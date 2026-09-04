@@ -178,6 +178,7 @@
     // straightforward question about a queue, where a durations distribution
     // narrowed the same way is a different statistic wearing the same axes.
     renderedOnce.timeline = false;
+    renderedOnce.activity = false;
     renderedOnce.testing = false;
     if (viewState.view === "calendar") {
       renderCalendar();
@@ -185,6 +186,9 @@
     } else if (viewState.view === "timeline") {
       renderTimelineView();
       renderedOnce.timeline = true;
+    } else if (viewState.view === "activity") {
+      renderActivity();
+      renderedOnce.activity = true;
     } else if (viewState.view === "testing") {
       renderTestingView();
       renderedOnce.testing = true;

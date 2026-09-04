@@ -14,6 +14,13 @@ const (
 	CommandRecoverFinalization = "recover-finalization"
 )
 
+// SetAsideReasonCode marks a finalization record this run excluded from
+// selection instead of stopping for. It rides in the record's reason codes, so
+// every selector that already reads them sees the exclusion without a new
+// field. Claim recovery reads it too: a REQ this run excluded keeps its claim
+// (internal/lifecycleadvance).
+const SetAsideReasonCode = "FINALIZATION-SET-ASIDE"
+
 func Handlers() map[string]commandruntime.CommandHandler {
 	return map[string]commandruntime.CommandHandler{
 		CommandFinalize:            handleFinalize,
@@ -76,11 +83,7 @@ func handleRecoverFinalization(executionContext commandruntime.ExecutionContext,
 			return commandFailure(executionContext.RepositoryRoot, CommandRecoverFinalization, "FINALIZATION-JOURNAL-INVALID", readError.Error())
 		}
 		result := advanceJournal(context.Background(), executionContext.RepositoryRoot, journal, true)
-		aggregate.Findings = append(aggregate.Findings, result.Findings...)
-		aggregate.Changes = append(aggregate.Changes, result.Changes...)
-		appendFinalizationResult(&aggregate, result)
-		if result.Outcome != resultmodel.OutcomeSuccess {
-			aggregate.Outcome = result.Outcome
+		if !consumeRecoveryRecord(&aggregate, journal.Manifest.RequestID, result) {
 			return aggregate
 		}
 	}
@@ -97,11 +100,7 @@ func handleRecoverFinalization(executionContext commandruntime.ExecutionContext,
 		}
 		for _, journal := range journals {
 			result := advanceJournal(context.Background(), executionContext.RepositoryRoot, journal, true)
-			aggregate.Findings = append(aggregate.Findings, result.Findings...)
-			aggregate.Changes = append(aggregate.Changes, result.Changes...)
-			appendFinalizationResult(&aggregate, result)
-			if result.Outcome != resultmodel.OutcomeSuccess {
-				aggregate.Outcome = result.Outcome
+			if !consumeRecoveryRecord(&aggregate, journal.Manifest.RequestID, result) {
 				return aggregate
 			}
 		}
@@ -138,14 +137,99 @@ func parseRecoverArguments(arguments []string) (commandOptions, error) {
 	return options, nil
 }
 
+// consumeRecoveryRecord folds one journal's outcome into the aggregate and
+// reports whether recovery may keep draining the remaining records. A refusal
+// that belongs to a single REQ becomes that REQ's exclusion; anything else is
+// evidence the next REQ would trip over, so it stops the run.
+func consumeRecoveryRecord(aggregate *resultmodel.CommandResult, requestID string, result resultmodel.CommandResult) bool {
+	aggregate.Changes = append(aggregate.Changes, result.Changes...)
+	if result.Outcome != resultmodel.OutcomeSuccess && requestScopedRefusal(requestID, result) {
+		record, finding := setAsideProjection(requestID, result)
+		aggregate.Findings = append(aggregate.Findings, finding)
+		appendFinalizationRecord(aggregate, record)
+		return true
+	}
+	aggregate.Findings = append(aggregate.Findings, result.Findings...)
+	appendFinalizationResult(aggregate, result)
+	if result.Outcome == resultmodel.OutcomeSuccess {
+		return true
+	}
+	aggregate.Outcome = result.Outcome
+	return false
+}
+
+// requestScopedRefusal answers whether a refused record belongs to exactly one
+// REQ. Ownership is REQ-514's test — every finding names this REQ and no other
+// — plus proof that the attempt left nothing behind: an incomplete rollback is
+// residue on paths the next claim would write through, and a command-level
+// failure is not a per-record verdict at all. A refusal whose cause is shared
+// state is produced without ownership (sharedStateRefusal, discoveryRefusal),
+// so this returns false for it and the whole run stops, which is the one stop
+// the maintainer's principle allows.
+func requestScopedRefusal(requestID string, result resultmodel.CommandResult) bool {
+	if requestID == "" || result.Finalization == nil || len(result.Findings) == 0 {
+		return false
+	}
+	if result.Outcome == resultmodel.OutcomeFailure || result.Rollback.Status == resultmodel.RollbackIncomplete {
+		return false
+	}
+	for _, finding := range result.Findings {
+		if !namesOnlyRequestID(finding.AffectedIDs, requestID) {
+			return false
+		}
+	}
+	return true
+}
+
+// setAsideProjection turns one REQ-scoped refusal into the exclusion a selector
+// reads. The record keeps its own reason codes and gains the set-aside code; the
+// finding names no next verb, because the verb that resolves a refused
+// finalization tail is a judgment the exit summary makes, not one this command
+// can pick (REQ-514: a refusal never names itself as the fix).
+func setAsideProjection(requestID string, result resultmodel.CommandResult) (resultmodel.FinalizationResult, resultmodel.CommandFinding) {
+	record := *result.Finalization
+	record.ReasonCodes = append(append([]string(nil), record.ReasonCodes...), SetAsideReasonCode)
+	record.NextArgv = nil
+	evidence := []string{}
+	for _, finding := range result.Findings {
+		evidence = append(evidence, finding.Evidence...)
+	}
+	evidence = append(evidence, "rollback: "+rollbackLabel(result.Rollback.Status))
+	return record, resultmodel.CommandFinding{
+		Code: SetAsideReasonCode, Severity: resultmodel.SeverityWarning,
+		AffectedIDs: []string{requestID}, AffectedPaths: append([]string(nil), record.BlockedPaths...),
+		Evidence: evidence, Fixability: resultmodel.FixabilityManual,
+		AutomationStopReason: requestID + " is set aside for this run; its finalization tail refused and the remaining REQs continue",
+		VerificationArgv:     append([]string(nil), record.VerificationArgv...),
+	}
+}
+
+func rollbackLabel(status resultmodel.RollbackStatus) string {
+	if status == "" {
+		return string(resultmodel.RollbackNotNeeded)
+	}
+	return string(status)
+}
+
+// namesOnlyRequestID is exclusive, not a membership test: a finding that names
+// this REQ alongside another one is not this REQ's private exclusion, and
+// setting it aside would hide the other REQ's evidence.
+func namesOnlyRequestID(affectedIDs []string, requestID string) bool {
+	return len(affectedIDs) == 1 && affectedIDs[0] == requestID
+}
+
 func appendFinalizationResult(aggregate *resultmodel.CommandResult, result resultmodel.CommandResult) {
 	if result.Finalization == nil {
 		return
 	}
-	aggregate.Finalizations = append(aggregate.Finalizations, *result.Finalization)
+	appendFinalizationRecord(aggregate, *result.Finalization)
+}
+
+func appendFinalizationRecord(aggregate *resultmodel.CommandResult, record resultmodel.FinalizationResult) {
+	aggregate.Finalizations = append(aggregate.Finalizations, record)
 	if len(aggregate.Finalizations) == 1 {
-		record := aggregate.Finalizations[0]
-		aggregate.Finalization = &record
+		first := aggregate.Finalizations[0]
+		aggregate.Finalization = &first
 	} else {
 		aggregate.Finalization = nil
 	}

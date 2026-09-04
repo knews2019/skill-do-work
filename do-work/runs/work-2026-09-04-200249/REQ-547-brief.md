@@ -1,7 +1,7 @@
 ---
 id: REQ-547
 title: '[impact-rule-change] Stop finalize refusing a REQ that has no checkpoint entry'
-status: pending
+status: claimed
 priority: now
 created_at: 2026-09-03T16:40:00Z
 user_request: UR-085
@@ -19,6 +19,7 @@ write_set:
   - skills/do-work/tools/do-work-cli/internal/requeststate/state_apply.go
   - skills/do-work/tools/do-work-cli/internal/finalization/finalization_apply.go
   - skills/do-work/tools/do-work-cli/internal/finalization/finalization_recovery_test.go
+claimed_at: 2026-09-04T20:02:18Z
 ---
 
 # Stop Finalize Refusing a REQ That Has No Checkpoint Entry

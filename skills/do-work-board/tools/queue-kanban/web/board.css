@@ -3147,3 +3147,73 @@ body.is-resizing-detail .detail-resizer::before {
 .timeline-excluded-id:hover {
   text-decoration: underline;
 }
+
+/* ---- activity view ------------------------------------------------------
+   "What changed on the queue lately." Deliberately plain: this view is a
+   reading surface, not a chart, so it borrows the timeline table's metrics
+   rather than inventing a second table style. The title column is the one
+   that wraps — every other cell is short and fixed-shape, and letting the
+   title wrap is what keeps the row readable instead of scrolling the whole
+   table sideways to reach the stamp. */
+#view-activity {
+  padding: 16px 24px 24px;
+}
+
+.activity-summary {
+  margin: 0 0 4px;
+  font-size: 13px;
+  color: var(--ink-soft);
+}
+
+.activity-empty {
+  margin: 0 0 12px;
+  font-size: 12px;
+  color: var(--ink-faint);
+  max-width: 108ch;
+}
+
+.activity-table-scroll {
+  max-height: 70vh;
+  overflow: auto;
+  margin-top: 8px;
+  font-size: 12px;
+}
+
+.activity-table-scroll table {
+  border-collapse: collapse;
+  width: 100%;
+}
+
+.activity-table-scroll th,
+.activity-table-scroll td {
+  text-align: left;
+  padding: 5px 12px 5px 0;
+  border-bottom: 1px solid var(--line-soft);
+  white-space: nowrap;
+  vertical-align: top;
+}
+
+.activity-table-scroll thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--surface-1);
+  color: var(--ink-faint);
+  font-weight: 600;
+}
+
+.activity-table-scroll tbody th {
+  font-family: var(--font-mono);
+  font-weight: 600;
+}
+
+/* The one wrapping column; see the block comment above. */
+.activity-table-scroll td[headers="activity-table-column-title"] {
+  white-space: normal;
+  min-width: 28ch;
+}
+
+.activity-table-scroll td[headers="activity-table-column-stamp"] {
+  font-family: var(--font-mono);
+  color: var(--ink-faint);
+}

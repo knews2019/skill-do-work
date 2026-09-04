@@ -58,6 +58,7 @@ func handleRecover(executionContext commandruntime.ExecutionContext, arguments [
 		return aggregate
 	}
 	recovery.FinalizationPassed = true
+	setAsideRequests := setAsideRequestIDs(finalizationResult.Finalizations)
 	snapshot, discoveryError := repositorymodel.DiscoverRepository(executionContext.RepositoryRoot)
 	if discoveryError != nil {
 		return recoveryFailureWithState(executionContext.RepositoryRoot, recovery, "RECOVERY-DISCOVERY-FAILED", discoveryError.Error())
@@ -80,6 +81,11 @@ func handleRecover(executionContext commandruntime.ExecutionContext, arguments [
 		requestPath := advanceRequestPath(request)
 		evidence := recoveryCheckpointEvidence(snapshot.CheckpointClaimsByID[requestID])
 		claimResult := resultmodel.RecoveryClaimResult{RequestID: requestID, RequestPath: requestPath, CheckpointEvidence: evidence}
+		if setAsideRequests[requestID] {
+			claimResult.Decision = "finalization set aside; claim preserved"
+			recovery.Claims = append(recovery.Claims, claimResult)
+			continue
+		}
 		authorized := options.assumeSoleAuthority || options.takeOverRequestID == requestID
 		if !authorized {
 			claimResult.Decision = "takeover available; claim preserved"
@@ -140,6 +146,23 @@ func handleRecover(executionContext commandruntime.ExecutionContext, arguments [
 	}
 	aggregate.Outcome = resultmodel.OutcomeSuccess
 	return aggregate
+}
+
+// setAsideRequestIDs collects the REQs this run's finalization pass excluded
+// from selection. Their claims must survive recovery: releasing one puts the
+// REQ back in the queue where the same run selects it again, and its unfinished
+// journal then refuses the rebuilt work at the finalize tail (REQ-515). The
+// exclusion rides in the record's reason codes, so nothing new is parsed here.
+func setAsideRequestIDs(records []resultmodel.FinalizationResult) map[string]bool {
+	setAside := map[string]bool{}
+	for _, record := range records {
+		for _, reasonCode := range record.ReasonCodes {
+			if reasonCode == finalization.SetAsideReasonCode && record.RequestID != "" {
+				setAside[record.RequestID] = true
+			}
+		}
+	}
+	return setAside
 }
 
 func parseRecoveryArguments(arguments []string) (recoverOptions, error) {

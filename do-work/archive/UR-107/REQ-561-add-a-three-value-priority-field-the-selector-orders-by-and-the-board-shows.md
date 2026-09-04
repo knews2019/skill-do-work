@@ -1,7 +1,7 @@
 ---
 id: REQ-561
 title: 'Add a three-value priority field the selector orders by and the board shows'
-status: pending
+status: cancelled
 created_at: 2026-09-03T20:38:55Z
 user_request: UR-107
 domain: backend
@@ -66,6 +66,7 @@ status_changed_at: 2026-09-04T12:36:12Z
 commit: 2d052afa24759990b8c3bf417b3ad4579b1bfc16
 heavy_verified_at: 2026-09-04T12:36:12Z
 heavy_verified_revision: c0d8ce1cb44cc1830b167214c018d76ba87baffc
+completed_at: 2026-09-04T18:24:23Z
 ---
 
 # Add a Three-Value Priority Field the Selector Orders By and the Board Shows
@@ -365,3 +366,9 @@ Execution revision: `c0d8ce1cb44cc1830b167214c018d76ba87baffc`
 - staged-skills: exit 0 — `bash _dev/tests/maintainer-verify.sh --heavy-lane staged-skills`
 - updater: exit 0 — `bash _dev/tests/maintainer-verify.sh --heavy-lane updater`
 - installer: exit 0 — `bash _dev/tests/maintainer-verify.sh --heavy-lane installer`
+
+## Cancelled
+
+- **When:** 2026-09-04T18:24:23Z
+- **Why:** Not built: its code shipped in release 0.273.0 (Priority-Ordered Queue Selection and Board Tags). The authored priority field, the selector ordering and the board tags are already in the tree, so there is nothing left to implement.
+- **Decided by:** user, via `do-work abandon`

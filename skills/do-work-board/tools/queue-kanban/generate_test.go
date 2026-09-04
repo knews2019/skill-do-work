@@ -42,6 +42,7 @@ func TestEmbeddedAuthoredJavaScriptInventory(t *testing.T) {
 		}
 	}
 	wantAuthoredJavaScriptPaths := []string{
+		"web/board-activity.js",
 		"web/board-calendar.js",
 		"web/board-cards.js",
 		"web/board-clipboard.js",
@@ -68,6 +69,7 @@ func TestBoardJavaScriptAssemblyStructure(t *testing.T) {
 		"web/board-calendar.js",
 		"web/board-durations.js",
 		"web/board-timeline.js",
+		"web/board-activity.js",
 		"web/board-testing.js",
 		"web/board-detail.js",
 		"web/board-controls.js",

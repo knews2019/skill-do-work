@@ -123,8 +123,11 @@ func advanceJournal(ctx context.Context, repositoryRoot string, journal *Journal
 		if recoveredSHA, ok := matchingHeadCommit(repositoryRoot, journal); ok {
 			journal.PrimaryCommit = recoveredSHA
 		} else {
-			if blockedCode, blockedReason, blockedPaths := commitSafety(repositoryRoot, journal); blockedCode != "" {
-				return finalizationFailure(journal, resumed, blockedCode, blockedReason, blockedPaths)
+			if blockedCode, blockedReason, blockedPaths, requestOwned := commitSafety(repositoryRoot, journal); blockedCode != "" {
+				if requestOwned {
+					return finalizationFailure(journal, resumed, blockedCode, blockedReason, blockedPaths)
+				}
+				return sharedStateRefusal(journal, resumed, blockedCode, blockedReason, blockedPaths)
 			}
 			transaction := gittransaction.CommitExactPaths(ctx, repositoryRoot, journal.EffectiveCommitPaths, journal.Manifest.CommitMessage, nil)
 			if transaction.Failure != nil {
@@ -454,13 +457,16 @@ func stampReleaseAt(repositoryRoot, archivedPath, releaseAt string) error {
 	return atomicfile.ReplaceExisting(absolutePath, document.DocumentBytes())
 }
 
-func commitSafety(repositoryRoot string, journal *Journal) (string, string, []string) {
+// commitSafety reports a refusal plus whether this journal's own REQ owns its cause.
+// An owned cause keeps REQ ownership so recovery can set that one REQ aside; an
+// unowned cause is shared state and stops the run.
+func commitSafety(repositoryRoot string, journal *Journal) (string, string, []string, bool) {
 	if err := exec.Command("git", "-C", repositoryRoot, "diff", "--cached", "--quiet", "--exit-code").Run(); err != nil {
-		return "FINALIZATION-DIRTY-INDEX", "finalization requires an empty existing index", nil
+		return "FINALIZATION-DIRTY-INDEX", "finalization requires an empty existing index", nil, false
 	}
 	rows, err := corehelpers.ReadProtectedInventory(repositoryRoot)
 	if err != nil {
-		return "FINALIZATION-INVENTORY-FAILED", err.Error(), nil
+		return "FINALIZATION-INVENTORY-FAILED", err.Error(), nil, true
 	}
 	allowed := map[string]bool{}
 	for _, path := range journal.EffectiveCommitPaths {
@@ -483,20 +489,41 @@ func commitSafety(repositoryRoot string, journal *Journal) (string, string, []st
 		releasePaths[image.Path] = true
 	}
 	blocked := []string{}
+	owned := []string{}
 	for _, row := range rows {
 		if row.Classification == "X" && allowed[row.Path] {
-			blocked = append(blocked, row.Path)
+			// A protected-shaped path the journal DOES declare is this REQ's own
+			// work, not dirt somebody else left. It must refuse with the REQ still
+			// named, so recovery sets that one REQ aside and keeps draining; an
+			// unowned refusal here would park the whole queue over one secret-shaped
+			// file the REQ changed on purpose, which is what REQ-515 removes.
+			owned = append(owned, row.Path)
 			continue
 		}
-		if !allowed[row.Path] && (row.Path == "do-work" || strings.HasPrefix(row.Path, "do-work/") || releasePaths[row.Path]) {
+		// Dirt outside the group implicates this transaction only when the group
+		// was inferred from the tree. A journaled finalize declares its exact
+		// write set in the manifest, so an uncommitted path it never declared
+		// belongs to somebody else — another session's untracked draft, another
+		// session's edit to a shared log. Refusing on those stopped runs that had
+		// nothing else wrong with them, and pushed the pipeline into committing
+		// foreign work under its own name to reach a clean tree (REQ-560). Leave
+		// them: the commit still carries the exact allowlist and nothing more.
+		if !journal.Discovered {
+			continue
+		}
+		if !allowed[row.Path] && (sharedFinalizationPath(row.Path) || releasePaths[row.Path]) {
 			blocked = append(blocked, row.Path)
 		}
+	}
+	owned = uniqueSorted(owned)
+	if len(owned) > 0 {
+		return "FINALIZATION-PROTECTED-DECLARED-PATH", "protected-classified paths the journal declares cannot be committed by this transaction", owned, true
 	}
 	blocked = uniqueSorted(blocked)
 	if len(blocked) > 0 {
-		return "FINALIZATION-AMBIGUOUS-SHARED-STATE", "shared lifecycle, release, or protected paths remain outside the exact recovery group", blocked
+		return "FINALIZATION-AMBIGUOUS-SHARED-STATE", "shared lifecycle, release, or protected paths remain outside the exact recovery group", blocked, false
 	}
-	return "", "", nil
+	return "", "", nil, false
 }
 
 func matchingHeadCommit(repositoryRoot string, journal *Journal) (string, bool) {
@@ -622,6 +649,25 @@ func finalizationFailure(journal *Journal, resumed bool, code, reason string, pa
 		Evidence: []string{reason}, Fixability: resultmodel.FixabilityRefused, AutomationStopReason: "finalization evidence is incomplete or ambiguous",
 		NextArgv: verification, VerificationArgv: verification,
 	}}, Finalization: &record, Finalizations: []resultmodel.FinalizationResult{record}}
+}
+
+// sharedStateRefusal reports a refusal whose cause is state this journal never
+// declared: the repository's single index, or shared lifecycle and release
+// paths outside the exact recovery group. It carries no affected REQ because no
+// REQ owns the cause, and that absence is the condition recovery reads to stop
+// the whole run instead of setting one REQ aside (REQ-515). Anything a REQ does
+// own keeps its ownership and is set aside per REQ. The resolving verb is the
+// uncommitted inventory that shows the caller what the shared dirt is, never
+// the command that just refused (REQ-514).
+func sharedStateRefusal(journal *Journal, resumed bool, code, reason string, paths []string) resultmodel.CommandResult {
+	result := finalizationFailure(journal, resumed, code, reason, paths)
+	collection := []string{"do-work-cli", "--format", "json", "uncommitted-inventory"}
+	result.Findings[0].AffectedIDs = nil
+	result.Findings[0].AutomationStopReason = "shared finalization state is dirty or ambiguous and no single REQ owns it"
+	result.Findings[0].NextArgv = collection
+	result.Finalization.NextArgv = append([]string(nil), collection...)
+	result.Finalizations[0] = *result.Finalization
+	return result
 }
 
 func finalizationRecord(journal *Journal, resumed bool, paths, reasonCodes []string) resultmodel.FinalizationResult {

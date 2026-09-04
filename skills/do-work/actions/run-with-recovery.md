@@ -30,7 +30,7 @@ Invoke one constant command from the project root:
 <skill-root>/tools/do-work-cli.sh --repo-root <project-root> --format json recover --assume-sole-authority
 ```
 
-Continue only on typed `success`. The command settles finalization first, then atomically resets every recoverable working claim and removes all same-request checkpoint entries from structural evidence. It reports hostile, multiple, and unlabelled writer records as data; no observed writer text enters shell source. Clear a refusal through judgment and re-run its exact `verification_argv`; never reproduce the mutation by hand.
+Continue only on typed `success`, then read the returned `finalizations` one record at a time: a record carrying `FINALIZATION-SET-ASIDE` in its `reason_codes` is one REQ this run will not select — recovery keeps that REQ's existing claim instead of releasing it, so this verb's claim reset cannot hand the same REQ back to selection — and every other REQ still runs (`actions/work-reference.md` → **Commit & Metadata-Commit Procedure (Step 9)**). Report each set-aside with its reason codes and the verb that resolves it before handing off. The command settles finalization first, then atomically resets every recoverable working claim it did not set aside and removes all same-request checkpoint entries from structural evidence. It reports hostile, multiple, and unlabelled writer records as data; no observed writer text enters shell source. Clear a refusal through judgment and re-run its exact `verification_argv`; never reproduce the mutation by hand.
 
 ### Step 2: Hand off to the work pipeline
 
@@ -46,9 +46,11 @@ Report recovered finalization records and working-REQ takeovers first, then use 
 | --- | --- | --- |
 | "The command refused and the instructions say no fallback, so the run ends here" | Judge why it refused, clear the cause, re-run the exact command | The no-fallback rule forbids reproducing a mutation by hand, not thinking; a Finder `.DS_Store` under `do-work/` once stopped a run whose only real obstacle was that one file |
 | "The checkpoint says another writer, so I'll leave that REQ claimed" | Trust the `recover --assume-sole-authority` result | The user's authority assertion covers every structurally observed working claim for this invocation |
+| "One record came back set aside, so this run is over" | Report that REQ with its reason codes, then hand `$ARGUMENTS` to the work pipeline unchanged | A set-aside is one REQ's exclusion, not the queue's; REQ-456's stuck finalization tail parked 31 pending REQs by being read as a whole-run stop |
 
 ## Verification Checklist
 
 - [ ] Recovery used the constant canonical `recover --assume-sole-authority` argv, with no writer interpolation or fallback
 - [ ] Every working REQ and every same-request checkpoint entry appears in the typed recovery result
+- [ ] Every set-aside record was reported with its reason codes and a resolving verb, and the REQs it did not name still went to the work pipeline
 - [ ] The work handoff received the original `$ARGUMENTS` verbatim
