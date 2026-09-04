@@ -14,6 +14,7 @@ The standard-library Go module under this directory is the canonical implementat
 - `internal/repositorymodel/` owns one-pass do-work discovery, exact paths, collisions, and REQ allocation.
 - `internal/dependencygraph/` derives readiness, reverse edges, cycles, and depth from a repository snapshot.
 - `internal/nextselection/` owns read-only target expansion, queue readiness, process-tree-owned blocked probes, wave/fan-out bounds, estimates, and typed selected/excluded records.
+- `internal/lifecycleadvance/` owns the read-only per-REQ lifecycle projection: exact identity/state, route phase, missing evidence coordinates, and tokenized next/replay argv.
 - `internal/corehelpers/` owns the remaining utility handlers and leaf check, inventory, Git, publication, reservation, and survey mechanics; shared download, timestamp, probe, and provenance primitives remain with their domain owners.
 - `internal/hookcommands/` owns core and memory SessionStart plus memory Stop protocols; retained hook scripts only launch these commands.
 - `internal/knowledgecommands/` owns BKB scaffold/status/structural scans, Dream's seven deterministic scans, Interview list/status/export/ingest/reset/version mechanics, and Memory's exact store plans, lexical recall, status/bootstrap/audit probes; actions retain semantic judgment, reports, locks, consent, consolidation, transcript summarization, optional semantic recall, and repair/recommendation choice.
@@ -34,6 +35,20 @@ The standard-library Go module under this directory is the canonical implementat
 ## Package direction
 
 `requestmodel` may import `schemanormalization`. `repositorymodel` may import `requestmodel` and `atomicfile`. `dependencygraph` consumes repository records. `gittransaction`, `toolboxcommands`, and `heavyverification` may import `ownedprocess`, which imports only the standard library and must never import a command package. Keep imports acyclic and do not import the separate `queue-kanban` command.
+
+## Advance phase table
+
+`advance REQ-NNN` discovers one snapshot and never writes a REQ, checkpoint, Git, or any other byte. Mechanical phases return an exact `next_argv`; judgment phases return no command and are named `agent judgment: <what>`. Every result carries exact identity/path, tree/status/route, structured missing evidence, and a JSON replay argv.
+
+| Evidence boundary | Route A | Route B | Route C |
+|---|---|---|---|
+| Queue | `claim`; blocked requests replay targeted `next` | same | same |
+| Claimed, before build | triage → `estimate-p50` → planning-skip judgment | triage → estimate → planning-skip → exploration → scope → `preflight` | triage → estimate → planning → exploration → scope → `preflight` |
+| Built | `qualify` → testing judgment | `qualify` → `scope-drift`/testing | same |
+| Tested | review → lessons/orientation → finalization-manifest judgment | same | same |
+| Archive | missing terminal provenance → `recover-finalization --discover`; otherwise complete | same | same |
+
+Exact `##` sections are intermediate evidence. A clean preflight has no durable section, so the preflight phase remains current until `## Implementation Summary` exists. Finalization stays judgment until the action supplies a manifest path. `ADVANCE-EVIDENCE-MISSING` refuses contradictory ordering or unusable identity; `ADVANCE-PHASE-UNKNOWN` refuses impossible tree/status/route combinations. Targeted `next`, not `run-blocked-check`, remains the sole blocked-probe authority.
 
 ## Traps
 

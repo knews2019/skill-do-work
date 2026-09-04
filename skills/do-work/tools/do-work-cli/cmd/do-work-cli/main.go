@@ -12,6 +12,7 @@ import (
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/heavyverification"
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/hookcommands"
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/knowledgecommands"
+	"github.com/knews2019/skill-do-work/do-work-cli/internal/lifecycleadvance"
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/nextselection"
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/publication"
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/repairvalidation"
@@ -35,6 +36,9 @@ func main() {
 		handlers[name] = handler
 	}
 	for name, handler := range nextselection.Handlers() {
+		handlers[name] = handler
+	}
+	for name, handler := range lifecycleadvance.Handlers() {
 		handlers[name] = handler
 	}
 	for name, handler := range requeststate.Handlers() {
