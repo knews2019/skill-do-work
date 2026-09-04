@@ -17,5 +17,3 @@ session_depth: light
 - 28 pending requests remain. This targeted run drained REQ-483's frozen ledger; the selector recommends REQ-485 next.
 
 ## In Progress (interrupted)
-
-- REQ-507: [impact-rule-change] Hand the archive and commit tails to finalize — claimed 2026-09-04T18:21:29Z — writer: t2s-Virtual-Machine.local:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2

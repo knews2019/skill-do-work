@@ -1,7 +1,8 @@
 ---
 id: REQ-507
 title: '[impact-rule-change] Hand the archive and commit tails to finalize'
-status: claimed
+status: pending-heavy-testing
+status_changed_at: 2026-09-04T19:11:30Z
 priority: now
 created_at: 2026-09-02T14:37:54Z
 user_request: UR-098
@@ -22,6 +23,7 @@ exploration_at: 2026-09-04T18:32:49Z
 dispatch_at: 2026-09-04T18:36:04Z
 builder_handback_at: 2026-09-04T19:04:09Z
 integration_at: 2026-09-04T19:04:37Z
+commit: ad8bceb7aa0d0c63c230048b6a1f2dae1ef7ccb9
 estimate:
   p50_active_minutes: 50
   confidence: low
@@ -79,7 +81,7 @@ Firm on the boundary between mechanics and judgment as classified in the report'
 - `_dev/primes/lessons-action-files.md` — 3436 tokens, over the 2000-token budget; `slugged: partial` so no targeted form. Matched on "changing action routing, pipeline fields, status contracts, downstream readers".
 
 ## Open Questions
-None.
+- [ ] Heavy lanes at `ad8bceb7aa0d0c63c230048b6a1f2dae1ef7ccb9`: the work loop runs them at queue exhaustion and records the result here
 
 ## Full Context
 See `do-work/user-requests/UR-098/input.md` for complete verbatim input.
@@ -156,3 +158,22 @@ None.
 ## Qualification
 
 Typed qualification passed for exact range `8e3dbf01e0660424965d79acb2e386b6604e4780..ad8bceb7aa0d0c63c230048b6a1f2dae1ef7ccb9`: all 12 implementation paths match the declared Scope, every summary entry matches the merged diff, and scope-drift reported no findings.
+
+## Testing
+
+- **Red-green validation:** Public finalization and phase-matrix tests first failed because `advance` still stopped at agent judgment and rejected the manifest input; after implementation, the four-path/refusal matrix passed in 4.005s and the final focused lifecycle/result rerun passed in 11.022s and 0.343s.
+- **Focused merged-state gate:** the advance-owned probe ran lifecycleadvance, finalization, and resultmodel at the merged tree with exit 0, baseline state green, and diagnostic SHA-256 `e8a829932bae3fc53990317ac388f37816b6e8ddc32fa469c245b7cdac251a06`.
+- **Race:** lifecycleadvance, finalization, and resultmodel passed under `go test -race` in 13.737s, 42.619s, and 1.515s.
+- **Contracts:** the aggregate contract regression suite passed in 15.3s; every fast test file remained under 30s.
+- **Repository gate:** `bash _dev/tests/maintainer-verify.sh` exited 0 at `02b5a2a3fe1831b8dc8088d8c80165617f0ec29f`, covering ShellCheck, gofmt, contracts, vet, 375 board tests, and 677 CLI tests; the slowest CLI test file was 19.28s.
+
+## Heavy Verification Plan
+
+- Base revision: `8e3dbf01e0660424965d79acb2e386b6604e4780`
+- Target revision: `ad8bceb7aa0d0c63c230048b6a1f2dae1ef7ccb9`
+- `queue-kanban-javascript`: `bash _dev/tests/maintainer-verify.sh --heavy-lane queue-kanban-javascript` — coverage is uncertain for the changed core contract owner.
+- `queue-kanban-browser`: `bash _dev/tests/maintainer-verify.sh --heavy-lane queue-kanban-browser` — coverage is uncertain for the changed core contract owner.
+- `do-work-cli-integrations`: `bash _dev/tests/maintainer-verify.sh --heavy-lane do-work-cli-integrations` — coverage is uncertain for the changed core contract owner.
+- `staged-skills`: `bash _dev/tests/maintainer-verify.sh --heavy-lane staged-skills` — coverage is uncertain for the changed core contract owner.
+- `updater`: `bash _dev/tests/maintainer-verify.sh --heavy-lane updater` — coverage is uncertain for the changed core contract owner.
+- `installer`: `bash _dev/tests/maintainer-verify.sh --heavy-lane installer` — coverage is uncertain for the changed core contract owner.
