@@ -163,7 +163,7 @@ func TestAdvanceCommandPhaseMatrix(t *testing.T) {
 		{
 			name: "ready route C finalization", treeSection: "working", status: "claimed", frontmatter: "route: C\nplanning_at: 2026-09-04T12:00:00Z\nwrite_set: [owned.go]\nestimate:\n  p50_active_minutes: 30\n",
 			body:      routeCBodyThrough("Orientation"),
-			wantPhase: "agent judgment: prepare finalization manifest", wantPhaseKind: "agent_judgment",
+			wantPhase: "finalize", wantPhaseKind: "mechanical", wantNextCommand: "finalize",
 			wantMissing: advanceMissingEvidence{Kind: "file", Expected: "action-authored finalization manifest"},
 		},
 		{
@@ -427,6 +427,8 @@ func expectedAdvanceNextArgv(command, requestPath, route string) []string {
 		return []string{"do-work-cli", "--format", "json", "advance", "REQ-703", "--request-path", requestPath, "--diff-range", "<pre>..<merge_hash>"}
 	case "test-gate":
 		return []string{"do-work-cli", "--format", "json", "advance", "REQ-703", "--request-path", requestPath, "--gate-arg", "<canonical-gate-argv-token>", "--", "--probe-file", "<focused-test-probe>"}
+	case "finalize":
+		return []string{"do-work-cli", "--format", "json", "advance", "REQ-703", "--request-path", requestPath, "--finalization-manifest", "<action-authored-finalization-manifest>"}
 	case "recover-finalization":
 		return []string{"do-work-cli", "--format", "json", "recover-finalization", "--discover"}
 	default:

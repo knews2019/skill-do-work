@@ -717,6 +717,46 @@ if ! grep -qF '## Qualification Anti-Rationalization Table (Step 6.3)' "$work_re
   printf 'FAIL: work-reference.md must retain the judgment-owned qualification table and finding-closure ratchet.\n' >&2
   fail_count=$((fail_count + 1))
 fi
+
+# Finalization tail prose keeps action judgment while advance and the existing
+# finalizer own every deterministic archive/release/commit mutation.
+work_step_eight="$(awk '/^### Step 8:/{capture=1} /^### Step 9:/{capture=0} capture' "$work_action")"
+work_step_nine="$(awk '/^### Step 9:/{capture=1} /^### Step 10:/{capture=0} capture' "$work_action")"
+reference_changelog="$(awk '/^## Changelog Entry Procedure \(Step 9\)/{capture=1} /^## Commit & Metadata-Commit Procedure \(Step 9\)/{capture=0} capture' "$work_reference")"
+reference_commit="$(awk '/^## Commit & Metadata-Commit Procedure \(Step 9\)/{capture=1} /^## Session Checkpoint Principle \(Step 10\)/{capture=0} capture' "$work_reference")"
+for judgment_token in 'Fold-First follow-ups' 'Sweep consolidation and impact stamping' 'Terminal judgment' 'Release and lesson judgment' 'author exactly one strict manifest'; do
+  if ! grep -qF "$judgment_token" <<<"$work_step_eight"; then
+    printf 'FAIL: actions/work.md Step 8 must retain finalization judgment token %s\n' "$judgment_token" >&2
+    fail_count=$((fail_count + 1))
+  fi
+done
+for result_token in 'exact `advance` continuation' 'ordered `finalizations`' '`phase: cleanup_complete`' 'empty `blocked_paths`/`reason_codes`'; do
+  if ! grep -qF "$result_token" <<<"$work_step_nine"; then
+    printf 'FAIL: actions/work.md Step 9 must consume advance-owned finalization evidence token %s\n' "$result_token" >&2
+    fail_count=$((fail_count + 1))
+  fi
+done
+if [ "$(wc -l <<<"$work_step_nine" | tr -d ' ')" -gt 8 ]; then
+  printf 'FAIL: actions/work.md Step 9 must remain a concise advance handoff, not regrow a mechanical recipe.\n' >&2
+  fail_count=$((fail_count + 1))
+fi
+for release_judgment_token in 'version source' 'delivered change' 'project-owned' 'suite-maintainer mirror' 'unique title' 'house voice' 'exact payload bytes'; do
+  if ! grep -qF "$release_judgment_token" <<<"$reference_changelog"; then
+    printf 'FAIL: work-reference.md changelog procedure must retain release judgment token %s\n' "$release_judgment_token" >&2
+    fail_count=$((fail_count + 1))
+  fi
+done
+if ! grep -qF 'Pass that one manifest to the current `advance` continuation.' <<<"$reference_commit" \
+    || ! grep -qF 'Consume ordered `finalizations`' <<<"$reference_commit"; then
+  printf 'FAIL: work-reference.md commit procedure must hand one judged manifest to advance and consume ordered evidence.\n' >&2
+  fail_count=$((fail_count + 1))
+fi
+for tail_recipe in 'do-work-cli\.sh.*finalize' 'finalize --manifest' 'git add' 'git commit' 'record-commit-hash'; do
+  if grep -Eq "$tail_recipe" <<<"$work_step_eight"$'\n'"$work_step_nine"$'\n'"$reference_changelog"$'\n'"$reference_commit"; then
+    printf 'FAIL: finalization judgment sections must not restore mechanical tail recipe %s\n' "$tail_recipe" >&2
+    fail_count=$((fail_count + 1))
+  fi
+done
 if ! grep -qF 'request-bound execution of each mechanical evidence gate' "$cli_prime"; then
   printf 'FAIL: prime-do-work-cli.md must describe lifecycleadvance as the request-bound evidence-gate owner.\n' >&2
   fail_count=$((fail_count + 1))

@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/commandruntime"
+	"github.com/knews2019/skill-do-work/do-work-cli/internal/finalization"
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/repositorymodel"
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/requestmodel"
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/resultmodel"
@@ -50,6 +51,9 @@ func handleAdvance(executionContext commandruntime.ExecutionContext, arguments [
 			projected := classifyAdvance(candidates[0])
 			if len(arguments) == 1 || projected.Advance == nil || projected.Outcome == resultmodel.OutcomeRefused {
 				return projected
+			}
+			if projected.Advance.Phase == finalization.CommandFinalize {
+				return executeAdvanceFinalization(executionContext, projected, arguments[1:])
 			}
 			return executeAdvanceEvidenceGates(executionContext, candidates[0], projected, arguments[1:])
 		}
@@ -247,8 +251,9 @@ func classifyWorkingAdvance(target *repositorymodel.RequestFile, advance *result
 		return advancePhase(advance, "agent judgment: lessons and orientation", resultmodel.AdvancePhaseAgentJudgment,
 			advanceEvidence("section", requestPath, "", "Orientation", "subsystem-level handback"), nil)
 	}
-	return advancePhase(advance, "agent judgment: prepare finalization manifest", resultmodel.AdvancePhaseAgentJudgment,
-		resultmodel.AdvanceMissingEvidence{Kind: "file", Path: "<action-authored-finalization-manifest>", Expected: "action-authored finalization manifest"}, nil)
+	return advancePhase(advance, finalization.CommandFinalize, resultmodel.AdvancePhaseMechanical,
+		resultmodel.AdvanceMissingEvidence{Kind: "file", Path: "<action-authored-finalization-manifest>", Expected: "action-authored finalization manifest"},
+		[]string{"do-work-cli", "--format", "json", CommandAdvance, advance.RequestID, "--request-path", requestPath, "--finalization-manifest", "<action-authored-finalization-manifest>"})
 }
 
 func classifyArchiveAdvance(target *repositorymodel.RequestFile, advance *resultmodel.AdvanceLifecycleResult) resultmodel.CommandResult {

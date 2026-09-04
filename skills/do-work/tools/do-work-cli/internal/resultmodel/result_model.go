@@ -1016,6 +1016,30 @@ func renderText(result CommandResult) []byte {
 			}
 		}
 	}
+	for _, record := range result.Finalizations {
+		fmt.Fprintf(&output, "finalization %s [%s, %s]\n", record.RequestID, record.Phase, record.TerminalStatus)
+		fmt.Fprintf(&output, "  request: %s\n", record.RequestPath)
+		fmt.Fprintf(&output, "  archive: %s\n", record.ArchivePath)
+		fmt.Fprintf(&output, "  journal: %s\n", record.JournalPath)
+		fmt.Fprintf(&output, "  resumed: %t\n", record.Resumed)
+		fmt.Fprintf(&output, "  discovered: %t\n", record.Discovered)
+		fmt.Fprintf(&output, "  commit paths: %s\n", strings.Join(record.CommitPaths, ", "))
+		fmt.Fprintf(&output, "  primary commit: %s\n", record.PrimaryCommit)
+		fmt.Fprintf(&output, "  metadata commit: %s\n", record.MetadataCommit)
+		fmt.Fprintf(&output, "  created primary commit: %s\n", record.CreatedPrimaryCommit)
+		fmt.Fprintf(&output, "  created metadata commit: %s\n", record.CreatedMetadataCommit)
+		fmt.Fprintf(&output, "  blocked paths: %s\n", strings.Join(record.BlockedPaths, ", "))
+		fmt.Fprintf(&output, "  reason codes: %s\n", strings.Join(record.ReasonCodes, ", "))
+		if len(record.NextArgv) > 0 {
+			fmt.Fprintf(&output, "  next: %s\n", joinArgv(record.NextArgv))
+		}
+		if len(record.VerificationArgv) > 0 {
+			fmt.Fprintf(&output, "  verify: %s\n", joinArgv(record.VerificationArgv))
+		}
+		if len(record.CollectionArgv) > 0 {
+			fmt.Fprintf(&output, "  collect: %s\n", joinArgv(record.CollectionArgv))
+		}
+	}
 	if result.QueueAdvance != nil {
 		queueAdvance := result.QueueAdvance
 		fmt.Fprintf(&output, "queue advance: members=%d claimed=%d bound=%d partial=%t\n", len(queueAdvance.FrozenMembers), len(queueAdvance.Claimed), queueAdvance.DispatchBound, queueAdvance.Partial)

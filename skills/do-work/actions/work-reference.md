@@ -489,7 +489,7 @@ Run summaries compose, rather than overwrite: report each deferred parent with i
 1. **Capture `<pre>`** — run `git rev-parse --short HEAD` and read the printed hash. It is the integration tip before this REQ's **first** merge and the lower bound of the merge range. Capture it **once per REQ**; a remediation re-merge does not re-capture it (below). Never recover it afterwards as `HEAD^1` or live `HEAD` — both move as soon as the orchestrator commits the changelog (Step 9) or merges the next sibling.
 2. **Guard the queue, then merge without committing** — first run `git diff --name-only <pre>...<operative_name> -- do-work/` (three dots: merge-base to branch tip — which is why this runs **before** the merge; once the branch is merged that diff goes empty). Owner bookkeeping sits below `<pre>` (step 0) and the hand-back file is never committed, so any path printed is queue state committed on the builder's branch — the write *State stays home* forbids. Stop and drop/revert those commits on the branch before integrating (on a remediation re-merge whose fix branch was cut from the integrated tip, owner or sibling commits can surface here too — the cumulative range's safe-direction over-inclusion: judge, don't auto-delete). This guard is the only mechanical check that ever sees them: `tools/checks/qualify.sh` and `tools/checks/scope-drift.sh` both exclude `do-work/` by contract, and `queue-kanban verify`'s committed-queue-state probe reads this same three-dot diff — blind after the merge, and Step 8 deletes the branch before Step 9 runs verify. Then `git merge --no-ff --no-commit <operative_name>` (this REQ's operative name, *Naming* above — the branch the builder was actually dispatched on, which is the collision variant where there was one), then resolve any conflict. `--no-ff` forces a merge commit even where the branch could fast-forward (Merge, never rebase, above); `--no-commit` is what leaves the integration seam somewhere to go. If git answers `Already up to date.` the builder committed nothing: no `MERGE_HEAD` is set, so a `git commit` here would either fail or fabricate a non-merge commit — stop and treat the hand-back as empty instead.
 3. **Apply the integration seams, then commit** — stage the handed-back seam lines (Sole integrator, above) and `git commit`. Folding the seam into the merge commit is the only placement that puts it inside the merge range: a seam committed *after* the merge is that merge commit's **child**, hence outside `<pre>..<merge_hash>`, and qualify, review, and Step 9's validation would never see it.
-4. **Capture `<merge_hash>`** — `git rev-parse --short HEAD` on the commit just made. It is the upper bound of the merge range and the hash Step 9 writes into the REQ's `commit:` field.
+4. **Capture `<merge_hash>`** — `git rev-parse --short HEAD` on the commit just made. It is the upper bound of the merge range and the supplied-provenance hash that finalization records in the REQ's `commit:` field.
 
 **Hold both endpoints as re-typed literals, never as shell variables.** The canonical [State across command blocks](../docs/prescribed-shell-primitives.md#state-across-command-blocks) rule applies because the consumers sit in later blocks with model round-trips in between — a `"$pre..$merge_hash"` composed in a fresh shell expands to `".."`, which git rejects. Hold both hashes known from this session's own context and re-typed into each fresh command, never a shell variable. `tools/checks/qualify.sh` hard-FAILs on a range it cannot resolve rather than reading an empty diff, so a lost endpoint surfaces as a qualification failure naming the range instead of a vacuous pass.
 
@@ -973,97 +973,18 @@ If no upstream REQ is `failed`, fall through to the symptom-based classification
 
 ## Changelog Entry Procedure (Step 9)
 
-This procedure owns judgment and payload authoring only. After choosing the source, version, mirrors, existing format, title, voice, and exact replacements below, pass them to one canonical `release` manifest as directed by `actions/work.md` Step 9. `release` is the sole deterministic version/changelog writer and validates monotonicity, preimages, keys, anchors, mirrors, and exact ownership evidence in one transaction. Missing/refused tooling stops the release tail; manual edits and package-manager/helper fallbacks are forbidden.
+This procedure owns release judgment and human-facing payload content. A successful REQ gets one changelog entry unless it is an already-green repair no-op; failed/cancelled work and that no-op carry no release manifest or `release_at`. Match an existing repository convention, or use the house heading `## X.Y.Z — [Short Descriptive Title] (YYYY-MM-DD)` with a unique title that tells a scanning reader what changed.
 
-The nested release manifest must classify every normalized path in `targets[].path` and `changelogs[].path` exactly once. Put each consumer repository source, including its own lockfile mirror, in `project_owned_targets`; its exact normalized union with `required_mirrors` must equal the mutation paths and the two lists must not overlap. Consumer releases leave `maintainer_release` false and `required_mirrors` empty. Only a do-work suite maintainer release sets `maintainer_release: true` and uses `required_mirrors` for the explicitly selected suite mirrors. Never infer project ownership from Git tracking or from the absence of an installed, dependency, cache, distribution, vendor, or generated directory name. Missing, extra, duplicate, overlapping, unsafe, or consumer-supplied mirror evidence is a refusal, so correct the manifest rather than falling back to another writer.
+Choose the version source from affirmative project ownership: prefer the project's own release file, otherwise its release tags, otherwise the changelog counter (starting at `0.1.0`). If project-owned version files disagree, leave them unchanged and use the changelog counter; if the chosen source trails the newest changelog entry, bump from the higher value. Judge the delivered change as breaking, additive, or patch; breaking outranks additive, uncertainty takes the smaller bump, and below `1.0.0` breaking changes bump the minor version.
 
-Every successful REQ (`completed` / `completed-with-issues`) gets an entry in the target repo's root `CHANGELOG.md`, written **before** the commit so it ships inside it. Failed and cancelled REQs get no entry — the changelog records delivered change, not attempts. A changelog entry is a human-facing artifact: load `crew-members/anti-slop.md` before writing it (its JIT_CONTEXT condition already covers this — noted here so it isn't skipped).
+Include a committed lockfile only when it records this package's own version, and author exact old/new payload bytes that change only that package entry. Classify every release target exactly once as project-owned or a suite-maintainer mirror; do not infer ownership from path spelling or Git tracking, create a missing lockfile, rewrite dependencies, or ask a package manager to produce the payload.
 
-**Already-green repair exception:** a successfully reviewed repository-gate repair no-op delivered no project change, so it skips this entire procedure: no changelog entry, version/lock mirror, release transaction, or `release_at`. Its exact evidence, archive, and commit rules live in **Repository Gate Deferral and Resumption** → **Already-green repair no-op completion**.
-
-**Precedence check first.** If the repo already has a `CHANGELOG.md` whose entries follow a different convention (keep-a-changelog categories, generated conventional-commit logs, plain dated lists), **match the existing format** — never impose the house voice on a repo with its own. Everything below applies when there is no changelog yet or the existing one already follows this format.
-
-**Bootstrap.** If no root `CHANGELOG.md` exists, create one:
-
-```markdown
-# Changelog
-
-What's new, what's better, what's different. Most recent stuff on top.
-
----
-```
-
-**Entry key.** Always `## X.Y.Z — [Short Descriptive Title] (YYYY-MM-DD)` — every entry carries both a version and a date. The title must say what was delivered so a reader scanning only headings knows what changed ("Board View Filters", not a whimsical codename). It must be unique against every existing entry in the file (grep before writing — duplicates have occurred), and the new `X.Y.Z` must be **strictly greater** than the version in the file's first existing entry (duplicate version numbers have occurred).
-
-**Where `X.Y.Z` comes from.** Resolve the version source once per entry, in this order:
-
-1. **A version in a project-owned release file** — `package.json`'s `"version"`, `Cargo.toml`, `pyproject.toml`, a `VERSION` file, or the like (this list is illustrative; any file the project's own release process maintains a version line in qualifies). Exclude every installed skill, dependency, vendored package, cache, distribution output, and generated tree from candidate discovery regardless of whether Git tracks it; the condition is lack of affirmative project ownership, not any directory spelling. In particular, the installed do-work suite's `VERSION` and `actions/version.md` are runtime metadata and must never be selected or bumped for a consumer REQ. Prepare the selected project-owned old/new bytes for the release manifest and declare the exact target in `project_owned_targets`. The repo's version and changelog header stay in lock-step; include any committed lockfile mirror below in the same manifest and project-owned classification.
-2. **Version only in release tags** (no version line in any file) — take the highest release tag as the current version and bump from it, but write the result **only into the changelog header**. do-work never creates a git tag: a tag is a release announcement, and only a human decides when one happens.
-3. **No version anywhere** — the changelog is the source of truth. Take the highest `X.Y.Z` across the file's existing entries and bump from it. If there are no entries yet (bootstrap), seed the first entry at `0.1.0`. Nothing outside `CHANGELOG.md` is touched — an unversioned repo stays unversioned, and the header number is a changelog fact, not a claim that a release was cut.
-
-Two guards on source resolution. If **two or more version files disagree** with each other, do not guess which one the release process uses: leave every file untouched, fall back to the changelog counter (source 3), and say so in the Step 9 report. If the resolved source is **behind** the newest changelog entry (someone released or edited out of band), bump from whichever is higher — never emit a version below one already in the file.
-
-**Lockfile mirror (source 1 only).** Some lockfiles record the version of the package you just bumped, not only its dependencies' — so bumping the version file alone leaves a stale copy behind, and the next ordinary build or install rewrites it: the tree reads dirty for a change nobody made, and the fix accretes as ad-hoc "sync the lockfile version" commits. Under npm it is only cosmetic (`npm ci` tolerates a version-only mismatch and leaves it stale, which is exactly why the drift survives unnoticed for many versions), but `cargo check --locked` exits 101 on it and `uv lock --check` exits 1, so elsewhere it hard-fails CI.
-
-The trigger is the condition, not the ecosystem — *the repo commits a lockfile that records this package's own version*. Known instances, not the boundary:
-
-| Lockfile | Where this package's own version is mirrored |
-| -------- | -------------------------------------------- |
-| `package-lock.json` | the top-level `"version"`, **plus** `packages[""].version` when the file has a `packages` map (`lockfileVersion` 2 or 3; a `lockfileVersion` 1 file has one site, not two). Bumping a **workspace member** is different: its version lives at `packages["<member-path>"].version` in the root lockfile, and the two root-package sites hold the *root's* version and correctly stay put — so read them as "nothing to sync" and you leave the real mirror stale |
-| `Cargo.lock` | the `[[package]]` entry whose `name` is this crate — present even in a crate with no dependencies |
-| `uv.lock` | the `[[package]]` entry whose `name` is this project (`source = { editable = "." }` or `virtual`) |
-
-Dependency-only lockfiles never trip this: `pnpm-lock.yaml`, `yarn.lock`, `poetry.lock`, and `go.sum` record no version for the root package (yarn Berry writes the sentinel `0.0.0-use.local` on purpose), so a repo with only those has nothing to sync. The split follows the **lock tool, not the manifest** — `pyproject.toml` mirrors under uv and not under poetry — so open the lockfile and look rather than inferring from the manifest's name.
-
-**Prepare the exact mirrored old/new bytes and include them in the release manifest.** It is one or two lines of judged payload content, needs no toolchain and no network, and the command publishes it with the other release targets. Do **not** shell out to the package manager. `npm install --package-lock-only` executes target hooks and may restructure or re-resolve; `cargo generate-lockfile` can drag unrelated dependencies and checksums forward.
-
-Three constraints govern the caller-authored mirror payload. Change **only this package's own entry** — a dependency may legitimately carry the same version string, so a whole-file search-and-replace corrupts resolutions. Include only sites that already exist, and never declare a new lockfile: in a workspace or monorepo the one committed lockfile sits at the root, not beside the member manifest, and the entry inside it is the member's own path per the table above. The payload is a version-line fix, not a dependency resync; unrelated lockfile drift is its own REQ. If the mirrored value is already correct, omit that target.
-
-**Then read the lockfile's diff before you stage it** — it must contain only the mirrored version line(s), and nothing else may ride along in this REQ's commit.
-
-**Bump size.** Read the change the REQ actually delivered, not its wording:
-
-| Bump      | When                                                                                                                                       |
-| --------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
-| **major** | An existing consumer breaks: a public API or CLI flag removed or renamed, an on-disk or wire format changed, a documented default reversed. |
-| **minor** | A user-invocable capability exists that didn't before, and nothing existing breaks.                                                          |
-| **patch** | Everything else — bug fixes, performance, refactors, tests, docs, internal-only changes.                                                    |
-
-Tie-breakers, in order: a breaking change outranks an additive one in the same REQ (bump major, not minor); when genuinely torn between two levels, pick the **smaller** one. **Below `1.0.0`, a breaking change bumps the minor, not the major** — `0.x` is unstable by semver's own definition, so the first breaking change in a seeded repo must not silently promote it to a `1.0.0` release. A `completed-with-issues` REQ is bumped on what it delivered, exactly like `completed`.
-
-The `CHANGELOG.md` change — and the version file plus any lockfile mirroring it, when source 1 applied — are part of the REQ's lifecycle files. Stage them in the commit below.
-
-**Voice contract (house style).** 1–2 casual sentences leading with *why it matters* — the situation that prompted the change and what's better now — then bullets for the specifics. Lead with value, not implementation; file paths and flags belong in the bullets, not the lead. Keep it brief. Newest on top, one entry per REQ (this matches one-commit-per-request).
-
-```markdown
-## 0.4.0 — Clear Questions for Interactive Prompts (2026-07-07)
-
-Agents kept asking questions only they could parse — codenames coined
-mid-analysis, options with no stated consequence. Question wording is
-now a contract, not a hope.
-
-- New `crew-members/clear-questions.md`, loaded before any interactive ask
-- Six principles: one decision per question, decode your own shorthand, say the consequence…
-```
-
+The house voice is one or two brief sentences leading with why the delivery matters, followed by specific bullets. Load `crew-members/anti-slop.md` for this human-facing text. The action passes its judged title, prose, ownership, bump, mirrors, and exact payload bytes through the single finalization manifest; deterministic validation and publication stay with the finalizer.
 ## Commit & Metadata-Commit Procedure (Step 9)
 
-The action writes one strict JSON finalization manifest after semantic review and release judgment. It contains the exact working REQ path and digest, checkpoint digest, terminal transition and timestamp, writer identity, exact implementation/lifecycle/release commit allowlist, commit message, and optional release manifest plus `release_at`. Include `do-work/calibration-log.tsv` only when the canonical lifecycle plan reports it as an exact target.
+The action judges and authors one strict finalization manifest: exact working REQ/path and request/checkpoint digests, terminal transition and timestamp, writer, exact implementation/lifecycle/release allowlist, commit message, optional release payload, and provenance mode. Use `supplied_commit` with the retained merge hash when an isolated implementation already landed; use `primary_commit` without an implementation hash when finalization creates the primary commit from the declared paths, including an already-green no-release repair or terminal failure.
 
-- A finalization with no implementation commit to record sets `provenance_mode: "primary_commit"` and omits `implementation_hash` — the already-green repair no-op and a terminal `fail` archive are today's cases, illustrative rather than closed.
-- Every isolated implementation that reached a hand-back merge sets `provenance_mode: "supplied_commit"` and supplies the durable 7–40 lowercase hex merge hash. The hash must resolve and be an ancestor of current `HEAD`; include `do-work/calibration-log.tsv` only when the canonical lifecycle plan reports it as an exact target.
-- An already-green repair omits release data and lists only its exact lifecycle paths.
-
-Invoke the single finalization owner:
-
-```bash
-<skill-root>/tools/do-work-cli.sh --repo-root <project-root> --format json finalize --manifest <finalization-manifest-path>
-```
-
-`finalize` journals before lifecycle mutation, composes canonical lifecycle and optional release plans, commits only the manifest allowlist, records provenance in a separate metadata commit when primary mode created the implementation commit, verifies the exact final state, and removes its Git-private journal. The action never runs direct `complete`, `release`, `git add`, `git commit`, or record-commit-hash commands for this tail.
-
-Consume ordered `finalizations`; singular `finalization` is compatibility-only when exactly one record exists. Continue only on typed success whose terminal phase is `cleanup_complete` and whose `blocked_paths` and `reason_codes` are empty. Each record supplies exact request/archive/journal identity, discovered/resumed flags, commit paths, created-this-invocation and settled primary/metadata hashes, and non-null collection/next/verification argv. Global and per-REQ refusals use the same ordered record contract. On interruption, run public `recover` before any later queue read; it invokes finalization discovery first. There is no hand-edit or helper fallback, and no free-form Git fallback.
-
+Pass that one manifest to the current `advance` continuation. Finalization remains the sole archive, release, commit, provenance, verification, rollback, and journal authority. Consume ordered `finalizations` rather than the singular compatibility projection, and continue only on global success with exactly one record matching the active REQ/path, `phase: cleanup_complete`, and empty `blocked_paths` and `reason_codes`; its archive path, commit paths, settled/created hashes, and recovery argv are the complete tail evidence.
 ## Session Checkpoint Principle (Step 10)
 
 Invoke `advance --checkpoint` when the selector finds no more claimable work. It owns the session-end checkpoint mutation, derives queue state from one snapshot, and preserves every live foreign or unlabelled `## In Progress (interrupted)` record byte-for-byte. The action supplies no parallel checkpoint algorithm.

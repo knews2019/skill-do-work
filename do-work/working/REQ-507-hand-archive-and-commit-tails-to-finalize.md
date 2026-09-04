@@ -21,6 +21,7 @@ planning_at: 2026-09-04T18:26:45Z
 exploration_at: 2026-09-04T18:32:49Z
 dispatch_at: 2026-09-04T18:36:04Z
 builder_handback_at: 2026-09-04T19:04:09Z
+integration_at: 2026-09-04T19:04:37Z
 estimate:
   p50_active_minutes: 50
   confidence: low
@@ -42,8 +43,8 @@ Step 8 (66 lines) and Step 9 (21 lines) reduce to: mint follow-ups by Fold-First
 
 ## AI Execution State (P-A-U Loop)
 - [x] **[PLAN]:** Keep `finalization` as the transaction authority; make `advance` compose it from one request-bound manifest, consume typed finalization evidence in the work action, remove the displaced archive/commit recipes and predicates, and prove the four terminal paths through the public CLI seam.
-- [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
-- [ ] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
+- [x] **[APPLY]:** The isolated builder implemented the frozen 12-file plan with public RED-first coverage and committed it as 7faafb9d3fbf04b26a4599a5141b81f3b476c6fa.
+- [x] **[UNIFY]:** The owner verified the clean builder branch, exact scoped diff, absence of builder-authored lifecycle files, formatting, tests, contracts, and the conflict-free no-ff integration.
 
 ## Why
 REQ-498 made the tail a journaled CLI transaction; the prose still walks the pre-498 sequence.
@@ -105,7 +106,7 @@ See `do-work/user-requests/UR-098/input.md` for complete verbatim input.
 
 ## Scope
 
-**Files:**
+**Files I will touch:**
 
 - `skills/do-work/actions/work.md`
 - `skills/do-work/actions/work-reference.md`
@@ -131,3 +132,23 @@ See `do-work/user-requests/UR-098/input.md` for complete verbatim input.
 
 - **D-01 — Expand the captured scope to the current owners.** Replace the stale contract dispatcher and lifecycle directory entries with the exact 12-file set above, including the finalizer's same-decode binding seam, result text renderer, and CLI prime. Value: fail-closed request identity and truthful public contracts. Risk: broader but auditable implementation surface.
 - **D-02 — Preserve the finalizer as the sole transaction engine.** `advance` composes and projects it; it does not duplicate journal, archive, release, Git, provenance, or rollback logic.
+- **D-03 — Bind before all observable preparation.** The selected request ID and path are compared immediately after the finalizer's single manifest decode, before index inspection, journal lookup, planning, or mutation; only that typed mismatch maps to the dedicated refusal.
+
+## Implementation Summary
+
+- `_dev/tests/contracts/core-checks.sh` (modified) — enforces the concise judgment boundary and forbids restored finalization-tail recipes within the affected sections.
+- `skills/do-work/actions/work-reference.md` (modified) — reduces changelog and commit procedures to release-content, provenance, and typed-result judgment.
+- `skills/do-work/actions/work.md` (modified) — reduces Step 8 to Fold-First and terminal/release judgment and Step 9 to the advance continuation and typed-success condition.
+- `skills/do-work/tools/do-work-cli/internal/finalization/finalization_commands.go` (modified) — exposes bound in-process finalization while preserving the direct command contract.
+- `skills/do-work/tools/do-work-cli/internal/finalization/finalization_prepare.go` (modified) — checks outer request identity from the single decoded manifest before any preparation effect.
+- `skills/do-work/tools/do-work-cli/internal/lifecycleadvance/advance_commands.go` (modified) — classifies oriented work as mechanical finalization and dispatches its input to the composition seam.
+- `skills/do-work/tools/do-work-cli/internal/lifecycleadvance/advance_commands_test.go` (modified) — updates the public phase matrix and exact continuation expectation.
+- `skills/do-work/tools/do-work-cli/internal/lifecycleadvance/finalization_gate.go` (added) — strictly parses one manifest and projects the canonical finalizer result with active advance identity.
+- `skills/do-work/tools/do-work-cli/internal/lifecycleadvance/finalization_gate_test.go` (added) — proves four terminal paths and no-mutation refusal behavior through the public command.
+- `skills/do-work/tools/do-work-cli/internal/resultmodel/result_model.go` (modified) — renders every ordered finalization record in text from the existing typed model.
+- `skills/do-work/tools/do-work-cli/internal/resultmodel/result_model_test.go` (modified) — proves normalized text/JSON field parity and actual multi-record ordering.
+- `skills/do-work/tools/do-work-cli/prime-do-work-cli.md` (modified) — records advance as the request-bound finalization composer without moving judgment into the CLI.
+
+## Discovered Tasks
+
+None.
