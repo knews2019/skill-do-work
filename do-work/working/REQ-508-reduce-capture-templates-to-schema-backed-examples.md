@@ -174,3 +174,60 @@ The machine must not infer Simple versus Complex, field applicability, dependenc
 **Result: Pass.** Canonical advance returned satisfied qualify and scope-drift records, with no findings, for range 366e1796bc2b0ca4f5b4a344e3c511a4c680dc8c..c00227166b288b97c60377cc06e7a5bfa736a0e8. All nine declared source files changed substantively. The orchestrator read the schema registry, request projections, publication validator, and example diff: public capture planning reaches validation before record mutations, and ordinary typed reads still normalize legacy values. The examples retain record shape and capture-time judgment; no live comment-pinning predicate remains.
 
 **Requirement trace:** Minimal examples are covered by the actual-document public test and 67-line measurement; removed mechanical comments map to schema/publication behavior tests; legacy aliases and canonical-key precedence have explicit tests; capture judgments and optional proof/question shapes remain prose.
+
+## Heavy Verification Plan
+
+Base revision: 366e1796bc2b0ca4f5b4a344e3c511a4c680dc8c
+Target revision: c00227166b288b97c60377cc06e7a5bfa736a0e8
+Manifest: _dev/tests/heavy-lanes.json
+Planner result: success; no uncovered paths, uncertainty, or forced-all selection.
+
+### do-work-cli-integrations
+
+Argv: ["bash","_dev/tests/maintainer-verify.sh","--heavy-lane","do-work-cli-integrations"]
+Reasons:
+- skills/do-work/tools/do-work-cli/internal/publication/answer_test.go matched subtree skills/do-work/tools/do-work-cli
+- skills/do-work/tools/do-work-cli/internal/publication/capture_files.go matched subtree skills/do-work/tools/do-work-cli
+- skills/do-work/tools/do-work-cli/internal/publication/capture_files_test.go matched subtree skills/do-work/tools/do-work-cli
+- skills/do-work/tools/do-work-cli/internal/requestmodel/request_model.go matched subtree skills/do-work/tools/do-work-cli
+- skills/do-work/tools/do-work-cli/internal/requestmodel/request_model_test.go matched subtree skills/do-work/tools/do-work-cli
+- skills/do-work/tools/do-work-cli/internal/schemanormalization/schema_normalization.go matched subtree skills/do-work/tools/do-work-cli
+- skills/do-work/tools/do-work-cli/internal/schemanormalization/schema_normalization_test.go matched subtree skills/do-work/tools/do-work-cli
+
+### staged-skills
+
+Argv: ["bash","_dev/tests/maintainer-verify.sh","--heavy-lane","staged-skills"]
+Reasons:
+- skills/do-work/actions/capture-reference.md matched subtree skills
+- skills/do-work/actions/capture.md matched subtree skills
+- skills/do-work/tools/do-work-cli/internal/publication/answer_test.go matched subtree skills
+- skills/do-work/tools/do-work-cli/internal/publication/capture_files.go matched subtree skills
+- skills/do-work/tools/do-work-cli/internal/publication/capture_files_test.go matched subtree skills
+- skills/do-work/tools/do-work-cli/internal/requestmodel/request_model.go matched subtree skills
+- skills/do-work/tools/do-work-cli/internal/requestmodel/request_model_test.go matched subtree skills
+- skills/do-work/tools/do-work-cli/internal/schemanormalization/schema_normalization.go matched subtree skills
+- skills/do-work/tools/do-work-cli/internal/schemanormalization/schema_normalization_test.go matched subtree skills
+
+### updater
+
+Argv: ["bash","_dev/tests/maintainer-verify.sh","--heavy-lane","updater"]
+Reasons:
+- skills/do-work/tools/do-work-cli/internal/publication/answer_test.go matched subtree skills/do-work/tools/do-work-cli
+- skills/do-work/tools/do-work-cli/internal/publication/capture_files.go matched subtree skills/do-work/tools/do-work-cli
+- skills/do-work/tools/do-work-cli/internal/publication/capture_files_test.go matched subtree skills/do-work/tools/do-work-cli
+- skills/do-work/tools/do-work-cli/internal/requestmodel/request_model.go matched subtree skills/do-work/tools/do-work-cli
+- skills/do-work/tools/do-work-cli/internal/requestmodel/request_model_test.go matched subtree skills/do-work/tools/do-work-cli
+- skills/do-work/tools/do-work-cli/internal/schemanormalization/schema_normalization.go matched subtree skills/do-work/tools/do-work-cli
+- skills/do-work/tools/do-work-cli/internal/schemanormalization/schema_normalization_test.go matched subtree skills/do-work/tools/do-work-cli
+
+### installer
+
+Argv: ["bash","_dev/tests/maintainer-verify.sh","--heavy-lane","installer"]
+Reasons:
+- skills/do-work/tools/do-work-cli/internal/publication/answer_test.go matched subtree skills/do-work/tools/do-work-cli
+- skills/do-work/tools/do-work-cli/internal/publication/capture_files.go matched subtree skills/do-work/tools/do-work-cli
+- skills/do-work/tools/do-work-cli/internal/publication/capture_files_test.go matched subtree skills/do-work/tools/do-work-cli
+- skills/do-work/tools/do-work-cli/internal/requestmodel/request_model.go matched subtree skills/do-work/tools/do-work-cli
+- skills/do-work/tools/do-work-cli/internal/requestmodel/request_model_test.go matched subtree skills/do-work/tools/do-work-cli
+- skills/do-work/tools/do-work-cli/internal/schemanormalization/schema_normalization.go matched subtree skills/do-work/tools/do-work-cli
+- skills/do-work/tools/do-work-cli/internal/schemanormalization/schema_normalization_test.go matched subtree skills/do-work/tools/do-work-cli
