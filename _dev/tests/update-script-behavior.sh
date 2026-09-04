@@ -673,10 +673,14 @@ else
     interrupted_archive="$fetch_root/interrupted-$signal_name.tar.gz"
     probe_output="$(FETCH_SIGNAL="$signal_name" FETCHER_PATH="$archive_fetcher" \
       ARCHIVE_PATH="$interrupted_archive" UPSTREAM_REPO="$upstream_fixture_repo" HTTP_BASE="$rate_limited_url" \
+      python3 -c 'import os, signal, sys
+for s in (signal.SIGHUP, signal.SIGINT, signal.SIGTERM):
+    signal.signal(s, signal.SIG_DFL)
+os.execvp(sys.argv[1], sys.argv[1:])' \
       "$bash_path" -c '
         bash() {
           kill -s "$FETCH_SIGNAL" "$$"
-          return 1
+          while :; do :; done
         }
         export -f bash
         exec "$1" "$FETCHER_PATH" "$ARCHIVE_PATH" \
