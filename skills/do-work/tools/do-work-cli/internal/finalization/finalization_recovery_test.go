@@ -681,3 +681,142 @@ func TestRecoverFinalizationPreservesAndMatchesPrivateFileModeInLifecyclePostima
 		t.Fatalf("recovery failed: %#v", recovered)
 	}
 }
+
+// REQ-515: one refused record is that REQ's exclusion, not the run's stop. The
+// fixture is REQ-456's shape — a journal that cannot finish its tail while a
+// second, unrelated journal is perfectly finishable. Before this REQ, recovery
+// returned at the first refusal and the second REQ never ran.
+func TestRecoverFinalizationSetsAsideRefusedRecordAndFinishesTheRest(t *testing.T) {
+	repositoryRoot := seedTwoPlannedFinalizations(t)
+	previousHook := afterFinalizationPhase
+	afterFinalizationPhase = func(phase Phase) error {
+		if phase != PhaseLifecycleApplied {
+			return nil
+		}
+		if _, err := os.Stat(filepath.Join(repositoryRoot, "do-work", "archive", "REQ-720.md")); err == nil {
+			return context.Canceled
+		}
+		return nil
+	}
+	t.Cleanup(func() { afterFinalizationPhase = previousHook })
+
+	recovered := handleRecoverFinalization(commandruntime.ExecutionContext{RepositoryRoot: repositoryRoot}, nil)
+	afterFinalizationPhase = previousHook
+	if recovered.Outcome != resultmodel.OutcomeSuccess {
+		t.Fatalf("a REQ-scoped refusal stopped the whole recovery: %#v", recovered)
+	}
+	if len(recovered.Finalizations) != 2 {
+		t.Fatalf("mixed recovery must report both records, got %#v", recovered.Finalizations)
+	}
+	setAside, settled := recovered.Finalizations[0], recovered.Finalizations[1]
+	if setAside.RequestID != "REQ-720" || settled.RequestID != "REQ-721" {
+		t.Fatalf("record order = %q, %q", setAside.RequestID, settled.RequestID)
+	}
+	if !containsFinalizationReason(setAside.ReasonCodes, setAsideReasonCode) {
+		t.Fatalf("set-aside record must carry %s: %#v", setAsideReasonCode, setAside)
+	}
+	if !containsFinalizationReason(setAside.ReasonCodes, "FINALIZATION-JOURNAL-WRITE") {
+		t.Fatalf("set-aside record must keep the refusal's own reason code: %#v", setAside)
+	}
+	if len(setAside.NextArgv) != 0 {
+		t.Fatalf("a set-aside names no next verb of its own (REQ-514): %#v", setAside.NextArgv)
+	}
+	if settled.Phase != string(PhaseCleanupComplete) || len(settled.ReasonCodes) != 0 || len(settled.BlockedPaths) != 0 {
+		t.Fatalf("the clean record did not settle: %#v", settled)
+	}
+
+	setAsideFinding := resultmodel.CommandFinding{}
+	for _, finding := range recovered.Findings {
+		if finding.Code == setAsideReasonCode {
+			setAsideFinding = finding
+		}
+	}
+	if len(setAsideFinding.AffectedIDs) != 1 || setAsideFinding.AffectedIDs[0] != "REQ-720" {
+		t.Fatalf("the set-aside finding must name the one REQ it excludes: %#v", setAsideFinding)
+	}
+	if setAsideFinding.AutomationStopReason == "" || len(setAsideFinding.NextArgv) != 0 {
+		t.Fatalf("set-aside finding shape = %#v", setAsideFinding)
+	}
+
+	selected := nextselection.Handlers()[nextselection.CommandNext](commandruntime.ExecutionContext{RepositoryRoot: repositoryRoot}, nil)
+	if selected.Outcome != resultmodel.OutcomeSuccess || len(selected.Selected) != 1 || selected.Selected[0].RequestID != "REQ-722" {
+		t.Fatalf("selection after a set-aside = %#v", selected)
+	}
+}
+
+// REQ-515: dirt that no REQ owns still stops the run, and its finding names a
+// verb other than the one that refused.
+func TestRecoverFinalizationStopsWhenTheRefusalOwnsNoRequest(t *testing.T) {
+	repositoryRoot := newFinalizationRepository(t)
+	seedSimpleDiscoveredTail(t, repositoryRoot, "REQ-740", "req-740.txt")
+	writeFinalizationFile(t, repositoryRoot, "do-work/CHECKPOINT.md", "# Session Checkpoint\n\n## In Progress (interrupted)\n\n- REQ-999: foreign — writer: other:/repo\n")
+
+	result := handleRecoverFinalization(commandruntime.ExecutionContext{RepositoryRoot: repositoryRoot}, []string{"--discover"})
+	if result.Outcome != resultmodel.OutcomeRefused {
+		t.Fatalf("unowned shared dirt must stop the run: %#v", result)
+	}
+	for _, finding := range result.Findings {
+		if len(finding.AffectedIDs) == 0 && len(finding.NextArgv) == 0 {
+			t.Fatalf("a global stop must name a resolving verb: %#v", finding)
+		}
+	}
+}
+
+func containsFinalizationReason(reasonCodes []string, wanted string) bool {
+	for _, code := range reasonCodes {
+		if code == wanted {
+			return true
+		}
+	}
+	return false
+}
+
+// seedTwoPlannedFinalizations leaves two prepared journals plus one untouched
+// pending REQ, so a run that sets the first journal aside can still be seen to
+// finish the second and select the third.
+func seedTwoPlannedFinalizations(t *testing.T) string {
+	t.Helper()
+	repositoryRoot := newFinalizationRepository(t)
+	checkpointPath := "do-work/CHECKPOINT.md"
+	checkpoint := "# Session Checkpoint\n\n## In Progress (interrupted)\n\n" +
+		"- REQ-720: First fixture — claimed now — writer: host:/repo\n" +
+		"- REQ-721: Second fixture — claimed now — writer: host:/repo\n"
+	writeFinalizationFile(t, repositoryRoot, checkpointPath, checkpoint)
+	writeFinalizationFile(t, repositoryRoot, "do-work/queue/REQ-722-next.md", "---\nid: REQ-722\ntitle: Next fixture\nstatus: pending\n---\n")
+	for _, requestID := range []string{"REQ-720", "REQ-721"} {
+		ownedPath := strings.ToLower(requestID) + ".txt"
+		writeFinalizationFile(t, repositoryRoot, "do-work/working/"+requestID+".md",
+			"---\nid: "+requestID+"\ntitle: Planned fixture\nstatus: claimed\nclaimed_at: 2026-09-02T08:00:00Z\ncommit:\n---\n\n## Implementation Summary\n- `"+ownedPath+"` (modified)\n")
+		writeFinalizationFile(t, repositoryRoot, ownedPath, "before\n")
+	}
+	runFinalizationGit(t, repositoryRoot, "add", ".")
+	runFinalizationGit(t, repositoryRoot, "commit", "-qm", "seed")
+	for _, requestID := range []string{"REQ-720", "REQ-721"} {
+		ownedPath := strings.ToLower(requestID) + ".txt"
+		writeFinalizationFile(t, repositoryRoot, ownedPath, "after\n")
+	}
+	for _, requestID := range []string{"REQ-720", "REQ-721"} {
+		requestPath := "do-work/working/" + requestID + ".md"
+		manifest := Manifest{
+			RequestID: requestID, RequestPath: requestPath, WriterLabel: "host:/repo", Transition: "complete",
+			TerminalStatus: "completed", CompletedAt: "2026-09-02T09:00:00Z",
+			ExpectedRequestSHA256:    digestFile(t, repositoryRoot, requestPath),
+			ExpectedCheckpointSHA256: digestFile(t, repositoryRoot, checkpointPath),
+			CommitPaths: []string{requestPath, "do-work/archive/" + requestID + ".md", checkpointPath,
+				strings.ToLower(requestID) + ".txt"},
+			CommitMessage: "[" + requestID + "] finalize planned fixture", ProvenanceMode: ProvenancePrimaryCommit,
+		}
+		manifestPath := filepath.Join(t.TempDir(), requestID+"-manifest.json")
+		contents, err := json.Marshal(manifest)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(manifestPath, contents, 0o600); err != nil {
+			t.Fatal(err)
+		}
+		if _, _, err := prepareJournal(context.Background(), repositoryRoot, manifestPath); err != nil {
+			t.Fatal(err)
+		}
+	}
+	return repositoryRoot
+}

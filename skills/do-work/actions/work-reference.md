@@ -669,6 +669,17 @@ The exit report is **composed**, not picked from disjoint branches. Whenever the
    A skipped browser lane needs an engine: set `QUEUE_KANBAN_BROWSER=<path>` and re-run `do-work run`. Plan drift or a stored historical-revalidation plan goes through `do-work clarify`, which runs the held lanes by hand.
    ```
 
+9. **Set-aside-by-recovery section** — applies if any `recover` result in this run carried a finalization record whose `reason_codes` include `FINALIZATION-SET-ASIDE`. Recovery refused that one REQ's finalization tail, excluded it from this run's selection, and drained the rest; the REQ was not claimed and nothing was written to it. Render one line per record from the record's own fields:
+
+   ```
+   ⚠ N REQs set aside by recovery:
+     REQ-NNN — [title] (set aside: <reason codes, comma-separated>)
+       recover: <resolving verb>
+     ...
+   ```
+
+   **The resolving verb is this summary's judgment, not a field to copy.** Pick it exactly as **Stuck Runs Hand Off to Judgment (any step)** picks it, above: `do-work run-with-recovery` when this checkout is the only writer and releaser of the queue, `do-work cleanup` when the archive itself needs repair. The record's `next_argv` is empty on purpose — the only verb the command could name is the one that just refused — so a missing verb here means the summary skipped the judgment, not that none exists.
+
 **After rendering all applicable sections, exit the work loop.** There is no claimed member. Step 1's contract on this path is "render the composed summary, then stop"; the only path that continues is one whose typed queue result contains a committed claim.
 
 If **no section applies** (no REQs at all in `do-work/queue/`), report completion and exit. Never silently exit when any section applies — every non-pending or non-ready REQ in the queue is something the user needs to see.
@@ -1059,7 +1070,7 @@ Invoke the single finalization owner:
 
 `finalize` journals before lifecycle mutation, composes canonical lifecycle and optional release plans, commits only the manifest allowlist, records provenance in a separate metadata commit when primary mode created the implementation commit, verifies the exact final state, and removes its Git-private journal. The action never runs direct `complete`, `release`, `git add`, `git commit`, or record-commit-hash commands for this tail.
 
-Consume ordered `finalizations`; singular `finalization` is compatibility-only when exactly one record exists. Continue only on typed success whose terminal phase is `cleanup_complete` and whose `blocked_paths` and `reason_codes` are empty. Each record supplies exact request/archive/journal identity, discovered/resumed flags, commit paths, created-this-invocation and settled primary/metadata hashes, and non-null collection/next/verification argv. Global and per-REQ refusals use the same ordered record contract. On interruption, run public `recover` before any later queue read; it invokes finalization discovery first. There is no hand-edit or helper fallback, and no free-form Git fallback.
+Consume ordered `finalizations` **one record at a time**; singular `finalization` is compatibility-only when exactly one record exists. Continue on typed success, then read each record on its own: a record is settled when its terminal phase is `cleanup_complete` and its `blocked_paths` and `reason_codes` are empty, and a record whose `reason_codes` carry `FINALIZATION-SET-ASIDE` is one REQ recovery could not finish. **A set-aside excludes that REQ from this run's selection and nothing else** — its own reason codes say what refused, the remaining records still count as settled, and the run keeps draining the queue (**Composed Exit Summary (Step 1)** → *Set-aside-by-recovery section* renders it). A typed refusal is the whole-run stop and is what dirt no REQ owns looks like: its finding names no REQ, and the verb that resolves it comes from **Stuck Runs Hand Off to Judgment (any step)**, above. Each record supplies exact request/archive/journal identity, discovered/resumed flags, commit paths, created-this-invocation and settled primary/metadata hashes, and non-null collection/next/verification argv; a set-aside's `next_argv` is empty by contract, because the only verb the command could name there is the one that just refused. Global and per-REQ refusals use the same ordered record contract. On interruption, run public `recover` before any later queue read; it invokes finalization discovery first. There is no hand-edit or helper fallback, and no free-form Git fallback.
 
 ## Session Checkpoint Principle (Step 10)
 
