@@ -1,6 +1,6 @@
 # Knowledge Base Overview
 
-Last updated: 2026-09-02 | Articles: 200 | Topic Clusters: 11
+Last updated: 2026-09-04 | Articles: 245 | Topic Clusters: 11
 
 The Do-Work Suite Knowledge Base is a compiled, interlinked Markdown wiki capturing architecture, lessons, operational patterns, and historical decisions across the four-skill suite: `do-work`, `do-work-board`, `do-work-knowledge`, and `do-work-toolbox`.
 
