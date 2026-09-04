@@ -33,6 +33,9 @@ estimate:
 dispatch_at: 2026-09-04T18:23:51Z
 builder_handback_at: 2026-09-04T18:51:24Z
 integration_at: 2026-09-04T18:51:24Z
+review_at: 2026-09-04T19:05:25Z
+remediation_at: 2026-09-04T19:05:25Z
+re_review_at: 2026-09-04T19:05:25Z
 ---
 
 # Hand-Back and Finalize Check Cleanliness Only on the REQ's Own Paths
@@ -135,7 +138,7 @@ See `do-work/user-requests/UR-106/input.md` for complete verbatim input.
 - `skills/do-work/tools/do-work-cli/internal/finalization/finalization_apply.go` (modified)
 - `skills/do-work/tools/do-work-cli/internal/finalization/finalization_req560_test.go` (new)
 
-**What was done:** `commitSafety`'s shared-remainder refusal (`FINALIZATION-AMBIGUOUS-SHARED-STATE`) now applies only to discovered, tree-inferred recovery groups; a journaled `finalize --manifest` declares its exact write set up front, so a path it never declared cannot belong to the transaction and is left alone. The declared-path check that fires first is untouched, so a dirty path the REQ owns still refuses. In prose, hand-back step 0's third category changed from "stop and surface" to "leave alone and name" in both the canonical text and its condensed copy, and the sentence authorizing a pipeline-authored unrelated-work commit was rewritten to say: keep every byte, leave it where it is, name it, carry on.
+**What was done:** `commitSafety`'s shared-remainder refusal (`FINALIZATION-AMBIGUOUS-SHARED-STATE`) now applies only to discovered, tree-inferred recovery groups; a journaled `finalize --manifest` declares its exact write set up front, so a path it never declared cannot belong to the transaction and is left alone. The check that fires first, on paths the journal does declare, is untouched. In prose, hand-back step 0's third category changed from "stop and surface" to "leave alone and name" in both the canonical text and its condensed copy, and the sentence authorizing a pipeline-authored unrelated-work commit was rewritten to say: keep every byte, leave it where it is, name it, carry on.
 
 ## Decisions
 
@@ -182,3 +185,43 @@ Three files belonging to the other two REQs in this wave, none of them owned or 
 - `TestFinalizeIgnoresForeignTreeDirtOutsideTheManifest` — with a modified tracked `do-work/calibration-log.tsv` and an untracked `do-work/audits/maintainability-draft.md` that the REQ neither owns nor declares: `finalize --manifest` succeeds, both foreign paths are still dirty afterwards exactly as found, and the primary commit's file list contains neither.
 
 **Not weakened:** the whole finalization package passes unchanged, including `TestFinalizeAcceptsWorkingRequestDirtWrittenByThePipeline` and the recovery/discovery suite, so discovery keeps its original refusal.
+
+## Review
+
+**Verdict: Pass** — independent review, overall 92%, acceptance Pass. Full record: `do-work/runs/work-2026-09-04-182017/REQ-560-review.md`. Eight findings, none blocking.
+
+The reviewer fired both refusals this REQ deliberately keeps rather than assuming they survived: discovery still refuses on shared dirt outside its inferred group, and the manifest's exact-allowlist validation still refuses a `commit_paths` missing a planned target. No sentence authorizing a pipeline-authored preserve commit survives in the shipped tree.
+
+**D-01 upheld, premise checked rather than accepted.** The reviewer read `internal/gittransaction/exact_commit.go` and confirmed `CommitExactPaths` refuses a non-empty index, then runs `git add -A -- <dirty declared paths>` and a plain `git commit` that takes the whole index. Step 0's own prose ends the same way. So a foreign staged entry left in the index really is committed, the REQ's `## What` forbids both stopping and committing, and unstaging is the only outcome left. Faithful to intent, not an overreach.
+
+**Findings fixed rather than deferred (F1, F2, F3, F7).** Four of the eight sat inside this REQ's own write set and three of them weakened the REQ's own promise, so they were fixed and re-merged rather than filed:
+
+- **F1 (Important).** The prose this REQ added claimed `git restore --staged` "leaves the file's bytes exactly as they are so nothing the other writer typed is lost". That is false for a path staged and then modified again: the staged snapshot survives only as a dangling blob reachable through `git fsck --lost-found`. In a rule whose entire purpose is protecting another writer's work, an agent reading that sentence would believe the operation is always lossless and would not warn the owner. Both copies now state the working-tree guarantee accurately and name the `MM` case as the exception the progress line must call out.
+- **F2 (Important).** `grep -rn "AMBIGUOUS-SHARED-STATE" --include=*.go` returned exactly one hit, the production string — nothing pinned either refusal this REQ kept, before or after the change. A new test, `TestCommitSafetyStillRefusesSharedDirtForADiscoveredGroup`, drives `commitSafety` directly over one tree in both modes; it fails on the pre-change code, so it catches a silent widening, which is exactly what this REQ's Constraints forbid.
+- **F3.** The condensed copy said a foreign path is "another session's"; the canonical text says "another session's or the user's". The user's own uncommitted work is precisely the class the originating incident was about, and the two texts are a hand-maintained pair with no mechanical check.
+- **F7.** The new test accepted `"M  "` as well as `" M "`. `"M  "` means staged, the opposite of leaving the path alone.
+
+**Findings recorded, not fixed:** F4 (the prose promises per-entry checkpoint granularity that finalize's whole-file digest does not have), F5 (`finalize --manifest` now passes foreign dirt silently where it used to name it in the refusal; step 0 already named the same paths earlier in the run), F6 (this REQ's own Implementation Summary described the surviving check too broadly — corrected in place above), F8 (the touched line adopted the pre-existing `sharedFinalizationPath` helper, a behaviour-free de-duplication on a line already being edited).
+
+**Remediation:** commit `0e1b687` on the REQ's branch, re-merged once. `<pre>` held at `6adb8b9`, so the final merge range is `6adb8b9..3430117` and covers the original work plus the fixes.
+
+## Lessons Learned
+
+**What worked:**
+- Checking a builder's premise instead of its conclusion. D-01 deviated from the REQ's literal sentence; the reviewer settled it by reading `CommitExactPaths` and confirming the commit really is whole-index. The deviation was right, and it is right for a reason now on the record rather than an assertion.
+- Keying the narrowing on `journal.Discovered` rather than on a list of tolerated path spellings. One condition answers the real question — was this group inferred from the tree or declared in a manifest — and it cannot go stale the way a path list does.
+
+**What didn't:**
+- The first version shipped a false safety claim in the same sentence that introduced the safety behaviour. "Unstaging leaves the bytes untouched" is true of the working tree and false of a staged-then-modified snapshot. A sentence that reassures is worth more scrutiny than one that warns, because nobody re-checks reassurance.
+- Pinning only the behaviour that changed. The two refusals this REQ deliberately *kept* had no test at all, so the change protected its own new path while leaving the paths it promised not to touch open to silent deletion. Kept behaviour needs a lock-in exactly when a change walks past it.
+
+**Worth knowing:**
+- `finalize --manifest` now passes foreign dirt with no finding and no path list, where it used to name those paths in its refusal. Step 0 names the same paths earlier in the run, so the information exists, but the CLI alone no longer reports what it skipped.
+- The prose says only a dirty path the REQ owns stops, listing its checkpoint entry. Finalize's actual guard is a whole-file `expected_checkpoint_sha256`, so any foreign edit to `do-work/CHECKPOINT.md` still refuses. The prose promises per-entry granularity the code does not have.
+- The two hand-back step-0 texts remain a hand-maintained duplicate pair with no mechanical check. This REQ had to edit both, and the review found them already drifting by one clause.
+
+## Orientation
+
+Another session's or the user's uncommitted files no longer stop a run or get swept into its commits. Lives in the work pipeline's hand-back and finalization boundary: the rule in the work action and its reference at hand-back step 0, the mechanism in the do-work CLI's finalization commit-safety check, which now applies its shared-remainder refusal only to a recovery group inferred from the tree.
+
+Neither prime this REQ lists was made stale: `_dev/primes/prime-action-files.md` and `skills/do-work/tools/do-work-cli/prime-do-work-cli.md` both still resolve every path they reference.
