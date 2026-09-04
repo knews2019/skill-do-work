@@ -111,7 +111,7 @@ The only matching stale links are the three consecutive lesson bullets for REQ-4
 
 ## Implementation Summary
 
-- Updated the REQ-491, REQ-492, and REQ-493 entries in `skills/do-work/tools/do-work-cli/lessons-do-work-cli.md` to their actual `do-work/archive/UR-095/` destinations.
+- `skills/do-work/tools/do-work-cli/lessons-do-work-cli.md` (modified) — updated the REQ-491, REQ-492, and REQ-493 entries to their actual UR-095 archive destinations.
 - Added the verified `#lessons-learned` anchors while preserving every family marker, label, and lesson sentence.
 - The isolated builder committed `dfcebb28e8711a3df6728830964afdb39ec7e4e2`; integration merged it as `2dda18a1f816e148258295b2b351f12695a049b4` after the queue-path guard confirmed no `do-work/` change on the builder branch.
 
