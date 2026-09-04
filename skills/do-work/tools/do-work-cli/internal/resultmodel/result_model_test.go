@@ -332,6 +332,45 @@ func TestAdvanceTextAndJSONCarryTheSameTypedLifecycleState(t *testing.T) {
 	}
 }
 
+func TestRecoveryAndCheckpointTextAndJSONCarryTypedState(t *testing.T) {
+	result := CommandResult{
+		Command: "recover", Outcome: OutcomeSuccess,
+		Recovery: &RecoveryResult{
+			AuthorityMode: "take-over", TakeOverRequestID: "REQ-504", FinalizationPassed: true,
+			Claims: []RecoveryClaimResult{{
+				RequestID: "REQ-504", RequestPath: "do-work/working/REQ-504.md", Decision: "recovered", Recovered: true,
+				CheckpointEvidence: []SelectionClaimEvidence{{Source: "checkpoint", Writer: "other:/repo"}},
+			}},
+			NextArgv: []string{"do-work-cli", "next"}, VerificationArgv: []string{"do-work-cli", "recover"},
+		},
+		Checkpoint: &CheckpointResult{CheckpointPath: "do-work/CHECKPOINT.md", PreservedClaims: 1, WrittenAt: "2026-09-04T12:00:00Z"},
+	}
+	textOutput, err := RenderResult(result, FormatText)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, expected := range []string{"recovery [take-over]", "claim REQ-504", "checkpoint do-work/CHECKPOINT.md: preserved_claims=1"} {
+		if !strings.Contains(string(textOutput), expected) {
+			t.Fatalf("text output missing %q:\n%s", expected, textOutput)
+		}
+	}
+	jsonOutput, err := RenderResult(result, FormatJSON)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var decoded CommandResult
+	if err := json.Unmarshal(jsonOutput, &decoded); err != nil {
+		t.Fatal(err)
+	}
+	if decoded.Recovery == nil || len(decoded.Recovery.Claims) != 1 || decoded.Checkpoint == nil || decoded.Checkpoint.PreservedClaims != 1 {
+		t.Fatalf("typed recovery/checkpoint state lost: %#v", decoded)
+	}
+	normalized := NormalizeResult(CommandResult{Recovery: &RecoveryResult{Claims: []RecoveryClaimResult{{}}}})
+	if normalized.Recovery.NextArgv == nil || normalized.Recovery.VerificationArgv == nil || normalized.Recovery.Claims[0].CheckpointEvidence == nil {
+		t.Fatalf("recovery collections must normalize non-null: %#v", normalized.Recovery)
+	}
+}
+
 func TestOutcomeExitCodes(t *testing.T) {
 	tests := []struct {
 		outcome CommandOutcome

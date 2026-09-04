@@ -4,7 +4,7 @@
 
 Unlike the commit steps embedded in other actions (capture Step 7, work.md's Commit Phase, review-work standalone, cleanup), this action handles files that accumulated outside the normal pipeline — manual edits, ad-hoc fixes, or work done between do-work runs.
 
-**Commit pathway deconfliction:** Three actions can commit archived REQs: (1) actions/work.md's Commit Phase delegates lifecycle/archive/hash mechanics to the canonical request-state command and commits its exact planned paths, including the separate serial metadata commit, (2) review-work standalone commits the REQ after appending a Review section, (3) this action commits leftover files traced to archived REQs. This action does not replace or retry request-state transitions; it only discovers files via `git status`. If work or review-work already committed a file, it will not appear here. If a prior ordinary commit was interrupted, this action may pick up unrelated leftovers as intended.
+**Commit pathway deconfliction:** `actions/work.md` delegates its complete lifecycle, archive, release, exact commit, and provenance tail to canonical finalization. Standalone review may commit its own appended report; this action handles only leftover files discovered through `git status`. It never replaces, retries, or reconstructs a lifecycle transaction.
 
 ## When to Use
 
@@ -42,13 +42,13 @@ commit action
 
 ### Step 1: Preflight
 
-Before protected association or reading any uncommitted path, invoke the canonical legacy-tail recovery:
+Before protected association or reading any uncommitted path, invoke the canonical recovery composition:
 
 ```bash
-<skill-root>/tools/do-work-cli.sh --repo-root <project-root> --format json recover-finalization --discover
+<skill-root>/tools/do-work-cli.sh --repo-root <project-root> --format json recover
 ```
 
-Continue only on typed `success` with every ordered `finalizations` record carrying empty `blocked_paths` and `reason_codes`. Recovery commits all safe finalization groups in its returned order and refuses before this action selects ordinary groups when staged, protected, shared, or multiply-owned evidence remains ambiguous. Group only the changes left after recovery; never re-associate a recovered path.
+Continue only on typed `success` with every ordered `finalizations` record carrying empty `blocked_paths` and `reason_codes`. Recovery commits all safe finalization groups in its returned order, preserves unfinished working claims without authority, and refuses before this action selects ordinary groups when staged, protected, shared, or multiply-owned evidence remains ambiguous. Group only the changes left after recovery; never re-associate a recovered path.
 
 Start the protected inventory wrapper; it owns the worktree-safe run quarantine and delegates low-level classification to the existing checks:
 

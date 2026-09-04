@@ -15,7 +15,7 @@
 **Do NOT use when:**
 
 - You are mid-merge or mid-archive on a REQ. Finish that first — a half-integrated REQ has no honest description.
-- You only need a session checkpoint. `actions/work.md` Step 10 already writes `do-work/CHECKPOINT.md`; this action adds a restart prompt on top of it and does not replace it.
+- You only need a session checkpoint. Run canonical `advance --checkpoint`; this action adds a restart prompt on top of it and does not replace that command.
 
 Stopping before review is fine, and often better: fresh eyes review more carefully than tired ones. Restartable means merged and verified green, not reviewed.
 
@@ -46,7 +46,7 @@ For each in-flight REQ, state:
 - Merged or not merged, with the merge commit and the **full merge range**.
 - What remains, in order.
 - Uncommitted files **by name**. "0 commits" reads as "nothing there" and is often wrong.
-- Whose claim it is. A claim under another checkout's `writer:` label in `do-work/CHECKPOINT.md` is foreign — mark it so, and leave it byte-identical (`actions/work-reference.md` → **Crash Recovery (Step 1)**, **In-Progress Record (Step 2)**).
+- The canonical `recover` result for each working claim, including its structural writer evidence and exact takeover command. Do not classify ownership again from checkpoint prose.
 
 For each worktree, give one verdict:
 
@@ -98,7 +98,7 @@ One committed `do-work/RESTART-PROMPT.md`, any queue-state edits Step 1 made, an
 
 - **Never ask the user anything in the main thread.** Per `actions/work.md` Step 3.5, mark the item `- [~] ... D-NN: chose X. Reasoning. Value. Risk.` and proceed. Per Step 8, queue user-facing questions as a follow-up REQ with `status: pending-answers` (the user answers them with `do-work clarify`); a question carrying an outside `Answerer:` routes to that person's stakeholder REQ instead (`do-work stakeholder-answers` ingests their reply).
 - **Do any more work after writing the handoff and you rewrite it before handing over.**
-- **When rewriting `do-work/CHECKPOINT.md`, carry through verbatim every In Progress entry you did not write** (`actions/work-reference.md` → **Session Checkpoint Template (Step 10)**).
+- **Refresh `do-work/CHECKPOINT.md` only through `advance --checkpoint`.** Its transaction preserves every live foreign or unlabelled In Progress record.
 - Explorers, planners, and reviewers write full output to `do-work/runs/<run>/` and reply with a short summary, so the handoff's context stays clear.
 
 ## Common Rationalizations

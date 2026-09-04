@@ -91,6 +91,9 @@ func discoverFinalizationJournals(repositoryRoot string, assumeSoleReleaser bool
 	}
 	candidates := legacyCandidates(snapshot)
 	if len(candidates) == 0 {
+		if coherentClaimOnlyTopology(snapshot, dirty, origins, destinations) {
+			return nil, nil
+		}
 		if blocked := ambiguousSharedRemainder(dirty); len(blocked) > 0 {
 			failure := discoveryRefusal(repositoryRoot, "FINALIZATION-DISCOVERY-AMBIGUOUS", "shared finalization state has no terminal request owner", blocked)
 			return nil, &failure
@@ -217,6 +220,43 @@ func discoverFinalizationJournals(repositoryRoot string, assumeSoleReleaser bool
 		journals = append(journals, journal)
 	}
 	return journals, nil
+}
+
+// coherentClaimOnlyTopology distinguishes a claim transaction that stopped
+// before its commit from an unjournalled archive/release tail. Recovery owns
+// claims after finalization has explicitly declined this exact shape.
+func coherentClaimOnlyTopology(snapshot *repositorymodel.RepositorySnapshot, dirty map[string]bool, origins, destinations map[string]string) bool {
+	workingByBase := map[string]*repositorymodel.RequestFile{}
+	for _, request := range snapshot.RequestFiles {
+		if request.TreeSection != "working" || request.TypedRecord.RequestStatus != "claimed" {
+			continue
+		}
+		workingByBase[filepath.Base(request.RelativePath)] = request
+	}
+	if len(workingByBase) == 0 || len(dirty) == 0 {
+		return false
+	}
+	for path := range dirty {
+		if !sharedFinalizationPath(path) && !releaseMetadataPath(path) {
+			continue
+		}
+		if path == "do-work/CHECKPOINT.md" {
+			continue
+		}
+		base := filepath.Base(path)
+		if _, found := workingByBase[base]; found && (strings.HasPrefix(path, "do-work/working/") || strings.HasPrefix(path, "do-work/queue/")) {
+			continue
+		}
+		originBase := filepath.Base(origins[path])
+		destinationBase := filepath.Base(destinations[path])
+		_, originFound := workingByBase[originBase]
+		destinationFound := workingByBase[destinationBase] != nil
+		if (originBase != "." && originFound) || (destinationBase != "." && destinationFound) {
+			continue
+		}
+		return false
+	}
+	return true
 }
 
 func activeDiscoveryCandidates(candidates []*discoveryCandidate) []*discoveryCandidate {

@@ -24,7 +24,7 @@ This living log is also the **trail of intent**. The REQ starts as a validated s
 
 ## Architecture
 
-The per-REQ orchestration pipeline (triage → estimate → plan/explore → implement → qualify → test → review → archive → commit, with the orchestrator handling all file management) is diagrammed in `actions/work-reference.md` → **Architecture**.
+The per-REQ orchestration pipeline (triage → estimate → plan/explore → implement → qualify → test → review → prepare → finalize) is diagrammed in `actions/work-reference.md` → **Architecture**. The orchestrator owns judgment and authored evidence; canonical commands own deterministic lifecycle, checkpoint, archive, release, and commit mutations.
 
 > **Remember:** Every completed request gets a git commit (Step 9) before looping to the next request.
 
@@ -120,25 +120,19 @@ When `$ARGUMENTS` is empty — no targeting tokens, no flags, no other tokens �
 
 ## Steps
 
-**actions/work.md is an orchestrator.** You handle ALL file management (moving files, updating frontmatter, appending sections, archiving). Spawned agents handle implementation work only.
+**actions/work.md is an orchestrator.** You own semantic judgment and action-authored evidence. Canonical commands own deterministic file management; spawned agents handle implementation work only.
 
 ### Step 1: Find Next Request
 
 **One releaser, and this session assumes it is that one.** Other checkouts may be capturing, claiming and building against this queue — that is in contract (`actions/work-reference.md` → **Execution Model — Claim Anywhere, One Releaser**). What must not be running twice is the release tail this action performs, and this session assumes it owns it: it acquires no lock, and it neither detects nor coordinates a second releaser. Where `do-work/` is committed, treat a synced queue as a snapshot rather than the current state.
 
-Before the first checkpoint read, working-REQ recovery, selector invocation, or claim, invoke finalization recovery as the first Step 1 operation:
+Before any selector invocation or claim, invoke the canonical recovery composition as the first Step 1 operation:
 
 ```bash
-<skill-root>/tools/do-work-cli.sh --repo-root <project-root> --format json recover-finalization --discover
+<skill-root>/tools/do-work-cli.sh --repo-root <project-root> --format json recover
 ```
 
-Continue only on typed `success` with every record in ordered `finalizations` carrying empty `blocked_paths` and `reason_codes`. Consume singular `finalization` only as the one-record compatibility projection. A refusal is a blocker to clear, not a stop: judge each `blocked_paths` entry, take the least destructive action that clears it, and re-run the record's exact `verification_argv` (`actions/work-reference.md` → **Stuck Runs Hand Off to Judgment (any step)**). Only shared state whose owner the orchestrator cannot decide stops, and that stop names the verb that resolves it. Judgment covers the obstacle, never the finalization: no checkpoint, queue, release, staging, or provenance inference replaces the command.
-
-After that typed success, **read `do-work/CHECKPOINT.md`** (Step 10 → **On session start**): it is Crash Recovery's input, not just resume context.
-
-**Crash Recovery:** if `do-work/working/` contains any `REQ-*.md`, a claim outlived the run that made it. **A claimed REQ is not automatically this session's to reclaim** — recovery resets frontmatter and strips thirteen generated sections that nothing has committed yet, so it runs only on a REQ the checkpoint records **under this checkout's own `writer:` label** as this session's interrupted work. Any other claimed REQ is left byte-identical and reported: one the checkpoint attributes to a different checkout is reported as that checkout's claim and never offered for takeover, and one nothing accounts for is offered for takeover only once it is stale — where a human, never the threshold, authorizes the takeover. Full classification, the writer label, the staleness threshold and its timestamp guard, and the unattended path: `actions/work-reference.md` → **Crash Recovery (Step 1)**. Once every `working/` file is recovered, taken over, or left alone, proceed with finding the next request.
-
-`do-work run-with-recovery` is the deliberate authority variant: it resolves finalization and working-REQ ownership first, then enters this action with the original arguments.
+Continue only on typed `success`. The ordered result first settles finalization, then reports each structurally observed working claim and its exact takeover command without changing it. A refusal is a blocker to clear through judgment and the returned `verification_argv`; do not reproduce recovery, checkpoint, release, staging, or provenance mutations in prose. `do-work run-with-recovery` invokes the same composition with explicit sole authority before entering this action.
 
 Invoke the canonical read-only selector once, passing the run's targeting tokens and selection flags exactly as parsed in **Input**:
 
@@ -642,7 +636,7 @@ Only add a link when the lesson is relevant to that prime file's scope — don't
 
 **Knowledge-base handoff.** After the Lessons Learned section is written and prime-file links are in place, follow `actions/kb-lessons-handoff.md` to offer dropping a structured source document into `kb/raw/inbox/` so the next `do-work-knowledge bkb triage` + `do-work-knowledge bkb ingest` cycle compiles the lessons into the wiki. The handoff asks the user before writing and records `kb_status` (plus `kb_entry` on success) back onto the REQ. In unattended work runs with no human in the loop, the handoff defaults to `kb_status: pending` — it never writes to the KB without consent. If the project has no `kb/` directory, the handoff points the user at `do-work-knowledge bkb init` and defers; it never blocks archival.
 
-### Step 8: Archive
+### Step 8: Prepare Finalization
 
 **On success:**
 
@@ -729,40 +723,9 @@ Include `do-work/calibration-log.tsv` only when the canonical lifecycle plan rep
 
 ### Step 10: Loop or Exit
 
-**Targeted run:** do not perform the fresh full-queue check below. After a serial integration or a fully integrated fan-out wave, follow Step 1's Targeted mode and **Targeted Run Ledger** contract: replay canonical `next` with the exact original targeting tokens and every original non-fan-out selection flag, omit `--fan-out`, project its records onto the frozen ledger, then apply the saved numeric bound to projected `selected` records. Loop after a context wipe while an unconsumed member is selected. Stop when the ledger is drained or a genuine exclusion blocks an unconsumed member. This replay is the only targeted recomputation; do not glob, parse, or sort the queue.
+After integration, replay the canonical selector required by the current run mode and loop while it selects work; when it does not, run `<skill-root>/tools/do-work-cli.sh --repo-root <project-root> --format json advance --checkpoint`, then cleanup and render Step 1's composed exit summary. The checkpoint command is the sole session-end writer and preserves every live foreign or unlabelled in-progress record.
 
-**Default or `--wave` run:** re-check `do-work/queue/` for `REQ-*.md` files (fresh check, not cached).
-
-- **Claimable `pending` REQs found**: **CONTEXT WIPE** (see below), then loop to Step 1. **In auto-wave mode, loop back for a freshly computed wave — never a leftover slice of the previous one.** A REQ whose dependency landed in the wave just integrated becomes ready only on a recompute, and a REQ another checkout claimed mid-wave has to drop out of contention. Re-running Step 1's filters does both; carrying a remainder list forward defeats both.
-- **No claimable `pending` REQs remain** (queue may still have dependency-blocked, assigned-elsewhere, or held REQs): Write a **Session Checkpoint** (see below), run actions/cleanup.md, then report the final summary using the **same composed structure** as Step 1's "Exit paths when the scan finds nothing to claim" — render every section that has at least one REQ, in the order `actions/work-reference.md` → **Composed Exit Summary (Step 1)** defines. Neither this step nor Step 1 restates that set: a second copy is what went stale the last two times a section was added. If no section applies (queue is fully empty), report completion and exit. Mixed cases render all applicable sections in one summary.
-
-#### Context Wipe — Verified
-
-Before looping to Step 1 for the next REQ:
-
-1. **Fresh agents:** Spawn a NEW agent for the next REQ. Do not reuse the previous builder/explorer/planner agent. Each REQ gets clean agents with no carried-over context.
-2. **Explicit declaration:** State in your progress message: `Context wipe: previous REQ was [REQ-NNN] working on [files]. Now starting fresh for next REQ.`
-3. **Contamination check:** When the next REQ's builder returns its Implementation Summary (Step 6.25), compare the file list against the *previous* REQ's Implementation Summary. Unexpected overlap — files from the previous REQ appearing without an explicit `addendum_to` or `related` link — is a scope contamination signal. Flag it in the Qualification step (Step 6.3).
-
-#### Session Checkpoint
-
-At the end of every work session (whether all REQs completed, user stops, or session is ending), write `do-work/CHECKPOINT.md`. Scale the checkpoint to how much happened:
-
-(write `do-work/CHECKPOINT.md` per the **Session Checkpoint Template (Step 10)** in `actions/work-reference.md`, scaled to session depth: light / moderate / heavy)
-
-This write replaces the whole file, so it is the one step that can erase a claim it did not make: **carry every `## In Progress (interrupted)` entry this checkout did not write through verbatim** — a foreign `writer:` label and no label at all both qualify — and enrich only this checkout's own labeled entries (`actions/work-reference.md` → **Session Checkpoint Template (Step 10)**).
-
-**Session depth guide:**
-- **light** (1-2 REQs): Minimal checkpoint — Completed + Still Queued sections are sufficient
-- **moderate** (3-5 REQs): Add Session Notes with patterns observed and environment quirks
-- **heavy** (6+ REQs): Add Context Summary recapping key decisions and recommending the next session re-read prime files fresh rather than trusting carried-over assumptions
-
-**On session start (Step 1 addition):** After `recover-finalization --discover` returns typed clean success and before ordinary working-REQ crash recovery, check for `do-work/CHECKPOINT.md`. If it exists:
-1. Read it and report a brief summary: `Resuming from previous session. Last completed: REQ-NNN. [N] REQs still queued.`
-2. Its `## In Progress (interrupted)` section is what crash recovery classifies against — a `working/` REQ named there under this checkout's own `writer:` label is this session's own to recover; any other entry recovery must leave byte-identical, however it fails to match that label (the cases are enumerated once, in `actions/work-reference.md` → **Crash Recovery (Step 1)**). Step 2 wrote those entries at claim time, one per claim (`actions/work-reference.md` → **In-Progress Record (Step 2)**), which is why the section survives a crash that never reached this step.
-3. **Do not delete yet.** Keep the checkpoint until crash recovery has finished with every `working/` file, then remove **this checkout's own entries**. Delete the file itself only once no entry this checkout did not write remains — a foreign `writer:` label and no label at all both qualify, because the first records a claim held elsewhere and the second a claim of unknown origin that recovery already refused to touch, and this session starting is no reason to drop either. Deleting only after recovery is done still prevents losing resume context if the session crashes again mid-recovery.
-
-This is NOT a blocking gate. With no checkpoint, the session starts normally — crash recovery still runs, it just has nothing to match against, so every claimed `working/` REQ is treated as a foreign claim and left intact.
+**Context-wipe principle:** every REQ starts with fresh agents and a fresh canonical selection. Carry only durable REQ evidence, and treat unexplained overlap with the previous Implementation Summary as qualification drift.
 
 ## Clarify Questions
 
@@ -772,7 +735,7 @@ The clarify workflow has its own action. Run `do-work clarify` — it handles ba
 
 ```
 □ Step 0: Parse arguments (targeting tokens, --wave N, --fan-out [N], --skip-impact-negligible); reject unrecognized residue
-□ Step 1: Run recover-finalization --discover FIRST; only after typed clean success read CHECKPOINT.md, recover own-label working crashes, validate frontmatter, and select
+□ Step 1: Run recover FIRST; consume its typed finalization and working-claim decisions, then validate frontmatter and select
 □ Step 2: Claim request (mkdir -p working/ + move, update status & claimed_at, append the claim + writer label to CHECKPOINT.md's In Progress list)
 □ Step 3: Triage (decide route, append ## Triage, read original if addendum)
 □ Step 3.5: Handle Open Questions (mark - [~] with D-XX numbered decisions; a user answer obtained mid-run is written in as - [x] before dispatch — never - [~], no D-XX)
@@ -789,7 +752,7 @@ The clarify workflow has its own action. Run `do-work clarify` — it handles ba
 □ Step 7.5: Lessons Learned + Orientation (append sections at subsystem altitude, update prime files, skip lessons for Route A if no surprises)
 □ Step 8: Prepare finalization intent (choose terminal status, classify failures, route questions/tasks, collect deferred lessons, and preserve exact lifecycle/release inputs without mutating the tail)
 □ Step 9: Finalize once (write the strict manifest; canonical finalization owns archive/checkpoint/UR/calibration/release, exact commit, provenance, verification, and cleanup)
-□ Step 10: Loop or Exit (context wipe + contamination check if looping, else write CHECKPOINT.md with depth + cleanup)
+□ Step 10: Loop or Exit (fresh selection if looping, else advance --checkpoint + cleanup)
 ```
 
 
@@ -856,7 +819,7 @@ See [sample-archived-req.md](./sample-archived-req.md) for a complete example of
 
 | If you're thinking... | STOP. Instead... | Because... |
 |---|---|---|
-| "`recover-finalization` refused, so the run has to stop here" | Judge each blocked path and clear it, then re-run the exact `verification_argv` (`actions/work-reference.md` → **Stuck Runs Hand Off to Judgment (any step)**) | The command refuses anything it cannot attribute and has no opinion about what the bytes are; a Finder `.DS_Store` under `do-work/` once parked an entire queue behind that refusal |
+| "`recover` refused, so the run has to stop here" | Judge each blocked path and clear it, then re-run the exact `verification_argv` (`actions/work-reference.md` → **Stuck Runs Hand Off to Judgment (any step)**) | The command refuses anything it cannot attribute and has no opinion about what the bytes are; a Finder `.DS_Store` under `do-work/` once parked an entire queue behind that refusal |
 | "I'll skip Pre-Flight — the baseline is probably stable" | Run `git status` and the test baseline anyway (Step 5.75) | Pre-existing failures get misattributed to the builder, and pre-existing dirty files can contaminate the repository-wide diff used for qualification and review |
 | "I wrote the test after the code but it fails without it, so this counts as TDD" | For `tdd: true`, write the failing test first and show it RED before the code | Post-hoc tests encode the implementation's quirks; the RED-before-GREEN ordering is the evidence Step 6.5 gates on |
 | "P-A-U is bookkeeping — I'll just tick the boxes" | Do each phase; Step 6.3 audits the diff against the checked boxes | A checked `[UNIFY]` over a diff containing `console.log` is a false claim the qualifier will catch |

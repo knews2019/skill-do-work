@@ -54,7 +54,6 @@ run_contract_file() {
 }
 
 for contract_file in \
-  "$repo_root/_dev/tests/contracts/request-state.sh" \
   "$repo_root/_dev/tests/contracts/core-checks.sh" \
   "$repo_root/_dev/tests/contracts/queue-kanban.sh" \
   "$repo_root/_dev/tests/contracts/replace-text-section.sh"

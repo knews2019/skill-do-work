@@ -140,8 +140,11 @@ func validateTransition(target *repositorymodel.RequestFile, graph *dependencygr
 		if options.CheckpointAbsent {
 			evidenceModes++
 		}
+		if options.CheckpointAllEntries {
+			evidenceModes++
+		}
 		if evidenceModes != 1 {
-			return refuse("RECOVER-CLAIM-CHECKPOINT-EVIDENCE", "recover-claim requires exactly one of --checkpoint-writer, --checkpoint-unlabeled, or --checkpoint-absent", sourcePath)
+			return refuse("RECOVER-CLAIM-CHECKPOINT-EVIDENCE", "recover-claim requires exactly one structural checkpoint evidence mode", sourcePath)
 		}
 	case TransitionUnblock:
 		if target.TreeSection != "queue" || status != "blocked" {
@@ -357,6 +360,9 @@ func planRecoverCheckpoint(existingBytes []byte, plan *StatePlan) {
 		return
 	}
 	updated, removed := checkpointWithoutAuthorizedClaim(existingBytes, requestID, plan.Options.CheckpointWriter, plan.Options.CheckpointUnlabeled)
+	if plan.Options.CheckpointAllEntries {
+		updated, removed = RemoveAllCheckpointClaims(existingBytes, requestID)
+	}
 	if !removed {
 		plan.Refusal = refuse("RECOVER-CLAIM-CHECKPOINT-EVIDENCE", "the exact asserted checkpoint entry does not exist", plan.SourcePath, plan.CheckpointPath)
 		return
