@@ -305,3 +305,7 @@ Worth recording: two independent review passes missed both. The re-review did ch
 A finalization that recovery cannot finish sets one REQ aside and the queue keeps draining. Lives in the recovery and finalization boundary: the per-record folding in the do-work CLI's finalization commands, claim preservation in its lifecycle-advance recovery, and the per-record contract in the work and run-with-recovery actions plus the commit action that reads the same records.
 
 Neither prime this REQ lists was made stale; both still resolve every path they reference.
+
+## Post-Merge Verification (final)
+
+`bash _dev/tests/maintainer-verify.sh` at `6211e3c`, after the two external findings were fixed: **exit 0, no failures.** The gate also ran green on the main-merge commit that brought in the advance chain, so this REQ is verified both against its own changes and against the rewritten pipeline it now sits inside.
