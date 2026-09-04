@@ -15,7 +15,7 @@ impact: impact-rule-change
 effort_estimate: effort-substantive
 related: [REQ-513, REQ-514, REQ-516, REQ-517]
 batch: recovery-never-traps
-write_set: [skills/do-work/actions/work.md, skills/do-work/actions/run-with-recovery.md, skills/do-work/actions/work-reference.md, skills/do-work/actions/commit.md, _dev/tests/contract-regressions.sh, _dev/tests/contracts/recovery-set-aside.sh, skills/do-work/tools/do-work-cli/internal/finalization/]
+write_set: [skills/do-work/actions/work.md, skills/do-work/actions/run-with-recovery.md, skills/do-work/actions/work-reference.md, skills/do-work/actions/commit.md, _dev/tests/contract-regressions.sh, _dev/tests/contracts/recovery-set-aside.sh, skills/do-work/docs/work-guide.md, skills/do-work/tools/do-work-cli/internal/finalization/, skills/do-work/tools/do-work-cli/internal/lifecycleadvance/]
 claimed_at: 2026-09-04T18:15:54Z
 route: B
 estimate:
@@ -33,6 +33,8 @@ dispatch_at: 2026-09-04T18:23:51Z
 builder_handback_at: 2026-09-04T19:09:41Z
 integration_at: 2026-09-04T19:09:41Z
 review_at: 2026-09-04T19:24:12Z
+remediation_at: 2026-09-04T19:36:54Z
+re_review_at: 2026-09-04T19:36:54Z
 ---
 
 # Per-REQ recovery findings never stop the loop
@@ -226,3 +228,35 @@ This is worse than the behaviour it replaced. The old code parked the queue; thi
 **What the review affirmed:** the per-record folding, the REQ-514-conformant set-aside shape with empty `next_argv` and preserved reason codes, the honest RED→GREEN, and the `setAsideReasonCode` cross-artifact predicate. The plain `do-work run` path in the Red-Green Proof does what it promises.
 
 Remediation dispatched for F1, F2, F3, M1, M3 and M5, with `internal/lifecycleadvance/recovery_commands.go` authorized into scope because the REQ's completion proof requires it.
+
+## Remediation
+
+Dispatched after the failed review; merged at `fe2de1e`, keeping `<pre>` at `18666d7` so the range stays cumulative.
+
+**F1 fixed — a set-aside REQ keeps its claim.** `handleRecover` now collects the REQ ids whose finalization records carry `FINALIZATION-SET-ASIDE` and skips claim recovery for each, recording `finalization set aside; claim preserved`. Stopping `recover` outright was the alternative and was rejected: that is the whole-run gate this REQ exists to retire. The exclusion is read from the record's own `reason_codes`, so there is no new field and no second contract.
+
+The orchestrator verified this independently rather than accepting the report: with `recovery_commands.go` restored to the pre-remediation revision, `TestRecoverPreservesTheClaimOfARequestFinalizationSetAside` fails with `the set-aside REQ lost its claim: stat .../do-work/working/REQ-730.md: no such file or directory` — the reviewer's symptom exactly — and passes on the merged tree.
+
+**F2 fixed — shared-cause refusals lose REQ ownership at the producer.** `FINALIZATION-DIRTY-INDEX` and `FINALIZATION-AMBIGUOUS-SHARED-STATE` are exactly the refusals whose cause is state the journal never declared: the repository's single index, and shared lifecycle, release or protected paths outside the recovery group. They now emit through `sharedStateRefusal` with no `AffectedIDs`, so the existing ownership gate returns false and the run stops. Keying it on the condition — no REQ owns the cause — rather than on a code list that would go stale on the third such code is what makes the "a finding that owns no REQ stops the run" branch reachable from the journal path for the first time. It also matches `discoveryRefusal`, which has always produced unowned refusals for the same reason. The unowned refusal's resolving verb is `uncommitted-inventory`, copied from that established shape, so REQ-514's rule that a refusal never names itself still holds.
+
+**F3 and M1 fixed — both false branches now pinned, red-proven.** `TestRecoverFinalizationStopsOnSharedDirtInsteadOfSettingOneRequestAside` fails without its fix with outcome `success` and *both* REQs carrying `FINALIZATION-DIRTY-INDEX, FINALIZATION-SET-ASIDE` — the old code set the whole repository's dirty index aside once per REQ. `TestRecoverFinalizationStopsWhenRollbackLeavesResidue` fails without its guard with REQ-721 dragged into a broken state. `namesRequestID` became the exclusive `namesOnlyRequestID`, closing M1.
+
+**M3 and M5 fixed.** The exit-summary line dropped `[title]`, which is not a field of `FinalizationResult`, rather than sending a floor agent to open the REQ file for one line. The contract's missing-action-file branch is guarded on the file existing instead of on an unrelated variable.
+
+## Decisions (remediation)
+
+**D-07 — DECIDE & STATE. Claim recovery skips set-aside REQs; it does not refuse for them.** Stopping `recover` on a set-aside would reinstate the whole-run gate this REQ removes.
+
+**D-08 — DECIDE & STATE. Shared-cause refusals lose ownership at the producer, not at the consumer.** Stated as a condition rather than a code list, per CLAUDE.md.
+
+**D-09 — DECIDE & STATE. The unowned refusal's resolving verb is `uncommitted-inventory`**, the established shape for a global stop, and a genuinely different verb from the one that just ran.
+
+**D-10 — DECIDE & STATE, orchestrator-authorized. `internal/lifecycleadvance/` was written despite the first pass declaring it out of scope.** F1 cannot be fixed anywhere else — the release happens in `handleRecover`, not in the finalization package — so the REQ's completion proof requires the file class. Added to the scope list and `write_set`.
+
+**D-11 — DECIDE & STATE. `SetAsideReasonCode` is exported** so `lifecycleadvance` uses the same token the finalization package emits, rather than a second literal in a second package. The contract's extraction follows the rename in the same commit, so it still reddens on a future rename.
+
+**D-12 — DECIDE & STATE. The exit-summary line dropped `[title]` rather than sourcing it.**
+
+**D-13 — DECIDE & STATE, orchestrator-authorized. Two restatement sites outside the declared write set were corrected.** `work-reference.md` Crash Recovery and `docs/work-guide.md` both said `--assume-sole-authority` resets every working claim. That is false as of this commit and false *because of* it, so the same rule that pulled `commit.md` into scope pulls these in. One clause each.
+
+**D-14 — DECIDE & STATE. `recover --take-over REQ-NNN` on a set-aside REQ preserves the claim instead of taking it over.** The same command's finalization pass just refused that REQ's tail, so handing the claim to the run would dispatch a builder onto a REQ whose stale journal refuses again at finalize. Both the set-aside finding and the claim decision appear in the result, so the user sees why.
