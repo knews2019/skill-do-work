@@ -525,6 +525,15 @@ func lifecycleRequestBytes(plan StatePlan) ([]byte, error) {
 				return nil, err
 			}
 		}
+		// A claimed request carrying a commit is dependency-source-ready, so a
+		// re-claim must not inherit the previous attempt's commit or its heavy
+		// evidence: that would make this request's dependents buildable against
+		// work the remediation already withdrew.
+		for _, field := range []string{"commit", "heavy_verified_at", "heavy_verified_revision"} {
+			if err := document.DeleteField(field); err != nil {
+				return nil, err
+			}
+		}
 	case TransitionRecover:
 		blocked := plan.Target.TypedRecord.RequestStatus == "blocked"
 		hasScope := markdownSectionExists(document.BodyBytes(), "Scope")

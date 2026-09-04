@@ -3,6 +3,7 @@ package lifecycleadvance
 import (
 	"context"
 	"fmt"
+	"os/exec"
 	"sort"
 	"strings"
 	"time"
@@ -100,6 +101,22 @@ func handleRecover(executionContext commandruntime.ExecutionContext, arguments [
 			})
 			continue
 		}
+		if heldForHeavyLanes(executionContext.RepositoryRoot, request) {
+			claimResult.Decision = "held for heavy lanes; claim preserved"
+			claimResult.HeldForHeavyLanes = true
+			recovery.Claims = append(recovery.Claims, claimResult)
+			aggregate.Findings = append(aggregate.Findings, resultmodel.CommandFinding{
+				Code: "RECOVERY-CLAIM-HELD-FOR-HEAVY-LANES", Severity: resultmodel.SeverityInfo,
+				AffectedIDs: []string{requestID}, AffectedPaths: []string{requestPath},
+				Evidence: []string{"section: " + heavyVerificationPlanSection,
+					"commit: " + strings.TrimSpace(request.TypedRecord.ImplementationCommit) + " is an ancestor of HEAD"},
+				Fixability:           resultmodel.FixabilityManual,
+				AutomationStopReason: "heavy lanes run from the work action's drain, which owns the lane manifest path",
+				NextArgv:             []string{"do-work-cli", "--format", "json", CommandAdvance, requestID},
+				VerificationArgv:     []string{"do-work-cli", "--format", "json", CommandRecover},
+			})
+			continue
+		}
 		stateOptions := requeststate.StateOptions{
 			Transition: requeststate.TransitionRecover, RequestID: requestID, RequestPath: requestPath,
 			AssumeSoleWriter: true, Commit: true, Now: time.Now().UTC().Truncate(time.Second),
@@ -146,6 +163,28 @@ func handleRecover(executionContext commandruntime.ExecutionContext, arguments [
 	}
 	aggregate.Outcome = resultmodel.OutcomeSuccess
 	return aggregate
+}
+
+// heavyVerificationPlanSection is the request-body section the work action
+// appends when it holds a reviewed request for its selected heavy lanes.
+const heavyVerificationPlanSection = "Heavy Verification Plan"
+
+// heldForHeavyLanes reports a claimed working request that is waiting for this
+// session's heavy-lane drain rather than an interrupted build. The evidence is
+// the held phase's own two marks: the plan section the hold appended, and an
+// implementation commit that is already an ancestor of HEAD. The section alone
+// is not proof — a request whose commit never landed on this history is
+// ordinary interrupted work. No clock is read.
+func heldForHeavyLanes(repositoryRoot string, request *repositorymodel.RequestFile) bool {
+	implementationCommit := strings.TrimSpace(request.TypedRecord.ImplementationCommit)
+	if implementationCommit == "" || request.ParsedDocument == nil {
+		return false
+	}
+	sections, sectionError := advanceSections(request.ParsedDocument.BodyBytes())
+	if sectionError != "" || !hasSection(sections, heavyVerificationPlanSection) {
+		return false
+	}
+	return exec.Command("git", "-C", repositoryRoot, "merge-base", "--is-ancestor", implementationCommit, "HEAD").Run() == nil
 }
 
 // setAsideRequestIDs collects the REQs this run's finalization pass excluded

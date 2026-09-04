@@ -107,7 +107,7 @@ func classifyQueueAdvance(target *repositorymodel.RequestFile, advance *resultmo
 		return advancePhase(advance, "blocked-check", resultmodel.AdvancePhaseMechanical,
 			advanceEvidence("field", requestPath, "status", "", "pending after successful probe and unblock"),
 			[]string{"do-work-cli", "--format", "json", "next", advance.RequestID})
-	case "pending-answers", "pending-heavy-testing", "blocked-archive-collision", "blocked-dependency-cycle":
+	case "pending-answers", "blocked-archive-collision", "blocked-dependency-cycle":
 		return advancePhase(advance, "agent judgment: resolve "+advance.Status, resultmodel.AdvancePhaseAgentJudgment,
 			advanceEvidence("field", requestPath, "status", "", "pending"), nil)
 	default:

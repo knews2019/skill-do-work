@@ -126,8 +126,8 @@ func checkpointQueueState(snapshot *repositorymodel.RepositorySnapshot) string {
 			counts[request.TypedRecord.RequestStatus]++
 		}
 	}
-	return fmt.Sprintf("[%d pending, %d pending-answers, %d pending-heavy-testing, %d blocked, %d blocked-archive-collision, %d blocked-dependency-cycle, %d in-progress]",
-		counts["pending"], counts["pending-answers"], counts["pending-heavy-testing"], counts["blocked"],
+	return fmt.Sprintf("[%d pending, %d pending-answers, %d blocked, %d blocked-archive-collision, %d blocked-dependency-cycle, %d in-progress]",
+		counts["pending"], counts["pending-answers"], counts["blocked"],
 		counts["blocked-archive-collision"], counts["blocked-dependency-cycle"], counts["in-progress"])
 }
 
