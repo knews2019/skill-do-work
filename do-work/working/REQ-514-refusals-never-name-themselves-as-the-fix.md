@@ -214,3 +214,34 @@ Passed after bounded remediation — 7 remediation files verified, all three rev
 ## Remediation
 
 One bounded remediation pass is authorized by the work loop. It must apply the invariant to every refusal finding regardless of aggregate outcome, align singular and ordered finalization remedies, and execute the literal claim path in the folded lifecycle acceptance fixture.
+
+## Re-review
+
+**Overall: 50%** | 2026-09-04T00:13:17Z
+
+| Dimension | Score |
+|---|---:|
+| Requirements | 68% |
+| Code Quality | 76% |
+| Test Adequacy | 66% |
+| Scope | 100% |
+| Risk | Low |
+| Acceptance | Fail |
+
+**Original-finding closure:**
+- F1 partially closed: aggregate-independent normalization and the cited cleanup producer are fixed; the mandated table still constructs synthetic results instead of walking all refusal builders.
+- F2 closed for discovery: finding, singular record, and ordered record use inventory as next action and recovery only as verification.
+- F3 closed for the real claim path: the fixture runs committed claim before implementation and recovery; it omits the literal typed `cleanup_complete` assertion.
+
+**Important findings (each with its recorded impact token — durable audit record):**
+- The required table-driven walk of every real refusal finding builder remains a four-row synthetic `CommandResult` table, so producer completeness is not pinned — `impact-rule-change` → report only
+- Journal-backed `recover-finalization` failures normalize the top finding but retain `recover-finalization` as `next_argv` in canonical singular/ordered finalization records — `impact-user-visible` → report only
+
+**Minor findings:**
+- The real claim-to-recovery fixture proves terminal effects but does not literally assert `Finalization.Phase == cleanup_complete` — `impact-rule-change` → report only
+
+**Acceptance:** Fail — focused tests and the live discovery output pass, but a production journal-backed refusal still exposes a self-referential canonical typed next action.
+**Suggested testing:** 3 items
+**Follow-ups created:** None (3 findings report only)
+
+*Re-reviewed by review-work action*
