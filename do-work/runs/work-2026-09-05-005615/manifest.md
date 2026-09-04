@@ -27,3 +27,5 @@ User scope: do-work run to completion, serial claims; do not finish while agents
 
 - REQ-509 review accepted (100%, Pass); selected lane evidence complete after canonical version-mirror repair and installer retry; preparing finalization.
 - REQ-504 remediation plan complete and ready after REQ-509.
+
+- REQ-509 completed and delivered; release0.282.1; commit9f19533f0112625e9d3fe2bf4f1ac0eaae8f4b47; manifest validation passed; own checkout/branch removed without force; untracked handback consumed after promotion to archive.
