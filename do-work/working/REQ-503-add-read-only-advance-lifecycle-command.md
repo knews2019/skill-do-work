@@ -1,7 +1,7 @@
 ---
 id: REQ-503
 title: 'Add the read-only advance lifecycle command'
-status: pending
+status: claimed
 priority: now
 created_at: 2026-09-02T14:37:54Z
 user_request: UR-098
@@ -38,6 +38,7 @@ estimate:
     - cross-route regression gates
     - full-suite verification
 gate_deferred: 'true'
+claimed_at: 2026-09-04T15:20:34Z
 ---
 
 # Add the Read-Only advance Lifecycle Command
