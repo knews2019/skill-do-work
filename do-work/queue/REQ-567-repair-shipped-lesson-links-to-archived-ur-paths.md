@@ -1,7 +1,7 @@
 ---
 id: REQ-567
 title: 'Repair shipped lesson links to archived UR paths'
-status: pending-heavy-testing
+status: pending
 route: C
 created_at: 2026-09-04T15:07:20Z
 user_request: UR-098
@@ -15,13 +15,12 @@ sweep: 'true'
 sweep_key: shipped-lesson-links-obsolete-archive-paths
 depends_on: []
 related: [REQ-503]
-claimed_at: 2026-09-04T15:08:27Z
 planning_at: 2026-09-04T15:10:25Z
 exploration_at: 2026-09-04T15:10:25Z
 dispatch_at: 2026-09-04T15:12:02Z
 builder_handback_at: 2026-09-04T15:14:55Z
 integration_at: 2026-09-04T15:15:16Z
-status_changed_at: 2026-09-04T15:19:13Z
+status_changed_at: 2026-09-04T20:59:59Z
 commit: 2dda18a1f816e148258295b2b351f12695a049b4
 write_set: [skills/do-work/tools/do-work-cli/lessons-do-work-cli.md]
 estimate:
@@ -34,6 +33,8 @@ estimate:
     - 3 acceptance criteria
     - cross-route regression gates
     - full-suite verification
+heavy_verified_at: 2026-09-04T20:59:59Z
+heavy_verified_revision: 2dda18a1f816e148258295b2b351f12695a049b4
 ---
 
 # Repair shipped lesson links to archived UR paths
@@ -151,8 +152,28 @@ Passed — 1 file verified, 3 acceptance criteria traced, and P-A-U confirmed. T
 
 ## Open Questions
 
-- [ ] Run the selected heavy lane commands at `2dda18a1f816e148258295b2b351f12695a049b4`; did every command exit 0?
+- [x] Run the selected heavy lane commands at `2dda18a1f816e148258295b2b351f12695a049b4`; did every command exit 0? → Confirmed: All 4 selected heavy lanes passed without skips at 2dda18a1f816e148258295b2b351f12695a049b4.
 
 Recommended: Yes
 
 Also: No — <failing lane>
+
+
+## Answer Notes
+
+- 2026-09-04 - [ ] Run the selected heavy lane commands at `2dda18a1f816e148258295b2b351f12695a049b4`; did every command exit 0?: Confirmed: All 4 selected heavy lanes passed without skips at 2dda18a1f816e148258295b2b351f12695a049b4.
+> ```
+> Exact-revision heavy verification via do-work clarify. Stored base, target, selected lanes, argv and coverage reasons matched the recomputed plan. All lane results came from the detached checkout at 2dda18a1f816e148258295b2b351f12695a049b4.
+> All 4 selected heavy lanes passed without skips at 2dda18a1f816e148258295b2b351f12695a049b4.
+> Scope: verification results only; implementation changes, fresh review and archiving remain for do-work run. Date and timestamp follow skills/do-work/actions/work-reference.md, Timestamp rule and its date-only paragraph.
+> ```
+
+## Heavy Verification Result
+
+Target revision: `2dda18a1f816e148258295b2b351f12695a049b4`
+Execution revision: `2dda18a1f816e148258295b2b351f12695a049b4`
+
+- do-work-cli-integrations: exit 0, 50s — `bash _dev/tests/maintainer-verify.sh --heavy-lane do-work-cli-integrations`
+- staged-skills: exit 0, 22s — `bash _dev/tests/maintainer-verify.sh --heavy-lane staged-skills`
+- updater: exit 0, 53s — `bash _dev/tests/maintainer-verify.sh --heavy-lane updater`
+- installer: exit 0, 24s — `bash _dev/tests/maintainer-verify.sh --heavy-lane installer`
