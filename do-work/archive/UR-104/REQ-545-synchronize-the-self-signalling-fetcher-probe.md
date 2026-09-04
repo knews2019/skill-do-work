@@ -1,7 +1,7 @@
 ---
 id: REQ-545
 title: 'Synchronize the self-signalling upstream-fetcher probe'
-status: claimed
+status: completed
 priority: now
 created_at: 2026-09-03T15:25:00Z
 user_request: UR-104
@@ -24,6 +24,8 @@ estimate:
   calculated_at: 2026-09-04T13:23:32Z
   basis:
     - Route A
+completed_at: 2026-09-04T13:30:00Z
+commit: 32aec2e7eb9504ecde992e3782c35798e0d7f471
 ---
 
 # Synchronize the Self-Signalling Upstream-Fetcher Probe

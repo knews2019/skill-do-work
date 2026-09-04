@@ -15,7 +15,6 @@ session_depth: light
 
 ## In Progress (interrupted)
 
-- REQ-545: Synchronize the self-signalling upstream-fetcher probe — claimed 2026-09-04T13:17:16Z — writer: t2s-Virtual-Machine.local:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2
 
 - REQ-566: [impact-rule-change] Run held heavy lanes at queue exhaustion without asking, and record per-lane wall time — claimed 2026-09-04T13:24:15Z — writer: t2s-Virtual-Machine.local:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2
 
