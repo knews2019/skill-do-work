@@ -47,6 +47,7 @@ planning_at: 2026-09-04T15:57:17Z
 exploration_at: 2026-09-04T15:57:17Z
 preflight_at: 2026-09-04T16:00:28Z
 dispatch_at: 2026-09-04T16:01:12Z
+builder_handback_at: 2026-09-04T16:31:17Z
 estimate:
   p50_active_minutes: 50
   confidence: low

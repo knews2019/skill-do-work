@@ -6,4 +6,4 @@ Status: in-progress
 
 | Agent | Slice | Output file | Status |
 |---|---|---|---|
-| builder-REQ-504 | Collapse recovery/checkpoint mechanics behind canonical commands | `REQ-504-handback.md` | pending |
+| builder-REQ-504 | Collapse recovery/checkpoint mechanics behind canonical commands | `REQ-504-handback.md` | done — builder `a296ee9e` |
