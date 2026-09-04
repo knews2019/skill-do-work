@@ -1,7 +1,7 @@
 ---
 id: REQ-503
 title: 'Add the read-only advance lifecycle command'
-status: pending
+status: claimed
 priority: now
 created_at: 2026-09-02T14:37:54Z
 user_request: UR-098
@@ -46,6 +46,7 @@ status_changed_at: 2026-09-04T20:59:59Z
 commit: f38a78b0ad80b34b3f5cd332b31e21ae63a7602d
 heavy_verified_at: 2026-09-04T20:59:59Z
 heavy_verified_revision: f38a78b0ad80b34b3f5cd332b31e21ae63a7602d
+claimed_at: 2026-09-04T21:59:20Z
 ---
 
 # Add the Read-Only advance Lifecycle Command
