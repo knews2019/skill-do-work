@@ -32,6 +32,7 @@ write_set:
   - skills/do-work/tools/do-work-cli/internal/nextselection/blocked_probe_test.go
   - skills/do-work/tools/do-work-cli/internal/nextselection/blocked_probe_unix.go
   - skills/do-work/tools/do-work-cli/internal/nextselection/blocked_probe_windows.go
+  - skills/do-work/tools/do-work-cli/prime-do-work-cli.md
 claimed_at: 2026-09-04T17:32:08Z
 route: C
 estimate:
@@ -148,6 +149,7 @@ The current blocked probe is not yet a complete focused-test baseline API: it re
 - `skills/do-work/tools/do-work-cli/internal/nextselection/blocked_probe_test.go`
 - `skills/do-work/tools/do-work-cli/internal/nextselection/blocked_probe_unix.go`
 - `skills/do-work/tools/do-work-cli/internal/nextselection/blocked_probe_windows.go`
+- `skills/do-work/tools/do-work-cli/prime-do-work-cli.md`
 
 **Files I will NOT touch:** the root contract dispatcher, gate-evidence implementation, finalization, heavy verification, publication/deferral, queue selection-and-claim transaction, board code, or unrelated action readers.
 
@@ -161,3 +163,4 @@ The current blocked probe is not yet a complete focused-test baseline API: it re
 ## Decisions
 
 - **D-01 — DECIDE & STATE:** Expanded the captured scope to the current contract owner, typed result projection, core-helper baseline record, and platform probe implementation. The capture preceded the contract-suite split and assumed probe diagnostics already existed; these files are required to meet the request's explicit typed evidence and baseline-comparison behavior without duplicating command logic.
+- **D-02 — DECIDE & STATE:** Added the CLI prime after focused GREEN because its lifecycle-advance phase table would otherwise keep teaching the retired read-only/next-command behavior. The prime is the required source index for every future change in this subsystem, so leaving it stale would split the contract immediately.
