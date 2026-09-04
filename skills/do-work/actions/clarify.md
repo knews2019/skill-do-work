@@ -8,7 +8,7 @@ This is the second human-attention window in the pipeline. After actions/work.md
 
 **Use when:**
 - A work run just finished and left `pending-answers` REQs in the queue.
-- A work run left `pending-heavy-testing` REQs whose exact implementation revisions need permission before selected heavy lanes run.
+- A work run left `pending-heavy-testing` REQs whose lanes did not run at exhaustion (skipped lane, plan drift, or historical plan) and a maintainer wants to run them by hand.
 - The user asks "what's blocked?", "show me pending questions", or similar.
 - The pipeline can't advance because builder-decided questions need sign-off.
 - `blocked` REQs are waiting on a **human-confirmable** external condition (a designer answered, a service is now up) and you want to confirm the condition is met so they re-enter the queue.
@@ -34,13 +34,20 @@ Find all `REQ-*.md` files in `do-work/queue/` with `status: pending-answers` or 
 
 If no `pending-answers`, `pending-heavy-testing`, or `blocked` REQ is found: report "No pending questions, heavy tests, or blocked REQs — queue is clear" and exit. If only `blocked` REQs exist, skip Steps 2.5–5 and go straight to Step 5.5.
 
-### Step 2.5: Ask once before heavy testing
+### Step 2.5: Run held heavy lanes by hand
 
-List every `pending-heavy-testing` REQ with its title, exact full `commit:` revision, and stored Heavy Verification Plan. Refuse malformed entries whose hash is absent or does not resolve, whose plan is incomplete, or whose target differs from `commit:`; they stay held. Ask one batch question naming every exact selected lane command and revision. A decline or no answer leaves every REQ unchanged and never delays ordinary `pending` work, which the work loop already finished before routing here.
+List every `pending-heavy-testing` REQ with its title, exact full `commit:` revision, and stored Heavy Verification Plan. Refuse malformed entries whose hash is absent or does not resolve, whose plan is incomplete, or whose target differs from `commit:`; they stay held.
 
-After permission, recompute each stored plan in an isolated detached worktree. An ordinary exact-revision plan uses `plan-heavy-verification` at its stored target. A compatibility plan for already-landed pre-manifest work uses `plan-heavy-revalidation` with every stored historical source range and the exact stored execution revision; it reads the lane manifest from that execution revision and requires every historical target in its ancestry. Refuse any difference from the stored mode, ranges, manifest/execution revision, selected ids, argv, or reasons. REQs in one approved batch may share one lane execution only when their stored execution revision is identical. Run the deduplicated commands there and retain each lane's status and per-test-file duration output. Configure Chromium explicitly for a selected browser lane: a skip is incomplete evidence, never green. The work loop never runs these commands; clarify is the explicit human-attention window that owns the permission. An explicit user request for `bash _dev/tests/maintainer-verify.sh --heavy` is force-all and bypasses narrowing.
+Recompute each stored plan in an isolated detached worktree. An ordinary exact-revision plan uses `plan-heavy-verification` at its stored target. A compatibility plan for already-landed pre-manifest work uses `plan-heavy-revalidation` with every stored historical source range and the exact stored execution revision; it reads the lane manifest from that execution revision and requires every historical target in its ancestry. Refuse any difference from the stored mode, ranges, manifest/execution revision, selected ids, argv, or reasons. REQs in one approved batch may share one lane execution only when their stored execution revision is identical. Run the deduplicated lanes there with the same runner the exhaustion drain uses, which reports each lane's exit status, skip state, and wall seconds:
 
-For each REQ, build one canonical `answer` manifest with `expected_status: pending-heavy-testing`, `mode: heavy-testing`, and typed `heavy_testing` evidence: exact request target, exact execution revision, and every applicable lane's id, argv, exit status, and skip state. Use `confirmed` only when every selected command exits zero with no skip. Green records `heavy_verified_at` and `heavy_verified_revision`, clears `claimed_at`, and returns the REQ to runnable `pending` without archiving it; `next` projects `resume_phase: review`, and the work loop claims normally before fresh review, lessons, release judgment, and canonical finalization. Use `answered` with every failing or skipped lane for red; it clears the same claim and green-evidence fields and returns the REQ to ordinary remediation. Stale, mismatched, or non-ancestor evidence refuses or cannot produce the review resume. Invoke the ordinary `answer --manifest ... --at ... --commit` transaction; there is no hand edit or free-form fallback. The stored Open Question, answer note, and generated Heavy Verification Result are the durable consent and result evidence.
+```bash
+<skill-root>/tools/do-work-cli.sh --repo-root "<project-root>" --format json \
+  run-heavy-verification --manifest _dev/tests/heavy-lanes.json --lane "<lane-id>"
+```
+
+Configure Chromium explicitly for a selected browser lane: a skip is incomplete evidence, never green. An explicit user request for `bash _dev/tests/maintainer-verify.sh --heavy` is force-all and bypasses narrowing.
+
+For each REQ, build one canonical `answer` manifest with `expected_status: pending-heavy-testing`, `mode: heavy-testing`, and typed `heavy_testing` evidence: exact request target, exact execution revision, and every applicable lane's id, argv, exit status, skip state, and wall seconds. Use `confirmed` only when every selected command exits zero with no skip. Green records `heavy_verified_at` and `heavy_verified_revision`, clears `claimed_at`, and returns the REQ to runnable `pending` without archiving it; `next` projects `resume_phase: review`, and the work loop claims normally before fresh review, lessons, release judgment, and canonical finalization. Use `answered` with every failing or skipped lane for red; it clears the same claim and green-evidence fields and returns the REQ to ordinary remediation. Stale, mismatched, or non-ancestor evidence refuses or cannot produce the review resume. Invoke the ordinary `answer --manifest ... --at ... --commit` transaction; there is no hand edit or free-form fallback. The stored Open Question, answer note, and generated Heavy Verification Result are the durable consent and result evidence.
 
 ### Step 3: Present questions
 
@@ -200,7 +207,7 @@ Note for the user which blocked REQs carry a `blocked_check` probe — those unb
 
 ### Step 6: Report
 
-Summary of what was resolved and what's still pending — include every heavy-test REQ returned to `pending` for review-resume or remediation, or left awaiting permission; any `blocked` REQs unblocked (now `pending`) or left waiting; and any stakeholder-questions REQs handed off, reclaimed from, or left open, alongside the answered/confirmed/discarded questions. When Step 5.25 ran, append its evidence-backed candidate report. When the user deferred an over-threshold scan, say it was not run and include the combined explicit command.
+Summary of what was resolved and what's still pending — include every heavy-test REQ returned to `pending` for review-resume or remediation, or left held; any `blocked` REQs unblocked (now `pending`) or left waiting; and any stakeholder-questions REQs handed off, reclaimed from, or left open, alongside the answered/confirmed/discarded questions. When Step 5.25 ran, append its evidence-backed candidate report. When the user deferred an over-threshold scan, say it was not run and include the combined explicit command.
 
 ## Builder Was Right / Discarded
 

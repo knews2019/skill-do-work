@@ -227,7 +227,7 @@ commit: abc1234               # required in a git repo — implementation commit
 error: "Description"          # Set when a REQ failed; RETAINED verbatim if that failed REQ is later cancelled via do-work abandon — the surviving failure signal on a status: cancelled REQ, NOT drift to strip
 error_type: intent|spec|code|environment   # Set with `error` on failure; likewise retained on a failed→cancelled flip
 
-# Set by work.md Step 6.5 when the merged diff selects permission-gated heavy lanes.
+# Set by work.md Step 6.5 when the merged diff selects heavy lanes for the exhaustion drain.
 # The REQ stays in queue and ordinary selection walks past it. `commit` above is the
 # exact implemented revision the Open Question names while other runnable REQs continue.
 status: pending-heavy-testing
@@ -315,7 +315,7 @@ Default and UR-expanded queue selection order ready work by three stable classes
 
 ### Dependency-source-ready status set
 
-**A dependency is source-ready when it is terminally successful, or when its normalized status is `pending-heavy-testing` and it carries a nonblank `commit:`.** The latter has landed implementation and passed the fast gate; its own heavy result still controls its terminal completion, but dependents may build against the exact committed source while that permission hold is open. `pending-heavy-testing` without commit metadata fails closed, and a red heavy lane returns the REQ to `pending`, which immediately makes the dependency unmet again. This set is scheduling authority only: it does not make the held REQ terminal, successful, archivable, or eligible for completed-work readers.
+**A dependency is source-ready when it is terminally successful, or when its normalized status is `pending-heavy-testing` and it carries a nonblank `commit:`.** The latter has landed implementation and passed the fast gate; its own heavy result still controls its terminal completion, but dependents may build against the exact committed source while that hold is open. `pending-heavy-testing` without commit metadata fails closed, and a red heavy lane returns the REQ to `pending`, which immediately makes the dependency unmet again. This set is scheduling authority only: it does not make the held REQ terminal, successful, archivable, or eligible for completed-work readers.
 
 The trigger is the *condition above*, not the caller list: **any reader that filters for "the completed/most-recent work" inherits this contract.** The known consumers are illustrative, not exhaustive — `actions/cleanup.md` (UR close), `../../do-work-toolbox/actions/completed-work-presentation-reference.md` (shared reader for item-level presentation actions), `actions/review-work.md` (standalone target), and `actions/commit.md` (REQ association); `actions/forensics.md` and `actions/roadmap.md` already honor both. When adding a new reader, normalize status first, accept both canonical values, and point back here — hand-enumerated caller lists go stale silently, which is why the condition, not the list, is the contract.
 
@@ -709,6 +709,16 @@ The exit report is **composed**, not picked from disjoint branches. Whenever the
      ...
 
    Skipped by `--skip-impact-negligible`, not blocked — nothing was written to these REQs. Re-run without the flag to include them, or name one explicitly (`do-work run REQ-NNN --skip-impact-negligible`), which overrides the skip for that REQ. A REQ with no `impact:` reads as `impact-user-visible` and never appears here.
+   ```
+
+8. **Held-for-heavy-testing section** — applies if any REQ still carries status `pending-heavy-testing` after the heavy-lane drain ran (`actions/work.md` Step 6.5). A REQ whose selected lanes all executed is answered by the drain and never reaches this section; one that appears here got no result, and the typed finding names why. Render:
+
+   ```
+   ⚠ N REQs held for heavy testing:
+     REQ-NNN — [title] (held: <finding code> <lane>)
+     ...
+
+   A skipped browser lane needs an engine: set `QUEUE_KANBAN_BROWSER=<path>` and re-run `do-work run`. Plan drift or a stored historical-revalidation plan goes through `do-work clarify`, which runs the held lanes by hand.
    ```
 
 **After rendering all applicable sections, exit the work loop** — do not proceed to Step 2.0 or beyond. There is no claimable `pending` REQ. Step 1's contract on this path is "render the composed summary, then stop"; the only path that continues is the one where Step 1 finds at least one claimable `pending` REQ (dependency-ready and, in a default scan, not assigned elsewhere).
