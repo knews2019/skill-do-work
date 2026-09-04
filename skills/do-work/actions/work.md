@@ -13,7 +13,7 @@ An orchestrated build system that processes request files created by actions/cap
 
 **Do NOT use when:**
 - The queue is empty — tell the user and stop; suggest `do-work capture-request: [describe]` instead.
-- The only REQs left are `pending-answers` or `pending-heavy-testing` — report them; route answers to `do-work clarify`; held heavy lanes run themselves at exhaustion (Qualification and Testing Judgment).
+- The only REQs left are `pending-answers` — report them and route answers to `do-work clarify`.
 - See `SKILL.md` routing table for sibling action selection (inspect, verify-requests, review-work, etc.).
 
 ## Request Files as Living Logs
@@ -88,13 +88,12 @@ The `do-work/` folder layout is described in `actions/work-reference.md` → **F
 
 The full annotated frontmatter schema and the **Schema Read Contract** — the normalize-and-warn rules every read site honors for fields with a documented canonical vocabulary — live in `actions/work-reference.md` → **Request File Schema — Full Frontmatter** and **Schema Read Contract**. Every reference below to "the Schema Read Contract" points there.
 
-**Status flow (frontmatter values):** `pending` → `claimed` → `completed` / `completed-with-issues` / `failed`, with `claimed` → `pending-heavy-testing` → `pending` → `claimed` as the non-blocking heavy-test hold and review resume.
+**Status flow (frontmatter values):** `pending` → `claimed` → `completed` / `completed-with-issues` / `failed`. The heavy-test hold is a phase of `claimed`, marked by the REQ's `## Heavy Verification Plan` section and its `commit:`, per the section-tracking rule in the next paragraph — it is not a status.
 
 The intermediate phases (planning, exploring, implementing, testing, reviewing) are tracked by which `##` sections exist in the REQ file, not by frontmatter status changes. Only two status transitions are written on the ordinary path: `advance` commits `pending` → `claimed`, then finalization commits the terminal status. Exception paths write their documented hold or remediation status through their canonical command.
 
 **Special statuses — these REQs stay in the queue but are not claimable while the condition remains:**
 - `pending-answers` — a follow-up REQ whose Open Questions need user input before it can be worked. These accumulate in the queue and get batch-reviewed when the user runs `do-work clarify`.
-- `pending-heavy-testing` — implementation and the fast tests are complete, but the saved revision still needs its planned heavy lanes. It stays non-runnable while ordinary queue work continues, but its required nonblank `commit:` makes its landed source ready for dependent REQs. Both green and red answers return it to runnable `pending` without `claimed_at`: green carries `heavy_verified_at` plus `heavy_verified_revision` so `next` resumes at review, while red has no reusable evidence and blocks dependents again during ordinary remediation. At queue exhaustion the loop runs the batched lanes at HEAD itself (Qualification and Testing Judgment, heavy-lane drain); no permission is asked.
 - `blocked` — waiting on an **external condition** named in `blocked_by`; `advance` runs any recorded probe and atomically unblocks a success before claim. Human-confirmable conditions may also resolve through `do-work clarify`.
 - `blocked-archive-collision` — set by `advance` when recursive discovery finds the queue REQ id in the archive. Non-destructive holding state; the user flips it back to `pending` (or removes/renames the duplicate) after deciding what to do.
 - `blocked-dependency-cycle` — set by Step 1 when a REQ's `depends_on` graph contains a cycle (e.g., REQ-A depends on REQ-B which depends on REQ-A). Non-destructive holding state; the user edits the `depends_on` chain to break the cycle, then flips the status back to `pending`.
@@ -339,27 +338,7 @@ An already-green repository-gate repair must present the exact no-op evidence an
 
 Select focused tests from the touched primes' valid test maps, then cover unmapped files with repository-native detection. Every test-file invocation must remain under 30 seconds. The focused-test gate distinguishes green, matching recorded red, new red, timeout, launch failure, and an unusable `launched: false` baseline; only green or an exact matching red clears mechanically. Whether two failures are semantically the same, or a warning represents a real regression, remains the orchestrator's judgment. New regressions return to implementation for at most three attempts, loading the debugging and testing crew guidance on attempt two onward.
 
-Run the declared canonical repository gate directly, unpiped, against the final tree. A non-zero exit is rerun once before any classification, and everything downstream — repair-failure handling, diagnostic attribution, deferral — reads the second run's status, output, and fingerprint (`actions/work-reference.md` → **One retry before classification**). Return its exact argv and exit status through `advance` so the typed evidence is checked or recorded; focused-test exclusions never waive this gate. Repository-gate repair attribution, base-revision diagnosis, deferral, and cleanup remain action-owned judgments governed by `actions/work-reference.md`. Plan affected heavy lanes with the repository's typed planner; selected lanes enter the non-blocking hold below.
-
-**Heavy-test hold (non-blocking):** after the fast tier passes, a REQ with selected heavy lanes does **not** run those lanes and does not hold the queue loop open. Record the fast commands and durations plus the typed lane plan, then atomically:
-
-1. land the implementation commit and record its full hash in the REQ's canonical `commit:` field;
-2. set `status: pending-heavy-testing` and `status_changed_at: <now>` (current UTC instant — Timestamp rule, `actions/work-reference.md`), append `## Heavy Verification Plan` with the exact base/target revisions and each selected lane's id, argv, and reasons, then append `## Open Questions` holding exactly one line, `- [ ] Heavy lanes at \`<commit>\`: the work loop runs them at queue exhaustion and records the result here` — a machine hold the `answer` transaction ticks with the lane result, not a question for the user, so it carries no `Recommended:` or `Also:` options;
-3. move the REQ from `do-work/working/` back to `do-work/queue/`, remove only its checkpoint claim, commit those bookkeeping paths, and perform the ordinary isolated-worktree cleanup; and
-4. recompute selection and continue every unrelated runnable REQ.
-
-**Heavy-lane drain (at queue exhaustion):** when no claimable pending REQ remains but at least one undrained `pending-heavy-testing` REQ exists, this loop runs the held lanes itself. No permission is asked. Per held REQ, recompute `plan-heavy-verification` at its stored base and `commit:` and refuse any drift against the stored `## Heavy Verification Plan` — a drifted plan, or a stored `historical-revalidation` plan, leaves that REQ held and routes it to `do-work clarify`. Union the selected lane ids across every remaining REQ and run them once at HEAD, repeating `--lane` for each unioned id:
-
-```bash
-<skill-root>/tools/do-work-cli.sh --repo-root "<project-root>" --format json \
-  run-heavy-verification --manifest _dev/tests/heavy-lanes.json --lane "<lane-id>"
-```
-
-The runner refuses an unknown lane and a dirty tracked tree outside `do-work/` before anything executes; `HEAVY-RUN-DIRTY-TREE` is a typed condition to resolve, never a hand edit. It reports each lane's exit status, skip state, wall seconds, and `disposition`, and a red or skipped lane is a warning finding rather than a command failure.
-
-A lane whose deterministic fingerprint — its argv, its covered and globally unclassified committed paths, regular untracked input bytes, bounded toolchain probes, and the entire inherited environment — still matches a successful record no older than four hours is reported `reused` instead of executed; every other lane is `executed` with the exact reason it was not reused (`fingerprint_mismatch`, `evidence_expired`, `no_prior_evidence`, `fingerprint_uncertain`). Execution revokes the previous success before launch; an invalidation failure refuses the run. Fingerprint uncertainty (including an opaque browser runtime or a symlink input) always executes. Shipped lane argv explicitly isolates system/global Git configuration; custom manifest commands retain their declared environment. Report each lane's disposition alongside its result: a `reused` green was measured by an earlier run, not this one. Add `--no-evidence-reuse` when a lane must execute regardless — a suspected flake, or an input outside its declared fingerprint.
-
-Then build one `answer` manifest per REQ, exactly as `actions/clarify.md` Step 2.5 does, from the subset of lanes that REQ selected: every one present in the run, exited 0, and unskipped submits `confirmed`; any one skipped submits **no** answer — the REQ stays `pending-heavy-testing`, its `HEAVY-RUN-LANE-SKIPPED` finding names the lane, and it is excluded from further drains this run; anything else submits `answered` listing every lane. `target_revision` is that REQ's `commit:` and `execution_revision` is the runner's. Recompute selection and continue: a green REQ returns claimable with `resume_phase: review`, and a `commit:` drained once this run is never drained again. All outcomes remove stale `claimed_at`.
+Run the declared canonical repository gate directly, unpiped, against the final tree. A non-zero exit is rerun once before any classification, and everything downstream — repair-failure handling, diagnostic attribution, deferral — reads the second run's status, output, and fingerprint (`actions/work-reference.md` → **One retry before classification**). Return its exact argv and exit status through `advance` so the typed evidence is checked or recorded; focused-test exclusions never waive this gate. Repository-gate repair attribution, base-revision diagnosis, deferral, and cleanup remain action-owned judgments governed by `actions/work-reference.md`. Plan affected heavy lanes with the repository's typed planner; selected lanes are recorded in the Testing section and held at Step 7.7 after review.
 
 Append to the request file:
 
@@ -444,6 +423,35 @@ Only add a link when the lesson is relevant to that prime file's scope — don't
 
 **Knowledge-base handoff.** After the Lessons Learned section is written and prime-file links are in place, follow `actions/kb-lessons-handoff.md` to offer dropping a structured source document into `kb/raw/inbox/` so the next `do-work-knowledge bkb triage` + `do-work-knowledge bkb ingest` cycle compiles the lessons into the wiki. The handoff asks the user before writing and records `kb_status` (plus `kb_entry` on success) back onto the REQ. In unattended work runs with no human in the loop, the handoff defaults to `kb_status: pending` — it never writes to the KB without consent. If the project has no `kb/` directory, the handoff points the user at `do-work-knowledge bkb init` and defers; it never blocks archival.
 
+### Step 7.7: Heavy-Test Hold and Drain
+
+**Heavy-test hold:** after Steps 7 and 7.5 pass, a REQ whose Testing section recorded selected heavy lanes does **not** run those lanes and does not hold the queue loop open. Record the fast commands and durations plus the typed lane plan, then:
+
+1. land the implementation commit and record its full hash in the REQ's canonical `commit:` field;
+2. append `## Heavy Verification Plan` with the exact base/target revisions and each selected lane's id, argv, and reasons; and
+3. recompute selection and continue every unrelated runnable REQ.
+
+The REQ stays `claimed` in `do-work/working/`: no status change, no `## Open Questions` machine line, no move to `do-work/queue/`, and no checkpoint edit. The landed `commit:` is what makes its source ready for dependent REQs while it waits.
+
+**Heavy-lane drain (at queue exhaustion):** when no claimable pending REQ remains and at least one held claimed REQ exists — including one routed here by `recover`'s `RECOVERY-CLAIM-HELD-FOR-HEAVY-LANES` finding — this loop runs the held lanes itself. No permission is asked. Per held REQ, recompute `plan-heavy-verification` at its stored base and `commit:` and refuse any drift against the stored `## Heavy Verification Plan`. Plan drift, or a stored `historical-revalidation` plan, leaves that REQ held and is a typed finding for a human, never a hand edit. Union the selected lane ids across every remaining REQ and run them once at HEAD, repeating `--lane` for each unioned id:
+
+```bash
+<skill-root>/tools/do-work-cli.sh --repo-root "<project-root>" --format json \
+  run-heavy-verification --manifest _dev/tests/heavy-lanes.json --lane "<lane-id>"
+```
+
+The runner refuses an unknown lane and a dirty tracked tree outside `do-work/` before anything executes; `HEAVY-RUN-DIRTY-TREE` is a typed condition to resolve, never a hand edit. It reports each lane's exit status, skip state, wall seconds, and `disposition`, and a red or skipped lane is a warning finding rather than a command failure.
+
+A lane whose deterministic fingerprint — its argv, its covered and globally unclassified committed paths, regular untracked input bytes, bounded toolchain probes, and the entire inherited environment — still matches a successful record no older than four hours is reported `reused` instead of executed; every other lane is `executed` with the exact reason it was not reused (`fingerprint_mismatch`, `evidence_expired`, `no_prior_evidence`, `fingerprint_uncertain`). Execution revokes the previous success before launch; an invalidation failure refuses the run. Fingerprint uncertainty (including an opaque browser runtime or a symlink input) always executes. Shipped lane argv explicitly isolates system/global Git configuration; custom manifest commands retain their declared environment. Report each lane's disposition alongside its result: a `reused` green was measured by an earlier run, not this one. Add `--no-evidence-reuse` when a lane must execute regardless — a suspected flake, or an input outside its declared fingerprint.
+
+Then dispose of each held REQ from the subset of lanes it selected, with no `answer` transaction in any outcome:
+
+- **Green** — every lane that REQ selected is present in the run, exited 0, and was not skipped. Write `heavy_verified_at: <now>` (current UTC instant — Timestamp rule, `actions/work-reference.md`), `heavy_verified_revision: <runner's execution revision>`, and a `## Heavy Verification Result` section naming the target revision, the execution revision, and one line per lane onto the claimed record, then run Steps 8 and 9 for it in this same turn.
+- **Red** — any selected lane exited non-zero. Delete `commit:` and the `## Heavy Verification Plan` section from the record so dependents stop building against withdrawn work, then enter Step 7's remediation path now and re-hold at this step after a fresh review.
+- **Skipped** — any selected lane was skipped. The REQ stays claimed and held, its `HEAVY-RUN-LANE-SKIPPED` finding names the lane, the next drain retries it, and the composed exit summary names it if the run ends while it is still held.
+
+A `commit:` drained once this run is never drained again.
+
 ### Step 8: Prepare Finalization
 
 Keep judgment here and fold before minting. Read builder-authored decisions and discoveries from the REQ or its durable hand-back per `actions/work-reference.md` → **Reading a Builder-Authored Section (any step)**; an unreadable hand-back is a finding, not silence.
@@ -484,9 +492,10 @@ The clarify workflow has its own action. Run `do-work clarify` — it handles ba
 □ Step 6: Implement (spawn agent with lessons + TDD mode if set, log decisions as D-XX)
 □ Step 6.25: Implementation Summary (append file manifest — mandatory for all routes)
 □ Qualification judgment (orchestrator verifies substantive changes, live flow, requirement coverage, and warnings using advance's mechanical records)
-□ Testing judgment (measure every test file against the <30s budget; run the direct repository gate; plan affected heavy lanes and park selected REQs as `pending-heavy-testing` without blocking the queue; load debug rules on attempt 2+; verify TDD evidence if tdd:true)
+□ Testing judgment (measure every test file against the <30s budget; run the direct repository gate; plan affected heavy lanes and record the selected ones in the Testing section; load debug rules on attempt 2+; verify TDD evidence if tdd:true)
 □ Step 7: Review (spawn actions/review-work.md — gate on acceptance: Pass→archive, Fail→remediate with debug rules)
 □ Step 7.5: Lessons Learned + Orientation (append sections at subsystem altitude, update prime files, skip lessons for Route A if no surprises)
+□ Step 7.7: Heavy hold after review (held requests stay claimed); drain at exhaustion, finalize green in the same turn
 □ Step 8: Prepare finalization intent (choose terminal status, classify failures, route questions/tasks, collect deferred lessons, and preserve exact lifecycle/release inputs without mutating the tail)
 □ Step 9: Finalize once (pass the strict manifest to `advance`; canonical finalization owns archive/checkpoint/UR/calibration/release, exact commit, provenance, verification, and cleanup)
 □ Step 10: Loop or Exit (fresh selection if looping, else advance --checkpoint + cleanup)
@@ -498,7 +507,7 @@ The clarify workflow has its own action. Run `do-work clarify` — it handles ba
 | Phase | Action |
 |-------|--------|
 | `pending-answers` REQs remain after queue is empty | Report them to the user: list each REQ and its unresolved questions. Suggest `do-work clarify` to batch-review. |
-| `pending-heavy-testing` REQs remain after queue is empty | Run the heavy-lane drain from Qualification and Testing Judgment. A REQ still held afterwards (skipped lane, plan drift, dirty tree) is listed in the composed exit summary with its typed finding; not a failed run. |
+| Held claimed REQs remain after the queue is empty | Run the heavy-lane drain in Step 7.7. A REQ still held afterwards (skipped lane, plan drift, dirty tree) is listed in the composed exit summary with its typed finding; not a failed run. |
 | `blocked` REQs remain after queue is empty | Report each with its `blocked_by` condition and age (per the composed exit summary). Suggest re-running `do-work run` (auto-probes any `blocked_check`) once a condition is met, or `do-work clarify` to confirm a human-checkable one. For a stakeholder-questions REQ (`stakeholder:` present), suggest sharing its report and then `do-work stakeholder-answers` — never a probe or a yes/no confirm. |
 | Plan agent fails (Route C) | Classify failure (Intent/Spec/Code/Environment), create follow-up REQ if applicable, archive as failed |
 | Explore agent fails (B/C) | Proceed to implementation with reduced context — builder can explore on its own |

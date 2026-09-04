@@ -95,10 +95,9 @@ type HeavyVerificationPlan struct {
 }
 
 // HeavyLaneExecution is one lane of a run: either executed now, or reported
-// from matching stored evidence. Its first five fields carry the same JSON
-// names as publication's HeavyLaneResult so an action can copy a lane's result
-// into heavy_testing evidence field by field; the reuse fields below are
-// run-local and are not part of that durable evidence.
+// from matching stored evidence. Its first five fields are the durable per-lane
+// evidence the work action's drain copies onto the claimed record; the reuse
+// fields below are run-local and are not part of that evidence.
 type HeavyLaneExecution struct {
 	LaneID      string   `json:"lane_id"`
 	CommandArgv []string `json:"command_argv"`
@@ -225,7 +224,6 @@ type SelectionRecord struct {
 	Dependencies      []string             `json:"dependencies"`
 	EstimateMinutes   int                  `json:"estimate_minutes"`
 	EstimateKnown     bool                 `json:"estimate_known"`
-	ResumePhase       string               `json:"resume_phase,omitempty"`
 	NextArgv          []string             `json:"next_argv"`
 	NextJustRecipe    string               `json:"next_just_recipe"`
 	VerificationArgv  []string             `json:"verification_argv"`
@@ -269,7 +267,6 @@ type SelectionSummary struct {
 	Pending                 int `json:"pending"`
 	FinishedAwaitingArchive int `json:"finished_awaiting_archive"`
 	PendingAnswers          int `json:"pending_answers"`
-	PendingHeavyTesting     int `json:"pending_heavy_testing"`
 	Blocked                 int `json:"blocked"`
 	BlockedArchiveCollision int `json:"blocked_archive_collision"`
 	BlockedDependencyCycle  int `json:"blocked_dependency_cycle"`
@@ -532,6 +529,9 @@ type RecoveryClaimResult struct {
 	CheckpointEvidence []SelectionClaimEvidence `json:"checkpoint_evidence"`
 	Decision           string                   `json:"decision"`
 	Recovered          bool                     `json:"recovered"`
+	// HeldForHeavyLanes marks a claim recovery deliberately preserved: the
+	// request is waiting for this session's heavy-lane drain, not interrupted.
+	HeldForHeavyLanes bool `json:"held_for_heavy_lanes"`
 }
 
 // RecoveryResult is the ordered public recovery composition. Finalization is
@@ -1176,10 +1176,10 @@ func renderText(result CommandResult) []byte {
 	for _, skipped := range result.SkippedWork {
 		fmt.Fprintf(&output, "skipped %s: %s\n", skipped.Code, skipped.Reason)
 	}
-	if result.Command == "next" || len(result.Selected) > 0 || len(result.Excluded) > 0 || result.SelectionSummary.Pending > 0 || result.SelectionSummary.PendingHeavyTesting > 0 || result.SelectionSummary.Blocked > 0 {
-		fmt.Fprintf(&output, "queue: %d pending | %d finished (awaiting archive) | %d pending-answers | %d pending-heavy-testing | %d blocked | %d blocked-archive-collision | %d blocked-dependency-cycle\n",
+	if result.Command == "next" || len(result.Selected) > 0 || len(result.Excluded) > 0 || result.SelectionSummary.Pending > 0 || result.SelectionSummary.Blocked > 0 {
+		fmt.Fprintf(&output, "queue: %d pending | %d finished (awaiting archive) | %d pending-answers | %d blocked | %d blocked-archive-collision | %d blocked-dependency-cycle\n",
 			result.SelectionSummary.Pending, result.SelectionSummary.FinishedAwaitingArchive,
-			result.SelectionSummary.PendingAnswers, result.SelectionSummary.PendingHeavyTesting, result.SelectionSummary.Blocked,
+			result.SelectionSummary.PendingAnswers, result.SelectionSummary.Blocked,
 			result.SelectionSummary.BlockedArchiveCollision, result.SelectionSummary.BlockedDependencyCycle)
 	}
 	selectedIDs := make([]string, 0, len(result.Selected))
@@ -1190,9 +1190,6 @@ func renderText(result CommandResult) []byte {
 		}
 		fmt.Fprintf(&output, "selected %s [%s, %s, depth %d, %s]: %s\n", selection.RequestID, selection.Provenance, selection.SelectionPriority, selection.DependencyDepth, estimate, selection.Title)
 		fmt.Fprintf(&output, "  request: %s (original status: %s)\n", selection.RequestPath, selection.OriginalStatus)
-		if selection.ResumePhase != "" {
-			fmt.Fprintf(&output, "  resume phase: %s\n", selection.ResumePhase)
-		}
 		fmt.Fprintf(&output, "  probe %s (attempted: %t, exit: %d)", selection.ProbeStatus, selection.ProbeAttempted, selection.ProbeExitCode)
 		if selection.UnblockRequired {
 			fmt.Fprint(&output, "; unblock required")

@@ -38,7 +38,7 @@ func TestNormalizeFieldAppliesAliasesDefaultsAndExactWarnings(t *testing.T) {
 		},
 		{
 			"unknown without default retains evidence", "status", "almost-done", "almost-done", false, false,
-			"⚠ status: 'almost-done' not recognized — expected one of [pending, claimed, completed, completed-with-issues, failed, cancelled, pending-answers, pending-heavy-testing, blocked, blocked-archive-collision, blocked-dependency-cycle]. No default is defined; reporting it unchanged.",
+			"⚠ status: 'almost-done' not recognized — expected one of [pending, claimed, completed, completed-with-issues, failed, cancelled, pending-answers, blocked, blocked-archive-collision, blocked-dependency-cycle]. No default is defined; reporting it unchanged.",
 		},
 		{"verbatim field", "assigned_to", " Cloud-Alpha ", "Cloud-Alpha", true, false, ""},
 	}
@@ -159,10 +159,27 @@ func TestTerminalPredicatesKeepFailureAndCancellationDistinct(t *testing.T) {
 	if !IsStopped("failed") || IsStopped("blocked") {
 		t.Fatal("failed is stopped; blocked remains unfinished")
 	}
-	if !DependencySourceReady("pending-heavy-testing", "abc123") {
-		t.Fatal("pending-heavy implementation commit must be source-ready")
+}
+
+// TestDependencySourceReadyAcceptsClaimedWithCommitOnly pins REQ-570: the heavy
+// hold is a phase of a claimed request, so a claimed dependency that already
+// landed its implementation commit is source-ready. Every other status is not,
+// commit or no commit — the rule is the condition, not a second status list, so
+// no retired value is named here. The repository sweep in the REQ proves the
+// retired hold status is gone from the tree.
+func TestDependencySourceReadyAcceptsClaimedWithCommitOnly(t *testing.T) {
+	if !DependencySourceReady("claimed", "abc123") {
+		t.Fatal("a claimed request holding its landed implementation commit must be source-ready")
 	}
-	if DependencySourceReady("pending-heavy-testing", "") || DependencySourceReady("pending", "abc123") {
-		t.Fatal("missing commit or pending remediation must block dependencies")
+	if DependencySourceReady("claimed", "") {
+		t.Fatal("a claimed request without a commit must fail closed")
+	}
+	if DependencySourceReady("pending", "abc123") {
+		t.Fatal("pending remediation must block dependencies even with a stale commit")
+	}
+	for _, unrecognizedStatus := range []string{"pending-answers", "blocked", "almost-done"} {
+		if DependencySourceReady(unrecognizedStatus, "abc123") {
+			t.Fatalf("%s must not grant source readiness", unrecognizedStatus)
+		}
 	}
 }

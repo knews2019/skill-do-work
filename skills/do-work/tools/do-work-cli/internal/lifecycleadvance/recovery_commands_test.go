@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/knews2019/skill-do-work/do-work-cli/internal/commandruntime"
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/resultmodel"
 )
 
@@ -236,4 +237,79 @@ func TestRecoverLegacyCheckpointClaimsThroughPublicCommand(t *testing.T) {
 	if !strings.Contains(string(after), foreign) {
 		t.Fatalf("fresh claim changed foreign bytes:\n%s", after)
 	}
+}
+
+// TestRecoverHoldsAClaimedRequestWithAHeavyVerificationPlanForTheDrain pins
+// REQ-570: a claimed request in do-work/working/ carrying a Heavy Verification
+// Plan section and a commit that is an ancestor of HEAD is held for the heavy
+// lanes, so recovery preserves its claim and routes it to this session's drain.
+// A claimed request without the section, and one whose commit never landed on
+// this history, both recover to the queue as before.
+func TestRecoverHoldsAClaimedRequestWithAHeavyVerificationPlanForTheDrain(t *testing.T) {
+	repositoryRoot := t.TempDir()
+	writeAdvanceFile(t, repositoryRoot, "do-work/CHECKPOINT.md", "# Session Checkpoint\n\n## In Progress (interrupted)\n")
+	writeAdvanceFile(t, repositoryRoot, "project.txt", "base\n")
+	runAdvanceGit(t, repositoryRoot, "init", "-q")
+	runAdvanceGit(t, repositoryRoot, "config", "user.name", "Held Recovery Test")
+	runAdvanceGit(t, repositoryRoot, "config", "user.email", "held@example.invalid")
+	runAdvanceGit(t, repositoryRoot, "add", ".")
+	runAdvanceGit(t, repositoryRoot, "commit", "-qm", "fixture")
+	landedCommit := strings.TrimSpace(string(runAdvanceGit(t, repositoryRoot, "rev-parse", "HEAD")))
+
+	runAdvanceGit(t, repositoryRoot, "checkout", "-q", "-b", "abandoned")
+	writeAdvanceFile(t, repositoryRoot, "abandoned.txt", "abandoned\n")
+	runAdvanceGit(t, repositoryRoot, "add", ".")
+	runAdvanceGit(t, repositoryRoot, "commit", "-qm", "abandoned attempt")
+	abandonedCommit := strings.TrimSpace(string(runAdvanceGit(t, repositoryRoot, "rev-parse", "HEAD")))
+	runAdvanceGit(t, repositoryRoot, "checkout", "-q", "-")
+
+	heavyPlanBody := "## Review\n\nReviewed.\n\n## Heavy Verification Plan\n\n- browser lane\n"
+	writeAdvanceRequest(t, repositoryRoot, "working", "REQ-740", "claimed",
+		"claimed_at: 2026-09-04T12:00:00Z\ncommit: "+landedCommit+"\n", heavyPlanBody)
+	writeAdvanceRequest(t, repositoryRoot, "working", "REQ-741", "claimed",
+		"claimed_at: 2026-09-04T12:00:00Z\ncommit: "+landedCommit+"\n", "## Review\n\nReviewed.\n")
+	writeAdvanceRequest(t, repositoryRoot, "working", "REQ-742", "claimed",
+		"claimed_at: 2026-09-04T12:00:00Z\ncommit: "+abandonedCommit+"\n", heavyPlanBody)
+	runAdvanceGit(t, repositoryRoot, "add", ".")
+	runAdvanceGit(t, repositoryRoot, "commit", "-qm", "claims")
+
+	recovered := handleRecover(commandruntime.ExecutionContext{RepositoryRoot: repositoryRoot}, []string{"--assume-sole-authority"})
+	if recovered.Outcome != resultmodel.OutcomeSuccess {
+		t.Fatalf("recovery did not settle: %#v", recovered)
+	}
+
+	heldClaim := recoveryClaimFor(t, recovered, "REQ-740")
+	if !heldClaim.HeldForHeavyLanes || heldClaim.Recovered {
+		t.Fatalf("held claim was not preserved for the drain: %#v", heldClaim)
+	}
+	if _, err := os.Stat(filepath.Join(repositoryRoot, "do-work", "working", "REQ-740-fixture.md")); err != nil {
+		t.Fatalf("held REQ lost its claim: %v", err)
+	}
+	if !carriesRecoveryFinding(recovered, "RECOVERY-CLAIM-HELD-FOR-HEAVY-LANES", "REQ-740") {
+		t.Fatalf("held REQ produced no typed finding: %#v", recovered.Findings)
+	}
+
+	for _, requestID := range []string{"REQ-741", "REQ-742"} {
+		claim := recoveryClaimFor(t, recovered, requestID)
+		if claim.HeldForHeavyLanes || !claim.Recovered {
+			t.Fatalf("%s should recover as an ordinary interrupted claim: %#v", requestID, claim)
+		}
+		if _, err := os.Stat(filepath.Join(repositoryRoot, "do-work", "queue", requestID+"-fixture.md")); err != nil {
+			t.Fatalf("%s was not returned to the queue: %v", requestID, err)
+		}
+	}
+}
+
+func carriesRecoveryFinding(result resultmodel.CommandResult, code, requestID string) bool {
+	for _, finding := range result.Findings {
+		if finding.Code != code {
+			continue
+		}
+		for _, affected := range finding.AffectedIDs {
+			if affected == requestID {
+				return true
+			}
+		}
+	}
+	return false
 }

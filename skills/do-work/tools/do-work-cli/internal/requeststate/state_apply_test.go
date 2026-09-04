@@ -106,6 +106,29 @@ func TestLifecycleApplySynchronizesClaimUnblockCompleteFailAndCancel(t *testing.
 	})
 }
 
+// TestClaimStripsPriorAttemptCommitAndHeavyEvidence pins REQ-570's D-01: with a
+// claimed request carrying a commit now counting as source-ready, a re-claim
+// must not leave a previous attempt's commit or heavy evidence behind, or the
+// dependents of the re-claimed request become buildable against work that was
+// already withdrawn.
+func TestClaimStripsPriorAttemptCommitAndHeavyEvidence(t *testing.T) {
+	root := newStateRepository(t)
+	writeStateRequest(t, root, "do-work/queue/REQ-570.md", "REQ-570", "pending",
+		"commit: 0123456789abcdef\nheavy_verified_at: 2026-09-04T18:00:00Z\nheavy_verified_revision: fedcba9876543210\n")
+	result := handleStateCommand(commandruntime.ExecutionContext{RepositoryRoot: root}, TransitionClaim,
+		[]string{"REQ-570", "--request-path", "do-work/queue/REQ-570.md", "--provenance", "default", "--writer", "host:/repo", "--at", "2026-09-05T02:00:00Z"})
+	assertStateSuccess(t, result)
+	contents := readStateFile(t, root, "do-work/working/REQ-570.md")
+	if !strings.Contains(contents, "status: claimed") {
+		t.Fatalf("claim did not land:\n%s", contents)
+	}
+	for _, field := range []string{"commit:", "heavy_verified_at:", "heavy_verified_revision:"} {
+		if strings.Contains(contents, field) {
+			t.Errorf("claim retained a prior attempt's %s:\n%s", field, contents)
+		}
+	}
+}
+
 func TestClaimCommitLandsExactFootprintAndLeavesCleanTree(t *testing.T) {
 	root := newStateRepository(t)
 	configureStateGit(t, root)

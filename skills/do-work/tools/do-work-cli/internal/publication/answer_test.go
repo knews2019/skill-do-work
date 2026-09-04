@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"errors"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -261,172 +260,22 @@ func TestBuildAnswerPlanDerivesClarifyDispositionFromWholeRecord(t *testing.T) {
 	}
 }
 
-func TestHeavyTestingAnswerCompletesOnGreenAndRequeuesOnFailure(t *testing.T) {
-	for _, testCase := range []struct {
-		name         string
-		outcome      string
-		summary      string
-		wantVerified bool
-	}{
-		{name: "green", outcome: "confirmed", summary: "yes, exit 0", wantVerified: true},
-		{name: "failed", outcome: "answered", summary: "no, browser lane failed"},
-	} {
-		t.Run(testCase.name, func(t *testing.T) {
-			root := t.TempDir()
-			runGitFixture(t, root, "init", "-q")
-			writeFixture(t, root, "implementation.txt", []byte("implementation\n"), 0o644)
-			runGitFixture(t, root, "add", ".")
-			runGitFixture(t, root, "-c", "user.name=Test", "-c", "user.email=test@example.com", "commit", "-qm", "implementation")
-			targetRevision := strings.TrimSpace(runGitFixtureOutput(t, root, "rev-parse", "HEAD"))
-			writeFixture(t, root, "execution.txt", []byte("execution\n"), 0o644)
-			runGitFixture(t, root, "add", ".")
-			runGitFixture(t, root, "-c", "user.name=Test", "-c", "user.email=test@example.com", "commit", "-qm", "execution")
-			executionRevision := strings.TrimSpace(runGitFixtureOutput(t, root, "rev-parse", "HEAD"))
-			requestPath := "do-work/queue/REQ-3-heavy.md"
-			question := "- [ ] Run heavy tests at " + targetRevision + "; did they exit 0?"
-			request := []byte("---\nid: REQ-3\nstatus: pending-heavy-testing\nclaimed_at: 2026-09-03T18:00:00Z\ncommit: " + targetRevision + "\n---\n## Open Questions\n\n" + question + "\n")
-			writeFixture(t, root, requestPath, request, 0o644)
-			laneExit := 1
-			if testCase.wantVerified {
-				laneExit = 0
-			}
-			answer := &AnswerManifest{
-				RequestPath: requestPath, ExpectedStatus: "pending-heavy-testing", Mode: "heavy-testing",
-				Answers:      []QuestionAnswer{{ExpectedLine: question, Outcome: testCase.outcome, Summary: testCase.summary}},
-				HeavyTesting: &HeavyTestingEvidence{TargetRevision: targetRevision, ExecutionRevision: executionRevision, Lanes: []HeavyLaneResult{{LaneID: "browser", CommandArgv: []string{"bash", "verify.sh", "browser"}, ExitStatus: laneExit, WallSeconds: 26}}},
-			}
-			plan := BuildAnswerPlan(root, Manifest{Operation: OperationAnswer, Answer: answer}, time.Date(2026, 9, 3, 20, 0, 0, 0, time.UTC))
-			if plan.Refusal != nil || len(plan.Mutations) != 1 {
-				t.Fatalf("heavy-testing plan = %#v", plan)
-			}
-			if !bytes.Contains(plan.Mutations[0].Contents, []byte("status: pending")) {
-				t.Fatalf("heavy-testing contents = %s", plan.Mutations[0].Contents)
-			}
-			if plan.Mutations[0].DestinationPath != "" || bytes.Contains(plan.Mutations[0].Contents, []byte("claimed_at:")) {
-				t.Fatalf("heavy-testing should requeue without a stale claim: %#v\n%s", plan.Mutations[0], plan.Mutations[0].Contents)
-			}
-			if testCase.wantVerified {
-				for _, expected := range []string{"heavy_verified_at: 2026-09-03T20:00:00Z", "heavy_verified_revision: " + executionRevision, "## Heavy Verification Result", "- browser: exit 0, 26s — "} {
-					if !bytes.Contains(plan.Mutations[0].Contents, []byte(expected)) {
-						t.Errorf("green result omitted %q:\n%s", expected, plan.Mutations[0].Contents)
-					}
-				}
-			} else {
-				if bytes.Contains(plan.Mutations[0].Contents, []byte("heavy_verified_")) {
-					t.Fatalf("failed result retained green evidence:\n%s", plan.Mutations[0].Contents)
-				}
-				if !bytes.Contains(plan.Mutations[0].Contents, []byte("- browser: exit 1, 26s — ")) {
-					t.Errorf("failed result omitted the red lane's wall time:\n%s", plan.Mutations[0].Contents)
-				}
-			}
-		})
-	}
-}
-
-// newHeavyAnswerFixture builds a two-commit repository holding one
-// pending-heavy-testing request whose commit is the first revision, and
-// returns the pieces a heavy-testing answer manifest needs.
-func newHeavyAnswerFixture(t *testing.T, requestID string) (root, requestPath, question, targetRevision, executionRevision string) {
-	t.Helper()
-	root = t.TempDir()
-	runGitFixture(t, root, "init", "-q")
-	writeFixture(t, root, "implementation.txt", []byte("implementation\n"), 0o644)
-	runGitFixture(t, root, "add", ".")
-	runGitFixture(t, root, "-c", "user.name=Test", "-c", "user.email=test@example.com", "commit", "-qm", "implementation")
-	targetRevision = strings.TrimSpace(runGitFixtureOutput(t, root, "rev-parse", "HEAD"))
-	writeFixture(t, root, "execution.txt", []byte("execution\n"), 0o644)
-	runGitFixture(t, root, "add", ".")
-	runGitFixture(t, root, "-c", "user.name=Test", "-c", "user.email=test@example.com", "commit", "-qm", "execution")
-	executionRevision = strings.TrimSpace(runGitFixtureOutput(t, root, "rev-parse", "HEAD"))
-	requestPath = "do-work/queue/" + requestID + "-heavy.md"
-	question = "- [ ] Run heavy tests at " + targetRevision + "; did they exit 0?"
-	request := []byte("---\nid: " + requestID + "\nstatus: pending-heavy-testing\nclaimed_at: 2026-09-03T18:00:00Z\ncommit: " + targetRevision + "\n---\n## Open Questions\n\n" + question + "\n")
-	writeFixture(t, root, requestPath, request, 0o644)
-	return root, requestPath, question, targetRevision, executionRevision
-}
-
-func TestHeavyTestingAnswerRejectsNegativeWallSeconds(t *testing.T) {
-	root, requestPath, question, targetRevision, executionRevision := newHeavyAnswerFixture(t, "REQ-5")
-	answer := &AnswerManifest{
-		RequestPath: requestPath, ExpectedStatus: "pending-heavy-testing", Mode: "heavy-testing",
-		Answers:      []QuestionAnswer{{ExpectedLine: question, Outcome: "confirmed", Summary: "green"}},
-		HeavyTesting: &HeavyTestingEvidence{TargetRevision: targetRevision, ExecutionRevision: executionRevision, Lanes: []HeavyLaneResult{{LaneID: "browser", CommandArgv: []string{"bash", "verify.sh", "browser"}, ExitStatus: 0, WallSeconds: -1}}},
-	}
-	plan := BuildAnswerPlan(root, Manifest{Operation: OperationAnswer, Answer: answer}, time.Now())
-	if plan.Refusal == nil || plan.Refusal.Code != "ANSWER-HEAVY-EVIDENCE-INVALID" {
-		t.Fatalf("negative wall seconds refusal = %#v", plan.Refusal)
-	}
-}
-
-// TestHeavyTestingAnswerRefusesConfirmedWithSkippedLane pins the answer half of
-// R1: a lane that did not execute can never stamp heavy_verified_*, and the
-// recorded evidence still carries the skip's wall time.
-func TestHeavyTestingAnswerRefusesConfirmedWithSkippedLane(t *testing.T) {
-	for _, testCase := range []struct {
-		name       string
-		outcome    string
-		wantCode   string
-		wantResult string
-	}{
-		{name: "confirmed", outcome: "confirmed", wantCode: "ANSWER-HEAVY-EVIDENCE-NOT-GREEN"},
-		{name: "answered", outcome: "answered", wantResult: "- browser: skipped, 1s — "},
-	} {
-		t.Run(testCase.name, func(t *testing.T) {
-			root, requestPath, question, targetRevision, executionRevision := newHeavyAnswerFixture(t, "REQ-6")
-			answer := &AnswerManifest{
-				RequestPath: requestPath, ExpectedStatus: "pending-heavy-testing", Mode: "heavy-testing",
-				Answers:      []QuestionAnswer{{ExpectedLine: question, Outcome: testCase.outcome, Summary: "browser lane skipped"}},
-				HeavyTesting: &HeavyTestingEvidence{TargetRevision: targetRevision, ExecutionRevision: executionRevision, Lanes: []HeavyLaneResult{{LaneID: "browser", CommandArgv: []string{"bash", "verify.sh", "browser"}, ExitStatus: 0, Skipped: true, WallSeconds: 1}}},
-			}
-			plan := BuildAnswerPlan(root, Manifest{Operation: OperationAnswer, Answer: answer}, time.Now())
-			if testCase.wantCode != "" {
-				if plan.Refusal == nil || plan.Refusal.Code != testCase.wantCode {
-					t.Fatalf("skipped-lane refusal = %#v", plan.Refusal)
-				}
-				return
-			}
-			if plan.Refusal != nil || len(plan.Mutations) != 1 {
-				t.Fatalf("skipped-lane plan = %#v", plan)
-			}
-			if !bytes.Contains(plan.Mutations[0].Contents, []byte(testCase.wantResult)) {
-				t.Fatalf("skipped-lane result omitted %q:\n%s", testCase.wantResult, plan.Mutations[0].Contents)
-			}
-			if bytes.Contains(plan.Mutations[0].Contents, []byte("heavy_verified_")) {
-				t.Fatalf("skipped-lane result stamped green evidence:\n%s", plan.Mutations[0].Contents)
-			}
-		})
-	}
-}
-
-func TestHeavyTestingAnswerRejectsMismatchedEvidence(t *testing.T) {
+// TestAnswerRefusesHeavyTestingMode pins REQ-570: the heavy-testing answer mode
+// is gone, so a manifest still naming it is refused as an unknown mode rather
+// than reaching any heavy-specific validation.
+func TestAnswerRefusesHeavyTestingMode(t *testing.T) {
 	root := t.TempDir()
-	runGitFixture(t, root, "init", "-q")
-	writeFixture(t, root, "seed", []byte("seed\n"), 0o644)
-	runGitFixture(t, root, "add", ".")
-	runGitFixture(t, root, "-c", "user.name=Test", "-c", "user.email=test@example.com", "commit", "-qm", "seed")
-	targetRevision := strings.TrimSpace(runGitFixtureOutput(t, root, "rev-parse", "HEAD"))
-	writeFixture(t, root, "later", []byte("later\n"), 0o644)
-	runGitFixture(t, root, "add", ".")
-	runGitFixture(t, root, "-c", "user.name=Test", "-c", "user.email=test@example.com", "commit", "-qm", "later")
-	laterRevision := strings.TrimSpace(runGitFixtureOutput(t, root, "rev-parse", "HEAD"))
-	requestPath := "do-work/queue/REQ-4-heavy.md"
+	requestPath := "do-work/queue/REQ-7-heavy.md"
 	question := "- [ ] Run heavy tests; did they exit 0?"
-	writeFixture(t, root, requestPath, []byte("---\nid: REQ-4\nstatus: pending-heavy-testing\ncommit: "+targetRevision+"\n---\n## Open Questions\n\n"+question+"\n"), 0o644)
-	answer := &AnswerManifest{RequestPath: requestPath, ExpectedStatus: "pending-heavy-testing", Mode: "heavy-testing", Answers: []QuestionAnswer{{ExpectedLine: question, Outcome: "confirmed", Summary: "green"}}, HeavyTesting: &HeavyTestingEvidence{TargetRevision: laterRevision, ExecutionRevision: laterRevision, Lanes: []HeavyLaneResult{{LaneID: "lane", CommandArgv: []string{"true"}, ExitStatus: 0}}}}
+	writeFixture(t, root, requestPath, []byte("---\nid: REQ-7\nstatus: pending-answers\ncommit: 0123456789abcdef\n---\n## Open Questions\n\n"+question+"\n"), 0o644)
+	answer := &AnswerManifest{
+		RequestPath: requestPath, ExpectedStatus: "pending-answers", Mode: "heavy-testing",
+		Answers: []QuestionAnswer{{ExpectedLine: question, Outcome: "confirmed", Summary: "green"}},
+	}
 	plan := BuildAnswerPlan(root, Manifest{Operation: OperationAnswer, Answer: answer}, time.Now())
-	if plan.Refusal == nil || plan.Refusal.Code != "ANSWER-HEAVY-EVIDENCE-MISMATCH" {
-		t.Fatalf("mismatched evidence refusal = %#v", plan.Refusal)
+	if plan.Refusal == nil || plan.Refusal.Code != "ANSWER-MODE-INVALID" {
+		t.Fatalf("retired heavy-testing mode refusal = %#v", plan.Refusal)
 	}
-}
-
-func runGitFixtureOutput(t *testing.T, repositoryRoot string, arguments ...string) string {
-	t.Helper()
-	command := exec.Command("git", append([]string{"-C", repositoryRoot}, arguments...)...)
-	output, err := command.CombinedOutput()
-	if err != nil {
-		t.Fatalf("git %s: %v\n%s", strings.Join(arguments, " "), err, output)
-	}
-	return string(output)
 }
 
 func TestBuildAnswerPlanRefusesArchivedReply(t *testing.T) {
