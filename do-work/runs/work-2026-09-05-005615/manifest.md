@@ -1,6 +1,6 @@
 # Queue run
 
-Status: in-progress
+Status: stopped at shared-state recovery refusal; resumable
 
 User scope: do-work run to completion, serial claims; do not finish while agents or background commands remain pending.
 
@@ -74,3 +74,11 @@ User scope: do-work run to completion, serial claims; do not finish while agents
 - Read-only REQ-552 plan and REQ-565 owner notes complete; no agent, test process, or builder remains pending. REQ-552 requires claim-time judgment on two obsolete executable-fault fixtures. Foreign REQ-570 bookkeeping remains active and preserved.
 
 - All later-step preparation complete: REQ-486-plan.md, REQ-571-prep.md, small-prose-prep.md (549/554/555/556), shell-go-prep.md (553/557/558). No agent, background command, or builder checkout remains pending. No new tests or source changes during shared-state wait. Preparing final canonical recovery verification; other-session REQ-570, working/baseline.json and run work-2026-09-05-020017 remain untouched.
+
+## Resume boundary
+
+Final verification `do-work-cli --format json recover-finalization --discover` refused with `FINALIZATION-DISCOVERY-AMBIGUOUS`; changes were empty. Evidence: `.git/work-run-20260905/recovery-boundary-final.json`. Foreign paths are the active REQ-570 working record, `do-work/working/baseline.json`, and the brief/exploration/plan/manifest in `do-work/runs/work-2026-09-05-020017/`. Every byte is preserved. No claim, takeover, source fix, or foreign commit was attempted.
+
+This run completed REQ-567, REQ-503, prioritized REQ-509, REQ-504 (one successful remediation), and REQ-505. REQ-506 remains pending with the independently reproduced critical focused-execution failure and its eight-file remediation plan ready. REQ-507 remains pending: saved staged lane failed, later REQ-547 repaired the obsolete assertion, fresh current verification still required. Neither is falsely marked complete or still in the removed-by-answer old heavy status. Other pending work remains unclaimed.
+
+Resume normal `do-work run` after the active REQ-570 owner settles its bookkeeping. Start with canonical recover and queue advance, re-read any newly landed work action and lifecycle changes, and consume the saved plans only after claim-time revalidation. Do not use sole-authority recovery while that other owner remains active. All this run's agents and background commands finished; its builder worktrees were already cleaned, and all preparation is durable. No external cache files were inspected or deleted; the user freed the space personally.
