@@ -72,3 +72,5 @@ User scope: do-work run to completion, serial claims; do not finish while agents
 - Read-only later-step prep: prep_552 → REQ-552-plan.md pending; mainpreparingREQ565 ownernotes.
 
 - Read-only REQ-552 plan and REQ-565 owner notes complete; no agent, test process, or builder remains pending. REQ-552 requires claim-time judgment on two obsolete executable-fault fixtures. Foreign REQ-570 bookkeeping remains active and preserved.
+
+- All later-step preparation complete: REQ-486-plan.md, REQ-571-prep.md, small-prose-prep.md (549/554/555/556), shell-go-prep.md (553/557/558). No agent, background command, or builder checkout remains pending. No new tests or source changes during shared-state wait. Preparing final canonical recovery verification; other-session REQ-570, working/baseline.json and run work-2026-09-05-020017 remain untouched.
