@@ -968,7 +968,7 @@ assert_core_sibling_reference() {
 }
 
 assert_core_sibling_reference actions/capture.md do-work-board
-assert_core_sibling_reference actions/work.md do-work-board
+# REQ-507 moved work's lifecycle execution to core advance; it has no board dependency.
 assert_core_sibling_reference actions/forensics.md do-work-board
 assert_core_sibling_reference actions/kb-lessons-handoff.md do-work-knowledge
 

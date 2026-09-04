@@ -2,6 +2,14 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.280.0 — Finalize Requests Without Checkpoint Claims (2026-09-04)
+
+Requests can finish when their checkpoint claim is absent or carries a different writer label. An untouched prepared finalization journal can be discarded through the recovery command.
+
+- Lifecycle postimages follow the exact planned target set; genuine image-set corruption still refuses.
+- Terminal transitions clear every checkpoint entry for their request while preserving other requests.
+- `recover-finalization --discard-journal REQ-NNN` refuses if lifecycle bytes changed or finalization advanced beyond preparation.
+
 ## 0.279.0 — One Stuck REQ No Longer Parks the Whole Queue (2026-09-04)
 
 A finalization that recovery cannot finish now sets that one REQ aside with its reason code and keeps draining the rest. Before, the first refused record stopped the run and every other pending REQ waited behind it.
