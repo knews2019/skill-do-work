@@ -4,6 +4,8 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ## 0.282.0 — Expose the Next Lifecycle Step (2026-09-05)
 
+**Version mirror repair:** Aligns the version action with this release so fresh suite installation passes manifest validation.
+
 The lifecycle CLI now projects a request’s next phase, missing evidence, and replayable command from one canonical snapshot. This read-only foundation supports the later queue, verification, and finalization extensions.
 
 - Adds typed Route A/B/C phase results, impossible-transition refusals, and deterministic text/JSON output.
