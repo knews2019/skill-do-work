@@ -107,6 +107,18 @@ func BuildReleasePlan(repositoryRoot string, manifest Manifest) PublicationPlan 
 		}
 		plan.Mutations = append(plan.Mutations, PlannedMutation{Kind: kind, Path: path, ExpectedBytes: expectedBytes, Contents: newBytes, Mode: 0o644})
 	}
+	declaredPaths := map[string]bool{}
+	for _, mutation := range plan.Mutations {
+		declaredPaths[mutation.Path] = true
+	}
+	undeclared, mirrorRefusal := undeclaredReleaseMirrors(repositoryRoot, oldVersion, declaredPaths, changelogMirrorExpected)
+	if mirrorRefusal != nil {
+		plan.Refusal = mirrorRefusal
+		return plan
+	}
+	if len(undeclared) > 0 {
+		return refusedPlan(plan, "RELEASE-MIRROR-UNDECLARED", "tracked release mirrors still carry the old version and are not declared targets; declare each as a version or changelog target (project_owned_targets, or required_mirrors for a maintainer release)", nil, undeclared...)
+	}
 	plan = finalizePlan(plan)
 	if plan.Refusal != nil {
 		return plan

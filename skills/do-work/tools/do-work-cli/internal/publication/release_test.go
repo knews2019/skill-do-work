@@ -8,7 +8,7 @@ import (
 )
 
 func TestBuildReleasePlanAcceptsParameterizedNonHouseChangelog(t *testing.T) {
-	root := t.TempDir()
+	root := initializedGitRepository(t)
 	writeFixture(t, root, "VERSION", []byte("1.2.3\n"), 0o644)
 	writeFixture(t, root, "CHANGELOG.txt", []byte("History\n* old\n"), 0o644)
 	writeFixture(t, root, "payload/version-old", []byte("1.2.3\n"), 0o644)
@@ -20,6 +20,7 @@ func TestBuildReleasePlanAcceptsParameterizedNonHouseChangelog(t *testing.T) {
 		Targets:             []ReleaseTarget{{Path: "VERSION", ExpectedPayload: PayloadFile{SourcePath: "payload/version-old"}, NewPayload: PayloadFile{SourcePath: "payload/version-new"}, OldVersion: "1.2.3", NewVersion: "1.2.4"}},
 		Changelogs:          []ChangelogTarget{{Path: "CHANGELOG.txt", ExpectedPayload: PayloadFile{SourcePath: "payload/log-old"}, NewPayload: PayloadFile{SourcePath: "payload/log-new"}, InsertionAnchor: "History\n", EntryKey: "release-1.2.4", EntryTitle: "Fresh title"}},
 	}}
+	runGitFixture(t, root, "add", "-A")
 	plan := BuildReleasePlan(root, manifest)
 	if plan.Refusal != nil || len(plan.Mutations) != 2 {
 		t.Fatalf("plan = %#v", plan)
@@ -27,9 +28,10 @@ func TestBuildReleasePlanAcceptsParameterizedNonHouseChangelog(t *testing.T) {
 }
 
 func TestBuildReleasePlanBootstrapsChangelogWithoutVersionFile(t *testing.T) {
-	root := t.TempDir()
+	root := initializedGitRepository(t)
 	writeFixture(t, root, "payload/log-new", []byte("History\nrelease-0.1.0 First release\n"), 0o644)
 	manifest := Manifest{Operation: OperationRelease, Release: &ReleaseManifest{OldVersion: "0.0.0", NewVersion: "0.1.0", ProjectOwnedTargets: []string{"CHANGELOG.txt"}, Changelogs: []ChangelogTarget{{Path: "CHANGELOG.txt", Create: true, NewPayload: PayloadFile{SourcePath: "payload/log-new"}, InsertionAnchor: "History\n", EntryKey: "release-0.1.0", EntryTitle: "First release"}}}}
+	runGitFixture(t, root, "add", "-A")
 	plan := BuildReleasePlan(root, manifest)
 	if plan.Refusal != nil || plan.Mutations[0].Kind != MutationCreate {
 		t.Fatalf("plan = %#v", plan)
@@ -104,7 +106,7 @@ func TestBuildReleasePlanRequiresExactOwnershipPartition(t *testing.T) {
 }
 
 func TestBuildReleasePlanAcceptsDeclaredMaintainerMirrors(t *testing.T) {
-	root := t.TempDir()
+	root := initializedGitRepository(t)
 	for _, path := range []string{"VERSION", "skills/do-work/VERSION"} {
 		writeFixture(t, root, path, []byte("1.0.0\n"), 0o644)
 	}
@@ -127,6 +129,7 @@ func TestBuildReleasePlanAcceptsDeclaredMaintainerMirrors(t *testing.T) {
 			{Path: "skills/do-work/CHANGELOG.md", ExpectedPayload: PayloadFile{SourcePath: "payload/log-old"}, NewPayload: PayloadFile{SourcePath: "payload/log-new"}, InsertionAnchor: "History\n", EntryKey: "release-1.0.1", EntryTitle: "Title"},
 		},
 	}}
+	runGitFixture(t, root, "add", "-A")
 	if plan := BuildReleasePlan(root, manifest); plan.Refusal != nil || len(plan.Mutations) != 4 {
 		t.Fatalf("maintainer mirror plan = %#v", plan)
 	}
