@@ -2,7 +2,10 @@ package heavyverification
 
 import (
 	"fmt"
+	"os"
+	"strconv"
 	"strings"
+	"time"
 
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/commandruntime"
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/resultmodel"
@@ -11,12 +14,14 @@ import (
 const (
 	CommandPlanHeavyVerification = "plan-heavy-verification"
 	CommandPlanHeavyRevalidation = "plan-heavy-revalidation"
+	CommandRunHeavyVerification  = "run-heavy-verification"
 )
 
 func Handlers() map[string]commandruntime.CommandHandler {
 	return map[string]commandruntime.CommandHandler{
 		CommandPlanHeavyVerification: handlePlanHeavyVerification,
 		CommandPlanHeavyRevalidation: handlePlanHeavyRevalidation,
+		CommandRunHeavyVerification:  handleRunHeavyVerification,
 	}
 }
 
@@ -30,6 +35,19 @@ func handlePlanHeavyVerification(executionContext commandruntime.ExecutionContex
 		return planFailure(CommandPlanHeavyVerification, "HEAVY-PLAN-UNVERIFIABLE", err)
 	}
 	return resultmodel.CommandResult{Outcome: resultmodel.OutcomeSuccess, HeavyVerification: &plan}
+}
+
+func handleRunHeavyVerification(executionContext commandruntime.ExecutionContext, arguments []string) resultmodel.CommandResult {
+	manifestPath, laneIDs, laneTimeout, err := parseRunArguments(arguments)
+	if err != nil {
+		return runFailure("HEAVY-RUN-USAGE", err)
+	}
+	// Lane output is teed to stderr because stdout carries the command result.
+	run, findings, err := RunLanes(executionContext.RepositoryRoot, manifestPath, laneIDs, laneTimeout, os.Stderr)
+	if err != nil {
+		return runFailure(LaneRunRefusalCode(err), err)
+	}
+	return resultmodel.CommandResult{Outcome: resultmodel.OutcomeSuccess, HeavyVerificationRun: &run, Findings: findings}
 }
 
 func handlePlanHeavyRevalidation(executionContext commandruntime.ExecutionContext, arguments []string) resultmodel.CommandResult {
@@ -148,6 +166,70 @@ func parseRevalidationArguments(arguments []string) (string, []resultmodel.Heavy
 		return "", nil, "", false, fmt.Errorf("usage: %s [--manifest <path>] --source-range <base>..<target> [--source-range ...] --execution-revision <revision> [--force-all]", CommandPlanHeavyRevalidation)
 	}
 	return manifestPath, sourceRanges, executionRevision, forceAll, nil
+}
+
+// parseRunArguments accepts the lanes to execute and the per-lane time bound.
+// --lane repeats; a repeated id would run the lane twice and produce two
+// records under one id, which per-lane evidence cannot carry.
+func parseRunArguments(arguments []string) (string, []string, time.Duration, error) {
+	manifestPath := "_dev/tests/heavy-lanes.json"
+	laneIDs := []string{}
+	laneTimeoutSeconds := defaultLaneTimeoutSeconds
+	seen := map[string]bool{}
+	seenLaneIDs := map[string]bool{}
+	for argumentIndex := 0; argumentIndex < len(arguments); argumentIndex++ {
+		argument := arguments[argumentIndex]
+		optionName, optionValue, hasInlineValue := strings.Cut(argument, "=")
+		switch optionName {
+		case "--manifest", "--lane", "--lane-timeout-seconds":
+			if optionName != "--lane" && seen[optionName] {
+				return "", nil, 0, fmt.Errorf("%s may be supplied only once", optionName)
+			}
+			seen[optionName] = true
+			if !hasInlineValue {
+				argumentIndex++
+				if argumentIndex >= len(arguments) {
+					return "", nil, 0, fmt.Errorf("%s requires a value", optionName)
+				}
+				optionValue = arguments[argumentIndex]
+			}
+			if strings.TrimSpace(optionValue) == "" {
+				return "", nil, 0, fmt.Errorf("%s requires a value", optionName)
+			}
+			switch optionName {
+			case "--manifest":
+				manifestPath = optionValue
+			case "--lane":
+				if seenLaneIDs[optionValue] {
+					return "", nil, 0, fmt.Errorf("--lane %s may be supplied only once", optionValue)
+				}
+				seenLaneIDs[optionValue] = true
+				laneIDs = append(laneIDs, optionValue)
+			case "--lane-timeout-seconds":
+				parsedSeconds, parseError := strconv.Atoi(optionValue)
+				if parseError != nil || parsedSeconds <= 0 {
+					return "", nil, 0, fmt.Errorf("--lane-timeout-seconds requires a positive whole number of seconds")
+				}
+				laneTimeoutSeconds = parsedSeconds
+			}
+		default:
+			return "", nil, 0, fmt.Errorf("unknown %s option %q", CommandRunHeavyVerification, argument)
+		}
+	}
+	if len(laneIDs) == 0 {
+		return "", nil, 0, fmt.Errorf("usage: %s [--manifest <path>] --lane <id> [--lane <id>...] [--lane-timeout-seconds <seconds>]", CommandRunHeavyVerification)
+	}
+	return manifestPath, laneIDs, time.Duration(laneTimeoutSeconds) * time.Second, nil
+}
+
+func runFailure(code string, err error) resultmodel.CommandResult {
+	finding := resultmodel.CommandFinding{
+		Code: code, Severity: resultmodel.SeverityError, Evidence: []string{err.Error()},
+		Fixability: resultmodel.FixabilityManual, AutomationStopReason: "heavy lanes cannot be run safely",
+		NextArgv:         []string{"git", "status", "--short"},
+		VerificationArgv: []string{"do-work-cli", "--format", "json", CommandRunHeavyVerification},
+	}
+	return resultmodel.CommandResult{Outcome: resultmodel.OutcomeFailure, Findings: []resultmodel.CommandFinding{finding}}
 }
 
 func planFailure(command, code string, err error) resultmodel.CommandResult {

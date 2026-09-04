@@ -94,6 +94,25 @@ type HeavyVerificationPlan struct {
 	SelectedLanes     []HeavyLaneSelection `json:"selected_lanes"`
 }
 
+// HeavyLaneExecution is one lane the runner actually executed. Its JSON tags
+// match publication's HeavyLaneResult so an action can paste a run's lanes into
+// heavy_testing evidence without reshaping them.
+type HeavyLaneExecution struct {
+	LaneID      string   `json:"lane_id"`
+	CommandArgv []string `json:"command_argv"`
+	ExitStatus  int      `json:"exit_status"`
+	Skipped     bool     `json:"skipped,omitempty"`
+	WallSeconds int      `json:"wall_seconds"`
+}
+
+// HeavyVerificationRun is the typed record of one heavy-lane execution pass.
+// Planning stays with HeavyVerificationPlan; this type carries only what ran.
+type HeavyVerificationRun struct {
+	ManifestPath      string               `json:"manifest_path"`
+	ExecutionRevision string               `json:"execution_revision"`
+	Lanes             []HeavyLaneExecution `json:"lanes"`
+}
+
 // AuditMetricsResult is the machine projection of the maintainability-audit
 // measurements. Compatibility Markdown and JSON are rendered from this same
 // ordered data; consumers never need to parse a table back into numbers.
@@ -354,26 +373,27 @@ type FinalizationResult struct {
 }
 
 type CommandResult struct {
-	SchemaVersion      int                           `json:"schema_version"`
-	Command            string                        `json:"command"`
-	Outcome            CommandOutcome                `json:"outcome"`
-	RepositoryRoot     string                        `json:"repository_root"`
-	Findings           []CommandFinding              `json:"findings"`
-	Changes            []RecordedChange              `json:"changes"`
-	SkippedWork        []SkippedWork                 `json:"skipped_work"`
-	AvailableCommands  []string                      `json:"available_commands,omitempty"`
-	Selected           []SelectionRecord             `json:"selected"`
-	Excluded           []SelectionExclusion          `json:"excluded"`
-	SelectionSummary   SelectionSummary              `json:"selection_summary"`
-	Rollback           RollbackResult                `json:"rollback"`
-	ProtocolOutput     *string                       `json:"protocol_output,omitempty"`
-	AuditMetrics       *AuditMetricsResult           `json:"audit_metrics,omitempty"`
-	GateDeferral       *GateDeferralResult           `json:"gate_deferral,omitempty"`
-	GateEvidence       *GateEvidenceResult           `json:"gate_evidence,omitempty"`
-	HeavyVerification  *HeavyVerificationPlan        `json:"heavy_verification,omitempty"`
-	AlreadyGreenRepair *AlreadyGreenRepairValidation `json:"already_green_repair,omitempty"`
-	Finalization       *FinalizationResult           `json:"finalization,omitempty"`
-	Finalizations      []FinalizationResult          `json:"finalizations"`
+	SchemaVersion        int                           `json:"schema_version"`
+	Command              string                        `json:"command"`
+	Outcome              CommandOutcome                `json:"outcome"`
+	RepositoryRoot       string                        `json:"repository_root"`
+	Findings             []CommandFinding              `json:"findings"`
+	Changes              []RecordedChange              `json:"changes"`
+	SkippedWork          []SkippedWork                 `json:"skipped_work"`
+	AvailableCommands    []string                      `json:"available_commands,omitempty"`
+	Selected             []SelectionRecord             `json:"selected"`
+	Excluded             []SelectionExclusion          `json:"excluded"`
+	SelectionSummary     SelectionSummary              `json:"selection_summary"`
+	Rollback             RollbackResult                `json:"rollback"`
+	ProtocolOutput       *string                       `json:"protocol_output,omitempty"`
+	AuditMetrics         *AuditMetricsResult           `json:"audit_metrics,omitempty"`
+	GateDeferral         *GateDeferralResult           `json:"gate_deferral,omitempty"`
+	GateEvidence         *GateEvidenceResult           `json:"gate_evidence,omitempty"`
+	HeavyVerification    *HeavyVerificationPlan        `json:"heavy_verification,omitempty"`
+	HeavyVerificationRun *HeavyVerificationRun         `json:"heavy_verification_run,omitempty"`
+	AlreadyGreenRepair   *AlreadyGreenRepairValidation `json:"already_green_repair,omitempty"`
+	Finalization         *FinalizationResult           `json:"finalization,omitempty"`
+	Finalizations        []FinalizationResult          `json:"finalizations"`
 	// ExactTextOutput preserves compatibility-shaped stdout without polluting
 	// JSON with an opaque duplicate. It must be derived from the same typed
 	// observation carried by the result.
@@ -442,6 +462,17 @@ func NormalizeResult(result CommandResult) CommandResult {
 			}
 			if lane.Reasons == nil {
 				lane.Reasons = []string{}
+			}
+		}
+	}
+	if result.HeavyVerificationRun != nil {
+		if result.HeavyVerificationRun.Lanes == nil {
+			result.HeavyVerificationRun.Lanes = []HeavyLaneExecution{}
+		}
+		for laneIndex := range result.HeavyVerificationRun.Lanes {
+			lane := &result.HeavyVerificationRun.Lanes[laneIndex]
+			if lane.CommandArgv == nil {
+				lane.CommandArgv = []string{}
 			}
 		}
 	}
@@ -749,6 +780,19 @@ func renderText(result CommandResult) []byte {
 			for _, reason := range lane.Reasons {
 				fmt.Fprintf(&output, "    reason: %s\n", reason)
 			}
+		}
+	}
+	if result.HeavyVerificationRun != nil {
+		run := result.HeavyVerificationRun
+		fmt.Fprintf(&output, "heavy verification run: lanes=%d\n", len(run.Lanes))
+		fmt.Fprintf(&output, "  manifest: %s\n", run.ManifestPath)
+		fmt.Fprintf(&output, "  execution revision: %s\n", run.ExecutionRevision)
+		for _, lane := range run.Lanes {
+			laneOutcome := fmt.Sprintf("exit %d", lane.ExitStatus)
+			if lane.Skipped {
+				laneOutcome = "skipped"
+			}
+			fmt.Fprintf(&output, "  lane %s: %s in %ds — %s\n", lane.LaneID, laneOutcome, lane.WallSeconds, joinArgv(lane.CommandArgv))
 		}
 	}
 	if result.AlreadyGreenRepair != nil {
