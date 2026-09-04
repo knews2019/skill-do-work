@@ -17,6 +17,18 @@ effort_estimate: effort-substantive
 write_set: [skills/do-work/actions/capture-reference.md, skills/do-work/actions/capture.md, _dev/tests/contract-regressions.sh, skills/do-work/tools/do-work-cli/internal/schemanormalization/]
 claimed_at: 2026-09-04T19:13:19Z
 route: C
+estimate:
+  p50_active_minutes: 55
+  confidence: low
+  calculated_at: 2026-09-04T19:13:54Z
+  basis:
+    - Route C
+    - 8-file write set
+    - 3 subsystems involved
+    - 3 acceptance criteria
+    - dependency depth 4
+    - cross-route regression gates
+    - full-suite verification
 ---
 
 # Reduce Capture Templates to Minimal Examples Backed by the Schema Layer
