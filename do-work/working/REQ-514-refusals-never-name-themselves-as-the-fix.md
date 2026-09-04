@@ -176,3 +176,32 @@ See `do-work/user-requests/UR-099/input.md` for complete verbatim input.
 - PASS: `go vet ./...`
 - PASS: `git diff --check`
 - The existing folded lifecycle test `TestRecoverFinalizationResumesJournalAfterLifecycleInterruption` remains green and reaches terminal cleanup through recovery.
+
+## Review
+
+**Overall: 50%** | 2026-09-04T00:00:24Z
+
+| Dimension | Score |
+|-----------|-------|
+| Requirements | 35% |
+| Code Quality | 65% |
+| Test Adequacy | 40% |
+| Scope | 100% |
+| Risk | Low |
+| Acceptance | Fail |
+
+**Important findings (each with its recorded impact token — this is the durable audit record the judgment mandates):**
+- Result normalization applies the no-self-remedy invariant only to aggregate `OutcomeRefused`; live `FixabilityRefused` findings under `OutcomeFindings` retain same-verb `next_argv`, and the synthetic table does not walk real producers — `impact-rule-change` → report only
+- Ambiguous discovery's top-level finding names `uncommitted-inventory`, but its canonical singular/ordered finalization records still name `recover-finalization --discover` as both next and verification, producing contradictory typed remedies — `impact-user-visible` → report only
+- The folded serial claim acceptance fixture seeds an already-claimed REQ instead of executing the claim command, so it does not pin the requested claim → implementation → complete → recovery sequence — `impact-rule-change` → report only
+
+**Minor findings:** None
+**Acceptance:** Fail — focused and full Go checks pass, but the universal refusal invariant and folded serial-claim sequence have direct acceptance gaps.
+**Suggested testing:** 2 items
+**Follow-ups created:** None (3 findings report only)
+
+*Reviewed by review-work action*
+
+## Remediation
+
+One bounded remediation pass is authorized by the work loop. It must apply the invariant to every refusal finding regardless of aggregate outcome, align singular and ordered finalization remedies, and execute the literal claim path in the folded lifecycle acceptance fixture.
