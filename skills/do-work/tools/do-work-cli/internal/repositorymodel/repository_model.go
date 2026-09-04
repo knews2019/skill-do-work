@@ -346,14 +346,7 @@ func manifestStatus(fileBytes []byte) string {
 
 func projectCheckpointClaims(snapshot *RepositorySnapshot, relativePath string, fileBytes []byte) {
 	lines := strings.Split(string(fileBytes), "\n")
-	headingLine, sectionEnd, found := checkpointSectionBounds(lines)
-	if !found {
-		// Older checkpoints predate the section heading. Keep their structural
-		// claim headers visible to selection and recovery until the explicit
-		// checkpoint writer upgrades the document.
-		headingLine = -1
-		sectionEnd = len(lines)
-	}
+	headingLine, sectionEnd, _ := CheckpointClaimBounds(lines)
 	for lineIndex := headingLine + 1; lineIndex < sectionEnd; lineIndex++ {
 		headerText := lines[lineIndex]
 		headerText = strings.TrimSuffix(headerText, "\r")
@@ -382,7 +375,10 @@ func projectCheckpointClaims(snapshot *RepositorySnapshot, relativePath string, 
 	}
 }
 
-func checkpointSectionBounds(lines []string) (int, int, bool) {
+// CheckpointClaimBounds returns the canonical claim heading and its section end.
+// Without that heading, supported legacy claims occupy the whole document, so
+// the heading index is -1. Readers and writers preserve that layout.
+func CheckpointClaimBounds(lines []string) (int, int, bool) {
 	for lineIndex, line := range lines {
 		if strings.TrimSuffix(line, "\r") != "## In Progress (interrupted)" {
 			continue
@@ -394,7 +390,7 @@ func checkpointSectionBounds(lines []string) (int, int, bool) {
 		}
 		return lineIndex, len(lines), true
 	}
-	return 0, 0, false
+	return -1, len(lines), false
 }
 
 // ReserveNextRequestID exclusively creates and returns the next marker.

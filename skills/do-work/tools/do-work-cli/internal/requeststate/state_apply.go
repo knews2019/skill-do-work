@@ -14,6 +14,7 @@ import (
 
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/atomicfile"
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/gittransaction"
+	"github.com/knews2019/skill-do-work/do-work-cli/internal/repositorymodel"
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/requestmodel"
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/resultmodel"
 )
@@ -821,7 +822,29 @@ func checkpointWithClaim(existing []byte, requestID, title, claimedAt, writer st
 	}
 	without := checkpointWithoutClaim(existing, requestID, writer)
 	entry := fmt.Sprintf("- %s: %s — claimed %s — writer: %s", requestID, title, claimedAt, writer)
-	return appendSectionEntry(without, "In Progress (interrupted)", entry)
+	lines := strings.Split(string(without), "\n")
+	_, sectionEnd, canonical := repositorymodel.CheckpointClaimBounds(lines)
+	if !canonical {
+		for _, line := range lines {
+			match := checkpointRequestIDPattern.FindStringSubmatch(line)
+			if match != nil && strings.TrimLeft(strings.TrimPrefix(match[1], "REQ-"), "0") != "" && checkpointEntryMatchesRequest(line, match[1]) {
+				// A new section would hide the retained legacy claims from discovery.
+				return []byte(strings.TrimRight(string(without), "\n") + "\n\n" + entry + "\n")
+			}
+		}
+		return appendSectionEntry(without, "In Progress (interrupted)", entry)
+	}
+	// Use the same canonical boundary as discovery, including CRLF headings.
+	newline := "\n"
+	if bytes.Contains(without, []byte("\r\n")) {
+		newline = "\r\n"
+	}
+	sectionText := strings.TrimRight(strings.Join(lines[:sectionEnd], "\n"), "\r\n")
+	followingText := strings.Join(lines[sectionEnd:], "\n")
+	if followingText == "" {
+		return []byte(sectionText + newline + newline + entry + newline)
+	}
+	return []byte(sectionText + newline + newline + entry + newline + newline + followingText)
 }
 
 func checkpointWithoutClaim(existing []byte, requestID, writer string) []byte {
@@ -830,7 +853,7 @@ func checkpointWithoutClaim(existing []byte, requestID, writer string) []byte {
 }
 
 // RemoveOwnedCheckpointClaim removes one writer-labelled entry from the real
-// In Progress section, including that entry's indented continuation lines.
+// claim range, including that entry's indented continuation lines.
 func RemoveOwnedCheckpointClaim(existing []byte, requestID, writer string) ([]byte, bool) {
 	return checkpointWithoutAuthorizedClaim(existing, requestID, writer, false)
 }
@@ -856,10 +879,7 @@ func filterCheckpointClaims(existing []byte, requestID string, authorized func(s
 		return existing, false
 	}
 	lines := strings.Split(string(existing), "\n")
-	headingLine, sectionEnd, found := sectionLineBounds(lines, "In Progress (interrupted)")
-	if !found {
-		return existing, false
-	}
+	headingLine, sectionEnd, _ := repositorymodel.CheckpointClaimBounds(lines)
 	filtered := append([]string(nil), lines[:headingLine+1]...)
 	removed := false
 	for lineIndex := headingLine + 1; lineIndex < sectionEnd; lineIndex++ {
@@ -899,10 +919,7 @@ func checkpointEntryMatchesRequest(line, requestID string) bool {
 
 func checkpointHasRequestEntry(existing []byte, requestID string) bool {
 	lines := strings.Split(string(existing), "\n")
-	headingLine, sectionEnd, found := sectionLineBounds(lines, "In Progress (interrupted)")
-	if !found {
-		return false
-	}
+	headingLine, sectionEnd, _ := repositorymodel.CheckpointClaimBounds(lines)
 	for _, line := range lines[headingLine+1 : sectionEnd] {
 		if checkpointEntryMatchesRequest(line, requestID) {
 			return true

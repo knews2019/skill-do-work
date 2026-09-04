@@ -96,8 +96,6 @@ func checkpointSessionBytes(existing []byte, writtenAt, queueState string) []byt
 	frontmatter = setCheckpointScalar(frontmatter, "queue_state", queueState)
 	if len(bytes.TrimSpace(body)) == 0 {
 		body = []byte("# Session Checkpoint\n\n## In Progress (interrupted)\n")
-	} else if !bytes.Contains(body, []byte("## In Progress (interrupted)")) {
-		body = append(bytes.TrimRight(body, "\n"), []byte("\n\n## In Progress (interrupted)\n")...)
 	}
 	return []byte("---\n" + strings.TrimSpace(frontmatter) + "\n---\n\n" + strings.TrimLeft(string(body), "\n"))
 }
