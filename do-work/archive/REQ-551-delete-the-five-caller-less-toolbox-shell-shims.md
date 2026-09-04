@@ -1,7 +1,7 @@
 ---
 id: REQ-551
 title: '[impact-negligible] Delete the five caller-less toolbox shell shims and re-point their fixtures at do-work-cli'
-status: claimed
+status: completed
 priority: later
 created_at: 2026-09-03T19:45:35Z
 user_request: UR-105
@@ -17,6 +17,8 @@ impact: impact-negligible
 effort_estimate: effort-mechanical
 write_set: [skills/do-work-toolbox/scripts/, skills/do-work-toolbox/actions/install.md, _dev/tests/prescribed-shell-cases/generate-report-image.sh, _dev/tests/prescribed-shell-cases/generate-report-image-batch.sh, _dev/tests/prescribed-shell-cases/publish-portfolio-summary.sh, _dev/tests/prescribed-shell-cases/install-last30days.sh, _dev/tests/prescribed-shell-cases/architecture-report-preflight.sh, _dev/tests/prescribed-shell-canonicalization.sh, _dev/tests/staged-skills-contract.sh, _dev/tests/audit-lockins.sh]
 claimed_at: 2026-09-04T13:45:29Z
+completed_at: 2026-09-04T13:56:30Z
+commit: 60df70283e673c7a8275d94c35676d964b0f65b3
 ---
 
 # Delete the five caller-less toolbox shell shims and re-point their fixtures at do-work-cli

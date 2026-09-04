@@ -18,7 +18,6 @@ session_depth: light
 
 - REQ-566: [impact-rule-change] Run held heavy lanes at queue exhaustion without asking, and record per-lane wall time — claimed 2026-09-04T13:24:15Z — writer: t2s-Virtual-Machine.local:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2
 
-- REQ-551: [impact-negligible] Delete the five caller-less toolbox shell shims and re-point their fixtures at do-work-cli — claimed 2026-09-04T13:45:29Z — writer: t2s-Virtual-Machine.local:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2
 
 ## Still Queued
 
