@@ -241,6 +241,10 @@ The current request-state shell lane begins at the internal `recover-claim` prim
 
 **What was done:** Recovery now runs finalization discovery first and reports claim authority as typed data; explicit authority resets each request and removes all matching checkpoint evidence without interpolating writer text into shell source. Checkpoint-mode advance is the sole checkpoint mutation while ordinary request-specific advance stays read-only. The action and reference prose now state the remaining judgment principles and preserve REQ-505's ownership of selection and claim.
 
+## Qualification
+
+Passed — 26 files verified, 5 requirements traced, P-A-U confirmed. The four new Go package/test files are convention-discovered package members and tests, so the qualifier's static-reference warnings are expected rather than dead-code findings.
+
 ## Decisions
 
 - **D-01 — DECIDE & STATE:** Public recovery runs finalization discovery first and stops on its typed refusal, preserving the existing resumable-finalization authority.
