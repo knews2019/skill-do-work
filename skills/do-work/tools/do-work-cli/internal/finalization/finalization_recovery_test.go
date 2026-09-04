@@ -662,4 +662,3 @@ func TestRecoverFinalizationPreservesAndMatchesPrivateFileModeInLifecyclePostima
 		t.Fatalf("recovery failed: %#v", recovered)
 	}
 }
-

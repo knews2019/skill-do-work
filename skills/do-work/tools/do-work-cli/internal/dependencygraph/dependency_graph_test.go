@@ -234,8 +234,8 @@ func TestFilenameOnlyCollisionMakesAbsentDependencyAmbiguous(t *testing.T) {
 func TestSameIdFilenameFrontmatterCollisionKeepsDependencyAmbiguous(t *testing.T) {
 	repositoryRoot := t.TempDir()
 	fixtures := map[string]string{
-		"do-work/archive/REQ-020-first.md":  "---\nid: REQ-021\nstatus: completed\n---\nBody\n",
-		"do-work/archive/REQ-021-second.md": "---\nid: REQ-021\nstatus: completed\n---\nBody\n",
+		"do-work/archive/REQ-020-first.md":   "---\nid: REQ-021\nstatus: completed\n---\nBody\n",
+		"do-work/archive/REQ-021-second.md":  "---\nid: REQ-021\nstatus: completed\n---\nBody\n",
 		"do-work/queue/REQ-030-dependent.md": "---\nid: REQ-030\nstatus: pending\ndepends_on: [REQ-021]\n---\nBody\n",
 	}
 	for relativePath, contents := range fixtures {
@@ -274,4 +274,3 @@ func TestSameIdFilenameFrontmatterCollisionKeepsDependencyAmbiguous(t *testing.T
 		t.Fatalf("REQ-021 target = %#v, want ambiguous", target)
 	}
 }
-

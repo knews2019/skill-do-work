@@ -779,4 +779,3 @@ func TestPlannedPostimagesPreservesRealFileModes(t *testing.T) {
 		t.Errorf("retained REQ mode = %o, want 0600", retReq.Mode)
 	}
 }
-

@@ -21,7 +21,8 @@ fi
 repo_root="$(cd "$script_directory/../.." && pwd)"
 gate_script="$repo_root/_dev/tests/maintainer-verify.sh"
 cli_launcher="$repo_root/skills/do-work/tools/do-work-cli.sh"
-log_root="${TMPDIR:-/tmp}/do-work-gate-runs"
+tmp_dir="${TMPDIR:-/tmp}"
+log_root="${tmp_dir%/}/do-work-gate-runs"
 poll_interval="${GATE_RUNNER_INTERVAL:-20}"
 run_once='no'
 if [ "${1:-}" = '--once' ]; then
@@ -31,6 +32,20 @@ elif [ "$#" -ne 0 ]; then
   exit 2
 fi
 mkdir -p "$log_root"
+
+repo_id="$(printf '%s' "$repo_root" | shasum -a 256 2>/dev/null | cut -c1-12 || echo 'default')"
+pid_file="$log_root/runner-$repo_id.pid"
+
+if [ "$run_once" != 'yes' ]; then
+  if [ -f "$pid_file" ]; then
+    existing_pid="$(cat "$pid_file" 2>/dev/null || true)"
+    if [ -n "$existing_pid" ] && kill -0 "$existing_pid" 2>/dev/null && [ "$existing_pid" != "$$" ]; then
+      exit 0
+    fi
+  fi
+  printf '%s\n' "$$" > "$pid_file"
+  trap 'rm -f "$pid_file"' EXIT INT TERM
+fi
 
 run_gate_for_head() {
   local revision="$1"

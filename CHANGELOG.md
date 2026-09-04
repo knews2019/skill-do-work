@@ -2,6 +2,13 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.274.1 — SessionStart Launches the Background Gate Runner (2026-09-04)
+
+The SessionStart hook now launches the background maintainer gate runner (`_dev/tests/gate-runner.sh`) when it is not already running for this checkout, attaching gate evidence to revisions automatically without manual start commands.
+
+- The launcher detects an existing runner via PID file under `$TMPDIR/do-work-gate-runs/` and avoids duplicate instances.
+- Non-maintainer consumer checkouts without `_dev/` never attempt to start the runner and retain unchanged banner output.
+
 ## 0.274.0 — Historical Heavy Verification Can Resume Safely (2026-09-04)
 
 Already-landed work from before the heavy-lane manifest can now be verified against one exact descendant revision and then re-enter the normal review and finalization path.
