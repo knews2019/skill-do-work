@@ -1,7 +1,7 @@
 ---
 id: REQ-504
 title: '[impact-rule-change] Collapse Step 10 and Crash Recovery prose into recovery'
-status: pending-heavy-testing
+status: pending
 priority: now
 created_at: 2026-09-02T14:37:54Z
 user_request: UR-098
@@ -41,7 +41,6 @@ write_set:
   - skills/do-work/tools/do-work-cli/internal/requeststate/state_apply_test.go
   - skills/do-work/tools/do-work-cli/internal/finalization/finalization_discovery.go
   - skills/do-work/tools/do-work-cli/internal/finalization/finalization_recovery_test.go
-claimed_at: 2026-09-04T15:44:47Z
 route: C
 planning_at: 2026-09-04T15:57:17Z
 exploration_at: 2026-09-04T15:57:17Z
@@ -49,7 +48,7 @@ preflight_at: 2026-09-04T16:00:28Z
 dispatch_at: 2026-09-04T16:01:12Z
 builder_handback_at: 2026-09-04T16:31:17Z
 integration_at: 2026-09-04T16:31:53Z
-status_changed_at: 2026-09-04T16:37:51Z
+status_changed_at: 2026-09-04T21:00:44Z
 commit: f412a8411057d0a833df5584657161008f315b84
 estimate:
   p50_active_minutes: 50
@@ -63,6 +62,8 @@ estimate:
     - dependency depth 1
     - cross-route regression gates
     - full-suite verification
+heavy_verified_at: 2026-09-04T21:00:44Z
+heavy_verified_revision: f412a8411057d0a833df5584657161008f315b84
 ---
 
 # Collapse Step 10 and Crash Recovery Prose Into Recovery
@@ -279,4 +280,28 @@ None.
 
 ## Open Questions
 
-- [ ] Heavy lanes at `f412a8411057d0a833df5584657161008f315b84`: the work loop runs them at queue exhaustion and records the result here
+- [x] Heavy lanes at `f412a8411057d0a833df5584657161008f315b84`: the work loop runs them at queue exhaustion and records the result here → Confirmed: All 6 selected heavy lanes passed without skips at f412a8411057d0a833df5584657161008f315b84.
+
+
+## Answer Notes
+
+- 2026-09-04 - [ ] Heavy lanes at `f412a8411057d0a833df5584657161008f315b84`: the work loop runs them at queue exhaustion and records the result here: Confirmed: All 6 selected heavy lanes passed without skips at f412a8411057d0a833df5584657161008f315b84.
+> ```
+> Exact-revision heavy verification via do-work clarify. Stored base, target, selected lanes, argv and coverage reasons matched the recomputed plan. All lane results came from the detached checkout at f412a8411057d0a833df5584657161008f315b84.
+> All 6 selected heavy lanes passed without skips at f412a8411057d0a833df5584657161008f315b84.
+> Initial attempt: staged-skills, updater and installer each exited 1 after 0 seconds before their tests started, reporting an invalid timing-log header. Preserved the original log and initialized a fresh log using the repository test-duration-log.sh helper. Reran only those three lanes at the same revision; all passed. The earlier passing CLI integration, JavaScript and browser results remain applicable. No tracked source was changed.
+> Scope: verification results only; implementation changes, fresh review and archiving remain for do-work run. Date and timestamp follow skills/do-work/actions/work-reference.md, Timestamp rule and its date-only paragraph.
+> Browser lane used /Applications/Google Chrome.app/Contents/MacOS/Google Chrome through QUEUE_KANBAN_BROWSER.
+> ```
+
+## Heavy Verification Result
+
+Target revision: `f412a8411057d0a833df5584657161008f315b84`
+Execution revision: `f412a8411057d0a833df5584657161008f315b84`
+
+- queue-kanban-javascript: exit 0, 8s — `bash _dev/tests/maintainer-verify.sh --heavy-lane queue-kanban-javascript`
+- queue-kanban-browser: exit 0, 97s — `bash _dev/tests/maintainer-verify.sh --heavy-lane queue-kanban-browser`
+- do-work-cli-integrations: exit 0, 60s — `bash _dev/tests/maintainer-verify.sh --heavy-lane do-work-cli-integrations`
+- staged-skills: exit 0, 23s — `bash _dev/tests/maintainer-verify.sh --heavy-lane staged-skills`
+- updater: exit 0, 51s — `bash _dev/tests/maintainer-verify.sh --heavy-lane updater`
+- installer: exit 0, 23s — `bash _dev/tests/maintainer-verify.sh --heavy-lane installer`
