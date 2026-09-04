@@ -49,6 +49,8 @@ In worktree dispatch mode the working tree is clean after the merge, so judge "n
 
 ### Step 2: Read the REQ
 
+Read `crew-members/shared-principles.md` before interpreting the REQ, in both review modes.
+
 Read the full REQ file. Extract:
 - **What was requested** — the What/Detailed Requirements sections
 - **Builder Guidance** — certainty level (Firm vs Exploratory), scope cues, implementation hints. Use this to calibrate expectations: Exploratory requests get more latitude on interpretation; Firm requirements must match exactly.
@@ -476,17 +478,13 @@ Match effort to complexity:
 
 ## Common Rationalizations
 
-Guard against these when conducting the review:
+Shared conditions live in [shared-principles.md](../crew-members/shared-principles.md); these rows govern review scoring and findings:
 
 | If you're thinking... | STOP. Instead... | Because... |
 |---|---|---|
-| "Requirements are met because the builder says so" | Walk the REQ requirements against the diff, line by line | Implementation summaries are claims, not evidence |
-| "Acceptance passes because unit tests pass" | Run the feature end-to-end | Unit tests and acceptance testing catch different defects |
 | "The score is borderline, I'll round up" | Apply the scoring guidelines mechanically | Rounding up defeats the quality gate |
 | "This finding is minor, so I can omit it" | Judge severity honestly, record its impact token, and end the line `→ report only` | Report-only means durable evidence, not silence |
-| "I can't run the code so I'll skip acceptance" | Score Untested and note exactly what you couldn't test | Skipping silently hides risk |
 | "That stale restatement is in a file this REQ never declared — out of scope" | Report it with its impact token; auto-queue it only if it is `impact-critical` | The diff changed the meaning, but a noncritical review finding does not authorize new queue work |
-| "All requirements checked and tests pass, so it's good" | Apply the Klarna Test — did we optimize for measurable things (checkboxes, passing tests) at the expense of unmeasured intent? | Checkbox compliance + passing tests can still miss what the user actually wanted |
 
 ## Red Flags
 
