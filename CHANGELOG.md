@@ -10,6 +10,12 @@ The board could not answer "what changed on the queue in the last few hours". Re
 - Its own 6h / 24h / 48h / 7d window, separate from the board's Recently-done window because they answer different questions. The shared filter chips apply, and an empty result says which empty it is: nothing moved, or the filters hide what did.
 - The lifecycle-stamp list now has one definition feeding both the future-stamp check and this view, so a stamp added to the schema reaches both surfaces from one edit.
 - Fixes two managed Just recipes, `bkb-init` and `memory-recall`, that no version of `just` could parse.
+## 0.275.4 — Minimal Capture Examples Backed by Schema Checks (2026-09-04)
+
+Capture examples now show the record shapes without repeating field rules in comments. New records are checked before publication, while existing records retain tolerant alias reads.
+
+- The four examples shrink from 137 to 67 lines, with copyable TDD proof and question shapes retained separately.
+- Publication rejects malformed fields, noncanonical values, unsafe user-text scalars, invalid blocked metadata, and mismatched UR membership before planning record writes.
 
 ## 0.275.3 — Held Heavy-Test REQs Wait With the Queue, Not in the Inbox (2026-09-04)
 

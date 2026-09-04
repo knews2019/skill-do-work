@@ -43,6 +43,11 @@ type RequestRecord struct {
 	AddendumTo                          string
 	AddendumSource                      string
 	RelatedIDs                          []string
+	RelatedSource                       string
+	BatchName                           string
+	BatchSource                         string
+	SuggestedSpec                       string
+	SuggestedSpecSource                 string
 	WritePaths                          []string
 	AssignedTo                          string
 	CreatedAt                           string
@@ -279,8 +284,11 @@ func (document *RequestDocument) TypedRecord() RequestRecord {
 	repositoryGateRepairEvidence := schemanormalization.NormalizeField("repository_gate_repair", document.scalarValue("repository_gate_repair"))
 	deferredImplementationBaseEvidence := schemanormalization.NormalizeField("deferred_implementation_base", document.scalarValue("deferred_implementation_base"))
 	deferredImplementationMergeEvidence := schemanormalization.NormalizeField("deferred_implementation_merge", document.scalarValue("deferred_implementation_merge"))
-	dependencyValues, dependencySource := document.preferredList("depends_on", "dependencies")
-	addendumValues, addendumSource := document.preferredList("addendum_to", "amends", "parent", "amendment_to")
+	dependencyValues, dependencySource := document.preferredList("depends_on")
+	addendumValues, addendumSource := document.preferredList("addendum_to")
+	relatedValues, relatedSource := document.preferredList("related")
+	batchValue, batchSource := document.preferredScalar("batch")
+	suggestedSpecValue, suggestedSpecSource := document.preferredScalar("suggested_spec")
 	addendumValue := ""
 	if len(addendumValues) > 0 {
 		addendumValue = addendumValues[0]
@@ -297,7 +305,10 @@ func (document *RequestDocument) TypedRecord() RequestRecord {
 		UserRequestID: document.scalarValue("user_request"),
 		DependsOn:     dependencyValues, DependencySource: dependencySource,
 		AddendumTo: addendumValue, AddendumSource: addendumSource,
-		RelatedIDs: document.listValue("related"), WritePaths: document.listValue("write_set"),
+		RelatedIDs: relatedValues, RelatedSource: relatedSource,
+		BatchName: batchValue, BatchSource: batchSource,
+		SuggestedSpec: suggestedSpecValue, SuggestedSpecSource: suggestedSpecSource,
+		WritePaths: document.listValue("write_set"),
 		AssignedTo: strings.TrimSpace(document.scalarValue("assigned_to")),
 		CreatedAt:  document.scalarValue("created_at"), ClaimedAt: document.scalarValue("claimed_at"),
 		CompletedAt: document.scalarValue("completed_at"), ImplementationCommit: strings.TrimSpace(document.scalarValue("commit")),
@@ -626,16 +637,28 @@ func (document *RequestDocument) listValue(fieldName string) []string {
 	return []string{field.ScalarValue}
 }
 
-func (document *RequestDocument) preferredList(canonicalKey string, aliasKeys ...string) ([]string, string) {
+func (document *RequestDocument) preferredList(canonicalKey string) ([]string, string) {
 	if _, found := document.fieldSpans[canonicalKey]; found {
 		return document.listValue(canonicalKey), canonicalKey
 	}
-	for _, aliasKey := range aliasKeys {
+	for _, aliasKey := range schemanormalization.SchemaFieldAliases(canonicalKey) {
 		if _, found := document.fieldSpans[aliasKey]; found {
 			return document.listValue(aliasKey), aliasKey
 		}
 	}
 	return nil, ""
+}
+
+func (document *RequestDocument) preferredScalar(canonicalKey string) (string, string) {
+	if _, found := document.fieldSpans[canonicalKey]; found {
+		return document.scalarValue(canonicalKey), canonicalKey
+	}
+	for _, aliasKey := range schemanormalization.SchemaFieldAliases(canonicalKey) {
+		if _, found := document.fieldSpans[aliasKey]; found {
+			return document.scalarValue(aliasKey), aliasKey
+		}
+	}
+	return "", ""
 }
 
 func encodeScalar(fieldValue string, lineEnding string) string {
