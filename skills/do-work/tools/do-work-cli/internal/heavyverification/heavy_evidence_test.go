@@ -314,6 +314,34 @@ func TestRunLanesWithoutEvidenceReuseExecutesAndStillRefreshesTheRecord(t *testi
 	}
 }
 
+// TestRunHeavyVerificationCommandReusesEvidenceThroughItsOwnSeam exercises the
+// command a drain actually invokes, not just RunLanes: a second invocation with
+// no extra flags reuses, and --no-evidence-reuse forces the lane to execute.
+func TestRunHeavyVerificationCommandReusesEvidenceThroughItsOwnSeam(t *testing.T) {
+	repositoryRoot := newLaneEvidenceRepository(t)
+
+	firstResult := runHeavyLanes(t, repositoryRoot, "--lane", "alpha-lane")
+	if firstResult.Outcome != resultmodel.OutcomeSuccess || firstResult.HeavyVerificationRun == nil {
+		t.Fatalf("first command result = %#v", firstResult)
+	}
+	assertLaneDisposition(t, laneExecutionRecord(t, *firstResult.HeavyVerificationRun, "alpha-lane"), LaneDispositionExecuted, laneReasonNoPriorEvidence)
+	if !takeLaneRanMarker(t, repositoryRoot, "alpha-lane") {
+		t.Fatal("the first command invocation did not execute the lane")
+	}
+
+	secondResult := runHeavyLanes(t, repositoryRoot, "--lane", "alpha-lane")
+	assertLaneDisposition(t, laneExecutionRecord(t, *secondResult.HeavyVerificationRun, "alpha-lane"), LaneDispositionReused, laneReasonFingerprintMatch)
+	if takeLaneRanMarker(t, repositoryRoot, "alpha-lane") {
+		t.Fatal("the command executed a lane it reported as reused")
+	}
+
+	forcedResult := runHeavyLanes(t, repositoryRoot, "--lane", "alpha-lane", "--no-evidence-reuse")
+	assertLaneDisposition(t, laneExecutionRecord(t, *forcedResult.HeavyVerificationRun, "alpha-lane"), LaneDispositionExecuted, laneReasonReuseDisabled)
+	if !takeLaneRanMarker(t, repositoryRoot, "alpha-lane") {
+		t.Fatal("--no-evidence-reuse did not force the lane to execute")
+	}
+}
+
 // TestRunLanesRefusesTamperedEvidenceInsteadOfTrustingIt keeps a stored record
 // that no longer describes a successful run out of the reuse path.
 func TestRunLanesRefusesTamperedEvidenceInsteadOfTrustingIt(t *testing.T) {
