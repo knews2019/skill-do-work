@@ -28,7 +28,6 @@ estimate:
     - trivial short-circuit
 exploration_at: 2026-09-04T22:05:56Z
 preflight_at: 2026-09-04T22:07:51Z
-dispatch_at: 2026-09-04T22:08:22Z
 route: B
 claimed_at: 2026-09-04T22:05:00Z
 ---
@@ -154,3 +153,7 @@ The full exploration and source-to-shared mapping are in `do-work/runs/work-2026
 ## Pre-flight
 
 Canonical advance records for this exact request/path satisfied baseline and green-gate evidence. `bash _dev/tests/contracts/core-checks.sh` passed; direct `bash _dev/tests/maintainer-verify.sh` passed at 45d9d3dbc50255eaf363699829a9730ed5fb4f0a (board 14s; CLI 47s; slowest CLI file 19.57s). No failing baseline exclusions. Existing report work from another session was committed separately and is outside this request’s range.
+
+## Dispatch
+
+Use the exact five-path Scope. See REQ-509-exploration.md in this main-tree run for detailed source-to-shared mapping. Own branch codex/worktree-agent-REQ-509-shared-principles, checkout .git/work-run-20260905/worktree-agent-REQ-509-shared-principles; hand back only through REQ-509-handback.md.

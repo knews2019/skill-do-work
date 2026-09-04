@@ -1,5 +1,5 @@
 {
-  "test_command": "bash _dev/tests/maintainer-verify.sh",
-  "exit_status": 1,
+  "test_command": "bash _dev/tests/contracts/core-checks.sh",
+  "exit_status": 0,
   "launched": true
 }
