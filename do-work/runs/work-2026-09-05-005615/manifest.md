@@ -21,3 +21,9 @@ User scope: do-work run to completion, serial claims; do not finish while agents
 - REQ-509 builder handback consumed; c68102502066a65c5be0573b17236b0a1ff58695; RED/GREEN and focused contracts pass; integrating next.
 - REQ-504 review complete (Acceptance Fail, critical legacy-checkpoint finding); remediation waits until REQ-509 completes.
 - REQ-510 prep complete.
+
+- REQ-509 integrated range: 622a5e55de332984d7e180615a2c5c2b6c7ef2d7..2ba5b432658853690e8e5a6d20bd2dcc147e9ada; qualify and focused evidence green; repository gate running; independent review_509 → REQ-509-review.md pending.
+- REQ-504 read-only remediation plan → REQ-504-remediation-plan.md pending.
+
+- REQ-509 review accepted (100%, Pass); selected lane evidence complete after canonical version-mirror repair and installer retry; preparing finalization.
+- REQ-504 remediation plan complete and ready after REQ-509.

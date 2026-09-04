@@ -2,6 +2,13 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.282.1 — Share Implementation and Review Principles (2026-09-05)
+
+Implementation and review now load one shared set of condition-based principles. Each action retains the guidance specific to its lifecycle or authority boundaries.
+
+- Consolidates nine portable work/review rows into eight shared conditions, preserving Route A and repair-attempt exceptions.
+- Tests both active loading points and their removal mutations; the existing cross-file similarity check remains unchanged and reports zero matching pairs.
+
 ## 0.282.0 — Expose the Next Lifecycle Step (2026-09-05)
 
 **Version mirror repair:** Aligns the version action with this release so fresh suite installation passes manifest validation.
