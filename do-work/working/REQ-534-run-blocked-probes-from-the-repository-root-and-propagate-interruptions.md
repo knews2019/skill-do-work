@@ -167,3 +167,29 @@ None.
 - RED then PASS: root-relative probe, typed real-signal/group-reaping, and interruption short-circuit acceptance fixtures.
 - PASS: complete nextselection package and its race suite; `go vet ./...`; `go test -count=1 ./...`.
 - PASS: Windows amd64 nextselection cross-compile; `git diff --check`; no debug-artifact matches in the seven files.
+
+## Review
+
+**Overall: 83%** | 2026-09-04T00:12:33Z
+
+| Dimension | Score |
+|-----------|-------|
+| Requirements | 92% |
+| Code Quality | 90% |
+| Test Adequacy | 88% |
+| Scope | 100% |
+| Risk | Low |
+| Acceptance | Partial |
+
+**Important findings (each with its recorded impact token — this is the durable audit record the judgment mandates):**
+- The canonical run action still says a probe never halts or raises an error, contradicting the new required typed-interruption stop at `actions/work.md:153` — `impact-rule-change` → report only
+
+**Minor findings:**
+- `blocked_probe.go:29-31` still promises a public 0–4 envelope despite the new 129/130/143 interruption override — `impact-negligible` → report only
+- The handback's required-read list names six paths that did not exist at the integration base or merge end, so that durable evidence is not verifiable (`REQ-534-handback.md:91-97`) — `impact-negligible` → report only
+
+**Acceptance:** Partial — implementation, race, full module, vet, process cleanup, and Linux/Windows compile checks pass; live restatements remain contradictory.
+**Suggested testing:** 2 items
+**Follow-ups created:** None (3 findings report only)
+
+*Reviewed by review-work action*
