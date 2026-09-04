@@ -124,7 +124,7 @@ func advanceJournal(ctx context.Context, repositoryRoot string, journal *Journal
 			journal.PrimaryCommit = recoveredSHA
 		} else {
 			if blockedCode, blockedReason, blockedPaths := commitSafety(repositoryRoot, journal); blockedCode != "" {
-				return finalizationFailure(journal, resumed, blockedCode, blockedReason, blockedPaths)
+				return sharedStateRefusal(journal, resumed, blockedCode, blockedReason, blockedPaths)
 			}
 			transaction := gittransaction.CommitExactPaths(ctx, repositoryRoot, journal.EffectiveCommitPaths, journal.Manifest.CommitMessage, nil)
 			if transaction.Failure != nil {
@@ -633,6 +633,25 @@ func finalizationFailure(journal *Journal, resumed bool, code, reason string, pa
 		Evidence: []string{reason}, Fixability: resultmodel.FixabilityRefused, AutomationStopReason: "finalization evidence is incomplete or ambiguous",
 		NextArgv: verification, VerificationArgv: verification,
 	}}, Finalization: &record, Finalizations: []resultmodel.FinalizationResult{record}}
+}
+
+// sharedStateRefusal reports a refusal whose cause is state this journal never
+// declared: the repository's single index, or shared lifecycle and release
+// paths outside the exact recovery group. It carries no affected REQ because no
+// REQ owns the cause, and that absence is the condition recovery reads to stop
+// the whole run instead of setting one REQ aside (REQ-515). Anything a REQ does
+// own keeps its ownership and is set aside per REQ. The resolving verb is the
+// uncommitted inventory that shows the caller what the shared dirt is, never
+// the command that just refused (REQ-514).
+func sharedStateRefusal(journal *Journal, resumed bool, code, reason string, paths []string) resultmodel.CommandResult {
+	result := finalizationFailure(journal, resumed, code, reason, paths)
+	collection := []string{"do-work-cli", "--format", "json", "uncommitted-inventory"}
+	result.Findings[0].AffectedIDs = nil
+	result.Findings[0].AutomationStopReason = "shared finalization state is dirty or ambiguous and no single REQ owns it"
+	result.Findings[0].NextArgv = collection
+	result.Finalization.NextArgv = append([]string(nil), collection...)
+	result.Finalizations[0] = *result.Finalization
+	return result
 }
 
 func finalizationRecord(journal *Journal, resumed bool, paths, reasonCodes []string) resultmodel.FinalizationResult {
