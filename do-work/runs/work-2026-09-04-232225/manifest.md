@@ -1,6 +1,6 @@
 # Queue run
 
-Status: in-progress
+Status: paused — REQ-574 selected next (repository-gate repair), handed to the user before claiming it
 
 User scope: do-work run UR-115 (UR-expanded; REQ-573 stays dependency-gated behind REQ-572).
 
@@ -16,3 +16,4 @@ User scope: do-work run UR-115 (UR-expanded; REQ-573 stays dependency-gated behi
 - Qualification satisfied on range 7ad53bff..fbdcd35e (qualify + scope-drift). Focused probe (activity Go tests + Node summary test) green in 2s.
 - Canonical gate `bash _dev/tests/maintainer-verify.sh` red after its one retry: only the 30s per-file budget, four do-work-cli test files (inventory_test 38.9s, defer_gate_test 37.0s, finalization_recovery_test 35.7s, finalization_req499_test 30.9s); every test passed. Detached diagnostic worktree at base 7ad53bff: also red, defer_gate_test 32.5s. Attributed as unrelated (CLI test files; REQ-572 touches the board only).
 - defer-gate applied: repair REQ-574 (bring do-work-cli test files under the 30s budget) minted under UR-115, fingerprint go-test-file-budget:do-work-cli:publication-defer-gate-test, sweep_key do-work-cli-test-file-budget; REQ-572 back to queue as pending with depends_on REQ-574, gate_deferred, saved range 7ad53bff..fbdcd35e for reuse. Builder and diagnostic worktrees removed; branch deleted without force.
+- Deferral committed at 35af5c23. Selector now picks REQ-574 first (class repository-gate-repair); REQ-572 and REQ-573 excluded until it integrates. Paused before claiming REQ-574: it is CLI test-file work that overlaps the CLI packages two other live sessions in this checkout are editing (REQ-506 remediation, REQ-570 just merged), and the gate's per-file budget is load-sensitive while they run. No claim of this session remains open, so no session-end checkpoint write was made.
