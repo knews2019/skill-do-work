@@ -1,7 +1,7 @@
 ---
 id: REQ-577
 title: 'Repository gate repair: remove the launcher fixture single-iteration loop'
-status: pending
+status: claimed
 route: C
 created_at: 2026-09-04T23:55:41Z
 user_request: UR-098
@@ -15,6 +15,7 @@ sweep: 'true'
 sweep_key: do-work-cli-launcher-single-iteration-loop
 depends_on: []
 related: [REQ-506]
+claimed_at: 2026-09-04T23:58:14Z
 ---
 
 # Repository gate repair: remove the launcher fixture single-iteration loop
