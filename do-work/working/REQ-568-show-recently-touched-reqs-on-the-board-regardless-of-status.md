@@ -1,7 +1,7 @@
 ---
 id: REQ-568
 title: 'Show recently touched REQs on the board regardless of status'
-status: pending
+status: claimed
 created_at: 2026-09-04T17:54:05Z
 user_request: UR-112
 domain: ui-design
@@ -12,6 +12,7 @@ depends_on: []
 maintenance: false
 impact: impact-user-visible
 effort_estimate: effort-substantive
+claimed_at: 2026-09-04T18:13:19Z
 ---
 
 # Show Recently Touched REQs on the Board Regardless of Status

@@ -19,3 +19,5 @@ session_depth: light
 ## In Progress (interrupted)
 
 - REQ-506: [impact-rule-change] Run the evidence gates from advance — claimed 2026-09-04T17:32:08Z — writer: t2s-Virtual-Machine.local:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2
+
+- REQ-568: Show recently touched REQs on the board regardless of status — claimed 2026-09-04T18:13:19Z — writer: vm:/home/user/skill-do-work
