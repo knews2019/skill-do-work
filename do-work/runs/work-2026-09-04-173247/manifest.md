@@ -7,5 +7,5 @@ Status: in-progress
 | Agent | Slice | Output file | Status |
 |-------|-------|-------------|--------|
 | plan | REQ-506 implementation plan | REQ-506-plan.md | done |
-| explore | REQ-506 repository exploration | REQ-506-explore.md | pending |
+| explore | REQ-506 repository exploration | REQ-506-explore.md | done |
 | builder | REQ-506 isolated implementation | REQ-506-handback.md | pending |
