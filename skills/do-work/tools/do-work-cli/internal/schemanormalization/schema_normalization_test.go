@@ -163,8 +163,10 @@ func TestTerminalPredicatesKeepFailureAndCancellationDistinct(t *testing.T) {
 
 // TestDependencySourceReadyAcceptsClaimedWithCommitOnly pins REQ-570: the heavy
 // hold is a phase of a claimed request, so a claimed dependency that already
-// landed its implementation commit is source-ready, and the retired
-// pending-heavy-testing status is neither recognized nor source-ready.
+// landed its implementation commit is source-ready. Every other status is not,
+// commit or no commit — the rule is the condition, not a second status list, so
+// no retired value is named here. The repository sweep in the REQ proves the
+// retired hold status is gone from the tree.
 func TestDependencySourceReadyAcceptsClaimedWithCommitOnly(t *testing.T) {
 	if !DependencySourceReady("claimed", "abc123") {
 		t.Fatal("a claimed request holding its landed implementation commit must be source-ready")
@@ -175,10 +177,9 @@ func TestDependencySourceReadyAcceptsClaimedWithCommitOnly(t *testing.T) {
 	if DependencySourceReady("pending", "abc123") {
 		t.Fatal("pending remediation must block dependencies even with a stale commit")
 	}
-	if DependencySourceReady("pending-heavy-testing", "abc123") {
-		t.Fatal("the retired pending-heavy-testing status must not grant source readiness")
-	}
-	if NormalizeField("status", "pending-heavy-testing").IsRecognized {
-		t.Fatal("pending-heavy-testing must no longer be a canonical status value")
+	for _, unrecognizedStatus := range []string{"pending-answers", "blocked", "almost-done"} {
+		if DependencySourceReady(unrecognizedStatus, "abc123") {
+			t.Fatalf("%s must not grant source readiness", unrecognizedStatus)
+		}
 	}
 }

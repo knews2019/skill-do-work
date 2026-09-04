@@ -11,7 +11,7 @@ work action (orchestrator - lightweight, stays in loop)
   │
   ├── recover (finalization first, then typed working-claim classification)
   │
-  ├── For each pending request (skip pending-answers and pending-heavy-testing):
+  ├── For each pending request (skip pending-answers):
   │     │
   │     ├── TRIAGE: Assess complexity (no agent, just read & categorize)
   │     │
@@ -226,20 +226,12 @@ status_changed_at: 2026-07-22T20:38:00Z
 # (all three modes: serve, static, summary).
 completed_at: 2025-01-26T10:45:00Z   # required on every terminal flip — UTC ISO instant
 status: completed | completed-with-issues | failed
-commit: abc1234               # required in a git repo — implementation commit hash (also required while pending-heavy-testing so dependents can use the landed source)
+commit: abc1234               # required in a git repo — implementation commit hash (also recorded at the heavy hold so dependents can build against the landed source)
 error: "Description"          # Set when a REQ failed; RETAINED verbatim if that failed REQ is later cancelled via do-work abandon — the surviving failure signal on a status: cancelled REQ, NOT drift to strip
 error_type: intent|spec|code|environment   # Set with `error` on failure; likewise retained on a failed→cancelled flip
 
-# Set by work.md's Qualification and Testing Judgment when the merged diff selects heavy lanes for the exhaustion drain.
-# The REQ stays in queue and ordinary selection walks past it. `commit` above is the
-# exact implemented revision the hold line names while other runnable REQs continue.
-status: pending-heavy-testing
-status_changed_at: 2026-09-03T10:45:00Z
-
-# Written only by a green heavy-testing answer. The answer returns the REQ to
-# runnable pending and clears claimed_at; canonical next emits resume_phase:
-# review only while commit -> heavy_verified_revision -> current HEAD ancestry
-# remains valid. Invalid or stale evidence follows ordinary remediation.
+# Written by work.md Step 7.7's drain onto the claimed record before finalization.
+# They prove which execution revision the heavy lanes actually checked.
 heavy_verified_at: 2026-09-03T12:00:00Z
 heavy_verified_revision: def5678
 
@@ -279,7 +271,7 @@ The enum-or-boolean-valued fields above (one table row each, below) are covered 
 | Field (read sites) | Canonical enum | Normalization | Default on unknown |
 |---|---|---|---|
 | `domain` (Step 4 Route C plan-agent spawn, Step 6 crew load, Step 7 review-work spawn) | `frontend`, `backend`, `ui-design`, `general`, `security`, `testing`, `cms` | `back-end`/`back_end` → `backend`; `front-end`/`front_end` → `frontend`; `ui_design` → `ui-design`; `sec` → `security`; `test` → `testing`; `content-management`/`content_management` → `cms` | `general` |
-| `status` (Step 1 scan + categorization, Qualification and Testing Judgment's heavy-test hold, Step 9 finalization, abandon action) | `pending`, `claimed`, `completed`, `completed-with-issues`, `failed`, `cancelled`, `pending-answers`, `pending-heavy-testing`, `blocked`, `blocked-archive-collision`, `blocked-dependency-cycle` | `complete`/`done`/`finished`/`closed` → `completed`; `canceled`/`abandoned`/`wont-do`/`wontfix` → `cancelled` | skip REQ at Step 1 with the warning text — never claim or archive an unrecognized status silently |
+| `status` (Step 1 scan + categorization, Step 9 finalization, abandon action) | `pending`, `claimed`, `completed`, `completed-with-issues`, `failed`, `cancelled`, `pending-answers`, `blocked`, `blocked-archive-collision`, `blocked-dependency-cycle` | `complete`/`done`/`finished`/`closed` → `completed`; `canceled`/`abandoned`/`wont-do`/`wontfix` → `cancelled` | skip REQ at Step 1 with the warning text — never claim or archive an unrecognized status silently |
 | `route` (Step 3 dispatch, Step 5.5 scope declaration, Step 7 scope-drift comparison) | `A`, `B`, `C` | lowercase `a`/`b`/`c` → uppercase | treat as needing re-triage in Step 3 |
 | `caveman` (Step 6 crew load) | `false`, `true`, `lite`, `full`, `ultra` | truthy strings (`yes`/`on`) → `true`; `light` → `lite` | `false` |
 | `maintenance` (Step 6 crew load) | `true`, `false` (YAML boolean) | truthy strings (`yes`/`on`/`t`) → `true`; `no`/`off`/`f` → `false` | `false` (Step 6 maintenance crew not loaded) |
@@ -318,7 +310,7 @@ Default and UR-expanded queue selection order ready work by three stable classes
 
 ### Dependency-source-ready status set
 
-**A dependency is source-ready when it is terminally successful, or when its normalized status is `pending-heavy-testing` and it carries a nonblank `commit:`.** The latter has landed implementation and passed the fast gate; its own heavy result still controls its terminal completion, but dependents may build against the exact committed source while that hold is open. `pending-heavy-testing` without commit metadata fails closed, and a red heavy lane returns the REQ to `pending`, which immediately makes the dependency unmet again. This set is scheduling authority only: it does not make the held REQ terminal, successful, archivable, or eligible for completed-work readers.
+**A dependency is source-ready when it is terminally successful, or when its normalized status is `claimed` and it carries a nonblank `commit:`.** The latter is a request held for heavy lanes after review: it has landed implementation and passed the fast gate, so dependents may build against the exact committed source while the hold is open. `claimed` without a commit fails closed, and a red drain withdraws `commit:` so the dependency is unmet again. This set is scheduling authority only: it does not make the held REQ terminal, successful, archivable, or eligible for completed-work readers.
 
 The trigger is the *condition above*, not the caller list: **any reader that filters for "the completed/most-recent work" inherits this contract.** The known consumers are illustrative, not exhaustive — `actions/cleanup.md` (UR close), `../../do-work-toolbox/actions/completed-work-presentation-reference.md` (shared reader for item-level presentation actions), `actions/review-work.md` (standalone target), and `actions/commit.md` (REQ association); `actions/forensics.md` and `actions/roadmap.md` already honor both. When adding a new reader, normalize status first, accept both canonical values, and point back here — hand-enumerated caller lists go stale silently, which is why the condition, not the list, is the contract.
 
@@ -668,14 +660,14 @@ The exit report is **composed**, not picked from disjoint branches. Whenever the
    Skipped by `--skip-impact-negligible`, not blocked — nothing was written to these REQs. Re-run without the flag to include them, or name one explicitly (`do-work run REQ-NNN --skip-impact-negligible`), which overrides the skip for that REQ. A REQ with no `impact:` reads as `impact-user-visible` and never appears here.
    ```
 
-8. **Held-for-heavy-testing section** — applies if any REQ still carries status `pending-heavy-testing` after the heavy-lane drain ran (`actions/work.md` → Qualification and Testing Judgment). A REQ whose selected lanes all executed is answered by the drain and never reaches this section; one that appears here got no result, and the typed finding names why. Render:
+8. **Held-for-heavy-testing section** — applies if any claimed REQ in `do-work/working/` still carries `## Heavy Verification Plan` without `heavy_verified_revision` after the heavy-lane drain ran (`actions/work.md` → Step 7.7). A REQ whose selected lanes all executed is finalized by the drain and never reaches this section; one that appears here got no result, and the typed finding names why. Render:
 
    ```
    ⚠ N REQs held for heavy testing:
      REQ-NNN — [title] (held: <finding code> <lane>)
      ...
 
-   A skipped browser lane needs an engine: set `QUEUE_KANBAN_BROWSER=<path>` and re-run `do-work run`. Plan drift or a stored historical-revalidation plan goes through `do-work clarify`, which runs the held lanes by hand.
+   A skipped browser lane needs an engine: set `QUEUE_KANBAN_BROWSER=<path>` and re-run `do-work run`. Plan drift or a stored historical-revalidation plan is a typed finding for a human; the next `do-work run` drain retries once the cause is fixed.
    ```
 
 9. **Set-aside-by-recovery section** — applies if any `recover` result in this run carried a finalization record whose `reason_codes` include `FINALIZATION-SET-ASIDE`. Recovery refused that one REQ's finalization tail, excluded it from this run's selection, and drained the rest; the REQ keeps the claim it already had — recovery does not release it, under `do-work run-with-recovery` either — and its unfinished journal is still on disk. Render one line per record from the record's own fields:
