@@ -1,0 +1,46 @@
+# REQ-509 read-only preparation
+
+No claim, source edit, test execution, build, staging, or commit performed. This report is the only file written.
+
+## Evidence and scope decisions
+
+- The REQ's What/Why/RED already reflect the accepted one-loading-point goal. REQ-508 exists in `do-work/archive/`; the orchestrator must use canonical selection/claim evidence for readiness.
+- Read both listed primes, maintenance/general crew contracts, the lessons budget contract and index, and both action/shell lesson satellites. Claim-time indexed selection is empty: action-files costs 4244 tokens and shell-commands 3385, both `slugged: partial`, above the 2000-token budget. Refresh the stale 3436-token drop; shell lessons match only if the implementation adds shell test logic. Touch-conditional satellite reading is additive to the budget, so both were read for this preparation.
+- Inspected all 23 Common Rationalizations tables across four packages. They contain 126 rows now. Most encode action-specific boundaries or defaults, not portable instructions. Do not transplant consent, status, command ownership, or initialization rules into a global contract: doing so would change other actions' behavior.
+- **Audit contradiction reproduced:** the exact Finding 11 command prints `tables 23 rows 126 near_identical_cross_file_pairs 1`, not zero. Its only pair is capture versus validate-feedback, reason similarity 0.767857: “Capture ≠ Execute — the user decides when to run the queue” versus “…what becomes work.” The audit acknowledges their different boundaries while giving a contradictory zero count. Preserve both local rows and narrow capture's reason to its actual boundary (for example, “Capturing intent does not authorize processing the resulting queue.”). This satisfies literal zero without changing the threshold, exclusions, or either behavior. Record the discrepancy and resolution in the REQ before implementation.
+- **Four-part constraint:** this REQ explicitly migrates judgment/loading, not mechanics into Go. A new CLI command would contradict its purpose and the “judgment stays prose” constraint. Record that the CLI-command part is not applicable; deleted prose plus new loading/negative mutation proof are the applicable migration parts. Current table-preservation predicates are also absent: `contract-regressions.sh` is a 77-line aggregate, real core checks live in `_dev/tests/contracts/core-checks.sh`. Do not delete unrelated negative sentinels in `defensive-surface-audit.sh` or the qualification/finding-closure predicates in core-checks. Document that no old individual Common Rationalizations predicates remain to delete.
+
+## Concrete minimal implementation
+
+Declare five implementation paths before coding: new `skills/do-work/crew-members/shared-principles.md`; modify core `actions/work.md`, `actions/review-work.md`, `actions/capture.md`; modify `_dev/tests/contracts/core-checks.sh`. The captured aggregate test path is stale; use its existing sourced owner without enlarging the aggregate. Release files and request metadata remain canonical finalization work. No sibling action needs mutation for this minimum scope.
+
+The merged file is the loading point for the portable union below, keyed by the condition being guarded rather than imagined agent excuses. Preserve existing canonical owners with short links where one exists; avoid copying general/testing/coding-guardrails instructions into a second detailed authority.
+
+| Condition/principle | Existing source rows to remove from local tables | Shared behavior |
+| --- | --- | --- |
+| Evidence supports completion claims | work “Implementation Summary is too detailed”; review “builder says so” | Factual changed-file summary; verify the claim against the actual diff and requirements. |
+| Captured TDD applies | work “test after the code … counts as TDD” | RED before implementation; point to testing.md for the workflow. |
+| A planned change touches a file | work “file change is small … Scope” | Declare every touched path before coding; size does not waive scope. |
+| A repair is being retried after failure | work “Tests still fail on attempt 2” | Load debugging.md and testing.md before another attempt. |
+| Adjacent work is outside the declared request | work “out-of-scope thing inline” | Use general.md's Discovered-Tasks Contract; do not silently widen the request. |
+| Acceptance is inferred from narrow tests | review “unit tests pass” | Verify the requested behavior end-to-end where applicable. |
+| Acceptance cannot be exercised | review “can't run … skip acceptance” | Record Untested and the exact unavailable check, never imply a pass. |
+| Checklists pass but intent remains uncertain | review “All requirements checked and tests pass” | Check the user's intended outcome (the existing Klarna Test), not only measurable proxies. |
+
+Keep work-local rows for recover refusal/exact verification argv, pre-build baseline gate, P-A-U qualification, advance archive collision, safe branch deletion, and operative branch identity. Keep review-local rows for score rounding, minor finding impact/report-only policy, and stale restatements/critical-only auto-queueing. Add a short pointer beside both remaining tables for the moved shared guidance.
+
+All other tables remain local: capture's splitting/human-attention/authoring/run boundary; abandon/cleanup archive and claim rules; handoff dependency/checkpoint facts; recovery authority; stakeholder Q-ID routing; roadmap/read-only survey; simple-selector overrides; KB handoff consent/provenance; board build/root rules; dream consolidation/consent; interview schema/checkpoints; memory capacity/bootstrap/fallback; prompt-library trust/modes; architecture-report immutable watermark ownership; installer target/config policy; audit calibration/measurement; slop-check report/rewrite policy; stray-check deletion/commit ownership; validate-feedback evidence/capture boundary. Those conditions belong to the invoked action even where a general value (evidence, consent, preservation) recurs. They are not duplicate shared row copies.
+
+## Loading and focused proof
+
+- In work Step 6's existing numbered load order, add an unconditional shared-principles load adjacent to general/coding-guardrails (before domain conditions and builder dispatch). Keep existing loads.
+- In review-work Step 2, add an unconditional load before interpreting/reviewing the REQ; Step 2 is shared by orchestrated and standalone modes, so both receive the contract. Merely saying implementation previously loaded it in Step 4 is insufficient.
+- Add one merged contract predicate in core-checks, using the existing Python availability, to require the shared file and active load directives in the precise implementation and review sections. Test the same predicate with in-memory mutations: remove implementation load alone; remove review load alone; remove/misspell the shared file; displace a load into a non-loading section or comment. Both live loading checks must be RED before source edits and GREEN afterward. Do not make a whole-file substring check that comments can satisfy.
+- Include the exact audit row extraction and >0.75 trigger-or-reason similarity logic in this merged check (or its in-memory helper); require zero and mutation-test copying an action row to another action. Preserve the parser's actual scope when reporting results; the shared file can use a condition-led table under `## Principles`, while the audit remains action Common Rationalizations coverage. Do not pin 23 tables or 126 rows: counts change legitimately when rows move.
+- Check representative retained local boundaries without freezing every sentence: work collision/branch identity and review scoring/report-only rows remain local, with source-to-shared mapping inspected during independent review. The test must not enforce movement of every row just to inflate the union.
+- Focused command: `bash _dev/tests/contracts/core-checks.sh`; aggregate: `bash _dev/tests/contract-regressions.sh`; package citation check: `bash _dev/tests/shipped-package-reference-contract.sh`. Use normal recorded canonical gate rather than duplicating full-gate runs.
+- Canonical project recipe is `just maintainer-verify`, whose sole command is `bash /Users/t2/Desktop/e1-experimental-repos/skill-do-work2/_dev/tests/maintainer-verify.sh`. Resolve and reuse the exact argv bound by advance for this request; recommended explicit argv from repository root is `["bash", "_dev/tests/maintainer-verify.sh"]`, or preserve the existing session's equivalent bound argv. Direct nonzero gate execution gets one immediate identical retry per work-reference's rule. Do not start concurrent gates with the current request.
+
+## Acceptance limitations to surface
+
+The missing loads are a genuine observable RED; claiming these tables were duplicate is not. Prose tests prove the floor agent receives the right contract, not that an LLM invariably follows it. Independent review must verify that the shared principles preserve original conditions and that action-specific retained exceptions still resolve. Literal demand for a new CLI command or deletion of nonexistent table predicates should be rejected in the documented implementation decision rather than met with fabricated mechanics or unrelated test deletion.

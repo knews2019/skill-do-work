@@ -2,6 +2,13 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.282.0 — Expose the Next Lifecycle Step (2026-09-05)
+
+The lifecycle CLI now projects a request’s next phase, missing evidence, and replayable command from one canonical snapshot. This read-only foundation supports the later queue, verification, and finalization extensions.
+
+- Adds typed Route A/B/C phase results, impossible-transition refusals, and deterministic text/JSON output.
+- Verifies exact-revision command behavior and four integration lanes. Independent review records two noncritical advisory edge cases: optional Route A lessons and lifecycle headings inside fenced examples.
+
 ## 0.281.1 — Restore Archived Lifecycle Lesson Links (2026-09-05)
 
 The CLI lesson references now open the archived lifecycle-gate decisions and their Lessons Learned sections. Three stale root-level archive links now point to their canonical UR-095 locations.
