@@ -17,3 +17,7 @@ User scope: do-work run to completion, serial claims; do not finish while agents
 - REQ-509 builder build_509 accepted; source implementation in progress; output REQ-509-handback.md pending.
 
 - Read-only later-step prep: prep_510 → REQ-510-prep.md pending.
+
+- REQ-509 builder handback consumed; c68102502066a65c5be0573b17236b0a1ff58695; RED/GREEN and focused contracts pass; integrating next.
+- REQ-504 review complete (Acceptance Fail, critical legacy-checkpoint finding); remediation waits until REQ-509 completes.
+- REQ-510 prep complete.

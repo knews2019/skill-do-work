@@ -29,6 +29,7 @@ estimate:
 exploration_at: 2026-09-04T22:05:56Z
 preflight_at: 2026-09-04T22:07:51Z
 dispatch_at: 2026-09-04T22:08:22Z
+builder_handback_at: 2026-09-04T22:14:10Z
 route: B
 claimed_at: 2026-09-04T22:05:00Z
 ---
