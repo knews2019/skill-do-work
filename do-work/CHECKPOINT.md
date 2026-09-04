@@ -18,5 +18,4 @@ session_depth: light
 
 ## In Progress (interrupted)
 
-- REQ-504: [impact-rule-change] Collapse Step 10 and Crash Recovery prose into recovery — claimed 2026-09-04T22:27:42Z — writer: t2s-Virtual-Machine.local:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2
 

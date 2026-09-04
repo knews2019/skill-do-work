@@ -60,3 +60,5 @@ User scope: do-work run to completion, serial claims; do not finish while agents
 - Read-only later-step plan: review_506 → REQ-562-plan.md pending.
 
 - User chose to free disk space personally; no inspection or deletion outside the repository was authorized or performed. No tests run until sufficient space returns. REQ-562 read-only plan complete; all subagents completed, no background process pending.
+
+- REQ-504 updater/installer passed after user restored47GB; all6 selected lanes greenunskipped, finalization prepared next.

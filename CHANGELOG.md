@@ -2,6 +2,10 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.284.0 — Recover Legacy Checkpoints Without Losing Claims (2026-09-05)
+
+Recovery, checkpoint refresh, and fresh claims now preserve supported legacy checkpoint evidence through one structural interpretation. Public regression tests prove both reported failures are fixed; all selected verification lanes passed after disk space was restored.
+
 ## 0.283.0 — Refuse Releases That Leave a Mirror Undeclared (2026-09-05)
 
 The release planner now finds every version and changelog mirror itself and refuses a manifest that would leave one on the old version, so the drift the board flagged after the previous release cannot recur.

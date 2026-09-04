@@ -1,7 +1,7 @@
 ---
 id: REQ-504
 title: '[impact-rule-change] Collapse Step 10 and Crash Recovery prose into recovery'
-status: claimed
+status: completed
 kb_status: pending
 priority: now
 created_at: 2026-09-02T14:37:54Z
@@ -67,6 +67,8 @@ estimate:
     - cross-route regression gates
     - full-suite verification
 claimed_at: 2026-09-04T22:27:42Z
+completed_at: 2026-09-04T22:59:12Z
+release_at: 2026-09-04T22:59:12Z
 ---
 
 # Collapse Step 10 and Crash Recovery Prose Into Recovery
@@ -619,11 +621,11 @@ Post-remediation: **100%, Acceptance Pass, Risk None**. The independent reviewer
 
 Route C. Cumulative evidence remains `773787b74acddfdfc4c16498a89d99a5cc3ab716..6a11b60c83615791769d57b082580f0b69323984`. The original 26-path migration at `f412a8411057d0a833df5584657161008f315b84` and its first independent review remain part of this review. Repair attribution is exactly `f13bdcc0d1a83c0d24e5af6262f6863ee31ef8d7..6a11b60c83615791769d57b082580f0b69323984`: seven declared paths. Intervening sibling and owner commits in the cumulative range are not attributed to this builder.
 
-## What's built
+### What's built
 
 Public recovery still settles finalization before classifying working claims and requires explicit takeover authority. Checkpoint discovery, removal, absence checks, and fresh insertion now share the existing canonical-or-legacy range. Refresh preserves the supported legacy body instead of adding an empty section that hides it. The original command ownership and prose reduction remain intact.
 
-## Findings and F-01 closure
+### Findings and F-01 closure
 
 **Important:** None remaining. F-01 is closed by direct public-command acceptance, not merely by observing a shared helper.
 
@@ -631,7 +633,7 @@ Public recovery still settles finalization before classifying working claims and
 
 Before repair, the final public regression tests independently reproduced both reported failures: refresh reported five preserved claims while subsequent discovery returned zero, and explicit takeover refused with `RECOVER-CLAIM-CHECKPOINT-EVIDENCE`. With the integrated repair, refresh retains all five semantic claim records and exact body bytes; takeover removes all four matching labelled, duplicate, numeric-alias, and unlabelled records plus continuations. Public `next` selects the recovered request, a committed fresh claim succeeds, and public recovery still sees the unrelated writer's original claim.
 
-## Requirements checklist
+### Requirements checklist
 
 - [x] Finalization-first recovery, typed takeover decisions, and constant authority argv remain implemented and executable. Observation preserves bytes; explicit targeted and sole-authority paths pass.
 - [x] Supported legacy and canonical checkpoint evidence remains recoverable and visible. Canonical section precedence, prose-only heading tokens, numeric aliases, writer-specific removal, unlabelled records, and CRLF controls pass.
@@ -641,7 +643,7 @@ Before repair, the final public regression tests independently reproduced both r
 - [x] The original inherited ownership, Step 8, commit, handoff, and guide repairs remain represented. Later selection, evidence-gate, and finalization extensions are separate chain work.
 - [x] The seven remediation files are within the original 26-path Scope. Both execution-state checklists are complete. Decisions D-08 through D-12 explain compatibility, range attribution, and the fresh-insertion branch; the readable handback matches the diff.
 
-## Acceptance testing
+### Acceptance testing
 
 **Result: Pass.** Bounded independent commands ran from `skills/do-work/tools/do-work-cli`. The tested seven files match integration `6a11b60c83615791769d57b082580f0b69323984`; execution checkout HEAD was observed as `eabc29842dc537eb2cbc43adcfd2ae294bfbc92b`, whose only additional committed change is an unrelated report HTML edit.
 
@@ -652,13 +654,13 @@ Before repair, the final public regression tests independently reproduced both r
 
 The builder's recorded RED-before-production ordering and owner-package, vet, formatting, and diff checks agree with this independent replay. This reviewer did not run a full or heavy lane. The original six-lane green record belongs to the old implementation revision and cannot verify changed source; the orchestrator owns current integrated gate and heavy evidence before completion.
 
-## Restatement, domain, and self-validation
+### Restatement, domain, and self-validation
 
 Swept `CheckpointClaimBounds`, the replaced private helper, checkpoint writers/removers/absence predicates, and checkpoint-heading/legacy prose across the shipped tree. Cleanup reaches the same writer-specific helper; terminal transitions reach the same all-entry helper. Existing authority predicates and request identity matching were not widened. Canonical-heading prose still describes the normal emitted format and does not authorize a legacy migration or an alternate action-owned writer. No stale operative restatement introduced by the repair was found; REQ-544's separate caller-authored publication/cleanup sweep remains separate.
 
 Security review focused on explicit authority and exact-byte preservation. No new shell interpolation, public schema, dependency, or removal authority was introduced. The shared helper is earned by the reproduced disagreement and is used by multiple existing consumers. Self-validation checked actual test execution, the fresh-claim alternate writer, refusal non-mutation, source attribution, and reviewer cleanup.
 
-## Scores
+### Scores
 
 **Overall: 100%** — arithmetic average of the four percentage dimensions; no qualitative penalty applies.
 
@@ -707,3 +709,11 @@ Plan target: `6a11b60c83615791769d57b082580f0b69323984`. Runner execution revisi
 - installer: exit 2, 7s, skipped:False, executed (reuse_disabled).
 
 **Infrastructure diagnosis:** The second run’s full log reports `No space left on device` during fixture creation. The volume had only116MB free during execution and228MB after fixture cleanup. This is not passing evidence and does not change the review verdict into completion. The repository occupies764MB total (567MB ignored build assets); the configured regenerable Go build cache is outside the user’s repository boundary. User permission was requested before any inspection/deletion there. Keep updater/installer verification outstanding until space is restored; retain both failed attempts.
+
+### Retry after user restored disk space
+
+Observed47GB available before the retry. Runner execution revision: `1a726b6f4d96a4906f4395d7492a305b8fa89464`. Both lanes executed with reuse disabled; no implementation path changed between earlier passing lanes and this retry. The prior failures remain recorded as infrastructure attempts.
+- updater: exit0, 61s, skipped:false, executed.
+- installer: exit0, 29s, skipped:false, executed.
+
+All six selected lanes now have an executed, unskipped passing result for the integrated implementation. The existing claim can complete through strict finalization; no answer transaction is applicable because this remediation stayed claimed rather than entering another hold.
