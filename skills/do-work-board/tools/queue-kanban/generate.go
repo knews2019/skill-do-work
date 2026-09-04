@@ -47,6 +47,7 @@ var boardJavaScriptFragmentPaths = [...]string{
 	"web/board-calendar.js",
 	"web/board-durations.js",
 	"web/board-timeline.js",
+	"web/board-activity.js",
 	"web/board-testing.js",
 	"web/board-detail.js",
 	"web/board-controls.js",
@@ -78,7 +79,12 @@ type generatedBoardData struct {
 	Calendar                          []generatedCalendarEntry        `json:"calendar"`
 	Durations                         generatedDurations              `json:"durations"`
 	Timeline                          generatedTimeline               `json:"timeline"`
-	Notes                             []generatedNote                 `json:"notes,omitempty"` // do-work/notes.md lines — rendered as a strip above the queue
+	// Activity rows for the Activity view: every REQ's newest lifecycle stamp
+	// and the transition it records, newest first, regardless of status. Ships
+	// unwindowed — the client filters against the wall clock at render time so a
+	// long-open tab keeps meaning "the last N hours" (activity.go).
+	Activity []generatedActivityEntry `json:"activity"`
+	Notes    []generatedNote          `json:"notes,omitempty"` // do-work/notes.md lines — rendered as a strip above the queue
 
 	// Verify findings carried into the page so a human looking at the board sees
 	// what `queue-kanban verify` sees (REQ-284). Three categories are suppressed
@@ -297,6 +303,17 @@ type generatedCalendarEntry struct {
 	EntryTime  string `json:"entryTime"`
 	DayKey     string `json:"dayKey"`
 	TimeSource string `json:"timeSource"`
+}
+
+// generatedActivityEntry is one Activity row on the wire. StampField ships
+// alongside the instant so a reader can go straight to the frontmatter line
+// that produced the row; Transition ships already phrased so the client never
+// becomes a second definition of what a stamp means (activity.go).
+type generatedActivityEntry struct {
+	RequestId  string `json:"id"`
+	StampField string `json:"stampField"`
+	StampAt    string `json:"stampAt"`
+	Transition string `json:"transition"`
 }
 
 // generatedDurations is the Durations view's data: one measured sample per
@@ -837,6 +854,15 @@ func buildGeneratedBoardDataWithMentions(board *Board, mentionAnalysis boardTick
 			DayKey:         sample.DayKey,
 			WallMinutes:    sample.WallMinutes,
 			ExcludedReason: sample.DayMedianExclusion,
+		})
+	}
+
+	for _, row := range buildActivityRows(board.AllRequests) {
+		data.Activity = append(data.Activity, generatedActivityEntry{
+			RequestId:  row.RequestId,
+			StampField: row.StampField,
+			StampAt:    formatTimestamp(row.StampTime),
+			Transition: row.Transition,
 		})
 	}
 

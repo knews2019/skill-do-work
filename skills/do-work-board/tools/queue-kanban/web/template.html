@@ -80,9 +80,23 @@
           <button type="button" class="control-button" data-view-target="timeline" aria-pressed="false">
             Timeline
           </button>
+          <button type="button" class="control-button" data-view-target="activity" aria-pressed="false">
+            Activity
+          </button>
           <button type="button" class="control-button" data-view-target="testing" aria-pressed="false">
             Testing
           </button>
+        </div>
+
+        <!-- Activity only: this view's own window, kept separate from the
+             board's Recently-done window because they answer different
+             questions and a shared control would silently move both. -->
+        <div class="control-group" role="group" aria-label="Activity window" id="activity-window-group" hidden>
+          <span class="control-label">Touched in</span>
+          <button type="button" class="control-button" data-activity-window="6" aria-pressed="false">6h</button>
+          <button type="button" class="control-button is-active" data-activity-window="24" aria-pressed="true">24h</button>
+          <button type="button" class="control-button" data-activity-window="48" aria-pressed="false">48h</button>
+          <button type="button" class="control-button" data-activity-window="168" aria-pressed="false">7d</button>
         </div>
 
         <!-- Durations only: a mark's fill changes meaning with this channel, so
@@ -441,6 +455,34 @@
             </table>
           </div>
         </details>
+      </section>
+
+      <!-- Activity — every REQ whose newest lifecycle stamp falls inside the
+           selected window, newest first, naming the stamp and the transition it
+           records. Status deliberately does not filter it: this is the one
+           surface that answers "what changed lately", and every other time
+           surface here is shaped by status (Recently done is terminal only, the
+           Calendar dates a REQ from its claim or resolve day, the Timeline
+           draws spans rather than transitions). Rows come pre-ordered and
+           pre-phrased from Go; board-activity.js windows and draws them. -->
+      <section id="view-activity" class="view-panel" aria-label="Recently touched REQs" hidden>
+        <p class="activity-summary" id="activity-summary"></p>
+        <p class="activity-empty" id="activity-empty" hidden></p>
+        <div class="activity-table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th scope="col" id="activity-table-column-req">REQ</th>
+                <th scope="col" id="activity-table-column-title">Title</th>
+                <th scope="col" id="activity-table-column-status">Status</th>
+                <th scope="col" id="activity-table-column-transition">What happened</th>
+                <th scope="col" id="activity-table-column-when">When</th>
+                <th scope="col" id="activity-table-column-stamp">Stamp</th>
+              </tr>
+            </thead>
+            <tbody id="activity-table-body"></tbody>
+          </table>
+        </div>
       </section>
 
       <!-- Testing tracking — who tested which finished REQ, and where it

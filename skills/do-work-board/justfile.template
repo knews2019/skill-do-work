@@ -70,8 +70,8 @@ run-do-work-update *args:
 
 # Initialize or fill gaps in a BKB scaffold through the canonical Go command
 [positional-arguments]
-bkb-init kb="kb" *args:
-    kb="$1"; shift; project_root="{{justfile_directory()}}"; bash "$project_root/.claude/skills/do-work/tools/do-work-cli.sh" --repo-root "$project_root" bkb-init --kb "$kb" "$@"
+bkb-init *args:
+    kb="${1:-kb}"; if [ "$#" -gt 0 ]; then shift; fi; project_root="{{justfile_directory()}}"; bash "$project_root/.claude/skills/do-work/tools/do-work-cli.sh" --repo-root "$project_root" bkb-init --kb "$kb" "$@"
 
 # Read a deterministic BKB status snapshot
 bkb-status kb="kb":
@@ -126,8 +126,8 @@ memory-forget query *args:
 
 # Run bounded attributed lexical memory recall
 [positional-arguments]
-memory-recall query="" *args:
-    query="$1"; shift; project_root="{{justfile_directory()}}"; bash "$project_root/.claude/skills/do-work/tools/do-work-cli.sh" --repo-root "$project_root" memory-recall "$@" "$query"
+memory-recall *args:
+    query="${1-}"; if [ "$#" -gt 0 ]; then shift; fi; project_root="{{justfile_directory()}}"; bash "$project_root/.claude/skills/do-work/tools/do-work-cli.sh" --repo-root "$project_root" memory-recall "$@" "$query"
 
 # Read memory store health
 [positional-arguments]
