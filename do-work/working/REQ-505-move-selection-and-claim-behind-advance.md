@@ -41,6 +41,7 @@ claimed_at: 2026-09-04T16:39:30Z
 route: C
 planning_at: 2026-09-04T16:49:45Z
 exploration_at: 2026-09-04T16:49:45Z
+preflight_at: 2026-09-04T16:52:22Z
 estimate:
   p50_active_minutes: 50
   confidence: low
@@ -167,3 +168,15 @@ Repository discovery already walks nested archive trees and carries complete fil
 - [ ] Nested archive collisions, dependency cycles, and successful blocked probes reach exact guarded hold/unblock/claim transactions while unrelated work continues.
 - [ ] Working/archive advance stays read-only, checkpoint mode remains checkpoint-only, and later evidence/finalization phases remain outside this request.
 - [ ] Step 1 and Steps 2.0/2 collapse to a command-owned selection/claim principle with all live readers aligned and public behavior tests replacing stale prose predicates.
+
+## Pre-Flight
+
+**Git:** Clean outside the owner-written run brief under `do-work/`.
+
+**Tests baseline:** Uncached lifecycle-advance, next-selection, request-state, and result-model package tests passed before implementation.
+
+**Repository gate:** Direct unpiped `bash _dev/tests/maintainer-verify.sh` passed at revision `f7afaccb8822c35749962bdc47a914d9a700140f`; 375 board tests and 655 CLI tests passed, and typed green-gate evidence was recorded for the exact argv.
+
+**Dependencies:** Installed; Go 1.26.1, ShellCheck 0.11.0, and all repository lanes launched successfully.
+
+*Checked by work action.*
