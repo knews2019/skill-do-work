@@ -16,6 +16,7 @@ impact: impact-rule-change
 effort_estimate: effort-substantive
 write_set: [skills/do-work/actions/capture-reference.md, skills/do-work/actions/capture.md, _dev/tests/contract-regressions.sh, skills/do-work/tools/do-work-cli/internal/schemanormalization/]
 claimed_at: 2026-09-04T19:13:19Z
+route: C
 ---
 
 # Reduce Capture Templates to Minimal Examples Backed by the Schema Layer
@@ -68,3 +69,9 @@ See `do-work/user-requests/UR-098/input.md` for complete verbatim input.
 
 ---
 *Source: capture of the orchestrator simplification request (UR-098).*
+
+## Triage
+
+**Route: C — Complex.** The change removes instructional contracts from four capture templates only after tracing each rule to schema or capture-file enforcement, adds missing behavior coverage, and updates the active predicate owner without weakening record shape.
+
+**Planning:** Required.
