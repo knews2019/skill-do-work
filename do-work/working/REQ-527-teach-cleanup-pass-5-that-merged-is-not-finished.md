@@ -161,3 +161,33 @@ Depends on REQ-458, which establishes the evidence and the corrected verify cate
 - PASS: `go test -count=1 ./internal/cleanup`; `go test -race -count=1 ./internal/cleanup`; `go vet ./...`; `go test -count=1 ./...`.
 - PASS: `bash _dev/tests/shipped-package-reference-contract.sh`; sequential `bash _dev/tests/contract-regressions.sh`; `git diff --check`.
 - One parallel contract run crossed a per-file timing budget; its standalone fixture and the sequential complete rerun passed.
+
+## Review
+
+**Overall: 73%** | 2026-09-04T00:00:44Z
+
+| Dimension | Score |
+|-----------|-------|
+| Requirements | 75% |
+| Code Quality | 80% |
+| Test Adequacy | 78% |
+| Scope | 100% |
+| Risk | Low |
+| Acceptance | Partial |
+
+**Important findings (each with its recorded impact token — this is the durable audit record the judgment mandates):**
+- Dry-run can report consent-required for a terminal REQ still in `working/` while the real run first moves that REQ and then automatically deletes its worktree (`cleanup_commands.go:40-43`; `cleanup_git.go:215,261,268`) — `impact-user-visible` → report only
+- Board verify deduplicates ambiguous REQ identity into one settled winner and advertises the worktree `[fixable]`, while cleanup refuses the same candidate as `request_state=ambiguous` (`queue-kanban/model.go:667-701`; `queue-kanban/verify.go:912-920`; `cleanup_git.go:373-383`) — `impact-user-visible` → report only
+- `actions/cleanup.md:128` still says only unmerged work needs explicit consent, omitting every newly consent-gated state — `impact-rule-change` → report only
+- Existing REQ-409 cleanup tests were behaviorally updated without the required cross-REQ provenance in Testing (`cleanup_git_test.go:141-177,313-333`) — `impact-negligible` → report only
+
+**Minor findings:** `actions/restart-with-parallel-handoff.md:51-55` still equates removable with an archived claim rather than the new exact outside-`working/` settled state — `impact-rule-change` → report only
+**Acceptance:** Partial — active-run preservation and settled cleanup pass, but built fixtures reproduce dry-run/apply and board/cleanup contradictions.
+**Suggested testing:** 2 items
+**Follow-ups created:** None (5 findings report only)
+
+*Reviewed by review-work action*
+
+## Remediation
+
+One bounded remediation pass must align dry-run with post-Pass-0 cleanup decisions, make board verification fail closed on duplicate identity, correct the two stale operative restatements, and record the intentional REQ-409 test updates.
