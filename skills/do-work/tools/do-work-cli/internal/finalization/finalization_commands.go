@@ -2,6 +2,7 @@ package finalization
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/commandruntime"
@@ -35,6 +36,27 @@ func handleFinalize(executionContext commandruntime.ExecutionContext, arguments 
 	journal, resumed, err := prepareJournal(context.Background(), executionContext.RepositoryRoot, manifestPath)
 	if err != nil {
 		return commandFailure(executionContext.RepositoryRoot, CommandFinalize, "FINALIZATION-PREPARE", err.Error())
+	}
+	return advanceJournal(context.Background(), executionContext.RepositoryRoot, journal, resumed)
+}
+
+// FinalizeBound runs the canonical finalization transaction only when the
+// action-authored manifest identifies the request selected by the caller.
+// prepareBoundJournal performs that comparison from the manifest's single
+// decode before journal, index, or repository mutation.
+func FinalizeBound(executionContext commandruntime.ExecutionContext, manifestPath, expectedRequestID, expectedRequestPath string) resultmodel.CommandResult {
+	journal, resumed, err := prepareBoundJournal(context.Background(), executionContext.RepositoryRoot, manifestPath, expectedRequestID, expectedRequestPath)
+	if err != nil {
+		var bindingError requestBindingError
+		if !errors.As(err, &bindingError) {
+			return commandFailure(executionContext.RepositoryRoot, CommandFinalize, "FINALIZATION-PREPARE", err.Error())
+		}
+		return resultmodel.CommandResult{Outcome: resultmodel.OutcomeRefused, RepositoryRoot: executionContext.RepositoryRoot, Findings: []resultmodel.CommandFinding{{
+			Code: "FINALIZATION-REQUEST-MISMATCH", Severity: resultmodel.SeverityError,
+			AffectedIDs: []string{expectedRequestID}, AffectedPaths: []string{expectedRequestPath, manifestPath}, Evidence: []string{err.Error()},
+			Fixability: resultmodel.FixabilityRefused, AutomationStopReason: "the finalization manifest is not bound to the selected request",
+			VerificationArgv: []string{"do-work-cli", "--format", "json", CommandFinalize, "--manifest", manifestPath},
+		}}}
 	}
 	return advanceJournal(context.Background(), executionContext.RepositoryRoot, journal, resumed)
 }

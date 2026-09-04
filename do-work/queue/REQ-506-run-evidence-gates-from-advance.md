@@ -1,7 +1,7 @@
 ---
 id: REQ-506
 title: '[impact-rule-change] Run the evidence gates from advance'
-status: claimed
+status: pending-heavy-testing
 priority: now
 created_at: 2026-09-02T14:37:54Z
 user_request: UR-098
@@ -51,6 +51,10 @@ estimate:
 planning_at: 2026-09-04T17:36:43Z
 exploration_at: 2026-09-04T17:41:25Z
 dispatch_at: 2026-09-04T17:44:35Z
+builder_handback_at: 2026-09-04T18:15:00Z
+integration_at: 2026-09-04T18:15:22Z
+status_changed_at: 2026-09-04T18:20:39Z
+commit: 06367337dd82d97416e0d9d37872cc35b56ae7bc
 ---
 
 # Run the Evidence Gates From advance
@@ -60,8 +64,8 @@ Steps 3.6 (estimate), 5.75 (pre-flight), 6.3 (qualify) and the mechanical half o
 
 ## AI Execution State (P-A-U Loop)
 - [x] **[PLAN]:** Compose current-phase typed command handlers through advance, bind subordinate evidence to the exact REQ and path, retain judgment gates in prose, and replace obsolete sentence predicates with public behavior tests.
-- [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
-- [ ] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
+- [x] **[APPLY]:** Implemented request-bound estimate, preflight, qualification, focused-test, and green-gate execution through existing typed handlers, plus the planned prose and contract migration.
+- [x] **[UNIFY]:** Reviewed all 16 changed files, ran gofmt, focused and race tests, module tests, vet, contract regressions, and the direct maintainer gate; no debug artifacts or undeclared touches remained.
 
 ## Why
 Each gate already has a command (`estimate-p50`, `preflight`, `qualify`, `run-blocked-check`); the prose only says when to call it and what to paste.
@@ -96,9 +100,6 @@ Firm on the boundary between mechanics and judgment as classified in the report'
 - `_dev/primes/lessons-action-files.md` — 4163 tokens, over the shared budget; `slugged: partial` so no complete targeted form. Matched on action pipeline and downstream-reader changes.
 - `_dev/primes/lessons-shell-commands.md` — 3385 tokens, over the shared budget; `slugged: partial` so no complete targeted form. Matched on prescribed argv and migration-parity behavior.
 - `skills/do-work/tools/do-work-cli/lessons-do-work-cli.md` — 6265 tokens, over the shared budget; `slugged: partial` so no complete targeted form. Matched on structured evidence, owned probes, command composition, and failure identity.
-
-## Open Questions
-None.
 
 ## Full Context
 See `do-work/user-requests/UR-098/input.md` for complete verbatim input.
@@ -164,3 +165,68 @@ The current blocked probe is not yet a complete focused-test baseline API: it re
 
 - **D-01 — DECIDE & STATE:** Expanded the captured scope to the current contract owner, typed result projection, core-helper baseline record, and platform probe implementation. The capture preceded the contract-suite split and assumed probe diagnostics already existed; these files are required to meet the request's explicit typed evidence and baseline-comparison behavior without duplicating command logic.
 - **D-02 — DECIDE & STATE:** Added the CLI prime after focused GREEN because its lifecycle-advance phase table would otherwise keep teaching the retired read-only/next-command behavior. The prime is the required source index for every future change in this subsystem, so leaving it stale would split the contract immediately.
+- **D-03 — DECIDE & STATE:** Separate canonical repository-gate tokens with repeated gate-argument flags while phase argv follows the command separator. This preserves both token channels without shell interpolation.
+- **D-04 — DECIDE & STATE:** Treat a red as baseline-matching only when launch succeeded and command text, non-zero status, and bounded normalized diagnostic identity all agree. Uncertain semantic similarity remains action judgment and is conservatively reported as new red.
+- **D-05 — DECIDE & STATE:** Capture Unix probe output through a parent-owned bounded pipe. This retains diagnostics without letting a background descendant keep the direct child wait open.
+- **D-06 — DECIDE & STATE:** Point every mechanical continuation back through advance with explicit placeholders for judgment-owned inputs. The action no longer invokes subordinate helpers directly.
+- **D-07 — DECIDE & STATE:** Retain retry limits, warning interpretation, TDD validity, gate attribution/deferral, heavy-lane planning, and finding closure in prose. Only deterministic command execution and exact evidence comparison moved into Go.
+
+## Implementation Summary
+
+**Files changed:**
+
+- `_dev/tests/contracts/core-checks.sh` (modified) — rejects restored evidence recipes and requires the retained judgment boundaries.
+- `skills/do-work/actions/work-reference.md` (modified) — aligns architecture and gate evidence flow with request-bound advance execution.
+- `skills/do-work/actions/work.md` (modified) — replaces four mechanical procedures with one evidence-gate consumer loop.
+- `skills/do-work/tools/do-work-cli/internal/corehelpers/commands.go` (modified) — returns focused-test evidence and conservative saved-baseline comparison.
+- `skills/do-work/tools/do-work-cli/internal/corehelpers/commands_test.go` (modified) — covers diagnostic comparison and unusable baseline refusal.
+- `skills/do-work/tools/do-work-cli/internal/lifecycleadvance/advance_commands.go` (modified) — routes current mechanical phases through request-bound advance execution.
+- `skills/do-work/tools/do-work-cli/internal/lifecycleadvance/advance_commands_test.go` (modified) — updates the public phase matrix and continuation contract.
+- `skills/do-work/tools/do-work-cli/internal/lifecycleadvance/evidence_gates.go` (new) — composes typed handlers with exact phase, identity, input, and range binding.
+- `skills/do-work/tools/do-work-cli/internal/lifecycleadvance/evidence_gates_test.go` (new) — covers all evidence gates, baseline states, invalid inputs, and direct green recording.
+- `skills/do-work/tools/do-work-cli/internal/nextselection/blocked_probe.go` (modified) — exposes bounded normalized probe diagnostics without changing selection semantics.
+- `skills/do-work/tools/do-work-cli/internal/nextselection/blocked_probe_test.go` (modified) — verifies root normalization, truncation, and stable diagnostic identity.
+- `skills/do-work/tools/do-work-cli/internal/nextselection/blocked_probe_unix.go` (modified) — captures output through an owned pipe while preserving descendant cleanup.
+- `skills/do-work/tools/do-work-cli/internal/nextselection/blocked_probe_windows.go` (modified) — carries the diagnostic writer through the Windows probe path.
+- `skills/do-work/tools/do-work-cli/internal/resultmodel/result_model.go` (modified) — adds normalized typed gate and focused-test records with compact rendering.
+- `skills/do-work/tools/do-work-cli/internal/resultmodel/result_model_test.go` (modified) — covers normalization and rendering of nested evidence records.
+- `skills/do-work/tools/do-work-cli/prime-do-work-cli.md` (modified) — records advance's new request-bound evidence execution authority.
+
+**What was done:** Advance now discovers and executes the current request's mechanical evidence boundary through existing command owners, returning ordered records bound to the exact request and path. Focused tests preserve bounded diagnostic identity and distinguish green, matching baseline red, new red, timeout, launch failure, missing baseline, and an unusable unlaunched baseline. Work prose now supplies inputs and semantic judgment through one named consumer loop.
+
+## Discovered Tasks
+
+None.
+
+## Qualification
+
+**Passed.** The exact merge range contains 16 substantive implementation files and no undeclared path. All five acceptance criteria trace to public lifecycle gate behavior, bounded probe evidence, retained judgment prose, and replacement structural contracts; the checked P-A-U state matches the merged diff. Two declared core-helper check files were not needed because their existing handler logic was reused unchanged. New Go files are convention-discovered, and the relocated output warning is the retained anti-rationalization example rather than runtime debug instrumentation.
+
+## Testing
+
+**Red-green validation:** The public advance estimate-gate case first failed with `ADVANCE-USAGE` because phase inputs after the command separator were not accepted. The identical focused test passed after request-bound gate composition was implemented, and the final public file covers every evidence phase, exact and invalid ranges, baseline states, hostile inputs, timeout, launch failure, and direct green recording.
+
+**Merged-state verification:** Focused lifecycle, core-helper, selector, and result packages passed in 24.69s; the same packages under the race detector passed in 26.88s; static analysis passed in 0.31s; Windows selector-probe compilation passed in 1.33s; the full Go module passed in 48.15s; and contract regressions passed in 16.26s. The direct, unpiped canonical gate passed with 375 board tests and 674 CLI tests, with every measured test file below 30 seconds. Green-gate evidence was recorded at revision `5e767e5bc2b6edeb9a7c2b78589a5275f2e18f4b`.
+
+## Heavy Verification Plan
+
+**Base revision:** `24ed2fdda549a0759cdc571562c9b782bfeb6251`
+
+**Target revision:** `06367337dd82d97416e0d9d37872cc35b56ae7bc`
+
+The planner marked coverage uncertain because `_dev/tests/contracts/core-checks.sh` is outside every declared path rule, so it conservatively selected all lanes:
+
+- **queue-kanban-javascript** — argv: `bash _dev/tests/maintainer-verify.sh --heavy-lane queue-kanban-javascript`; reason: uncovered contract path makes coverage uncertain.
+- **queue-kanban-browser** — argv: `bash _dev/tests/maintainer-verify.sh --heavy-lane queue-kanban-browser`; reason: uncovered contract path makes coverage uncertain.
+- **do-work-cli-integrations** — argv: `bash _dev/tests/maintainer-verify.sh --heavy-lane do-work-cli-integrations`; reason: uncovered contract path makes coverage uncertain.
+- **staged-skills** — argv: `bash _dev/tests/maintainer-verify.sh --heavy-lane staged-skills`; reason: uncovered contract path makes coverage uncertain.
+- **updater** — argv: `bash _dev/tests/maintainer-verify.sh --heavy-lane updater`; reason: uncovered contract path makes coverage uncertain.
+- **installer** — argv: `bash _dev/tests/maintainer-verify.sh --heavy-lane installer`; reason: uncovered contract path makes coverage uncertain.
+
+## Open Questions
+
+- [ ] Heavy lanes at `06367337dd82d97416e0d9d37872cc35b56ae7bc`: the work loop runs them at queue exhaustion and records the result here
+
+## Orientation
+
+[MAP CHANGED] The lifecycle now has one public request-bound evidence path: advance discovers the current phase, executes its existing mechanical handler, and returns ordered typed gate records; the work action supplies inputs and retains semantic judgment.

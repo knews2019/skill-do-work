@@ -95,9 +95,9 @@ func TestAdvanceCommandPhaseMatrix(t *testing.T) {
 			wantMissing: advanceMissingEvidence{Kind: "section", Section: "Implementation Summary", Expected: "implemented file manifest"},
 		},
 		{
-			name: "route A testing skips scope drift", treeSection: "working", status: "claimed", frontmatter: "route: A\nestimate:\n  p50_active_minutes: 5\n",
+			name: "route A test gate", treeSection: "working", status: "claimed", frontmatter: "route: A\nestimate:\n  p50_active_minutes: 5\n",
 			body:      "## Triage\n\nRoute A.\n\n## Plan\n\nPlanning not required.\n\n## Implementation Summary\n\n- owned.go\n\n## Qualification\n\nPASS.\n",
-			wantPhase: "agent judgment: testing", wantPhaseKind: "agent_judgment",
+			wantPhase: "test-gate", wantPhaseKind: "mechanical", wantNextCommand: "test-gate",
 			wantMissing: advanceMissingEvidence{Kind: "section", Section: "Testing", Expected: "tests and gate evidence"},
 		},
 		{
@@ -143,9 +143,9 @@ func TestAdvanceCommandPhaseMatrix(t *testing.T) {
 			wantMissing: advanceMissingEvidence{Kind: "section", Section: "Qualification", Expected: "typed qualification result"},
 		},
 		{
-			name: "qualified route C scope drift", treeSection: "working", status: "claimed", frontmatter: "route: C\nplanning_at: 2026-09-04T12:00:00Z\nwrite_set: [owned.go]\nestimate:\n  p50_active_minutes: 30\n",
+			name: "qualified route C test gate", treeSection: "working", status: "claimed", frontmatter: "route: C\nplanning_at: 2026-09-04T12:00:00Z\nwrite_set: [owned.go]\nestimate:\n  p50_active_minutes: 30\n",
 			body:      routeCBodyThrough("Qualification"),
-			wantPhase: "scope-drift", wantPhaseKind: "mechanical", wantNextCommand: "scope-drift",
+			wantPhase: "test-gate", wantPhaseKind: "mechanical", wantNextCommand: "test-gate",
 			wantMissing: advanceMissingEvidence{Kind: "section", Section: "Testing", Expected: "tests and gate evidence"},
 		},
 		{
@@ -163,7 +163,7 @@ func TestAdvanceCommandPhaseMatrix(t *testing.T) {
 		{
 			name: "ready route C finalization", treeSection: "working", status: "claimed", frontmatter: "route: C\nplanning_at: 2026-09-04T12:00:00Z\nwrite_set: [owned.go]\nestimate:\n  p50_active_minutes: 30\n",
 			body:      routeCBodyThrough("Orientation"),
-			wantPhase: "agent judgment: prepare finalization manifest", wantPhaseKind: "agent_judgment",
+			wantPhase: "finalize", wantPhaseKind: "mechanical", wantNextCommand: "finalize",
 			wantMissing: advanceMissingEvidence{Kind: "file", Expected: "action-authored finalization manifest"},
 		},
 		{
@@ -420,11 +420,15 @@ func expectedAdvanceNextArgv(command, requestPath, route string) []string {
 	case "next":
 		return []string{"do-work-cli", "--format", "json", "next", "REQ-703"}
 	case "estimate-p50":
-		return []string{"do-work-cli", "estimate-p50", "--route", route}
+		return []string{"do-work-cli", "--format", "json", "advance", "REQ-703", "--request-path", requestPath, "--", "--route", route, "--write-set", "<count>", "--subsystems", "<count>", "--acceptance", "<count>"}
 	case "preflight":
-		return []string{"do-work-cli", "--format", "json", "preflight"}
-	case "qualify", "scope-drift":
-		return []string{"do-work-cli", "--format", "json", command, "--request-path", requestPath}
+		return []string{"do-work-cli", "--format", "json", "advance", "REQ-703", "--request-path", requestPath, "--gate-arg", "<canonical-gate-argv-token>", "--", "<resolved-test-argv>"}
+	case "qualify":
+		return []string{"do-work-cli", "--format", "json", "advance", "REQ-703", "--request-path", requestPath, "--diff-range", "<pre>..<merge_hash>"}
+	case "test-gate":
+		return []string{"do-work-cli", "--format", "json", "advance", "REQ-703", "--request-path", requestPath, "--gate-arg", "<canonical-gate-argv-token>", "--", "--probe-file", "<focused-test-probe>"}
+	case "finalize":
+		return []string{"do-work-cli", "--format", "json", "advance", "REQ-703", "--request-path", requestPath, "--finalization-manifest", "<action-authored-finalization-manifest>"}
 	case "recover-finalization":
 		return []string{"do-work-cli", "--format", "json", "recover-finalization", "--discover"}
 	default:

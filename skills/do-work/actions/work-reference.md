@@ -18,7 +18,7 @@ work action (orchestrator - lightweight, stays in loop)
   │     ├── OPEN QUESTIONS? ── - [ ] items exist ──► Mark - [~], builder decides
   │     │                      (none / all resolved) ──► continue
   │     │
-  │     ├── ESTIMATE: Ensure estimate: block exists, print P50 line (never blocks)
+  │     ├── MECHANICAL EVIDENCE GATE: estimate record
   │     │     │
   │     │     ├── Route A (Simple) ──────────────────┐
   │     │     │   Skip plan/explore, direct to build │
@@ -29,16 +29,19 @@ work action (orchestrator - lightweight, stays in loop)
   │     │     └── Route C (Complex) ──► Plan ──► Explore ──► Scope declare
   │     │                                            │
   │     │                                            ▼
+  │     │                              pre-build gate record
+  │     │                                            │
+  │     │                                            ▼
   │     │                                     Implementation agent
   │     │                                            │
   │     │                                            ▼
   │     │                                  Implementation Summary
   │     │                                            │
   │     │                                            ▼
-  │     │                              Qualify (orchestrator verifies)
+  │     │                        qualification gate + judgment
   │     │                                            │
   │     │                                            ▼
-  │     │                                        Testing
+  │     │                         focused/gate evidence + judgment
   │     │                                            │
   │     │                                            ▼
   │     │                                  Review ◄─── Fail? ──► Remediate ──► Re-review
@@ -227,7 +230,7 @@ commit: abc1234               # required in a git repo — implementation commit
 error: "Description"          # Set when a REQ failed; RETAINED verbatim if that failed REQ is later cancelled via do-work abandon — the surviving failure signal on a status: cancelled REQ, NOT drift to strip
 error_type: intent|spec|code|environment   # Set with `error` on failure; likewise retained on a failed→cancelled flip
 
-# Set by work.md Step 6.5 when the merged diff selects heavy lanes for the exhaustion drain.
+# Set by work.md's Qualification and Testing Judgment when the merged diff selects heavy lanes for the exhaustion drain.
 # The REQ stays in queue and ordinary selection walks past it. `commit` above is the
 # exact implemented revision the hold line names while other runnable REQs continue.
 status: pending-heavy-testing
@@ -276,16 +279,16 @@ The enum-or-boolean-valued fields above (one table row each, below) are covered 
 | Field (read sites) | Canonical enum | Normalization | Default on unknown |
 |---|---|---|---|
 | `domain` (Step 4 Route C plan-agent spawn, Step 6 crew load, Step 7 review-work spawn) | `frontend`, `backend`, `ui-design`, `general`, `security`, `testing`, `cms` | `back-end`/`back_end` → `backend`; `front-end`/`front_end` → `frontend`; `ui_design` → `ui-design`; `sec` → `security`; `test` → `testing`; `content-management`/`content_management` → `cms` | `general` |
-| `status` (Step 1 scan + categorization, Step 6.5 heavy-test hold, Step 9 finalization, abandon action) | `pending`, `claimed`, `completed`, `completed-with-issues`, `failed`, `cancelled`, `pending-answers`, `pending-heavy-testing`, `blocked`, `blocked-archive-collision`, `blocked-dependency-cycle` | `complete`/`done`/`finished`/`closed` → `completed`; `canceled`/`abandoned`/`wont-do`/`wontfix` → `cancelled` | skip REQ at Step 1 with the warning text — never claim or archive an unrecognized status silently |
+| `status` (Step 1 scan + categorization, Qualification and Testing Judgment's heavy-test hold, Step 9 finalization, abandon action) | `pending`, `claimed`, `completed`, `completed-with-issues`, `failed`, `cancelled`, `pending-answers`, `pending-heavy-testing`, `blocked`, `blocked-archive-collision`, `blocked-dependency-cycle` | `complete`/`done`/`finished`/`closed` → `completed`; `canceled`/`abandoned`/`wont-do`/`wontfix` → `cancelled` | skip REQ at Step 1 with the warning text — never claim or archive an unrecognized status silently |
 | `route` (Step 3 dispatch, Step 5.5 scope declaration, Step 7 scope-drift comparison) | `A`, `B`, `C` | lowercase `a`/`b`/`c` → uppercase | treat as needing re-triage in Step 3 |
 | `caveman` (Step 6 crew load) | `false`, `true`, `lite`, `full`, `ultra` | truthy strings (`yes`/`on`) → `true`; `light` → `lite` | `false` |
 | `maintenance` (Step 6 crew load) | `true`, `false` (YAML boolean) | truthy strings (`yes`/`on`/`t`) → `true`; `no`/`off`/`f` → `false` | `false` (Step 6 maintenance crew not loaded) |
-| `tdd` (Step 6 testing-crew load, Step 6.5 TDD-evidence gate; emission validated in `actions/capture.md`) | `true`, `false` (YAML boolean) | `test_first`/`yes`/`on`/`t` → `true`; `no`/`off`/`f` → `false` | `false` (Step 6 testing crew not loaded; Step 6.5 gate not enforced) |
+| `tdd` (Step 6 testing-crew load, Qualification and Testing Judgment's TDD-evidence gate; emission validated in `actions/capture.md`) | `true`, `false` (YAML boolean) | `test_first`/`yes`/`on`/`t` → `true`; `no`/`off`/`f` → `false` | `false` (Step 6 testing crew not loaded; TDD-evidence gate not enforced) |
 | `error_type` (Step 8 failure classification, Step 8 upstream-failure short-circuit, forensics) | `intent`, `spec`, `code`, `environment` | (no common typo aliases identified) | `code` |
 | `kb_status` (kb-lessons handoff — work.md's Lessons-Capture Phase / review-work.md's Self-Validation & Lessons Learned step; roadmap lessons rollup) | `promoted`, `pending`, `declined`, `skipped` | `skip` → `skipped`; `rejected` → `declined` | `pending` |
 | `impact` (capture emission — capture.md Step 1; automatic follow-up creation — review-work.md Step 10, work.md Step 8's Discovered Tasks flow; selection filters — work.md Step 1's `--skip-impact-negligible` and `tools/select-simple-reqs.sh`'s `impact-critical` veto; board display — `../../do-work-board/tools/queue-kanban` parser) | `impact-critical`, `impact-user-visible`, `impact-rule-change`, `impact-negligible` | (no aliases — new prefix-unique vocabulary) | `impact-user-visible` |
 | `priority` (capture emission/addenda — capture.md Steps 1–2; ordinary ready ordering before fan-out — work.md Step 1 selector; Pending Ready/Waiting order and badges — `../../do-work-board/tools/queue-kanban` parser) | `now`, `next`, `later` | (no aliases) | `next` |
-| `effort_estimate` (Step 3.6's mechanical-effort short-circuit; selection filter — `tools/select-simple-reqs.sh`, backing `actions/run-simple-reqs.md`; board display — `../../do-work-board/tools/queue-kanban` parser; judged by capture, review follow-up creation, and Discovered Tasks creation on every new REQ) | `effort-mechanical`, `effort-substantive` | `trivial` → `effort-mechanical`; `normal` → `effort-substantive` (read-only legacy aliases, so every REQ written before the rename stays valid unchanged; never propagated on write — `actions/capture-reference.md` § Schema Aliases) | `effort-substantive` |
+| `effort_estimate` (Mechanical Evidence-Gate Loop's effort short-circuit; selection filter — `tools/select-simple-reqs.sh`, backing `actions/run-simple-reqs.md`; board display — `../../do-work-board/tools/queue-kanban` parser; judged by capture, review follow-up creation, and Discovered Tasks creation on every new REQ) | `effort-mechanical`, `effort-substantive` | `trivial` → `effort-mechanical`; `normal` → `effort-substantive` (read-only legacy aliases, so every REQ written before the rename stays valid unchanged; never propagated on write — `actions/capture-reference.md` § Schema Aliases) | `effort-substantive` |
 | `testing_status` (board Testing view — `../../do-work-board/tools/queue-kanban` parser + `/api/testing/status` writes; no work-pipeline read sites) | `in-testing`, `tested`, `returned` | `in_testing`/`in testing`/`testing`/`selected-for-testing`/`selected for testing` → `in-testing`; `returned-with-feedback`/`returned_with_feedback`/`returned with feedback` → `returned` | treat as not-tested (Ready to test) with an invalid flag + data warning |
 | `builder_decided` (clarify's confirm routing — `actions/clarify.md` Step 4/Step 5; reversal detection — `actions/clarify.md` Step 4's `overturned_decision_sources` and `actions/verify-requests.md`'s Decision Revalidation Workflow; doctor's `HOLLOW-COMPLETION` no-code-change exception) | exact `true` only | (no aliases — marker class, exactly like `sweep` and `review_generated`) | absent reads as false |
 | `gate_deferred` (canonical repository-gate deferral marker; selector priority after dependencies are satisfied) | `true`, `false` | truthy strings (`yes`/`on`/`t`) → `true`; `no`/`off`/`f` → `false` | `false` |
@@ -365,7 +368,7 @@ Keep the exact `## In Progress (interrupted)` heading as the claim-evidence boun
 
 ## Repository Gate Deferral and Resumption
 
-This is the full action-owned algorithm behind `actions/work.md`'s baseline and Step 6.5 attribution lanes. The canonical gate is mandatory; deferral changes who owns an unrelated failure and what the selector runs next, never the pass requirement for completion.
+This is the full action-owned judgment behind `actions/work.md`'s pre-build and final-gate attribution lanes. The canonical gate is mandatory; deferral changes who owns an unrelated failure and what the selector runs next, never the pass requirement for completion.
 
 ### One retry before classification
 
@@ -377,7 +380,7 @@ One transient broken pipe inside a single probe used to cost a deferral, a minte
 
 At run start hold two session-local sets: **suppressed parents** and **repair closure**. They are scheduling evidence, not REQ fields. A parent enters suppression only from a successful typed `gate_deferral` result and stays there until its repair dependency reaches terminal success. Suppression wins over explicit-REQ provenance, preventing a targeted parent from bypassing the dependency it just gained. Every returned repair id enters the closure even when its `user_request` is outside a targeted UR; this is the only cross-UR widening allowed. Recompute the canonical selector after every deferral and every repair terminal result—never reuse a prior selected record.
 
-After Step 5.75 and before dispatch or source edits, resolve the project-owned canonical gate once as structured argv. Invoke `<skill-root>/tools/do-work-cli.sh --repo-root <project-root> --format json check-green-gate -- <gate argv...>` from the project root and consume only `gate_evidence`. Typed success with `matches: true` proves the exact argv green at the returned `baseline_revision`; save that revision and do not rerun the baseline. Typed success with `matches: false` requires the ordinary direct run. A failed check is unverifiable and stops safely. After any direct zero exit, invoke `<skill-root>/tools/do-work-cli.sh --repo-root <project-root> --format json record-green-gate --gate-exit-status 0 -- <gate argv...>` and require typed success. The Git-private record binds exact argv and repository identity to the post-run `HEAD`; a recorded revision must be in current `HEAD` ancestry, and only intervening commits whose every changed path is under `_dev/gate-runs/` preserve a match. A different argv, repository, non-ancestor revision, or any other changed path never matches. For a direct run, save the current revision, direct status, bounded diagnostic evidence, and a stable semantic fingerprint; when that run was retried under **One retry before classification** above, all four come from the second run. Fingerprinting must discard volatile timestamps, scratch roots, and ordering noise but retain the failing command/test identity and normalized diagnostic; use the same procedure everywhere below. A gate launch or record failure stops safely.
+Before dispatch or source edits, resolve the project-owned canonical gate once as structured argv and invoke `advance` for the exact working request, passing one `--gate-arg` per token. Consume only the matching request-bound `gate_records`. A satisfied green-gate record proves the exact argv green at its returned baseline revision; save that revision and do not rerun the baseline. A `needs_input` record requires the action to run `next_argv` directly and unpiped, then invoke the same advance phase with the exact exit status so advance records the result. A failed or mismatched record is unverifiable and stops safely. The Git-private record binds exact argv and repository identity to the post-run `HEAD`; a recorded revision must be in current `HEAD` ancestry, and only intervening commits whose every changed path is under `_dev/gate-runs/` preserve a match. A different argv, repository, non-ancestor revision, or any other changed path never matches. For a direct run, save the current revision, direct status, bounded diagnostic evidence, and a stable semantic fingerprint; when that run was retried under **One retry before classification** above, all four come from the second run. Fingerprinting must discard volatile timestamps, scratch roots, and ordering noise but retain the failing command/test identity and normalized diagnostic; use the same procedure everywhere below. A gate launch or record failure stops safely.
 
 The branch table is exhaustive:
 
@@ -401,7 +404,7 @@ On success consume `gate_deferral` fields only: `parent_id`, `parent_path`, `rep
 
 ### Late attribution
 
-The final gate uses the identical argv and fingerprint procedure and never consults the baseline record, and a non-zero direct exit gets its one rerun under **One retry before classification** above before any branch here applies — every branch below reads the second run's status, output, and fingerprint. After a direct exit zero, invoke `<skill-root>/tools/do-work-cli.sh --repo-root <project-root> --format json record-green-gate --gate-exit-status 0 -- <gate argv...>`, require typed success, and continue; because recording happens after the gate returns, the recorded revision includes any gate-created `_dev/gate-runs/` log commit. In worktree dispatch mode, a red current tree is attributed by creating an isolated detached diagnostic worktree at the saved `<pre>` and running the gate there directly. Always remove that diagnostic worktree without force after capturing its status and evidence.
+The final gate uses the identical argv and fingerprint procedure and never substitutes the baseline record for a direct run. Run the gate directly and unpiped; a non-zero exit gets its one rerun under **One retry before classification** above before any branch here applies, so every branch below reads the second run's status, output, and fingerprint. Return the exact argv and exit status through the current advance phase; require its request-bound green-gate record before continuing. Because recording happens after the gate returns, the recorded revision includes any gate-created `_dev/gate-runs/` log commit. In worktree dispatch mode, a red current tree is attributed by creating an isolated detached diagnostic worktree at the saved `<pre>` and running the gate there directly. Always remove that diagnostic worktree without force after capturing its status and evidence.
 
 - Active `repository_gate_repair: true`: any same-fingerprint red, different-fingerprint red, missing/malformed fingerprint evidence, or launch-failed final gate is a terminal repair failure. Prepare a strict `transition: "fail"` finalization manifest, never invoke `defer-gate`; every parent remains pending behind the failed dependency. Recompute the selector and continue unrelated runnable REQs.
 - Base exit 0: current implementation caused the failure; use the bounded remediation loop.
@@ -424,7 +427,7 @@ This branch exists only when a claimed `repository_gate_repair: true` REQ's pre-
 - **Expected diagnostic fingerprint:** <fingerprint recorded by repair intake>
 - **Gate command:** ["argv0","argv1"]
 - **Direct exit status:** 0
-- **Recorded green revision:** <`recorded_revision` returned by `record-green-gate`>
+- **Recorded green revision:** <`recorded_revision` returned by the advance green-gate record>
 - **Observed result:** green before implementation; repair already satisfied
 - **Verified at:** <now> (current UTC instant — Timestamp rule)
 ```
@@ -439,7 +442,7 @@ Write the mandatory summary exactly as:
 **What was done:** Re-ran the repair's recorded canonical repository gate before source edits and confirmed it is already green; no implementation changes were necessary.
 ```
 
-**The pre-build run is this branch's only gate lane**, and under the one-retry rule above a red first exit makes it at most two runs of the same argv. After its direct zero exit, invoke `<skill-root>/tools/do-work-cli.sh --repo-root <project-root> --format json record-green-gate --gate-exit-status 0 -- <gate argv...>`, require typed success, and write the returned `recorded_revision` into the evidence block above. Step 6.5 captures `<now>` under the Timestamp rule and independent review reuses it; both invoke `<skill-root>/tools/do-work-cli.sh --repo-root <project-root> --format json validate-already-green-repair --request-path <exact working REQ path> --writer <exact finalization writer> --at <now>` and consume only their respective `already_green_repair.tdd_allowed` and `already_green_repair.review_allowed` fields. That shared command extracts the intake/no-op fingerprints and argv, verifies the record at its own past revision without relaunching the gate, observes project and release state, and derives the exact staged-path allowlist from a successful canonical completion dry run. Callers never supply those evidence values or recreate the predicate. A no-op repair changes no project path, so a later `HEAD` move by an unrelated commit can never make it the cause of a red gate and never invalidates its recorded evidence at its own recorded revision; ordinary REQs keep the `HEAD`-bound rule in **Session state and baseline** above. Done means that one gate lane plus bookkeeping — under ten minutes of wall clock on the maintainer's machine, or roughly twice that when the retry fires — reported in the REQ's `## Testing` section, which carries both exit statuses when it did.
+**The pre-build run is this branch's only gate lane**, and under the one-retry rule above a red first exit makes it at most two runs of the same argv. After its direct zero exit, return the exact status and argv through the current advance phase, require a satisfied request-bound green-gate record, and write its `recorded_revision` into the evidence block above. Qualification and Testing Judgment captures `<now>` under the Timestamp rule and independent review reuses it; both invoke `<skill-root>/tools/do-work-cli.sh --repo-root <project-root> --format json validate-already-green-repair --request-path <exact working REQ path> --writer <exact finalization writer> --at <now>` and consume only their respective `already_green_repair.tdd_allowed` and `already_green_repair.review_allowed` fields. That shared command extracts the intake/no-op fingerprints and argv, verifies the record at its own past revision without relaunching the gate, observes project and release state, and derives the exact staged-path allowlist from a successful canonical completion dry run. Callers never supply those evidence values or recreate the predicate. A no-op repair changes no project path, so a later `HEAD` move by an unrelated commit can never make it the cause of a red gate and never invalidates its recorded evidence at its own recorded revision; ordinary REQs keep the `HEAD`-bound rule in **Session state and baseline** above. Done means that one gate lane plus bookkeeping — under ten minutes of wall clock on the maintainer's machine, or roughly twice that when the retry fires — reported in the REQ's `## Testing` section, which carries both exit statuses when it did.
 
 Qualification is a narrow evidence check, not a vacuous diff pass: require the exact two sections above, verify the recorded green-gate evidence at the recorded green revision at typed success with `matches: true`, and prove no project path changed. Do not run the ordinary diff-requiring qualifier and do not relaunch the gate. Append `## Qualification\n\nPassed — repository-gate repair no-op; durable gate evidence verified and project diff empty.` Independent review must then use the shared validator's typed `review_allowed: true`, which matches the expected fingerprint to intake and proves the project diff remains empty, not repeat those checks; self-review is insufficient.
 
@@ -492,7 +495,7 @@ Run summaries compose, rather than overwrite: report each deferred parent with i
 1. **Capture `<pre>`** — run `git rev-parse --short HEAD` and read the printed hash. It is the integration tip before this REQ's **first** merge and the lower bound of the merge range. Capture it **once per REQ**; a remediation re-merge does not re-capture it (below). Never recover it afterwards as `HEAD^1` or live `HEAD` — both move as soon as the orchestrator commits the changelog (Step 9) or merges the next sibling.
 2. **Guard the queue, then merge without committing** — first run `git diff --name-only <pre>...<operative_name> -- do-work/` (three dots: merge-base to branch tip — which is why this runs **before** the merge; once the branch is merged that diff goes empty). Owner bookkeeping sits below `<pre>` (step 0) and the hand-back file is never committed, so any path printed is queue state committed on the builder's branch — the write *State stays home* forbids. Stop and drop/revert those commits on the branch before integrating (on a remediation re-merge whose fix branch was cut from the integrated tip, owner or sibling commits can surface here too — the cumulative range's safe-direction over-inclusion: judge, don't auto-delete). This guard is the only mechanical check that ever sees them: `tools/checks/qualify.sh` and `tools/checks/scope-drift.sh` both exclude `do-work/` by contract, and `queue-kanban verify`'s committed-queue-state probe reads this same three-dot diff — blind after the merge, and Step 8 deletes the branch before Step 9 runs verify. Then `git merge --no-ff --no-commit <operative_name>` (this REQ's operative name, *Naming* above — the branch the builder was actually dispatched on, which is the collision variant where there was one), then resolve any conflict. `--no-ff` forces a merge commit even where the branch could fast-forward (Merge, never rebase, above); `--no-commit` is what leaves the integration seam somewhere to go. If git answers `Already up to date.` the builder committed nothing: no `MERGE_HEAD` is set, so a `git commit` here would either fail or fabricate a non-merge commit — stop and treat the hand-back as empty instead.
 3. **Apply the integration seams, then commit** — stage the handed-back seam lines (Sole integrator, above) and `git commit`. Folding the seam into the merge commit is the only placement that puts it inside the merge range: a seam committed *after* the merge is that merge commit's **child**, hence outside `<pre>..<merge_hash>`, and qualify, review, and Step 9's validation would never see it.
-4. **Capture `<merge_hash>`** — `git rev-parse --short HEAD` on the commit just made. It is the upper bound of the merge range and the hash Step 9 writes into the REQ's `commit:` field.
+4. **Capture `<merge_hash>`** — `git rev-parse --short HEAD` on the commit just made. It is the upper bound of the merge range and the supplied-provenance hash that finalization records in the REQ's `commit:` field.
 
 **Hold both endpoints as re-typed literals, never as shell variables.** The canonical [State across command blocks](../docs/prescribed-shell-primitives.md#state-across-command-blocks) rule applies because the consumers sit in later blocks with model round-trips in between — a `"$pre..$merge_hash"` composed in a fresh shell expands to `".."`, which git rejects. Hold both hashes known from this session's own context and re-typed into each fresh command, never a shell variable. `tools/checks/qualify.sh` hard-FAILs on a range it cannot resolve rather than reading an empty diff, so a lost endpoint surfaces as a qualification failure naming the range instead of a vacuous pass.
 
@@ -665,7 +668,7 @@ The exit report is **composed**, not picked from disjoint branches. Whenever the
    Skipped by `--skip-impact-negligible`, not blocked — nothing was written to these REQs. Re-run without the flag to include them, or name one explicitly (`do-work run REQ-NNN --skip-impact-negligible`), which overrides the skip for that REQ. A REQ with no `impact:` reads as `impact-user-visible` and never appears here.
    ```
 
-8. **Held-for-heavy-testing section** — applies if any REQ still carries status `pending-heavy-testing` after the heavy-lane drain ran (`actions/work.md` Step 6.5). A REQ whose selected lanes all executed is answered by the drain and never reaches this section; one that appears here got no result, and the typed finding names why. Render:
+8. **Held-for-heavy-testing section** — applies if any REQ still carries status `pending-heavy-testing` after the heavy-lane drain ran (`actions/work.md` → Qualification and Testing Judgment). A REQ whose selected lanes all executed is answered by the drain and never reaches this section; one that appears here got no result, and the typed finding names why. Render:
 
    ```
    ⚠ N REQs held for heavy testing:
@@ -761,7 +764,7 @@ The canonical `complete` command either appends the planned row once or reports 
 
 **"Files I will touch" is the source of the `write_set` frontmatter field.** After writing this section, the orchestrator mirrors the list into `write_set:` — one direction only, so the prose and the field cannot drift. Never edit `write_set` and expect the Scope list to follow. The mirror feeds the board's overlaps badge only (`write_set` is display, not scheduling, at any builder count — **Worktree Dispatch Mode (Step 1)** → Fan-Out Dispatch, below).
 
-## Pre-Flight Template (Step 5.75)
+## Pre-Build Evidence Record Template
 
 ```markdown
 ## Pre-Flight
@@ -797,7 +800,7 @@ The canonical `complete` command either appends the planned row once or reports 
 | "The existing code was already like this" | Flag it in Discovered Tasks | Pre-existing problems are still problems |
 | "It's just a small deviation from the plan" | Log it as a Decision (D-XX) | Unlogged deviations break traceability |
 
-## Testing Section Template (Step 6.5)
+## Testing Section Template
 
 ```markdown
 ## Testing
@@ -989,97 +992,21 @@ If no upstream REQ is `failed`, fall through to the symptom-based classification
 
 ## Changelog Entry Procedure (Step 9)
 
-This procedure owns judgment and payload authoring only. After choosing the source, version, mirrors, existing format, title, voice, and exact replacements below, pass them to one canonical `release` manifest as directed by `actions/work.md` Step 9. `release` is the sole deterministic version/changelog writer and validates monotonicity, preimages, keys, anchors, mirrors, and exact ownership evidence in one transaction. Missing/refused tooling stops the release tail; manual edits and package-manager/helper fallbacks are forbidden.
+This procedure owns release judgment and human-facing payload content. A successful REQ gets one changelog entry unless it is an already-green repair no-op; failed/cancelled work and that no-op carry no release manifest or `release_at`. Match an existing repository convention, or use the house heading `## X.Y.Z — [Short Descriptive Title] (YYYY-MM-DD)` with a unique title that tells a scanning reader what changed.
 
-The nested release manifest must classify every normalized path in `targets[].path` and `changelogs[].path` exactly once. Put each consumer repository source, including its own lockfile mirror, in `project_owned_targets`; its exact normalized union with `required_mirrors` must equal the mutation paths and the two lists must not overlap. Consumer releases leave `maintainer_release` false and `required_mirrors` empty. Only a do-work suite maintainer release sets `maintainer_release: true` and uses `required_mirrors` for the explicitly selected suite mirrors. Never infer project ownership from Git tracking or from the absence of an installed, dependency, cache, distribution, vendor, or generated directory name. Missing, extra, duplicate, overlapping, unsafe, or consumer-supplied mirror evidence is a refusal, so correct the manifest rather than falling back to another writer.
+Choose the version source from affirmative project ownership: prefer the project's own release file, otherwise its release tags, otherwise the changelog counter (starting at `0.1.0`). If project-owned version files disagree, leave them unchanged and use the changelog counter; if the chosen source trails the newest changelog entry, bump from the higher value. Judge the delivered change as breaking, additive, or patch; breaking outranks additive, uncertainty takes the smaller bump, and below `1.0.0` breaking changes bump the minor version.
 
-Every successful REQ (`completed` / `completed-with-issues`) gets an entry in the target repo's root `CHANGELOG.md`, written **before** the commit so it ships inside it. Failed and cancelled REQs get no entry — the changelog records delivered change, not attempts. A changelog entry is a human-facing artifact: load `crew-members/anti-slop.md` before writing it (its JIT_CONTEXT condition already covers this — noted here so it isn't skipped).
+Include a committed lockfile only when it records this package's own version, and author exact old/new payload bytes that change only that package entry. Classify every release target exactly once as project-owned or a suite-maintainer mirror; do not infer ownership from path spelling or Git tracking, create a missing lockfile, rewrite dependencies, or ask a package manager to produce the payload.
 
-**Already-green repair exception:** a successfully reviewed repository-gate repair no-op delivered no project change, so it skips this entire procedure: no changelog entry, version/lock mirror, release transaction, or `release_at`. Its exact evidence, archive, and commit rules live in **Repository Gate Deferral and Resumption** → **Already-green repair no-op completion**.
-
-**Precedence check first.** If the repo already has a `CHANGELOG.md` whose entries follow a different convention (keep-a-changelog categories, generated conventional-commit logs, plain dated lists), **match the existing format** — never impose the house voice on a repo with its own. Everything below applies when there is no changelog yet or the existing one already follows this format.
-
-**Bootstrap.** If no root `CHANGELOG.md` exists, create one:
-
-```markdown
-# Changelog
-
-What's new, what's better, what's different. Most recent stuff on top.
-
----
-```
-
-**Entry key.** Always `## X.Y.Z — [Short Descriptive Title] (YYYY-MM-DD)` — every entry carries both a version and a date. The title must say what was delivered so a reader scanning only headings knows what changed ("Board View Filters", not a whimsical codename). It must be unique against every existing entry in the file (grep before writing — duplicates have occurred), and the new `X.Y.Z` must be **strictly greater** than the version in the file's first existing entry (duplicate version numbers have occurred).
-
-**Where `X.Y.Z` comes from.** Resolve the version source once per entry, in this order:
-
-1. **A version in a project-owned release file** — `package.json`'s `"version"`, `Cargo.toml`, `pyproject.toml`, a `VERSION` file, or the like (this list is illustrative; any file the project's own release process maintains a version line in qualifies). Exclude every installed skill, dependency, vendored package, cache, distribution output, and generated tree from candidate discovery regardless of whether Git tracks it; the condition is lack of affirmative project ownership, not any directory spelling. In particular, the installed do-work suite's `VERSION` and `actions/version.md` are runtime metadata and must never be selected or bumped for a consumer REQ. Prepare the selected project-owned old/new bytes for the release manifest and declare the exact target in `project_owned_targets`. The repo's version and changelog header stay in lock-step; include any committed lockfile mirror below in the same manifest and project-owned classification.
-2. **Version only in release tags** (no version line in any file) — take the highest release tag as the current version and bump from it, but write the result **only into the changelog header**. do-work never creates a git tag: a tag is a release announcement, and only a human decides when one happens.
-3. **No version anywhere** — the changelog is the source of truth. Take the highest `X.Y.Z` across the file's existing entries and bump from it. If there are no entries yet (bootstrap), seed the first entry at `0.1.0`. Nothing outside `CHANGELOG.md` is touched — an unversioned repo stays unversioned, and the header number is a changelog fact, not a claim that a release was cut.
-
-Two guards on source resolution. If **two or more version files disagree** with each other, do not guess which one the release process uses: leave every file untouched, fall back to the changelog counter (source 3), and say so in the Step 9 report. If the resolved source is **behind** the newest changelog entry (someone released or edited out of band), bump from whichever is higher — never emit a version below one already in the file.
-
-**Lockfile mirror (source 1 only).** Some lockfiles record the version of the package you just bumped, not only its dependencies' — so bumping the version file alone leaves a stale copy behind, and the next ordinary build or install rewrites it: the tree reads dirty for a change nobody made, and the fix accretes as ad-hoc "sync the lockfile version" commits. Under npm it is only cosmetic (`npm ci` tolerates a version-only mismatch and leaves it stale, which is exactly why the drift survives unnoticed for many versions), but `cargo check --locked` exits 101 on it and `uv lock --check` exits 1, so elsewhere it hard-fails CI.
-
-The trigger is the condition, not the ecosystem — *the repo commits a lockfile that records this package's own version*. Known instances, not the boundary:
-
-| Lockfile | Where this package's own version is mirrored |
-| -------- | -------------------------------------------- |
-| `package-lock.json` | the top-level `"version"`, **plus** `packages[""].version` when the file has a `packages` map (`lockfileVersion` 2 or 3; a `lockfileVersion` 1 file has one site, not two). Bumping a **workspace member** is different: its version lives at `packages["<member-path>"].version` in the root lockfile, and the two root-package sites hold the *root's* version and correctly stay put — so read them as "nothing to sync" and you leave the real mirror stale |
-| `Cargo.lock` | the `[[package]]` entry whose `name` is this crate — present even in a crate with no dependencies |
-| `uv.lock` | the `[[package]]` entry whose `name` is this project (`source = { editable = "." }` or `virtual`) |
-
-Dependency-only lockfiles never trip this: `pnpm-lock.yaml`, `yarn.lock`, `poetry.lock`, and `go.sum` record no version for the root package (yarn Berry writes the sentinel `0.0.0-use.local` on purpose), so a repo with only those has nothing to sync. The split follows the **lock tool, not the manifest** — `pyproject.toml` mirrors under uv and not under poetry — so open the lockfile and look rather than inferring from the manifest's name.
-
-**Prepare the exact mirrored old/new bytes and include them in the release manifest.** It is one or two lines of judged payload content, needs no toolchain and no network, and the command publishes it with the other release targets. Do **not** shell out to the package manager. `npm install --package-lock-only` executes target hooks and may restructure or re-resolve; `cargo generate-lockfile` can drag unrelated dependencies and checksums forward.
-
-Three constraints govern the caller-authored mirror payload. Change **only this package's own entry** — a dependency may legitimately carry the same version string, so a whole-file search-and-replace corrupts resolutions. Include only sites that already exist, and never declare a new lockfile: in a workspace or monorepo the one committed lockfile sits at the root, not beside the member manifest, and the entry inside it is the member's own path per the table above. The payload is a version-line fix, not a dependency resync; unrelated lockfile drift is its own REQ. If the mirrored value is already correct, omit that target.
-
-**Then read the lockfile's diff before you stage it** — it must contain only the mirrored version line(s), and nothing else may ride along in this REQ's commit.
-
-**Bump size.** Read the change the REQ actually delivered, not its wording:
-
-| Bump      | When                                                                                                                                       |
-| --------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
-| **major** | An existing consumer breaks: a public API or CLI flag removed or renamed, an on-disk or wire format changed, a documented default reversed. |
-| **minor** | A user-invocable capability exists that didn't before, and nothing existing breaks.                                                          |
-| **patch** | Everything else — bug fixes, performance, refactors, tests, docs, internal-only changes.                                                    |
-
-Tie-breakers, in order: a breaking change outranks an additive one in the same REQ (bump major, not minor); when genuinely torn between two levels, pick the **smaller** one. **Below `1.0.0`, a breaking change bumps the minor, not the major** — `0.x` is unstable by semver's own definition, so the first breaking change in a seeded repo must not silently promote it to a `1.0.0` release. A `completed-with-issues` REQ is bumped on what it delivered, exactly like `completed`.
-
-The `CHANGELOG.md` change — and the version file plus any lockfile mirroring it, when source 1 applied — are part of the REQ's lifecycle files. Stage them in the commit below.
-
-**Voice contract (house style).** 1–2 casual sentences leading with *why it matters* — the situation that prompted the change and what's better now — then bullets for the specifics. Lead with value, not implementation; file paths and flags belong in the bullets, not the lead. Keep it brief. Newest on top, one entry per REQ (this matches one-commit-per-request).
-
-```markdown
-## 0.4.0 — Clear Questions for Interactive Prompts (2026-07-07)
-
-Agents kept asking questions only they could parse — codenames coined
-mid-analysis, options with no stated consequence. Question wording is
-now a contract, not a hope.
-
-- New `crew-members/clear-questions.md`, loaded before any interactive ask
-- Six principles: one decision per question, decode your own shorthand, say the consequence…
-```
-
+The house voice is one or two brief sentences leading with why the delivery matters, followed by specific bullets. Load `crew-members/anti-slop.md` for this human-facing text. The action passes its judged title, prose, ownership, bump, mirrors, and exact payload bytes through the single finalization manifest; deterministic validation and publication stay with the finalizer.
 ## Commit & Metadata-Commit Procedure (Step 9)
 
-The action writes one strict JSON finalization manifest after semantic review and release judgment. It contains the exact working REQ path and digest, checkpoint digest, terminal transition and timestamp, writer identity, exact implementation/lifecycle/release commit allowlist, commit message, and optional release manifest plus `release_at`. Include `do-work/calibration-log.tsv` only when the canonical lifecycle plan reports it as an exact target.
-
-- A finalization with no implementation commit to record sets `provenance_mode: "primary_commit"` and omits `implementation_hash` — the already-green repair no-op and a terminal `fail` archive are today's cases, illustrative rather than closed.
-- Every isolated implementation that reached a hand-back merge sets `provenance_mode: "supplied_commit"` and supplies the durable 7–40 lowercase hex merge hash. The hash must resolve and be an ancestor of current `HEAD`; include `do-work/calibration-log.tsv` only when the canonical lifecycle plan reports it as an exact target.
-- An already-green repair omits release data and lists only its exact lifecycle paths.
-
-Invoke the single finalization owner:
-
-```bash
-<skill-root>/tools/do-work-cli.sh --repo-root <project-root> --format json finalize --manifest <finalization-manifest-path>
-```
-
-`finalize` journals before lifecycle mutation, composes canonical lifecycle and optional release plans, commits only the manifest allowlist, records provenance in a separate metadata commit when primary mode created the implementation commit, verifies the exact final state, and removes its Git-private journal. The action never runs direct `complete`, `release`, `git add`, `git commit`, or record-commit-hash commands for this tail.
+The action judges and authors one strict finalization manifest: exact working REQ/path and request/checkpoint digests, terminal transition and timestamp, writer, exact implementation/lifecycle/release allowlist, commit message, optional release payload, and provenance mode. Use `supplied_commit` with the retained merge hash when an isolated implementation already landed; use `primary_commit` without an implementation hash when finalization creates the primary commit from the declared paths, including an already-green no-release repair or terminal failure.
 
 Consume ordered `finalizations` **one record at a time**; singular `finalization` is compatibility-only when exactly one record exists. Continue on typed success, then read each record on its own: a record is settled when its terminal phase is `cleanup_complete` and its `blocked_paths` and `reason_codes` are empty, and a record whose `reason_codes` carry `FINALIZATION-SET-ASIDE` is one REQ recovery could not finish. **A set-aside excludes that REQ from this run's selection and nothing else** — its own reason codes say what refused, the remaining records still count as settled, and the run keeps draining the queue (**Composed Exit Summary (Step 1)** → *Set-aside-by-recovery section* renders it). A typed refusal is the whole-run stop and is what dirt no REQ owns looks like: a dirty Git index or shared lifecycle, release, or protected paths outside the recovery group refuse without naming a REQ, because no REQ owns that cause; its finding names no REQ, and the verb that resolves it comes from **Stuck Runs Hand Off to Judgment (any step)**, above. Each record supplies exact request/archive/journal identity, discovered/resumed flags, commit paths, created-this-invocation and settled primary/metadata hashes, and non-null collection/next/verification argv; a set-aside's `next_argv` is empty by contract, because the only verb the command could name there is the one that just refused. Global and per-REQ refusals use the same ordered record contract. On interruption, run public `recover` before any later queue read; it invokes finalization discovery first. There is no hand-edit or helper fallback, and no free-form Git fallback.
 
+
+Pass that one manifest to the current `advance` continuation. Finalization remains the sole archive, release, commit, provenance, verification, rollback, and journal authority. Consume ordered `finalizations` rather than the singular compatibility projection, and read each record on its own per the per-record contract above; a settled record's archive path, commit paths, settled/created hashes, and recovery argv are the complete tail evidence.
 ## Session Checkpoint Principle (Step 10)
 
 Invoke `advance --checkpoint` when the selector finds no more claimable work. It owns the session-end checkpoint mutation, derives queue state from one snapshot, and preserves every live foreign or unlabelled `## In Progress (interrupted)` record byte-for-byte. The action supplies no parallel checkpoint algorithm.

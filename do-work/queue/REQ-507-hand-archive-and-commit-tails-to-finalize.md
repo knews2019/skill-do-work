@@ -1,7 +1,8 @@
 ---
 id: REQ-507
 title: '[impact-rule-change] Hand the archive and commit tails to finalize'
-status: pending
+status: pending-heavy-testing
+status_changed_at: 2026-09-04T19:11:30Z
 priority: now
 created_at: 2026-09-02T14:37:54Z
 user_request: UR-098
@@ -14,7 +15,27 @@ batch: orchestrator-simplification
 maintenance: true
 impact: impact-rule-change
 effort_estimate: effort-substantive
-write_set: [skills/do-work/actions/work.md, skills/do-work/actions/work-reference.md, _dev/tests/contract-regressions.sh, skills/do-work/tools/do-work-cli/internal/lifecycleadvance/]
+write_set: [skills/do-work/actions/work.md, skills/do-work/actions/work-reference.md, _dev/tests/contracts/core-checks.sh, skills/do-work/tools/do-work-cli/prime-do-work-cli.md, skills/do-work/tools/do-work-cli/internal/lifecycleadvance/advance_commands.go, skills/do-work/tools/do-work-cli/internal/lifecycleadvance/finalization_gate.go, skills/do-work/tools/do-work-cli/internal/lifecycleadvance/finalization_gate_test.go, skills/do-work/tools/do-work-cli/internal/lifecycleadvance/advance_commands_test.go, skills/do-work/tools/do-work-cli/internal/finalization/finalization_commands.go, skills/do-work/tools/do-work-cli/internal/finalization/finalization_prepare.go, skills/do-work/tools/do-work-cli/internal/resultmodel/result_model.go, skills/do-work/tools/do-work-cli/internal/resultmodel/result_model_test.go]
+claimed_at: 2026-09-04T18:21:29Z
+route: C
+planning_at: 2026-09-04T18:26:45Z
+exploration_at: 2026-09-04T18:32:49Z
+dispatch_at: 2026-09-04T18:36:04Z
+builder_handback_at: 2026-09-04T19:04:09Z
+integration_at: 2026-09-04T19:04:37Z
+commit: ad8bceb7aa0d0c63c230048b6a1f2dae1ef7ccb9
+estimate:
+  p50_active_minutes: 50
+  confidence: low
+  calculated_at: 2026-09-04T18:22:01Z
+  basis:
+    - Route C
+    - 8-file write set
+    - 3 subsystems involved
+    - 3 acceptance criteria
+    - dependency depth 3
+    - cross-route regression gates
+    - full-suite verification
 ---
 
 # Hand the Archive and Commit Tails to finalize
@@ -23,9 +44,9 @@ write_set: [skills/do-work/actions/work.md, skills/do-work/actions/work-referenc
 Step 8 (66 lines) and Step 9 (21 lines) reduce to: mint follow-ups by Fold-First (prose), then `advance` runs `finalize`. The Changelog Entry Procedure and the Commit and Metadata-Commit Procedure in `work-reference.md` leave prose except the changelog title and prose judgment.
 
 ## AI Execution State (P-A-U Loop)
-- [ ] **[PLAN]:** (Agent: Read listed `prime_files` and agent rules. Write brief technical approach here. Do not write code yet.)
-- [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
-- [ ] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
+- [x] **[PLAN]:** Keep `finalization` as the transaction authority; make `advance` compose it from one request-bound manifest, consume typed finalization evidence in the work action, remove the displaced archive/commit recipes and predicates, and prove the four terminal paths through the public CLI seam.
+- [x] **[APPLY]:** The isolated builder implemented the frozen 12-file plan with public RED-first coverage and committed it as 7faafb9d3fbf04b26a4599a5141b81f3b476c6fa.
+- [x] **[UNIFY]:** The owner verified the clean builder branch, exact scoped diff, absence of builder-authored lifecycle files, formatting, tests, contracts, and the conflict-free no-ff integration.
 
 ## Why
 REQ-498 made the tail a journaled CLI transaction; the prose still walks the pre-498 sequence.
@@ -60,10 +81,99 @@ Firm on the boundary between mechanics and judgment as classified in the report'
 - `_dev/primes/lessons-action-files.md` — 3436 tokens, over the 2000-token budget; `slugged: partial` so no targeted form. Matched on "changing action routing, pipeline fields, status contracts, downstream readers".
 
 ## Open Questions
-None.
+- [ ] Heavy lanes at `ad8bceb7aa0d0c63c230048b6a1f2dae1ef7ccb9`: the work loop runs them at queue exhaustion and records the result here
 
 ## Full Context
 See `do-work/user-requests/UR-098/input.md` for complete verbatim input.
 
 ---
 *Source: capture of the orchestrator simplification request (UR-098).*
+
+## Triage
+
+**Route: C — Complex.** This rule-changing migration removes two finalization procedures, binds advance to the existing journaled finalizer, and must preserve four distinct completion paths plus release and follow-up judgment boundaries.
+
+**Planning:** Required.
+
+## Plan
+
+1. Add public RED coverage for serial, supplied-worktree, completed-with-issues, already-green/no-release, and refusal paths at `advance`.
+2. Add strict request-bound finalization-manifest handling to `advance`, delegating the transaction to the existing `finalization` handler and preserving its typed result.
+3. Reduce the work action and reference procedures to Fold-First, impact, release-content, terminal-state, lesson, and cleanup judgment; update the CLI prime to the same ownership boundary.
+4. Replace retired prose predicates with structural ownership guards, then run focused, race, module, contract, vet, and repository-gate verification.
+
+## Exploration
+
+`lifecycleadvance` already imports `finalization`, so composing the terminal phase introduces no package cycle. The existing finalizer owns the required transaction and result fields, but safe outer request binding must happen during its single manifest decode; prechecking in `lifecycleadvance` and reopening the file would create a replacement race. Ordered finalization records already normalize in JSON, while the text renderer needs a production update to maintain typed text/JSON parity. The captured shell-test path is stale: active predicates now live in `_dev/tests/contracts/core-checks.sh`. None of the four required terminal paths is covered through public `advance`, and completed-with-issues lacks a full finalization transaction case.
+
+## Scope
+
+**Files I will touch:**
+
+- `skills/do-work/actions/work.md`
+- `skills/do-work/actions/work-reference.md`
+- `_dev/tests/contracts/core-checks.sh`
+- `skills/do-work/tools/do-work-cli/prime-do-work-cli.md`
+- `skills/do-work/tools/do-work-cli/internal/lifecycleadvance/advance_commands.go`
+- `skills/do-work/tools/do-work-cli/internal/lifecycleadvance/finalization_gate.go` (new)
+- `skills/do-work/tools/do-work-cli/internal/lifecycleadvance/finalization_gate_test.go` (new)
+- `skills/do-work/tools/do-work-cli/internal/lifecycleadvance/advance_commands_test.go`
+- `skills/do-work/tools/do-work-cli/internal/finalization/finalization_commands.go`
+- `skills/do-work/tools/do-work-cli/internal/finalization/finalization_prepare.go`
+- `skills/do-work/tools/do-work-cli/internal/resultmodel/result_model.go`
+- `skills/do-work/tools/do-work-cli/internal/resultmodel/result_model_test.go`
+
+**Acceptance:**
+
+- A reviewed and oriented working request advances to a mechanical `finalize` phase, requires exactly one request-bound manifest, and returns the existing finalizer's full typed outcome, findings, changes, rollback, and ordered records.
+- Public CLI tests prove serial, supplied-worktree, completed-with-issues, already-green/no-release, missing-input, hostile-input, and identity-mismatch behavior, with refusals producing no mutation.
+- Step 8/9 and their reference procedures retain Fold-First, consolidation, impact, terminal/failure, release-content, lesson, and cleanup judgment but no longer teach archive, staging, commit, provenance, or verification mechanics.
+- Structural contracts and the CLI prime enforce the new ownership boundary; focused, race, module, contract, vet, and direct repository gates pass.
+
+## Decisions
+
+- **D-01 — Expand the captured scope to the current owners.** Replace the stale contract dispatcher and lifecycle directory entries with the exact 12-file set above, including the finalizer's same-decode binding seam, result text renderer, and CLI prime. Value: fail-closed request identity and truthful public contracts. Risk: broader but auditable implementation surface.
+- **D-02 — Preserve the finalizer as the sole transaction engine.** `advance` composes and projects it; it does not duplicate journal, archive, release, Git, provenance, or rollback logic.
+- **D-03 — Bind before all observable preparation.** The selected request ID and path are compared immediately after the finalizer's single manifest decode, before index inspection, journal lookup, planning, or mutation; only that typed mismatch maps to the dedicated refusal.
+
+## Implementation Summary
+
+- `_dev/tests/contracts/core-checks.sh` (modified) — enforces the concise judgment boundary and forbids restored finalization-tail recipes within the affected sections.
+- `skills/do-work/actions/work-reference.md` (modified) — reduces changelog and commit procedures to release-content, provenance, and typed-result judgment.
+- `skills/do-work/actions/work.md` (modified) — reduces Step 8 to Fold-First and terminal/release judgment and Step 9 to the advance continuation and typed-success condition.
+- `skills/do-work/tools/do-work-cli/internal/finalization/finalization_commands.go` (modified) — exposes bound in-process finalization while preserving the direct command contract.
+- `skills/do-work/tools/do-work-cli/internal/finalization/finalization_prepare.go` (modified) — checks outer request identity from the single decoded manifest before any preparation effect.
+- `skills/do-work/tools/do-work-cli/internal/lifecycleadvance/advance_commands.go` (modified) — classifies oriented work as mechanical finalization and dispatches its input to the composition seam.
+- `skills/do-work/tools/do-work-cli/internal/lifecycleadvance/advance_commands_test.go` (modified) — updates the public phase matrix and exact continuation expectation.
+- `skills/do-work/tools/do-work-cli/internal/lifecycleadvance/finalization_gate.go` (added) — strictly parses one manifest and projects the canonical finalizer result with active advance identity.
+- `skills/do-work/tools/do-work-cli/internal/lifecycleadvance/finalization_gate_test.go` (added) — proves four terminal paths and no-mutation refusal behavior through the public command.
+- `skills/do-work/tools/do-work-cli/internal/resultmodel/result_model.go` (modified) — renders every ordered finalization record in text from the existing typed model.
+- `skills/do-work/tools/do-work-cli/internal/resultmodel/result_model_test.go` (modified) — proves normalized text/JSON field parity and actual multi-record ordering.
+- `skills/do-work/tools/do-work-cli/prime-do-work-cli.md` (modified) — records advance as the request-bound finalization composer without moving judgment into the CLI.
+
+## Discovered Tasks
+
+None.
+
+## Qualification
+
+Typed qualification passed for exact range `8e3dbf01e0660424965d79acb2e386b6604e4780..ad8bceb7aa0d0c63c230048b6a1f2dae1ef7ccb9`: all 12 implementation paths match the declared Scope, every summary entry matches the merged diff, and scope-drift reported no findings.
+
+## Testing
+
+- **Red-green validation:** Public finalization and phase-matrix tests first failed because `advance` still stopped at agent judgment and rejected the manifest input; after implementation, the four-path/refusal matrix passed in 4.005s and the final focused lifecycle/result rerun passed in 11.022s and 0.343s.
+- **Focused merged-state gate:** the advance-owned probe ran lifecycleadvance, finalization, and resultmodel at the merged tree with exit 0, baseline state green, and diagnostic SHA-256 `e8a829932bae3fc53990317ac388f37816b6e8ddc32fa469c245b7cdac251a06`.
+- **Race:** lifecycleadvance, finalization, and resultmodel passed under `go test -race` in 13.737s, 42.619s, and 1.515s.
+- **Contracts:** the aggregate contract regression suite passed in 15.3s; every fast test file remained under 30s.
+- **Repository gate:** `bash _dev/tests/maintainer-verify.sh` exited 0 at `02b5a2a3fe1831b8dc8088d8c80165617f0ec29f`, covering ShellCheck, gofmt, contracts, vet, 375 board tests, and 677 CLI tests; the slowest CLI test file was 19.28s.
+
+## Heavy Verification Plan
+
+- Base revision: `8e3dbf01e0660424965d79acb2e386b6604e4780`
+- Target revision: `ad8bceb7aa0d0c63c230048b6a1f2dae1ef7ccb9`
+- `queue-kanban-javascript`: `bash _dev/tests/maintainer-verify.sh --heavy-lane queue-kanban-javascript` — coverage is uncertain for the changed core contract owner.
+- `queue-kanban-browser`: `bash _dev/tests/maintainer-verify.sh --heavy-lane queue-kanban-browser` — coverage is uncertain for the changed core contract owner.
+- `do-work-cli-integrations`: `bash _dev/tests/maintainer-verify.sh --heavy-lane do-work-cli-integrations` — coverage is uncertain for the changed core contract owner.
+- `staged-skills`: `bash _dev/tests/maintainer-verify.sh --heavy-lane staged-skills` — coverage is uncertain for the changed core contract owner.
+- `updater`: `bash _dev/tests/maintainer-verify.sh --heavy-lane updater` — coverage is uncertain for the changed core contract owner.
+- `installer`: `bash _dev/tests/maintainer-verify.sh --heavy-lane installer` — coverage is uncertain for the changed core contract owner.

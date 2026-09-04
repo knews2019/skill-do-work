@@ -1,8 +1,6 @@
 package lifecycleadvance
 
 import (
-	"crypto/sha256"
-	"encoding/hex"
 	"encoding/json"
 	"os"
 	"path/filepath"
@@ -133,14 +131,4 @@ func seedSetAsideRecoveryFixture(t *testing.T) string {
 		t.Fatalf("the fixture needs an unfinished journal on disk: %v", statError)
 	}
 	return repositoryRoot
-}
-
-func advanceFileDigest(t *testing.T, repositoryRoot, relativePath string) string {
-	t.Helper()
-	contents, err := os.ReadFile(filepath.Join(repositoryRoot, filepath.FromSlash(relativePath)))
-	if err != nil {
-		t.Fatal(err)
-	}
-	digest := sha256.Sum256(contents)
-	return hex.EncodeToString(digest[:])
 }
