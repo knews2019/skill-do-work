@@ -32,6 +32,8 @@ estimate:
     - 5 acceptance criteria
     - async lifecycle behavior
 dispatch_at: 2026-09-04T18:23:51Z
+builder_handback_at: 2026-09-04T18:30:54Z
+integration_at: 2026-09-04T18:30:54Z
 ---
 
 # Retry a Red Repository Gate Once Before Deferring or Minting a Repair REQ
@@ -41,9 +43,9 @@ dispatch_at: 2026-09-04T18:23:51Z
 When the repository gate exits non-zero, at the baseline (Step 5 pre-flight) or after integration (Step 6.5), rerun the exact same argv once, immediately, before any classification. A green rerun is recorded as green and the run continues; the retry is written to the run's progress output as one line. A red rerun enters the existing path unchanged: fingerprint, diagnostic worktree, `defer-gate`, repair REQ. The retry happens in the program that launches the gate where one exists (`preflight.sh` for the baseline), and as one rule in `work-reference.md` cited from Step 6.5 for the direct post-merge run.
 
 ## AI Execution State (P-A-U Loop)
-- [ ] **[PLAN]:** (Agent: Read listed `prime_files` and agent rules. Write brief technical approach here. Do not write code yet.)
-- [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
-- [ ] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
+- [x] **[PLAN]:** Read both primes plus the crew rules; located the real gate launch site (`internal/corehelpers/checks.go` `handlePreflight`, which `preflight.sh` only execs into) and the two prose lanes that treat a first non-zero exit as final.
+- [x] **[APPLY]:** Retry mechanics in `checks.go` with two behavior probes in `checks_test.go`; one condition-keyed prose rule in `work-reference.md` cited from `work.md` Step 5, Step 5.75 and Step 6.5 item 4.
+- [x] **[UNIFY]:** `git diff --stat` reviewed for all four files; `gofmt -l` empty, `go vet` clean, `go build ./...` clean, `action-shell-blocks.sh` and `contract-regressions.sh` pass; `git status --porcelain -uall` showed exactly the four modified files, no debug artifacts.
 
 ## Why
 
@@ -107,3 +109,75 @@ See `do-work/user-requests/UR-106/input.md` for complete verbatim input.
 **Dependencies:** ✓ Go 1.26.1 and ShellCheck 0.11.0 provisioned for this session (container shipped Go 1.24.7 / no ShellCheck)
 
 *Checked by work action*
+
+## Scope
+
+**Files I will touch:**
+- `skills/do-work/tools/do-work-cli/internal/corehelpers/checks.go` (modify) — the baseline retry mechanics, at the site that actually launches the gate command
+- `skills/do-work/tools/do-work-cli/internal/corehelpers/checks_test.go` (modify) — behavior probes pinning the bounded single retry
+- `skills/do-work/actions/work-reference.md` (modify) — the one retry rule, plus the sentences that treated a first non-zero exit as final
+- `skills/do-work/actions/work.md` (modify) — Step 5, Step 5.75 and Step 6.5 item 4 cite the rule
+
+**Files I will NOT touch:** `_dev/tests/maintainer-verify.sh` (the gate itself), `skills/do-work/tools/checks/preflight.sh` (a five-line launcher with no logic to change), `CHANGELOG.md` and `VERSION` (Step 9 finalization).
+
+**Acceptance criteria (restated from REQ):**
+- [x] A red baseline gate is rerun once, immediately, with the exact same argv
+- [x] Only the second result is recorded in `baseline.json`
+- [x] One WARN line names the retry and both exit codes
+- [x] A second failure enters the existing fingerprint / defer-gate path unchanged
+- [x] Exactly one retry, no new status, flag, or REQ type
+
+## Implementation Summary
+
+**Files changed:**
+- `skills/do-work/tools/do-work-cli/internal/corehelpers/checks.go` (modified)
+- `skills/do-work/tools/do-work-cli/internal/corehelpers/checks_test.go` (modified)
+- `skills/do-work/actions/work-reference.md` (modified)
+- `skills/do-work/actions/work.md` (modified)
+
+**What was done:** A new `runBaselineCommand` helper launches the gate argv, and `handlePreflight` calls it a second time on any non-zero exit, recording only the second run in `baseline.json` and `baseline-failures.txt` and emitting a `PREFLIGHT-BASELINE-RETRIED` warning that renders as one WARN line naming both exit statuses. A matching prose rule, keyed on the condition "any direct non-zero exit of the canonical gate argv" rather than on one call site, was added to `work-reference.md` under Repository Gate Deferral and Resumption and is cited from `work.md` Step 5, Step 5.75 and Step 6.5 item 4; the sentences that treated the first non-zero exit as final were rewritten.
+
+## Decisions
+
+**D-01 — DECIDE & STATE. The baseline retry lives in the Go handler, not in `preflight.sh`.** The write set named the launcher, but `preflight.sh` is five lines that exec `do-work-cli.sh preflight`; the command is executed by `handlePreflight` in `internal/corehelpers/checks.go`. Editing the launcher could not have produced the behavior. The site named in the write set behaves as the REQ specifies without being edited.
+
+**D-02 — DECIDE & STATE. The prose rule is keyed on the condition, not on the Step 6.5 site alone.** Keying it only at the post-merge site would have left the pre-build baseline lane unchanged — the lane that actually deferred REQ-531 (adding the batch field) and minted REQ-548 (the already-green repair), which is the incident in this REQ's Why section. One rule in one place, stated as a condition per CLAUDE.md's "State conditions, not lists"; `work.md` cites it from both lanes.
+
+**D-03 — DECIDE & STATE. Retry on any non-zero exit, including 126 and 127.** One condition, no exception list. A command that cannot launch fails instantly, so the second attempt costs nothing measurable, and the not-launched finding still fires off the second run. An exception list would buy no time and would go stale.
+
+**D-04 — DECIDE & STATE. `baseline.json` keeps its three existing fields.** The REQ says record only the second result. A `first_exit_status` field would add schema surface every reader would then have to be taught to ignore; both statuses reach the Testing section through the WARN line, which is what the REQ asks for.
+
+**D-05 — DECIDE & STATE. `runBaselineCommand` is a named package-level function, not an inline closure.** It is called twice with identical arguments, which is what "the same argv, run again" means; a named function makes that sameness structural instead of a copy-paste that can drift.
+
+**D-06 — DECIDE & STATE. One optional line added to the Testing Section Template.** The REQ requires both exit codes in `## Testing` when a retry happened. Without a template slot that requirement lives only in a rule nobody rereads while filling in the template.
+
+## Discovered Tasks
+
+- **impact-low, report only** — `skills/do-work/docs/command-line-guide.md` line 46 describes `defer-gate`'s manifest as binding the "direct non-zero gate result". Still true, since that result is now the second run's, but a reader comparing it against the new rule may want it said explicitly.
+- **impact-low, report only** — `preflightCompatibilityText` renders every other finding as a hard-coded literal but reads `finding.Evidence[0]` for the retry case. That is the only way to carry both exit statuses without a second data channel; worth a consistent evidence-carrying convention if a second finding ever needs the same thing.
+- **impact-low, report only** — this repository uses the same script as both the Step 5 pre-flight test command and the Step 5.75 canonical gate, so a genuinely red suite can now cost up to four full runs in one REQ. Bounded and correct; if wall-clock ever becomes the complaint, reusing the pre-flight result for the baseline lane is the lever.
+
+## Qualification
+
+Passed — 4 files verified in the merge range `904b4d3..0e07aac`, 5 requirements traced, P-A-U confirmed. `qualify.sh` returned `OK: mechanical qualification passed`. Judgment checks: the `checks.go` change is substantive real logic (a named launcher called twice, a bounded retry, a new warning finding, a renderer case), not a stub; every acceptance criterion maps to a named file; nothing is hardcoded or stubbed.
+
+## Testing
+
+**Tests run:** `go test ./internal/corehelpers/ -run Preflight -count=1` and `bash _dev/tests/maintainer-verify.sh`
+**Result:** ✓ Focused probes passing (3 tests). Repository gate passes everything except one pre-existing failure carried from the baseline.
+
+**Repository gate retry:** first run exited 1, rerun exited 1 — the same failure both times, so the retry correctly did not mask it. Recorded here because this REQ is what added that retry.
+
+**Pre-existing baseline failure (not attributable to this REQ):** `_dev/tests/session-start-hook-behavior.sh` finishes in 39-44s against a 30s per-file budget. It failed identically before any change (`do-work/working/baseline-failures.txt`) and no assertion inside it fails. It is a wall-clock budget miss on a slow container, so it was not deferred to a repository-gate repair REQ.
+
+**Red-green validation:**
+- `TestPreflightRerunsRedBaselineOnceAndRecordsOnlyTheRerun`: ✗ before implementation (`baseline command ran 1 times, want exactly 2 (one run plus one retry)`) → ✓ after
+- `TestPreflightKeepsRedBaselineWhenTheSingleRetryAlsoFails`: ✗ before implementation (`baseline command ran 1 times, want exactly 2 — the retry is bounded at one`) → ✓ after
+
+Both RED results were reproduced independently by the orchestrator, by restoring `checks.go` to the pre-merge revision with the new probes in place.
+
+**New tests added:**
+- `TestPreflightRerunsRedBaselineOnceAndRecordsOnlyTheRerun` — a command exiting 3 then 0 is invoked exactly twice; `baseline.json` holds `exit_status: 0`; no failures file is left; one retry line naming both statuses is printed.
+- `TestPreflightKeepsRedBaselineWhenTheSingleRetryAlsoFails` — a command that always exits 3 is still invoked exactly twice, so the retry is bounded at one; `baseline.json` holds `exit_status: 3` and the failures file holds the second run's output.
+
+**Environment note:** this container shipped Go 1.24.7, no ShellCheck, and `just` 1.21.0. The gate requires Go 1.26.1, ShellCheck 0.11.0, and a `just` new enough for `[positional-arguments]`. All three were provisioned before the gate could run at all; none of those gaps was caused by this REQ.
