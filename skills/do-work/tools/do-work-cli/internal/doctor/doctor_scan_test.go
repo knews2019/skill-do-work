@@ -123,6 +123,26 @@ func TestImplementationPathsUseOnlyPathLedFileBulletsAndDeduplicate(t *testing.T
 	}
 }
 
+func TestImplementationPathsIgnoreInlineAndBacktickedHeadingMentionsBeforeRealSection(t *testing.T) {
+	body := "The migration now emits `## Implementation Summary` for every completed request.\n\n" +
+		"An inline ## Implementation Summary mention is also only prose.\n\n" +
+		"## Implementation Summary\n\n" +
+		"**Files changed:**\n" +
+		"- `skills/do-work/tools/do-work-cli/internal/doctor/doctor_scan.go` (modified)\n" +
+		"- `skills/do-work/tools/do-work-cli/internal/doctor/doctor_scan_test.go` (modified)\n\n" +
+		"## Qualification\nPassed\n"
+	want := []string{
+		"skills/do-work/tools/do-work-cli/internal/doctor/doctor_scan.go",
+		"skills/do-work/tools/do-work-cli/internal/doctor/doctor_scan_test.go",
+	}
+	if got := implementationPaths(body); !reflect.DeepEqual(got, want) {
+		t.Fatalf("implementation paths = %v, want %v", got, want)
+	}
+	if !hasImplementationEvidence(body) {
+		t.Fatal("valid path-led summary was reported hollow after an earlier inline heading mention")
+	}
+}
+
 func TestCanonicalPredicatesRetainStuckHollowAndStaleEvidence(t *testing.T) {
 	repositoryRoot := t.TempDir()
 	workingExtra := "title: Resume migration\nroute: b\ncreated_at: 2026-08-20T00:00:00Z\n"

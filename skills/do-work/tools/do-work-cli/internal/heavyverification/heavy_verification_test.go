@@ -177,6 +177,92 @@ func TestPlanUsesManifestBytesFromTargetRevision(t *testing.T) {
 	}
 }
 
+func TestPlanRevalidationUnionsHistoricalRangesAgainstExecutionManifest(t *testing.T) {
+	repositoryRoot := t.TempDir()
+	runHeavyTestGit(t, repositoryRoot, "init", "-q")
+	runHeavyTestGit(t, repositoryRoot, "config", "user.name", "Heavy Test")
+	runHeavyTestGit(t, repositoryRoot, "config", "user.email", "heavy@example.test")
+	writeHeavyTestFile(t, repositoryRoot, "seed.txt", "seed\n")
+	firstBase := commitHeavyTestChanges(t, repositoryRoot, "seed without manifest")
+	writeHeavyTestFile(t, repositoryRoot, "scripts/update.sh", "same bytes\n")
+	firstTarget := commitHeavyTestChanges(t, repositoryRoot, "historical updater")
+	secondBase := firstTarget
+	if err := os.MkdirAll(filepath.Join(repositoryRoot, "web"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	runHeavyTestGit(t, repositoryRoot, "mv", "scripts/update.sh", "web/update.js")
+	secondTarget := commitHeavyTestChanges(t, repositoryRoot, "historical rename")
+	writeHeavyTestFile(t, repositoryRoot, "heavy-lanes.json", heavyTestManifest)
+	executionRevision := commitHeavyTestChanges(t, repositoryRoot, "add current lane manifest")
+
+	plan, err := PlanRevalidation(repositoryRoot, heavyTestManifestPath(repositoryRoot), []resultmodel.HeavySourceRange{
+		{BaseRevision: firstBase, TargetRevision: firstTarget},
+		{BaseRevision: secondBase, TargetRevision: secondTarget},
+	}, executionRevision, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if plan.Mode != "historical-revalidation" || plan.ManifestRevision != executionRevision || plan.ExecutionRevision != executionRevision {
+		t.Fatalf("revalidation identity = %#v", plan)
+	}
+	if !reflect.DeepEqual(plan.ChangedPaths, []string{"scripts/update.sh", "web/update.js"}) {
+		t.Fatalf("unioned paths = %v", plan.ChangedPaths)
+	}
+	if got := selectedHeavyLaneIDs(plan); !reflect.DeepEqual(got, []string{"browser-behavior", "update-script"}) {
+		t.Fatalf("selected lanes = %v", got)
+	}
+	if !reflect.DeepEqual(plan.SourceRanges, []resultmodel.HeavySourceRange{
+		{BaseRevision: firstBase, TargetRevision: firstTarget},
+		{BaseRevision: secondBase, TargetRevision: secondTarget},
+	}) {
+		t.Fatalf("source ranges = %#v", plan.SourceRanges)
+	}
+}
+
+func TestPlanRevalidationRejectsMissingExecutionManifestAndNonAncestorTarget(t *testing.T) {
+	repositoryRoot, baseRevision := newHeavyTestRepository(t, heavyTestManifest)
+	writeHeavyTestFile(t, repositoryRoot, "web/app.js", "branch change\n")
+	branchTarget := commitHeavyTestChanges(t, repositoryRoot, "side branch target")
+	runHeavyTestGit(t, repositoryRoot, "checkout", "-q", "-b", "execution", baseRevision)
+	writeHeavyTestFile(t, repositoryRoot, "docs/guide.md", "execution branch\n")
+	executionRevision := commitHeavyTestChanges(t, repositoryRoot, "execution branch")
+
+	_, err := PlanRevalidation(repositoryRoot, heavyTestManifestPath(repositoryRoot), []resultmodel.HeavySourceRange{{BaseRevision: baseRevision, TargetRevision: branchTarget}}, executionRevision, false)
+	if err == nil || !strings.Contains(err.Error(), "ancestor") {
+		t.Fatalf("non-ancestor target error = %v", err)
+	}
+
+	if err := os.Remove(heavyTestManifestPath(repositoryRoot)); err != nil {
+		t.Fatal(err)
+	}
+	missingManifestRevision := commitHeavyTestChanges(t, repositoryRoot, "remove manifest")
+	_, err = PlanRevalidation(repositoryRoot, heavyTestManifestPath(repositoryRoot), []resultmodel.HeavySourceRange{{BaseRevision: baseRevision, TargetRevision: executionRevision}}, missingManifestRevision, false)
+	if err == nil || !strings.Contains(err.Error(), "manifest") {
+		t.Fatalf("missing execution manifest error = %v", err)
+	}
+}
+
+func TestPlanRevalidationUnknownPathSelectsAllAndStrictPlanRemainsExact(t *testing.T) {
+	repositoryRoot, baseRevision := newHeavyTestRepository(t, heavyTestManifest)
+	writeHeavyTestFile(t, repositoryRoot, "mystery.bin", "unknown\n")
+	targetRevision := commitHeavyTestChanges(t, repositoryRoot, "unknown historical path")
+
+	revalidation, err := PlanRevalidation(repositoryRoot, heavyTestManifestPath(repositoryRoot), []resultmodel.HeavySourceRange{{BaseRevision: baseRevision, TargetRevision: targetRevision}}, targetRevision, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !revalidation.Uncertain || !reflect.DeepEqual(selectedHeavyLaneIDs(revalidation), []string{"browser-behavior", "update-script"}) {
+		t.Fatalf("revalidation fail-closed plan = %#v", revalidation)
+	}
+	strict, err := Plan(repositoryRoot, heavyTestManifestPath(repositoryRoot), baseRevision, targetRevision, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strict.Mode != "" || len(strict.SourceRanges) != 0 || strict.ManifestRevision != "" || strict.ExecutionRevision != "" {
+		t.Fatalf("strict planner contract changed: %#v", strict)
+	}
+}
+
 func TestPlanUsesTargetRevisionManifestModeAndRejectsTargetSymlink(t *testing.T) {
 	repositoryRoot, baseRevision := newHeavyTestRepository(t, heavyTestManifest)
 	manifestPath := heavyTestManifestPath(repositoryRoot)

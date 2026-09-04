@@ -409,7 +409,7 @@ func TestUsageFindingsNameARunnableCommand(t *testing.T) {
 			name:                "a global option missing its value",
 			arguments:           []string{"--repo-root"},
 			expectedCode:        "MISSING-OPTION-VALUE",
-			expectedNextCommand: "install-suite",
+			expectedNextCommand: "help",
 		},
 		{
 			name:                "an invalid format before a known command",
@@ -421,13 +421,13 @@ func TestUsageFindingsNameARunnableCommand(t *testing.T) {
 			name:                "no command at all",
 			arguments:           []string{"--format", "text"},
 			expectedCode:        "MISSING-COMMAND",
-			expectedNextCommand: "install-suite",
+			expectedNextCommand: "help",
 		},
 		{
-			name:                "an unknown command names itself",
+			name:                "an unknown command points to help",
 			arguments:           []string{"not-a-command"},
 			expectedCode:        "UNKNOWN-COMMAND",
-			expectedNextCommand: "not-a-command",
+			expectedNextCommand: "help",
 		},
 	}
 	for _, test := range tests {
@@ -466,6 +466,47 @@ func TestUsageFindingsNameARunnableCommand(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func TestHelpSucceedsAndListsAvailableCommands(t *testing.T) {
+	registered := map[string]CommandHandler{
+		"install-suite": func(ExecutionContext, []string) resultmodel.CommandResult { return resultmodel.CommandResult{} },
+		"next":          func(ExecutionContext, []string) resultmodel.CommandResult { return resultmodel.CommandResult{} },
+	}
+	for _, format := range []string{"text", "json"} {
+		var stdout bytes.Buffer
+		exitCode := NewRuntime(&stdout, registered).Run([]string{"--format", format, "help"})
+		if exitCode != 0 {
+			t.Fatalf("%s help exit = %d\n%s", format, exitCode, stdout.String())
+		}
+		for _, command := range []string{"help", "install-suite", "next"} {
+			if !strings.Contains(stdout.String(), command) {
+				t.Errorf("%s help omitted %q:\n%s", format, command, stdout.String())
+			}
+		}
+	}
+}
+
+func TestStatusStaysUnknownAndNeverNamesItselfAsRemedy(t *testing.T) {
+	var stdout bytes.Buffer
+	exitCode := NewRuntime(&stdout, map[string]CommandHandler{
+		"next": func(ExecutionContext, []string) resultmodel.CommandResult { return resultmodel.CommandResult{} },
+	}).Run([]string{"--format", "json", "status"})
+	if exitCode == 0 {
+		t.Fatalf("status unexpectedly succeeded:\n%s", stdout.String())
+	}
+	var decoded resultmodel.CommandResult
+	if err := json.Unmarshal(stdout.Bytes(), &decoded); err != nil {
+		t.Fatal(err)
+	}
+	if len(decoded.Findings) != 1 || decoded.Findings[0].Code != "UNKNOWN-COMMAND" {
+		t.Fatalf("status finding = %#v", decoded.Findings)
+	}
+	for _, argv := range [][]string{decoded.Findings[0].NextArgv, decoded.Findings[0].VerificationArgv} {
+		if len(argv) == 0 || argv[len(argv)-1] != "help" || strings.Contains(strings.Join(argv, " "), "status") {
+			t.Errorf("status remedy = %v, want help without status", argv)
+		}
 	}
 }
 

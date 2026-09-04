@@ -29,3 +29,28 @@ func TestPlanHeavyVerificationHandlerRejectsIncompleteArguments(t *testing.T) {
 		t.Fatalf("usage result = %#v", result)
 	}
 }
+
+func TestPlanHeavyRevalidationHandlerProjectsMultipleRanges(t *testing.T) {
+	repositoryRoot, baseRevision := newHeavyTestRepository(t, heavyTestManifest)
+	writeHeavyTestFile(t, repositoryRoot, "web/app.js", "changed\n")
+	targetRevision := commitHeavyTestChanges(t, repositoryRoot, "known change")
+	result := handlePlanHeavyRevalidation(commandruntime.ExecutionContext{RepositoryRoot: repositoryRoot}, []string{
+		"--manifest", "heavy-lanes.json",
+		"--source-range", baseRevision + ".." + targetRevision,
+		"--source-range", baseRevision + ".." + targetRevision,
+		"--execution-revision", targetRevision,
+	})
+	if result.Outcome != resultmodel.OutcomeSuccess || result.HeavyVerification == nil {
+		t.Fatalf("handler result = %#v", result)
+	}
+	if len(result.HeavyVerification.SourceRanges) != 2 || result.HeavyVerification.Mode != "historical-revalidation" {
+		t.Fatalf("handler plan = %#v", result.HeavyVerification)
+	}
+}
+
+func TestPlanHeavyRevalidationHandlerRejectsIncompleteArguments(t *testing.T) {
+	result := handlePlanHeavyRevalidation(commandruntime.ExecutionContext{RepositoryRoot: t.TempDir()}, []string{"--execution-revision", "HEAD"})
+	if result.Outcome != resultmodel.OutcomeFailure || len(result.Findings) != 1 || result.Findings[0].Code != "HEAVY-REVALIDATION-USAGE" {
+		t.Fatalf("usage result = %#v", result)
+	}
+}

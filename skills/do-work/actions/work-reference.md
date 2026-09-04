@@ -233,6 +233,13 @@ error_type: intent|spec|code|environment   # Set with `error` on failure; likewi
 status: pending-heavy-testing
 status_changed_at: 2026-09-03T10:45:00Z
 
+# Written only by a green heavy-testing answer. The answer returns the REQ to
+# runnable pending and clears claimed_at; canonical next emits resume_phase:
+# review only while commit -> heavy_verified_revision -> current HEAD ancestry
+# remains valid. Invalid or stale evidence follows ordinary remediation.
+heavy_verified_at: 2026-09-03T12:00:00Z
+heavy_verified_revision: def5678
+
 # Set by abandon action (do-work abandon — user-directed won't-do decision).
 # Two entry paths: a not-yet-finished REQ (pending / pending-answers / blocked / ...), and an
 # already-archived `failed` REQ resolved after the fact — the latter keeps its `error`/`error_type`

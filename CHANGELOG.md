@@ -2,6 +2,14 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.274.0 — Historical Heavy Verification Can Resume Safely (2026-09-04)
+
+Already-landed work from before the heavy-lane manifest can now be verified against one exact descendant revision and then re-enter the normal review and finalization path.
+
+- `plan-heavy-revalidation` unions rename-aware paths from multiple historical ranges, reads the manifest at the execution revision, and fails closed on invalid ancestry or uncovered paths. Strict exact-revision planning is unchanged.
+- Green heavy evidence returns a REQ to runnable `pending` with a typed review resume; red evidence also clears the stale claim but follows ordinary remediation. Neither answer archives work before independent review.
+- Doctor recognizes Implementation Summary only as a whole heading line, and unknown CLI commands now point to a successful `help` command instead of repeating the invalid command.
+
 ## 0.273.1 — Contract Tests Split by Functional Owner (2026-09-04)
 
 The fast contract aggregate is now a 77-line launcher instead of an 8,448-line mix of behavioral tests and sentence pins. The retained incident probes live with their functional owner and the obsolete extracted-Markdown assertions are gone.

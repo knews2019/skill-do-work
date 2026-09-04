@@ -61,13 +61,75 @@ func Plan(repositoryRoot, manifestPath, baseRevision, targetRevision string, for
 		ManifestPath: manifestRelativePath, BaseRevision: baseCommit, TargetRevision: targetCommit,
 		ForcedAll: forceAll, ChangedPaths: changedPaths, UncoveredPaths: []string{}, SelectedLanes: []resultmodel.HeavyLaneSelection{},
 	}
-	if forceAll {
+	return selectHeavyLanes(plan, manifest), nil
+}
+
+// PlanRevalidation maps one or more already-landed historical implementation ranges
+// using the manifest committed at the exact revision where the selected lanes will run.
+func PlanRevalidation(repositoryRoot, manifestPath string, sourceRanges []resultmodel.HeavySourceRange, executionRevision string, forceAll bool) (resultmodel.HeavyVerificationPlan, error) {
+	if len(sourceRanges) == 0 {
+		return resultmodel.HeavyVerificationPlan{}, fmt.Errorf("at least one source range is required")
+	}
+	_, manifestRelativePath, err := resolveManifestPath(repositoryRoot, manifestPath)
+	if err != nil {
+		return resultmodel.HeavyVerificationPlan{}, err
+	}
+	executionCommit, err := resolveRevision(repositoryRoot, executionRevision)
+	if err != nil {
+		return resultmodel.HeavyVerificationPlan{}, fmt.Errorf("resolve execution revision %q: %w", executionRevision, err)
+	}
+	manifest, err := readManifestAtRevision(repositoryRoot, manifestRelativePath, executionCommit)
+	if err != nil {
+		return resultmodel.HeavyVerificationPlan{}, err
+	}
+	resolvedRanges := make([]resultmodel.HeavySourceRange, 0, len(sourceRanges))
+	changedPathSet := map[string]bool{}
+	for rangeIndex, sourceRange := range sourceRanges {
+		baseCommit, resolveError := resolveRevision(repositoryRoot, sourceRange.BaseRevision)
+		if resolveError != nil {
+			return resultmodel.HeavyVerificationPlan{}, fmt.Errorf("resolve source range %d base revision %q: %w", rangeIndex+1, sourceRange.BaseRevision, resolveError)
+		}
+		targetCommit, resolveError := resolveRevision(repositoryRoot, sourceRange.TargetRevision)
+		if resolveError != nil {
+			return resultmodel.HeavyVerificationPlan{}, fmt.Errorf("resolve source range %d target revision %q: %w", rangeIndex+1, sourceRange.TargetRevision, resolveError)
+		}
+		if ancestorError := requireAncestor(repositoryRoot, baseCommit, targetCommit); ancestorError != nil {
+			return resultmodel.HeavyVerificationPlan{}, fmt.Errorf("source range %d base must be an ancestor of its target: %w", rangeIndex+1, ancestorError)
+		}
+		if ancestorError := requireAncestor(repositoryRoot, targetCommit, executionCommit); ancestorError != nil {
+			return resultmodel.HeavyVerificationPlan{}, fmt.Errorf("source range %d target must be an ancestor of execution revision: %w", rangeIndex+1, ancestorError)
+		}
+		changedPaths, diffError := diffChangedPaths(repositoryRoot, baseCommit, targetCommit)
+		if diffError != nil {
+			return resultmodel.HeavyVerificationPlan{}, fmt.Errorf("source range %d: %w", rangeIndex+1, diffError)
+		}
+		for _, changedPath := range changedPaths {
+			changedPathSet[changedPath] = true
+		}
+		resolvedRanges = append(resolvedRanges, resultmodel.HeavySourceRange{BaseRevision: baseCommit, TargetRevision: targetCommit})
+	}
+	changedPaths := make([]string, 0, len(changedPathSet))
+	for changedPath := range changedPathSet {
+		changedPaths = append(changedPaths, changedPath)
+	}
+	sort.Strings(changedPaths)
+	plan := resultmodel.HeavyVerificationPlan{
+		Mode: "historical-revalidation", SourceRanges: resolvedRanges,
+		ManifestRevision: executionCommit, ExecutionRevision: executionCommit,
+		ManifestPath: manifestRelativePath, ForcedAll: forceAll, ChangedPaths: changedPaths,
+		UncoveredPaths: []string{}, SelectedLanes: []resultmodel.HeavyLaneSelection{},
+	}
+	return selectHeavyLanes(plan, manifest), nil
+}
+
+func selectHeavyLanes(plan resultmodel.HeavyVerificationPlan, manifest laneManifest) resultmodel.HeavyVerificationPlan {
+	if plan.ForcedAll {
 		plan.SelectedLanes = selectAllLanes(manifest.Lanes, "explicit force-all selected every declared heavy lane")
-		return plan, nil
+		return plan
 	}
 
 	selectedReasons := make(map[string][]string)
-	for _, changedPath := range changedPaths {
+	for _, changedPath := range plan.ChangedPaths {
 		covered := false
 		for _, lane := range manifest.Lanes {
 			for _, rule := range lane.Coverage {
@@ -90,7 +152,7 @@ func Plan(repositoryRoot, manifestPath, baseRevision, targetRevision string, for
 		plan.Uncertain = true
 		reason := fmt.Sprintf("coverage is uncertain for: %s", strings.Join(plan.UncoveredPaths, ", "))
 		plan.SelectedLanes = selectAllLanes(manifest.Lanes, reason)
-		return plan, nil
+		return plan
 	}
 	for _, lane := range manifest.Lanes {
 		reasons := selectedReasons[lane.ID]
@@ -101,7 +163,19 @@ func Plan(repositoryRoot, manifestPath, baseRevision, targetRevision string, for
 			LaneID: lane.ID, CommandArgv: append([]string(nil), lane.Argv...), Reasons: reasons,
 		})
 	}
-	return plan, nil
+	return plan
+}
+
+func requireAncestor(repositoryRoot, ancestorRevision, descendantRevision string) error {
+	command := exec.Command("git", "-C", repositoryRoot, "merge-base", "--is-ancestor", ancestorRevision, descendantRevision)
+	if output, err := command.CombinedOutput(); err != nil {
+		detail := strings.TrimSpace(string(output))
+		if detail == "" {
+			detail = err.Error()
+		}
+		return fmt.Errorf("%s is not an ancestor of %s: %s", ancestorRevision, descendantRevision, detail)
+	}
+	return nil
 }
 
 func resolveManifestPath(repositoryRoot, manifestPath string) (string, string, error) {

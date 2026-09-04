@@ -11,11 +11,6 @@ import (
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/resultmodel"
 )
 
-// UnregisteredCommandPlaceholder is what a finding names when the runtime has no commands at
-// all. It exists so a runtime built with an empty handler map still renders, and no shipped
-// binary ever reaches it.
-const UnregisteredCommandPlaceholder = "install-suite"
-
 type ExecutionContext struct {
 	RepositoryRoot string
 	Format         resultmodel.OutputFormat
@@ -48,6 +43,18 @@ func (runtime *CommandRuntime) Run(arguments []string) int {
 			Findings:       []resultmodel.CommandFinding{*parseFinding},
 		})
 	}
+	if command == "help" {
+		if len(commandArgs) > 0 {
+			return runtime.writeResult(context.Format, resultmodel.CommandResult{
+				Command: command, Outcome: resultmodel.OutcomeFailure, RepositoryRoot: context.RepositoryRoot,
+				Findings: []resultmodel.CommandFinding{runtime.usageFinding(command, "HELP-ARGUMENTS", "help accepts no command arguments")},
+			})
+		}
+		return runtime.writeResult(context.Format, resultmodel.CommandResult{
+			Command: command, Outcome: resultmodel.OutcomeSuccess, RepositoryRoot: context.RepositoryRoot,
+			AvailableCommands: runtime.availableCommands(),
+		})
+	}
 	handler, exists := runtime.handlers[command]
 	if !exists {
 		return runtime.writeResult(context.Format, resultmodel.CommandResult{
@@ -56,7 +63,7 @@ func (runtime *CommandRuntime) Run(arguments []string) int {
 			RepositoryRoot: context.RepositoryRoot,
 			Findings: []resultmodel.CommandFinding{runtime.usageFinding(
 				command, "UNKNOWN-COMMAND", fmt.Sprintf("command %q is not available: available commands are %s",
-					command, strings.Join(runtime.registeredCommands(), ", ")),
+					command, strings.Join(runtime.availableCommands(), ", ")),
 			)},
 		})
 	}
@@ -144,16 +151,17 @@ func (runtime *CommandRuntime) parseGlobalOptions(arguments []string) (Execution
 	}
 	context.RepositoryRoot = absolutePath(context.RepositoryRoot)
 	finding := runtime.usageFinding(intendedCommand, "MISSING-COMMAND",
-		"a command is required: available commands are "+strings.Join(runtime.registeredCommands(), ", "))
+		"a command is required: available commands are "+strings.Join(runtime.availableCommands(), ", "))
 	return context, "", nil, &finding
 }
 
-// usageFinding names a runnable argv. Requirement 5 asks every finding for the EXACT next
-// command line, so the caller's own command is threaded through; when none is known, the
-// first registered command stands in, because a real name is pasteable and a placeholder is
-// not.
+// usageFinding names a runnable argv. A valid intended command remains the remedy for a bad
+// global option; missing and unknown commands route to the built-in help surface.
 func (runtime *CommandRuntime) usageFinding(commandName, code, evidence string) resultmodel.CommandFinding {
 	nextCommand := runtime.nameableCommand(commandName)
+	if code == "UNKNOWN-COMMAND" || code == "MISSING-COMMAND" {
+		nextCommand = "help"
+	}
 	return resultmodel.CommandFinding{
 		Code:                 code,
 		Severity:             resultmodel.SeverityError,
@@ -166,17 +174,27 @@ func (runtime *CommandRuntime) usageFinding(commandName, code, evidence string) 
 }
 
 // nameableCommand resolves the argv token a finding should suggest. A registered command the
-// user actually named wins; otherwise the first registered command does, so the suggestion
-// is always something that runs.
+// user actually named wins; otherwise the built-in help surface is always runnable.
 func (runtime *CommandRuntime) nameableCommand(commandName string) string {
-	if commandName != "" {
+	if commandName == "help" {
 		return commandName
 	}
-	registered := runtime.registeredCommands()
-	if len(registered) == 0 {
-		return UnregisteredCommandPlaceholder
+	if _, registered := runtime.handlers[commandName]; registered {
+		return commandName
 	}
-	return registered[0]
+	return "help"
+}
+
+func (runtime *CommandRuntime) availableCommands() []string {
+	names := runtime.registeredCommands()
+	for _, name := range names {
+		if name == "help" {
+			return names
+		}
+	}
+	names = append(names, "help")
+	sort.Strings(names)
+	return names
 }
 
 // registeredCommands lists what this runtime can actually run, sorted so the listing does

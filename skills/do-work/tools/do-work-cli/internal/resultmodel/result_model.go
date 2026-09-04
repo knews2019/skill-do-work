@@ -74,15 +74,24 @@ type HeavyLaneSelection struct {
 	Reasons     []string `json:"reasons"`
 }
 
+type HeavySourceRange struct {
+	BaseRevision   string `json:"base_revision"`
+	TargetRevision string `json:"target_revision"`
+}
+
 type HeavyVerificationPlan struct {
-	ManifestPath   string               `json:"manifest_path"`
-	BaseRevision   string               `json:"base_revision"`
-	TargetRevision string               `json:"target_revision"`
-	ForcedAll      bool                 `json:"forced_all"`
-	Uncertain      bool                 `json:"uncertain"`
-	ChangedPaths   []string             `json:"changed_paths"`
-	UncoveredPaths []string             `json:"uncovered_paths"`
-	SelectedLanes  []HeavyLaneSelection `json:"selected_lanes"`
+	Mode              string               `json:"mode,omitempty"`
+	SourceRanges      []HeavySourceRange   `json:"source_ranges,omitempty"`
+	ManifestRevision  string               `json:"manifest_revision,omitempty"`
+	ExecutionRevision string               `json:"execution_revision,omitempty"`
+	ManifestPath      string               `json:"manifest_path"`
+	BaseRevision      string               `json:"base_revision"`
+	TargetRevision    string               `json:"target_revision"`
+	ForcedAll         bool                 `json:"forced_all"`
+	Uncertain         bool                 `json:"uncertain"`
+	ChangedPaths      []string             `json:"changed_paths"`
+	UncoveredPaths    []string             `json:"uncovered_paths"`
+	SelectedLanes     []HeavyLaneSelection `json:"selected_lanes"`
 }
 
 // AuditMetricsResult is the machine projection of the maintainability-audit
@@ -181,6 +190,7 @@ type SelectionRecord struct {
 	Dependencies      []string             `json:"dependencies"`
 	EstimateMinutes   int                  `json:"estimate_minutes"`
 	EstimateKnown     bool                 `json:"estimate_known"`
+	ResumePhase       string               `json:"resume_phase,omitempty"`
 	NextArgv          []string             `json:"next_argv"`
 	NextJustRecipe    string               `json:"next_just_recipe"`
 	VerificationArgv  []string             `json:"verification_argv"`
@@ -351,6 +361,7 @@ type CommandResult struct {
 	Findings           []CommandFinding              `json:"findings"`
 	Changes            []RecordedChange              `json:"changes"`
 	SkippedWork        []SkippedWork                 `json:"skipped_work"`
+	AvailableCommands  []string                      `json:"available_commands,omitempty"`
 	Selected           []SelectionRecord             `json:"selected"`
 	Excluded           []SelectionExclusion          `json:"excluded"`
 	SelectionSummary   SelectionSummary              `json:"selection_summary"`
@@ -412,6 +423,9 @@ func NormalizeResult(result CommandResult) CommandResult {
 		result.Finalizations = []FinalizationResult{}
 	}
 	if result.HeavyVerification != nil {
+		if result.HeavyVerification.SourceRanges == nil && result.HeavyVerification.Mode != "" {
+			result.HeavyVerification.SourceRanges = []HeavySourceRange{}
+		}
 		if result.HeavyVerification.ChangedPaths == nil {
 			result.HeavyVerification.ChangedPaths = []string{}
 		}
@@ -663,6 +677,9 @@ func renderText(result CommandResult) []byte {
 	var output strings.Builder
 	fmt.Fprintf(&output, "%s: %s\n", result.Command, result.Outcome)
 	fmt.Fprintf(&output, "repository: %s\n", result.RepositoryRoot)
+	if len(result.AvailableCommands) > 0 {
+		fmt.Fprintf(&output, "available commands: %s\n", strings.Join(result.AvailableCommands, ", "))
+	}
 	for _, finding := range result.Findings {
 		fmt.Fprintf(&output, "finding %s [%s]: %s\n", finding.Code, finding.Severity, strings.Join(finding.Evidence, "; "))
 		if len(finding.AffectedIDs) > 0 {
@@ -713,7 +730,16 @@ func renderText(result CommandResult) []byte {
 		plan := result.HeavyVerification
 		fmt.Fprintf(&output, "heavy verification: selected=%d uncertain=%t force_all=%t\n", len(plan.SelectedLanes), plan.Uncertain, plan.ForcedAll)
 		fmt.Fprintf(&output, "  manifest: %s\n", plan.ManifestPath)
-		fmt.Fprintf(&output, "  revisions: %s..%s\n", plan.BaseRevision, plan.TargetRevision)
+		if plan.Mode == "" {
+			fmt.Fprintf(&output, "  revisions: %s..%s\n", plan.BaseRevision, plan.TargetRevision)
+		} else {
+			fmt.Fprintf(&output, "  mode: %s\n", plan.Mode)
+			fmt.Fprintf(&output, "  manifest revision: %s\n", plan.ManifestRevision)
+			fmt.Fprintf(&output, "  execution revision: %s\n", plan.ExecutionRevision)
+			for _, sourceRange := range plan.SourceRanges {
+				fmt.Fprintf(&output, "  source range: %s..%s\n", sourceRange.BaseRevision, sourceRange.TargetRevision)
+			}
+		}
 		fmt.Fprintf(&output, "  changed paths: %s\n", strings.Join(plan.ChangedPaths, ", "))
 		if len(plan.UncoveredPaths) > 0 {
 			fmt.Fprintf(&output, "  uncovered paths: %s\n", strings.Join(plan.UncoveredPaths, ", "))
@@ -756,6 +782,9 @@ func renderText(result CommandResult) []byte {
 		}
 		fmt.Fprintf(&output, "selected %s [%s, %s, depth %d, %s]: %s\n", selection.RequestID, selection.Provenance, selection.SelectionPriority, selection.DependencyDepth, estimate, selection.Title)
 		fmt.Fprintf(&output, "  request: %s (original status: %s)\n", selection.RequestPath, selection.OriginalStatus)
+		if selection.ResumePhase != "" {
+			fmt.Fprintf(&output, "  resume phase: %s\n", selection.ResumePhase)
+		}
 		fmt.Fprintf(&output, "  probe %s (attempted: %t, exit: %d)", selection.ProbeStatus, selection.ProbeAttempted, selection.ProbeExitCode)
 		if selection.UnblockRequired {
 			fmt.Fprint(&output, "; unblock required")

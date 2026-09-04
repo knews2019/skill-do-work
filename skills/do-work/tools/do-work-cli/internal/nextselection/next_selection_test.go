@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -689,6 +690,60 @@ func TestPendingHeavyTestingIsCountedAndNeverSelected(t *testing.T) {
 		t.Fatalf("pending-heavy-testing selection = %#v", result)
 	}
 	assertExclusionCode(t, result, "REQ-930", "STATUS-NOT-PENDING")
+}
+
+func TestMatchingHeavyEvidenceResumesAtReviewAndStaleEvidenceDoesNot(t *testing.T) {
+	repositoryRoot := t.TempDir()
+	runNextSelectionGit(t, repositoryRoot, "init", "-q")
+	if err := os.WriteFile(filepath.Join(repositoryRoot, "implementation.txt"), []byte("implementation\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	runNextSelectionGit(t, repositoryRoot, "add", ".")
+	runNextSelectionGit(t, repositoryRoot, "-c", "user.name=Test", "-c", "user.email=test@example.com", "commit", "-qm", "implementation")
+	targetRevision := runNextSelectionGit(t, repositoryRoot, "rev-parse", "HEAD")
+	runNextSelectionGit(t, repositoryRoot, "checkout", "-q", "-b", "stale-execution")
+	if err := os.WriteFile(filepath.Join(repositoryRoot, "execution.txt"), []byte("execution\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	runNextSelectionGit(t, repositoryRoot, "add", ".")
+	runNextSelectionGit(t, repositoryRoot, "-c", "user.name=Test", "-c", "user.email=test@example.com", "commit", "-qm", "execution")
+	staleExecutionRevision := runNextSelectionGit(t, repositoryRoot, "rev-parse", "HEAD")
+	runNextSelectionGit(t, repositoryRoot, "checkout", "-q", "-b", "current-execution", targetRevision)
+	if err := os.WriteFile(filepath.Join(repositoryRoot, "execution.txt"), []byte("current execution\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	runNextSelectionGit(t, repositoryRoot, "add", ".")
+	runNextSelectionGit(t, repositoryRoot, "-c", "user.name=Test", "-c", "user.email=test@example.com", "commit", "-qm", "current execution")
+	executionRevision := runNextSelectionGit(t, repositoryRoot, "rev-parse", "HEAD")
+	writeCommandRequest(t, repositoryRoot, "do-work/queue/REQ-931-heavy-green.md", "REQ-931", "pending", "commit: "+targetRevision+"\nheavy_verified_at: 2026-09-03T20:00:00Z\nheavy_verified_revision: "+executionRevision+"\n")
+	writeCommandRequest(t, repositoryRoot, "do-work/queue/REQ-932-heavy-stale.md", "REQ-932", "pending", "commit: "+targetRevision+"\nheavy_verified_at: 2026-09-03T20:00:00Z\nheavy_verified_revision: "+staleExecutionRevision+"\n")
+
+	snapshot, err := repositorymodel.DiscoverRepository(repositoryRoot)
+	if err != nil {
+		t.Fatal(err)
+	}
+	limit := 2
+	result := Select(snapshot, dependencygraph.BuildGraph(snapshot), SelectionOptions{FanOutLimit: &limit}, nil)
+	if len(result.Selected) != 2 {
+		t.Fatalf("selected = %#v", result.Selected)
+	}
+	resumeByID := map[string]string{}
+	for _, selected := range result.Selected {
+		resumeByID[selected.RequestID] = selected.ResumePhase
+	}
+	if resumeByID["REQ-931"] != "review" || resumeByID["REQ-932"] != "" {
+		t.Fatalf("resume phases = %#v", resumeByID)
+	}
+}
+
+func runNextSelectionGit(t *testing.T, repositoryRoot string, arguments ...string) string {
+	t.Helper()
+	command := exec.Command("git", append([]string{"-C", repositoryRoot}, arguments...)...)
+	output, err := command.CombinedOutput()
+	if err != nil {
+		t.Fatalf("git %s: %v\n%s", strings.Join(arguments, " "), err, output)
+	}
+	return strings.TrimSpace(string(output))
 }
 
 func TestPendingHeavyTestingSourceAllowsDependentSelection(t *testing.T) {

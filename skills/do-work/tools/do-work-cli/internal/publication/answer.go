@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io/fs"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"regexp"
 	"sort"
@@ -254,25 +255,41 @@ func BuildAnswerPlan(repositoryRoot string, manifest Manifest, answerTime time.T
 		if record.RequestStatus != "pending-heavy-testing" {
 			return refusedPlan(plan, "ANSWER-HEAVY-STATUS", "heavy-testing answers require pending-heavy-testing", []string{record.RequestID}, requestPath)
 		}
+		resolvedHeavyEvidence, evidenceCode, evidenceError := validateHeavyTestingEvidence(repositoryRoot, record, answer.HeavyTesting, allSubmittedConfirmed && !remainingOpen)
+		if evidenceError != nil {
+			return refusedPlan(plan, evidenceCode, evidenceError.Error(), []string{record.RequestID}, requestPath)
+		}
 		status := "pending-heavy-testing"
-		if !remainingOpen {
+		green := allSubmittedConfirmed && !remainingOpen
+		if green || !allSubmittedConfirmed {
 			status = "pending"
-			if allSubmittedConfirmed {
-				status = "completed"
-			}
 		}
 		if setError := document.SetScalar("status", status); setError != nil {
 			return refusedPlan(plan, "ANSWER-EDIT-FAILED", setError.Error(), []string{record.RequestID}, requestPath)
 		}
 		resultStatus = status
-		if status == "completed" {
-			if timestampError := document.SetScalar("completed_at", canonicalTimestamp); timestampError != nil {
-				return refusedPlan(plan, "ANSWER-EDIT-FAILED", timestampError.Error(), []string{record.RequestID}, requestPath)
-			}
-		} else if status == "pending" {
+		if status == "pending" {
 			if timestampError := document.SetScalar("status_changed_at", canonicalTimestamp); timestampError != nil {
 				return refusedPlan(plan, "ANSWER-EDIT-FAILED", timestampError.Error(), []string{record.RequestID}, requestPath)
 			}
+			_ = document.DeleteField("claimed_at")
+			if green {
+				if timestampError := document.SetScalar("heavy_verified_at", canonicalTimestamp); timestampError != nil {
+					return refusedPlan(plan, "ANSWER-EDIT-FAILED", timestampError.Error(), []string{record.RequestID}, requestPath)
+				}
+				if revisionError := document.SetScalar("heavy_verified_revision", resolvedHeavyEvidence.ExecutionRevision); revisionError != nil {
+					return refusedPlan(plan, "ANSWER-EDIT-FAILED", revisionError.Error(), []string{record.RequestID}, requestPath)
+				}
+			} else {
+				_ = document.DeleteField("heavy_verified_at")
+				_ = document.DeleteField("heavy_verified_revision")
+			}
+		}
+		if appendError := appendHeavyVerificationResult(document, resolvedHeavyEvidence, lineEnding); appendError != nil {
+			return refusedPlan(plan, "ANSWER-EDIT-FAILED", appendError.Error(), []string{record.RequestID}, requestPath)
+		}
+		if answer.ArchivePath != "" {
+			return refusedPlan(plan, "ANSWER-HEAVY-ARCHIVE-FORBIDDEN", "heavy-testing answers return the request to the runnable queue; canonical finalization archives it after review", []string{record.RequestID}, answer.ArchivePath)
 		}
 	case "stakeholder":
 		status := "blocked"
@@ -588,6 +605,93 @@ func appendAnswerNotes(document *requestmodel.RequestDocument, notes []byte, lin
 	}
 	insertion := append(prefix, notes...)
 	return document.ReplaceBodySpan(sectionEnd, sectionEnd, insertion)
+}
+
+func validateHeavyTestingEvidence(repositoryRoot string, record requestmodel.RequestRecord, evidence *HeavyTestingEvidence, requireGreen bool) (HeavyTestingEvidence, string, error) {
+	if evidence == nil {
+		return HeavyTestingEvidence{}, "ANSWER-HEAVY-EVIDENCE-MISSING", fmt.Errorf("heavy-testing requires target, execution, and per-lane evidence")
+	}
+	if len(evidence.Lanes) == 0 {
+		return HeavyTestingEvidence{}, "ANSWER-HEAVY-EVIDENCE-INVALID", fmt.Errorf("heavy-testing requires at least one lane result")
+	}
+	targetCommit, err := resolveAnswerCommit(repositoryRoot, evidence.TargetRevision)
+	if err != nil {
+		return HeavyTestingEvidence{}, "ANSWER-HEAVY-EVIDENCE-INVALID", fmt.Errorf("resolve heavy target revision: %w", err)
+	}
+	requestCommit, err := resolveAnswerCommit(repositoryRoot, record.ImplementationCommit)
+	if err != nil {
+		return HeavyTestingEvidence{}, "ANSWER-HEAVY-EVIDENCE-INVALID", fmt.Errorf("resolve request implementation commit: %w", err)
+	}
+	if targetCommit != requestCommit {
+		return HeavyTestingEvidence{}, "ANSWER-HEAVY-EVIDENCE-MISMATCH", fmt.Errorf("heavy target %s does not match request commit %s", targetCommit, requestCommit)
+	}
+	executionCommit, err := resolveAnswerCommit(repositoryRoot, evidence.ExecutionRevision)
+	if err != nil {
+		return HeavyTestingEvidence{}, "ANSWER-HEAVY-EVIDENCE-INVALID", fmt.Errorf("resolve heavy execution revision: %w", err)
+	}
+	headCommit, err := resolveAnswerCommit(repositoryRoot, "HEAD")
+	if err != nil {
+		return HeavyTestingEvidence{}, "ANSWER-HEAVY-EVIDENCE-INVALID", fmt.Errorf("resolve repository HEAD: %w", err)
+	}
+	if !answerRevisionIsAncestor(repositoryRoot, targetCommit, executionCommit) {
+		return HeavyTestingEvidence{}, "ANSWER-HEAVY-EVIDENCE-NON-ANCESTOR", fmt.Errorf("request commit %s is not an ancestor of heavy execution revision %s", targetCommit, executionCommit)
+	}
+	if !answerRevisionIsAncestor(repositoryRoot, executionCommit, headCommit) {
+		return HeavyTestingEvidence{}, "ANSWER-HEAVY-EVIDENCE-STALE", fmt.Errorf("heavy execution revision %s is not an ancestor of current HEAD %s", executionCommit, headCommit)
+	}
+	resolved := HeavyTestingEvidence{TargetRevision: targetCommit, ExecutionRevision: executionCommit, Lanes: make([]HeavyLaneResult, 0, len(evidence.Lanes))}
+	seenLanes := map[string]bool{}
+	for _, lane := range evidence.Lanes {
+		if strings.TrimSpace(lane.LaneID) == "" || strings.ContainsAny(lane.LaneID, "`\r\n") || seenLanes[lane.LaneID] {
+			return HeavyTestingEvidence{}, "ANSWER-HEAVY-EVIDENCE-INVALID", fmt.Errorf("heavy lane ids must be unique, non-empty, single-line tokens")
+		}
+		seenLanes[lane.LaneID] = true
+		if len(lane.CommandArgv) == 0 || lane.ExitStatus < 0 || lane.ExitStatus > 255 {
+			return HeavyTestingEvidence{}, "ANSWER-HEAVY-EVIDENCE-INVALID", fmt.Errorf("heavy lane %s requires argv and an exit status from 0 to 255", lane.LaneID)
+		}
+		for _, argument := range lane.CommandArgv {
+			if argument == "" || strings.ContainsAny(argument, "`\r\n") {
+				return HeavyTestingEvidence{}, "ANSWER-HEAVY-EVIDENCE-INVALID", fmt.Errorf("heavy lane %s argv contains an unsafe token", lane.LaneID)
+			}
+		}
+		if requireGreen && (lane.Skipped || lane.ExitStatus != 0) {
+			return HeavyTestingEvidence{}, "ANSWER-HEAVY-EVIDENCE-NOT-GREEN", fmt.Errorf("heavy lane %s is not green", lane.LaneID)
+		}
+		resolved.Lanes = append(resolved.Lanes, HeavyLaneResult{LaneID: lane.LaneID, CommandArgv: append([]string(nil), lane.CommandArgv...), ExitStatus: lane.ExitStatus, Skipped: lane.Skipped})
+	}
+	return resolved, "", nil
+}
+
+func resolveAnswerCommit(repositoryRoot, revision string) (string, error) {
+	if strings.TrimSpace(revision) == "" {
+		return "", fmt.Errorf("revision is empty")
+	}
+	command := exec.Command("git", "-C", repositoryRoot, "rev-parse", "--verify", revision+"^{commit}")
+	output, err := command.CombinedOutput()
+	if err != nil {
+		return "", fmt.Errorf("git rev-parse: %s", strings.TrimSpace(string(output)))
+	}
+	return strings.TrimSpace(string(output)), nil
+}
+
+func answerRevisionIsAncestor(repositoryRoot, ancestorRevision, descendantRevision string) bool {
+	return exec.Command("git", "-C", repositoryRoot, "merge-base", "--is-ancestor", ancestorRevision, descendantRevision).Run() == nil
+}
+
+func appendHeavyVerificationResult(document *requestmodel.RequestDocument, evidence HeavyTestingEvidence, lineEnding string) error {
+	lines := []string{
+		"Target revision: `" + evidence.TargetRevision + "`",
+		"Execution revision: `" + evidence.ExecutionRevision + "`",
+		"",
+	}
+	for _, lane := range evidence.Lanes {
+		outcome := fmt.Sprintf("exit %d", lane.ExitStatus)
+		if lane.Skipped {
+			outcome = "skipped"
+		}
+		lines = append(lines, fmt.Sprintf("- %s: %s — `%s`", lane.LaneID, outcome, strings.Join(lane.CommandArgv, " ")))
+	}
+	return appendSectionEvidence(document, "## Heavy Verification Result", []byte(strings.Join(lines, lineEnding)+lineEnding), lineEnding)
 }
 
 func appendSectionEvidence(document *requestmodel.RequestDocument, heading string, evidence []byte, lineEnding string) error {

@@ -49,6 +49,8 @@ type RequestRecord struct {
 	ClaimedAt                           string
 	CompletedAt                         string
 	ImplementationCommit                string
+	HeavyVerifiedAt                     string
+	HeavyVerifiedRevision               string
 	CavemanValue                        string
 	CavemanEvidence                     schemanormalization.FieldResult
 	DomainValue                         string
@@ -299,6 +301,7 @@ func (document *RequestDocument) TypedRecord() RequestRecord {
 		AssignedTo: strings.TrimSpace(document.scalarValue("assigned_to")),
 		CreatedAt:  document.scalarValue("created_at"), ClaimedAt: document.scalarValue("claimed_at"),
 		CompletedAt: document.scalarValue("completed_at"), ImplementationCommit: strings.TrimSpace(document.scalarValue("commit")),
+		HeavyVerifiedAt: document.scalarValue("heavy_verified_at"), HeavyVerifiedRevision: strings.TrimSpace(document.scalarValue("heavy_verified_revision")),
 		CavemanValue: cavemanEvidence.ResolvedValue, CavemanEvidence: cavemanEvidence,
 		DomainValue: domainEvidence.ResolvedValue, DomainEvidence: domainEvidence,
 		RouteValue: routeEvidence.ResolvedValue, RouteEvidence: routeEvidence,

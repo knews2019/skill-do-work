@@ -414,9 +414,6 @@ func lastMarkdownPhase(body string) string {
 }
 
 func hasImplementationEvidence(body string) bool {
-	if !strings.Contains(body, "## Implementation Summary") {
-		return false
-	}
 	for _, path := range implementationPaths(body) {
 		if !strings.HasPrefix(path, "do-work/") {
 			return true
@@ -506,17 +503,27 @@ func addGitDivergenceFindings(ctx context.Context, result *resultmodel.CommandRe
 }
 
 func implementationPaths(body string) []string {
-	sectionIndex := strings.Index(body, "## Implementation Summary")
-	if sectionIndex < 0 {
+	lines := strings.Split(body, "\n")
+	sectionStart := -1
+	for lineIndex, line := range lines {
+		if strings.TrimRight(line, "\r\t ") == "## Implementation Summary" {
+			sectionStart = lineIndex + 1
+			break
+		}
+	}
+	if sectionStart < 0 {
 		return nil
 	}
-	section := body[sectionIndex+len("## Implementation Summary"):]
-	if nextSection := strings.Index(section, "\n## "); nextSection >= 0 {
-		section = section[:nextSection]
+	sectionEnd := len(lines)
+	for lineIndex := sectionStart; lineIndex < len(lines); lineIndex++ {
+		if strings.HasPrefix(strings.TrimSuffix(lines[lineIndex], "\r"), "## ") {
+			sectionEnd = lineIndex
+			break
+		}
 	}
 	paths := []string{}
 	seenPaths := map[string]bool{}
-	for _, line := range strings.Split(section, "\n") {
+	for _, line := range lines[sectionStart:sectionEnd] {
 		trimmedLine := strings.TrimLeft(line, " \t")
 		if !strings.HasPrefix(trimmedLine, "- `") {
 			continue
