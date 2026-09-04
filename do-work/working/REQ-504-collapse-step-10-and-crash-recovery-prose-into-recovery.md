@@ -45,6 +45,7 @@ claimed_at: 2026-09-04T15:44:47Z
 route: C
 planning_at: 2026-09-04T15:57:17Z
 exploration_at: 2026-09-04T15:57:17Z
+preflight_at: 2026-09-04T16:00:28Z
 estimate:
   p50_active_minutes: 50
   confidence: low
@@ -167,3 +168,15 @@ The current request-state shell lane begins at the internal `recover-claim` prim
 - [ ] Ordinary `advance REQ-NNN` stays read-only; checkpoint mode mutates only `do-work/CHECKPOINT.md` and preserves foreign/unlabelled live entries byte-for-byte.
 - [ ] Step 10, Crash Recovery, Session Checkpoint, finalization ownership, and recovery handoff prose collapse without stealing selection/claim scope from the following request.
 - [ ] Every retired shell behavior has equivalent Go coverage, the exact 26-path scope passes drift checks, and focused/module/repository gates pass.
+
+## Pre-Flight
+
+**Git:** Clean outside `do-work/` after the concurrent release owner committed its previously observed board/action changes.
+
+**Tests baseline:** `go test -count=1` across finalization, request-state, repository-model, result-model, and lifecycle-advance passed before implementation.
+
+**Repository gate:** The exact unpiped `bash _dev/tests/maintainer-verify.sh` passed at revision `275b2fd131b0cf0906e94218a994b620ea843b63`, and typed green-gate evidence was recorded for that revision.
+
+**Dependencies:** Installed; Go 1.26.1, ShellCheck 0.11.0, and all fast repository lanes launched successfully.
+
+*Checked by work action.*
