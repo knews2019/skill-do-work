@@ -175,6 +175,20 @@ The machine must not infer Simple versus Complex, field applicability, dependenc
 
 **Requirement trace:** Minimal examples are covered by the actual-document public test and 67-line measurement; removed mechanical comments map to schema/publication behavior tests; legacy aliases and canonical-key precedence have explicit tests; capture judgments and optional proof/question shapes remain prose.
 
+## Testing
+
+**Fast tier: Pass.** The direct, unpiped maintainer gate passed on merged source at d3f26cfe84bf4a4f45e9e50caf183f2bd8558fc1: 375 board tests and 686 CLI tests, slowest file 19.09s, below the 30s file budget. Canonical advance recorded satisfied scope-drift, focused-test, and green-gate evidence. The uncached focused schema/requestmodel/publication packages passed in 0.134s, 0.261s, and 18.467s respectively; no baseline exclusions were needed.
+
+**Builder verification:** Full CLI module tests and Go vet passed; race checks passed for schema/requestmodel/publication (1.617s, 1.901s, 26.541s). Contract regressions and diff checks passed. The standalone staged-skills script's heavy-only refusal was not counted as a pass; selected heavy lanes run through the typed runner below.
+
+**Red-green validation:** The resumed builder directly observed the new reordered-membership test fail before changing positional comparison to duplicate-free set equality, then pass in focused/race/module/gate runs. The pre-interruption builder reported schema-refusal RED-before-code then GREEN; its original console transcript was unavailable after the model switch, so that evidence remains explicitly attributed. A separate reconstructed base-source overlay made all 23 schema-regression cases fail and current source passes them; reconstruction is regression evidence, not relabeled original TDD. The captured comment-predicate RED premise was stale: no live predicate still pinned those comments. The actual four examples now pass public capture planning and total 67 lines versus 137 before.
+
+**Existing tests updated (cross-REQ impact):** REQ-413 (capture, answer, and release transactions; cf111a50 and remediation 1b8777d2) supplied the original raw-input and F6 structured-override fixtures; REQ-485 (canonical reservation marker filenames; 271aa8ae and 1425b982) supplied reservation/collision fixtures. Only payload metadata was canonicalized. Existing path, linkage, raw-byte containment, reservation, fold, and answer assertions remain and passed; these requests' behavior was not weakened.
+
+**Heavy verification:** Typed runner completed at execution revision 0e5e7e37bdea6af82c38b248c54c017fbb9ac7d4 against the saved target c00227166b288b97c60377cc06e7a5bfa736a0e8. All four selected lanes ran, none skipped: do-work-cli-integrations exit 0 (46s; 700 CLI tests plus 110 script cases), staged-skills exit 1 (22s), updater exit 0 (51s), installer exit 0 (25s). The runner returned HEAVY-RUN-LANE-RED for staged-skills; command-level success is not claimed as lane success.
+
+**Inherited heavy failure:** Staged-skills reports “core runtime must resolve actions/work.md through sibling do-work-board”. Its assertion at lines 960–971 and the work.md subject are byte-identical at the pre-merge base and current HEAD (work.md blob 85f98f893ab09d38be4629dedfbec0836f84b023; test blob 384def9f8f9695654e39bd9dca968eb3500a0b48). The predicate's required do-work-board/ text is absent at the base too; neither surface belongs to this request's changed files. This establishes an inherited failure, not a REQ-508 regression. No heavy-verified marker is asserted. Keep the failure visible and finish with issues rather than expanding the user's current-only scope to an unrelated repair.
+
 ## Heavy Verification Plan
 
 Base revision: 366e1796bc2b0ca4f5b4a344e3c511a4c680dc8c
