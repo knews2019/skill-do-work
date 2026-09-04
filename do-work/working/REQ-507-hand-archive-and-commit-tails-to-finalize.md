@@ -20,6 +20,7 @@ route: C
 planning_at: 2026-09-04T18:26:45Z
 exploration_at: 2026-09-04T18:32:49Z
 dispatch_at: 2026-09-04T18:36:04Z
+builder_handback_at: 2026-09-04T19:04:09Z
 estimate:
   p50_active_minutes: 50
   confidence: low
