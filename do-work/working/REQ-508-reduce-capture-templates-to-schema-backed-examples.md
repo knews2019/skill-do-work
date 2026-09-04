@@ -127,3 +127,12 @@ The machine must not infer Simple versus Complex, field applicability, dependenc
 - [ ] `capture-reference.md` contains exactly one copyable minimal example for Simple REQ, Complex REQ, UR input, and Addendum REQ; the four fenced spans total at most 68 lines and contain no per-field explanatory comments.
 - [ ] Every removed mechanical rule is enforced at the schema/publication boundary with public behavior tests, while legacy aliases remain accepted by ordinary readers.
 - [ ] Capture judgment remains in prose, all existing publication safeguards retain their specific findings, and no replacement sentence predicate is introduced.
+
+## Pre-Flight
+
+**Git:** ✓ Working tree clean outside `do-work/`.
+**Tests baseline:** ✓ `go test -count=1 ./internal/schemanormalization ./internal/requestmodel ./internal/publication` passed from the CLI module (17.7s on the recorded run).
+**Repository gate:** ✓ `bash _dev/tests/maintainer-verify.sh` passed directly; 375 board tests and 677 CLI tests passed, with the slowest files below 30 seconds.
+**Dependencies:** ✓ Existing Go and shell toolchains satisfy the maintainer gate.
+
+*Checked by work action*
