@@ -3,6 +3,7 @@ title: "Presentation and Reporting"
 type: concept
 topic_cluster: presentation-and-reporting
 sources:
+  - raw/processed/2026-09-04/REQ-340-addendum-finish-the-report-image-interru.md
   - raw/processed/2026-09-01/REQ-189-canonicalize-ai-report-and-the-shared-co.md
   - raw/processed/2026-09-01/REQ-190-reduce-present-work-to-portfolio-only-be.md
   - raw/processed/2026-09-01/REQ-191-extract-an-explicit-standalone-present-v.md
@@ -28,7 +29,7 @@ Architectural overview and synthesis for the Presentation and Reporting subsyste
 
 ## Key Principles & Synthesized Lessons
 
-This cluster synthesizes evidence from 11 source documents:
+This cluster synthesizes evidence from 12 source documents:
 
 - [[REQ-189-canonicalize-ai-report-and-the-shared-co]] — Canonicalize ai-report and the shared completed-work evidence contract
 - [[REQ-190-reduce-present-work-to-portfolio-only-be]] — Reduce present-work to portfolio-only behavior
@@ -41,6 +42,7 @@ This cluster synthesizes evidence from 11 source documents:
 - [[REQ-202-complete-unsafe-remotion-preview-mutatio]] — Complete unsafe Remotion preview mutation detection
 - [[REQ-325-stop-the-report-image-interruption-path-]] — Stop the report-image interruption path orphaning its backend
 - [[REQ-384-deliver-the-architecture-report-as-a-fre]] — Deliver the architecture report as a freeform HTML bundle
+- [[REQ-340-addendum-finish-the-report-image-interru]] — Addendum: finish the report-image interruption sweep
 
 ## Cross-References
 

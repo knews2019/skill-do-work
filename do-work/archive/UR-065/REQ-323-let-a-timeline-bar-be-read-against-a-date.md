@@ -34,6 +34,8 @@ write_set:
   - skills/do-work-board/tools/queue-kanban/web/template.html
   - skills/do-work-board/tools/queue-kanban/generate_test.go
   - skills/do-work-board/tools/queue-kanban/timeline_browser_probe_test.go
+kb_status: promoted
+kb_entry: REQ-323-let-a-timeline-bar-be-read-against-a-dat.md
 ---
 
 # Let a Timeline Bar Be Read Against a Date

@@ -3,6 +3,7 @@ title: "Knowledge Base and Memory"
 type: concept
 topic_cluster: knowledge-and-memory
 sources:
+  - raw/processed/2026-09-04/REQ-417-implement-interview-and-deterministic-me.md
   - raw/processed/2026-09-01/REQ-013-forensics-detect-corrections-recurring-a.md
   - raw/processed/2026-09-01/REQ-088-fix-memory-reference-md-s-citation-of-th.md
   - raw/processed/2026-09-01/REQ-141-stage-the-modular-knowledge-skill.md
@@ -24,7 +25,7 @@ Architectural overview and synthesis for the Knowledge Base and Memory subsystem
 
 ## Key Principles & Synthesized Lessons
 
-This cluster synthesizes evidence from 7 source documents:
+This cluster synthesizes evidence from 8 source documents:
 
 - [[REQ-013-forensics-detect-corrections-recurring-a]] — forensics: detect corrections recurring across archived REQ Lessons Learned
 - [[REQ-088-fix-memory-reference-md-s-citation-of-th]] — Confirm: fix memory-reference.md's citation of the export-ignored CLAUDE.md
@@ -33,6 +34,7 @@ This cluster synthesizes evidence from 7 source documents:
 - [[REQ-477-family-keyed-lessons-intelligent-index-a]] — Family-keyed lessons, intelligent index, and mandatory Trap promotion
 - [[REQ-478-capture-stamps-required-lessons-under-a-]] — Capture stamps required lessons under a token budget
 - [[REQ-479-enforce-required-lessons-reads-and-audit]] — Enforce required-lessons reads and audit un-promoted families
+- [[REQ-417-implement-interview-and-deterministic-me]] — Implement interview and deterministic memory store commands
 
 ## Cross-References
 

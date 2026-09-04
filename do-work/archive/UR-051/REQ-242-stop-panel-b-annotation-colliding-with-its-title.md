@@ -30,6 +30,8 @@ claimed_at: 2026-08-18T13:05:12Z
 route: B
 completed_at: 2026-08-18T14:00:46Z
 commit: 48263dd
+kb_status: promoted
+kb_entry: REQ-242-stop-panel-b-s-slowest-day-annotation-co.md
 ---
 
 # Stop Panel B's Slowest-Day Annotation Colliding With Its Own Title

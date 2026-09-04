@@ -1,10 +1,11 @@
 # Topic Index: Suite and Package Architecture
 
-Total articles: 32
+Total articles: 35
 
 ## Articles
 
 - [[concept-modular-suite-architecture]]
+- [[REQ-061-add-a-just-shortcut-for-do-work-updates]]
 - [[REQ-093-six-shipped-go-source-sites-cite-the-exp]]
 - [[REQ-120-shipped-files-stop-citing-the-export-ign]]
 - [[REQ-136-define-the-four-skill-suite-contract]]
@@ -29,6 +30,7 @@ Total articles: 32
 - [[REQ-174-validate-root-markdown-fence-info]]
 - [[REQ-182-public-work-and-schema-vocabularies-drif]]
 - [[REQ-186-required-baseline-verification-executes-]]
+- [[REQ-243-check-that-shipped-markdown-pointers-act]]
 - [[REQ-249-decide-the-cross-package-citation-path-f]]
 - [[REQ-250-close-the-remaining-markdown-link-checke]]
 - [[REQ-269-draw-the-cross-package-citation-class-by]]
@@ -36,3 +38,4 @@ Total articles: 32
 - [[REQ-312-resolve-same-package-citations-in-the-sh]]
 - [[REQ-408-build-shared-request-schema-dependency-a]]
 - [[REQ-420-replace-shell-implementations-with-shims]]
+- [[REQ-525-block-the-install-confirmation-before-si]]

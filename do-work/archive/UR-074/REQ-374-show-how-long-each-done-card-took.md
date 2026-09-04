@@ -34,6 +34,8 @@ write_set:
   - skills/do-work-board/tools/queue-kanban/web/board.css
   - skills/do-work-board/tools/queue-kanban/generate_test.go
   - skills/do-work-board/tools/queue-kanban/durations_test.go
+kb_status: promoted
+kb_entry: REQ-374-show-how-long-each-done-card-took.md
 ---
 
 # Show How Long Each Done Card Took

@@ -24,6 +24,8 @@ write_set:
   - skills/do-work-toolbox/scripts/generate-report-image.sh
   - _dev/tests/prescribed-shell-cases/generate-report-image-batch.sh
   - _dev/tests/prescribed-shell-cases/generate-report-image.sh
+kb_status: promoted
+kb_entry: REQ-340-addendum-finish-the-report-image-interru.md
 ---
 
 # Finish the Report-Image Interruption Sweep

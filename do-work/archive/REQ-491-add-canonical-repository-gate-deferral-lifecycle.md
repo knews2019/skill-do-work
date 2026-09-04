@@ -38,7 +38,6 @@ integration_at: 2026-09-02T01:50:50Z
 review_at: 2026-09-02T01:57:18Z
 remediation_at: 2026-09-02T02:13:19Z
 re_review_at: 2026-09-02T02:23:42Z
-kb_status: pending
 write_set:
   - skills/do-work/tools/do-work-cli/internal/publication/publication_types.go
   - skills/do-work/tools/do-work-cli/internal/publication/publication_manifest.go
@@ -74,6 +73,8 @@ write_set:
 completed_at: 2026-09-02T02:25:16Z
 release_at: 2026-09-02T02:26:42Z
 commit: 0a5d4e44
+kb_status: promoted
+kb_entry: REQ-491-add-canonical-repository-gate-deferral-l.md
 ---
 
 # Add Canonical Repository-Gate Deferral Lifecycle

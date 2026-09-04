@@ -3,6 +3,10 @@ title: "Metadata and Timestamps"
 type: concept
 topic_cluster: metadata-and-timestamps
 sources:
+  - raw/processed/2026-09-04/REQ-244-cite-the-timestamp-rule-at-every-timesta.md
+  - raw/processed/2026-09-04/REQ-245-name-fabricated-stamps-in-the-board-s-fu.md
+  - raw/processed/2026-09-04/REQ-289-separate-impact-from-effort-with-unique.md
+  - raw/processed/2026-09-04/REQ-290-surface-impact-in-req-titles-and-add-a-r.md
   - raw/processed/2026-09-01/REQ-074-recovered-req-loses-its-status-change-ti.md
   - raw/processed/2026-09-01/REQ-076-go-utility-emits-the-canonical-utc-tim.md
   - raw/processed/2026-09-01/REQ-078-the-windows-timestamp-fallback-cannot-ru.md
@@ -34,7 +38,7 @@ Architectural overview and synthesis for the Metadata and Timestamps subsystem i
 
 ## Key Principles & Synthesized Lessons
 
-This cluster synthesizes evidence from 17 source documents:
+This cluster synthesizes evidence from 21 source documents:
 
 - [[REQ-074-recovered-req-loses-its-status-change-ti]] — A recovered REQ loses the timestamp that says when it was reset
 - [[REQ-076-go-utility-emits-the-canonical-utc-tim]] — Go utility emits the canonical UTC timestamp, preferred over date -u when built
@@ -53,6 +57,10 @@ This cluster synthesizes evidence from 17 source documents:
 - [[REQ-310-check-a-template-payload-s-citations-aga]] — Check a template payload's citations against where the payload lands
 - [[REQ-314-judge-effort-estimate-on-review-minted-f]] — Judge effort_estimate on review-minted follow-ups too
 - [[REQ-316-audit-the-calibration-log-write-step-for]] — Audit the calibration-log write step for the REQ-274 stale-stamp bug class
+- [[REQ-244-cite-the-timestamp-rule-at-every-timesta]] — Cite the Timestamp rule at every timestamp write site
+- [[REQ-245-name-fabricated-stamps-in-the-board-s-fu]] — Name fabricated stamps in the board's future-stamp warnings
+- [[REQ-289-separate-impact-from-effort-with-unique]] — Separate impact from effort, with unique greppable tokens on both axes
+- [[REQ-290-surface-impact-in-req-titles-and-add-a-r]] — Surface impact in REQ titles and add a run filter that skips negligible work
 
 ## Cross-References
 

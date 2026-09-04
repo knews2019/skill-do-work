@@ -40,6 +40,8 @@ estimate:
 completed_at: 2026-09-03T01:30:00Z
 commit: b877eb6
 release_at: 2026-09-03T01:30:00Z
+kb_status: promoted
+kb_entry: REQ-457-record-cleanup-move-destinations-after-e.md
 ---
 
 # Make Rollback Ownership Follow the Created Filesystem Object

@@ -30,6 +30,8 @@ estimate:
     - 45-state retained differential matrix
 completed_at: 2026-09-01T09:17:47Z
 commit: 24abcf96408d33440498f67dcb6a59ef4240c03a
+kb_status: promoted
+kb_entry: REQ-462-review-fix-preserve-deletion-precedence.md
 ---
 
 # Preserve Deletion Precedence Across Git XY Inventory States

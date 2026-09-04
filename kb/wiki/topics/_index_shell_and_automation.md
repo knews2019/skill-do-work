@@ -1,6 +1,6 @@
 # Topic Index: Shell and Automation
 
-Total articles: 20
+Total articles: 23
 
 ## Articles
 
@@ -19,8 +19,11 @@ Total articles: 20
 - [[REQ-172-make-screenshot-source-cleanup-best-effo]]
 - [[REQ-173-handle-first-line-bom-in-just-collision-]]
 - [[REQ-187-no-single-local-maintainer-command-prove]]
+- [[REQ-258-split-the-prescribed-shell-behavior-suit]]
 - [[REQ-298-review-fix-sweep-the-unchecked-exit-stat]]
 - [[REQ-409-implement-safe-cleanup-passes-and-explic]]
 - [[REQ-413-implement-capture-file-answer-release-ve]]
 - [[REQ-414-migrate-remaining-core-checks-publicatio]]
 - [[REQ-419-add-flat-just-recipes-collision-validati]]
+- [[REQ-460-make-outside-text-delimiter-containment]]
+- [[REQ-543-reap-the-commit-hook-with-its-own-parent]]

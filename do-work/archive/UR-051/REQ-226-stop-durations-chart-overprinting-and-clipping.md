@@ -35,6 +35,8 @@ write_set:
   - skills/do-work-board/tools/queue-kanban/generate.go
   - skills/do-work-board/tools/queue-kanban/generate_test.go
   - skills/do-work-board/tools/queue-kanban/web/board-durations.js
+kb_status: promoted
+kb_entry: REQ-226-stop-the-durations-chart-from-silently-o.md
 ---
 
 # Stop the Durations Chart from Silently Overprinting and Clipping

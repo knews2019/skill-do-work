@@ -15,6 +15,8 @@ depends_on: []
 maintenance: false
 route: B
 write_set: [actions/install.md, justfile, tools/do-work-update.sh, tools/prime-do-work-update.md, _dev/tests/contract-regressions.sh, README.md, docs/version-guide.md, actions/board.md, docs/board-guide.md, actions/help.md, SKILL.md, actions/version.md, CHANGELOG.md]
+kb_status: promoted
+kb_entry: REQ-061-add-a-just-shortcut-for-do-work-updates.md
 ---
 
 # Add a just shortcut for do-work updates

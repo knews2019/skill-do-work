@@ -1,6 +1,6 @@
 # Topic Index: Worktree and Parallel Dispatch
 
-Total articles: 13
+Total articles: 14
 
 ## Articles
 
@@ -16,4 +16,5 @@ Total articles: 13
 - [[REQ-096-execution-model-re-grain-claim-anywhere-]]
 - [[REQ-099-automatic-wave-dispatch-the-work-loop-co]]
 - [[REQ-101-docs-adr-multi-checkout-guide-and-the-se]]
+- [[REQ-458-addendum-classify-active-worktrees-as-pr]]
 - [[UR-018-parallel-building-batch-session-traps]]

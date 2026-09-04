@@ -34,7 +34,6 @@ dispatch_at: 2026-09-01T23:58:26Z
 builder_handback_at: 2026-09-02T00:09:20Z
 integration_at: 2026-09-02T00:09:20Z
 review_at: 2026-09-02T00:54:06Z
-kb_status: pending
 write_set:
   - skills/do-work/tools/do-work-cli/internal/suiteinstall/install_transaction.go
   - skills/do-work/tools/do-work-cli/internal/suiteinstall/install_transaction_test.go
@@ -44,6 +43,8 @@ write_set:
 completed_at: 2026-09-02T00:55:13Z
 release_at: 2026-09-02T00:56:47Z
 commit: 21036776
+kb_status: promoted
+kb_entry: REQ-451-make-confirmation-input-interruptible.md
 ---
 
 # Make Confirmation Input Interruptible

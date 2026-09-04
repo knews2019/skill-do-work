@@ -46,10 +46,11 @@ claimed_at: 2026-09-03T18:47:36Z
 implementation_at: 2026-09-03T19:29:52Z
 testing_at: 2026-09-03T19:32:25Z
 review_at: 2026-09-03T19:41:38Z
-kb_status: pending
 completed_at: 2026-09-03T19:44:58Z
 commit: 455462be46b3170a22d331136ec5aa7f7e5a1c60
 release_at: 2026-09-03T19:44:58Z
+kb_status: promoted
+kb_entry: REQ-531-review-findings-below-impact-critical-st.md
 ---
 
 # Review Findings Below Impact-Critical Stay in the Report

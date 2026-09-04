@@ -35,6 +35,8 @@ claimed_at: 2026-08-18T12:43:06Z
 route: B
 completed_at: 2026-08-18T13:51:09Z
 commit: 90c74b7
+kb_status: promoted
+kb_entry: REQ-241-reconcile-the-durations-label-metrics-wi.md
 ---
 
 # Reconcile the Durations Label Metrics With the Face Actually Rendered

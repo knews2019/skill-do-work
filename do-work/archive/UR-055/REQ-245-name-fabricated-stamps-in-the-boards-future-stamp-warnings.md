@@ -33,6 +33,8 @@ route: A
 status_changed_at: 2026-08-18T13:52:03Z
 completed_at: 2026-08-18T13:52:03Z
 commit: 23bad9d
+kb_status: promoted
+kb_entry: REQ-245-name-fabricated-stamps-in-the-board-s-fu.md
 ---
 
 # Name Fabricated Stamps in the Board's Future-Stamp Warnings

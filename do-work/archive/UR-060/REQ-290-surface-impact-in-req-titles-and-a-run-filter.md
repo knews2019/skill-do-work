@@ -33,6 +33,8 @@ write_set:
 - skills/do-work/docs/capture-guide.md
 - skills/do-work-toolbox/actions/code-review.md
 - skills/do-work/docs/work-guide.md
+kb_status: promoted
+kb_entry: REQ-290-surface-impact-in-req-titles-and-add-a-r.md
 ---
 
 # Surface Impact in REQ Titles and Add a Run Filter That Skips Negligible Work

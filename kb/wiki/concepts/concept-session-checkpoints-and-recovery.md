@@ -3,6 +3,8 @@ title: "Checkpoint and Crash Recovery"
 type: concept
 topic_cluster: checkpoint-and-crash-recovery
 sources:
+  - raw/processed/2026-09-04/REQ-457-record-cleanup-move-destinations-after-e.md
+  - raw/processed/2026-09-04/REQ-489-remove-whole-checkpoint-entries-when-a-r.md
   - raw/processed/2026-09-01/REQ-035-represent-concurrent-claims-in-the-orche.md
   - raw/processed/2026-09-01/REQ-071-crash-recovery-must-respect-a-live-claim.md
   - raw/processed/2026-09-01/REQ-077-crash-recovery-s-own-crash-branch-is-unr.md
@@ -30,7 +32,7 @@ Architectural overview and synthesis for the Checkpoint and Crash Recovery subsy
 
 ## Key Principles & Synthesized Lessons
 
-This cluster synthesizes evidence from 13 source documents:
+This cluster synthesizes evidence from 15 source documents:
 
 - [[REQ-035-represent-concurrent-claims-in-the-orche]] — Represent concurrent claims in the orchestrator lock and Crash Recovery gate
 - [[REQ-071-crash-recovery-must-respect-a-live-claim]] — Crash recovery must respect a live claim before stripping and re-queueing
@@ -45,6 +47,8 @@ This cluster synthesizes evidence from 13 source documents:
 - [[REQ-246-repair-detectably-wrong-queue-and-workin]] — Repair detectably wrong queue and working timestamps from the session hook
 - [[REQ-256-disclose-the-session-hook-s-queue-write-]] — Disclose the session hook's queue write surface in the docs
 - [[REQ-274-retire-the-the-sessionstart-hook-exits-n]] — Retire the "the SessionStart hook exits nonzero" framing where it is still stated
+- [[REQ-457-record-cleanup-move-destinations-after-e]] — Record cleanup move destinations after exclusive creation
+- [[REQ-489-remove-whole-checkpoint-entries-when-a-r]] — Remove whole checkpoint entries when a REQ leaves working
 
 ## Cross-References
 

@@ -35,6 +35,8 @@ estimate:
 completed_at: 2026-09-03T10:15:00Z
 commit: f1197c6
 release_at: 2026-09-03T10:15:00Z
+kb_status: promoted
+kb_entry: REQ-528-anchor-resolved-question-marker-matching.md
 ---
 
 # Anchor Resolved-Question Marker Matching to Its Position

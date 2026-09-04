@@ -32,6 +32,8 @@ write_set:
   - skills/do-work-board/tools/queue-kanban/web/board-timeline.js
   - skills/do-work-board/tools/queue-kanban/generate_test.go
   - skills/do-work-board/tools/queue-kanban/timeline_browser_probe_test.go
+kb_status: promoted
+kb_entry: REQ-322-name-the-req-on-its-own-timeline-row.md
 ---
 
 # Name the REQ on Its Own Timeline Row

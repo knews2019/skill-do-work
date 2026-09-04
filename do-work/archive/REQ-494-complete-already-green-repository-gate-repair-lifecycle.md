@@ -24,9 +24,10 @@ integration_at: 2026-09-02T04:40:05Z
 review_at: 2026-09-02T04:43:53Z
 remediation_at: 2026-09-02T04:50:18Z
 re_review_at: 2026-09-02T04:53:21Z
-kb_status: pending
 write_set: [skills/do-work/actions/work.md, skills/do-work/actions/review-work.md, _dev/tests/contract-regressions.sh]
 completed_at: 2026-09-02T04:54:36Z
+kb_status: promoted
+kb_entry: REQ-494-review-fix-complete-prior-green-reposito.md
 ---
 
 # Review Fix: Complete Already-Green Repository-Gate Repair Lifecycle

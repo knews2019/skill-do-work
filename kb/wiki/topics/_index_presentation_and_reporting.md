@@ -1,6 +1,6 @@
 # Topic Index: Presentation and Reporting
 
-Total articles: 12
+Total articles: 13
 
 ## Articles
 
@@ -15,4 +15,5 @@ Total articles: 12
 - [[REQ-201-deduplicate-completed-work-presentation-]]
 - [[REQ-202-complete-unsafe-remotion-preview-mutatio]]
 - [[REQ-325-stop-the-report-image-interruption-path-]]
+- [[REQ-340-addendum-finish-the-report-image-interru]]
 - [[REQ-384-deliver-the-architecture-report-as-a-fre]]

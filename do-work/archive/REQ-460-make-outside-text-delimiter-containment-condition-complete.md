@@ -35,13 +35,14 @@ dispatch_at: 2026-09-03T11:17:09Z
 builder_handback_at: 2026-09-03T11:19:48Z
 integration_at: 2026-09-03T11:19:48Z
 review_at: 2026-09-03T11:24:06Z
-kb_status: pending
 write_set:
   - skills/do-work/tools/do-work-cli/internal/publication/answer.go
   - skills/do-work/tools/do-work-cli/internal/publication/answer_test.go
 completed_at: 2026-09-03T11:31:24Z
 commit: 7e16f05c4e95ebf50fcf2d065e4f0145246d46ad
 release_at: 2026-09-03T11:31:24Z
+kb_status: promoted
+kb_entry: REQ-460-make-outside-text-delimiter-containment.md
 ---
 
 # Make Outside-Text Delimiter Containment Condition-Complete

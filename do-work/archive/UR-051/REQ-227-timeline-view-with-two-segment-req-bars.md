@@ -41,6 +41,8 @@ write_set:
   - skills/do-work-board/tools/queue-kanban/web/board.css
   - skills/do-work-board/tools/queue-kanban/web/board.js
   - skills/do-work-board/tools/queue-kanban/durations_test.go
+kb_status: promoted
+kb_entry: REQ-227-add-the-timeline-view-with-two-segment-r.md
 ---
 
 # Add the Timeline View with Two-Segment REQ Bars

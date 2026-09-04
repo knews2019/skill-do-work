@@ -3,6 +3,18 @@ title: "Queue Orchestration and Task Lifecycle"
 type: concept
 topic_cluster: queue-orchestration-and-lifecycle
 sources:
+  - raw/processed/2026-09-04/REQ-065-confirm-update-handoff-md-s-commit-hash.md
+  - raw/processed/2026-09-04/REQ-121-one-uncommitted-changes-inventory-one-re.md
+  - raw/processed/2026-09-04/REQ-451-make-confirmation-input-interruptible.md
+  - raw/processed/2026-09-04/REQ-452-refuse-ambiguous-explicit-request-ids.md
+  - raw/processed/2026-09-04/REQ-453-keep-targeted-ur-dependency-closures-in.md
+  - raw/processed/2026-09-04/REQ-462-review-fix-preserve-deletion-precedence.md
+  - raw/processed/2026-09-04/REQ-491-add-canonical-repository-gate-deferral-l.md
+  - raw/processed/2026-09-04/REQ-492-integrate-repository-gate-deferral-and-r.md
+  - raw/processed/2026-09-04/REQ-493-review-fix-complete-repository-gate-defe.md
+  - raw/processed/2026-09-04/REQ-494-review-fix-complete-prior-green-reposito.md
+  - raw/processed/2026-09-04/REQ-498-make-orchestrator-finalization-resumable.md
+  - raw/processed/2026-09-04/REQ-513-commit-the-claim-footprint-in-every-mode.md
   - raw/processed/2026-09-01/REQ-001-code-review-split-actions-work-md-into-o.md
   - raw/processed/2026-09-01/REQ-012-add-do-work-note-command-for-lightweight.md
   - raw/processed/2026-09-01/REQ-014-add-crew-members-maintenance-md-codifyin.md
@@ -46,7 +58,7 @@ Architectural overview and synthesis for the Queue Orchestration and Task Lifecy
 
 ## Key Principles & Synthesized Lessons
 
-This cluster synthesizes evidence from 17 source documents:
+This cluster synthesizes evidence from 29 source documents:
 
 - [[REQ-001-code-review-split-actions-work-md-into-o]] — Code review: split actions/work.md into orchestrator + reference companion
 - [[REQ-012-add-do-work-note-command-for-lightweight]] — Add do-work note command for lightweight roadmap notes
@@ -65,6 +77,18 @@ This cluster synthesizes evidence from 17 source documents:
 - [[REQ-291-browser-behavior-probe-lane-beside-the-n]] — Browser behavior probe lane beside the Node behavior lane
 - [[REQ-299-review-fix-carry-builder-authored-sectio]] — Review fix: carry builder-authored sections past Step 8, starting with ## Decisions
 - [[REQ-389-addendum-mark-spliced-paste-titles-with-]] — Addendum: mark spliced paste titles with a leading arrow
+- [[REQ-065-confirm-update-handoff-md-s-commit-hash]] — Confirm: update HANDOFF.md's commit-hash write-back guidance
+- [[REQ-121-one-uncommitted-changes-inventory-one-re]] — One uncommitted-changes inventory, one REQ-association pass
+- [[REQ-451-make-confirmation-input-interruptible]] — Make confirmation input interruptible
+- [[REQ-452-refuse-ambiguous-explicit-request-ids]] — Refuse ambiguous explicit request IDs
+- [[REQ-453-keep-targeted-ur-dependency-closures-in]] — Keep targeted UR dependency closures in the run
+- [[REQ-462-review-fix-preserve-deletion-precedence]] — Review fix: Preserve deletion precedence across Git XY inventory states
+- [[REQ-491-add-canonical-repository-gate-deferral-l]] — Add canonical repository-gate deferral lifecycle
+- [[REQ-492-integrate-repository-gate-deferral-and-r]] — Integrate repository-gate deferral and resumption into do-work run
+- [[REQ-493-review-fix-complete-repository-gate-defe]] — Review fix: Complete repository-gate deferral preflight topology
+- [[REQ-494-review-fix-complete-prior-green-reposito]] — Review fix: Complete already-green repository-gate repair lifecycle
+- [[REQ-498-make-orchestrator-finalization-resumable]] — Make orchestrator finalization resumable
+- [[REQ-513-commit-the-claim-footprint-in-every-mode]] — Commit the claim footprint in every mode
 
 ## Cross-References
 

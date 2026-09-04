@@ -32,6 +32,8 @@ estimate:
 completed_at: 2026-09-03T02:30:00Z
 commit: ea2bab0
 release_at: 2026-09-03T02:30:00Z
+kb_status: promoted
+kb_entry: REQ-458-addendum-classify-active-worktrees-as-pr.md
 ---
 
 # Addendum: Classify Active Worktrees as Present and Non-Fixable

@@ -23,10 +23,11 @@ builder_handback_at: 2026-09-02T04:02:18Z
 integration_at: 2026-09-02T04:02:19Z
 review_at: 2026-09-02T04:10:16Z
 release_at: 2026-09-02T04:18:52Z
-kb_status: pending
 write_set: [skills/do-work/tools/do-work-cli/internal/publication/defer_gate.go, skills/do-work/tools/do-work-cli/internal/publication/defer_gate_test.go, skills/do-work/actions/work-reference.md, _dev/tests/contract-regressions.sh]
 completed_at: 2026-09-02T04:17:51Z
 commit: 3c9caf68
+kb_status: promoted
+kb_entry: REQ-493-review-fix-complete-repository-gate-defe.md
 ---
 
 # Review Fix: Complete Repository-Gate Deferral Preflight Topology

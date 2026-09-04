@@ -1,6 +1,6 @@
 # Topic Index: Queue Orchestration and Task Lifecycle
 
-Total articles: 18
+Total articles: 30
 
 ## Articles
 
@@ -9,11 +9,13 @@ Total articles: 18
 - [[REQ-012-add-do-work-note-command-for-lightweight]]
 - [[REQ-014-add-crew-members-maintenance-md-codifyin]]
 - [[REQ-060-no-mechanism-resolves-a-failed-req-so-a]]
+- [[REQ-065-confirm-update-handoff-md-s-commit-hash]]
 - [[REQ-079-two-guards-pin-the-weaker-fingerprint-of]]
 - [[REQ-080-the-capture-template-emits-a-stray-instr]]
 - [[REQ-081-next-version-ignores-flags-placed-after]]
 - [[REQ-091-the-hand-back-merge-fails-while-the-owne]]
 - [[REQ-102-scope-work-md-step-10-preserve-rules-to-]]
+- [[REQ-121-one-uncommitted-changes-inventory-one-re]]
 - [[REQ-147-addendum-reserve-request-numbers-during-]]
 - [[REQ-151-review-fix-retire-the-pipeline-guard-in-]]
 - [[REQ-155-review-fix-correct-the-manual-stop-hook-]]
@@ -22,3 +24,13 @@ Total articles: 18
 - [[REQ-291-browser-behavior-probe-lane-beside-the-n]]
 - [[REQ-299-review-fix-carry-builder-authored-sectio]]
 - [[REQ-389-addendum-mark-spliced-paste-titles-with-]]
+- [[REQ-451-make-confirmation-input-interruptible]]
+- [[REQ-452-refuse-ambiguous-explicit-request-ids]]
+- [[REQ-453-keep-targeted-ur-dependency-closures-in]]
+- [[REQ-462-review-fix-preserve-deletion-precedence]]
+- [[REQ-491-add-canonical-repository-gate-deferral-l]]
+- [[REQ-492-integrate-repository-gate-deferral-and-r]]
+- [[REQ-493-review-fix-complete-repository-gate-defe]]
+- [[REQ-494-review-fix-complete-prior-green-reposito]]
+- [[REQ-498-make-orchestrator-finalization-resumable]]
+- [[REQ-513-commit-the-claim-footprint-in-every-mode]]

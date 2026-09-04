@@ -3,6 +3,7 @@ title: "Worktree and Parallel Dispatch"
 type: concept
 topic_cluster: worktree-and-parallel-dispatch
 sources:
+  - raw/processed/2026-09-04/REQ-458-addendum-classify-active-worktrees-as-pr.md
   - raw/processed/2026-09-01/REQ-036-re-validate-write-set-disjointness-when.md
   - raw/processed/2026-09-01/REQ-037-place-the-worktree-merge-in-the-step-seq.md
   - raw/processed/2026-09-01/REQ-073-fan-out-dispatch-n-concurrent-builders-u.md
@@ -43,6 +44,7 @@ This cluster synthesizes evidence from 12 source documents:
 - [[REQ-099-automatic-wave-dispatch-the-work-loop-co]] — Automatic wave dispatch — the work loop computes and dispatches the ready set
 - [[REQ-101-docs-adr-multi-checkout-guide-and-the-se]] — Docs + ADR — multi-checkout guide and the session-ownership decision record
 - [[UR-018-parallel-building-batch-session-traps]] — Traps the parallel-building batch session already hit
+- [[REQ-458-addendum-classify-active-worktrees-as-pr]] — Addendum: classify active worktrees as present and non-fixable
 
 ## Cross-References
 

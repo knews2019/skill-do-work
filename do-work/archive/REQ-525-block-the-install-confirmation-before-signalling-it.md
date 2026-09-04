@@ -30,6 +30,8 @@ estimate:
 completed_at: 2026-09-03T13:05:00Z
 commit: 8c06caa
 release_at: 2026-09-03T13:05:00Z
+kb_status: promoted
+kb_entry: REQ-525-block-the-install-confirmation-before-si.md
 ---
 
 # Block the Install Confirmation Before Signalling It

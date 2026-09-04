@@ -31,6 +31,8 @@ write_set:
 - skills/do-work-board/tools/queue-kanban/durations.go
 - skills/do-work-board/tools/queue-kanban/durations_test.go
 - skills/do-work-board/tools/queue-kanban/web/board.css
+kb_status: promoted
+kb_entry: REQ-231-keep-panel-a-s-direct-labels-clear-of-th.md
 ---
 
 # Discovered Task: Keep Panel A's Direct Labels Clear of the Mark Band

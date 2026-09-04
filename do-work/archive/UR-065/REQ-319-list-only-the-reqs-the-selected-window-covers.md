@@ -34,6 +34,8 @@ write_set:
   - skills/do-work-board/tools/queue-kanban/generate_test.go
   - skills/do-work-board/tools/queue-kanban/web/template.html
   - skills/do-work-board/tools/queue-kanban/web/board.css
+kb_status: promoted
+kb_entry: REQ-319-list-only-the-reqs-the-selected-window-c.md
 ---
 
 # List Only the REQs the Selected Window Covers

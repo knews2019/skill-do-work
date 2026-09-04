@@ -14,7 +14,6 @@ depends_on: []
 maintenance: false
 impact: impact-user-visible
 effort_estimate: effort-substantive
-kb_status: pending
 claimed_at: 2026-09-02T13:46:20Z
 planning_at: 2026-09-02T14:00:49Z
 dispatch_at: 2026-09-02T14:10:30Z
@@ -39,6 +38,8 @@ estimate:
 completed_at: 2026-09-02T16:27:19Z
 commit: 1249e856
 release_at: 2026-09-02T16:27:20Z
+kb_status: promoted
+kb_entry: REQ-498-make-orchestrator-finalization-resumable.md
 ---
 
 # Make Orchestrator Finalization Resumable

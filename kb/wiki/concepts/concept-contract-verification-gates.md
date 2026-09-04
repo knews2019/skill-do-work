@@ -3,6 +3,8 @@ title: "Verification and Testing"
 type: concept
 topic_cluster: verification-and-testing
 sources:
+  - raw/processed/2026-09-04/REQ-531-review-findings-below-impact-critical-st.md
+  - raw/processed/2026-09-04/REQ-537-tier-the-maintainer-gate-fast-by-default.md
   - raw/processed/2026-09-01/REQ-006-code-review-replace-work-md-step-number.md
   - raw/processed/2026-09-01/REQ-084-verify-s-queue-state-probe-misses-a-buil.md
   - raw/processed/2026-09-01/REQ-098-verify-probes-assigned-elsewhere-claimed.md
@@ -41,7 +43,7 @@ Architectural overview and synthesis for the Verification and Testing subsystem 
 
 ## Key Principles & Synthesized Lessons
 
-This cluster synthesizes evidence from 20 source documents:
+This cluster synthesizes evidence from 22 source documents:
 
 - [[REQ-006-code-review-replace-work-md-step-number]] — Code review: replace work.md step-number coupling with named contracts
 - [[REQ-084-verify-s-queue-state-probe-misses-a-buil]] — verify's queue-state probe misses a builder that committed its do-work edits
@@ -63,6 +65,8 @@ This cluster synthesizes evidence from 20 source documents:
 - [[REQ-375-restore-the-strict-browser-lane-on-curre]] — Restore the strict browser lane on current Chromium
 - [[REQ-410-implement-doctor-deterministic-forensics]] — Implement doctor, deterministic forensics, and metadata repairs
 - [[REQ-446-review-fix-match-remediation-to-prefligh]] — Review fix: Match remediation to preflight failure kind
+- [[REQ-531-review-findings-below-impact-critical-st]] — Review findings below impact-critical stay in the report
+- [[REQ-537-tier-the-maintainer-gate-fast-by-default]] — Tier the maintainer gate: fast by default, --heavy on request
 
 ## Cross-References
 

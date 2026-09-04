@@ -1,6 +1,6 @@
 # Topic Index: Checkpoint and Crash Recovery
 
-Total articles: 14
+Total articles: 16
 
 ## Articles
 
@@ -18,3 +18,5 @@ Total articles: 14
 - [[REQ-246-repair-detectably-wrong-queue-and-workin]]
 - [[REQ-256-disclose-the-session-hook-s-queue-write-]]
 - [[REQ-274-retire-the-the-sessionstart-hook-exits-n]]
+- [[REQ-457-record-cleanup-move-destinations-after-e]]
+- [[REQ-489-remove-whole-checkpoint-entries-when-a-r]]

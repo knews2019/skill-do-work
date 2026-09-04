@@ -34,6 +34,8 @@ write_set:
   - skills/do-work-board/tools/queue-kanban/web/template.html
   - skills/do-work-board/tools/queue-kanban/timeline_browser_probe_test.go
   - skills/do-work-board/tools/queue-kanban/browser_probe_test.go
+kb_status: promoted
+kb_entry: REQ-321-colour-timeline-bars-by-req-status.md
 ---
 
 # Colour Timeline Bars by REQ Status

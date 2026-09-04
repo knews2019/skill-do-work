@@ -21,6 +21,8 @@ write_set:
 claimed_at: 2026-09-03T15:02:38Z
 completed_at: 2026-09-03T16:30:42Z
 commit: 8d9d1bb
+kb_status: promoted
+kb_entry: REQ-537-tier-the-maintainer-gate-fast-by-default.md
 ---
 
 # Tier the Maintainer Gate: Fast by Default, --heavy on Request

@@ -39,7 +39,6 @@ re_review_at: 2026-09-02T03:32:03Z
 completed_at: 2026-09-02T03:33:27Z
 release_at: 2026-09-02T03:34:44Z
 commit: f9eb65f7
-kb_status: pending
 write_set:
   - skills/do-work/actions/work.md
   - skills/do-work/actions/work-reference.md
@@ -48,6 +47,8 @@ write_set:
   - skills/do-work/tools/do-work-cli/prime-do-work-cli.md
   - skills/do-work/docs/command-line-guide.md
   - _dev/tests/contract-regressions.sh
+kb_status: promoted
+kb_entry: REQ-492-integrate-repository-gate-deferral-and-r.md
 ---
 
 # Integrate Repository-Gate Deferral and Resumption Into do-work run

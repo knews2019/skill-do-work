@@ -14,7 +14,6 @@ depends_on: []
 maintenance: false
 impact: impact-critical
 effort_estimate: effort-mechanical
-kb_status: pending
 sweep: true
 sweep_key: checkpoint-section-blind-line-editing
 status_changed_at: 2026-09-01T21:05:20Z
@@ -32,6 +31,8 @@ estimate:
 completed_at: 2026-09-02T14:31:16Z
 release_at: 2026-09-02T14:33:40Z
 commit: 6e92e536
+kb_status: promoted
+kb_entry: REQ-489-remove-whole-checkpoint-entries-when-a-r.md
 ---
 
 # Remove Whole Checkpoint Entries When a REQ Leaves Working

@@ -41,6 +41,8 @@ estimate:
 completed_at: 2026-09-03T16:35:08Z
 commit: 1cc3beb
 release_at: 2026-09-03T16:35:08Z
+kb_status: promoted
+kb_entry: REQ-543-reap-the-commit-hook-with-its-own-parent.md
 ---
 
 # Kill the Owned Commit Process Group on Cancellation

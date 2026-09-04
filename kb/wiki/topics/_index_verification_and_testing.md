@@ -1,6 +1,6 @@
 # Topic Index: Verification and Testing
 
-Total articles: 22
+Total articles: 24
 
 ## Articles
 
@@ -26,3 +26,5 @@ Total articles: 22
 - [[REQ-375-restore-the-strict-browser-lane-on-curre]]
 - [[REQ-410-implement-doctor-deterministic-forensics]]
 - [[REQ-446-review-fix-match-remediation-to-prefligh]]
+- [[REQ-531-review-findings-below-impact-critical-st]]
+- [[REQ-537-tier-the-maintainer-gate-fast-by-default]]

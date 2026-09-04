@@ -29,6 +29,8 @@ write_set:
 - skills/do-work-board/tools/queue-kanban/web/board-timeline.js
 - skills/do-work-board/tools/queue-kanban/web/template.html
 - skills/do-work-board/tools/queue-kanban/generate_test.go
+kb_status: promoted
+kb_entry: REQ-233-give-the-timeline-a-keyboard-path-to-zoo.md
 ---
 
 # Discovered Task: Give the Timeline a Keyboard Path to Zoom and Pan

@@ -9,6 +9,8 @@ user_request: UR-010
 addendum_to: REQ-062
 domain: general
 discovered_during: REQ-062
+kb_status: promoted
+kb_entry: REQ-065-confirm-update-handoff-md-s-commit-hash.md
 ---
 
 # Confirm: update HANDOFF.md's commit-hash write-back guidance

@@ -3,6 +3,9 @@ title: "Shell and Automation"
 type: concept
 topic_cluster: shell-and-automation
 sources:
+  - raw/processed/2026-09-04/REQ-258-split-the-prescribed-shell-behavior-suit.md
+  - raw/processed/2026-09-04/REQ-460-make-outside-text-delimiter-containment.md
+  - raw/processed/2026-09-04/REQ-543-reap-the-commit-hook-with-its-own-parent.md
   - raw/processed/2026-09-01/REQ-064-restore-blanked-archived-reqs-from-git-h.md
   - raw/processed/2026-09-01/REQ-066-clear-two-shellcheck-warnings-in-the-com.md
   - raw/processed/2026-09-01/REQ-072-go-utility-allocates-req-ids-and-version.md
@@ -35,7 +38,7 @@ Architectural overview and synthesis for the Shell and Automation subsystem in t
 
 ## Key Principles & Synthesized Lessons
 
-This cluster synthesizes evidence from 18 source documents:
+This cluster synthesizes evidence from 21 source documents:
 
 - [[REQ-064-restore-blanked-archived-reqs-from-git-h]] — Restore blanked archived REQs from git history in cleanup
 - [[REQ-066-clear-two-shellcheck-warnings-in-the-com]] — Clear two shellcheck warnings in the commit-hash guard fixture
@@ -55,6 +58,9 @@ This cluster synthesizes evidence from 18 source documents:
 - [[REQ-413-implement-capture-file-answer-release-ve]] — Implement capture-file, answer, release, version, and changelog transactions
 - [[REQ-414-migrate-remaining-core-checks-publicatio]] — Migrate remaining core checks, publication helpers, Git helpers, and surveys
 - [[REQ-419-add-flat-just-recipes-collision-validati]] — Add flat Just recipes, collision validation, action delegation, and compatibility aliases
+- [[REQ-258-split-the-prescribed-shell-behavior-suit]] — Split the prescribed shell behavior suite per script
+- [[REQ-460-make-outside-text-delimiter-containment]] — Make outside-text delimiter containment condition-complete
+- [[REQ-543-reap-the-commit-hook-with-its-own-parent]] — Reap the commit hook with its own parent
 
 ## Cross-References
 

@@ -3,6 +3,9 @@ title: "Suite and Package Architecture"
 type: concept
 topic_cluster: suite-and-package-architecture
 sources:
+  - raw/processed/2026-09-04/REQ-061-add-a-just-shortcut-for-do-work-updates.md
+  - raw/processed/2026-09-04/REQ-243-check-that-shipped-markdown-pointers-act.md
+  - raw/processed/2026-09-04/REQ-525-block-the-install-confirmation-before-si.md
   - raw/processed/2026-09-01/REQ-093-six-shipped-go-source-sites-cite-the-exp.md
   - raw/processed/2026-09-01/REQ-120-shipped-files-stop-citing-the-export-ign.md
   - raw/processed/2026-09-01/REQ-136-define-the-four-skill-suite-contract.md
@@ -48,7 +51,7 @@ Architectural overview and synthesis for the Suite and Package Architecture subs
 
 ## Key Principles & Synthesized Lessons
 
-This cluster synthesizes evidence from 31 source documents:
+This cluster synthesizes evidence from 34 source documents:
 
 - [[REQ-093-six-shipped-go-source-sites-cite-the-exp]] — Confirm: six shipped Go-source sites cite the export-ignored CLAUDE.md, and the suite's guard catches none of them
 - [[REQ-120-shipped-files-stop-citing-the-export-ign]] — Shipped files stop citing the export-ignored maintainer doc
@@ -81,6 +84,9 @@ This cluster synthesizes evidence from 31 source documents:
 - [[REQ-312-resolve-same-package-citations-in-the-sh]] — Resolve same-package citations in the shipped reference contract
 - [[REQ-408-build-shared-request-schema-dependency-a]] — Build shared request, schema, dependency, atomic-file, and repository packages
 - [[REQ-420-replace-shell-implementations-with-shims]] — Replace shell implementations with shims and prove whole-suite parity
+- [[REQ-061-add-a-just-shortcut-for-do-work-updates]] — Add a just shortcut for do-work updates
+- [[REQ-243-check-that-shipped-markdown-pointers-act]] — Check that shipped markdown pointers actually resolve
+- [[REQ-525-block-the-install-confirmation-before-si]] — Block the install confirmation before signalling it
 
 ## Cross-References
 

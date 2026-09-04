@@ -50,6 +50,8 @@ write_set:
 - skills/do-work-toolbox/actions/maintainability-audit.md
 - skills/do-work-toolbox/actions/maintainability-audit-reference.md
 - _dev/tests/contract-regressions.sh
+kb_status: promoted
+kb_entry: REQ-289-separate-impact-from-effort-with-unique.md
 ---
 
 # Separate Impact from Effort, With Unique Greppable Tokens on Both Axes

@@ -29,6 +29,8 @@ claimed_at: 2026-08-18T12:43:06Z
 route: B
 completed_at: 2026-08-18T13:51:43Z
 commit: 37d7729
+kb_status: promoted
+kb_entry: REQ-243-check-that-shipped-markdown-pointers-act.md
 ---
 
 # Check That Shipped Markdown Pointers Actually Resolve

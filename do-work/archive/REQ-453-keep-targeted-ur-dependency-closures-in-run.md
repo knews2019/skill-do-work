@@ -20,7 +20,6 @@ write_set:
   - skills/do-work/actions/work.md
   - skills/do-work/actions/work-reference.md
   - _dev/tests/contract-regressions.sh
-kb_status: pending
 claimed_at: 2026-09-02T12:10:38Z
 route: C
 planning_at: 2026-09-02T12:19:08Z
@@ -44,6 +43,8 @@ estimate:
 completed_at: 2026-09-02T13:28:36Z
 release_at: 2026-09-02T13:31:23Z
 commit: 62ef510d
+kb_status: promoted
+kb_entry: REQ-453-keep-targeted-ur-dependency-closures-in.md
 ---
 
 # Keep Targeted UR Dependency Closures in the Run

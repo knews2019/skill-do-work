@@ -28,6 +28,8 @@ estimate:
     - persistence, privacy, and rollback changes
 completed_at: 2026-09-01T08:34:36Z
 commit: ecf77a3da1751d170c22ae94b782e1354337c67b
+kb_status: promoted
+kb_entry: REQ-417-implement-interview-and-deterministic-me.md
 ---
 
 # Implement Interview and Deterministic Memory Store Commands

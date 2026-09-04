@@ -33,6 +33,8 @@ write_set:
   - skills/do-work-board/tools/queue-kanban/web/template.html
   - skills/do-work-board/tools/queue-kanban/web/board.css
   - skills/do-work-board/tools/queue-kanban/generate_test.go
+kb_status: promoted
+kb_entry: REQ-320-show-and-set-the-timeline-window-s-start.md
 ---
 
 # Show and Set the Timeline Window's Start and End

@@ -1,6 +1,6 @@
 # Topic Index: Kanban Board and UI
 
-Total articles: 32
+Total articles: 39
 
 ## Articles
 
@@ -25,10 +25,15 @@ Total articles: 32
 - [[REQ-195-modularize-the-framework-free-queue-boar]]
 - [[REQ-200-render-png-file-mentions-as-images]]
 - [[REQ-207-render-html-file-mentions-as-folder-awar]]
+- [[REQ-226-stop-the-durations-chart-from-silently-o]]
+- [[REQ-231-keep-panel-a-s-direct-labels-clear-of-th]]
+- [[REQ-241-reconcile-the-durations-label-metrics-wi]]
+- [[REQ-242-stop-panel-b-s-slowest-day-annotation-co]]
 - [[REQ-266-name-builds-beside-the-js-renderer-s-mea]]
 - [[REQ-277-state-the-mark-label-face-constant-s-rea]]
 - [[REQ-284-emit-every-verify-finding-from-the-board]]
 - [[REQ-285-render-a-verify-findings-strip-on-the-bo]]
+- [[REQ-374-show-how-long-each-done-card-took]]
 - [[REQ-376-raise-the-done-line-s-faint-text-to-read]]
 - [[REQ-381-index-cited-ticket-ids-and-let-the-filte]]
 - [[REQ-382-expand-ticket-ids-written-as-markdown-li]]
@@ -36,3 +41,5 @@ Total articles: 32
 - [[REQ-386-make-the-drawer-and-the-paste-agree-abou]]
 - [[REQ-387-keep-a-spliced-title-from-changing-how-t]]
 - [[REQ-388-settle-the-last-two-drawer-clipboard-div]]
+- [[REQ-456-wait-for-theme-transitions-before-contra]]
+- [[REQ-528-anchor-resolved-question-marker-matching]]

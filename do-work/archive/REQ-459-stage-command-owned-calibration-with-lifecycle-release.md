@@ -23,6 +23,8 @@ estimate:
     - one structural contract
 completed_at: 2026-09-01T06:45:28Z
 commit: 1c0132399f2fbe2abe57e7280175e2565c848044
+kb_status: promoted
+kb_entry: REQ-459-review-fix-stage-command-owned-calibrati.md
 ---
 
 # Review Fix: Stage Command-Owned Calibration with Lifecycle Release

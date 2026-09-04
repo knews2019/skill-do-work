@@ -3,6 +3,13 @@ title: "Kanban Board and UI"
 type: concept
 topic_cluster: kanban-board-and-ui
 sources:
+  - raw/processed/2026-09-04/REQ-226-stop-the-durations-chart-from-silently-o.md
+  - raw/processed/2026-09-04/REQ-231-keep-panel-a-s-direct-labels-clear-of-th.md
+  - raw/processed/2026-09-04/REQ-241-reconcile-the-durations-label-metrics-wi.md
+  - raw/processed/2026-09-04/REQ-242-stop-panel-b-s-slowest-day-annotation-co.md
+  - raw/processed/2026-09-04/REQ-374-show-how-long-each-done-card-took.md
+  - raw/processed/2026-09-04/REQ-456-wait-for-theme-transitions-before-contra.md
+  - raw/processed/2026-09-04/REQ-528-anchor-resolved-question-marker-matching.md
   - raw/processed/2026-09-01/REQ-015-sync-the-deferred-status-between-the-que.md
   - raw/processed/2026-09-01/REQ-016-remove-the-producer-less-severity-frontm.md
   - raw/processed/2026-09-01/REQ-017-just-run-kanban-replace-a-stale-board-se.md
@@ -49,7 +56,7 @@ Architectural overview and synthesis for the Kanban Board and UI subsystem in th
 
 ## Key Principles & Synthesized Lessons
 
-This cluster synthesizes evidence from 30 source documents:
+This cluster synthesizes evidence from 37 source documents:
 
 - [[REQ-015-sync-the-deferred-status-between-the-que]] — Sync the `deferred` status between the queue-kanban parser and the Schema Read Contract
 - [[REQ-016-remove-the-producer-less-severity-frontm]] — Remove the producer-less `severity` frontmatter field from queue-kanban
@@ -81,6 +88,13 @@ This cluster synthesizes evidence from 30 source documents:
 - [[REQ-386-make-the-drawer-and-the-paste-agree-abou]] — Make the drawer and the paste agree about a body H1 that restates the title
 - [[REQ-387-keep-a-spliced-title-from-changing-how-t]] — Keep a spliced title from changing how the pasted Markdown parses
 - [[REQ-388-settle-the-last-two-drawer-clipboard-div]] — Settle the last two drawer/clipboard divergences: fence info strings and ids inside paths
+- [[REQ-226-stop-the-durations-chart-from-silently-o]] — Stop the Durations chart from silently overprinting and clipping
+- [[REQ-231-keep-panel-a-s-direct-labels-clear-of-th]] — Keep Panel A's direct labels clear of the mark band
+- [[REQ-241-reconcile-the-durations-label-metrics-wi]] — Reconcile the Durations label metrics with the face actually rendered
+- [[REQ-242-stop-panel-b-s-slowest-day-annotation-co]] — Stop Panel B's slowest-day annotation colliding with its own title
+- [[REQ-374-show-how-long-each-done-card-took]] — Show how long each done card took
+- [[REQ-456-wait-for-theme-transitions-before-contra]] — Wait for theme transitions before contrast measurement
+- [[REQ-528-anchor-resolved-question-marker-matching]] — Anchor resolved-question marker matching to its position
 
 ## Cross-References
 

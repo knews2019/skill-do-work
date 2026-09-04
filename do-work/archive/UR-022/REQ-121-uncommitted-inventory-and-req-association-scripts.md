@@ -15,6 +15,8 @@ depends_on: []
 maintenance: false
 related: [REQ-111, REQ-112, REQ-114]
 batch: census-durable-findings
+kb_status: promoted
+kb_entry: REQ-121-one-uncommitted-changes-inventory-one-re.md
 ---
 
 # One Uncommitted-Changes Inventory, One REQ-Association Pass

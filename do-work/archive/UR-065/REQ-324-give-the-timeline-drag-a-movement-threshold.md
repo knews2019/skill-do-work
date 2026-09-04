@@ -33,6 +33,8 @@ write_set:
   - skills/do-work-board/tools/queue-kanban/generate_test.go
   - skills/do-work-board/tools/queue-kanban/timeline_browser_probe_test.go
   - skills/do-work-board/tools/queue-kanban/browser_probe_test.go
+kb_status: promoted
+kb_entry: REQ-324-give-the-timeline-drag-a-movement-thresh.md
 ---
 
 # Give the Timeline Drag a Movement Threshold

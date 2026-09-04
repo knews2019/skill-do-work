@@ -18,9 +18,6 @@ dispatch_at: 2026-09-02T21:01:09Z
 builder_handback_at: 2026-09-02T21:09:42Z
 integration_at: 2026-09-02T21:09:42Z
 review_at: 2026-09-02T21:25:40Z
-kb_status: pending
-kb_entry:
-estimate:
   p50_active_minutes: 40
   confidence: medium
   calculated_at: 2026-09-02T20:45:56Z
@@ -38,6 +35,8 @@ claimed_at: 2026-09-02T20:45:12Z
 completed_at: 2026-09-02T21:33:21Z
 release_at: 2026-09-02T21:33:21Z
 commit: 33852cb4a9c0e8af197d789fea6f2624beb68ffe
+kb_status: promoted
+kb_entry: REQ-513-commit-the-claim-footprint-in-every-mode.md
 ---
 
 # Commit the claim footprint in every mode

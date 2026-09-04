@@ -43,6 +43,8 @@ write_set:
 - _dev/tests/prescribed-shell-cases/run-blocked-check.sh
 - _dev/tests/prescribed-shell-cases/show-commit-diff.sh
 - _dev/tests/prescribed-shell-cases/stage-exact-deletion.sh
+kb_status: promoted
+kb_entry: REQ-258-split-the-prescribed-shell-behavior-suit.md
 ---
 
 # Split the Prescribed Shell Behavior Suite Per Script

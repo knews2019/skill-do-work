@@ -1,5 +1,9 @@
 # Activity Log
 
+## [2026-09-04] ingest | Ingested 45 backlog sources across 11 topic clusters (245 articles total)
+
+Compiled remaining archived lesson sources with full frontmatter, queue traceability, and updated indexes.
+
 ## [2026-07-02] init | Knowledge base created
 
 Structure initialized. Ready for first source.
