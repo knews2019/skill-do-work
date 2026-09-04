@@ -161,6 +161,9 @@ func duplicateStatusesSatisfied(snapshot *repositorymodel.RepositorySnapshot, re
 		}
 	}
 	for _, requestFile := range requestFiles {
+		if requestFile.FilenameID != requestID || requestFile.TypedRecord.RequestID != requestID {
+			return false
+		}
 		if !schemanormalization.DependencySourceReady(requestFile.TypedRecord.RequestStatus, requestFile.TypedRecord.ImplementationCommit) {
 			return false
 		}

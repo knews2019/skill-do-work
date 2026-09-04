@@ -230,3 +230,48 @@ func TestFilenameOnlyCollisionMakesAbsentDependencyAmbiguous(t *testing.T) {
 		t.Fatalf("warnings = %#v", graph.WarningMessages)
 	}
 }
+
+func TestSameIdFilenameFrontmatterCollisionKeepsDependencyAmbiguous(t *testing.T) {
+	repositoryRoot := t.TempDir()
+	fixtures := map[string]string{
+		"do-work/archive/REQ-020-first.md":  "---\nid: REQ-021\nstatus: completed\n---\nBody\n",
+		"do-work/archive/REQ-021-second.md": "---\nid: REQ-021\nstatus: completed\n---\nBody\n",
+		"do-work/queue/REQ-030-dependent.md": "---\nid: REQ-030\nstatus: pending\ndepends_on: [REQ-021]\n---\nBody\n",
+	}
+	for relativePath, contents := range fixtures {
+		absolutePath := filepath.Join(repositoryRoot, filepath.FromSlash(relativePath))
+		if err := os.MkdirAll(filepath.Dir(absolutePath), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(absolutePath, []byte(contents), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	snapshot, err := repositorymodel.DiscoverRepository(repositoryRoot)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(snapshot.CollisionEntries) != 1 || snapshot.CollisionEntries[0].RequestID != "REQ-021" {
+		t.Fatalf("fixture collision evidence = %#v", snapshot.CollisionEntries)
+	}
+
+	graph := BuildGraph(snapshot)
+	dependent := graph.NodesByID["REQ-030"]
+	if dependent == nil {
+		t.Fatal("REQ-030 node is missing")
+	}
+	if dependent.IsReady || dependent.DependenciesSatisfied {
+		t.Fatalf("REQ-030 was ready through a collided dependency: %#v", dependent)
+	}
+	if !reflect.DeepEqual(dependent.AmbiguousTargets, []string{"REQ-021"}) ||
+		!reflect.DeepEqual(dependent.UnmetDependencies, []string{"REQ-021"}) {
+		t.Fatalf("REQ-030 ambiguity evidence = %#v", dependent)
+	}
+	if dependent.DependencyDepth != -1 {
+		t.Fatalf("REQ-030 dependency depth = %d, want unresolved -1", dependent.DependencyDepth)
+	}
+	if target := graph.NodesByID["REQ-021"]; target == nil || !target.IsAmbiguous {
+		t.Fatalf("REQ-021 target = %#v, want ambiguous", target)
+	}
+}
+
