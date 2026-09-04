@@ -65,6 +65,7 @@ The standard-library Go module under this directory is the canonical implementat
 - [family: collision-fixture-identity] Reusing a target number in both fixture filenames and frontmatter → filename claims can make an incomplete frontmatter identity rule look correct; use unrelated filename numbers plus a malformed adjacent-value negative control.
 - [family: projection-before-bounding] Applying a dispatch bound before projecting a frozen target ledger → newly discovered out-of-ledger records consume selector slots and starve retained work; observe canonically without the scheduling bound, project frozen membership, then bound dispatch.
 - [family: publication-target-topology-classification] Treating a tracked path or a manifest's self-description as release ownership → dependency and generated trees can authorize their own metadata; seed ownership at an independent repository or declared maintainer root, then propagate only through proven relationships.
+- [family: commit-preflight-before-side-effect] Passing a validation-only dry run before an owned filesystem claim → commit-only guards can refuse the real transaction after the command has already left durable residue; validate every commit precondition before the first side effect.
 
 ## Verify
 

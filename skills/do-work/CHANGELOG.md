@@ -2,6 +2,13 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.275.1 — Architecture Publication Retries Stop and Commit Again (2026-09-04)
+
+A failed report-bundle claim could spin forever, while the same publisher rejected every `--commit` call. Architecture-report publication now stops on real claim errors and clean-index commits work again.
+
+- Bundle claims retry only proven name collisions; permission, read-only, and other failures return a typed finding with the candidate path and cause.
+- `architecture-report-preflight --commit` validates without combining incompatible transaction flags, then commits exactly the generated `index.html`.
+
 ## 0.275.0 — Heavy Lanes Run Themselves at Queue Exhaustion and Record Wall Time (2026-09-04)
 
 The heavy-test hold used to end in a question nobody was there to answer, so an unattended queue drain stopped on it. The loop now runs the held lanes itself once the queue is empty and records how long each lane took.

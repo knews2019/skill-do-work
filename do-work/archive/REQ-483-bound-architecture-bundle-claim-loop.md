@@ -1,7 +1,7 @@
 ---
 id: REQ-483
 title: '[impact-critical] Review fix: Bound the architecture bundle-claim loop and restore --commit'
-status: claimed
+status: completed
 priority: now
 created_at: 2026-09-01T11:51:27Z
 user_request: UR-081
@@ -29,6 +29,7 @@ implementation_at: 2026-09-03T21:53:38Z
 builder_handback_at: 2026-09-03T21:55:13Z
 integration_at: 2026-09-03T21:57:28Z
 testing_at: 2026-09-03T22:00:11Z
+review_at: 2026-09-04T14:37:22Z
 status_changed_at: 2026-09-04T12:36:12Z
 commit: 3eb87519df19a14103f407159b9f6e753b51ca7b
 write_set:
@@ -36,7 +37,11 @@ write_set:
   - skills/do-work/tools/do-work-cli/internal/toolboxcommands/architecture_test.go
 heavy_verified_at: 2026-09-04T12:36:12Z
 heavy_verified_revision: c0d8ce1cb44cc1830b167214c018d76ba87baffc
+kb_status: pending
+kb_entry:
 claimed_at: 2026-09-04T14:31:30Z
+completed_at: 2026-09-04T14:42:11Z
+release_at: 2026-09-04T14:42:11Z
 ---
 
 # Bound the Architecture Bundle-Claim Loop and Restore --commit
@@ -192,3 +197,43 @@ Execution revision: `c0d8ce1cb44cc1830b167214c018d76ba87baffc`
 - staged-skills: exit 0 — `bash _dev/tests/maintainer-verify.sh --heavy-lane staged-skills`
 - updater: exit 0 — `bash _dev/tests/maintainer-verify.sh --heavy-lane updater`
 - installer: exit 0 — `bash _dev/tests/maintainer-verify.sh --heavy-lane installer`
+
+## Review
+
+**Overall: 80%** | 2026-09-04T14:37:22Z
+
+| Dimension | Score |
+|-----------|-------|
+| Requirements | 90% |
+| Code Quality | 85% |
+| Test Adequacy | 85% |
+| Scope | 100% |
+| Risk | Low |
+| Acceptance | Partial |
+
+**Important findings (each with its recorded impact token — this is the durable audit record the judgment mandates):**
+- `architecturePublish` runs its validation-only transaction with `commit=false`, then claims the report bundle before the real transaction applies the commit-only empty-index guard. With an unrelated staged file, `--commit` correctly returns `GIT-DIRTY-INDEX` but leaves an empty `reports/<candidate>/` directory; the clean-index commit test does not cover this refusal path. — impact-user-visible → report only
+
+**Minor findings:** None
+**Acceptance:** Partial — the unbounded claim loop and broken clean-index `--commit` path are fixed with committed RED→GREEN coverage, but dirty-index refusal leaves an empty claimed directory.
+**Suggested testing:** 1 item — add a regression proving dirty-index `--commit` refuses before bundle claim and leaves no candidate directory.
+**Follow-ups created:** None (1 finding report only)
+
+*Reviewed by review-work action*
+
+## Lessons Learned
+
+**What worked:**
+- A package-local claim seam made the non-collision error deterministic even in privileged test environments, so the captured CPU-spin regression has direct RED→GREEN proof.
+
+**What didn't:**
+- Separating the dry-run validation from the real commit transaction restored the happy path but moved the commit-only index guard after bundle creation, leaving an empty directory on refusal.
+
+**Worth knowing:**
+- A mutating command must validate every commit-only precondition before its first owned filesystem side effect; a generic dry-run that suppresses the caller's commit bit cannot prove that boundary by itself.
+
+## Orientation
+
+Architecture-report publication now stops promptly on non-collision claim failures and clean-index `--commit` publishes exactly one committed bundle in the do-work-cli toolbox subsystem. A dirty-index refusal still leaves an empty bundle directory as a report-only edge case.
+
+**[MAP CHANGED]**: No — this corrects two control-flow branches without changing the command surface or subsystem boundaries.
