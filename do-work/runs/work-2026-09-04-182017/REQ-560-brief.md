@@ -30,7 +30,6 @@ estimate:
     - 3-file write set
     - 2 subsystems involved
     - 5 acceptance criteria
-dispatch_at: 2026-09-04T18:23:51Z
 ---
 
 # Hand-Back and Finalize Check Cleanliness Only on the REQ's Own Paths
@@ -98,11 +97,3 @@ See `do-work/user-requests/UR-106/input.md` for complete verbatim input.
 **Planning not required** - Route B: Exploration-guided implementation
 
 *Skipped by work action*
-
-## Pre-Flight
-
-**Git:** ✓ working tree clean outside `do-work/`
-**Tests baseline:** ⚠ `bash _dev/tests/maintainer-verify.sh` red BEFORE any change — one pre-existing failure, `_dev/tests/session-start-hook-behavior.sh took 44s; each test file must finish under 30s`. A wall-clock budget miss on a slow container, no assertion failed. Recorded in `do-work/working/baseline-failures.txt` so Step 6.5 separates it from new regressions; not attributable to this REQ and not deferred to a repair REQ.
-**Dependencies:** ✓ Go 1.26.1 and ShellCheck 0.11.0 provisioned for this session (container shipped Go 1.24.7 / no ShellCheck)
-
-*Checked by work action*
