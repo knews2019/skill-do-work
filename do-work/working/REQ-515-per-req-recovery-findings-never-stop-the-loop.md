@@ -1,7 +1,7 @@
 ---
 id: REQ-515
 title: '[impact-rule-change] Per-REQ recovery findings never stop the loop'
-status: pending
+status: claimed
 priority: now
 created_at: 2026-09-02T20:35:18Z
 user_request: UR-099
@@ -16,6 +16,7 @@ effort_estimate: effort-substantive
 related: [REQ-513, REQ-514, REQ-516, REQ-517]
 batch: recovery-never-traps
 write_set: [skills/do-work/actions/work.md, skills/do-work/actions/run-with-recovery.md, skills/do-work/actions/work-reference.md, _dev/tests/contract-regressions.sh, skills/do-work/tools/do-work-cli/internal/finalization/]
+claimed_at: 2026-09-04T18:15:54Z
 ---
 
 # Per-REQ recovery findings never stop the loop
