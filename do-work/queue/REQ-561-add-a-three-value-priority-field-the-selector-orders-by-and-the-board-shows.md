@@ -1,7 +1,7 @@
 ---
 id: REQ-561
 title: 'Add a three-value priority field the selector orders by and the board shows'
-status: pending-heavy-testing
+status: pending
 created_at: 2026-09-03T20:38:55Z
 user_request: UR-107
 domain: backend
@@ -62,8 +62,10 @@ exploration_at: 2026-09-03T21:17:07Z
 dispatch_at: 2026-09-03T21:18:56Z
 builder_handback_at: 2026-09-03T21:35:57Z
 integration_at: 2026-09-03T21:37:20Z
-status_changed_at: 2026-09-04T10:14:02Z
+status_changed_at: 2026-09-04T12:36:12Z
 commit: 2d052afa24759990b8c3bf417b3ad4579b1bfc16
+heavy_verified_at: 2026-09-04T12:36:12Z
+heavy_verified_revision: c0d8ce1cb44cc1830b167214c018d76ba87baffc
 ---
 
 # Add a Three-Value Priority Field the Selector Orders By and the Board Shows
@@ -342,7 +344,7 @@ Passed — the exact `ff1ddc1fdf0fa596e0816f7d573cbf584e2ea06b..2d052afa24759990
 
 ## Open Questions
 
-- [ ] Run the selected heavy lane commands at execution revision `c0d8ce1cb44cc1830b167214c018d76ba87baffc`; did every command exit 0?
+- [x] Run the selected heavy lane commands at execution revision `c0d8ce1cb44cc1830b167214c018d76ba87baffc`; did every command exit 0? → Confirmed: Yes
   Recommended: Yes
   Also: No — report the failing lane
 
@@ -350,3 +352,16 @@ Passed — the exact `ff1ddc1fdf0fa596e0816f7d573cbf584e2ea06b..2d052afa24759990
 ## Answer Notes
 
 - 2026-09-03 - [ ] Run `bash _dev/tests/maintainer-verify.sh --heavy` at `2d052afa24759990b8c3bf417b3ad4579b1bfc16`; did it exit 0?: No, exit 1: staged-skills-contract.sh took 30s and update-script-behavior.sh took 57s, exceeding the under-30s test-file budget
+- 2026-09-04 - [ ] Run the selected heavy lane commands at execution revision `c0d8ce1cb44cc1830b167214c018d76ba87baffc`; did every command exit 0?: Confirmed: Yes
+
+## Heavy Verification Result
+
+Target revision: `2d052afa24759990b8c3bf417b3ad4579b1bfc16`
+Execution revision: `c0d8ce1cb44cc1830b167214c018d76ba87baffc`
+
+- queue-kanban-javascript: exit 0 — `bash _dev/tests/maintainer-verify.sh --heavy-lane queue-kanban-javascript`
+- queue-kanban-browser: exit 0 — `bash _dev/tests/maintainer-verify.sh --heavy-lane queue-kanban-browser`
+- do-work-cli-integrations: exit 0 — `bash _dev/tests/maintainer-verify.sh --heavy-lane do-work-cli-integrations`
+- staged-skills: exit 0 — `bash _dev/tests/maintainer-verify.sh --heavy-lane staged-skills`
+- updater: exit 0 — `bash _dev/tests/maintainer-verify.sh --heavy-lane updater`
+- installer: exit 0 — `bash _dev/tests/maintainer-verify.sh --heavy-lane installer`
