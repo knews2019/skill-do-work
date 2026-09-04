@@ -3,7 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Do-Work Velocity: Why the Queue Drains Slowly, Why It Refills, and What to Change</title>
+<meta name="description" content="A guided explanation of do-work queue speed: shipped improvements, timing evidence, remaining work, and lessons learned.">
+<title>Drain the queue faster — what changed, what remains</title>
 <style>
   :root {
     --bg: #f7f4ee;
@@ -72,18 +73,196 @@
   ol.plan li { margin-bottom: 14px; }
   footer { padding-top: 28px; color: var(--muted); font-size: 14px; }
   a { color: var(--accent); }
+
+
+:root {--bg:#f6f4ef;--surface:#fffefa;--text:#202e38;--muted:#54636b;--accent:#175aca;--rule:#d9ddd9;--wash:#eaf0fa;--good:#196440;}
+@media(prefers-color-scheme:dark){:root{--bg:#121b23;--surface:#192630;--text:#edf1ee;--muted:#aab9c4;--accent:#91baff;--rule:#364750;--wash:#203347;--good:#9bd5b2;}}
+html{scroll-behavior:smooth;scroll-padding-top:24px;}
+body{font:17px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;}
+.page{padding:0 clamp(20px,3vw,64px) 64px;}
+h1{font-size:clamp(36px,4.3vw,64px);line-height:1.08;max-width:21ch;}
+h2{font-size:30px;line-height:1.2;} h3{font:600 20px/1.3 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;}
+p{max-width:74ch;margin:12px 0;}a{text-underline-offset:3px;}
+header{padding:48px 0 32px;}header .lede{font-size:21px;max-width:60ch;}
+nav{display:flex;gap:12px 26px;flex-wrap:wrap;padding:18px 0;border-bottom:1px solid var(--rule);}
+nav a{font-size:15px;color:var(--text);text-decoration:none;}nav a:hover{text-decoration:underline;}
+section{padding:40px 0;} .row{gap:28px;} .row>*{min-width:0;}
+.intro-copy{flex:1.5 1 520px;} .decision{flex:1 1 350px;background:var(--wash);padding:26px;border-radius:12px;border:1px solid var(--rule);}
+.decision pre{margin-top:18px;font-size:17px;}
+.kicker{font-size:11px;letter-spacing:.12em;}
+.step-label{font:600 12px/1.4 ui-monospace,monospace;letter-spacing:.1em;color:var(--muted);display:block;margin-bottom:10px;}
+.section-intro{margin:12px 0 24px;}
+.fact-strip{display:flex;flex-wrap:wrap;margin-top:28px;gap:24px 42px;}
+.fact-strip div{flex:1 1 200px;} .fact-strip b{display:block;font-size:28px;font-weight:600;}
+.fact-strip span{font-size:14px;color:var(--muted);}
+.explain{flex:1 1 330px;} .evidence{flex:1.5 1 580px;}
+.table-wrap{overflow-x:auto;max-width:100%;border:1px solid var(--rule);border-radius:10px;background:var(--surface);}
+table{font-size:16px;}th,td{padding:14px 16px;}th{font-size:12px;}tr:last-child td{border-bottom:0;}
+.note{font-size:14px;color:var(--muted);} .status{font-size:12px;font-weight:600;color:var(--good);white-space:nowrap;}
+.flow{display:flex;flex-wrap:wrap;gap:12px;margin:22px 0;}
+.flow>div{flex:1 1 175px;padding:20px;border-top:3px solid var(--accent);background:var(--surface);}
+.flow b{display:block;margin-bottom:8px;} .flow p{font-size:15px;margin:0;} .flow .step-label{margin-bottom:8px;}
+.callout{border-left:3px solid var(--accent);padding:4px 0 4px 20px;margin:22px 0;}
+.bar-row{display:grid;grid-template-columns:90px minmax(90px,1fr) 62px;gap:12px;align-items:center;margin:12px 0;font-size:14px;}
+.track{height:18px;background:var(--wash);border-radius:3px;overflow:hidden;}
+.bar{height:100%;background:var(--accent);width:var(--w);border-radius:3px;}
+.bar-row strong{text-align:right;font-variant-numeric:tabular-nums;}
+.lesson{flex:1 1 300px;border-top:1px solid var(--rule);padding:18px 0;}
+.lesson h3{margin-top:8px;} .lesson p{font-size:16px;}
+details{border-bottom:1px solid var(--rule);}summary{cursor:pointer;padding:17px 0;font-weight:600;}summary:hover{color:var(--accent);}
+details[open]>summary{color:var(--accent);}
+.history-content{padding:12px 0 28px;overflow-x:auto;}
+.history-content h2{font-size:24px;} .history-content h3{font-size:19px;}
+.history-content .card{min-width:0;} .history-content table{font-size:15px;}
+.history-content .row{align-items:flex-start;} .history-content svg{max-width:100%;height:auto;}
+.history-content .measure{max-width:74ch;}
+.history-content .verdict{max-width:none;}
+.history-item{scroll-margin-top:24px;}
+.key{font-size:13px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);}
+footer{font-size:14px;}
+:focus-visible{outline:3px solid var(--accent);outline-offset:5px;}
+@media(max-width:600px){th,td{padding:10px;} .decision{padding:20px;} h2{font-size:26px;} .history-content table{min-width:540px;} .history-content .card{overflow-x:auto;} }
+@media(max-width:600px){#changed table,#changed tbody,#changed tr,#changed td{display:block;}#changed thead{display:none;}#changed tr+tr{border-top:1px solid var(--rule);}#changed td{border:0;padding:12px 18px;}#changed td::before{content:attr(data-label);display:block;font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:6px;}}
+@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto;}}
+@media print{nav{display:none;}details:not([open]){display:none;}body{font-size:12pt;}}
 </style>
 </head>
 <body>
 <div class="page">
-
 <header>
-  <div class="kicker">do-work analysis report · skill-do-work2 · maintainer question · 2026-09-03 21:45 EEST · revised 22:10 · lessons and handoff added 22:25 · landing recorded 22:35 · audit follow-ups added 22:45 · gate measured and triage proposed 23:20 · REQ-531 phase timings added 23:40 · triage applied and 0.272.1 recorded 00:15 · instrumentation lesson added 00:53 · state at 19:58 on 09-04 recorded</div>
-  <h1 class="measure" style="margin-top:12px">Why the queue drains slowly, why it refills, and what to change</h1>
-  <p class="lede measure">Development velocity of the do-work queue, measured from the archive, the calibration log, the recorded gate runs, the changelog and the queue on disk. Follow-up to the 00:10 gate-cost analysis, the 09-02 orchestrator analysis, the 09-01 queue analysis and the 08-20 treadmill report. Revised at 22:10 to carry both problems, after the maintainer read the 21:45 draft. Evidence mode: non-visual. UI captures were not expected for this work.</p>
+<div class="kicker">Do-work · execution speed · learning report</div>
+<div class="row" style="margin-top:20px">
+<div class="intro-copy">
+<h1>Less work around<br>each request.</h1>
+<p class="lede">The expensive gate and several avoidable delays have been addressed. The next opportunity is to finish simplifying the instructions an agent follows for every request.</p>
+<p class="note">Snapshot: 5 September 2026, 00:59 EEST · source revision <code>50048090</code> · release 0.281.1.<br>This is a dated report, not a live queue monitor.</p>
+</div>
+<aside class="decision" aria-label="Next task recommendation">
+<div class="step-label">The next new task</div>
+<h3>REQ-509 → REQ-510</h3>
+<p>Consolidate shared guidance, then delete obsolete workflow procedures.</p>
+<pre><code>do-work run REQ-509</code></pre>
+<p class="note">Send this to the agent running the skill. REQ-509 is ready and is the live selector’s choice. The expected speed benefit is mainly in REQ-510; it has not yet been measured.</p>
+</aside>
+</div>
+<div class="fact-strip" aria-label="Snapshot facts">
+<div><b>19 + 1</b><span>Pending requests + one claimed</span></div>
+<div><b>1,072 lines</b><span>Current workflow reference; REQ-510 targets &lt;700</span></div>
+<div><b>0.281.1</b><span>Latest release at this snapshot</span></div>
+</div>
 </header>
-
-<section>
+<nav aria-label="Report sections">
+<a href="#changed">1. What improved</a><a href="#time">2. Understand the time</a><a href="#next">3. Choose the next task</a><a href="#lessons">4. Lessons to keep</a><a href="#sources">Evidence &amp; history</a>
+</nav>
+<main>
+<section id="changed">
+<span class="step-label">01 / What improved</span>
+<h2>Several recurring costs have already been removed.</h2>
+<p class="section-intro">The old report contains useful measurements, but many of its action items are now completed. Use this table to understand what the current system already does.</p>
+<div class="table-wrap"><table>
+<thead><tr><th scope="col">Where time was lost</th><th scope="col">What shipped</th><th scope="col">Why it helps the drain</th></tr></thead>
+<tbody>
+<tr><td data-label="Where time was lost">Heavy checks on routine work</td><td data-label="What shipped"><span class="status">Shipped · 0.271.0 / 0.273.1</span><br>Fast/heavy separation; contract tests split by owner</td><td data-label="Why it helps">Less test work on the routine path. The historical standalone fast-gate measurement fell from about 629 s to 75 s.</td></tr>
+<tr><td data-label="Where time was lost">Repeating verification</td><td data-label="What shipped"><span class="status">Shipped · 0.274.1 / 0.281.0</span><br>Automatic gate runner; matching heavy-lane evidence reused for up to four hours</td><td data-label="Why it helps">Recent valid evidence can replace repeated execution. Reuse depends on matching inputs; browser lanes still execute.</td></tr>
+<tr><td data-label="Where time was lost">A transient failure became another request</td><td data-label="What shipped"><span class="status">Shipped · 0.277.0</span><br>One retry of the same gate command</td><td data-label="Why it helps">A green retry avoids the repair-request lifecycle. A second failure still enters diagnosis.</td></tr>
+<tr><td data-label="Where time was lost">Unrelated files or one stuck finalization stopped work</td><td data-label="What shipped"><span class="status">Shipped · 0.278.0–0.280.0</span><br>Scoped cleanliness, per-request recovery, finalization without checkpoint claims</td><td data-label="Why it helps">Unrelated work can continue; the pipeline no longer needs to commit another session’s files to proceed.</td></tr>
+<tr><td data-label="Where time was lost">The queue generated more maintenance as it drained</td><td data-label="What shipped"><span class="status">Shipped · 0.272.0</span><br>Noncritical findings stay in their reports</td><td data-label="Why it helps">Reduces automatic intake. Critical findings still enter the queue.</td></tr>
+</tbody></table></div>
+<p class="note">Sources: <a href="../../CHANGELOG.md">release notes</a> and the original report’s gate measurements. These are recorded results, not a fresh benchmark of today’s HEAD.</p>
+</section>
+<section id="time">
+<span class="step-label">02 / Understand the time</span>
+<h2>A request’s elapsed time includes much more than building.</h2>
+<p class="section-intro">A REQ is one queued request. Its lifecycle includes preparing the work, building it, checking it, and closing its records. This diagram explains those stages; its boxes are not proportional to duration.</p>
+<div class="flow" aria-label="Conceptual request lifecycle">
+<div><span class="step-label">1 → Prepare</span><b>Select, plan, explore</b><p>Read context, decide scope, record the approach.</p></div>
+<div><span class="step-label">2 → Build</span><b>Implement and test</b><p>Change the code and check the intended behavior.</p></div>
+<div><span class="step-label">3 → Verify</span><b>Integrate and review</b><p>Check the landed change. Failed checks can require remediation.</p></div>
+<div><span class="step-label">4 → Close</span><b>Release and archive</b><p>Record the outcome and settle the request’s lifecycle.</p></div>
+</div>
+<div class="row">
+<div class="explain">
+<h3>Read the timing samples carefully.</h3>
+<p>The report’s original <strong>65-minute median</strong> covered 24 archived requests. Its later <strong>11-minute median</strong> covered a different group of 11 requests.</p>
+<p>The seven calibration entries ending with the heavy-evidence cache release have a <strong>51-minute median</strong>, ranging from 12 to 111 minutes. That shows variation; it does not prove that the speed fixes regressed.</p>
+<div class="callout"><strong>These are different samples, not a controlled before/after test.</strong><p>Request complexity, remediation, heavy-test holds and resumed claims can change the recorded interval. Claim-to-archive time is not necessarily total time since the first attempt.</p></div>
+<details><summary>Why a three-minute completion can mislead</summary><p>The shipped-link repair (REQ-567) was built on 4 September and later resumed after heavy verification. Its newest calibration entry is 3 minutes. That describes the recorded completion interval, not all the earlier work.</p></details>
+</div>
+<div class="evidence">
+<h3>Seven recent recorded durations</h3>
+<p class="note">Calibration log, completions 4 September 18:49–21:09 UTC. Fixed sample ending at REQ-564; subsequent completions are excluded.</p>
+<div class="bar-row"><span>REQ-559</span><div class="track"><div class="bar" style="--w:29.73%"></div></div><strong>33 min</strong></div>
+<div class="bar-row"><span>REQ-560</span><div class="track"><div class="bar" style="--w:45.95%"></div></div><strong>51 min</strong></div>
+<div class="bar-row"><span>REQ-515</span><div class="track"><div class="bar" style="--w:94.59%"></div></div><strong>105 min</strong></div>
+<div class="bar-row"><span>REQ-568</span><div class="track"><div class="bar" style="--w:100.00%"></div></div><strong>111 min</strong></div>
+<div class="bar-row"><span>REQ-508</span><div class="track"><div class="bar" style="--w:50.45%"></div></div><strong>56 min</strong></div>
+<div class="bar-row"><span>REQ-547</span><div class="track"><div class="bar" style="--w:10.81%"></div></div><strong>12 min</strong></div>
+<div class="bar-row"><span>REQ-564</span><div class="track"><div class="bar" style="--w:23.42%"></div></div><strong>26 min</strong></div>
+<p class="note">Source: <a href="../../do-work/calibration-log.tsv">calibration-log.tsv</a>, <code>wall_minutes</code>. Bars share a 111-minute scale. Median: sort 12, 26, 33, <strong>51</strong>, 56, 105, 111; the fourth value is the middle.</p>
+<details><summary>What each request did</summary><p>REQ-559: gate retry. REQ-560: scoped cleanliness. REQ-515: recovery that continues. REQ-568: board activity view. REQ-508: smaller capture examples. REQ-547: checkpoint-free finalization. REQ-564: heavy-evidence reuse.</p></details>
+</div>
+</div>
+<div class="callout"><strong>Observed: preparation can cost more than the small change suggests.</strong><p>The earlier priority-field run (REQ-561) took 20 min 47 s before builder dispatch, with 5,316 words of raw planning/exploration and eight pre-builder commits. This identifies a process cost worth investigating; it does not isolate the CPU cost of recording timestamps.</p></div>
+</section>
+<section id="next">
+<span class="step-label">03 / Choose the next task</span>
+<h2>Finish the simplification chain and close landed work.</h2>
+<div class="row">
+<div class="explain">
+<h3>Next new build: shared guidance</h3>
+<p><a href="../../do-work/queue/REQ-509-merge-common-rationalizations-into-one-crew-member.md">REQ-509</a> provides one loading point for shared principles and unlocks <a href="../../do-work/queue/REQ-510-sweep-work-reference-sections-owned-by-cli-tests.md">REQ-510</a>, the workflow-reference cleanup.</p>
+<p>The audit found <strong>zero near-identical cross-file rows</strong>. So the reason to do REQ-509 is consistent loading and its existing dependency role, not a proven deduplication saving.</p>
+</div>
+<div class="explain">
+<h3>Main expected payoff: less procedural prose</h3>
+<p>REQ-510 removes reference sections whose rules already live in CLI behavior tests. The reference is now <strong>1,072 lines</strong>; the request targets <strong>fewer than 700</strong>.</p>
+<p>Fewer redundant instructions should reduce repeated context reading and mechanical reasoning. That is a hypothesis to measure, not a promised number of minutes saved.</p>
+</div>
+<div class="explain">
+<h3>Existing work: finish the return path</h3>
+<p>The shipped-link repair (REQ-567) is now archived. The existing session has claimed the lifecycle command (REQ-503) again. Several chain implementations are already on main but still require closure.</p>
+<p>The finalization migration (REQ-507) has a recorded <code>staged-skills</code> heavy-test failure and must return to remediation. A landed commit alone does not make that request done.</p>
+</div>
+</div>
+<div class="callout"><strong>Timing instrumentation remains useful, but its return is indirect.</strong><p>REQ-562 would add flat stage/command timings and one final summary. Keep it lightweight: no separate agent turns or instrumentation-only commits. It helps choose future optimizations; its direct speed saving is unproven.</p></div>
+</section>
+<section id="lessons">
+<span class="step-label">04 / Lessons to keep</span>
+<h2>Use the evidence without making the process heavier.</h2>
+<div class="row">
+<article class="lesson"><span class="key">L18 · Measurement cost</span><h3>Instrumentation must be cheaper than the work.</h3><p>Write bounded raw events in Git-private state and fold one summary into finalization. Extra planning, artifacts and commits can overwhelm the small measurement they support.</p></article>
+<article class="lesson"><span class="key">L19 · Comparable samples</span><h3>A new median needs its sample beside it.</h3><p>The 65-, 11- and 51-minute figures cover different requests and intervals. Show counts, endpoints and caveats before using them to claim a speedup or regression.</p></article>
+<article class="lesson"><span class="key">L20 · Lifecycle state</span><h3>Implemented and completed are separate states.</h3><p>The chain has code on main while records await review or remediation. Finish that return path; do not infer closure from a commit or rebuild work just because its record is pending.</p></article>
+</div>
+<div class="row">
+<article class="lesson"><span class="key">L21 · Expected return</span><h3>A prerequisite is not the source of the saving.</h3><p>REQ-509 unlocks REQ-510. The stronger speed hypothesis is removing obsolete procedures in REQ-510, not relocating unique guidance into a new file.</p></article>
+<article class="lesson"><span class="key">L22 · Safe reuse</span><h3>Reuse evidence when the inputs match.</h3><p>The heavy-lane cache is bounded by age and fingerprints. A recent timestamp alone cannot prove that changed code or fixtures were checked.</p></article>
+<article class="lesson"><span class="key">L23 · Remaining uncertainty</span><h3>Parallelism is not proven to be the only remaining lever.</h3><p>The later timing spread and unfinished prose cleanup leave serial opportunities. Measure stage time, retries and bookkeeping before declaring per-request execution optimized.</p></article>
+</div>
+</section>
+<section id="sources">
+<span class="step-label">Evidence / Read further when needed</span>
+<h2>Current evidence first. Historical detail below.</h2>
+<div class="row">
+<div class="explain">
+<h3>Reproduce this snapshot</h3>
+<pre><code>just do-work-next
+tail -n 12 do-work/calibration-log.tsv
+wc -l skills/do-work/actions/work.md \
+  skills/do-work/actions/work-reference.md
+git log -12 --oneline</code></pre>
+<p class="note">These read-only checks were used for this update. They will return newer state as the queue moves. No gate or queue execution was started for this report.</p>
+</div>
+<div class="explain">
+<h3>Evidence and limits</h3>
+<p><a href="../../CHANGELOG.md">Changelog</a>: shipped behavior through 0.281.1.<br><a href="../../do-work/calibration-log.tsv">Calibration log</a>: recorded wall minutes.<br><a href="../../skills/do-work/actions/work-reference.md">Workflow reference</a>: current 1,072-line source.<br><a href="../../do-work/queue/REQ-507-hand-archive-and-commit-tails-to-finalize.md">Finalization migration</a>: recorded heavy failure.</p>
+<p class="note">Repository files support the new snapshot; the earlier report supplies historical measurements. This update is not an independent audit of every shipped feature. UI captures were not expected for this work.</p>
+</div>
+</div>
+<details id="history">
+<summary>Open the original report and lessons L1–L18 · 3–4 September</summary>
+<p class="callout"><strong>Historical record.</strong> Recommendations, queue counts and “not captured” labels below were true or proposed at their stated dates. They are preserved as source material, not instructions for the current queue. In particular, the old “parallelism is the only lever left” claim is superseded by L23 above.</p>
+<details class="history-item"><summary>01 · Verdict</summary><div class="history-content">
   <div class="row">
     <div class="verdict measure" style="flex: 2 1 480px">
       <h2>Verdict</h2>
@@ -104,9 +283,8 @@
       <div class="card tile"><div class="label">Created vs archived, 30 days</div><div class="value">395 · 391</div><div class="sub">130 review-born · 182 addenda · 439 releases</div></div>
     </div>
   </div>
-</section>
-
-<section>
+</div></details>
+<details class="history-item"><summary>02 · Where a REQ's hour goes</summary><div class="history-content">
   <h2>Where a REQ's hour goes</h2>
   <div class="row">
     <div class="card" style="flex: 1 1 520px">
@@ -162,9 +340,8 @@
       </ol>
     </div>
   </div>
-</section>
-
-<section>
+</div></details>
+<details class="history-item"><summary>03 · The speed fix today</summary><div class="history-content">
   <h2>The speed fix today</h2>
   <div class="row">
     <div style="flex: 1 1 560px">
@@ -184,9 +361,8 @@
       <p style="margin-bottom:0">The same session measured the wider corpus: <code>update-script-behavior.sh</code> about 60 s, <code>install-suite-behavior.sh</code> about 40 s, one Go package about 35 s. Those are the first three files the 30-second budget would flag.</p>
     </div>
   </div>
-</section>
-
-<section>
+</div></details>
+<details class="history-item"><summary>04 · What changed in the batch, and what is still open</summary><div class="history-content">
   <h2>What changed in the batch, and what is still open</h2>
   <div class="measure">
     <p>The 21:45 draft of this report asked for three edits to the batch. Commit d00da469 at 22:04 made all three as an addendum to REQ-539, REQ-540, REQ-541 and REQ-542. They stay listed so the reasoning is on record; items 4 to 8 are still open.</p>
@@ -201,9 +377,8 @@
       <li><strong>Prefer deletion over optimization in REQ-538 and REQ-539.</strong> REQ-532 (deleting dead test scripts and nested self-tests from the gate) already shipped; the Codex worktree's uncommitted diff deletes REQ-538's two meta-tests outright rather than skipping them. That is the cheaper shape for the rest of the batch too: a sentence pin whose comment names no incident REQ, or whose target is not a shipped file, is deleted rather than reclassified. The orchestrator-simplification chain (REQ-502 to REQ-510) is the same move applied to <code>work.md</code>, and the 09-02 report measured about 55% of its step prose as mechanics the CLI already owns.</li>
     </ol>
   </div>
-</section>
-
-<section>
+</div></details>
+<details class="history-item"><summary>05 · The queue's shape</summary><div class="history-content">
   <h2>The queue's shape</h2>
   <div class="row">
     <div class="measure" style="flex: 1 1 460px">
@@ -222,9 +397,8 @@
       </table>
     </div>
   </div>
-</section>
-
-<section>
+</div></details>
+<details class="history-item"><summary>06 · Triage of the 47 pending: proposed 23:20, applied 23:55</summary><div class="history-content">
   <h2>Triage of the 47 pending: proposed 23:20, applied 23:55</h2>
   <p class="measure">Every pending REQ read and judged against one question: does building it now make the queue drain faster, or does it protect the drain? The maintainer's standing preference from 09-03 morning applies: fold test-only work into parents, cancel unobserved hardening, defer board features. Applied at 23:55 after the maintainer amended the cancel list (REQ-496 kept, REQ-530 added) and said yes: commits f23c1c7f (seven from the queue), a243dad6 (REQ-471's line into REQ-510, REQ-482 earmarked), fef46c3d and e6db36e2 (the two cloud claims). The table keeps the proposal's wording with the outcome marked per row.</p>
   <div class="row">
@@ -243,9 +417,8 @@
       <p style="margin-bottom:0">Wall-clock floor: the chain, roughly nine REQs at the post-0.271.0 rate. Everything else fits inside that window with three builders. Then the twelve deferred, of which ten are small deletions that the cheap lane can take in one pass.</p>
     </div>
   </div>
-</section>
-
-<section>
+</div></details>
+<details class="history-item"><summary>07 · Why the queue refills</summary><div class="history-content">
   <h2>Why the queue refills</h2>
   <div class="row">
     <div class="measure" style="flex: 1 1 460px">
@@ -275,9 +448,8 @@
       </table>
     </div>
   </div>
-</section>
-
-<section>
+</div></details>
+<details class="history-item"><summary>08 · Throughput, last six days</summary><div class="history-content">
   <h2>Throughput, last six days</h2>
   <div class="row">
     <div class="card" style="flex: 1 1 520px">
@@ -300,9 +472,8 @@
       <p style="margin-bottom:0">Origin counts read two frontmatter keys: <code>review_generated: true</code> marks a REQ a review handback minted, <code>addendum_to</code> marks one appended to a prior REQ's scope. 202 of the 391 archived REQs carry no <code>impact</code> field at all; an absent field reads as user-visible, which is the same gap the 2026-08-20 report found in 19 of 31 pending REQs.</p>
     </div>
   </div>
-</section>
-
-<section>
+</div></details>
+<details class="history-item"><summary>09 · Lessons learned today</summary><div class="history-content">
   <h2>Lessons learned today</h2>
   <p class="measure">What this day taught about making the queue move, written so a session that has none of this context can act on it. Each lesson names the evidence and the rule that follows from it. Added at 22:25; instrumentation lesson added at 00:53.</p>
   <div class="row">
@@ -337,9 +508,8 @@
       </table>
     </div>
   </div>
-</section>
-
-<section>
+</div></details>
+<details class="history-item"><summary>10 · Handoff for the next session</summary><div class="history-content">
   <h2>Handoff for the next session</h2>
   <div class="row">
     <div class="card measure" style="flex: 1 1 460px">
@@ -381,9 +551,8 @@
       </ul>
     </div>
   </div>
-</section>
-
-<section>
+</div></details>
+<details class="history-item"><summary>11 · Verify it yourself</summary><div class="history-content">
   <h2>Verify it yourself</h2>
   <div class="row">
     <div style="flex: 1 1 420px">
@@ -409,13 +578,15 @@ cd skills/do-work-board/tools/queue-kanban &amp;&amp; go test -count=1 -json ./.
   | grep '"Action":"pass"' | sort -t: -k5 -n | tail  # slowest tests</pre>
     </div>
   </div>
-</section>
-
-<footer>
+</div></details>
+<details><summary>Original source notes</summary><p class="note">
   Lineage: <a href="../2026-09-03_0010_maintainer-verify-gate-cost-analysis/index.html">2026-09-03 00:10 gate cost analysis</a> · <a href="../2026-09-02_1651_orchestrator-simplification-analysis/index.html">2026-09-02 orchestrator simplification</a> · <a href="../2026-09-01_0927_queue-analysis-time-cost-disposition/index.html">2026-09-01 queue analysis</a> · <a href="../2026-08-20_1131_remaining-work-and-the-req-treadmill/index.html">2026-08-20 the REQ treadmill</a>. Sources: do-work/archive frontmatter (83 REQ files plus UR folders), do-work/calibration-log.tsv at 73fc3c80, do-work/queue and do-work/working at HEAD d00da469, CHANGELOG.md, commits af6b29bc, eef2b8d2, d00da469 and ffbc3628, UR-100 and UR-104 inputs, REQ-531's file, the live REQ-561 run artifacts, the Codex worktree diff, and the maintainer's 21:32 instruction in the pasted session transcript. Render status is stated below this line after the check.
-  <div id="render-status">19:58 revision render-verified in light at 1440 px width, full page, no horizontal overflow (scrollWidth 1425 = clientWidth); dark scheme not emulated in this pass — the change is text only and the layout is scheme-independent.</div>
-</footer>
 
+</p></details>
+</details>
+</section>
+</main>
+<footer><p>Updated in place at the maintainer’s request. Guided explanation added on 5 September; dated source sections preserved below it. No external fonts, scripts or build step.</p><p id="render-status">Render-checked in light and dark at 1440 px, and at 390 px mobile width. Historical chart checked expanded. No page-level horizontal overflow.</p></footer>
 </div>
 </body>
 </html>
