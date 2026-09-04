@@ -1,7 +1,7 @@
 ---
 id: REQ-505
 title: '[impact-rule-change] Move selection and claim behind advance'
-status: pending
+status: claimed
 priority: now
 created_at: 2026-09-02T14:37:54Z
 user_request: UR-098
@@ -62,6 +62,7 @@ estimate:
     - full-suite verification
 heavy_verified_at: 2026-09-04T21:02:21Z
 heavy_verified_revision: 716187b847d1de0402b69587a2fe5cf7e7bd8516
+claimed_at: 2026-09-04T23:00:06Z
 ---
 
 # Move Selection and Claim Behind advance
