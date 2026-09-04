@@ -18,5 +18,4 @@ session_depth: light
 
 ## In Progress (interrupted)
 
-
-
+- REQ-547: [impact-rule-change] Stop finalize refusing a REQ that has no checkpoint entry — claimed 2026-09-04T20:43:09Z — writer: t2s-Virtual-Machine.local:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2

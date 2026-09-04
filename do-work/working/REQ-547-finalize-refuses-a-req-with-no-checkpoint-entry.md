@@ -1,7 +1,7 @@
 ---
 id: REQ-547
 title: '[impact-rule-change] Stop finalize refusing a REQ that has no checkpoint entry'
-status: pending
+status: claimed
 priority: now
 created_at: 2026-09-03T16:40:00Z
 user_request: UR-085
@@ -30,6 +30,7 @@ estimate:
     - 5 acceptance criteria
     - persistence changes
 status_changed_at: 2026-09-04T20:43:02Z
+claimed_at: 2026-09-04T20:43:09Z
 ---
 
 # Stop Finalize Refusing a REQ That Has No Checkpoint Entry
