@@ -23,10 +23,25 @@ var (
 	digestPattern    = regexp.MustCompile(`^[0-9a-fA-F]{64}$`)
 )
 
+type requestBindingError struct {
+	reason string
+}
+
+func (err requestBindingError) Error() string {
+	return err.reason
+}
+
 func prepareJournal(ctx context.Context, repositoryRoot, manifestPath string) (*Journal, bool, error) {
+	return prepareBoundJournal(ctx, repositoryRoot, manifestPath, "", "")
+}
+
+func prepareBoundJournal(ctx context.Context, repositoryRoot, manifestPath, expectedRequestID, expectedRequestPath string) (*Journal, bool, error) {
 	manifest, manifestBytes, err := decodeManifest(repositoryRoot, manifestPath)
 	if err != nil {
 		return nil, false, err
+	}
+	if expectedRequestID != "" && (manifest.RequestID != expectedRequestID || manifest.RequestPath != expectedRequestPath) {
+		return nil, false, requestBindingError{reason: fmt.Sprintf("finalization manifest identifies %s at %s, expected %s at %s", manifest.RequestID, manifest.RequestPath, expectedRequestID, expectedRequestPath)}
 	}
 	if err := exec.Command("git", "-C", repositoryRoot, "diff", "--cached", "--quiet", "--exit-code").Run(); err != nil {
 		return nil, false, fmt.Errorf("finalization requires an empty existing index")

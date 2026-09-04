@@ -72,6 +72,71 @@ func TestRenderersUseOneNormalizedResult(t *testing.T) {
 	}
 }
 
+func TestFinalizationTextAndJSONCarryTheSameOrderedEvidence(t *testing.T) {
+	result := CommandResult{
+		Command: "advance", Outcome: OutcomeRefused, RepositoryRoot: "/tmp/example",
+		Finalizations: []FinalizationResult{{
+			RequestID: "REQ-507", RequestPath: "do-work/working/REQ-507-tail.md", ArchivePath: "do-work/archive/REQ-507-tail.md",
+			JournalPath: "/tmp/example/.git/do-work-finalization/REQ-507.json", Phase: "verified", TerminalStatus: "completed-with-issues",
+			Resumed: true, Discovered: false, CommitPaths: []string{"do-work/working/REQ-507-tail.md", "do-work/archive/REQ-507-tail.md"},
+			PrimaryCommit: "primary123", MetadataCommit: "metadata456", CreatedPrimaryCommit: "", CreatedMetadataCommit: "metadata456",
+			BlockedPaths: []string{"foreign.txt"}, ReasonCodes: []string{"FINALIZATION-VERIFY"},
+			NextArgv: []string{"do-work-cli", "recover-finalization"}, VerificationArgv: []string{"git", "status", "--short"}, CollectionArgv: []string{"git", "diff", "--", "foreign.txt"},
+		}},
+	}
+
+	textOutput, err := RenderResult(result, FormatText)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, expected := range []string{
+		"finalization REQ-507 [verified, completed-with-issues]", "request: do-work/working/REQ-507-tail.md", "archive: do-work/archive/REQ-507-tail.md",
+		"journal: /tmp/example/.git/do-work-finalization/REQ-507.json", "resumed: true", "discovered: false",
+		"commit paths: do-work/working/REQ-507-tail.md, do-work/archive/REQ-507-tail.md", "primary commit: primary123", "metadata commit: metadata456",
+		"created primary commit:", "created metadata commit: metadata456", "blocked paths: foreign.txt", "reason codes: FINALIZATION-VERIFY",
+		"next: do-work-cli recover-finalization", "verify: git status --short", "collect: git diff -- foreign.txt",
+	} {
+		if !strings.Contains(string(textOutput), expected) {
+			t.Errorf("finalization text missing %q:\n%s", expected, textOutput)
+		}
+	}
+
+	jsonOutput, err := RenderResult(result, FormatJSON)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var decoded CommandResult
+	if err := json.Unmarshal(jsonOutput, &decoded); err != nil {
+		t.Fatal(err)
+	}
+	if len(decoded.Finalizations) != 1 || decoded.Finalization == nil || !reflect.DeepEqual(*decoded.Finalization, decoded.Finalizations[0]) || decoded.Finalizations[0].BlockedPaths == nil || decoded.Finalizations[0].ReasonCodes == nil {
+		t.Fatalf("finalization JSON lost ordered/compatibility evidence: %#v", decoded)
+	}
+
+	ordered := result
+	ordered.Finalizations = append(ordered.Finalizations, FinalizationResult{RequestID: "REQ-508", Phase: "cleanup_complete", TerminalStatus: "completed"})
+	orderedText, err := RenderResult(ordered, FormatText)
+	if err != nil {
+		t.Fatal(err)
+	}
+	firstOffset := strings.Index(string(orderedText), "finalization REQ-507")
+	secondOffset := strings.Index(string(orderedText), "finalization REQ-508")
+	if firstOffset < 0 || secondOffset <= firstOffset {
+		t.Fatalf("finalization text changed record order:\n%s", orderedText)
+	}
+	orderedJSON, err := RenderResult(ordered, FormatJSON)
+	if err != nil {
+		t.Fatal(err)
+	}
+	decoded = CommandResult{}
+	if err := json.Unmarshal(orderedJSON, &decoded); err != nil {
+		t.Fatal(err)
+	}
+	if len(decoded.Finalizations) != 2 || decoded.Finalization != nil || decoded.Finalizations[0].RequestID != "REQ-507" || decoded.Finalizations[1].RequestID != "REQ-508" {
+		t.Fatalf("finalization JSON changed record order: %#v", decoded)
+	}
+}
+
 func TestSelectionTextAndJSONCarryTheSameTypedCommands(t *testing.T) {
 	result := CommandResult{
 		Command: "next", Outcome: OutcomeSuccess, RepositoryRoot: "/tmp/example",
@@ -332,6 +397,12 @@ func TestAdvanceTextAndJSONCarryTheSameTypedLifecycleState(t *testing.T) {
 			}},
 			NextArgv:         []string{"do-work-cli", "--format", "json", "qualify", "--request-path", "do-work/working/REQ-503-advance.md"},
 			VerificationArgv: []string{"do-work-cli", "--format", "json", "advance", "REQ-503"},
+			GateRecords: []AdvanceGateRecord{{
+				RequestID: "REQ-503", RequestPath: "do-work/working/REQ-503-advance.md",
+				GateID: "run-blocked-check", Provenance: AdvanceGateBaselineRecord,
+				State: AdvanceGateFindings, Outcome: OutcomeFindings,
+				FocusedTest: &FocusedTestResult{ExitStatus: 9, Launched: true, DiagnosticSHA256: "abc", BaselineState: FocusedBaselineNewRed},
+			}},
 		},
 	}
 
@@ -345,6 +416,8 @@ func TestAdvanceTextAndJSONCarryTheSameTypedLifecycleState(t *testing.T) {
 		`missing section: do-work/working/REQ-503-advance.md section="Qualification" expected=typed qualification result`,
 		"next: do-work-cli --format json qualify --request-path do-work/working/REQ-503-advance.md",
 		"verify: do-work-cli --format json advance REQ-503",
+		"gate run-blocked-check [baseline_record, findings]: findings",
+		"focused test: status=9 baseline=new_red diagnostic=abc",
 	} {
 		if !strings.Contains(string(textOutput), expected) {
 			t.Errorf("text output missing %q:\n%s", expected, textOutput)
@@ -361,12 +434,13 @@ func TestAdvanceTextAndJSONCarryTheSameTypedLifecycleState(t *testing.T) {
 	}
 	if decoded.Advance == nil || decoded.Advance.Phase != "qualify" || decoded.Advance.PhaseKind != AdvancePhaseMechanical ||
 		!reflect.DeepEqual(decoded.Advance.NextArgv, result.Advance.NextArgv) || !reflect.DeepEqual(decoded.Advance.VerificationArgv, result.Advance.VerificationArgv) ||
-		len(decoded.Advance.MissingEvidence) != 1 || decoded.Advance.MissingEvidence[0].Section != "Qualification" {
+		len(decoded.Advance.MissingEvidence) != 1 || decoded.Advance.MissingEvidence[0].Section != "Qualification" ||
+		len(decoded.Advance.GateRecords) != 1 || decoded.Advance.GateRecords[0].FocusedTest == nil || decoded.Advance.GateRecords[0].FocusedTest.BaselineState != FocusedBaselineNewRed {
 		t.Fatalf("JSON lost typed advance state: %#v", decoded.Advance)
 	}
 
 	normalized := NormalizeResult(CommandResult{Advance: &AdvanceLifecycleResult{}})
-	if normalized.Advance.MissingEvidence == nil || normalized.Advance.NextArgv == nil || normalized.Advance.VerificationArgv == nil {
+	if normalized.Advance.MissingEvidence == nil || normalized.Advance.NextArgv == nil || normalized.Advance.VerificationArgv == nil || normalized.Advance.GateRecords == nil {
 		t.Fatalf("advance collections must normalize non-null: %#v", normalized.Advance)
 	}
 }
