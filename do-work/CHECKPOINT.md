@@ -20,3 +20,5 @@ session_depth: light
 
 
 - REQ-508: [impact-rule-change] Reduce capture templates to minimal examples backed by the schema layer — claimed 2026-09-04T19:13:19Z — writer: t2s-Virtual-Machine.local:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2
+
+- REQ-547: [impact-rule-change] Stop finalize refusing a REQ that has no checkpoint entry — claimed 2026-09-04T20:02:18Z — writer: vm:/home/user/skill-do-work
