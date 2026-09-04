@@ -1,7 +1,7 @@
 ---
 id: REQ-535
 title: 'Review fix: keep same-id filename collisions ambiguous in duplicate readiness'
-status: claimed
+status: completed
 priority: now
 created_at: 2026-09-03T12:20:21Z
 user_request: UR-103
@@ -24,6 +24,8 @@ estimate:
   calculated_at: 2026-09-04T12:48:00Z
   basis:
     - trivial short-circuit
+completed_at: 2026-09-04T12:55:00Z
+commit: 4d378988f56676efc90048903b1a8abda31f4039
 ---
 
 # Keep Same-Id Filename Collisions Ambiguous in Duplicate Readiness
