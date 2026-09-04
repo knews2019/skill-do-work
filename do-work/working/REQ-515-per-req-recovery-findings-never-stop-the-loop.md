@@ -32,6 +32,7 @@ estimate:
 dispatch_at: 2026-09-04T18:23:51Z
 builder_handback_at: 2026-09-04T19:09:41Z
 integration_at: 2026-09-04T19:09:41Z
+review_at: 2026-09-04T19:24:12Z
 ---
 
 # Per-REQ recovery findings never stop the loop
@@ -207,3 +208,21 @@ The first run failed on `_dev/tests/session-start-hook-behavior.sh took 30s; eac
 - `_dev/tests/contracts/recovery-set-aside.sh` — ten predicates. The strongest reads the `setAsideReasonCode` constant out of the Go source and requires all three action files to name that exact token, so a rename in the CLI reddens the suite instead of leaving prose citing a code nothing emits.
 
 **Gate history across this run:** the same test file measured 44s, 39s, 32s, 30s and 27s on five separate runs with nothing touching it. It is a flake sitting near its budget on a slow container, which is why it produced a red gate twice and a green one three times.
+
+## Review
+
+**Verdict: Fail** — independent review, acceptance failed on a named requirement, overall capped at 50%. Full record: `do-work/runs/work-2026-09-04-182017/REQ-515-review.md`. Returned to Step 6 for remediation.
+
+**F1 — impact-critical. A set-aside REQ is released back into the queue and re-selected.** Because the command now returns typed `success`, `recover --assume-sole-authority` goes on to claim recovery in `internal/lifecycleadvance/recovery_commands.go`. The reviewer reproduced it on this REQ's own `seedTwoPlannedFinalizations` fixture: after the set-aside the REQ's claim is recovered, it reappears in `do-work/queue/`, and `next` selects the very REQ the run just excluded — while its journal still sits at phase `prepared`. A builder then redoes the work and the finalize tail refuses with "an unfinished journal exists with a different manifest".
+
+This is worse than the behaviour it replaced. The old code parked the queue; this re-dispatches work onto a REQ that cannot finalize. The prose this REQ added asserts the opposite in three places — `run-with-recovery.md` ("one REQ this run will not select"), `work.md` ("excludes that one REQ from this run's selection"), and `work-reference.md` ("the REQ was not claimed and nothing was written to it", when the claim reset is written and committed). Shipped prose describing shipped behaviour incorrectly.
+
+**F2 — impact-rule-change. The shared-cause stop is effectively unreachable.** `requestScopedRefusal` returns false only for conditions `advanceJournal` never produces, plus an incomplete rollback. So `FINALIZATION-DIRTY-INDEX` and `FINALIZATION-AMBIGUOUS-SHARED-STATE` — the two codes that mean shared-target dirt — are stamped with the journal's REQ and become per-REQ exclusions. The maintainer's principle is that only shared-target dirt may stop the loop; setting shared-target dirt aside inverts it. Requirement 3 passes today only because discovery-level refusals return before the folding loop, which this diff did not touch.
+
+**F3 — impact-rule-change. The never-widen lock-in does not exercise the code this REQ added.** `TestRecoverFinalizationStopsWhenTheRefusalOwnsNoRequest` refuses inside `discoverFinalizationJournals` and returns before `consumeRecoveryRecord` runs. It would pass unchanged if `requestScopedRefusal` returned true for everything. No test covers any false branch, including `RollbackIncomplete`, which is the only live stop.
+
+**Recorded as report-only, not remediated:** F4 (the exclusion never reaches the selector — `advance` and `next` read no finalization records, so the exclusion lives in the recovery result and in prose; under plain `run` the two agree only because the REQ stays in `working/`), M2 (under `run-with-recovery` the prescribed resolving verb is the verb that just ran — circular advice, though not a REQ-514 violation since that rule governs `next_argv`), M4 (seven of ten contract predicates are exact-phrase pins; the Batch Constraint is still met because the Go RED test is the behaviour half), M6 (P-A-U boxes were unchecked; the hand-back shows the equivalent work).
+
+**What the review affirmed:** the per-record folding, the REQ-514-conformant set-aside shape with empty `next_argv` and preserved reason codes, the honest RED→GREEN, and the `setAsideReasonCode` cross-artifact predicate. The plain `do-work run` path in the Red-Green Proof does what it promises.
+
+Remediation dispatched for F1, F2, F3, M1, M3 and M5, with `internal/lifecycleadvance/recovery_commands.go` authorized into scope because the REQ's completion proof requires it.
