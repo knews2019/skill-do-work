@@ -1,7 +1,7 @@
 ---
 id: REQ-561
 title: 'Add a three-value priority field the selector orders by and the board shows'
-status: pending
+status: pending-heavy-testing
 created_at: 2026-09-03T20:38:55Z
 user_request: UR-107
 domain: backend
@@ -57,13 +57,12 @@ write_set:
   - skills/do-work/CHANGELOG.md
   - skills/do-work/actions/version.md
   - do-work/queue/
-claimed_at: 2026-09-03T20:58:09Z
 planning_at: 2026-09-03T21:10:13Z
 exploration_at: 2026-09-03T21:17:07Z
 dispatch_at: 2026-09-03T21:18:56Z
 builder_handback_at: 2026-09-03T21:35:57Z
 integration_at: 2026-09-03T21:37:20Z
-status_changed_at: 2026-09-03T21:51:41Z
+status_changed_at: 2026-09-04T10:14:02Z
 commit: 2d052afa24759990b8c3bf417b3ad4579b1bfc16
 ---
 
@@ -255,9 +254,95 @@ Passed — the exact `ff1ddc1fdf0fa596e0816f7d573cbf584e2ea06b..2d052afa24759990
 
 **Red-green validation:** the schema RED preserved absent/invalid values instead of defaulting; the selector RED kept numeric order; the board RED kept numeric Pending order. The added tests then passed with default/warning projection, class/dependency precedence, fan-out timing, explicit/UR ordering, Ready/Waiting sorting, static/live agreement, and browser badges.
 
+## Heavy Verification Plan
+
+- `mode`: `historical-revalidation`
+- `source_ranges`: `ff1ddc1fdf0fa596e0816f7d573cbf584e2ea06b..2d052afa24759990b8c3bf417b3ad4579b1bfc16`
+- `manifest_revision`: `c0d8ce1cb44cc1830b167214c018d76ba87baffc`
+- `execution_revision`: `c0d8ce1cb44cc1830b167214c018d76ba87baffc`
+- `manifest_path`: `_dev/tests/heavy-lanes.json`
+- `forced_all`: `false`
+- `uncertain`: `false`
+- `uncovered_paths`: `[]`
+- `changed_paths`:
+  - `CHANGELOG.md`
+  - `VERSION`
+  - `do-work/queue/REQ-475-confine-all-configured-memory-tree-readers.md`
+  - `do-work/queue/REQ-482-stack-verify-findings-full-width.md`
+  - `do-work/queue/REQ-483-bound-architecture-bundle-claim-loop.md`
+  - `do-work/queue/REQ-485-canonicalize-req-reservation-marker-filenames.md`
+  - `do-work/queue/REQ-486-collapsible-ur-progress-summaries.md`
+  - `do-work/queue/REQ-490-compute-wave-depth-from-satisfied-duplicate-records.md`
+  - `do-work/queue/REQ-496-add-shared-executable-already-green-repair-validator.md`
+  - `do-work/queue/REQ-503-add-read-only-advance-lifecycle-command.md`
+  - `do-work/queue/REQ-504-collapse-step-10-and-crash-recovery-prose-into-recovery.md`
+  - `do-work/queue/REQ-505-move-selection-and-claim-behind-advance.md`
+  - `do-work/queue/REQ-506-run-evidence-gates-from-advance.md`
+  - `do-work/queue/REQ-507-hand-archive-and-commit-tails-to-finalize.md`
+  - `do-work/queue/REQ-508-reduce-capture-templates-to-schema-backed-examples.md`
+  - `do-work/queue/REQ-509-merge-common-rationalizations-into-one-crew-member.md`
+  - `do-work/queue/REQ-510-sweep-work-reference-sections-owned-by-cli-tests.md`
+  - `do-work/queue/REQ-512-complete-legacy-finalization-semantic-ownership.md`
+  - `do-work/queue/REQ-514-refusals-never-name-themselves-as-the-fix.md`
+  - `do-work/queue/REQ-515-per-req-recovery-findings-never-stop-the-loop.md`
+  - `do-work/queue/REQ-527-teach-cleanup-pass-5-that-merged-is-not-finished.md`
+  - `do-work/queue/REQ-534-run-blocked-probes-from-the-repository-root-and-propagate-interruptions.md`
+  - `do-work/queue/REQ-535-keep-same-id-filename-collisions-ambiguous-in-duplicate-readiness.md`
+  - `do-work/queue/REQ-536-record-real-file-modes-in-lifecycle-postimages.md`
+  - `do-work/queue/REQ-539-cut-the-contract-file-and-split-the-aggregate.md`
+  - `do-work/queue/REQ-542-sessionstart-launches-the-gate-runner.md`
+  - `do-work/queue/REQ-544-anchor-every-lifecycle-gate-over-caller-authored-text.md`
+  - `do-work/queue/REQ-545-synchronize-the-self-signalling-fetcher-probe.md`
+  - `do-work/queue/REQ-547-finalize-refuses-a-req-with-no-checkpoint-entry.md`
+  - `do-work/queue/REQ-549-drop-dead-path-tokens-from-decision-indexes-and-lessons-prime.md`
+  - `do-work/queue/REQ-550-collapse-four-exported-one-line-delegates-into-their-targets.md`
+  - `do-work/queue/REQ-551-delete-the-five-caller-less-toolbox-shell-shims.md`
+  - `do-work/queue/REQ-552-replace-two-coreutils-exec-sites-with-the-pure-go-the-package-already-has.md`
+  - `do-work/queue/REQ-553-source-one-launcher-preamble-instead-of-hand-rolling-it.md`
+  - `do-work/queue/REQ-554-move-the-commit-and-inspect-shared-body-into-the-prescribed-shell-guide.md`
+  - `do-work/queue/REQ-555-rewrite-the-prescribed-shell-guide-executable-homes-table-to-the-cli-route-form.md`
+  - `do-work/queue/REQ-556-cut-the-debug-artifact-rule-prose-that-qualify-already-enforces.md`
+  - `do-work/queue/REQ-557-deduplicate-six-go-helper-names-defined-fourteen-times-across-do-work-cli.md`
+  - `do-work/queue/REQ-558-keep-one-nil-root-guard-in-git-transaction-and-delete-the-other-eight.md`
+  - `do-work/queue/REQ-559-retry-a-red-repository-gate-once-before-a-repair-req.md`
+  - `do-work/queue/REQ-560-hand-back-and-finalize-check-only-the-reqs-own-paths.md`
+  - `do-work/working/REQ-561-add-a-three-value-priority-field-the-selector-orders-by-and-the-board-shows.md`
+  - `skills/do-work-board/actions/board.md`
+  - `skills/do-work-board/tools/queue-kanban/generate.go`
+  - `skills/do-work-board/tools/queue-kanban/model.go`
+  - `skills/do-work-board/tools/queue-kanban/model_test.go`
+  - `skills/do-work-board/tools/queue-kanban/priority_browser_probe_test.go`
+  - `skills/do-work-board/tools/queue-kanban/serve_test.go`
+  - `skills/do-work-board/tools/queue-kanban/web/board-cards.js`
+  - `skills/do-work-board/tools/queue-kanban/web/board.css`
+  - `skills/do-work/CHANGELOG.md`
+  - `skills/do-work/actions/capture-reference.md`
+  - `skills/do-work/actions/capture.md`
+  - `skills/do-work/actions/version.md`
+  - `skills/do-work/actions/work-reference.md`
+  - `skills/do-work/tools/do-work-cli/internal/nextselection/next_commands_test.go`
+  - `skills/do-work/tools/do-work-cli/internal/nextselection/next_selection.go`
+  - `skills/do-work/tools/do-work-cli/internal/nextselection/next_selection_test.go`
+  - `skills/do-work/tools/do-work-cli/internal/nextselection/next_targets.go`
+  - `skills/do-work/tools/do-work-cli/internal/nextselection/next_targets_test.go`
+  - `skills/do-work/tools/do-work-cli/internal/nextselection/next_types.go`
+  - `skills/do-work/tools/do-work-cli/internal/requestmodel/request_model.go`
+  - `skills/do-work/tools/do-work-cli/internal/requestmodel/request_model_test.go`
+  - `skills/do-work/tools/do-work-cli/internal/resultmodel/result_model.go`
+  - `skills/do-work/tools/do-work-cli/internal/resultmodel/result_model_test.go`
+  - `skills/do-work/tools/do-work-cli/internal/schemanormalization/schema_normalization.go`
+  - `skills/do-work/tools/do-work-cli/internal/schemanormalization/schema_normalization_test.go`
+- `selected_lanes`:
+  - `queue-kanban-javascript`: `bash _dev/tests/maintainer-verify.sh --heavy-lane queue-kanban-javascript`
+  - `queue-kanban-browser`: `bash _dev/tests/maintainer-verify.sh --heavy-lane queue-kanban-browser`
+  - `do-work-cli-integrations`: `bash _dev/tests/maintainer-verify.sh --heavy-lane do-work-cli-integrations`
+  - `staged-skills`: `bash _dev/tests/maintainer-verify.sh --heavy-lane staged-skills`
+  - `updater`: `bash _dev/tests/maintainer-verify.sh --heavy-lane updater`
+  - `installer`: `bash _dev/tests/maintainer-verify.sh --heavy-lane installer`
+
 ## Open Questions
 
-- [x] Run `bash _dev/tests/maintainer-verify.sh --heavy` at `2d052afa24759990b8c3bf417b3ad4579b1bfc16`; did it exit 0? → No, exit 1: staged-skills-contract.sh took 30s and update-script-behavior.sh took 57s, exceeding the under-30s test-file budget
+- [ ] Run the selected heavy lane commands at execution revision `c0d8ce1cb44cc1830b167214c018d76ba87baffc`; did every command exit 0?
   Recommended: Yes
   Also: No — report the failing lane
 

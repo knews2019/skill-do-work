@@ -1,7 +1,7 @@
 ---
 id: REQ-475
 title: '[impact-critical] Review fix: Confine all configured Memory tree readers'
-status: pending
+status: pending-heavy-testing
 priority: now
 created_at: 2026-09-01T08:32:57Z
 user_request: UR-081
@@ -31,7 +31,6 @@ estimate:
     - persistence changes
     - cross-route regression gates
     - full-suite verification
-claimed_at: 2026-09-03T21:43:31Z
 route: C
 planning_at: 2026-09-03T21:53:38Z
 exploration_at: 2026-09-03T21:53:38Z
@@ -41,7 +40,7 @@ builder_handback_at: 2026-09-03T22:13:52Z
 integration_at: 2026-09-03T22:20:33Z
 testing_at: 2026-09-03T22:24:22Z
 review_at: 2026-09-03T22:24:22Z
-status_changed_at: 2026-09-03T23:00:34Z
+status_changed_at: 2026-09-04T10:14:02Z
 commit: c6d457473d24cdb188070709100884f019323ebc
 write_set:
   - skills/do-work/tools/do-work-cli/internal/knowledgecommands/memory_commands.go
@@ -171,9 +170,32 @@ Passed — mechanical qualification accepted the cumulative `63045c9e..c6d45747`
 
 **Red-green validation:** The outside-object/root disclosure matrix, special/limit boundaries, and deterministic ledger-root swap all failed in their pre-fix states and pass on the merged implementation with byte-preservation and canary-absence assertions.
 
+## Heavy Verification Plan
+
+- `mode`: `historical-revalidation`
+- `source_ranges`:
+  - `63045c9e03062858ef74c65ca631bcba8b5c832f..a0207eaa0285fcbdfa66db168d093d78d0c5737f`
+  - `11061016a89b88ae3b14ee83ec748ca03cc1d132..c6d457473d24cdb188070709100884f019323ebc`
+- `manifest_revision`: `c0d8ce1cb44cc1830b167214c018d76ba87baffc`
+- `execution_revision`: `c0d8ce1cb44cc1830b167214c018d76ba87baffc`
+- `manifest_path`: `_dev/tests/heavy-lanes.json`
+- `forced_all`: `false`
+- `uncertain`: `false`
+- `uncovered_paths`: `[]`
+- `changed_paths`:
+  - `skills/do-work-knowledge/actions/memory-reference.md`
+  - `skills/do-work-knowledge/actions/memory.md`
+  - `skills/do-work/tools/do-work-cli/internal/knowledgecommands/memory_commands.go`
+  - `skills/do-work/tools/do-work-cli/internal/knowledgecommands/memory_commands_test.go`
+- `selected_lanes`:
+  - `do-work-cli-integrations`: `bash _dev/tests/maintainer-verify.sh --heavy-lane do-work-cli-integrations`
+  - `staged-skills`: `bash _dev/tests/maintainer-verify.sh --heavy-lane staged-skills`
+  - `updater`: `bash _dev/tests/maintainer-verify.sh --heavy-lane updater`
+  - `installer`: `bash _dev/tests/maintainer-verify.sh --heavy-lane installer`
+
 ## Open Questions
 
-- [x] Run `bash _dev/tests/maintainer-verify.sh --heavy` at `c6d457473d24cdb188070709100884f019323ebc`; did it exit 0? → No — exit 1; update-script-behavior.sh took 55s, exceeding the under-30s limit
+- [ ] Run the selected heavy lane commands at execution revision `c0d8ce1cb44cc1830b167214c018d76ba87baffc`; did every command exit 0?
   Recommended: Yes
   Also: No — report the failing lane
 

@@ -1,7 +1,7 @@
 ---
 id: REQ-483
 title: '[impact-critical] Review fix: Bound the architecture bundle-claim loop and restore --commit'
-status: pending
+status: pending-heavy-testing
 priority: now
 created_at: 2026-09-01T11:51:27Z
 user_request: UR-081
@@ -23,14 +23,13 @@ estimate:
   calculated_at: 2026-09-03T21:44:31Z
   basis:
     - trivial short-circuit
-claimed_at: 2026-09-03T21:43:37Z
 route: A
 dispatch_at: 2026-09-03T21:48:13Z
 implementation_at: 2026-09-03T21:53:38Z
 builder_handback_at: 2026-09-03T21:55:13Z
 integration_at: 2026-09-03T21:57:28Z
 testing_at: 2026-09-03T22:00:11Z
-status_changed_at: 2026-09-03T23:00:34Z
+status_changed_at: 2026-09-04T10:14:02Z
 commit: 3eb87519df19a14103f407159b9f6e753b51ca7b
 write_set:
   - skills/do-work/tools/do-work-cli/internal/toolboxcommands/architecture.go
@@ -150,9 +149,28 @@ Passed — the exact `6a7e49d4..3eb87519` integration range contains only the tw
 
 **Heavy boundary:** `architecture_test.go` matches `skills/do-work/tools/do-work-cli/**/*_test.go` from `maintainer-verify.sh --heavy-surfaces`; exact-revision heavy permission is therefore required before independent review and finalization.
 
+## Heavy Verification Plan
+
+- `mode`: `historical-revalidation`
+- `source_ranges`: `6a7e49d446311977d88155e458d7a214b12aecc5..3eb87519df19a14103f407159b9f6e753b51ca7b`
+- `manifest_revision`: `c0d8ce1cb44cc1830b167214c018d76ba87baffc`
+- `execution_revision`: `c0d8ce1cb44cc1830b167214c018d76ba87baffc`
+- `manifest_path`: `_dev/tests/heavy-lanes.json`
+- `forced_all`: `false`
+- `uncertain`: `false`
+- `uncovered_paths`: `[]`
+- `changed_paths`:
+  - `skills/do-work/tools/do-work-cli/internal/toolboxcommands/architecture.go`
+  - `skills/do-work/tools/do-work-cli/internal/toolboxcommands/architecture_test.go`
+- `selected_lanes`:
+  - `do-work-cli-integrations`: `bash _dev/tests/maintainer-verify.sh --heavy-lane do-work-cli-integrations`
+  - `staged-skills`: `bash _dev/tests/maintainer-verify.sh --heavy-lane staged-skills`
+  - `updater`: `bash _dev/tests/maintainer-verify.sh --heavy-lane updater`
+  - `installer`: `bash _dev/tests/maintainer-verify.sh --heavy-lane installer`
+
 ## Open Questions
 
-- [x] Run `bash _dev/tests/maintainer-verify.sh --heavy` at `3eb87519df19a14103f407159b9f6e753b51ca7b`; did it exit 0? → No — exit 1; staged-skills-contract.sh took 45s, update-script-behavior.sh took 73s, and its interrupt-status probe failed
+- [ ] Run the selected heavy lane commands at execution revision `c0d8ce1cb44cc1830b167214c018d76ba87baffc`; did every command exit 0?
   Recommended: Yes
   Also: No — report the failing lane
 

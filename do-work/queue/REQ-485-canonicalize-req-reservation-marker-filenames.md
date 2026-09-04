@@ -1,7 +1,7 @@
 ---
 id: REQ-485
 title: 'Canonicalize REQ reservation marker filenames across allocation flows'
-status: pending
+status: pending-heavy-testing
 priority: now
 created_at: 2026-09-01T12:11:03Z
 user_request: UR-092
@@ -26,7 +26,6 @@ estimate:
     - persistence changes
     - cross-route regression gates
     - full-suite verification
-claimed_at: 2026-09-03T21:43:41Z
 route: C
 planning_at: 2026-09-03T21:53:38Z
 exploration_at: 2026-09-03T21:53:38Z
@@ -36,7 +35,7 @@ builder_handback_at: 2026-09-03T22:07:29Z
 integration_at: 2026-09-03T22:16:20Z
 testing_at: 2026-09-03T22:19:19Z
 review_at: 2026-09-03T22:19:19Z
-status_changed_at: 2026-09-03T23:00:34Z
+status_changed_at: 2026-09-04T10:14:02Z
 commit: 88446a576c9c2bcf80f1bdd06a54041b7f9baaba
 write_set:
   - skills/do-work-board/tools/queue-kanban/allocate.go
@@ -203,9 +202,45 @@ Passed — mechanical qualification accepted the cumulative `6b07c546..88446a57`
 
 **Red-green validation:** Literal cross-writer, legacy alias, coexistence cleanup, whitespace malformed-name, direct symlink, and deterministic identity-swap cases all failed at their corresponding pre-fix states and pass in the final merged state.
 
+## Heavy Verification Plan
+
+- `mode`: `historical-revalidation`
+- `source_ranges`:
+  - `6b07c546ac026663a083e8e39a52081417de4ec3..01172937fa49e670476a4379495865884e95957e`
+  - `8088ae206b333f1162b5bec93a593fdda5f7477b..88446a576c9c2bcf80f1bdd06a54041b7f9baaba`
+- `manifest_revision`: `c0d8ce1cb44cc1830b167214c018d76ba87baffc`
+- `execution_revision`: `c0d8ce1cb44cc1830b167214c018d76ba87baffc`
+- `manifest_path`: `_dev/tests/heavy-lanes.json`
+- `forced_all`: `false`
+- `uncertain`: `false`
+- `uncovered_paths`: `[]`
+- `changed_paths`:
+  - `skills/do-work-board/tools/queue-kanban/allocate.go`
+  - `skills/do-work-board/tools/queue-kanban/allocate_test.go`
+  - `skills/do-work-board/tools/queue-kanban/prime-do-kanban.md`
+  - `skills/do-work/actions/capture.md`
+  - `skills/do-work/tools/do-work-cli/internal/corehelpers/reservations.go`
+  - `skills/do-work/tools/do-work-cli/internal/corehelpers/reservations_test.go`
+  - `skills/do-work/tools/do-work-cli/internal/hookcommands/session_start_test.go`
+  - `skills/do-work/tools/do-work-cli/internal/publication/answer_test.go`
+  - `skills/do-work/tools/do-work-cli/internal/publication/capture_files.go`
+  - `skills/do-work/tools/do-work-cli/internal/publication/capture_files_test.go`
+  - `skills/do-work/tools/do-work-cli/internal/publication/defer_gate.go`
+  - `skills/do-work/tools/do-work-cli/internal/publication/defer_gate_test.go`
+  - `skills/do-work/tools/do-work-cli/internal/publication/reservations.go`
+  - `skills/do-work/tools/do-work-cli/internal/repositorymodel/repository_model.go`
+  - `skills/do-work/tools/do-work-cli/internal/repositorymodel/repository_model_test.go`
+- `selected_lanes`:
+  - `queue-kanban-javascript`: `bash _dev/tests/maintainer-verify.sh --heavy-lane queue-kanban-javascript`
+  - `queue-kanban-browser`: `bash _dev/tests/maintainer-verify.sh --heavy-lane queue-kanban-browser`
+  - `do-work-cli-integrations`: `bash _dev/tests/maintainer-verify.sh --heavy-lane do-work-cli-integrations`
+  - `staged-skills`: `bash _dev/tests/maintainer-verify.sh --heavy-lane staged-skills`
+  - `updater`: `bash _dev/tests/maintainer-verify.sh --heavy-lane updater`
+  - `installer`: `bash _dev/tests/maintainer-verify.sh --heavy-lane installer`
+
 ## Open Questions
 
-- [x] Run `bash _dev/tests/maintainer-verify.sh --heavy` at `88446a576c9c2bcf80f1bdd06a54041b7f9baaba`; did it exit 0? → No — exit 1; staged-skills-contract.sh took 48s, update-script-behavior.sh took 76s, and its interrupt-status probe failed
+- [ ] Run the selected heavy lane commands at execution revision `c0d8ce1cb44cc1830b167214c018d76ba87baffc`; did every command exit 0?
   Recommended: Yes
   Also: No — report the failing lane
 

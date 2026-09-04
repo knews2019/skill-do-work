@@ -1,7 +1,7 @@
 ---
 id: REQ-502
 title: 'Review fix: Remove enriched checkpoint entries in cleanup mover'
-status: pending
+status: pending-heavy-testing
 domain: backend
 created_at: 2026-09-02T14:26:49Z
 user_request: UR-083
@@ -22,11 +22,10 @@ prime_files: [skills/do-work/tools/do-work-cli/prime-do-work-cli.md]
 required_lessons: [skills/do-work/tools/do-work-cli/lessons-do-work-cli.md#alternate-writer-contract-drift]
 sweep: true
 sweep_key: checkpoint-section-blind-line-editing
-claimed_at: 2026-09-03T20:58:01Z
 dispatch_at: 2026-09-03T20:59:01Z
 builder_handback_at: 2026-09-03T21:02:28Z
 integration_at: 2026-09-03T21:05:36Z
-status_changed_at: 2026-09-03T21:51:41Z
+status_changed_at: 2026-09-04T10:14:02Z
 commit: ed692757dfc642f3ad34b171dde9f6490c857beb
 ---
 
@@ -115,9 +114,29 @@ Passed — 3 files verified, 4 requirements traced, P-A-U confirmed. The merge r
 
 *Verified by work action*
 
+## Heavy Verification Plan
+
+- `mode`: `historical-revalidation`
+- `source_ranges`: `46d5fd48421062236bb4218a12e8f37f20098caf..ed692757dfc642f3ad34b171dde9f6490c857beb`
+- `manifest_revision`: `c0d8ce1cb44cc1830b167214c018d76ba87baffc`
+- `execution_revision`: `c0d8ce1cb44cc1830b167214c018d76ba87baffc`
+- `manifest_path`: `_dev/tests/heavy-lanes.json`
+- `forced_all`: `false`
+- `uncertain`: `false`
+- `uncovered_paths`: `[]`
+- `changed_paths`:
+  - `skills/do-work/tools/do-work-cli/internal/cleanup/cleanup_plan.go`
+  - `skills/do-work/tools/do-work-cli/internal/cleanup/cleanup_plan_test.go`
+  - `skills/do-work/tools/do-work-cli/internal/requeststate/state_apply.go`
+- `selected_lanes`:
+  - `do-work-cli-integrations`: `bash _dev/tests/maintainer-verify.sh --heavy-lane do-work-cli-integrations`
+  - `staged-skills`: `bash _dev/tests/maintainer-verify.sh --heavy-lane staged-skills`
+  - `updater`: `bash _dev/tests/maintainer-verify.sh --heavy-lane updater`
+  - `installer`: `bash _dev/tests/maintainer-verify.sh --heavy-lane installer`
+
 ## Open Questions
 
-- [x] Run `bash _dev/tests/maintainer-verify.sh --heavy` at `ed692757dfc642f3ad34b171dde9f6490c857beb`; did it exit 0? → No, exit 1: staged-skills-contract.sh took 35s and update-script-behavior.sh took 59s, exceeding the under-30s test-file budget
+- [ ] Run the selected heavy lane commands at execution revision `c0d8ce1cb44cc1830b167214c018d76ba87baffc`; did every command exit 0?
   Recommended: Yes
   Also: No — report the failing lane
 
