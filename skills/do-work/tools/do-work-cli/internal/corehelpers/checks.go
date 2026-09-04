@@ -23,6 +23,31 @@ type baselineRecord struct {
 
 var qualificationDebugArtifactPattern = regexp.MustCompile(`\b(` + "debug" + `ger|` + "TO" + `DO|` + "FIX" + `ME)\b`)
 
+// runBaselineCommand launches the supplied baseline argv once from the repository root and
+// returns its combined output, exit status, and whether it launched at all. The caller may
+// call it twice with the identical arguments — that is exactly what the one retry is.
+func runBaselineCommand(repositoryRoot string, arguments []string) (combinedOutput []byte, exitStatus int, launched bool) {
+	var command *exec.Cmd
+	if len(arguments) == 1 && strings.IndexFunc(arguments[0], func(r rune) bool { return r == ' ' || r == '\t' || r == '\n' }) >= 0 {
+		command = exec.Command("sh", "-c", arguments[0])
+	} else {
+		command = exec.Command(arguments[0], arguments[1:]...)
+	}
+	command.Dir = repositoryRoot
+	combinedOutput, runError := command.CombinedOutput()
+	exitStatus = 0
+	launched = true
+	if runError != nil {
+		if exitError, ok := runError.(*exec.ExitError); ok {
+			exitStatus = exitError.ExitCode()
+		} else {
+			exitStatus = 127
+		}
+		launched = exitStatus != 126 && exitStatus != 127
+	}
+	return combinedOutput, exitStatus, launched
+}
+
 func handlePreflight(executionContext commandruntime.ExecutionContext, arguments []string) resultmodel.CommandResult {
 	filteredArguments, dryRun, dryRunError := extractDryRun(arguments)
 	if dryRunError != nil {
@@ -55,23 +80,16 @@ func handlePreflight(executionContext commandruntime.ExecutionContext, arguments
 			findings = append(findings, helperFinding("PREFLIGHT-BASELINE-DRY-RUN", resultmodel.SeverityInfo, nil, "baseline command was not executed and no baseline files were changed", resultmodel.FixabilityAutomatic, "", arguments, []string{"test", "!", "-e", "do-work/working/baseline.json"}))
 		} else {
 			commandLine := strings.Join(arguments, " ")
-			var command *exec.Cmd
-			if len(arguments) == 1 && strings.IndexFunc(arguments[0], func(r rune) bool { return r == ' ' || r == '\t' || r == '\n' }) >= 0 {
-				command = exec.Command("sh", "-c", arguments[0])
-			} else {
-				command = exec.Command(arguments[0], arguments[1:]...)
-			}
-			command.Dir = executionContext.RepositoryRoot
-			output, runError := command.CombinedOutput()
-			status := 0
-			launched := true
-			if runError != nil {
-				if exitError, ok := runError.(*exec.ExitError); ok {
-					status = exitError.ExitCode()
-				} else {
-					status = 127
-				}
-				launched = status != 126 && status != 127
+			output, status, launched := runBaselineCommand(executionContext.RepositoryRoot, arguments)
+			// A non-zero exit is rerun once, immediately, before anything classifies it.
+			// A transient failure used to defer the REQ and mint a repair REQ that found
+			// the command already green. Only the rerun's status and output are recorded.
+			if status != 0 {
+				firstStatus := status
+				output, status, launched = runBaselineCommand(executionContext.RepositoryRoot, arguments)
+				findings = append(findings, helperFinding("PREFLIGHT-BASELINE-RETRIED", resultmodel.SeverityWarning, nil,
+					fmt.Sprintf("baseline command exited %d on its first run and was rerun once; the rerun exited %d and is the only recorded result", firstStatus, status),
+					resultmodel.FixabilityManual, "record both exit statuses in the REQ's Testing section", arguments, arguments))
 			}
 			baselineDirectory := filepath.Join(executionContext.RepositoryRoot, "do-work", "working")
 			if makeError := os.MkdirAll(baselineDirectory, 0o755); makeError != nil {
@@ -206,6 +224,10 @@ func preflightCompatibilityText(arguments []string, findings []resultmodel.Comma
 		case "PREFLIGHT-STATUS-FAILED":
 			hadRepositoryState = true
 			output.WriteString("WARN: git status could not read the working tree\n")
+		case "PREFLIGHT-BASELINE-RETRIED":
+			if len(finding.Evidence) > 0 {
+				fmt.Fprintf(&output, "WARN: %s\n", finding.Evidence[0])
+			}
 		case "PREFLIGHT-BASELINE-RED":
 			output.WriteString("WARN: baseline tests failing BEFORE any changes — builder is not to blame for these\n")
 		case "PREFLIGHT-BASELINE-NOT-LAUNCHED":
