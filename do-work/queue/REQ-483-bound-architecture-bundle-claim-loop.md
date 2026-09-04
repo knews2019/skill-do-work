@@ -1,7 +1,7 @@
 ---
 id: REQ-483
 title: '[impact-critical] Review fix: Bound the architecture bundle-claim loop and restore --commit'
-status: pending-heavy-testing
+status: pending
 priority: now
 created_at: 2026-09-01T11:51:27Z
 user_request: UR-081
@@ -29,11 +29,13 @@ implementation_at: 2026-09-03T21:53:38Z
 builder_handback_at: 2026-09-03T21:55:13Z
 integration_at: 2026-09-03T21:57:28Z
 testing_at: 2026-09-03T22:00:11Z
-status_changed_at: 2026-09-04T10:14:02Z
+status_changed_at: 2026-09-04T12:36:12Z
 commit: 3eb87519df19a14103f407159b9f6e753b51ca7b
 write_set:
   - skills/do-work/tools/do-work-cli/internal/toolboxcommands/architecture.go
   - skills/do-work/tools/do-work-cli/internal/toolboxcommands/architecture_test.go
+heavy_verified_at: 2026-09-04T12:36:12Z
+heavy_verified_revision: c0d8ce1cb44cc1830b167214c018d76ba87baffc
 ---
 
 # Bound the Architecture Bundle-Claim Loop and Restore --commit
@@ -170,7 +172,7 @@ Passed — the exact `6a7e49d4..3eb87519` integration range contains only the tw
 
 ## Open Questions
 
-- [ ] Run the selected heavy lane commands at execution revision `c0d8ce1cb44cc1830b167214c018d76ba87baffc`; did every command exit 0?
+- [x] Run the selected heavy lane commands at execution revision `c0d8ce1cb44cc1830b167214c018d76ba87baffc`; did every command exit 0? → Confirmed: Yes
   Recommended: Yes
   Also: No — report the failing lane
 
@@ -178,3 +180,14 @@ Passed — the exact `6a7e49d4..3eb87519` integration range contains only the tw
 ## Answer Notes
 
 - 2026-09-03 - [ ] Run `bash _dev/tests/maintainer-verify.sh --heavy` at `3eb87519df19a14103f407159b9f6e753b51ca7b`; did it exit 0?: No — exit 1; staged-skills-contract.sh took 45s, update-script-behavior.sh took 73s, and its interrupt-status probe failed
+- 2026-09-04 - [ ] Run the selected heavy lane commands at execution revision `c0d8ce1cb44cc1830b167214c018d76ba87baffc`; did every command exit 0?: Confirmed: Yes
+
+## Heavy Verification Result
+
+Target revision: `3eb87519df19a14103f407159b9f6e753b51ca7b`
+Execution revision: `c0d8ce1cb44cc1830b167214c018d76ba87baffc`
+
+- do-work-cli-integrations: exit 0 — `bash _dev/tests/maintainer-verify.sh --heavy-lane do-work-cli-integrations`
+- staged-skills: exit 0 — `bash _dev/tests/maintainer-verify.sh --heavy-lane staged-skills`
+- updater: exit 0 — `bash _dev/tests/maintainer-verify.sh --heavy-lane updater`
+- installer: exit 0 — `bash _dev/tests/maintainer-verify.sh --heavy-lane installer`
