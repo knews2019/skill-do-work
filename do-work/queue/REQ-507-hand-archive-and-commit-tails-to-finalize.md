@@ -1,8 +1,8 @@
 ---
 id: REQ-507
 title: '[impact-rule-change] Hand the archive and commit tails to finalize'
-status: pending-heavy-testing
-status_changed_at: 2026-09-04T19:11:30Z
+status: pending
+status_changed_at: 2026-09-04T20:57:34Z
 priority: now
 created_at: 2026-09-02T14:37:54Z
 user_request: UR-098
@@ -16,7 +16,6 @@ maintenance: true
 impact: impact-rule-change
 effort_estimate: effort-substantive
 write_set: [skills/do-work/actions/work.md, skills/do-work/actions/work-reference.md, _dev/tests/contracts/core-checks.sh, skills/do-work/tools/do-work-cli/prime-do-work-cli.md, skills/do-work/tools/do-work-cli/internal/lifecycleadvance/advance_commands.go, skills/do-work/tools/do-work-cli/internal/lifecycleadvance/finalization_gate.go, skills/do-work/tools/do-work-cli/internal/lifecycleadvance/finalization_gate_test.go, skills/do-work/tools/do-work-cli/internal/lifecycleadvance/advance_commands_test.go, skills/do-work/tools/do-work-cli/internal/finalization/finalization_commands.go, skills/do-work/tools/do-work-cli/internal/finalization/finalization_prepare.go, skills/do-work/tools/do-work-cli/internal/resultmodel/result_model.go, skills/do-work/tools/do-work-cli/internal/resultmodel/result_model_test.go]
-claimed_at: 2026-09-04T18:21:29Z
 route: C
 planning_at: 2026-09-04T18:26:45Z
 exploration_at: 2026-09-04T18:32:49Z
@@ -81,7 +80,7 @@ Firm on the boundary between mechanics and judgment as classified in the report'
 - `_dev/primes/lessons-action-files.md` — 3436 tokens, over the 2000-token budget; `slugged: partial` so no targeted form. Matched on "changing action routing, pipeline fields, status contracts, downstream readers".
 
 ## Open Questions
-- [ ] Heavy lanes at `ad8bceb7aa0d0c63c230048b6a1f2dae1ef7ccb9`: the work loop runs them at queue exhaustion and records the result here
+- [x] Heavy lanes at `ad8bceb7aa0d0c63c230048b6a1f2dae1ef7ccb9`: the work loop runs them at queue exhaustion and records the result here → Heavy verification failed: staged-skills exited 1. Return to remediation.
 
 ## Full Context
 See `do-work/user-requests/UR-098/input.md` for complete verbatim input.
@@ -177,3 +176,27 @@ Typed qualification passed for exact range `8e3dbf01e0660424965d79acb2e386b6604e
 - `staged-skills`: `bash _dev/tests/maintainer-verify.sh --heavy-lane staged-skills` — coverage is uncertain for the changed core contract owner.
 - `updater`: `bash _dev/tests/maintainer-verify.sh --heavy-lane updater` — coverage is uncertain for the changed core contract owner.
 - `installer`: `bash _dev/tests/maintainer-verify.sh --heavy-lane installer` — coverage is uncertain for the changed core contract owner.
+
+
+## Answer Notes
+
+- 2026-09-04 - [ ] Heavy lanes at `ad8bceb7aa0d0c63c230048b6a1f2dae1ef7ccb9`: the work loop runs them at queue exhaustion and records the result here: Heavy verification failed: staged-skills exited 1. Return to remediation.
+> ```
+> Exact-revision heavy verification via do-work clarify. Stored base, target, selected lanes, argv and coverage reasons were checked against the recomputed plan and matched. Execution revision: ad8bceb7aa0d0c63c230048b6a1f2dae1ef7ccb9. Each selected lane ran in the detached checkout; no results were borrowed from another revision.
+> Heavy verification failed: staged-skills exited 1. Return to remediation.
+> Failure evidence: FAIL: core runtime must resolve actions/work.md through sibling do-work-board. The staged-skills assertion checks for a do-work-board/ reference in skills/do-work/actions/work.md. The other five lanes passed.
+> Chromium engine: /Applications/Google Chrome.app/Contents/MacOS/Google Chrome, explicitly supplied through QUEUE_KANBAN_BROWSER.
+> Scope: record verification only; implementation fixes, fresh review and archiving are left to do-work run. Date and answer timestamp follow skills/do-work/actions/work-reference.md, Timestamp rule and its date-only paragraph.
+> ```
+
+## Heavy Verification Result
+
+Target revision: `ad8bceb7aa0d0c63c230048b6a1f2dae1ef7ccb9`
+Execution revision: `ad8bceb7aa0d0c63c230048b6a1f2dae1ef7ccb9`
+
+- queue-kanban-javascript: exit 0, 8s — `bash _dev/tests/maintainer-verify.sh --heavy-lane queue-kanban-javascript`
+- queue-kanban-browser: exit 0, 99s — `bash _dev/tests/maintainer-verify.sh --heavy-lane queue-kanban-browser`
+- do-work-cli-integrations: exit 0, 62s — `bash _dev/tests/maintainer-verify.sh --heavy-lane do-work-cli-integrations`
+- staged-skills: exit 1, 29s — `bash _dev/tests/maintainer-verify.sh --heavy-lane staged-skills`
+- updater: exit 0, 56s — `bash _dev/tests/maintainer-verify.sh --heavy-lane updater`
+- installer: exit 0, 38s — `bash _dev/tests/maintainer-verify.sh --heavy-lane installer`
