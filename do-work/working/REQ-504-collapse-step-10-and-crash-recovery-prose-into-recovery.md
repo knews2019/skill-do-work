@@ -14,8 +14,49 @@ batch: orchestrator-simplification
 maintenance: true
 impact: impact-rule-change
 effort_estimate: effort-substantive
-write_set: [skills/do-work/actions/work.md, skills/do-work/actions/work-reference.md, skills/do-work/actions/run-with-recovery.md, _dev/tests/contract-regressions.sh, skills/do-work/tools/do-work-cli/internal/lifecycleadvance/]
+write_set:
+  - skills/do-work/actions/work.md
+  - skills/do-work/actions/work-reference.md
+  - skills/do-work/actions/run-with-recovery.md
+  - skills/do-work/actions/commit.md
+  - skills/do-work/actions/restart-with-parallel-handoff.md
+  - skills/do-work/docs/work-guide.md
+  - skills/do-work/tools/do-work-cli/prime-do-work-cli.md
+  - _dev/tests/contract-regressions.sh
+  - _dev/tests/contracts/request-state.sh
+  - skills/do-work/tools/do-work-cli/internal/lifecycleadvance/advance_commands.go
+  - skills/do-work/tools/do-work-cli/internal/lifecycleadvance/advance_commands_test.go
+  - skills/do-work/tools/do-work-cli/internal/lifecycleadvance/recovery_commands.go
+  - skills/do-work/tools/do-work-cli/internal/lifecycleadvance/recovery_commands_test.go
+  - skills/do-work/tools/do-work-cli/internal/lifecycleadvance/checkpoint_commands.go
+  - skills/do-work/tools/do-work-cli/internal/lifecycleadvance/checkpoint_commands_test.go
+  - skills/do-work/tools/do-work-cli/internal/resultmodel/result_model.go
+  - skills/do-work/tools/do-work-cli/internal/resultmodel/result_model_test.go
+  - skills/do-work/tools/do-work-cli/internal/repositorymodel/repository_model.go
+  - skills/do-work/tools/do-work-cli/internal/repositorymodel/repository_model_test.go
+  - skills/do-work/tools/do-work-cli/internal/requeststate/state_types.go
+  - skills/do-work/tools/do-work-cli/internal/requeststate/state_plan.go
+  - skills/do-work/tools/do-work-cli/internal/requeststate/state_apply.go
+  - skills/do-work/tools/do-work-cli/internal/requeststate/state_plan_test.go
+  - skills/do-work/tools/do-work-cli/internal/requeststate/state_apply_test.go
+  - skills/do-work/tools/do-work-cli/internal/finalization/finalization_discovery.go
+  - skills/do-work/tools/do-work-cli/internal/finalization/finalization_recovery_test.go
 claimed_at: 2026-09-04T15:44:47Z
+route: C
+planning_at: 2026-09-04T15:57:17Z
+exploration_at: 2026-09-04T15:57:17Z
+estimate:
+  p50_active_minutes: 50
+  confidence: low
+  calculated_at: 2026-09-04T15:45:07Z
+  basis:
+    - Route C
+    - 5-file write set
+    - 3 subsystems involved
+    - 11 acceptance criteria
+    - dependency depth 1
+    - cross-route regression gates
+    - full-suite verification
 ---
 
 # Collapse Step 10 and Crash Recovery Prose Into Recovery
@@ -24,7 +65,7 @@ claimed_at: 2026-09-04T15:44:47Z
 Replace `work.md` Step 10 (155 lines: loop, checkpoint, session start) and `work-reference.md` Crash Recovery and Session Checkpoint Template with one loop sentence and one principle, now that `recover-finalization`, `run-with-recovery` and `advance` own the mechanics. Delete the sentence-predicates that pinned that prose and add behavior tests on the commands.
 
 ## AI Execution State (P-A-U Loop)
-- [ ] **[PLAN]:** (Agent: Read listed `prime_files` and agent rules. Write brief technical approach here. Do not write code yet.)
+- [x] **[PLAN]:** The Plan and Explore agents mapped the public recovery order, structural checkpoint evidence, atomic multi-entry removal, claim-only finalization topology, checkpoint-only advance mutation, prose collapse, and replacement behavior tests across the exact widened scope.
 - [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
 - [ ] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
 
@@ -86,3 +127,43 @@ See `do-work/user-requests/UR-098/input.md` for complete verbatim input.
 
 ---
 *Source: capture of the orchestrator simplification request (UR-098).*
+
+## Triage
+
+**Route: C — Complex.** This rule-changing migration deletes two large recovery/checkpoint prose surfaces, transfers checkpoint behavior into the new lifecycle command, retires sentence-predicate tests, and must close seven inherited public-boundary review findings without weakening recovery ownership or shell-safety contracts.
+
+**Planning:** Required.
+
+## Plan
+
+1. Add RED tests for the actual surviving gaps: claim-only state must not be misclassified as an ambiguous finalization tail; checkpoint discovery must retain labelled, unlabelled, absent, and multiple-writer evidence; one authorized recovery must remove every same-request entry atomically without touching unrelated bytes.
+2. Add a canonical lifecycle `recover` composition that runs finalization recovery first, then structurally classifies/reclaims working requests, and exposes ownership/takeover decisions as typed findings. `recover --assume-sole-authority` is the constant public boundary used by `run-with-recovery`; raw writer text never enters shell source.
+3. Extend `advance` only with a checkpoint mutation mode. Ordinary `advance REQ-NNN` remains byte-for-byte read-only. The checkpoint mode preserves every foreign or unlabelled live claim record and changes no project path.
+4. Cover the uninterrupted public order—recover, select, fresh claim—plus hostile writer labels, multiple labels, missing/unlabelled evidence, takeover offer-versus-authority, timestamps, unrelated dirt, and worktree cleanup in Go. Retire the now-redundant split shell recovery lane and its aggregator registration after equivalent behavior is green.
+5. Collapse `work.md` Step 10 and the reference recovery/checkpoint algorithms to short principles and constant command boundaries; repair the inherited finalization ownership, Step 8 naming, commit action, handoff action, CLI prime, and work-guide restatements in the same change.
+6. Keep the dependency-chain boundary intact: this request temporarily replays typed `next` and invokes `advance --checkpoint` at exhaustion; the following selection/claim request remains the sole owner of moving those operations behind `advance`.
+
+**Plan validation:** Every inherited review instance maps to a behavior test and an owning implementation path. The captured RED premise was stale because an earlier contract split already deleted the quoted sentence predicates; this plan targets the live behavioral gap instead. Retaining the exact `## Crash Recovery (Step 1)` heading avoids unnecessary changes to doctor, forensics, cleanup, and board references.
+
+*Generated by Plan agent.*
+
+## Exploration
+
+The current request-state shell lane begins at the internal `recover-claim` primitive, uses one literal writer, and never proves initial finalization recovery, multi-label/unlabelled evidence, structural transport, or public recover-to-next-to-claim order. Repository discovery currently records writer-bearing checkpoint lines only, while request state accepts only one writer or one unlabelled evidence flag and removes one entry. Finalization discovery can classify a coherent claim-only footprint as an ambiguous tail before claim recovery runs. Existing request-state mutation helpers, finalization handlers, selector APIs, cleanup worktree repair, and typed result fields provide reusable composition seams.
+
+`advance` currently accepts one request id and promises total read-only behavior; its archived-complete phase neither selects nor writes a checkpoint. The safe first mutation is therefore an explicit checkpoint mode, with the existing command remaining read-only. The old root contract file is now only an aggregator; the live replacement owner is `_dev/tests/contracts/request-state.sh`, which can be deleted only after equivalent Go coverage lands.
+
+*Generated by Explore agent.*
+
+## Scope
+
+**Files I will touch:** the exact 26 paths in frontmatter `write_set`: six action/guide restatements; the CLI prime; the split shell lane plus aggregator; six lifecycle command/test files; result, repository, and request-state model/transaction files and tests; and finalization discovery plus its recovery test.
+
+**Files I will NOT touch:** doctor, forensics, cleanup, board, hook routing, other command packages, or any queue file. The retained Crash Recovery heading and existing handler registration keep those consumers valid.
+
+**Acceptance criteria:**
+- [ ] Public recovery runs finalization recovery before claim recovery, accepts coherent claim-only topology, and reaches typed selection plus a fresh claim without residue.
+- [ ] Structural checkpoint evidence safely covers labelled, unlabelled, absent, hostile, and multiple-writer cases; only explicit authority removes all same-request records atomically.
+- [ ] Ordinary `advance REQ-NNN` stays read-only; checkpoint mode mutates only `do-work/CHECKPOINT.md` and preserves foreign/unlabelled live entries byte-for-byte.
+- [ ] Step 10, Crash Recovery, Session Checkpoint, finalization ownership, and recovery handoff prose collapse without stealing selection/claim scope from the following request.
+- [ ] Every retired shell behavior has equivalent Go coverage, the exact 26-path scope passes drift checks, and focused/module/repository gates pass.
