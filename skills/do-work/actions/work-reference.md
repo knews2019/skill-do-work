@@ -18,7 +18,7 @@ work action (orchestrator - lightweight, stays in loop)
   │     ├── OPEN QUESTIONS? ── - [ ] items exist ──► Mark - [~], builder decides
   │     │                      (none / all resolved) ──► continue
   │     │
-  │     ├── ESTIMATE: Ensure estimate: block exists, print P50 line (never blocks)
+  │     ├── MECHANICAL EVIDENCE GATE: estimate record
   │     │     │
   │     │     ├── Route A (Simple) ──────────────────┐
   │     │     │   Skip plan/explore, direct to build │
@@ -29,16 +29,19 @@ work action (orchestrator - lightweight, stays in loop)
   │     │     └── Route C (Complex) ──► Plan ──► Explore ──► Scope declare
   │     │                                            │
   │     │                                            ▼
+  │     │                              pre-build gate record
+  │     │                                            │
+  │     │                                            ▼
   │     │                                     Implementation agent
   │     │                                            │
   │     │                                            ▼
   │     │                                  Implementation Summary
   │     │                                            │
   │     │                                            ▼
-  │     │                              Qualify (orchestrator verifies)
+  │     │                        qualification gate + judgment
   │     │                                            │
   │     │                                            ▼
-  │     │                                        Testing
+  │     │                         focused/gate evidence + judgment
   │     │                                            │
   │     │                                            ▼
   │     │                                  Review ◄─── Fail? ──► Remediate ──► Re-review
@@ -227,7 +230,7 @@ commit: abc1234               # required in a git repo — implementation commit
 error: "Description"          # Set when a REQ failed; RETAINED verbatim if that failed REQ is later cancelled via do-work abandon — the surviving failure signal on a status: cancelled REQ, NOT drift to strip
 error_type: intent|spec|code|environment   # Set with `error` on failure; likewise retained on a failed→cancelled flip
 
-# Set by work.md Step 6.5 when the merged diff selects heavy lanes for the exhaustion drain.
+# Set by work.md's Qualification and Testing Judgment when the merged diff selects heavy lanes for the exhaustion drain.
 # The REQ stays in queue and ordinary selection walks past it. `commit` above is the
 # exact implemented revision the hold line names while other runnable REQs continue.
 status: pending-heavy-testing
@@ -276,16 +279,16 @@ The enum-or-boolean-valued fields above (one table row each, below) are covered 
 | Field (read sites) | Canonical enum | Normalization | Default on unknown |
 |---|---|---|---|
 | `domain` (Step 4 Route C plan-agent spawn, Step 6 crew load, Step 7 review-work spawn) | `frontend`, `backend`, `ui-design`, `general`, `security`, `testing`, `cms` | `back-end`/`back_end` → `backend`; `front-end`/`front_end` → `frontend`; `ui_design` → `ui-design`; `sec` → `security`; `test` → `testing`; `content-management`/`content_management` → `cms` | `general` |
-| `status` (Step 1 scan + categorization, Step 6.5 heavy-test hold, Step 9 finalization, abandon action) | `pending`, `claimed`, `completed`, `completed-with-issues`, `failed`, `cancelled`, `pending-answers`, `pending-heavy-testing`, `blocked`, `blocked-archive-collision`, `blocked-dependency-cycle` | `complete`/`done`/`finished`/`closed` → `completed`; `canceled`/`abandoned`/`wont-do`/`wontfix` → `cancelled` | skip REQ at Step 1 with the warning text — never claim or archive an unrecognized status silently |
+| `status` (Step 1 scan + categorization, Qualification and Testing Judgment's heavy-test hold, Step 9 finalization, abandon action) | `pending`, `claimed`, `completed`, `completed-with-issues`, `failed`, `cancelled`, `pending-answers`, `pending-heavy-testing`, `blocked`, `blocked-archive-collision`, `blocked-dependency-cycle` | `complete`/`done`/`finished`/`closed` → `completed`; `canceled`/`abandoned`/`wont-do`/`wontfix` → `cancelled` | skip REQ at Step 1 with the warning text — never claim or archive an unrecognized status silently |
 | `route` (Step 3 dispatch, Step 5.5 scope declaration, Step 7 scope-drift comparison) | `A`, `B`, `C` | lowercase `a`/`b`/`c` → uppercase | treat as needing re-triage in Step 3 |
 | `caveman` (Step 6 crew load) | `false`, `true`, `lite`, `full`, `ultra` | truthy strings (`yes`/`on`) → `true`; `light` → `lite` | `false` |
 | `maintenance` (Step 6 crew load) | `true`, `false` (YAML boolean) | truthy strings (`yes`/`on`/`t`) → `true`; `no`/`off`/`f` → `false` | `false` (Step 6 maintenance crew not loaded) |
-| `tdd` (Step 6 testing-crew load, Step 6.5 TDD-evidence gate; emission validated in `actions/capture.md`) | `true`, `false` (YAML boolean) | `test_first`/`yes`/`on`/`t` → `true`; `no`/`off`/`f` → `false` | `false` (Step 6 testing crew not loaded; Step 6.5 gate not enforced) |
+| `tdd` (Step 6 testing-crew load, Qualification and Testing Judgment's TDD-evidence gate; emission validated in `actions/capture.md`) | `true`, `false` (YAML boolean) | `test_first`/`yes`/`on`/`t` → `true`; `no`/`off`/`f` → `false` | `false` (Step 6 testing crew not loaded; TDD-evidence gate not enforced) |
 | `error_type` (Step 8 failure classification, Step 8 upstream-failure short-circuit, forensics) | `intent`, `spec`, `code`, `environment` | (no common typo aliases identified) | `code` |
 | `kb_status` (kb-lessons handoff — work.md's Lessons-Capture Phase / review-work.md's Self-Validation & Lessons Learned step; roadmap lessons rollup) | `promoted`, `pending`, `declined`, `skipped` | `skip` → `skipped`; `rejected` → `declined` | `pending` |
 | `impact` (capture emission — capture.md Step 1; automatic follow-up creation — review-work.md Step 10, work.md Step 8's Discovered Tasks flow; selection filters — work.md Step 1's `--skip-impact-negligible` and `tools/select-simple-reqs.sh`'s `impact-critical` veto; board display — `../../do-work-board/tools/queue-kanban` parser) | `impact-critical`, `impact-user-visible`, `impact-rule-change`, `impact-negligible` | (no aliases — new prefix-unique vocabulary) | `impact-user-visible` |
 | `priority` (capture emission/addenda — capture.md Steps 1–2; ordinary ready ordering before fan-out — work.md Step 1 selector; Pending Ready/Waiting order and badges — `../../do-work-board/tools/queue-kanban` parser) | `now`, `next`, `later` | (no aliases) | `next` |
-| `effort_estimate` (Step 3.6's mechanical-effort short-circuit; selection filter — `tools/select-simple-reqs.sh`, backing `actions/run-simple-reqs.md`; board display — `../../do-work-board/tools/queue-kanban` parser; judged by capture, review follow-up creation, and Discovered Tasks creation on every new REQ) | `effort-mechanical`, `effort-substantive` | `trivial` → `effort-mechanical`; `normal` → `effort-substantive` (read-only legacy aliases, so every REQ written before the rename stays valid unchanged; never propagated on write — `actions/capture-reference.md` § Schema Aliases) | `effort-substantive` |
+| `effort_estimate` (Mechanical Evidence-Gate Loop's effort short-circuit; selection filter — `tools/select-simple-reqs.sh`, backing `actions/run-simple-reqs.md`; board display — `../../do-work-board/tools/queue-kanban` parser; judged by capture, review follow-up creation, and Discovered Tasks creation on every new REQ) | `effort-mechanical`, `effort-substantive` | `trivial` → `effort-mechanical`; `normal` → `effort-substantive` (read-only legacy aliases, so every REQ written before the rename stays valid unchanged; never propagated on write — `actions/capture-reference.md` § Schema Aliases) | `effort-substantive` |
 | `testing_status` (board Testing view — `../../do-work-board/tools/queue-kanban` parser + `/api/testing/status` writes; no work-pipeline read sites) | `in-testing`, `tested`, `returned` | `in_testing`/`in testing`/`testing`/`selected-for-testing`/`selected for testing` → `in-testing`; `returned-with-feedback`/`returned_with_feedback`/`returned with feedback` → `returned` | treat as not-tested (Ready to test) with an invalid flag + data warning |
 | `builder_decided` (clarify's confirm routing — `actions/clarify.md` Step 4/Step 5; reversal detection — `actions/clarify.md` Step 4's `overturned_decision_sources` and `actions/verify-requests.md`'s Decision Revalidation Workflow; doctor's `HOLLOW-COMPLETION` no-code-change exception) | exact `true` only | (no aliases — marker class, exactly like `sweep` and `review_generated`) | absent reads as false |
 | `gate_deferred` (canonical repository-gate deferral marker; selector priority after dependencies are satisfied) | `true`, `false` | truthy strings (`yes`/`on`/`t`) → `true`; `no`/`off`/`f` → `false` | `false` |
@@ -365,13 +368,13 @@ Keep the exact `## In Progress (interrupted)` heading as the claim-evidence boun
 
 ## Repository Gate Deferral and Resumption
 
-This is the full action-owned algorithm behind `actions/work.md`'s baseline and Step 6.5 attribution lanes. The canonical gate is mandatory; deferral changes who owns an unrelated failure and what the selector runs next, never the pass requirement for completion.
+This is the full action-owned judgment behind `actions/work.md`'s pre-build and final-gate attribution lanes. The canonical gate is mandatory; deferral changes who owns an unrelated failure and what the selector runs next, never the pass requirement for completion.
 
 ### Session state and baseline
 
 At run start hold two session-local sets: **suppressed parents** and **repair closure**. They are scheduling evidence, not REQ fields. A parent enters suppression only from a successful typed `gate_deferral` result and stays there until its repair dependency reaches terminal success. Suppression wins over explicit-REQ provenance, preventing a targeted parent from bypassing the dependency it just gained. Every returned repair id enters the closure even when its `user_request` is outside a targeted UR; this is the only cross-UR widening allowed. Recompute the canonical selector after every deferral and every repair terminal result—never reuse a prior selected record.
 
-After Step 5.75 and before dispatch or source edits, resolve the project-owned canonical gate once as structured argv. Invoke `<skill-root>/tools/do-work-cli.sh --repo-root <project-root> --format json check-green-gate -- <gate argv...>` from the project root and consume only `gate_evidence`. Typed success with `matches: true` proves the exact argv green at the returned `baseline_revision`; save that revision and do not rerun the baseline. Typed success with `matches: false` requires the ordinary direct run. A failed check is unverifiable and stops safely. After any direct zero exit, invoke `<skill-root>/tools/do-work-cli.sh --repo-root <project-root> --format json record-green-gate --gate-exit-status 0 -- <gate argv...>` and require typed success. The Git-private record binds exact argv and repository identity to the post-run `HEAD`; a recorded revision must be in current `HEAD` ancestry, and only intervening commits whose every changed path is under `_dev/gate-runs/` preserve a match. A different argv, repository, non-ancestor revision, or any other changed path never matches. For a direct run, save the current revision, direct status, bounded diagnostic evidence, and a stable semantic fingerprint. Fingerprinting must discard volatile timestamps, scratch roots, and ordering noise but retain the failing command/test identity and normalized diagnostic; use the same procedure everywhere below. A gate launch or record failure stops safely.
+Before dispatch or source edits, resolve the project-owned canonical gate once as structured argv and invoke `advance` for the exact working request, passing one `--gate-arg` per token. Consume only the matching request-bound `gate_records`. A satisfied green-gate record proves the exact argv green at its returned baseline revision; save that revision and do not rerun the baseline. A `needs_input` record requires the action to run `next_argv` directly and unpiped, then invoke the same advance phase with the exact exit status so advance records the result. A failed or mismatched record is unverifiable and stops safely. The Git-private record binds exact argv and repository identity to the post-run `HEAD`; a recorded revision must be in current `HEAD` ancestry, and only intervening commits whose every changed path is under `_dev/gate-runs/` preserve a match. A different argv, repository, non-ancestor revision, or any other changed path never matches. For a direct run, save the current revision, direct status, bounded diagnostic evidence, and a stable semantic fingerprint. Fingerprinting must discard volatile timestamps, scratch roots, and ordering noise but retain the failing command/test identity and normalized diagnostic; use the same procedure everywhere below. A gate launch or record failure stops safely.
 
 The branch table is exhaustive:
 
@@ -395,7 +398,7 @@ On success consume `gate_deferral` fields only: `parent_id`, `parent_path`, `rep
 
 ### Late attribution
 
-The final gate uses the identical argv and fingerprint procedure and never consults the baseline record. After a direct exit zero, invoke `<skill-root>/tools/do-work-cli.sh --repo-root <project-root> --format json record-green-gate --gate-exit-status 0 -- <gate argv...>`, require typed success, and continue; because recording happens after the gate returns, the recorded revision includes any gate-created `_dev/gate-runs/` log commit. In worktree dispatch mode, a red current tree is attributed by creating an isolated detached diagnostic worktree at the saved `<pre>` and running the gate there directly. Always remove that diagnostic worktree without force after capturing its status and evidence.
+The final gate uses the identical argv and fingerprint procedure and never substitutes the baseline record for a direct run. Run the gate directly and unpiped, then return the exact argv and exit status through the current advance phase; require its request-bound green-gate record before continuing. Because recording happens after the gate returns, the recorded revision includes any gate-created `_dev/gate-runs/` log commit. In worktree dispatch mode, a red current tree is attributed by creating an isolated detached diagnostic worktree at the saved `<pre>` and running the gate there directly. Always remove that diagnostic worktree without force after capturing its status and evidence.
 
 - Active `repository_gate_repair: true`: any same-fingerprint red, different-fingerprint red, missing/malformed fingerprint evidence, or launch-failed final gate is a terminal repair failure. Prepare a strict `transition: "fail"` finalization manifest, never invoke `defer-gate`; every parent remains pending behind the failed dependency. Recompute the selector and continue unrelated runnable REQs.
 - Base exit 0: current implementation caused the failure; use the bounded remediation loop.
@@ -418,7 +421,7 @@ This branch exists only when a claimed `repository_gate_repair: true` REQ's pre-
 - **Expected diagnostic fingerprint:** <fingerprint recorded by repair intake>
 - **Gate command:** ["argv0","argv1"]
 - **Direct exit status:** 0
-- **Recorded green revision:** <`recorded_revision` returned by `record-green-gate`>
+- **Recorded green revision:** <`recorded_revision` returned by the advance green-gate record>
 - **Observed result:** green before implementation; repair already satisfied
 - **Verified at:** <now> (current UTC instant — Timestamp rule)
 ```
@@ -433,7 +436,7 @@ Write the mandatory summary exactly as:
 **What was done:** Re-ran the repair's recorded canonical repository gate before source edits and confirmed it is already green; no implementation changes were necessary.
 ```
 
-**The pre-build run is this branch's only gate run.** After its direct zero exit, invoke `<skill-root>/tools/do-work-cli.sh --repo-root <project-root> --format json record-green-gate --gate-exit-status 0 -- <gate argv...>`, require typed success, and write the returned `recorded_revision` into the evidence block above. Step 6.5 captures `<now>` under the Timestamp rule and independent review reuses it; both invoke `<skill-root>/tools/do-work-cli.sh --repo-root <project-root> --format json validate-already-green-repair --request-path <exact working REQ path> --writer <exact finalization writer> --at <now>` and consume only their respective `already_green_repair.tdd_allowed` and `already_green_repair.review_allowed` fields. That shared command extracts the intake/no-op fingerprints and argv, verifies the record at its own past revision without relaunching the gate, observes project and release state, and derives the exact staged-path allowlist from a successful canonical completion dry run. Callers never supply those evidence values or recreate the predicate. A no-op repair changes no project path, so a later `HEAD` move by an unrelated commit can never make it the cause of a red gate and never invalidates its recorded evidence at its own recorded revision; ordinary REQs keep the `HEAD`-bound rule in **Session state and baseline** above. Done means one gate run plus bookkeeping — under ten minutes of wall clock on the maintainer's machine — reported in the REQ's `## Testing` section.
+**The pre-build run is this branch's only gate run.** After its direct zero exit, return the exact status and argv through the current advance phase, require a satisfied request-bound green-gate record, and write its `recorded_revision` into the evidence block above. Qualification and Testing Judgment captures `<now>` under the Timestamp rule and independent review reuses it; both invoke `<skill-root>/tools/do-work-cli.sh --repo-root <project-root> --format json validate-already-green-repair --request-path <exact working REQ path> --writer <exact finalization writer> --at <now>` and consume only their respective `already_green_repair.tdd_allowed` and `already_green_repair.review_allowed` fields. That shared command extracts the intake/no-op fingerprints and argv, verifies the record at its own past revision without relaunching the gate, observes project and release state, and derives the exact staged-path allowlist from a successful canonical completion dry run. Callers never supply those evidence values or recreate the predicate. A no-op repair changes no project path, so a later `HEAD` move by an unrelated commit can never make it the cause of a red gate and never invalidates its recorded evidence at its own recorded revision; ordinary REQs keep the `HEAD`-bound rule in **Session state and baseline** above. Done means one gate run plus bookkeeping — under ten minutes of wall clock on the maintainer's machine — reported in the REQ's `## Testing` section.
 
 Qualification is a narrow evidence check, not a vacuous diff pass: require the exact two sections above, verify the recorded green-gate evidence at the recorded green revision at typed success with `matches: true`, and prove no project path changed. Do not run the ordinary diff-requiring qualifier and do not relaunch the gate. Append `## Qualification\n\nPassed — repository-gate repair no-op; durable gate evidence verified and project diff empty.` Independent review must then use the shared validator's typed `review_allowed: true`, which matches the expected fingerprint to intake and proves the project diff remains empty, not repeat those checks; self-review is insufficient.
 
@@ -659,7 +662,7 @@ The exit report is **composed**, not picked from disjoint branches. Whenever the
    Skipped by `--skip-impact-negligible`, not blocked — nothing was written to these REQs. Re-run without the flag to include them, or name one explicitly (`do-work run REQ-NNN --skip-impact-negligible`), which overrides the skip for that REQ. A REQ with no `impact:` reads as `impact-user-visible` and never appears here.
    ```
 
-8. **Held-for-heavy-testing section** — applies if any REQ still carries status `pending-heavy-testing` after the heavy-lane drain ran (`actions/work.md` Step 6.5). A REQ whose selected lanes all executed is answered by the drain and never reaches this section; one that appears here got no result, and the typed finding names why. Render:
+8. **Held-for-heavy-testing section** — applies if any REQ still carries status `pending-heavy-testing` after the heavy-lane drain ran (`actions/work.md` → Qualification and Testing Judgment). A REQ whose selected lanes all executed is answered by the drain and never reaches this section; one that appears here got no result, and the typed finding names why. Render:
 
    ```
    ⚠ N REQs held for heavy testing:
@@ -744,7 +747,7 @@ The canonical `complete` command either appends the planned row once or reports 
 
 **"Files I will touch" is the source of the `write_set` frontmatter field.** After writing this section, the orchestrator mirrors the list into `write_set:` — one direction only, so the prose and the field cannot drift. Never edit `write_set` and expect the Scope list to follow. The mirror feeds the board's overlaps badge only (`write_set` is display, not scheduling, at any builder count — **Worktree Dispatch Mode (Step 1)** → Fan-Out Dispatch, below).
 
-## Pre-Flight Template (Step 5.75)
+## Pre-Build Evidence Record Template
 
 ```markdown
 ## Pre-Flight
@@ -780,7 +783,7 @@ The canonical `complete` command either appends the planned row once or reports 
 | "The existing code was already like this" | Flag it in Discovered Tasks | Pre-existing problems are still problems |
 | "It's just a small deviation from the plan" | Log it as a Decision (D-XX) | Unlogged deviations break traceability |
 
-## Testing Section Template (Step 6.5)
+## Testing Section Template
 
 ```markdown
 ## Testing

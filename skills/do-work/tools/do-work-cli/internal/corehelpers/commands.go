@@ -2,6 +2,7 @@ package corehelpers
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/url"
 	"os"
@@ -490,8 +491,8 @@ func handleRecordCommit(executionContext commandruntime.ExecutionContext, argume
 	return requeststate.RecordCommitProvenance(context.Background(), executionContext.RepositoryRoot, requestPath, implementationHash, verifyOnly, dryRun)
 }
 
-func handleBlockedCheck(_ commandruntime.ExecutionContext, arguments []string) resultmodel.CommandResult {
-	probeFile := ""
+func handleBlockedCheck(executionContext commandruntime.ExecutionContext, arguments []string) resultmodel.CommandResult {
+	probeFile, baselineJSONPath, baselineFailuresPath := "", "", ""
 	timeoutSeconds := 30
 	for index := 0; index < len(arguments); index++ {
 		switch {
@@ -511,6 +512,18 @@ func handleBlockedCheck(_ commandruntime.ExecutionContext, arguments []string) r
 				return usageResult(CommandBlockedCheck, "--timeout-seconds requires a positive integer")
 			}
 			timeoutSeconds = parsed
+		case arguments[index] == "--baseline-json" || strings.HasPrefix(arguments[index], "--baseline-json="):
+			value, err := optionValue(arguments, &index, "--baseline-json")
+			if err != nil {
+				return usageResult(CommandBlockedCheck, err.Error())
+			}
+			baselineJSONPath = value
+		case arguments[index] == "--baseline-failures" || strings.HasPrefix(arguments[index], "--baseline-failures="):
+			value, err := optionValue(arguments, &index, "--baseline-failures")
+			if err != nil {
+				return usageResult(CommandBlockedCheck, err.Error())
+			}
+			baselineFailuresPath = value
 		default:
 			return usageResult(CommandBlockedCheck, "unknown option "+arguments[index])
 		}
@@ -518,11 +531,15 @@ func handleBlockedCheck(_ commandruntime.ExecutionContext, arguments []string) r
 	if probeFile == "" {
 		return usageResult(CommandBlockedCheck, "--probe-file is required")
 	}
-	probeBytes, err := os.ReadFile(probeFile)
+	if (baselineJSONPath == "") != (baselineFailuresPath == "") {
+		return usageResult(CommandBlockedCheck, "--baseline-json and --baseline-failures must be supplied together")
+	}
+	probeBytes, err := os.ReadFile(absoluteFromRoot(executionContext.RepositoryRoot, probeFile))
 	if err != nil {
 		return usageResult(CommandBlockedCheck, err.Error())
 	}
-	status, runError := nextselection.RunBlockedProbe(probeBytes, timeoutSeconds)
+	probeEvidence, runError := nextselection.RunBlockedProbeEvidenceAtRoot(executionContext.RepositoryRoot, probeBytes, timeoutSeconds)
+	status := probeEvidence.ExitStatus
 	code, outcome, severity := "BLOCKED-PROBE-SUCCEEDED", resultmodel.OutcomeSuccess, resultmodel.SeverityInfo
 	if status != 0 {
 		code, outcome, severity = "BLOCKED-PROBE-FAILED", resultmodel.OutcomeFindings, resultmodel.SeverityWarning
@@ -533,13 +550,76 @@ func handleBlockedCheck(_ commandruntime.ExecutionContext, arguments []string) r
 	if status == 125 || runError != nil {
 		code, outcome, severity = "BLOCKED-PROBE-LAUNCH-FAILED", resultmodel.OutcomeFailure, resultmodel.SeverityError
 	}
-	evidence := fmt.Sprintf("raw probe status %d", status)
+	focusedTest := &resultmodel.FocusedTestResult{
+		ProbeFile: probeFile, ExitStatus: status, Launched: probeEvidence.Launched,
+		TimedOut: probeEvidence.TimedOut, Diagnostic: probeEvidence.Diagnostic,
+		DiagnosticSHA256: probeEvidence.DiagnosticSHA256, BaselineState: resultmodel.FocusedBaselineNotCompared,
+		CommandText: strings.TrimSpace(string(probeBytes)),
+	}
+	baselineFinding := resultmodel.CommandFinding{}
+	if baselineJSONPath != "" {
+		baselineFinding = compareFocusedBaseline(executionContext.RepositoryRoot, baselineJSONPath, baselineFailuresPath, focusedTest)
+		if baselineFinding.Code != "" && baselineFinding.Severity == resultmodel.SeverityError && outcome == resultmodel.OutcomeSuccess {
+			outcome = resultmodel.OutcomeFindings
+		}
+	}
+	evidence := fmt.Sprintf("raw probe status %d; diagnostic sha256 %s", status, probeEvidence.DiagnosticSHA256)
 	if runError != nil {
 		evidence += ": " + runError.Error()
 	}
-	return resultmodel.CommandResult{Outcome: outcome, ExitCodeOverride: status, Findings: []resultmodel.CommandFinding{helperFinding(code, severity, []string{probeFile}, evidence,
+	findings := []resultmodel.CommandFinding{helperFinding(code, severity, []string{probeFile}, evidence,
 		resultmodel.FixabilityManual, map[bool]string{true: "the probe did not clear the blocked condition", false: ""}[status != 0],
-		[]string{"do-work-cli", CommandBlockedCheck, "--probe-file", probeFile}, []string{"do-work-cli", "--format", "json", CommandBlockedCheck, "--probe-file", probeFile})}}
+		[]string{"do-work-cli", CommandBlockedCheck, "--probe-file", probeFile}, []string{"do-work-cli", "--format", "json", CommandBlockedCheck, "--probe-file", probeFile})}
+	if baselineFinding.Code != "" {
+		findings = append(findings, baselineFinding)
+	}
+	return resultmodel.CommandResult{Outcome: outcome, ExitCodeOverride: status, Findings: findings, FocusedTest: focusedTest}
+}
+
+func compareFocusedBaseline(repositoryRoot, baselineJSONPath, baselineFailuresPath string, focusedTest *resultmodel.FocusedTestResult) resultmodel.CommandFinding {
+	baselineBytes, readError := os.ReadFile(absoluteFromRoot(repositoryRoot, baselineJSONPath))
+	if os.IsNotExist(readError) {
+		focusedTest.BaselineState = resultmodel.FocusedBaselineMissing
+		return helperFinding("FOCUSED-BASELINE-MISSING", resultmodel.SeverityWarning, []string{baselineJSONPath}, "no baseline record exists", resultmodel.FixabilityManual, "every failing test remains a candidate regression", nil, nil)
+	}
+	if readError != nil {
+		focusedTest.BaselineState = resultmodel.FocusedBaselineUnusable
+		return helperFinding("FOCUSED-BASELINE-UNREADABLE", resultmodel.SeverityError, []string{baselineJSONPath}, readError.Error(), resultmodel.FixabilityManual, "baseline comparison is unavailable", nil, nil)
+	}
+	var baseline baselineRecord
+	if decodeError := json.Unmarshal(baselineBytes, &baseline); decodeError != nil {
+		focusedTest.BaselineState = resultmodel.FocusedBaselineUnusable
+		return helperFinding("FOCUSED-BASELINE-INVALID", resultmodel.SeverityError, []string{baselineJSONPath}, decodeError.Error(), resultmodel.FixabilityManual, "baseline comparison is unavailable", nil, nil)
+	}
+	focusedTest.BaselineStatus = baseline.ExitStatus
+	focusedTest.BaselineLaunched = baseline.Launched
+	if !baseline.Launched {
+		focusedTest.BaselineState = resultmodel.FocusedBaselineUnusable
+		return helperFinding("FOCUSED-BASELINE-NOT-LAUNCHED", resultmodel.SeverityError, []string{baselineJSONPath}, "baseline launched=false", resultmodel.FixabilityManual, "a record for a command that never ran cannot exclude failures", nil, nil)
+	}
+	if focusedTest.ExitStatus == 0 {
+		focusedTest.BaselineState = resultmodel.FocusedBaselineGreen
+		return resultmodel.CommandFinding{}
+	}
+	baselineFailureBytes, failureError := os.ReadFile(absoluteFromRoot(repositoryRoot, baselineFailuresPath))
+	if failureError != nil {
+		focusedTest.BaselineState = resultmodel.FocusedBaselineNewRed
+		return helperFinding("FOCUSED-BASELINE-FAILURE-EVIDENCE-MISSING", resultmodel.SeverityError, []string{baselineFailuresPath}, failureError.Error(), resultmodel.FixabilityManual, "the current failure cannot be excluded", nil, nil)
+	}
+	_, baselineDiagnosticSHA256 := nextselection.BlockedProbeDiagnosticIdentity(string(baselineFailureBytes), repositoryRoot)
+	if baseline.ExitStatus != 0 && baseline.ExitStatus == focusedTest.ExitStatus && strings.TrimSpace(baseline.TestCommand) == focusedTest.CommandText && baselineDiagnosticSHA256 == focusedTest.DiagnosticSHA256 {
+		focusedTest.BaselineState = resultmodel.FocusedBaselineMatchingRed
+		return helperFinding("FOCUSED-BASELINE-MATCH", resultmodel.SeverityInfo, []string{baselineFailuresPath}, "same command, status, and normalized diagnostic identity", resultmodel.FixabilityAutomatic, "", nil, nil)
+	}
+	focusedTest.BaselineState = resultmodel.FocusedBaselineNewRed
+	return helperFinding("FOCUSED-NEW-RED", resultmodel.SeverityError, []string{probeFileOrFallback(focusedTest.ProbeFile)}, "current failure does not match the saved command and normalized diagnostic identity", resultmodel.FixabilityManual, "the failure is a candidate regression", nil, nil)
+}
+
+func probeFileOrFallback(probeFile string) string {
+	if probeFile == "" {
+		return "<focused-test-probe>"
+	}
+	return probeFile
 }
 
 func handleRepairTimestamps(executionContext commandruntime.ExecutionContext, arguments []string) resultmodel.CommandResult {

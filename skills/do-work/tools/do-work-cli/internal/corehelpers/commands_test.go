@@ -162,6 +162,43 @@ func TestDryRunSurfacesDoNotMutateBaselineDownloadOrTimestamps(t *testing.T) {
 	}
 }
 
+func TestBlockedCheckReturnsTypedBoundedBaselineComparison(t *testing.T) {
+	repository := t.TempDir()
+	probePath := filepath.Join(repository, "focused.sh")
+	baselinePath := filepath.Join(repository, "baseline.json")
+	failuresPath := filepath.Join(repository, "baseline-failures.txt")
+	probe := "echo 'same failure'; exit 23"
+	if err := os.WriteFile(probePath, []byte(probe), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(baselinePath, []byte(`{"test_command":"echo 'same failure'; exit 23","exit_status":23,"launched":true}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(failuresPath, []byte("same failure\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	result := handleBlockedCheck(testContext(repository), []string{
+		"--probe-file", "focused.sh", "--timeout-seconds", "2",
+		"--baseline-json", "baseline.json", "--baseline-failures", "baseline-failures.txt",
+	})
+	if result.FocusedTest == nil || result.FocusedTest.BaselineState != resultmodel.FocusedBaselineMatchingRed || result.FocusedTest.DiagnosticSHA256 == "" {
+		t.Fatalf("focused result=%#v findings=%#v", result.FocusedTest, result.Findings)
+	}
+	if !hasFinding(result, "FOCUSED-BASELINE-MATCH") || hasFinding(result, "FOCUSED-NEW-RED") {
+		t.Fatalf("findings=%#v", result.Findings)
+	}
+
+	if err := os.WriteFile(baselinePath, []byte(`{"test_command":"ignored","exit_status":127,"launched":false}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	result = handleBlockedCheck(testContext(repository), []string{
+		"--probe-file", "focused.sh", "--baseline-json", "baseline.json", "--baseline-failures", "baseline-failures.txt",
+	})
+	if result.FocusedTest == nil || result.FocusedTest.BaselineState != resultmodel.FocusedBaselineUnusable || !hasFinding(result, "FOCUSED-BASELINE-NOT-LAUNCHED") {
+		t.Fatalf("unusable baseline result=%#v findings=%#v", result.FocusedTest, result.Findings)
+	}
+}
+
 func TestAllSeventeenPublicCommandsRunInTextAndJSONWithStableStatusAndNoDryRunEffects(t *testing.T) {
 	if testing.Short() || os.Getenv("DO_WORK_HEAVY_TESTS") != "1" {
 		t.Skip("binary-building integration is heavy-only")

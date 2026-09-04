@@ -1,5 +1,5 @@
-// Package lifecycleadvance advances queue selection and projects the next
-// lifecycle phase for already-working or archived requests.
+// Package lifecycleadvance advances queue selection and executes the current
+// mechanical evidence phase for already-working requests.
 package lifecycleadvance
 
 import (
@@ -38,7 +38,7 @@ func handleAdvance(executionContext commandruntime.ExecutionContext, arguments [
 	if len(arguments) == 1 && arguments[0] == "--checkpoint" {
 		return handleAdvanceCheckpoint(executionContext)
 	}
-	if len(arguments) == 1 && advanceRequestIDPattern.MatchString(arguments[0]) {
+	if len(arguments) >= 1 && advanceRequestIDPattern.MatchString(arguments[0]) {
 		snapshot, discoveryError := discoverAdvanceRepository(executionContext.RepositoryRoot)
 		if discoveryError != nil {
 			return advanceFailure("ADVANCE-DISCOVERY-FAILED", discoveryError.Error())
@@ -47,7 +47,11 @@ func handleAdvance(executionContext commandruntime.ExecutionContext, arguments [
 			if candidates[0].ParseFailure != "" || candidates[0].TypedRecord.RequestID != arguments[0] {
 				return advanceRefusal(arguments[0], []string{advanceRequestPath(candidates[0])}, "ADVANCE-EVIDENCE-MISSING", "request identity or frontmatter is malformed", nil)
 			}
-			return classifyAdvance(candidates[0])
+			projected := classifyAdvance(candidates[0])
+			if len(arguments) == 1 || projected.Advance == nil || projected.Outcome == resultmodel.OutcomeRefused {
+				return projected
+			}
+			return executeAdvanceEvidenceGates(executionContext, candidates[0], projected, arguments[1:])
 		}
 	}
 	return handleQueueAdvance(executionContext.RepositoryRoot, arguments)
@@ -146,9 +150,9 @@ func classifyWorkingAdvance(target *repositorymodel.RequestFile, advance *result
 		if hasAnySection(sections, "Plan", "Exploration", "Scope", "Pre-Flight", "Implementation Summary", "Qualification", "Testing", "Review", "Lessons Learned", "Orientation") {
 			return missingBeforeLaterRefusal(advance, "estimate.p50_active_minutes")
 		}
-		nextArgv := []string{"do-work-cli", "estimate-p50", "--route", record.RouteValue}
+		nextArgv := []string{"do-work-cli", "--format", "json", CommandAdvance, advance.RequestID, "--request-path", requestPath, "--", "--route", record.RouteValue, "--write-set", "<count>", "--subsystems", "<count>", "--acceptance", "<count>"}
 		if record.EffortEstimateValue == "effort-mechanical" && record.RouteValue == "A" {
-			nextArgv = []string{"do-work-cli", "estimate-p50", "--trivial"}
+			nextArgv = []string{"do-work-cli", "--format", "json", CommandAdvance, advance.RequestID, "--request-path", requestPath, "--", "--trivial"}
 		}
 		return advancePhase(advance, "estimate-p50", resultmodel.AdvancePhaseMechanical,
 			advanceEvidence("field", requestPath, "estimate.p50_active_minutes", "", "positive integer"), nextArgv)
@@ -207,7 +211,7 @@ func classifyWorkingAdvance(target *repositorymodel.RequestFile, advance *result
 		}
 		return advancePhase(advance, "preflight", resultmodel.AdvancePhaseMechanical,
 			advanceEvidence("section", requestPath, "", "Implementation Summary", "preflight complete and implementation summarized"),
-			[]string{"do-work-cli", "--format", "json", "preflight"})
+			[]string{"do-work-cli", "--format", "json", CommandAdvance, advance.RequestID, "--request-path", requestPath, "--gate-arg", "<canonical-gate-argv-token>", "--", "<resolved-test-argv>"})
 	}
 	if !hasSection(sections, "Qualification") {
 		if hasAnySection(sections, "Testing", "Review", "Lessons Learned", "Orientation") {
@@ -215,19 +219,15 @@ func classifyWorkingAdvance(target *repositorymodel.RequestFile, advance *result
 		}
 		return advancePhase(advance, "qualify", resultmodel.AdvancePhaseMechanical,
 			advanceEvidence("section", requestPath, "", "Qualification", "typed qualification result"),
-			[]string{"do-work-cli", "--format", "json", "qualify", "--request-path", requestPath})
+			[]string{"do-work-cli", "--format", "json", CommandAdvance, advance.RequestID, "--request-path", requestPath, "--diff-range", "<pre>..<merge_hash>"})
 	}
 	if !hasSection(sections, "Testing") {
 		if hasAnySection(sections, "Review", "Lessons Learned", "Orientation") {
 			return missingBeforeLaterRefusal(advance, "Testing")
 		}
-		if record.RouteValue == "A" {
-			return advancePhase(advance, "agent judgment: testing", resultmodel.AdvancePhaseAgentJudgment,
-				advanceEvidence("section", requestPath, "", "Testing", "tests and gate evidence"), nil)
-		}
-		return advancePhase(advance, "scope-drift", resultmodel.AdvancePhaseMechanical,
+		return advancePhase(advance, "test-gate", resultmodel.AdvancePhaseMechanical,
 			advanceEvidence("section", requestPath, "", "Testing", "tests and gate evidence"),
-			[]string{"do-work-cli", "--format", "json", "scope-drift", "--request-path", requestPath})
+			[]string{"do-work-cli", "--format", "json", CommandAdvance, advance.RequestID, "--request-path", requestPath, "--gate-arg", "<canonical-gate-argv-token>", "--", "--probe-file", "<focused-test-probe>"})
 	}
 	if !hasSection(sections, "Review") {
 		if hasAnySection(sections, "Lessons Learned", "Orientation") {
