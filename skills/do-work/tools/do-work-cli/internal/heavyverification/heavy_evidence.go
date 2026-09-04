@@ -292,7 +292,7 @@ func laneFingerprint(repositoryRoot string, lane manifestLane, committedTree []t
 	}
 	document := fingerprintDocument{
 		SchemaVersion: laneEvidenceSchemaVersion, LaneID: lane.ID,
-		CommandArgv: append([]string(nil), lane.Argv...),
+		CommandArgv:  append([]string(nil), lane.Argv...),
 		CoveredFiles: []string{}, Toolchain: []toolchainProbeSeal{}, Environment: []environmentSeal{},
 	}
 	for _, entry := range committedTree {

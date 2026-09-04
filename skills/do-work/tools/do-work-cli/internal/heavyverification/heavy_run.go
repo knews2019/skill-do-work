@@ -114,10 +114,10 @@ func RunLanes(request LaneRunRequest) (resultmodel.HeavyVerificationRun, []resul
 	// The tree is read once, after the dirty-tree refusal, so every lane's
 	// fingerprint describes the same pre-run repository state.
 	committedTree, treeError := readCommittedTree(repositoryRoot, executionRevision)
-	evidenceStore, storeError := openLaneEvidenceStore(repositoryRoot)
-	if storeError != nil {
-		evidenceStore = nil
-	}
+	// A repository whose Git common directory cannot be resolved has no
+	// evidence store. Every lane then executes, which is the safe direction:
+	// the run reports that reason rather than refusing to verify anything.
+	evidenceStore, _ := openLaneEvidenceStore(repositoryRoot)
 	run := resultmodel.HeavyVerificationRun{
 		ManifestPath:      manifestRelativePath,
 		ExecutionRevision: executionRevision,
@@ -309,12 +309,11 @@ func interruptedLaneStatus(received os.Signal) int {
 // reader never mistakes an inherited duration for a measured one.
 func reusedLaneExecution(lane manifestLane, decision laneReuseDecision, fingerprint string) resultmodel.HeavyLaneExecution {
 	return resultmodel.HeavyLaneExecution{
-		LaneID:      lane.ID,
-		CommandArgv: append([]string(nil), lane.Argv...),
-		ExitStatus:  decision.Record.ExitStatus,
-		Skipped:     decision.Record.Skipped,
-		WallSeconds: 0,
-
+		LaneID:             lane.ID,
+		CommandArgv:        append([]string(nil), lane.Argv...),
+		ExitStatus:         decision.Record.ExitStatus,
+		Skipped:            decision.Record.Skipped,
+		WallSeconds:        0,
 		Disposition:        decision.Disposition,
 		DispositionReason:  decision.Reason,
 		FingerprintSHA256:  fingerprint,
