@@ -1,7 +1,7 @@
 ---
 id: REQ-566
 title: '[impact-rule-change] Run held heavy lanes at queue exhaustion without asking, and record per-lane wall time'
-status: pending
+status: claimed
 created_at: 2026-09-04T13:19:11Z
 user_request: UR-111
 domain: backend
@@ -51,6 +51,7 @@ estimate:
     - cross-route regression gates
 heavy_verified_at: 2026-09-04T14:18:07Z
 heavy_verified_revision: 58e1c9c948bb68f3805e704b9c7db39fff38f504
+claimed_at: 2026-09-04T14:18:08Z
 ---
 
 # Run Held Heavy Lanes At Queue Exhaustion Without Asking, And Record Per-Lane Wall Time
