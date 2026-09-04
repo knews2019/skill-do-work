@@ -47,3 +47,16 @@ User scope: do-work run to completion, serial claims; do not finish while agents
 - Other session completed REQ-569 at b3ff309e (release0.283.0); its publication edits are committed and no longer dirty. Keep that implementation separate from REQ-504 attribution.
 
 - REQ-504 completed builder handback consumed from disk:4e351d172b14b822dd5027d3c13d12874ef5774c; no pending builder processes. Integrating seven-file remediation; original cumulative base773787b74acddfdfc4c16498a89d99a5cc3ab716 remains fixed.
+
+- REQ-504 integrated at6a11b60c83615791769d57b082580f0b69323984; cumulative773787b7..6a11b60c; qualification/scope satisfied, integrated focused/full gates running; independent review_504_remediation → REQ-504-re-review.md pending.
+- REQ-506 remediation plan complete (eight paths, three tasks), ready after canonical505/506 progression.
+
+- REQ-504 integrated canonical gate and focused evidence passed; selected six heavy lanes executing at6a11b60c with explicitChromium and no evidence reuse.
+- Read-only later-step plan: review_507 → REQ-544-plan.md pending.
+
+- REQ-504 independent re-review complete:100%, Pass, no findings; RED replay on pre-repaircode independently reproducedbothF01failures. Fresh heavy verification still pending.
+
+- REQ-504 heavy initial: JS0/6s,browser0/90s,CLI0/65s,staged0/25s,updater1/23s,installer2/5s. Retry updater1/27s installer2/7s. Full retry log identifies disk full; no heavy process remains. Await user permission to inspect/clear configured external Go build cache. Claim remains intact, all source/review evidence preserved; no false completion.
+- Read-only later-step plan: review_506 → REQ-562-plan.md pending.
+
+- User chose to free disk space personally; no inspection or deletion outside the repository was authorized or performed. No tests run until sufficient space returns. REQ-562 read-only plan complete; all subagents completed, no background process pending.

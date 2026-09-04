@@ -2,6 +2,7 @@
 id: REQ-504
 title: '[impact-rule-change] Collapse Step 10 and Crash Recovery prose into recovery'
 status: claimed
+kb_status: pending
 priority: now
 created_at: 2026-09-02T14:37:54Z
 user_request: UR-098
@@ -42,6 +43,8 @@ write_set:
   - skills/do-work/tools/do-work-cli/internal/finalization/finalization_discovery.go
   - skills/do-work/tools/do-work-cli/internal/finalization/finalization_recovery_test.go
 preflight_at: 2026-09-04T22:36:05Z
+remediation_at: 2026-09-04T22:45:34Z
+re_review_at: 2026-09-04T22:51:22Z
 review_at: 2026-09-04T22:28:49Z
 route: C
 planning_at: 2026-09-04T15:57:17Z
@@ -50,7 +53,7 @@ dispatch_at: 2026-09-04T16:01:12Z
 builder_handback_at: 2026-09-04T22:44:47Z
 integration_at: 2026-09-04T16:31:53Z
 status_changed_at: 2026-09-04T21:00:44Z
-commit: f412a8411057d0a833df5584657161008f315b84
+commit: 6a11b60c83615791769d57b082580f0b69323984
 estimate:
   p50_active_minutes: 50
   confidence: low
@@ -270,7 +273,7 @@ None.
 - Canonical repository gate: direct unpiped `bash _dev/tests/maintainer-verify.sh` passed on merged `main`; 375 board tests completed in 19 seconds and 655 CLI tests in 49 seconds, with the slowest file at 22.76 seconds, below the 30-second budget.
 - Green-gate evidence was recorded at revision `2069631f7b40d547a2b0218d16623e30cd717887` for the exact canonical argv.
 
-## Heavy Verification Plan
+## Prior Heavy Verification Plan
 
 - Base revision: `773787b74acddfdfc4c16498a89d99a5cc3ab716`
 - Target revision: `f412a8411057d0a833df5584657161008f315b84`
@@ -297,7 +300,7 @@ None.
 > Browser lane used /Applications/Google Chrome.app/Contents/MacOS/Google Chrome through QUEUE_KANBAN_BROWSER.
 > ```
 
-## Heavy Verification Result
+## Prior Heavy Verification Result
 
 Target revision: `f412a8411057d0a833df5584657161008f315b84`
 Execution revision: `f412a8411057d0a833df5584657161008f315b84`
@@ -479,7 +482,228 @@ Remediation baseline at `3501aeddd31634d0f165d193b32709c86f08cd8b`: canonical ad
 ## Remediation Execution State
 
 - [x] **[PLAN]:** Consume the independent failure and seven-file remediation plan; public RED first, share structural range, preserve legacy layout and authority, GREEN and boundary controls.
-- [ ] **[APPLY]:** Await isolated builder.
-- [ ] **[UNIFY]:** Await diff review and native checks.
+- [x] **[APPLY]:** Seven-file remediation committed and integrated; public RED/GREEN proved both original failures.
+- [x] **[UNIFY]:** Reviewed every remediation file and complete diff; clean branch, exact seven-file index, no queue writes; gofmt, vet and owner tests passed.
 
 Remediation builder returned at 2026-09-04T22:44:47Z; prior implementation handback was 2026-09-04T16:31:17Z. Exact seven-file branch commit: `4e351d172b14b822dd5027d3c13d12874ef5774c`. Public RED/GREEN and owner checks passed; integration and re-review remain.
+
+## Implementation Summary
+
+- `_dev/tests/contract-regressions.sh` (modified) — removes the registration for the retired request-state shell lane after equivalent public Go coverage landed.
+- `_dev/tests/contracts/request-state.sh` (deleted) — retires the shell fixture that began at the internal recovery primitive.
+- `skills/do-work/actions/commit.md` (modified) — assigns the resumable mutation boundary to finalization instead of restating manual request-state commits.
+- `skills/do-work/actions/restart-with-parallel-handoff.md` (modified) — replaces the removed checkpoint-template reference with the command-owned principle.
+- `skills/do-work/actions/run-with-recovery.md` (modified) — invokes constant recover-with-sole-authority argv and hands the original scope to the work loop.
+- `skills/do-work/actions/work-reference.md` (modified) — collapses crash recovery and session checkpoint algorithms to concise command-owned principles.
+- `skills/do-work/actions/work.md` (modified) — collapses Step 10, clarifies orchestration judgment, and renames Step 8 to preparation.
+- `skills/do-work/docs/work-guide.md` (modified) — aligns user guidance with typed recovery and checkpoint commands.
+- `skills/do-work/tools/do-work-cli/internal/finalization/finalization_discovery.go` (modified) — declines coherent unfinished claim-only topology so public recovery owns it.
+- `skills/do-work/tools/do-work-cli/internal/finalization/finalization_recovery_test.go` (modified) — covers the claim-only discovery exemption.
+- `skills/do-work/tools/do-work-cli/internal/lifecycleadvance/advance_commands.go` (modified) — adds explicit checkpoint mode while preserving ordinary advance reads.
+- `skills/do-work/tools/do-work-cli/internal/lifecycleadvance/advance_commands_test.go` (modified) — keeps ordinary advance byte-for-byte read-only after checkpoint mode lands.
+- `skills/do-work/tools/do-work-cli/internal/lifecycleadvance/checkpoint_commands.go` (new) — implements the guarded checkpoint-only mutation transaction.
+- `skills/do-work/tools/do-work-cli/internal/lifecycleadvance/checkpoint_commands_test.go` (new) — proves exact-path checkpoint mutation and live-entry preservation.
+- `skills/do-work/tools/do-work-cli/internal/lifecycleadvance/recovery_commands.go` (new) — composes finalization-first recovery with typed authority and claim recovery.
+- `skills/do-work/tools/do-work-cli/internal/lifecycleadvance/recovery_commands_test.go` (new) — covers public recovery order, hostile labels, multiple evidence shapes, takeover, selection, and fresh claim.
+- `skills/do-work/tools/do-work-cli/internal/repositorymodel/repository_model.go` (modified) — projects labelled and unlabelled checkpoint evidence structurally with legacy fallback.
+- `skills/do-work/tools/do-work-cli/internal/repositorymodel/repository_model_test.go` (modified) — covers canonical-section and heading-less checkpoint evidence.
+- `skills/do-work/tools/do-work-cli/internal/requeststate/state_apply.go` (modified) — removes every authorized same-request checkpoint entry atomically.
+- `skills/do-work/tools/do-work-cli/internal/requeststate/state_apply_test.go` (modified) — proves all-entry removal and unrelated-byte preservation.
+- `skills/do-work/tools/do-work-cli/internal/requeststate/state_plan.go` (modified) — plans structural all-entry recovery authority.
+- `skills/do-work/tools/do-work-cli/internal/requeststate/state_plan_test.go` (modified) — covers multi-entry planning and evidence guards.
+- `skills/do-work/tools/do-work-cli/internal/requeststate/state_types.go` (modified) — adds the all-entry checkpoint recovery option.
+- `skills/do-work/tools/do-work-cli/internal/resultmodel/result_model.go` (modified) — adds typed recovery and checkpoint result projections.
+- `skills/do-work/tools/do-work-cli/internal/resultmodel/result_model_test.go` (modified) — locks text/JSON recovery and checkpoint output shape.
+- `skills/do-work/tools/do-work-cli/prime-do-work-cli.md` (modified) — documents the new command ownership and the narrowed advance mutation boundary.
+
+**What was done:** Recovery now runs finalization discovery first and reports claim authority as typed data; explicit authority resets each request and removes all matching checkpoint evidence without interpolating writer text into shell source. Checkpoint-mode advance is the sole checkpoint mutation while ordinary request-specific advance stays read-only. The action and reference prose now state the remaining judgment principles and preserve REQ-505's ownership of selection and claim.
+
+
+### Integrated remediation
+
+All paths below are repository-relative and modified. These seven paths are the complete remediation manifest, within the original 26-path Scope.
+
+| File | Change and UNIFY verification |
+|---|---|
+| `skills/do-work/tools/do-work-cli/internal/repositorymodel/repository_model.go` | Exposes existing canonical/legacy interpretation as `CheckpointClaimBounds`; discovery consumes it. Canonical exact heading wins until the next level-two section, including CRLF; absent heading returns whole-document legacy range. Removed the stale promise that a writer upgrades the document. Reviewed discovery semantics remain unchanged. |
+| `skills/do-work/tools/do-work-cli/internal/repositorymodel/repository_model_test.go` | Pins LF legacy with prose-only heading token, canonical section exclusion of Completed/Notes, and CRLF canonical identity/header evidence. |
+| `skills/do-work/tools/do-work-cli/internal/requeststate/state_apply.go` | Removal and absence checks consume the shared range. Fresh claim appends without a new section when valid legacy claim headers remain, preserving their discoverability; canonical insertion uses the same CRLF-aware bounds. Existing numeric identity and writer authorization predicates remain intact. Reviewed all local checkpoint writers and readers. |
+| `skills/do-work/tools/do-work-cli/internal/requeststate/state_apply_test.go` | Proves writer-specific removal retains other writers and unlabelled records; all-entry removal retains another identity and out-of-range history byte-for-byte. Covers alias IDs, LF/CRLF, fresh insertion, and false legacy absence refusal with no commit or byte change. |
+| `skills/do-work/tools/do-work-cli/internal/lifecycleadvance/checkpoint_commands.go` | Deletes the branch that appended an empty canonical section to a nonempty legacy body. Empty/new checkpoint behavior remains canonical. |
+| `skills/do-work/tools/do-work-cli/internal/lifecycleadvance/checkpoint_commands_test.go` | Public recover → checkpoint refresh → recover compares semantic request/writer/header evidence, permitting frontmatter source-line offsets, and checks preserved count against actual discovery plus exact legacy body bytes. |
+| `skills/do-work/tools/do-work-cli/internal/lifecycleadvance/recovery_commands_test.go` | Public observation → targeted authorized takeover → next → committed fresh claim → observation proves recovery of labelled, duplicate, numeric-alias and unlabelled entries, continuation removal, and retention of another working request's evidence. Fixtures and CLI processes are owned and completed by tests. |
+
+
+Original saved base `773787b74acddfdfc4c16498a89d99a5cc3ab716` remains the lower bound; latest integration `6a11b60c83615791769d57b082580f0b69323984` is the upper bound. Supplemental repair-only range `f13bdcc0d1a83c0d24e5af6262f6863ee31ef8d7..6a11b60c83615791769d57b082580f0b69323984` proves the builder touched exactly seven allowed paths and no do-work state. Cumulative historical owner/sibling commits are expected over-inclusion, not this builder’s changes; retain them without deletion.
+
+### Remediation decisions
+
+- **D-10 — preserve the supported shape:** Expose the existing structural bounds instead of migrating foreign records. A canonical heading is authoritative only as an exact line, and legacy claims remain whole-document evidence when it is absent. This is a shared interpretation change for existing removal/absence callers, not additional takeover authority.
+- **D-11 — targeted public acceptance:** The legacy acceptance fixture uses public `recover --take-over REQ-713` so another working request stays active and can prove evidence preservation after fresh claim. The existing canonical `--assume-sole-authority` test remains green. Combining labelled, duplicate, alias and unlabelled records in the one fixture proves their interaction rather than four redundant smoke fixtures.
+- **D-12 — fresh-claim composition:** Fresh claim must not introduce a competing canonical section while valid legacy claims remain. It uses the existing structural request-header recognizer and numeric identity check. Canonical insertion also consumes the shared bounds to avoid a second section on CRLF inputs. No queue/lifecycle authority or format schema changed.
+
+
+## Qualification
+
+Canonical advance accepted qualification and scope-drift for cumulative `773787b74acddfdfc4c16498a89d99a5cc3ab716..6a11b60c83615791769d57b082580f0b69323984`; both bound records are satisfied. Original 26-path manifest remains complete; the remediation-only range contains seven declared files. Static new-file warnings are Go package entry points (`Handlers` registers recover, handleAdvance dispatches checkpoint) or Go-discovered tests. The relocated console.log sentence is an instruction, not execution. Reporter print calls in core-checks and heavy-runtime-fingerprint are intentional output from separately reviewed REQ-509/564 history in the cumulative range. No debug artifact or unwired production file was introduced by this remediation.
+
+## Testing
+
+Commands ran from the checkout's `skills/do-work/tools/do-work-cli` directory unless stated otherwise.
+
+Primary RED before production changes at builder base:
+
+```text
+go test -count=1 ./internal/lifecycleadvance -run 'Test(RecoverLegacyCheckpointClaimsThroughPublicCommand|AdvanceCheckpointPreservesLegacyClaimDiscovery)$' -v
+```
+
+Exit 1, package 1.976s, command wall 3.2s. Relevant output:
+
+```text
+=== RUN   TestAdvanceCheckpointPreservesLegacyClaimDiscovery
+refresh hid legacy evidence: [four REQ-713 records plus one REQ-799 record before; empty checkpoint_evidence arrays afterward] preserved=5 observed=0
+--- FAIL: TestAdvanceCheckpointPreservesLegacyClaimDiscovery (1.51s)
+=== RUN   TestRecoverLegacyCheckpointClaimsThroughPublicCommand
+[recover --take-over REQ-713]: exit status 1
+"outcome": "refused"
+"code": "RECOVER-CLAIM-CHECKPOINT-EVIDENCE"
+"the exact asserted checkpoint entry does not exist"
+--- FAIL: TestRecoverLegacyCheckpointClaimsThroughPublicCommand (0.19s)
+FAIL .../internal/lifecycleadvance 1.976s
+```
+
+The bracketed evidence description above abbreviates the long typed Go value; the actual failure included all five identities, writers and header strings. The recovery failure reported four structurally observed target records before refusing their removal.
+
+Initial GREEN after production edits: same command exit 0, package 2.179s (refresh 1.14s; recovery 0.70s). After adding the final exact selection assertion, same command exit 0 with:
+
+```text
+--- PASS: TestAdvanceCheckpointPreservesLegacyClaimDiscovery (0.87s)
+--- PASS: TestRecoverLegacyCheckpointClaimsThroughPublicCommand (0.73s)
+PASS
+ok .../internal/lifecycleadvance 2.050s
+```
+
+Owner checks:
+
+```text
+go test -count=1 ./internal/lifecycleadvance ./internal/requeststate ./internal/repositorymodel
+ok .../internal/lifecycleadvance 20.926s
+ok .../internal/requeststate 6.388s
+ok .../internal/repositorymodel 0.615s
+```
+
+Exit 0. These include the canonical public sole-authority recovery and unrelated-dirt tests alongside the new legacy composition. No selected test was skipped. `go vet ./...` exit 0 (0.039s final invocation); `git diff --check` exit 0; `gofmt -l` for all seven paths emitted nothing, explicitly checked for empty output. No implementation changed after the owner run; the later test-only selection assertion passed in the final focused public run. Heavy lanes and the canonical full repository gate are intentionally left to the integrating orchestrator; old heavy evidence is historical, not evidence for changed bytes.
+
+
+**Integrated verification:** Both advance-owned focused-test passes exited0 with launched:true, timed_out:false, baseline_state:green. Canonical full `bash _dev/tests/maintainer-verify.sh` exited0 at `6a11b60c83615791769d57b082580f0b69323984`:381 board tests/18s,731 CLI tests/58s, slowestCLIfile23.90s<30s. The exact-argv green record and all three request-bound gates are satisfied in test-gate-green.json. Heavy results below remain pending until their actual runner record exists.
+
+## Heavy Verification Plan
+
+- Base revision: `773787b74acddfdfc4c16498a89d99a5cc3ab716`
+- Target revision: `6a11b60c83615791769d57b082580f0b69323984`
+- `queue-kanban-javascript`: `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane queue-kanban-javascript` — coverage is uncertain for: ai-reports/2026-09-03_2145_do-work-velocity-and-pending-queue-speed/index.html, do-work/.req-reservations/REQ-568, do-work/.req-reservations/REQ-569, do-work/calibration-log.tsv, do-work/user-requests/UR-113/assets/REQ-569-board-version-mismatch-finding.png, do-work/working/baseline.json, justfile
+- `queue-kanban-browser`: `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane queue-kanban-browser` — coverage is uncertain for: ai-reports/2026-09-03_2145_do-work-velocity-and-pending-queue-speed/index.html, do-work/.req-reservations/REQ-568, do-work/.req-reservations/REQ-569, do-work/calibration-log.tsv, do-work/user-requests/UR-113/assets/REQ-569-board-version-mismatch-finding.png, do-work/working/baseline.json, justfile
+- `do-work-cli-integrations`: `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane do-work-cli-integrations` — coverage is uncertain for: ai-reports/2026-09-03_2145_do-work-velocity-and-pending-queue-speed/index.html, do-work/.req-reservations/REQ-568, do-work/.req-reservations/REQ-569, do-work/calibration-log.tsv, do-work/user-requests/UR-113/assets/REQ-569-board-version-mismatch-finding.png, do-work/working/baseline.json, justfile
+- `staged-skills`: `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane staged-skills` — coverage is uncertain for: ai-reports/2026-09-03_2145_do-work-velocity-and-pending-queue-speed/index.html, do-work/.req-reservations/REQ-568, do-work/.req-reservations/REQ-569, do-work/calibration-log.tsv, do-work/user-requests/UR-113/assets/REQ-569-board-version-mismatch-finding.png, do-work/working/baseline.json, justfile
+- `updater`: `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane updater` — coverage is uncertain for: ai-reports/2026-09-03_2145_do-work-velocity-and-pending-queue-speed/index.html, do-work/.req-reservations/REQ-568, do-work/.req-reservations/REQ-569, do-work/calibration-log.tsv, do-work/user-requests/UR-113/assets/REQ-569-board-version-mismatch-finding.png, do-work/working/baseline.json, justfile
+- `installer`: `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane installer` — coverage is uncertain for: ai-reports/2026-09-03_2145_do-work-velocity-and-pending-queue-speed/index.html, do-work/.req-reservations/REQ-568, do-work/.req-reservations/REQ-569, do-work/calibration-log.tsv, do-work/user-requests/UR-113/assets/REQ-569-board-version-mismatch-finding.png, do-work/working/baseline.json, justfile
+
+**D-13 — finish this remediation in place:** The public lifecycle surface exposes no heavy-hold transition, while the current action also prohibits reproducing checkpoint/status mutation. Resolve that procedural conflict by running the selected lanes now through the canonical runner, retaining this existing claim through review/finalization. No status or checkpoint fallback is authored, and no old heavy success is reused for changed source.
+
+## Review
+
+Post-remediation: **100%, Acceptance Pass, Risk None**. The independent reviewer closed originalF01 with public pre-repair RED and integrated GREEN; no remaining findings or automatic follow-ups.
+
+
+**Approve** — the single remediation closes both legacy-checkpoint failures from F-01, including the fresh-claim path that could otherwise hide another request's surviving evidence.
+
+Route C. Cumulative evidence remains `773787b74acddfdfc4c16498a89d99a5cc3ab716..6a11b60c83615791769d57b082580f0b69323984`. The original 26-path migration at `f412a8411057d0a833df5584657161008f315b84` and its first independent review remain part of this review. Repair attribution is exactly `f13bdcc0d1a83c0d24e5af6262f6863ee31ef8d7..6a11b60c83615791769d57b082580f0b69323984`: seven declared paths. Intervening sibling and owner commits in the cumulative range are not attributed to this builder.
+
+## What's built
+
+Public recovery still settles finalization before classifying working claims and requires explicit takeover authority. Checkpoint discovery, removal, absence checks, and fresh insertion now share the existing canonical-or-legacy range. Refresh preserves the supported legacy body instead of adding an empty section that hides it. The original command ownership and prose reduction remain intact.
+
+## Findings and F-01 closure
+
+**Important:** None remaining. F-01 is closed by direct public-command acceptance, not merely by observing a shared helper.
+
+**Minor:** None. **Nit:** None.
+
+Before repair, the final public regression tests independently reproduced both reported failures: refresh reported five preserved claims while subsequent discovery returned zero, and explicit takeover refused with `RECOVER-CLAIM-CHECKPOINT-EVIDENCE`. With the integrated repair, refresh retains all five semantic claim records and exact body bytes; takeover removes all four matching labelled, duplicate, numeric-alias, and unlabelled records plus continuations. Public `next` selects the recovered request, a committed fresh claim succeeds, and public recovery still sees the unrelated writer's original claim.
+
+## Requirements checklist
+
+- [x] Finalization-first recovery, typed takeover decisions, and constant authority argv remain implemented and executable. Observation preserves bytes; explicit targeted and sole-authority paths pass.
+- [x] Supported legacy and canonical checkpoint evidence remains recoverable and visible. Canonical section precedence, prose-only heading tokens, numeric aliases, writer-specific removal, unlabelled records, and CRLF controls pass.
+- [x] False legacy absence is refused without a commit or filesystem change. All-entry removal stays restricted to the requested identity; writer-specific removal retains other writers and unlabelled records.
+- [x] Checkpoint-mode advance changes only its checkpoint target and retains unrelated project dirt. Ordinary working-request advance remains read-only.
+- [x] The original migration retains its four required parts: owning commands, reduced action/reference prose, retired shell fixture/registration, and public Go behavior tests. The documented stale captured RED premise was replaced with actual public-boundary failures.
+- [x] The original inherited ownership, Step 8, commit, handoff, and guide repairs remain represented. Later selection, evidence-gate, and finalization extensions are separate chain work.
+- [x] The seven remediation files are within the original 26-path Scope. Both execution-state checklists are complete. Decisions D-08 through D-12 explain compatibility, range attribution, and the fresh-insertion branch; the readable handback matches the diff.
+
+## Acceptance testing
+
+**Result: Pass.** Bounded independent commands ran from `skills/do-work/tools/do-work-cli`. The tested seven files match integration `6a11b60c83615791769d57b082580f0b69323984`; execution checkout HEAD was observed as `eabc29842dc537eb2cbc43adcfd2ae294bfbc92b`, whose only additional committed change is an unrelated report HTML edit.
+
+- Public regression and authority group: `go test -count=1 ./internal/lifecycleadvance -run 'Test(RecoverLegacyCheckpointClaimsThroughPublicCommand|AdvanceCheckpointPreservesLegacyClaimDiscovery|RecoverPublicCommandRunsFinalizationThenRecoversEveryClaim|RecoverWithoutAuthorityOffersTypedTakeoverAndDoesNotMutateClaim|AdvanceCheckpointWritesOnlyCheckpointAndPreservesClaims|WorkingAdvanceRemainsReadOnlyAfterCheckpointMode)$' -v` — exit 0, package 3.630s, five actual tests passed. The obsolete checkpoint-only name in this selector matched no test; the correct test was then run explicitly below.
+- Checkpoint-only public control: `go test -count=1 ./internal/lifecycleadvance -run '^TestAdvanceCheckpointChangesOnlyCheckpointAndPreservesLiveEntries$' -v` — exit 0, package 1.226s; exact changed-path and foreign-byte assertions passed.
+- Structural and authority controls: `go test -count=1 ./internal/requeststate ./internal/repositorymodel -run 'Test(CheckpointRemovalPreservesRangeAndWriterAuthority|RecoveryRefusesFalseLegacyCheckpointAbsence|CheckpointDiscoveryUsesCanonicalOrLegacyClaimRange)$' -v` — exit 0; request-state 0.450s and repository-model 0.162s. All selected subcases passed without skips.
+- Independent RED replay: a detached checkout at `f13bdcc0d1a83c0d24e5af6262f6863ee31ef8d7` received only the final two public test files. Running `go test -count=1 ./internal/lifecycleadvance -run 'Test(RecoverLegacyCheckpointClaimsThroughPublicCommand|AdvanceCheckpointPreservesLegacyClaimDiscovery)$' -v` exited 1 in 4.965s on the two original semantic failures, not compilation or fixture errors. The same tests pass above at the integrated source.
+
+The builder's recorded RED-before-production ordering and owner-package, vet, formatting, and diff checks agree with this independent replay. This reviewer did not run a full or heavy lane. The original six-lane green record belongs to the old implementation revision and cannot verify changed source; the orchestrator owns current integrated gate and heavy evidence before completion.
+
+## Restatement, domain, and self-validation
+
+Swept `CheckpointClaimBounds`, the replaced private helper, checkpoint writers/removers/absence predicates, and checkpoint-heading/legacy prose across the shipped tree. Cleanup reaches the same writer-specific helper; terminal transitions reach the same all-entry helper. Existing authority predicates and request identity matching were not widened. Canonical-heading prose still describes the normal emitted format and does not authorize a legacy migration or an alternate action-owned writer. No stale operative restatement introduced by the repair was found; REQ-544's separate caller-authored publication/cleanup sweep remains separate.
+
+Security review focused on explicit authority and exact-byte preservation. No new shell interpolation, public schema, dependency, or removal authority was introduced. The shared helper is earned by the reproduced disagreement and is used by multiple existing consumers. Self-validation checked actual test execution, the fresh-claim alternate writer, refusal non-mutation, source attribution, and reviewer cleanup.
+
+## Scores
+
+**Overall: 100%** — arithmetic average of the four percentage dimensions; no qualitative penalty applies.
+
+| Dimension | Score |
+|---|---:|
+| Requirements | 100% |
+| Code quality | 100% |
+| Test adequacy | 100% |
+| Scope | 100% |
+| Risk | None |
+| Acceptance | Pass |
+
+**Suggested additional testing:** finish the orchestrator-owned current-revision repository gate and selected heavy lanes. No additional manual acceptance check is required for this bounded repair.
+
+**Follow-ups created:** None (0 findings report only).
+
+**Cleanup confirmed:** all reviewer test processes completed. The only temporary tracked changes were the two test files in the reviewer-owned detached checkout; those were restored, its full porcelain status was empty, and `.git/work-run-20260905/re-review-504` was removed without force. No background process, fixture, or reviewer worktree remains. This report is the sole main-tree write; no source, request, queue, status, or commit was changed by this reviewer.
+
+## Lessons Learned
+
+**What worked:** One structural claim range now serves discovery, removal, absence and fresh insertion; public recovery → next → fresh claim proves the combined behavior.
+
+**What did not:** Original local tests and six green heavy lanes did not cover supported legacy layouts composed through their alternate writers. Refresh could preserve bytes but hide their authority behind an empty new section.
+
+**Worth knowing:** Keep the full original-to-remediation range for review while separating intervening sibling work for attribution. The compatibility shape is preserved, and authorization predicates remain with their existing owners.
+
+## Orientation
+
+[MAP CHANGED] Recovery and session checkpoint maintenance run through the CLI. Supported older checkpoints now remain visible and recoverable through refresh and subsequent claims, while unrelated writers’ evidence survives. The existing action/shell/CLI prime pointers remain valid; no prime-map change was needed for the internal shared helper.
+
+## Heavy Verification Result
+
+Plan target: `6a11b60c83615791769d57b082580f0b69323984`. Runner execution revision: `eabc29842dc537eb2cbc43adcfd2ae294bfbc92b` (only intervening change was an unrelated report HTML edit; all implementation paths unchanged). Chromium explicitly configured at `/Applications/Google Chrome.app/Contents/MacOS/Google Chrome`. No lane was skipped or reused.
+
+### Initial run
+
+- queue-kanban-javascript: exit 0, 6s, skipped:False, executed (reuse_disabled).
+- queue-kanban-browser: exit 0, 90s, skipped:False, executed (reuse_disabled).
+- do-work-cli-integrations: exit 0, 65s, skipped:False, executed (reuse_disabled).
+- staged-skills: exit 0, 25s, skipped:False, executed (reuse_disabled).
+- updater: exit 1, 23s, skipped:False, executed (reuse_disabled).
+- installer: exit 2, 5s, skipped:False, executed (reuse_disabled).
+### Required retry of failed lanes
+
+- updater: exit 1, 27s, skipped:False, executed (reuse_disabled).
+- installer: exit 2, 7s, skipped:False, executed (reuse_disabled).
+
+**Infrastructure diagnosis:** The second run’s full log reports `No space left on device` during fixture creation. The volume had only116MB free during execution and228MB after fixture cleanup. This is not passing evidence and does not change the review verdict into completion. The repository occupies764MB total (567MB ignored build assets); the configured regenerable Go build cache is outside the user’s repository boundary. User permission was requested before any inspection/deletion there. Keep updater/installer verification outstanding until space is restored; retain both failed attempts.
