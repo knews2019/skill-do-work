@@ -220,6 +220,7 @@ func TestTypedRecordCarriesEveryNormalizedSchemaFieldAndGenericEvidence(t *testi
 	fixture := []byte("---\n" +
 		"id: REQ-42\n" +
 		"status: done\n" +
+		"commit:  abc123  \n" +
 		"builder_decided: true\n" +
 		"gate_deferred: yes\n" +
 		"repository_gate_repair: true\n" +
@@ -243,6 +244,9 @@ func TestTypedRecordCarriesEveryNormalizedSchemaFieldAndGenericEvidence(t *testi
 		t.Fatal(err)
 	}
 	record := document.TypedRecord()
+	if record.ImplementationCommit != "abc123" {
+		t.Fatalf("implementation commit = %q", record.ImplementationCommit)
+	}
 	projections := []struct {
 		schemaField   string
 		valueField    string

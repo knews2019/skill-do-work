@@ -177,19 +177,36 @@ func TestPlanUsesManifestBytesFromTargetRevision(t *testing.T) {
 	}
 }
 
-func TestPlanRejectsSymlinkManifestAndMalformedTrailingJSON(t *testing.T) {
+func TestPlanUsesTargetRevisionManifestModeAndRejectsTargetSymlink(t *testing.T) {
 	repositoryRoot, baseRevision := newHeavyTestRepository(t, heavyTestManifest)
 	manifestPath := heavyTestManifestPath(repositoryRoot)
+	if err := os.Chmod(manifestPath, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := Plan(repositoryRoot, manifestPath, baseRevision, "HEAD", false); err != nil {
+		t.Fatalf("working-copy mode drift overrode regular target metadata: %v", err)
+	}
 	if err := os.Remove(manifestPath); err != nil {
 		t.Fatal(err)
 	}
+	if _, err := Plan(repositoryRoot, manifestPath, baseRevision, "HEAD", false); err != nil {
+		t.Fatalf("missing working copy overrode regular target metadata: %v", err)
+	}
+
 	if err := os.Symlink(filepath.Join(repositoryRoot, "seed.txt"), manifestPath); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := Plan(repositoryRoot, manifestPath, baseRevision, "HEAD", false); err == nil {
-		t.Fatal("symlink manifest was accepted")
+	symlinkTarget := commitHeavyTestChanges(t, repositoryRoot, "symlink manifest")
+	if err := os.Remove(manifestPath); err != nil {
+		t.Fatal(err)
 	}
+	writeHeavyTestFile(t, repositoryRoot, "heavy-lanes.json", heavyTestManifest)
+	if _, err := Plan(repositoryRoot, manifestPath, baseRevision, symlinkTarget, false); err == nil {
+		t.Fatal("target-revision symlink manifest was accepted through a regular working copy")
+	}
+}
 
+func TestPlanRejectsMalformedTrailingJSON(t *testing.T) {
 	malformedManifest := heavyTestManifest + " trailing"
 	secondRoot, secondBase := newHeavyTestRepository(t, malformedManifest)
 	if _, err := Plan(secondRoot, heavyTestManifestPath(secondRoot), secondBase, "HEAD", false); err == nil {
@@ -237,6 +254,44 @@ func TestRepositoryManifestNamesEveryLaneScopedMaintainerEntryPoint(t *testing.T
 	if !strings.Contains(string(maintainerScript), "--heavy)\n") {
 		t.Fatal("maintainer dispatcher no longer preserves --heavy force-all")
 	}
+
+	coverageCases := []struct {
+		path        string
+		wantLaneIDs []string
+	}{
+		{"skills/do-work/tools/do-work-cli/internal/resultmodel/result_model.go", []string{"do-work-cli-integrations", "staged-skills", "updater", "installer"}},
+		{"VERSION", []string{"installer"}},
+		{"README.md", []string{"installer"}},
+		{"suite/modules.tsv", []string{"staged-skills", "updater", "installer"}},
+		{"tools/install-do-work-suite.sh", []string{"updater", "installer"}},
+		{"tools/validate-suite-manifest.sh", []string{"updater", "installer"}},
+		{"tools/replace-text-section.sh", []string{"updater", "installer"}},
+		{"tools/fetch-upstream-archive.sh", []string{"updater"}},
+		{"skills/do-work/tools/do-work-update.sh", []string{"staged-skills", "updater"}},
+		{"skills/do-work/tools/do-work-cli.sh", []string{"staged-skills", "updater"}},
+		{"skills/do-work/hooks/hooks.json", []string{"staged-skills", "updater"}},
+		{"skills/do-work/agent-instructions.template.md", []string{"staged-skills", "updater", "installer"}},
+		{"skills/do-work-board/justfile.template", []string{"staged-skills", "updater", "installer"}},
+		{"skills/do-work/actions/version.md", []string{"staged-skills", "updater"}},
+	}
+	for _, coverageCase := range coverageCases {
+		if got := manifestSelectedLaneIDs(manifest, coverageCase.path); !reflect.DeepEqual(got, coverageCase.wantLaneIDs) {
+			t.Errorf("%s selected lanes = %v, want %v", coverageCase.path, got, coverageCase.wantLaneIDs)
+		}
+	}
+}
+
+func manifestSelectedLaneIDs(manifest laneManifest, changedPath string) []string {
+	selectedLaneIDs := []string{}
+	for _, lane := range manifest.Lanes {
+		for _, rule := range lane.Coverage {
+			if rule.matches(changedPath) {
+				selectedLaneIDs = append(selectedLaneIDs, lane.ID)
+				break
+			}
+		}
+	}
+	return selectedLaneIDs
 }
 
 func selectedHeavyLaneIDs(plan resultmodel.HeavyVerificationPlan) []string {

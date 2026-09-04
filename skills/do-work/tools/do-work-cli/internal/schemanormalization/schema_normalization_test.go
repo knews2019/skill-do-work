@@ -78,4 +78,10 @@ func TestTerminalPredicatesKeepFailureAndCancellationDistinct(t *testing.T) {
 	if !IsStopped("failed") || IsStopped("blocked") {
 		t.Fatal("failed is stopped; blocked remains unfinished")
 	}
+	if !DependencySourceReady("pending-heavy-testing", "abc123") {
+		t.Fatal("pending-heavy implementation commit must be source-ready")
+	}
+	if DependencySourceReady("pending-heavy-testing", "") || DependencySourceReady("pending", "abc123") {
+		t.Fatal("missing commit or pending remediation must block dependencies")
+	}
 }

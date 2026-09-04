@@ -634,6 +634,20 @@ func TestPendingHeavyTestingIsCountedAndNeverSelected(t *testing.T) {
 	assertExclusionCode(t, result, "REQ-930", "STATUS-NOT-PENDING")
 }
 
+func TestPendingHeavyTestingSourceAllowsDependentSelection(t *testing.T) {
+	repositoryRoot := t.TempDir()
+	writeCommandRequest(t, repositoryRoot, "do-work/queue/REQ-563-heavy.md", "REQ-563", "pending-heavy-testing", "commit: 0123456789abcdef\n")
+	writeCommandRequest(t, repositoryRoot, "do-work/queue/REQ-564-dependent.md", "REQ-564", "pending", "depends_on: [REQ-563]\n")
+	snapshot, err := repositorymodel.DiscoverRepository(repositoryRoot)
+	if err != nil {
+		t.Fatal(err)
+	}
+	result := Select(snapshot, dependencygraph.BuildGraph(snapshot), SelectionOptions{}, nil)
+	if got := selectedRequestIDsFromModel(result.Selected); !equalStrings(got, []string{"REQ-564"}) {
+		t.Fatalf("selected = %v, want dependent REQ-564; result=%#v", got, result)
+	}
+}
+
 func TestSimpleSelectionRetainsSpecializedVetoesAndFrozenEstimate(t *testing.T) {
 	repositoryRoot := t.TempDir()
 	writeCommandRequest(t, repositoryRoot, "do-work/queue/REQ-401-good.md", "REQ-401", "pending", "effort_estimate: trivial\nestimate:\n  p50_active_minutes: 15\n")

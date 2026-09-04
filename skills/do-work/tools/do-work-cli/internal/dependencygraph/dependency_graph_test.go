@@ -21,6 +21,9 @@ func buildFixtureGraph(t *testing.T, fixtures []graphFixture) *DependencyGraph {
 	repositoryRoot := t.TempDir()
 	for _, fixture := range fixtures {
 		frontmatter := "---\nid: " + fixture.requestID + "\nstatus: " + fixture.status + "\n"
+		if fixture.status == "pending-heavy-testing" {
+			frontmatter += "commit: 0123456789abcdef\n"
+		}
 		if fixture.dependencyKey != "" {
 			frontmatter += fixture.dependencyKey + ": ["
 			for dependencyIndex, dependencyID := range fixture.dependencies {
@@ -94,6 +97,49 @@ func TestDependencySatisfactionUsesOnlyTerminalSuccess(t *testing.T) {
 	}
 	if graph.NodesByID["REQ-011"].IsReady || graph.NodesByID["REQ-012"].IsReady {
 		t.Fatal("cancelled and failed targets must not satisfy dependencies")
+	}
+}
+
+func TestPendingHeavyDependencyIsSourceReadyUntilItReturnsToPending(t *testing.T) {
+	heavyGraph := buildFixtureGraph(t, []graphFixture{
+		{"REQ-563", "pending-heavy-testing", "", nil},
+		{"REQ-564", "pending", "depends_on", []string{"REQ-563"}},
+	})
+	if !heavyGraph.NodesByID["REQ-564"].IsReady {
+		t.Fatalf("pending-heavy implementation did not unblock dependent: %#v", heavyGraph.NodesByID["REQ-564"])
+	}
+
+	pendingGraph := buildFixtureGraph(t, []graphFixture{
+		{"REQ-563", "pending", "", nil},
+		{"REQ-564", "pending", "depends_on", []string{"REQ-563"}},
+	})
+	if pendingGraph.NodesByID["REQ-564"].IsReady {
+		t.Fatalf("pending remediation source unblocked dependent: %#v", pendingGraph.NodesByID["REQ-564"])
+	}
+}
+
+func TestPendingHeavyDependencyRequiresImplementationCommit(t *testing.T) {
+	repositoryRoot := t.TempDir()
+	requestBytes := map[string]string{
+		"do-work/queue/REQ-563-heavy.md":     "---\nid: REQ-563\nstatus: pending-heavy-testing\n---\nBody\n",
+		"do-work/queue/REQ-564-dependent.md": "---\nid: REQ-564\nstatus: pending\ndepends_on: [REQ-563]\n---\nBody\n",
+	}
+	for relativePath, contents := range requestBytes {
+		path := filepath.Join(repositoryRoot, filepath.FromSlash(relativePath))
+		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(path, []byte(contents), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	snapshot, err := repositorymodel.DiscoverRepository(repositoryRoot)
+	if err != nil {
+		t.Fatal(err)
+	}
+	dependent := BuildGraph(snapshot).NodesByID["REQ-564"]
+	if dependent.IsReady || !reflect.DeepEqual(dependent.UnmetDependencies, []string{"REQ-563"}) {
+		t.Fatalf("commit-less pending-heavy source satisfied dependency: %#v", dependent)
 	}
 }
 

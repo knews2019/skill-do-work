@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"os"
 	"os/exec"
 	"path/filepath"
 	"sort"
@@ -38,7 +37,7 @@ type coverageRule struct {
 // Plan derives the heavy lanes required by the exact Git range. Selection is
 // conservative: one uncovered path selects every declared lane.
 func Plan(repositoryRoot, manifestPath, baseRevision, targetRevision string, forceAll bool) (resultmodel.HeavyVerificationPlan, error) {
-	manifestAbsolutePath, manifestRelativePath, err := resolveManifestPath(repositoryRoot, manifestPath)
+	_, manifestRelativePath, err := resolveManifestPath(repositoryRoot, manifestPath)
 	if err != nil {
 		return resultmodel.HeavyVerificationPlan{}, err
 	}
@@ -50,7 +49,7 @@ func Plan(repositoryRoot, manifestPath, baseRevision, targetRevision string, for
 	if err != nil {
 		return resultmodel.HeavyVerificationPlan{}, fmt.Errorf("resolve target revision %q: %w", targetRevision, err)
 	}
-	manifest, err := readManifestAtRevision(repositoryRoot, manifestAbsolutePath, manifestRelativePath, targetCommit)
+	manifest, err := readManifestAtRevision(repositoryRoot, manifestRelativePath, targetCommit)
 	if err != nil {
 		return resultmodel.HeavyVerificationPlan{}, err
 	}
@@ -125,15 +124,22 @@ func resolveManifestPath(repositoryRoot, manifestPath string) (string, string, e
 	return manifestAbsolutePath, filepath.ToSlash(relativePath), nil
 }
 
-func readManifestAtRevision(repositoryRoot, manifestAbsolutePath, manifestRelativePath, targetRevision string) (laneManifest, error) {
-	manifestInfo, err := os.Lstat(manifestAbsolutePath)
+func readManifestAtRevision(repositoryRoot, manifestRelativePath, targetRevision string) (laneManifest, error) {
+	treeEntry, err := runGit(repositoryRoot, "ls-tree", "-z", targetRevision, "--", manifestRelativePath)
 	if err != nil {
-		return laneManifest{}, fmt.Errorf("inspect heavy-lane manifest: %w", err)
+		return laneManifest{}, fmt.Errorf("inspect heavy-lane manifest at target revision: %w", err)
 	}
-	if !manifestInfo.Mode().IsRegular() || manifestInfo.Mode()&os.ModeSymlink != 0 {
-		return laneManifest{}, fmt.Errorf("heavy-lane manifest must be a regular non-symlink file")
+	entryPrefix, entryPath, found := bytes.Cut(bytes.TrimSuffix(treeEntry, []byte{0}), []byte{'\t'})
+	entryFields := bytes.Fields(entryPrefix)
+	if !found || len(entryFields) != 3 || string(entryPath) != manifestRelativePath {
+		return laneManifest{}, fmt.Errorf("heavy-lane manifest is missing or ambiguous at target revision")
 	}
-	contents, err := runGit(repositoryRoot, "show", targetRevision+":"+manifestRelativePath)
+	manifestMode := string(entryFields[0])
+	manifestType := string(entryFields[1])
+	if manifestType != "blob" || (manifestMode != "100644" && manifestMode != "100755") {
+		return laneManifest{}, fmt.Errorf("heavy-lane manifest must be a regular file at target revision")
+	}
+	contents, err := runGit(repositoryRoot, "cat-file", "blob", string(entryFields[2]))
 	if err != nil {
 		return laneManifest{}, fmt.Errorf("read heavy-lane manifest from target revision: %w", err)
 	}
