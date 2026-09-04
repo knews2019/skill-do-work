@@ -103,23 +103,20 @@ type RepairOptions struct {
 	Commit bool
 }
 
-func ApplyTimestampPlan(ctx context.Context, snapshot *repositorymodel.RepositorySnapshot, plans []TimestampRepairPlan, options RepairOptions) resultmodel.CommandResult {
-	return applyTimestampPlan(ctx, snapshot, plans, options).result
-}
-
 type repairExecution struct {
+	resultmodel.CommandResult
 	result     resultmodel.CommandResult
 	commitSHA  string
 	revertArgv []string
 }
 
-func applyTimestampPlan(ctx context.Context, snapshot *repositorymodel.RepositorySnapshot, plans []TimestampRepairPlan, options RepairOptions) repairExecution {
+func ApplyTimestampPlan(ctx context.Context, snapshot *repositorymodel.RepositorySnapshot, plans []TimestampRepairPlan, options RepairOptions) repairExecution {
 	result := resultmodel.CommandResult{Outcome: resultmodel.OutcomeSuccess, Rollback: resultmodel.RollbackResult{Status: resultmodel.RollbackNotNeeded}}
 	if snapshot == nil {
 		result.Outcome = resultmodel.OutcomeFailure
 		result.Findings = []resultmodel.CommandFinding{doctorFinding("DOCTOR-SNAPSHOT-MISSING", resultmodel.SeverityError, nil, nil,
 			"repository snapshot is required", resultmodel.FixabilityManual, "timestamp repair could not start", doctorArgv(), doctorJSONArgv())}
-		return repairExecution{result: result}
+		return repairExecution{CommandResult: result, result: result}
 	}
 	result.RepositoryRoot = snapshot.RepositoryRoot
 	eligiblePlans := []TimestampRepairPlan{}
@@ -140,7 +137,7 @@ func applyTimestampPlan(ctx context.Context, snapshot *repositorymodel.Repositor
 		if len(result.Findings) > 0 {
 			result.Outcome = resultmodel.OutcomeRefused
 		}
-		return repairExecution{result: result}
+		return repairExecution{CommandResult: result, result: result}
 	}
 	targetPaths := make([]string, len(eligiblePlans))
 	for index, plan := range eligiblePlans {
@@ -164,7 +161,7 @@ func applyTimestampPlan(ctx context.Context, snapshot *repositorymodel.Repositor
 	if transactionResult.Failure != nil {
 		transactionCommandResult := gittransaction.BuildCommandResult("doctor", transactionResult)
 		transactionCommandResult.Findings = append(result.Findings, transactionCommandResult.Findings...)
-		return repairExecution{result: transactionCommandResult, commitSHA: transactionResult.CommitSHA, revertArgv: transactionResult.RevertArgv}
+		return repairExecution{CommandResult: transactionCommandResult, result: transactionCommandResult, commitSHA: transactionResult.CommitSHA, revertArgv: transactionResult.RevertArgv}
 	}
 	result.Rollback = transactionResult.Rollback
 	for _, plan := range eligiblePlans {
@@ -182,5 +179,5 @@ func applyTimestampPlan(ctx context.Context, snapshot *repositorymodel.Repositor
 	if len(result.Findings) > 0 {
 		result.Outcome = resultmodel.OutcomeFindings
 	}
-	return repairExecution{result: result, commitSHA: transactionResult.CommitSHA, revertArgv: append([]string(nil), transactionResult.RevertArgv...)}
+	return repairExecution{CommandResult: result, result: result, commitSHA: transactionResult.CommitSHA, revertArgv: append([]string(nil), transactionResult.RevertArgv...)}
 }

@@ -205,7 +205,7 @@ func handleAssociate(executionContext commandruntime.ExecutionContext, arguments
 			return resultmodel.CommandResult{Outcome: resultmodel.OutcomeFailure, ExactTextOutput: &exact, ExitCodeOverride: 2}
 		}
 	}
-	associations, err := associatePaths(executionContext.RepositoryRoot, candidates)
+	associations, err := AssociateProjectPaths(executionContext.RepositoryRoot, candidates)
 	if err != nil {
 		if os.Getenv("DO_WORK_COMPATIBILITY_SHIM") == "1" && strings.Contains(err.Error(), "unmatched backtick") {
 			exact := "PARSE-FAILED: " + err.Error() + "\n"
@@ -242,7 +242,9 @@ func handleAssociate(executionContext commandruntime.ExecutionContext, arguments
 	return result
 }
 
-func associatePaths(repositoryRoot string, candidates []string) (map[string]string, error) {
+// AssociateProjectPaths exposes Implementation Summary ownership for project
+// paths only. Shared do-work metadata is deliberately always unowned.
+func AssociateProjectPaths(repositoryRoot string, candidates []string) (map[string]string, error) {
 	claims := map[string]struct {
 		id        string
 		completed time.Time
@@ -315,12 +317,6 @@ func associatePaths(repositoryRoot string, candidates []string) (map[string]stri
 		output[candidate] = claims[candidate].id
 	}
 	return output, nil
-}
-
-// AssociateProjectPaths exposes Implementation Summary ownership for project
-// paths only. Shared do-work metadata is deliberately always unowned.
-func AssociateProjectPaths(repositoryRoot string, candidates []string) (map[string]string, error) {
-	return associatePaths(repositoryRoot, candidates)
 }
 
 func terminalSuccessStatus(status string) bool {

@@ -74,7 +74,11 @@ func RecordGreenGate(repositoryRoot string, gateCommand []string) (resultmodel.G
 // CheckGreenGate answers whether the recorded green run for this exact gate argv
 // still covers the current HEAD. This is the HEAD-bound rule every ordinary REQ uses.
 func CheckGreenGate(repositoryRoot string, gateCommand []string) (resultmodel.GateEvidenceResult, error) {
-	return CheckGreenGateAtRevision(repositoryRoot, gateCommand, "")
+	context, err := resolveEvidenceContext(repositoryRoot, gateCommand)
+	if err != nil {
+		return invalidEvidence(gateCommand), err
+	}
+	return evaluateEvidenceRecord(repositoryRoot, context, gateCommand, context.headRevision)
 }
 
 // CheckGreenGateAtRevision answers the same question about targetRevisionSpec instead
@@ -86,15 +90,22 @@ func CheckGreenGateAtRevision(repositoryRoot string, gateCommand []string, targe
 	if err != nil {
 		return invalidEvidence(gateCommand), err
 	}
-	result := evidenceResult(context, gateCommand)
 	targetRevision := context.headRevision
 	if targetRevisionSpec != "" {
-		targetRevision, err = resolveCommitRevision(repositoryRoot, targetRevisionSpec)
+		resolved, err := resolveCommitRevision(repositoryRoot, targetRevisionSpec)
 		if err != nil {
+			result := evidenceResult(context, gateCommand)
 			result.State = resultmodel.GateEvidenceInvalidRecord
+			result.TargetRevision = resolved
 			return result, err
 		}
+		targetRevision = resolved
 	}
+	return evaluateEvidenceRecord(repositoryRoot, context, gateCommand, targetRevision)
+}
+
+func evaluateEvidenceRecord(repositoryRoot string, context repositoryEvidenceContext, gateCommand []string, targetRevision string) (resultmodel.GateEvidenceResult, error) {
+	result := evidenceResult(context, gateCommand)
 	result.TargetRevision = targetRevision
 	record, exists, err := readEvidenceRecord(context.recordPath)
 	if err != nil {

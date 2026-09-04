@@ -154,10 +154,6 @@ var (
 // a private adjacent file with no overwrite. Publication is the final commit point: after
 // the rooted link succeeds, no failure path removes the destination pathname.
 func DownloadAtomic(ctx context.Context, sourceURL, targetPath string) DownloadResult {
-	return downloadAtomicValidated(ctx, sourceURL, targetPath, nil)
-}
-
-func downloadAtomicValidated(ctx context.Context, sourceURL, targetPath string, validator func(io.Reader) error) DownloadResult {
 	if sourceURL == "" || targetPath == "" {
 		return DownloadResult{Err: fmt.Errorf("source URL and target path are required")}
 	}
@@ -172,7 +168,7 @@ func downloadAtomicValidated(ctx context.Context, sourceURL, targetPath string, 
 	} else if !os.IsNotExist(err) {
 		return DownloadResult{Err: err}
 	}
-	stageName, result := prepareDownloadCandidate(ctx, sourceURL, parentRoot, targetName, validator)
+	stageName, result := prepareDownloadCandidate(ctx, sourceURL, parentRoot, targetName, nil)
 	if result.Err != nil {
 		return result
 	}

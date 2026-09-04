@@ -42,7 +42,7 @@ func handleDoctor(executionContext commandruntime.ExecutionContext, arguments []
 		return ScanRepository(context.Background(), snapshot, ScanOptions{Now: now})
 	}
 	plans, planFindings := BuildTimestampPlan(context.Background(), snapshot, now)
-	repairExecution := applyTimestampPlan(context.Background(), snapshot, plans, RepairOptions{DryRun: options.dryRun, Commit: options.commit})
+	repairExecution := ApplyTimestampPlan(context.Background(), snapshot, plans, RepairOptions{DryRun: options.dryRun, Commit: options.commit})
 	repairResult := repairExecution.result
 	if options.dryRun || repairResult.Outcome == resultmodel.OutcomeFailure || repairResult.Outcome == resultmodel.OutcomeRolledBack || repairResult.Outcome == resultmodel.OutcomeRisk || repairResult.Outcome == resultmodel.OutcomeRefused {
 		repairResult.Findings = append(planFindings, repairResult.Findings...)

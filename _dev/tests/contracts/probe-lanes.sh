@@ -26,6 +26,8 @@ register_probe prescribed_shell_probe "$repo_root/_dev/tests/prescribed-shell-ca
   'prescribed shell primitive canonicalization failed (see the attributed FAIL lines above).'
 register_probe defensive_surface_probe "$repo_root/_dev/tests/defensive-surface-audit.sh" \
   'defensive-surface exact deletion regression failed (see the attributed FAIL lines above).'
+register_probe audit_lockins_probe "$repo_root/_dev/tests/audit-lockins.sh" \
+  'audit lock-in regressions failed (see the attributed FAIL lines above).'
 register_probe do_work_cli_launcher_probe "$repo_root/_dev/tests/do-work-cli-launcher-behavior.sh" \
   'do-work-cli launcher behavior probes failed (see the FAIL lines above).'
 register_probe p50_estimator_probe "$repo_root/_dev/tests/p50-estimator-determinism.sh" \
