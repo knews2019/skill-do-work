@@ -22,4 +22,3 @@ session_depth: light
 - REQ-570: [impact-rule-change] Delete the pending-heavy-testing status; held requests stay claimed — claimed 2026-09-04T23:00:17Z — writer: t2s-Virtual-Machine.local:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2
 
 
-- REQ-506: [impact-rule-change] Run the evidence gates from advance — claimed 2026-09-04T23:40:10Z — writer: t2s-Virtual-Machine.local:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2

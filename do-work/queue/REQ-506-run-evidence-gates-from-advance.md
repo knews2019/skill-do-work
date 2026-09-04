@@ -1,7 +1,7 @@
 ---
 id: REQ-506
 title: '[impact-rule-change] Run the evidence gates from advance'
-status: claimed
+status: pending
 priority: now
 created_at: 2026-09-02T14:37:54Z
 user_request: UR-098
@@ -9,7 +9,7 @@ domain: general
 prime_files: [_dev/primes/prime-action-files.md, _dev/primes/prime-shell-commands.md, skills/do-work/tools/do-work-cli/prime-do-work-cli.md]
 tdd: true
 suggested_spec:
-depends_on: [REQ-505]
+depends_on: [REQ-505, REQ-577]
 batch: orchestrator-simplification
 maintenance: true
 impact: impact-rule-change
@@ -53,7 +53,7 @@ dispatch_at: 2026-09-04T17:44:35Z
 builder_handback_at: 2026-09-04T18:15:00Z
 integration_at: 2026-09-04T18:15:22Z
 status_changed_at: 2026-09-04T20:57:34Z
-claimed_at: 2026-09-04T23:40:10Z
+gate_deferred: 'true'
 ---
 
 # Run the Evidence Gates From advance
@@ -402,3 +402,12 @@ Hand back the exact eight-path manifest, RED/GREEN outputs, preserved ordinary m
 ## Pre-Build Gate Observation
 
 Canonical focused preflight passed (exit0, launchedtrue) and its own baseline is preserved in `.git/work-run-20260905/REQ-506/baseline.json`; the foreign shared baseline bytes were restored. The directly executed full gate first failed only three <30-second file budgets (44.35/43.39/40.18s; all728 CLI tests passed). Its one retry, with GOMAXPROCS=2 to reduce contention and the same assertions/budget, instead failed ShellCheck SC2043 in the active foreign `_dev/tests/do-work-cli-launcher-behavior.sh:56` edit. Neither attempt is green evidence. This source is outside the repair's eight-path boundary; preserve it and await its owner's source change before re-verification. Builder has not been dispatched. Exact attempt evidence: `.git/work-run-20260905/REQ-506/prebuild-gate-attempts.json`.
+
+## Repository Gate Deferral
+
+- **Gate command (argv JSON):** ["bash","_dev/tests/maintainer-verify.sh"]
+- **Direct exit status:** 1
+- **Diagnostic fingerprint:** shellcheck:sc2043:do-work-cli-launcher-behavior:single-iteration-loop
+- **Repair dependency:** REQ-577
+- **Diagnostic evidence:** "ShellCheck warning SC2043 in _dev/tests/do-work-cli-launcher-behavior.sh: for command_name in bash; do; This loop will only ever run once. Bad quoting or missing glob/expansion?"
+- **Diagnostic evidence:** "The required second direct canonical gate run exited 1 on this warning. The launcher test bytes now belong to committed release7cceea12 and remain unchanged since that failure. First attempt had only Go per-file timing overruns; those are not the deciding fingerprint."
