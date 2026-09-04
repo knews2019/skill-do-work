@@ -16,6 +16,20 @@ impact: impact-rule-change
 effort_estimate: effort-substantive
 write_set: [skills/do-work/actions/work.md, skills/do-work/actions/work-reference.md, _dev/tests/contract-regressions.sh, skills/do-work/tools/do-work-cli/internal/lifecycleadvance/]
 claimed_at: 2026-09-04T16:39:30Z
+route: C
+estimate:
+  p50_active_minutes: 50
+  confidence: low
+  calculated_at: 2026-09-04T16:40:03Z
+  basis:
+    - Route C
+    - 8-file write set
+    - 2 new files
+    - 3 subsystems involved
+    - 3 acceptance criteria
+    - dependency depth 1
+    - cross-route regression gates
+    - full-suite verification
 ---
 
 # Move Selection and Claim Behind advance
@@ -68,3 +82,9 @@ See `do-work/user-requests/UR-098/input.md` for complete verbatim input.
 
 ---
 *Source: capture of the orchestrator simplification request (UR-098).*
+
+## Triage
+
+**Route: C — Complex.** This rule-changing migration moves default, targeted, fan-out, collision, and claim sequencing into the lifecycle command while deleting a large active action surface and replacing its prose predicates with public command behavior tests.
+
+**Planning:** Required.
