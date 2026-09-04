@@ -1,7 +1,7 @@
 ---
 id: REQ-506
 title: '[impact-rule-change] Run the evidence gates from advance'
-status: pending-heavy-testing
+status: pending
 priority: now
 created_at: 2026-09-02T14:37:54Z
 user_request: UR-098
@@ -33,7 +33,6 @@ write_set:
   - skills/do-work/tools/do-work-cli/internal/nextselection/blocked_probe_unix.go
   - skills/do-work/tools/do-work-cli/internal/nextselection/blocked_probe_windows.go
   - skills/do-work/tools/do-work-cli/prime-do-work-cli.md
-claimed_at: 2026-09-04T17:32:08Z
 route: C
 estimate:
   p50_active_minutes: 55
@@ -53,8 +52,10 @@ exploration_at: 2026-09-04T17:41:25Z
 dispatch_at: 2026-09-04T17:44:35Z
 builder_handback_at: 2026-09-04T18:15:00Z
 integration_at: 2026-09-04T18:15:22Z
-status_changed_at: 2026-09-04T18:20:39Z
+status_changed_at: 2026-09-04T20:57:34Z
 commit: 06367337dd82d97416e0d9d37872cc35b56ae7bc
+heavy_verified_at: 2026-09-04T20:57:34Z
+heavy_verified_revision: 06367337dd82d97416e0d9d37872cc35b56ae7bc
 ---
 
 # Run the Evidence Gates From advance
@@ -225,8 +226,31 @@ The planner marked coverage uncertain because `_dev/tests/contracts/core-checks.
 
 ## Open Questions
 
-- [ ] Heavy lanes at `06367337dd82d97416e0d9d37872cc35b56ae7bc`: the work loop runs them at queue exhaustion and records the result here
+- [x] Heavy lanes at `06367337dd82d97416e0d9d37872cc35b56ae7bc`: the work loop runs them at queue exhaustion and records the result here → Confirmed: All 6 selected heavy lanes passed without skips at 06367337dd82d97416e0d9d37872cc35b56ae7bc.
 
 ## Orientation
 
 [MAP CHANGED] The lifecycle now has one public request-bound evidence path: advance discovers the current phase, executes its existing mechanical handler, and returns ordered typed gate records; the work action supplies inputs and retains semantic judgment.
+
+
+## Answer Notes
+
+- 2026-09-04 - [ ] Heavy lanes at `06367337dd82d97416e0d9d37872cc35b56ae7bc`: the work loop runs them at queue exhaustion and records the result here: Confirmed: All 6 selected heavy lanes passed without skips at 06367337dd82d97416e0d9d37872cc35b56ae7bc.
+> ```
+> Exact-revision heavy verification via do-work clarify. Stored base, target, selected lanes, argv and coverage reasons were checked against the recomputed plan and matched. Execution revision: 06367337dd82d97416e0d9d37872cc35b56ae7bc. Each selected lane ran in the detached checkout; no results were borrowed from another revision.
+> All 6 selected heavy lanes passed without skips at 06367337dd82d97416e0d9d37872cc35b56ae7bc.
+> Chromium engine: /Applications/Google Chrome.app/Contents/MacOS/Google Chrome, explicitly supplied through QUEUE_KANBAN_BROWSER.
+> Scope: record verification only; implementation fixes, fresh review and archiving are left to do-work run. Date and answer timestamp follow skills/do-work/actions/work-reference.md, Timestamp rule and its date-only paragraph.
+> ```
+
+## Heavy Verification Result
+
+Target revision: `06367337dd82d97416e0d9d37872cc35b56ae7bc`
+Execution revision: `06367337dd82d97416e0d9d37872cc35b56ae7bc`
+
+- queue-kanban-javascript: exit 0, 8s — `bash _dev/tests/maintainer-verify.sh --heavy-lane queue-kanban-javascript`
+- queue-kanban-browser: exit 0, 96s — `bash _dev/tests/maintainer-verify.sh --heavy-lane queue-kanban-browser`
+- do-work-cli-integrations: exit 0, 63s — `bash _dev/tests/maintainer-verify.sh --heavy-lane do-work-cli-integrations`
+- staged-skills: exit 0, 45s — `bash _dev/tests/maintainer-verify.sh --heavy-lane staged-skills`
+- updater: exit 0, 61s — `bash _dev/tests/maintainer-verify.sh --heavy-lane updater`
+- installer: exit 0, 26s — `bash _dev/tests/maintainer-verify.sh --heavy-lane installer`

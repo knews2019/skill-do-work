@@ -2,6 +2,7 @@
 id: REQ-564
 title: 'Reuse matching per-lane verification evidence for four hours'
 status: claimed
+route: B
 created_at: 2026-09-03T22:58:23Z
 user_request: UR-109
 domain: testing
@@ -104,3 +105,19 @@ The builder finished after all and wrote a full hand-back at `do-work/runs/work-
 **Verification the builder reports** (verify, do not assume): `go vet ./...` clean, `gofmt -l ./internal` empty, `go test -count=1 ./...` all packages ok, Windows cross-compile and vet clean, `contract-regressions.sh` exit 0 with no FAIL lines, and **twelve isolating reverts each proved red**. It did not run a real heavy lane — each is roughly ten minutes — so the merged-tree gate is still owed.
 
 **Sizing note, so the work is not oversold.** This REQ is queued as a queue-speed improvement. Measured this session: the repository gate ran nine times at roughly ten minutes each, about half the run's wall clock — but those were **fast-tier** runs, not heavy lanes. This REQ targets heavy lanes, so its benefit here is real but narrower than the title suggests.
+
+## Triage
+
+**Route: B** — resume completed builder branch `19103f5`; independent review before integration found unsafe reuse cases requiring remediation.
+
+## Plan
+
+Planning not required. Keep the per-lane cache and four-hour contract; correct invalidation and complete the inputs that authorize reuse.
+
+## Pre-integration Review
+
+Acceptance failed on four important findings: a failed/skipped forced rerun retained an older green; unknown-file fallback could still reuse stale evidence; browser/toolchain/environment/external executable inputs were incompletely sealed; a run-wide timestamp let later lanes reuse expired records. Toolchain probes also needed bounded execution. These are corrected within this request, before release.
+
+## Remediation Plan
+
+An isolated builder at `codex/req564-remediation` fixes the unsafe reuse cases with targeted RED/GREEN regressions. Scope extends the original heavyverification/resultmodel code, tests and action/prime prose, plus `_dev/tests/heavy-lanes.json` and the runtime-fingerprint helper required to determine shipped-lane inputs. No checkpoint/finalization implementation is part of this request. Browser evidence remains non-reusable while its complete runtime cannot be identified.
