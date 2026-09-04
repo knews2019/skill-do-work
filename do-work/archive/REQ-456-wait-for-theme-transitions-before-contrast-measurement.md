@@ -2,6 +2,7 @@
 id: REQ-456
 title: 'Wait for theme transitions before contrast measurement'
 status: completed
+completed_at: 2026-09-02T20:14:45Z
 created_at: 2026-08-31T20:49:21Z
 user_request: UR-085
 domain: testing
