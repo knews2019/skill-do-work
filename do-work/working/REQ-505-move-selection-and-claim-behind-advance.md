@@ -24,6 +24,7 @@ write_set:
   - skills/do-work/tools/do-work-cli/internal/lifecycleadvance/advance_commands_test.go
   - skills/do-work/tools/do-work-cli/internal/lifecycleadvance/queue_commands.go
   - skills/do-work/tools/do-work-cli/internal/lifecycleadvance/queue_commands_test.go
+  - skills/do-work/tools/do-work-cli/internal/lifecycleadvance/checkpoint_commands_test.go
   - skills/do-work/tools/do-work-cli/internal/nextselection/next_commands.go
   - skills/do-work/tools/do-work-cli/internal/nextselection/next_commands_test.go
   - skills/do-work/tools/do-work-cli/internal/nextselection/next_selection.go
@@ -147,6 +148,7 @@ Repository discovery already walks nested archive trees and carries complete fil
 - `skills/do-work/tools/do-work-cli/internal/lifecycleadvance/advance_commands_test.go`
 - `skills/do-work/tools/do-work-cli/internal/lifecycleadvance/queue_commands.go`
 - `skills/do-work/tools/do-work-cli/internal/lifecycleadvance/queue_commands_test.go`
+- `skills/do-work/tools/do-work-cli/internal/lifecycleadvance/checkpoint_commands_test.go`
 - `skills/do-work/tools/do-work-cli/internal/nextselection/next_commands.go`
 - `skills/do-work/tools/do-work-cli/internal/nextselection/next_commands_test.go`
 - `skills/do-work/tools/do-work-cli/internal/nextselection/next_selection.go`
@@ -181,3 +183,7 @@ Repository discovery already walks nested archive trees and carries complete fil
 **Dependencies:** Installed; Go 1.26.1, ShellCheck 0.11.0, and all repository lanes launched successfully.
 
 *Checked by work action.*
+
+## Decisions
+
+- **D-01 — DECIDE & STATE:** Expanded the scope by one existing checkpoint test file because REQ-504 deliberately pinned pending-queue advance as read-only, while REQ-505 intentionally makes that exact phase mutating. The replacement fixture must pin working/archive read-only behavior and preserve checkpoint-only mutation; leaving the old assertion would make the stated behavior and the inherited test mutually exclusive.
