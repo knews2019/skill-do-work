@@ -30,6 +30,7 @@ estimate:
     - dependency depth 2
     - cross-route regression gates
     - full-suite verification
+planning_at: 2026-09-04T17:36:43Z
 ---
 
 # Run the Evidence Gates From advance
@@ -38,7 +39,7 @@ estimate:
 Steps 3.6 (estimate), 5.75 (pre-flight), 6.3 (qualify) and the mechanical half of 6.5 (test gate and baseline comparison) run from `advance`; the Qualification Anti-Rationalization Table and the Finding-Closure Ratchet stay as principles.
 
 ## AI Execution State (P-A-U Loop)
-- [ ] **[PLAN]:** (Agent: Read listed `prime_files` and agent rules. Write brief technical approach here. Do not write code yet.)
+- [x] **[PLAN]:** Compose current-phase typed command handlers through advance, bind subordinate evidence to the exact REQ and path, retain judgment gates in prose, and replace obsolete sentence predicates with public behavior tests.
 - [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
 - [ ] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
 
@@ -88,3 +89,12 @@ See `do-work/user-requests/UR-098/input.md` for complete verbatim input.
 **Route: C — Complex.** This rule-changing migration composes estimation, preflight, qualification, and repository-gate evidence into the lifecycle command while removing procedural action contracts and replacing them with public Go behavior tests.
 
 **Planning:** Required.
+
+## Plan
+
+1. Add ordered typed evidence-gate records to the advance result, carrying exact request identity, path, evidence provenance, gate state, subordinate outcome, findings, changes, and tokenized next/verification commands.
+2. Compose the current mechanical phase through existing typed command handlers rather than duplicate estimate, preflight, qualification, or baseline logic; reject missing or phase-irrelevant inputs and bind every result to the discovered request.
+3. Collapse the four procedural action surfaces to an advance consumer loop while retaining qualification skepticism, finding closure, retry/failure judgment, TDD proof, heavy-lane planning, and repository-gate attribution in prose.
+4. Replace stale sentence predicates with public RED/GREEN command behavior and run focused, race, module, contract, and canonical merged-state gates.
+
+**Plan validation:** All three detailed requirements map to the four tasks, and every task maps back to the evidence-authority migration. The typed consumer contract explicitly carries per-record identity, provenance, state, outcome, findings, changes, and tokenized continuation. Scope must account for the post-capture contract-suite split and result projection; exploration will resolve those exact paths before dispatch.
