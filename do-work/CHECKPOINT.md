@@ -14,6 +14,7 @@ session_depth: light
 
 ## In Progress (interrupted)
 
+- REQ-567: Repair shipped lesson links to archived UR paths — claimed 2026-09-04T15:08:27Z — writer: t2s-Virtual-Machine.local:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2
 
 ## Still Queued
 
