@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 )
@@ -70,5 +71,34 @@ func TestWorkingAdvanceRemainsReadOnlyAfterCheckpointMode(t *testing.T) {
 	}
 	if after := advanceTreeDigest(t, repositoryRoot); before != after {
 		t.Fatalf("ordinary advance changed bytes")
+	}
+}
+
+func TestAdvanceCheckpointPreservesLegacyClaimDiscovery(t *testing.T) {
+	root, checkpoint, _ := legacyCheckpointRepository(t)
+	before := runCheckpointPublicCommand(t, root, "recover")
+	refreshed := runCheckpointPublicCommand(t, root, "advance", "--checkpoint")
+	after := runCheckpointPublicCommand(t, root, "recover")
+	count := 0
+	for i := range after.Recovery.Claims {
+		for j := range after.Recovery.Claims[i].CheckpointEvidence {
+			after.Recovery.Claims[i].CheckpointEvidence[j].SourceLine = 0
+			count++
+		}
+	}
+	for i := range before.Recovery.Claims {
+		for j := range before.Recovery.Claims[i].CheckpointEvidence {
+			before.Recovery.Claims[i].CheckpointEvidence[j].SourceLine = 0
+		}
+	}
+	if !reflect.DeepEqual(before.Recovery.Claims, after.Recovery.Claims) || refreshed.Checkpoint.PreservedClaims != count || count != 5 {
+		t.Fatalf("refresh hid legacy evidence: before=%#v after=%#v preserved=%d observed=%d", before.Recovery.Claims, after.Recovery.Claims, refreshed.Checkpoint.PreservedClaims, count)
+	}
+	contents, err := os.ReadFile(filepath.Join(root, "do-work/CHECKPOINT.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.HasSuffix(string(contents), checkpoint) {
+		t.Fatalf("refresh changed legacy body:\n%s", contents)
 	}
 }

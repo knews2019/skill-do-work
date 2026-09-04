@@ -416,3 +416,26 @@ func TestDiscoverRepositoryAcceptsProductionLegacyArchiveInputClass(t *testing.T
 		t.Fatalf("production legacy input class was damaged: %#v", snapshot.DamagedRecords)
 	}
 }
+
+func TestCheckpointDiscoveryUsesCanonicalOrLegacyClaimRange(t *testing.T) {
+	for _, test := range []struct{ name, prefix, suffix, newline string }{
+		{"legacy-prose-heading-token", "# Session Checkpoint\n\nThis mentions `## In Progress (interrupted)` in prose.\n", "", "\n"},
+		{"canonical", "## Completed\n- REQ-713: historical — writer: ignore:/repo\n## In Progress (interrupted)\n", "## Notes\n- REQ-713: note — writer: ignore:/repo\n", "\n"},
+		{"canonical-crlf", "## Completed\n- REQ-713: historical — writer: ignore:/repo\n## In Progress (interrupted)\n", "## Notes\n- REQ-713: note — writer: ignore:/repo\n", "\r\n"},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			root := t.TempDir()
+			entry := "- REQ-000713: live — claimed now — writer: keep:/repo\n  detail\n"
+			contents := strings.ReplaceAll(test.prefix+entry+test.suffix, "\n", test.newline)
+			writeRepositoryFixture(t, root, "do-work/CHECKPOINT.md", contents)
+			snapshot, err := DiscoverRepository(root)
+			if err != nil {
+				t.Fatal(err)
+			}
+			claims := snapshot.CheckpointClaimsByID["REQ-713"]
+			if len(claims) != 1 || claims[0].Writer != "keep:/repo" || claims[0].HeaderText != strings.TrimSuffix(strings.Split(entry, "\n")[0], "\r") {
+				t.Fatalf("wrong claim range: %#v", claims)
+			}
+		})
+	}
+}

@@ -866,3 +866,58 @@ func TestPlannedPostimagesNamesExactlyTheDeclaredTargets(t *testing.T) {
 		}
 	})
 }
+
+func TestCheckpointRemovalPreservesRangeAndWriterAuthority(t *testing.T) {
+	for _, test := range []struct{ name, prefix, suffix, newline string }{
+		{"legacy-prose-heading-token", "# Session Checkpoint\n\nThis mentions `## In Progress (interrupted)` in prose.\n", "", "\n"},
+		{"canonical", "## Completed\n- REQ-713: historical — writer: own:/repo\n  historical detail\n## In Progress (interrupted)\n", "## Notes\n- REQ-713: note — writer: own:/repo\n  note detail\n", "\n"},
+		{"canonical-crlf", "## Completed\n- REQ-713: historical — writer: own:/repo\n  historical detail\n## In Progress (interrupted)\n", "## Notes\n- REQ-713: note — writer: own:/repo\n  note detail\n", "\r\n"},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			own := "- REQ-000713: own — writer: own:/repo\n  owned detail\n"
+			other := "- REQ-713: other — writer: other:/repo\n\tother detail\n"
+			unlabelled := "- REQ-713: unlabelled\n  unknown detail\n"
+			foreign := "- REQ-799: foreign — writer: own:/repo\n  foreign detail\n"
+			content := func(value string) []byte { return []byte(strings.ReplaceAll(value, "\n", test.newline)) }
+			original := content(test.prefix + own + other + unlabelled + foreign + test.suffix)
+			owned, removed := RemoveOwnedCheckpointClaim(original, "REQ-713", "own:/repo")
+			if !removed || string(owned) != string(content(test.prefix+other+unlabelled+foreign+test.suffix)) {
+				t.Fatalf("writer removal exceeded authority:\n%s", owned)
+			}
+			all, removed := RemoveAllCheckpointClaims(original, "REQ-713")
+			if !removed || string(all) != string(content(test.prefix+foreign+test.suffix)) {
+				t.Fatalf("all-entry removal crossed range or identity:\n%s", all)
+			}
+			if checkpointHasRequestEntry(all, "REQ-713") {
+				t.Fatal("out-of-range history counted as current evidence")
+			}
+			claimed := checkpointWithClaim(all, "REQ-713", "Fresh", "now", "fresh:/repo")
+			if !checkpointHasRequestEntry(claimed, "REQ-713") || !checkpointHasRequestEntry(claimed, "REQ-799") {
+				t.Fatalf("fresh claim hid current evidence:\n%s", claimed)
+			}
+			if !strings.Contains(string(claimed), string(content(foreign))) || !strings.HasPrefix(string(claimed), string(content(test.prefix))) || !strings.HasSuffix(string(claimed), string(content(test.suffix))) {
+				t.Fatalf("fresh claim changed unrelated bytes:\n%s", claimed)
+			}
+		})
+	}
+}
+
+func TestRecoveryRefusesFalseLegacyCheckpointAbsence(t *testing.T) {
+	root := newStateRepository(t)
+	writeStateRequest(t, root, "do-work/working/REQ-713.md", "REQ-713", "claimed", "claimed_at: 2026-09-04T12:00:00Z\n")
+	checkpoint := "# Session Checkpoint\n\n- REQ-000713: legacy — writer: other:/repo\n  retained detail\n"
+	if err := os.WriteFile(filepath.Join(root, "do-work/CHECKPOINT.md"), []byte(checkpoint), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	runStateGit(t, root, "add", ".")
+	runStateGit(t, root, "commit", "-qm", "legacy fixture")
+	before := runStateGit(t, root, "rev-parse", "HEAD")
+	result := handleStateCommand(commandruntime.ExecutionContext{RepositoryRoot: root}, TransitionRecover,
+		[]string{"REQ-713", "--request-path", "do-work/working/REQ-713.md", "--checkpoint-absent", "--assume-sole-writer", "--commit"})
+	if result.Outcome != resultmodel.OutcomeRefused || !hasStateFinding(result, "RECOVER-CLAIM-CHECKPOINT-EVIDENCE") {
+		t.Fatalf("false absence accepted: %#v", result)
+	}
+	if readStateFile(t, root, "do-work/CHECKPOINT.md") != checkpoint || runStateGit(t, root, "rev-parse", "HEAD") != before || runStateGit(t, root, "status", "--porcelain") != "" {
+		t.Fatal("refused absence changed fixture")
+	}
+}

@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/knews2019/skill-do-work/do-work-cli/internal/resultmodel"
 )
 
 func TestRecoverPublicCommandRunsFinalizationThenRecoversEveryClaim(t *testing.T) {
@@ -142,5 +144,96 @@ func TestRecoverWithoutAuthorityOffersTypedTakeoverAndDoesNotMutateClaim(t *test
 	}
 	if _, err := os.Stat(filepath.Join(repositoryRoot, "do-work", "queue", "REQ-713-fixture.md")); err != nil {
 		t.Fatalf("authorized take-over did not return request to queue: %v", err)
+	}
+}
+
+func legacyCheckpointRepository(t *testing.T) (string, string, string) {
+	t.Helper()
+	root := t.TempDir()
+	for _, id := range []string{"REQ-713", "REQ-799"} {
+		writeAdvanceRequest(t, root, "working", id, "claimed", "claimed_at: 2026-09-04T12:00:00Z\n", "# Legacy claim\n")
+	}
+	entries := "- REQ-713: Legacy claim — claimed 2026-09-04T12:00:00Z — writer: other:/checkout\n  Keep detail.\n" +
+		"- REQ-000713: Alias — claimed earlier — writer: second:/checkout\n\tAlias detail.\n" +
+		"- REQ-713: Unlabelled — claimed earlier\n  Unlabelled detail.\n" +
+		"- REQ-713: Duplicate — claimed earlier — writer: other:/checkout\n  Duplicate detail.\n"
+	foreign := "- REQ-799: Foreign — claimed earlier — writer: keep:/checkout\n  Preserve foreign detail.\n"
+	checkpoint := "# Session Checkpoint\n\n" + entries + foreign
+	writeAdvanceFile(t, root, "do-work/CHECKPOINT.md", checkpoint)
+	runAdvanceGit(t, root, "init", "-q")
+	runAdvanceGit(t, root, "config", "user.name", "Legacy Recovery Test")
+	runAdvanceGit(t, root, "config", "user.email", "legacy@example.invalid")
+	runAdvanceGit(t, root, "add", ".")
+	runAdvanceGit(t, root, "commit", "-qm", "fixture")
+	return root, checkpoint, foreign
+}
+
+func runCheckpointPublicCommand(t *testing.T, root string, args ...string) resultmodel.CommandResult {
+	t.Helper()
+	argv := append([]string{"--repo-root", root, "--format", "json"}, args...)
+	command := exec.Command(advanceCLIBinary(t), argv...)
+	command.Dir = root
+	output, err := command.CombinedOutput()
+	if err != nil {
+		t.Fatalf("%v: %v\n%s", args, err, output)
+	}
+	var result resultmodel.CommandResult
+	if err := json.Unmarshal(output, &result); err != nil {
+		t.Fatalf("decode: %v\n%s", err, output)
+	}
+	if result.Outcome != resultmodel.OutcomeSuccess {
+		t.Fatalf("%v: %s", args, output)
+	}
+	return result
+}
+
+func TestRecoverLegacyCheckpointClaimsThroughPublicCommand(t *testing.T) {
+	root, checkpoint, foreign := legacyCheckpointRepository(t)
+	before := advanceTreeDigest(t, root)
+	observation := runCheckpointPublicCommand(t, root, "recover")
+	if len(observation.Recovery.Claims) != 2 || len(observation.Recovery.Claims[0].CheckpointEvidence) != 4 || observation.Recovery.Claims[0].CheckpointEvidence[0].Writer != "other:/checkout" {
+		t.Fatalf("legacy evidence missing: %#v", observation.Recovery)
+	}
+	if advanceTreeDigest(t, root) != before {
+		t.Fatal("observation changed bytes")
+	}
+	recovered := runCheckpointPublicCommand(t, root, "recover", "--take-over", "REQ-713")
+	if len(recovered.Recovery.Claims) != 1 || !recovered.Recovery.Claims[0].Recovered {
+		t.Fatalf("recovery = %#v", recovered.Recovery)
+	}
+	after, err := os.ReadFile(filepath.Join(root, "do-work/CHECKPOINT.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(after) != "# Session Checkpoint\n\n"+foreign {
+		t.Fatalf("recovery did not remove only matching blocks:\n%s\nOriginal:\n%s", after, checkpoint)
+	}
+	selection := runCheckpointPublicCommand(t, root, "next", "REQ-713")
+	if len(selection.Selected) != 1 || selection.Selected[0].RequestID != "REQ-713" {
+		t.Fatalf("recovered request not selectable: %#v", selection)
+	}
+	runCheckpointPublicCommand(t, root, "claim", "REQ-713", "--request-path", "do-work/queue/REQ-713-fixture.md", "--provenance", "explicit-req", "--writer", "current:/checkout", "--at", "2026-09-04T13:00:00Z", "--commit")
+	refreshed := runCheckpointPublicCommand(t, root, "recover")
+	if len(refreshed.Recovery.Claims) != 2 {
+		t.Fatalf("fresh claims = %#v", refreshed.Recovery)
+	}
+	for _, claim := range refreshed.Recovery.Claims {
+		if len(claim.CheckpointEvidence) != 1 {
+			t.Fatalf("fresh claim hid evidence: %#v", claim)
+		}
+		wantWriter := "current:/checkout"
+		if claim.RequestID == "REQ-799" {
+			wantWriter = "keep:/checkout"
+		}
+		if claim.CheckpointEvidence[0].Writer != wantWriter {
+			t.Fatalf("writer changed: %#v", claim)
+		}
+	}
+	after, err = os.ReadFile(filepath.Join(root, "do-work/CHECKPOINT.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(after), foreign) {
+		t.Fatalf("fresh claim changed foreign bytes:\n%s", after)
 	}
 }
