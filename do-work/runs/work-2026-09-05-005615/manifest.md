@@ -1,6 +1,6 @@
 # Queue run
 
-Status: stopped at shared-state recovery refusal; resumable
+Status: in-progress; waiting for active foreign writers
 
 User scope: do-work run to completion, serial claims; do not finish while agents or background commands remain pending.
 
@@ -82,3 +82,5 @@ Final verification `do-work-cli --format json recover-finalization --discover` r
 This run completed REQ-567, REQ-503, prioritized REQ-509, REQ-504 (one successful remediation), and REQ-505. REQ-506 remains pending with the independently reproduced critical focused-execution failure and its eight-file remediation plan ready. REQ-507 remains pending: saved staged lane failed, later REQ-547 repaired the obsolete assertion, fresh current verification still required. Neither is falsely marked complete or still in the removed-by-answer old heavy status. Other pending work remains unclaimed.
 
 Resume normal `do-work run` after the active REQ-570 owner settles its bookkeeping. Start with canonical recover and queue advance, re-read any newly landed work action and lifecycle changes, and consume the saved plans only after claim-time revalidation. Do not use sole-authority recovery while that other owner remains active. All this run's agents and background commands finished; its builder worktrees were already cleaned, and all preparation is durable. No external cache files were inspected or deleted; the user freed the space personally.
+
+- User resumed full run with explicit instruction to remain active through pending work. Canonical recover still refuses REQ-570 lifecycle/run/baseline dirt; a read-only owned watcher is pending (session98623). REQ-570 builder branch has now committed d33d4c52; its owner remains active. Another session claimed REQ-572; do not take it over. Activity prep complete for572/573 and preserved in activity-prep.md. Main characterized a real RLIMIT_FSIZE copy-failure seam for552; fixture cleanup completed, evidence saved, no source/queue mutation.
