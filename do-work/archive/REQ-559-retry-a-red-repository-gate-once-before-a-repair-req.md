@@ -1,7 +1,7 @@
 ---
 id: REQ-559
 title: '[impact-rule-change] Retry a red repository gate once before deferring or minting a repair REQ'
-status: claimed
+status: completed
 priority: now
 created_at: 2026-09-03T20:05:46Z
 user_request: UR-106
@@ -37,6 +37,9 @@ integration_at: 2026-09-04T18:30:54Z
 review_at: 2026-09-04T18:47:19Z
 remediation_at: 2026-09-04T18:47:19Z
 re_review_at: 2026-09-04T18:47:19Z
+completed_at: 2026-09-04T18:49:22Z
+commit: a835258
+release_at: 2026-09-04T18:49:22Z
 ---
 
 # Retry a Red Repository Gate Once Before Deferring or Minting a Repair REQ

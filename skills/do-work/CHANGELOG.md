@@ -2,6 +2,14 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.276.0 — A Red Gate Gets One Retry Before It Costs a REQ (2026-09-04)
+
+A repository gate that fails once and passes on the next run used to cost a deferral, a minted repair REQ, and a second gate run to learn that nothing was broken. Now the same argv is simply rerun once, immediately, and a green rerun carries on.
+
+- The pre-flight baseline reruns a non-zero gate command once and records only the rerun in `baseline.json`, printing one line that names both exit statuses.
+- The retry is bounded at exactly one: a second failure enters the existing fingerprint, diagnostic, and `defer-gate` path unchanged, using the rerun's output.
+- The rule is stated once, keyed on any direct non-zero exit of the canonical gate argv, and cited from both the pre-build baseline lane and the post-merge lane.
+
 ## 0.275.3 — Held Heavy-Test REQs Wait With the Queue, Not in the Inbox (2026-09-04)
 
 0.275.0 made the work loop run held heavy lanes itself at queue exhaustion, but the board still filed every `pending-heavy-testing` REQ under Needs input · Blocked, and the hold line it carried still read as a Yes/No question for you. Nothing was being asked; now nothing looks asked.
