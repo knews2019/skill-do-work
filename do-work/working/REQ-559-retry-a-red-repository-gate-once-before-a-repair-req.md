@@ -1,7 +1,7 @@
 ---
 id: REQ-559
 title: '[impact-rule-change] Retry a red repository gate once before deferring or minting a repair REQ'
-status: pending
+status: claimed
 priority: now
 created_at: 2026-09-03T20:05:46Z
 user_request: UR-106
@@ -19,6 +19,7 @@ write_set:
   - skills/do-work/actions/work.md
   - skills/do-work/actions/work-reference.md
   - skills/do-work/tools/checks/preflight.sh
+claimed_at: 2026-09-04T18:15:54Z
 ---
 
 # Retry a Red Repository Gate Once Before Deferring or Minting a Repair REQ
