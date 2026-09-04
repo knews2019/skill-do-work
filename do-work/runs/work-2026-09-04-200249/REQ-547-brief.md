@@ -20,18 +20,6 @@ write_set:
   - skills/do-work/tools/do-work-cli/internal/finalization/finalization_apply.go
   - skills/do-work/tools/do-work-cli/internal/finalization/finalization_recovery_test.go
 claimed_at: 2026-09-04T20:02:18Z
-route: B
-estimate:
-  p50_active_minutes: 30
-  confidence: medium
-  calculated_at: 2026-09-04T20:03:07Z
-  basis:
-    - Route B
-    - 4-file write set
-    - 2 subsystems involved
-    - 5 acceptance criteria
-    - persistence changes
-dispatch_at: 2026-09-04T20:03:07Z
 ---
 
 # Stop Finalize Refusing a REQ That Has No Checkpoint Entry
@@ -114,19 +102,3 @@ Fold-first scan run over all six pending `sweep: true` REQs. REQ-502's
 `checkpoint-section-blind-line-editing` is a different defect (how a line is edited, not
 whether its absence blocks finalization), so this is captured separately rather than folded
 into it.
-
----
-
-## Triage
-
-**Route: B** - Medium
-
-**Reasoning:** The required behaviour is stated exactly, but which side of the preimage/postimage pair is wrong has to be found by reading the journal plan and apply paths before either can be corrected. Outcome clear, location needs discovery.
-
-**Planning:** Not required
-
-## Plan
-
-**Planning not required** - Route B: Exploration-guided implementation
-
-*Skipped by work action*

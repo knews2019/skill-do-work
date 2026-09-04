@@ -15,19 +15,6 @@ effort_estimate: effort-substantive
 related: [REQ-539, REQ-563]
 batch: smart-heavy-verification
 claimed_at: 2026-09-04T20:02:18Z
-route: B
-estimate:
-  p50_active_minutes: 35
-  confidence: medium
-  calculated_at: 2026-09-04T20:03:07Z
-  basis:
-    - Route B
-    - 5-file write set
-    - 2 subsystems involved
-    - 5 acceptance criteria
-    - persistence changes
-    - cross-route regression gates
-dispatch_at: 2026-09-04T20:03:07Z
 ---
 
 # Reuse Matching Per-Lane Verification Evidence for Four Hours
@@ -91,19 +78,3 @@ See `do-work/user-requests/UR-109/input.md` for complete verbatim input.
 
 ---
 *Source: Replace the all-or-nothing heavy-test trigger with change-aware lane selection and reusable per-lane evidence. Select only heavy lanes affected by the request's changed paths, explain why each lane was selected, and fall back to the complete heavy suite whenever coverage is uncertain. Cache each successful lane result for at most four hours, but reuse it only when a deterministic fingerprint of its command, test inputs, fixtures, toolchain, and required environment still matches; time alone must never authorize reuse. Allow unaffected lanes to reuse evidence while affected lanes rerun, preserve --heavy as a force-all override, and record whether each lane was executed or reused. Build this after REQ-539's aggregate split.*
-
----
-
-## Triage
-
-**Route: B** - Medium
-
-**Reasoning:** The caching rule is specified, but the lane fingerprint and the existing heavy-verification plan and record sites have to be located before the reuse window can be added. Outcome clear, location needs discovery.
-
-**Planning:** Not required
-
-## Plan
-
-**Planning not required** - Route B: Exploration-guided implementation
-
-*Skipped by work action*
