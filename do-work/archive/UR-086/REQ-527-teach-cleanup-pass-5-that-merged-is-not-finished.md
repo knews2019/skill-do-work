@@ -1,7 +1,7 @@
 ---
 id: REQ-527
 title: 'Teach cleanup Pass 5 that merged is not finished'
-status: claimed
+status: completed
 priority: now
 created_at: 2026-09-03T02:00:00Z
 user_request: UR-086
@@ -39,6 +39,8 @@ estimate:
     - dependency depth 1
     - cross-route regression gates
     - full-suite verification
+completed_at: 2026-09-04T00:22:00Z
+commit: 9ccbc9f2928a
 ---
 
 # Teach Cleanup Pass 5 That Merged Is Not Finished
