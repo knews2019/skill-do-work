@@ -18,7 +18,6 @@ session_depth: light
 
 
 
-- REQ-563: Select affected heavy-test lanes from request changes — claimed 2026-09-03T23:40:37Z — writer: t2s-Virtual-Machine.local:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2
 
 ## Still Queued
 

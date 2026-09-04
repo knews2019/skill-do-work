@@ -1,7 +1,7 @@
 ---
 id: REQ-563
 title: 'Select affected heavy-test lanes from request changes'
-status: claimed
+status: completed
 created_at: 2026-09-03T22:58:23Z
 user_request: UR-109
 domain: testing
@@ -40,6 +40,8 @@ write_set:
   - skills/do-work/actions/work-reference.md
   - skills/do-work/tools/do-work-cli/prime-do-work-cli.md
 claimed_at: 2026-09-03T23:40:37Z
+completed_at: 2026-09-04T00:26:00Z
+commit: 6d9a28edcd79
 ---
 
 # Select Affected Heavy-Test Lanes From Request Changes
