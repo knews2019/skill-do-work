@@ -1,7 +1,7 @@
 ---
 id: REQ-503
 title: 'Add the read-only advance lifecycle command'
-status: claimed
+status: pending
 priority: now
 created_at: 2026-09-02T14:37:54Z
 user_request: UR-098
@@ -9,7 +9,7 @@ domain: backend
 prime_files: [skills/do-work/tools/do-work-cli/prime-do-work-cli.md]
 tdd: true
 suggested_spec:
-depends_on: [REQ-489, REQ-498, REQ-499, REQ-500, REQ-501, REQ-502]
+depends_on: [REQ-489, REQ-498, REQ-499, REQ-500, REQ-501, REQ-502, REQ-567]
 batch: orchestrator-simplification
 maintenance: false
 impact: impact-user-visible
@@ -21,7 +21,6 @@ write_set:
   - skills/do-work/tools/do-work-cli/internal/resultmodel/result_model_test.go
   - skills/do-work/tools/do-work-cli/cmd/do-work-cli/main.go
   - skills/do-work/tools/do-work-cli/prime-do-work-cli.md
-claimed_at: 2026-09-04T14:57:15Z
 route: C
 planning_at: 2026-09-04T15:02:48Z
 exploration_at: 2026-09-04T15:04:18Z
@@ -38,6 +37,7 @@ estimate:
     - dependency depth 1
     - cross-route regression gates
     - full-suite verification
+gate_deferred: 'true'
 ---
 
 # Add the Read-Only advance Lifecycle Command
@@ -143,3 +143,13 @@ The six-file scope is sufficient. No action prose, request parser, repository di
 - [ ] Missing, malformed, ambiguous, contradictory, or impossible evidence produces stable typed findings.
 - [ ] `advance` never mutates a REQ, the checkpoint, Git, or any other repository byte.
 - [ ] The CLI prime documents the command and phase table; this foundation deletes no action prose.
+
+## Repository Gate Deferral
+
+- **Gate command (argv JSON):** ["bash","_dev/tests/maintainer-verify.sh"]
+- **Direct exit status:** 1
+- **Diagnostic fingerprint:** sha256:3af85b84722557f94ddfd466fc32136086fb5fed306e478bd344f689902472ff
+- **Repair dependency:** REQ-567
+- **Diagnostic evidence:** "shipped-package-reference-contract: obsolete archive link for REQ-491"
+- **Diagnostic evidence:** "shipped-package-reference-contract: obsolete archive link for REQ-492"
+- **Diagnostic evidence:** "shipped-package-reference-contract: obsolete archive link for REQ-493"
