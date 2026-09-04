@@ -1,0 +1,79 @@
+maintainer-verify: checking Go go1.26.1 or newer
+maintainer-verify: checking ShellCheck 0.11.0 or newer
+maintainer-verify: ShellCheck warning-level lint (82 tracked files)
+maintainer-verify: gofmt formatting check (248 tracked files)
+maintainer-verify: aggregate contract suite
+core-checks contract probes passed.
+test-file duration: _dev/tests/contracts/core-checks.sh 0s (limit <30s)
+queue-kanban contract probes passed.
+test-file duration: _dev/tests/contracts/queue-kanban.sh 0s (limit <30s)
+replace-section: success
+repository: /home/user/skill-do-work
+change /tmp/tmp.2KaYOYPmWo/project with spaces/Justfile [modified]: managed section written from /tmp/tmp.2KaYOYPmWo/managed-section.just
+rollback: not_needed
+replace-section: success
+repository: /home/user/skill-do-work
+rollback: not_needed
+replace-section: success
+repository: /home/user/skill-do-work
+change /tmp/tmp.2KaYOYPmWo/absent project/.justfile [created]: managed section written from /tmp/tmp.2KaYOYPmWo/managed-section.just
+rollback: not_needed
+replace-section: success
+repository: /home/user/skill-do-work
+change /tmp/tmp.2KaYOYPmWo/variants/justfile [modified]: managed section written from /tmp/tmp.2KaYOYPmWo/managed-section.just
+rollback: not_needed
+replace-section: success
+repository: /home/user/skill-do-work
+change /tmp/tmp.2KaYOYPmWo/variants/Justfile [modified]: managed section written from /tmp/tmp.2KaYOYPmWo/managed-section.just
+rollback: not_needed
+replace-section: success
+repository: /home/user/skill-do-work
+change /tmp/tmp.2KaYOYPmWo/variants/.justfile [modified]: managed section written from /tmp/tmp.2KaYOYPmWo/managed-section.just
+rollback: not_needed
+/home/user/skill-do-work/_dev/tests/contracts/replace-text-section.sh: line 503: just: command not found
+replace-section: success
+repository: /home/user/skill-do-work
+change /tmp/tmp.2KaYOYPmWo/raw-multiline-string.just [modified]: managed section written from /tmp/tmp.2KaYOYPmWo/reserved-section.just
+rollback: not_needed
+replace-section: success
+repository: /home/user/skill-do-work
+change /tmp/tmp.2KaYOYPmWo/cooked-multiline-string-crlf.just [modified]: managed section written from /tmp/tmp.2KaYOYPmWo/reserved-section.just
+rollback: not_needed
+replace-section: success
+repository: /home/user/skill-do-work
+change /tmp/tmp.2KaYOYPmWo/ordinary-and-command-multiline-literals.just [modified]: managed section written from /tmp/tmp.2KaYOYPmWo/reserved-section.just
+rollback: not_needed
+replace-section: success
+repository: /home/user/skill-do-work
+change /tmp/tmp.2KaYOYPmWo/ordinary-backtick-multiline-command.just [modified]: managed section written from /tmp/tmp.2KaYOYPmWo/reserved-section.just
+rollback: not_needed
+replace-section: success
+repository: /home/user/skill-do-work
+rollback: not_needed
+replace-text-section contract probes passed.
+test-file duration: _dev/tests/contracts/replace-text-section.sh 1s (limit <30s)
+SKIP: staged skills, updater, and installer probes require maintainer-verify.sh --heavy.
+Suite manifest contract probes passed.
+test-file duration: suite-manifest-contract.sh 3s (limit <30s)
+shipped package reference contract: PASS
+test-file duration: shipped-package-reference-contract.sh 4s (limit <30s)
+Shell-block lint passed: 79 fenced blocks and 32 shipped shell files; ShellCheck enabled.
+test-file duration: action-shell-blocks.sh 7s (limit <30s)
+SessionStart hook behavior probes passed.
+test-file duration: session-start-hook-behavior.sh 44s (limit <30s)
+FAIL: /home/user/skill-do-work/_dev/tests/session-start-hook-behavior.sh took 44s; each test file must finish under 30s
+FAIL: SessionStart hook behavior probes failed (see the fixture FAIL lines above).
+Prescribed shell primitive canonicalization checks passed.
+test-file duration: prescribed-shell-canonicalization.sh 15s (limit <30s)
+Defensive-surface exact deletion regressions passed.
+test-file duration: defensive-surface-audit.sh 0s (limit <30s)
+Audit lock-in regressions passed.
+test-file duration: audit-lockins.sh 2s (limit <30s)
+do-work-cli launcher behavior tests passed
+test-file duration: do-work-cli-launcher-behavior.sh 3s (limit <30s)
+p50 estimator suite: all probes passed.
+test-file duration: p50-estimator-determinism.sh 2s (limit <30s)
+select-simple-reqs suite: all probes passed.
+test-file duration: select-simple-reqs-behavior.sh 1s (limit <30s)
+Go test budget behavior probes passed.
+test-file duration: run-go-tests-with-budget-behavior.sh 19s (limit <30s)

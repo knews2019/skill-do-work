@@ -2,6 +2,30 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.279.0 — One Stuck REQ No Longer Parks the Whole Queue (2026-09-04)
+
+A finalization that recovery cannot finish now sets that one REQ aside with its reason code and keeps draining the rest. Before, the first refused record stopped the run and every other pending REQ waited behind it.
+
+- Recovery reads its records one at a time. A refusal owned by exactly one REQ becomes that REQ's exclusion, carries `FINALIZATION-SET-ASIDE`, and never names itself as the fix; the resolving verb comes from the exit summary.
+- Only a cause no REQ owns still stops the run — a dirty index, or shared paths outside the recovery group. Those now refuse without naming a REQ, which is what makes the stop reachable at all.
+- A set-aside REQ keeps its claim, so the run cannot re-select the REQ it just excluded, and `do-work commit` leaves that REQ's paths alone instead of committing them as ordinary changes.
+
+## 0.278.0 — Another Session's Files Are Not Your Blocker (2026-09-04)
+
+A file the running REQ does not own — untracked, modified, or staged by somebody else — no longer stops the pipeline and is never swept into its commits. It is left exactly as found and named once in the progress output.
+
+- Finalization's shared-remainder refusal now applies only to a recovery group inferred from the tree. A `finalize --manifest` declares its exact write set up front, so a path it never named cannot belong to it; a dirty path the REQ *does* declare still refuses as before.
+- Hand-back step 0's third category changed from "stop and surface" to "leave alone and name", and the clean-index requirement narrowed to the REQ's own paths.
+- The rule that let the pipeline author an "unrelated work" preserve commit is gone. The pipeline commits only what the REQ declares.
+
+## 0.277.0 — A Red Gate Gets One Retry Before It Costs a REQ (2026-09-04)
+
+A repository gate that fails once and passes on the next run used to cost a deferral, a minted repair REQ, and a second gate run to learn that nothing was broken. Now the same argv is simply rerun once, immediately, and a green rerun carries on.
+
+- The pre-flight baseline reruns a non-zero gate command once and records only the rerun in `baseline.json`, printing one line that names both exit statuses.
+- The retry is bounded at exactly one: a second failure enters the existing fingerprint, diagnostic, and `defer-gate` path unchanged, using the rerun's output.
+- The rule is stated once, keyed on any direct non-zero exit of the canonical gate argv, and cited from both the pre-build baseline lane and the post-merge lane.
+
 ## 0.276.0 — Board Activity View (2026-09-04)
 
 The board could not answer "what changed on the queue in the last few hours". Recently done shows terminal REQs only, the Calendar dates a REQ from its claim or resolve day, and the Timeline draws spans rather than the transitions between them — so three REQs claimed, built, merged and held for heavy testing in one afternoon appeared on none of them, and answering the question meant reading `git log`.

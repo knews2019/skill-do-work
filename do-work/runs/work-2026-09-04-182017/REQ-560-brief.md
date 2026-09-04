@@ -1,7 +1,7 @@
 ---
 id: REQ-560
 title: '[impact-rule-change] Hand-back and finalize check cleanliness only on the REQ''s own paths'
-status: pending
+status: claimed
 priority: now
 created_at: 2026-09-03T20:05:46Z
 user_request: UR-106
@@ -19,6 +19,17 @@ write_set:
   - skills/do-work/actions/work.md
   - skills/do-work/actions/work-reference.md
   - skills/do-work/tools/do-work-cli/internal/finalization/
+claimed_at: 2026-09-04T18:15:54Z
+route: B
+estimate:
+  p50_active_minutes: 20
+  confidence: medium
+  calculated_at: 2026-09-04T18:17:56Z
+  basis:
+    - Route B
+    - 3-file write set
+    - 2 subsystems involved
+    - 5 acceptance criteria
 ---
 
 # Hand-Back and Finalize Check Cleanliness Only on the REQ's Own Paths
@@ -70,3 +81,19 @@ A path the active REQ does not own, whether untracked, modified, or staged by an
 
 ## Full Context
 See `do-work/user-requests/UR-106/input.md` for complete verbatim input.
+
+---
+
+## Triage
+
+**Route: B** - Medium
+
+**Reasoning:** The rule change is stated exactly, but the finalization tree-dirt check in do-work-cli has to be found before it can be narrowed. Outcome clear, location needs discovery.
+
+**Planning:** Not required
+
+## Plan
+
+**Planning not required** - Route B: Exploration-guided implementation
+
+*Skipped by work action*

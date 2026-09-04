@@ -1,7 +1,7 @@
 ---
 id: REQ-559
 title: '[impact-rule-change] Retry a red repository gate once before deferring or minting a repair REQ'
-status: pending
+status: claimed
 priority: now
 created_at: 2026-09-03T20:05:46Z
 user_request: UR-106
@@ -19,6 +19,18 @@ write_set:
   - skills/do-work/actions/work.md
   - skills/do-work/actions/work-reference.md
   - skills/do-work/tools/checks/preflight.sh
+claimed_at: 2026-09-04T18:15:54Z
+route: B
+estimate:
+  p50_active_minutes: 25
+  confidence: medium
+  calculated_at: 2026-09-04T18:17:56Z
+  basis:
+    - Route B
+    - 3-file write set
+    - 2 subsystems involved
+    - 5 acceptance criteria
+    - async lifecycle behavior
 ---
 
 # Retry a Red Repository Gate Once Before Deferring or Minting a Repair REQ
@@ -70,3 +82,19 @@ When the repository gate exits non-zero, at the baseline (Step 5 pre-flight) or 
 
 ## Full Context
 See `do-work/user-requests/UR-106/input.md` for complete verbatim input.
+
+---
+
+## Triage
+
+**Route: B** - Medium
+
+**Reasoning:** The change is well specified but its two edit sites — the gate launch inside `preflight.sh` and the post-merge rule in `work-reference.md` Step 6.5 — have to be located and read before editing. Outcome clear, location needs discovery.
+
+**Planning:** Not required
+
+## Plan
+
+**Planning not required** - Route B: Exploration-guided implementation
+
+*Skipped by work action*

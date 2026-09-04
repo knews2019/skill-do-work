@@ -1,7 +1,7 @@
 ---
 id: REQ-564
 title: 'Reuse matching per-lane verification evidence for four hours'
-status: pending
+status: claimed
 created_at: 2026-09-03T22:58:23Z
 user_request: UR-109
 domain: testing
@@ -14,6 +14,7 @@ impact: impact-user-visible
 effort_estimate: effort-substantive
 related: [REQ-539, REQ-563]
 batch: smart-heavy-verification
+claimed_at: 2026-09-04T20:02:18Z
 ---
 
 # Reuse Matching Per-Lane Verification Evidence for Four Hours

@@ -1,7 +1,7 @@
 ---
 id: REQ-515
 title: '[impact-rule-change] Per-REQ recovery findings never stop the loop'
-status: pending
+status: claimed
 priority: now
 created_at: 2026-09-02T20:35:18Z
 user_request: UR-099
@@ -16,6 +16,19 @@ effort_estimate: effort-substantive
 related: [REQ-513, REQ-514, REQ-516, REQ-517]
 batch: recovery-never-traps
 write_set: [skills/do-work/actions/work.md, skills/do-work/actions/run-with-recovery.md, skills/do-work/actions/work-reference.md, _dev/tests/contract-regressions.sh, skills/do-work/tools/do-work-cli/internal/finalization/]
+claimed_at: 2026-09-04T18:15:54Z
+route: B
+estimate:
+  p50_active_minutes: 30
+  confidence: medium
+  calculated_at: 2026-09-04T18:17:56Z
+  basis:
+    - Route B
+    - 5-file write set
+    - 3 subsystems involved
+    - 5 acceptance criteria
+    - dependency depth 1
+    - cross-route regression gates
 ---
 
 # Per-REQ recovery findings never stop the loop
@@ -86,3 +99,19 @@ See `do-work/user-requests/UR-099/input.md` for complete verbatim input.
 
 ---
 *Source: maintainer conversation of 2026-09-02, item A3 of "how can I update the orchestrator to not end up in a trap like this?", captured by UR-099.*
+
+---
+
+## Triage
+
+**Route: B** - Medium
+
+**Reasoning:** Recovery record iteration spans two action files, the contract regression suite, and the CLI's finalization projection; the required behavior is firm, the exact projection sites need discovery.
+
+**Planning:** Not required
+
+## Plan
+
+**Planning not required** - Route B: Exploration-guided implementation
+
+*Skipped by work action*
