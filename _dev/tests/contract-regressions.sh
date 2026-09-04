@@ -56,7 +56,8 @@ run_contract_file() {
 for contract_file in \
   "$repo_root/_dev/tests/contracts/core-checks.sh" \
   "$repo_root/_dev/tests/contracts/queue-kanban.sh" \
-  "$repo_root/_dev/tests/contracts/replace-text-section.sh"
+  "$repo_root/_dev/tests/contracts/replace-text-section.sh" \
+  "$repo_root/_dev/tests/contracts/recovery-set-aside.sh"
 do
   if [ ! -f "$contract_file" ]; then
     printf 'FAIL: missing owner contract: %s\n' "${contract_file#"$repo_root/"}" >&2
