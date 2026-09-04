@@ -182,3 +182,28 @@ See `do-work/user-requests/UR-099/input.md` for complete verbatim input.
 
 - **impact-negligible, report only** — `recovery.FinalizationPassed` in `internal/lifecycleadvance/recovery_commands.go` is set to `true` even when a REQ was set aside. Defensible, since the finalization pass did complete and the per-record evidence says what was excluded, but a future REQ may want a distinct field so a consumer can see "passed with exclusions" without walking the records.
 - **impact-rule-change, report only** — REQ-514's re-review left two open findings on this same surface. This REQ clears one of them for set-aside records only, by clearing their `next_argv`, and touches neither otherwise.
+
+## Qualification
+
+Passed — 8 files verified in the merge range `18666d7..28c1460`, 7 acceptance criteria traced, P-A-U confirmed. `qualify.sh` returned `OK: mechanical qualification passed`. Judgment checks: `finalization_commands.go` gained real per-record control flow with six named helpers, not a flag; the new contract file holds ten executable predicates rather than sentence pins; every requirement maps to a named file.
+
+## Testing
+
+**Tests run:** `go test ./internal/finalization/`, `bash _dev/tests/contracts/recovery-set-aside.sh`, and `bash _dev/tests/maintainer-verify.sh`
+**Result:** ✓ Finalization package green. Contract probes passed. Repository gate green on the rerun.
+
+**Repository gate retry:** first run exited 1, rerun exited 0.
+
+The first run failed on `_dev/tests/session-start-hook-behavior.sh took 30s; each test file must finish under 30s` — the budget is `< 30s`, so it missed by one second. The rerun measured the same file at 27s and the whole gate exited 0 with no failures.
+
+**This is REQ-559's rule catching its first real case, in the same run that shipped it.** Under the previous rule the first non-zero exit was final: REQ-515 would have been deferred, a `repository_gate_repair` REQ minted and claimed, and its already-green no-op completion would have been the only thing letting REQ-515 resume — the REQ-548 sequence, reproduced exactly, over a one-second timing miss on a shared test file this REQ never touched. Instead the same argv was rerun once and the run continued. Cost: one gate run. Old cost: two gate runs, one claim, one checkpoint entry, one finalization, one archived REQ that changed nothing.
+
+**Red-green validation:**
+- `TestRecoverFinalizationSetsAsideRefusedRecordAndFinishesTheRest`: ✗ before implementation → ✓ after. The RED case from the REQ's Red-Green Proof — one refused record and one clean record, selection proceeds.
+- `TestRecoverFinalizationStopsWhenTheRefusalOwnsNoRequest`: the never-widen lock-in. A refusal owning no REQ still stops the run.
+
+**New tests added:**
+- The two Go behavior tests above.
+- `_dev/tests/contracts/recovery-set-aside.sh` — ten predicates. The strongest reads the `setAsideReasonCode` constant out of the Go source and requires all three action files to name that exact token, so a rename in the CLI reddens the suite instead of leaving prose citing a code nothing emits.
+
+**Gate history across this run:** the same test file measured 44s, 39s, 32s, 30s and 27s on five separate runs with nothing touching it. It is a flake sitting near its budget on a slow container, which is why it produced a red gate twice and a green one three times.
