@@ -52,7 +52,7 @@ Depends on REQ-572 (one Activity row per lifecycle stamp): highlighting sibling 
 **RED prompt/case:** In the Node behavior lane (`javascript_behavior_*_test.go`), render the Activity view with two rows for REQ-570 and one for REQ-505, dispatch a click on the REQ-570 row, and assert the detail drawer shows `REQ-570` and both REQ-570 rows carry the selected class while the REQ-505 row does not.
 **Why RED now:** `renderActivity` in `board-activity.js` builds plain `tr`/`td` elements with no `data-detail-kind` attribute and no selection state, so the click does nothing and no row is marked.
 **GREEN when:** The click opens the drawer for REQ-570 and exactly the rows with `data-activity-request="REQ-570"` are marked selected; on the running board, clicking any REQ-570 row opens the same drawer the Board shows for it and every REQ-570 row is visibly highlighted.
-**Validation:** Inferred during capture from the user's request and screenshot 2.
+**Validation:** User confirmed (verify-requests, 2026-09-04)
 
 ## Builder Guidance
 

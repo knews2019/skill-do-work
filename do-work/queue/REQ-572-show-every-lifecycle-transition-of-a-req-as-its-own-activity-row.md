@@ -40,7 +40,7 @@ The Activity view lists one row per REQ: its newest lifecycle stamp and nothing 
 - The client (`board-activity.js`) keeps windowing against the wall clock and keeps the shared filter chips. The summary line must say what it now counts: rows are transitions, REQs are distinct ids, and both numbers are useful ("38 transitions across 21 REQs in the last 24 hours").
 - A ticket with no parseable stamp is still skipped, never dated from the zero time.
 - Prefer showing all transitions by default over adding a "latest only" toggle. If a toggle is kept, "every transition" is the default state and the toggle is one extra button in the existing Activity window group, not a new control family.
-- Screenshots and the Board's `data-detail-kind` attribute are REQ-573's concern (opening the drawer and highlighting sibling rows); this REQ only changes the row set and the counts.
+- Click behavior and the Board's `data-detail-kind` attribute are REQ-573's concern (opening the drawer and highlighting sibling rows); this REQ only changes the row set and the counts.
 
 ## Constraints
 
@@ -56,7 +56,7 @@ REQ-573 (click a row to open the drawer and highlight sibling rows) depends on t
 **RED prompt/case:** A ticket with `created_at: 2026-09-04T22:52:00Z` and `claimed_at: 2026-09-04T23:00:17Z` passed to `buildActivityRows` returns one row ("claimed"). On the running board, REQ-570 (deleting the pending-heavy-testing status) in the 24h Activity window shows a single "claimed" row; its capture eight minutes earlier is not visible.
 **Why RED now:** `newestLifecycleStamp` keeps only the latest stamp per ticket by design (REQ-568, showing recently touched REQs regardless of status).
 **GREEN when:** The same ticket returns two rows, "claimed" at 23:00:17 then "captured" at 22:52:00, in that order; on the board REQ-570 appears twice in the 24h window and the summary line reports both the transition count and the distinct REQ count.
-**Validation:** Inferred during capture from the user's question and screenshot.
+**Validation:** User confirmed (verify-requests, 2026-09-04)
 
 ## Builder Guidance
 
