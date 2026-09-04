@@ -15,3 +15,7 @@ session_depth: light
 ## Still Queued
 
 - 28 pending requests remain. This targeted run drained REQ-483's frozen ledger; the selector recommends REQ-485 next.
+
+## In Progress (interrupted)
+
+- REQ-506: [impact-rule-change] Run the evidence gates from advance — claimed 2026-09-04T17:32:08Z — writer: t2s-Virtual-Machine.local:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2
