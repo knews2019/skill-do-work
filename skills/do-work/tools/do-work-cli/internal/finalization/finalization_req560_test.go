@@ -60,8 +60,10 @@ func TestFinalizeIgnoresForeignTreeDirtOutsideTheManifest(t *testing.T) {
 
 	// The foreign paths are left exactly as found: still dirty, never committed.
 	status := runFinalizationGit(t, repositoryRoot, "status", "--porcelain=v1", "--untracked-files=all")
-	if !strings.Contains(status, " M "+foreignTracked) && !strings.Contains(status, "M  "+foreignTracked) {
-		t.Fatalf("foreign tracked dirt was not left alone:\n%s", status)
+	// Only " M " is correct here. "M  " would mean the path had been staged,
+	// which is the opposite of leaving it alone.
+	if !strings.Contains(status, " M "+foreignTracked) {
+		t.Fatalf("foreign tracked dirt was not left alone as an unstaged modification:\n%s", status)
 	}
 	if !strings.Contains(status, "?? "+foreignUntracked) {
 		t.Fatalf("foreign untracked draft was not left alone:\n%s", status)
@@ -71,5 +73,40 @@ func TestFinalizeIgnoresForeignTreeDirtOutsideTheManifest(t *testing.T) {
 		if strings.Contains(committed, path) {
 			t.Fatalf("the primary commit swept in a foreign path %s:\n%s", path, committed)
 		}
+	}
+}
+
+// REQ-560 narrowed the shared-remainder refusal to discovered recovery groups
+// and deliberately kept two refusals that nothing else pins: a discovered group
+// still refuses on shared dirt outside it, because there the group is inferred
+// from the tree and an unattributed shared path really can be a torn tail of
+// the same interrupted transaction. Without this, a later edit can widen
+// recovery silently — the one thing this REQ's Constraints forbid.
+func TestCommitSafetyStillRefusesSharedDirtForADiscoveredGroup(t *testing.T) {
+	repositoryRoot := newFinalizationRepository(t)
+	declared := "do-work/working/REQ-560.md"
+	foreign := "do-work/calibration-log.tsv"
+	writeFinalizationFile(t, repositoryRoot, declared, "declared\n")
+	writeFinalizationFile(t, repositoryRoot, foreign, "req\tminutes\n")
+	runFinalizationGit(t, repositoryRoot, "add", ".")
+	runFinalizationGit(t, repositoryRoot, "commit", "-qm", "base")
+	writeFinalizationFile(t, repositoryRoot, declared, "declared, edited\n")
+	writeFinalizationFile(t, repositoryRoot, foreign, "req\tminutes\nREQ-2\t25\n")
+
+	journal := &Journal{EffectiveCommitPaths: []string{declared}, Discovered: true}
+	code, _, blocked := commitSafety(repositoryRoot, journal)
+	if code != "FINALIZATION-AMBIGUOUS-SHARED-STATE" {
+		t.Fatalf("a discovered group must still refuse on shared dirt outside it; got code %q blocked %v", code, blocked)
+	}
+	if len(blocked) != 1 || blocked[0] != foreign {
+		t.Fatalf("the refusal must name the shared path outside the group; got %v", blocked)
+	}
+
+	// The same tree under a journaled (manifest-declared) group is the narrowing
+	// this REQ shipped: the foreign path is not this transaction's to judge.
+	journal.Discovered = false
+	code, _, blocked = commitSafety(repositoryRoot, journal)
+	if code != "" || len(blocked) != 0 {
+		t.Fatalf("a journaled group must ignore foreign dirt outside its manifest; got code %q blocked %v", code, blocked)
 	}
 }
