@@ -39,6 +39,7 @@ estimate:
     - full-suite verification
 gate_deferred: 'true'
 claimed_at: 2026-09-04T15:20:34Z
+preflight_at: 2026-09-04T15:22:08Z
 ---
 
 # Add the Read-Only advance Lifecycle Command
@@ -47,7 +48,7 @@ claimed_at: 2026-09-04T15:20:34Z
 Add `do-work-cli advance REQ-NNN`: for the REQ's route, report the current lifecycle phase, the evidence still missing, and the exact next command, and refuse an impossible transition with a typed finding. Read-only in this REQ: it composes the existing commands (`next`, `claim`, `estimate-p50`, `preflight`, `scope-drift`, `qualify`, `run-blocked-check`, `complete`, `finalize`, `recover-finalization`) into one state machine but mutates nothing itself.
 
 ## AI Execution State (P-A-U Loop)
-- [ ] **[PLAN]:** (Agent: Read listed `prime_files` and agent rules. Write brief technical approach here. Do not write code yet.)
+- [x] **[PLAN]:** The Plan and Explore agents defined the six-file command/result-model/registration/prime boundary, route matrix, typed refusals, and test-first implementation order.
 - [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
 - [ ] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
 
@@ -154,3 +155,15 @@ The six-file scope is sufficient. No action prose, request parser, repository di
 - **Diagnostic evidence:** "shipped-package-reference-contract: obsolete archive link for REQ-491"
 - **Diagnostic evidence:** "shipped-package-reference-contract: obsolete archive link for REQ-492"
 - **Diagnostic evidence:** "shipped-package-reference-contract: obsolete archive link for REQ-493"
+
+## Pre-Flight
+
+**Git:** Clean outside `do-work/`.
+
+**Tests baseline:** `go test -count=1 ./...` in the CLI module launched successfully and retained the pre-existing `internal/corehelpers` failure in `TestProtectedInventoryPersistsLaterXAndRequiresStartedState`; every other package passed. This is the same unrelated baseline failure observed before the repository-gate repair.
+
+**Repository gate:** `check-green-gate` returned typed success with `matches: true` for `bash _dev/tests/maintainer-verify.sh` at baseline revision `62df4d447c6525c2e34631fbe1fde6503d9a2ef8`, so no redundant pre-build gate run was required.
+
+**Dependencies:** Installed; Go 1.26.1 and the repository gate dependencies were verified by the recorded green run.
+
+*Checked by work action.*
