@@ -360,7 +360,7 @@ func TestRepositoryManifestNamesEveryLaneScopedMaintainerEntryPoint(t *testing.T
 		if lane.ID != wantLaneID {
 			t.Fatalf("lane %d id = %q, want %q", laneIndex, lane.ID, wantLaneID)
 		}
-		wantArgv := []string{"bash", "_dev/tests/maintainer-verify.sh", "--heavy-lane", wantLaneID}
+		wantArgv := []string{"env", "GIT_CONFIG_NOSYSTEM=1", "GIT_CONFIG_GLOBAL=/dev/null", "bash", "_dev/tests/maintainer-verify.sh", "--heavy-lane", wantLaneID}
 		if !reflect.DeepEqual(lane.Argv, wantArgv) {
 			t.Fatalf("lane %s argv = %v", lane.ID, lane.Argv)
 		}
@@ -371,10 +371,12 @@ func TestRepositoryManifestNamesEveryLaneScopedMaintainerEntryPoint(t *testing.T
 	if !strings.Contains(string(maintainerScript), "--heavy)\n") {
 		t.Fatal("maintainer dispatcher no longer preserves --heavy force-all")
 	}
-	// A lane with no declared toolchain has a fingerprint input this repository
-	// cannot determine, so its evidence can never be reused. Every shipped lane
-	// declares one; without that the drain silently loses the whole reuse path.
+	// Complete lanes retain toolchain evidence. Browser runtime discovery is
+	// deliberately uncertain, so that lane must execute.
 	for _, lane := range manifest.Lanes {
+		if lane.ID == "queue-kanban-browser" {
+			continue
+		}
 		if lane.Fingerprint == nil || len(lane.Fingerprint.ToolchainProbes) == 0 {
 			t.Fatalf("lane %s declares no fingerprint toolchain probes, so its evidence can never be reused", lane.ID)
 		}

@@ -71,8 +71,8 @@ type LaneRunRequest struct {
 	// stored evidence to be reported from that record instead of executed.
 	// The zero value executes every lane, so reuse is never accidental.
 	EvidenceReuse bool
-	// EvaluatedAt is the instant evidence ages are measured against. The zero
-	// value means now; tests set it to age a record deterministically.
+	// EvaluatedAt freezes the clock for deterministic tests. Production leaves
+	// it zero so each lane decides and records against its own current instant.
 	EvaluatedAt time.Time
 }
 
@@ -107,17 +107,19 @@ func RunLanes(request LaneRunRequest) (resultmodel.HeavyVerificationRun, []resul
 	if err != nil {
 		return resultmodel.HeavyVerificationRun{}, nil, err
 	}
-	evaluatedAt := request.EvaluatedAt
-	if evaluatedAt.IsZero() {
-		evaluatedAt = time.Now()
+	clockNow := time.Now
+	if !request.EvaluatedAt.IsZero() {
+		clockNow = func() time.Time { return request.EvaluatedAt }
 	}
 	// The tree is read once, after the dirty-tree refusal, so every lane's
 	// fingerprint describes the same pre-run repository state.
 	committedTree, treeError := readCommittedTree(repositoryRoot, executionRevision)
-	// A repository whose Git common directory cannot be resolved has no
-	// evidence store. Every lane then executes, which is the safe direction:
-	// the run reports that reason rather than refusing to verify anything.
-	evidenceStore, _ := openLaneEvidenceStore(repositoryRoot)
+	// Execution must revoke prior success first, including forced reruns.
+	// An inaccessible store cannot prove that revocation succeeded.
+	evidenceStore, err := openLaneEvidenceStore(repositoryRoot)
+	if err != nil {
+		return resultmodel.HeavyVerificationRun{}, nil, refuseLaneRun("HEAVY-RUN-EVIDENCE-INVALIDATION", "%v", err)
+	}
 	run := resultmodel.HeavyVerificationRun{
 		ManifestPath:      manifestRelativePath,
 		ExecutionRevision: executionRevision,
@@ -131,16 +133,20 @@ func RunLanes(request LaneRunRequest) (resultmodel.HeavyVerificationRun, []resul
 		fingerprint := ""
 		fingerprintError := treeError
 		if fingerprintError == nil {
-			fingerprint, fingerprintError = laneFingerprint(repositoryRoot, lane, committedTree)
+			fingerprint, fingerprintError = laneFingerprint(repositoryRoot, lane, manifest, committedTree)
 		}
 		decision := laneReuseDecision{Disposition: LaneDispositionExecuted, Reason: laneReasonReuseDisabled}
 		if request.EvidenceReuse {
-			decision = decideLaneReuse(evidenceStore, lane, fingerprint, fingerprintError, evaluatedAt)
+			decision = decideLaneReuse(evidenceStore, lane, fingerprint, fingerprintError, clockNow())
 		}
 		if decision.Disposition == LaneDispositionReused {
 			run.Lanes = append(run.Lanes, reusedLaneExecution(lane, decision, fingerprint))
 			continue
 		}
+		if err := evidenceStore.InvalidateLaneEvidence(lane.ID); err != nil {
+			return resultmodel.HeavyVerificationRun{}, nil, refuseLaneRun("HEAVY-RUN-EVIDENCE-INVALIDATION", "invalidate prior evidence for %s before execution: %v", lane.ID, err)
+		}
+		executedAt := clockNow()
 		execution, skipLine, interrupted, err := runOneLane(repositoryRoot, lane, request.LaneTimeout, request.LaneOutputWriter, interruptions)
 		if err != nil {
 			return resultmodel.HeavyVerificationRun{}, nil, err
@@ -158,7 +164,7 @@ func RunLanes(request LaneRunRequest) (resultmodel.HeavyVerificationRun, []resul
 			// Only a green, unskipped lane with a determinable fingerprint is
 			// ever stored, and the stamp is the instant it actually ran: a
 			// later reuse must never extend the four-hour window.
-			if recordError := recordSuccessfulLane(evidenceStore, execution, fingerprint, executionRevision, evaluatedAt); recordError != nil {
+			if recordError := recordSuccessfulLane(evidenceStore, execution, fingerprint, executionRevision, executedAt); recordError != nil {
 				findings = append(findings, laneUnrecordedFinding(execution, recordError))
 			}
 		}

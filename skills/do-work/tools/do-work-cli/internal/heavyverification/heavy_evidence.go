@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -18,7 +17,7 @@ import (
 )
 
 const (
-	laneEvidenceSchemaVersion = 1
+	laneEvidenceSchemaVersion = 2
 	laneEvidenceDirectoryName = "do-work-heavy-lanes"
 	// laneEvidenceMaximumAge is a ceiling, never a guarantee. It is checked
 	// independently of the fingerprint, so either condition alone forces a
@@ -284,9 +283,9 @@ type environmentSeal struct {
 
 // laneFingerprint digests the lane's command, the exact committed bytes of
 // every path its manifest coverage declares, the output of every declared
-// toolchain probe, and every declared environment variable. Any input that
+// toolchain probe, and the whole inherited environment. Any input that
 // cannot be determined is an error, never a weaker fingerprint.
-func laneFingerprint(repositoryRoot string, lane manifestLane, committedTree []treeEntry) (string, error) {
+func laneFingerprint(repositoryRoot string, lane manifestLane, manifest laneManifest, committedTree []treeEntry) (string, error) {
 	if lane.Fingerprint == nil {
 		return "", fmt.Errorf("lane %s declares no fingerprint inputs", lane.ID)
 	}
@@ -295,24 +294,32 @@ func laneFingerprint(repositoryRoot string, lane manifestLane, committedTree []t
 		CommandArgv:  append([]string(nil), lane.Argv...),
 		CoveredFiles: []string{}, Toolchain: []toolchainProbeSeal{}, Environment: []environmentSeal{},
 	}
+	hasCoveredInput := false
 	for _, entry := range committedTree {
-		for _, rule := range lane.Coverage {
-			if rule.matches(entry.Path) {
-				document.CoveredFiles = append(document.CoveredFiles, fmt.Sprintf("%s %s %s %s", entry.Mode, entry.ObjectType, entry.ObjectID, entry.Path))
-				break
+		laneCovered := laneCoversPath(lane.Coverage, entry.Path)
+		hasCoveredInput = hasCoveredInput || laneCovered
+		// An unclassified input forces all lanes in the planner. Include it
+		// here too, or reuse could silently undo that conservative selection.
+		if laneCovered || !manifestClassifiesPath(manifest, entry.Path) {
+			if entry.Mode != "100644" && entry.Mode != "100755" {
+				return "", fmt.Errorf("lane %s input is a symlink, submodule, or unsupported tree mode", lane.ID)
 			}
+			document.CoveredFiles = append(document.CoveredFiles, fmt.Sprintf("%s %s %s %s", entry.Mode, entry.ObjectType, entry.ObjectID, entry.Path))
 		}
 	}
-	if len(document.CoveredFiles) == 0 {
+	if !hasCoveredInput {
 		// A lane whose declared coverage matches nothing at this revision has
 		// no test inputs to compare, so no record can be trusted against it.
 		return "", fmt.Errorf("lane %s covers no committed path at this revision", lane.ID)
 	}
+	untrackedFiles, err := fingerprintUntrackedFiles(repositoryRoot, lane, manifest)
+	if err != nil {
+		return "", err
+	}
+	document.CoveredFiles = append(document.CoveredFiles, untrackedFiles...)
 	sort.Strings(document.CoveredFiles)
 	for _, probe := range lane.Fingerprint.ToolchainProbes {
-		probeCommand := exec.Command(probe[0], probe[1:]...)
-		probeCommand.Dir = repositoryRoot
-		output, err := probeCommand.CombinedOutput()
+		output, err := runFingerprintProbe(repositoryRoot, probe, 5*time.Second)
 		if err != nil {
 			return "", fmt.Errorf("lane %s toolchain probe %s: %v", lane.ID, strings.Join(probe, " "), err)
 		}
@@ -321,7 +328,20 @@ func laneFingerprint(repositoryRoot string, lane manifestLane, committedTree []t
 			ProbeArgv: append([]string(nil), probe...), OutputSHA256: hex.EncodeToString(outputDigest[:]),
 		})
 	}
-	environmentNames := append([]string(nil), lane.Fingerprint.EnvironmentVariables...)
+	// Lanes inherit the whole process environment. A hand-maintained subset
+	// cannot prove that an omitted selector or tool setting stayed unchanged.
+	environmentSet := map[string]bool{}
+	for _, name := range lane.Fingerprint.EnvironmentVariables {
+		environmentSet[name] = true
+	}
+	for _, entry := range os.Environ() {
+		name, _, _ := strings.Cut(entry, "=")
+		environmentSet[name] = true
+	}
+	environmentNames := make([]string, 0, len(environmentSet))
+	for name := range environmentSet {
+		environmentNames = append(environmentNames, name)
+	}
 	sort.Strings(environmentNames)
 	for _, variableName := range environmentNames {
 		value, isSet := os.LookupEnv(variableName)
@@ -398,4 +418,87 @@ func equalLaneArgv(left, right []string) bool {
 		}
 	}
 	return true
+}
+
+// InvalidateLaneEvidence removes a previous success before launching any new
+// attempt. A failed, skipped, interrupted, or unlaunchable run must never leave
+// an older green reusable. Refuse execution if that cannot be established.
+func (store *laneEvidenceStore) InvalidateLaneEvidence(laneID string) error {
+	if err := ensurePrivateEvidenceDirectory(store.directoryPath); err != nil {
+		return err
+	}
+	recordPath := store.recordPath(laneID)
+	info, err := os.Lstat(recordPath)
+	if os.IsNotExist(err) {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	if !info.Mode().IsRegular() {
+		return fmt.Errorf("evidence target is not a regular file: %s", recordPath)
+	}
+	return os.Remove(recordPath)
+}
+
+func laneCoversPath(rules []coverageRule, path string) bool {
+	for _, rule := range rules {
+		if rule.matches(path) {
+			return true
+		}
+	}
+	return false
+}
+
+func manifestClassifiesPath(manifest laneManifest, path string) bool {
+	if laneCoversPath(manifest.NonHeavyCoverage, path) {
+		return true
+	}
+	for _, lane := range manifest.Lanes {
+		if laneCoversPath(lane.Coverage, path) {
+			return true
+		}
+	}
+	return false
+}
+
+// Go and shell consumers can read untracked files, even Git-ignored sources.
+// Seal their bytes as well as committed objects. Generated launcher binaries
+// then remain reusable while stable; ignoring them or refusing all of them
+// would respectively weaken evidence or disable caching on normal installs.
+func fingerprintUntrackedFiles(repositoryRoot string, lane manifestLane, manifest laneManifest) ([]string, error) {
+	seals := []string{}
+	for _, ignored := range []bool{false, true} {
+		argv := []string{"ls-files", "-z", "--others", "--exclude-standard"}
+		if ignored {
+			argv = append(argv, "--ignored")
+		}
+		output, err := runGit(repositoryRoot, argv...)
+		if err != nil {
+			return nil, fmt.Errorf("inspect untracked lane inputs: %w", err)
+		}
+		for _, path := range strings.Split(string(output), "\x00") {
+			if path == "" || strings.HasPrefix(path, queueStatePrefix) {
+				continue
+			}
+			if !laneCoversPath(lane.Coverage, path) && (ignored || manifestClassifiesPath(manifest, path)) {
+				continue
+			}
+			absolutePath := filepath.Join(repositoryRoot, filepath.FromSlash(path))
+			info, err := os.Lstat(absolutePath)
+			if err != nil {
+				return nil, fmt.Errorf("inspect untracked lane input: %w", err)
+			}
+			if !info.Mode().IsRegular() {
+				return nil, fmt.Errorf("untracked lane input is not a regular file")
+			}
+			contents, err := os.ReadFile(absolutePath)
+			if err != nil {
+				return nil, fmt.Errorf("read untracked lane input: %w", err)
+			}
+			digest := sha256.Sum256(contents)
+			seals = append(seals, fmt.Sprintf("untracked %o %x %s", info.Mode().Perm(), digest, path))
+		}
+	}
+	return seals, nil
 }
