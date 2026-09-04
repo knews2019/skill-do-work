@@ -1,7 +1,7 @@
 ---
 id: REQ-503
 title: 'Add the read-only advance lifecycle command'
-status: claimed
+status: pending-heavy-testing
 priority: now
 created_at: 2026-09-02T14:37:54Z
 user_request: UR-098
@@ -43,6 +43,8 @@ preflight_at: 2026-09-04T15:22:08Z
 dispatch_at: 2026-09-04T15:22:56Z
 builder_handback_at: 2026-09-04T15:39:51Z
 integration_at: 2026-09-04T15:40:31Z
+status_changed_at: 2026-09-04T15:43:36Z
+commit: f38a78b0ad80b34b3f5cd332b31e21ae63a7602d
 ---
 
 # Add the Read-Only advance Lifecycle Command
@@ -88,9 +90,6 @@ Firm on the boundary between mechanics and judgment as classified in the report'
 
 ## Required Lessons — Dropped for Budget
 - `skills/do-work/tools/do-work-cli/lessons-do-work-cli.md` — 6265 tokens, over the claim-time budget; `slugged: partial` so no targeted form. Matched on typed evidence projection and cross-action lifecycle composition.
-
-## Open Questions
-None.
 
 ## Full Context
 See `do-work/user-requests/UR-098/input.md` for complete verbatim input.
@@ -196,3 +195,29 @@ None.
 ## Qualification
 
 Passed — 6 files verified, 5 acceptance criteria traced, and P-A-U confirmed. The exact merge range `d1e87a31d358d27479816f9181555887e71af3f6..f38a78b0ad80b34b3f5cd332b31e21ae63a7602d` matches the declared scope. The generic new-file wiring heuristic warned on the two `advance_commands` basenames, but both files are wired by Go package compilation and the `lifecycleadvance.Handlers()` registration imported from `cmd/do-work-cli/main.go`; focused and black-box command tests exercise that seam.
+
+## Testing
+
+- RED: before production implementation, `go test -count=1 ./internal/lifecycleadvance` exited 1 in 2.6 seconds because every fixture reached the real CLI and received typed `UNKNOWN-COMMAND`; a later test-first Route A boundary case also failed with mechanical `scope-drift` instead of testing judgment.
+- GREEN: `go test -count=1 ./internal/lifecycleadvance ./internal/resultmodel ./cmd/do-work-cli` passed on merged `main`; package times were 1.183, 0.340, and 0.458 seconds.
+- Live seam: `do-work-cli --format json advance REQ-503` returned typed Route C `scope-drift` evidence and exact tokenized next/replay argv without changing repository state.
+- Canonical repository gate: `bash _dev/tests/maintainer-verify.sh` passed on merged `main`; 647 CLI tests completed with the slowest test file at 23.46 seconds, below the 30-second budget.
+- The pre-existing core-helper baseline failure did not recur in either the builder's full module run or the merged canonical gate; no new regression remains.
+- Green-gate evidence was recorded at revision `8201a1dc01295ae0fb6f2154f4871d0cc7b44d94` for the exact canonical argv.
+
+## Heavy Verification Plan
+
+- Base revision: `d1e87a31d358d27479816f9181555887e71af3f6`
+- Target revision: `f38a78b0ad80b34b3f5cd332b31e21ae63a7602d`
+- `do-work-cli-integrations`: `bash _dev/tests/maintainer-verify.sh --heavy-lane do-work-cli-integrations` — all six declared files matched subtree `skills/do-work/tools/do-work-cli`.
+- `staged-skills`: `bash _dev/tests/maintainer-verify.sh --heavy-lane staged-skills` — all six declared files matched subtree `skills`.
+- `updater`: `bash _dev/tests/maintainer-verify.sh --heavy-lane updater` — all six declared files matched subtree `skills/do-work/tools/do-work-cli`.
+- `installer`: `bash _dev/tests/maintainer-verify.sh --heavy-lane installer` — all six declared files matched subtree `skills/do-work/tools/do-work-cli`.
+
+## Open Questions
+
+- [ ] Run the selected heavy lane commands at `f38a78b0ad80b34b3f5cd332b31e21ae63a7602d`; did every command exit 0?
+
+Recommended: Yes
+
+Also: No — <failing lane>
