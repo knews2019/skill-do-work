@@ -6,4 +6,4 @@ Status: in-progress
 
 | Agent | Slice | Output file | Status |
 |---|---|---|---|
-| builder-REQ-567 | Repair three shipped lesson URLs | `REQ-567-handback.md` | pending |
+| builder-REQ-567 | Repair three shipped lesson URLs | `REQ-567-handback.md` | done |
