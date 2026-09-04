@@ -1,7 +1,7 @@
 ---
 id: REQ-502
 title: 'Review fix: Remove enriched checkpoint entries in cleanup mover'
-status: pending-heavy-testing
+status: pending
 domain: backend
 created_at: 2026-09-02T14:26:49Z
 user_request: UR-083
@@ -25,8 +25,10 @@ sweep_key: checkpoint-section-blind-line-editing
 dispatch_at: 2026-09-03T20:59:01Z
 builder_handback_at: 2026-09-03T21:02:28Z
 integration_at: 2026-09-03T21:05:36Z
-status_changed_at: 2026-09-04T10:14:02Z
+status_changed_at: 2026-09-04T12:36:12Z
 commit: ed692757dfc642f3ad34b171dde9f6490c857beb
+heavy_verified_at: 2026-09-04T12:36:12Z
+heavy_verified_revision: c0d8ce1cb44cc1830b167214c018d76ba87baffc
 ---
 
 # Review Fix: Remove Enriched Checkpoint Entries in Cleanup Mover
@@ -136,7 +138,7 @@ Passed — 3 files verified, 4 requirements traced, P-A-U confirmed. The merge r
 
 ## Open Questions
 
-- [ ] Run the selected heavy lane commands at execution revision `c0d8ce1cb44cc1830b167214c018d76ba87baffc`; did every command exit 0?
+- [x] Run the selected heavy lane commands at execution revision `c0d8ce1cb44cc1830b167214c018d76ba87baffc`; did every command exit 0? → Confirmed: Yes
   Recommended: Yes
   Also: No — report the failing lane
 
@@ -144,3 +146,14 @@ Passed — 3 files verified, 4 requirements traced, P-A-U confirmed. The merge r
 ## Answer Notes
 
 - 2026-09-03 - [ ] Run `bash _dev/tests/maintainer-verify.sh --heavy` at `ed692757dfc642f3ad34b171dde9f6490c857beb`; did it exit 0?: No, exit 1: staged-skills-contract.sh took 35s and update-script-behavior.sh took 59s, exceeding the under-30s test-file budget
+- 2026-09-04 - [ ] Run the selected heavy lane commands at execution revision `c0d8ce1cb44cc1830b167214c018d76ba87baffc`; did every command exit 0?: Confirmed: Yes
+
+## Heavy Verification Result
+
+Target revision: `ed692757dfc642f3ad34b171dde9f6490c857beb`
+Execution revision: `c0d8ce1cb44cc1830b167214c018d76ba87baffc`
+
+- do-work-cli-integrations: exit 0 — `bash _dev/tests/maintainer-verify.sh --heavy-lane do-work-cli-integrations`
+- staged-skills: exit 0 — `bash _dev/tests/maintainer-verify.sh --heavy-lane staged-skills`
+- updater: exit 0 — `bash _dev/tests/maintainer-verify.sh --heavy-lane updater`
+- installer: exit 0 — `bash _dev/tests/maintainer-verify.sh --heavy-lane installer`
