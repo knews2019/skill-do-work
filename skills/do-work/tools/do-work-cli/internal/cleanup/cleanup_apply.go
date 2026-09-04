@@ -626,7 +626,7 @@ func consumedScratchCommitRefusedFinding(group OperationGroup) resultmodel.Comma
 	return resultmodel.CommandFinding{Code: "CLEANUP-GROUP-REFUSED", Severity: resultmodel.SeverityWarning, AffectedIDs: ids, AffectedPaths: paths,
 		Evidence:   []string{group.Code + ": --commit cannot delete entirely untracked consumed scratch because Git cannot include its deletion in the requested commit"},
 		Fixability: resultmodel.FixabilityRefused, AutomationStopReason: "this untracked scratch group cannot participate in commit mode",
-		NextArgv: []string{"do-work-cli", "cleanup"}, VerificationArgv: verificationArgv}
+		VerificationArgv: verificationArgv}
 }
 
 func preflightRefusedGroupFinding(group OperationGroup, preflight gittransaction.TargetPreflight) resultmodel.CommandFinding {

@@ -259,7 +259,7 @@ func TestRefusalRemediesNeverNameTheInvokingCommand(t *testing.T) {
 		{
 			name: "owned refusal becomes a set-aside",
 			result: CommandResult{Command: "recover-finalization", Outcome: OutcomeRefused, Findings: []CommandFinding{{
-				Code: "FINALIZATION-LIFECYCLE-APPLY", AffectedIDs: []string{"REQ-456"},
+				Code: "FINALIZATION-LIFECYCLE-APPLY", Fixability: FixabilityRefused, AffectedIDs: []string{"REQ-456"},
 				AutomationStopReason: "lifecycle apply refused", NextArgv: []string{"do-work-cli", "--format", "json", "recover-finalization", "--discover"},
 				VerificationArgv: []string{"do-work-cli", "--format", "json", "recover-finalization", "--discover"},
 			}}},
@@ -284,6 +284,16 @@ func TestRefusalRemediesNeverNameTheInvokingCommand(t *testing.T) {
 				VerificationArgv: []string{"do-work-cli", "--format", "json", "cleanup", "--dry-run"},
 			}}},
 			wantOutcome: OutcomeRefused,
+			wantNext:    []string{},
+		},
+		{
+			name: "refusal finding inside findings outcome loses its self remedy",
+			result: CommandResult{Command: "cleanup", Outcome: OutcomeFindings, Findings: []CommandFinding{{
+				Code: "CLEANUP-GROUP-REFUSED", Fixability: FixabilityRefused, AffectedIDs: []string{"REQ-206"},
+				AutomationStopReason: "scratch cannot participate in commit mode", NextArgv: []string{"do-work-cli", "cleanup"},
+				VerificationArgv: []string{"git", "status", "--short"},
+			}}},
+			wantOutcome: OutcomeFindings,
 			wantNext:    []string{},
 		},
 	}

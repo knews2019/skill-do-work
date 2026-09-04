@@ -351,6 +351,9 @@ func TestDiscoveryRefusalNamesInventoryAsTheResolvingVerb(t *testing.T) {
 	if !reflect.DeepEqual(result.Findings[0].NextArgv, want) {
 		t.Fatalf("next argv = %#v, want inventory resolver %#v", result.Findings[0].NextArgv, want)
 	}
+	if result.Finalization == nil || !reflect.DeepEqual(result.Finalization.NextArgv, want) || len(result.Finalizations) != 1 || !reflect.DeepEqual(result.Finalizations[0].NextArgv, want) {
+		t.Fatalf("typed finalization remedies = singular %#v ordered %#v, want %#v", result.Finalization, result.Finalizations, want)
+	}
 	verification := []string{"do-work-cli", "--format", "json", "recover-finalization", "--discover"}
 	if !reflect.DeepEqual(result.Findings[0].VerificationArgv, verification) {
 		t.Fatalf("verification argv = %#v, want %#v", result.Findings[0].VerificationArgv, verification)
