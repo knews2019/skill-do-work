@@ -8,4 +8,4 @@ Status: in-progress
 |---|---|---|---|
 | plan-REQ-505 | Plan selection/claim migration | `REQ-505-plan.md` | done — synthesized into REQ |
 | explore-REQ-505 | Explore selection/claim owners and tests | `REQ-505-exploration.md` | done — synthesized into REQ |
-| builder-REQ-505 | Implement typed queue advance and collapse claim prose | `REQ-505-handback.md` | pending |
+| builder-REQ-505 | Implement typed queue advance and collapse claim prose | `REQ-505-handback.md` | done — builder `59fe3e3a` |
