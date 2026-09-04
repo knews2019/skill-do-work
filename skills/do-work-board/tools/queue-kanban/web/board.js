@@ -23,9 +23,13 @@
   }
 
   var viewState = {
-    view: "board", // "board" | "calendar" | "durations" | "timeline" | "testing"
+    view: "board", // "board" | "calendar" | "durations" | "timeline" | "activity" | "testing"
     lens: "flat", // "flat" | "user-request"
-    windowHours: 24
+    windowHours: 24,
+    // The Activity view's own window, deliberately separate from windowHours:
+    // "recently done" and "recently touched" answer different questions, so one
+    // shared control would move both without saying so.
+    activityWindowHours: 24
   };
 
   // Shared filters — applied to whichever view is active. userRequestActivity
@@ -46,6 +50,7 @@
     calendar: false,
     durations: false,
     timeline: false,
+    activity: false,
     testing: false
   };
 
