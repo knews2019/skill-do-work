@@ -78,3 +78,54 @@ None.
 **Reasoning:** A new board surface needs an aggregation over every lifecycle stamp in the model, a new UI control and view in the embedded client, a Go test pinning the ordering, and possibly a new hold stamp written by the work loop. That spans the Go model, the embedded frontend, and the skill's own action prose, so it is multi-component rather than a located edit.
 
 **Planning:** Required
+
+## Plan
+
+### The two builder decisions the REQ hands over
+
+**D-01 — the hold already has a stamp; no new frontmatter field.** `actions/work.md` Step 6.5's heavy-testing hold is specified to write `status_changed_at` alongside the status flip, and `status_changed_at` is already parsed onto the ticket (`model.go` `StatusChangedAt`) and already listed in `detectFutureTimestampFields`. REQ-567 carries it. REQ-503 and REQ-504 do not, and REQ-504 carries no lifecycle stamp at all past `created_at` — that is missing data on two tickets, not a gap in the schema. Adding a second hold stamp would be a second way to say what `status_changed_at` already says, and the first thing to drift. The two unstamped tickets go to `## Discovered Tasks`.
+
+Consequence, stated plainly: REQ-504 cannot appear on a stamp-driven surface, so the captured GREEN's five-ticket list is met for REQ-505, REQ-503, REQ-567 and REQ-485 but not REQ-504. Deriving "touched" from git history instead would invent a second definition of the word and read a different source than every other time surface on this board. Not done.
+
+**D-02 — a new Activity view, not a strip.** The two existing strips (Completion anomalies, Verify findings) are for breakage, and their defining property is that no window and no filter may hide them. This surface is windowed and should honour the shared filters, so putting it in a strip would need an exception to the one rule that makes strips trustworthy. It is a table of rows, and tables on this board live in view panels (Timeline, Durations). So: a sixth entry in the View control group, with its own window control group.
+
+### The aggregation
+
+New `activity.go` + `activity_test.go`, following the `timeline.go` / `durations.go` shape: pure functions over already-parsed tickets, no second walk of the tree and no new frontmatter field.
+
+The set of lifecycle stamps is **not** re-enumerated. `model.go`'s `detectFutureTimestampFields` already holds the one list of every timestamp the frontmatter can carry; a second hand-maintained copy would go stale the first time a stamp is added (CLAUDE.md, *State conditions, not lists*). Extract that table into one `lifecycleTimestampFields(ticket)` returning `{FieldName, RawValue, Transition}`, and give it two readers: the future-stamp check (which reads two fields) and this aggregation (which reads all three).
+
+`buildActivityRows(tickets)` returns one row per ticket that has at least one parseable stamp: the newest parseable stamp, the field it came from, and the transition that stamp records in words. Ordered newest first with an explicit `RequestId` tiebreak, so a tie is decided by the comparator rather than by the sort's stability.
+
+Two transition names depend on the ticket's status rather than the field alone — `status_changed_at` on a `pending-heavy-testing` ticket reads "held for heavy testing" (matching the calendar's existing wording), and `completed_at` reads "completed", "cancelled" or "failed" by status. Everything else is fixed per field.
+
+The window is not applied in Go. The payload ships every row with its stamp, and the client filters against the wall clock at render time — the same shape `recentlyDoneIds` already uses in `board-cards.js`, and for the same reason: a tab left open past the snapshot must not keep counting "last 24 hours" from page-generation time.
+
+### The client
+
+- `web/board-activity.js` (new fragment; register it in `boardJavaScriptFragmentPaths` in `generate.go`, which `TestBoardJavaScriptAssemblyStructure` locks).
+- `web/template.html` — a sixth View button, a `#view-activity` panel with its own window control group (6h / 24h / 48h / 7d) and a table: REQ, Title, Status, When, Transition.
+- `web/board-controls.js` — panel registration, window-group visibility, first-render guard.
+- `web/board.js` — `viewState.activityWindowHours`, `renderedOnce.activity`.
+- `web/board.css` — reuse the existing table classes; add only what the new panel needs.
+
+### Test-first sequence (`tdd: true`)
+
+1. `TestBuildActivityRowsOrdersByNewestStampAndNamesTheTransition` — RED first. A `pending-heavy-testing` ticket whose `status_changed_at` is inside the window is present, carries the "held for heavy testing" transition, and sorts above an older `completed_at` ticket and below a newer `claimed_at` one. This is the captured GREEN's Go half.
+2. `TestBuildActivityRowsPicksTheNewestStampNotTheFirstField` — a ticket whose newest stamp is not the first field in the table.
+3. `TestLifecycleTimestampFieldsFeedsBothReaders` — the extracted list is what `detectFutureTimestampFields` reads, so the two cannot drift apart.
+4. Boundary pair straddling the window edge, derived from the constant rather than restated beside it (lesson REQ-374: a fixture that spans a threshold widely does not test it).
+5. Render the board and look at it (prime: a chart's correctness is partly a claim about pixels; lesson REQ-285: for a rendering change the screenshot is the test).
+
+### Release
+
+New user-visible view, so a minor bump: 0.275.3 → 0.276.0, root `CHANGELOG.md` entry plus the byte-identical `skills/do-work/CHANGELOG.md` mirror (`_dev/primes/prime-releases.md`).
+
+*Plan written by the work action after the dispatched Plan agent was lost to a session restart.*
+
+## Plan Validation
+
+- **Requirement coverage:** every requirement in What maps to a task — "one surface" → the Activity view; "newest lifecycle stamp" → `buildActivityRows`; "newest first" → the comparator; "the stamp and the transition it records" → the row's two columns; "status must not filter it" → the aggregation reads every ticket regardless of status, which test 1 pins for the held case.
+- **No orphan tasks:** the `lifecycleTimestampFields` extraction is the only task not named by the REQ. It is not scope creep: it is what stops this REQ from creating a second stamp list, and it deletes a duplicate rather than adding one.
+- **Scope sanity:** 4 tasks (extract the list, aggregate, payload, client). Under the 5-task flag.
+- **Consumer field contract:** the payload's `activity` rows carry id, stamp field, stamp instant and transition — the exact fields the client's table and window filter consume.
