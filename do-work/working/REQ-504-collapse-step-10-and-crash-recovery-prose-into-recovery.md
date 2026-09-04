@@ -47,7 +47,7 @@ route: C
 planning_at: 2026-09-04T15:57:17Z
 exploration_at: 2026-09-04T15:57:17Z
 dispatch_at: 2026-09-04T16:01:12Z
-builder_handback_at: 2026-09-04T16:31:17Z
+builder_handback_at: 2026-09-04T22:44:47Z
 integration_at: 2026-09-04T16:31:53Z
 status_changed_at: 2026-09-04T21:00:44Z
 commit: f412a8411057d0a833df5584657161008f315b84
@@ -481,3 +481,5 @@ Remediation baseline at `3501aeddd31634d0f165d193b32709c86f08cd8b`: canonical ad
 - [x] **[PLAN]:** Consume the independent failure and seven-file remediation plan; public RED first, share structural range, preserve legacy layout and authority, GREEN and boundary controls.
 - [ ] **[APPLY]:** Await isolated builder.
 - [ ] **[UNIFY]:** Await diff review and native checks.
+
+Remediation builder returned at 2026-09-04T22:44:47Z; prior implementation handback was 2026-09-04T16:31:17Z. Exact seven-file branch commit: `4e351d172b14b822dd5027d3c13d12874ef5774c`. Public RED/GREEN and owner checks passed; integration and re-review remain.

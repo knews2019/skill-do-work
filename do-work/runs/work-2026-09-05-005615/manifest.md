@@ -42,3 +42,8 @@ User scope: do-work run to completion, serial claims; do not finish while agents
 - Concurrent unrelated dirt observed and left alone: ai-reports/2026-09-03_2145_do-work-velocity-and-pending-queue-speed/index.html; skills/do-work/tools/do-work-cli/internal/publication/release_mirrors_test.go.
 
 - REQ-507 independent review complete (Partial82.5%, two noncritical report-only findings); saved public finalization/phase/refusal and result parity checks passed. Read-only reviewer checkout removed.
+
+- REQ-506 independent review complete: Fail50%, critical false-success evidence with real launch failure/timeout. Read-only remediation planning → REQ-506-remediation-plan.md pending.
+- Other session completed REQ-569 at b3ff309e (release0.283.0); its publication edits are committed and no longer dirty. Keep that implementation separate from REQ-504 attribution.
+
+- REQ-504 completed builder handback consumed from disk:4e351d172b14b822dd5027d3c13d12874ef5774c; no pending builder processes. Integrating seven-file remediation; original cumulative base773787b74acddfdfc4c16498a89d99a5cc3ab716 remains fixed.
