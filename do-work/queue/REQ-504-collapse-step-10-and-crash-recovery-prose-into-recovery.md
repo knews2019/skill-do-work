@@ -1,7 +1,7 @@
 ---
 id: REQ-504
 title: '[impact-rule-change] Collapse Step 10 and Crash Recovery prose into recovery'
-status: claimed
+status: pending-heavy-testing
 priority: now
 created_at: 2026-09-02T14:37:54Z
 user_request: UR-098
@@ -49,6 +49,8 @@ preflight_at: 2026-09-04T16:00:28Z
 dispatch_at: 2026-09-04T16:01:12Z
 builder_handback_at: 2026-09-04T16:31:17Z
 integration_at: 2026-09-04T16:31:53Z
+status_changed_at: 2026-09-04T16:37:51Z
+commit: f412a8411057d0a833df5584657161008f315b84
 estimate:
   p50_active_minutes: 50
   confidence: low
@@ -122,9 +124,6 @@ These are active operative restatements found by REQ-498's post-remediation re-r
 - [ ] Prove uninterrupted public `run-with-recovery` → `next` → fresh `claim` behavior rather than starting the fixture at the internal `recover-claim` primitive.
 
 These critical public-boundary residuals survived REQ-501's one remediation attempt. Fold them into this request's canonical recovery-command boundary and behavior-test replacement; the isolated `recover-claim` transaction itself already covers authority/evidence/commit guards, exact-path rollback, and unrelated-dirt preservation.
-
-## Open Questions
-None.
 
 ## Full Context
 See `do-work/user-requests/UR-098/input.md` for complete verbatim input.
@@ -258,3 +257,26 @@ Passed — 26 files verified, 5 requirements traced, P-A-U confirmed. The four n
 ## Discovered Tasks
 
 None.
+
+## Testing
+
+- RED: before implementation, the focused lifecycle/model command failed because `recover` returned `UNKNOWN-COMMAND`, checkpoint-mode advance returned `ADVANCE-USAGE`, request-state lacked all-entry recovery types, repository discovery omitted unlabelled evidence, and finalization discovery rejected coherent claim-only topology.
+- GREEN: post-merge focused tests passed for finalization, request-state, repository-model, result-model, and lifecycle-advance; request-state and lifecycle-advance race tests passed; `go vet ./...` and the uncached full CLI module passed.
+- Contract replacement: `bash _dev/tests/contract-regressions.sh` passed after the redundant request-state shell lane and aggregator entry were removed.
+- Canonical repository gate: direct unpiped `bash _dev/tests/maintainer-verify.sh` passed on merged `main`; 375 board tests completed in 19 seconds and 655 CLI tests in 49 seconds, with the slowest file at 22.76 seconds, below the 30-second budget.
+- Green-gate evidence was recorded at revision `2069631f7b40d547a2b0218d16623e30cd717887` for the exact canonical argv.
+
+## Heavy Verification Plan
+
+- Base revision: `773787b74acddfdfc4c16498a89d99a5cc3ab716`
+- Target revision: `f412a8411057d0a833df5584657161008f315b84`
+- `queue-kanban-javascript`: `bash _dev/tests/maintainer-verify.sh --heavy-lane queue-kanban-javascript` — coverage is uncertain for `_dev/tests/contract-regressions.sh` and `_dev/tests/contracts/request-state.sh`.
+- `queue-kanban-browser`: `bash _dev/tests/maintainer-verify.sh --heavy-lane queue-kanban-browser` — coverage is uncertain for `_dev/tests/contract-regressions.sh` and `_dev/tests/contracts/request-state.sh`.
+- `do-work-cli-integrations`: `bash _dev/tests/maintainer-verify.sh --heavy-lane do-work-cli-integrations` — coverage is uncertain for `_dev/tests/contract-regressions.sh` and `_dev/tests/contracts/request-state.sh`.
+- `staged-skills`: `bash _dev/tests/maintainer-verify.sh --heavy-lane staged-skills` — coverage is uncertain for `_dev/tests/contract-regressions.sh` and `_dev/tests/contracts/request-state.sh`.
+- `updater`: `bash _dev/tests/maintainer-verify.sh --heavy-lane updater` — coverage is uncertain for `_dev/tests/contract-regressions.sh` and `_dev/tests/contracts/request-state.sh`.
+- `installer`: `bash _dev/tests/maintainer-verify.sh --heavy-lane installer` — coverage is uncertain for `_dev/tests/contract-regressions.sh` and `_dev/tests/contracts/request-state.sh`.
+
+## Open Questions
+
+- [ ] Heavy lanes at `f412a8411057d0a833df5584657161008f315b84`: the work loop runs them at queue exhaustion and records the result here
