@@ -15,7 +15,6 @@ session_depth: light
 
 ## In Progress (interrupted)
 
-- REQ-514: [impact-rule-change] Refusals never name themselves as the fix — claimed 2026-09-03T23:34:31Z — writer: t2s-Virtual-Machine.local:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2
 
 
 

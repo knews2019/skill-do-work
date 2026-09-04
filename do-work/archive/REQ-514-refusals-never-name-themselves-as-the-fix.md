@@ -1,7 +1,7 @@
 ---
 id: REQ-514
 title: '[impact-rule-change] Refusals never name themselves as the fix'
-status: claimed
+status: completed-with-issues
 priority: now
 created_at: 2026-09-02T20:35:18Z
 user_request: UR-099
@@ -33,6 +33,8 @@ estimate:
     - dependency depth 1
     - cross-route regression gates
     - full-suite verification
+completed_at: 2026-09-04T00:25:00Z
+commit: bbc129280999
 ---
 
 # Refusals never name themselves as the fix
