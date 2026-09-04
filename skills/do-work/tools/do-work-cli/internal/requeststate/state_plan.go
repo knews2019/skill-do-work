@@ -350,14 +350,19 @@ func planCheckpoint(snapshot *repositorymodel.RepositorySnapshot, plan *StatePla
 		plan.CheckpointBytes = checkpointWithClaim(existingBytes, plan.Target.TypedRecord.RequestID, plan.Target.TypedRecord.RequestTitle, requestmodel.CanonicalTimestamp(plan.Options.Now), writerLabel)
 		return
 	}
-	plan.CheckpointBytes = checkpointWithoutClaim(existingBytes, plan.Target.TypedRecord.RequestID, writerLabel)
+	// A terminal transition moves the request out of the working tree, so every
+	// "In Progress (interrupted)" entry for that exact REQ is false once the
+	// transition lands, including one a differently labelled writer left there.
+	// Removing only this writer's entry archived the REQ while the checkpoint
+	// went on claiming it was in flight, so terminal removal is keyed on the
+	// request id alone; the writer label still decides who may claim.
+	plan.CheckpointBytes, _ = RemoveAllCheckpointClaims(existingBytes, plan.Target.TypedRecord.RequestID)
 	if bytes.Equal(plan.CheckpointBytes, existingBytes) {
-		// Nothing this writer may remove: the entry is absent or carries another
-		// writer's label, which only a human clears. Targets are declared only for
-		// changed bytes, so writing the unchanged file would touch an undeclared
-		// path and roll the whole transition back on its own no-op.
+		// The checkpoint holds no entry for this REQ at all. Targets are declared
+		// only for changed bytes, so writing the unchanged file would touch an
+		// undeclared path and roll the whole transition back on its own no-op.
 		plan.CheckpointPath = ""
-		plan.SkippedWork = append(plan.SkippedWork, resultmodel.SkippedWork{Code: "CHECKPOINT-ENTRY-NOT-PRESENT", Reason: "the checkpoint holds no entry this writer may remove for the REQ"})
+		plan.SkippedWork = append(plan.SkippedWork, resultmodel.SkippedWork{Code: "CHECKPOINT-ENTRY-NOT-PRESENT", Reason: "the checkpoint holds no entry for the REQ"})
 	}
 }
 

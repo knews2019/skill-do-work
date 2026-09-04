@@ -141,6 +141,13 @@ func stateJustRecipe(transition Transition, requestID string) string {
 // PlannedPostimages projects the exact lifecycle result before mutation. It is
 // consumed by finalization journaling so a restart can distinguish a phase
 // that never started from one that completed before its journal update.
+//
+// The projection is keyed on the plan's declared TargetPaths, which is also the
+// set finalization snapshots as the journal preimage. Deriving both sets from
+// one declaration is what keeps them naming the same paths: a role path the
+// plan did not declare (an unchanged checkpoint, for instance) is not a
+// postimage, and a declared target with no projected image is a plan
+// inconsistency reported here rather than a journal that refuses on replay.
 func PlannedPostimages(plan StatePlan) ([]PlannedFileImage, error) {
 	if !plan.Runnable() {
 		return nil, fmt.Errorf("lifecycle plan is not runnable")
@@ -197,14 +204,15 @@ func PlannedPostimages(plan StatePlan) ([]PlannedFileImage, error) {
 		}
 		put(plan.CalibrationPath, exists, plan.CalibrationBytes, mode)
 	}
-	paths := make([]string, 0, len(images))
-	for path := range images {
-		paths = append(paths, path)
-	}
-	sort.Strings(paths)
-	result := make([]PlannedFileImage, 0, len(paths))
-	for _, path := range paths {
-		result = append(result, images[path])
+	declaredPaths := append([]string(nil), plan.TargetPaths...)
+	sort.Strings(declaredPaths)
+	result := make([]PlannedFileImage, 0, len(declaredPaths))
+	for _, path := range declaredPaths {
+		image, projected := images[path]
+		if !projected {
+			return nil, fmt.Errorf("declared lifecycle target has no planned postimage: %s", path)
+		}
+		result = append(result, image)
 	}
 	return result, nil
 }

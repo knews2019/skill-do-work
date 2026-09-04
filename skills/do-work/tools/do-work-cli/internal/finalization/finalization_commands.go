@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
 
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/commandruntime"
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/resultmodel"
@@ -66,6 +67,9 @@ func handleRecoverFinalization(executionContext commandruntime.ExecutionContext,
 	if err != nil {
 		return commandFailure(executionContext.RepositoryRoot, CommandRecoverFinalization, "FINALIZATION-USAGE", err.Error())
 	}
+	if options.DiscardJournalRequestID != "" {
+		return discardPreparedJournal(executionContext.RepositoryRoot, options.DiscardJournalRequestID)
+	}
 	paths, err := listJournals(executionContext.RepositoryRoot)
 	if err != nil {
 		return commandFailure(executionContext.RepositoryRoot, CommandRecoverFinalization, "FINALIZATION-JOURNAL-LIST", err.Error())
@@ -113,10 +117,72 @@ func handleRecoverFinalization(executionContext commandruntime.ExecutionContext,
 	return aggregate
 }
 
+// discardPreparedJournal is the documented exit from a journal that refuses on
+// every replay. It removes exactly one journal, and only while that journal is
+// provably pre-mutation: phase prepared, with every recorded lifecycle preimage
+// still on disk byte-for-byte as journalled. A journal past that point is the
+// only record of a durable mutation, so it is kept and the discard refuses.
+// After a discard, finalize rebuilds the journal from a fresh manifest, which
+// is why moving a Git-private journal by hand is no longer the only way out.
+func discardPreparedJournal(repositoryRoot, requestID string) resultmodel.CommandResult {
+	if !requestIDPattern.MatchString(requestID) {
+		return commandFailure(repositoryRoot, CommandRecoverFinalization, "FINALIZATION-USAGE", "--discard-journal requires an exact REQ-NNN id")
+	}
+	journalPath, _, err := journalLocations(repositoryRoot, requestID)
+	if err != nil {
+		return commandFailure(repositoryRoot, CommandRecoverFinalization, "FINALIZATION-JOURNAL-LIST", err.Error())
+	}
+	if _, statError := os.Lstat(journalPath); statError != nil {
+		if os.IsNotExist(statError) {
+			return commandFailure(repositoryRoot, CommandRecoverFinalization, "FINALIZATION-JOURNAL-MISSING", "no finalization journal exists for "+requestID)
+		}
+		return commandFailure(repositoryRoot, CommandRecoverFinalization, "FINALIZATION-JOURNAL-INVALID", statError.Error())
+	}
+	journal, err := readJournal(repositoryRoot, journalPath)
+	if err != nil {
+		return commandFailure(repositoryRoot, CommandRecoverFinalization, "FINALIZATION-JOURNAL-INVALID", err.Error())
+	}
+	if journal.Phase != PhasePrepared {
+		return discardRefusal(repositoryRoot, journal, "the journal already reached phase "+string(journal.Phase)+" and is the only record of that mutation", nil)
+	}
+	for _, image := range journal.LifecyclePreimages {
+		current, imageError := currentImage(repositoryRoot, image.Path)
+		if imageError != nil {
+			return discardRefusal(repositoryRoot, journal, imageError.Error(), []string{image.Path})
+		}
+		if !equalImage(current, image) {
+			return discardRefusal(repositoryRoot, journal, image.Path+" no longer matches its journal preimage, so lifecycle mutation may already have started", []string{image.Path})
+		}
+	}
+	if removeError := removeJournal(journal); removeError != nil {
+		return commandFailure(repositoryRoot, CommandRecoverFinalization, "FINALIZATION-JOURNAL-DISCARD", removeError.Error())
+	}
+	record := finalizationRecord(journal, true, nil, []string{"FINALIZATION-JOURNAL-DISCARDED"})
+	// The next step needs a manifest an action authors, so no argv is invented
+	// here; the verification argv proves the journal is gone.
+	record.NextArgv = nil
+	return resultmodel.CommandResult{Outcome: resultmodel.OutcomeSuccess, RepositoryRoot: repositoryRoot,
+		Findings: []resultmodel.CommandFinding{{
+			Code: "FINALIZATION-JOURNAL-DISCARDED", Severity: resultmodel.SeverityWarning,
+			AffectedIDs: []string{requestID}, AffectedPaths: []string{journalPath},
+			Evidence:         []string{"the prepared journal was removed with every lifecycle preimage intact; finalize may run again from a fresh manifest"},
+			Fixability:       resultmodel.FixabilityManual,
+			VerificationArgv: []string{"do-work-cli", "--format", "json", CommandRecoverFinalization},
+		}},
+		Finalization: &record, Finalizations: []resultmodel.FinalizationResult{record}}
+}
+
+func discardRefusal(repositoryRoot string, journal *Journal, reason string, paths []string) resultmodel.CommandResult {
+	result := finalizationFailure(journal, true, "FINALIZATION-DISCARD-REFUSED", reason, paths)
+	result.RepositoryRoot = repositoryRoot
+	result.Findings[0].AutomationStopReason = "the journal records durable finalization state and may not be discarded"
+	return result
+}
+
 func parseRecoverArguments(arguments []string) (commandOptions, error) {
 	options := commandOptions{}
-	for _, argument := range arguments {
-		switch argument {
+	for index := 0; index < len(arguments); index++ {
+		switch arguments[index] {
 		case "--discover":
 			if options.Discover {
 				return commandOptions{}, fmt.Errorf("--discover may be supplied only once")
@@ -127,12 +193,21 @@ func parseRecoverArguments(arguments []string) (commandOptions, error) {
 				return commandOptions{}, fmt.Errorf("--assume-sole-releaser may be supplied only once")
 			}
 			options.AssumeSoleReleaser = true
+		case "--discard-journal":
+			index++
+			if index >= len(arguments) || options.DiscardJournalRequestID != "" {
+				return commandOptions{}, fmt.Errorf("--discard-journal requires one REQ id and may be supplied only once")
+			}
+			options.DiscardJournalRequestID = arguments[index]
 		default:
-			return commandOptions{}, fmt.Errorf("unknown recover-finalization option %q", argument)
+			return commandOptions{}, fmt.Errorf("unknown recover-finalization option %q", arguments[index])
 		}
 	}
 	if options.AssumeSoleReleaser && !options.Discover {
 		return commandOptions{}, fmt.Errorf("--assume-sole-releaser requires --discover")
+	}
+	if options.DiscardJournalRequestID != "" && (options.Discover || options.AssumeSoleReleaser) {
+		return commandOptions{}, fmt.Errorf("--discard-journal removes one prepared journal and cannot run with --discover")
 	}
 	return options, nil
 }
