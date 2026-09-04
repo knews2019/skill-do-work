@@ -13,6 +13,19 @@ maintenance: false
 impact: impact-user-visible
 effort_estimate: effort-substantive
 claimed_at: 2026-09-04T18:13:19Z
+route: C
+estimate:
+  p50_active_minutes: 50
+  confidence: low
+  calculated_at: 2026-09-04T18:14:58Z
+  basis:
+    - Route C
+    - 8-file write set
+    - 1 new files
+    - 3 subsystems involved
+    - 4 acceptance criteria
+    - browser evidence
+    - cross-route regression gates
 ---
 
 # Show Recently Touched REQs on the Board Regardless of Status
@@ -55,3 +68,13 @@ None.
 
 ---
 *Source: "capture that as a REQ" (accepting the proposal: a "recently touched" window keyed on the newest stamp on a ticket, `updated_at` or the hold time)*
+
+---
+
+## Triage
+
+**Route: C** - Complex
+
+**Reasoning:** A new board surface needs an aggregation over every lifecycle stamp in the model, a new UI control and view in the embedded client, a Go test pinning the ordering, and possibly a new hold stamp written by the work loop. That spans the Go model, the embedded frontend, and the skill's own action prose, so it is multi-component rather than a located edit.
+
+**Planning:** Required
