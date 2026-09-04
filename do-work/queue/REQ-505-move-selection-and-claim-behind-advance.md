@@ -1,7 +1,7 @@
 ---
 id: REQ-505
 title: '[impact-rule-change] Move selection and claim behind advance'
-status: pending-heavy-testing
+status: pending
 priority: now
 created_at: 2026-09-02T14:37:54Z
 user_request: UR-098
@@ -38,7 +38,6 @@ write_set:
   - skills/do-work/tools/do-work-cli/internal/requeststate/state_apply_test.go
   - skills/do-work/tools/do-work-cli/internal/resultmodel/result_model.go
   - skills/do-work/tools/do-work-cli/internal/resultmodel/result_model_test.go
-claimed_at: 2026-09-04T16:39:30Z
 route: C
 planning_at: 2026-09-04T16:49:45Z
 exploration_at: 2026-09-04T16:49:45Z
@@ -46,7 +45,7 @@ preflight_at: 2026-09-04T16:52:22Z
 dispatch_at: 2026-09-04T16:52:56Z
 builder_handback_at: 2026-09-04T17:24:31Z
 integration_at: 2026-09-04T17:26:13Z
-status_changed_at: 2026-09-04T17:31:18Z
+status_changed_at: 2026-09-04T21:02:21Z
 commit: 716187b847d1de0402b69587a2fe5cf7e7bd8516
 estimate:
   p50_active_minutes: 50
@@ -61,6 +60,8 @@ estimate:
     - dependency depth 1
     - cross-route regression gates
     - full-suite verification
+heavy_verified_at: 2026-09-04T21:02:21Z
+heavy_verified_revision: 716187b847d1de0402b69587a2fe5cf7e7bd8516
 ---
 
 # Move Selection and Claim Behind advance
@@ -244,8 +245,29 @@ None.
 
 ## Open Questions
 
-- [ ] Heavy lanes at `716187b847d1de0402b69587a2fe5cf7e7bd8516`: the work loop runs them at queue exhaustion and records the result here
+- [x] Heavy lanes at `716187b847d1de0402b69587a2fe5cf7e7bd8516`: the work loop runs them at queue exhaustion and records the result here → Confirmed: All 4 selected heavy lanes passed without skips at 716187b847d1de0402b69587a2fe5cf7e7bd8516.
 
 ## Orientation
 
 [MAP CHANGED] Queue selection and claim now live behind the lifecycle-advance subsystem: `advance` returns committed claims and durable stateless continuation evidence, while the work action retains only the human-readable claimability principle and orchestration judgment.
+
+
+## Answer Notes
+
+- 2026-09-04 - [ ] Heavy lanes at `716187b847d1de0402b69587a2fe5cf7e7bd8516`: the work loop runs them at queue exhaustion and records the result here: Confirmed: All 4 selected heavy lanes passed without skips at 716187b847d1de0402b69587a2fe5cf7e7bd8516.
+> ```
+> Exact-revision heavy verification via do-work clarify. Stored base, target, selected lanes, argv and coverage reasons matched the recomputed plan. All lane results came from the detached checkout at 716187b847d1de0402b69587a2fe5cf7e7bd8516.
+> All 4 selected heavy lanes passed without skips at 716187b847d1de0402b69587a2fe5cf7e7bd8516.
+> Initial attempt: staged-skills, updater and installer each exited 1 after 0 seconds before their tests started, reporting an invalid timing-log header. Preserved the original log and initialized a fresh log using the repository test-duration-log.sh helper. Reran only those three lanes at the same revision; all passed. The earlier passing CLI integration result remains applicable. No tracked source was changed.
+> Scope: verification results only; implementation changes, fresh review and archiving remain for do-work run. Date and timestamp follow skills/do-work/actions/work-reference.md, Timestamp rule and its date-only paragraph.
+> ```
+
+## Heavy Verification Result
+
+Target revision: `716187b847d1de0402b69587a2fe5cf7e7bd8516`
+Execution revision: `716187b847d1de0402b69587a2fe5cf7e7bd8516`
+
+- do-work-cli-integrations: exit 0, 61s — `bash _dev/tests/maintainer-verify.sh --heavy-lane do-work-cli-integrations`
+- staged-skills: exit 0, 25s — `bash _dev/tests/maintainer-verify.sh --heavy-lane staged-skills`
+- updater: exit 0, 52s — `bash _dev/tests/maintainer-verify.sh --heavy-lane updater`
+- installer: exit 0, 23s — `bash _dev/tests/maintainer-verify.sh --heavy-lane installer`
