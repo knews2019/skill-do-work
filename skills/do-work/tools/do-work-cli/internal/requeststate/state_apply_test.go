@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"reflect"
 	"sort"
 	"strings"
 	"testing"
@@ -628,24 +629,32 @@ var _ = time.UTC
 // for changed bytes), and then write the file anyway — so the transaction
 // refused its own no-op and rolled back, and a landed REQ whose claiming
 // session had died could not be cancelled at all (REQ-468 and REQ-538,
-// 2026-09-03).
-func TestCancelFromWorkingLeavesForeignOrAbsentCheckpointEntryAndSucceeds(t *testing.T) {
+// 2026-09-03). The "absent entry" case is what still pins that no-op path.
+//
+// REQ-547 changed the foreign-label case: an entry for the REQ being archived
+// is false whoever wrote it, and leaving it behind made the checkpoint claim an
+// archived REQ was still in flight. So that entry is now removed, while every
+// other REQ's entry stays untouched.
+func TestCancelFromWorkingClearsAnyEntryForTheRequestAndSucceedsWithNone(t *testing.T) {
 	now := "2026-09-03T21:00:00Z"
 	cancelArguments := func(id string) []string {
 		return []string{id, "--request-path", "do-work/working/" + id + ".md", "--confirmed", "--dependent-disposition", "leave", "--reason", "landed in place", "--writer", "host:/repo", "--at", now}
 	}
-	t.Run("foreign entry stays byte-identical", func(t *testing.T) {
+	t.Run("entry written under another writer label is cleared", func(t *testing.T) {
 		root := newStateRepository(t)
 		writeStateRequest(t, root, "do-work/working/REQ-306.md", "REQ-306", "claimed", "claimed_at: 2026-09-03T16:00:00Z\n")
-		writeStateCheckpoint(t, root, "- REQ-306: Fixture — claimed 2026-09-03T16:00:00Z — writer: other:/repo\n")
-		before := readStateFile(t, root, "do-work/CHECKPOINT.md")
+		writeStateCheckpoint(t, root, "- REQ-306: Fixture — claimed 2026-09-03T16:00:00Z — writer: other:/repo\n- REQ-999: Unrelated — claimed earlier — writer: other:/repo\n")
 		result := handleStateCommand(commandruntime.ExecutionContext{RepositoryRoot: root}, TransitionCancel, cancelArguments("REQ-306"))
 		assertStateSuccess(t, result)
 		if contents := readStateFile(t, root, "do-work/archive/REQ-306.md"); !strings.Contains(contents, "status: cancelled") {
 			t.Fatalf("cancel did not archive the REQ:\n%s", contents)
 		}
-		if after := readStateFile(t, root, "do-work/CHECKPOINT.md"); after != before {
-			t.Fatalf("foreign checkpoint entry was changed:\nbefore:\n%s\nafter:\n%s", before, after)
+		after := readStateFile(t, root, "do-work/CHECKPOINT.md")
+		if strings.Contains(after, "REQ-306") {
+			t.Fatalf("the archived REQ still holds a checkpoint entry:\n%s", after)
+		}
+		if !strings.Contains(after, "REQ-999") {
+			t.Fatalf("another REQ's entry was removed with it:\n%s", after)
 		}
 	})
 	t.Run("absent entry", func(t *testing.T) {
@@ -730,6 +739,9 @@ func TestPlannedPostimagesPreservesRealFileModes(t *testing.T) {
 		DestinationPath: "do-work/archive/UR-999/input.md",
 		ExpectedBytes:   []byte("ur input\n"),
 	})
+	// The postimage set is the declared target set (REQ-547), so a move added
+	// after BuildPlan must be declared here too, exactly as planTargets would.
+	plan.TargetPaths = append(plan.TargetPaths, urSource, "do-work/archive/UR-999/input.md")
 
 	images, err := PlannedPostimages(plan)
 	if err != nil {
@@ -779,9 +791,16 @@ func TestPlannedPostimagesPreservesRealFileModes(t *testing.T) {
 		t.Errorf("fresh calibration mode = %o, want 0644", freshCal.Mode)
 	}
 
-	// Test retained REQ in-place
+	// Test retained REQ in-place. The archive destination is no longer part of
+	// the transition, so it leaves the declared target set with it.
 	retainedPlan := plan
 	retainedPlan.DestinationPath = retainedPlan.SourcePath
+	retainedPlan.TargetPaths = nil
+	for _, path := range plan.TargetPaths {
+		if path != plan.DestinationPath {
+			retainedPlan.TargetPaths = append(retainedPlan.TargetPaths, path)
+		}
+	}
 	retainedImages, err := PlannedPostimages(retainedPlan)
 	if err != nil {
 		t.Fatal(err)
@@ -793,4 +812,57 @@ func TestPlannedPostimagesPreservesRealFileModes(t *testing.T) {
 	if retReq := retainedByPath[retainedPlan.SourcePath]; !retReq.Exists || retReq.Mode != 0o600 {
 		t.Errorf("retained REQ mode = %o, want 0600", retReq.Mode)
 	}
+}
+
+// REQ-547: finalization snapshots the plan's declared TargetPaths as the
+// journal preimage and PlannedPostimages as the postimage, then refuses a
+// journal whose two sets name different paths. The projection used to emit an
+// image for every role path it knew about, so an undeclared path (a checkpoint
+// whose bytes do not change) became a postimage with no preimage and every
+// replay refused FINALIZATION-LIFECYCLE-CONFLICT. Both directions of that
+// disagreement are pinned here.
+func TestPlannedPostimagesNamesExactlyTheDeclaredTargets(t *testing.T) {
+	root := newStateRepository(t)
+	writeStateRequest(t, root, "do-work/working/REQ-311.md", "REQ-311", "claimed", "claimed_at: 2026-09-03T16:00:00Z\nestimate:\n  p50_active_minutes: 30\n")
+	writeStateCheckpoint(t, root, "- REQ-311: Fixture — claimed now — writer: host:/repo\n")
+	snapshot, err := repositorymodel.DiscoverRepository(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	plan := BuildPlan(snapshot, dependencygraph.BuildGraph(snapshot), StateOptions{
+		RequestID: "REQ-311", Transition: TransitionComplete, TerminalStatus: "completed",
+		WriterLabel: "host:/repo", Now: time.Date(2026, 9, 3, 17, 0, 0, 0, time.UTC),
+	})
+	if !plan.Runnable() {
+		t.Fatalf("plan not runnable: %#v", plan.Refusal)
+	}
+
+	t.Run("a role path the plan did not declare is not a postimage", func(t *testing.T) {
+		undeclared := plan
+		undeclared.TargetPaths = nil
+		for _, path := range plan.TargetPaths {
+			if path != plan.CheckpointPath {
+				undeclared.TargetPaths = append(undeclared.TargetPaths, path)
+			}
+		}
+		images, imageError := PlannedPostimages(undeclared)
+		if imageError != nil {
+			t.Fatal(imageError)
+		}
+		projected := []string{}
+		for _, image := range images {
+			projected = append(projected, image.Path)
+		}
+		if !reflect.DeepEqual(projected, undeclared.TargetPaths) {
+			t.Fatalf("postimages = %v, declared targets = %v", projected, undeclared.TargetPaths)
+		}
+	})
+
+	t.Run("a declared target with no projected image is reported", func(t *testing.T) {
+		unprojected := plan
+		unprojected.TargetPaths = append(append([]string(nil), plan.TargetPaths...), "do-work/never-projected.md")
+		if _, imageError := PlannedPostimages(unprojected); imageError == nil || !strings.Contains(imageError.Error(), "do-work/never-projected.md") {
+			t.Fatalf("undeclared postimage error = %v", imageError)
+		}
+	})
 }

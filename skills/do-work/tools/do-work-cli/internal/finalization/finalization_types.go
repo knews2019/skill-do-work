@@ -83,7 +83,8 @@ type Journal struct {
 }
 
 type commandOptions struct {
-	ManifestPath       string
-	Discover           bool
-	AssumeSoleReleaser bool
+	ManifestPath            string
+	Discover                bool
+	AssumeSoleReleaser      bool
+	DiscardJournalRequestID string
 }
