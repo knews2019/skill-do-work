@@ -16,6 +16,20 @@ impact: impact-rule-change
 effort_estimate: effort-substantive
 write_set: [skills/do-work/actions/work.md, skills/do-work/actions/work-reference.md, _dev/tests/contract-regressions.sh, skills/do-work/tools/do-work-cli/internal/lifecycleadvance/]
 claimed_at: 2026-09-04T17:32:08Z
+route: C
+estimate:
+  p50_active_minutes: 55
+  confidence: low
+  calculated_at: 2026-09-04T17:32:47Z
+  basis:
+    - Route C
+    - 8-file write set
+    - 2 new files
+    - 3 subsystems involved
+    - 3 acceptance criteria
+    - dependency depth 2
+    - cross-route regression gates
+    - full-suite verification
 ---
 
 # Run the Evidence Gates From advance
@@ -68,3 +82,9 @@ See `do-work/user-requests/UR-098/input.md` for complete verbatim input.
 
 ---
 *Source: capture of the orchestrator simplification request (UR-098).*
+
+## Triage
+
+**Route: C — Complex.** This rule-changing migration composes estimation, preflight, qualification, and repository-gate evidence into the lifecycle command while removing procedural action contracts and replacing them with public Go behavior tests.
+
+**Planning:** Required.
