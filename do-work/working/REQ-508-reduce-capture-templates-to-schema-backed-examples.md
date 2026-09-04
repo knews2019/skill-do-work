@@ -19,6 +19,7 @@ claimed_at: 2026-09-04T19:13:19Z
 route: C
 planning_at: 2026-09-04T19:21:18Z
 exploration_at: 2026-09-04T19:28:16Z
+dispatch_at: 2026-09-04T19:33:24Z
 estimate:
   p50_active_minutes: 55
   confidence: low
