@@ -222,6 +222,10 @@ Repository discovery already walks nested archive trees and carries complete fil
 
 None.
 
+## Qualification
+
+**Passed.** The exact merge range contains 18 substantive implementation files and no undeclared path. All five acceptance criteria trace to public queue-advance behavior and aligned action readers, and the checked P-A-U state matches the merged diff. The scope ceiling intentionally reserved five selector/request-state test seams that the implementation did not need; the scope checker reported only those declared-but-untouched paths. Its two static-reference warnings are expected for convention-discovered Go package files.
+
 ## Orientation
 
 [MAP CHANGED] Queue selection and claim now live behind the lifecycle-advance subsystem: `advance` returns committed claims and durable stateless continuation evidence, while the work action retains only the human-readable claimability principle and orchestration judgment.
