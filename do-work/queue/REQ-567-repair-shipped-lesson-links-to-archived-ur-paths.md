@@ -1,7 +1,7 @@
 ---
 id: REQ-567
 title: 'Repair shipped lesson links to archived UR paths'
-status: claimed
+status: pending-heavy-testing
 route: C
 created_at: 2026-09-04T15:07:20Z
 user_request: UR-098
@@ -21,6 +21,8 @@ exploration_at: 2026-09-04T15:10:25Z
 dispatch_at: 2026-09-04T15:12:02Z
 builder_handback_at: 2026-09-04T15:14:55Z
 integration_at: 2026-09-04T15:15:16Z
+status_changed_at: 2026-09-04T15:19:13Z
+commit: 2dda18a1f816e148258295b2b351f12695a049b4
 write_set: [skills/do-work/tools/do-work-cli/lessons-do-work-cli.md]
 estimate:
   p50_active_minutes: 30
@@ -122,3 +124,35 @@ The only matching stale links are the three consecutive lesson bullets for REQ-4
 ## Discovered Tasks
 
 None.
+
+## Qualification
+
+Passed — 1 file verified, 3 acceptance criteria traced, and P-A-U confirmed. The exact merge range `ffc6cf03c6ab77c8ead85a8925c193436b62c686..2dda18a1f816e148258295b2b351f12695a049b4` passed mechanical qualification and scope-drift comparison.
+
+## Testing
+
+- Focused contract: `bash _dev/tests/shipped-package-reference-contract.sh` passed in 1.2 seconds.
+- Canonical repository gate: `bash _dev/tests/maintainer-verify.sh` passed on the merged tree. Its enforced per-file budgets remained under 30 seconds; the slowest reported CLI test file was 27.60 seconds.
+- Green-gate evidence was recorded at revision `e738544ff7e6de5349aee910664e774759f0495c` for the exact canonical argv.
+
+### Red-green validation
+
+- RED: before implementation, the unchanged canonical gate exited 1 with fingerprint `sha256:3af85b84722557f94ddfd466fc32136086fb5fed306e478bd344f689902472ff` and exactly the three obsolete-link diagnostics captured in the repair intake.
+- GREEN: after changing only those three destinations, the same focused shipped-reference contract and the exact canonical repository gate exited 0.
+
+## Heavy Verification Plan
+
+- Base revision: `ffc6cf03c6ab77c8ead85a8925c193436b62c686`
+- Target revision: `2dda18a1f816e148258295b2b351f12695a049b4`
+- `do-work-cli-integrations`: `bash _dev/tests/maintainer-verify.sh --heavy-lane do-work-cli-integrations` — `skills/do-work/tools/do-work-cli/lessons-do-work-cli.md` matched subtree `skills/do-work/tools/do-work-cli`.
+- `staged-skills`: `bash _dev/tests/maintainer-verify.sh --heavy-lane staged-skills` — `skills/do-work/tools/do-work-cli/lessons-do-work-cli.md` matched subtree `skills`.
+- `updater`: `bash _dev/tests/maintainer-verify.sh --heavy-lane updater` — `skills/do-work/tools/do-work-cli/lessons-do-work-cli.md` matched subtree `skills/do-work/tools/do-work-cli`.
+- `installer`: `bash _dev/tests/maintainer-verify.sh --heavy-lane installer` — `skills/do-work/tools/do-work-cli/lessons-do-work-cli.md` matched subtree `skills/do-work/tools/do-work-cli`.
+
+## Open Questions
+
+- [ ] Run the selected heavy lane commands at `2dda18a1f816e148258295b2b351f12695a049b4`; did every command exit 0?
+
+Recommended: Yes
+
+Also: No — <failing lane>

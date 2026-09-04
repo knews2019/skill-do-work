@@ -2,7 +2,7 @@
 
 Run dir: `do-work/runs/work-2026-09-04-151120/`
 Concurrency: 1
-Status: synthesized
+Status: consumed
 
 | Agent | Slice | Output file | Status |
 |---|---|---|---|
