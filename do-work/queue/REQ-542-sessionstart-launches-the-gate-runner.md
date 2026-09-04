@@ -1,7 +1,7 @@
 ---
 id: REQ-542
 title: 'SessionStart launches the background gate runner'
-status: claimed
+status: pending
 priority: now
 created_at: 2026-09-03T14:49:02Z
 user_request: UR-104
@@ -18,7 +18,7 @@ batch: two-tier-gate
 write_set:
   - skills/do-work/hooks/session-start.sh
   - _dev/tests/gate-runner.sh
-claimed_at: 2026-09-04T13:01:15Z
+status_changed_at: 2026-09-04T13:08:46Z
 ---
 
 # SessionStart Launches the Background Gate Runner
