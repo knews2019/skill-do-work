@@ -84,7 +84,7 @@ type generatedBoardData struct {
 	// unwindowed — the client filters against the wall clock at render time so a
 	// long-open tab keeps meaning "the last N hours" (activity.go).
 	Activity []generatedActivityEntry `json:"activity"`
-	Notes                             []generatedNote                 `json:"notes,omitempty"` // do-work/notes.md lines — rendered as a strip above the queue
+	Notes    []generatedNote          `json:"notes,omitempty"` // do-work/notes.md lines — rendered as a strip above the queue
 
 	// Verify findings carried into the page so a human looking at the board sees
 	// what `queue-kanban verify` sees (REQ-284). Three categories are suppressed
