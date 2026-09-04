@@ -4,7 +4,7 @@ Plain routing index for lesson satellites. Each satellite has exactly one table 
 
 | Satellite | When it applies | Families | Tokens | Coverage |
 | --- | --- | --- | ---: | --- |
-| `_dev/primes/lessons-action-files.md` | Changing action routing, pipeline fields, status contracts, downstream readers, alternate artifact writers, or budgeted context routing | `alternate-writer-contract-drift, budgeted-context-routing, cross-action-exception-closure` | 4163 | `slugged: partial` |
+| `_dev/primes/lessons-action-files.md` | Changing action routing, pipeline fields, status contracts, downstream readers, alternate artifact writers, or budgeted context routing | `alternate-writer-contract-drift, budgeted-context-routing, canonical-authoring-vs-tolerant-reading, cross-action-exception-closure` | 4244 | `slugged: partial` |
 | `_dev/primes/lessons-kanban-board.md` | Changing queue-kanban parsing, filesystem-basename authority, views, static output, timeline behavior, or board publication | `exact-basename-authority` | 4820 | `slugged: partial` |
 | `_dev/primes/lessons-shell-commands.md` | Changing shipped shell, argv/quoting, prescribed command blocks, publication scripts, or migration parity fixtures | `legacy-fixture-implementation-shape` | 3385 | `slugged: partial` |
 | `skills/do-work-board/tools/queue-kanban/lessons-do-kanban.md` | Changing queue-kanban model, parser, UI, timeline, testing, or browser behavior | `unknown-reads-as-clean` | 5744 | `slugged: partial` |
