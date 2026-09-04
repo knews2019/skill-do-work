@@ -31,6 +31,8 @@ estimate:
     - 2 subsystems involved
     - 5 acceptance criteria
 dispatch_at: 2026-09-04T18:23:51Z
+builder_handback_at: 2026-09-04T18:51:24Z
+integration_at: 2026-09-04T18:51:24Z
 ---
 
 # Hand-Back and Finalize Check Cleanliness Only on the REQ's Own Paths
@@ -40,9 +42,9 @@ dispatch_at: 2026-09-04T18:23:51Z
 A path the active REQ does not own, whether untracked, modified, or staged by another session, is never a reason to stop, never surfaced as a blocker, and never committed by the pipeline. Step 7's hand-back settlement and Step 9's finalization check the index and tree only for the REQ's own paths: its run artifacts, its lifecycle files, its write set, and its release paths. Everything else is left exactly as found and named in one progress line. The "preserve in a separate unrelated-work commit" behaviour goes away.
 
 ## AI Execution State (P-A-U Loop)
-- [ ] **[PLAN]:** (Agent: Read listed `prime_files` and agent rules. Write brief technical approach here. Do not write code yet.)
-- [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
-- [ ] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
+- [x] **[PLAN]:** Read both primes plus the crew rules; traced the refusal to `commitSafety`'s shared-remainder check in `finalization_apply.go` and found the two hand-back step-0 texts plus the one sentence authorizing a pipeline-authored preserve commit.
+- [x] **[APPLY]:** Shared-remainder refusal narrowed to discovered recovery groups; step 0's third category rewritten to leave-alone-and-name in both action files; the preserve-commit sentence rewritten. One new Go test pins the narrowing.
+- [x] **[UNIFY]:** `git diff --stat` reviewed across 3 modified files and 1 new test; `gofmt -l` empty, `go vet` clean, whole `do-work-cli` module green; no debug artifacts, no stray prints, no commented-out code.
 
 ## Why
 
@@ -106,3 +108,49 @@ See `do-work/user-requests/UR-106/input.md` for complete verbatim input.
 **Dependencies:** ✓ Go 1.26.1 and ShellCheck 0.11.0 provisioned for this session (container shipped Go 1.24.7 / no ShellCheck)
 
 *Checked by work action*
+
+## Scope
+
+**Files I will touch:**
+- `skills/do-work/actions/work-reference.md` (modify) — hand-back step 0's third category, the index rule, and the sentence authorizing a pipeline-authored preserve commit
+- `skills/do-work/actions/work.md` (modify) — Step 6's condensed copy of step 0, mirrored to the same rule
+- `skills/do-work/tools/do-work-cli/internal/finalization/finalization_apply.go` (modify) — narrow the shared-remainder refusal to discovered recovery groups
+- `skills/do-work/tools/do-work-cli/internal/finalization/finalization_req560_test.go` (new) — pin the narrowing
+
+**Files I will NOT touch:** `internal/gittransaction/` (its empty-index refusal is out of scope), the manifest allowlist validation, the claim transaction's dirty-target refusal, `CHANGELOG.md` and `VERSION` (Step 9 finalization).
+
+**Acceptance criteria (restated from REQ):**
+- [x] A foreign untracked or modified path never stops hand-back or finalization
+- [x] Foreign paths are left byte-for-byte as found and named once in the progress output
+- [x] Every commit the run makes contains only the REQ's declared paths
+- [x] A dirty path the REQ itself owns still stops with the typed refusal
+- [x] The manifest's exact-allowlist validation is unchanged
+- [x] The narrowing is pinned by a test in the same Go package
+
+## Implementation Summary
+
+**Files changed:**
+- `skills/do-work/actions/work-reference.md` (modified)
+- `skills/do-work/actions/work.md` (modified)
+- `skills/do-work/tools/do-work-cli/internal/finalization/finalization_apply.go` (modified)
+- `skills/do-work/tools/do-work-cli/internal/finalization/finalization_req560_test.go` (new)
+
+**What was done:** `commitSafety`'s shared-remainder refusal (`FINALIZATION-AMBIGUOUS-SHARED-STATE`) now applies only to discovered, tree-inferred recovery groups; a journaled `finalize --manifest` declares its exact write set up front, so a path it never declared cannot belong to the transaction and is left alone. The declared-path check that fires first is untouched, so a dirty path the REQ owns still refuses. In prose, hand-back step 0's third category changed from "stop and surface" to "leave alone and name" in both the canonical text and its condensed copy, and the sentence authorizing a pipeline-authored unrelated-work commit was rewritten to say: keep every byte, leave it where it is, name it, carry on.
+
+## Decisions
+
+**D-01 — DECIDE & STATE. A foreign *staged* path is unstaged, not left in the index.** The REQ says a foreign staged path is unstaged only if this run staged it, otherwise left and named. Taken literally that produces the outcome the REQ forbids: every commit in the hand-back sequence is a whole-index commit, so a foreign entry left in the index is not left — it is silently adopted into one of this REQ's commits, breaking the REQ's own GREEN condition and repeating the exact harm the Why is about. Of the three possible outcomes for a staged foreign path — stop, commit it, take it out of the index — the What rules out the first two in one sentence, so the third is the only one left. `git restore --staged` removes the index entry and leaves the file's bytes untouched: the owner loses a staging flag, not a character of work, and the path is named so they can re-stage it.
+
+**D-02 — DECIDE & STATE. The narrowing is keyed on `journal.Discovered`, not on a path list.** The shared-remainder check is correct for `recover-finalization --discover`, where the group is inferred from the tree and an unattributed shared path really could be a torn tail of the same interrupted transaction. It is meaningless for `finalize --manifest`, where the journal binds the exact write set up front. Keying on the condition (inferred or declared?) rather than on tolerated path spellings follows CLAUDE.md's "state conditions, not lists".
+
+**D-03 — DECIDE & STATE. The manifest allowlist, both empty-index checks, and discovery's own refusal are untouched.** `gittransaction.CommitExactPaths` commits the whole index and refuses a non-empty index itself, in a package outside this REQ's write set; narrowing finalization's check alone would only move the same refusal later and report it worse. The REQ's own Context also keeps the shared-target rule for the REQ's own target and the index, and scopes the never-refuse rule to foreign modified or untracked paths.
+
+**D-04 — DECIDE & STATE. The preserve-commit sentence was rewritten, not deleted.** The only sentence authorizing a pipeline-authored preserve commit sat in "Stuck Runs Hand Off to Judgment". Deleting the bullet outright would leave that dirt class with no guidance, so it now says: keep every byte, leave it where it is, name it in the progress output, carry on — and if a canonical command still refuses because of that path, fall through to the shared-state bullet below it, which already names the resolving verb.
+
+**D-05 — DECIDE & STATE. No changelog or version write from the builder.** Both are outside the declared write set and belong to finalization.
+
+## Discovered Tasks
+
+- **impact-moderate, report only** — the two hand-back step-0 texts (`work-reference.md` and `work.md` Step 6's condensed copy) are a hand-maintained duplicate pair with no mechanical check pinning them together. Any future change to the sequence has to be made in both or they drift; `prime-action-files.md` names exactly this shape as `alternate-writer-contract-drift`.
+- **impact-moderate, report only** — `_dev/tests/session-start-hook-behavior.sh` fails inside a builder worktree because its launcher subshell resolves the system Go instead of the pinned toolchain, making the hook probes useless as a signal for any builder.
+- **impact-noncritical, report only** — `internal/publication`'s hostile-argv probe hard-fails when `just` is absent rather than skipping, turning a missing optional binary into a red module.
