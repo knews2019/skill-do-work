@@ -1,7 +1,7 @@
 ---
 id: REQ-550
 title: '[impact-negligible] Collapse four exported one-line Go delegates into their targets'
-status: pending
+status: claimed
 priority: later
 created_at: 2026-09-03T19:45:35Z
 user_request: UR-105
@@ -16,6 +16,7 @@ maintenance: false
 impact: impact-negligible
 effort_estimate: effort-mechanical
 write_set: [skills/do-work/tools/do-work-cli/internal/corehelpers/inventory.go, skills/do-work/tools/do-work-cli/internal/doctor/doctor_repair.go, skills/do-work/tools/do-work-cli/internal/archivefetch/archive_fetch.go, skills/do-work/tools/do-work-cli/internal/gateevidence/gate_evidence.go, _dev/tests/audit-lockins.sh]
+claimed_at: 2026-09-04T13:33:39Z
 ---
 
 # Collapse four exported one-line Go delegates into their targets
