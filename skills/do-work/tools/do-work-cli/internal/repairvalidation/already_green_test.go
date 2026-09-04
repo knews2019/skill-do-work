@@ -14,6 +14,7 @@ import (
 const testGateFingerprint = "sha256:already-green-fixture"
 
 func TestValidateAlreadyGreenRepairUsesIntakeAndRecordedEvidence(t *testing.T) {
+	t.Parallel()
 	repositoryRoot, requestPath := alreadyGreenRepository(t)
 	validation, evidence, err := Validate(repositoryRoot, Options{
 		RequestPath: requestPath,
@@ -40,6 +41,7 @@ func TestValidateAlreadyGreenRepairUsesIntakeAndRecordedEvidence(t *testing.T) {
 }
 
 func TestValidateAlreadyGreenRepairRejectsCoordinatedCurrentFingerprintMutation(t *testing.T) {
+	t.Parallel()
 	repositoryRoot, requestPath := alreadyGreenRepository(t)
 	absolute := filepath.Join(repositoryRoot, filepath.FromSlash(requestPath))
 	contents, err := os.ReadFile(absolute)
@@ -61,6 +63,7 @@ func TestValidateAlreadyGreenRepairRejectsCoordinatedCurrentFingerprintMutation(
 }
 
 func TestValidateAlreadyGreenRepairRejectsGreenRecordPredatingIntake(t *testing.T) {
+	t.Parallel()
 	repositoryRoot := t.TempDir()
 	git(t, repositoryRoot, "init", "-q")
 	git(t, repositoryRoot, "config", "user.name", "repair validator fixture")
@@ -87,6 +90,7 @@ func TestValidateAlreadyGreenRepairRejectsGreenRecordPredatingIntake(t *testing.
 }
 
 func TestValidateAlreadyGreenRepairRejectsAmbiguousRequestIdentityForBothDecisions(t *testing.T) {
+	t.Parallel()
 	repositoryRoot, requestPath := alreadyGreenRepository(t)
 	writeFile(t, repositoryRoot, "do-work/archive/REQ-701-duplicate.md", "---\nid: REQ-701\ntitle: Duplicate\nstatus: completed\n---\n")
 
@@ -100,6 +104,7 @@ func TestValidateAlreadyGreenRepairRejectsAmbiguousRequestIdentityForBothDecisio
 }
 
 func TestValidateAlreadyGreenRepairRequiresExactNoOpBlock(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name      string
 		insertion string
@@ -109,7 +114,9 @@ func TestValidateAlreadyGreenRepairRequiresExactNoOpBlock(t *testing.T) {
 		{name: "prefix-like duplicate heading", insertion: "\n## Repository Gate Repair No-Op Extra\n\nSelf asserted.\n"},
 	}
 	for _, test := range tests {
+		test := test
 		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
 			repositoryRoot, requestPath := alreadyGreenRepository(t)
 			absolute := filepath.Join(repositoryRoot, filepath.FromSlash(requestPath))
 			contents, err := os.ReadFile(absolute)
@@ -133,6 +140,7 @@ func TestValidateAlreadyGreenRepairRequiresExactNoOpBlock(t *testing.T) {
 }
 
 func TestValidateAlreadyGreenRepairUsesCanonicalCompletionPathsForStageAuthority(t *testing.T) {
+	t.Parallel()
 	repositoryRoot, requestPath := alreadyGreenRepository(t)
 	requestAbsolute := filepath.Join(repositoryRoot, filepath.FromSlash(requestPath))
 	contents, err := os.ReadFile(requestAbsolute)
@@ -167,6 +175,7 @@ func TestValidateAlreadyGreenRepairUsesCanonicalCompletionPathsForStageAuthority
 }
 
 func TestValidateAlreadyGreenRepairRejectsNeighboringShapes(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name string
 		old  string
@@ -183,7 +192,9 @@ func TestValidateAlreadyGreenRepairRejectsNeighboringShapes(t *testing.T) {
 		{"malformed qualification", "durable gate evidence verified and project diff empty.", "gate looked green."},
 	}
 	for _, test := range tests {
+		test := test
 		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
 			repositoryRoot, requestPath := alreadyGreenRepository(t)
 			absolute := filepath.Join(repositoryRoot, filepath.FromSlash(requestPath))
 			contents, err := os.ReadFile(absolute)
@@ -209,8 +220,11 @@ func TestValidateAlreadyGreenRepairRejectsNeighboringShapes(t *testing.T) {
 }
 
 func TestValidateAlreadyGreenRepairRejectsProjectAndReleaseMutation(t *testing.T) {
+	t.Parallel()
 	for _, relativePath := range []string{"app.txt", "VERSION", "package-lock.json"} {
+		relativePath := relativePath
 		t.Run(relativePath, func(t *testing.T) {
+			t.Parallel()
 			repositoryRoot, requestPath := alreadyGreenRepository(t)
 			writeFile(t, repositoryRoot, relativePath, "changed\n")
 			validation, _, err := Validate(repositoryRoot, Options{RequestPath: requestPath, WriterLabel: "fixture:/repo"})

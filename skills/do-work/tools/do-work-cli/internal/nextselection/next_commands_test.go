@@ -2,11 +2,41 @@ package nextselection
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"sync"
 	"testing"
 )
+
+var (
+	cliBinaryOnce sync.Once
+	cliBinaryPath string
+	cliBinaryErr  error
+)
+
+func testCLIBinary(t *testing.T) string {
+	t.Helper()
+	cliBinaryOnce.Do(func() {
+		dir, err := os.MkdirTemp("", "do-work-cli-test-*")
+		if err != nil {
+			cliBinaryErr = err
+			return
+		}
+		bin := filepath.Join(dir, "do-work-cli")
+		cmd := exec.Command("go", "build", "-o", bin, "../../cmd/do-work-cli")
+		if output, buildErr := cmd.CombinedOutput(); buildErr != nil {
+			cliBinaryErr = fmt.Errorf("build test CLI: %w\n%s", buildErr, output)
+			return
+		}
+		cliBinaryPath = bin
+	})
+	if cliBinaryErr != nil {
+		t.Fatalf("resolve test CLI binary: %v", cliBinaryErr)
+	}
+	return cliBinaryPath
+}
 
 type commandSelectionRecord struct {
 	RequestID         string `json:"request_id"`
@@ -19,11 +49,13 @@ func TestNextCommandProjectsGateSelectionPriority(t *testing.T) {
 	if testing.Short() || os.Getenv("DO_WORK_HEAVY_TESTS") != "1" {
 		t.Skip("go-run integration is heavy-only")
 	}
+	t.Parallel()
+	cli := testCLIBinary(t)
 	repositoryRoot := t.TempDir()
 	writeCommandRequest(t, repositoryRoot, "do-work/queue/REQ-811-ordinary.md", "REQ-811", "pending", "priority: now\n")
 	writeCommandRequest(t, repositoryRoot, "do-work/queue/REQ-812-deferred.md", "REQ-812", "pending", "gate_deferred: true\n")
 	writeCommandRequest(t, repositoryRoot, "do-work/queue/REQ-813-repair.md", "REQ-813", "pending", "repository_gate_repair: true\n")
-	command := exec.Command("go", "run", "../../cmd/do-work-cli", "--repo-root", repositoryRoot, "--format", "json", "next", "--fan-out", "3")
+	command := exec.Command(cli, "--repo-root", repositoryRoot, "--format", "json", "next", "--fan-out", "3")
 	output, runError := command.CombinedOutput()
 	if runError != nil {
 		t.Fatalf("next command returned %v:\n%s", runError, output)
@@ -47,10 +79,12 @@ func TestNextCommandProjectsPriorityOnSelectedAndFanOutExcluded(t *testing.T) {
 	if testing.Short() || os.Getenv("DO_WORK_HEAVY_TESTS") != "1" {
 		t.Skip("go-run integration is heavy-only")
 	}
+	t.Parallel()
+	cli := testCLIBinary(t)
 	repositoryRoot := t.TempDir()
 	writeCommandRequest(t, repositoryRoot, "do-work/queue/REQ-821-later.md", "REQ-821", "pending", "priority: later\n")
 	writeCommandRequest(t, repositoryRoot, "do-work/queue/REQ-822-now.md", "REQ-822", "pending", "priority: now\n")
-	command := exec.Command("go", "run", "../../cmd/do-work-cli", "--repo-root", repositoryRoot, "--format", "json", "next", "--fan-out", "1")
+	command := exec.Command(cli, "--repo-root", repositoryRoot, "--format", "json", "next", "--fan-out", "1")
 	output, runError := command.CombinedOutput()
 	if runError != nil {
 		t.Fatalf("next command returned %v:\n%s", runError, output)
@@ -76,6 +110,8 @@ func TestNextCommandMixedFixture(t *testing.T) {
 	if testing.Short() || os.Getenv("DO_WORK_HEAVY_TESTS") != "1" {
 		t.Skip("go-run integration is heavy-only")
 	}
+	t.Parallel()
+	cli := testCLIBinary(t)
 	repositoryRoot := t.TempDir()
 	writeCommandRequest(t, repositoryRoot, "do-work/archive/REQ-900-done.md", "REQ-900", "completed", "")
 	writeCommandRequest(t, repositoryRoot, "do-work/queue/REQ-101-root.md", "REQ-101", "pending", "estimate:\n  p50_active_minutes: 10\n")
@@ -88,7 +124,7 @@ func TestNextCommandMixedFixture(t *testing.T) {
 	writeCommandRequest(t, repositoryRoot, "do-work/queue/REQ-108-missing.md", "REQ-108", "pending", "depends_on: [REQ-999]\n")
 	writeCommandRequest(t, repositoryRoot, "do-work/queue/REQ-109-claimed.md", "REQ-109", "claimed", "claimed_at: 2026-08-31T10:00:00Z\n")
 
-	command := exec.Command("go", "run", "../../cmd/do-work-cli", "--repo-root", repositoryRoot, "--format", "json", "next", "--fan-out", "2", "--skip-impact-negligible")
+	command := exec.Command(cli, "--repo-root", repositoryRoot, "--format", "json", "next", "--fan-out", "2", "--skip-impact-negligible")
 	output, runError := command.CombinedOutput()
 	if runError != nil {
 		t.Fatalf("next command returned %v:\n%s", runError, output)
@@ -121,10 +157,12 @@ func TestNextCommandTreatsEmptyInlineDependencyListAsReady(t *testing.T) {
 	if testing.Short() || os.Getenv("DO_WORK_HEAVY_TESTS") != "1" {
 		t.Skip("go-run integration is heavy-only")
 	}
+	t.Parallel()
+	cli := testCLIBinary(t)
 	repositoryRoot := t.TempDir()
 	writeCommandRequest(t, repositoryRoot, "do-work/queue/REQ-110-empty-dependency-list.md", "REQ-110", "pending", "depends_on: []\n")
 
-	command := exec.Command("go", "run", "../../cmd/do-work-cli", "--repo-root", repositoryRoot, "--format", "json", "next")
+	command := exec.Command(cli, "--repo-root", repositoryRoot, "--format", "json", "next")
 	output, runError := command.CombinedOutput()
 	if runError != nil {
 		t.Fatalf("next command returned %v:\n%s", runError, output)

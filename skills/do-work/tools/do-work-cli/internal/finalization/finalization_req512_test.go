@@ -10,6 +10,7 @@ import (
 )
 
 func TestREQ512TrackedFoldRequiresClosedBoundary(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name   string
 		append string
@@ -40,7 +41,9 @@ func TestREQ512TrackedFoldRequiresClosedBoundary(t *testing.T) {
 		{name: "second fold", append: "\n## Review Fold — REQ-812\n\nFinding.\n\n## Recovery Fold — REQ-812\n\nRecovery.\n\n<!-- do-work:finalization-followup-fold-end kind=review request=REQ-812 -->\n"},
 	}
 	for _, test := range tests {
+		test := test
 		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
 			repositoryRoot := newFinalizationRepository(t)
 			path := "do-work/queue/REQ-813-follow-up.md"
 			before := "---\nid: REQ-813\ntitle: Follow-up\nstatus: pending\naddendum_to: REQ-812\n---\n\nOriginal body.\n"
@@ -56,6 +59,7 @@ func TestREQ512TrackedFoldRequiresClosedBoundary(t *testing.T) {
 }
 
 func TestREQ512MalformedWorkspaceIdentityAndNPMRootLockFailClosed(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name         string
 		manifestPath string
@@ -90,7 +94,9 @@ func TestREQ512MalformedWorkspaceIdentityAndNPMRootLockFailClosed(t *testing.T) 
 		},
 	}
 	for _, test := range tests {
+		test := test
 		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
 			repositoryRoot := newFinalizationRepository(t)
 			writeFinalizationFile(t, repositoryRoot, test.manifestPath, test.before)
 			writeFinalizationFile(t, repositoryRoot, test.lockPath, test.lock)
@@ -112,6 +118,7 @@ func TestREQ512MalformedWorkspaceIdentityAndNPMRootLockFailClosed(t *testing.T) 
 }
 
 func TestREQ512TrackedFoldForeignTailRefusesWithoutMutation(t *testing.T) {
+	t.Parallel()
 	repositoryRoot := newFinalizationRepository(t)
 	archivePath := "do-work/archive/REQ-814-fixture.md"
 	followupPath := "do-work/queue/REQ-815-follow-up.md"
@@ -148,6 +155,7 @@ func TestREQ512TrackedFoldForeignTailRefusesWithoutMutation(t *testing.T) {
 }
 
 func TestREQ512ChangedWorkspaceRootsStillRequireRootLockMirrors(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name       string
 		rootPath   string
@@ -186,7 +194,9 @@ func TestREQ512ChangedWorkspaceRootsStillRequireRootLockMirrors(t *testing.T) {
 		},
 	}
 	for _, test := range tests {
+		test := test
 		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
 			repositoryRoot := newFinalizationRepository(t)
 			writeFinalizationFile(t, repositoryRoot, test.rootPath, test.rootBefore)
 			writeFinalizationFile(t, repositoryRoot, test.lockPath, test.lockBefore)
@@ -208,6 +218,7 @@ func TestREQ512ChangedWorkspaceRootsStillRequireRootLockMirrors(t *testing.T) {
 }
 
 func TestREQ512WorkspaceMembersSelectChangedSourcesBeforeEqualVersionRoots(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name         string
 		rootPath     string
@@ -254,7 +265,9 @@ func TestREQ512WorkspaceMembersSelectChangedSourcesBeforeEqualVersionRoots(t *te
 		},
 	}
 	for _, test := range tests {
+		test := test
 		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
 			repositoryRoot := newFinalizationRepository(t)
 			writeFinalizationFile(t, repositoryRoot, test.rootPath, test.rootContents)
 			writeFinalizationFile(t, repositoryRoot, test.memberPath, test.memberBefore)
@@ -284,6 +297,7 @@ func TestREQ512WorkspaceMembersSelectChangedSourcesBeforeEqualVersionRoots(t *te
 }
 
 func TestREQ512SharedWorkspaceLocksReplaceOnlyMultipleChangedMembers(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name         string
 		rootPath     string
@@ -330,7 +344,9 @@ func TestREQ512SharedWorkspaceLocksReplaceOnlyMultipleChangedMembers(t *testing.
 		},
 	}
 	for _, test := range tests {
+		test := test
 		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
 			repositoryRoot := newFinalizationRepository(t)
 			writeFinalizationFile(t, repositoryRoot, test.rootPath, test.rootContents)
 			writeFinalizationFile(t, repositoryRoot, test.lockPath, test.lockBefore)

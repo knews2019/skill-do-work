@@ -3,17 +3,47 @@ package finalization
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"reflect"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/commandruntime"
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/publication"
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/resultmodel"
 )
+
+var (
+	cliBinaryOnce sync.Once
+	cliBinaryPath string
+	cliBinaryErr  error
+)
+
+func testCLIBinary(t *testing.T) string {
+	t.Helper()
+	cliBinaryOnce.Do(func() {
+		dir, err := os.MkdirTemp("", "do-work-cli-test-*")
+		if err != nil {
+			cliBinaryErr = err
+			return
+		}
+		bin := filepath.Join(dir, "do-work-cli")
+		cmd := exec.Command("go", "build", "-o", bin, "../../cmd/do-work-cli")
+		if output, buildErr := cmd.CombinedOutput(); buildErr != nil {
+			cliBinaryErr = fmt.Errorf("build test CLI: %w\n%s", buildErr, output)
+			return
+		}
+		cliBinaryPath = bin
+	})
+	if cliBinaryErr != nil {
+		t.Fatalf("resolve test CLI binary: %v", cliBinaryErr)
+	}
+	return cliBinaryPath
+}
 
 func TestRecoverFinalizationAssumeSoleReleaserRequiresDiscover(t *testing.T) {
 	repositoryRoot := newFinalizationRepository(t)
@@ -440,8 +470,8 @@ func TestPublicRecoverFinalizationMovesURThenAllowsRealClaim(t *testing.T) {
 
 func runPublicFinalizationCommand(t *testing.T, repositoryRoot string, arguments ...string) resultmodel.CommandResult {
 	t.Helper()
-	commandArguments := append([]string{"run", "../../cmd/do-work-cli", "--repo-root", repositoryRoot, "--format", "json"}, arguments...)
-	command := exec.Command("go", commandArguments...)
+	commandArguments := append([]string{"--repo-root", repositoryRoot, "--format", "json"}, arguments...)
+	command := exec.Command(testCLIBinary(t), commandArguments...)
 	output, err := command.CombinedOutput()
 	if err != nil {
 		t.Fatalf("public command %v: %v\n%s", arguments, err, output)
