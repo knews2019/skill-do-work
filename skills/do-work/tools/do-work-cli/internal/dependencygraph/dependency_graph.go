@@ -22,6 +22,7 @@ type DependencyEdge struct {
 type DependencyNode struct {
 	RequestID             string
 	RequestStatus         string
+	ImplementationCommit  string
 	DependencyIDs         []string
 	DependentIDs          []string
 	UnmetDependencies     []string
@@ -82,7 +83,8 @@ func BuildGraph(snapshot *repositorymodel.RepositorySnapshot) *DependencyGraph {
 		}
 		graph.NodesByID[requestID] = &DependencyNode{
 			RequestID: requestID, RequestStatus: requestStatus,
-			DependencyDepth: -1, IsAmbiguous: isAmbiguous,
+			ImplementationCommit: requestFile.TypedRecord.ImplementationCommit,
+			DependencyDepth:      -1, IsAmbiguous: isAmbiguous,
 		}
 		graph.OrderedIDs = append(graph.OrderedIDs, requestID)
 	}
@@ -130,7 +132,7 @@ func BuildGraph(snapshot *repositorymodel.RepositorySnapshot) *DependencyGraph {
 				node.MissingTargets = append(node.MissingTargets, dependencyID)
 				node.UnmetDependencies = append(node.UnmetDependencies, dependencyID)
 				graph.WarningMessages = append(graph.WarningMessages, fmt.Sprintf("%s depends on missing target %s", requestID, dependencyID))
-			case !duplicateSatisfied && !schemanormalization.DependencySatisfied(dependencyNode.RequestStatus):
+			case !duplicateSatisfied && !schemanormalization.DependencySourceReady(dependencyNode.RequestStatus, dependencyNode.ImplementationCommit):
 				node.UnmetDependencies = append(node.UnmetDependencies, dependencyID)
 			}
 		}
@@ -147,7 +149,7 @@ func BuildGraph(snapshot *repositorymodel.RepositorySnapshot) *DependencyGraph {
 
 // duplicateStatusesSatisfied resolves only exact duplicate records. Filename/frontmatter
 // collisions remain ambiguous, while duplicate copies satisfy dependents only when every
-// discovered status is terminal-successful.
+// discovered record exposes source-ready dependency evidence.
 func duplicateStatusesSatisfied(snapshot *repositorymodel.RepositorySnapshot, requestID string) bool {
 	requestFiles := snapshot.RequestsByID[requestID]
 	if len(requestFiles) < 2 {
@@ -159,7 +161,7 @@ func duplicateStatusesSatisfied(snapshot *repositorymodel.RepositorySnapshot, re
 		}
 	}
 	for _, requestFile := range requestFiles {
-		if !schemanormalization.DependencySatisfied(requestFile.TypedRecord.RequestStatus) {
+		if !schemanormalization.DependencySourceReady(requestFile.TypedRecord.RequestStatus, requestFile.TypedRecord.ImplementationCommit) {
 			return false
 		}
 	}

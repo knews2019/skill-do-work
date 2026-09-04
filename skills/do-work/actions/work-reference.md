@@ -223,11 +223,11 @@ status_changed_at: 2026-07-22T20:38:00Z
 # (all three modes: serve, static, summary).
 completed_at: 2025-01-26T10:45:00Z   # required on every terminal flip — UTC ISO instant
 status: completed | completed-with-issues | failed
-commit: abc1234               # required in a git repo — implementation commit hash (see work.md's Commit Phase write-back)
+commit: abc1234               # required in a git repo — implementation commit hash (also required while pending-heavy-testing so dependents can use the landed source)
 error: "Description"          # Set when a REQ failed; RETAINED verbatim if that failed REQ is later cancelled via do-work abandon — the surviving failure signal on a status: cancelled REQ, NOT drift to strip
 error_type: intent|spec|code|environment   # Set with `error` on failure; likewise retained on a failed→cancelled flip
 
-# Set by work.md Step 6.5 when the merged diff requires the permission-gated heavy suite.
+# Set by work.md Step 6.5 when the merged diff selects permission-gated heavy lanes.
 # The REQ stays in queue and ordinary selection walks past it. `commit` above is the
 # exact implemented revision the Open Question names while other runnable REQs continue.
 status: pending-heavy-testing
@@ -305,6 +305,10 @@ Default and UR-expanded queue selection order ready work by three stable classes
 ### Terminal-success status set
 
 **After applying the `status` alias map, a REQ counts as *terminally successful* when its status is `completed` or `completed-with-issues`.** This is the canonical set every reader that selects "completed work" must honor — `completed-with-issues` is terminal and counts toward UR completion (it just carries known follow-ups, per `actions/work.md` Step 8), so a filter that accepts only the literal `completed` silently drops remediated-with-issues work. `failed` is terminal but **not** successful — success-readers exclude it.
+
+### Dependency-source-ready status set
+
+**A dependency is source-ready when it is terminally successful, or when its normalized status is `pending-heavy-testing` and it carries a nonblank `commit:`.** The latter has landed implementation and passed the fast gate; its own heavy result still controls its terminal completion, but dependents may build against the exact committed source while that permission hold is open. `pending-heavy-testing` without commit metadata fails closed, and a red heavy lane returns the REQ to `pending`, which immediately makes the dependency unmet again. This set is scheduling authority only: it does not make the held REQ terminal, successful, archivable, or eligible for completed-work readers.
 
 The trigger is the *condition above*, not the caller list: **any reader that filters for "the completed/most-recent work" inherits this contract.** The known consumers are illustrative, not exhaustive — `actions/cleanup.md` (UR close), `../../do-work-toolbox/actions/completed-work-presentation-reference.md` (shared reader for item-level presentation actions), `actions/review-work.md` (standalone target), and `actions/commit.md` (REQ association); `actions/forensics.md` and `actions/roadmap.md` already honor both. When adding a new reader, normalize status first, accept both canonical values, and point back here — hand-enumerated caller lists go stale silently, which is why the condition, not the list, is the contract.
 
@@ -840,6 +844,10 @@ The canonical `complete` command either appends the planned row once or reports 
 
 **Existing tests updated (cross-REQ impact):**
 - [test file] (from REQ-NNN): [what changed and why — intentional behavior change]
+
+**Heavy verification plan:** *(when lanes were selected)*
+- Range: [base revision]..[target revision]
+- [lane id]: [exact argv] — [selection reason]
 
 *Verified by work action*
 ```

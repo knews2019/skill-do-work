@@ -202,3 +202,13 @@ func IsStopped(status string) bool {
 
 // DependencySatisfied reports whether a dependency status unblocks a dependent.
 func DependencySatisfied(status string) bool { return IsTerminalSuccess(status) }
+
+// DependencySourceReady reports whether downstream work may build against a
+// dependency's durable source. Pending heavy verification is source-ready only
+// after the implementation commit has been recorded; returning it to pending
+// withdraws that authority until remediation lands a new commit.
+func DependencySourceReady(status, implementationCommit string) bool {
+	normalizedStatus := NormalizeField("status", status).ResolvedValue
+	return IsTerminalSuccess(normalizedStatus) ||
+		(normalizedStatus == "pending-heavy-testing" && strings.TrimSpace(implementationCommit) != "")
+}

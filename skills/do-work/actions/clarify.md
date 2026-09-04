@@ -8,7 +8,7 @@ This is the second human-attention window in the pipeline. After actions/work.md
 
 **Use when:**
 - A work run just finished and left `pending-answers` REQs in the queue.
-- A work run left `pending-heavy-testing` REQs whose exact implementation revisions need permission before the heavy suite runs.
+- A work run left `pending-heavy-testing` REQs whose exact implementation revisions need permission before selected heavy lanes run.
 - The user asks "what's blocked?", "show me pending questions", or similar.
 - The pipeline can't advance because builder-decided questions need sign-off.
 - `blocked` REQs are waiting on a **human-confirmable** external condition (a designer answered, a service is now up) and you want to confirm the condition is met so they re-enter the queue.
@@ -36,11 +36,11 @@ If no `pending-answers`, `pending-heavy-testing`, or `blocked` REQ is found: rep
 
 ### Step 2.5: Ask once before heavy testing
 
-List every `pending-heavy-testing` REQ with its title and exact full `commit:` revision. Refuse malformed entries whose hash is absent or does not resolve; they stay held. Ask one batch question: `May I run bash _dev/tests/maintainer-verify.sh --heavy for these exact revisions?` A decline or no answer leaves every REQ unchanged and never delays ordinary `pending` work, which the work loop already finished before routing here.
+List every `pending-heavy-testing` REQ with its title, exact full `commit:` revision, and stored Heavy Verification Plan. Refuse malformed entries whose hash is absent or does not resolve, whose plan is incomplete, or whose target differs from `commit:`; they stay held. Ask one batch question naming every exact selected lane command and revision. A decline or no answer leaves every REQ unchanged and never delays ordinary `pending` work, which the work loop already finished before routing here.
 
-After permission, run the heavy command for each named revision in an isolated detached worktree at that revision, never at a later `HEAD`, and retain its per-test-file duration output. The work loop never runs this command; clarify is the explicit human-attention window that owns the permission.
+After permission, recompute `plan-heavy-verification` from the stored base to target in an isolated detached worktree at that target, never at a later `HEAD`. Refuse any difference from the stored selected ids, argv, or reasons. Run only the returned lane commands and retain each lane's status and per-test-file duration output. The work loop never runs these commands; clarify is the explicit human-attention window that owns the permission. An explicit user request for `bash _dev/tests/maintainer-verify.sh --heavy` is force-all and bypasses narrowing.
 
-For each result, build one canonical `answer` manifest with `expected_status: pending-heavy-testing` and `mode: heavy-testing`. Use `confirmed` with the exit-0 evidence for green, which completes and archives the already-implemented REQ. Use `answered` with the failing lane and exit status for red, which flips the REQ to `pending` for remediation. Invoke the ordinary `answer --manifest ... --at ... --commit` transaction; there is no hand edit or free-form fallback. The stored Open Question and answer note are the durable consent and result evidence.
+For each REQ, build one canonical `answer` manifest with `expected_status: pending-heavy-testing` and `mode: heavy-testing`. Use `confirmed` only when every selected command exits zero, recording each lane; this completes and archives the already-implemented REQ. Use `answered` with every failing lane and exit status for red, which flips the REQ to `pending` for remediation. Invoke the ordinary `answer --manifest ... --at ... --commit` transaction; there is no hand edit or free-form fallback. The stored Open Question and answer note are the durable consent and result evidence.
 
 ### Step 3: Present questions
 

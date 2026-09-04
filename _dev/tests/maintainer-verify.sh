@@ -37,29 +37,8 @@ fixture_script=''
 fixture_go_root=''
 with_node_bin=''
 
-# Path globs whose changes warrant a --heavy run, printed by --heavy-surfaces so a caller
-# can decide mechanically. A path belongs here when the only lanes covering it are the ones
-# the default tier does not run: the board's Node and browser probes, and the aggregate's
-# installer/updater probes. Directory-and-suffix globs are deliberately wider than the
-# minimum — an unnecessary heavy run costs minutes, a missed one costs the coverage.
-heavy_surface_globs=(
-  '_dev/tests/*.sh'
-  'skills/do-work-board/tools/queue-kanban/web/**'
-  'skills/do-work/tools/*.sh'
-  'skills/do-work/tools/checks/*.sh'
-  'skills/do-work/tools/do-work-cli/**/*_test.go'
-  'tools/*.sh'
-  'suite/modules.tsv'
-)
-# The board test files that carry those probes have no shared filename token, so they are
-# derived from the probe entry points they call instead of hand-listed: a hand list goes
-# stale the first time a probe moves into a new file, and silently under-reports.
-board_probe_entry_points='runJavaScriptBehaviorProbe|runBrowserBehaviorProbe'
-board_probe_entry_points="$board_probe_entry_points|lookupNodeForJavaScriptProbe"
-board_probe_entry_points="$board_probe_entry_points|lookupBrowserForBehaviorProbe"
-
 print_usage_and_exit() {
-  printf 'usage: %s [--heavy|--heavy-surfaces|--self-test]\n' "$0" >&2
+  printf 'usage: %s [--heavy|--heavy-lane <lane-id>|--self-test]\n' "$0" >&2
   exit 2
 }
 
@@ -80,30 +59,6 @@ run_budgeted_go_tests() {
   DO_WORK_TEST_ENFORCE_BUDGET="$enforce_test_budget" \
   DO_WORK_TEST_FILE_BUDGET_SECONDS="$test_file_budget_seconds" \
     bash "$repo_root/_dev/tests/run-go-tests-with-budget.sh" "$module_directory" "$@"
-}
-
-# The grep runs inside a process substitution, whose exit status nothing can read, so an
-# absent grep and a genuine no-match arrive identically as an empty list. The zero-match
-# failure below is what keeps that from printing a short list a caller would trust.
-print_heavy_surfaces() {
-  local surface_glob
-  local probe_test_file
-  local probe_test_files=()
-
-  while IFS= read -r probe_test_file; do
-    if [ -n "$probe_test_file" ]; then
-      probe_test_files+=("$probe_test_file")
-    fi
-  done < <(cd "$repo_root" && grep -rlE "$board_probe_entry_points" \
-    --include='*_test.go' -- skills/do-work-board/tools/queue-kanban | sort)
-  if [ "${#probe_test_files[@]}" -eq 0 ]; then
-    printf 'maintainer-verify: no board test file calls a Node or browser probe entry point (%s); the heavy surface list cannot be derived\n' \
-      "$board_probe_entry_points" >&2
-    return 1
-  fi
-  for surface_glob in "${heavy_surface_globs[@]}" "${probe_test_files[@]}"; do
-    printf '%s\n' "$surface_glob"
-  done
 }
 
 # Returns 0 when $1 is at or above the floor $2. Compares dot-separated components as
@@ -385,9 +340,11 @@ run_self_test() {
   local without_node_bin
   local generic_shim
   local stage_name
-  local surfaces_output
   local mutated_fixture_script
   local mutation_output
+  local lane_probe_script
+  local lane_cli_binary
+  local lane_duration_log
 
   self_test_root="$(mktemp -d)"
   self_test_exit_root="$self_test_root"
@@ -434,19 +391,6 @@ run_self_test() {
     return 1
   fi
 
-  # Against the real script, not the fixture: the derived half of the list is only honest if
-  # it resolves against a tree that actually holds the board's probe test files.
-  surfaces_output="$self_test_root/heavy-surfaces.out"
-  if ! /bin/bash "$script_path" --heavy-surfaces > "$surfaces_output" 2>&1; then
-    sed 's/^/  /' "$surfaces_output" >&2
-    fail_self_test '--heavy-surfaces exited nonzero'
-    return 1
-  fi
-  if [ ! -s "$surfaces_output" ]; then
-    fail_self_test '--heavy-surfaces printed nothing; a caller would read that as no path needing a heavy run'
-    return 1
-  fi
-
   for stage_name in \
     go-version shellcheck-version shellcheck-lint gofmt-lint gofmt-unformatted \
     aggregate board-vet board-test \
@@ -473,6 +417,26 @@ run_self_test() {
   chmod +x "$fixture_script"
   if ! cmp -s "$script_path" "$fixture_script"; then
     fail_self_test 'the strict-marker mutation fixture was not restored'
+    return 1
+  fi
+
+  lane_probe_script="$self_test_root/lane-probe.sh"
+  lane_cli_binary="$self_test_root/lane-cli"
+  lane_duration_log="$self_test_root/lane-durations.tsv"
+  printf '%s\n' '#!/usr/bin/env bash' 'set -eu' \
+    'test "${DO_WORK_MAINTAINER_TIER:-}" = heavy' \
+    'test -x "${DO_WORK_TEST_DO_WORK_CLI_BINARY:?}"' > "$lane_probe_script"
+  printf '%s\n' '#!/usr/bin/env bash' 'exit 0' > "$lane_cli_binary"
+  chmod +x "$lane_probe_script" "$lane_cli_binary"
+  if ! DO_WORK_TEST_DURATION_LOG="$lane_duration_log" \
+    DO_WORK_TEST_RUN_ID=lane-self-test \
+    DO_WORK_TEST_DO_WORK_CLI_BINARY="$lane_cli_binary" \
+    run_heavy_probe_lane "$lane_probe_script"; then
+    fail_self_test 'the selected shell-lane fixture failed'
+    return 1
+  fi
+  if [ "$(grep -c '^lane-self-test' "$lane_duration_log")" -ne 1 ]; then
+    fail_self_test 'one selected shell lane must record exactly one duration row'
     return 1
   fi
 
@@ -656,13 +620,103 @@ run_verification() {
   printf 'Maintainer verification passed.\n'
 }
 
-if [ "$#" -gt 1 ]; then
+run_heavy_probe_lane() (
+  local probe_script="$1"
+  local lane_scratch
+  local lane_cli_binary="${DO_WORK_TEST_DO_WORK_CLI_BINARY:-}"
+  local started_at
+  local elapsed_seconds
+  local lane_status=0
+  # Re-source inside the lane subshell so an isolated caller's log/run overrides
+  # are the ones this row records.
+  # shellcheck source=_dev/tests/test-duration-log.sh
+  source "$repo_root/_dev/tests/test-duration-log.sh"
+  if [ -z "$lane_cli_binary" ]; then
+    lane_scratch="$(mktemp -d)"
+    trap 'rm -rf "$lane_scratch"' EXIT
+    lane_cli_binary="$lane_scratch/do-work-cli"
+    if ! (
+      cd "$repo_root/skills/do-work/tools/do-work-cli"
+      go build -ldflags='-s -w' -o "$lane_cli_binary" ./cmd/do-work-cli
+    ); then
+      printf 'maintainer-verify: could not build the heavy-lane do-work-cli\n' >&2
+      return 1
+    fi
+  elif [ ! -x "$lane_cli_binary" ]; then
+    printf 'maintainer-verify: supplied heavy-lane do-work-cli is not executable: %s\n' "$lane_cli_binary" >&2
+    return 1
+  fi
+  started_at="$(date +%s)"
+  DO_WORK_MAINTAINER_TIER=heavy \
+    DO_WORK_TEST_DO_WORK_CLI_BINARY="$lane_cli_binary" \
+    bash "$probe_script" || lane_status=$?
+  elapsed_seconds=$(( $(date +%s) - started_at ))
+  printf 'test-file duration: %s %ss (limit none (heavy))\n' \
+    "${probe_script#"$repo_root/"}" "$elapsed_seconds"
+  record_test_duration "${probe_script#"$repo_root/"}" "$elapsed_seconds"
+  return "$lane_status"
+)
+
+# Each stable lane is independently executable. The typed planner emits only these
+# argv values; --heavy remains the explicit force-all gate above.
+run_heavy_lane() {
+  local verification_tier=heavy
+  local lane_id="$1"
+
+  case "$lane_id" in
+    queue-kanban-javascript)
+      QUEUE_KANBAN_BROWSER_PROBES=off \
+        QUEUE_KANBAN_JAVASCRIPT_PROBES=on \
+        QUEUE_KANBAN_STRICT_JAVASCRIPT_BEHAVIOR=1 \
+        run_budgeted_go_tests "$repo_root/skills/do-work-board/tools/queue-kanban" \
+          -run '^TestJavaScriptBehavior' -v .
+      ;;
+    queue-kanban-browser)
+      QUEUE_KANBAN_JAVASCRIPT_PROBES=off \
+        QUEUE_KANBAN_BROWSER_PROBES=on \
+        QUEUE_KANBAN_STRICT_BROWSER_BEHAVIOR=1 \
+        run_budgeted_go_tests "$repo_root/skills/do-work-board/tools/queue-kanban" \
+          -run '^TestBrowserBehavior' -v .
+      ;;
+    do-work-cli-integrations)
+      DO_WORK_HEAVY_TESTS=1 \
+        run_budgeted_go_tests "$repo_root/skills/do-work/tools/do-work-cli" ./...
+      ;;
+    staged-skills)
+      run_heavy_probe_lane "$repo_root/_dev/tests/staged-skills-contract.sh"
+      ;;
+    updater)
+      run_heavy_probe_lane "$repo_root/_dev/tests/update-script-behavior.sh"
+      ;;
+    installer)
+      run_heavy_probe_lane "$repo_root/_dev/tests/install-suite-behavior.sh"
+      ;;
+    *)
+      printf 'maintainer-verify: unknown heavy lane: %s\n' "$lane_id" >&2
+      return 2
+      ;;
+  esac
+}
+
+if [ "$#" -gt 2 ]; then
   print_usage_and_exit
 fi
 case "${1:-}" in
-  --self-test) run_self_test ;;
-  --heavy-surfaces) print_heavy_surfaces ;;
-  --heavy) run_verification heavy ;;
-  '') run_verification fast ;;
+  --self-test)
+    [ "$#" -eq 1 ] || print_usage_and_exit
+    run_self_test
+    ;;
+  --heavy)
+    [ "$#" -eq 1 ] || print_usage_and_exit
+    run_verification heavy
+    ;;
+  --heavy-lane)
+    [ "$#" -eq 2 ] || print_usage_and_exit
+    run_heavy_lane "$2"
+    ;;
+  '')
+    [ "$#" -eq 0 ] || print_usage_and_exit
+    run_verification fast
+    ;;
   *) print_usage_and_exit ;;
 esac

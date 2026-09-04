@@ -1,0 +1,92 @@
+{
+  "schema_version": 1,
+  "lanes": [
+    {
+      "id": "queue-kanban-javascript",
+      "argv": ["bash", "_dev/tests/maintainer-verify.sh", "--heavy-lane", "queue-kanban-javascript"],
+      "coverage": [
+        {"kind": "subtree", "path": "skills/do-work-board/tools/queue-kanban"},
+        {"kind": "exact", "path": "_dev/tests/heavy-lanes.json"},
+        {"kind": "exact", "path": "_dev/tests/maintainer-verify.sh"}
+      ]
+    },
+    {
+      "id": "queue-kanban-browser",
+      "argv": ["bash", "_dev/tests/maintainer-verify.sh", "--heavy-lane", "queue-kanban-browser"],
+      "coverage": [
+        {"kind": "subtree", "path": "skills/do-work-board/tools/queue-kanban"},
+        {"kind": "exact", "path": "_dev/tests/heavy-lanes.json"},
+        {"kind": "exact", "path": "_dev/tests/maintainer-verify.sh"}
+      ]
+    },
+    {
+      "id": "do-work-cli-integrations",
+      "argv": ["bash", "_dev/tests/maintainer-verify.sh", "--heavy-lane", "do-work-cli-integrations"],
+      "coverage": [
+        {"kind": "subtree", "path": "skills/do-work/tools/do-work-cli"},
+        {"kind": "exact", "path": "_dev/tests/heavy-lanes.json"},
+        {"kind": "exact", "path": "_dev/tests/maintainer-verify.sh"}
+      ]
+    },
+    {
+      "id": "staged-skills",
+      "argv": ["bash", "_dev/tests/maintainer-verify.sh", "--heavy-lane", "staged-skills"],
+      "coverage": [
+        {"kind": "subtree", "path": "skills"},
+        {"kind": "exact", "path": "suite/modules.tsv"},
+        {"kind": "exact", "path": "_dev/tests/staged-skills-contract.sh"},
+        {"kind": "exact", "path": "_dev/tests/contracts/probe-lanes.sh"},
+        {"kind": "exact", "path": "_dev/tests/heavy-lanes.json"},
+        {"kind": "exact", "path": "_dev/tests/maintainer-verify.sh"}
+      ]
+    },
+    {
+      "id": "updater",
+      "argv": ["bash", "_dev/tests/maintainer-verify.sh", "--heavy-lane", "updater"],
+      "coverage": [
+        {"kind": "exact", "path": "skills/do-work/tools/do-work-update.sh"},
+        {"kind": "exact", "path": "skills/do-work/tools/do-work-cli.sh"},
+        {"kind": "subtree", "path": "skills/do-work/tools/do-work-cli"},
+        {"kind": "exact", "path": "skills/do-work/hooks/hooks.json"},
+        {"kind": "exact", "path": "skills/do-work/agent-instructions.template.md"},
+        {"kind": "exact", "path": "skills/do-work-board/justfile.template"},
+        {"kind": "exact", "path": "skills/do-work/actions/version.md"},
+        {"kind": "exact", "path": "suite/modules.tsv"},
+        {"kind": "exact", "path": "tools/validate-suite-manifest.sh"},
+        {"kind": "exact", "path": "tools/install-do-work-suite.sh"},
+        {"kind": "exact", "path": "tools/replace-text-section.sh"},
+        {"kind": "exact", "path": "tools/fetch-upstream-archive.sh"},
+        {"kind": "exact", "path": "_dev/tests/update-script-behavior.sh"},
+        {"kind": "exact", "path": "_dev/tests/contracts/probe-lanes.sh"},
+        {"kind": "exact", "path": "_dev/tests/heavy-lanes.json"},
+        {"kind": "exact", "path": "_dev/tests/maintainer-verify.sh"}
+      ]
+    },
+    {
+      "id": "installer",
+      "argv": ["bash", "_dev/tests/maintainer-verify.sh", "--heavy-lane", "installer"],
+      "coverage": [
+        {"kind": "exact", "path": "VERSION"},
+        {"kind": "exact", "path": "README.md"},
+        {"kind": "subtree", "path": "skills/do-work/tools/do-work-cli"},
+        {"kind": "exact", "path": "skills/do-work/agent-instructions.template.md"},
+        {"kind": "exact", "path": "skills/do-work-board/justfile.template"},
+        {"kind": "exact", "path": "tools/install-do-work-suite.sh"},
+        {"kind": "exact", "path": "tools/validate-suite-manifest.sh"},
+        {"kind": "exact", "path": "tools/replace-text-section.sh"},
+        {"kind": "exact", "path": "skills/do-work/tools/install-do-work-suite.sh"},
+        {"kind": "exact", "path": "suite/modules.tsv"},
+        {"kind": "exact", "path": "_dev/tests/install-suite-behavior.sh"},
+        {"kind": "exact", "path": "_dev/tests/contracts/probe-lanes.sh"},
+        {"kind": "exact", "path": "_dev/tests/heavy-lanes.json"},
+        {"kind": "exact", "path": "_dev/tests/maintainer-verify.sh"}
+      ]
+    }
+  ],
+  "non_heavy_coverage": [
+    {"kind": "suffix-under", "root": ".", "suffix": ".md"},
+    {"kind": "suffix-under", "root": ".", "suffix": ".go"},
+    {"kind": "exact", "path": "VERSION"},
+    {"kind": "exact", "path": "CHANGELOG.md"}
+  ]
+}
