@@ -7,17 +7,22 @@ import (
 
 // Activity aggregation for the board's Activity view.
 //
-// One row per REQ: its newest lifecycle stamp, the field that stamp lives in,
-// and the transition it records. Newest first, and STATUS DOES NOT FILTER IT —
-// a REQ that was claimed, held for heavy testing, blocked, completed, cancelled
-// or failed inside the window all belong on the same surface.
+// One row per lifecycle STAMP: the field it lives in, the instant it holds, and
+// the transition it records. A REQ captured, claimed, dispatched, merged,
+// reviewed, released and completed inside the window carries seven rows, so the
+// whole path it took is readable here instead of only in its frontmatter or in
+// `git log`. Newest first, and STATUS DOES NOT FILTER IT — a REQ that was
+// claimed, held for heavy testing, blocked, completed, cancelled or failed
+// inside the window all belong on the same surface.
 //
 // The question this answers is "what changed on the queue in the last N hours,
 // and why", which no other surface answers. Recently done is terminal states
 // only. The Timeline draws wait and work spans but not the transitions between
-// them. The Calendar dates a REQ from its claim or resolve day. When three REQs
-// were claimed, built, merged and held between 14:57 and 16:39 UTC, every one of
-// those surfaces showed a two-hour hole and the answer needed `git log`.
+// them. The Calendar dates a REQ from its claim or resolve day. The detail
+// drawer prints Created, Claimed and Completed and nothing between them. When
+// three REQs were claimed, built, merged and held between 14:57 and 16:39 UTC,
+// every one of those surfaces showed a two-hour hole and the answer needed
+// `git log`.
 //
 // Everything here comes from stamps the board already parsed onto each ticket:
 // no new frontmatter field, no second walk of the tree, the same posture
@@ -30,7 +35,8 @@ import (
 // isWithinRecentWindow (model.go) so there is one definition of "inside the
 // window" rather than a second one here.
 
-// ActivityRow is one REQ's most recent lifecycle transition.
+// ActivityRow is one lifecycle transition of one REQ. A REQ contributes as many
+// rows as it carries parseable stamps, so RequestId is not unique across rows.
 type ActivityRow struct {
 	RequestId string
 
@@ -46,24 +52,34 @@ type ActivityRow struct {
 	Transition string
 }
 
-// buildActivityRows returns one row per ticket carrying at least one parseable
-// lifecycle stamp, newest first.
+// buildActivityRows returns one row per parseable lifecycle stamp across every
+// ticket, newest first. lifecycleTimestampFields (model.go) is the one
+// enumeration of which stamps exist and what each records, so a stamp added to
+// the schema reaches this surface without an edit here.
 //
-// A ticket with no parseable stamp is SKIPPED rather than dated from the zero
-// time: a fabricated instant would sort it last forever and read as real
-// evidence that nothing happened to it, when the truth is that the board cannot
-// tell. Absence stays absence.
+// A stamp that does not parse is SKIPPED rather than dated from the zero time:
+// a fabricated instant would sort it last forever and read as real evidence
+// that nothing happened, when the truth is that the board cannot tell. Absence
+// stays absence, which is also why a ticket carrying no parseable stamp at all
+// contributes no rows.
 func buildActivityRows(tickets []*RequestTicket) []ActivityRow {
 	rows := make([]ActivityRow, 0, len(tickets))
 	for _, ticket := range tickets {
 		if ticket == nil {
 			continue
 		}
-		newest, ok := newestLifecycleStamp(ticket)
-		if !ok {
-			continue
+		for _, field := range lifecycleTimestampFields(ticket) {
+			parsedInstant, parsedOk := parseTimestamp(field.RawValue)
+			if !parsedOk {
+				continue
+			}
+			rows = append(rows, ActivityRow{
+				RequestId:  ticket.RequestId,
+				StampField: field.FieldName,
+				StampTime:  parsedInstant,
+				Transition: field.Transition,
+			})
 		}
-		rows = append(rows, newest)
 	}
 	sort.Slice(rows, func(first, second int) bool {
 		if !rows[first].StampTime.Equal(rows[second].StampTime) {
@@ -72,34 +88,17 @@ func buildActivityRows(tickets []*RequestTicket) []ActivityRow {
 		// Ties are broken in the comparator, never left to the sort's stability:
 		// otherwise the input order decides, and the order silently changes the
 		// next time the tree walk returns tickets in a different sequence.
-		return rows[first].RequestId > rows[second].RequestId
+		if rows[first].RequestId != rows[second].RequestId {
+			return rows[first].RequestId > rows[second].RequestId
+		}
+		// The REQ id cannot separate two stamps of ONE ticket written at one
+		// instant, which is the common case rather than the exotic one: the work
+		// loop writes completed_at and status_changed_at together. The stamp
+		// field is the last key. It sorts ascending because a field name carries
+		// no notion of newer or older — the direction is arbitrary and only the
+		// determinism matters, unlike the id above, where the larger number is
+		// the newer REQ.
+		return rows[first].StampField < rows[second].StampField
 	})
 	return rows
-}
-
-// newestLifecycleStamp picks the latest parseable stamp on one ticket. It reads
-// every field lifecycleTimestampFields names and compares them all, rather than
-// stopping at the first present one — created_at is first in that list and
-// almost every ticket has one, so a first-match reader would report "captured"
-// for a REQ that was claimed, built and merged this afternoon.
-func newestLifecycleStamp(ticket *RequestTicket) (ActivityRow, bool) {
-	var newest ActivityRow
-	found := false
-	for _, field := range lifecycleTimestampFields(ticket) {
-		parsedInstant, parsedOk := parseTimestamp(field.RawValue)
-		if !parsedOk {
-			continue
-		}
-		if found && !parsedInstant.After(newest.StampTime) {
-			continue
-		}
-		newest = ActivityRow{
-			RequestId:  ticket.RequestId,
-			StampField: field.FieldName,
-			StampTime:  parsedInstant,
-			Transition: field.Transition,
-		}
-		found = true
-	}
-	return newest, found
 }

@@ -457,14 +457,16 @@
         </details>
       </section>
 
-      <!-- Activity — every REQ whose newest lifecycle stamp falls inside the
-           selected window, newest first, naming the stamp and the transition it
-           records. Status deliberately does not filter it: this is the one
-           surface that answers "what changed lately", and every other time
-           surface here is shaped by status (Recently done is terminal only, the
-           Calendar dates a REQ from its claim or resolve day, the Timeline
-           draws spans rather than transitions). Rows come pre-ordered and
-           pre-phrased from Go; board-activity.js windows and draws them. -->
+      <!-- Activity — every lifecycle stamp falling inside the selected window,
+           one row each, newest first, naming the stamp and the transition it
+           records. A REQ that moved several times inside the window owns
+           several rows, interleaved with the other REQs by time. Status
+           deliberately does not filter it: this is the one surface that answers
+           "what changed lately", and every other time surface here is shaped by
+           status (Recently done is terminal only, the Calendar dates a REQ from
+           its claim or resolve day, the Timeline draws spans rather than
+           transitions). Rows come pre-ordered and pre-phrased from Go;
+           board-activity.js windows and draws them. -->
       <section id="view-activity" class="view-panel" aria-label="Recently touched REQs" hidden>
         <p class="activity-summary" id="activity-summary"></p>
         <p class="activity-empty" id="activity-empty" hidden></p>

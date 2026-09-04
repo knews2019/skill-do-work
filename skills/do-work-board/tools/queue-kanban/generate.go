@@ -79,10 +79,11 @@ type generatedBoardData struct {
 	Calendar                          []generatedCalendarEntry        `json:"calendar"`
 	Durations                         generatedDurations              `json:"durations"`
 	Timeline                          generatedTimeline               `json:"timeline"`
-	// Activity rows for the Activity view: every REQ's newest lifecycle stamp
-	// and the transition it records, newest first, regardless of status. Ships
-	// unwindowed — the client filters against the wall clock at render time so a
-	// long-open tab keeps meaning "the last N hours" (activity.go).
+	// Activity rows for the Activity view: one entry per parseable lifecycle
+	// stamp and the transition it records, newest first, regardless of status —
+	// so one REQ appears once per transition it went through. Ships unwindowed:
+	// the client filters against the wall clock at render time so a long-open
+	// tab keeps meaning "the last N hours" (activity.go).
 	Activity []generatedActivityEntry `json:"activity"`
 	Notes    []generatedNote          `json:"notes,omitempty"` // do-work/notes.md lines — rendered as a strip above the queue
 
@@ -305,10 +306,12 @@ type generatedCalendarEntry struct {
 	TimeSource string `json:"timeSource"`
 }
 
-// generatedActivityEntry is one Activity row on the wire. StampField ships
-// alongside the instant so a reader can go straight to the frontmatter line
-// that produced the row; Transition ships already phrased so the client never
-// becomes a second definition of what a stamp means (activity.go).
+// generatedActivityEntry is one Activity row on the wire — one lifecycle stamp,
+// so RequestId repeats across the entries of a REQ that moved several times.
+// StampField ships alongside the instant so a reader can go straight to the
+// frontmatter line that produced the row; Transition ships already phrased so
+// the client never becomes a second definition of what a stamp means
+// (activity.go).
 type generatedActivityEntry struct {
 	RequestId  string `json:"id"`
 	StampField string `json:"stampField"`

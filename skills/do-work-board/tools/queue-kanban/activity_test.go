@@ -12,10 +12,38 @@ import (
 // any cutoff in the gap classifies every sample the same way.
 const activityWindow = 24 * time.Hour
 
+// TestBuildActivityRowsEmitsOneRowPerLifecycleStamp is REQ-572's captured
+// RED/GREEN case: REQ-570 was captured at 22:52 and claimed eight minutes
+// later, and the Activity view showed only the claim. Every parseable stamp is
+// now its own row, so the whole path a REQ took is readable on one surface.
+func TestBuildActivityRowsEmitsOneRowPerLifecycleStamp(t *testing.T) {
+	rows := buildActivityRows([]*RequestTicket{{
+		RequestId: "REQ-570",
+		Status:    "claimed",
+		CreatedAt: "2026-09-04T22:52:00Z",
+		ClaimedAt: "2026-09-04T23:00:17Z",
+	}})
+
+	want := []ActivityRow{
+		{RequestId: "REQ-570", StampField: "claimed_at", StampTime: time.Date(2026, 9, 4, 23, 0, 17, 0, time.UTC), Transition: "claimed"},
+		{RequestId: "REQ-570", StampField: "created_at", StampTime: time.Date(2026, 9, 4, 22, 52, 0, 0, time.UTC), Transition: "captured"},
+	}
+	if len(rows) != len(want) {
+		t.Fatalf("rows = %d, want %d (one per parseable stamp): %+v", len(rows), len(want), rows)
+	}
+	for index, wantRow := range want {
+		got := rows[index]
+		if got.StampField != wantRow.StampField || got.Transition != wantRow.Transition || !got.StampTime.Equal(wantRow.StampTime) {
+			t.Fatalf("row %d = %+v, want %+v", index, got, wantRow)
+		}
+	}
+}
+
 // TestBuildActivityRowsOrdersByNewestStampAndNamesTheTransition is REQ-568's
-// captured GREEN condition in Go: a pending-heavy-testing REQ whose hold lands
-// inside the window is on the surface, carries the transition its stamp
-// records, and sorts by that stamp rather than by status or by queue order.
+// captured GREEN condition in Go, widened by REQ-572: a pending-heavy-testing
+// REQ whose hold lands inside the window is on the surface, carries the
+// transition its stamp records, and sorts by that stamp rather than by status
+// or by queue order — and its earlier claim now sits on the same surface too.
 func TestBuildActivityRowsOrdersByNewestStampAndNamesTheTransition(t *testing.T) {
 	// The instants are the ones REQ-568's Why section cites for the 16:56 board
 	// that prompted it, not invented offsets: REQ-504 was held at 16:38, REQ-505
@@ -47,49 +75,43 @@ func TestBuildActivityRowsOrdersByNewestStampAndNamesTheTransition(t *testing.T)
 		}
 	}
 
-	// Newest first by stamp. This is the captured GREEN's five REQs; the capture
-	// listed them as 505, 504, 503, 567, 485, but the stamps it also cites put
+	// Newest first by stamp, and every stamp is its own row. The capture listed
+	// the REQs as 505, 504, 503, 567, 485, but the stamps it also cites put
 	// REQ-504's 16:38 hold above REQ-505's 16:36 claim and REQ-567's 15:19 hold
 	// above REQ-503's 15:04. The stamps decide the order, not the capture's
-	// approximate listing.
-	wantOrder := []string{"REQ-504", "REQ-505", "REQ-567", "REQ-503", "REQ-485"}
+	// approximate listing — and the claims that preceded each hold interleave
+	// with the other REQs by time rather than hiding behind the newer stamp.
+	wantOrder := []ActivityRow{
+		{RequestId: "REQ-504", StampField: "status_changed_at", Transition: "held for heavy testing"},
+		{RequestId: "REQ-505", StampField: "claimed_at", Transition: "claimed"},
+		{RequestId: "REQ-504", StampField: "claimed_at", Transition: "claimed"},
+		{RequestId: "REQ-567", StampField: "status_changed_at", Transition: "held for heavy testing"},
+		{RequestId: "REQ-567", StampField: "claimed_at", Transition: "claimed"},
+		{RequestId: "REQ-503", StampField: "status_changed_at", Transition: "held for heavy testing"},
+		{RequestId: "REQ-503", StampField: "claimed_at", Transition: "claimed"},
+		{RequestId: "REQ-485", StampField: "completed_at", Transition: "completed"},
+	}
 	if len(inWindow) != len(wantOrder) {
 		t.Fatalf("in-window rows = %d, want %d: %+v", len(inWindow), len(wantOrder), inWindow)
 	}
-	for index, wantId := range wantOrder {
-		if inWindow[index].RequestId != wantId {
-			t.Fatalf("row %d = %s, want %s (full order %+v)", index, inWindow[index].RequestId, wantId, inWindow)
-		}
-	}
-
 	// Status must not filter the surface, and each row must name the transition
 	// its stamp records — not merely carry a time.
-	byId := map[string]ActivityRow{}
-	for _, row := range inWindow {
-		byId[row.RequestId] = row
-	}
-	for _, heldId := range []string{"REQ-504", "REQ-503", "REQ-567"} {
-		held := byId[heldId]
-		if held.StampField != "status_changed_at" {
-			t.Fatalf("%s newest stamp field = %q, want status_changed_at", heldId, held.StampField)
+	for index, wantRow := range wantOrder {
+		got := inWindow[index]
+		if got.RequestId != wantRow.RequestId || got.StampField != wantRow.StampField || got.Transition != wantRow.Transition {
+			t.Fatalf("row %d = %s/%s/%q, want %s/%s/%q (full order %+v)",
+				index, got.RequestId, got.StampField, got.Transition,
+				wantRow.RequestId, wantRow.StampField, wantRow.Transition, inWindow)
 		}
-		if held.Transition != "held for heavy testing" {
-			t.Fatalf("%s transition = %q, want %q", heldId, held.Transition, "held for heavy testing")
-		}
-	}
-	if byId["REQ-505"].Transition != "claimed" {
-		t.Fatalf("REQ-505 transition = %q, want %q", byId["REQ-505"].Transition, "claimed")
-	}
-	if byId["REQ-485"].Transition != "completed" {
-		t.Fatalf("REQ-485 transition = %q, want %q", byId["REQ-485"].Transition, "completed")
 	}
 }
 
-// TestBuildActivityRowsPicksTheNewestStampNotTheFirstDeclaredField pins that
-// the rule is "newest stamp", not "first field in the table". created_at is
-// first in the lifecycle list and every ticket has one, so a reader that
-// stopped at the first present field would pass every other assertion here.
-func TestBuildActivityRowsPicksTheNewestStampNotTheFirstDeclaredField(t *testing.T) {
+// TestBuildActivityRowsOrdersOneTicketsStampsNewestFirst pins that one REQ's
+// own rows are ordered by their instants, not by the order the fields are
+// declared in. created_at is first in the lifecycle list and every ticket has
+// one, so a reader that emitted rows in declaration order would put the oldest
+// transition at the top of the surface and still pass a count assertion.
+func TestBuildActivityRowsOrdersOneTicketsStampsNewestFirst(t *testing.T) {
 	now := time.Date(2026, 9, 4, 18, 0, 0, 0, time.UTC)
 	ticket := &RequestTicket{
 		RequestId:   "REQ-901",
@@ -102,14 +124,23 @@ func TestBuildActivityRowsPicksTheNewestStampNotTheFirstDeclaredField(t *testing
 		CompletedAt: "",
 	}
 	rows := buildActivityRows([]*RequestTicket{ticket})
-	if len(rows) != 1 {
-		t.Fatalf("rows = %d, want 1", len(rows))
+	wantSequence := []struct {
+		stampField string
+		hoursAgo   int
+	}{
+		{"review_at", 1},
+		{"planning_at", 8},
+		{"claimed_at", 9},
+		{"created_at", 72},
 	}
-	if rows[0].StampField != "review_at" {
-		t.Fatalf("newest stamp field = %q, want review_at", rows[0].StampField)
+	if len(rows) != len(wantSequence) {
+		t.Fatalf("rows = %d, want %d (one per parseable stamp): %+v", len(rows), len(wantSequence), rows)
 	}
-	if !rows[0].StampTime.Equal(now.Add(-1 * time.Hour)) {
-		t.Fatalf("newest stamp time = %s, want %s", rows[0].StampTime, now.Add(-1*time.Hour))
+	for index, wantRow := range wantSequence {
+		wantInstant := now.Add(-time.Duration(wantRow.hoursAgo) * time.Hour)
+		if rows[index].StampField != wantRow.stampField || !rows[index].StampTime.Equal(wantInstant) {
+			t.Fatalf("row %d = %s at %s, want %s at %s", index, rows[index].StampField, rows[index].StampTime, wantRow.stampField, wantInstant)
+		}
 	}
 }
 
@@ -177,6 +208,32 @@ func TestBuildActivityRowsBreaksStampTiesDeterministically(t *testing.T) {
 		t.Fatalf("tie order depends on input order: %s,%s vs %s,%s",
 			forward[0].RequestId, forward[1].RequestId, reversed[0].RequestId, reversed[1].RequestId)
 	}
+
+	// One REQ carrying two stamps at one instant is the common case, not an
+	// exotic one: the work loop writes completed_at and status_changed_at
+	// together. The REQ id cannot separate those two rows, so the stamp field is
+	// the third key. The blocked_at/claimed_at pair is the one that bites: the
+	// field order decides it against the declaration order in
+	// lifecycleTimestampFields, so an implementation that leans on the emit
+	// order or on the sort's stability puts claimed_at first and fails here.
+	sameTicketRows := buildActivityRows([]*RequestTicket{{
+		RequestId:       "REQ-909",
+		Status:          "completed",
+		BlockedAt:       "2026-09-04T09:00:00Z",
+		ClaimedAt:       "2026-09-04T09:00:00Z",
+		CompletedAt:     "2026-09-04T12:00:00Z",
+		StatusChangedAt: "2026-09-04T12:00:00Z",
+	}})
+	wantStampOrder := []string{"completed_at", "status_changed_at", "blocked_at", "claimed_at"}
+	if len(sameTicketRows) != len(wantStampOrder) {
+		t.Fatalf("rows = %d, want %d: %+v", len(sameTicketRows), len(wantStampOrder), sameTicketRows)
+	}
+	for index, wantField := range wantStampOrder {
+		if sameTicketRows[index].StampField != wantField {
+			t.Fatalf("same-instant row %d = %q, want %q (stamp field must break a same-REQ tie): %+v",
+				index, sameTicketRows[index].StampField, wantField, sameTicketRows)
+		}
+	}
 }
 
 // TestLifecycleTimestampFieldsIsTheOneListBothReadersUse is the anti-drift pin.
@@ -232,20 +289,22 @@ func TestLifecycleTimestampFieldsIsTheOneListBothReadersUse(t *testing.T) {
 		}
 	}
 
-	// And the aggregation reads the same list: with every stamp at one instant,
-	// the newest-stamp pick must land on a field the list declares.
+	// And the aggregation reads the same list: every declared stamp becomes its
+	// own row, and no row cites a field the list does not declare. A count alone
+	// would pass on a reader that emitted one field fourteen times, so the two
+	// sets are compared rather than their sizes.
 	rows := buildActivityRows([]*RequestTicket{everyStamp})
-	if len(rows) != 1 {
-		t.Fatalf("rows = %d, want 1", len(rows))
+	if len(rows) != len(declared) {
+		t.Fatalf("rows = %d, want %d — one per declared lifecycle stamp: %+v", len(rows), len(declared), rows)
 	}
-	declaredField := false
+	rowFields := map[string]int{}
+	for _, row := range rows {
+		rowFields[row.StampField]++
+	}
 	for _, field := range declared {
-		if field.FieldName == rows[0].StampField {
-			declaredField = true
-			break
+		if rowFields[field.FieldName] != 1 {
+			t.Fatalf("declared lifecycle stamp %q produced %d activity rows, want exactly 1: %+v",
+				field.FieldName, rowFields[field.FieldName], rows)
 		}
-	}
-	if !declaredField {
-		t.Fatalf("activity row cited %q, which lifecycleTimestampFields does not declare", rows[0].StampField)
 	}
 }
