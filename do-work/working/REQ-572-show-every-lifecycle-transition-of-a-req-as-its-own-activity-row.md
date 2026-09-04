@@ -1,7 +1,7 @@
 ---
 id: REQ-572
 title: 'Show every lifecycle transition of a REQ as its own Activity row'
-status: pending
+status: claimed
 created_at: 2026-09-04T23:16:00Z
 user_request: UR-115
 domain: general
@@ -20,6 +20,7 @@ write_set:
   - skills/do-work-board/tools/queue-kanban/web/board-activity.js
   - skills/do-work-board/tools/queue-kanban/web/template.html
   - skills/do-work-board/tools/queue-kanban/web/board.css
+claimed_at: 2026-09-04T23:21:41Z
 ---
 
 # Show Every Lifecycle Transition of a REQ as Its Own Activity Row
