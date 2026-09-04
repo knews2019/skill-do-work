@@ -1,7 +1,9 @@
 ---
 id: REQ-567
 title: 'Repair shipped lesson links to archived UR paths'
-status: claimed
+status: completed
+review_at: 2026-09-04T21:59:01Z
+kb_status: pending
 route: C
 created_at: 2026-09-04T15:07:20Z
 user_request: UR-098
@@ -36,6 +38,8 @@ estimate:
 heavy_verified_at: 2026-09-04T20:59:59Z
 heavy_verified_revision: 2dda18a1f816e148258295b2b351f12695a049b4
 claimed_at: 2026-09-04T21:55:44Z
+completed_at: 2026-09-04T21:59:01Z
+release_at: 2026-09-04T21:59:01Z
 ---
 
 # Repair shipped lesson links to archived UR paths
@@ -178,3 +182,48 @@ Execution revision: `2dda18a1f816e148258295b2b351f12695a049b4`
 - staged-skills: exit 0, 22s — `bash _dev/tests/maintainer-verify.sh --heavy-lane staged-skills`
 - updater: exit 0, 53s — `bash _dev/tests/maintainer-verify.sh --heavy-lane updater`
 - installer: exit 0, 24s — `bash _dev/tests/maintainer-verify.sh --heavy-lane installer`
+
+## Review
+
+**Overall: 100%** | 2026-09-04T21:57:19Z
+
+| Dimension | Score |
+|-----------|-------|
+| Requirements | 100% |
+| Code Quality | 100% |
+| Test Adequacy | 100% |
+| Scope | 100% |
+| Risk | None |
+| Acceptance | Pass |
+
+Overall is the arithmetic mean of the four percentage dimensions; no qualitative modifier applies. The report-only finding below predates this narrowly scoped shipped-reference repair and does not indicate an implementation defect or scope drift.
+
+**Important findings:**
+
+- F1 — Existing local knowledge-base source pointers still send readers to absent root-level archive paths: `kb/wiki/sources/REQ-491-add-canonical-repository-gate-deferral-l.md:69`, `kb/wiki/sources/REQ-492-integrate-repository-gate-deferral-and-r.md:45`, and `kb/wiki/sources/REQ-493-review-fix-complete-repository-gate-defe.md:34`; their actual REQs live under `do-work/archive/UR-095/`. These pages are outside the shipped-link repair's declared scope. — impact-user-visible → report only
+
+**Minor findings:** None.
+
+**Acceptance:** Pass — all three corrected destinations and anchors exist at the reviewed target, the named stale surface is absent, and the focused reference contract exits 0.
+
+**Suggested testing:** 0 items. The existing reference contract and exact-target heavy results cover this change; remote publication availability was not tested or claimed.
+
+**Follow-ups created:** None (1 findings report only).
+
+**Self-validation:** Completed. Distinguished current-checkout execution from saved exact-target evidence, checked actual archive headings independently of the reference contract, checked unchanged prose and scope, and recorded the stale local pointers without mutating their records. No source, queue, request, archive, or Git state was changed by this review.
+
+*Reviewed by review-work action*
+
+**Independent verification:** Exact-range comparison changed only three URL destinations; all target archives and Lessons Learned headings exist. Current focused shipped-reference contract passed in 0.78s, and current corrected bullets match the heavy-verified target.
+
+## Lessons Learned
+
+**What worked:** Repair the destinations against actual archived files and verify their headings while preserving the lesson prose. The unchanged shipped-reference contract proves the missing-link repair.
+
+**What did not:** Root-level archive paths become stale after UR consolidation; search by request ID before preserving a copied link.
+
+**Worth knowing:** Exact-revision heavy evidence can resume at independent review; it does not replace checking current link targets.
+
+## Orientation
+
+The shipped CLI lessons now lead to the three archived lifecycle-gate decisions and their lesson sections.

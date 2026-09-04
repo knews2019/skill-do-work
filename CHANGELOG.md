@@ -2,6 +2,10 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.281.1 — Restore Archived Lifecycle Lesson Links (2026-09-05)
+
+The CLI lesson references now open the archived lifecycle-gate decisions and their Lessons Learned sections. Three stale root-level archive links now point to their canonical UR-095 locations.
+
 ## 0.281.0 — Reuse Matching Heavy Verification Results for Four Hours (2026-09-05)
 
 Heavy verification reuses recent successful lane results when their inputs still match. Each lane reports whether it executed or reused evidence.
