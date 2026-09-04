@@ -1,7 +1,7 @@
 ---
 id: REQ-560
 title: '[impact-rule-change] Hand-back and finalize check cleanliness only on the REQ''s own paths'
-status: claimed
+status: completed
 priority: now
 created_at: 2026-09-03T20:05:46Z
 user_request: UR-106
@@ -36,6 +36,9 @@ integration_at: 2026-09-04T18:51:24Z
 review_at: 2026-09-04T19:05:25Z
 remediation_at: 2026-09-04T19:05:25Z
 re_review_at: 2026-09-04T19:05:25Z
+completed_at: 2026-09-04T19:07:22Z
+commit: 3430117
+release_at: 2026-09-04T19:07:22Z
 ---
 
 # Hand-Back and Finalize Check Cleanliness Only on the REQ's Own Paths

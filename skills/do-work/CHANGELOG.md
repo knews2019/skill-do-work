@@ -2,6 +2,14 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.277.0 — Another Session's Files Are Not Your Blocker (2026-09-04)
+
+A file the running REQ does not own — untracked, modified, or staged by somebody else — no longer stops the pipeline and is never swept into its commits. It is left exactly as found and named once in the progress output.
+
+- Finalization's shared-remainder refusal now applies only to a recovery group inferred from the tree. A `finalize --manifest` declares its exact write set up front, so a path it never named cannot belong to it; a dirty path the REQ *does* declare still refuses as before.
+- Hand-back step 0's third category changed from "stop and surface" to "leave alone and name", and the clean-index requirement narrowed to the REQ's own paths.
+- The rule that let the pipeline author an "unrelated work" preserve commit is gone. The pipeline commits only what the REQ declares.
+
 ## 0.276.0 — A Red Gate Gets One Retry Before It Costs a REQ (2026-09-04)
 
 A repository gate that fails once and passes on the next run used to cost a deferral, a minted repair REQ, and a second gate run to learn that nothing was broken. Now the same argv is simply rerun once, immediately, and a green rerun carries on.
