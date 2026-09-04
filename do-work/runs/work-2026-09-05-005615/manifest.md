@@ -37,3 +37,8 @@ User scope: do-work run to completion, serial claims; do not finish while agents
 - Read-only later-step review: review_506 → REQ-506-review.md pending.
 
 - Read-only later-step review: review_507 → REQ-507-review.md pending. Saved staged-lane red was repaired by REQ-547 commit c5dff3db; fresh current verification required when claimed.
+
+- Main read-only REQ-544-prep.md ready; publication defects and live writer/test grammar discrepancy identified; cleanup now delegates to shared removal.
+- Concurrent unrelated dirt observed and left alone: ai-reports/2026-09-03_2145_do-work-velocity-and-pending-queue-speed/index.html; skills/do-work/tools/do-work-cli/internal/publication/release_mirrors_test.go.
+
+- REQ-507 independent review complete (Partial82.5%, two noncritical report-only findings); saved public finalization/phase/refusal and result parity checks passed. Read-only reviewer checkout removed.
