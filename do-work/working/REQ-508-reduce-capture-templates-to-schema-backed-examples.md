@@ -1,7 +1,7 @@
 ---
 id: REQ-508
 title: '[impact-rule-change] Reduce capture templates to minimal examples backed by the schema layer'
-status: pending
+status: claimed
 priority: now
 created_at: 2026-09-02T14:37:54Z
 user_request: UR-098
@@ -15,6 +15,7 @@ maintenance: true
 impact: impact-rule-change
 effort_estimate: effort-substantive
 write_set: [skills/do-work/actions/capture-reference.md, skills/do-work/actions/capture.md, _dev/tests/contract-regressions.sh, skills/do-work/tools/do-work-cli/internal/schemanormalization/]
+claimed_at: 2026-09-04T19:13:19Z
 ---
 
 # Reduce Capture Templates to Minimal Examples Backed by the Schema Layer

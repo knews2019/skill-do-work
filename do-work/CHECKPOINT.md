@@ -17,3 +17,5 @@ session_depth: light
 - 28 pending requests remain. This targeted run drained REQ-483's frozen ledger; the selector recommends REQ-485 next.
 
 ## In Progress (interrupted)
+
+- REQ-508: [impact-rule-change] Reduce capture templates to minimal examples backed by the schema layer — claimed 2026-09-04T19:13:19Z — writer: t2s-Virtual-Machine.local:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2
