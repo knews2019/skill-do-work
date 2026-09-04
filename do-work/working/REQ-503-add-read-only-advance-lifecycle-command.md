@@ -41,6 +41,7 @@ gate_deferred: 'true'
 claimed_at: 2026-09-04T15:20:34Z
 preflight_at: 2026-09-04T15:22:08Z
 dispatch_at: 2026-09-04T15:22:56Z
+builder_handback_at: 2026-09-04T15:39:51Z
 ---
 
 # Add the Read-Only advance Lifecycle Command

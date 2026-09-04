@@ -6,4 +6,4 @@ Status: in-progress
 
 | Agent | Slice | Output file | Status |
 |---|---|---|---|
-| builder-REQ-503 | Add the read-only advance lifecycle command | `REQ-503-handback.md` | pending |
+| builder-REQ-503 | Add the read-only advance lifecycle command | `REQ-503-handback.md` | done |
