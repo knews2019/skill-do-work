@@ -19,6 +19,5 @@ session_depth: light
 ## In Progress (interrupted)
 
 
-- REQ-547: [impact-rule-change] Stop finalize refusing a REQ that has no checkpoint entry — claimed 2026-09-04T20:02:18Z — writer: vm:/home/user/skill-do-work
 
 - REQ-564: Reuse matching per-lane verification evidence for four hours — claimed 2026-09-04T20:02:18Z — writer: vm:/home/user/skill-do-work

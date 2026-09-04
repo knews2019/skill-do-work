@@ -1,7 +1,7 @@
 ---
 id: REQ-547
 title: '[impact-rule-change] Stop finalize refusing a REQ that has no checkpoint entry'
-status: claimed
+status: pending
 priority: now
 created_at: 2026-09-03T16:40:00Z
 user_request: UR-085
@@ -19,8 +19,6 @@ write_set:
   - skills/do-work/tools/do-work-cli/internal/requeststate/state_apply.go
   - skills/do-work/tools/do-work-cli/internal/finalization/finalization_apply.go
   - skills/do-work/tools/do-work-cli/internal/finalization/finalization_recovery_test.go
-claimed_at: 2026-09-04T20:02:18Z
-route: B
 estimate:
   p50_active_minutes: 30
   confidence: medium
@@ -31,7 +29,7 @@ estimate:
     - 2 subsystems involved
     - 5 acceptance criteria
     - persistence changes
-dispatch_at: 2026-09-04T20:03:07Z
+status_changed_at: 2026-09-04T20:43:02Z
 ---
 
 # Stop Finalize Refusing a REQ That Has No Checkpoint Entry
@@ -116,20 +114,6 @@ whether its absence blocks finalization), so this is captured separately rather 
 into it.
 
 ---
-
-## Triage
-
-**Route: B** - Medium
-
-**Reasoning:** The required behaviour is stated exactly, but which side of the preimage/postimage pair is wrong has to be found by reading the journal plan and apply paths before either can be corrected. Outcome clear, location needs discovery.
-
-**Planning:** Not required
-
-## Plan
-
-**Planning not required** - Route B: Exploration-guided implementation
-
-*Skipped by work action*
 
 ## Handoff State (session stopped 2026-09-04T20:2xZ)
 
