@@ -2,6 +2,10 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.285.0 — Select and Claim Requests Through Advance (2026-09-05)
+
+Queue-mode advance owns request selection, committed claims, and targeted continuation. Exact-revision heavy verification passed; independent review records two noncritical edge cases in default archive collisions and missing frozen members.
+
 ## 0.284.0 — Recover Legacy Checkpoints Without Losing Claims (2026-09-05)
 
 Recovery, checkpoint refresh, and fresh claims now preserve supported legacy checkpoint evidence through one structural interpretation. Public regression tests prove both reported failures are fixed; all selected verification lanes passed after disk space was restored.

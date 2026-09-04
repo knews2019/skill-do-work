@@ -64,3 +64,5 @@ User scope: do-work run to completion, serial claims; do not finish while agents
 - REQ-504 updater/installer passed after user restored47GB; all6 selected lanes greenunskipped, finalization prepared next.
 
 - REQ-504 completed/delivered: release0.284.0, finalizationac2196e172ceb8115c659394781ea95bde205d49, implementation6a11b60c83615791769d57b082580f0b69323984. Exact archive source and lesson promoted; schema/release mirror validation passed; branch/worktree removed withoutforce. Consumed handback deleted. All selected lanes passed afterspace restoration, none skipped.
+
+- REQ-505 claimed375735da, exactsavedrangeandheavyresume re-resolved; independentPartial71.25% accepted forcompletion withtwo noncriticalreportonlyfindings; finalizationpreparing.
