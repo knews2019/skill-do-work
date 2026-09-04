@@ -1,7 +1,7 @@
 ---
 id: REQ-542
 title: 'SessionStart launches the background gate runner'
-status: claimed
+status: completed
 priority: now
 created_at: 2026-09-03T14:49:02Z
 user_request: UR-104
@@ -27,6 +27,8 @@ write_set:
   - skills/do-work/CHANGELOG.md
 status_changed_at: 2026-09-04T13:08:46Z
 claimed_at: 2026-09-04T13:13:09Z
+completed_at: 2026-09-04T13:17:00Z
+commit: 69305f9827f3dfaf953d5530e92ad31995f2283b
 ---
 
 # SessionStart Launches the Background Gate Runner
