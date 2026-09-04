@@ -14,6 +14,7 @@ session_depth: light
 
 ## In Progress (interrupted)
 
+- REQ-503: Add the read-only advance lifecycle command — claimed 2026-09-04T14:57:15Z — writer: t2s-Virtual-Machine.local:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2
 
 ## Still Queued
 

@@ -1,7 +1,7 @@
 ---
 id: REQ-503
 title: 'Add the read-only advance lifecycle command'
-status: pending
+status: claimed
 priority: now
 created_at: 2026-09-02T14:37:54Z
 user_request: UR-098
@@ -15,6 +15,7 @@ maintenance: false
 impact: impact-user-visible
 effort_estimate: effort-substantive
 write_set: [skills/do-work/tools/do-work-cli/internal/lifecycleadvance/, skills/do-work/tools/do-work-cli/cmd/do-work-cli/main.go, skills/do-work/tools/do-work-cli/prime-do-work-cli.md]
+claimed_at: 2026-09-04T14:57:15Z
 ---
 
 # Add the Read-Only advance Lifecycle Command
