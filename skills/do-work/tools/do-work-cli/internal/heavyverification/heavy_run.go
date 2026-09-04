@@ -56,14 +56,39 @@ func LaneRunRefusalCode(err error) string {
 	return "HEAVY-RUN-UNVERIFIABLE"
 }
 
-// RunLanes executes the named manifest lanes at HEAD, one at a time in manifest
-// order, and records each lane's exit status, skip state, and wall time. It
-// does not plan (that is Plan), does not judge the stored plan prose, and does
-// not build an answer manifest; a red or skipped lane is evidence the caller
-// records rather than a failure of this command. Lane output is teed to
-// laneOutputWriter so a caller watching a long drain still sees progress.
-func RunLanes(repositoryRoot, manifestPath string, requestedLaneIDs []string, laneTimeout time.Duration, laneOutputWriter io.Writer) (resultmodel.HeavyVerificationRun, []resultmodel.CommandFinding, error) {
-	_, manifestRelativePath, err := resolveManifestPath(repositoryRoot, manifestPath)
+// LaneRunRequest is everything one heavy-lane pass needs. It is a struct rather
+// than a parameter list because reuse added inputs that only some callers set.
+type LaneRunRequest struct {
+	RepositoryRoot string
+	ManifestPath   string
+	// LaneIDs are the manifest lanes to verify, in any order; they are run in
+	// manifest order.
+	LaneIDs     []string
+	LaneTimeout time.Duration
+	// LaneOutputWriter receives a tee of each executed lane's output.
+	LaneOutputWriter io.Writer
+	// EvidenceReuse allows a lane whose fingerprint still matches recent
+	// stored evidence to be reported from that record instead of executed.
+	// The zero value executes every lane, so reuse is never accidental.
+	EvidenceReuse bool
+	// EvaluatedAt freezes the clock for deterministic tests. Production leaves
+	// it zero so each lane decides and records against its own current instant.
+	EvaluatedAt time.Time
+}
+
+// RunLanes verifies the named manifest lanes at HEAD, one at a time in manifest
+// order, and records each lane's exit status, skip state, wall time, and
+// disposition. A lane is executed unless evidence reuse is enabled and that
+// lane's deterministic fingerprint still matches a stored successful result no
+// older than four hours; expiry and fingerprint equality are independent, so
+// either alone forces execution. RunLanes does not plan (that is Plan), does
+// not judge the stored plan prose, and does not build an answer manifest; a red
+// or skipped lane is evidence the caller records rather than a failure of this
+// command. Lane output is teed to LaneOutputWriter so a caller watching a long
+// drain still sees progress.
+func RunLanes(request LaneRunRequest) (resultmodel.HeavyVerificationRun, []resultmodel.CommandFinding, error) {
+	repositoryRoot := request.RepositoryRoot
+	_, manifestRelativePath, err := resolveManifestPath(repositoryRoot, request.ManifestPath)
 	if err != nil {
 		return resultmodel.HeavyVerificationRun{}, nil, err
 	}
@@ -78,9 +103,22 @@ func RunLanes(repositoryRoot, manifestPath string, requestedLaneIDs []string, la
 	if err != nil {
 		return resultmodel.HeavyVerificationRun{}, nil, err
 	}
-	orderedLanes, err := selectManifestLanes(manifest, requestedLaneIDs)
+	orderedLanes, err := selectManifestLanes(manifest, request.LaneIDs)
 	if err != nil {
 		return resultmodel.HeavyVerificationRun{}, nil, err
+	}
+	clockNow := time.Now
+	if !request.EvaluatedAt.IsZero() {
+		clockNow = func() time.Time { return request.EvaluatedAt }
+	}
+	// The tree is read once, after the dirty-tree refusal, so every lane's
+	// fingerprint describes the same pre-run repository state.
+	committedTree, treeError := readCommittedTree(repositoryRoot, executionRevision)
+	// Execution must revoke prior success first, including forced reruns.
+	// An inaccessible store cannot prove that revocation succeeded.
+	evidenceStore, err := openLaneEvidenceStore(repositoryRoot)
+	if err != nil {
+		return resultmodel.HeavyVerificationRun{}, nil, refuseLaneRun("HEAVY-RUN-EVIDENCE-INVALIDATION", "%v", err)
 	}
 	run := resultmodel.HeavyVerificationRun{
 		ManifestPath:      manifestRelativePath,
@@ -92,16 +130,43 @@ func RunLanes(repositoryRoot, manifestPath string, requestedLaneIDs []string, la
 	signal.Notify(interruptions, os.Interrupt, syscall.SIGTERM)
 	defer signal.Stop(interruptions)
 	for _, lane := range orderedLanes {
-		execution, skipLine, interrupted, err := runOneLane(repositoryRoot, lane, laneTimeout, laneOutputWriter, interruptions)
+		fingerprint := ""
+		fingerprintError := treeError
+		if fingerprintError == nil {
+			fingerprint, fingerprintError = laneFingerprint(repositoryRoot, lane, manifest, committedTree)
+		}
+		decision := laneReuseDecision{Disposition: LaneDispositionExecuted, Reason: laneReasonReuseDisabled}
+		if request.EvidenceReuse {
+			decision = decideLaneReuse(evidenceStore, lane, fingerprint, fingerprintError, clockNow())
+		}
+		if decision.Disposition == LaneDispositionReused {
+			run.Lanes = append(run.Lanes, reusedLaneExecution(lane, decision, fingerprint))
+			continue
+		}
+		if err := evidenceStore.InvalidateLaneEvidence(lane.ID); err != nil {
+			return resultmodel.HeavyVerificationRun{}, nil, refuseLaneRun("HEAVY-RUN-EVIDENCE-INVALIDATION", "invalidate prior evidence for %s before execution: %v", lane.ID, err)
+		}
+		executedAt := clockNow()
+		execution, skipLine, interrupted, err := runOneLane(repositoryRoot, lane, request.LaneTimeout, request.LaneOutputWriter, interruptions)
 		if err != nil {
 			return resultmodel.HeavyVerificationRun{}, nil, err
 		}
+		execution.Disposition = LaneDispositionExecuted
+		execution.DispositionReason = decision.Reason
+		execution.FingerprintSHA256 = fingerprint
 		run.Lanes = append(run.Lanes, execution)
 		switch {
 		case execution.Skipped:
 			findings = append(findings, laneSkippedFinding(execution, skipLine))
 		case execution.ExitStatus != 0:
 			findings = append(findings, laneRedFinding(execution))
+		default:
+			// Only a green, unskipped lane with a determinable fingerprint is
+			// ever stored, and the stamp is the instant it actually ran: a
+			// later reuse must never extend the four-hour window.
+			if recordError := recordSuccessfulLane(evidenceStore, execution, fingerprint, executionRevision, executedAt); recordError != nil {
+				findings = append(findings, laneUnrecordedFinding(execution, recordError))
+			}
 		}
 		if interrupted {
 			// Remaining lanes are left unrun rather than reported: a lane
@@ -243,6 +308,56 @@ func interruptedLaneStatus(received os.Signal) int {
 		return interruptedLaneStatusFloor + int(signalNumber)
 	}
 	return interruptedLaneStatusFloor + int(syscall.SIGINT)
+}
+
+// reusedLaneExecution reports a lane from its stored record. WallSeconds is
+// this pass's cost, which is zero: the recorded run is named separately so a
+// reader never mistakes an inherited duration for a measured one.
+func reusedLaneExecution(lane manifestLane, decision laneReuseDecision, fingerprint string) resultmodel.HeavyLaneExecution {
+	return resultmodel.HeavyLaneExecution{
+		LaneID:             lane.ID,
+		CommandArgv:        append([]string(nil), lane.Argv...),
+		ExitStatus:         decision.Record.ExitStatus,
+		Skipped:            decision.Record.Skipped,
+		WallSeconds:        0,
+		Disposition:        decision.Disposition,
+		DispositionReason:  decision.Reason,
+		FingerprintSHA256:  fingerprint,
+		EvidenceRevision:   decision.Record.ExecutionRevision,
+		EvidenceRecordedAt: decision.Record.RecordedAt,
+	}
+}
+
+// recordSuccessfulLane stores a green lane's result so a later run inside the
+// window can reuse it. A lane whose fingerprint could not be determined stores
+// nothing: an unfingerprinted record could only ever authorize reuse by age.
+func recordSuccessfulLane(store *laneEvidenceStore, execution resultmodel.HeavyLaneExecution, fingerprint, executionRevision string, recordedAt time.Time) error {
+	if store == nil || fingerprint == "" {
+		return nil
+	}
+	return store.WriteLaneEvidence(storedLaneEvidence{
+		SchemaVersion:      laneEvidenceSchemaVersion,
+		RepositoryIdentity: store.repositoryIdentity,
+		LaneID:             execution.LaneID,
+		CommandArgv:        append([]string(nil), execution.CommandArgv...),
+		FingerprintSHA256:  fingerprint,
+		ExitStatus:         execution.ExitStatus,
+		Skipped:            execution.Skipped,
+		WallSeconds:        execution.WallSeconds,
+		ExecutionRevision:  executionRevision,
+		RecordedAt:         recordedAt.UTC().Format(time.RFC3339),
+	})
+}
+
+func laneUnrecordedFinding(execution resultmodel.HeavyLaneExecution, recordError error) resultmodel.CommandFinding {
+	return resultmodel.CommandFinding{
+		Code: "HEAVY-RUN-EVIDENCE-UNRECORDED", Severity: resultmodel.SeverityWarning,
+		Evidence:             []string{fmt.Sprintf("heavy lane %s passed but its evidence was not stored: %v", execution.LaneID, recordError)},
+		Fixability:           resultmodel.FixabilityManual,
+		AutomationStopReason: "the lane result stands; only its reuse record is missing",
+		NextArgv:             []string{"git", "rev-parse", "--git-common-dir"},
+		VerificationArgv:     []string{"do-work-cli", "--format", "json", CommandRunHeavyVerification, "--lane", execution.LaneID},
+	}
 }
 
 func laneSkippedFinding(execution resultmodel.HeavyLaneExecution, skipLine string) resultmodel.CommandFinding {

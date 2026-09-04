@@ -300,6 +300,37 @@ func TestPlanRejectsMalformedTrailingJSON(t *testing.T) {
 	}
 }
 
+// TestDecodeManifestRefusesUnusableFingerprintDeclarations keeps a fingerprint
+// block that cannot decide reuse out of the manifest, rather than letting it
+// decode into a digest that quietly covers less than it claims.
+func TestDecodeManifestRefusesUnusableFingerprintDeclarations(t *testing.T) {
+	for _, testCase := range []struct{ name, fingerprint string }{
+		{"no toolchain probe", `{"toolchain_probes": []}`},
+		{"empty probe argv", `{"toolchain_probes": [[]]}`},
+		{"empty probe token", `{"toolchain_probes": [["go", ""]]}`},
+		{"duplicate environment variable", `{"toolchain_probes": [["go", "version"]], "environment_variables": ["CI", "CI"]}`},
+		{"blank environment variable", `{"toolchain_probes": [["go", "version"]], "environment_variables": [" "]}`},
+	} {
+		t.Run(testCase.name, func(t *testing.T) {
+			manifest := `{"schema_version": 1, "lanes": [{"id": "lane", "argv": ["true"], ` +
+				`"coverage": [{"kind": "exact", "path": "seed.txt"}], "fingerprint": ` + testCase.fingerprint + `}]}`
+			if _, err := decodeManifest([]byte(manifest)); err == nil {
+				t.Fatalf("manifest with %s was accepted", testCase.name)
+			}
+		})
+	}
+	// The declaration stays optional: a lane without one still decodes, it just
+	// never reuses evidence.
+	withoutFingerprint := `{"schema_version": 1, "lanes": [{"id": "lane", "argv": ["true"], "coverage": [{"kind": "exact", "path": "seed.txt"}]}]}`
+	manifest, err := decodeManifest([]byte(withoutFingerprint))
+	if err != nil {
+		t.Fatalf("a lane without fingerprint inputs no longer decodes: %v", err)
+	}
+	if manifest.Lanes[0].Fingerprint != nil {
+		t.Fatalf("absent fingerprint decoded into %#v", manifest.Lanes[0].Fingerprint)
+	}
+}
+
 func TestRepositoryManifestNamesEveryLaneScopedMaintainerEntryPoint(t *testing.T) {
 	repositoryRoot, err := filepath.Abs("../../../../../..")
 	if err != nil {
@@ -329,7 +360,7 @@ func TestRepositoryManifestNamesEveryLaneScopedMaintainerEntryPoint(t *testing.T
 		if lane.ID != wantLaneID {
 			t.Fatalf("lane %d id = %q, want %q", laneIndex, lane.ID, wantLaneID)
 		}
-		wantArgv := []string{"bash", "_dev/tests/maintainer-verify.sh", "--heavy-lane", wantLaneID}
+		wantArgv := []string{"env", "GIT_CONFIG_NOSYSTEM=1", "GIT_CONFIG_GLOBAL=/dev/null", "bash", "_dev/tests/maintainer-verify.sh", "--heavy-lane", wantLaneID}
 		if !reflect.DeepEqual(lane.Argv, wantArgv) {
 			t.Fatalf("lane %s argv = %v", lane.ID, lane.Argv)
 		}
@@ -339,6 +370,16 @@ func TestRepositoryManifestNamesEveryLaneScopedMaintainerEntryPoint(t *testing.T
 	}
 	if !strings.Contains(string(maintainerScript), "--heavy)\n") {
 		t.Fatal("maintainer dispatcher no longer preserves --heavy force-all")
+	}
+	// Complete lanes retain toolchain evidence. Browser runtime discovery is
+	// deliberately uncertain, so that lane must execute.
+	for _, lane := range manifest.Lanes {
+		if lane.ID == "queue-kanban-browser" {
+			continue
+		}
+		if lane.Fingerprint == nil || len(lane.Fingerprint.ToolchainProbes) == 0 {
+			t.Fatalf("lane %s declares no fingerprint toolchain probes, so its evidence can never be reused", lane.ID)
+		}
 	}
 
 	coverageCases := []struct {

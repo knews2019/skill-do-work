@@ -61,6 +61,22 @@ func TestHandlersRegisterRunHeavyVerification(t *testing.T) {
 	}
 }
 
+// TestRunArgumentsDefaultToEvidenceReuse pins the default the drain depends on:
+// reuse is on unless the caller explicitly asks for a full rerun.
+func TestRunArgumentsDefaultToEvidenceReuse(t *testing.T) {
+	_, _, _, evidenceReuse, err := parseRunArguments([]string{"--lane", "installer"})
+	if err != nil || !evidenceReuse {
+		t.Fatalf("default evidence reuse = %t (err %v), want true", evidenceReuse, err)
+	}
+	_, _, _, evidenceReuse, err = parseRunArguments([]string{"--lane", "installer", "--no-evidence-reuse"})
+	if err != nil || evidenceReuse {
+		t.Fatalf("--no-evidence-reuse left reuse = %t (err %v), want false", evidenceReuse, err)
+	}
+	if _, _, _, _, err = parseRunArguments([]string{"--lane", "installer", "--no-evidence-reuse", "--no-evidence-reuse"}); err == nil {
+		t.Fatal("a repeated --no-evidence-reuse was accepted")
+	}
+}
+
 func TestPlanHeavyRevalidationHandlerRejectsIncompleteArguments(t *testing.T) {
 	result := handlePlanHeavyRevalidation(commandruntime.ExecutionContext{RepositoryRoot: t.TempDir()}, []string{"--execution-revision", "HEAD"})
 	if result.Outcome != resultmodel.OutcomeFailure || len(result.Findings) != 1 || result.Findings[0].Code != "HEAVY-REVALIDATION-USAGE" {
