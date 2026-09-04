@@ -2,6 +2,15 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.276.0 — Board Activity View (2026-09-04)
+
+The board could not answer "what changed on the queue in the last few hours". Recently done shows terminal REQs only, the Calendar dates a REQ from its claim or resolve day, and the Timeline draws spans rather than the transitions between them — so three REQs claimed, built, merged and held for heavy testing in one afternoon appeared on none of them, and answering the question meant reading `git log`.
+
+- A new **Activity** view lists every REQ whose newest lifecycle stamp falls inside the window, newest first, naming what happened ("held for heavy testing", "builder dispatched", "completed") and which frontmatter stamp says so. Status does not filter it — claimed, held, blocked, completed, cancelled and failed all belong on the same surface.
+- Its own 6h / 24h / 48h / 7d window, separate from the board's Recently-done window because they answer different questions. The shared filter chips apply, and an empty result says which empty it is: nothing moved, or the filters hide what did.
+- The lifecycle-stamp list now has one definition feeding both the future-stamp check and this view, so a stamp added to the schema reaches both surfaces from one edit.
+- Fixes two managed Just recipes, `bkb-init` and `memory-recall`, that no version of `just` could parse.
+
 ## 0.275.3 — Held Heavy-Test REQs Wait With the Queue, Not in the Inbox (2026-09-04)
 
 0.275.0 made the work loop run held heavy lanes itself at queue exhaustion, but the board still filed every `pending-heavy-testing` REQ under Needs input · Blocked, and the hold line it carried still read as a Yes/No question for you. Nothing was being asked; now nothing looks asked.
