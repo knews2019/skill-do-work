@@ -48,7 +48,7 @@ Before protected association or reading any uncommitted path, invoke the canonic
 <skill-root>/tools/do-work-cli.sh --repo-root <project-root> --format json recover
 ```
 
-Continue only on typed `success` with every ordered `finalizations` record carrying empty `blocked_paths` and `reason_codes`. Recovery commits all safe finalization groups in its returned order, preserves unfinished working claims without authority, and refuses before this action selects ordinary groups when staged, protected, shared, or multiply-owned evidence remains ambiguous. Group only the changes left after recovery; never re-associate a recovered path.
+Continue only on typed `success`, and read the ordered `finalizations` one record at a time: a record carrying `FINALIZATION-SET-ASIDE` in its `reason_codes` is one REQ recovery excluded, and the remaining records still count as settled when their `blocked_paths` and `reason_codes` are empty. Recovery commits all safe finalization groups in its returned order, preserves unfinished working claims without authority, and refuses before this action selects ordinary groups when staged, protected, shared, or multiply-owned evidence remains ambiguous. Group only the changes left after recovery; never re-associate a recovered path.
 
 Start the protected inventory wrapper; it owns the worktree-safe run quarantine and delegates low-level classification to the existing checks:
 
