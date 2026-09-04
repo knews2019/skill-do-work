@@ -38,7 +38,7 @@ func TestNormalizeFieldAppliesAliasesDefaultsAndExactWarnings(t *testing.T) {
 		},
 		{
 			"unknown without default retains evidence", "status", "almost-done", "almost-done", false, false,
-			"⚠ status: 'almost-done' not recognized — expected one of [pending, claimed, completed, completed-with-issues, failed, cancelled, pending-answers, pending-heavy-testing, blocked, blocked-archive-collision, blocked-dependency-cycle]. No default is defined; reporting it unchanged.",
+			"⚠ status: 'almost-done' not recognized — expected one of [pending, claimed, completed, completed-with-issues, failed, cancelled, pending-answers, blocked, blocked-archive-collision, blocked-dependency-cycle]. No default is defined; reporting it unchanged.",
 		},
 		{"verbatim field", "assigned_to", " Cloud-Alpha ", "Cloud-Alpha", true, false, ""},
 	}
@@ -159,10 +159,26 @@ func TestTerminalPredicatesKeepFailureAndCancellationDistinct(t *testing.T) {
 	if !IsStopped("failed") || IsStopped("blocked") {
 		t.Fatal("failed is stopped; blocked remains unfinished")
 	}
-	if !DependencySourceReady("pending-heavy-testing", "abc123") {
-		t.Fatal("pending-heavy implementation commit must be source-ready")
+}
+
+// TestDependencySourceReadyAcceptsClaimedWithCommitOnly pins REQ-570: the heavy
+// hold is a phase of a claimed request, so a claimed dependency that already
+// landed its implementation commit is source-ready, and the retired
+// pending-heavy-testing status is neither recognized nor source-ready.
+func TestDependencySourceReadyAcceptsClaimedWithCommitOnly(t *testing.T) {
+	if !DependencySourceReady("claimed", "abc123") {
+		t.Fatal("a claimed request holding its landed implementation commit must be source-ready")
 	}
-	if DependencySourceReady("pending-heavy-testing", "") || DependencySourceReady("pending", "abc123") {
-		t.Fatal("missing commit or pending remediation must block dependencies")
+	if DependencySourceReady("claimed", "") {
+		t.Fatal("a claimed request without a commit must fail closed")
+	}
+	if DependencySourceReady("pending", "abc123") {
+		t.Fatal("pending remediation must block dependencies even with a stale commit")
+	}
+	if DependencySourceReady("pending-heavy-testing", "abc123") {
+		t.Fatal("the retired pending-heavy-testing status must not grant source readiness")
+	}
+	if NormalizeField("status", "pending-heavy-testing").IsRecognized {
+		t.Fatal("pending-heavy-testing must no longer be a canonical status value")
 	}
 }

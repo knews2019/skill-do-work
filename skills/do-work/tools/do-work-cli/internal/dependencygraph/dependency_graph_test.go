@@ -14,6 +14,10 @@ type graphFixture struct {
 	status        string
 	dependencyKey string
 	dependencies  []string
+	// commit is the fixture's implementation commit; treeSection defaults to
+	// "queue" so an existing fixture keeps its original location.
+	commit      string
+	treeSection string
 }
 
 func buildFixtureGraph(t *testing.T, fixtures []graphFixture) *DependencyGraph {
@@ -21,8 +25,8 @@ func buildFixtureGraph(t *testing.T, fixtures []graphFixture) *DependencyGraph {
 	repositoryRoot := t.TempDir()
 	for _, fixture := range fixtures {
 		frontmatter := "---\nid: " + fixture.requestID + "\nstatus: " + fixture.status + "\n"
-		if fixture.status == "pending-heavy-testing" {
-			frontmatter += "commit: 0123456789abcdef\n"
+		if fixture.commit != "" {
+			frontmatter += "commit: " + fixture.commit + "\n"
 		}
 		if fixture.dependencyKey != "" {
 			frontmatter += fixture.dependencyKey + ": ["
@@ -35,7 +39,11 @@ func buildFixtureGraph(t *testing.T, fixtures []graphFixture) *DependencyGraph {
 			frontmatter += "]\n"
 		}
 		frontmatter += "---\nBody\n"
-		requestPath := filepath.Join(repositoryRoot, "do-work", "queue", fixture.requestID+".md")
+		treeSection := fixture.treeSection
+		if treeSection == "" {
+			treeSection = "queue"
+		}
+		requestPath := filepath.Join(repositoryRoot, "do-work", treeSection, fixture.requestID+".md")
 		if err := os.MkdirAll(filepath.Dir(requestPath), 0o755); err != nil {
 			t.Fatal(err)
 		}
@@ -52,12 +60,12 @@ func buildFixtureGraph(t *testing.T, fixtures []graphFixture) *DependencyGraph {
 
 func TestBuildGraphComputesReadinessReverseEdgesAndDepth(t *testing.T) {
 	graph := buildFixtureGraph(t, []graphFixture{
-		{"REQ-001", "completed", "", nil},
-		{"REQ-002", "pending", "dependencies", []string{"REQ-001"}},
-		{"REQ-003", "pending", "depends_on", []string{"REQ-001", "REQ-002", "REQ-002"}},
-		{"REQ-004", "pending", "depends_on", []string{"REQ-999"}},
-		{"REQ-005", "pending", "depends_on", []string{"REQ-006"}},
-		{"REQ-006", "pending", "depends_on", []string{"REQ-005"}},
+		{requestID: "REQ-001", status: "completed"},
+		{requestID: "REQ-002", status: "pending", dependencyKey: "dependencies", dependencies: []string{"REQ-001"}},
+		{requestID: "REQ-003", status: "pending", dependencyKey: "depends_on", dependencies: []string{"REQ-001", "REQ-002", "REQ-002"}},
+		{requestID: "REQ-004", status: "pending", dependencyKey: "depends_on", dependencies: []string{"REQ-999"}},
+		{requestID: "REQ-005", status: "pending", dependencyKey: "depends_on", dependencies: []string{"REQ-006"}},
+		{requestID: "REQ-006", status: "pending", dependencyKey: "depends_on", dependencies: []string{"REQ-005"}},
 	})
 
 	if !graph.NodesByID["REQ-002"].IsReady || graph.NodesByID["REQ-002"].DependencyDepth != 1 {
@@ -85,12 +93,12 @@ func TestBuildGraphComputesReadinessReverseEdgesAndDepth(t *testing.T) {
 
 func TestDependencySatisfactionUsesOnlyTerminalSuccess(t *testing.T) {
 	graph := buildFixtureGraph(t, []graphFixture{
-		{"REQ-001", "completed-with-issues", "", nil},
-		{"REQ-002", "cancelled", "", nil},
-		{"REQ-003", "failed", "", nil},
-		{"REQ-010", "pending", "depends_on", []string{"REQ-001"}},
-		{"REQ-011", "pending", "depends_on", []string{"REQ-002"}},
-		{"REQ-012", "pending", "depends_on", []string{"REQ-003"}},
+		{requestID: "REQ-001", status: "completed-with-issues"},
+		{requestID: "REQ-002", status: "cancelled"},
+		{requestID: "REQ-003", status: "failed"},
+		{requestID: "REQ-010", status: "pending", dependencyKey: "depends_on", dependencies: []string{"REQ-001"}},
+		{requestID: "REQ-011", status: "pending", dependencyKey: "depends_on", dependencies: []string{"REQ-002"}},
+		{requestID: "REQ-012", status: "pending", dependencyKey: "depends_on", dependencies: []string{"REQ-003"}},
 	})
 	if !graph.NodesByID["REQ-010"].IsReady {
 		t.Fatal("completed-with-issues must satisfy a dependency")
@@ -100,46 +108,35 @@ func TestDependencySatisfactionUsesOnlyTerminalSuccess(t *testing.T) {
 	}
 }
 
-func TestPendingHeavyDependencyIsSourceReadyUntilItReturnsToPending(t *testing.T) {
-	heavyGraph := buildFixtureGraph(t, []graphFixture{
-		{"REQ-563", "pending-heavy-testing", "", nil},
-		{"REQ-564", "pending", "depends_on", []string{"REQ-563"}},
+// TestClaimedDependencyWithCommitIsSourceReady pins REQ-570: a request held for
+// heavy lanes stays claimed in do-work/working/ carrying its landed commit, and
+// that is what makes its dependents buildable. A claimed request without a
+// commit, and a pending request carrying a prior attempt's commit, both stay
+// unmet.
+func TestClaimedDependencyWithCommitIsSourceReady(t *testing.T) {
+	heldGraph := buildFixtureGraph(t, []graphFixture{
+		{requestID: "REQ-563", status: "claimed", commit: "0123456789abcdef", treeSection: "working"},
+		{requestID: "REQ-564", status: "pending", dependencyKey: "depends_on", dependencies: []string{"REQ-563"}},
 	})
-	if !heavyGraph.NodesByID["REQ-564"].IsReady {
-		t.Fatalf("pending-heavy implementation did not unblock dependent: %#v", heavyGraph.NodesByID["REQ-564"])
+	if !heldGraph.NodesByID["REQ-564"].IsReady {
+		t.Fatalf("held claimed source did not unblock dependent: %#v", heldGraph.NodesByID["REQ-564"])
+	}
+
+	commitlessGraph := buildFixtureGraph(t, []graphFixture{
+		{requestID: "REQ-563", status: "claimed", treeSection: "working"},
+		{requestID: "REQ-564", status: "pending", dependencyKey: "depends_on", dependencies: []string{"REQ-563"}},
+	})
+	dependent := commitlessGraph.NodesByID["REQ-564"]
+	if dependent.IsReady || !reflect.DeepEqual(dependent.UnmetDependencies, []string{"REQ-563"}) {
+		t.Fatalf("commit-less claimed source satisfied dependency: %#v", dependent)
 	}
 
 	pendingGraph := buildFixtureGraph(t, []graphFixture{
-		{"REQ-563", "pending", "", nil},
-		{"REQ-564", "pending", "depends_on", []string{"REQ-563"}},
+		{requestID: "REQ-563", status: "pending", commit: "0123456789abcdef"},
+		{requestID: "REQ-564", status: "pending", dependencyKey: "depends_on", dependencies: []string{"REQ-563"}},
 	})
 	if pendingGraph.NodesByID["REQ-564"].IsReady {
 		t.Fatalf("pending remediation source unblocked dependent: %#v", pendingGraph.NodesByID["REQ-564"])
-	}
-}
-
-func TestPendingHeavyDependencyRequiresImplementationCommit(t *testing.T) {
-	repositoryRoot := t.TempDir()
-	requestBytes := map[string]string{
-		"do-work/queue/REQ-563-heavy.md":     "---\nid: REQ-563\nstatus: pending-heavy-testing\n---\nBody\n",
-		"do-work/queue/REQ-564-dependent.md": "---\nid: REQ-564\nstatus: pending\ndepends_on: [REQ-563]\n---\nBody\n",
-	}
-	for relativePath, contents := range requestBytes {
-		path := filepath.Join(repositoryRoot, filepath.FromSlash(relativePath))
-		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
-			t.Fatal(err)
-		}
-		if err := os.WriteFile(path, []byte(contents), 0o644); err != nil {
-			t.Fatal(err)
-		}
-	}
-	snapshot, err := repositorymodel.DiscoverRepository(repositoryRoot)
-	if err != nil {
-		t.Fatal(err)
-	}
-	dependent := BuildGraph(snapshot).NodesByID["REQ-564"]
-	if dependent.IsReady || !reflect.DeepEqual(dependent.UnmetDependencies, []string{"REQ-563"}) {
-		t.Fatalf("commit-less pending-heavy source satisfied dependency: %#v", dependent)
 	}
 }
 
