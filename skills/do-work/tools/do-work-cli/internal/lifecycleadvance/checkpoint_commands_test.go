@@ -59,9 +59,9 @@ func TestAdvanceCheckpointChangesOnlyCheckpointAndPreservesLiveEntries(t *testin
 	}
 }
 
-func TestOrdinaryAdvanceRemainsReadOnlyAfterCheckpointMode(t *testing.T) {
+func TestWorkingAdvanceRemainsReadOnlyAfterCheckpointMode(t *testing.T) {
 	repositoryRoot := t.TempDir()
-	writeAdvanceRequest(t, repositoryRoot, "queue", "REQ-715", "pending", "", "")
+	writeAdvanceRequest(t, repositoryRoot, "working", "REQ-715", "claimed", "", "")
 	writeAdvanceFile(t, repositoryRoot, "do-work/CHECKPOINT.md", "# Session Checkpoint\n\n## In Progress (interrupted)\n")
 	before := advanceTreeDigest(t, repositoryRoot)
 	command := exec.Command(advanceCLIBinary(t), "--repo-root", repositoryRoot, "--format", "json", "advance", "REQ-715")

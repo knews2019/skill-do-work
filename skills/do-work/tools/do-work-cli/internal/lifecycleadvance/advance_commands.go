@@ -1,5 +1,5 @@
-// Package lifecycleadvance projects one request's next do-work lifecycle phase
-// without changing repository state.
+// Package lifecycleadvance advances queue selection and projects the next
+// lifecycle phase for already-working or archived requests.
 package lifecycleadvance
 
 import (
@@ -12,7 +12,6 @@ import (
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/commandruntime"
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/repositorymodel"
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/requestmodel"
-	"github.com/knews2019/skill-do-work/do-work-cli/internal/requeststate"
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/resultmodel"
 )
 
@@ -39,25 +38,19 @@ func handleAdvance(executionContext commandruntime.ExecutionContext, arguments [
 	if len(arguments) == 1 && arguments[0] == "--checkpoint" {
 		return handleAdvanceCheckpoint(executionContext)
 	}
-	requestID, parseError := parseAdvanceArguments(arguments)
-	if parseError != nil {
-		return advanceFailure("ADVANCE-USAGE", parseError.Error())
-	}
-	snapshot, discoveryError := discoverAdvanceRepository(executionContext.RepositoryRoot)
-	if discoveryError != nil {
-		return advanceFailure("ADVANCE-DISCOVERY-FAILED", discoveryError.Error())
-	}
-	target, targetRefusal := requeststate.ResolveTarget(snapshot, requestID, "")
-	if targetRefusal != nil {
-		paths := append([]string(nil), targetRefusal.Paths...)
-		if len(paths) == 0 {
-			for _, candidate := range snapshot.RequestsByID[requestID] {
-				paths = append(paths, advanceRequestPath(candidate))
-			}
+	if len(arguments) == 1 && advanceRequestIDPattern.MatchString(arguments[0]) {
+		snapshot, discoveryError := discoverAdvanceRepository(executionContext.RepositoryRoot)
+		if discoveryError != nil {
+			return advanceFailure("ADVANCE-DISCOVERY-FAILED", discoveryError.Error())
 		}
-		return advanceRefusal(requestID, paths, "ADVANCE-EVIDENCE-MISSING", targetRefusal.Reason, nil)
+		if candidates := snapshot.RequestsByID[arguments[0]]; len(candidates) == 1 && candidates[0].TreeSection != "queue" {
+			if candidates[0].ParseFailure != "" || candidates[0].TypedRecord.RequestID != arguments[0] {
+				return advanceRefusal(arguments[0], []string{advanceRequestPath(candidates[0])}, "ADVANCE-EVIDENCE-MISSING", "request identity or frontmatter is malformed", nil)
+			}
+			return classifyAdvance(candidates[0])
+		}
 	}
-	return classifyAdvance(target)
+	return handleQueueAdvance(executionContext.RepositoryRoot, arguments)
 }
 
 func parseAdvanceArguments(arguments []string) (string, error) {

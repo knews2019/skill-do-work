@@ -144,6 +144,45 @@ func TestNormalizeResultUsesEmptyClaimEvidenceArray(t *testing.T) {
 	}
 }
 
+func TestQueueAdvanceTextAndJSONPreserveTypedSessionState(t *testing.T) {
+	result := CommandResult{
+		Command: "advance", Outcome: OutcomeFindings,
+		QueueAdvance: &QueueAdvanceResult{
+			TargetTokens: []string{"UR-500"}, DispatchBound: 1, Partial: true,
+			FrozenMembers:    []QueueAdvanceMember{{RequestID: "REQ-501", RequestPath: "do-work/working/REQ-501.md", Provenance: "ur-expanded", Consumed: true}},
+			Claimed:          []QueueAdvanceMember{{RequestID: "REQ-501", RequestPath: "do-work/working/REQ-501.md", Provenance: "ur-expanded", Consumed: true}},
+			Phases:           []QueueAdvancePhase{{RequestID: "REQ-501", Phase: "claim", Outcome: OutcomeSuccess}},
+			ContinuationArgv: []string{"do-work-cli", "--format", "json", "advance", "UR-500", "--dispatch-bound", "1"},
+			VerificationArgv: []string{"git", "status", "--short", "--", "do-work"},
+		},
+	}
+	textOutput, err := RenderResult(result, FormatText)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, expected := range []string{
+		"queue advance: members=1 claimed=1 bound=1 partial=true",
+		"REQ-501 claim: success",
+		"continue: do-work-cli --format json advance UR-500 --dispatch-bound 1",
+		"verify: git status --short -- do-work",
+	} {
+		if !strings.Contains(string(textOutput), expected) {
+			t.Errorf("queue text missing %q:\n%s", expected, textOutput)
+		}
+	}
+	jsonOutput, err := RenderResult(result, FormatJSON)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var decoded CommandResult
+	if err := json.Unmarshal(jsonOutput, &decoded); err != nil {
+		t.Fatal(err)
+	}
+	if decoded.QueueAdvance == nil || len(decoded.QueueAdvance.FrozenMembers) != 1 || len(decoded.QueueAdvance.Claimed) != 1 || len(decoded.QueueAdvance.Phases) != 1 || decoded.QueueAdvance.Phases[0].Changes == nil || decoded.QueueAdvance.Phases[0].Findings == nil || decoded.QueueAdvance.ContinuationArgv[4] != "UR-500" {
+		t.Fatalf("queue JSON lost typed state: %#v", decoded.QueueAdvance)
+	}
+}
+
 func TestGateEvidenceTextAndJSONCarryTheSameTypedState(t *testing.T) {
 	result := CommandResult{
 		Command: "check-green-gate", Outcome: OutcomeSuccess, RepositoryRoot: "/tmp/example",

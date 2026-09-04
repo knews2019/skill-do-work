@@ -45,6 +45,7 @@ exploration_at: 2026-09-04T16:49:45Z
 preflight_at: 2026-09-04T16:52:22Z
 dispatch_at: 2026-09-04T16:52:56Z
 builder_handback_at: 2026-09-04T17:24:31Z
+integration_at: 2026-09-04T17:26:13Z
 estimate:
   p50_active_minutes: 50
   confidence: low
@@ -67,8 +68,8 @@ Steps 1 (95 lines), 2.0 and 2 become `advance` phases; `work.md` keeps one selec
 
 ## AI Execution State (P-A-U Loop)
 - [x] **[PLAN]:** The Plan and Explore agents mapped a typed queue-mode advance composition, explicit frozen-ledger continuation state, nested archive-collision and cycle holds, successful-probe unblock-to-claim behavior, per-request committed claim transactions, prose collapse, and replacement public tests across the widened scope.
-- [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
-- [ ] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
+- [x] **[APPLY]:** Implemented queue-mode selection and claim, stateless targeted continuation, guarded hold/unblock transactions, typed results, and the planned prose collapse within the declared scope.
+- [x] **[UNIFY]:** Reviewed the 18-file diff, ran gofmt, focused and race tests, module tests, vet, contract regressions, and the direct maintainer gate; no debug artifacts or out-of-scope paths remained.
 
 ## Why
 Selection already runs through `next` and claim through `claim`; the 114 lines of prose restate their contracts.
@@ -188,3 +189,39 @@ Repository discovery already walks nested archive trees and carries complete fil
 ## Decisions
 
 - **D-01 — DECIDE & STATE:** Expanded the scope by one existing checkpoint test file because REQ-504 deliberately pinned pending-queue advance as read-only, while REQ-505 intentionally makes that exact phase mutating. The replacement fixture must pin working/archive read-only behavior and preserve checkpoint-only mutation; leaving the old assertion would make the stated behavior and the inherited test mutually exclusive.
+- **D-02 — DECIDE & STATE:** Encoded targeted continuation as explicit tokenized CLI state using a dispatch bound plus repeated frozen members. This survives process boundaries and preserves frozen membership without shell interpolation; strict validation and hostile-token tests contain the added public evidence flags.
+- **D-03 — DECIDE & STATE:** Kept ordinary default selection bounded while targeted, wave, fan-out, simple, and continuation observations use the unbounded selector seam before projection. Both paths delegate to the same selector, preserving the one-request floor without starving frozen targeted members.
+- **D-04 — DECIDE & STATE:** Hold every dependency-cycle member before dispatch and count successful holds as consumed session work. This prevents cycle livelock while guarded per-record commits preserve durable and attributable state changes.
+
+## Implementation Summary
+
+**Files changed:**
+
+- `skills/do-work/actions/clarify.md` (modified) — aligned clarification guidance with advance-owned queue mechanics.
+- `skills/do-work/actions/work-reference.md` (modified) — replaced procedural selection and ledger instructions with typed advance evidence contracts.
+- `skills/do-work/actions/work.md` (modified) — collapsed selection and claim mechanics to one command-owned principle.
+- `skills/do-work/docs/work-guide.md` (modified) — updated the user-facing queue execution description.
+- `skills/do-work/tools/do-work-cli/internal/lifecycleadvance/advance_commands.go` (modified) — routed pending queue inputs through the composed advance transaction.
+- `skills/do-work/tools/do-work-cli/internal/lifecycleadvance/advance_commands_test.go` (modified) — updated public advance command coverage.
+- `skills/do-work/tools/do-work-cli/internal/lifecycleadvance/checkpoint_commands_test.go` (modified) — preserved working/archive read-only and checkpoint-only behavior.
+- `skills/do-work/tools/do-work-cli/internal/lifecycleadvance/queue_commands.go` (new) — implemented selection, holds, unblock, claim, and continuation orchestration.
+- `skills/do-work/tools/do-work-cli/internal/lifecycleadvance/queue_commands_test.go` (new) — covered default, targeted, wave, fan-out, collision, cycle, probe, refusal, and hostile-token paths.
+- `skills/do-work/tools/do-work-cli/internal/nextselection/next_commands.go` (modified) — exposed canonical argument parsing for lifecycle composition.
+- `skills/do-work/tools/do-work-cli/internal/nextselection/next_selection.go` (modified) — added unbounded observation while retaining ordinary bounded selection.
+- `skills/do-work/tools/do-work-cli/internal/requeststate/state_apply.go` (modified) — applied guarded hold and unblock transitions.
+- `skills/do-work/tools/do-work-cli/internal/requeststate/state_plan.go` (modified) — planned exact queue-state mutations from fresh snapshots.
+- `skills/do-work/tools/do-work-cli/internal/requeststate/state_plan_test.go` (modified) — verified hold and unblock state plans.
+- `skills/do-work/tools/do-work-cli/internal/requeststate/state_types.go` (modified) — represented the new mutation evidence and state transitions.
+- `skills/do-work/tools/do-work-cli/internal/resultmodel/result_model.go` (modified) — projected queue phases, claims, continuation, and verification evidence.
+- `skills/do-work/tools/do-work-cli/internal/resultmodel/result_model_test.go` (modified) — verified structured and rendered queue-advance results.
+- `skills/do-work/tools/do-work-cli/prime-do-work-cli.md` (modified) — documented the new lifecycle-advance authority boundary.
+
+**What was done:** Queue selection and claim now execute as one public lifecycle-advance composition. It returns committed claim members, ordered typed phase findings, and tokenized continuation evidence while preserving default one-request dispatch, frozen targeted membership, guarded collision/cycle holds, successful-probe unblock, truthful partial refusal, and checkpoint-only behavior.
+
+## Discovered Tasks
+
+None.
+
+## Orientation
+
+[MAP CHANGED] Queue selection and claim now live behind the lifecycle-advance subsystem: `advance` returns committed claims and durable stateless continuation evidence, while the work action retains only the human-readable claimability principle and orchestration judgment.

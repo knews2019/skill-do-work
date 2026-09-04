@@ -618,6 +618,20 @@ func lifecycleRequestBytes(plan StatePlan) ([]byte, error) {
 			entry += "\n- **Previously:** failed" + classification + " — " + prior + " — resolved by decision not to retry"
 		}
 		return appendSectionEntry(document.DocumentBytes(), "Cancelled", entry), nil
+	case TransitionHoldArchiveCollision:
+		if err := document.SetScalar("status", "blocked-archive-collision"); err != nil {
+			return nil, err
+		}
+		if err := document.SetScalar("status_changed_at", timestamp); err != nil {
+			return nil, err
+		}
+	case TransitionHoldDependencyCycle:
+		if err := document.SetScalar("status", "blocked-dependency-cycle"); err != nil {
+			return nil, err
+		}
+		if err := document.SetScalar("status_changed_at", timestamp); err != nil {
+			return nil, err
+		}
 	}
 	return document.DocumentBytes(), nil
 }
@@ -683,7 +697,7 @@ func verifyAppliedState(plan StatePlan) error {
 		}
 		return nil
 	}
-	wantStatus := map[Transition]string{TransitionClaim: "claimed", TransitionRecover: recoveredStatus(plan), TransitionUnblock: "pending", TransitionComplete: plan.Options.TerminalStatus, TransitionFail: "failed", TransitionCancel: "cancelled"}[plan.Transition]
+	wantStatus := map[Transition]string{TransitionClaim: "claimed", TransitionRecover: recoveredStatus(plan), TransitionUnblock: "pending", TransitionComplete: plan.Options.TerminalStatus, TransitionFail: "failed", TransitionCancel: "cancelled", TransitionHoldArchiveCollision: "blocked-archive-collision", TransitionHoldDependencyCycle: "blocked-dependency-cycle"}[plan.Transition]
 	if wantStatus == "" && plan.Transition == TransitionComplete {
 		wantStatus = "completed"
 	}

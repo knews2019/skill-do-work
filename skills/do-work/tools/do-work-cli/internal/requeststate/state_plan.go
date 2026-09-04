@@ -27,7 +27,7 @@ func BuildPlan(snapshot *repositorymodel.RepositorySnapshot, graph *dependencygr
 		return plan
 	}
 	plan.RepositoryRoot = snapshot.RepositoryRoot
-	target, targetRefusal := ResolveTarget(snapshot, options.RequestID, options.RequestPath)
+	target, targetRefusal := resolvedPlanTarget(snapshot, options)
 	if targetRefusal != nil {
 		plan.Refusal = targetRefusal
 		return plan
@@ -94,6 +94,24 @@ func BuildPlan(snapshot *repositorymodel.RepositorySnapshot, graph *dependencygr
 	planCalibration(&plan)
 	planTargets(&plan)
 	return plan
+}
+
+func resolvedPlanTarget(snapshot *repositorymodel.RepositorySnapshot, options StateOptions) (*repositorymodel.RequestFile, *StateRefusal) {
+	if options.ResolvedTarget == nil {
+		return ResolveTarget(snapshot, options.RequestID, options.RequestPath)
+	}
+	target := options.ResolvedTarget
+	found := false
+	for _, requestFile := range snapshot.RequestFiles {
+		if requestFile == target {
+			found = true
+			break
+		}
+	}
+	if !found || target.TypedRecord.RequestID != options.RequestID || requestPathFor(target) != options.RequestPath || target.ParseFailure != "" {
+		return nil, refuse("REQUEST-SNAPSHOT-STALE", "resolved request no longer belongs to this repository snapshot", options.RequestPath)
+	}
+	return target, nil
 }
 
 func validateTransition(target *repositorymodel.RequestFile, graph *dependencygraph.DependencyGraph, options StateOptions) *StateRefusal {
@@ -214,6 +232,10 @@ func validateTransition(target *repositorymodel.RequestFile, graph *dependencygr
 			if summaryError := validateOutsideText(options.CancellationSummary); summaryError != nil {
 				return refuse("CANCEL-REASON-UNSAFE", summaryError.Error(), sourcePath)
 			}
+		}
+	case TransitionHoldArchiveCollision, TransitionHoldDependencyCycle:
+		if target.TreeSection != "queue" || status != "pending" {
+			return refuse("HOLD-STATUS", "queue hold requires one pending queue REQ", sourcePath)
 		}
 	default:
 		return refuse("STATE-USAGE", "unknown lifecycle transition", sourcePath)
