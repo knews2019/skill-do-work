@@ -168,3 +168,9 @@ The machine must not infer Simple versus Complex, field applicability, dependenc
 ## Discovered Tasks
 
 - [impact-negligible] The staged-skills heavy-only guard still describes user permission even though selected lanes run automatically at exhaustion; the guard itself works. → report only
+
+## Qualification
+
+**Result: Pass.** Canonical advance returned satisfied qualify and scope-drift records, with no findings, for range 366e1796bc2b0ca4f5b4a344e3c511a4c680dc8c..c00227166b288b97c60377cc06e7a5bfa736a0e8. All nine declared source files changed substantively. The orchestrator read the schema registry, request projections, publication validator, and example diff: public capture planning reaches validation before record mutations, and ordinary typed reads still normalize legacy values. The examples retain record shape and capture-time judgment; no live comment-pinning predicate remains.
+
+**Requirement trace:** Minimal examples are covered by the actual-document public test and 67-line measurement; removed mechanical comments map to schema/publication behavior tests; legacy aliases and canonical-key precedence have explicit tests; capture judgments and optional proof/question shapes remain prose.
