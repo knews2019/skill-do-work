@@ -625,3 +625,41 @@ func assertDiscoveryReason(t *testing.T, result resultmodel.CommandResult, code,
 		t.Fatalf("refusal record = %#v", record)
 	}
 }
+
+func TestRecoverFinalizationPreservesAndMatchesPrivateFileModeInLifecyclePostimages(t *testing.T) {
+	repositoryRoot, manifestPath := seedPlannedFinalization(t, ProvenancePrimaryCommit)
+	requestPath := "do-work/working/REQ-720.md"
+	reqAbs := filepath.Join(repositoryRoot, filepath.FromSlash(requestPath))
+	if err := os.Chmod(reqAbs, 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	journal, resumed, err := prepareJournal(context.Background(), repositoryRoot, manifestPath)
+	if err != nil || resumed {
+		t.Fatalf("prepare: resumed=%t, err=%v", resumed, err)
+	}
+
+	plan, err := lifecyclePlan(repositoryRoot, journal.Manifest, journal.LifecyclePreimages)
+	if err != nil {
+		t.Fatal(err)
+	}
+	applied := requeststate.ApplyPlan(context.Background(), plan)
+	if applied.Outcome != resultmodel.OutcomeSuccess {
+		t.Fatalf("apply failed: %#v", applied)
+	}
+
+	archiveAbs := filepath.Join(repositoryRoot, "do-work", "archive", "REQ-720.md")
+	info, err := os.Lstat(archiveAbs)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if info.Mode().Perm() != 0o600 {
+		t.Fatalf("archived file mode = %o, want 0600", info.Mode().Perm())
+	}
+
+	recovered := handleRecoverFinalization(commandruntime.ExecutionContext{RepositoryRoot: repositoryRoot}, nil)
+	if recovered.Outcome != resultmodel.OutcomeSuccess || len(recovered.Finalizations) != 1 || recovered.Finalizations[0].Phase != string(PhaseCleanupComplete) {
+		t.Fatalf("recovery failed: %#v", recovered)
+	}
+}
+

@@ -152,21 +152,49 @@ func PlannedPostimages(plan StatePlan) ([]PlannedFileImage, error) {
 	put := func(path string, exists bool, contents []byte, mode uint32) {
 		images[path] = PlannedFileImage{Path: path, Exists: exists, Bytes: append([]byte(nil), contents...), Mode: mode}
 	}
+	sourceMode := func(relPath string, fallback uint32) uint32 {
+		if plan.RepositoryRoot == "" || relPath == "" {
+			return fallback
+		}
+		info, err := os.Lstat(filepath.Join(plan.RepositoryRoot, filepath.FromSlash(relPath)))
+		if err == nil && info.Mode().IsRegular() {
+			return uint32(info.Mode())
+		}
+		return fallback
+	}
+	reqMode := sourceMode(plan.SourcePath, 0o644)
 	if plan.SourcePath == plan.DestinationPath {
-		put(plan.SourcePath, true, requestBytes, 0o644)
+		put(plan.SourcePath, true, requestBytes, reqMode)
 	} else {
 		put(plan.SourcePath, false, nil, 0)
-		put(plan.DestinationPath, true, requestBytes, 0o644)
+		put(plan.DestinationPath, true, requestBytes, reqMode)
 	}
 	for _, move := range plan.AdditionalMoves {
+		moveMode := sourceMode(move.SourcePath, 0o644)
 		put(move.SourcePath, false, nil, 0)
-		put(move.DestinationPath, true, move.ExpectedBytes, 0o644)
+		put(move.DestinationPath, true, move.ExpectedBytes, moveMode)
 	}
 	if plan.CheckpointPath != "" {
-		put(plan.CheckpointPath, plan.CheckpointExisted || len(plan.CheckpointBytes) > 0, plan.CheckpointBytes, 0o644)
+		exists := plan.CheckpointExisted || len(plan.CheckpointBytes) > 0
+		mode := uint32(0)
+		if exists {
+			mode = 0o644
+			if plan.CheckpointExisted {
+				mode = sourceMode(plan.CheckpointPath, 0o644)
+			}
+		}
+		put(plan.CheckpointPath, exists, plan.CheckpointBytes, mode)
 	}
 	if plan.CalibrationPath != "" {
-		put(plan.CalibrationPath, plan.CalibrationExisted || len(plan.CalibrationBytes) > 0, plan.CalibrationBytes, 0o644)
+		exists := plan.CalibrationExisted || len(plan.CalibrationBytes) > 0
+		mode := uint32(0)
+		if exists {
+			mode = 0o644
+			if plan.CalibrationExisted {
+				mode = sourceMode(plan.CalibrationPath, 0o644)
+			}
+		}
+		put(plan.CalibrationPath, exists, plan.CalibrationBytes, mode)
 	}
 	paths := make([]string, 0, len(images))
 	for path := range images {

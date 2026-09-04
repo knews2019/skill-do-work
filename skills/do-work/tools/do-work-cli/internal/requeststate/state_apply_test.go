@@ -13,6 +13,7 @@ import (
 
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/commandruntime"
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/dependencygraph"
+	"github.com/knews2019/skill-do-work/do-work-cli/internal/repositorymodel"
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/resultmodel"
 )
 
@@ -658,3 +659,124 @@ func TestCancelFromWorkingLeavesForeignOrAbsentCheckpointEntryAndSucceeds(t *tes
 		}
 	})
 }
+
+func TestPlannedPostimagesPreservesRealFileModes(t *testing.T) {
+	root := newStateRepository(t)
+	reqWorkingPath := "do-work/working/REQ-310.md"
+	writeStateRequest(t, root, reqWorkingPath, "REQ-310", "claimed", "claimed_at: 2026-09-03T16:00:00Z\nestimate:\n  p50_active_minutes: 30\n")
+	if err := os.Chmod(filepath.Join(root, filepath.FromSlash(reqWorkingPath)), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	urSource := "do-work/user-requests/UR-999/input.md"
+	urAbs := filepath.Join(root, filepath.FromSlash(urSource))
+	if err := os.MkdirAll(filepath.Dir(urAbs), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(urAbs, []byte("ur input\n"), 0o640); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chmod(urAbs, 0o640); err != nil {
+		t.Fatal(err)
+	}
+
+	checkpointPath := "do-work/CHECKPOINT.md"
+	writeStateCheckpoint(t, root, "- REQ-310: Fixture — claimed now — writer: host:/repo\n")
+	if err := os.Chmod(filepath.Join(root, filepath.FromSlash(checkpointPath)), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	calibrationPath := "do-work/calibration-log.tsv"
+	calAbs := filepath.Join(root, filepath.FromSlash(calibrationPath))
+	if err := os.WriteFile(calAbs, []byte("REQ-100\t-\t-\t10\t2026-09-01T00:00:00Z\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chmod(calAbs, 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	snapshot, err := repositorymodel.DiscoverRepository(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	graph := dependencygraph.BuildGraph(snapshot)
+	plan := BuildPlan(snapshot, graph, StateOptions{
+		RequestID:      "REQ-310",
+		Transition:     TransitionComplete,
+		TerminalStatus: "completed",
+		WriterLabel:    "host:/repo",
+		Now:            time.Date(2026, 9, 3, 17, 0, 0, 0, time.UTC),
+	})
+	if !plan.Runnable() {
+		t.Fatalf("plan not runnable: %#v", plan.Refusal)
+	}
+	plan.AdditionalMoves = append(plan.AdditionalMoves, FileMove{
+		SourcePath:      urSource,
+		DestinationPath: "do-work/archive/UR-999/input.md",
+		ExpectedBytes:   []byte("ur input\n"),
+	})
+
+	images, err := PlannedPostimages(plan)
+	if err != nil {
+		t.Fatal(err)
+	}
+	byPath := map[string]PlannedFileImage{}
+	for _, img := range images {
+		byPath[img.Path] = img
+	}
+
+	destReq := byPath[plan.DestinationPath]
+	if !destReq.Exists || destReq.Mode != 0o600 {
+		t.Errorf("destination REQ postimage mode = %o, want 0600 (exists=%t)", destReq.Mode, destReq.Exists)
+	}
+
+	destUR := byPath["do-work/archive/UR-999/input.md"]
+	if !destUR.Exists || destUR.Mode != 0o640 {
+		t.Errorf("destination UR postimage mode = %o, want 0640 (exists=%t)", destUR.Mode, destUR.Exists)
+	}
+
+	cpImg := byPath[checkpointPath]
+	if !cpImg.Exists || cpImg.Mode != 0o600 {
+		t.Errorf("checkpoint postimage mode = %o, want 0600 (exists=%t)", cpImg.Mode, cpImg.Exists)
+	}
+
+	calImg := byPath[calibrationPath]
+	if !calImg.Exists || calImg.Mode != 0o600 {
+		t.Errorf("calibration postimage mode = %o, want 0600 (exists=%t)", calImg.Mode, calImg.Exists)
+	}
+
+	// Now test fresh files created without pre-existing disk targets
+	freshPlan := plan
+	freshPlan.CheckpointExisted = false
+	freshPlan.CalibrationExisted = false
+	freshImages, err := PlannedPostimages(freshPlan)
+	if err != nil {
+		t.Fatal(err)
+	}
+	freshByPath := map[string]PlannedFileImage{}
+	for _, img := range freshImages {
+		freshByPath[img.Path] = img
+	}
+	if freshCp := freshByPath[checkpointPath]; !freshCp.Exists || freshCp.Mode != 0o644 {
+		t.Errorf("fresh checkpoint mode = %o, want 0644", freshCp.Mode)
+	}
+	if freshCal := freshByPath[calibrationPath]; !freshCal.Exists || freshCal.Mode != 0o644 {
+		t.Errorf("fresh calibration mode = %o, want 0644", freshCal.Mode)
+	}
+
+	// Test retained REQ in-place
+	retainedPlan := plan
+	retainedPlan.DestinationPath = retainedPlan.SourcePath
+	retainedImages, err := PlannedPostimages(retainedPlan)
+	if err != nil {
+		t.Fatal(err)
+	}
+	retainedByPath := map[string]PlannedFileImage{}
+	for _, img := range retainedImages {
+		retainedByPath[img.Path] = img
+	}
+	if retReq := retainedByPath[retainedPlan.SourcePath]; !retReq.Exists || retReq.Mode != 0o600 {
+		t.Errorf("retained REQ mode = %o, want 0600", retReq.Mode)
+	}
+}
+
