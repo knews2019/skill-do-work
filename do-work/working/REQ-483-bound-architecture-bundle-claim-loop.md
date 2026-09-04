@@ -1,7 +1,7 @@
 ---
 id: REQ-483
 title: '[impact-critical] Review fix: Bound the architecture bundle-claim loop and restore --commit'
-status: pending
+status: claimed
 priority: now
 created_at: 2026-09-01T11:51:27Z
 user_request: UR-081
@@ -36,6 +36,7 @@ write_set:
   - skills/do-work/tools/do-work-cli/internal/toolboxcommands/architecture_test.go
 heavy_verified_at: 2026-09-04T12:36:12Z
 heavy_verified_revision: c0d8ce1cb44cc1830b167214c018d76ba87baffc
+claimed_at: 2026-09-04T14:31:30Z
 ---
 
 # Bound the Architecture Bundle-Claim Loop and Restore --commit

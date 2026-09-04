@@ -14,6 +14,7 @@ session_depth: light
 
 ## In Progress (interrupted)
 
+- REQ-483: [impact-critical] Review fix: Bound the architecture bundle-claim loop and restore --commit — claimed 2026-09-04T14:31:30Z — writer: t2s-Virtual-Machine.local:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2
 
 ## Still Queued
 
