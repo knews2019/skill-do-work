@@ -1,7 +1,7 @@
 ---
 id: REQ-507
 title: '[impact-rule-change] Hand the archive and commit tails to finalize'
-status: pending
+status: claimed
 priority: now
 created_at: 2026-09-02T14:37:54Z
 user_request: UR-098
@@ -15,6 +15,7 @@ maintenance: true
 impact: impact-rule-change
 effort_estimate: effort-substantive
 write_set: [skills/do-work/actions/work.md, skills/do-work/actions/work-reference.md, _dev/tests/contract-regressions.sh, skills/do-work/tools/do-work-cli/internal/lifecycleadvance/]
+claimed_at: 2026-09-04T18:21:29Z
 ---
 
 # Hand the Archive and Commit Tails to finalize
