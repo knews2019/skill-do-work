@@ -18,6 +18,5 @@ session_depth: light
 
 ## In Progress (interrupted)
 
-- REQ-515: [impact-rule-change] Per-REQ recovery findings never stop the loop — claimed 2026-09-04T18:15:54Z — writer: vm:/home/user/skill-do-work
 
 - REQ-508: [impact-rule-change] Reduce capture templates to minimal examples backed by the schema layer — claimed 2026-09-04T19:13:19Z — writer: t2s-Virtual-Machine.local:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2

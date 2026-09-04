@@ -1,7 +1,7 @@
 ---
 id: REQ-515
 title: '[impact-rule-change] Per-REQ recovery findings never stop the loop'
-status: claimed
+status: completed
 priority: now
 created_at: 2026-09-02T20:35:18Z
 user_request: UR-099
@@ -35,6 +35,9 @@ integration_at: 2026-09-04T19:09:41Z
 review_at: 2026-09-04T19:24:12Z
 remediation_at: 2026-09-04T19:36:54Z
 re_review_at: 2026-09-04T19:36:54Z
+completed_at: 2026-09-04T20:01:30Z
+commit: 4d4b33f
+release_at: 2026-09-04T20:01:30Z
 ---
 
 # Per-REQ recovery findings never stop the loop

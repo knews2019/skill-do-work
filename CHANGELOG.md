@@ -2,6 +2,14 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.278.0 — One Stuck REQ No Longer Parks the Whole Queue (2026-09-04)
+
+A finalization that recovery cannot finish now sets that one REQ aside with its reason code and keeps draining the rest. Before, the first refused record stopped the run and every other pending REQ waited behind it.
+
+- Recovery reads its records one at a time. A refusal owned by exactly one REQ becomes that REQ's exclusion, carries `FINALIZATION-SET-ASIDE`, and never names itself as the fix; the resolving verb comes from the exit summary.
+- Only a cause no REQ owns still stops the run — a dirty index, or shared paths outside the recovery group. Those now refuse without naming a REQ, which is what makes the stop reachable at all.
+- A set-aside REQ keeps its claim, so the run cannot re-select the REQ it just excluded, and `do-work commit` leaves that REQ's paths alone instead of committing them as ordinary changes.
+
 ## 0.277.0 — Another Session's Files Are Not Your Blocker (2026-09-04)
 
 A file the running REQ does not own — untracked, modified, or staged by somebody else — no longer stops the pipeline and is never swept into its commits. It is left exactly as found and named once in the progress output.
