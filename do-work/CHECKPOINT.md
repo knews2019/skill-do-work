@@ -14,7 +14,6 @@ session_depth: light
 
 ## In Progress (interrupted)
 
-- REQ-485: Canonicalize REQ reservation marker filenames across allocation flows — claimed 2026-09-04T14:45:21Z — writer: t2s-Virtual-Machine.local:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2
 
 ## Still Queued
 

@@ -32,6 +32,10 @@
 
 - **Browser support:** the strict browser lane targets current stable Chromium. Chrome 141 is deprecated and is not a compatibility target, as confirmed in REQ-375 (Restore the strict browser lane on current Chromium). Record the exact build with browser evidence; a failed trial does not establish behavior across other browser releases.
 
+## Traps
+
+- [family: exact-basename-authority] A filesystem basename is authority before it is presentation: never trim or normalize it before deciding whether it reserves an ID. Canonical writers format the stored minimum-three-digit ID; compatibility readers accept only whole positive-numeric aliases, and documentation or fixtures that construct marker paths count as writers.
+
 ## Stakes
 
 Owned by the shipped prime for the same tool: `skills/do-work-board/tools/queue-kanban/prime-do-kanban.md` § Stakes (status-driven column bucketing; the embedded client shared by `generate` and `serve`). Read that file's **Read first** and **Traps** with this one — it is the routing index, this file is the maintainer conventions. Not restated here; a second copy would drift.

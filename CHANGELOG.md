@@ -2,6 +2,13 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.275.2 — Reservation Markers Use One Filename (2026-09-04)
+
+Two allocators could reserve the same request number under different padded filenames. Reservation writers now converge on one stored-ID spelling, while legacy markers remain visible to collision checks and cleanup.
+
+- New markers use minimum-three-digit request IDs such as `REQ-042`; manifests using old fixed-six paths are refused with an actionable finding.
+- Exact numeric readers recognize legacy widths without accepting whitespace or suffix junk, and folded gate repairs read marker bytes through identity-checked rooted handles.
+
 ## 0.275.1 — Architecture Publication Retries Stop and Commit Again (2026-09-04)
 
 A failed report-bundle claim could spin forever, while the same publisher rejected every `--commit` call. Architecture-report publication now stops on real claim errors and clean-index commits work again.

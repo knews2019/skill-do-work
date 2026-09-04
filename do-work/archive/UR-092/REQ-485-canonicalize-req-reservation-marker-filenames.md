@@ -1,7 +1,7 @@
 ---
 id: REQ-485
 title: 'Canonicalize REQ reservation marker filenames across allocation flows'
-status: claimed
+status: completed
 priority: now
 created_at: 2026-09-01T12:11:03Z
 user_request: UR-092
@@ -34,7 +34,7 @@ implementation_at: 2026-09-03T22:06:30Z
 builder_handback_at: 2026-09-03T22:07:29Z
 integration_at: 2026-09-03T22:16:20Z
 testing_at: 2026-09-03T22:19:19Z
-review_at: 2026-09-03T22:19:19Z
+review_at: 2026-09-04T14:52:35Z
 status_changed_at: 2026-09-04T12:36:12Z
 commit: 88446a576c9c2bcf80f1bdd06a54041b7f9baaba
 write_set:
@@ -56,6 +56,10 @@ write_set:
 heavy_verified_at: 2026-09-04T12:36:12Z
 heavy_verified_revision: c0d8ce1cb44cc1830b167214c018d76ba87baffc
 claimed_at: 2026-09-04T14:45:21Z
+kb_status: pending
+kb_entry:
+completed_at: 2026-09-04T14:56:19Z
+release_at: 2026-09-04T14:56:19Z
 ---
 
 # Canonicalize REQ Reservation Marker Filenames Across Allocation Flows
@@ -264,3 +268,30 @@ Execution revision: `c0d8ce1cb44cc1830b167214c018d76ba87baffc`
 - staged-skills: exit 0 — `bash _dev/tests/maintainer-verify.sh --heavy-lane staged-skills`
 - updater: exit 0 — `bash _dev/tests/maintainer-verify.sh --heavy-lane updater`
 - installer: exit 0 — `bash _dev/tests/maintainer-verify.sh --heavy-lane installer`
+
+## Final Review
+
+**Overall: 84%** | 2026-09-04T14:52:35Z
+
+**Verdict:** Approve with follow-ups. Runtime reservation allocation is safe and the original duplicate-number collision is closed. Production writers emit the minimum-three-digit stored-ID spelling, exact legacy numeric widths remain visible to collision and cleanup logic, and unsafe fold objects are refused.
+
+- **Important — impact-user-visible (report only):** `skills/do-work/actions/work-reference.md` still instructs defer-gate authors to create an “unpadded” reservation, and the matching test helper concatenates the raw repair ID. For `REQ-1` through `REQ-99`, that secondary authoring contract yields a noncanonical basename that the hardened defer gate correctly refuses.
+- **Minor — impact-negligible (report only):** the cleanup prescribed-case comment calls a fixed-six legacy capture the “prescribed” path even though the test behavior is correct.
+
+**Acceptance:** Partial. The implementation requirements and safety boundaries are satisfied; one stale low-number defer-gate authoring restatement remains outside the runtime change.
+
+**Suggested testing:** Add a low-number defer-gate case that constructs the canonical marker path through the documented authoring flow.
+
+**Follow-ups created:** None; both findings are report-only under their impact classifications.
+
+*Reviewed by review-work action.*
+
+## Lessons Learned
+
+- **What worked:** A literal cross-module collision fixture kept the two independent allocators honest, while separating canonical writer tests from exact legacy-reader tests prevented compatibility from weakening the stored-name contract. Rooted identity tests made the no-follow fold boundary independently reviewable.
+- **What did not:** The first implementation trimmed filesystem basenames and later read a validated marker by pathname; both required remediation. The fresh review also found that the writer sweep stopped at production code and missed a secondary defer-gate authoring instruction.
+- **Worth carrying forward:** A manifest example or test helper that constructs a persisted path is a writer contract even when runtime code only validates it. Low-number IDs are the decisive fixture for detecting raw ID concatenation where minimum-three-digit storage is required.
+
+## Orientation
+
+[MAP CHANGED] Reservation allocation now uses one canonical stored-ID basename across board, core, and publication flows while exact legacy numeric names remain readable; rooted fold reads preserve filesystem authority. One stale defer-gate authoring restatement remains report-only.
