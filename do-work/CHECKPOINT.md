@@ -21,3 +21,5 @@ session_depth: light
 - REQ-506: [impact-rule-change] Run the evidence gates from advance — claimed 2026-09-04T17:32:08Z — writer: t2s-Virtual-Machine.local:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2
 
 - REQ-559: [impact-rule-change] Retry a red repository gate once before deferring or minting a repair REQ — claimed 2026-09-04T18:15:54Z — writer: vm:/home/user/skill-do-work
+
+- REQ-560: [impact-rule-change] Hand-back and finalize check cleanliness only on the REQ's own paths — claimed 2026-09-04T18:15:54Z — writer: vm:/home/user/skill-do-work

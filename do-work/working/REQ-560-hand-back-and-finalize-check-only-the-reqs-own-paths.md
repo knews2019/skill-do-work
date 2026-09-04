@@ -1,7 +1,7 @@
 ---
 id: REQ-560
 title: '[impact-rule-change] Hand-back and finalize check cleanliness only on the REQ''s own paths'
-status: pending
+status: claimed
 priority: now
 created_at: 2026-09-03T20:05:46Z
 user_request: UR-106
@@ -19,6 +19,7 @@ write_set:
   - skills/do-work/actions/work.md
   - skills/do-work/actions/work-reference.md
   - skills/do-work/tools/do-work-cli/internal/finalization/
+claimed_at: 2026-09-04T18:15:54Z
 ---
 
 # Hand-Back and Finalize Check Cleanliness Only on the REQ's Own Paths
