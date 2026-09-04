@@ -56,7 +56,7 @@ Independent review of REQ-489 found that `internal/cleanup.ownedCheckpointRemova
 
 ## Instances
 
-- [ ] `skills/do-work/tools/do-work-cli/internal/cleanup/cleanup_plan.go` `ownedCheckpointRemoval`: cleanup archives a terminal working REQ but leaves its enriched checkpoint continuation block unattributed (found by REQ-489 / UR-083)
+- [x] `skills/do-work/tools/do-work-cli/internal/cleanup/cleanup_plan.go` `ownedCheckpointRemoval`: cleanup archives a terminal working REQ but leaves its enriched checkpoint continuation block unattributed (found by REQ-489 / UR-083)
 
 ## Red-Green Proof
 
@@ -158,3 +158,26 @@ Execution revision: `c0d8ce1cb44cc1830b167214c018d76ba87baffc`
 - staged-skills: exit 0 — `bash _dev/tests/maintainer-verify.sh --heavy-lane staged-skills`
 - updater: exit 0 — `bash _dev/tests/maintainer-verify.sh --heavy-lane updater`
 - installer: exit 0 — `bash _dev/tests/maintainer-verify.sh --heavy-lane installer`
+
+## Review
+
+**Overall: 98%** | 2026-09-04T13:30:00Z
+
+| Dimension | Score |
+|-----------|-------|
+| Requirements | 100% |
+| Code Quality | 98% |
+| Test Adequacy | 98% |
+| Scope | 100% |
+| Risk | Low |
+| Acceptance | Pass |
+
+## Lessons Learned
+
+**What worked:**
+- Reusing the canonical `requeststate` exact-section whole-entry checkpoint remover rather than maintaining a duplicate regex or parser in `cleanup`.
+- Ensuring both the header and all indented continuation lines are removed atomically.
+
+**What didn't:**
+- Earlier global line filtering that only matched the header line `- REQ-NNN:`, which orphaned continuation lines when checkpoints gained multi-line entries.
+
