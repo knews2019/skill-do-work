@@ -16,10 +16,6 @@ for prescribed_script in \
   skills/do-work/scripts/stage-exact-deletion.sh \
   skills/do-work-knowledge/scripts/lexical-memory-recall.sh \
   skills/do-work-knowledge/scripts/install-memory-hooks.sh \
-  skills/do-work-toolbox/scripts/generate-report-image.sh \
-  skills/do-work-toolbox/scripts/generate-report-image-batch.sh \
-  skills/do-work-toolbox/scripts/publish-portfolio-summary.sh \
-  skills/do-work-toolbox/scripts/install-last30days.sh \
   skills/do-work/tools/fetch-upstream-archive.sh
 do
   if [ ! -x "$repo_root/$prescribed_script" ]; then

@@ -40,8 +40,40 @@ if [ -n "$delegate_findings" ]; then
   done <<< "$delegate_findings"
 fi
 
+# Finding 5: toolbox-shims-no-callers (REQ-551)
+callerless_shims="$(
+  for f in "$repo_root"/skills/do-work-toolbox/scripts/*.sh; do
+    [ -e "$f" ] || continue
+    b=$(basename "$f")
+    n=$(rg -l --fixed-strings "$b" "$repo_root/skills" "$repo_root/tools" "$repo_root/suite" "$repo_root/README.md" "$repo_root/CLAUDE.md" "$repo_root/_dev/primes" --glob '!*CHANGELOG*' | grep -v "/$b$" | wc -l | tr -d ' ')
+    [ "$n" -eq 0 ] && echo "$f"
+  done
+)"
+if [ -n "$callerless_shims" ]; then
+  while IFS= read -r f; do
+    [ -z "$f" ] && continue
+    printf 'FAIL: caller-less toolbox shell shim found: %s\n' "$f" >&2
+    failure_count=$((failure_count + 1))
+  done <<< "$callerless_shims"
+fi
+
+# Shipped shell delegating check (REQ-551 companion)
+non_delegating="$(
+  find "$repo_root/skills" "$repo_root/tools" -name '*.sh' | while read -r f; do
+    rg -q do-work-cli "$f" || echo "NON-DELEGATING: $f"
+  done
+)"
+if [ -n "$non_delegating" ]; then
+  while IFS= read -r line; do
+    [ -z "$line" ] && continue
+    printf 'FAIL: %s\n' "$line" >&2
+    failure_count=$((failure_count + 1))
+  done <<< "$non_delegating"
+fi
+
 if [ "$failure_count" -gt 0 ]; then
   exit 1
 fi
 
 printf 'Audit lock-in regressions passed.\n'
+

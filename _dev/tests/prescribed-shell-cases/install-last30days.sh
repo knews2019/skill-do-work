@@ -5,6 +5,18 @@ source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/prescribed-shell-harnes
 
 fixture_repo_init "$fixture_root"
 export DO_WORK_COMPATIBILITY_REPO_ROOT="$fixture_root"
+toolbox_scripts="$fixture_root/toolbox-scripts"
+mkdir -p "$toolbox_scripts"
+cat > "$toolbox_scripts/install-last30days.sh" <<EOF
+#!/usr/bin/env bash
+set -euo pipefail
+launcher_arguments=(--format text)
+if [[ -n "\${DO_WORK_COMPATIBILITY_REPO_ROOT:-}" ]]; then
+  launcher_arguments+=(--repo-root "\$DO_WORK_COMPATIBILITY_REPO_ROOT")
+fi
+exec bash "$repo_root/skills/do-work/tools/do-work-cli.sh" "\${launcher_arguments[@]}" install-last30days "\$@"
+EOF
+chmod +x "$toolbox_scripts/install-last30days.sh"
 
 # install-last30days: a SKILL.md-only tree fails check, is repaired from a
 # complete fixture, and receives the full subtree plus ignore/Python guarantees.

@@ -3,7 +3,20 @@
 # shellcheck source=_dev/tests/prescribed-shell-harness.sh
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/prescribed-shell-harness.sh"
 
-preflight_script="$toolbox_scripts/architecture-report-preflight.sh"
+preflight_script="$fixture_root/architecture-report-preflight.sh"
+cat > "$preflight_script" <<EOF
+#!/usr/bin/env bash
+set -euo pipefail
+repository_probe='.'
+if [[ "\${1:-}" == --scan && "\$#" -eq 2 ]]; then
+  repository_probe="\$2"
+elif [[ "\${1:-}" == --publish && "\$#" -eq 3 ]]; then
+  repository_probe="\$(dirname "\$2")"
+fi
+repository_root="\$(git -C "\$repository_probe" rev-parse --show-toplevel 2>/dev/null || pwd -P)"
+DO_WORK_COMPATIBILITY_SHIM=1 exec bash "$repo_root/skills/do-work/tools/do-work-cli.sh" --repo-root "\$repository_root" --format text architecture-report-preflight "\$@"
+EOF
+chmod +x "$preflight_script"
 
 # Reads one `key=value` line out of a captured --scan record.
 scan_field() {

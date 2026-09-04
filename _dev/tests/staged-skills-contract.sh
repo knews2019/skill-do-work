@@ -161,9 +161,6 @@ toolbox_files=(
   skills/do-work-toolbox/docs/present-work-guide.md
   skills/do-work-toolbox/docs/present-video-guide.md
   skills/do-work-toolbox/crew-members/ui-design.md
-  skills/do-work-toolbox/scripts/architecture-report-preflight.sh
-  skills/do-work-toolbox/scripts/publish-portfolio-summary.sh
-  skills/do-work-toolbox/scripts/generate-report-image-batch.sh
 )
 
 for core_file in "${core_files[@]}"; do

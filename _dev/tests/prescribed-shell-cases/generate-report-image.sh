@@ -2,8 +2,18 @@
 # Fixture execution proofs for generate-report-image.
 # shellcheck source=_dev/tests/prescribed-shell-harness.sh
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/prescribed-shell-harness.sh"
-
-[ -z "${DO_WORK_TEST_TOOLBOX_SCRIPTS:-}" ] || toolbox_scripts="$DO_WORK_TEST_TOOLBOX_SCRIPTS"
+toolbox_scripts="$fixture_root/toolbox-scripts"
+mkdir -p "$toolbox_scripts"
+cat > "$toolbox_scripts/generate-report-image.sh" <<EOF
+#!/usr/bin/env bash
+set -euo pipefail
+launcher_arguments=(--format text)
+if [[ -n "\${DO_WORK_COMPATIBILITY_REPO_ROOT:-}" ]]; then
+  launcher_arguments+=(--repo-root "\$DO_WORK_COMPATIBILITY_REPO_ROOT")
+fi
+exec bash "$repo_root/skills/do-work/tools/do-work-cli.sh" "\${launcher_arguments[@]}" generate-report-image "\$@"
+EOF
+chmod +x "$toolbox_scripts/generate-report-image.sh"
 
 # Canonical publication is repository-rooted. Exercise the retained launcher from a
 # real fixture repository instead of depending on copied or rewritten shell internals.

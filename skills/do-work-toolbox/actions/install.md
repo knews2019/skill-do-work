@@ -235,7 +235,7 @@ Run the shipped full-guarantee check (complete runtime payload, ignore rule, Pyt
 
 #### Phase 2: Vendor the skill
 
-The upstream repo keeps the actual skill at `skills/last30days/` (self-contained — `SKILL.md`, `scripts/`, and supporting directories). The installer shallow-clones to temporary storage, rejects an incomplete source, copies the full subtree into a private staging directory adjacent to the destination, and validates the staged payload before a same-filesystem rename publishes it. When replacing an incomplete destination, it holds the prior tree in a private adjacent backup until the validated replacement is live; a publication failure restores the prior tree byte-for-byte. A complete destination keeps the existing no-op/ignore-repair behavior.
+The upstream repo keeps the actual skill at `skills/last30days/` (self-contained — `SKILL.md`, a `scripts` directory, and supporting directories). The installer shallow-clones to temporary storage, rejects an incomplete source, copies the full subtree into a private staging directory adjacent to the destination, and validates the staged payload before a same-filesystem rename publishes it. When replacing an incomplete destination, it holds the prior tree in a private adjacent backup until the validated replacement is live; a publication failure restores the prior tree byte-for-byte. A complete destination keeps the existing no-op/ignore-repair behavior.
 
 ```bash
 <skill-root>/../do-work/tools/do-work-cli.sh --repo-root <project-root> --format json install-last30days install <project-root>

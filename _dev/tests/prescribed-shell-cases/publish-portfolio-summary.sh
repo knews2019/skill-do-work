@@ -6,6 +6,18 @@ source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/prescribed-shell-harnes
 # Canonical publication is repository-rooted.
 fixture_repo_init "$fixture_root"
 export DO_WORK_COMPATIBILITY_REPO_ROOT="$fixture_root"
+toolbox_scripts="$fixture_root/toolbox-scripts"
+mkdir -p "$toolbox_scripts"
+cat > "$toolbox_scripts/publish-portfolio-summary.sh" <<EOF
+#!/usr/bin/env bash
+set -euo pipefail
+launcher_arguments=(--format text)
+if [[ -n "\${DO_WORK_COMPATIBILITY_REPO_ROOT:-}" ]]; then
+  launcher_arguments+=(--repo-root "\$DO_WORK_COMPATIBILITY_REPO_ROOT")
+fi
+DO_WORK_COMPATIBILITY_SHIM=1 exec bash "$repo_root/skills/do-work/tools/do-work-cli.sh" "\${launcher_arguments[@]}" publish-portfolio-summary "\$@"
+EOF
+chmod +x "$toolbox_scripts/publish-portfolio-summary.sh"
 
 portfolio_root="$fixture_root/portfolio"
 mkdir -p "$portfolio_root/deliverables/portfolio-snapshots"

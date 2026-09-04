@@ -15,7 +15,7 @@ batch: maintainability-audit-2026-09-03
 maintenance: false
 impact: impact-negligible
 effort_estimate: effort-mechanical
-write_set: [skills/do-work-toolbox/scripts/, _dev/tests/prescribed-shell-cases/generate-report-image.sh, _dev/tests/prescribed-shell-cases/generate-report-image-batch.sh, _dev/tests/prescribed-shell-cases/publish-portfolio-summary.sh, _dev/tests/prescribed-shell-cases/install-last30days.sh, _dev/tests/prescribed-shell-cases/architecture-report-preflight.sh, _dev/tests/prescribed-shell-canonicalization.sh, _dev/tests/staged-skills-contract.sh, _dev/tests/audit-lockins.sh]
+write_set: [skills/do-work-toolbox/scripts/, skills/do-work-toolbox/actions/install.md, _dev/tests/prescribed-shell-cases/generate-report-image.sh, _dev/tests/prescribed-shell-cases/generate-report-image-batch.sh, _dev/tests/prescribed-shell-cases/publish-portfolio-summary.sh, _dev/tests/prescribed-shell-cases/install-last30days.sh, _dev/tests/prescribed-shell-cases/architecture-report-preflight.sh, _dev/tests/prescribed-shell-canonicalization.sh, _dev/tests/staged-skills-contract.sh, _dev/tests/audit-lockins.sh]
 claimed_at: 2026-09-04T13:45:29Z
 ---
 
@@ -25,9 +25,9 @@ claimed_at: 2026-09-04T13:45:29Z
 All five scripts under `skills/do-work-toolbox/scripts/` are pure `exec` pass-throughs to a `do-work-cli` subcommand with no caller outside `_dev/tests`; the shipped guide already routes every action to `tools/do-work-cli.sh … <subcommand>`. Delete the five scripts, re-point their five behaviour fixtures at the CLI directly, and remove their rows from the canonicalization ratchet and the staged-package list.
 
 ## AI Execution State (P-A-U Loop)
-- [ ] **[PLAN]:** (Agent: Read listed `prime_files` and agent rules. Write brief technical approach here. Do not write code yet.)
-- [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
-- [ ] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
+- [x] **[PLAN]:** (Agent: Read `_dev/primes/prime-shell-commands.md`. Delete 5 toolbox scripts under `skills/do-work-toolbox/scripts/`. Remove their 4 rows from `prescribed-shell-canonicalization.sh` and 3 rows from `staged-skills-contract.sh`. Re-point the 5 fixtures in `_dev/tests/prescribed-shell-cases/` to call `tools/do-work-cli.sh --format text <subcommand>` via local fixture launchers while leaving fixture bodies untouched. Add Finding 5 caller-less shim and shipped-shell delegation assertions to `_dev/tests/audit-lockins.sh`. Record the 2026-08-11 KEEP-row disposition in commit message.)
+- [x] **[APPLY]:** (Agent: Deleted the 5 toolbox scripts. Removed 4 rows from `prescribed-shell-canonicalization.sh` and 3 rows from `staged-skills-contract.sh`. Re-pointed the 5 fixtures in `prescribed-shell-cases/` to local launchers routing to `tools/do-work-cli.sh --format text <subcommand>`. Added Finding 5 caller-less shim and shipped-shell delegation assertions to `_dev/tests/audit-lockins.sh`. Updated upstream directory reference in `skills/do-work-toolbox/actions/install.md` to avoid false citation.)
+- [x] **[UNIFY]:** (Agent: Verified `git diff --stat` across all touched files. Ran `DO_WORK_MAINTAINER_TIER=heavy bash _dev/tests/prescribed-shell-scripts-behavior.sh` (110 cases across 18 files green). Ran `bash _dev/tests/contract-regressions.sh` (all contract probes green). Verified Finding 5 reproduce command outputs 0.)
 
 ## Why
 Dead shipped surface: 63 lines nothing invokes, four rows in a ratchet, three rows in a staged list, all maintained for no caller.
@@ -71,5 +71,29 @@ None.
 ## Full Context
 See `do-work/user-requests/UR-105/input.md` for complete verbatim input.
 
+## Implementation Summary
+- Deleted all five caller-less toolbox shell shims under `skills/do-work-toolbox/scripts/`: `architecture-report-preflight.sh`, `generate-report-image.sh`, `generate-report-image-batch.sh`, `publish-portfolio-summary.sh`, and `install-last30days.sh`.
+- Re-pointed the five behaviour test fixtures under `_dev/tests/prescribed-shell-cases/` (`architecture-report-preflight.sh`, `generate-report-image.sh`, `generate-report-image-batch.sh`, `publish-portfolio-summary.sh`, `install-last30days.sh`) to route directly to `skills/do-work/tools/do-work-cli.sh --format text <subcommand>` via local fixture launchers, keeping the entire 1242 lines of test cases untouched.
+- Removed the 4 script existence assertions from `_dev/tests/prescribed-shell-canonicalization.sh` and the 3 script assertions from `_dev/tests/staged-skills-contract.sh`.
+- Added Finding 5 assertions to `_dev/tests/audit-lockins.sh` checking that no caller-less toolbox shims remain and that all shipped shell scripts delegate to `do-work-cli`.
+- Adjusted prose citation in `skills/do-work-toolbox/actions/install.md` referring to upstream skill directory to satisfy `shipped-package-reference-contract.sh`.
+
+## Decisions
+- Used isolated fixture launchers in `$fixture_root` for each test case file, preserving 100% of the fixture test assertions without altering individual test case lines.
+- Two of the deleted scripts (`generate-report-image.sh` and `install-last30days.sh`) had KEEP rows in `decisions/audits/2026-08-11-defensive-surface.md` dispositioned for their previous shell implementations before Go migration; deleting the remaining 0.260.1 shims is documented here and in the commit message without modifying the frozen audit decision record.
+
+## Testing
+- `DO_WORK_MAINTAINER_TIER=heavy bash _dev/tests/prescribed-shell-scripts-behavior.sh` passed with 110 named script cases across 18 per-script files and 0 failures.
+- `bash _dev/tests/contract-regressions.sh` passed all contract regression checks including `shipped-package-reference-contract.sh`, `audit-lockins.sh`, and `prescribed-shell-canonicalization.sh`.
+- Finding 5 reproduce command outputs 0 matches.
+
+## Review
+- Verified `git diff --stat` across all touched files.
+- Verified no debugging artifacts or untracked debris introduced.
+
+## Lessons Learned
+- When deleting a shipped directory, sweep documentation in sibling actions for backtick path citations (e.g. `scripts/`) that might unintentionally resolve to the deleted directory under same-package reference rules.
+
 ---
 *Source: `do-work/audits/audit-2026-09-03.md` §Plan, capture-request line for toolbox-shims-no-callers.*
+
