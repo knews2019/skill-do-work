@@ -157,7 +157,7 @@ The goal is that every REQ, at every point in time, expresses a single coherent 
 - Create `do-work/user-requests/UR-NNN/input.md` with the addendum input verbatim (new UR, fresh number)
 - Create `do-work/queue/REQ-NNN-slug.md` linking to that new UR, with `addendum_to` pointing at the original
 
-The `addendum_to` field is what connects the addendum to its origin. The new REQ then enters the queue normally and gets picked up by the next `do-work run`. Write it using the **Addendum REQ Template** in `actions/capture-reference.md` — the exact frontmatter and body shape, including the `## Prior Implementation` section for archived originals. It is a normal capture in every other respect, so Step 1's assessments apply to it as they do to any new REQ — including the earmark, which the template carries as an optional `assigned_to` line.
+The `addendum_to` field is what connects the addendum to its origin. The new REQ then enters the queue normally and gets picked up by the next `do-work run`. Write it using the **Addendum REQ Template** in `actions/capture-reference.md` — the exact frontmatter and body shape, including the `## Prior Implementation` section for archived originals. It is a normal capture in every other respect, so Step 1's assessments apply to it as they do to any new REQ.
 
 **Context is critical for addenda to archived/completed REQs.** When writing the addendum REQ, read the original archived REQ and include a `## Prior Implementation` section summarizing: what was built, key files modified, patterns used, and commit hash (if available). Without this, the builder wastes time re-discovering what already exists. For in-flight REQs this matters less — the builder will encounter the work in progress naturally.
 
@@ -223,7 +223,7 @@ If the user provides one or more screenshots:
 
 ### Step 5: Write Files
 
-**Open `actions/capture-reference.md` before preparing content** — this step names the template for every durable file, and none of them are restated here.
+**Open `actions/capture-reference.md` before preparing content** — its minimal examples define the record shapes; `capture-files` validates their mechanical field contract. Step 1 and the reference's named contracts own capture judgments and optional sections.
 
 Prepare the final UR/REQ bytes, raw verbatim-input bytes, assets, expected/new fold bytes, and one strict `capture-files` JSON manifest as regular payload files in a private temporary directory. The manifest carries every destination, exact ID/linkage, canonical stored-id `do-work/.req-reservations/REQ-NNN` marker, payload path and mode, and optional commit message. These are inputs, not durable queue writes.
 

@@ -105,14 +105,23 @@ var fieldContracts = map[string]fieldContract{
 	"deferred_implementation_merge": {verbatim: true},
 }
 
+var schemaFieldAliases = map[string][]string{
+	"addendum_to":    {"amends", "parent", "amendment_to"},
+	"depends_on":     {"dependencies"},
+	"batch":          {"batch_name"},
+	"related":        {"related_reqs"},
+	"suggested_spec": {"spec_hint", "suggested-spec"},
+}
+
 // FieldResult is the complete evidence for one schema-backed field read.
 type FieldResult struct {
-	FieldName      string
-	OriginalValue  string
-	ResolvedValue  string
-	IsRecognized   bool
-	IsDefaulted    bool
-	WarningMessage string
+	FieldName                 string
+	OriginalValue             string
+	ResolvedValue             string
+	IsRecognized              bool
+	IsDefaulted               bool
+	IsCanonicalAuthoringValue bool
+	WarningMessage            string
 }
 
 // SchemaFieldNames returns every field governed by the Schema Read Contract.
@@ -125,18 +134,39 @@ func SchemaFieldNames() []string {
 	return fieldNames
 }
 
+// SchemaFieldAliases returns the read-only key aliases for one canonical key.
+func SchemaFieldAliases(canonicalKey string) []string {
+	aliases, found := schemaFieldAliases[canonicalKey]
+	if !found {
+		return nil
+	}
+	return append([]string(nil), aliases...)
+}
+
+// CanonicalFieldForAlias identifies a read-only alias and its writable key.
+func CanonicalFieldForAlias(fieldName string) (string, bool) {
+	for canonicalKey, aliases := range schemaFieldAliases {
+		for _, aliasKey := range aliases {
+			if fieldName == aliasKey {
+				return canonicalKey, true
+			}
+		}
+	}
+	return "", false
+}
+
 // NormalizeField resolves one value under the Schema Read Contract.
 func NormalizeField(fieldName string, rawValue string) FieldResult {
 	trimmedValue := strings.TrimSpace(rawValue)
 	contract, contracted := fieldContracts[fieldName]
 	if !contracted {
-		return FieldResult{FieldName: fieldName, OriginalValue: rawValue, ResolvedValue: trimmedValue, IsRecognized: true}
+		return FieldResult{FieldName: fieldName, OriginalValue: rawValue, ResolvedValue: trimmedValue, IsRecognized: true, IsCanonicalAuthoringValue: true}
 	}
 	if trimmedValue == "" {
 		return FieldResult{FieldName: fieldName, OriginalValue: rawValue, ResolvedValue: contract.defaultValue, IsRecognized: true, IsDefaulted: true}
 	}
 	if contract.verbatim {
-		return FieldResult{FieldName: fieldName, OriginalValue: rawValue, ResolvedValue: trimmedValue, IsRecognized: true}
+		return FieldResult{FieldName: fieldName, OriginalValue: rawValue, ResolvedValue: trimmedValue, IsRecognized: true, IsCanonicalAuthoringValue: trimmedValue == rawValue}
 	}
 	normalizedValue := strings.ToLower(trimmedValue)
 	if contract.upperCase {
@@ -147,7 +177,7 @@ func NormalizeField(fieldName string, rawValue string) FieldResult {
 	}
 	for _, canonicalValue := range contract.canonicalValues {
 		if normalizedValue == canonicalValue {
-			return FieldResult{FieldName: fieldName, OriginalValue: rawValue, ResolvedValue: normalizedValue, IsRecognized: true}
+			return FieldResult{FieldName: fieldName, OriginalValue: rawValue, ResolvedValue: normalizedValue, IsRecognized: true, IsCanonicalAuthoringValue: trimmedValue == canonicalValue}
 		}
 	}
 	warning := ""

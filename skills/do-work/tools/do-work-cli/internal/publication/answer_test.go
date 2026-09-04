@@ -122,8 +122,10 @@ func TestRemediationF6StructuredOverridePlansAndRollsBackWithAnswer(t *testing.T
 	runGitFixture(t, root, "-c", "user.name=Test", "-c", "user.email=test@example.com", "commit", "-qm", "seed")
 	raw := []byte("stakeholder changed scope")
 	writeFixture(t, root, "payload/raw", raw, 0o644)
-	writeFixture(t, root, "payload/ur", []byte("---\nid: UR-2\nrequests: [REQ-2]\n---\n"+string(containedOutsideBytes(raw, "\n"))+"\n"), 0o644)
-	writeFixture(t, root, "payload/req", []byte("---\nid: REQ-2\nstatus: pending\nuser_request: UR-2\n---\n"), 0o644)
+	urPayload := append(canonicalURFixture("UR-2", []string{"REQ-2"}), containedOutsideBytes(raw, "\n")...)
+	urPayload = append(urPayload, '\n')
+	writeFixture(t, root, "payload/ur", urPayload, 0o644)
+	writeFixture(t, root, "payload/req", canonicalREQFixture("REQ-2", "UR-2"), 0o644)
 	writeFixture(t, root, "payload/blocked-history", []byte("## Blocked\n\n- Resolved after stakeholder override.\n"), 0o644)
 	writeFixture(t, root, "payload/implementation", []byte("## Implementation\n\nNo code changes.\n"), 0o644)
 	override := &CaptureManifest{UserRequestID: "UR-2", UserRequest: PublishedFile{Path: "do-work/user-requests/UR-2/input.md", Payload: PayloadFile{SourcePath: "payload/ur"}}, RawInput: &PayloadFile{SourcePath: "payload/raw"}, Requests: []CaptureRequest{{ID: "REQ-2", UserRequestID: "UR-2", File: PublishedFile{Path: "do-work/queue/REQ-2-change.md", Payload: PayloadFile{SourcePath: "payload/req"}}, ReservationPath: "do-work/.req-reservations/REQ-002"}}}

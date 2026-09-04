@@ -1,6 +1,6 @@
 # Capture Requests — Reference
 
-> **Companion file to `actions/capture.md`.** Holds the REQ/UR templates, the schema-alias table, and the addendum-REQ template — the hard-contract field specifications that `actions/work.md`, `actions/roadmap.md`, and `../../do-work-board/tools/queue-kanban/model.go` all read. Each section below is pointed to by name from the matching step in `actions/capture.md`. Loading this file is only necessary when you reach the step that references it — and read only the named section. If this file is already in context from an earlier step this session, reuse it; don't re-read it at every reference site.
+> **Companion file to `actions/capture.md`.** Holds copyable REQ/UR shapes, capture judgments, and pointers to the schema and publication authorities. Each section below is pointed to by name from the matching step in `actions/capture.md`. Loading this file is only necessary when you reach the step that references it — and read only the named section. If this file is already in context from an earlier step this session, reuse it; don't re-read it at every reference site.
 
 ---
 
@@ -81,61 +81,39 @@ Capture sums the selected entries' costs and never exceeds the budget. It first 
 
 ### Simple REQ
 
+The examples below are copyable shape contracts. [`schemanormalization`](../tools/do-work-cli/internal/schemanormalization/schema_normalization.go) owns canonical values, defaults, and read aliases; [`capture-files`](../tools/do-work-cli/internal/publication/capture_files.go) validates authored field shapes, quoting, timestamps, and linkage before publication. Capture's Step 1 and this reference's named contracts retain applicability and meaning: classification, TDD proof, lesson selection, dependencies, assignment, blocked conditions, and optional sections. Full field semantics, **Frontmatter Quoting**, and the **Timestamp rule** live in `actions/work-reference.md`.
+
 ```markdown
 ---
 id: REQ-001
-title: 'Brief descriptive title'   # quoted per Frontmatter Quoting (actions/work-reference.md); prefix `[<impact token>] ` when impact: is anything other than impact-user-visible — REQ Title Convention above
+title: 'Brief descriptive title'
 status: pending
-created_at: 2025-01-26T10:00:00Z  # current UTC instant, never local time with a Z suffix (Timestamp rule, actions/work-reference.md)
+created_at: 2025-01-26T10:00:00Z
 user_request: UR-001
-domain: frontend  # choose one: frontend, backend, ui-design, general, security, testing, or cms
-prime_files: []  # list paths to relevant prime-*.md files, or leave empty
-required_lessons: []  # OPTIONAL capture-authored list governed by Required Lessons Budget Contract above; entries are `path` or eligible `path#family-slug`. Omit when the lessons index has no relevant match.
-tdd: true  # default true when a runnable RED test can be written in this project's harness; false otherwise (see heuristic below)
-suggested_spec:  # optional — spec template name if one clearly matches (e.g., "api-endpoint", "bug-fix")
-depends_on: []  # optional — list of REQ IDs that must complete before this REQ runs; honored by actions/work.md's selection scan
-maintenance: false  # set true ONLY for a deliberate removal/narrowing of the skill's OWN operating instructions — see Step 1's maintenance assessment; loads crew-members/maintenance.md in actions/work.md Step 6
-# impact: impact-user-visible   # EXPECTED on every REQ, but JUDGED, never copied: impact-critical | impact-user-visible | impact-rule-change | impact-negligible — whether anyone would ever notice the work, judged by Step 1's impact assessment. Deliberately commented out: an uncommented value gets copied more often than judged, and absence already reads as impact-user-visible, never as the user's stop signal (actions/work-reference.md → Request File Schema)
-# priority: now   # OPTIONAL authored order: now | next | later — emit only when the user's words explicitly rank timing/order; otherwise omit and let absence read as next
-# effort_estimate: effort-mechanical   # OPTIONAL in the schema, expected on every new REQ (effort-mechanical | effort-substantive; absent reads as effort-substantive) — the SIZE of the fix, a separate axis from impact, judged as size and never read off the impact verdict. Capture judges it on every REQ it mints, by the same three-way standard as `impact:` (`actions/capture.md` Step 1's effort assessment): judge it, or put the judgment to the user, or leave it absent because neither was possible. Never invent `effort-mechanical` for work whose size you haven't judged — and never assert `effort-substantive` because it is the default, which is the same failure wearing the safe answer.
-# assigned_to: 'cloud-alpha'   # OPTIONAL advisory earmark — emit ONLY when the user names a session to reserve this work for (Step 1's earmark assessment); verbatim, quoted per Frontmatter Quoting (actions/work-reference.md), never invented. The default work scan skips-and-reports it; explicit targeting clears it on claim (actions/work-reference.md → Request File Schema)
-# External-condition fields — set ONLY when the task waits on something outside the queue (see Step 1's external-condition assessment). Omit all three for normal REQs.
-# status: blocked            # use INSTEAD OF `status: pending` when the REQ cannot start until an external condition is met — distinct from depends_on (another REQ) and Open Questions (a question for the user)
-# blocked_by: '...'          # free text naming the condition (quoted per Frontmatter Quoting, actions/work-reference.md), e.g. 'LM Studio running locally', 'designer answered on mockups'
-# blocked_at: 2026-01-26T10:00:00Z   # stamp the moment it was captured blocked — current UTC instant, same Timestamp rule as created_at
-# blocked_check: '...'       # OPTIONAL shell probe (quoted per Frontmatter Quoting, actions/work-reference.md) — emit ONLY when the user supplies or explicitly confirms the command; never invent one
+domain: frontend
+prime_files: []
+tdd: false
+maintenance: false
 ---
-
 # [Brief Title]
-
 ## What
 [1-3 sentences describing what is being requested]
-
 ## AI Execution State (P-A-U Loop)
 - [ ] **[PLAN]:** (Agent: Read listed `prime_files` and agent rules. Write brief technical approach here. Do not write code yet.)
 - [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
 - [ ] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
-
-## Why (if provided)
-[User's stated reasoning — omit if not provided]
-
-## Context
-[Additional context, constraints, or details mentioned]
-
-## Red-Green Proof
-**RED prompt/case:** [Minimal prompt, repro, or example that should fail or be missing today]
-**Why RED now:** [What is currently broken or absent]
-**GREEN when:** [Observable result that proves the request is done]
-**Validation:** [User confirmed / User adjusted / Inferred during capture]
-
-## Assets
-[Description of screenshots or links to saved files]
-
----
 *Source: [original verbatim request]*
 ```
 
 Include `## Red-Green Proof` when the request is behavior-changing and can be proven with a prompt, repro, or example. If `tdd: true`, this section is mandatory. The goal is proof of behavior, not implementation detail.
+
+    ## Red-Green Proof
+    **RED prompt/case:** [Minimal prompt, repro, or example]
+    **Why RED now:** [What is broken or absent]
+    **GREEN when:** [Observable result]
+    **Validation:** [User confirmed / User adjusted / Inferred during capture]
+
+Add `## Why` when the user supplied reasoning, `## Context` for relevant constraints or details, and `## Assets` for supplied screenshots or files.
 
 Treat defining the RED state as essential, high-value capture work. It is one of the most helpful things you can do for the downstream builder because it turns vague intent into a concrete failing proof target. Do not treat this as paperwork. Lean into it. Be eager to find the best RED case: the smallest, clearest prompt/repro/example that proves the behavior is missing now and will clearly turn GREEN later.
 
@@ -145,26 +123,24 @@ Complex requests use the same base format plus these sections:
 
 ```markdown
 ## Detailed Requirements
-[Extract EVERY requirement from the original input that applies to THIS feature.
-DO NOT SUMMARIZE — use the user's words. Include specific values, constraints,
-conditions, edge cases, "must"/"should"/"never" statements.]
-
+- [Every requirement from the input that applies to this REQ]
 ## Constraints
 [Limitations, restrictions, batch-level concerns that apply to this REQ]
-
 ## Dependencies
 [What this feature needs or what needs it — reference other REQ IDs]
-
 ## Builder Guidance
-[Certainty level: Exploratory / Firm / Mixed. Scope cues like "keep it simple."
-Any latitude given to the builder.]
-
-## Open Questions
-- [ ] [Question about ambiguity the user needs to clarify]
-  Recommended: [best default based on context]
-  Also: [alternative A], [alternative B]
+[Certainty level, scope cues, and builder latitude]
+## Full Context
+See `do-work/user-requests/UR-NNN/input.md` for complete verbatim input.
+```
 
 Open Questions use checkbox syntax with recommended choices. Each question includes a `Recommended:` line (the best default if the user doesn't answer) and an `Also:` line with alternatives. The choices make questions answerable even when the question itself isn't fully understood — the user can just pick one.
+
+When needed, add `## Open Questions` with this shape:
+
+    - [ ] [Question]
+      Recommended: [Best default and why]
+      Also: [Alternatives]
 
 `- [ ]` = unresolved, `- [x]` = answered (answer follows `→`), `- [~]` = deferred to builder (note follows `→`).
 
@@ -173,10 +149,6 @@ Open Questions use checkbox syntax with recommended choices. Each question inclu
 Only add questions where the user's intent is genuinely unclear — don't add questions the builder can answer by reading the codebase.
 
 A question whose real answerer is a named outside person carries an extra `Answerer: <name>` line under its `Also:` line (capture Step 1's audience assessment — verbatim, never invented). The work loop routes it to that person's stakeholder REQ at archive time instead of into clarify; the build itself never waits on it.
-
-## Full Context
-See `do-work/user-requests/UR-NNN/input.md` for complete verbatim input.
-```
 
 **Additional frontmatter for complex requests:**
 - `related: [REQ-006, REQ-007]` — other REQs in this batch
@@ -201,17 +173,7 @@ An ordering edge requires **successful completion** (`completed` or `completed-w
 
 ### Schema Aliases
 
-Several fields above accept legacy aliases at read time so muscle-memory typos from sister tools don't silently drop information. The canonical key wins when multiple are present; capture always emits the canonical — aliases are read-only, never propagated on write.
-
-| Canonical field | Aliases recognized | Read sites |
-|---|---|---|
-| `addendum_to` | `amends`, `parent`, `amendment_to` | capture's duplicate check, `actions/work.md`'s upstream-failure walk + cycle detection, `actions/roadmap.md` Blocked classification |
-| `depends_on` | `dependencies` | capture's slicing convention, `actions/work.md`'s dependency-aware selection / cycle detection / `--wave` depth / upstream walk, `actions/roadmap.md` Ready/Blocked rubrics |
-| `batch` | `batch_name` | `actions/roadmap.md` batch grouping; verify-requests cross-REQ summarization |
-| `related` | `related_reqs` | `actions/roadmap.md` cross-REQ surfacing; verify-requests batch coverage |
-| `suggested_spec` | `spec_hint`, `suggested-spec` | `actions/work.md`'s spec pre-load hint |
-
-For enum-valued and boolean fields shared with `actions/work.md` (`status`, `domain`, `route`, `caveman`, `tdd`, `maintenance`, `error_type`, `kb_status`, `impact`, `priority`, `effort_estimate`), capture honors the **normalize-and-warn contract** defined in the Schema Read Contract (in the companion `actions/work-reference.md`): invalid values trigger a warning and a documented default rather than silent acceptance. When writing the REQ files, if the captured value for any normalize-and-warn field doesn't match the canonical enum (after applying the contract's normalization), prompt the user to confirm the intended value before emitting the REQ — capture is the human-attention window for catching typos at the source. Never write a non-canonical value silently.
+[`schemanormalization`](../tools/do-work-cli/internal/schemanormalization/schema_normalization.go) is the authority for legacy key/value aliases, canonical spellings, defaults, and warnings. [`requestmodel`](../tools/do-work-cli/internal/requestmodel/request_model.go) preserves canonical-key precedence when reading them. Aliases remain read-only: `capture-files` refuses noncanonical authored keys and values. If an input value does not resolve to a canonical value, confirm the intended meaning with the user before authoring it.
 
 ### UR input.md
 
@@ -220,22 +182,15 @@ Created for every invocation. For simple requests, it's minimal:
 ```markdown
 ---
 id: UR-005
-title: 'Add keyboard shortcuts'  # raw user-derived text — single-quoted per Frontmatter Quoting (actions/work-reference.md), apostrophes doubled
-created_at: 2025-01-26T10:00:00Z  # current UTC instant, never local time with a Z suffix (Timestamp rule, actions/work-reference.md)
+title: 'Add keyboard shortcuts'
+created_at: 2025-01-26T10:00:00Z
 requests: [REQ-020]
-word_count: 4
+word_count: 3
 ---
-
-# Add keyboard shortcuts
-
 ## Full Verbatim Input
-
 > ````text
 > add keyboard shortcuts
 > ````
-
----
-*Captured: 2025-01-26T10:00:00Z*
 ```
 
 For complex requests, add a Summary, an Extracted Requests table, and a Batch Constraints section before the Full Verbatim Input. The verbatim section must contain the COMPLETE, UNEDITED input — never summarize or clean it up. It uses `actions/clarify.md` Step 4's **Outside-text containment** body-passage form: prefix every physical line and use a fence longer than the longest backtick run in the input. The example's four-backtick fence is sized for its sample text, not a fixed fence to copy regardless of content.
@@ -258,30 +213,21 @@ Written for **Addendum for in-flight/completed requests** (`actions/capture.md` 
 ```markdown
 ---
 id: REQ-021
-title: 'Addendum: dark mode sidebar support'   # a non-default impact prefixes the tag ahead of the kind prefix — "[impact-negligible] Addendum: …" (REQ Title Convention above)
+title: 'Addendum: dark mode sidebar support'
 status: pending
-created_at: 2025-01-27T09:00:00Z  # current UTC instant (Timestamp rule, actions/work-reference.md)
-user_request: UR-006        ← new UR created for this addendum
-addendum_to: REQ-005        ← links back to the original request
-# assigned_to: 'cloud-alpha'   # OPTIONAL advisory earmark — same contract as the Simple/Complex REQ template above: emit ONLY when the user names a session to reserve this work for (Step 1's earmark assessment), verbatim and quoted per Frontmatter Quoting, never invented
-# priority: now              ← OPTIONAL; apply Step 1's user-words-only priority assessment to this new addendum REQ
+created_at: 2025-01-27T09:00:00Z
+user_request: UR-006
+addendum_to: REQ-005
+domain: frontend
+prime_files: []
+tdd: false
+maintenance: false
 ---
-
 # Addendum: Dark Mode Sidebar Support
-
 ## What
 Add sidebar support to the existing dark mode implementation (REQ-005).
-
-## Context
-Addendum to REQ-005, which is currently [in progress / completed].
-The user wants the sidebar to also support dark mode.
-
 ## Prior Implementation
-[For archived/completed originals: read the original REQ from the archive and
-summarize what was built, key files modified, patterns used, and commit hash
-(if available). Skip this section for in-flight originals — the builder will
-encounter the work in progress naturally.]
-
+[Summary of the archived original; omit for an in-flight original]
 ## Requirements
 - Sidebar must respect the dark mode theme
 ```

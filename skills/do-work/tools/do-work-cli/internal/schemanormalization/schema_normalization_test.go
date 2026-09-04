@@ -1,6 +1,9 @@
 package schemanormalization
 
-import "testing"
+import (
+	"reflect"
+	"testing"
+)
 
 func TestNormalizeFieldAppliesAliasesDefaultsAndExactWarnings(t *testing.T) {
 	testCases := []struct {
@@ -62,6 +65,84 @@ func TestPreferredFieldGivesCanonicalKeyPrecedence(t *testing.T) {
 	values, sourceKey, found = PreferredField(fields, "addendum_to", "amends", "parent", "amendment_to")
 	if !found || sourceKey != "parent" || len(values) != 1 || values[0] != "REQ-4" {
 		t.Fatalf("preferred addendum = %v, %q, %v", values, sourceKey, found)
+	}
+}
+
+func TestSchemaAliasesAreCentralizedAndDefensivelyCopied(t *testing.T) {
+	wantAliases := map[string][]string{
+		"addendum_to":    {"amends", "parent", "amendment_to"},
+		"depends_on":     {"dependencies"},
+		"batch":          {"batch_name"},
+		"related":        {"related_reqs"},
+		"suggested_spec": {"spec_hint", "suggested-spec"},
+	}
+	for canonicalKey, want := range wantAliases {
+		aliases := SchemaFieldAliases(canonicalKey)
+		if !reflect.DeepEqual(aliases, want) {
+			t.Fatalf("SchemaFieldAliases(%q) = %v, want %v", canonicalKey, aliases, want)
+		}
+		aliases[0] = "mutated"
+		if got := SchemaFieldAliases(canonicalKey); !reflect.DeepEqual(got, want) {
+			t.Fatalf("caller mutation changed aliases for %q: %v", canonicalKey, got)
+		}
+		for _, aliasKey := range want {
+			if gotCanonical, found := CanonicalFieldForAlias(aliasKey); !found || gotCanonical != canonicalKey {
+				t.Fatalf("CanonicalFieldForAlias(%q) = %q, %v", aliasKey, gotCanonical, found)
+			}
+		}
+	}
+	if aliases := SchemaFieldAliases("unknown"); aliases != nil {
+		t.Fatalf("unknown aliases = %v, want nil", aliases)
+	}
+	if canonicalKey, found := CanonicalFieldForAlias("depends_on"); found || canonicalKey != "" {
+		t.Fatalf("canonical key reported as alias: %q, %v", canonicalKey, found)
+	}
+}
+
+func TestNormalizeFieldDistinguishesExactCanonicalAuthoringValues(t *testing.T) {
+	testCases := []struct {
+		name      string
+		fieldName string
+		rawValue  string
+		canonical bool
+	}{
+		{"canonical enum", "status", "pending", true},
+		{"case-normalized enum", "status", "PENDING", false},
+		{"read alias", "status", "done", false},
+		{"defaulted empty", "impact", "", false},
+		{"invalid default", "impact", "visible", false},
+		{"canonical boolean", "tdd", "true", true},
+		{"boolean alias", "tdd", "yes", false},
+		{"verbatim", "deferred_implementation_base", "abc123", true},
+	}
+	for _, testCase := range testCases {
+		t.Run(testCase.name, func(t *testing.T) {
+			result := NormalizeField(testCase.fieldName, testCase.rawValue)
+			if result.IsCanonicalAuthoringValue != testCase.canonical {
+				t.Fatalf("NormalizeField(%q, %q).IsCanonicalAuthoringValue = %v", testCase.fieldName, testCase.rawValue, result.IsCanonicalAuthoringValue)
+			}
+		})
+	}
+}
+
+func TestEverySchemaContractPreservesReadAliasesAndExactWriteEvidence(t *testing.T) {
+	for fieldName, contract := range fieldContracts {
+		for _, canonicalValue := range contract.canonicalValues {
+			result := NormalizeField(fieldName, canonicalValue)
+			if !result.IsCanonicalAuthoringValue || result.ResolvedValue != canonicalValue || !result.IsRecognized || result.IsDefaulted || result.WarningMessage != "" {
+				t.Errorf("canonical %s=%q: %#v", fieldName, canonicalValue, result)
+			}
+		}
+		for aliasValue, canonicalValue := range contract.aliasValues {
+			result := NormalizeField(fieldName, aliasValue)
+			if result.IsCanonicalAuthoringValue || result.ResolvedValue != canonicalValue || !result.IsRecognized || result.IsDefaulted || result.WarningMessage != "" {
+				t.Errorf("legacy %s=%q: %#v", fieldName, aliasValue, result)
+			}
+		}
+		result := NormalizeField(fieldName, "")
+		if result.IsCanonicalAuthoringValue || result.ResolvedValue != contract.defaultValue || !result.IsRecognized || !result.IsDefaulted || result.WarningMessage != "" {
+			t.Errorf("absent %s: %#v", fieldName, result)
+		}
 	}
 }
 
