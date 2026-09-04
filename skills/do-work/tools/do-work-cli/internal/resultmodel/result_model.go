@@ -94,18 +94,34 @@ type HeavyVerificationPlan struct {
 	SelectedLanes     []HeavyLaneSelection `json:"selected_lanes"`
 }
 
-// HeavyLaneExecution is one lane the runner actually executed. Its JSON tags
-// match publication's HeavyLaneResult so an action can paste a run's lanes into
-// heavy_testing evidence without reshaping them.
+// HeavyLaneExecution is one lane of a run: either executed now, or reported
+// from matching stored evidence. Its first five fields carry the same JSON
+// names as publication's HeavyLaneResult so an action can copy a lane's result
+// into heavy_testing evidence field by field; the reuse fields below are
+// run-local and are not part of that durable evidence.
 type HeavyLaneExecution struct {
 	LaneID      string   `json:"lane_id"`
 	CommandArgv []string `json:"command_argv"`
 	ExitStatus  int      `json:"exit_status"`
 	Skipped     bool     `json:"skipped,omitempty"`
 	WallSeconds int      `json:"wall_seconds"`
+	// Disposition is "executed" or "reused", so a reader can tell which greens
+	// this run measured and which it inherited from stored evidence.
+	Disposition string `json:"disposition"`
+	// DispositionReason names the exact condition that decided the
+	// disposition: a fingerprint match, or the one check that failed.
+	DispositionReason string `json:"disposition_reason"`
+	// FingerprintSHA256 is the deterministic digest of the lane's command, its
+	// covered committed files, its toolchain probes, and its required
+	// environment. Empty when that fingerprint could not be determined.
+	FingerprintSHA256 string `json:"fingerprint_sha256,omitempty"`
+	// EvidenceRevision and EvidenceRecordedAt name the run a reused lane
+	// inherits its result from. Both stay empty for an executed lane.
+	EvidenceRevision   string `json:"evidence_revision,omitempty"`
+	EvidenceRecordedAt string `json:"evidence_recorded_at,omitempty"`
 }
 
-// HeavyVerificationRun is the typed record of one heavy-lane execution pass.
+// HeavyVerificationRun is the typed record of one heavy-lane verification pass.
 // Planning stays with HeavyVerificationPlan; this type carries only what ran.
 type HeavyVerificationRun struct {
 	ManifestPath      string               `json:"manifest_path"`
@@ -643,6 +659,11 @@ func NormalizeResult(result CommandResult) CommandResult {
 			if lane.CommandArgv == nil {
 				lane.CommandArgv = []string{}
 			}
+			if lane.Disposition == "" {
+				// A lane with no stated disposition was executed: reuse is the
+				// case that has to be declared, never the one inferred.
+				lane.Disposition = "executed"
+			}
 		}
 	}
 	if len(result.Finalizations) == 0 && result.Finalization != nil {
@@ -1128,7 +1149,14 @@ func renderText(result CommandResult) []byte {
 			if lane.Skipped {
 				laneOutcome = "skipped"
 			}
-			fmt.Fprintf(&output, "  lane %s: %s in %ds — %s\n", lane.LaneID, laneOutcome, lane.WallSeconds, joinArgv(lane.CommandArgv))
+			laneDisposition := lane.Disposition
+			if lane.DispositionReason != "" {
+				laneDisposition = laneDisposition + ": " + lane.DispositionReason
+			}
+			fmt.Fprintf(&output, "  lane %s: %s in %ds [%s] — %s\n", lane.LaneID, laneOutcome, lane.WallSeconds, laneDisposition, joinArgv(lane.CommandArgv))
+			if lane.EvidenceRevision != "" || lane.EvidenceRecordedAt != "" {
+				fmt.Fprintf(&output, "    inherited evidence: revision=%s recorded_at=%s\n", lane.EvidenceRevision, lane.EvidenceRecordedAt)
+			}
 		}
 	}
 	if result.AlreadyGreenRepair != nil {

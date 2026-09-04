@@ -25,6 +25,11 @@ type manifestLane struct {
 	ID       string         `json:"id"`
 	Argv     []string       `json:"argv"`
 	Coverage []coverageRule `json:"coverage"`
+	// Fingerprint is optional and governs evidence reuse only. Lane selection
+	// never reads it; a lane that omits it simply always executes. Keeping it
+	// optional is what lets the manifest committed at an older revision, which
+	// the revalidation planner still reads, decode unchanged.
+	Fingerprint *laneFingerprintInputs `json:"fingerprint,omitempty"`
 }
 
 type coverageRule struct {
@@ -264,6 +269,11 @@ func decodeManifest(contents []byte) (laneManifest, error) {
 		for _, rule := range lane.Coverage {
 			if err := rule.validate(); err != nil {
 				return laneManifest{}, fmt.Errorf("lane %q coverage: %w", lane.ID, err)
+			}
+		}
+		if lane.Fingerprint != nil {
+			if err := lane.Fingerprint.validate(); err != nil {
+				return laneManifest{}, fmt.Errorf("lane %q: %w", lane.ID, err)
 			}
 		}
 	}

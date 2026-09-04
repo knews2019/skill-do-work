@@ -8,7 +8,11 @@
         {"kind": "subtree", "path": "skills/do-work-board/tools/queue-kanban"},
         {"kind": "exact", "path": "_dev/tests/heavy-lanes.json"},
         {"kind": "exact", "path": "_dev/tests/maintainer-verify.sh"}
-      ]
+      ],
+      "fingerprint": {
+        "toolchain_probes": [["go", "version"], ["node", "--version"], ["bash", "--version"]],
+        "environment_variables": []
+      }
     },
     {
       "id": "queue-kanban-browser",
@@ -17,7 +21,11 @@
         {"kind": "subtree", "path": "skills/do-work-board/tools/queue-kanban"},
         {"kind": "exact", "path": "_dev/tests/heavy-lanes.json"},
         {"kind": "exact", "path": "_dev/tests/maintainer-verify.sh"}
-      ]
+      ],
+      "fingerprint": {
+        "toolchain_probes": [["go", "version"], ["node", "--version"], ["bash", "--version"]],
+        "environment_variables": ["QUEUE_KANBAN_BROWSER"]
+      }
     },
     {
       "id": "do-work-cli-integrations",
@@ -26,7 +34,11 @@
         {"kind": "subtree", "path": "skills/do-work/tools/do-work-cli"},
         {"kind": "exact", "path": "_dev/tests/heavy-lanes.json"},
         {"kind": "exact", "path": "_dev/tests/maintainer-verify.sh"}
-      ]
+      ],
+      "fingerprint": {
+        "toolchain_probes": [["go", "version"], ["git", "--version"], ["bash", "--version"]],
+        "environment_variables": []
+      }
     },
     {
       "id": "staged-skills",
@@ -38,7 +50,11 @@
         {"kind": "exact", "path": "_dev/tests/contracts/probe-lanes.sh"},
         {"kind": "exact", "path": "_dev/tests/heavy-lanes.json"},
         {"kind": "exact", "path": "_dev/tests/maintainer-verify.sh"}
-      ]
+      ],
+      "fingerprint": {
+        "toolchain_probes": [["go", "version"], ["git", "--version"], ["bash", "--version"]],
+        "environment_variables": ["DO_WORK_TEST_DO_WORK_CLI_BINARY"]
+      }
     },
     {
       "id": "updater",
@@ -60,7 +76,11 @@
         {"kind": "exact", "path": "_dev/tests/contracts/probe-lanes.sh"},
         {"kind": "exact", "path": "_dev/tests/heavy-lanes.json"},
         {"kind": "exact", "path": "_dev/tests/maintainer-verify.sh"}
-      ]
+      ],
+      "fingerprint": {
+        "toolchain_probes": [["go", "version"], ["git", "--version"], ["bash", "--version"]],
+        "environment_variables": ["DO_WORK_TEST_DO_WORK_CLI_BINARY"]
+      }
     },
     {
       "id": "installer",
@@ -80,7 +100,11 @@
         {"kind": "exact", "path": "_dev/tests/contracts/probe-lanes.sh"},
         {"kind": "exact", "path": "_dev/tests/heavy-lanes.json"},
         {"kind": "exact", "path": "_dev/tests/maintainer-verify.sh"}
-      ]
+      ],
+      "fingerprint": {
+        "toolchain_probes": [["go", "version"], ["git", "--version"], ["bash", "--version"]],
+        "environment_variables": ["DO_WORK_TEST_DO_WORK_CLI_BINARY"]
+      }
     }
   ],
   "non_heavy_coverage": [

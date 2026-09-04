@@ -38,12 +38,16 @@ func handlePlanHeavyVerification(executionContext commandruntime.ExecutionContex
 }
 
 func handleRunHeavyVerification(executionContext commandruntime.ExecutionContext, arguments []string) resultmodel.CommandResult {
-	manifestPath, laneIDs, laneTimeout, err := parseRunArguments(arguments)
+	manifestPath, laneIDs, laneTimeout, evidenceReuse, err := parseRunArguments(arguments)
 	if err != nil {
 		return runFailure("HEAVY-RUN-USAGE", err)
 	}
 	// Lane output is teed to stderr because stdout carries the command result.
-	run, findings, err := RunLanes(executionContext.RepositoryRoot, manifestPath, laneIDs, laneTimeout, os.Stderr)
+	run, findings, err := RunLanes(LaneRunRequest{
+		RepositoryRoot: executionContext.RepositoryRoot, ManifestPath: manifestPath,
+		LaneIDs: laneIDs, LaneTimeout: laneTimeout, LaneOutputWriter: os.Stderr,
+		EvidenceReuse: evidenceReuse,
+	})
 	if err != nil {
 		return runFailure(LaneRunRefusalCode(err), err)
 	}
@@ -168,58 +172,70 @@ func parseRevalidationArguments(arguments []string) (string, []resultmodel.Heavy
 	return manifestPath, sourceRanges, executionRevision, forceAll, nil
 }
 
-// parseRunArguments accepts the lanes to execute and the per-lane time bound.
-// --lane repeats; a repeated id would run the lane twice and produce two
-// records under one id, which per-lane evidence cannot carry.
-func parseRunArguments(arguments []string) (string, []string, time.Duration, error) {
+// parseRunArguments accepts the lanes to verify, the per-lane time bound, and
+// whether stored evidence may stand in for an execution. --lane repeats; a
+// repeated id would run the lane twice and produce two records under one id,
+// which per-lane evidence cannot carry. Evidence reuse is on by default, which
+// is what lets a drain skip lanes nothing changed under; --no-evidence-reuse
+// forces every named lane to execute and refresh its record.
+func parseRunArguments(arguments []string) (string, []string, time.Duration, bool, error) {
 	manifestPath := "_dev/tests/heavy-lanes.json"
 	laneIDs := []string{}
 	laneTimeoutSeconds := defaultLaneTimeoutSeconds
+	evidenceReuse := true
 	seen := map[string]bool{}
 	seenLaneIDs := map[string]bool{}
 	for argumentIndex := 0; argumentIndex < len(arguments); argumentIndex++ {
 		argument := arguments[argumentIndex]
+		if argument == "--no-evidence-reuse" {
+			if seen[argument] {
+				return "", nil, 0, false, fmt.Errorf("--no-evidence-reuse may be supplied only once")
+			}
+			seen[argument] = true
+			evidenceReuse = false
+			continue
+		}
 		optionName, optionValue, hasInlineValue := strings.Cut(argument, "=")
 		switch optionName {
 		case "--manifest", "--lane", "--lane-timeout-seconds":
 			if optionName != "--lane" && seen[optionName] {
-				return "", nil, 0, fmt.Errorf("%s may be supplied only once", optionName)
+				return "", nil, 0, false, fmt.Errorf("%s may be supplied only once", optionName)
 			}
 			seen[optionName] = true
 			if !hasInlineValue {
 				argumentIndex++
 				if argumentIndex >= len(arguments) {
-					return "", nil, 0, fmt.Errorf("%s requires a value", optionName)
+					return "", nil, 0, false, fmt.Errorf("%s requires a value", optionName)
 				}
 				optionValue = arguments[argumentIndex]
 			}
 			if strings.TrimSpace(optionValue) == "" {
-				return "", nil, 0, fmt.Errorf("%s requires a value", optionName)
+				return "", nil, 0, false, fmt.Errorf("%s requires a value", optionName)
 			}
 			switch optionName {
 			case "--manifest":
 				manifestPath = optionValue
 			case "--lane":
 				if seenLaneIDs[optionValue] {
-					return "", nil, 0, fmt.Errorf("--lane %s may be supplied only once", optionValue)
+					return "", nil, 0, false, fmt.Errorf("--lane %s may be supplied only once", optionValue)
 				}
 				seenLaneIDs[optionValue] = true
 				laneIDs = append(laneIDs, optionValue)
 			case "--lane-timeout-seconds":
 				parsedSeconds, parseError := strconv.Atoi(optionValue)
 				if parseError != nil || parsedSeconds <= 0 {
-					return "", nil, 0, fmt.Errorf("--lane-timeout-seconds requires a positive whole number of seconds")
+					return "", nil, 0, false, fmt.Errorf("--lane-timeout-seconds requires a positive whole number of seconds")
 				}
 				laneTimeoutSeconds = parsedSeconds
 			}
 		default:
-			return "", nil, 0, fmt.Errorf("unknown %s option %q", CommandRunHeavyVerification, argument)
+			return "", nil, 0, false, fmt.Errorf("unknown %s option %q", CommandRunHeavyVerification, argument)
 		}
 	}
 	if len(laneIDs) == 0 {
-		return "", nil, 0, fmt.Errorf("usage: %s [--manifest <path>] --lane <id> [--lane <id>...] [--lane-timeout-seconds <seconds>]", CommandRunHeavyVerification)
+		return "", nil, 0, false, fmt.Errorf("usage: %s [--manifest <path>] --lane <id> [--lane <id>...] [--lane-timeout-seconds <seconds>] [--no-evidence-reuse]", CommandRunHeavyVerification)
 	}
-	return manifestPath, laneIDs, time.Duration(laneTimeoutSeconds) * time.Second, nil
+	return manifestPath, laneIDs, time.Duration(laneTimeoutSeconds) * time.Second, evidenceReuse, nil
 }
 
 func runFailure(code string, err error) resultmodel.CommandResult {

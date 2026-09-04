@@ -297,8 +297,9 @@ func TestHeavyVerificationRunTextAndJSONCarryTheSameTypedLanes(t *testing.T) {
 		HeavyVerificationRun: &HeavyVerificationRun{
 			ManifestPath: "_dev/tests/heavy-lanes.json", ExecutionRevision: "4444444",
 			Lanes: []HeavyLaneExecution{
-				{LaneID: "queue-kanban-browser", CommandArgv: []string{"bash", "verify.sh", "--heavy-lane", "queue-kanban-browser"}, ExitStatus: 0, Skipped: true, WallSeconds: 2},
-				{LaneID: "update-script", CommandArgv: []string{"bash", "verify.sh", "--heavy-lane", "update-script"}, ExitStatus: 3, WallSeconds: 41},
+				{LaneID: "queue-kanban-browser", CommandArgv: []string{"bash", "verify.sh", "--heavy-lane", "queue-kanban-browser"}, ExitStatus: 0, Skipped: true, WallSeconds: 2, Disposition: "executed", DispositionReason: "fingerprint_mismatch"},
+				{LaneID: "update-script", CommandArgv: []string{"bash", "verify.sh", "--heavy-lane", "update-script"}, ExitStatus: 3, WallSeconds: 41, Disposition: "executed", DispositionReason: "no_prior_evidence"},
+				{LaneID: "installer", CommandArgv: []string{"bash", "verify.sh", "--heavy-lane", "installer"}, ExitStatus: 0, WallSeconds: 0, Disposition: "reused", DispositionReason: "fingerprint_match", FingerprintSHA256: "abc123", EvidenceRevision: "3333333", EvidenceRecordedAt: "2026-09-04T18:00:00Z"},
 			},
 		},
 	}
@@ -306,12 +307,16 @@ func TestHeavyVerificationRunTextAndJSONCarryTheSameTypedLanes(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	// The disposition renders beside every lane, and the inherited record is
+	// named, so a reader of the text alone can tell which greens were measured.
 	for _, expected := range []string{
-		"heavy verification run: lanes=2",
+		"heavy verification run: lanes=3",
 		"manifest: _dev/tests/heavy-lanes.json",
 		"execution revision: 4444444",
-		"lane queue-kanban-browser: skipped in 2s — bash verify.sh --heavy-lane queue-kanban-browser",
-		"lane update-script: exit 3 in 41s — bash verify.sh --heavy-lane update-script",
+		"lane queue-kanban-browser: skipped in 2s [executed: fingerprint_mismatch] — bash verify.sh --heavy-lane queue-kanban-browser",
+		"lane update-script: exit 3 in 41s [executed: no_prior_evidence] — bash verify.sh --heavy-lane update-script",
+		"lane installer: exit 0 in 0s [reused: fingerprint_match] — bash verify.sh --heavy-lane installer",
+		"inherited evidence: revision=3333333 recorded_at=2026-09-04T18:00:00Z",
 	} {
 		if !strings.Contains(string(textOutput), expected) {
 			t.Errorf("text output missing %q:\n%s", expected, textOutput)
@@ -325,16 +330,23 @@ func TestHeavyVerificationRunTextAndJSONCarryTheSameTypedLanes(t *testing.T) {
 	if err := json.Unmarshal(jsonOutput, &decoded); err != nil {
 		t.Fatal(err)
 	}
-	if decoded.HeavyVerificationRun == nil || decoded.HeavyVerificationRun.ExecutionRevision != "4444444" || len(decoded.HeavyVerificationRun.Lanes) != 2 {
+	if decoded.HeavyVerificationRun == nil || decoded.HeavyVerificationRun.ExecutionRevision != "4444444" || len(decoded.HeavyVerificationRun.Lanes) != 3 {
 		t.Fatalf("JSON lost the typed run: %#v", decoded.HeavyVerificationRun)
 	}
 	if decoded.HeavyVerificationRun.Lanes[0].WallSeconds != 2 || !decoded.HeavyVerificationRun.Lanes[0].Skipped || decoded.HeavyVerificationRun.Lanes[1].WallSeconds != 41 || decoded.HeavyVerificationRun.Lanes[1].ExitStatus != 3 {
 		t.Fatalf("JSON lost per-lane state: %#v", decoded.HeavyVerificationRun.Lanes)
 	}
+	reusedLane := decoded.HeavyVerificationRun.Lanes[2]
+	if reusedLane.Disposition != "reused" || reusedLane.DispositionReason != "fingerprint_match" || reusedLane.EvidenceRevision != "3333333" || reusedLane.EvidenceRecordedAt != "2026-09-04T18:00:00Z" || reusedLane.FingerprintSHA256 != "abc123" {
+		t.Fatalf("JSON lost the reuse record: %#v", reusedLane)
+	}
 
 	normalized := NormalizeResult(CommandResult{HeavyVerificationRun: &HeavyVerificationRun{Lanes: []HeavyLaneExecution{{LaneID: "solo-lane"}}}})
 	if normalized.HeavyVerificationRun.Lanes[0].CommandArgv == nil {
 		t.Fatal("lane argv remained nil")
+	}
+	if normalized.HeavyVerificationRun.Lanes[0].Disposition != "executed" {
+		t.Fatalf("an unstated disposition must normalize to executed, got %q", normalized.HeavyVerificationRun.Lanes[0].Disposition)
 	}
 	if NormalizeResult(CommandResult{HeavyVerificationRun: &HeavyVerificationRun{}}).HeavyVerificationRun.Lanes == nil {
 		t.Fatal("lanes remained nil")
