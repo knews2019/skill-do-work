@@ -2,6 +2,14 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.286.0 — Run the CLI Through the Go Build Cache (2026-09-05)
+
+The launcher no longer keeps its own binary or decides staleness by file timestamps. It declares a `tool` directive and resolves the executable with `go tool -n`, so the Go toolchain rebuilds only when an input's content changes and reuses the cached command otherwise.
+
+- The launcher runs the cached executable from the caller's directory and propagates the command's exact exit status; a toolchain that cannot build it refuses with an actionable message and runs nothing.
+- The Go version check is pure bash, so restricted PATHs carrying only bash and go still reach the command.
+- Fixtures that shipped a prebuilt binary now rely on the module sources beside the launcher.
+
 ## 0.285.0 — Select and Claim Requests Through Advance (2026-09-05)
 
 Queue-mode advance owns request selection, committed claims, and targeted continuation. Exact-revision heavy verification passed; independent review records two noncritical edge cases in default archive collisions and missing frozen members.
