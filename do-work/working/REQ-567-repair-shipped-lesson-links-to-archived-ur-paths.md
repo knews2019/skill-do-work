@@ -1,7 +1,7 @@
 ---
 id: REQ-567
 title: 'Repair shipped lesson links to archived UR paths'
-status: pending
+status: claimed
 route: C
 created_at: 2026-09-04T15:07:20Z
 user_request: UR-098
@@ -35,6 +35,7 @@ estimate:
     - full-suite verification
 heavy_verified_at: 2026-09-04T20:59:59Z
 heavy_verified_revision: 2dda18a1f816e148258295b2b351f12695a049b4
+claimed_at: 2026-09-04T21:55:44Z
 ---
 
 # Repair shipped lesson links to archived UR paths
