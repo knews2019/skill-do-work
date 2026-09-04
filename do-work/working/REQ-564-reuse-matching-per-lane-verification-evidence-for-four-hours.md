@@ -1,7 +1,7 @@
 ---
 id: REQ-564
 title: 'Reuse matching per-lane verification evidence for four hours'
-status: pending
+status: claimed
 created_at: 2026-09-03T22:58:23Z
 user_request: UR-109
 domain: testing
@@ -26,6 +26,7 @@ estimate:
     - persistence changes
     - cross-route regression gates
 status_changed_at: 2026-09-04T20:43:09Z
+claimed_at: 2026-09-04T20:43:09Z
 ---
 
 # Reuse Matching Per-Lane Verification Evidence for Four Hours
