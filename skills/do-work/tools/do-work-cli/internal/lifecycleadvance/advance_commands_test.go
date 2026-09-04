@@ -72,16 +72,6 @@ func TestAdvanceCommandPhaseMatrix(t *testing.T) {
 		wantMissing     advanceMissingEvidence
 	}{
 		{
-			name: "pending queue claim", treeSection: "queue", status: "pending",
-			wantPhase: "claim", wantPhaseKind: "mechanical", wantNextCommand: "claim",
-			wantMissing: advanceMissingEvidence{Kind: "field", Field: "status", Expected: "claimed"},
-		},
-		{
-			name: "blocked queue re-probe", treeSection: "queue", status: "blocked", frontmatter: "blocked_by: service unavailable\nblocked_check: exit 0\n",
-			wantPhase: "blocked-check", wantPhaseKind: "mechanical", wantNextCommand: "next",
-			wantMissing: advanceMissingEvidence{Kind: "field", Field: "status", Expected: "pending after successful probe and unblock"},
-		},
-		{
 			name: "claimed without triage", treeSection: "working", status: "claimed",
 			wantPhase: "agent judgment: triage and open questions", wantPhaseKind: "agent_judgment",
 			wantMissing: advanceMissingEvidence{Kind: "field", Field: "route", Expected: "A, B, or C"},
@@ -240,14 +230,6 @@ func TestAdvanceCommandRefusesMalformedAmbiguousAndImpossibleStates(t *testing.T
 			wantCode: "ADVANCE-EVIDENCE-MISSING",
 		},
 		{
-			name: "ambiguous request",
-			seed: func(t *testing.T, root string) {
-				writeAdvanceRequest(t, root, "queue", "REQ-704", "pending", "", "")
-				writeAdvanceRequest(t, root, "archive", "REQ-704", "completed", "commit: abc1234\n", "")
-			},
-			wantCode: "ADVANCE-EVIDENCE-MISSING",
-		},
-		{
 			name: "unknown route",
 			seed: func(t *testing.T, root string) {
 				writeAdvanceRequest(t, root, "working", "REQ-704", "claimed", "route: D\n", "## Triage\n")
@@ -288,7 +270,7 @@ func TestAdvanceCommandRefusesMalformedAmbiguousAndImpossibleStates(t *testing.T
 
 func TestAdvanceCommandIsByteForByteReadOnlyInTextAndJSON(t *testing.T) {
 	repositoryRoot := t.TempDir()
-	writeAdvanceRequest(t, repositoryRoot, "queue", "REQ-705", "pending", "", "")
+	writeAdvanceRequest(t, repositoryRoot, "working", "REQ-705", "claimed", "", "")
 	writeAdvanceFile(t, repositoryRoot, "do-work/CHECKPOINT.md", "# Session Checkpoint\n\nKeep these bytes.\n")
 	runAdvanceGit(t, repositoryRoot, "init", "-q")
 	runAdvanceGit(t, repositoryRoot, "config", "user.name", "Advance Test")
@@ -315,7 +297,7 @@ func TestAdvanceCommandIsByteForByteReadOnlyInTextAndJSON(t *testing.T) {
 func TestAdvanceCommandRejectsInvalidArguments(t *testing.T) {
 	repositoryRoot := t.TempDir()
 	writeAdvanceRequest(t, repositoryRoot, "queue", "REQ-706", "pending", "", "")
-	for _, arguments := range [][]string{{}, {"REQ-706", "REQ-707"}, {"REQ-x"}, {"--checkpoint", "REQ-706"}} {
+	for _, arguments := range [][]string{{"REQ-x"}, {"--checkpoint", "REQ-706"}} {
 		commandArguments := []string{"--repo-root", repositoryRoot, "--format", "json", "advance"}
 		commandArguments = append(commandArguments, arguments...)
 		command := exec.Command(advanceCLIBinary(t), commandArguments...)

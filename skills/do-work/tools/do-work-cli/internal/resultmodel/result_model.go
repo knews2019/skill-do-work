@@ -405,6 +405,44 @@ type AdvanceLifecycleResult struct {
 	VerificationArgv []string                 `json:"verification_argv"`
 }
 
+// QueueAdvanceMember is one member of a queue invocation's frozen target set.
+// Consumed means this invocation committed the member's claim or terminal hold;
+// a continuation never expands this set from a changing UR or queue.
+type QueueAdvanceMember struct {
+	RequestID   string `json:"request_id"`
+	RequestPath string `json:"request_path"`
+	Provenance  string `json:"provenance"`
+	Consumed    bool   `json:"consumed"`
+}
+
+// QueueAdvancePhase records one committed or refused queue mutation. Each
+// request gets its own transaction, so a later refusal cannot imply rollback
+// of an earlier claim.
+type QueueAdvancePhase struct {
+	RequestID string           `json:"request_id"`
+	Phase     string           `json:"phase"`
+	Outcome   CommandOutcome   `json:"outcome"`
+	Changes   []RecordedChange `json:"changes"`
+	Findings  []CommandFinding `json:"findings"`
+}
+
+// QueueAdvanceResult is the typed selection-and-claim session owned by
+// advance. Original non-fan-out options are retained separately from the
+// dispatch bound so replay can observe, project frozen membership, then bound.
+type QueueAdvanceResult struct {
+	TargetTokens         []string             `json:"target_tokens"`
+	WaveDepth            *int                 `json:"wave_depth,omitempty"`
+	SkipImpactNegligible bool                 `json:"skip_impact_negligible"`
+	SimpleOnly           bool                 `json:"simple_only"`
+	DispatchBound        int                  `json:"dispatch_bound"`
+	FrozenMembers        []QueueAdvanceMember `json:"frozen_members"`
+	Claimed              []QueueAdvanceMember `json:"claimed"`
+	Phases               []QueueAdvancePhase  `json:"phases"`
+	Partial              bool                 `json:"partial"`
+	ContinuationArgv     []string             `json:"continuation_argv"`
+	VerificationArgv     []string             `json:"verification_argv"`
+}
+
 // RecoveryClaimResult is one structurally observed working claim and the
 // authority decision made for it by the canonical recovery command.
 type RecoveryClaimResult struct {
@@ -456,6 +494,7 @@ type CommandResult struct {
 	Finalization         *FinalizationResult           `json:"finalization,omitempty"`
 	Finalizations        []FinalizationResult          `json:"finalizations"`
 	Advance              *AdvanceLifecycleResult       `json:"advance,omitempty"`
+	QueueAdvance         *QueueAdvanceResult           `json:"queue_advance,omitempty"`
 	Recovery             *RecoveryResult               `json:"recovery,omitempty"`
 	Checkpoint           *CheckpointResult             `json:"checkpoint,omitempty"`
 	// ExactTextOutput preserves compatibility-shaped stdout without polluting
@@ -674,6 +713,35 @@ func NormalizeResult(result CommandResult) CommandResult {
 			result.Advance.VerificationArgv = []string{}
 		}
 	}
+	if result.QueueAdvance != nil {
+		queueAdvance := result.QueueAdvance
+		if queueAdvance.TargetTokens == nil {
+			queueAdvance.TargetTokens = []string{}
+		}
+		if queueAdvance.FrozenMembers == nil {
+			queueAdvance.FrozenMembers = []QueueAdvanceMember{}
+		}
+		if queueAdvance.Claimed == nil {
+			queueAdvance.Claimed = []QueueAdvanceMember{}
+		}
+		if queueAdvance.Phases == nil {
+			queueAdvance.Phases = []QueueAdvancePhase{}
+		}
+		for phaseIndex := range queueAdvance.Phases {
+			if queueAdvance.Phases[phaseIndex].Changes == nil {
+				queueAdvance.Phases[phaseIndex].Changes = []RecordedChange{}
+			}
+			if queueAdvance.Phases[phaseIndex].Findings == nil {
+				queueAdvance.Phases[phaseIndex].Findings = []CommandFinding{}
+			}
+		}
+		if queueAdvance.ContinuationArgv == nil {
+			queueAdvance.ContinuationArgv = []string{}
+		}
+		if queueAdvance.VerificationArgv == nil {
+			queueAdvance.VerificationArgv = []string{}
+		}
+	}
 	if result.Recovery != nil {
 		if result.Recovery.Claims == nil {
 			result.Recovery.Claims = []RecoveryClaimResult{}
@@ -844,6 +912,19 @@ func renderText(result CommandResult) []byte {
 		}
 		if len(advance.VerificationArgv) > 0 {
 			fmt.Fprintf(&output, "  verify: %s\n", joinArgv(advance.VerificationArgv))
+		}
+	}
+	if result.QueueAdvance != nil {
+		queueAdvance := result.QueueAdvance
+		fmt.Fprintf(&output, "queue advance: members=%d claimed=%d bound=%d partial=%t\n", len(queueAdvance.FrozenMembers), len(queueAdvance.Claimed), queueAdvance.DispatchBound, queueAdvance.Partial)
+		for _, phase := range queueAdvance.Phases {
+			fmt.Fprintf(&output, "  %s %s: %s\n", phase.RequestID, phase.Phase, phase.Outcome)
+		}
+		if len(queueAdvance.ContinuationArgv) > 0 {
+			fmt.Fprintf(&output, "  continue: %s\n", joinArgv(queueAdvance.ContinuationArgv))
+		}
+		if len(queueAdvance.VerificationArgv) > 0 {
+			fmt.Fprintf(&output, "  verify: %s\n", joinArgv(queueAdvance.VerificationArgv))
 		}
 	}
 	if result.Recovery != nil {

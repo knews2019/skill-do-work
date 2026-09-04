@@ -10,12 +10,14 @@ import (
 type Transition string
 
 const (
-	TransitionClaim    Transition = "claim"
-	TransitionRecover  Transition = "recover-claim"
-	TransitionUnblock  Transition = "unblock"
-	TransitionComplete Transition = "complete"
-	TransitionFail     Transition = "fail"
-	TransitionCancel   Transition = "cancel"
+	TransitionClaim                Transition = "claim"
+	TransitionRecover              Transition = "recover-claim"
+	TransitionUnblock              Transition = "unblock"
+	TransitionComplete             Transition = "complete"
+	TransitionFail                 Transition = "fail"
+	TransitionCancel               Transition = "cancel"
+	TransitionHoldArchiveCollision Transition = "hold-archive-collision"
+	TransitionHoldDependencyCycle  Transition = "hold-dependency-cycle"
 )
 
 type SelectionProvenance string
@@ -65,6 +67,10 @@ type StateOptions struct {
 	// whose current bytes hash to its entry is transaction input rather than a
 	// refusal; every other dirty target keeps the default refusal.
 	AcceptedPreimageDigests map[string]string
+	// ResolvedTarget binds an exact request from the supplied repository
+	// snapshot. Queue advance uses it only when a recursive collision snapshot
+	// intentionally contains another record with the same id.
+	ResolvedTarget *repositorymodel.RequestFile
 }
 
 type StateRefusal struct {

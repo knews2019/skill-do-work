@@ -80,6 +80,11 @@ func parseNextOptions(arguments []string) (SelectionOptions, error) {
 	return options, nil
 }
 
+// ParseOptions shares next's public argument grammar with lifecycle advance.
+func ParseOptions(arguments []string) (SelectionOptions, error) {
+	return parseNextOptions(arguments)
+}
+
 func optionInteger(argument string, remaining []string, name string, positive bool) (int, int, error) {
 	valueText := ""
 	consumed := 0

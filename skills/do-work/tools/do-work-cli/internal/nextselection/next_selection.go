@@ -17,6 +17,18 @@ import (
 )
 
 func Select(snapshot *repositorymodel.RepositorySnapshot, graph *dependencygraph.DependencyGraph, options SelectionOptions, probeRunner ProbeRunner) resultmodel.CommandResult {
+	return selectQueue(snapshot, graph, options, probeRunner, false)
+}
+
+// SelectUnbounded returns the complete ready projection without next's
+// implicit one-record default or an explicit fan-out limit. Advance uses it to
+// freeze membership before applying its saved dispatch bound.
+func SelectUnbounded(snapshot *repositorymodel.RepositorySnapshot, graph *dependencygraph.DependencyGraph, options SelectionOptions, probeRunner ProbeRunner) resultmodel.CommandResult {
+	options.FanOutLimit = nil
+	return selectQueue(snapshot, graph, options, probeRunner, true)
+}
+
+func selectQueue(snapshot *repositorymodel.RepositorySnapshot, graph *dependencygraph.DependencyGraph, options SelectionOptions, probeRunner ProbeRunner, unbounded bool) resultmodel.CommandResult {
 	result := resultmodel.CommandResult{Outcome: resultmodel.OutcomeSuccess}
 	result.SelectionSummary = summarizeQueue(snapshot)
 	candidates, targetExclusions := resolveTargets(snapshot, graph, options)
@@ -71,7 +83,7 @@ func Select(snapshot *repositorymodel.RepositorySnapshot, graph *dependencygraph
 	limit := len(eligible)
 	if options.FanOutLimit != nil && *options.FanOutLimit < limit {
 		limit = *options.FanOutLimit
-	} else if options.FanOutLimit == nil && len(options.TargetTokens) == 0 && options.WaveDepth == nil && !options.SimpleOnly && limit > 1 {
+	} else if options.FanOutLimit == nil && len(options.TargetTokens) == 0 && options.WaveDepth == nil && !options.SimpleOnly && !unbounded && limit > 1 {
 		limit = 1
 	}
 	result.Selected = append(result.Selected, eligible[:limit]...)

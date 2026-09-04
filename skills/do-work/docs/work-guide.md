@@ -1,6 +1,6 @@
 # Work (Process the Queue)
 
-The central orchestrator. It owns judgment while canonical commands recover, claim, checkpoint, finalize, archive, release, and commit queue state.
+The central orchestrator. It owns judgment while canonical commands advance queue claims, recover, checkpoint, finalize, archive, release, and commit queue state.
 
 ## Complexity triage
 
@@ -17,18 +17,14 @@ When uncertain, the system defaults to Route B (under-planning is recoverable; o
 ## Pipeline steps
 
 ```
-1. Find next pending REQ
-2. Claim it (move to working/, status: claimed)
-3. Triage (route A/B/C)
-4. Estimate (P50 active minutes — printed before planning starts)
-5. Plan (Route C only — architecture, file list, testing approach)
-6. Explore (Routes B & C — find relevant files and patterns)
-7. Implement (all routes — build the thing)
-8. Test (run tests, validate red-green if TDD)
-9. Review (requirements check, code quality, acceptance testing)
-10. Prepare finalization (choose outcome, route findings, author the manifest)
-11. Finalize (one resumable lifecycle/archive/release/commit transaction)
-12. Loop or exit (`advance --checkpoint` records the exit state)
+1. Advance selection and claim (one typed, committed queue transaction)
+2. Triage (route A/B/C)
+3. Estimate (P50 active minutes — printed before planning starts)
+4. Plan and explore when the route requires them
+5. Implement and test
+6. Review and prepare finalization
+7. Finalize (one resumable lifecycle/archive/release/commit transaction)
+8. Continue from `advance` or record the exit checkpoint
 ```
 
 ### The estimate line
@@ -83,16 +79,15 @@ Claims write structural entries immediately. At session exit, `advance --checkpo
 
 A typical `do-work run` session:
 
-1. **Queue scan** — finds the next `pending` REQ file in `do-work/queue/`
-2. **Claim** — moves it to `working/` and sets `status: claimed` so no other agent grabs it
-3. **Triage** — reads the REQ, assesses complexity, picks Route A/B/C
-4. **Estimate** — ensures a P50 forecast exists and prints the estimate line before planning
-5. **Build** — implements the request (planning and exploration for B/C routes)
-6. **Test** — runs the project's test suite, validates red-green if TDD targets exist
-7. **Review** — scores the work against requirements, code quality, and acceptance criteria
-8. **Prepare** — chooses the terminal result and routes critical findings
-9. **Finalize** — journals and applies archive, release, commit, and provenance once
-10. **Loop** — wipes context and selects again, or writes the checkpoint through `advance --checkpoint`
+1. **Advance** — selects claimable queue work, records holds, and commits each claim
+2. **Triage** — reads the REQ, assesses complexity, picks Route A/B/C
+3. **Estimate** — ensures a P50 forecast exists and prints the estimate line before planning
+4. **Build** — implements the request (planning and exploration for B/C routes)
+5. **Test** — runs the project's test suite, validates red-green if TDD targets exist
+6. **Review** — scores the work against requirements, code quality, and acceptance criteria
+7. **Prepare** — chooses the terminal result and routes critical findings
+8. **Finalize** — journals and applies archive, release, commit, and provenance once
+9. **Loop** — follows `advance`'s frozen continuation, starts a fresh advance, or writes the checkpoint through `advance --checkpoint`
 
 Each REQ is fully processed before the next one starts. If context limits are hit mid-REQ, a checkpoint is written so the next session can resume.
 
@@ -104,7 +99,7 @@ A bulk `do-work run` has a few properties worth knowing before firing 20 REQs at
 - **Claim from anywhere; release from one place.** Any checkout you point at a queue — a worktree, a second workspace, a clone, a cloud session — may capture REQs, claim them, and build them. A successful claim atomically commits its queue move and checkpoint entry, so it is available to other checkouts on their next ordinary git sync. Two unsynced checkouts can still claim the same REQ; nothing locks or arbitrates them, and their committed footprints conflict when the branches meet. What stays single is the **release tail**: one checkout merges, bumps the version, writes the `CHANGELOG.md` entry, moves files into `archive/`, and closes URs (`actions/work-reference.md` → Execution Model — Claim Anywhere, One Releaser). `do-work verify`'s duplicate-id probe catches colliding captures. Within one checkout the loop still finishes a REQ before starting the next **unless you pass `--fan-out`**: `do-work run --fan-out [N]` computes the ready set itself — pending, dependencies met, unclaimed, not earmarked for someone else — and dispatches that many builders at once, each in its own tree, with no confirmation prompt. You can still pick the set by hand instead, and either way the releaser merges, verifies, and archives them one at a time (`actions/work-reference.md` → Worktree Dispatch Mode → Fan-Out Dispatch). The saving is in the build phase; everything after the merge stays serial. On a harness without worktree support the flag quietly does nothing and you get the serial loop.
 - **`write_set` helps you pick, but never picks for you.** A REQ's `write_set` frontmatter (the repo-relative paths it expects to write) is a display-only hint that feeds the board's *overlaps* badge — useful when choosing which REQs to run together, but nothing schedules on it, and no badge means *unknown*, not safe.
 - **No mid-run pause for clarification.** Open Questions are answered by the builder with logged reasoning and a `pending-answers` follow-up REQ is queued for batch review — except a question whose real answerer is a named outside stakeholder, which lands on that person's stakeholder REQ with an HTML report to share (`do-work stakeholder-answers` ingests their reply later). You'll see your own questions when you next run `do-work clarify` — the loop itself never blocks on a prompt, in either direction.
-- **Waiting on an external condition uses `status: blocked`.** When a REQ can't start until something outside the queue is true — LM Studio running, a designer answering, credentials provisioned — it carries `status: blocked` and a free-text `blocked_by` naming the condition (set at capture or when the builder hits the missing precondition mid-run before any edits land). This is distinct from `pending-answers` (a question for you) and `depends_on` (a wait on another REQ). Blocked REQs sit out of the run. If the REQ has an optional `blocked_check` shell probe, the next `do-work run` re-runs it and auto-unblocks on exit 0; otherwise confirm the condition via `do-work clarify` or edit the status back to `pending`. The one blocked shape with its own exit is a stakeholder-questions REQ (`stakeholder:` in frontmatter) — it clears through `do-work stakeholder-answers`, never a probe or a clarify confirm. They surface on the board's *Needs input · Blocked* column with a "blocked by" badge.
+- **Waiting on an external condition uses `status: blocked`.** When a REQ can't start until something outside the queue is true — LM Studio running, a designer answering, credentials provisioned — it carries `status: blocked` and a free-text `blocked_by` naming the condition (set at capture or when the builder hits the missing precondition mid-run before any edits land). This is distinct from `pending-answers` (a question for you) and `depends_on` (a wait on another REQ). Blocked REQs sit out of the run. If the REQ has an optional `blocked_check` shell probe, queue-mode `advance` re-runs it and atomically unblocks a success before claim; otherwise confirm the condition via `do-work clarify` or edit the status back to `pending`. The one blocked shape with its own exit is a stakeholder-questions REQ (`stakeholder:` in frontmatter) — it clears through `do-work stakeholder-answers`, never a probe or a clarify confirm. They surface on the board's *Needs input · Blocked* column with a "blocked by" badge.
 - **Failures classify, archive, and queue follow-ups; the loop always continues.** A failed REQ is classified, archived as `failed`, and a follow-up REQ is queued when appropriate; the loop then proceeds to the next pending REQ. Failures that trace back to a failed upstream REQ (via `addendum_to` or `depends_on`) are auto-classified as `spec` with an upstream pointer in the error message — so cascading failures aren't misdiagnosed as fresh code bugs. To triage what landed (including any `pending-answers` follow-ups for completed-with-issues outcomes), run `do-work clarify` after the queue drains.
 
 ## Several checkouts against one queue

@@ -74,6 +74,29 @@ func TestClaimPreservesExplicitDependencyBypassButGatesURExpansion(t *testing.T)
 	}
 }
 
+func TestQueueHoldBindsExactResolvedTargetAcrossDuplicateID(t *testing.T) {
+	repositoryRoot := t.TempDir()
+	writeStateRequest(t, repositoryRoot, "do-work/queue/REQ-211.md", "REQ-211", "pending", "")
+	writeStateRequest(t, repositoryRoot, "do-work/archive/UR-210/REQ-211.md", "REQ-211", "completed", "commit: abc1234\n")
+	snapshot, err := repositorymodel.DiscoverRepository(repositoryRoot)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var queueTarget *repositorymodel.RequestFile
+	for _, candidate := range snapshot.RequestsByID["REQ-211"] {
+		if candidate.TreeSection == "queue" {
+			queueTarget = candidate
+		}
+	}
+	plan := BuildPlan(snapshot, dependencygraph.BuildGraph(snapshot), StateOptions{
+		Transition: TransitionHoldArchiveCollision, RequestID: "REQ-211", RequestPath: "do-work/queue/REQ-211.md",
+		ResolvedTarget: queueTarget, OriginalStatus: "pending", Now: time.Date(2026, 9, 4, 12, 0, 0, 0, time.UTC),
+	})
+	if !plan.Runnable() || plan.SourcePath != "do-work/queue/REQ-211.md" || plan.DestinationPath != plan.SourcePath {
+		t.Fatalf("exact collision hold plan = %#v", plan)
+	}
+}
+
 func TestFailAcceptsOnlyCanonicalErrorTypes(t *testing.T) {
 	for _, errorType := range []string{"intent", "spec", "code", "environment"} {
 		t.Run("accepts "+errorType, func(t *testing.T) {
