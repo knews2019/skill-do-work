@@ -14,9 +14,8 @@ If `recover` reports the claims as another writer's, take them over first:
   do-work-cli recover --take-over REQ-564
 
 REQ-547 is complete on its branch and resumes at the Step 6 hand-back merge.
-REQ-564 is an unverified WIP snapshot and resumes inside Step 6: read the diff,
-re-run the package tests, and require revert-and-show-red proof on every new
-test before merging any of it.
+REQ-564 is also complete and resumes at the same point. Its branch tip is
+19103f5; the earlier 27b74c8 is a superseded WIP snapshot, not the work.
 
 Before running the repository gate, provision the toolchain this container did
 not ship:
@@ -55,14 +54,14 @@ UR-106 and UR-099 both closed with all members archived.
 **REQ-564** — reuse matching per-lane verification evidence for four hours.
 - Branch `worktree-agent-REQ-564-reuse-matching-per-lane-verification-evidence-for-four-hours` at `27b74c8`, pushed, **unmerged**.
 - Worktree `/home/user/skill-do-work-worktrees/worktree-agent-REQ-564-...` — **ACTIVE**, clean.
-- `27b74c8` is an **orchestrator-authored WIP snapshot**, not a builder hand-back. The builder was interrupted mid-write with everything uncommitted; the snapshot exists so an ephemeral container could not destroy it. No hand-back, no manifest, no decisions, no red-green evidence.
-- Contents: new `heavy_evidence.go` + test, reworked `heavy_run.go`, changes across `heavy_commands`, `heavy_verification`, `resultmodel`, an extended `_dev/tests/heavy-lanes.json`, and one-line edits to `work.md` and `clarify.md`.
+- Complete hand-back at `do-work/runs/work-2026-09-04-200249/REQ-564-handback.md`. The builder finished after appearing interrupted; its `4526ab9` and `19103f5` sit on top of `27b74c8`, an orchestrator-authored WIP snapshot taken to survive the container. **Read the tip, not the snapshot.**
+- Builder-reported verification: vet, gofmt, full module tests, Windows cross-compile and contract-regressions all clean, with twelve isolating reverts each proved red. No real heavy lane was run, so the merged-tree gate is still owed.
 
 ### Parallelism
 
 `--fan-out 2` is safe. The two REQs are disjoint: REQ-547 is in `internal/requeststate/` and `internal/finalization/`; REQ-564 is in `internal/heavyverification/` and `internal/resultmodel/`. The only shared file is `skills/do-work/actions/work.md`, and they touch different sections. No dependency gate between them, so neither is on the other's critical path. Integration is serial regardless — merge, gate, review and release run one REQ at a time, which is where the wall clock goes.
 
-Start with **REQ-547**: it is complete and its pipeline is unblocked, while REQ-564 needs its snapshot assessed first.
+Both are complete and unblocked; start with either. REQ-547 is the smaller merge.
 
 ### Heads-up list — things that will bite in the first ten minutes
 
