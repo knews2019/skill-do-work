@@ -481,3 +481,7 @@ Remediation baseline at `3501aeddd31634d0f165d193b32709c86f08cd8b`: canonical ad
 - [x] **[PLAN]:** Consume the independent failure and seven-file remediation plan; public RED first, share structural range, preserve legacy layout and authority, GREEN and boundary controls.
 - [ ] **[APPLY]:** Await isolated builder.
 - [ ] **[UNIFY]:** Await diff review and native checks.
+
+## Builder dispatch boundary
+
+Implement only the seven exact paths in REQ-504-remediation-plan.md, a subset of the original 26-file Scope. Use checkout `.git/work-run-20260905/worktree-agent-REQ-504-legacy-checkpoints`, branch `codex/worktree-agent-REQ-504-legacy-checkpoints`. Main working REQ and this brief own current evidence; ignore checkout queue snapshot. One remediation attempt. Main handback is the sole allowed external write: `do-work/runs/work-2026-09-05-005615/REQ-504-handback.md`; never commit it or any do-work path.

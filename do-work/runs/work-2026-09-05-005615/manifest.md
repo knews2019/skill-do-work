@@ -29,3 +29,11 @@ User scope: do-work run to completion, serial claims; do not finish while agents
 - REQ-504 remediation plan complete and ready after REQ-509.
 
 - REQ-509 completed and delivered; release0.282.1; commit9f19533f0112625e9d3fe2bf4f1ac0eaae8f4b47; manifest validation passed; own checkout/branch removed without force; untracked handback consumed after promotion to archive.
+
+- REQ-504 claimed at 3501aedd; critical review consumed, seven-file remediation planned; preflight and direct maintainer gate passed. Builder build_504 → REQ-504-handback.md pending; isolated checkout .git/work-run-20260905/worktree-agent-REQ-504-legacy-checkpoints, branch codex/worktree-agent-REQ-504-legacy-checkpoints.
+- REQ-505 read-only review complete, Partial 71.25%, two noncritical report-only findings; consume after canonical claim.
+
+- REQ-504 builder accepted; remediation in progress.
+- Read-only later-step review: review_506 → REQ-506-review.md pending.
+
+- Read-only later-step review: review_507 → REQ-507-review.md pending. Saved staged-lane red was repaired by REQ-547 commit c5dff3db; fresh current verification required when claimed.
