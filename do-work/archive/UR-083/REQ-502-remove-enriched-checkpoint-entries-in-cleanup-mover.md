@@ -1,7 +1,7 @@
 ---
 id: REQ-502
 title: 'Review fix: Remove enriched checkpoint entries in cleanup mover'
-status: claimed
+status: completed
 domain: backend
 created_at: 2026-09-02T14:26:49Z
 user_request: UR-083
@@ -30,6 +30,7 @@ commit: ed692757dfc642f3ad34b171dde9f6490c857beb
 heavy_verified_at: 2026-09-04T12:36:12Z
 heavy_verified_revision: c0d8ce1cb44cc1830b167214c018d76ba87baffc
 claimed_at: 2026-09-04T13:32:07Z
+completed_at: 2026-09-04T13:33:00Z
 ---
 
 # Review Fix: Remove Enriched Checkpoint Entries in Cleanup Mover
