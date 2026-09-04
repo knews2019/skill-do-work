@@ -5,17 +5,25 @@ do-work run REQ-547 REQ-564 --fan-out 2
 
 This command is sufficient; everything below it is context.
 
-Two REQs are claimed by this checkout (writer vm:/home/user/skill-do-work) and
-both already have unmerged builder branches pushed to origin. Neither needs a
-builder re-dispatched.
+Pull request #180 is MERGED. All of wave 1 is on main: the gate retry,
+the own-paths cleanliness change, and the per-REQ recovery change,
+released as 0.277.0, 0.278.0 and 0.279.0. Do not reopen it and do not
+push wave 2 onto that pull request - a merged PR is finished. Start the
+branch fresh from main and open a new PR when wave 2 is ready.
+
+Two REQs are claimed by this checkout (writer vm:/home/user/skill-do-work)
+and both have COMPLETE builder branches on origin, still unmerged:
+  worktree-agent-REQ-547-finalize-refuses-a-req-with-no-checkpoint-entry  (tip b3d25c8)
+  worktree-agent-REQ-564-reuse-matching-per-lane-verification-evidence-for-four-hours  (tip 19103f5)
+Neither needs a builder re-dispatched. Both resume at the Step 6
+hand-back merge. Merge them onto main, not onto the old branch.
 
 If `recover` reports the claims as another writer's, take them over first:
   do-work-cli recover --take-over REQ-547
   do-work-cli recover --take-over REQ-564
 
-REQ-547 is complete on its branch and resumes at the Step 6 hand-back merge.
-REQ-564 is also complete and resumes at the same point. Its branch tip is
-19103f5; the earlier 27b74c8 is a superseded WIP snapshot, not the work.
+Before wave 2, fix the two P1 findings on already-released code - they
+are in the Reference section below and they are the first work.
 
 Before running the repository gate, provision the toolchain this container did
 not ship:
@@ -69,7 +77,7 @@ Both are complete and unblocked; start with either. REQ-547 is the smaller merge
 - **One test file straddles its budget.** `_dev/tests/session-start-hook-behavior.sh` measured 27, 30, 32, 39 and 44 seconds across five runs today against a strict 30-second limit, with nobody touching it. It caused two full gate reruns. It is a flake, not a regression. Nothing in the queue covers it; worth capturing. — maintainer
 - **Version numbers collided once already.** This branch and main both released from 0.275.3. Main took 0.275.4 and 0.276.0; this branch renumbered to 0.277.0/0.278.0/0.279.0. Before cutting the next release, re-read `CHANGELOG.md`'s first entry rather than assuming. — next session
 - **REQ-508 is claimed by another checkout** (`t2s-Virtual-Machine.local:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2`). Its checkpoint entry is FOREIGN — leave it byte-identical. — next session
-- **A review is in flight on the pull request right now.** knews2019/skill-do-work#180, Codex triggered manually at 20:24 against commit `ad8e9b4`. Its findings will land after this session ended, so **read the PR's review threads before touching wave 2** — they are unanswered by definition. The same reviewer already found two genuine P1 bugs in REQ-515 that two full independent review passes had missed, so treat its findings as bug reports: verify each against the code, fix what is real, reply on the thread. Note `ad8e9b4` is one commit behind the handoff commit `dd43421`; the difference is handoff documentation and queue state only, no code. — next session
+- **Pull request #180 is merged**, so wave 1 is on main and that PR is closed history. Its review threads carry the two P1 findings below, already answered but not fixed. The same reviewer already found two genuine P1 bugs in REQ-515 that two full independent review passes had missed, so treat its findings as bug reports: verify each against the code, fix what is real, reply on the thread. Wave 2 needs a new pull request off main. — next session
 - **Estimates run low on this queue.** Calibration: REQ-559 25→33, REQ-560 20→51, REQ-515 30→105, REQ-568 50→111. The gap is not building; it is merge, gate, review and remediation. Do not plan wave 2 against the P50 figures. — maintainer
 
 ### Open P1 findings on shipped code — do these first
