@@ -42,6 +42,7 @@ route: C
 planning_at: 2026-09-04T16:49:45Z
 exploration_at: 2026-09-04T16:49:45Z
 preflight_at: 2026-09-04T16:52:22Z
+dispatch_at: 2026-09-04T16:52:56Z
 estimate:
   p50_active_minutes: 50
   confidence: low
