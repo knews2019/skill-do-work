@@ -1,7 +1,7 @@
 ---
 id: REQ-485
 title: 'Canonicalize REQ reservation marker filenames across allocation flows'
-status: pending-heavy-testing
+status: pending
 priority: now
 created_at: 2026-09-01T12:11:03Z
 user_request: UR-092
@@ -35,7 +35,7 @@ builder_handback_at: 2026-09-03T22:07:29Z
 integration_at: 2026-09-03T22:16:20Z
 testing_at: 2026-09-03T22:19:19Z
 review_at: 2026-09-03T22:19:19Z
-status_changed_at: 2026-09-04T10:14:02Z
+status_changed_at: 2026-09-04T12:36:12Z
 commit: 88446a576c9c2bcf80f1bdd06a54041b7f9baaba
 write_set:
   - skills/do-work-board/tools/queue-kanban/allocate.go
@@ -53,6 +53,8 @@ write_set:
   - skills/do-work/tools/do-work-cli/internal/corehelpers/reservations_test.go
   - skills/do-work/tools/do-work-cli/internal/hookcommands/session_start_test.go
   - skills/do-work/actions/capture.md
+heavy_verified_at: 2026-09-04T12:36:12Z
+heavy_verified_revision: c0d8ce1cb44cc1830b167214c018d76ba87baffc
 ---
 
 # Canonicalize REQ Reservation Marker Filenames Across Allocation Flows
@@ -240,7 +242,7 @@ Passed — mechanical qualification accepted the cumulative `6b07c546..88446a57`
 
 ## Open Questions
 
-- [ ] Run the selected heavy lane commands at execution revision `c0d8ce1cb44cc1830b167214c018d76ba87baffc`; did every command exit 0?
+- [x] Run the selected heavy lane commands at execution revision `c0d8ce1cb44cc1830b167214c018d76ba87baffc`; did every command exit 0? → Confirmed: Yes
   Recommended: Yes
   Also: No — report the failing lane
 
@@ -248,3 +250,16 @@ Passed — mechanical qualification accepted the cumulative `6b07c546..88446a57`
 ## Answer Notes
 
 - 2026-09-03 - [ ] Run `bash _dev/tests/maintainer-verify.sh --heavy` at `88446a576c9c2bcf80f1bdd06a54041b7f9baaba`; did it exit 0?: No — exit 1; staged-skills-contract.sh took 48s, update-script-behavior.sh took 76s, and its interrupt-status probe failed
+- 2026-09-04 - [ ] Run the selected heavy lane commands at execution revision `c0d8ce1cb44cc1830b167214c018d76ba87baffc`; did every command exit 0?: Confirmed: Yes
+
+## Heavy Verification Result
+
+Target revision: `88446a576c9c2bcf80f1bdd06a54041b7f9baaba`
+Execution revision: `c0d8ce1cb44cc1830b167214c018d76ba87baffc`
+
+- queue-kanban-javascript: exit 0 — `bash _dev/tests/maintainer-verify.sh --heavy-lane queue-kanban-javascript`
+- queue-kanban-browser: exit 0 — `bash _dev/tests/maintainer-verify.sh --heavy-lane queue-kanban-browser`
+- do-work-cli-integrations: exit 0 — `bash _dev/tests/maintainer-verify.sh --heavy-lane do-work-cli-integrations`
+- staged-skills: exit 0 — `bash _dev/tests/maintainer-verify.sh --heavy-lane staged-skills`
+- updater: exit 0 — `bash _dev/tests/maintainer-verify.sh --heavy-lane updater`
+- installer: exit 0 — `bash _dev/tests/maintainer-verify.sh --heavy-lane installer`
