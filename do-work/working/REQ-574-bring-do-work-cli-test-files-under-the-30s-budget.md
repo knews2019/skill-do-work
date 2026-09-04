@@ -1,7 +1,7 @@
 ---
 id: REQ-574
 title: 'Repository gate repair: bring do-work-cli test files under the 30s per-file budget'
-status: pending
+status: claimed
 route: C
 created_at: 2026-09-04T23:50:46Z
 user_request: UR-115
@@ -15,6 +15,7 @@ sweep: 'true'
 sweep_key: do-work-cli-test-file-budget
 depends_on: []
 related: [REQ-572]
+claimed_at: 2026-09-04T23:59:43Z
 ---
 
 # Repository gate repair: bring do-work-cli test files under the 30s per-file budget
