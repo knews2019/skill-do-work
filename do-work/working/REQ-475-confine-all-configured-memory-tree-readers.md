@@ -1,7 +1,7 @@
 ---
 id: REQ-475
 title: '[impact-critical] Review fix: Confine all configured Memory tree readers'
-status: pending
+status: claimed
 priority: now
 created_at: 2026-09-01T08:32:57Z
 user_request: UR-081
@@ -50,6 +50,7 @@ write_set:
   - skills/do-work-knowledge/actions/memory-reference.md
 heavy_verified_at: 2026-09-04T12:36:12Z
 heavy_verified_revision: c0d8ce1cb44cc1830b167214c018d76ba87baffc
+claimed_at: 2026-09-04T12:47:59Z
 ---
 
 # Confine All Configured Memory Tree Readers
