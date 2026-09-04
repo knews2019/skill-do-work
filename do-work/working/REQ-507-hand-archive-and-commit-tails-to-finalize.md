@@ -17,6 +17,18 @@ effort_estimate: effort-substantive
 write_set: [skills/do-work/actions/work.md, skills/do-work/actions/work-reference.md, _dev/tests/contract-regressions.sh, skills/do-work/tools/do-work-cli/internal/lifecycleadvance/]
 claimed_at: 2026-09-04T18:21:29Z
 route: C
+estimate:
+  p50_active_minutes: 50
+  confidence: low
+  calculated_at: 2026-09-04T18:22:01Z
+  basis:
+    - Route C
+    - 8-file write set
+    - 3 subsystems involved
+    - 3 acceptance criteria
+    - dependency depth 3
+    - cross-route regression gates
+    - full-suite verification
 ---
 
 # Hand the Archive and Commit Tails to finalize
