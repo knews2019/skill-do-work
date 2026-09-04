@@ -22,6 +22,9 @@ exploration_at: 2026-09-04T19:28:16Z
 dispatch_at: 2026-09-04T19:33:24Z
 builder_handback_at: 2026-09-04T19:59:55Z
 integration_at: 2026-09-04T20:00:14Z
+review_at: 2026-09-04T20:08:35Z
+kb_status: pending
+kb_entry:
 estimate:
   p50_active_minutes: 55
   confidence: low
@@ -127,7 +130,7 @@ The machine must not infer Simple versus Complex, field applicability, dependenc
 **Files I will NOT touch:** `_dev/tests/contract-regressions.sh`, `_dev/tests/contracts/core-checks.sh`, publication manifest/type production files, `skills/do-work/actions/work-reference.md`, `skills/do-work/docs/capture-guide.md`, and board code; exploration found no required predicate deletion or contract wiring there.
 
 **Acceptance criteria (restated from REQ):**
-- [ ] `capture-reference.md` contains exactly one copyable minimal example for Simple REQ, Complex REQ, UR input, and Addendum REQ; the four fenced spans total at most 68 lines and contain no per-field explanatory comments.
+- [x] `capture-reference.md` contains exactly one copyable minimal example for Simple REQ, Complex REQ, UR input, and Addendum REQ; the four fenced spans total at most 68 lines and contain no per-field explanatory comments.
 - [ ] Every removed mechanical rule is enforced at the schema/publication boundary with public behavior tests, while legacy aliases remain accepted by ordinary readers.
 - [ ] Capture judgment remains in prose, all existing publication safeguards retain their specific findings, and no replacement sentence predicate is introduced.
 
@@ -188,6 +191,56 @@ The machine must not infer Simple versus Complex, field applicability, dependenc
 **Heavy verification:** Typed runner completed at execution revision 0e5e7e37bdea6af82c38b248c54c017fbb9ac7d4 against the saved target c00227166b288b97c60377cc06e7a5bfa736a0e8. All four selected lanes ran, none skipped: do-work-cli-integrations exit 0 (46s; 700 CLI tests plus 110 script cases), staged-skills exit 1 (22s), updater exit 0 (51s), installer exit 0 (25s). The runner returned HEAVY-RUN-LANE-RED for staged-skills; command-level success is not claimed as lane success.
 
 **Inherited heavy failure:** Staged-skills reports “core runtime must resolve actions/work.md through sibling do-work-board”. Its assertion at lines 960–971 and the work.md subject are byte-identical at the pre-merge base and current HEAD (work.md blob 85f98f893ab09d38be4629dedfbec0836f84b023; test blob 384def9f8f9695654e39bd9dca968eb3500a0b48). The predicate's required do-work-board/ text is absent at the base too; neither surface belongs to this request's changed files. This establishes an inherited failure, not a REQ-508 regression. No heavy-verified marker is asserted. Keep the failure visible and finish with issues rather than expanding the user's current-only scope to an unrelated repair.
+
+## Review
+
+**Overall: 82%** | 2026-09-04T20:06:32Z
+
+| Dimension | Score |
+|-----------|-------|
+| Requirements | 90% |
+| Code Quality | 88% |
+| Test Adequacy | 90% |
+| Scope | 100% |
+| Risk | Low |
+| Acceptance | Partial |
+
+**Important findings:**
+- `skills/do-work/tools/do-work-cli/internal/publication/capture_files.go:193` and `:225` accept simultaneous list and nested-map evidence: public capture dry-runs accepted malformed mixed `depends_on` and UR `requests` fields. Reject mixed shape at the canonical-authoring boundary while retaining tolerant legacy reads. — impact-user-visible → report only
+- `skills/do-work/actions/capture.md:7` still describes the removed alias table and forbids fields/enums not shown in now-minimal examples, contradicting the schema-authority pointer and potentially suppressing valid capture assessments. — impact-user-visible → report only
+
+**Minor findings:** None.
+**Acceptance:** Partial — canonical capture and scalar refusal work; mixed list/mapping shapes incorrectly pass. Four selected heavy lanes ran: three passed and staged-skills failed on an unchanged, independently attributed baseline assertion. No heavy-verified claim.
+**Score calculation:** Mean 92%, minus 10 for Partial acceptance = 82%.
+**Suggested testing:** 2 items.
+**Follow-ups created:** None (2 findings report only).
+**Self-validation:** Requirements, exact diff, final Testing, cross-REQ fixtures, restatement sweep, P-A-U, positive/negative public acceptance, and finding impact routing checked.
+
+*Reviewed by independent review-work action. Public dry-run acceptance used an exclusive temporary fixture: canonical block lists succeeded, scalar lists refused without changes, mixed REQ/UR lists incorrectly succeeded; no queue was written.*
+
+## Lessons Learned
+
+**What worked:**
+- Testing the actual published examples through the public capture boundary removed sentence-pinning without abandoning executable shape checks.
+- Separate canonical authoring evidence preserved tolerant legacy reads while adding write-side refusals.
+
+**What didn't:**
+- Model-switch recovery retained code but lost the original console transcript; inherited testimony and reconstructed regression proof had to stay separately labeled.
+- The first membership comparison wrongly depended on array order; a test-first reordered case exposed and corrected it.
+- Review found that a tolerant parser can expose both list and nested-map evidence, and that capture's opening pointer still described exhaustive templates. These remain reported issues.
+
+**Worth knowing:**
+- Strict writers using tolerant parsers must judge exclusive shape evidence, not just the presence of a usable projection. Tests should read the shipped examples themselves as well as deliberately malformed payloads.
+
+## Orientation
+
+Capture now delegates mechanical authoring checks to the schema and publication layers. Its four examples show compact record shapes, while legacy readers retain aliases and the agent still judges applicability. Known limits are the mixed-list validation edge, stale opening instruction, and inherited staged-skills assertion recorded above. The touched action/shell prime pointers still resolve; no new subsystem or release owner was introduced.
+
+## Finalization Judgment
+
+Finish as completed-with-issues: core acceptance works, independent review is Partial at 82%, and one selected heavy lane remains red on an unchanged baseline assertion. Preserve all findings without starting another request, as the user explicitly instructed. No critical discovery or escalated builder decision requires a new queue item.
+
+Release judgment: 0.275.3 → 0.275.4, a patch enforcing existing capture contracts and simplifying examples; no new user workflow or intended valid-input contract. VERSION and root CHANGELOG.md are project-owned; skills/do-work/VERSION and skills/do-work/CHANGELOG.md are required suite-maintainer mirrors. Exact release payload dry-run passed. KB handoff remains pending; no KB was initialized or written.
 
 ## Heavy Verification Plan
 
