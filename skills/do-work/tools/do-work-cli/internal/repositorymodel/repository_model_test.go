@@ -93,7 +93,7 @@ func TestDiscoverRepositoryProjectsCheckpointClaimsInSourceOrder(t *testing.T) {
 	writeRepositoryFixture(t, repositoryRoot, "do-work/CHECKPOINT.md", strings.Join([]string{
 		"# Session Checkpoint",
 		"",
-		"## Arbitrary placement",
+		"## In Progress (interrupted)",
 		"- REQ-000001: First claim — claimed 2026-09-01T10:00:00Z — writer: host-a:/repo",
 		"- REQ-999: Unrelated — claimed earlier — writer: host-z:/repo",
 		"- REQ-001: Duplicate claim — claimed 2026-09-01T10:01:00Z — writer: host-b:/repo",
@@ -106,14 +106,17 @@ func TestDiscoverRepositoryProjectsCheckpointClaimsInSourceOrder(t *testing.T) {
 		t.Fatal(err)
 	}
 	claims := snapshot.CheckpointClaimsByID["REQ-001"]
-	if len(claims) != 2 {
-		t.Fatalf("REQ-001 checkpoint claims = %#v, want two writer-bearing headers", claims)
+	if len(claims) != 3 {
+		t.Fatalf("REQ-001 checkpoint claims = %#v, want every structural header", claims)
 	}
-	if claims[0].Writer != "host-a:/repo" || claims[0].ClaimedAt != "2026-09-01T10:00:00Z" || claims[0].SourceLine != 4 || claims[0].RelativePath != "CHECKPOINT.md" {
+	if claims[0].Writer != "host-a:/repo" || !claims[0].HasWriter || claims[0].ClaimedAt != "2026-09-01T10:00:00Z" || claims[0].SourceLine != 4 || claims[0].RelativePath != "CHECKPOINT.md" {
 		t.Fatalf("first checkpoint claim = %#v", claims[0])
 	}
 	if claims[1].Writer != "host-b:/repo" || claims[1].ClaimedAt != "2026-09-01T10:01:00Z" || claims[1].SourceLine != 6 {
 		t.Fatalf("second checkpoint claim = %#v", claims[1])
+	}
+	if claims[2].Writer != "" || claims[2].HasWriter || claims[2].ClaimedAt != "2026-09-01T10:02:00Z" || claims[2].SourceLine != 7 {
+		t.Fatalf("unlabelled checkpoint claim = %#v", claims[2])
 	}
 	if claims[0].HeaderText != "- REQ-000001: First claim — claimed 2026-09-01T10:00:00Z — writer: host-a:/repo" {
 		t.Fatalf("header text = %q", claims[0].HeaderText)

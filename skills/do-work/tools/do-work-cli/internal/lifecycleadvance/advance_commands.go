@@ -32,10 +32,13 @@ type sectionEvidence struct {
 }
 
 func Handlers() map[string]commandruntime.CommandHandler {
-	return map[string]commandruntime.CommandHandler{CommandAdvance: handleAdvance}
+	return map[string]commandruntime.CommandHandler{CommandAdvance: handleAdvance, CommandRecover: handleRecover}
 }
 
 func handleAdvance(executionContext commandruntime.ExecutionContext, arguments []string) resultmodel.CommandResult {
+	if len(arguments) == 1 && arguments[0] == "--checkpoint" {
+		return handleAdvanceCheckpoint(executionContext)
+	}
 	requestID, parseError := parseAdvanceArguments(arguments)
 	if parseError != nil {
 		return advanceFailure("ADVANCE-USAGE", parseError.Error())

@@ -315,7 +315,7 @@ func TestAdvanceCommandIsByteForByteReadOnlyInTextAndJSON(t *testing.T) {
 func TestAdvanceCommandRejectsInvalidArguments(t *testing.T) {
 	repositoryRoot := t.TempDir()
 	writeAdvanceRequest(t, repositoryRoot, "queue", "REQ-706", "pending", "", "")
-	for _, arguments := range [][]string{{}, {"REQ-706", "REQ-707"}, {"REQ-x"}} {
+	for _, arguments := range [][]string{{}, {"REQ-706", "REQ-707"}, {"REQ-x"}, {"--checkpoint", "REQ-706"}} {
 		commandArguments := []string{"--repo-root", repositoryRoot, "--format", "json", "advance"}
 		commandArguments = append(commandArguments, arguments...)
 		command := exec.Command(advanceCLIBinary(t), commandArguments...)

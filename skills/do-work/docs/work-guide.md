@@ -1,6 +1,6 @@
 # Work (Process the Queue)
 
-The central orchestrator. Picks up pending requests and works through them one by one — triage, plan, build, test, review, archive.
+The central orchestrator. It owns judgment while canonical commands recover, claim, checkpoint, finalize, archive, release, and commit queue state.
 
 ## Complexity triage
 
@@ -26,9 +26,9 @@ When uncertain, the system defaults to Route B (under-planning is recoverable; o
 7. Implement (all routes — build the thing)
 8. Test (run tests, validate red-green if TDD)
 9. Review (requirements check, code quality, acceptance testing)
-10. Archive (move to archive/, auto-queue critical findings if needed)
-11. Commit (one commit per REQ, explicit file staging)
-12. Loop or exit (context wipe, pick next REQ)
+10. Prepare finalization (choose outcome, route findings, author the manifest)
+11. Finalize (one resumable lifecycle/archive/release/commit transaction)
+12. Loop or exit (`advance --checkpoint` records the exit state)
 ```
 
 ### The estimate line
@@ -77,9 +77,7 @@ If you answer a question yourself mid-run — a long run stopping to ask you som
 
 ## Checkpoints
 
-`do-work/CHECKPOINT.md` is written as work is claimed, not only at the end: each request is recorded the moment it's picked up — stamped with the checkout that recorded it (machine name plus checkout path) — and the file is refreshed at session end with the last completed REQ and the queue state. That's what lets a run that dies mid-request pick its own work back up — a crash never reaches the end of a session, so a checkpoint written only there would be missing exactly when it's needed.
-
-It also decides what the next session is allowed to clean up. A REQ sitting claimed in `working/` is only reset and re-queued when the checkpoint records it as that session's own interrupted work — under this checkout's own stamp; anything else is left exactly as it is and reported, and you're asked before it's taken over — and then only once it has been claimed for over three hours. That stamp matters because the checkpoint is a committed file: if you work the same queue from two checkouts, one of them will eventually pull in the other's live claim, and the stamp is what stops it being read as a local crash and stripped. A claim stamped by another checkout is reported as held there and never offered for takeover. So a crash never costs you the plan, exploration, and scope the interrupted run had already written.
+Claims write structural entries immediately. At session exit, `advance --checkpoint` is the sole checkpoint writer: it refreshes queue state while preserving every live foreign or unlabelled record. On the next run, canonical `recover` settles finalization first and returns typed claim decisions. A takeover happens only through its exact command or an explicit sole-authority run; writer labels remain data and never become shell source.
 
 ## What happens when you run it
 
@@ -92,9 +90,9 @@ A typical `do-work run` session:
 5. **Build** — implements the request (planning and exploration for B/C routes)
 6. **Test** — runs the project's test suite, validates red-green if TDD targets exist
 7. **Review** — scores the work against requirements, code quality, and acceptance criteria
-8. **Archive** — moves the REQ to `archive/`; only critical review/build findings auto-queue
-9. **Commit** — one atomic commit per REQ with explicit file staging
-10. **Loop** — wipes context and picks the next REQ (or exits if the queue is empty)
+8. **Prepare** — chooses the terminal result and routes critical findings
+9. **Finalize** — journals and applies archive, release, commit, and provenance once
+10. **Loop** — wipes context and selects again, or writes the checkpoint through `advance --checkpoint`
 
 Each REQ is fully processed before the next one starts. If context limits are hit mid-REQ, a checkpoint is written so the next session can resume.
 
@@ -134,7 +132,7 @@ If both checkouts made byte-identical claims (same second, nothing written yet),
 
 **Captures collide the same way, and the same fix applies.** Two checkouts capturing at once can both mint `REQ-042`. Merge them, renumber one, and run `do-work verify` — its duplicate-id probe is there for exactly this. `do-work verify` also flags two related drifts: a REQ you're building here that's still earmarked for somewhere else, and a UR archived while one of its members is still live.
 
-**Crash recovery only touches its own checkout's work.** Each claim in `CHECKPOINT.md` records the checkout that made it (machine name plus checkout path). A REQ sitting claimed in `working/` is reset and re-queued only when the checkpoint attributes it to *this* checkout; anything else is reported (`claim held by …, not touched`) and left exactly as it is. That's what stops a routine `git pull` from being read as a local crash and wiping a claim another checkout is actively working — which is a real failure that happened once, deterministically, before the stamp existed.
+**Recovery is one public command.** Plain `recover` preserves working claims and returns typed takeover options after finalization is clean. `recover --take-over REQ-NNN` authorizes one claim; `run-with-recovery` uses `recover --assume-sole-authority` to reset all working claims and every same-request checkpoint entry without interpreting writer text as code.
 
 **Building several REQs at once.** Within one checkout, `do-work run --fan-out [N]` computes the ready set itself — pending, dependencies met, unclaimed, not earmarked elsewhere — and dispatches that many builders concurrently, each in its own git worktree, with no confirmation prompt. `--fan-out 3` sets the count; bare `--fan-out` uses your harness's limit, or two. It composes with `--wave N` (`--wave` picks *which* REQs, `--fan-out` picks *how many at once*), and on a harness without worktree support it quietly does nothing and you get the ordinary serial loop.
 
@@ -169,7 +167,7 @@ Use whichever feels natural. `continue` and `resume` read well after a break; `r
 
 - **`continue` vs fresh `run`** — No functional difference. Both scan the queue and pick the next pending REQ. Use `continue` when you're resuming a session; use `run` when you're starting fresh. The checkpoint system handles the actual resume logic.
 - **Failed items** — If a REQ fails review, the system tries one remediation pass. If it still fails, it archives with issues noted and auto-queues only critical findings. Noncritical findings stay in that report; promote one by running `do-work capture` with its complete finding line quoted as the source.
-- **Context limits** — Long-running queues may hit context limits. `do-work/CHECKPOINT.md` is already current — it's written as each request is claimed, not just before stopping — so just run `do-work run` again in a new session and it picks up where it left off.
+- **Context limits** — Claims are recorded immediately and `advance --checkpoint` refreshes the exit state. Start a new session with `do-work run`; its first canonical recovery result says whether anything needs takeover authority.
 - **One at a time** — The work action processes one REQ per loop iteration. This keeps commits atomic and reviews focused. Don't try to batch multiple REQs into one pass.
 
 ## Clarify mode

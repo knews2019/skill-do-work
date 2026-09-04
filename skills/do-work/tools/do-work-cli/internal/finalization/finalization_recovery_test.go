@@ -88,6 +88,25 @@ func TestRecoverFinalizationDiscoversLegacyNoJournalTail(t *testing.T) {
 	}
 }
 
+func TestRecoverFinalizationAcceptsCoherentClaimOnlyTopology(t *testing.T) {
+	repositoryRoot := newFinalizationRepository(t)
+	writeFinalizationFile(t, repositoryRoot, "do-work/queue/REQ-699.md", "---\nid: REQ-699\ntitle: Claim-only fixture\nstatus: pending\n---\n")
+	writeFinalizationFile(t, repositoryRoot, "do-work/CHECKPOINT.md", "# Session Checkpoint\n\n## In Progress (interrupted)\n")
+	runFinalizationGit(t, repositoryRoot, "add", ".")
+	runFinalizationGit(t, repositoryRoot, "commit", "-qm", "claim-only fixture")
+	claim := requeststate.Handlers()["claim"](commandruntime.ExecutionContext{RepositoryRoot: repositoryRoot}, []string{
+		"REQ-699", "--request-path", "do-work/queue/REQ-699.md", "--provenance", "explicit-req", "--writer", "host:/repo", "--at", "2026-09-02T01:00:00Z",
+	})
+	if claim.Outcome != resultmodel.OutcomeSuccess {
+		t.Fatalf("claim fixture = %#v", claim)
+	}
+
+	result := handleRecoverFinalization(commandruntime.ExecutionContext{RepositoryRoot: repositoryRoot}, []string{"--discover"})
+	if result.Outcome != resultmodel.OutcomeSuccess || len(result.Finalizations) != 0 {
+		t.Fatalf("claim-only topology was mistaken for finalization: %#v", result)
+	}
+}
+
 func TestValidateManifestRequiresExplicitProvenanceMode(t *testing.T) {
 	repositoryRoot := newFinalizationRepository(t)
 	writeFinalizationFile(t, repositoryRoot, "seed.txt", "seed\n")

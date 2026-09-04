@@ -660,6 +660,21 @@ func TestCancelFromWorkingLeavesForeignOrAbsentCheckpointEntryAndSucceeds(t *tes
 	})
 }
 
+func TestAuthorizedCheckpointRemovalDropsEverySameRequestEntry(t *testing.T) {
+	existing := []byte("# Session Checkpoint\n\n## In Progress (interrupted)\n\n" +
+		"- REQ-00310: first — writer: one:/repo\n  first detail\n" +
+		"- REQ-310: second — writer: two:/repo\n" +
+		"- REQ-310: unlabelled\n  unknown detail\n" +
+		"- REQ-999: keep — writer: other:/repo\n  keep detail\n")
+	updated, removed := RemoveAllCheckpointClaims(existing, "REQ-310")
+	if !removed || strings.Contains(string(updated), "REQ-310") || strings.Contains(string(updated), "REQ-00310") {
+		t.Fatalf("same-request entries remain:\n%s", updated)
+	}
+	if !strings.Contains(string(updated), "REQ-999") || !strings.Contains(string(updated), "keep detail") {
+		t.Fatalf("unrelated entry changed:\n%s", updated)
+	}
+}
+
 func TestPlannedPostimagesPreservesRealFileModes(t *testing.T) {
 	root := newStateRepository(t)
 	reqWorkingPath := "do-work/working/REQ-310.md"

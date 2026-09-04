@@ -405,6 +405,34 @@ type AdvanceLifecycleResult struct {
 	VerificationArgv []string                 `json:"verification_argv"`
 }
 
+// RecoveryClaimResult is one structurally observed working claim and the
+// authority decision made for it by the canonical recovery command.
+type RecoveryClaimResult struct {
+	RequestID          string                   `json:"request_id"`
+	RequestPath        string                   `json:"request_path"`
+	CheckpointEvidence []SelectionClaimEvidence `json:"checkpoint_evidence"`
+	Decision           string                   `json:"decision"`
+	Recovered          bool                     `json:"recovered"`
+}
+
+// RecoveryResult is the ordered public recovery composition. Finalization is
+// always attempted before these claim records are classified or changed.
+type RecoveryResult struct {
+	AuthorityMode      string                `json:"authority_mode"`
+	TakeOverRequestID  string                `json:"take_over_request_id,omitempty"`
+	FinalizationPassed bool                  `json:"finalization_passed"`
+	Claims             []RecoveryClaimResult `json:"claims"`
+	NextArgv           []string              `json:"next_argv"`
+	VerificationArgv   []string              `json:"verification_argv"`
+}
+
+// CheckpointResult describes the sole mutating advance mode.
+type CheckpointResult struct {
+	CheckpointPath  string `json:"checkpoint_path"`
+	PreservedClaims int    `json:"preserved_claims"`
+	WrittenAt       string `json:"written_at"`
+}
+
 type CommandResult struct {
 	SchemaVersion        int                           `json:"schema_version"`
 	Command              string                        `json:"command"`
@@ -428,6 +456,8 @@ type CommandResult struct {
 	Finalization         *FinalizationResult           `json:"finalization,omitempty"`
 	Finalizations        []FinalizationResult          `json:"finalizations"`
 	Advance              *AdvanceLifecycleResult       `json:"advance,omitempty"`
+	Recovery             *RecoveryResult               `json:"recovery,omitempty"`
+	Checkpoint           *CheckpointResult             `json:"checkpoint,omitempty"`
 	// ExactTextOutput preserves compatibility-shaped stdout without polluting
 	// JSON with an opaque duplicate. It must be derived from the same typed
 	// observation carried by the result.
@@ -644,6 +674,22 @@ func NormalizeResult(result CommandResult) CommandResult {
 			result.Advance.VerificationArgv = []string{}
 		}
 	}
+	if result.Recovery != nil {
+		if result.Recovery.Claims == nil {
+			result.Recovery.Claims = []RecoveryClaimResult{}
+		}
+		for claimIndex := range result.Recovery.Claims {
+			if result.Recovery.Claims[claimIndex].CheckpointEvidence == nil {
+				result.Recovery.Claims[claimIndex].CheckpointEvidence = []SelectionClaimEvidence{}
+			}
+		}
+		if result.Recovery.NextArgv == nil {
+			result.Recovery.NextArgv = []string{}
+		}
+		if result.Recovery.VerificationArgv == nil {
+			result.Recovery.VerificationArgv = []string{}
+		}
+	}
 	setAsideSelfRefusal := false
 	allRefusalBlockersOwned := true
 	for index := range result.Findings {
@@ -799,6 +845,22 @@ func renderText(result CommandResult) []byte {
 		if len(advance.VerificationArgv) > 0 {
 			fmt.Fprintf(&output, "  verify: %s\n", joinArgv(advance.VerificationArgv))
 		}
+	}
+	if result.Recovery != nil {
+		recovery := result.Recovery
+		fmt.Fprintf(&output, "recovery [%s]: finalization_passed=%t claims=%d\n", recovery.AuthorityMode, recovery.FinalizationPassed, len(recovery.Claims))
+		for _, claim := range recovery.Claims {
+			fmt.Fprintf(&output, "  claim %s [%s]: %s\n", claim.RequestID, claim.RequestPath, claim.Decision)
+		}
+		if len(recovery.NextArgv) > 0 {
+			fmt.Fprintf(&output, "  next: %s\n", joinArgv(recovery.NextArgv))
+		}
+		if len(recovery.VerificationArgv) > 0 {
+			fmt.Fprintf(&output, "  verify: %s\n", joinArgv(recovery.VerificationArgv))
+		}
+	}
+	if result.Checkpoint != nil {
+		fmt.Fprintf(&output, "checkpoint %s: preserved_claims=%d written_at=%s\n", result.Checkpoint.CheckpointPath, result.Checkpoint.PreservedClaims, result.Checkpoint.WrittenAt)
 	}
 	for _, change := range result.Changes {
 		fmt.Fprintf(&output, "change %s [%s]: %s\n", change.Path, change.Kind, change.Detail)

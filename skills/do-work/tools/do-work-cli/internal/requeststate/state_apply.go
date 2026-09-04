@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/atomicfile"
@@ -812,7 +813,23 @@ func RemoveOwnedCheckpointClaim(existing []byte, requestID, writer string) ([]by
 	return checkpointWithoutAuthorizedClaim(existing, requestID, writer, false)
 }
 
+// RemoveAllCheckpointClaims removes every structural entry for one request
+// after the caller has established explicit recovery authority.
+func RemoveAllCheckpointClaims(existing []byte, requestID string) ([]byte, bool) {
+	return filterCheckpointClaims(existing, requestID, func(string) bool { return true })
+}
+
 func checkpointWithoutAuthorizedClaim(existing []byte, requestID, writer string, unlabeled bool) ([]byte, bool) {
+	return filterCheckpointClaims(existing, requestID, func(line string) bool {
+		writerMatches := strings.HasSuffix(strings.TrimRight(line, "\r"), "writer: "+writer)
+		if unlabeled {
+			writerMatches = !strings.Contains(line, " — writer: ")
+		}
+		return writerMatches
+	})
+}
+
+func filterCheckpointClaims(existing []byte, requestID string, authorized func(string) bool) ([]byte, bool) {
 	if len(existing) == 0 {
 		return existing, false
 	}
@@ -825,11 +842,7 @@ func checkpointWithoutAuthorizedClaim(existing []byte, requestID, writer string,
 	removed := false
 	for lineIndex := headingLine + 1; lineIndex < sectionEnd; lineIndex++ {
 		line := lines[lineIndex]
-		writerMatches := strings.HasSuffix(strings.TrimRight(line, "\r"), "writer: "+writer)
-		if unlabeled {
-			writerMatches = !strings.Contains(line, " — writer: ")
-		}
-		if strings.HasPrefix(line, "- "+requestID+":") && writerMatches {
+		if checkpointEntryMatchesRequest(line, requestID) && authorized(line) {
 			removed = true
 			for lineIndex+1 < sectionEnd && strings.TrimSpace(lines[lineIndex+1]) != "" && (strings.HasPrefix(lines[lineIndex+1], " ") || strings.HasPrefix(lines[lineIndex+1], "\t")) {
 				lineIndex++
@@ -842,6 +855,26 @@ func checkpointWithoutAuthorizedClaim(existing []byte, requestID, writer string,
 	return []byte(strings.Join(filtered, "\n")), removed
 }
 
+var checkpointRequestIDPattern = regexp.MustCompile(`^\s*-\s+(REQ-0*[0-9]+)\s*:`)
+
+func checkpointEntryMatchesRequest(line, requestID string) bool {
+	match := checkpointRequestIDPattern.FindStringSubmatch(line)
+	if match == nil {
+		return false
+	}
+	wantNumber, wantError := strconv.Atoi(strings.TrimLeft(strings.TrimPrefix(requestID, "REQ-"), "0"))
+	gotNumber, gotError := strconv.Atoi(strings.TrimLeft(strings.TrimPrefix(match[1], "REQ-"), "0"))
+	if strings.TrimLeft(strings.TrimPrefix(requestID, "REQ-"), "0") == "" {
+		wantNumber = 0
+		wantError = nil
+	}
+	if strings.TrimLeft(strings.TrimPrefix(match[1], "REQ-"), "0") == "" {
+		gotNumber = 0
+		gotError = nil
+	}
+	return wantError == nil && gotError == nil && wantNumber == gotNumber
+}
+
 func checkpointHasRequestEntry(existing []byte, requestID string) bool {
 	lines := strings.Split(string(existing), "\n")
 	headingLine, sectionEnd, found := sectionLineBounds(lines, "In Progress (interrupted)")
@@ -849,7 +882,7 @@ func checkpointHasRequestEntry(existing []byte, requestID string) bool {
 		return false
 	}
 	for _, line := range lines[headingLine+1 : sectionEnd] {
-		if strings.HasPrefix(line, "- "+requestID+":") {
+		if checkpointEntryMatchesRequest(line, requestID) {
 			return true
 		}
 	}

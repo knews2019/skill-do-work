@@ -23,8 +23,9 @@ var ErrRepositoryNotFound = errors.New("do-work repository not found")
 
 var requestNumberPattern = regexp.MustCompile(`(?i)^REQ-0*([0-9]+)`)
 var reservationNumberPattern = regexp.MustCompile(`^REQ-([0-9]+)$`)
-var checkpointClaimPattern = regexp.MustCompile(`^\s*-\s+(REQ-0*[0-9]+)\s*:.*\s+—\s+writer:\s*(\S(?:.*\S)?)\s*$`)
-var checkpointClaimedAtPattern = regexp.MustCompile(`\s+—\s+claimed\s+(.*?)\s+—\s+writer:`)
+var checkpointClaimPattern = regexp.MustCompile(`^\s*-\s+(REQ-0*[0-9]+)\s*:`)
+var checkpointWriterPattern = regexp.MustCompile(`\s+—\s+writer:\s*(\S(?:.*\S)?)\s*$`)
+var checkpointClaimedAtPattern = regexp.MustCompile(`\s+—\s+claimed\s+(.*?)(?:\s+—\s+writer:|\s*$)`)
 
 // beforeReservationMarkerCreate is a test seam for a deterministic directory swap.
 var beforeReservationMarkerCreate = func(string) {}
@@ -86,12 +87,13 @@ type CollisionEvidence struct {
 	ClaimPaths []string
 }
 
-// CheckpointClaimEvidence is one writer-bearing checkpoint claim header. It is
+// CheckpointClaimEvidence is one checkpoint claim header. It is
 // policy-free discovery evidence; callers decide whether a claim blocks work.
 type CheckpointClaimEvidence struct {
 	RequestID    string
 	ClaimedAt    string
 	Writer       string
+	HasWriter    bool
 	RelativePath string
 	SourceLine   int
 	HeaderText   string
@@ -104,6 +106,9 @@ type RepositorySnapshot struct {
 	RequestFiles         []*RequestFile
 	RequestsByID         map[string][]*RequestFile
 	CheckpointClaimsByID map[string][]CheckpointClaimEvidence
+	CheckpointPath       string
+	CheckpointBytes      []byte
+	CheckpointExists     bool
 	UserRequestFiles     []*UserRequestFile
 	RunManifestFiles     []RunManifestFile
 	ReservationFiles     []ReservationFile
@@ -207,6 +212,9 @@ func DiscoverRepository(repositoryRoot string) (*RepositorySnapshot, error) {
 				snapshot.WarningMessages = append(snapshot.WarningMessages, fmt.Sprintf("cannot read checkpoint %s: %v", absolutePath, readError))
 				return nil
 			}
+			snapshot.CheckpointPath = relativeSlashPath
+			snapshot.CheckpointBytes = append([]byte(nil), fileBytes...)
+			snapshot.CheckpointExists = true
 			projectCheckpointClaims(snapshot, relativeSlashPath, fileBytes)
 			return nil
 		}
@@ -337,7 +345,17 @@ func manifestStatus(fileBytes []byte) string {
 }
 
 func projectCheckpointClaims(snapshot *RepositorySnapshot, relativePath string, fileBytes []byte) {
-	for lineIndex, headerText := range strings.Split(string(fileBytes), "\n") {
+	lines := strings.Split(string(fileBytes), "\n")
+	headingLine, sectionEnd, found := checkpointSectionBounds(lines)
+	if !found {
+		// Older checkpoints predate the section heading. Keep their structural
+		// claim headers visible to selection and recovery until the explicit
+		// checkpoint writer upgrades the document.
+		headingLine = -1
+		sectionEnd = len(lines)
+	}
+	for lineIndex := headingLine + 1; lineIndex < sectionEnd; lineIndex++ {
+		headerText := lines[lineIndex]
 		headerText = strings.TrimSuffix(headerText, "\r")
 		claimMatch := checkpointClaimPattern.FindStringSubmatch(headerText)
 		if claimMatch == nil {
@@ -351,11 +369,32 @@ func projectCheckpointClaims(snapshot *RepositorySnapshot, relativePath string, 
 		if claimedMatch := checkpointClaimedAtPattern.FindStringSubmatch(headerText); claimedMatch != nil {
 			claimedAt = strings.TrimSpace(claimedMatch[1])
 		}
+		writer := ""
+		hasWriter := false
+		if writerMatch := checkpointWriterPattern.FindStringSubmatch(headerText); writerMatch != nil {
+			writer = strings.TrimSpace(writerMatch[1])
+			hasWriter = writer != ""
+		}
 		snapshot.CheckpointClaimsByID[requestID] = append(snapshot.CheckpointClaimsByID[requestID], CheckpointClaimEvidence{
-			RequestID: requestID, ClaimedAt: claimedAt, Writer: strings.TrimSpace(claimMatch[2]),
+			RequestID: requestID, ClaimedAt: claimedAt, Writer: writer, HasWriter: hasWriter,
 			RelativePath: relativePath, SourceLine: lineIndex + 1, HeaderText: headerText,
 		})
 	}
+}
+
+func checkpointSectionBounds(lines []string) (int, int, bool) {
+	for lineIndex, line := range lines {
+		if strings.TrimSuffix(line, "\r") != "## In Progress (interrupted)" {
+			continue
+		}
+		for sectionEnd := lineIndex + 1; sectionEnd < len(lines); sectionEnd++ {
+			if strings.HasPrefix(strings.TrimSuffix(lines[sectionEnd], "\r"), "## ") {
+				return lineIndex, sectionEnd, true
+			}
+		}
+		return lineIndex, len(lines), true
+	}
+	return 0, 0, false
 }
 
 // ReserveNextRequestID exclusively creates and returns the next marker.

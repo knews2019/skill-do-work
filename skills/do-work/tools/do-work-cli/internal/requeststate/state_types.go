@@ -54,6 +54,7 @@ type StateOptions struct {
 	CheckpointWriter      string
 	CheckpointUnlabeled   bool
 	CheckpointAbsent      bool
+	CheckpointAllEntries  bool
 	AssumeSoleWriter      bool
 	Now                   time.Time
 	DryRun                bool

@@ -1,6 +1,7 @@
 package requeststate
 
 import (
+	"strings"
 	"testing"
 	"time"
 
@@ -38,6 +39,23 @@ func TestSixLifecycleTransitionsProduceRunnablePlans(t *testing.T) {
 				t.Fatalf("incomplete plan: %#v", plan)
 			}
 		})
+	}
+}
+
+func TestRecoveryPlanAcceptsAllCheckpointEntriesAuthority(t *testing.T) {
+	repositoryRoot := t.TempDir()
+	writeStateRequest(t, repositoryRoot, "do-work/working/REQ-107.md", "REQ-107", "claimed", "claimed_at: 2026-08-31T20:00:00Z\n")
+	writeStateCheckpoint(t, repositoryRoot, "- REQ-107: first — writer: one:/repo\n- REQ-107: second\n")
+	snapshot, err := repositorymodel.DiscoverRepository(repositoryRoot)
+	if err != nil {
+		t.Fatal(err)
+	}
+	plan := BuildPlan(snapshot, dependencygraph.BuildGraph(snapshot), StateOptions{
+		Transition: TransitionRecover, RequestID: "REQ-107", AssumeSoleWriter: true,
+		CheckpointAllEntries: true, DryRun: true, Now: time.Date(2026, 8, 31, 21, 0, 0, 0, time.UTC),
+	})
+	if !plan.Runnable() || strings.Contains(string(plan.CheckpointBytes), "REQ-107") {
+		t.Fatalf("all-entry recovery plan = %#v checkpoint=%s", plan.Refusal, plan.CheckpointBytes)
 	}
 }
 

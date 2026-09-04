@@ -48,6 +48,7 @@ exploration_at: 2026-09-04T15:57:17Z
 preflight_at: 2026-09-04T16:00:28Z
 dispatch_at: 2026-09-04T16:01:12Z
 builder_handback_at: 2026-09-04T16:31:17Z
+integration_at: 2026-09-04T16:31:53Z
 estimate:
   p50_active_minutes: 50
   confidence: low
@@ -69,8 +70,8 @@ Replace `work.md` Step 10 (155 lines: loop, checkpoint, session start) and `work
 
 ## AI Execution State (P-A-U Loop)
 - [x] **[PLAN]:** The Plan and Explore agents mapped the public recovery order, structural checkpoint evidence, atomic multi-entry removal, claim-only finalization topology, checkpoint-only advance mutation, prose collapse, and replacement behavior tests across the exact widened scope.
-- [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
-- [ ] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
+- [x] **[APPLY]:** Added the typed public recovery and checkpoint boundaries, structural checkpoint evidence, atomic all-entry recovery, claim-only finalization handling, replacement Go coverage, and the planned prose collapse in the exact 26-file scope.
+- [x] **[UNIFY]:** Reviewed all 26 changed paths and the complete diff; focused tests, race tests, vet, full Go tests, contract regressions, diff checks, and the canonical maintainer gate all passed on the builder branch with no debug artifacts.
 
 ## Why
 This is the largest single deletion in the chain and the one the recovery work makes possible: the prose described what to do when a session died, and the CLI now does it.
@@ -160,7 +161,33 @@ The current request-state shell lane begins at the internal `recover-claim` prim
 
 ## Scope
 
-**Files I will touch:** the exact 26 paths in frontmatter `write_set`: six action/guide restatements; the CLI prime; the split shell lane plus aggregator; six lifecycle command/test files; result, repository, and request-state model/transaction files and tests; and finalization discovery plus its recovery test.
+**Files I will touch:**
+- `_dev/tests/contract-regressions.sh`
+- `_dev/tests/contracts/request-state.sh`
+- `skills/do-work/actions/commit.md`
+- `skills/do-work/actions/restart-with-parallel-handoff.md`
+- `skills/do-work/actions/run-with-recovery.md`
+- `skills/do-work/actions/work-reference.md`
+- `skills/do-work/actions/work.md`
+- `skills/do-work/docs/work-guide.md`
+- `skills/do-work/tools/do-work-cli/internal/finalization/finalization_discovery.go`
+- `skills/do-work/tools/do-work-cli/internal/finalization/finalization_recovery_test.go`
+- `skills/do-work/tools/do-work-cli/internal/lifecycleadvance/advance_commands.go`
+- `skills/do-work/tools/do-work-cli/internal/lifecycleadvance/advance_commands_test.go`
+- `skills/do-work/tools/do-work-cli/internal/lifecycleadvance/checkpoint_commands.go`
+- `skills/do-work/tools/do-work-cli/internal/lifecycleadvance/checkpoint_commands_test.go`
+- `skills/do-work/tools/do-work-cli/internal/lifecycleadvance/recovery_commands.go`
+- `skills/do-work/tools/do-work-cli/internal/lifecycleadvance/recovery_commands_test.go`
+- `skills/do-work/tools/do-work-cli/internal/repositorymodel/repository_model.go`
+- `skills/do-work/tools/do-work-cli/internal/repositorymodel/repository_model_test.go`
+- `skills/do-work/tools/do-work-cli/internal/requeststate/state_apply.go`
+- `skills/do-work/tools/do-work-cli/internal/requeststate/state_apply_test.go`
+- `skills/do-work/tools/do-work-cli/internal/requeststate/state_plan.go`
+- `skills/do-work/tools/do-work-cli/internal/requeststate/state_plan_test.go`
+- `skills/do-work/tools/do-work-cli/internal/requeststate/state_types.go`
+- `skills/do-work/tools/do-work-cli/internal/resultmodel/result_model.go`
+- `skills/do-work/tools/do-work-cli/internal/resultmodel/result_model_test.go`
+- `skills/do-work/tools/do-work-cli/prime-do-work-cli.md`
 
 **Files I will NOT touch:** doctor, forensics, cleanup, board, hook routing, other command packages, or any queue file. The retained Crash Recovery heading and existing handler registration keep those consumers valid.
 
@@ -182,3 +209,48 @@ The current request-state shell lane begins at the internal `recover-claim` prim
 **Dependencies:** Installed; Go 1.26.1, ShellCheck 0.11.0, and all fast repository lanes launched successfully.
 
 *Checked by work action.*
+
+## Implementation Summary
+
+- `_dev/tests/contract-regressions.sh` (modified) — removes the registration for the retired request-state shell lane after equivalent public Go coverage landed.
+- `_dev/tests/contracts/request-state.sh` (deleted) — retires the shell fixture that began at the internal recovery primitive.
+- `skills/do-work/actions/commit.md` (modified) — assigns the resumable mutation boundary to finalization instead of restating manual request-state commits.
+- `skills/do-work/actions/restart-with-parallel-handoff.md` (modified) — replaces the removed checkpoint-template reference with the command-owned principle.
+- `skills/do-work/actions/run-with-recovery.md` (modified) — invokes constant recover-with-sole-authority argv and hands the original scope to the work loop.
+- `skills/do-work/actions/work-reference.md` (modified) — collapses crash recovery and session checkpoint algorithms to concise command-owned principles.
+- `skills/do-work/actions/work.md` (modified) — collapses Step 10, clarifies orchestration judgment, and renames Step 8 to preparation.
+- `skills/do-work/docs/work-guide.md` (modified) — aligns user guidance with typed recovery and checkpoint commands.
+- `skills/do-work/tools/do-work-cli/internal/finalization/finalization_discovery.go` (modified) — declines coherent unfinished claim-only topology so public recovery owns it.
+- `skills/do-work/tools/do-work-cli/internal/finalization/finalization_recovery_test.go` (modified) — covers the claim-only discovery exemption.
+- `skills/do-work/tools/do-work-cli/internal/lifecycleadvance/advance_commands.go` (modified) — adds explicit checkpoint mode while preserving ordinary advance reads.
+- `skills/do-work/tools/do-work-cli/internal/lifecycleadvance/advance_commands_test.go` (modified) — keeps ordinary advance byte-for-byte read-only after checkpoint mode lands.
+- `skills/do-work/tools/do-work-cli/internal/lifecycleadvance/checkpoint_commands.go` (new) — implements the guarded checkpoint-only mutation transaction.
+- `skills/do-work/tools/do-work-cli/internal/lifecycleadvance/checkpoint_commands_test.go` (new) — proves exact-path checkpoint mutation and live-entry preservation.
+- `skills/do-work/tools/do-work-cli/internal/lifecycleadvance/recovery_commands.go` (new) — composes finalization-first recovery with typed authority and claim recovery.
+- `skills/do-work/tools/do-work-cli/internal/lifecycleadvance/recovery_commands_test.go` (new) — covers public recovery order, hostile labels, multiple evidence shapes, takeover, selection, and fresh claim.
+- `skills/do-work/tools/do-work-cli/internal/repositorymodel/repository_model.go` (modified) — projects labelled and unlabelled checkpoint evidence structurally with legacy fallback.
+- `skills/do-work/tools/do-work-cli/internal/repositorymodel/repository_model_test.go` (modified) — covers canonical-section and heading-less checkpoint evidence.
+- `skills/do-work/tools/do-work-cli/internal/requeststate/state_apply.go` (modified) — removes every authorized same-request checkpoint entry atomically.
+- `skills/do-work/tools/do-work-cli/internal/requeststate/state_apply_test.go` (modified) — proves all-entry removal and unrelated-byte preservation.
+- `skills/do-work/tools/do-work-cli/internal/requeststate/state_plan.go` (modified) — plans structural all-entry recovery authority.
+- `skills/do-work/tools/do-work-cli/internal/requeststate/state_plan_test.go` (modified) — covers multi-entry planning and evidence guards.
+- `skills/do-work/tools/do-work-cli/internal/requeststate/state_types.go` (modified) — adds the all-entry checkpoint recovery option.
+- `skills/do-work/tools/do-work-cli/internal/resultmodel/result_model.go` (modified) — adds typed recovery and checkpoint result projections.
+- `skills/do-work/tools/do-work-cli/internal/resultmodel/result_model_test.go` (modified) — locks text/JSON recovery and checkpoint output shape.
+- `skills/do-work/tools/do-work-cli/prime-do-work-cli.md` (modified) — documents the new command ownership and the narrowed advance mutation boundary.
+
+**What was done:** Recovery now runs finalization discovery first and reports claim authority as typed data; explicit authority resets each request and removes all matching checkpoint evidence without interpolating writer text into shell source. Checkpoint-mode advance is the sole checkpoint mutation while ordinary request-specific advance stays read-only. The action and reference prose now state the remaining judgment principles and preserve REQ-505's ownership of selection and claim.
+
+## Decisions
+
+- **D-01 — DECIDE & STATE:** Public recovery runs finalization discovery first and stops on its typed refusal, preserving the existing resumable-finalization authority.
+- **D-02 — DECIDE & STATE:** Plain recovery observes unfinished claims; only explicit takeover or sole-authority mode authorizes their reset.
+- **D-03 — DECIDE & STATE:** Writer labels remain typed data and never become generated shell source.
+- **D-04 — DECIDE & STATE:** Authorized recovery removes all normalized same-request checkpoint records in one request-state plan, including multiple labels, unlabelled records, aliases, and continuations.
+- **D-05 — DECIDE & STATE:** Canonical-section checkpoint parsing wins when present; heading-less whole-document parsing remains as legacy read compatibility.
+- **D-06 — DECIDE & STATE:** `advance --checkpoint` performs an exact-path uncommitted session-end write; ordinary advance remains read-only.
+- **D-07 — DECIDE & STATE:** Recovery commits one request-state transaction per working request and stops before later requests if one transaction fails.
+
+## Discovered Tasks
+
+None.
