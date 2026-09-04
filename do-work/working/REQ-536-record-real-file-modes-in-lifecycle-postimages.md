@@ -1,7 +1,7 @@
 ---
 id: REQ-536
 title: 'Review fix: record real file modes in lifecycle postimages'
-status: pending
+status: claimed
 priority: now
 created_at: 2026-09-03T12:20:21Z
 user_request: UR-103
@@ -16,6 +16,7 @@ maintenance: false
 impact: impact-user-visible
 effort_estimate: effort-mechanical
 write_set: [skills/do-work/tools/do-work-cli/internal/requeststate/state_apply.go, skills/do-work/tools/do-work-cli/internal/requeststate/state_apply_test.go, skills/do-work/tools/do-work-cli/internal/finalization/finalization_prepare.go, skills/do-work/tools/do-work-cli/internal/finalization/finalization_recovery_test.go]
+claimed_at: 2026-09-04T12:55:13Z
 ---
 
 # Record Real File Modes in Lifecycle Postimages

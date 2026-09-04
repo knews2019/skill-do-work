@@ -15,7 +15,7 @@ session_depth: light
 
 ## In Progress (interrupted)
 
-
+- REQ-536: Review fix: record real file modes in lifecycle postimages — claimed 2026-09-04T12:55:13Z — writer: t2s-Virtual-Machine.local:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2
 
 ## Still Queued
 
