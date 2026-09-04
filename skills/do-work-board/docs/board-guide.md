@@ -15,7 +15,7 @@ Renders the `do-work/` queue as a Kanban board in your browser, plus a queue act
 
 ## Board view
 
-Four columns: **Pending**, **Claimed**, **Needs input · Blocked**, **Recently done**. Pending splits into *Ready* and *Waiting on dependencies*. A `pending` REQ with an unsatisfied `depends_on` stays in Pending and sorts under Waiting. A bare `blocked` REQ with an unmet dependency also displays there until every dependency reaches terminal success, while retaining its blocked status and badges; once its dependencies succeed, its external blocked condition is actionable and the card returns to Needs input · Blocked. A REQ whose `status` isn't in the schema vocabulary parks under Needs input · Blocked with an `invalid` flag.
+Four columns: **Pending**, **Claimed**, **Needs input · Blocked**, **Recently done**. Pending splits into *Ready* and *Waiting*. A `pending` REQ with an unsatisfied `depends_on` stays in Pending and sorts under Waiting. A bare `blocked` REQ with an unmet dependency also displays there until every dependency reaches terminal success, while retaining its blocked status and badges; once its dependencies succeed, its external blocked condition is actionable and the card returns to Needs input · Blocked. A `pending-heavy-testing` REQ waits there as well: its code is committed and the work loop runs its heavy lanes itself once the queue is empty, so nothing is being asked of you. A REQ whose `status` isn't in the schema vocabulary parks under Needs input · Blocked with an `invalid` flag.
 
 Two strips sit above the columns and stay visible in every view:
 

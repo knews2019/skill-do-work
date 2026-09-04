@@ -229,7 +229,7 @@ error_type: intent|spec|code|environment   # Set with `error` on failure; likewi
 
 # Set by work.md Step 6.5 when the merged diff selects heavy lanes for the exhaustion drain.
 # The REQ stays in queue and ordinary selection walks past it. `commit` above is the
-# exact implemented revision the Open Question names while other runnable REQs continue.
+# exact implemented revision the hold line names while other runnable REQs continue.
 status: pending-heavy-testing
 status_changed_at: 2026-09-03T10:45:00Z
 

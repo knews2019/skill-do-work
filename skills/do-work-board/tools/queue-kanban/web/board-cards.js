@@ -462,7 +462,8 @@
   }
 
   // The Pending column is the only one that sub-groups: what the work loop could
-  // claim right now, versus what is still waiting on an upstream REQ. When
+  // claim right now, versus what is still waiting — on an upstream REQ, or for
+  // the heavy-lane drain the loop runs at queue exhaustion. When
   // nothing is waiting, the headers are noise — the column renders as a flat
   // list, exactly as it did before dependency readiness was computed.
   function fillPendingColumn(readyIds, waitingIds, totalCount) {
@@ -483,7 +484,7 @@
       return;
     }
     container.appendChild(makePendingGroup("Ready", readyIds, "Nothing ready — everything here is waiting"));
-    container.appendChild(makePendingGroup("Waiting on dependencies", waitingIds, ""));
+    container.appendChild(makePendingGroup("Waiting", waitingIds, ""));
   }
 
   function makePendingGroup(labelText, requestIds, emptyText) {

@@ -544,7 +544,7 @@ Before marking complete, verify tests pass:
 **Heavy-test hold (non-blocking):** after the fast tier passes, a REQ with selected heavy lanes does **not** run those lanes and does not hold the queue loop open. Record the fast commands and durations plus the typed lane plan, then atomically:
 
 1. land the implementation commit and record its full hash in the REQ's canonical `commit:` field;
-2. set `status: pending-heavy-testing` and `status_changed_at: <now>` (current UTC instant — Timestamp rule, `actions/work-reference.md`), append `## Heavy Verification Plan` with the exact base/target revisions and each selected lane's id, argv, and reasons, then append `## Open Questions` with exactly `- [ ] Run the selected heavy lane commands at \`<commit>\`; did every command exit 0?`, `Recommended: Yes`, and `Also: No — <failing lane>`;
+2. set `status: pending-heavy-testing` and `status_changed_at: <now>` (current UTC instant — Timestamp rule, `actions/work-reference.md`), append `## Heavy Verification Plan` with the exact base/target revisions and each selected lane's id, argv, and reasons, then append `## Open Questions` holding exactly one line, `- [ ] Heavy lanes at \`<commit>\`: the work loop runs them at queue exhaustion and records the result here` — a machine hold the `answer` transaction ticks with the lane result, not a question for the user, so it carries no `Recommended:` or `Also:` options;
 3. move the REQ from `do-work/working/` back to `do-work/queue/`, remove only its checkpoint claim, commit those bookkeeping paths, and perform the ordinary isolated-worktree cleanup; and
 4. recompute selection and continue every unrelated runnable REQ.
 

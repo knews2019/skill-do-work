@@ -2,6 +2,13 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.275.3 — Held Heavy-Test REQs Wait With the Queue, Not in the Inbox (2026-09-04)
+
+0.275.0 made the work loop run held heavy lanes itself at queue exhaustion, but the board still filed every `pending-heavy-testing` REQ under Needs input · Blocked, and the hold line it carried still read as a Yes/No question for you. Nothing was being asked; now nothing looks asked.
+
+- The board buckets `pending-heavy-testing` under Pending → Waiting (the group is now simply "Waiting"), the calendar labels it "held for heavy testing", and the timeline keeps naming it as excluded until the drain runs instead of dropping it.
+- The Step 6.5 hold writes one machine-hold line in place of the question and its Recommended/Also options; the `answer` transaction ticks it exactly as before.
+
 ## 0.275.2 — Reservation Markers Use One Filename (2026-09-04)
 
 Two allocators could reserve the same request number under different padded filenames. Reservation writers now converge on one stored-ID spelling, while legacy markers remain visible to collision checks and cleanup.

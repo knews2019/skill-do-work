@@ -436,7 +436,10 @@ func timelineChain(tickets []*RequestTicket, projection TimelineProjection) ([]T
 		switch {
 		case ticket.Status == "pending":
 			pendingTickets = append(pendingTickets, ticket)
-		case isNeedsInputOrBlockedStatus(ticket.Status) && ticket.Status != "failed":
+		case ticket.Status == "pending-heavy-testing", isNeedsInputOrBlockedStatus(ticket.Status) && ticket.Status != "failed":
+			// The held REQ is named explicitly: it left the needs-input family when
+			// the loop took over its heavy lanes, and a REQ that is neither pending
+			// nor excluded would vanish from the forecast without a word.
 			exclusions = append(exclusions, TimelineExclusion{
 				RequestId: ticket.RequestId,
 				Reason:    timelineExclusionReason(ticket),
