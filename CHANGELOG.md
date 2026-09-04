@@ -2,6 +2,13 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.283.0 — Refuse Releases That Leave a Mirror Undeclared (2026-09-05)
+
+The release planner now finds every version and changelog mirror itself and refuses a manifest that would leave one on the old version, so the drift the board flagged after the previous release cannot recur.
+
+- Any tracked `VERSION` file or `**Current version**:` line still carrying the old version, and any tracked changelog byte-identical to the declared changelog preimage, must be a declared target; `RELEASE-MIRROR-UNDECLARED` names each missing path.
+- A failed tracked-file enumeration refuses with `RELEASE-MIRROR-ENUMERATION` instead of passing silently.
+
 ## 0.282.1 — Share Implementation and Review Principles (2026-09-05)
 
 Implementation and review now load one shared set of condition-based principles. Each action retains the guidance specific to its lifecycle or authority boundaries.
