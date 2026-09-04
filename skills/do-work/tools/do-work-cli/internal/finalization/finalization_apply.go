@@ -123,7 +123,10 @@ func advanceJournal(ctx context.Context, repositoryRoot string, journal *Journal
 		if recoveredSHA, ok := matchingHeadCommit(repositoryRoot, journal); ok {
 			journal.PrimaryCommit = recoveredSHA
 		} else {
-			if blockedCode, blockedReason, blockedPaths := commitSafety(repositoryRoot, journal); blockedCode != "" {
+			if blockedCode, blockedReason, blockedPaths, requestOwned := commitSafety(repositoryRoot, journal); blockedCode != "" {
+				if requestOwned {
+					return finalizationFailure(journal, resumed, blockedCode, blockedReason, blockedPaths)
+				}
 				return sharedStateRefusal(journal, resumed, blockedCode, blockedReason, blockedPaths)
 			}
 			transaction := gittransaction.CommitExactPaths(ctx, repositoryRoot, journal.EffectiveCommitPaths, journal.Manifest.CommitMessage, nil)
@@ -454,13 +457,16 @@ func stampReleaseAt(repositoryRoot, archivedPath, releaseAt string) error {
 	return atomicfile.ReplaceExisting(absolutePath, document.DocumentBytes())
 }
 
-func commitSafety(repositoryRoot string, journal *Journal) (string, string, []string) {
+// commitSafety reports a refusal plus whether this journal's own REQ owns its cause.
+// An owned cause keeps REQ ownership so recovery can set that one REQ aside; an
+// unowned cause is shared state and stops the run.
+func commitSafety(repositoryRoot string, journal *Journal) (string, string, []string, bool) {
 	if err := exec.Command("git", "-C", repositoryRoot, "diff", "--cached", "--quiet", "--exit-code").Run(); err != nil {
-		return "FINALIZATION-DIRTY-INDEX", "finalization requires an empty existing index", nil
+		return "FINALIZATION-DIRTY-INDEX", "finalization requires an empty existing index", nil, false
 	}
 	rows, err := corehelpers.ReadProtectedInventory(repositoryRoot)
 	if err != nil {
-		return "FINALIZATION-INVENTORY-FAILED", err.Error(), nil
+		return "FINALIZATION-INVENTORY-FAILED", err.Error(), nil, true
 	}
 	allowed := map[string]bool{}
 	for _, path := range journal.EffectiveCommitPaths {
@@ -483,9 +489,15 @@ func commitSafety(repositoryRoot string, journal *Journal) (string, string, []st
 		releasePaths[image.Path] = true
 	}
 	blocked := []string{}
+	owned := []string{}
 	for _, row := range rows {
 		if row.Classification == "X" && allowed[row.Path] {
-			blocked = append(blocked, row.Path)
+			// A protected-shaped path the journal DOES declare is this REQ's own
+			// work, not dirt somebody else left. It must refuse with the REQ still
+			// named, so recovery sets that one REQ aside and keeps draining; an
+			// unowned refusal here would park the whole queue over one secret-shaped
+			// file the REQ changed on purpose, which is what REQ-515 removes.
+			owned = append(owned, row.Path)
 			continue
 		}
 		// Dirt outside the group implicates this transaction only when the group
@@ -503,11 +515,15 @@ func commitSafety(repositoryRoot string, journal *Journal) (string, string, []st
 			blocked = append(blocked, row.Path)
 		}
 	}
+	owned = uniqueSorted(owned)
+	if len(owned) > 0 {
+		return "FINALIZATION-PROTECTED-DECLARED-PATH", "protected-classified paths the journal declares cannot be committed by this transaction", owned, true
+	}
 	blocked = uniqueSorted(blocked)
 	if len(blocked) > 0 {
-		return "FINALIZATION-AMBIGUOUS-SHARED-STATE", "shared lifecycle, release, or protected paths remain outside the exact recovery group", blocked
+		return "FINALIZATION-AMBIGUOUS-SHARED-STATE", "shared lifecycle, release, or protected paths remain outside the exact recovery group", blocked, false
 	}
-	return "", "", nil
+	return "", "", nil, false
 }
 
 func matchingHeadCommit(repositoryRoot string, journal *Journal) (string, bool) {

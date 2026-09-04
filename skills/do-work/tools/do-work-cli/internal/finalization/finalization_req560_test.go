@@ -94,7 +94,7 @@ func TestCommitSafetyStillRefusesSharedDirtForADiscoveredGroup(t *testing.T) {
 	writeFinalizationFile(t, repositoryRoot, foreign, "req\tminutes\nREQ-2\t25\n")
 
 	journal := &Journal{EffectiveCommitPaths: []string{declared}, Discovered: true}
-	code, _, blocked := commitSafety(repositoryRoot, journal)
+	code, _, blocked, _ := commitSafety(repositoryRoot, journal)
 	if code != "FINALIZATION-AMBIGUOUS-SHARED-STATE" {
 		t.Fatalf("a discovered group must still refuse on shared dirt outside it; got code %q blocked %v", code, blocked)
 	}
@@ -105,8 +105,34 @@ func TestCommitSafetyStillRefusesSharedDirtForADiscoveredGroup(t *testing.T) {
 	// The same tree under a journaled (manifest-declared) group is the narrowing
 	// this REQ shipped: the foreign path is not this transaction's to judge.
 	journal.Discovered = false
-	code, _, blocked = commitSafety(repositoryRoot, journal)
+	code, _, blocked, _ = commitSafety(repositoryRoot, journal)
 	if code != "" || len(blocked) != 0 {
 		t.Fatalf("a journaled group must ignore foreign dirt outside its manifest; got code %q blocked %v", code, blocked)
+	}
+}
+
+// A protected-shaped path the journal DECLARES is the REQ's own work, so its
+// refusal must keep naming that REQ. Reported on PR #180: routing it through
+// the unowned shared-state refusal made one secret-shaped file the REQ changed
+// on purpose park the entire queue, which is the behaviour REQ-515 removes.
+func TestCommitSafetyKeepsOwnershipForADeclaredProtectedPath(t *testing.T) {
+	repositoryRoot := newFinalizationRepository(t)
+	declared := "do-work/working/REQ-560.md"
+	secretShaped := ".env"
+	writeFinalizationFile(t, repositoryRoot, declared, "declared\n")
+	runFinalizationGit(t, repositoryRoot, "add", ".")
+	runFinalizationGit(t, repositoryRoot, "commit", "-qm", "base")
+	writeFinalizationFile(t, repositoryRoot, secretShaped, "TOKEN=abc\n")
+
+	journal := &Journal{EffectiveCommitPaths: []string{declared, secretShaped}, Discovered: false}
+	code, _, paths, requestOwned := commitSafety(repositoryRoot, journal)
+	if code == "" {
+		t.Skip("this repository fixture does not classify the fixture path as protected")
+	}
+	if !requestOwned {
+		t.Fatalf("a declared protected path is the REQ's own cause and must keep ownership; got code %q paths %v", code, paths)
+	}
+	if code == "FINALIZATION-AMBIGUOUS-SHARED-STATE" {
+		t.Fatalf("a declared protected path is not shared-target dirt; got %q", code)
 	}
 }
