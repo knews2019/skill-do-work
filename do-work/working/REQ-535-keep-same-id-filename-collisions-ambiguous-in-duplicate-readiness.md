@@ -1,7 +1,7 @@
 ---
 id: REQ-535
 title: 'Review fix: keep same-id filename collisions ambiguous in duplicate readiness'
-status: pending
+status: claimed
 priority: now
 created_at: 2026-09-03T12:20:21Z
 user_request: UR-103
@@ -16,6 +16,7 @@ maintenance: false
 impact: impact-user-visible
 effort_estimate: effort-mechanical
 write_set: [skills/do-work/tools/do-work-cli/internal/dependencygraph/dependency_graph.go, skills/do-work/tools/do-work-cli/internal/dependencygraph/dependency_graph_test.go]
+claimed_at: 2026-09-04T12:47:52Z
 ---
 
 # Keep Same-Id Filename Collisions Ambiguous in Duplicate Readiness

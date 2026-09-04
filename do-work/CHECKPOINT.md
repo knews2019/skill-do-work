@@ -15,9 +15,7 @@ session_depth: light
 
 ## In Progress (interrupted)
 
-
-
-
+- REQ-535: Review fix: keep same-id filename collisions ambiguous in duplicate readiness — claimed 2026-09-04T12:47:52Z — writer: t2s-Virtual-Machine.local:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2
 
 ## Still Queued
 
