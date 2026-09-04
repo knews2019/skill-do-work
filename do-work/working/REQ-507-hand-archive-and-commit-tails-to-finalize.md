@@ -17,6 +17,7 @@ effort_estimate: effort-substantive
 write_set: [skills/do-work/actions/work.md, skills/do-work/actions/work-reference.md, _dev/tests/contract-regressions.sh, skills/do-work/tools/do-work-cli/internal/lifecycleadvance/]
 claimed_at: 2026-09-04T18:21:29Z
 route: C
+planning_at: 2026-09-04T18:26:45Z
 estimate:
   p50_active_minutes: 50
   confidence: low
@@ -37,7 +38,7 @@ estimate:
 Step 8 (66 lines) and Step 9 (21 lines) reduce to: mint follow-ups by Fold-First (prose), then `advance` runs `finalize`. The Changelog Entry Procedure and the Commit and Metadata-Commit Procedure in `work-reference.md` leave prose except the changelog title and prose judgment.
 
 ## AI Execution State (P-A-U Loop)
-- [ ] **[PLAN]:** (Agent: Read listed `prime_files` and agent rules. Write brief technical approach here. Do not write code yet.)
+- [x] **[PLAN]:** Keep `finalization` as the transaction authority; make `advance` compose it from one request-bound manifest, consume typed finalization evidence in the work action, remove the displaced archive/commit recipes and predicates, and prove the four terminal paths through the public CLI seam.
 - [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
 - [ ] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
 
@@ -87,3 +88,10 @@ See `do-work/user-requests/UR-098/input.md` for complete verbatim input.
 **Route: C — Complex.** This rule-changing migration removes two finalization procedures, binds advance to the existing journaled finalizer, and must preserve four distinct completion paths plus release and follow-up judgment boundaries.
 
 **Planning:** Required.
+
+## Plan
+
+1. Add public RED coverage for serial, supplied-worktree, completed-with-issues, already-green/no-release, and refusal paths at `advance`.
+2. Add strict request-bound finalization-manifest handling to `advance`, delegating the transaction to the existing `finalization` handler and preserving its typed result.
+3. Reduce the work action and reference procedures to Fold-First, impact, release-content, terminal-state, lesson, and cleanup judgment; update the CLI prime to the same ownership boundary.
+4. Replace retired prose predicates with structural ownership guards, then run focused, race, module, contract, vet, and repository-gate verification.
