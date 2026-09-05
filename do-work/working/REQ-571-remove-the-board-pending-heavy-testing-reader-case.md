@@ -24,6 +24,16 @@ write_set:
   - skills/do-work-board/tools/queue-kanban/web/board-calendar.js
   - skills/do-work-board/tools/queue-kanban/prime-do-kanban.md
 claimed_at: 2026-09-05T00:38:07Z
+route: A
+estimate:
+  p50_active_minutes: 20
+  confidence: medium
+  calculated_at: 2026-09-05T00:50:53Z
+  basis:
+    - Route A
+    - 8-file write set
+    - 2 subsystems involved
+    - 3 acceptance criteria
 ---
 
 # Remove the Board's pending-heavy-testing Reader Case
@@ -80,3 +90,19 @@ The board is a separate package with its own version and a parser that must stay
 
 ## Full Context
 See `do-work/user-requests/UR-114/input.md` for complete verbatim input.
+
+---
+
+## Triage
+
+**Route: A** - Simple
+
+**Reasoning:** The request is a cleanup after REQ-570 removed a status, with its own eight-file write set declared. The reader case to remove and the tests that move with it are both named.
+
+**Planning:** Not required
+
+## Plan
+
+**Planning not required** - Route A: Direct implementation
+
+*Skipped by work action*

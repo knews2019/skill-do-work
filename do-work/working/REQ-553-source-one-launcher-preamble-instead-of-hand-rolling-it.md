@@ -17,6 +17,16 @@ impact: impact-negligible
 effort_estimate: effort-substantive
 write_set: [tools/do-work-cli-preamble.sh, skills/do-work/tools/do-work-cli-preamble.sh, tools/install-do-work-suite.sh, tools/fetch-upstream-archive.sh, tools/replace-text-section.sh, tools/validate-suite-manifest.sh, skills/do-work/tools/install-do-work-suite.sh, skills/do-work/tools/fetch-upstream-archive.sh, skills/do-work/tools/replace-text-section.sh, skills/do-work/tools/validate-suite-manifest.sh, skills/do-work/tools/checks/associate-files.sh, _dev/tests/staged-skills-contract.sh, _dev/tests/audit-lockins.sh]
 claimed_at: 2026-09-05T00:41:15Z
+route: B
+estimate:
+  p50_active_minutes: 35
+  confidence: medium
+  calculated_at: 2026-09-05T00:50:53Z
+  basis:
+    - Route B
+    - 13-file write set
+    - 3 subsystems involved
+    - 4 acceptance criteria
 ---
 
 # Source one do-work-cli launcher preamble instead of hand-rolling it in every launcher
@@ -72,3 +82,19 @@ See `do-work/user-requests/UR-105/input.md` for complete verbatim input.
 
 ---
 *Source: `do-work/audits/audit-2026-09-03.md` §Plan, capture-request line for cli-launcher-preamble-copied.*
+
+---
+
+## Triage
+
+**Route: B** - Medium
+
+**Reasoning:** The outcome is clear — one sourceable preamble replacing nine hand-rolled copies — but how each of the nine callers must locate the shared file, and whether the byte-locked mirror needs a modules.tsv declaration, has to be established by reading the callers. Exploration required; the shape of the fix is not in doubt.
+
+**Planning:** Not required
+
+## Plan
+
+**Planning not required** - Route B: Exploration-guided implementation
+
+*Skipped by work action*

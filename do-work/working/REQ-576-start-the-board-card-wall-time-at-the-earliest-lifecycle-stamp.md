@@ -19,6 +19,15 @@ write_set:
   - skills/do-work-board/tools/queue-kanban/generate.go
   - skills/do-work-board/tools/queue-kanban/web/board-cards.js
 claimed_at: 2026-09-05T00:38:08Z
+route: A
+estimate:
+  p50_active_minutes: 15
+  confidence: medium
+  calculated_at: 2026-09-05T00:50:53Z
+  basis:
+    - Route A
+    - 4-file write set
+    - 4 acceptance criteria
 ---
 
 # Start the Board Card Wall Time at the Earliest Lifecycle Stamp, Not Only `claimed_at`
@@ -77,3 +86,19 @@ See `do-work/user-requests/UR-116/input.md` for the verbatim input and the REQ-5
 
 ---
 *Source: "capture a req for append-only stamps and the board wall time change"*
+
+---
+
+## Triage
+
+**Route: A** - Simple
+
+**Reasoning:** The request names the function, the current wrong behaviour, the new origin rule, and the one field to keep excluded. The edge cases are enumerable from the rule itself.
+
+**Planning:** Not required
+
+## Plan
+
+**Planning not required** - Route A: Direct implementation
+
+*Skipped by work action*

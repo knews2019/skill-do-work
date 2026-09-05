@@ -23,6 +23,16 @@ write_set:
   - skills/do-work/tools/do-work-cli/internal/cleanup/cleanup_plan.go
   - skills/do-work/tools/do-work-cli/internal/cleanup/cleanup_plan_test.go
 claimed_at: 2026-09-05T00:33:24Z
+route: A
+estimate:
+  p50_active_minutes: 15
+  confidence: medium
+  calculated_at: 2026-09-05T00:50:53Z
+  basis:
+    - Route A
+    - 4-file write set
+    - 2 subsystems involved
+    - 5 acceptance criteria
 ---
 
 # Anchor Every Lifecycle Gate That Reads Caller-Authored Text
@@ -75,3 +85,19 @@ Depends on REQ-528, which establishes the anchoring invariant and the fail-towar
 
 ---
 *Source: REQ-528 implementation shape-grep, findings F-01 through F-04.*
+
+---
+
+## Triage
+
+**Route: A** - Simple
+
+**Reasoning:** The request names all four instances with file and line, states the invariant they violate, and lists its own four-file write set. It also records what was deliberately excluded and why. Nothing needs discovering.
+
+**Planning:** Not required
+
+## Plan
+
+**Planning not required** - Route A: Direct implementation
+
+*Skipped by work action*

@@ -17,6 +17,15 @@ addendum_to: REQ-512
 sweep: true
 sweep_key: legacy-finalization-workspace-identity-residual
 claimed_at: 2026-09-05T00:41:15Z
+route: A
+estimate:
+  p50_active_minutes: 10
+  confidence: medium
+  calculated_at: 2026-09-05T00:50:53Z
+  basis:
+    - Route A
+    - 2-file write set
+    - 4 acceptance criteria
 ---
 
 # Close Residual Workspace Release Identity Gaps
@@ -60,3 +69,19 @@ See `do-work/user-requests/UR-110/input.md` and REQ-512's `## Re-Review` section
 ## Open Questions
 
 - [x] Auto-approved: critical severity (release/finalization ownership risk). → Added to queue immediately.
+
+---
+
+## Triage
+
+**Route: A** - Simple
+
+**Reasoning:** The request names both gaps by function, states the fail-closed rule each must satisfy, and lists the four RED cases its tests must cover. The predecessor REQ-512 supplies the surrounding design.
+
+**Planning:** Not required
+
+## Plan
+
+**Planning not required** - Route A: Direct implementation
+
+*Skipped by work action*

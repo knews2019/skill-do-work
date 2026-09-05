@@ -16,6 +16,16 @@ impact: impact-rule-change
 effort_estimate: effort-substantive
 write_set: [skills/do-work/actions/work-reference.md, skills/do-work/actions/work.md, _dev/tests/contract-regressions.sh, skills/do-work/docs/]
 claimed_at: 2026-09-05T00:33:24Z
+route: B
+estimate:
+  p50_active_minutes: 20
+  confidence: medium
+  calculated_at: 2026-09-05T00:50:53Z
+  basis:
+    - Route B
+    - 4-file write set
+    - 2 subsystems involved
+    - 4 acceptance criteria
 ---
 
 # Sweep work-reference Sections Whose Contract Is Now a CLI Behavior Test
@@ -75,3 +85,19 @@ User added (23:35 local, "yes, on the nine cancelation", applying the velocity r
 
 - REQ-471 (flow and reader consistency plus documentation for the gate-blocked set-aside) was cancelled into this sweep. When deleting `work-reference.md` sections here, also sweep any surviving sentence that says an unrelated canonical-gate failure must preserve a claim and stop the session; the shipped behaviour is the deferral lifecycle (REQ-491 to REQ-494) plus the retry-once rule REQ-559 adds, and queue summaries must distinguish blocked work, pending user decisions and dependency-gated work. One sweep, no new section.
 - Coherence check: no contradiction; this widens the sweep's search condition by one sentence family.
+
+---
+
+## Triage
+
+**Route: B** - Medium
+
+**Reasoning:** The outcome is stated exactly — delete every work-reference section whose contract moved into a Go behavior test — but which sections qualify, and which test owns each one, has to be discovered by reading both the prose and the test suite. That discovery is the whole job, so exploration is required and a plan on top of it would only restate the request.
+
+**Planning:** Not required
+
+## Plan
+
+**Planning not required** - Route B: Exploration-guided implementation
+
+*Skipped by work action*

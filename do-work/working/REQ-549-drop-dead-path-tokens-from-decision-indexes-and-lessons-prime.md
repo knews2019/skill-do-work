@@ -17,6 +17,16 @@ impact: impact-negligible
 effort_estimate: effort-mechanical
 write_set: [decisions/topics/_index_skill-architecture.md, decisions/topics/_index_knowledge-base.md, decisions/audits/2026-08-05-shell-logic-in-prose-census.md, decisions/imported-specs/2026-04-12_close-gaps-in-interview.md, _dev/primes/lessons-action-files.md, _dev/tests/audit-lockins.sh]
 claimed_at: 2026-09-05T00:38:07Z
+route: A
+estimate:
+  p50_active_minutes: 15
+  confidence: medium
+  calculated_at: 2026-09-05T00:50:53Z
+  basis:
+    - Route A
+    - 6-file write set
+    - 2 subsystems involved
+    - 3 acceptance criteria
 ---
 
 # Drop the eight dead path tokens from the decision indexes and the lessons prime
@@ -73,3 +83,19 @@ See `do-work/user-requests/UR-105/input.md` for complete verbatim input.
 
 ---
 *Source: `do-work/audits/audit-2026-09-03.md` §Plan, capture-request line for dead-path-pointers-in-records.*
+
+---
+
+## Triage
+
+**Route: A** - Simple
+
+**Reasoning:** The request names the eight dead tokens, the six files that cite them, the 31 citation lines, and the ADR retirement pattern to match. Verification is mechanical.
+
+**Planning:** Not required
+
+## Plan
+
+**Planning not required** - Route A: Direct implementation
+
+*Skipped by work action*
