@@ -32,16 +32,19 @@ func (err requestBindingError) Error() string {
 }
 
 func prepareJournal(ctx context.Context, repositoryRoot, manifestPath string) (*Journal, bool, error) {
-	return prepareBoundJournal(ctx, repositoryRoot, manifestPath, "", "")
+	return prepareBoundJournal(ctx, repositoryRoot, manifestPath, "", "", "")
 }
 
-func prepareBoundJournal(ctx context.Context, repositoryRoot, manifestPath, expectedRequestID, expectedRequestPath string) (*Journal, bool, error) {
+func prepareBoundJournal(ctx context.Context, repositoryRoot, manifestPath, expectedRequestID, expectedRequestPath, requiredTransition string) (*Journal, bool, error) {
 	manifest, manifestBytes, err := decodeManifest(repositoryRoot, manifestPath)
 	if err != nil {
 		return nil, false, err
 	}
 	if expectedRequestID != "" && (manifest.RequestID != expectedRequestID || manifest.RequestPath != expectedRequestPath) {
 		return nil, false, requestBindingError{reason: fmt.Sprintf("finalization manifest identifies %s at %s, expected %s at %s", manifest.RequestID, manifest.RequestPath, expectedRequestID, expectedRequestPath)}
+	}
+	if requiredTransition != "" && manifest.Transition != requiredTransition {
+		return nil, false, fmt.Errorf("this lifecycle phase only permits finalization transition %q", requiredTransition)
 	}
 	if err := exec.Command("git", "-C", repositoryRoot, "diff", "--cached", "--quiet", "--exit-code").Run(); err != nil {
 		return nil, false, fmt.Errorf("finalization requires an empty existing index")

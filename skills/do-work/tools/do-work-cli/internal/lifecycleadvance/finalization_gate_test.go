@@ -57,6 +57,8 @@ type advanceFinalizationEvidence struct {
 }
 
 type advanceFinalizationManifest struct {
+	FailureError             string   `json:"failure_error,omitempty"`
+	FailureType              string   `json:"failure_type,omitempty"`
 	RequestID                string   `json:"request_id"`
 	RequestPath              string   `json:"request_path"`
 	WriterLabel              string   `json:"writer_label"`
@@ -361,4 +363,77 @@ func runAdvanceFinalization(t *testing.T, repositoryRoot, format, requestID stri
 		t.Fatalf("decode advance finalization result: %v\n%s", err, output)
 	}
 	return result, status, string(output)
+}
+
+func TestAdvanceFinalizesEarlyFailureWithoutAdmittingEarlyCompletion(t *testing.T) {
+	for _, testCase := range []struct {
+		name, lastSection, transition, corruption string
+		wantSuccess                               bool
+	}{
+		{"planner failed", "Triage", "fail", "", true},
+		{"implementation failed", "Scope", "fail", "", true},
+		{"tests failed", "Qualification", "fail", "", true},
+		{"premature completion", "Triage", "complete", "", false},
+		{"wrong identity", "Triage", "fail", "identity", false},
+		{"stale preimage", "Triage", "fail", "digest", false},
+		{"missing failure reason", "Triage", "fail", "reason", false},
+	} {
+		t.Run(testCase.name, func(t *testing.T) {
+			repositoryRoot, requestPath, manifestPath, _ := seedAdvanceFinalization(t, "REQ-784", "completed", "primary_commit", false, false)
+			requestBytes, readError := os.ReadFile(filepath.Join(repositoryRoot, requestPath))
+			if readError != nil {
+				t.Fatal(readError)
+			}
+			requestText := strings.Replace(string(requestBytes), routeCBodyThrough("Orientation"), routeCBodyThrough(testCase.lastSection), 1)
+			writeAdvanceFile(t, repositoryRoot, requestPath, requestText)
+			runAdvanceGit(t, repositoryRoot, "add", requestPath)
+			runAdvanceGit(t, repositoryRoot, "commit", "-qm", "request stopped before successful evidence")
+			manifestBytes, readError := os.ReadFile(manifestPath)
+			if readError != nil {
+				t.Fatal(readError)
+			}
+			var manifest advanceFinalizationManifest
+			if err := json.Unmarshal(manifestBytes, &manifest); err != nil {
+				t.Fatal(err)
+			}
+			manifest.Transition = testCase.transition
+			manifest.ExpectedRequestSHA256 = advanceFileDigest(t, repositoryRoot, requestPath)
+			if testCase.transition == "fail" {
+				manifest.TerminalStatus = "failed"
+				manifest.FailureError = "phase could not finish"
+				manifest.FailureType = "environment"
+			}
+			switch testCase.corruption {
+			case "identity":
+				manifest.RequestID = "REQ-999"
+			case "digest":
+				manifest.ExpectedRequestSHA256 = strings.Repeat("0", 64)
+			case "reason":
+				manifest.FailureError = ""
+			}
+			writeAdvanceJSON(t, manifestPath, manifest)
+			beforeTree := advanceTreeDigest(t, repositoryRoot)
+			beforeHead := string(runAdvanceGit(t, repositoryRoot, "rev-parse", "HEAD"))
+			result, status, output := runAdvanceFinalization(t, repositoryRoot, "json", "REQ-784", "--finalization-manifest", manifestPath)
+			if testCase.wantSuccess {
+				if status != 0 || result.Finalization == nil || result.Finalization.TerminalStatus != "failed" || result.Finalization.Phase != "cleanup_complete" {
+					t.Fatalf("failure did not finalize: status=%d\n%s", status, output)
+				}
+				if _, err := os.Stat(filepath.Join(repositoryRoot, requestPath)); !os.IsNotExist(err) {
+					t.Fatalf("working request remains: %v", err)
+				}
+				checkpointText := readAdvanceQueueFile(t, repositoryRoot, "do-work/CHECKPOINT.md")
+				if strings.Contains(checkpointText, "REQ-784") {
+					t.Fatalf("claim remains: %s", checkpointText)
+				}
+			} else {
+				if status == 0 {
+					t.Fatalf("invalid finalization accepted: %s", output)
+				}
+				if beforeTree != advanceTreeDigest(t, repositoryRoot) || beforeHead != string(runAdvanceGit(t, repositoryRoot, "rev-parse", "HEAD")) {
+					t.Fatal("refused finalization mutated the repository")
+				}
+			}
+		})
+	}
 }

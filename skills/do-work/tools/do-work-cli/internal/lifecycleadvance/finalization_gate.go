@@ -28,7 +28,15 @@ func executeAdvanceFinalization(executionContext commandruntime.ExecutionContext
 	}
 	advance.NextArgv = []string{}
 	advance.MissingEvidence = []resultmodel.AdvanceMissingEvidence{}
-	result := finalization.FinalizeBound(executionContext, inputs.manifestPath, advance.RequestID, advance.RequestPath)
+	requiredTransition := ""
+	if advance.Phase != finalization.CommandFinalize {
+		requiredTransition = "fail"
+	}
+	result := finalization.FinalizeBound(executionContext, inputs.manifestPath, advance.RequestID, advance.RequestPath, requiredTransition)
+	if result.Outcome == resultmodel.OutcomeSuccess {
+		advance.Phase = finalization.CommandFinalize
+		advance.PhaseKind = resultmodel.AdvancePhaseMechanical
+	}
 	result.Advance = advance
 	return result
 }

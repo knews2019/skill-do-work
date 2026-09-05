@@ -54,6 +54,11 @@ func handleAdvance(executionContext commandruntime.ExecutionContext, arguments [
 				return advanceRefusal(arguments[0], []string{advanceRequestPath(candidates[0])}, "ADVANCE-EVIDENCE-MISSING", "request identity or frontmatter is malformed", nil)
 			}
 			projected := classifyAdvance(candidates[0])
+			if candidates[0].TreeSection == "working" {
+				if inputs, err := parseAdvanceFinalizationInputs(arguments[1:]); err == nil && inputs.manifestPath != "" {
+					return executeAdvanceFinalization(executionContext, projected, arguments[1:])
+				}
+			}
 			if len(arguments) == 1 || projected.Advance == nil || projected.Outcome == resultmodel.OutcomeRefused {
 				return projected
 			}

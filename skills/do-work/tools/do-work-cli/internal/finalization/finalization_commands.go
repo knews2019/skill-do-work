@@ -44,9 +44,10 @@ func handleFinalize(executionContext commandruntime.ExecutionContext, arguments 
 // FinalizeBound runs the canonical finalization transaction only when the
 // action-authored manifest identifies the request selected by the caller.
 // prepareBoundJournal performs that comparison from the manifest's single
-// decode before journal, index, or repository mutation.
-func FinalizeBound(executionContext commandruntime.ExecutionContext, manifestPath, expectedRequestID, expectedRequestPath string) resultmodel.CommandResult {
-	journal, resumed, err := prepareBoundJournal(context.Background(), executionContext.RepositoryRoot, manifestPath, expectedRequestID, expectedRequestPath)
+// decode before journal, index, or repository mutation. A nonempty requiredTransition
+// restricts the same decoded manifest, allowing early failure without early completion.
+func FinalizeBound(executionContext commandruntime.ExecutionContext, manifestPath, expectedRequestID, expectedRequestPath, requiredTransition string) resultmodel.CommandResult {
+	journal, resumed, err := prepareBoundJournal(context.Background(), executionContext.RepositoryRoot, manifestPath, expectedRequestID, expectedRequestPath, requiredTransition)
 	if err != nil {
 		var bindingError requestBindingError
 		if !errors.As(err, &bindingError) {
