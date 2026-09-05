@@ -1,7 +1,7 @@
 ---
 id: REQ-570
 title: '[impact-rule-change] Delete the pending-heavy-testing status; held requests stay claimed'
-status: claimed
+status: completed
 created_at: 2026-09-04T22:52:00Z
 user_request: UR-114
 domain: general
@@ -56,6 +56,13 @@ planning_at: 2026-09-04T23:11:07Z
 preflight_at: 2026-09-04T23:14:45Z
 dispatch_at: 2026-09-04T23:15:08Z
 builder_handback_at: 2026-09-04T23:35:48Z
+integration_at: 2026-09-04T23:38:06Z
+review_at: 2026-09-04T23:59:01Z
+commit: 4a12b66432dfb582b1d9113d839021815ceacd73
+heavy_verified_at: 2026-09-05T00:05:25Z
+heavy_verified_revision: 8269a0bbeba471bcd5f89a49449ea2f0b35e96fd
+completed_at: 2026-09-05T00:05:50Z
+release_at: 2026-09-05T00:05:50Z
 ---
 
 # Delete the pending-heavy-testing Status; Held Requests Stay Claimed
@@ -65,9 +72,9 @@ builder_handback_at: 2026-09-04T23:35:48Z
 Make the heavy-test hold a phase of a `claimed` request instead of a status. A request is held only after fast tests, qualification and review have passed; it stays `claimed` in `do-work/working/` with its `## Heavy Verification Plan` section and its `commit:` on `main`. At queue exhaustion the same session runs the lanes and, in the same turn, finalizes each green request through Steps 8 and 9 or enters ordinary remediation for each red one. Delete the `pending-heavy-testing` value and every reader of it in the core skill.
 
 ## AI Execution State (P-A-U Loop)
-- [ ] **[PLAN]:** (Agent: Read listed `prime_files` and agent rules. Write brief technical approach here. Do not write code yet.)
-- [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
-- [ ] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
+- [x] **[PLAN]:** Builder read the REQ, the run plan and exploration, five crew files, three primes and three lessons satellites, then executed in order: RED tests first (five plus the D-01 claim test), selector and result-model deletions, the readiness disjunct flip, the heavy answer mode deletion, the advance skip case and checkpoint count, the recovery held branch keyed on section plus ancestry, the claim strip, then the Step 7.7 prose move and sweep. Build and vet after each group.
+- [x] **[APPLY]:** Four commits on the builder branch (bff3b803, 481ab05a, d33d4c52, 525aabc5), 22 files, all inside `## Scope`; +311/-569 lines; merged at 4a12b664.
+- [x] **[UNIFY]:** `git diff --stat 6eaac667 HEAD` reviewed (22 files); `gofmt -l .` empty; `go vet ./...` exit 0; `git status --porcelain --untracked-files=all` empty in the worktree; changed Go files searched for TODO/FIXME/fmt.Print/console.log with no matches; production diffs read line by line, prose diffs read against the plan, test diffs checked for orphaned helpers and imports (two dead helpers removed, D-02 and D-03).
 
 ## Why
 
@@ -317,3 +324,147 @@ The REQ's GREEN also names the direct maintainer gate; run it only where the orc
 **Dependencies:** ✓ Go toolchain present; module builds.
 
 *Checked by work action*
+
+## Implementation Summary
+
+**Files changed:**
+- `skills/do-work/actions/work.md` (modified)
+- `skills/do-work/actions/work-reference.md` (modified)
+- `skills/do-work/actions/clarify.md` (modified)
+- `skills/do-work/actions/cleanup.md` (modified)
+- `skills/do-work/actions/roadmap.md` (modified)
+- `skills/do-work/actions/restart-with-parallel-handoff.md` (modified)
+- `skills/do-work/tools/do-work-cli/prime-do-work-cli.md` (modified)
+- `skills/do-work/tools/do-work-cli/internal/schemanormalization/schema_normalization.go` (modified)
+- `skills/do-work/tools/do-work-cli/internal/schemanormalization/schema_normalization_test.go` (modified)
+- `skills/do-work/tools/do-work-cli/internal/dependencygraph/dependency_graph_test.go` (modified)
+- `skills/do-work/tools/do-work-cli/internal/nextselection/next_selection.go` (modified)
+- `skills/do-work/tools/do-work-cli/internal/nextselection/next_selection_test.go` (modified)
+- `skills/do-work/tools/do-work-cli/internal/resultmodel/result_model.go` (modified)
+- `skills/do-work/tools/do-work-cli/internal/publication/answer.go` (modified)
+- `skills/do-work/tools/do-work-cli/internal/publication/answer_test.go` (modified)
+- `skills/do-work/tools/do-work-cli/internal/publication/publication_types.go` (modified)
+- `skills/do-work/tools/do-work-cli/internal/lifecycleadvance/advance_commands.go` (modified)
+- `skills/do-work/tools/do-work-cli/internal/lifecycleadvance/checkpoint_commands.go` (modified)
+- `skills/do-work/tools/do-work-cli/internal/lifecycleadvance/recovery_commands.go` (modified)
+- `skills/do-work/tools/do-work-cli/internal/lifecycleadvance/recovery_commands_test.go` (modified)
+- `skills/do-work/tools/do-work-cli/internal/requeststate/state_apply.go` (modified)
+- `skills/do-work/tools/do-work-cli/internal/requeststate/state_apply_test.go` (modified)
+
+**What was done:** Deleted the `pending-heavy-testing` status from the core skill. `DependencySourceReady` now treats a `claimed` request with a nonblank `commit:` as landed source; the selector lost `ResumePhase` and `matchingHeavyReviewPhase`; the `heavy-testing` answer mode, its evidence types and every `ANSWER-HEAVY-*` code are gone; the advance queue skip case and the checkpoint `queue_state` count no longer name the value; recovery preserves a claimed request that carries a `## Heavy Verification Plan` section and a `commit:` in HEAD's ancestry as `held for heavy lanes` (`RECOVERY-CLAIM-HELD-FOR-HEAVY-LANES`, `HeldForHeavyLanes: true`) instead of releasing it; the claim transition strips a prior attempt's `commit:`, `heavy_verified_at` and `heavy_verified_revision` (D-01). In `work.md` the hold and drain moved to a new Step 7.7 after review and lessons, the held request stays `claimed` in `do-work/working/`, a green drain runs Steps 8 and 9 in the same turn, and a red drain withdraws `commit:` and the plan section before remediation; clarify Step 2.5 and every other prose reader of the status were deleted. Merge range `4373e1e7..4a12b664` (builder branch, 4 commits, +311/-569). `_dev/tests/contracts/core-checks.sh` was in the captured write set but needed no change: no contract predicate named the status.
+
+## Qualification
+
+**Passed.** The merge range `4373e1e7..4a12b664` contains 22 files, all inside the declared Scope; `advance` reports `qualify` and `scope-drift` satisfied with no undeclared touch and no declared-but-untouched path. Read against the diff, not the summary: `DependencySourceReady` now accepts `claimed` with a nonblank commit and rejects everything else non-terminal; `heldForHeavyLanes` in recovery keys on the `## Heavy Verification Plan` section plus a `git merge-base --is-ancestor` check and preserves the claim with `HeldForHeavyLanes: true` and finding `RECOVERY-CLAIM-HELD-FOR-HEAVY-LANES`; `TransitionClaim` deletes `commit`, `heavy_verified_at`, `heavy_verified_revision`; the queue skip case and the checkpoint `queue_state` string drop the value; the selector, result model and answer command lose the resume and heavy-answer machinery. `work.md` gains Step 7.7 between lessons and finalization with the hold keeping the request `claimed` and the drain's green/red/skipped dispositions; clarify Step 2.5 is gone; the remaining action files, the reference schema, the dependency-source-ready set and exit-summary item 8 are consistent with the new rule. Every Detailed Requirement traces to a hunk. No debug artifacts, no `do-work/` path in the range. The builder's sweep grep printed nothing across `skills/do-work` and `_dev`.
+
+Two static observations, both expected: the `## Heavy Verification Result` section now has no Go writer (the drain prose writes it, plan finding F5), and the board under `skills/do-work-board` still names the status (REQ-571's scope).
+
+## Decisions
+
+- **D-01 — claim strips a prior attempt's `commit:` and heavy evidence.** Plan finding F3, accepted before dispatch. Under the new readiness rule a re-claimed request that kept a stale `commit:` would make its dependents source-ready at claim time against withdrawn work; two such records (REQ-506, REQ-507) were in the queue. Value: readiness always follows a commit made by the current attempt. Risk: none identified; the fields are rewritten at the next hold. DECIDE & STATE.
+- **D-08 — merged past another session's uncommitted edit.** `git merge` refused because another session had a one-line uncommitted edit to `skills/do-work/tools/do-work-cli/prime-do-work-cli.md`, a file this REQ also changes. Held that single file in a stash for the seconds the merge took, then restored it; the working-tree diff of that file afterwards is the same one-line change. No other foreign path was touched. Recorded because the handoff rule says to leave a user's uncommitted bytes where they are; this was the least destructive way to let the canonical sequence proceed and it left the bytes in place. DECIDE & STATE.
+- **D-09 — repository gate red twice for causes outside this range.** Run 1 exited 1 only on the per-file 30s budget (three files at 31–37s) while another session's builder and gate ran on the same machine; every test passed. Run 2 exited 1 on `TestInventoryMatchesRetainedSecretOriginAndAmbiguityMatrix` with `do-work-cli.sh: line 52: and: command not found`: another session's half-written uncommitted edit to the launcher script in the shared main tree; `go test ./internal/corehelpers` alone passed in 25s right after. Neither cause is in `4373e1e7..4a12b664`, and HEAD itself is not red, so the repository-gate deferral lifecycle (which mints a repair for a red HEAD) does not apply. Resolution: wait for the concurrent gate to finish and the launcher to be syntactically whole, then run the gate again and record only a green obtained on this tree. If the launcher edit stays broken, that is another session's obstacle to name, not this REQ's. DECIDE & STATE.
+
+## Testing
+
+**Tests run:** `go test -count=1 ./internal/schemanormalization ./internal/dependencygraph ./internal/nextselection ./internal/publication ./internal/lifecycleadvance ./internal/requeststate` from the CLI module (focused probe, 26s wall; slowest package publication 24.7s); builder's full module `go test -count=1 ./...`, `gofmt -l .`, `go vet ./...` (85s combined), `bash _dev/tests/contract-regressions.sh` (24s), `bash _dev/tests/shipped-package-reference-contract.sh` (1s); `advance` test-gate: focused probe exit 0, green-gate satisfied.
+**Result:** ✓ All passing (728 CLI tests, 381 board tests under the gate)
+
+**Repository gate retry:** the direct `bash _dev/tests/maintainer-verify.sh` on the shared main tree exited 1 twice for causes outside this range (run 1: per-file 30s budget under concurrent load, every test passed; run 2: another session's half-written uncommitted edit to `tools/do-work-cli.sh` broke one corehelpers test, which passed alone in 25s). Recorded as D-09. The gate then ran on a clean detached checkout of `4a12b664` once the machine was quiet and exited 0 in 106s (CLI 64s, slowest file 28.44s; board 19s). Only that green run was recorded through `advance`.
+
+**Red-green validation:** (traces to `## Red-Green Proof`; all failures captured at builder commit bff3b803 before any production edit)
+- `TestDependencySourceReadyAcceptsClaimedWithCommitOnly` (schemanormalization): ✗ "a claimed request holding its landed implementation commit must be source-ready" → ✓
+- `TestClaimedDependencyWithCommitIsSourceReady` (dependencygraph): ✗ dependent kept `UnmetDependencies: [REQ-563]`, `IsReady: false` → ✓
+- `TestHeldClaimedSourceAllowsDependentSelection` (nextselection): ✗ `selected = [], want dependent REQ-564` with `DEPENDENCIES-UNMET` → ✓ (the Red-Green Proof's first GREEN clause)
+- `TestAnswerRefusesHeavyTestingMode` (publication): ✗ refusal was `ANSWER-HEAVY-STATUS` → ✓ `ANSWER-MODE-INVALID` (second GREEN clause)
+- `TestRecoverHoldsAClaimedRequestWithAHeavyVerificationPlanForTheDrain` (lifecycleadvance): ✗ compile failure, `HeldForHeavyLanes` undefined → ✓ held record preserved with `RECOVERY-CLAIM-HELD-FOR-HEAVY-LANES`; non-ancestor commit recovers as before (third GREEN clause)
+- `TestClaimStripsPriorAttemptCommitAndHeavyEvidence` (requeststate): ✗ claim retained `commit:`, `heavy_verified_at:`, `heavy_verified_revision:` → ✓ (D-01)
+- The fourth GREEN clause (no retired token in the core skill) is proven by the sweep grep printing nothing, run by the builder, the reviewer and the orchestrator.
+
+**New tests added:**
+- the six tests above, plus the `carriesRecoveryFinding` helper in `recovery_commands_test.go`
+
+**Existing tests updated (cross-REQ impact):**
+- `TestPendingHeavyDependencyIsSourceReadyUntilItReturnsToPending`, `TestPendingHeavyDependencyRequiresImplementationCommit` (dependencygraph, from REQ-531 era): deleted; the retired status was their subject, fail-closed cases moved into the replacement test
+- `TestPendingHeavyTestingIsCountedAndNeverSelected`, `TestMatchingHeavyEvidenceResumesAtReviewAndStaleEvidenceDoesNot`, `TestPendingHeavyTestingSourceAllowsDependentSelection` (nextselection): deleted with the count, the resume phase and the status
+- `TestHeavyTestingAnswerCompletesOnGreenAndRequeuesOnFailure`, `TestHeavyTestingAnswerRejectsNegativeWallSeconds`, `TestHeavyTestingAnswerRefusesConfirmedWithSkippedLane`, `TestHeavyTestingAnswerRejectsMismatchedEvidence` (publication): deleted with the answer mode
+- `TestTerminalPredicatesKeepFailureAndCancellationDistinct` (schemanormalization): two assertions on the retired disjunct removed; terminal and stopped assertions kept
+- `TestNormalizeFieldAppliesAliasesDefaultsAndExactWarnings` (schemanormalization): expected enum sentence shortened
+
+**Heavy verification plan:**
+- Range: 4373e1e770a20d708934bd2bf741a41062ac2df2..4a12b66432dfb582b1d9113d839021815ceacd73
+- do-work-cli-integrations: `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane do-work-cli-integrations` — CLI package files changed under `skills/do-work/tools/do-work-cli`
+- staged-skills: `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane staged-skills` — shipped action files and the CLI prime changed under `skills`
+- updater: `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane updater` — shipped CLI subtree changed
+- installer: `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane installer` — shipped CLI subtree changed
+
+*Verified by work action*
+
+## Review
+
+**Overall: 94%** | 2026-09-04T23:59:01Z
+
+| Dimension | Score |
+|-----------|-------|
+| Requirements | 96% |
+| Code Quality | 90% |
+| Test Adequacy | 92% |
+| Scope | 98% |
+| Risk | Low |
+| Acceptance | Pass |
+
+**Important findings (each with its recorded impact token — this is the durable audit record the judgment mandates):**
+- F1 — `actions/work.md:471` (Step 10) never names the Step 7.7 drain, and `actions/work-reference.md:663` gates exit-summary section 8 on "after the heavy-lane drain ran", so a run that holds a request and ends without draining reports success and names nothing; the next run's `recover` picks it up, so nothing is lost — impact-user-visible → report only
+- F2 — the drain's stated re-entry (`actions/work.md:436`, `RECOVERY-CLAIM-HELD-FOR-HEAVY-LANES`) never fires on an ordinary `do-work run`, because Step 1 uses plain `recover` and the authority check at `recovery_commands.go:90` precedes the held check at `:104`; the takeover argv reaches it on the second call, and `actions/work-reference.md:357` still describes takeover as preserving only a set-aside claim — impact-user-visible → report only
+
+**Minor findings:**
+- F3 — `requestmodel/request_model.go:57` and `:315` still project `heavy_verified_at` / `heavy_verified_revision` into the typed record with no remaining Go reader after `matchingHeavyReviewPhase` was deleted — impact-negligible → report only
+- F4 — `actions/work.md:428` repeats the lane-plan recording that `actions/work.md:341` now assigns to the Testing section, a carry-over from when the hold followed testing directly — impact-negligible → report only
+- F5 (Nit) — the `ParsedDocument == nil` guard at `recovery_commands.go:180` is unreachable; keeping it is the right call and the builder recorded it as D-06 — impact-negligible → report only
+
+**Acceptance:** Pass — six touched packages green with `go test -count=1`, `go vet ./...` exit 0, the retired-token sweep prints nothing, and the `finalize` phase for a held record was confirmed by reading `classifyWorkingAdvance` and `advanceSections` rather than by trusting the hand run.
+**Suggested testing:** 4 items
+**Follow-ups created:** None (5 findings report only)
+
+*Reviewed by review-work action*
+
+## Lessons Learned
+
+**What worked:** RED tests written and run before any production edit gave one exact failure message per acceptance clause, so the merge review could trace each clause to a test instead of to prose. Splitting the Go work into compile-safe groups let the builder build and vet after every group and kept a 22-file deletion boring.
+**What didn't:** The plan asserted two test helpers (`runNextSelectionGit`, `runGitFixtureOutput`) had other callers; on disk every caller was inside a test the REQ deletes. Plans that say "keep X, it is used N times" should name the callers. The repository gate on the shared main tree went red twice for reasons outside the range (load and another session's half-written launcher edit); a clean detached checkout of the merge commit was the only way to measure this REQ alone.
+**Worth knowing:** `## Heavy Verification Plan` has no Go writer or parser; `advance` ignores unknown headings, so a held record with Review, Lessons Learned and Orientation classifies straight to `finalize`. A second copy of that heading refuses the request, which is why the red drain deletes it before re-holding. In `recover`, the held branch sits after the authority check: a plain `recover` still returns `RECOVERY-TAKEOVER-AVAILABLE` for a held claim, and the held finding fires on the authorized second call (review F2). `commit:` is now written only at the Step 7.7 hold and at finalization, so `claimed` plus commit means reviewed and landed.
+
+## Orientation
+
+[MAP CHANGED] The status vocabulary shrank: `pending-heavy-testing` is gone and the heavy-test hold is a phase of a `claimed` request, marked by its `## Heavy Verification Plan` section and `commit:`. Review and lessons now run before the hold, the drain at queue exhaustion finalizes green requests in the same turn, and `recover` preserves a held claim instead of releasing it. The change lives in the lifecycle-advance and request-state subsystems of the CLI (readiness, recovery, claim) and in the work action's new Step 7.7; the queue never again round-trips a verified request through `pending`. Why it matters: dependents of a verified request are no longer serialized behind one review each, and a status word can no longer hide evidence the record already carries.
+
+## Heavy Verification Plan
+
+**Base revision:** `4373e1e770a20d708934bd2bf741a41062ac2df2`
+
+**Target revision:** `4a12b66432dfb582b1d9113d839021815ceacd73`
+
+- **do-work-cli-integrations** — argv: `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane do-work-cli-integrations`; selected because Go files changed under `skills/do-work/tools/do-work-cli`.
+- **staged-skills** — argv: `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane staged-skills`; selected because shipped action files and the CLI prime changed under `skills`.
+- **updater** — argv: `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane updater`; selected because the shipped CLI subtree changed.
+- **installer** — argv: `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane installer`; selected because the shipped CLI subtree changed.
+
+The request stays `claimed` in `do-work/working/` while held (work.md Step 7.7); this single-request run drains immediately because no claimable pending request remains.
+
+## Discovered Tasks
+
+- Heavy lanes `staged-skills`, `updater` and `installer` exit 1 after 0s in any fresh checkout with `FAIL: test duration log has an invalid header: do-work/test-durations.tsv`; `do-work-cli-integrations` in the same run is unaffected. REQ-505's drain hit the identical failure and worked around it the same way (pre-create the header with `_dev/tests/test-duration-log.sh`'s bytes, rerun the three lanes). The untracked log is created by the helper's `ln` and the header check that follows reads a different first line when several lanes initialize it in one run. Second occurrence of the same defect; the helper's initialization is the root cause to fix. impact-user-visible → report only.
+- `_dev/tests/session-start-hook-behavior.sh` exceeds the 30s per-file budget under concurrent load (32s in the builder's first `contract-regressions.sh` run; 17–29s alone); the repository gate's per-file budget also tripped on `defer_gate_test.go`, `finalization_recovery_test.go` and `inventory_test.go` while other sessions ran tests on the same machine. Load-dependent timing, not a code failure; noted because it cost three gate runs in this REQ. impact-negligible → report only.
+- `skills/do-work-board/**` still reads the retired status in nine files; that is REQ-571's declared scope, not a new finding. → report only.
+
+## Heavy Verification Result
+
+Target revision: `4a12b66432dfb582b1d9113d839021815ceacd73`
+Execution revision: `8269a0bbeba471bcd5f89a49449ea2f0b35e96fd` (HEAD at the drain; the first lane ran at its predecessor `1c86e21a1f140149e90d85c53a2f738300235134`, also a descendant of the target)
+
+- do-work-cli-integrations: exit 0, 118s — `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane do-work-cli-integrations` (executed at 1c86e21a)
+- staged-skills: exit 0, 37s — `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane staged-skills` (executed at 8269a0bb)
+- updater: exit 0, 64s — `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane updater` (executed at 8269a0bb)
+- installer: exit 0, 28s — `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane installer` (executed at 8269a0bb)
+
+All lanes ran from a clean detached checkout of HEAD because the shared main tree carried other sessions' uncommitted edits (the runner refuses a dirty tracked tree). The first attempt saw staged-skills, updater and installer exit 1 after 0s with an invalid test-duration-log header in the fresh checkout; the log was initialized with the helper's header bytes and only those three lanes were rerun with `--no-evidence-reuse` (see Discovered Tasks). No lane was skipped.

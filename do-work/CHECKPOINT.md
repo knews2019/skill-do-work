@@ -19,7 +19,6 @@ session_depth: light
 ## In Progress (interrupted)
 
 
-- REQ-570: [impact-rule-change] Delete the pending-heavy-testing status; held requests stay claimed — claimed 2026-09-04T23:00:17Z — writer: t2s-Virtual-Machine.local:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2
 
 - REQ-577: Repository gate repair: remove the launcher fixture single-iteration loop — claimed 2026-09-04T23:58:14Z — writer: t2s-Virtual-Machine.local:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2
 

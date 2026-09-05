@@ -2,6 +2,14 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.287.0 — Hold Reviewed Requests as Claimed Until Heavy Lanes Pass (2026-09-05)
+
+The `pending-heavy-testing` status is gone. A request that passed review and has heavy lanes left to run stays `claimed` with its landed commit, its dependents build against that commit right away, and a green drain finalizes it in the same turn instead of sending it back through `pending` for a second claim and review.
+
+- `DependencySourceReady` treats a `claimed` request with a nonblank `commit:` as landed source; a re-claim strips a prior attempt's `commit:` and heavy evidence so the rule never fires against withdrawn work.
+- `recover` preserves a claimed request that carries `## Heavy Verification Plan` and a commit in HEAD's ancestry as `RECOVERY-CLAIM-HELD-FOR-HEAVY-LANES` instead of releasing it.
+- The `heavy-testing` answer mode, its `ANSWER-HEAVY-*` refusals, the selector's `resume_phase`, and clarify Step 2.5 are deleted; work.md Step 7.7 owns the hold and the drain after review and lessons.
+
 ## 0.286.0 — Run the CLI Through the Go Build Cache (2026-09-05)
 
 The launcher no longer keeps its own binary or decides staleness by file timestamps. It declares a `tool` directive and resolves the executable with `go tool -n`, so the Go toolchain rebuilds only when an input's content changes and reuses the cached command otherwise.
