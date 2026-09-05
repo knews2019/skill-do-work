@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Verify findings mockup — M2 · aligned columns</title>
+<link rel="stylesheet" href="shared.css">
+<style>
+/* M2: the whole list is one grid: subject | chip | text. The subject is a
+   cell of its group's first row, not a heading above it, so every chip and
+   every detail start on the same two x-positions. A new group gets a hairline. */
+.board-findings-rows { display: grid; grid-template-columns: max-content max-content minmax(0, 1fr); column-gap: 12px; row-gap: 4px; }
+.board-findings-row { display: contents; font-size: 0.8rem; }
+.board-findings-row > * { line-height: 1.45; }
+.board-findings-row-first > * { border-top: 1px solid var(--line-soft); padding-top: 6px; margin-top: 2px; }
+.board-findings-row-muted > * { color: var(--ink-soft); }
+.board-findings-subject { margin: 0; font-family: var(--font-mono); font-size: 0.8rem; font-weight: 600; letter-spacing: 0; color: var(--ink-base); }
+.board-findings-chip { align-self: baseline; justify-self: start; font-size: 0.66rem; padding: 1px 7px; line-height: 1.6; }
+.board-findings-text { display: block; }
+.board-findings-remedy { display: block; margin: 1px 0 0; }
+</style>
+<script>var t=new URLSearchParams(location.search).get("theme");if(t==="light"||t==="dark")document.documentElement.setAttribute("data-theme",t);</script>
+</head>
+<body>
+<main class="board-main">
+  <section class="board-anomalies board-findings" id="board-findings" aria-label="Verify findings">
+    <div class="board-anomalies-head">
+      <strong class="board-anomalies-title">Verify findings</strong>
+      <span class="board-anomalies-count" id="board-findings-count">3 findings · 1 probe not checked</span>
+      <span class="board-anomalies-hint">queue and process problems <code>queue-kanban verify</code> detects — each names what to do about it</span>
+    </div>
+    <div class="board-findings-rows" id="board-findings-rows">
+<div class="board-findings-row"><span class="board-findings-subject">worktree-agent-REQ-573-activity-drawer</span><span class="board-findings-chip">unmerged-worktree-leftover</span><span class="board-findings-text"><span class="board-findings-detail">exists at .git/work-run-20260905-1201/worktree-agent-REQ-573-activity-drawer</span><span class="board-findings-remedy">this is either a builder still in flight or work that outlived a dead run — verify cannot tell those apart. Leave it alone during a run; otherwise cleanup Pass 5 asks before discarding it, because the branch may hold the only copy</span></span></div>
+<div class="board-findings-row board-findings-row-first"><span class="board-findings-subject">worktree-agent-REQ-582-arrow-citations</span><span class="board-findings-chip">worktree-present-run-in-flight</span><span class="board-findings-text"><span class="board-findings-detail">exists at .git/work-run-20260905-1201/worktree-agent-REQ-582-arrow-citations</span><span class="board-findings-remedy">this worktree is present, not leftover: REQ-582 is still in do-work/working/, so the run that owns it has not reached review, remediation, or its final path. Leave it in place — worktree cleanup happens after the REQ is archived, not before</span></span></div>
+<div class="board-findings-row board-findings-row-muted board-findings-row-first"><span class="board-findings-subject">REQ-581</span><span class="board-findings-chip">stranded-finished-request</span><span class="board-findings-text"><span class="board-findings-detail">has terminal status &quot;completed&quot; but still sits in do-work/working/ <span class="board-findings-fixable">cleanup can fix</span></span><span class="board-findings-remedy">cleanup Pass 0 moves it into do-work/archive/</span></span></div>
+<div class="board-findings-row board-findings-row-muted board-findings-row-first"><span class="board-findings-subject"></span><span class="board-findings-chip">not checked</span><span class="board-findings-text"><span class="board-findings-detail">committed-queue-state probe for worktree-agent-REQ-573-activity-drawer: `git diff main...worktree-agent-REQ-573-activity-drawer -- do-work/` failed (no such branch, or unrelated histories)</span></span></div>
+    </div>
+  </section>
+  <div class="board-columns">
+    <div class="board-column" style="--column-accent: var(--accent-pending)"><div class="column-header"><h2 class="column-title">Pending</h2><span class="column-count">9</span></div></div>
+    <div class="board-column" style="--column-accent: var(--accent-claimed)"><div class="column-header"><h2 class="column-title">Claimed</h2><span class="column-count">1</span></div></div>
+    <div class="board-column" style="--column-accent: var(--accent-blocked)"><div class="column-header"><h2 class="column-title">Needs input · blocked</h2><span class="column-count">0</span></div></div>
+    <div class="board-column" style="--column-accent: var(--accent-done)"><div class="column-header"><h2 class="column-title">Recently done</h2><span class="column-count">41</span></div></div>
+  </div>
+</main>
+<span class="mockup-tag" aria-hidden="true">M2 · aligned columns</span>
+</body>
+</html>

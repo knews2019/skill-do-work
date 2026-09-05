@@ -1,0 +1,234 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Verify Findings — One Warning Line, Three Mockups</title>
+<style>
+:root{
+  --bg:#faf8f4; --surface:#ffffff; --surface-2:#f4f0e8; --ink:#1f2d38; --muted:#66737d;
+  --line:#e3dccd; --accent:#2563eb; --accent-ink:#1d4ed8; --amber:#8a6a3b; --warn:#b45309; --good:#2f7a4f;
+  --display:"Iowan Old Style",Palatino,"Palatino Linotype",Georgia,serif;
+  --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme:dark){
+  :root{--bg:#101417; --surface:#171d21; --surface-2:#1d242a; --ink:#e9e6e0; --muted:#9ba6ae;
+        --line:#2c343a; --accent:#7ea6ff; --accent-ink:#9dbaff; --amber:#c9a273; --warn:#e0a34a; --good:#7fc79a;}
+}
+/* Render-judge switch only: ?theme=dark forces the dark palette so both renders can be checked from one browser. */
+html[data-theme="dark"]{--bg:#101417; --surface:#171d21; --surface-2:#1d242a; --ink:#e9e6e0; --muted:#9ba6ae;
+        --line:#2c343a; --accent:#7ea6ff; --accent-ink:#9dbaff; --amber:#c9a273; --warn:#e0a34a; --good:#7fc79a; color-scheme:dark}
+html[data-theme="light"]{--bg:#faf8f4; --surface:#ffffff; --surface-2:#f4f0e8; --ink:#1f2d38; --muted:#66737d;
+  --line:#e3dccd; --accent:#2563eb; --accent-ink:#1d4ed8; --amber:#8a6a3b; --warn:#b45309; --good:#2f7a4f; color-scheme:light}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);
+  font:16px/1.62 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;-webkit-font-smoothing:antialiased}
+.page{width:100%;padding:0 clamp(20px,2.6vw,60px) 96px}
+.measure{max-width:74ch}
+.row{display:flex;flex-wrap:wrap;gap:26px}
+h1,h2,h3{font-family:var(--display);font-weight:600;letter-spacing:-.01em;margin:0}
+h1{font-size:clamp(30px,3.4vw,44px);line-height:1.1}
+h2{font-size:clamp(23px,2vw,30px);margin-bottom:10px}
+h3{font-size:19px;margin-bottom:6px}
+p{margin:0 0 14px}
+a{color:var(--accent-ink)}
+code{font:13.5px/1.5 var(--mono);background:var(--surface-2);border:1px solid var(--line);border-radius:4px;padding:1px 5px}
+.kicker{font:600 11.5px/1.4 var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin:0 0 10px}
+header.masthead{border-bottom:1px solid var(--line);padding:44px 0 26px;margin-bottom:40px}
+.dateline{font:12.5px/1.6 var(--mono);color:var(--muted);margin-top:14px}
+section{padding:38px 0;border-bottom:1px solid var(--line)}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:20px 22px}
+.verdict{background:var(--surface);border:1px solid var(--line);border-left:3px solid var(--accent);border-radius:8px;padding:24px 26px}
+.verdict p:last-child{margin-bottom:0}
+.tiles{display:flex;flex-wrap:wrap;gap:14px;margin-top:24px}
+.tile{flex:1 1 168px;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px 16px}
+.tile .lab{font:11.5px/1.4 var(--mono);color:var(--muted);text-transform:uppercase;letter-spacing:.09em}
+.tile .val{font:600 38px/1.15 var(--display);margin-top:6px}
+.tile .sub{font:12px/1.45 var(--mono);color:var(--muted);margin-top:4px}
+figure{margin:0}
+.shot{position:relative;max-width:2000px;margin:0 auto;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:var(--surface)}
+.shot img{display:block;width:100%;height:auto}
+.shot svg{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+figcaption{font:14.5px/1.62 inherit;color:var(--muted);margin-top:12px;max-width:110ch}
+.badge{display:inline-block;font:600 10.5px/1 var(--mono);letter-spacing:.09em;text-transform:uppercase;
+  border:1px solid var(--line);border-radius:99px;padding:5px 9px;color:var(--muted);background:var(--surface-2)}
+.badge.live{color:var(--good);border-color:var(--good)}
+.badge.mock{color:var(--warn);border-color:var(--warn)}
+.callout{fill:var(--warn);stroke:#fff;stroke-width:3}
+.callout-num{font:700 30px var(--mono);fill:#fff}
+.callout-box{fill:none;stroke:var(--warn);stroke-width:5;stroke-dasharray:14 8}
+table{width:100%;border-collapse:collapse;font-size:14.5px}
+th,td{text-align:left;padding:9px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font:600 11.5px/1.4 var(--mono);text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+td.num{font-variant-numeric:tabular-nums;font-family:var(--mono);font-size:13px;white-space:nowrap}
+.tablewrap{overflow-x:auto;background:var(--surface);border:1px solid var(--line);border-radius:10px}
+pre{background:var(--surface-2);border:1px solid var(--line);border-radius:8px;padding:16px 18px;margin:0 0 14px;
+  font:13px/1.62 var(--mono);white-space:pre-wrap;overflow-wrap:anywhere}
+.mock{flex:1 1 calc(50% - 13px);min-width:min(100%,560px);background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:18px 20px 20px}
+.mock.reco{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
+.mock .code{font:600 12px/1 var(--mono);color:var(--accent-ink);letter-spacing:.08em}
+.mock h3{margin:8px 0 8px;display:flex;gap:10px;align-items:baseline;flex-wrap:wrap}
+.mock p{font-size:15px;margin-bottom:10px}
+.mock .frame{border:1px solid var(--line);border-radius:8px;overflow:hidden;background:#0c0e12;margin:10px 0 12px}
+.mock iframe{display:block;width:100%;height:560px;border:0}
+.mock .links{font:12.5px/1.7 var(--mono);color:var(--muted);margin:0}
+.mock pre{margin:10px 0 0;font-size:12.5px}
+ul{margin:0 0 14px;padding-left:20px}
+li{margin-bottom:7px}
+.lede{font-size:18px;line-height:1.6}
+.foot{padding:34px 0 0;font:12.5px/1.7 var(--mono);color:var(--muted)}
+.split{flex:1 1 460px;min-width:0}
+.split-wide{flex:2 1 720px;min-width:0}
+</style>
+<script>
+  // Render-judge switch only: ?theme=dark|light forces a palette for the screenshot pass.
+  var forced = new URLSearchParams(location.search).get("theme");
+  if (forced === "dark" || forced === "light") document.documentElement.setAttribute("data-theme", forced);
+</script>
+</head>
+<body>
+<div class="page">
+
+<header class="masthead">
+  <p class="kicker">Proposal · Kanban board · Verify findings strip · REQ-588</p>
+  <h1>One warning line per finding</h1>
+  <p class="dateline">2026-09-05 · one cause, three mockups, one captured request (REQ-588, waiting for your pick) · written before any implementation</p>
+  <p class="dateline">This is a design proposal, not a completed-work report. Nothing here has shipped. The mockups are hand-built pages that copy the board's stylesheet and the strip's markup; the three findings and one skipped probe in them are the two findings from your screenshot plus one "cleanup can fix" finding and one skipped probe, added so every row weight the renderer has is visible.</p>
+</header>
+
+<section>
+  <p class="kicker">Verdict</p>
+  <div class="verdict measure">
+    <p>The strip is not broken by a bug. It looks broken because REQ-579 (verify findings as compact rows) put the detail sentence, an arrow and the remedy sentence into one inline span, so a row is a paragraph that wraps under the chip, and the subject heading, the chip and the text each got their own size. Three defects, one row rule.</p>
+    <p>All three mockups fix the same three things: the remedy gets its own line, the chip and the text become a two-column grid so wrapped text stays in its column, and subject, chip and text share one scale (subject in the board's mono face, since it is an identifier). They differ only in where the subject goes and whether the remedy is always shown. <strong>M1 is the recommendation:</strong> it is a CSS change plus dropping the arrow, and it keeps the list REQ-579 approved. M2 is the most scannable on a wide board but spends a column on the subject, which worktree names make wide. M3 is the smallest strip, at the cost of a click to read what to do.</p>
+    <p>One more change rides with all three (D4 in the request): today the producer's detail starts by repeating the subject ("worktree-agent-REQ-573-activity-drawer exists — .git/…") under a heading that already says the name. The mockups show the detail without that repeat.</p>
+  </div>
+</section>
+
+<section>
+  <p class="kicker">The strip as shipped</p>
+  <div class="row">
+    <div class="split-wide">
+      <figure>
+        <a href="screenshots/live-board-2026-09-05-1450utc.png" target="_blank" rel="noopener">
+        <div class="shot">
+          <img src="screenshots/live-board-2026-09-05-1450utc.png" alt="The live board at 14:50 UTC: the Verify Findings strip with one finding whose detail, arrow and remedy run together as one two-line grey paragraph; REQ-588 sits in the Needs Input column as pending-answers." width="1600" height="600">
+          <svg viewBox="0 0 1600 600" aria-hidden="true">
+            <rect class="callout-box" x="40" y="160" width="1530" height="100" rx="10"/>
+            <circle class="callout" cx="1520" cy="140" r="20"/><text class="callout-num" x="1520" y="149" text-anchor="middle" style="font-size:24px">1</text>
+            <rect class="callout-box" x="820" y="345" width="360" height="160" rx="10"/>
+            <circle class="callout" cx="1200" cy="345" r="20"/><text class="callout-num" x="1200" y="354" text-anchor="middle" style="font-size:24px">2</text>
+          </svg>
+        </div>
+        </a>
+        <figcaption><span class="badge live">Live capture</span> The board at 127.0.0.1:8090, light theme, 14:50 UTC on 2026-09-05, headless Chrome at 1600 px. Callout 1 is the row: chip, then detail, arrow and remedy as one wrapping paragraph. Callout 2 is REQ-588, the captured request, waiting in Needs Input for the answer to "which layout". Your 14:25 screenshot had a second finding (the REQ-582 worktree); it merged since, so the strip is one row shorter now. The M0 mockup below rebuilds the two-finding state.</figcaption>
+      </figure>
+    </div>
+    <div class="split">
+      <div class="card">
+        <p class="kicker">Cause, in the shipped files</p>
+        <p>In <code>web/board-cards.js</code>, <code>makeFindingRow</code> appends detail, the fixable tag and <code>"→ " + remedy</code> as inline siblings of one <code>.board-findings-text</code> span. In <code>web/board.css</code> (board 0.236.20):</p>
+<pre>.board-findings-row {
+  display: flex; align-items: baseline; gap: 8px;
+  font-size: 0.82rem; line-height: 1.45;
+}
+.board-findings-subject { font-size: 0.72rem; font-weight: 600; }
+.board-findings-chip    { font-size: 0.72rem; text-transform: uppercase; }
+.board-findings-remedy  { margin-left: 6px; color: var(--ink-soft); }</pre>
+        <p style="margin-bottom:0">Flex lets the text span wrap as one block beside the chip, so a long remedy makes a paragraph; the remedy differs from the detail only by colour; and the heading is a fourth size next to the header's 0.82rem title, the 0.72rem chip and the 0.82rem row.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <p class="kicker">Mockups · open each one</p>
+  <p class="measure lede">Each frame is a live page in the board's own stylesheet; open it full-size to see it at board width, or add <code>?theme=dark</code>. Only the CSS block printed under each frame differs from the shipped stylesheet, plus the markup note. The top-right tag is a mockup label, not part of the proposal.</p>
+  <div class="row">
+
+    <div class="mock">
+      <span class="code">M0 · CURRENT</span>
+      <h3>One wrapping paragraph per finding <span class="badge mock">Mockup of today</span></h3>
+      <p>The shipped rows with the two findings from your screenshot, plus a fixable finding and a skipped probe. The remedy is the grey tail of the detail; the second line starts under the chip's text column with one word on it.</p>
+      <div class="frame"><iframe src="mockups/m0-current.html" title="M0: current layout" loading="lazy"></iframe></div>
+      <p class="links"><a href="mockups/m0-current.html" target="_blank" rel="noopener">open full-size</a> · <a href="screenshots/mockup-m0-current-light.png" target="_blank" rel="noopener">light capture</a> · <a href="screenshots/mockup-m0-current-dark.png" target="_blank" rel="noopener">dark capture</a></p>
+<pre>/* no change: shipped rules as printed above */</pre>
+    </div>
+
+    <div class="mock reco">
+      <span class="code">M1 · REMEDY UNDER DETAIL · recommended</span>
+      <h3>Chip, one detail line, one remedy line</h3>
+      <p>The subject heading and row order stay as REQ-579 approved. The row becomes a two-column grid; the remedy is a block under the detail with no arrow. Smallest change: CSS only, plus deleting the arrow string in the renderer.</p>
+      <div class="frame"><iframe src="mockups/m1-remedy-under-detail.html" title="M1: remedy under detail" loading="lazy"></iframe></div>
+      <p class="links"><a href="mockups/m1-remedy-under-detail.html" target="_blank" rel="noopener">open full-size</a> · <a href="screenshots/mockup-m1-remedy-under-detail-light.png" target="_blank" rel="noopener">light capture</a> · <a href="screenshots/mockup-m1-remedy-under-detail-dark.png" target="_blank" rel="noopener">dark capture</a></p>
+<pre>.board-findings-row { display: grid; grid-template-columns: max-content minmax(0, 1fr);
+  column-gap: 10px; align-items: baseline; font-size: 0.8rem; }
+.board-findings-text { display: block; }
+.board-findings-remedy { display: block; margin: 1px 0 0; }
+.board-findings-subject { font-family: var(--font-mono); font-size: 0.8rem;
+  font-weight: 600; letter-spacing: 0; color: var(--ink-base); }
+.board-findings-chip { font-size: 0.66rem; padding: 1px 7px; line-height: 1.6; }
+/* board-cards.js: remedy text without the "→ " prefix */</pre>
+    </div>
+
+    <div class="mock">
+      <span class="code">M2 · ALIGNED COLUMNS</span>
+      <h3>Subject as a row label, chips in one column</h3>
+      <p>The whole list is one grid: subject, chip, text. The subject is a cell of its group's first row, so every chip and every detail start at the same two x-positions and a hairline separates groups. Most scannable; costs a small renderer change (subject moves into the row) and a column as wide as the longest subject.</p>
+      <div class="frame"><iframe src="mockups/m2-aligned-columns.html" title="M2: aligned columns" loading="lazy"></iframe></div>
+      <p class="links"><a href="mockups/m2-aligned-columns.html" target="_blank" rel="noopener">open full-size</a> · <a href="screenshots/mockup-m2-aligned-columns-light.png" target="_blank" rel="noopener">light capture</a> · <a href="screenshots/mockup-m2-aligned-columns-dark.png" target="_blank" rel="noopener">dark capture</a></p>
+<pre>.board-findings-rows { display: grid;
+  grid-template-columns: max-content max-content minmax(0, 1fr);
+  column-gap: 12px; row-gap: 4px; }
+.board-findings-row { display: contents; font-size: 0.8rem; }
+.board-findings-row-first > * { border-top: 1px solid var(--line-soft); padding-top: 6px; }
+.board-findings-subject { margin: 0; font-family: var(--font-mono); font-size: 0.8rem;
+  font-weight: 600; color: var(--ink-base); }
+.board-findings-chip { justify-self: start; font-size: 0.66rem; }
+.board-findings-text, .board-findings-remedy { display: block; }
+/* board-cards.js: subject rendered as the first cell of the group's first row,
+   an empty cell on the rows after it; no heading element */</pre>
+    </div>
+
+    <div class="mock">
+      <span class="code">M3 · REMEDY ON DEMAND</span>
+      <h3>One line per finding, "what to do" opens the remedy</h3>
+      <p>Same grid and scale as M1, but the remedy sits in a closed toggle after the detail. The strip is as tall as the list of findings; the first row is shown open so both states are visible. Costs a click to read the remedy, and a small renderer change.</p>
+      <div class="frame"><iframe src="mockups/m3-remedy-on-demand.html" title="M3: remedy on demand" loading="lazy"></iframe></div>
+      <p class="links"><a href="mockups/m3-remedy-on-demand.html" target="_blank" rel="noopener">open full-size</a> · <a href="screenshots/mockup-m3-remedy-on-demand-light.png" target="_blank" rel="noopener">light capture</a> · <a href="screenshots/mockup-m3-remedy-on-demand-dark.png" target="_blank" rel="noopener">dark capture</a></p>
+<pre>/* M1 rules, plus: */
+.board-findings-more { display: inline; }
+.board-findings-more summary { display: inline; cursor: pointer;
+  color: var(--accent-claimed); font-size: 0.76rem; list-style: none; }
+.board-findings-remedy { display: block; margin: 1px 0 0; }
+/* board-cards.js: remedy wrapped in &lt;details&gt;&lt;summary&gt;what to do&lt;/summary&gt;…&lt;/details&gt; */</pre>
+    </div>
+
+  </div>
+</section>
+
+<section>
+  <p class="kicker">What each one costs</p>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Option</th><th>Files</th><th>Renderer change</th><th>Strip height, 3 findings + 1 probe at 1600 px</th><th>Trade</th></tr></thead>
+    <tbody>
+      <tr><td>M1</td><td>board.css, board-cards.js, behavior test</td><td>drop the arrow prefix</td><td class="num">7 text lines + 3 headings</td><td>keeps REQ-579's list exactly; longest strip of the three</td></tr>
+      <tr><td>M2</td><td>board.css, board-cards.js, behavior test</td><td>subject becomes a row cell</td><td class="num">7 text lines, no headings</td><td>best alignment; subject column eats width when names are long</td></tr>
+      <tr><td>M3</td><td>board.css, board-cards.js, behavior test</td><td>remedy inside a details toggle</td><td class="num">4 text lines + 3 headings</td><td>smallest; the remedy is hidden until clicked</td></tr>
+    </tbody>
+  </table></div>
+  <p class="measure" style="margin-top:14px">All three also change <code>verify.go</code> and its test so a subject-bearing finding's detail no longer starts with the subject (D4), and all three keep the board's version, parser lock-step and build outputs per the kanban prime.</p>
+</section>
+
+<section>
+  <p class="kicker">Next step</p>
+  <p class="measure">REQ-588 (this addendum) is captured as pending-answers with one question, which layout ships. Answering it flips the REQ to pending and <code>do-work run REQ-588</code> builds it. Bundle: <code>ai-reports/2026-09-05_1445_REQ-588-verify-findings-row-mockups/</code>.</p>
+</section>
+
+<script>
+  if (forced === "dark" || forced === "light") document.querySelectorAll(".mock iframe").forEach(function (f) { f.src = f.getAttribute("src") + "?theme=" + forced; });
+</script>
+<p class="foot">Mockups and captures made 2026-09-05 14:45 to 14:55 UTC from board 0.236.20 with headless Chrome at 1600 px, light and dark. Report layout render-verified in both themes.</p>
+</div>
+</body>
+</html>
