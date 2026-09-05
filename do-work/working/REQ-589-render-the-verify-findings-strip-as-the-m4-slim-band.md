@@ -1,7 +1,7 @@
 ---
 id: REQ-589
 title: 'Addendum: render the verify findings strip as the M4 slim band, one line closed and one row per finding open'
-status: pending
+status: claimed
 created_at: 2026-09-05T18:19:11Z
 user_request: UR-125
 addendum_to: REQ-588
@@ -17,6 +17,7 @@ write_set:
   - skills/do-work-board/tools/queue-kanban/web/board-cards.js
   - skills/do-work-board/tools/queue-kanban/web/template.html
   - skills/do-work-board/tools/queue-kanban/javascript_behavior_c_test.go
+claimed_at: 2026-09-05T18:20:43Z
 ---
 
 # Addendum: Render the Verify Findings Strip as the M4 Slim Band, One Line Closed and One Row per Finding Open
