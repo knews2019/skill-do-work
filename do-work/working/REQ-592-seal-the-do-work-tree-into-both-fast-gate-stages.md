@@ -28,15 +28,28 @@ write_set: [_dev/tests/fast-stages.json, skills/do-work/tools/do-work-cli/intern
 title: '[impact-critical] Review fix: seal the do-work tree into both fast gate stages'
 claimed_at: 2026-09-05T22:59:38Z
 route: B
+builder_handback_at: 2026-09-05T23:47:39Z
 dispatch_at: 2026-09-05T23:24:40Z
 ---
 
 # Review Fix: Seal the do-work Tree Into Both Fast Gate Stages
 
 ## AI Execution State (P-A-U Loop)
-- [ ] **[PLAN]:** (Agent: Read listed `prime_files` and agent rules. Write brief technical approach here. Do not write code yet.)
-- [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
-- [ ] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
+- [x] **[PLAN]:** Both `prime_files` read, plus the crew rules and the exploration. Approach: declare
+  `do-work` as the queue-kanban stage's coverage and `do-work/archive/UR-003/input.md` as an exact rule
+  on the do-work-cli stage, empty `non_stage_coverage`, and add a `seal_exclusions` list tested before
+  the coverage test. Recorded in `## Exploration` above and in the builder brief.
+- [x] **[APPLY]:** Four files, exactly the declared `write_set`. Nothing outside it was edited; the
+  five paths considered and rejected are listed under **Declared but not touched** in the hand-back.
+- [x] **[UNIFY]:** `git diff --stat` on the merge range reports four files, 146 insertions, 40
+  deletions, identical to the builder branch's own diff against its base. Linters: `gofmt -l .` in the
+  do-work-cli module — no output; `go vet ./...` — clean; `shellcheck` 0.11.0 on
+  `_dev/tests/fast-stage-reuse-behavior.sh` — exit 0. No debug artifacts: the diff adds no `fmt.Print`,
+  no `set -x`, no commented-out block and no temporary path; verified per file —
+  `fast-stages.json` (three coverage edits plus the new list), `fast_stage_evidence.go` (struct field,
+  predicate, decoder validation, two guard replacements, three corrected comments),
+  `fast_stage_evidence_test.go` (fixture manifest, probe-input move, five cases), and
+  `fast-stage-reuse-behavior.sh` (fixture manifest, probe-input move, two cases).
 
 ## What
 
@@ -261,5 +274,126 @@ mutating script runs `git add && git commit`, the commit fails, the tree stays d
 gets `HEAVY-RUN-DIRTY-TREE` where it asserts `HEAVY-RUN-REVISION-CHANGED`. With signing off it
 passes 2/2 here and the whole gate is green. Anyone who sees it red again should check the signing
 config before calling it a flake.
+
+*Checked by work action*
+
+## Implementation Summary
+
+**Files changed:**
+- `_dev/tests/fast-stages.json` (modified)
+- `skills/do-work/tools/do-work-cli/internal/heavyverification/fast_stage_evidence.go` (modified)
+- `skills/do-work/tools/do-work-cli/internal/heavyverification/fast_stage_evidence_test.go` (modified)
+- `_dev/tests/fast-stage-reuse-behavior.sh` (modified)
+
+**What was done:** The fast gate's stage seal stopped inheriting the heavy lane's whole-tree
+`do-work/` exclusion and started declaring what each stage really reads. `do-work` is now the
+queue-kanban stage's coverage, because that stage builds the board from the real tree; and
+`do-work/archive/UR-003/input.md` is an exact coverage rule on the do-work-cli stage, because that
+one file is its only real read there. `non_stage_coverage` is empty — verified by walking the board's
+own prune rules and its file-mention stat, not assumed. A new `seal_exclusions` list, tested **before**
+the coverage test, keeps four churn paths from invalidating a stage that never reads their bytes; the
+gate's own `do-work/test-durations.tsv` is the load-bearing one, because the stage appends to it while
+running and the recorded fingerprint is the pre-run one, so a seal over it could never match again.
+
+The two assertions that pinned the old behaviour were rewritten rather than deleted, and each names
+the failure it now catches. The Go decision table's `queue state changed` case became two cases —
+one proving the stage that reads the tree executes, one proving the stage that does not still reuses
+— so the fix cannot be "seal everything into everything", which would have killed reuse during a
+drain. Two more cases pin the churn exclusions, and a manifest-decoding case pins an unsupported
+exclusion kind, because a typo'd kind would otherwise decode, match nothing, and turn reuse off for
+that stage forever. Every one of those five was shown red by ablation before being accepted.
+
+Merge range `fce57fcc..2d932a47`, four files, 146 insertions, 40 deletions — identical to the builder
+branch's own diff against its base. Builder branch head `1a04355a`, one commit.
+
+## Decisions
+
+D-01 through D-05 are the builder's, authored in
+`do-work/runs/work-2026-09-05-231943/REQ-592-handback.md` → `## Decisions` and transcribed here.
+
+- **D-01 — `seal_exclusions` states a condition, not a list. DECIDE & STATE.** The Go struct doc
+  carries the admission test — a path the gate or the orchestrator writes *while a gate runs*, whose
+  bytes no stage reads — and says the manifest entries are only today's set of paths passing it. That
+  is the answer `_dev/primes/prime-shell-commands.md` § Closed Enumerations Go Stale demands of a new
+  enumeration, and it gives the next person a test to apply instead of a list to copy.
+- **D-02 — `do-work/deliverables` is excluded although it does not exist in this checkout. DECIDE &
+  STATE.** Toolbox actions write reports there while work runs, and `walk.go:192` prunes it from the
+  board walk by name. A coverage rule matches strings and never touches the filesystem, so an entry
+  for an absent directory costs nothing and stops the first report written there from turning reuse
+  off.
+- **D-03 — the two fixtures disagree about ignoring the duration log, on purpose. DECIDE & STATE.**
+  The Go fixture's log is Git-ignored, matching the real file; the shell fixture's is not. Between
+  them both untracked branches of the seal loop are exercised, and the ablation shows both cases fail
+  without the exclusion.
+- **D-04 — one commit, not several. DECIDE & STATE.** The manifest, the implementation and both
+  rewritten assertions have to land together; splitting them would leave a red commit on the branch.
+- **D-05 — a manifest-decoding case for an invalid exclusion kind was added. DECIDE & STATE.** The new
+  validation loop was otherwise untested, and a typo'd kind would decode, silently match nothing, and
+  seal the excluded file — turning reuse off for that stage permanently, with a green gate the whole
+  time.
+
+## Discovered Tasks
+
+- **impact-critical — the heavy lane has the same false-green shape for an uncommitted tracked
+  `do-work/` edit.** Its dirty-tree refusal exempts `do-work/` (`heavy_run.go:221,225`) and its
+  untracked seal skips the tree too (`heavy_evidence.go:481`), while its committed seal only sees HEAD
+  objects. The one tree the refusal skips is the tree the committed seal cannot see. REQ-592's own
+  text asserts the heavy exclusion is safe "because it refuses a dirty tree"; that claim does not
+  hold. The fix shape is the one just built for the fast gate. Out of this request's `write_set`.
+- **impact-noncritical, report only — the fast-stage seal is byte-level, but part of the
+  queue-kanban stage's real dependency is existence-level.** `collectRepoFileMentions`
+  (`filementions.go:35-56`) stats every repo-relative path mentioned in any REQ or UR body, and
+  `generate.go:713` runs it on every live board build. Those mentions reach `do-work/runs/` and
+  `do-work/deliverables/`, so creating or deleting a mentioned file in an excluded subtree flips a
+  boolean in the shipped board JSON without moving any seal. No current fast-stage assertion reads
+  that map.
+- **impact-noncritical, report only — the queue-kanban fast stage will rarely reuse during a drain.**
+  With `do-work` as its coverage it seals about 730 tracked files, and every REQ claim, move or
+  archive touches one. This is correct — the stage really reads those bytes — and it is the whole
+  cost of the change. Measured here: a queue-only edit re-runs queue-kanban in 56s where a fully warm
+  gate is 31s, against 75s for a cold gate.
+
+## Qualification
+
+**Passed.** Read from the merge range `fce57fcc..2d932a47`; the canonical `qualify` and
+`scope-drift` gates both report satisfied.
+
+- **The change is substantive and matches its declaration exactly.** Four files, 146 insertions, 40
+  deletions — the same diff the builder branch carries against its base, so nothing entered the range
+  from anywhere else. The `write_set` and the touched set are identical; no drift in either direction.
+- **The request's own Red-Green proof was reproduced end to end, at gate level, and it is the proof
+  that matters.** RED: with a warm store and one newline appended to `do-work/archive/UR-003/input.md`,
+  the gate printed `REUSED (fingerprint_match)` for both stages and `Maintainer verification passed.`
+  and exited 0, while `TestDiscoverRepositoryAcceptsProductionLegacyArchiveInputClass` failed on that
+  same tree with `production legacy fixture changed size: got 5609 bytes`. GREEN: the identical
+  sequence now prints `EXECUTING (fingerprint_mismatch)` for both stages and the gate exits 1 with
+  that test's failure in the log and zero occurrences of `Maintainer verification passed.`
+- **Every new assertion was shown red by ablation before it was accepted.** That matters more here
+  than usual, because four of the five new cases assert that something *still reuses* — a case that
+  can pass because the feature works or because the feature never fires. Removing `seal_exclusions`
+  from both fixtures turns `the gate's own duration log still reuses` and `a run-log write still
+  reuses` red in the Go table and red in the shell probe; removing the decoder's validation loop turns
+  the new `unsupported seal exclusion kind` case red. Each ablation output is quoted in the hand-back.
+- **The fix is not "seal everything into everything", and there is an assertion that says so.** The
+  old `queue state changed` case became two: one proving the stage that reads the tree executes, one
+  proving the stage that does not still reuses. Measured on the real gate: a newline appended to
+  `do-work/CHECKPOINT.md` re-runs queue-kanban and leaves do-work-cli reused, 56s against 75s cold.
+- **The two fixture probe inputs were moved out of the newly-sealed tree**, which the exploration
+  flagged as the trap that makes two existing cases pass for the wrong reason. Without the move,
+  `toolchain probe output changed` would be satisfied by the file's own byte seal moving rather than
+  by the probe's output changing, and `toolchain probe cannot run` would reach `fingerprint_uncertain`
+  through a missing seal input instead of a failing probe. Both would have kept passing while testing
+  nothing they name.
+- **The one requirement that could have been met dishonestly was met by verification.**
+  `non_stage_coverage` is now empty because the board's own prune rules (`walk.go:192,195,198`) and its
+  file-mention stat (`filementions.go:35-56`) were read to decide which subtrees are genuinely unread —
+  and the answer was "essentially none", so the churn trees went to `seal_exclusions` instead of being
+  declared unread. Declaring them unread would have been the same false green in a new place.
+
+Requirements traced: a change to any `do-work/` path a fast stage reads forces that stage to execute;
+`non_stage_coverage` states only verified-unread trees, and states none; both assertions that pinned
+the old behaviour are rewritten in the same change, each naming the failure it now catches; and
+`do-work/test-durations.tsv` keeps not invalidating its own stage, through the narrow exclusion rather
+than the whole-tree one.
 
 *Checked by work action*
