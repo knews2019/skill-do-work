@@ -1214,7 +1214,7 @@ var schemaReadContractFields = map[string]schemaFieldContract{
 	"status": {
 		canonicalValues: []string{
 			"pending", "claimed", "completed", "completed-with-issues", "failed",
-			"cancelled", "pending-answers", "pending-heavy-testing", "blocked", "blocked-archive-collision",
+			"cancelled", "pending-answers", "blocked", "blocked-archive-collision",
 			"blocked-dependency-cycle",
 		},
 		aliases:      map[string]string{},
@@ -1588,9 +1588,9 @@ type LifecycleTimestamp struct {
 	RawValue  string
 	// Transition is what happened at this instant, phrased for a reader rather
 	// than named after the field. Some entries depend on the ticket's status —
-	// status_changed_at on a held REQ is a heavy-testing hold, and completed_at
-	// on a cancelled one is a cancellation — which is why this is built per
-	// ticket rather than declared as a package-level table.
+	// completed_at on a cancelled REQ is a cancellation, not a completion — which
+	// is why this is built per ticket rather than declared as a package-level
+	// table.
 	Transition string
 }
 
@@ -1637,14 +1637,9 @@ func completionTransitionForStatus(status string) string {
 }
 
 // statusChangeTransitionForStatus names what a status_changed_at instant
-// records. The heavy-testing hold is the one flip worth naming outright — it is
-// the transition REQ-568 was raised for, and the wording matches the calendar's
-// existing label for the same state (web/board-calendar.js). Every other flip
-// reports the status it landed on rather than inventing a phrase for it.
+// records. Every flip reports the status it landed on rather than inventing a
+// phrase for it, so a status added to the schema needs no edit here.
 func statusChangeTransitionForStatus(status string) string {
-	if status == "pending-heavy-testing" {
-		return "held for heavy testing"
-	}
 	if status == "" {
 		return "status changed"
 	}

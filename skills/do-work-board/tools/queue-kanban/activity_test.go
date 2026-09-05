@@ -40,16 +40,18 @@ func TestBuildActivityRowsEmitsOneRowPerLifecycleStamp(t *testing.T) {
 }
 
 // TestBuildActivityRowsOrdersByNewestStampAndNamesTheTransition is REQ-568's
-// captured GREEN condition in Go, widened by REQ-572: a pending-heavy-testing
-// REQ whose hold lands inside the window is on the surface, carries the
-// transition its stamp records, and sorts by that stamp rather than by status
-// or by queue order — and its earlier claim now sits on the same surface too.
+// captured GREEN condition in Go, widened by REQ-572: a REQ whose status flip
+// lands inside the window is on the surface, carries the transition its stamp
+// records, and sorts by that stamp rather than by status or by queue order —
+// and its earlier claim now sits on the same surface too.
 func TestBuildActivityRowsOrdersByNewestStampAndNamesTheTransition(t *testing.T) {
 	// The instants are the ones REQ-568's Why section cites for the 16:56 board
-	// that prompted it, not invented offsets: REQ-504 was held at 16:38, REQ-505
-	// was the only claimed card and was 20 minutes old, REQ-485 was the newest
-	// Recently-done card at two hours old, and REQ-567 and REQ-503 carry the
-	// hold stamps their own frontmatter records.
+	// that prompted it, not invented offsets: REQ-504's status flipped at 16:38,
+	// REQ-505 was the only claimed card and was 20 minutes old, REQ-485 was the
+	// newest Recently-done card at two hours old, and REQ-567 and REQ-503 carry
+	// the flip stamps their own frontmatter records. (The status those three
+	// flipped TO was retired from the schema by REQ-570; `blocked` stands in for
+	// it, because what this test measures is the stamp, not the value.)
 	now := time.Date(2026, 9, 4, 16, 56, 0, 0, time.UTC)
 	at := func(hour, minute int) string {
 		return time.Date(2026, 9, 4, hour, minute, 0, 0, time.UTC).Format(time.RFC3339)
@@ -57,11 +59,11 @@ func TestBuildActivityRowsOrdersByNewestStampAndNamesTheTransition(t *testing.T)
 	tickets := []*RequestTicket{
 		// The claimed REQ the board already showed.
 		{RequestId: "REQ-505", Status: "claimed", ClaimedAt: at(16, 36)},
-		// The three held REQs the board showed nowhere. Each sorts by its hold
-		// stamp, not by its older claim.
-		{RequestId: "REQ-504", Status: "pending-heavy-testing", ClaimedAt: at(15, 40), StatusChangedAt: at(16, 38)},
-		{RequestId: "REQ-503", Status: "pending-heavy-testing", ClaimedAt: at(14, 57), StatusChangedAt: at(15, 4)},
-		{RequestId: "REQ-567", Status: "pending-heavy-testing", ClaimedAt: at(15, 8), StatusChangedAt: at(15, 19)},
+		// The three REQs the board showed nowhere. Each sorts by its flip stamp,
+		// not by its older claim.
+		{RequestId: "REQ-504", Status: "blocked", ClaimedAt: at(15, 40), StatusChangedAt: at(16, 38)},
+		{RequestId: "REQ-503", Status: "blocked", ClaimedAt: at(14, 57), StatusChangedAt: at(15, 4)},
+		{RequestId: "REQ-567", Status: "blocked", ClaimedAt: at(15, 8), StatusChangedAt: at(15, 19)},
 		// The terminal REQ that was the newest thing "Recently done" could show.
 		{RequestId: "REQ-485", Status: "completed", CompletedAt: at(14, 56), CompletionTime: time.Date(2026, 9, 4, 14, 56, 0, 0, time.UTC)},
 	}
@@ -77,17 +79,17 @@ func TestBuildActivityRowsOrdersByNewestStampAndNamesTheTransition(t *testing.T)
 
 	// Newest first by stamp, and every stamp is its own row. The capture listed
 	// the REQs as 505, 504, 503, 567, 485, but the stamps it also cites put
-	// REQ-504's 16:38 hold above REQ-505's 16:36 claim and REQ-567's 15:19 hold
+	// REQ-504's 16:38 flip above REQ-505's 16:36 claim and REQ-567's 15:19 flip
 	// above REQ-503's 15:04. The stamps decide the order, not the capture's
-	// approximate listing — and the claims that preceded each hold interleave
+	// approximate listing — and the claims that preceded each flip interleave
 	// with the other REQs by time rather than hiding behind the newer stamp.
 	wantOrder := []ActivityRow{
-		{RequestId: "REQ-504", StampField: "status_changed_at", Transition: "held for heavy testing"},
+		{RequestId: "REQ-504", StampField: "status_changed_at", Transition: "status changed to blocked"},
 		{RequestId: "REQ-505", StampField: "claimed_at", Transition: "claimed"},
 		{RequestId: "REQ-504", StampField: "claimed_at", Transition: "claimed"},
-		{RequestId: "REQ-567", StampField: "status_changed_at", Transition: "held for heavy testing"},
+		{RequestId: "REQ-567", StampField: "status_changed_at", Transition: "status changed to blocked"},
 		{RequestId: "REQ-567", StampField: "claimed_at", Transition: "claimed"},
-		{RequestId: "REQ-503", StampField: "status_changed_at", Transition: "held for heavy testing"},
+		{RequestId: "REQ-503", StampField: "status_changed_at", Transition: "status changed to blocked"},
 		{RequestId: "REQ-503", StampField: "claimed_at", Transition: "claimed"},
 		{RequestId: "REQ-485", StampField: "completed_at", Transition: "completed"},
 	}
@@ -151,12 +153,12 @@ func TestBuildActivityRowsStraddlesTheWindowBoundary(t *testing.T) {
 	now := time.Date(2026, 9, 4, 18, 0, 0, 0, time.UTC)
 	inside := &RequestTicket{
 		RequestId:       "REQ-902",
-		Status:          "pending-heavy-testing",
+		Status:          "blocked",
 		StatusChangedAt: now.Add(-activityWindow + time.Minute).Format(time.RFC3339),
 	}
 	outside := &RequestTicket{
 		RequestId:       "REQ-903",
-		Status:          "pending-heavy-testing",
+		Status:          "blocked",
 		StatusChangedAt: now.Add(-activityWindow - time.Minute).Format(time.RFC3339),
 	}
 	rows := buildActivityRows([]*RequestTicket{inside, outside})
