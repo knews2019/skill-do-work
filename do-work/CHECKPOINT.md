@@ -23,6 +23,5 @@ session_depth: light
 
 - REQ-587: Give the Timeline view one scroll surface, in the same style as the Activity view — claimed 2026-09-05T17:54:34Z — writer: t2s-Virtual-Machine.local:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2
 
-- REQ-589: Addendum: render the verify findings strip as the M4 slim band, one line closed and one row per finding open — claimed 2026-09-05T18:20:43Z — writer: t2s-Virtual-Machine.local:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2
 
 - REQ-590: Cap the path list in a verify finding so one detail cannot be 40 KB — claimed 2026-09-05T18:31:50Z — writer: t2s-Virtual-Machine.local:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2

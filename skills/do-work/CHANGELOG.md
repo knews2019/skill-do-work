@@ -2,6 +2,14 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.303.7 — The Verify Findings Strip Is One Line Until You Open It (2026-09-05)
+
+This morning's rows (0.303.2) were still too tall: every remedy printed in full, all the time, inside a card. A remedy is what you read after deciding to act, so it now sits behind a click, and the strip is one line until you open it.
+
+- Closed, the strip is a single line: a small warning mark, the counts, and every subject with a coloured dot for its weight (amber: read this, green: cleanup can fix, grey: a probe that never ran), with a Show button at the right.
+- Open, each finding is one row: dot, subject, category in plain words, the detail clipped at the line's end, and a chevron that opens that finding's "What to do" under the row.
+- The board remembers whether you left the strip open or closed.
+
 ## 0.303.6 — Lessons From the Six-Defect Review (2026-09-05)
 
 The five Go lessons behind the 0.303.5 fixes, so the next change in these files starts from what the review found rather than rediscovering it.
