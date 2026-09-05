@@ -1008,11 +1008,6 @@ func isCompletedStatus(normalizedStatus string) bool {
 	return normalizedStatus == "completed" || normalizedStatus == "completed-with-issues"
 }
 
-// isCancelledStatus reports whether a normalized status is the terminal
-// won't-do state written by the abandon action (do-work abandon). Cancelled is
-// terminal but NOT successful — it shares the Recently-done column and the
-// calendar with completed work, while success-only readers keep excluding it
-// via isCompletedStatus.
 // isDependencySourceReadyStatus reports whether a dependency has landed source
 // its dependents may build against: terminal success, or a claimed request
 // holding the implementation commit it recorded before a heavy-lane hold. It is
@@ -1020,11 +1015,18 @@ func isCompletedStatus(normalizedStatus string) bool {
 // actions/work-reference.md, kept in lock-step with DependencySourceReady in
 // the core CLI's schemanormalization package. Scheduling authority only — the
 // held request stays claimed, and completed-work readers keep using
-// isCompletedStatus.
+// isCompletedStatus. A withdrawn commit leaves the `commit:` key with no
+// value, so the re-claimed request loses source readiness again until
+// remediation records a new one.
 func isDependencySourceReadyStatus(normalizedStatus, commitHash string) bool {
 	return isCompletedStatus(normalizedStatus) || (normalizedStatus == "claimed" && strings.TrimSpace(commitHash) != "")
 }
 
+// isCancelledStatus reports whether a normalized status is the terminal
+// won't-do state written by the abandon action (do-work abandon). Cancelled is
+// terminal but NOT successful — it shares the Recently-done column and the
+// calendar with completed work, while success-only readers keep excluding it
+// via isCompletedStatus.
 func isCancelledStatus(normalizedStatus string) bool {
 	return normalizedStatus == "cancelled"
 }

@@ -14,6 +14,11 @@ type dependencyFixture struct {
 	Status       string
 	DependsOnIds []string
 	CommitHash   string
+	// WritesCommitKey keeps the `commit:` key in the frontmatter even when
+	// CommitHash is empty. That is the shape a re-claim leaves behind when it
+	// withdraws a prior attempt's commit, which is not the same file shape as a
+	// request that never recorded one.
+	WritesCommitKey bool
 }
 
 // buildDependencyBoard seeds a queue of REQs with the given statuses and
@@ -28,7 +33,7 @@ func buildDependencyBoard(t *testing.T, fixtures []dependencyFixture) *Board {
 		if len(fixture.DependsOnIds) > 0 {
 			frontmatter += "depends_on: [" + strings.Join(fixture.DependsOnIds, ", ") + "]\n"
 		}
-		if fixture.CommitHash != "" {
+		if fixture.CommitHash != "" || fixture.WritesCommitKey {
 			frontmatter += "commit: " + fixture.CommitHash + "\n"
 		}
 		frontmatter += "---\n\nBody.\n"
@@ -150,6 +155,26 @@ func TestClaimedDependencyWithoutACommitBlocksGating(t *testing.T) {
 
 	if !requestIdSet(board.Columns.PendingWaiting)["REQ-2"] {
 		t.Fatal("REQ-2 depends on a claimed REQ with no commit and must be waiting")
+	}
+}
+
+// TestClaimedDependencyWithAWithdrawnCommitBlocksGating pins the shape a
+// withdrawn commit leaves on disk, which the never-recorded case does not: a
+// re-claim empties the `commit:` value and leaves the key in place. The key
+// alone must not read as a recorded commit, or a re-claimed request would keep
+// unblocking dependents against source it no longer has.
+func TestClaimedDependencyWithAWithdrawnCommitBlocksGating(t *testing.T) {
+	board := buildDependencyBoard(t, []dependencyFixture{
+		{RequestId: "REQ-1", Status: "claimed", WritesCommitKey: true},
+		{RequestId: "REQ-2", Status: "pending", DependsOnIds: []string{"REQ-1"}},
+	})
+
+	if board.RequestsById["REQ-1"].CommitHash != "" {
+		t.Fatalf("an emptied commit key must read as no commit, got %q",
+			board.RequestsById["REQ-1"].CommitHash)
+	}
+	if !requestIdSet(board.Columns.PendingWaiting)["REQ-2"] {
+		t.Fatal("REQ-2 depends on a claimed REQ whose commit was withdrawn and must be waiting")
 	}
 }
 

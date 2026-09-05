@@ -167,12 +167,19 @@ func TestTerminalPredicatesKeepFailureAndCancellationDistinct(t *testing.T) {
 // commit or no commit — the rule is the condition, not a second status list, so
 // no retired value is named here. The repository sweep in the REQ proves the
 // retired hold status is gone from the tree.
+//
+// The withdrawn cases are the fail-closed half. This is the rule both the CLI
+// and the board read, and callers reach it with whatever the request carried,
+// so a commit that is only whitespace must not grant authority any more than an
+// absent one does.
 func TestDependencySourceReadyAcceptsClaimedWithCommitOnly(t *testing.T) {
 	if !DependencySourceReady("claimed", "abc123") {
 		t.Fatal("a claimed request holding its landed implementation commit must be source-ready")
 	}
-	if DependencySourceReady("claimed", "") {
-		t.Fatal("a claimed request without a commit must fail closed")
+	for _, withdrawnCommit := range []string{"", "   ", "\n\t"} {
+		if DependencySourceReady("claimed", withdrawnCommit) {
+			t.Fatalf("a claimed request whose commit is %q must fail closed", withdrawnCommit)
+		}
 	}
 	if DependencySourceReady("pending", "abc123") {
 		t.Fatal("pending remediation must block dependencies even with a stale commit")
