@@ -2,6 +2,12 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.294.1 — Archived Lesson Links Point at Their UR Folder (2026-09-05)
+
+Three lesson links in the do-work-cli satellite still pointed at the old flat archive path for REQ-503, REQ-504 and REQ-505, which moved into `do-work/archive/UR-098/`. The shipped package reference contract failed on every gate run until now.
+
+- `lessons-do-work-cli.md` links the three records at their current `UR-098` paths.
+
 ## 0.294.0 — Closing a Request Is One Command (2026-09-05)
 
 Closing a request used to be a page of shell the agent re-read and re-typed every time: archive the record, stage the exact paths, commit, record provenance, verify. Now the same `advance` command that drives every other mechanical phase composes the finalizer from one request-bound manifest, and Step 8 and Step 9 of the work action keep only the judgment: which follow-ups to fold, which terminal status, which release.
