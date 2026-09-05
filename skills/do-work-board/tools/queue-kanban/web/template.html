@@ -13,9 +13,18 @@
     <a class="skip-link" href="#board-main">Skip to board</a>
 
     <header class="board-topbar">
-      <div class="board-identity">
+      <!-- One line that never wraps: wordmark · project · clock. The full
+           stamp stays in #board-generated — the server writes it, board.js
+           appends the ticking age to it — but out of the visible line, where
+           board-controls.js reads it back as this line's tooltip. A four-line
+           identity block used to grow the bar to about 150px as soon as the
+           control pills beside it wrapped. -->
+      <div class="board-identity" id="board-identity">
         <h1 class="board-wordmark">do&#8209;work<span class="board-wordmark-mark">/ queue</span></h1>
+        <span class="board-identity-dot" aria-hidden="true">·</span>
         <p class="board-project" id="board-project">PROJECT_NAME</p>
+        <span class="board-identity-dot" aria-hidden="true">·</span>
+        <span class="board-generated-clock" id="board-generated-clock"></span>
         <p class="board-generated" id="board-generated">Generated GENERATED_AT_DISPLAY</p>
       </div>
 
@@ -67,36 +76,27 @@
           <button type="button" class="control-button" data-ur-activity="all" aria-pressed="false">All</button>
         </div>
 
+        <!-- The order the reader clicks through, declared only here:
+             board-controls.js reads these buttons back out of the DOM. -->
         <div class="control-group" role="group" aria-label="View">
           <button type="button" class="control-button is-active" data-view-target="board" aria-pressed="true">
             Board
           </button>
+          <button type="button" class="control-button" data-view-target="activity" aria-pressed="false">
+            Activity
+          </button>
           <button type="button" class="control-button" data-view-target="calendar" aria-pressed="false">
             Calendar
-          </button>
-          <button type="button" class="control-button" data-view-target="durations" aria-pressed="false">
-            Durations
           </button>
           <button type="button" class="control-button" data-view-target="timeline" aria-pressed="false">
             Timeline
           </button>
-          <button type="button" class="control-button" data-view-target="activity" aria-pressed="false">
-            Activity
+          <button type="button" class="control-button" data-view-target="durations" aria-pressed="false">
+            Durations
           </button>
           <button type="button" class="control-button" data-view-target="testing" aria-pressed="false">
             Testing
           </button>
-        </div>
-
-        <!-- Activity only: this view's own window, kept separate from the
-             board's Recently-done window because they answer different
-             questions and a shared control would silently move both. -->
-        <div class="control-group" role="group" aria-label="Activity window" id="activity-window-group" hidden>
-          <span class="control-label">Touched in</span>
-          <button type="button" class="control-button" data-activity-window="6" aria-pressed="false">6h</button>
-          <button type="button" class="control-button is-active" data-activity-window="24" aria-pressed="true">24h</button>
-          <button type="button" class="control-button" data-activity-window="48" aria-pressed="false">48h</button>
-          <button type="button" class="control-button" data-activity-window="168" aria-pressed="false">7d</button>
         </div>
 
         <!-- Durations only: a mark's fill changes meaning with this channel, so
@@ -483,7 +483,21 @@
            transitions). Rows come pre-ordered and pre-phrased from Go;
            board-activity.js windows and draws them. -->
       <section id="view-activity" class="view-panel" aria-label="Recently touched REQs" hidden>
-        <p class="activity-summary" id="activity-summary"></p>
+        <!-- This view's own window, kept separate from the board's
+             Recently-done window because they answer different questions and a
+             shared control would silently move both. It sits on the summary
+             line rather than in the top bar so the bar holds two pills on
+             every view; the panel hides and shows the chips with the view, so
+             nothing toggles them by hand. -->
+        <div class="activity-summary-row">
+          <p class="activity-summary" id="activity-summary"></p>
+          <div class="control-group" role="group" aria-label="Activity window" id="activity-window-group">
+            <button type="button" class="control-button" data-activity-window="6" aria-pressed="false">6h</button>
+            <button type="button" class="control-button is-active" data-activity-window="24" aria-pressed="true">24h</button>
+            <button type="button" class="control-button" data-activity-window="48" aria-pressed="false">48h</button>
+            <button type="button" class="control-button" data-activity-window="168" aria-pressed="false">7d</button>
+          </div>
+        </div>
         <p class="activity-empty" id="activity-empty" hidden></p>
         <div class="activity-table-scroll">
           <table>

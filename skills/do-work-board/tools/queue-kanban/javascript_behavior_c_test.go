@@ -3220,3 +3220,297 @@ func sliceFindingsStripMarkup(t *testing.T, indexHtml string) string {
 	}
 	return indexHtml[sectionStart : sectionStart+sectionEnd]
 }
+
+// The Activity view's window chips, and the order of the view pill.
+//
+// REQ-586 moved the "Touched in" pill out of the top bar. Three control groups
+// beside a four-line identity block wrapped the bar onto a second row, and the
+// Activity view is where that vertical space is worth the most: the reader
+// clicks a REQ there to see every row of it highlighted. The chips now sit on
+// the Activity summary line, inside #view-activity, so the view panel hides and
+// shows them and board-controls.js no longer toggles them by hand.
+//
+// WHERE the chips live is a fact about the markup, not about any renderer: the
+// four buttons behave identically wherever they sit, so a probe over the
+// shipped client cannot see the move at all. The markup assertions below are
+// the pin for it. The probe that follows pins the other half — the chips still
+// drive the shipped window writer, which is the thing a careless move breaks.
+func TestJavaScriptBehaviorActivityWindowChipsRenderInsideTheActivityView(t *testing.T) {
+	indexHtml := generateLiveSite(t)
+
+	topBarMarkup := sliceMarkupElementAfter(t, indexHtml, `<header class="board-topbar">`, "<header", "</header>")
+	activityViewMarkup := sliceMarkupElementAfter(t, indexHtml, `<section id="view-activity"`, "<section", "</section>")
+
+	if strings.Contains(topBarMarkup, "data-activity-window=") {
+		t.Errorf("the top bar still carries the Activity window chips; they belong on the Activity summary line")
+	}
+	for _, chipToken := range []string{
+		`data-activity-window="6"`,
+		`data-activity-window="24" aria-pressed="true"`,
+		`data-activity-window="48"`,
+		`data-activity-window="168"`,
+	} {
+		if !strings.Contains(activityViewMarkup, chipToken) {
+			t.Errorf("the Activity view is missing the window chip %q", chipToken)
+		}
+	}
+	if chipCount := strings.Count(indexHtml, "data-activity-window="); chipCount != 4 {
+		t.Errorf("the board has %d Activity window choices, want exactly 4 — the pill moved, it did not multiply", chipCount)
+	}
+	// Hidden and shown with the panel that now contains them. A surviving
+	// hand toggle would be a no-op line that still reads as a live rule, and a
+	// surviving `hidden` attribute would leave the chips invisible forever.
+	if strings.Contains(indexHtml, `getElementById("activity-window-group").hidden`) {
+		t.Errorf("board-controls.js still toggles #activity-window-group by hand; #view-activity hides it now")
+	}
+	if strings.Contains(activityViewMarkup, `id="activity-window-group" hidden`) {
+		t.Errorf("the Activity window group ships hidden inside its own view, so the chips never appear")
+	}
+
+	// The order the reader meets left to right, from REQ-586's addendum. It is
+	// declared once, in template.html; board-controls.js reads the buttons back
+	// out of the DOM, so this is the only place the order can be asserted.
+	wantedViewOrder := []string{"board", "activity", "calendar", "timeline", "durations", "testing"}
+	gotViewOrder := viewTargetsInDocumentOrder(topBarMarkup)
+	if !reflect.DeepEqual(gotViewOrder, wantedViewOrder) {
+		t.Errorf("the view pill reads %v, want %v", gotViewOrder, wantedViewOrder)
+	}
+
+	functionBlocks := []string{
+		sliceBalancedBlockAfter(t, indexHtml, "function createElement("),
+		sliceBalancedBlockAfter(t, indexHtml, "function setActiveButton("),
+		sliceBalancedBlockAfter(t, indexHtml, "function activityRowsWithin("),
+		sliceBalancedBlockAfter(t, indexHtml, "function activityWindowPhrase("),
+		sliceBalancedBlockAfter(t, indexHtml, "function selectedActivityRequestId("),
+		sliceBalancedBlockAfter(t, indexHtml, "function applyActivitySelectionHighlight("),
+		sliceBalancedBlockAfter(t, indexHtml, "function renderActivity("),
+		sliceBalancedBlockAfter(t, indexHtml, "function applyActivityWindowSelection("),
+	}
+	javascriptProbe := `
+function makeStubNode() {
+  var node = {
+    childNodes: [],
+    attributes: {},
+    hidden: false,
+    scope: "",
+    stubText: "",
+    classList: { toggle: function () {} },
+    setAttribute: function (attributeName, attributeValue) { this.attributes[attributeName] = attributeValue; },
+    getAttribute: function (attributeName) {
+      return Object.prototype.hasOwnProperty.call(this.attributes, attributeName) ? this.attributes[attributeName] : null;
+    },
+    appendChild: function (childNode) { this.childNodes.push(childNode); return childNode; }
+  };
+  Object.defineProperty(node, "textContent", {
+    get: function () { return this.stubText; },
+    set: function (nodeText) { this.stubText = nodeText; this.childNodes = []; }
+  });
+  return node;
+}
+// The four chips, as the shipped selector finds them: setActiveButton reads
+// them back through document.querySelectorAll, so driving the real writer means
+// answering that call rather than assigning aria-pressed by hand.
+function makeActivityChip(windowValue) {
+  var chip = makeStubNode();
+  chip.attributes["data-activity-window"] = windowValue;
+  chip.attributes["aria-pressed"] = windowValue === "24" ? "true" : "false";
+  return chip;
+}
+var activityChips = ["6", "24", "48", "168"].map(makeActivityChip);
+var nodesById = {};
+var document = {
+  getElementById: function (nodeId) {
+    if (!nodesById[nodeId]) { nodesById[nodeId] = makeStubNode(); }
+    return nodesById[nodeId];
+  },
+  createElement: function (tagName) { var node = makeStubNode(); node.stubTag = tagName; return node; },
+  querySelectorAll: function (selector) {
+    return selector.indexOf("[data-activity-window]") === -1 ? [] : activityChips;
+  }
+};
+var viewState = { activityWindowHours: 24 };
+var currentDetailKind = "";
+var currentDetailId = "";
+var requestsById = { "REQ-800": { title: "Busy request", status: "completed" } };
+function requestMatchesFilters() { return true; }
+function makeInstantWithRelativeNode() { return null; }
+function hoursAgo(hourCount) { return new Date(Date.now() - hourCount * 3600 * 1000).toISOString(); }
+var boardData = {
+  activity: [
+    { id: "REQ-800", stampField: "completed_at", stampAt: hoursAgo(1), transition: "completed" },
+    { id: "REQ-800", stampField: "claimed_at", stampAt: hoursAgo(30), transition: "claimed" }
+  ]
+};
+` + strings.Join(functionBlocks, "\n") + `
+function pressedChips() {
+  return activityChips.map(function (chip) { return chip.attributes["aria-pressed"]; });
+}
+var results = {};
+applyActivityWindowSelection(48);
+results.summaryAfter48h = nodesById["activity-summary"].textContent;
+results.pressedAfter48h = pressedChips();
+applyActivityWindowSelection(6);
+results.summaryAfter6h = nodesById["activity-summary"].textContent;
+results.pressedAfter6h = pressedChips();
+process.stdout.write(JSON.stringify(results));`
+	probeOutput := runJavaScriptBehaviorProbe(t, "activity window chips", javascriptProbe)
+
+	var results struct {
+		SummaryAfter48h string   `json:"summaryAfter48h"`
+		PressedAfter48h []string `json:"pressedAfter48h"`
+		SummaryAfter6h  string   `json:"summaryAfter6h"`
+		PressedAfter6h  []string `json:"pressedAfter6h"`
+	}
+	if unmarshalError := json.Unmarshal(probeOutput, &results); unmarshalError != nil {
+		t.Fatalf("decode activity window chip probe: %v\n%s", unmarshalError, probeOutput)
+	}
+
+	// REQ-586's captured proof asks for "in the last 48 hours" here. The shipped
+	// phrase writer spells any whole-day window in days, so the 48h chip has
+	// always read "in the last 2 days" — that phrasing is not this REQ's to
+	// change, and asserting the words it does not use would pin nothing.
+	if !strings.Contains(results.SummaryAfter48h, "in the last 2 days") {
+		t.Errorf("after the 48h chip the summary reads %q, want it to name that window", results.SummaryAfter48h)
+	}
+	if !strings.HasPrefix(results.SummaryAfter48h, "2 transitions") {
+		t.Errorf("the 48h window holds both fixture transitions, but the summary reads %q", results.SummaryAfter48h)
+	}
+	if wantedPressed := []string{"false", "false", "true", "false"}; !reflect.DeepEqual(results.PressedAfter48h, wantedPressed) {
+		t.Errorf("after the 48h chip the pill reads %v, want %v", results.PressedAfter48h, wantedPressed)
+	}
+	if !strings.Contains(results.SummaryAfter6h, "in the last 6 hours") {
+		t.Errorf("after the 6h chip the summary reads %q, want it to name the last 6 hours", results.SummaryAfter6h)
+	}
+	if wantedPressed := []string{"true", "false", "false", "false"}; !reflect.DeepEqual(results.PressedAfter6h, wantedPressed) {
+		t.Errorf("after the 6h chip the pill reads %v, want %v", results.PressedAfter6h, wantedPressed)
+	}
+}
+
+// The top bar's identity, as one line plus a tooltip.
+//
+// REQ-586 folded the wordmark, project and clock onto a single nowrap line so
+// the bar keeps its height when the control pills beside it wrap. The full
+// stamp — the date, the time and the ticking age board.js appends — stays in
+// #board-generated, out of the visible line and readable as the line's tooltip.
+//
+// The probe drives the shipped renderer rather than reading the markup for the
+// clock: which minute the line shows is a fact about the page's own data, and
+// the tooltip is assembled from whatever #board-generated holds at the time,
+// which is how the age reaches it without a second one-second ticker.
+func TestJavaScriptBehaviorTopBarIdentityIsOneLineWithAFullStampTooltip(t *testing.T) {
+	indexHtml := generateLiveSite(t)
+
+	identityMarkup := sliceMarkupElementAfter(t, indexHtml, `<div class="board-identity"`, "<div", "</div>")
+	wordmarkAt := strings.Index(identityMarkup, "board-wordmark")
+	projectAt := strings.Index(identityMarkup, `id="board-project"`)
+	clockAt := strings.Index(identityMarkup, `id="board-generated-clock"`)
+	fullStampAt := strings.Index(identityMarkup, `id="board-generated"`)
+	if wordmarkAt < 0 || projectAt < 0 || clockAt < 0 || fullStampAt < 0 {
+		t.Fatalf("the identity block is missing one of its four parts: %s", identityMarkup)
+	}
+	if !(wordmarkAt < projectAt && projectAt < clockAt) {
+		t.Errorf("the identity line reads out of order; want wordmark, then project, then clock: %s", identityMarkup)
+	}
+	if !strings.Contains(identityMarkup, "Generated ") {
+		t.Errorf("the identity block no longer carries the full Generated stamp: %s", identityMarkup)
+	}
+
+	functionBlocks := []string{
+		sliceBalancedBlockAfter(t, indexHtml, "function generatedStampTooltipText("),
+		sliceBalancedBlockAfter(t, indexHtml, "function renderTopBarIdentity("),
+	}
+	javascriptProbe := `
+function makeStubNode(nodeText) {
+  return {
+    childNodes: [],
+    title: "",
+    textContent: nodeText || "",
+    addEventListener: function (eventName) { this.wiredEvents = (this.wiredEvents || []).concat(eventName); },
+    appendChild: function (childNode) { this.childNodes.push(childNode); return childNode; }
+  };
+}
+// #board-generated as board.js leaves it: the server's stamp text, then the
+// ticking relative node it appends beside it.
+var generatedNode = makeStubNode("");
+generatedNode.childNodes = [
+  { textContent: "Generated 2026-09-05 12:17 UTC" },
+  { textContent: "37s ago" }
+];
+var nodesById = {
+  "board-identity": makeStubNode(""),
+  "board-generated": generatedNode,
+  "board-generated-clock": makeStubNode("")
+};
+var document = { getElementById: function (nodeId) { return nodesById[nodeId] || null; } };
+var boardData = { generatedAt: "2026-09-05T12:17:33Z" };
+` + strings.Join(functionBlocks, "\n") + `
+renderTopBarIdentity();
+process.stdout.write(JSON.stringify({
+  clockText: nodesById["board-generated-clock"].textContent,
+  tooltipText: nodesById["board-identity"].title,
+  wiredEvents: nodesById["board-identity"].wiredEvents || []
+}));`
+	probeOutput := runJavaScriptBehaviorProbe(t, "top bar identity", javascriptProbe)
+
+	var results struct {
+		ClockText   string   `json:"clockText"`
+		TooltipText string   `json:"tooltipText"`
+		WiredEvents []string `json:"wiredEvents"`
+	}
+	if unmarshalError := json.Unmarshal(probeOutput, &results); unmarshalError != nil {
+		t.Fatalf("decode top bar identity probe: %v\n%s", unmarshalError, probeOutput)
+	}
+
+	if results.ClockText != "12:17 UTC" {
+		t.Errorf("the identity line shows the clock as %q, want %q", results.ClockText, "12:17 UTC")
+	}
+	if results.TooltipText != "Generated 2026-09-05 12:17 UTC · 37s ago" {
+		t.Errorf("the identity tooltip reads %q, want the full stamp and its age", results.TooltipText)
+	}
+	// Without a refresh the tooltip would freeze at the age it was built with,
+	// and board.js owns the only one-second ticker on the page.
+	if len(results.WiredEvents) == 0 {
+		t.Errorf("nothing refreshes the identity tooltip, so it reports the age the page loaded with")
+	}
+}
+
+// viewTargetsInDocumentOrder returns the view pill's data-view-target values in
+// the order they appear, which is the order the reader clicks through.
+func viewTargetsInDocumentOrder(markup string) []string {
+	viewTargetPattern := regexp.MustCompile(`data-view-target="([a-z-]+)"`)
+	matches := viewTargetPattern.FindAllStringSubmatch(markup, -1)
+	viewTargets := make([]string, 0, len(matches))
+	for _, match := range matches {
+		viewTargets = append(viewTargets, match[1])
+	}
+	return viewTargets
+}
+
+// sliceMarkupElementAfter returns one element's markup, from anchorToken to the
+// close tag that balances it. Depth counting rather than the first close tag:
+// the blocks these assertions carve out are containers, and a nested element of
+// the same kind would otherwise end the slice early and quietly shrink what an
+// assertion is allowed to see.
+func sliceMarkupElementAfter(t *testing.T, sourceText string, anchorToken string, openTag string, closeTag string) string {
+	t.Helper()
+	anchorIndex := strings.Index(sourceText, anchorToken)
+	if anchorIndex < 0 {
+		t.Fatalf("the generated page has no %q", anchorToken)
+	}
+	remainder := sourceText[anchorIndex+len(anchorToken):]
+	depth := 1
+	for scanOffset := 0; scanOffset < len(remainder); scanOffset++ {
+		if strings.HasPrefix(remainder[scanOffset:], openTag) {
+			depth++
+			continue
+		}
+		if strings.HasPrefix(remainder[scanOffset:], closeTag) {
+			depth--
+			if depth == 0 {
+				return sourceText[anchorIndex : anchorIndex+len(anchorToken)+scanOffset+len(closeTag)]
+			}
+		}
+	}
+	t.Fatalf("the element opened by %q is never closed", anchorToken)
+	return ""
+}
