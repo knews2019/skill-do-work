@@ -1,0 +1,1 @@
+cd skills/do-work-board/tools/queue-kanban && QUEUE_KANBAN_BROWSER_PROBES=off QUEUE_KANBAN_JAVASCRIPT_PROBES=on go test -count=1 -run 'TestBuildActivityRows|TestLifecycleTimestampFieldsIsTheOneListBothReadersUse|TestJavaScriptBehaviorActivitySummaryCountsTransitionsAndRequests' .
