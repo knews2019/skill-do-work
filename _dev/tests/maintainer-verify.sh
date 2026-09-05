@@ -132,21 +132,23 @@ run_stage_with_evidence() {
     return
   fi
 
-  # The decision child runs from the repository root with three gate-generated
-  # variables removed. DO_WORK_TEST_RUN_ID is a timestamp-plus-PID label,
+  # The decision child runs from the repository root, so its own working
+  # directory is fixed, with five names removed from its environment.
+  # DO_WORK_TEST_RUN_ID is a timestamp-plus-PID label,
   # DO_WORK_TEST_OTHER_GATE_PROCESSES a `ps` sample and DO_WORK_TEST_DURATION_LOG
-  # an output path; OLDPWD is a shell breadcrumb naming the caller's previous
-  # directory. All four change between runs and none decides any assertion, and
-  # the fingerprint seals the whole environment, so with them present no stage
-  # could ever reuse. DO_WORK_TEST_ENFORCE_BUDGET and
-  # DO_WORK_TEST_FILE_BUDGET_SECONDS are deliberately NOT removed: they change
+  # an output path; OLDPWD names the caller's previous directory and SHLVL counts
+  # how deeply the caller's shells are nested. All five change between runs, none
+  # decides any assertion, and the fingerprint seals the whole environment, so
+  # with them present no stage could ever reuse — SHLVL alone was measured
+  # defeating it between a terminal and a wrapper script. DO_WORK_TEST_ENFORCE_BUDGET
+  # and DO_WORK_TEST_FILE_BUDGET_SECONDS are deliberately NOT removed: they change
   # the verdict. Status and output are captured separately, because a decision
   # command that could not run must read as "execute", never as "nothing
   # changed".
   decision_line="$(
     cd "$repo_root" &&
       env -u DO_WORK_TEST_RUN_ID -u DO_WORK_TEST_OTHER_GATE_PROCESSES \
-        -u DO_WORK_TEST_DURATION_LOG -u OLDPWD \
+        -u DO_WORK_TEST_DURATION_LOG -u OLDPWD -u SHLVL \
         bash "$cli_launcher" --repo-root "$repo_root" \
         decide-fast-stage --stage "$stage_id" -- "${stage_argv[@]}"
   )" || decision_status=$?
@@ -184,7 +186,7 @@ run_stage_with_evidence() {
     if ! (
       cd "$repo_root" &&
         env -u DO_WORK_TEST_RUN_ID -u DO_WORK_TEST_OTHER_GATE_PROCESSES \
-          -u DO_WORK_TEST_DURATION_LOG -u OLDPWD \
+          -u DO_WORK_TEST_DURATION_LOG -u OLDPWD -u SHLVL \
           bash "$cli_launcher" --repo-root "$repo_root" \
           record-fast-stage --stage "$stage_id" --fingerprint "$fingerprint" \
           --stage-exit-status 0 -- "${stage_argv[@]}" > /dev/null
