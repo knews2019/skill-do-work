@@ -72,6 +72,11 @@ capture/redaction/ledger mechanics all ship in `hooks/memory-stop-capture.sh`; p
 `hooks/pipeline-guard.sh`), and applying this repo's grep-the-primitive rule to the exposed class found a third.
 An incomplete baseline is the one error that actively misdirects the extraction work an audit exists to inform.
 
+> **Note (2026-09-05):** `hooks/pipeline-guard.sh` no longer exists — REQ-145 removed it with the stateful
+> pipeline on 2026-08-08 (`c42f228b`), and `internal/settingshooks/settings_hooks.go` keeps the name only to
+> strip it from consumer settings. This audit's findings are unchanged; the historical file reference above is
+> left as written.
+
 ---
 
 ## Method, and its limit

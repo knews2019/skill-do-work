@@ -552,6 +552,60 @@ type CheckpointResult struct {
 	WrittenAt       string `json:"written_at"`
 }
 
+// TimingEventRecord is one flat lifecycle timing event. The stream has no parent
+// or nesting model on purpose: an event names its own category, its own wall
+// clock window, and nothing about any other event, so appending one can never
+// invalidate another. ExitStatus and CommandIdentity are present only on command
+// events, and CommandIdentity is already redacted to the executable base name
+// plus an argv token count so no argument value can reach durable evidence.
+type TimingEventRecord struct {
+	SchemaVersion    int    `json:"schema_version"`
+	EventID          string `json:"event_id"`
+	RunID            string `json:"run_id"`
+	RequestID        string `json:"request_id"`
+	Category         string `json:"category"`
+	Operation        string `json:"operation"`
+	StartedAt        string `json:"started_at"`
+	EndedAt          string `json:"ended_at"`
+	ElapsedSeconds   int    `json:"elapsed_seconds"`
+	ElapsedSource    string `json:"elapsed_source"`
+	Outcome          string `json:"outcome"`
+	Revision         string `json:"revision,omitempty"`
+	ResponsibleAgent string `json:"responsible_agent,omitempty"`
+	ExitStatus       *int   `json:"exit_status,omitempty"`
+	CommandIdentity  string `json:"command_identity,omitempty"`
+}
+
+// TimingCategoryTotal aggregates one stable lifecycle category across a run.
+type TimingCategoryTotal struct {
+	Category       string `json:"category"`
+	ElapsedSeconds int    `json:"elapsed_seconds"`
+	EventCount     int    `json:"event_count"`
+}
+
+// LifecycleTimingResult is the typed projection of one request's timing stream:
+// what a record command appended, or what a fold observed, summarized, and
+// removed. StreamState is "appended", "absent" or "folded"; "absent" is the
+// backwards-compatible answer for a run that recorded nothing.
+type LifecycleTimingResult struct {
+	RequestID            string                `json:"request_id"`
+	RunID                string                `json:"run_id"`
+	StreamPath           string                `json:"stream_path"`
+	StreamState          string                `json:"stream_state"`
+	RecordedEvent        *TimingEventRecord    `json:"recorded_event,omitempty"`
+	EventCount           int                   `json:"event_count"`
+	ObservedStart        string                `json:"observed_start,omitempty"`
+	ObservedEnd          string                `json:"observed_end,omitempty"`
+	TotalObservedSeconds int                   `json:"total_observed_seconds"`
+	AttributedSeconds    int                   `json:"attributed_seconds"`
+	UnattributedSeconds  int                   `json:"unattributed_seconds"`
+	CategoryTotals       []TimingCategoryTotal `json:"category_totals,omitempty"`
+	SlowestStage         *TimingEventRecord    `json:"slowest_stage,omitempty"`
+	SlowestCommand       *TimingEventRecord    `json:"slowest_command,omitempty"`
+	RequestPath          string                `json:"request_path,omitempty"`
+	SectionWritten       bool                  `json:"section_written"`
+}
+
 type CommandResult struct {
 	SchemaVersion        int                           `json:"schema_version"`
 	Command              string                        `json:"command"`
@@ -579,6 +633,7 @@ type CommandResult struct {
 	QueueAdvance         *QueueAdvanceResult           `json:"queue_advance,omitempty"`
 	Recovery             *RecoveryResult               `json:"recovery,omitempty"`
 	Checkpoint           *CheckpointResult             `json:"checkpoint,omitempty"`
+	LifecycleTiming      *LifecycleTimingResult        `json:"lifecycle_timing,omitempty"`
 	// ExactTextOutput preserves compatibility-shaped stdout without polluting
 	// JSON with an opaque duplicate. It must be derived from the same typed
 	// observation carried by the result.
@@ -1172,6 +1227,27 @@ func renderText(result CommandResult) []byte {
 		fmt.Fprintf(&output, "  reason codes: %s\n", strings.Join(validation.ReasonCodes, ", "))
 		fmt.Fprintf(&output, "  offending paths: %s\n", strings.Join(validation.OffendingPaths, ", "))
 		fmt.Fprintf(&output, "  completion authority: writer=%s at=%s\n", validation.Writer, validation.PlannedAt)
+	}
+	if result.LifecycleTiming != nil {
+		timing := result.LifecycleTiming
+		fmt.Fprintf(&output, "lifecycle timing: request=%s run=%s state=%s events=%d\n", timing.RequestID, timing.RunID, timing.StreamState, timing.EventCount)
+		fmt.Fprintf(&output, "  stream: %s\n", timing.StreamPath)
+		if timing.RecordedEvent != nil {
+			event := timing.RecordedEvent
+			fmt.Fprintf(&output, "  recorded %s [%s/%s]: %s to %s (%ds, %s, %s)\n", event.EventID, event.Category, event.Operation,
+				event.StartedAt, event.EndedAt, event.ElapsedSeconds, event.ElapsedSource, event.Outcome)
+			if event.CommandIdentity != "" {
+				fmt.Fprintf(&output, "    command: %s\n", event.CommandIdentity)
+			}
+		}
+		if timing.StreamState == "folded" {
+			fmt.Fprintf(&output, "  observed: %s to %s (%ds total, %ds attributed, %ds unattributed)\n",
+				timing.ObservedStart, timing.ObservedEnd, timing.TotalObservedSeconds, timing.AttributedSeconds, timing.UnattributedSeconds)
+			for _, total := range timing.CategoryTotals {
+				fmt.Fprintf(&output, "  category %s: %ds across %d events\n", total.Category, total.ElapsedSeconds, total.EventCount)
+			}
+			fmt.Fprintf(&output, "  request: %s (section written: %t)\n", timing.RequestPath, timing.SectionWritten)
+		}
 	}
 	for _, skipped := range result.SkippedWork {
 		fmt.Fprintf(&output, "skipped %s: %s\n", skipped.Code, skipped.Reason)

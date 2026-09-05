@@ -262,3 +262,142 @@ func runCleanupGit(t *testing.T, repositoryRoot string, args ...string) string {
 	}
 	return strings.TrimSpace(string(output))
 }
+
+// checkpointWriterLabel is the exact writer token cleanup composes for this checkout, so a test
+// line carrying it is indistinguishable from a real claim to any check that only asks whether
+// the token appears somewhere on the line.
+func checkpointWriterLabel(t *testing.T, repositoryRoot string) string {
+	t.Helper()
+	hostname, err := os.Hostname()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if dotIndex := strings.IndexByte(hostname, '.'); dotIndex >= 0 {
+		hostname = hostname[:dotIndex]
+	}
+	return "writer: " + hostname + ":" + repositoryRoot
+}
+
+// TestCheckpointRemovalIgnoresRequestAndWriterTokensForgedInProse is REQ-544's cleanup half.
+// Departure cleanup deletes a claim line from do-work/CHECKPOINT.md, which is a destructive edit
+// to a shared file, and it once selected that line by asking only whether "- REQ-NNN:" and the
+// writer token both appeared somewhere on it. A session note that quotes a claim satisfies both
+// and is deleted with it. The removal now runs through requeststate.RemoveOwnedCheckpointClaim,
+// which anchors the request id at the entry start and the writer at the line end, so this test
+// is a caller-level lock-in on that delegation rather than a fix: it fails the moment cleanup
+// goes back to selecting lines by containment.
+func TestCheckpointRemovalIgnoresRequestAndWriterTokensForgedInProse(t *testing.T) {
+	writerLabel := func(t *testing.T, repositoryRoot string) string { return checkpointWriterLabel(t, repositoryRoot) }
+
+	t.Run("forged prose survives while the real claim and its continuation go", func(t *testing.T) {
+		repositoryRoot := cleanupRepository(t)
+		writer := writerLabel(t, repositoryRoot)
+		forgedLine := "- Note that - REQ-109: own — " + writer
+		writeCleanupFile(t, repositoryRoot, "do-work/working/REQ-109-done.md", cleanupRequest("REQ-109", "completed", ""))
+		checkpoint := "# Session Checkpoint\n\n## In Progress (interrupted)\n\n" +
+			"- REQ-109: own — " + writer + "\n" +
+			"  Last known state: implementing\n" +
+			forgedLine + "\n" +
+			"- REQ-109: foreign — writer: other:/checkout\n"
+		writeCleanupFile(t, repositoryRoot, "do-work/CHECKPOINT.md", checkpoint)
+		snapshot, err := repositorymodel.DiscoverRepository(repositoryRoot)
+		if err != nil {
+			t.Fatal(err)
+		}
+		contents := plannedCheckpointReplacement(t, BuildPlan(snapshot))
+		// The forged line ends with the real claim's exact bytes, so every assertion here
+		// compares whole lines: a substring test cannot tell the two apart.
+		if !checkpointHasLine(contents, forgedLine) {
+			t.Fatalf("forged prose line was deleted: %q", contents)
+		}
+		if checkpointHasLine(contents, "- REQ-109: own — "+writer) || strings.Contains(contents, "Last known state: implementing") {
+			t.Fatalf("real own claim or its continuation survived: %q", contents)
+		}
+		if !checkpointHasLine(contents, "- REQ-109: foreign — writer: other:/checkout") {
+			t.Fatalf("foreign claim was deleted: %q", contents)
+		}
+	})
+
+	// The legacy compatibility path scans the whole file when the canonical heading is absent,
+	// which is exactly where an unanchored match would have the most prose to hit.
+	t.Run("headingless legacy checkpoint anchors the same way", func(t *testing.T) {
+		repositoryRoot := cleanupRepository(t)
+		writer := writerLabel(t, repositoryRoot)
+		forgedLine := "- Recovered claim - REQ-110: own — " + writer
+		writeCleanupFile(t, repositoryRoot, "do-work/working/REQ-110-done.md", cleanupRequest("REQ-110", "completed", ""))
+		checkpoint := "# Session Checkpoint\n\n" + forgedLine + "\n- REQ-110: own — " + writer + "\n"
+		writeCleanupFile(t, repositoryRoot, "do-work/CHECKPOINT.md", checkpoint)
+		snapshot, err := repositorymodel.DiscoverRepository(repositoryRoot)
+		if err != nil {
+			t.Fatal(err)
+		}
+		contents := plannedCheckpointReplacement(t, BuildPlan(snapshot))
+		if !checkpointHasLine(contents, forgedLine) {
+			t.Fatalf("forged prose line was deleted from a headingless checkpoint: %q", contents)
+		}
+		if checkpointHasLine(contents, "- REQ-110: own — "+writer) {
+			t.Fatalf("real own claim survived in a headingless checkpoint: %q", contents)
+		}
+	})
+
+	// A checkpoint whose only matching-looking line is forged has nothing to remove, so cleanup
+	// must plan no replacement at all rather than rewriting the file to itself.
+	t.Run("a checkpoint holding only forged prose is not rewritten", func(t *testing.T) {
+		repositoryRoot := cleanupRepository(t)
+		writer := writerLabel(t, repositoryRoot)
+		writeCleanupFile(t, repositoryRoot, "do-work/working/REQ-111-done.md", cleanupRequest("REQ-111", "completed", ""))
+		checkpoint := "# Session Checkpoint\n\n## In Progress (interrupted)\n\n" +
+			"- Superseded: - REQ-111: own — " + writer + "\n"
+		writeCleanupFile(t, repositoryRoot, "do-work/CHECKPOINT.md", checkpoint)
+		commitCleanupFixture(t, repositoryRoot)
+		snapshot, err := repositorymodel.DiscoverRepository(repositoryRoot)
+		if err != nil {
+			t.Fatal(err)
+		}
+		plan := BuildPlan(snapshot)
+		for _, group := range plan.Groups {
+			for _, operation := range group.Operations {
+				if operation.Kind == OperationReplace && operation.SourcePath == "do-work/CHECKPOINT.md" {
+					t.Fatalf("forged prose planned a checkpoint replacement: %q", operation.Contents)
+				}
+			}
+		}
+		if result := ApplyPlan(context.Background(), plan, ApplyOptions{}); result.Outcome != resultmodel.OutcomeSuccess {
+			t.Fatalf("apply outcome = %#v", result)
+		}
+		applied, err := os.ReadFile(filepath.Join(repositoryRoot, "do-work", "CHECKPOINT.md"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if string(applied) != checkpoint {
+			t.Fatalf("checkpoint changed on disk:\nwant %q\ngot  %q", checkpoint, applied)
+		}
+		if _, err := os.Stat(filepath.Join(repositoryRoot, "do-work", "archive", "REQ-111-done.md")); err != nil {
+			t.Fatalf("completed request did not archive alongside the untouched checkpoint: %v", err)
+		}
+	})
+}
+
+// checkpointHasLine compares whole lines because the forged fixtures below end with the exact
+// bytes of the claim they imitate; a substring test would report the claim as surviving.
+func checkpointHasLine(contents, wantLine string) bool {
+	for _, line := range strings.Split(contents, "\n") {
+		if line == wantLine {
+			return true
+		}
+	}
+	return false
+}
+
+func plannedCheckpointReplacement(t *testing.T, plan CleanupPlan) string {
+	t.Helper()
+	for _, group := range plan.Groups {
+		for _, operation := range group.Operations {
+			if operation.Kind == OperationReplace && operation.SourcePath == "do-work/CHECKPOINT.md" {
+				return string(operation.Contents)
+			}
+		}
+	}
+	t.Fatalf("no checkpoint replacement was planned: %#v", plan.Groups)
+	return ""
+}

@@ -856,11 +856,17 @@ func TestTimelineProjectionChainOrderIsNumericNotLexical(t *testing.T) {
 	}
 }
 
-// Moving pending-heavy-testing out of the needs-input family must not drop it
-// from the forecast: a REQ that is neither pending nor excluded simply
-// disappears from the timeline, with no reason shown. It has to stay an
-// exclusion, worded as the wait it actually is.
-func TestTimelineProjectionStillExcludesTheHeavyLaneHoldWithItsReason(t *testing.T) {
+// A REQ the forecast cannot schedule has to be NAMED. timelineChain has one arm
+// for pending work and one for the statuses that wait on a person; every other
+// status falls out of the switch. For claimed, completed, cancelled and failed
+// that silence is right — none of them is queue work awaiting a start time. For
+// a status the schema does not know it is not. A typo, or a value retired from
+// the vocabulary and still sitting in an old file, would leave the REQ out of
+// the chain, out of the queue-end figure AND out of the exclusion list, so the
+// forecast would read exactly as it does when no such REQ exists. The board
+// columns already warn about that record; the forecast owes the same reader a
+// line.
+func TestTimelineProjectionNamesARequestWhoseStatusIsOffVocabulary(t *testing.T) {
 	now := time.Date(2026, 6, 20, 12, 0, 0, 0, time.UTC)
 	tickets := []*RequestTicket{}
 	for spanIndex, spanMinutes := range []float64{20, 30, 40, 50, 60, 70} {
@@ -870,25 +876,30 @@ func TestTimelineProjectionStillExcludesTheHeavyLaneHoldWithItsReason(t *testing
 	}
 	tickets = append(tickets,
 		projectionTicket("REQ-501", "pending", effortSubstantive, nil),
-		projectionTicket("REQ-502", "pending-heavy-testing", effortSubstantive, nil),
+		projectionTicket("REQ-502", "retired-hold-status", effortSubstantive, nil),
+		projectionTicket("REQ-503", "claimed", effortSubstantive, nil),
 	)
 	resolveUnmetDependenciesForTest(tickets)
 
 	projection := buildTimelineProjection(tickets, buildDurationAggregate(tickets), now)
 
 	if len(projection.Rows) != 1 || projection.Rows[0].RequestId != "REQ-501" {
-		t.Fatalf("chain = %+v, want only REQ-501 — the held REQ has no honest start time until its lanes run", projection.Rows)
+		t.Fatalf("chain = %+v, want only REQ-501 — an off-vocabulary status has no honest start time", projection.Rows)
 	}
-	var heldReason string
+	exclusionReasons := map[string]string{}
 	for _, exclusion := range projection.Excluded {
-		if exclusion.RequestId == "REQ-502" {
-			heldReason = exclusion.Reason
-		}
+		exclusionReasons[exclusion.RequestId] = exclusion.Reason
 	}
-	if heldReason == "" {
-		t.Fatalf("REQ-502 is missing from the exclusions — a held REQ must be named, not silently dropped (got %+v)", projection.Excluded)
+	if exclusionReasons["REQ-502"] == "" {
+		t.Fatalf("REQ-502 is missing from the exclusions — a record the board cannot read must be named, not silently dropped (got %+v)", projection.Excluded)
 	}
-	if !strings.Contains(heldReason, "queue exhaustion") {
-		t.Fatalf("exclusion reason = %q, want the wait named as the heavy-lane drain at queue exhaustion", heldReason)
+	if !strings.Contains(exclusionReasons["REQ-502"], "status") {
+		t.Fatalf("exclusion reason = %q, want the STATUS named as the problem — a reason that only says the REQ is unschedulable sends the reader looking at its dependencies", exclusionReasons["REQ-502"])
+	}
+	// The other half of the rule. Claimed work is in flight, not waiting, so
+	// naming it here would put every in-progress REQ in a list of things the
+	// forecast could not place.
+	if _, named := exclusionReasons["REQ-503"]; named {
+		t.Fatalf("claimed REQ-503 must not be an exclusion — it is in flight, not unschedulable (got %+v)", projection.Excluded)
 	}
 }

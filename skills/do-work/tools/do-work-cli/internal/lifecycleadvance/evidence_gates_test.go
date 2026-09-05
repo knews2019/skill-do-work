@@ -176,6 +176,10 @@ func TestAdvanceFocusedTestGateClassifiesBaselineStates(t *testing.T) {
 		{name: "different red status", probe: "echo same; exit 18", baselineJSON: `{"test_command":"echo same; exit 18","exit_status":17,"launched":true}`, baselineFailures: "same\n", wantState: resultmodel.FocusedBaselineNewRed, wantGateState: resultmodel.AdvanceGateFindings},
 		{name: "new red", probe: "echo new; exit 18", baselineJSON: `{"test_command":"echo old; exit 17","exit_status":17,"launched":true}`, baselineFailures: "old\n", wantState: resultmodel.FocusedBaselineNewRed, wantGateState: resultmodel.AdvanceGateFindings},
 		{name: "unusable baseline", probe: "exit 19", baselineJSON: `{"test_command":"exit 19","exit_status":127,"launched":false}`, wantState: resultmodel.FocusedBaselineUnusable, wantGateState: resultmodel.AdvanceGateFindings},
+		// A child may choose the runner's own reserved values for itself; a launched
+		// completion at 124 or 125 is ordinary red, not a timeout or a launch failure.
+		{name: "ordinary reserved timeout value", probe: "echo same; exit 124", baselineJSON: `{"test_command":"echo same; exit 124","exit_status":124,"launched":true}`, baselineFailures: "same\n", wantState: resultmodel.FocusedBaselineMatchingRed, wantGateState: resultmodel.AdvanceGateSatisfied},
+		{name: "ordinary reserved launch value", probe: "echo same; exit 125", baselineJSON: `{"test_command":"echo same; exit 125","exit_status":125,"launched":true}`, baselineFailures: "same\n", wantState: resultmodel.FocusedBaselineMatchingRed, wantGateState: resultmodel.AdvanceGateSatisfied},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
@@ -191,6 +195,10 @@ func TestAdvanceFocusedTestGateClassifiesBaselineStates(t *testing.T) {
 			focusedGate := findAdvanceGate(result, "run-blocked-check")
 			if focusedGate == nil || focusedGate.FocusedTest == nil || focusedGate.FocusedTest.BaselineState != test.wantState || focusedGate.State != test.wantGateState {
 				t.Fatalf("focused gate=%#v result=%#v", focusedGate, result)
+			}
+			// Every row is an ordinary launched completion, whatever integer it exits with.
+			if !focusedGate.FocusedTest.Launched || focusedGate.FocusedTest.TimedOut {
+				t.Fatalf("execution facts=%#v", focusedGate.FocusedTest)
 			}
 		})
 	}
@@ -298,4 +306,232 @@ func hasAdvanceResultFinding(result resultmodel.CommandResult, code string) bool
 		}
 	}
 	return false
+}
+
+// focusedGateRouteABody is the shortest claimed Route A body that reaches the
+// test-gate phase, matching the literal the existing focused-gate tables use.
+const focusedGateRouteABody = "## Triage\n\nRoute A.\n\n## Plan\n\nPlanning not required.\n\n## Implementation Summary\n\n- `owned.go` (modified)\n\n## Qualification\n\nPassed.\n"
+
+// canonicalGateFixtureBinary stands in for the repository gate: advance never
+// executes it, so a single absolute path keeps the recorded argv resolvable
+// even when the probe's own PATH is restricted.
+const canonicalGateFixtureBinary = "/usr/bin/true"
+
+// TestAdvanceFocusedGateNeverClearsFailedExecutionAgainstMatchingBaseline pins the
+// REQ-506 false success. A saved baseline that happens to carry the same reserved
+// exit value must not exclude a current execution that never launched or that the
+// timer killed, and advance must not exit successfully for either.
+func TestAdvanceFocusedGateNeverClearsFailedExecutionAgainstMatchingBaseline(t *testing.T) {
+	t.Run("current launch failure", func(t *testing.T) {
+		repositoryRoot := t.TempDir()
+		writeAdvanceRequest(t, repositoryRoot, "working", "REQ-717", "claimed", "route: A\nestimate:\n  p50_active_minutes: 5\n", focusedGateRouteABody)
+		writeAdvanceFile(t, repositoryRoot, "focused.sh", "exit 125")
+		writeAdvanceFile(t, repositoryRoot, "do-work/working/baseline.json", `{"test_command":"exit 125","exit_status":125,"launched":true}`)
+		writeAdvanceFile(t, repositoryRoot, "do-work/working/baseline-failures.txt", "")
+		initAdvanceGitFixture(t, repositoryRoot)
+		recordAdvanceGreenGate(t, repositoryRoot, canonicalGateFixtureBinary)
+
+		result, status := runAdvanceGateJSONWithPath(t, repositoryRoot, gitOnlyPathDirectory(t),
+			"REQ-717", "--gate-arg", canonicalGateFixtureBinary, "--", "--probe-file", "focused.sh", "--timeout-seconds", "2")
+		greenGate := findAdvanceGate(result, "green-gate")
+		if greenGate == nil || greenGate.State != resultmodel.AdvanceGateSatisfied {
+			t.Fatalf("canonical green evidence did not stand: gate=%#v result=%#v", greenGate, result)
+		}
+		focusedGate := findAdvanceGate(result, "run-blocked-check")
+		if focusedGate == nil || focusedGate.FocusedTest == nil || focusedGate.FocusedTest.Launched {
+			t.Fatalf("focused gate=%#v result=%#v", focusedGate, result)
+		}
+		if focusedGate.FocusedTest.BaselineState == resultmodel.FocusedBaselineMatchingRed || focusedGate.State != resultmodel.AdvanceGateFailed {
+			t.Fatalf("failed launch cleared the focused boundary: gate=%#v", focusedGate)
+		}
+		if !gateHasFinding(*focusedGate, "BLOCKED-PROBE-LAUNCH-FAILED") || status == 0 {
+			t.Fatalf("status=%d gate=%#v", status, focusedGate)
+		}
+	})
+
+	t.Run("current timeout", func(t *testing.T) {
+		repositoryRoot := t.TempDir()
+		writeAdvanceRequest(t, repositoryRoot, "working", "REQ-718", "claimed", "route: A\nestimate:\n  p50_active_minutes: 5\n", focusedGateRouteABody)
+		writeAdvanceFile(t, repositoryRoot, "focused.sh", "/bin/sleep 2; exit 124")
+		initAdvanceGitFixture(t, repositoryRoot)
+		recordAdvanceGreenGate(t, repositoryRoot, canonicalGateFixtureBinary)
+
+		// The saved baseline is the identical command run to completion: it exits 124
+		// under its own power, which is the same integer the timeout path reports.
+		baseline, _ := runAdvanceGateJSON(t, repositoryRoot, "REQ-718",
+			"--gate-arg", canonicalGateFixtureBinary, "--", "--probe-file", "focused.sh", "--timeout-seconds", "10")
+		baselineGate := findAdvanceGate(baseline, "run-blocked-check")
+		if baselineGate == nil || baselineGate.FocusedTest == nil || baselineGate.FocusedTest.ExitStatus != 124 {
+			t.Fatalf("direct baseline run=%#v result=%#v", baselineGate, baseline)
+		}
+		writeAdvanceFile(t, repositoryRoot, "do-work/working/baseline.json", `{"test_command":"/bin/sleep 2; exit 124","exit_status":124,"launched":true}`)
+		writeAdvanceFile(t, repositoryRoot, "do-work/working/baseline-failures.txt", "")
+
+		result, status := runAdvanceGateJSON(t, repositoryRoot, "REQ-718",
+			"--gate-arg", canonicalGateFixtureBinary, "--", "--probe-file", "focused.sh", "--timeout-seconds", "1")
+		focusedGate := findAdvanceGate(result, "run-blocked-check")
+		if focusedGate == nil || focusedGate.FocusedTest == nil || !focusedGate.FocusedTest.TimedOut {
+			t.Fatalf("focused gate=%#v result=%#v", focusedGate, result)
+		}
+		if focusedGate.FocusedTest.BaselineState == resultmodel.FocusedBaselineMatchingRed || focusedGate.State == resultmodel.AdvanceGateSatisfied || status == 0 {
+			t.Fatalf("timeout cleared the focused boundary: status=%d gate=%#v", status, focusedGate)
+		}
+	})
+}
+
+// TestAdvanceMissingInputContinuationsPreserveArgumentChannels pins REQ-506's
+// second defect: a missing-input continuation must place each judgment-owned
+// input in the channel that parses it, so substituting a real value into the
+// emitted argv is enough to make progress.
+func TestAdvanceMissingInputContinuationsPreserveArgumentChannels(t *testing.T) {
+	t.Run("qualification diff range", func(t *testing.T) {
+		repositoryRoot := t.TempDir()
+		requestPath := writeAdvanceRequest(t, repositoryRoot, "working", "REQ-724", "claimed",
+			"route: C\nplanning_at: 2026-09-04T12:00:00Z\nwrite_set: [owned.go]\nestimate:\n  p50_active_minutes: 30\n",
+			routeCBodyThrough("Implementation Summary"))
+		writeAdvanceFile(t, repositoryRoot, "owned.go", "package owned\n\nvar Value = 1\n")
+		initAdvanceGitFixture(t, repositoryRoot)
+		baseRevision := strings.TrimSpace(string(runAdvanceGit(t, repositoryRoot, "rev-parse", "HEAD")))
+		writeAdvanceFile(t, repositoryRoot, "owned.go", "package owned\n\nvar Value = 2\n")
+		runAdvanceGit(t, repositoryRoot, "add", "owned.go")
+		runAdvanceGit(t, repositoryRoot, "commit", "-qm", "implementation")
+		mergeRevision := strings.TrimSpace(string(runAdvanceGit(t, repositoryRoot, "rev-parse", "HEAD")))
+
+		result, status := runAdvanceGateJSON(t, repositoryRoot, "REQ-724", "--request-path", requestPath)
+		qualify := findAdvanceGate(result, "qualify")
+		if status == 0 || qualify == nil || qualify.State != resultmodel.AdvanceGateNeedsInput {
+			t.Fatalf("status=%d gate=%#v result=%#v", status, qualify, result)
+		}
+		if advanceArgvIndex(qualify.NextArgv, "--diff-range") < 0 || advanceArgvIndex(qualify.NextArgv, "--") >= 0 {
+			t.Fatalf("qualification continuation is in the wrong channel: %#v", qualify.NextArgv)
+		}
+		continuation := substituteAdvancePlaceholder(t, qualify.NextArgv, baseRevision+".."+mergeRevision)
+		followed, followedStatus := runAdvanceContinuation(t, repositoryRoot, continuation)
+		followedQualify := findAdvanceGate(followed, "qualify")
+		if followedStatus != 0 || followedQualify == nil || followedQualify.State != resultmodel.AdvanceGateSatisfied {
+			t.Fatalf("continuation %v status=%d gate=%#v result=%#v", continuation, followedStatus, followedQualify, followed)
+		}
+	})
+
+	t.Run("canonical gate tokens", func(t *testing.T) {
+		repositoryRoot := t.TempDir()
+		requestPath := writeAdvanceRequest(t, repositoryRoot, "working", "REQ-725", "claimed",
+			"route: C\nplanning_at: 2026-09-04T12:00:00Z\nwrite_set: [owned.go]\nestimate:\n  p50_active_minutes: 30\n",
+			routeCBodyThrough("Scope"))
+		initAdvanceGitFixture(t, repositoryRoot)
+		recordAdvanceGreenGate(t, repositoryRoot, canonicalGateFixtureBinary)
+
+		result, status := runAdvanceGateJSON(t, repositoryRoot, "REQ-725", "--request-path", requestPath, "--", "sh", "-c", "exit 0")
+		greenGate := findAdvanceGate(result, "check-green-gate")
+		if status == 0 || greenGate == nil || greenGate.State != resultmodel.AdvanceGateNeedsInput {
+			t.Fatalf("status=%d gate=%#v result=%#v", status, greenGate, result)
+		}
+		separatorIndex, gateArgIndex := advanceArgvIndex(greenGate.NextArgv, "--"), advanceArgvIndex(greenGate.NextArgv, "--gate-arg")
+		if gateArgIndex < 0 || separatorIndex < 0 || gateArgIndex > separatorIndex {
+			t.Fatalf("canonical gate continuation is in the wrong channel: %#v", greenGate.NextArgv)
+		}
+		continuation := substituteAdvancePlaceholder(t, greenGate.NextArgv, canonicalGateFixtureBinary)
+		followed, followedStatus := runAdvanceContinuation(t, repositoryRoot, continuation)
+		followedGreenGate := findAdvanceGate(followed, "green-gate")
+		if followedStatus != 0 || followedGreenGate == nil || followedGreenGate.State != resultmodel.AdvanceGateSatisfied {
+			t.Fatalf("continuation %v status=%d gate=%#v result=%#v", continuation, followedStatus, followedGreenGate, followed)
+		}
+	})
+}
+
+func initAdvanceGitFixture(t *testing.T, repositoryRoot string) {
+	t.Helper()
+	runAdvanceGit(t, repositoryRoot, "init", "-q")
+	runAdvanceGit(t, repositoryRoot, "config", "user.name", "Advance Gate Test")
+	runAdvanceGit(t, repositoryRoot, "config", "user.email", "advance@example.invalid")
+	runAdvanceGit(t, repositoryRoot, "add", ".")
+	runAdvanceGit(t, repositoryRoot, "commit", "-qm", "fixture")
+}
+
+func recordAdvanceGreenGate(t *testing.T, repositoryRoot string, gateArgv ...string) {
+	t.Helper()
+	arguments := append([]string{"--repo-root", repositoryRoot, "--format", "json", "record-green-gate", "--gate-exit-status", "0", "--"}, gateArgv...)
+	if output, err := exec.Command(advanceCLIBinary(t), arguments...).CombinedOutput(); err != nil {
+		t.Fatalf("record green gate: %v\n%s", err, output)
+	}
+}
+
+// gitOnlyPathDirectory returns a PATH value holding nothing but git, so the real
+// focused probe cannot launch its shell while canonical Git evidence still resolves.
+func gitOnlyPathDirectory(t *testing.T) string {
+	t.Helper()
+	gitBinary, err := exec.LookPath("git")
+	if err != nil {
+		t.Skipf("git is required for canonical gate evidence: %v", err)
+	}
+	directory := t.TempDir()
+	if err := os.Symlink(gitBinary, filepath.Join(directory, "git")); err != nil {
+		t.Fatal(err)
+	}
+	return directory
+}
+
+func runAdvanceGateJSONWithPath(t *testing.T, repositoryRoot, pathValue string, arguments ...string) (resultmodel.CommandResult, int) {
+	t.Helper()
+	commandArguments := []string{"--repo-root", repositoryRoot, "--format", "json", "advance"}
+	commandArguments = append(commandArguments, arguments...)
+	command := exec.Command(advanceCLIBinary(t), commandArguments...)
+	command.Env = append(os.Environ(), "PATH="+pathValue)
+	return decodeAdvanceGateRun(t, command)
+}
+
+// runAdvanceContinuation executes one emitted advance continuation verbatim,
+// adding only the fixture repository root the harness must supply.
+func runAdvanceContinuation(t *testing.T, repositoryRoot string, continuation []string) (resultmodel.CommandResult, int) {
+	t.Helper()
+	if len(continuation) == 0 || continuation[0] != "do-work-cli" {
+		t.Fatalf("continuation is not a do-work-cli invocation: %#v", continuation)
+	}
+	commandArguments := append([]string{"--repo-root", repositoryRoot}, continuation[1:]...)
+	return decodeAdvanceGateRun(t, exec.Command(advanceCLIBinary(t), commandArguments...))
+}
+
+func decodeAdvanceGateRun(t *testing.T, command *exec.Cmd) (resultmodel.CommandResult, int) {
+	t.Helper()
+	output, runError := command.CombinedOutput()
+	status := 0
+	if runError != nil {
+		exitError, ok := runError.(*exec.ExitError)
+		if !ok {
+			t.Fatalf("advance launch: %v", runError)
+		}
+		status = exitError.ExitCode()
+	}
+	var result resultmodel.CommandResult
+	if decodeError := json.Unmarshal(output, &result); decodeError != nil {
+		t.Fatalf("decode: %v\n%s", decodeError, output)
+	}
+	return result, status
+}
+
+// substituteAdvancePlaceholder replaces the single angle-bracket placeholder in an
+// emitted continuation with a real value, moving no flag and no separator.
+func substituteAdvancePlaceholder(t *testing.T, continuation []string, value string) []string {
+	t.Helper()
+	substituted := append([]string(nil), continuation...)
+	placeholders := 0
+	for index, token := range substituted {
+		if strings.Contains(token, "<") {
+			substituted[index] = value
+			placeholders++
+		}
+	}
+	if placeholders != 1 {
+		t.Fatalf("expected exactly one placeholder token in %#v", continuation)
+	}
+	return substituted
+}
+
+func advanceArgvIndex(argv []string, wanted string) int {
+	for index, token := range argv {
+		if token == wanted {
+			return index
+		}
+	}
+	return -1
 }

@@ -1,7 +1,7 @@
 ---
 id: REQ-506
 title: '[impact-rule-change] Run the evidence gates from advance'
-status: pending
+status: completed
 priority: now
 created_at: 2026-09-02T14:37:54Z
 user_request: UR-098
@@ -54,6 +54,10 @@ builder_handback_at: 2026-09-04T18:15:00Z
 integration_at: 2026-09-04T18:15:22Z
 status_changed_at: 2026-09-04T20:57:34Z
 gate_deferred: 'true'
+claimed_at: 2026-09-05T00:33:23Z
+completed_at: 2026-09-05T02:09:57Z
+commit: 027cffc3
+release_at: 2026-09-05T02:09:57Z
 ---
 
 # Run the Evidence Gates From advance
@@ -131,6 +135,8 @@ The current blocked probe is not yet a complete focused-test baseline API: it re
 
 ## Scope
 
+> **Remediation boundary (2026-09-05).** The list below is the ORIGINAL implementation's declared write set, and it stays as written because it is the honest record of that phase. The single permitted remediation narrowed the boundary to eight paths, named in `## Remediation Plan` → *Exact builder boundary*, and the builder held to seven of them. `scope-drift` therefore reports `SCOPE-DECLARED-NOT-TOUCHED` for the original entries the remediation deliberately did not reopen — `_dev/tests/contracts/core-checks.sh`, `skills/do-work/actions/work.md`, `skills/do-work/actions/work-reference.md`, `internal/corehelpers/checks.go` and the rest. Those files carry the original implementation, already in history; reopening them to satisfy a warning would widen a remediation the plan explicitly bounded. The warnings are expected, judged, and accepted.
+
 **Files I will touch:**
 - `skills/do-work/actions/work.md`
 - `skills/do-work/actions/work-reference.md`
@@ -193,7 +199,7 @@ The current blocked probe is not yet a complete focused-test baseline API: it re
 
 **What was done:** Advance now discovers and executes the current request's mechanical evidence boundary through existing command owners, returning ordered records bound to the exact request and path. Focused tests preserve bounded diagnostic identity and distinguish green, matching baseline red, new red, timeout, launch failure, missing baseline, and an unusable unlaunched baseline. Work prose now supplies inputs and semantic judgment through one named consumer loop.
 
-## Discovered Tasks
+## Prior Discovered Tasks
 
 None.
 
@@ -396,8 +402,8 @@ Hand back the exact eight-path manifest, RED/GREEN outputs, preserved ordinary m
 ## Remediation Execution State
 
 - [x] **[PLAN]:** Three tasks and eight paths; independent public RED first, smallest existing-owner fix, GREEN and caller-boundary verification.
-- [ ] **[APPLY]:** Await successful preflight and isolated builder.
-- [ ] **[UNIFY]:** Await actual diff and verification.
+- [x] **[APPLY]:** Facts carried out of the platform runner, classification and baseline eligibility keyed on those facts, gate promotion guarded, continuations built per channel. Evidence: commit `9130e2e8`, 176 insertions and 74 deletions across six files; the RED tests landed separately in `aaff10ec`.
+- [x] **[UNIFY]:** All four owner packages pass, static analysis is clean, the Windows platform signature compiles, and the whole module is unchanged except one pre-existing environment failure. Evidence: `go test -count=1 ./internal/lifecycleadvance ./internal/corehelpers ./internal/nextselection ./internal/resultmodel` → 4 × `ok`; `gofmt -l .` printed nothing; `go vet ./...` exit 0.
 
 ## Pre-Build Gate Observation
 
@@ -411,3 +417,111 @@ Canonical focused preflight passed (exit0, launchedtrue) and its own baseline is
 - **Repair dependency:** REQ-577
 - **Diagnostic evidence:** "ShellCheck warning SC2043 in _dev/tests/do-work-cli-launcher-behavior.sh: for command_name in bash; do; This loop will only ever run once. Bad quoting or missing glob/expansion?"
 - **Diagnostic evidence:** "The required second direct canonical gate run exited 1 on this warning. The launcher test bytes now belong to committed release7cceea12 and remain unchanged since that failure. First attempt had only Go per-file timing overruns; those are not the deciding fingerprint."
+## Implementation Summary
+
+**Files changed:**
+- `skills/do-work/tools/do-work-cli/internal/corehelpers/commands.go` (modified)
+- `skills/do-work/tools/do-work-cli/internal/lifecycleadvance/evidence_gates.go` (modified)
+- `skills/do-work/tools/do-work-cli/internal/lifecycleadvance/evidence_gates_test.go` (modified)
+- `skills/do-work/tools/do-work-cli/internal/nextselection/blocked_probe.go` (modified)
+- `skills/do-work/tools/do-work-cli/internal/nextselection/blocked_probe_test.go` (modified)
+- `skills/do-work/tools/do-work-cli/internal/nextselection/blocked_probe_unix.go` (modified)
+- `skills/do-work/tools/do-work-cli/internal/nextselection/blocked_probe_windows.go` (modified)
+
+**What was done:** The observed launch, timeout and error facts now travel out of the platform probe runner instead of being rebuilt from the reserved exit values 124 and 125, so a focused test that never launched or was killed by the timer can no longer be promoted to a satisfied gate. Every missing-input continuation is now built in the argument channel that parses it.
+
+The Unix runner returns probe evidence instead of a bare integer. Launched becomes true only after the child process actually starts, TimedOut is set only in the timer branch, and the signal branch keeps its typed interruption. The process-group isolation failure reports launched true together with its error, because the child really did start and the error is what says the run decided nothing. The evidence assembler stops re-deriving those two booleans from the exit status and keeps what the runner reported, filling in only the bounded diagnostic; the three pre-launch refusals now state both booleans instead of inheriting the zero value. The Windows stub matches the new signature and states an explicit never-launched, never-timed-out pair.
+
+The blocked-check handler classifies from those observed facts plus the runner error rather than from the integers 124 and 125. It compares against the saved baseline only for an execution that launched, was not stopped by the timer, and returned no runner error. An ineligible execution keeps baseline state not_compared instead of a value that would suggest the saved record itself was bad.
+
+In the evidence-gate composer, focusedGateState replaces the unguarded promotion arm, so a matching_red comparison string can no longer overwrite a failed subordinate or clear a timed-out run. advanceGateContinuation builds each missing-input continuation in its own channel: the qualification range flag and repeated gate-argument flags go before the separator, probe and estimator arguments after it. redirectHelperRemedies sends a subordinate remedy that would re-enter the evidence helper back through the same request-bound advance invocation; remedies naming any other tool are left alone.
+
+Seven of the eight permitted paths were touched. The eighth, corehelpers/commands_test.go, was permitted but left unchanged (D-18). The manifest above matches git diff 52ac78f7..027cffc3 --stat exactly: the same seven files, 454 insertions and 74 deletions. No path outside the eight-path boundary was changed.
+
+**Implementation range:** `52ac78f7..027cffc3`. Builder commit `9130e2e8`. The RED tests landed separately in `aaff10ec`, and `027cffc3` is the merge of that branch into main.
+
+## Remediation Build Decisions
+
+- **D-13 — launch is the process-start boundary, not the exit value:** Launched becomes true when the child process start call succeeds and stays false everywhere before it: pipe creation failure, start failure, the Windows stub, and the three pre-launch input refusals. The process-group isolation failure therefore reports launched true with a non-nil error, because the child genuinely started and the error is what tells every caller the run decided nothing. Eligibility for baseline comparison is launched and not timed out and no runner error, so that case is refused by the error rather than by a false launch claim.
+- **D-14 — the estimate continuation always emits the full estimator form:** The classifier in the advance command file emits the trivial short form only when effort is mechanical and route is A. That narrower condition is review finding F04, which stays report only, so duplicating it into the gate file would spread a disputed rule to a second site. The continuation instead emits the route, write-set, subsystems and acceptance arguments, which the estimator accepts for every route and effort. This is a deliberate divergence from the classifier's condition, taken to avoid widening the report-only finding.
+- **D-15 — timeout stays advisory at the subordinate level but is never comparable:** The old ladder rewrote only the finding code for status 124 and inherited the outcome and severity from the line above, so the policy was an accident of statement order. It is now explicit: a timeout is a timed-out finding with outcome findings and severity warning, which keeps the existing timeout-and-launch-failure control expecting a findings gate, and it is excluded from baseline comparison so it can never reach satisfied. A launched execution that ends with a runner error, such as an interruption, is a probe failure with outcome failure; calling it a launch failure, as the old ladder did, is the same class of untruth this remediation repairs, and no new finding code was needed to stop it.
+- **D-16 — one budgeted helper for the three descendant-reap waits:** The new tests raised load on these packages and surfaced a latent flake; the descendant-survives-timeout check failed in a three-package run. Measured real latency under that load was 1.13s, 1.41s and 1.95s against a 2-second budget, because the orphan's own parent is already dead, init does the reaping, and a zombie still answers a liveness signal until then. The three duplicated poll loops now share one helper with a 10-second budget and a comment saying why it is generous. The asserted contract is unchanged: the descendant must not survive. This touched test code only; the process-group teardown the remediation plan told the builder not to refactor was not refactored.
+- **D-17 — no nil-handler guard added in the gate composer:** The owner map lookup could be guarded one line above the call. Every gate identifier there is a compile-time constant from the same file and all are present in the handler map, which an existing test pins, so the guard would be defence nothing earned. Left as is and recorded as a discovered task instead.
+- **D-18 — the core-helper command test file was left unchanged:** It sat inside the permitted eight paths, but the corrected behaviour is proved at the public CLI seam and at the probe seam, and the existing control there already pins matching-red and unusable-baseline handling. Adding a helper-level mirror of the same assertions would be test-per-method symmetry. This is why the manifest lists seven paths and not eight.
+- **D-19 — the subordinate-remedy redirect is keyed on a condition, not a name list:** A remedy is redirected only when its argument vector is a do-work-cli invocation whose verb equals the subordinate command this gate record just ran. No enumeration of gate command names exists to go stale, and remedies naming any other tool keep whatever their owner wrote.
+
+## Qualification
+
+Passed the request-bound advance qualify gate for `52ac78f7..027cffc3` against the merged range. Seven of the eight permitted paths changed, 454 insertions and 74 deletions; `corehelpers/commands_test.go` was permitted and left unchanged, and `next_selection.go` is genuinely untouched, both recorded as decisions. Nothing under `do-work/` on the builder branch, no undeclared touch inside the remediation boundary.
+
+TDD is visible in the branch itself rather than only asserted: `aaff10ec` carries the failing tests alone with no production code, and `9130e2e8` carries the fix.
+
+`scope-drift` reports `SCOPE-DECLARED-NOT-TOUCHED` for the original implementation's declared files that this remediation deliberately did not reopen. Those warnings are expected and accepted; the judgment is recorded in `## Scope`.
+
+The P-A-U boxes were reconciled from the builder hand-back, which is where worktree dispatch puts them.
+## Testing
+
+**Red-green validation:** RED was captured on commit `aaff10ec`, before any non-test source was touched. At the public CLI seam, `TestAdvanceFocusedGateNeverClearsFailedExecutionAgainstMatchingBaseline` failed in both subcases: `failed launch cleared the focused boundary` with a gate holding `State:"satisfied", Outcome:"failure"` beside `Code:"BLOCKED-PROBE-LAUNCH-FAILED"` and `Code:"FOCUSED-BASELINE-MATCH"`, and `timeout cleared the focused boundary: status=0` with `State:"satisfied", Outcome:"findings"` beside `Code:"BLOCKED-PROBE-TIMED-OUT"`. `TestAdvanceMissingInputContinuationsPreserveArgumentChannels` failed with `qualification continuation is in the wrong channel` and `canonical gate continuation is in the wrong channel`, both ending `-- <exact --diff-range <pre>..<merge>>` and `-- <one --gate-arg per canonical repository-gate argv token>`. At the probe seam, `TestBlockedProbeEvidencePreservesOrdinaryReservedExitValues` failed on both rows, reporting `ExitStatus:124, Launched:true, TimedOut:true` and `ExitStatus:125, Launched:false, TimedOut:false` for children that exited under their own power. Two new rows added to the existing baseline-state table failed the same way. The hand-back states plainly that `TestBlockedProbeEvidenceRefusesUnrunnableInputsAsUnlaunched` passed already: it is a lock-in added on request, not a RED assertion.
+
+GREEN on commit `9130e2e8`: `TestAdvanceFocusedTestGateClassifiesBaselineStates` passes in 1.20s across `green`, `matching_red`, `different_red_status`, `new_red`, `unusable_baseline`, `ordinary_reserved_timeout_value` and `ordinary_reserved_launch_value`; `TestAdvanceFocusedTestGateDistinguishesTimeoutAndLaunchFailure` passes in 1.57s across `timeout` and `launch_failure`; `TestAdvanceFocusedGateNeverClearsFailedExecutionAgainstMatchingBaseline` passes in 3.91s across `current_launch_failure` and `current_timeout`; `TestAdvanceMissingInputContinuationsPreserveArgumentChannels` passes in 0.55s across `qualification_diff_range` and `canonical_gate_tokens`. The package run reports `ok .../internal/lifecycleadvance 7.253s`. The hand-back records the run regex for this command as a placeholder, `-run '<the four regressions plus the two closest controls>'`, so the exact regex text is not available.
+
+The built binary shows the fix is not a blanket rejection. Same command, same saved baseline, only the timeout differs: `--timeout-seconds 10` gives `state=satisfied launched=true timed_out=false exit_status=124 baseline_state=matching_red`, and `--timeout-seconds 1` gives `state=findings launched=true timed_out=true exit_status=124 baseline_state=not_compared` with advance exit 1.
+
+**Controls preserved:** All re-run on `9130e2e8` and passing.
+
+In `internal/lifecycleadvance/evidence_gates_test.go`: `TestAdvanceExecutesEstimateGateAtPublicCLISeam` protects estimate execution at the public seam; `TestAdvanceEvidenceGatesReturnTypedMissingInputs` protects that estimate, preflight, qualification and focused test all still return `needs_input` with `ADVANCE-GATE-INPUT-REQUIRED` and a nonzero exit; `TestAdvanceExecutesPreflightAndProjectsGreenEvidence` protects preflight projection; `TestAdvanceQualificationUsesExactRangeAndRunsScopeDrift` protects exact-range qualification and scope drift; `TestAdvanceGreenGateMissRequiresDirectRunThenRecordsIt` protects the deliberate three-token direct-gate argv, left untouched; `TestAdvanceFocusedTestGateClassifiesBaselineStates` protects the ordinary rows that matter most here, where `echo same; exit 17` against a baseline recording 17 still reaches `matching_red` and a satisfied gate and a green probe still reaches `green` and satisfied; `TestAdvanceGateInputsFailClosedAndNeverInterpolateHostileTokens` protects fail-closed handling of hostile tokens; `TestAdvanceFocusedTestGateDistinguishesTimeoutAndLaunchFailure` protects the split between timeout and launch failure.
+
+In `internal/corehelpers/commands_test.go`: `TestBlockedCheckReturnsTypedBoundedBaselineComparison` protects matching red with `FOCUSED-BASELINE-MATCH` and the unlaunched saved baseline with `FOCUSED-BASELINE-NOT-LAUNCHED`; `TestEveryRemainingUtilityHasOneHandler` protects the handler map at 21 handlers, so no command was added; `TestNonInformationalFindingsReceiveCommandSpecificActions` protects finding remedies; `TestDryRunSurfacesDoNotMutateBaselineDownloadOrTimestamps` protects dry-run purity.
+
+In `internal/nextselection/blocked_probe_test.go`: `TestBlockedProbePreservesRawStatus` protects raw status passthrough, `exit 37` to 37 with a nil error; `TestBlockedProbeEvidenceBoundsAndNormalizesDiagnostics` protects diagnostic bounding and normalization; `TestBlockedProbeTimeoutKillsDescendantGroup` protects that a timeout still returns status 124 with a nil error, so the timeout fact travels in the evidence and not in the error channel; `TestBlockedProbeCleansBackgroundDescendantAfterLeaderExits` and `TestBlockedProbeInterruptionIsTypedAndReapsDescendants` protect descendant cleanup and the typed interruption at 130.
+
+**Module verification:** Run from the CLI module directory inside the worktree, on commit `9130e2e8`.
+
+- `go test -count=1 ./internal/lifecycleadvance ./internal/corehelpers ./internal/nextselection ./internal/resultmodel` — four `ok` lines: lifecycleadvance 19.989s, corehelpers 16.615s, nextselection 6.824s, resultmodel 0.016s.
+- `gofmt -l .` — no output.
+- `go vet ./...` — no output, exit 0.
+- `GOOS=windows GOARCH=amd64 go test -c ./internal/nextselection -o /tmp/req506-win-check` — compiled; the file was then deleted.
+- `go test -race -count=1 ./internal/nextselection ./internal/lifecycleadvance ./internal/corehelpers` — ok at 8.041s, 23.012s and 20.380s. Not required, run because the change touches a goroutine-bearing runner.
+- `go test -count=1 ./...` — 28 packages ok, 1 package FAIL: `internal/heavyverification`.
+
+The `internal/heavyverification` failure was diagnosed as not belonging to this change. It fails identically on the untouched base source, verified by stashing every change and re-running. `TestShippedRuntimeEvidenceTracksEffectiveGoSettingsAndBinaryBytes` reports "default runtime must have a determinable fingerprint" and `TestShippedGitIsolationPreservesGenericLaneInheritance` reports "shipped runtime probe did not isolate host Git configuration". Both are environment probes about this sandbox, and the package is outside the eight-path boundary, so it was left alone.
+
+Two verification limits are worth stating. All module commands above were run on `9130e2e8` inside the worktree, not on the merge commit `027cffc3`; the merge adds no further source change. `_dev/tests/maintainer-verify.sh` was not run by the builder, as instructed, because the orchestrator owns the full gate after merging.
+
+## Discovered Tasks
+
+- `skills/do-work/tools/do-work-cli/internal/nextselection/next_selection.go:207-230` — three inconsistent re-derivations of the facts this change made truthful, in one block. Line 210 fabricates exit code 125 for a probe no process ever attempted, line 209 sets probe-attempted true for that same never-attempted probe, and lines 221-226 key launch failure on a non-nil probe error alone and re-parse 124 for timeout, which now disagrees with the core-helper classifier. The evidence-preserving runner already exists, so selection could consume the same facts instead of re-deriving them. Outside the eight-path boundary and explicitly excluded by the remediation plan → report only
+- `skills/do-work/tools/do-work-cli/internal/corehelpers/commands.go:600-603` — the green rung of the baseline comparison returns green on exit status 0 before comparing command text or diagnostic identity, so a probe that is a completely different command from the saved baseline's still reports green. Not reachable from the timeout or launch-failure paths repaired here, and tightening it could turn a legitimately passing focused test into a non-green verdict → report only
+- `skills/do-work/tools/do-work-cli/internal/corehelpers/commands.go:588-620` — the six focused-baseline findings all pass nil for next and verification argv, and the finding-specific command table has no case for them, so five error-severity findings ship with no remedy at all. The heavy matrix test `TestAllSeventeenPublicCommandsRunInTextAndJSONWithStableStatusAndNoDryRunEffects` asserts every non-informational finding has both, but its table never reaches this path → report only
+- `skills/do-work/tools/do-work-cli/internal/lifecycleadvance/evidence_gates.go:167` — the handler map is indexed without a presence check, so an unmapped gate id would panic one line later. Unreachable today, see D-17 → report only
+- `skills/do-work/tools/do-work-cli/internal/nextselection/blocked_probe.go:146` — the interruption classifier accepts only exit statuses 129, 130 and 143, so any other signal-derived status falls through and is labelled a launch failure by the selection path. A closed enumeration standing in for the condition "the runner forwarded a terminating signal", which the typed interruption already answers directly → report only
+- Review finding, descendant-cleanup tests: the three descendant-cleanup tests in `skills/do-work/tools/do-work-cli/internal/nextselection/blocked_probe_test.go` cannot fail on a real process-group leak, proved by reducing the group-signal helpers to no-ops and watching two of them still pass. Pre-existing, not caused by this change. Already captured as REQ-581 → queue as follow-up
+- Review finding, unpinned new code: the subordinate-remedy redirection and both halves of the layered guard in `focusedGateState` in `skills/do-work/tools/do-work-cli/internal/lifecycleadvance/evidence_gates.go` are unpinned, each proved by deleting the code and watching the package stay green. Already captured as REQ-583 → queue as follow-up
+- `skills/do-work/actions/work-reference.md:502` — review finding F03, a live reference still sends the merge range to the retired qualification helper through an environment variable. Action prose is outside the eight-path boundary, so it was left untouched → report only
+- `skills/do-work/actions/work.md:170` — review finding F04, the estimate short-circuit no longer states that the floor estimate applies when effort is mechanical or when Route A has no heavy-evidence indicators. Left untouched and deliberately not duplicated into the new estimate continuation, see D-14 → report only
+- The independent review recorded six findings in total, all report only. The three it described are covered by the bullets above; the remaining three are not named in the material available here, so they are not restated → report only
+
+## Review
+
+**Overall: 91%**
+**Acceptance: Pass.** Independent review approved the remediation and reproduced every claim against the built binary rather than reading the hand-back.
+
+The core differential was reproduced exactly: the identical probe `/bin/sleep 2; exit 124` against the identical baseline gives `satisfied / matching_red` at a ten-second timeout and `findings / not_compared` with exit 1 when the timer kills it. The F01 false-success replay now exits 2 with `state: failed`, `launched: false`, `not_compared`, while a genuine canonical green record stays satisfied. An ordinary child exiting 124 or 125 under its own power still reaches `matching_red`, so the fix did not invert the old bug. RED was verified on the tests-only commit with real assertion failures, not compile errors.
+
+Six findings, all report only. The one that matters: the three descendant-cleanup tests cannot fail on a real process-group leak. Reducing the group-signal helpers to no-ops left two of them passing, 30.01s and 31.35s against 2.90s and 2.01s, because a surviving descendant inherits the parent-owned diagnostic pipe and the runner blocks until it exits. They are reaping-latency assertions, not termination proofs. That is pre-existing and not this change's doing; raising the budget from 2s to 10s therefore took nothing away and protects nothing. Captured as REQ-581.
+
+Also report-only: the new subordinate-remedy redirection and both halves of the layered guard in `focusedGateState` are unpinned, each proved by deleting the code and watching the package stay green (captured as REQ-583); and `next_selection.go` still disagrees with corehelpers about the same facts, which is correct scope discipline because selection excludes on any non-zero status either way.
+
+## Lessons Learned
+
+Three rules came out of this, all at the subsystem boundary rather than in one function.
+
+Facts about a process lifecycle belong to the moment they are observed. A runner that returns only an exit status forces every caller to rebuild launch and timeout from reserved integers, and those integers are also legal exit values for an ordinary child. Return the observed facts from the boundary that saw them, and make eligibility for any later comparison a function of those facts plus the runner error.
+
+A comparison result describes similarity, not success. A gate may only be promoted for an execution that actually ran, so a matching-baseline string must never overwrite a failed or interrupted subordinate outcome. Failure authority stays with the owner that ran the command.
+
+A test that waits for a condition can pass because something unrelated blocks, not because the condition held. Before trusting a cleanup or teardown test, break the cleanup on purpose and confirm the test fails; a test that still passes is measuring latency, not the contract it claims.
+
+## Orientation
+
+Advance no longer reports a satisfied focused-test gate for an execution that never launched or was killed by the timer, so satisfied gates can again be trusted to authorize durable completion evidence. Every missing-input continuation it emits can now be followed by substituting the placeholder alone, without moving a flag or a separator.

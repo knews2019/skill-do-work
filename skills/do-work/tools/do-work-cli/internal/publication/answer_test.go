@@ -653,3 +653,433 @@ func TestBuildAnswerPlanRefusesADeclaredArchivePathAgainstANonTerminalVerdict(t 
 		requireClarifyStatus(t, plan, "cancelled")
 	})
 }
+
+// The stakeholder fixtures below share one blocked REQ. Its question section is the only thing
+// that changes between the terminal and partial rounds, because the branch the plan takes is
+// decided by whether an open question survives the round.
+const stakeholderRequestFixturePath = "do-work/queue/REQ-1-stakeholder.md"
+
+func writeStakeholderFixture(t *testing.T, root, questionLines string) {
+	t.Helper()
+	request := "---\nid: REQ-1\nstatus: blocked\nstakeholder: Dana\nblocked_by: ai-reports/REQ-1/old.md\nblocked_at: 2026-08-01T00:00:00Z\n---\n## Open Questions\n\n" + questionLines
+	writeFixture(t, root, stakeholderRequestFixturePath, []byte(request), 0o644)
+}
+
+// buildStakeholderTerminalRound answers the fixture's only question and submits the two durable
+// evidence payloads a terminal stakeholder disposition requires. Both payloads reach the command
+// exactly as a caller writes them, which is what makes their contents the whole attack surface.
+func buildStakeholderTerminalRound(t *testing.T, root, blockedHistory, implementation string) PublicationPlan {
+	t.Helper()
+	writeFixture(t, root, "payload/blocked-history", []byte(blockedHistory), 0o644)
+	writeFixture(t, root, "payload/implementation", []byte(implementation), 0o644)
+	return BuildAnswerPlan(root, Manifest{Operation: OperationAnswer, Answer: &AnswerManifest{
+		RequestPath: stakeholderRequestFixturePath, ExpectedStatus: "blocked", Mode: "stakeholder",
+		ArchivePath: "do-work/archive/REQ-1-stakeholder.md",
+		Answers:     []QuestionAnswer{{QuestionID: "Q-01", Outcome: "answered", Summary: "the blue palette"}},
+		StakeholderTerminal: &StakeholderTerminalEvidence{
+			BlockedHistory: PayloadFile{SourcePath: "payload/blocked-history"},
+			Implementation: PayloadFile{SourcePath: "payload/implementation"},
+		},
+	}}, time.Date(2026, 9, 1, 1, 2, 3, 0, time.UTC))
+}
+
+// Two genuine evidence pairs. The canonical pair is what `actions/stakeholder-answers.md`
+// Step 5 prescribes today; the compatibility pair is the earlier form this package's own
+// fixtures carry. Every forgery row below replaces exactly one half of the compatibility pair,
+// because that pair is accepted both before and after this change — pairing a forgery with the
+// canonical half instead would let the canonical half's own refusal mask a missing check.
+const (
+	canonicalBlockedResolutionEntry  = "## Blocked\n\n- [2026-09-01] blocked on \"answers from Dana\" — resolved: all questions answered\n"
+	canonicalNoCodeImplementation    = "## Implementation\n\n**No changes needed.** Stakeholder answers collected and routed; overrides became change REQs.\n"
+	compatibleBlockedResolutionEntry = "## Blocked\n\n- Resolved 2026-09-01 after stakeholder answer.\n"
+	compatibleNoCodeImplementation   = "## Implementation\n\nNo code changes.\n"
+)
+
+// TestStakeholderTerminalEvidenceRefusesMarkersForgedInCallerProse is the terminal half of
+// REQ-544. The stakeholder branch writes `status: completed`, stamps `completed_at`, deletes
+// `blocked_by`/`blocked_at` and moves the REQ into the archive on two markers read out of
+// payloads the caller composes. Matching them anywhere in that prose means the caller's own
+// narrative decides a terminal status: "still not resolved" carries the resolution marker and
+// "no code review yet" carries the no-code marker, and both are the opposite of what the gate
+// is asking. A marker must sit where the writer places one — opening a history entry, opening
+// the field after the entry's own separator, or opening the Implementation paragraph.
+func TestStakeholderTerminalEvidenceRefusesMarkersForgedInCallerProse(t *testing.T) {
+	tests := []struct {
+		name           string
+		blockedHistory string
+		implementation string
+		// wantEvidence names the half this row forges. The refusal has to say which payload
+		// failed and where its marker belongs, or a caller reading it has to guess which of the
+		// two files to correct.
+		wantEvidence string
+	}{
+		{
+			"blocked resolution negated in narrative prose",
+			"## Blocked\n\nThe stakeholder says this is still not resolved.\n",
+			compatibleNoCodeImplementation,
+			"no Blocked history entry opens with",
+		},
+		{
+			"blocked resolution negated inside a real history entry",
+			"## Blocked\n\n- [2026-09-01] blocked on \"answers from Dana\" — still not resolved\n",
+			compatibleNoCodeImplementation,
+			"no Blocked history entry opens with",
+		},
+		{
+			"blocked marker hidden in the quoted stakeholder name",
+			"## Blocked\n\n- [2026-09-01] blocked on \"answers from resolved: Dana\" — awaiting a reply\n",
+			compatibleNoCodeImplementation,
+			"no Blocked history entry opens with",
+		},
+		{
+			"blocked marker only inside a fenced example",
+			"## Blocked\n\nStill waiting on Dana. A finished entry reads:\n\n```\n- [2026-09-01] blocked on \"answers from Dana\" — resolved: all questions answered\n```\n",
+			compatibleNoCodeImplementation,
+			"no Blocked history entry opens with",
+		},
+		{
+			"blocked marker only under a later section heading",
+			"## Blocked\n\n- [2026-09-01] blocked on \"answers from Dana\" — awaiting a reply\n\n## Notes\n\n- resolved: this line is not Blocked history\n",
+			compatibleNoCodeImplementation,
+			"no Blocked history entry opens with",
+		},
+		{
+			"blocked entry carrying competing separators has no attributable field",
+			"## Blocked\n\n- [2026-09-01] blocked on \"palette — typography\" — resolved: all questions answered\n",
+			compatibleNoCodeImplementation,
+			"no Blocked history entry opens with",
+		},
+		{
+			"blocked marker opens a longer word rather than the marker itself",
+			"## Blocked\n\n- [2026-09-01] Resolvedness of the question set — still being judged\n",
+			compatibleNoCodeImplementation,
+			"no Blocked history entry opens with",
+		},
+		{
+			"blocked marker opens a paragraph that is not a history entry",
+			"## Blocked\n\nresolved is the word Dana used, but no answer has arrived.\n",
+			compatibleNoCodeImplementation,
+			"no Blocked history entry opens with",
+		},
+		{
+			"implementation marker is a fragment of a different statement",
+			compatibleBlockedResolutionEntry,
+			"## Implementation\n\nno code review yet\n",
+			"no Implementation paragraph or list item opens with",
+		},
+		{
+			"implementation marker buried mid-sentence",
+			compatibleBlockedResolutionEntry,
+			"## Implementation\n\nWe shipped the parser rewrite and no code changes were needed in the CLI.\n",
+			"no Implementation paragraph or list item opens with",
+		},
+		{
+			"blocked marker only inside a tilde fence",
+			"## Blocked\n\nStill waiting on Dana. A finished entry reads:\n\n~~~\n- [2026-09-01] blocked on \"answers from Dana\" — resolved: all questions answered\n~~~\n",
+			compatibleNoCodeImplementation,
+			"no Blocked history entry opens with",
+		},
+		{
+			"blocked marker only inside an indented code block",
+			"## Blocked\n\nStill waiting on Dana. A finished entry reads:\n\n    - [2026-09-01] blocked on \"answers from Dana\" — resolved: all questions answered\n",
+			compatibleNoCodeImplementation,
+			"no Blocked history entry opens with",
+		},
+		{
+			"blocked marker only inside a tab-indented code block",
+			"## Blocked\n\nStill waiting on Dana. A finished entry reads:\n\n\t- [2026-09-01] blocked on \"answers from Dana\" — resolved: all questions answered\n",
+			compatibleNoCodeImplementation,
+			"no Blocked history entry opens with",
+		},
+		{
+			"blocked marker only under a deeper subheading",
+			"## Blocked\n\n- [2026-09-01] blocked on \"answers from Dana\" — awaiting a reply\n\n### Resolution template\n\n- resolved: this line is not Blocked history\n",
+			compatibleNoCodeImplementation,
+			"no Blocked history entry opens with",
+		},
+		{
+			"implementation marker only inside a tilde fence",
+			compatibleBlockedResolutionEntry,
+			"## Implementation\n\nThe work is still open. A no-change note reads:\n\n~~~\nNo code changes. Nothing was built.\n~~~\n",
+			"no Implementation paragraph or list item opens with",
+		},
+		{
+			"implementation marker only inside an indented code block",
+			compatibleBlockedResolutionEntry,
+			"## Implementation\n\nThe work is still open. A no-change note reads:\n\n    No code changes. Nothing was built.\n",
+			"no Implementation paragraph or list item opens with",
+		},
+		{
+			"implementation marker only under a deeper subheading",
+			compatibleBlockedResolutionEntry,
+			"## Implementation\n\nThe parser rewrite is still in flight.\n\n### Template\n\n**No changes needed.** Nothing was built.\n",
+			"no Implementation paragraph or list item opens with",
+		},
+		{
+			"implementation note rephrased outside every writer's spelling",
+			compatibleBlockedResolutionEntry,
+			"## Implementation\n\nNo changes were needed.\n",
+			"no Implementation paragraph or list item opens with",
+		},
+		{
+			"emphasis around the marker is not a list bullet",
+			"## Blocked\n\n*resolved* is the word Dana used, but no answer has arrived.\n",
+			compatibleNoCodeImplementation,
+			"no Blocked history entry opens with",
+		},
+		{
+			"report-style link destination is not a marker position",
+			"## Blocked\n\n- [2026-09-01] [resolved: all questions answered](notes/dana.md) — awaiting a reply\n",
+			compatibleNoCodeImplementation,
+			"no Blocked history entry opens with",
+		},
+		{
+			"implementation marker only inside a fenced example",
+			compatibleBlockedResolutionEntry,
+			"## Implementation\n\nThe work is still open. A no-change note reads:\n\n```\nNo code changes. Nothing was built.\n```\n",
+			"no Implementation paragraph or list item opens with",
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			root := t.TempDir()
+			writeStakeholderFixture(t, root, "- [ ] **Q-01** — Which palette?\n")
+			plan := buildStakeholderTerminalRound(t, root, test.blockedHistory, test.implementation)
+			if plan.Refusal == nil || plan.Refusal.Code != "ANSWER-STAKEHOLDER-EVIDENCE-INVALID" {
+				t.Fatalf("forged terminal evidence accepted: refusal=%#v", plan.Refusal)
+			}
+			if !strings.Contains(plan.Refusal.Reason, test.wantEvidence) {
+				t.Fatalf("refusal reason %q does not name the forged half (%q)", plan.Refusal.Reason, test.wantEvidence)
+			}
+			if len(plan.Mutations) != 0 {
+				t.Fatalf("refused plan still carries mutations: %#v", plan.Mutations)
+			}
+		})
+	}
+}
+
+// TestStakeholderTerminalEvidenceKeepsGenuineWriterFormsTerminal is the control the anchoring
+// fix could plausibly break. Both the form the action prescribes today and the earlier form
+// this package's own fixtures use must still complete, stamp the timestamp, drop the blocked
+// fields and move the REQ into the archive — otherwise a stakeholder REQ whose questions are
+// all answered can never be closed by the command that owns closing it.
+func TestStakeholderTerminalEvidenceKeepsGenuineWriterFormsTerminal(t *testing.T) {
+	tests := []struct {
+		name           string
+		blockedHistory string
+		implementation string
+	}{
+		{
+			"the form actions/stakeholder-answers.md prescribes",
+			canonicalBlockedResolutionEntry,
+			canonicalNoCodeImplementation,
+		},
+		{
+			"the earlier form this package's fixtures carry",
+			compatibleBlockedResolutionEntry,
+			compatibleNoCodeImplementation,
+		},
+		{
+			"an asterisk bullet is the same list bullet",
+			"## Blocked\n\n* Resolved 2026-09-01 after stakeholder answer.\n",
+			compatibleNoCodeImplementation,
+		},
+		{
+			"a tab after the bullet is the same list bullet",
+			"## Blocked\n\n-\tResolved 2026-09-01 after stakeholder answer.\n",
+			compatibleNoCodeImplementation,
+		},
+		{
+			"a three-space indent still leaves a list item rather than code",
+			"## Blocked\n\n   - Resolved 2026-09-01 after stakeholder answer.\n",
+			compatibleNoCodeImplementation,
+		},
+		{
+			"the no-change note written as a list item",
+			canonicalBlockedResolutionEntry,
+			"## Implementation\n\n- **No changes needed.** Stakeholder answers collected and routed.\n",
+		},
+		{
+			"a no-change note qualified in the archived house style",
+			canonicalBlockedResolutionEntry,
+			"## Implementation\n\n**No changes needed in this REQ.** All four questions resolved by the stakeholder.\n",
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			root := t.TempDir()
+			writeStakeholderFixture(t, root, "- [ ] **Q-01** — Which palette?\n")
+			plan := buildStakeholderTerminalRound(t, root, test.blockedHistory, test.implementation)
+			if plan.Refusal != nil {
+				t.Fatalf("genuine terminal evidence refused: %#v", plan.Refusal)
+			}
+			if len(plan.Mutations) != 1 || plan.Mutations[0].Kind != MutationMove || plan.Mutations[0].DestinationPath != "do-work/archive/REQ-1-stakeholder.md" {
+				t.Fatalf("terminal archive move missing: %#v", plan.Mutations)
+			}
+			published := plan.Mutations[0].Contents
+			for _, want := range []string{"status: completed", "completed_at: 2026-09-01T01:02:03Z", "## Blocked", "## Implementation"} {
+				if !bytes.Contains(published, []byte(want)) {
+					t.Fatalf("published document is missing %q: %s", want, published)
+				}
+			}
+			for _, unwanted := range []string{"blocked_by:", "blocked_at:"} {
+				if bytes.Contains(published, []byte(unwanted)) {
+					t.Fatalf("published document retained %q: %s", unwanted, published)
+				}
+			}
+		})
+	}
+}
+
+// buildStakeholderPartialRound answers one of two questions, which leaves the REQ blocked and
+// routes it through the partial branch: a fresh report is published and `blocked_by` is
+// repointed at it, but only when the caller's own `## Reports` history names that same bundle.
+func buildStakeholderPartialRound(t *testing.T, root, reportsHistory string) PublicationPlan {
+	t.Helper()
+	writeFixture(t, root, "payload/report", []byte("fresh report\n"), 0o644)
+	writeFixture(t, root, "payload/reports-history", []byte(reportsHistory), 0o644)
+	return BuildAnswerPlan(root, Manifest{Operation: OperationAnswer, Answer: &AnswerManifest{
+		RequestPath: stakeholderRequestFixturePath, ExpectedStatus: "blocked", Mode: "stakeholder",
+		Answers:           []QuestionAnswer{{QuestionID: "Q-01", Outcome: "answered", Summary: "the blue palette"}},
+		Report:            &PublishedFile{Path: "ai-reports/REQ-1/fresh.md", Payload: PayloadFile{SourcePath: "payload/report"}},
+		StakeholderReport: &StakeholderReportEvidence{BlockedBy: "ai-reports/REQ-1/fresh.md", ReportsHistory: PayloadFile{SourcePath: "payload/reports-history"}},
+	}}, time.Date(2026, 9, 1, 1, 2, 3, 0, time.UTC))
+}
+
+// TestStakeholderReportLinkageRefusesReportPathForgedInCallerProse is the non-terminal half of
+// REQ-544. `blocked_by` is the field every later reader follows to find the report a
+// stakeholder is answering, and it is written on the report path appearing anywhere in a
+// history payload the caller composes — so a sentence mentioning the bundle, or a neighbouring
+// path that merely starts with it, repoints the linkage at a bundle the history never recorded.
+// The path is a field of a history entry and must be matched as one.
+func TestStakeholderReportLinkageRefusesReportPathForgedInCallerProse(t *testing.T) {
+	tests := []struct {
+		name           string
+		reportsHistory string
+	}{
+		{
+			"path mentioned only in commentary",
+			"## Reports\n\nWe still owe Dana a regenerated bundle; the last one was ai-reports/REQ-1/fresh.md.\n",
+		},
+		{
+			"entry names a longer path that merely starts with it",
+			"## Reports\n\n- [2026-09-01] ai-reports/REQ-1/fresh.md.bak — 1 open question at generation\n",
+		},
+		{
+			"entry names a deeper path under the same prefix",
+			"## Reports\n\n- [2026-09-01] ai-reports/REQ-1/fresh.md/index.html — 1 open question at generation\n",
+		},
+		{
+			"path only appears under a later section heading",
+			"## Reports\n\n- [2026-08-01] ai-reports/REQ-1/old.md — 2 open questions at generation\n\n## Notes\n\n- ai-reports/REQ-1/fresh.md — not report history\n",
+		},
+		{
+			"path named by a paragraph that is not a history entry",
+			"## Reports\n\nai-reports/REQ-1/fresh.md — a bundle nobody has generated yet.\n",
+		},
+		{
+			"path only appears inside a tilde fence",
+			"## Reports\n\nNothing regenerated yet. An entry reads:\n\n~~~\n- [2026-09-01] ai-reports/REQ-1/fresh.md — 1 open question at generation\n~~~\n",
+		},
+		{
+			"path only appears inside an indented code block",
+			"## Reports\n\nNothing regenerated yet. An entry reads:\n\n    - [2026-09-01] ai-reports/REQ-1/fresh.md — 1 open question at generation\n",
+		},
+		{
+			"path only appears under a deeper subheading",
+			"## Reports\n\n- [2026-08-01] ai-reports/REQ-1/old.md — 2 open questions at generation\n\n### Template\n\n- [2026-09-01] ai-reports/REQ-1/fresh.md — 1 open question at generation\n",
+		},
+		{
+			"link destination names a longer path that merely starts with it",
+			"## Reports\n\n- [2026-09-01] [Stale bundle](ai-reports/REQ-1/fresh.md.bak) — 1 open question at generation\n",
+		},
+		{
+			"link title names the path while its destination points elsewhere",
+			"## Reports\n\n- [2026-09-01] [ai-reports/REQ-1/fresh.md](notes/dana.md) — 1 open question at generation\n",
+		},
+		{
+			"relative link escaping the repository root resolves to nothing",
+			"## Reports\n\n- [2026-09-01] [Fresh bundle](../../../../ai-reports/REQ-1/fresh.md) — 1 open question at generation\n",
+		},
+		{
+			"path only appears inside a fenced example",
+			"## Reports\n\nNothing regenerated yet. An entry reads:\n\n```\n- [2026-09-01] ai-reports/REQ-1/fresh.md — 1 open question at generation\n```\n",
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			root := t.TempDir()
+			writeStakeholderFixture(t, root, "- [ ] **Q-01** — Which palette?\n- [ ] **Q-02** — Which type scale?\n")
+			plan := buildStakeholderPartialRound(t, root, test.reportsHistory)
+			if plan.Refusal == nil || plan.Refusal.Code != "ANSWER-STAKEHOLDER-REPORT-EVIDENCE-INVALID" {
+				t.Fatalf("forged report linkage accepted: refusal=%#v", plan.Refusal)
+			}
+			if len(plan.Mutations) != 0 {
+				t.Fatalf("refused plan still carries mutations: %#v", plan.Mutations)
+			}
+		})
+	}
+}
+
+// TestStakeholderReportLinkageKeepsGenuineHistoryEntriesLinked is the partial-branch control:
+// both the dated writer form and this package's earlier undated fixture must still repoint
+// `blocked_by` and publish the fresh bundle in the same transaction.
+func TestStakeholderReportLinkageKeepsGenuineHistoryEntriesLinked(t *testing.T) {
+	tests := []struct {
+		name           string
+		reportsHistory string
+	}{
+		{
+			"the dated form the stakeholder report template writes",
+			"## Reports\n\n- [2026-09-01] ai-reports/REQ-1/fresh.md — 1 open question at generation\n",
+		},
+		{
+			"the earlier undated form this package's fixtures carry",
+			"## Reports\n\n- ai-reports/REQ-1/fresh.md — partial stakeholder answers.\n",
+		},
+		{
+			"the Markdown-link form this repository's own archive uses",
+			"## Reports\n\n- [2026-09-01] [Timeline panning, not card dragging — AI report for the decision](ai-reports/REQ-1/fresh.md). Presents the open questions and the verification limits.\n",
+		},
+		{
+			"a link written relative to the request document that carries it",
+			"## Reports\n\n- [2026-09-01] [Fresh bundle](../../ai-reports/REQ-1/fresh.md) — 1 open question at generation\n",
+		},
+		{
+			"a dateless link entry keeps its destination as the path field",
+			"## Reports\n\n- [Fresh bundle](ai-reports/REQ-1/fresh.md) — 1 open question at generation\n",
+		},
+		{
+			"a backticked path is the same path field",
+			"## Reports\n\n- [2026-09-01] `ai-reports/REQ-1/fresh.md` — 1 open question at generation\n",
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			root := t.TempDir()
+			writeStakeholderFixture(t, root, "- [ ] **Q-01** — Which palette?\n- [ ] **Q-02** — Which type scale?\n")
+			plan := buildStakeholderPartialRound(t, root, test.reportsHistory)
+			if plan.Refusal != nil {
+				t.Fatalf("genuine report history refused: %#v", plan.Refusal)
+			}
+			var published []byte
+			publishedReport := false
+			for _, mutation := range plan.Mutations {
+				if mutation.Path == stakeholderRequestFixturePath {
+					published = mutation.Contents
+				}
+				if mutation.Kind == MutationCreate && mutation.Path == "ai-reports/REQ-1/fresh.md" {
+					publishedReport = true
+				}
+			}
+			if !publishedReport {
+				t.Fatalf("fresh report was not published with the linkage: %#v", plan.Mutations)
+			}
+			for _, want := range []string{"blocked_by: ai-reports/REQ-1/fresh.md", "status: blocked", "## Reports"} {
+				if !bytes.Contains(published, []byte(want)) {
+					t.Fatalf("published document is missing %q: %s", want, published)
+				}
+			}
+		})
+	}
+}

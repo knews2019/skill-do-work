@@ -2,6 +2,10 @@
 
 This patch builds on v1. The v1 specification is stored in this repo at `decisions/imported-specs/expand-skill-do-work-interview.md` and is being (or has been) implemented into the `interview` action, companion reference, user guide, crew persona, first template, and ADR-011. Some parts of v1 were underspecified; this v2 patch closes those gaps. Do not redo v1's work. Do not rename the action or restructure the files v1 created. Patch, don't rewrite.
 
+> **Note (2026-09-05):** `decisions/imported-specs/expand-skill-do-work-interview.md` — the v1 spec this patch
+> names as required reading below — is no longer in this repo; it was removed on 2026-04-16 (`d86a3418`) after
+> v1 shipped. This document stays the historical record of the v2 patch; its v1 references are left as written.
+
 ---
 
 ## Step 0 — Orient

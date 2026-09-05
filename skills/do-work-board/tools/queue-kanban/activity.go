@@ -12,8 +12,8 @@ import (
 // reviewed, released and completed inside the window carries seven rows, so the
 // whole path it took is readable here instead of only in its frontmatter or in
 // `git log`. Newest first, and STATUS DOES NOT FILTER IT — a REQ that was
-// claimed, held for heavy testing, blocked, completed, cancelled or failed
-// inside the window all belong on the same surface.
+// claimed, blocked, completed, cancelled or failed inside the window all belong
+// on the same surface.
 //
 // The question this answers is "what changed on the queue in the last N hours,
 // and why", which no other surface answers. Recently done is terminal states
@@ -46,9 +46,9 @@ type ActivityRow struct {
 	StampField string
 	StampTime  time.Time
 
-	// Transition is what happened, in words — "held for heavy testing", not
-	// "status_changed_at". Decided in Go by lifecycleTimestampFields so the
-	// client never becomes a second definition of what a stamp means.
+	// Transition is what happened, in words — "work merged", not
+	// "integration_at". Decided in Go by lifecycleTimestampFields so the client
+	// never becomes a second definition of what a stamp means.
 	Transition string
 }
 

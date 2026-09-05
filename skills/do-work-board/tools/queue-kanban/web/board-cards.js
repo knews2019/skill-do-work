@@ -36,10 +36,14 @@
     return badge;
   }
 
-  // Claim-to-completion wall time, stated on the done line beside the
-  // completion instant it already carries. This is the calibration interval,
-  // not an assertion about active implementation time; the detail drawer's
-  // observed phase breakdown shows where the recorded wall span went.
+  // Wall time from the EARLIEST recorded lifecycle stamp to completion, stated
+  // on the done line beside the completion instant it already carries. The
+  // origin is not necessarily claimed_at: a claim stamp rewritten after the work
+  // happened would otherwise erase every phase that ran before it. This is the
+  // calibration interval, not an assertion about active implementation time; the
+  // detail drawer's observed phase breakdown shows where the recorded wall span
+  // went, and the timeline's work bar is a DIFFERENT reading — it still splits
+  // at claimed_at, because that bar is a statement about the claim itself.
   //
   // Both the number and its verdict arrive decided from Go (durations.go's
   // measureImplementationSpan). Go also supplies the completed pause-badge text,

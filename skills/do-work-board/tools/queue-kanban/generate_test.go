@@ -1932,7 +1932,6 @@ func TestGenerateInlinesSemanticStatusCardStyles(t *testing.T) {
 			requiredAccent: `--card-accent: var(--accent-blocked)`,
 			requiredTint:   `--card-tint: var(--tint-blocked)`,
 			requiredSelectors: []string{
-				`.req-card[data-status="pending-heavy-testing"]`,
 				`.req-card[data-status="blocked"]`,
 				`.req-card[data-status="blocked-archive-collision"]`,
 				`.req-card[data-status="blocked-dependency-cycle"]`,

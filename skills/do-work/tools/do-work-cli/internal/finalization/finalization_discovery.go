@@ -854,9 +854,9 @@ func configuredReleaseMetadataPaths(repositoryRoot, oldVersion string, changelog
 		if readError != nil || !manifest.Exists {
 			return configuredReleaseSet{}, fmt.Errorf("read tracked workspace member %s", manifestPath)
 		}
-		packageName, ok := releasePackageName(base, manifest.Bytes)
-		if !ok {
-			return configuredReleaseSet{}, fmt.Errorf("parse tracked workspace member identity %s", manifestPath)
+		packageName, identityError := releasePackageName(base, manifest.Bytes)
+		if identityError != nil {
+			return configuredReleaseSet{}, fmt.Errorf("parse tracked workspace member identity %s: %w", manifestPath, identityError)
 		}
 		lockName, kind := workspaceLockName(base)
 		rootLockPath := filepath.ToSlash(filepath.Join(filepath.Dir(manifestPath), lockName))
@@ -1002,21 +1002,28 @@ func declaredMaintainerReleaseRoots(repositoryRoot string, trackedSet map[string
 	return uniqueSorted(roots), nil
 }
 
-func releasePackageName(manifestName string, contents []byte) (string, bool) {
+// releasePackageName returns the one identity a changed workspace source
+// releases under. That name is what selects the source's lock entry, so an
+// absent, unparseable, duplicated, or competing declaration is an error rather
+// than a first-match guess.
+func releasePackageName(manifestName string, contents []byte) (string, error) {
 	if manifestName == "package.json" {
 		var document struct {
 			Name string `json:"name"`
 		}
-		if json.Unmarshal(contents, &document) != nil || strings.TrimSpace(document.Name) == "" {
-			return "", false
+		if err := json.Unmarshal(contents, &document); err != nil {
+			return "", fmt.Errorf("manifest is not parseable JSON: %w", err)
 		}
-		return document.Name, true
+		if strings.TrimSpace(document.Name) == "" {
+			return "", fmt.Errorf("manifest declares no name")
+		}
+		return document.Name, nil
 	}
 	sections := []string{"package"}
 	if manifestName == "pyproject.toml" {
 		sections = []string{"project", "tool.poetry"}
 	}
-	return tomlSectionScalar(contents, sections, "name")
+	return tomlUniqueSectionScalar(contents, sections, "name")
 }
 
 func findOwnedWorkspaceOwner(repositoryRoot string, tracked, ownedManifests map[string]bool, manifestPath, manifestName string) (string, string, bool) {
@@ -1121,45 +1128,84 @@ func tomlSectionStringArray(contents []byte, section, key string) []string {
 	return values
 }
 
-func tomlSectionScalar(contents []byte, sections []string, key string) (string, bool) {
+// tomlUniqueSectionScalar returns the single value declared for key across the
+// accepted sections. Every declaration counts wherever it appears among them,
+// so a repeated key, a repeated section, and two dialect sections that disagree
+// are all ambiguous and fail closed instead of resolving to the first match.
+func tomlUniqueSectionScalar(contents []byte, sections []string, key string) (string, error) {
 	accepted := map[string]bool{}
 	for _, section := range sections {
 		accepted[section] = true
 	}
 	currentSection := ""
-	pattern := regexp.MustCompile(`^` + regexp.QuoteMeta(key) + `[ \t]*=[ \t]*["']([^"']+)["'][ \t]*$`)
+	declarationPattern := regexp.MustCompile(`^` + regexp.QuoteMeta(key) + `[ \t]*=`)
+	valuePattern := regexp.MustCompile(`^` + regexp.QuoteMeta(key) + `[ \t]*=[ \t]*["']([^"']+)["'][ \t]*$`)
+	values := []string{}
 	for _, line := range strings.Split(string(contents), "\n") {
 		trimmed := strings.TrimSpace(line)
 		if strings.HasPrefix(trimmed, "[") && strings.HasSuffix(trimmed, "]") {
 			currentSection = strings.TrimSpace(strings.TrimSuffix(strings.TrimPrefix(trimmed, "["), "]"))
 			continue
 		}
-		if !accepted[currentSection] {
+		if !accepted[currentSection] || !declarationPattern.MatchString(trimmed) {
 			continue
 		}
-		match := pattern.FindStringSubmatch(trimmed)
-		if len(match) == 2 {
-			return match[1], true
+		match := valuePattern.FindStringSubmatch(trimmed)
+		if len(match) != 2 {
+			return "", fmt.Errorf("%s declaration %q is not a quoted scalar", key, trimmed)
 		}
+		values = append(values, match[1])
 	}
-	return "", false
+	switch len(values) {
+	case 0:
+		return "", fmt.Errorf("no %s declaration in section %s", key, strings.Join(sections, " or "))
+	case 1:
+		return values[0], nil
+	default:
+		return "", fmt.Errorf("%d competing %s declarations (%s)", len(values), key, strings.Join(values, ", "))
+	}
 }
 
+// npmRootVersionCopies counts the root version copies a changed npm root must
+// mirror in its lock: the top-level "version" and packages[""].version.
+// Structural presence is the obligation, never the value, so a present copy
+// holding anything other than the released old version fails closed instead of
+// dropping out of the required mirror set and being left stale.
 func npmRootVersionCopies(contents []byte, oldVersion string) (int, error) {
 	var document struct {
-		Version  string `json:"version"`
-		Packages map[string]struct {
-			Version string `json:"version"`
-		} `json:"packages"`
+		Version  json.RawMessage            `json:"version"`
+		Packages map[string]json.RawMessage `json:"packages"`
 	}
 	if err := json.Unmarshal(contents, &document); err != nil {
 		return 0, err
 	}
-	copies := 0
-	if document.Version == oldVersion {
-		copies++
+	var rootPackageVersion json.RawMessage
+	if rootPackage, present := document.Packages[""]; present {
+		var rootPackageFields map[string]json.RawMessage
+		if err := json.Unmarshal(rootPackage, &rootPackageFields); err != nil {
+			return 0, fmt.Errorf(`packages[""] is not an object: %w`, err)
+		}
+		rootPackageVersion = rootPackageFields["version"]
 	}
-	if document.Packages[""].Version == oldVersion {
+	rootVersionCopies := []struct {
+		label string
+		raw   json.RawMessage
+	}{
+		{label: `"version"`, raw: document.Version},
+		{label: `packages[""]."version"`, raw: rootPackageVersion},
+	}
+	copies := 0
+	for _, rootCopy := range rootVersionCopies {
+		if rootCopy.raw == nil {
+			continue
+		}
+		var value string
+		if err := json.Unmarshal(rootCopy.raw, &value); err != nil {
+			return 0, fmt.Errorf("root %s is not a string: %w", rootCopy.label, err)
+		}
+		if value != oldVersion {
+			return 0, fmt.Errorf("root %s is %q, not the changed root's released version %q", rootCopy.label, value, oldVersion)
+		}
 		copies++
 	}
 	return copies, nil

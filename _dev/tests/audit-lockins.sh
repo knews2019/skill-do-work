@@ -71,6 +71,83 @@ if [ -n "$non_delegating" ]; then
   done <<< "$non_delegating"
 fi
 
+# Finding 8: dead-path-pointers-in-records (REQ-549)
+# Topic-index `sources:` lists and the primes are read as live routing, so a token that
+# matches no tracked file costs every reader a search. Dated records keep their citations
+# as written and are not scanned: decisions/records/, decisions/audits/,
+# decisions/imported-specs/ and decisions/log.md cite the tree as it was.
+tracked_file_list="$(cd "$repo_root" && git ls-files)"
+
+report_token_if_dead() {
+  local candidate_token="$1"
+  local citing_file="$2"
+  local resolvable_token="$candidate_token"
+
+  # Not a repo-relative file claim, so not checked: a glob pattern, a token rooted
+  # somewhere the reader resolves from instead (leading "/"), or a bare `do-work/...`
+  # token, which is the consuming project's queue state. Same carve-outs the shipped
+  # reference contract draws — see _dev/primes/prime-action-files.md Cross-Referencing.
+  case "$candidate_token" in
+    '' | *' '* | *'*'* | /* | do-work/*) return 0 ;;
+  esac
+  while [ "${resolvable_token#../}" != "$resolvable_token" ]; do
+    resolvable_token="${resolvable_token#../}"
+  done
+  # Substring match, the same reading `git ls-files | grep -F` gives: a token is live when
+  # some tracked path ends with it. Matched in-shell because `grep -q` closes the pipe
+  # early and `pipefail` would then read the writer's SIGPIPE as a miss.
+  case "$tracked_file_list" in
+    *"$resolvable_token"*) return 0 ;;
+  esac
+  printf '%s\t%s\n' "$candidate_token" "${citing_file#"$repo_root/"}"
+}
+
+dead_routing_tokens="$(
+  for index_file in "$repo_root"/decisions/topics/*.md; do
+    [ -e "$index_file" ] || continue
+    awk '/^sources:/ { in_sources = 1; next }
+         /^[a-z_]+:/ { in_sources = 0 }
+         in_sources && /^  - / { sub(/^  - /, ""); print }' "$index_file" |
+      while IFS= read -r source_entry; do
+        report_token_if_dead "$source_entry" "$index_file"
+      done
+  done
+  # A backticked token carrying a directory and a file extension is a path claim.
+  for prime_file in "$repo_root"/_dev/primes/*.md; do
+    [ -e "$prime_file" ] || continue
+    grep -o '`[^`]*`' "$prime_file" | tr -d '`' | grep -E '/.*\.[a-z]{2,4}$' |
+      while IFS= read -r prime_citation; do
+        report_token_if_dead "$prime_citation" "$prime_file"
+      done
+  done
+)"
+
+if [ -n "$dead_routing_tokens" ]; then
+  while IFS=$'\t' read -r dead_token citing_file; do
+    [ -z "$dead_token" ] && continue
+    printf 'FAIL: %s cites %s, which matches no tracked file\n' "$citing_file" "$dead_token" >&2
+    failure_count=$((failure_count + 1))
+  done <<< "$dead_routing_tokens"
+fi
+
+# Finding 2: cli-launcher-preamble-copied (REQ-553)
+# The two exempt paths are named in full, not by trailing path shape: a third copy at
+# skills/do-work-toolbox/tools/do-work-cli-preamble.sh is exactly the hand-rolled preamble
+# this pins at zero, and a suffix filter would read it as the exempt file.
+hand_rolled_preambles="$(
+  rg -l --glob '*.sh' 'for cli_candidate in|^launcher_arguments=\(--format text\)$' \
+    "$repo_root/skills" "$repo_root/tools" 2>/dev/null \
+    | grep -vxF -e "$repo_root/tools/do-work-cli-preamble.sh" \
+                -e "$repo_root/skills/do-work/tools/do-work-cli-preamble.sh"
+)"
+if [ -n "$hand_rolled_preambles" ]; then
+  while IFS= read -r f; do
+    [ -z "$f" ] && continue
+    printf 'FAIL: hand-rolled do-work-cli launcher preamble outside the preamble pair: %s\n' "$f" >&2
+    failure_count=$((failure_count + 1))
+  done <<< "$hand_rolled_preambles"
+fi
+
 if [ "$failure_count" -gt 0 ]; then
   exit 1
 fi

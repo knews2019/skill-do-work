@@ -6,54 +6,11 @@
 
 ## Architecture
 
-```
-work action (orchestrator - lightweight, stays in loop)
-  │
-  ├── recover (finalization first, then typed working-claim classification)
-  │
-  ├── For each pending request (skip pending-answers):
-  │     │
-  │     ├── TRIAGE: Assess complexity (no agent, just read & categorize)
-  │     │
-  │     ├── OPEN QUESTIONS? ── - [ ] items exist ──► Mark - [~], builder decides
-  │     │                      (none / all resolved) ──► continue
-  │     │
-  │     ├── MECHANICAL EVIDENCE GATE: estimate record
-  │     │     │
-  │     │     ├── Route A (Simple) ──────────────────┐
-  │     │     │   Skip plan/explore, direct to build │
-  │     │     │                                      │
-  │     │     ├── Route B (Medium) ───────┐          │
-  │     │     │   Explore, scope declare  │          │
-  │     │     │                           ▼          │
-  │     │     └── Route C (Complex) ──► Plan ──► Explore ──► Scope declare
-  │     │                                            │
-  │     │                                            ▼
-  │     │                              pre-build gate record
-  │     │                                            │
-  │     │                                            ▼
-  │     │                                     Implementation agent
-  │     │                                            │
-  │     │                                            ▼
-  │     │                                  Implementation Summary
-  │     │                                            │
-  │     │                                            ▼
-  │     │                        qualification gate + judgment
-  │     │                                            │
-  │     │                                            ▼
-  │     │                         focused/gate evidence + judgment
-  │     │                                            │
-  │     │                                            ▼
-  │     │                                  Review ◄─── Fail? ──► Remediate ──► Re-review
-  │     │                                            │
-  │     │                                            ▼
-  │     ├── Prepare finalization ──► classify discovered tasks ──► queue critical findings only
-  │     │                                            │
-  │     │                                            ▼
-  │     └── Commit (git repos only)
-  │
-  └── Context wipe → Loop | advance --checkpoint → cleanup → report
-```
+The per-REQ pipeline is `actions/work.md`'s numbered steps; this section is the ownership map beside them, not a second drawing of the sequence.
+
+- **The loop.** `recover` → select and claim → triage → open questions → mechanical evidence gate → route → build → Implementation Summary → qualification → focused/gate evidence → review (one remediation pass) → prepare finalization → finalize → checkpoint → cleanup. The orchestrator stays in the loop and stays light.
+- **The three routes converge.** Route A goes straight to the build; Route B explores and declares scope first; Route C plans before both. All three meet again at the pre-build evidence record and run every evidence step from there identically.
+- **Who owns what.** The orchestrator owns judgment and every authored `##` section. Canonical commands own the deterministic mutations: `advance` (selection, claim, mechanical evidence gates, checkpoint, finalization hand-off), `defer-gate` (repository-gate deferral), and the finalization engine (archive, release, commit, provenance, verification, cleanup).
 
 ## Execution Model — Claim Anywhere, One Releaser
 
@@ -163,16 +120,13 @@ impact: impact-user-visible   # OPTIONAL in the schema, expected on every new RE
 priority: next                # OPTIONAL authored queue rank: now | next | later. Capture writes it only when the user's words explicitly rank timing or order; absence and an unrecognized value both resolve to `next`, with the latter producing a Schema Read Contract warning. It orders ordinary dependency-ready work before fan-out bounding and sorts Pending Ready and Pending Waiting independently on the board. It never outranks repository-gate repairs, ready deferred parents, or `depends_on`; equal priorities keep existing queue order. The board shows compact `now`/`later` badges and no badge for the default `next`.
 effort_estimate: effort-substantive   # OPTIONAL triage bit: effort-mechanical | effort-substantive — separates small mechanical fixes from real work so the user can tell at a glance which queued REQs are cheap to approve or batch. **This field is SIZE, judged as size by whoever writes it — never derived from an impact verdict; that judgment is `impact:` above.** Closed two-value enum, deliberately — a triage bit, not an estimation system; do not grow it toward t-shirt sizes (the estimation system lives in the separate `estimate:` block below, and the only bridge between the two is the mechanical-effort short-circuit: `effort-mechanical` ⇒ the floor estimate, no signal extraction — `actions/estimate-reference.md`). Absent or unrecognized reads as `effort-substantive` (Schema Read Contract row below), and the read-only legacy aliases in that row carry every REQ written before the rename unchanged. **Expected on every new REQ:** capture, review follow-up creation, and Discovered Tasks creation judge it by the same three-way standard — judge it, or put the judgment to the user, or leave it absent because neither was possible, never a copied default (`actions/capture.md` Step 1's effort assessment; `actions/review-work.md` Step 10; **Discovered Tasks Classification (Step 8)** below). An unjudged REQ reads as `effort-substantive` and drops out of the selector below for no reason anyone chose. Read as a selection filter by `tools/select-simple-reqs.sh` (backing `actions/run-simple-reqs.md`), which selects only the REQs normalizing to `effort-mechanical` so a cheaper-model session can run the queue's small work; the read-only `trivial` alias above is load-bearing for that selector, because REQs written before the rename spell the value that way and a literal match on the canonical token alone silently drops them. Display only: parsed by `../../do-work-board/tools/queue-kanban/model.go` into a card chip (rendered only when `effort-mechanical` — `effort-substantive` is the default and would be noise) and a drawer row, with no column logic and no scheduling — keep that parser in lock-step with this line, both changing in the same commit.
 
-# OPTIONAL informational forecast — backwards-compatible: a REQ without it is fully
-# valid, and no scheduling, gating, or pipeline logic ever reads it. Written by the
-# work action's ensure-estimate step (post-triage) or by verify-requests after a
-# material repair, then FROZEN once execution begins — never rewritten with knowledge
-# gained during implementation. p50_active_minutes is a multiple of 5, never below 5;
-# it means roughly a 50% chance of completing within that many ACTIVE agent minutes
-# (user wait, paused/suspended sessions, and queue wait are excluded by definition).
-# Produced deterministically by tools/estimate-p50.sh from extracted signals; the
-# extraction guide, confidence rubric, and presentation formats live in
-# actions/estimate-reference.md. No P80 or other percentile fields — by design.
+# OPTIONAL informational forecast — never read by scheduling, gating, or pipeline
+# logic, and FROZEN once execution begins. p50_active_minutes is a multiple of 5 and
+# never below 5: roughly a 50% chance of finishing within that many ACTIVE agent
+# minutes (user wait, paused sessions, and queue wait are excluded by definition).
+# Written by the work action's ensure-estimate step or by verify-requests after a
+# material repair, produced deterministically by tools/estimate-p50.sh. Extraction
+# guide, confidence rubric, and presentation formats: actions/estimate-reference.md.
 estimate:
   p50_active_minutes: 75
   confidence: medium            # low | medium | high
@@ -186,9 +140,8 @@ estimate:
 claimed_at: 2025-01-26T10:30:00Z
 route: A | B | C
 
-# OPTIONAL observations written only after the named work-pipeline event
-# succeeds. Routes that skip an event omit its field; writers never fabricate a
-# value for a skipped phase. All eight use the Timestamp rule above.
+# OPTIONAL observations written only after the named work-pipeline event succeeds.
+# Routes that skip an event omit its field; writers never fabricate a skipped phase.
 planning_at: 2025-01-26T10:32:00Z         # Route C plan saved and validated
 dispatch_at: 2025-01-26T10:33:00Z         # implementation builder accepted the dispatch
 builder_handback_at: 2025-01-26T10:40:00Z # builder returned its completed hand-back
@@ -205,25 +158,20 @@ blocked_at: 2026-07-18T10:00:00Z          # stamped on every flip to blocked —
 blocked_check: 'curl -sf http://localhost:1234/v1/models'   # OPTIONAL shell probe (raw user text — **Frontmatter Quoting** contract above). User-authored content, run VERBATIM by work Step 1 (exit 0 ⇒ unblock to pending; any non-zero / timeout / unreadable ⇒ stays blocked). Absent ⇒ manual/clarify unblock only.
 stakeholder: 'Priya (design)'   # REQUIRED on stakeholder-questions REQs (meaningless elsewhere; raw user text — **Frontmatter Quoting** contract above): the outside person whose confirm-or-override answers this REQ collects — presence is the marker, value is the fold discriminator (actions/capture-reference.md → Fold-First Rule → Stakeholder-audience questions). Verbatim-read class, like assigned_to: no alias map, no case folding, trim-only; greppable by design (grep -rl '^stakeholder: ' do-work/queue/). Always paired with status: blocked + blocked_by naming the person and the latest report bundle path (or "report pending regeneration" until a bundle lands — actions/work.md Step 8) + blocked_at; never with blocked_check (a person is not probeable), and deliberately never with user_request: — UR membership would hold the first source UR open in every closure reader, and nothing waits on this REQ (question provenance lives in per-entry Source: lines). NOT parsed by the board — display rides the existing blocked_by badge, zero parser change. Nothing gates on this REQ: its source REQs completed on the builder's assumptions, and it exists only to route answers back (actions/stakeholder-answers.md); clarify routes it, never yes/no-confirms it (actions/clarify.md Step 5.5).
 
-# Set on ANY status flip that has no dedicated *_at stamp of its own — that
-# condition is the rule, the writers are illustrative: answered → pending
-# (clarify Step 5), unblock → pending (clarify Step 5.5, work Step 1 probe —
-# both REMOVE blocked_at, so this is the only trace of when the flip happened),
-# manual/stuck resets back to pending. Flips with a dedicated stamp (claim →
-# claimed_at, blocked → blocked_at, terminal →
-# completed_at) do NOT write it. Display-only: the board's state timer prefers
-# it over created_at/file-mtime for pending-tier cards ("updated … · 3m"); no
-# pipeline logic reads it. Timestamp rule applies (current UTC instant).
+# Set on ANY status flip that has no dedicated *_at stamp of its own — that condition
+# is the rule and the writers are illustrative (answered → pending, unblock → pending,
+# a manual or stuck reset). An unblock REMOVES blocked_at, so this is the only trace of
+# when that flip happened. Flips with a dedicated stamp (claimed_at, blocked_at,
+# completed_at) do NOT write it. Display-only: the board's pending-tier state timer
+# prefers it over created_at/file-mtime. Timestamp rule applies (current UTC instant).
 status_changed_at: 2026-07-22T20:38:00Z
 
-# Set by work action when finished. STAMPING RULE: every flip to a terminal
-# status (completed / completed-with-issues / failed / cancelled) MUST stamp
-# completed_at with a UTC ISO instant, plus commit with the implementation
-# hash in a git repo. These two fields are the ONLY sources the board resolves
-# a terminal REQ's completion instant from (no file-mtime fallback); a
-# terminal REQ missing both — or carrying an unparseable completed_at or a
-# hash git can't resolve — is flagged as a completion anomaly by do-work-board board
-# (all three modes: serve, static, summary).
+# Set by work action when finished. STAMPING RULE: every flip to a terminal status
+# (completed / completed-with-issues / failed / cancelled) MUST stamp completed_at with
+# a UTC ISO instant, plus commit with the implementation hash in a git repo. These two
+# are the ONLY sources the board resolves a terminal REQ's completion instant from (no
+# file-mtime fallback); missing both, an unparseable stamp, or a hash git cannot resolve
+# is a completion anomaly in all three do-work-board board modes.
 completed_at: 2025-01-26T10:45:00Z   # required on every terminal flip — UTC ISO instant
 status: completed | completed-with-issues | failed
 commit: abc1234               # required in a git repo — implementation commit hash (also recorded at the heavy hold so dependents can build against the landed source)
@@ -235,10 +183,9 @@ error_type: intent|spec|code|environment   # Set with `error` on failure; likewi
 heavy_verified_at: 2026-09-03T12:00:00Z
 heavy_verified_revision: def5678
 
-# Set by abandon action (do-work abandon — user-directed won't-do decision).
-# Two entry paths: a not-yet-finished REQ (pending / pending-answers / blocked / ...), and an
-# already-archived `failed` REQ resolved after the fact — the latter keeps its `error`/`error_type`
-# (above) alongside status: cancelled, so error-on-cancelled is valid data, not corruption.
+# Set by abandon action (do-work abandon — user-directed won't-do decision). Two entry
+# paths: a not-yet-finished REQ, and an already-archived `failed` REQ resolved after the
+# fact — the latter keeps its error/error_type, so error-on-cancelled is valid data.
 status: cancelled             # terminal, NOT successful; the reason lives in the REQ body's `## Cancelled` section
 completed_at: 2025-01-26T10:45:00Z  # stamped (or, on the failed→cancelled path, re-stamped to the cancellation instant) — the terminal timestamp the board's recently-done window reads
 
@@ -294,15 +241,7 @@ The enum-or-boolean-valued fields above (one table row each, below) are covered 
 
 `deferred_implementation_base` and `deferred_implementation_merge` use that same trim-only projection, but the canonical deferral writer accepts them only as a pair, resolves both to commits, requires a non-empty ancestor range, and persists the full commit IDs. A generic reader retains their scalar evidence; resumption owns the later ancestry and path-drift judgment.
 
-**Optional phase-stamp read contract.** `planning_at`, `dispatch_at`, `builder_handback_at`, `integration_at`, `review_at`, `remediation_at`, `re_review_at`, and `release_at` are additive scalar observations. Absence means that phase was not observed and must render no phase, zero, or inferred instant. A present value is trimmed and parsed by the Timestamp rule; an unparseable value is ignored by phase-duration derivation rather than normalized or replaced. The board keeps the declared pipeline order, omits missing/unparseable phases, and measures each displayed interval from the previous parseable observation. None of these fields changes calibration: its only span remains the just-archived REQ's `claimed_at` → `completed_at`.
-
-### Repository-gate deferral transaction
-
-`do-work-cli defer-gate --manifest <path>` is the sole mutation owner for converting a diagnosed unrelated repository-gate failure into repair work. The caller supplies judgment and exact evidence: parent id/path and bytes, checkpoint path and bytes, expected `claimed` state, writer label, structured gate argv, direct non-zero status, diagnostic fingerprint and evidence, stable root-cause `sweep_key`, repair id/path/title/reservation, and optional paired implementation base/merge commits. The command refuses stale preimages, staged owned targets, identity/path collisions, ambiguous fold candidates, unsafe topology, malformed evidence, and invalid merge ranges before publication.
-
-One successful transaction creates or uniquely folds a `pending` `repository_gate_repair: true`, `sweep: true` repair under the parent's `user_request`, projects every affected parent as a canonical open checklist item under `## Instances`, appends each parent through `related`, changes the parent to `status: pending`, adds the repair to canonical `depends_on`, sets `gate_deferred: true`, removes `claimed_at` and only the exact writer's checkpoint entry including its indented detail, appends `## Repository Gate Deferral`, and moves the parent from `working/` to `queue/`. A fingerprint folds only when both `sweep_key` and an exact parsed diagnostic-evidence field match; prefix or substring matches are not identity. The repair never uses `addendum_to`; the parent never enters `blocked` or `pending-answers`, because this lifecycle requires no user choice. Parent, checkpoint, and folded-repair preimages are classified independently as tracked-dirty, tracked-clean, or untracked; every move destination must be absent during planning and remains protected by exclusive creation during apply. Any error after mutation begins restores every parent, repair, reservation, destination, mode, and checkpoint byte to its exact preimage.
-
-Default and UR-expanded queue selection order ready work by three stable classes: `repository_gate_repair: true` first, ready `gate_deferred: true` parents second, and ordinary work third. Inside the ordinary class only, effective authored `priority` sorts `now` before `next` before `later`; existing queue order is the stable final tie-break, and fan-out bounds only after this ordering. Dependency readiness remains the hard gate before ordering, so a `now` dependent never bypasses an unfinished `later` prerequisite. Explicit REQ tokens retain caller order and bypass dependency readiness as before. UR expansions preserve token anchors while ordering each expansion by class, ordinary authored priority, then the existing dependency-depth/id keys. Results project both axes on selected records and exclusions: `selection_priority` is the scheduling class, while `priority` is the effective authored rank, so callers never infer either from display text.
+**Optional phase-stamp read contract.** `planning_at`, `dispatch_at`, `builder_handback_at`, `integration_at`, `review_at`, `remediation_at`, `re_review_at`, and `release_at` are additive scalar observations. Absence means that phase was not observed and must render no phase, zero, or inferred instant. A present value is trimmed and parsed by the Timestamp rule; an unparseable value is ignored by phase-duration derivation rather than normalized or replaced. The board keeps the declared pipeline order, omits missing/unparseable phases, and measures each displayed interval from the previous parseable observation. None of these fields changes calibration: its only span remains the just-archived REQ's `claimed_at` → `completed_at`. The same tolerance covers the body: `## Timing` is written by `fold-timing-summary` at Step 8 only when the run recorded lifecycle timing events, so a REQ without that section is complete rather than incomplete and no reader may require it.
 
 ### Terminal-success status set
 
@@ -332,11 +271,6 @@ The trigger is the *condition above*, not the caller list: **any reader that fil
 - **An argument list that resolves to an empty set stops the action.** It never falls through to a whole-queue default (a full run, a full survey). Expansion adds a recognized shape; it never makes an unrecognized or empty argument permissive.
 - **Expansion widens *which* REQs an action reaches; it never relaxes how any one is treated.** Each caller applies its own per-REQ gates — dependency-readiness, status refusals, confirmations — to every expanded member exactly as if that REQ had been named directly.
 
-### Targeted Run Ledger
-
-`advance` owns the targeted-run ledger as typed state. Its first queue result freezes resolved request membership, per-member provenance, consumed state, the exact original tokens and non-fan-out flags, and the effective numeric dispatch bound. Each returned `continuation_argv` observes the complete canonical selection again, projects frozen unconsumed members before bounding, and never adds later UR or queue members.
-
-The action treats the ledger as authority rather than rebuilding it. It dispatches only `queue_advance.claimed`, invokes the returned continuation after integration, and reports a genuine unconsumed-member exclusion from the typed phase evidence. A later refusal is partial when earlier per-request claim commits landed; those commits are not rolled back.
 ## Stuck Runs Hand Off to Judgment (any step)
 
 The canonical commands are deterministic on purpose: each decides exactly what it can prove and refuses the rest. A refusal, a typed blocker, or a gate that returns the same finding on retry means the deterministic layer has said everything it can. From there the run is stuck, and what unsticks it is the orchestrator's judgment about *why* the command refused, not another retry of the same command and not a mechanical rule looked up in this file. The "no free-form fallback" sentences elsewhere in the pipeline forbid reproducing a command's mutation by hand: a claim, a finalization, a state transition. They do not forbid thinking about the cause of a refusal and clearing it so the command can succeed. A queue is a factory; a stray file or an unattributed byte must never park it.
@@ -364,7 +298,7 @@ This is the full action-owned judgment behind `actions/work.md`'s pre-build and 
 
 ### One retry before classification
 
-**Whenever a direct run of the canonical gate argv exits non-zero, run the exact same argv once more — immediately, directly, unpiped, from the project root — before anything classifies that failure.** Only the second run decides: a zero exit is a green gate and the run continues through the ordinary zero-exit path, and a second non-zero exit is the real failure whose status, diagnostic evidence, and fingerprint every branch below reads. Exactly one retry per gate run, in every lane that launches the gate directly — the baseline lane and late attribution alike — so a run that has already been retried is never retried again. Report the retry as one line in the run's progress output naming both exit statuses, and record both in the REQ's `## Testing` section. Step 5 pre-flight applies the same rule inside `<skill-root>/tools/checks/preflight.sh`, which records only the rerun's result.
+**Whenever a direct run of the canonical gate argv exits non-zero, run the exact same argv once more — immediately, directly, unpiped, from the project root — before anything classifies that failure.** ***Directly* is a condition on what the gate observes, not on who spawns it:** the gate's own output reaches the console and the gate's own exit status reaches the caller, with no pipe, capture or filter in between. Launching that same argv through `run-timed-command` satisfies it — the wrapper hands the child the console's own handles and exits with the child's status, reporting 128 plus the signal number for a signalled child and 127 for a command that never launched — so every lane below may wrap the gate to attribute its wall time without becoming an indirect run. Only the second run decides: a zero exit is a green gate and the run continues through the ordinary zero-exit path, and a second non-zero exit is the real failure whose status, diagnostic evidence, and fingerprint every branch below reads. Exactly one retry per gate run, in every lane that launches the gate directly — the baseline lane and late attribution alike — so a run that has already been retried is never retried again. Report the retry as one line in the run's progress output naming both exit statuses, and record both in the REQ's `## Testing` section. Step 5 pre-flight applies the same rule inside `<skill-root>/tools/checks/preflight.sh`, which records only the rerun's result.
 
 One transient broken pipe inside a single probe used to cost a deferral, a minted repair REQ, and an archived no-op that changed no code. That is the cost this retry removes; a gate that is genuinely red pays one extra run and defers exactly as before.
 
@@ -372,7 +306,7 @@ One transient broken pipe inside a single probe used to cost a deferral, a minte
 
 At run start hold two session-local sets: **suppressed parents** and **repair closure**. They are scheduling evidence, not REQ fields. A parent enters suppression only from a successful typed `gate_deferral` result and stays there until its repair dependency reaches terminal success. Suppression wins over explicit-REQ provenance, preventing a targeted parent from bypassing the dependency it just gained. Every returned repair id enters the closure even when its `user_request` is outside a targeted UR; this is the only cross-UR widening allowed. Recompute the canonical selector after every deferral and every repair terminal result—never reuse a prior selected record.
 
-Before dispatch or source edits, resolve the project-owned canonical gate once as structured argv and invoke `advance` for the exact working request, passing one `--gate-arg` per token. Consume only the matching request-bound `gate_records`. A satisfied green-gate record proves the exact argv green at its returned baseline revision; save that revision and do not rerun the baseline. A `needs_input` record requires the action to run `next_argv` directly and unpiped, then invoke the same advance phase with the exact exit status so advance records the result. A failed or mismatched record is unverifiable and stops safely. The Git-private record binds exact argv and repository identity to the post-run `HEAD`; a recorded revision must be in current `HEAD` ancestry, and only intervening commits whose every changed path is under `_dev/gate-runs/` preserve a match. A different argv, repository, non-ancestor revision, or any other changed path never matches. For a direct run, save the current revision, direct status, bounded diagnostic evidence, and a stable semantic fingerprint; when that run was retried under **One retry before classification** above, all four come from the second run. Fingerprinting must discard volatile timestamps, scratch roots, and ordering noise but retain the failing command/test identity and normalized diagnostic; use the same procedure everywhere below. A gate launch or record failure stops safely.
+Before dispatch or source edits, resolve the project-owned canonical gate once as structured argv and invoke `advance` for the exact working request, passing one `--gate-arg` per token. Consume only the matching request-bound `gate_records`, and take their verdict as given rather than re-deriving it: a satisfied green-gate record authorizes dispatch at its returned baseline revision and the baseline is not rerun, a `needs_input` record requires running its `next_argv` directly and unpiped and returning the exact exit status through the same advance phase so `advance` records the result, and a failed or mismatched record is unverifiable and stops safely. **Fingerprinting is the action's, and the same procedure is used everywhere below:** for a direct run save the current revision, the direct status, bounded diagnostic evidence, and a stable semantic fingerprint that discards volatile timestamps, scratch roots, and ordering noise while retaining the failing command/test identity and normalized diagnostic. When that run was retried under **One retry before classification** above, all four come from the second run. A gate launch or record failure stops safely.
 
 The branch table is exhaustive:
 
@@ -389,8 +323,6 @@ The branch table is exhaustive:
 ### Manifest authoring and collision retry
 
 The action authors exact evidence; `do-work-cli defer-gate --manifest <path>` alone mutates. Copy parent/checkpoint preimages to payload files, carry the exact writer label, structured gate argv, direct non-zero status, fingerprint/evidence, stable root-cause `sweep_key`, and optional paired implementation commits. Scan the same request and `.req-reservations/` evidence as capture, propose read-only max+1, and let `defer-gate` exclusively create the unpadded reservation. Do not call a helper that pre-creates a marker. Retry a collision only for one of two typed results: **(a)** pre-mutation `outcome: refused` with the collision finding, an empty `changes` list, and `rollback.status: not_needed`; or **(b)** post-mutation collision with `outcome: rolled_back` and `rollback.status: succeeded`. Rescan the live repository and propose its new max+1 before retrying. An incomplete/failed rollback, `committed_risk`, any non-collision refusal/finding, stale preimage, or non-empty refused-result changes stops without retry.
-
-Fold mode supplies the unique pending repair's exact preimage. A committed repair's SessionStart cleanup may already have removed its reservation, so an absent marker is valid fold topology only when that repair preimage is clean against `HEAD`; a present marker must still match exactly. With a present exact reservation, untracked and manifest-bound tracked-dirty repair folds are supported, but staged repair bytes are always refused. An absent reservation with an untracked or tracked-dirty repair stays refused. An occupied parent queue destination is a pre-mutation planning refusal; exclusive move publication still rechecks absence at the final apply boundary.
 
 On success consume `gate_deferral` fields only: `parent_id`, `parent_path`, `repair_id`, `repair_path`, `repair_outcome`, `repair_dependency`, `diagnostic_fingerprint`, `sweep_key`, command/status, and optional range. Never scrape text rendering or infer the repair from queue order. Validate that the returned parent and fingerprint equal the proposal before updating the session sets.
 
@@ -434,17 +366,11 @@ Write the mandatory summary exactly as:
 **What was done:** Re-ran the repair's recorded canonical repository gate before source edits and confirmed it is already green; no implementation changes were necessary.
 ```
 
-**The pre-build run is this branch's only gate lane**, and under the one-retry rule above a red first exit makes it at most two runs of the same argv. After its direct zero exit, return the exact status and argv through the current advance phase, require a satisfied request-bound green-gate record, and write its `recorded_revision` into the evidence block above. Qualification and Testing Judgment captures `<now>` under the Timestamp rule and independent review reuses it; both invoke `<skill-root>/tools/do-work-cli.sh --repo-root <project-root> --format json validate-already-green-repair --request-path <exact working REQ path> --writer <exact finalization writer> --at <now>` and consume only their respective `already_green_repair.tdd_allowed` and `already_green_repair.review_allowed` fields. That shared command extracts the intake/no-op fingerprints and argv, verifies the record at its own past revision without relaunching the gate, observes project and release state, and derives the exact staged-path allowlist from a successful canonical completion dry run. Callers never supply those evidence values or recreate the predicate. A no-op repair changes no project path, so a later `HEAD` move by an unrelated commit can never make it the cause of a red gate and never invalidates its recorded evidence at its own recorded revision; ordinary REQs keep the `HEAD`-bound rule in **Session state and baseline** above. Done means that one gate lane plus bookkeeping — under ten minutes of wall clock on the maintainer's machine, or roughly twice that when the retry fires — reported in the REQ's `## Testing` section, which carries both exit statuses when it did.
-
-Qualification is a narrow evidence check, not a vacuous diff pass: require the exact two sections above, verify the recorded green-gate evidence at the recorded green revision at typed success with `matches: true`, and prove no project path changed. Do not run the ordinary diff-requiring qualifier and do not relaunch the gate. Append `## Qualification\n\nPassed — repository-gate repair no-op; durable gate evidence verified and project diff empty.` Independent review must then use the shared validator's typed `review_allowed: true`, which matches the expected fingerprint to intake and proves the project diff remains empty, not repeat those checks; self-review is insufficient.
-
-After review passes, author the ordinary strict finalization manifest with the exact already-green evidence and no release payload. The canonical finalization engine archives terminal success, removes the checkpoint claim, applies any UR closure/calibration targets, commits only its exact lifecycle allowlist, records provenance, verifies, and cleans up. Any project, changelog, version, lockfile, or unrelated path refuses this no-op finalization. Dependency readiness can resume parents. No other empty implementation receives any of these exceptions.
+**The pre-build run is this branch's only gate lane** — at most two runs of the same argv under the one-retry rule above. After its direct zero exit, return the exact status and argv through the current advance phase, require a satisfied request-bound green-gate record, and write its `recorded_revision` into the evidence block above. Qualification and independent review then each invoke `<skill-root>/tools/do-work-cli.sh --repo-root <project-root> --format json validate-already-green-repair --request-path <exact working REQ path> --writer <exact finalization writer> --at <now>` and consume only their respective `already_green_repair.tdd_allowed` and `already_green_repair.review_allowed` fields; **callers never supply the evidence values, recreate the predicate, relaunch the gate, or run the ordinary diff-requiring qualifier**, and self-review is insufficient. Append `## Qualification\n\nPassed — repository-gate repair no-op; durable gate evidence verified and project diff empty.`, then author the ordinary strict finalization manifest with the already-green evidence and no release payload. Because a no-op repair changes no project path, a later `HEAD` move can never make it the cause of a red gate, and its recorded evidence stays verifiable at its own recorded revision. An ordinary REQ's green record has no such immunity: it can stop matching as `HEAD` moves, and a mismatched record is unverifiable and stops safely (**Session state and baseline** above). Done means that one gate lane plus bookkeeping, reported in the REQ's `## Testing` section, which carries both exit statuses when the retry fired. **No other empty implementation receives any of these exceptions.**
 
 ### Continuation and reporting
 
-A failed, cancelled, or still-gated repair never releases its parents. The selector naturally excludes those parents by `depends_on`; the action continues unrelated selected REQs instead of ending the run. A successful repair causes a fresh selection, where repair priority is exhausted before deferred-parent priority and ordinary work.
-
-Run summaries compose, rather than overwrite: report each deferred parent with its typed repair id and create/fold outcome; each no-change repair completion; each resumed parent as reused or rebuilt-after-drift; each repair failure/cancellation; and every unrelated REQ that continued afterward. The ordinary composed exit summary still reports dependency-gated parents under its blocked-by-dependencies section. No branch writes `blocked` or `pending-answers`, and no branch asks for user confirmation.
+A failed, cancelled, or still-gated repair never releases its parents: the selector excludes them by `depends_on`, and the action continues unrelated selected REQs instead of ending the run; a successful repair instead triggers a fresh selection, which is what lets its parents resume. Run summaries compose rather than overwrite — report each deferred parent with its typed repair id and create/fold outcome, each no-change repair completion, each resumed parent as reused or rebuilt-after-drift, each repair failure or cancellation, and every unrelated REQ that continued afterward, with dependency-gated parents still under the composed summary's blocked-by-dependencies section. No branch writes `blocked` or `pending-answers`, and no branch asks for user confirmation.
 
 ## Worktree Dispatch Mode (Step 1)
 
@@ -464,7 +390,7 @@ Run summaries compose, rather than overwrite: report each deferred parent with i
 - **A remote builder's hand-back travels on the branch.** The absolute-main-tree-path hand-back file (*Sole integrator*, below) is a **local-only** mechanism: it works because the builder shares a filesystem with the main tree. A builder that does not — a cloud sandbox, another machine — commits its manifest **on its own branch** and the orchestrator reads it after the merge. Never hand a remote builder a main-tree path; it resolves to nothing or to something else's.
 - **A non-releaser checkout's `do-work/` snapshot is potentially stale, and never authoritative.** Where a consumer commits `do-work/`, every non-releaser checkout carries a copy of the queue as of its last sync: a REQ it shows as `pending` may already be claimed elsewhere, and a `status` it shows may be several transitions behind. Read it as a hint about what exists, never as the current state of anything, and resolve disagreements by syncing rather than by writing. This is the same rule *State stays home* (below) applies to a worktree's snapshot, widened to the checkout that owns one.
 
-**Claim conflicts between checkouts are ordinary git conflicts, and `do-work/CHECKPOINT.md` is where they surface.** Two checkouts claiming the same REQ produce a plain **content** conflict on the REQ file — never a rename conflict, because both sides perform the identical `do-work/queue/` → `do-work/working/` rename and git resolves it silently — made entirely of the two claim writes (`claimed_at`, and whatever sections each side generated). With byte-identical claim writes the REQ file does not conflict at all, and the `writer:` label is then the *only* thing that surfaces the double claim. **Expect a `CHECKPOINT.md` conflict on every concurrent claim, including two that overlap in nothing** — two single-line appends land at the same position, so git reports `CONFLICT (add/add)` (`AA`) or `CONFLICT (content)` (`UU`) depending on whether the file already existed. **Resolve it by keeping every entry from both sides.** That is the merge-time reading of the Session Checkpoint Principle: every live claim survives. Both one-sided resolutions lose data: taking ours strips another checkout's live claim record by hand; taking theirs discards this checkout's own record and makes its own crash unrecoverable. One id under two labels needs no reconciling: it is the honest record of two checkouts. On the REQ file itself only one claim survives — a human decision, evidenced by which checkout actually has the work. All of that is observed behavior, recorded in `do-work/archive/UR-018/REQ-095-two-clone-acceptance-run.md`'s `## Testing` section, and it holds only where the consumer **commits `do-work/`**; where the directory is untracked nothing syncs, so no conflict surfaces and `duplicate-req-id` is the only detector left.
+**Claim conflicts between checkouts are ordinary git conflicts, and `do-work/CHECKPOINT.md` is where they surface.** Two checkouts claiming the same REQ produce a plain **content** conflict on the REQ file — never a rename conflict, because both sides perform the identical `do-work/queue/` → `do-work/working/` rename and git resolves it silently — made entirely of the two claim writes (`claimed_at`, and whatever sections each side generated). With byte-identical claim writes the REQ file does not conflict at all, and the `writer:` label is then the *only* thing that surfaces the double claim. **Expect a `CHECKPOINT.md` conflict on every concurrent claim, including two that overlap in nothing** — two single-line appends land at the same position, so git reports `CONFLICT (add/add)` (`AA`) or `CONFLICT (content)` (`UU`) depending on whether the file already existed. **Resolve it by keeping every entry from both sides.** That is the merge-time reading of the checkpoint's own contract (**In-Progress Record (Step 1)**, below): every live claim survives. Both one-sided resolutions lose data: taking ours strips another checkout's live claim record by hand; taking theirs discards this checkout's own record and makes its own crash unrecoverable. One id under two labels needs no reconciling: it is the honest record of two checkouts. On the REQ file itself only one claim survives — a human decision, evidenced by which checkout actually has the work. All of that is observed behavior, recorded in `do-work/archive/UR-018/REQ-095-two-clone-acceptance-run.md`'s `## Testing` section, and it holds only where the consumer **commits `do-work/`**; where the directory is untracked nothing syncs, so no conflict surfaces and `duplicate-req-id` is the only detector left.
 
 **Red Flag — a second checkout running the release tail.** Capturing, claiming and building from another checkout are now in contract; the violation to watch for is a second checkout merging integration, bumping the version, prepending to `CHANGELOG.md`, moving files into `archive/`, or closing a UR. Two changelog prepends against one queue is the shape it usually takes, and unique version numbers do not make it safe (**Serial-only**, below).
 
@@ -507,22 +433,14 @@ Run summaries compose, rather than overwrite: report each deferred parent with i
 
 What fan-out adds:
 
-- **The set is either picked by a human or computed by auto-wave; `write_set` never gates the first and is not read at all by the second.** In the manual path a human chooses which REQs run together; in auto-wave the loop computes the ready set from `depends_on`, claim state, `assigned_to`, and — when the flag is set — `--skip-impact-negligible` (*Auto-wave*, below, is the canonical condition list; this is a gloss, not a second copy) (*Auto-wave*, below). A REQ's declared `write_set` is **advisory input to that pick, never a gate** in the manual path, and **not read at all** by the computed one — it is display-only, nothing schedules on it, and the board's `overlaps` badge misses glob-vs-glob, `**`, and directory entries, so **absence reads as unknown, not safe** (`../../do-work-board/actions/board.md`). That is why it cannot be a scheduling input: a field whose absence means *unknown* can only ever inform a judgment, never make one.
+- **The set is either picked by a human or computed by auto-wave; `write_set` never gates the first and is not read at all by the second.** In the manual path a human chooses which REQs run together; in auto-wave the loop delegates the whole computation to queue-mode `advance` and dispatches what it claims (*Auto-wave*, below, states the policy around that delegation; the predicate itself is the command's, and no list here is a second copy of it). A REQ's declared `write_set` is **advisory input to that pick, never a gate** in the manual path, and **not read at all** by the computed one — it is display-only, nothing schedules on it, and the board's `overlaps` badge misses glob-vs-glob, `**`, and directory entries, so **absence reads as unknown, not safe** (`../../do-work-board/actions/board.md`). That is why it cannot be a scheduling input: a field whose absence means *unknown* can only ever inform a judgment, never make one.
 - **The non-interference proof is the merge, not the pick.** `git merge --no-ff --no-commit` refusing is the only mechanical evidence that two builders' work does not collide. **Its limit is honest: git detects conflicts by line proximity, not meaning.** Two REQs each appending an entry to a shared registry merge cleanly and can still be jointly wrong. The **integration seam** rule (*Sole integrator*, above) is what covers that — and it works only because one integrator applies every seam by hand, inside the merge commit.
 - **Integration is serial.** Implementation parallelises; merge → qualify → test → review → changelog → archive runs one REQ at a time. Each merge also invalidates the previous REQ's *Post-merge verification* (above), so those checks re-run per REQ against the tree as it then stands. Expect the wall-clock saving in the build phase only, and say so rather than promising more.
 - **A worktree per builder is mandatory, not optional.** Sharing one working tree was considered and ruled out: every test run, qualification check, and review diff would then read a tree carrying the other builder's unfinished edits, so each REQ's evidence steps stop meaning anything and nothing downstream can tell. (The staging race is the lesser problem.) Keep this reason here — without it a later reader re-offers the shared tree as a simplification.
 
-**Auto-wave — what the loop computes, and what it deliberately does not.** `actions/work.md` Step 1 delegates the complete computation and claim transaction to queue-mode `advance`; its typed claimed members are the wave and its exclusions are the composed reasons. The prose below states selection policy and must never become a second queue scan. In auto-wave mode (`do-work run --fan-out [N]`) the ready set is every REQ that satisfies **all** of:
+**Auto-wave — what the loop computes, and what it deliberately does not.** `actions/work.md` Step 1 delegates the complete computation and claim transaction to queue-mode `advance`: its typed claimed members are the wave, and its typed exclusions are the composed reasons. **This prose states policy and must never become a second queue scan.** Readiness, the dependency-source-ready set, the live-claim veto, the `assigned_to` courtesy read, the `--skip-impact-negligible` filter, and the explicit-`REQ-NNN` provenance carve-out are one definition each, held by the command and applied identically in the serial loop and under `--fan-out` (**Schema Read Contract** → *Dependency-source-ready status set*, above, for what satisfies a dependency; `actions/work.md` Step 1 for provenance). Targeting tokens scope the candidate pool; `--fan-out` changes only how many of the selected set run at once, never which, and there is no separate readiness predicate for waves.
 
-1. `status: pending` — every other status is skipped exactly as the serial scan skips it (`actions/work.md` Step 1), holding statuses included.
-2. **Dependency-ready** — every id in `depends_on` (or its `dependencies:` alias) resolves to a `completed` or `completed-with-issues` REQ. The same predicate and the same cycle detection as the serial scan; auto-wave adds no second definition of readiness — **including the serial scan's provenance carve-out**: in a targeted run an **explicitly-named** `REQ-NNN` enters the wave regardless of `depends_on` (the user named it outright), while a REQ reached by `UR-NNN` expansion stays gated, scoped to the UR's member set (`actions/work.md` Step 1).
-3. **Unclaimed** — not in `do-work/working/`, and carrying no live `claimed_at`. A REQ under another checkout's `writer:` label in `do-work/CHECKPOINT.md` is claimed *there* and is never in this wave (**Crash Recovery (Step 1)**, above).
-4. **Not `assigned_to` another session** — the same courtesy read the serial scan performs, skipped and reported the same way (`actions/work.md` Step 1). Explicit targeting still overrides it, and still clears the field on claim.
-5. **Not dropped by `--skip-impact-negligible`** — when that flag is set, a REQ whose `impact:` resolves to `impact-negligible` under the Schema Read Contract is out of the wave, skipped and reported exactly as the serial scan skips and reports it (`actions/work.md` Step 1). This is what makes the flag a *which* filter that composes with `--fan-out` rather than one that silently no-ops under it. Explicit targeting still overrides it; `UR-NNN` expansion does not. Without the flag the condition is vacuous and the wave is unchanged.
-
-**Targeting tokens scope the pool, and per-token provenance survives into the wave.** `--fan-out` composes with targeting tokens (`actions/work.md` → Input): in a targeted run the candidate pool is the resolved token set rather than the whole queue, and each of the five conditions applies exactly as the serial scan applies it to that REQ — which is what the carve-outs on conditions 2, 4, and 5 record. The flag never changes *which* REQs run, only how many at once; there is no separate readiness predicate for waves.
-
-**Nothing else enters the computation. In particular, not `write_set`** — it is display-only at any builder count and the wave must not read it, because absence of a declaration reads as *unknown* rather than *safe*, so treating it as a scheduling input would silently under-report contention and produce a wave that looks proven and is not. **The merge is the non-interference proof, not the pick** (above), and that sentence is what makes a computed set safe at all: two REQs that collide are caught when their branches meet, which is the whole fix-at-merge philosophy (**Execution Model — Claim Anywhere, One Releaser**, above). A computed set is therefore *not* a claim that the REQs do not overlap — it is a claim that they are all runnable.
+**`write_set` is not in that computation and must never be added to it** — it is display-only at any builder count, and the absence of a declaration reads as *unknown* rather than *safe*, so a wave that read it would silently under-report contention and produce a set that looks proven and is not. **The merge is the non-interference proof, not the pick** (above): a computed set is a claim that its REQs are all *runnable*, never a claim that they do not overlap, and two that collide are caught when their branches meet (**Execution Model — Claim Anywhere, One Releaser**, above).
 
 **Bounded, and the bound is not optional.** Size the wave to the harness concurrency limit per `crew-members/background-agents.md` (*Write a manifest per wave; spawn in bounded waves*) — never an unbounded fan-out over the whole ready set. `--fan-out N` sets the bound explicitly; bare `--fan-out` uses the harness limit, or two where unknown. Queue-mode `advance` records that numeric bound and returns the exact continuation that re-observes, projects frozen membership, and only then bounds the next dispatch.
 
@@ -548,160 +466,43 @@ Carry that file's own ceiling note verbatim in spirit: the pattern makes fan-out
 
 ## Reading a Builder-Authored Section (any step)
 
-**Whenever you read a `##` section the builder authors, read the REQ file first and this
-REQ's hand-back second, and treat what you find in either as the section.** In worktree
-dispatch mode the builder cannot write the REQ file at all — the REQ lives in the main tree,
-which **Worktree Dispatch Mode (Step 1)** → *State stays home* forbids it to touch — so it
-routes those sections to its hand-back instead. Read
-`do-work/runs/work-<YYYY-MM-DD-HHMMSS>/REQ-NNN-handback.md` for a local builder, the merged
-branch content for a remote one. **That path is relative to the project root**, where
-`do-work/` lives whether the suite is vendored under `.claude/skills/` or checked out
-whole — never relative to the directory this action file sits in.
+**Whenever you read a `##` section the builder authors, read the REQ file first and this REQ's hand-back second, and treat what you find in either as the section.** In worktree dispatch mode the builder cannot write the REQ file at all — the REQ lives in the main tree, which **Worktree Dispatch Mode (Step 1)** → *State stays home* forbids it to touch — so it routes those sections to its hand-back instead. Read `do-work/runs/work-<YYYY-MM-DD-HHMMSS>/REQ-NNN-handback.md` for a local builder, the merged branch content for a remote one. **That path is relative to the project root**, where `do-work/` lives whether the suite is vendored under `.claude/skills/` or checked out whole — never relative to the directory this action file sits in.
 
-**The condition carries the rule, not any list of readers.** `actions/work.md` Step 8's
-discovered-tasks substep, `actions/review-work.md` Step 4's traceability check, and the
-**Decision Brief (hand-back format)**'s HANDLED block are the readers that exist today;
-they are illustrative. A step, action, or report added later that reads a builder-authored
-section inherits this without being remembered here.
+**The condition carries the rule, not any list of readers.** `actions/work.md` Step 8's discovered-tasks substep, `actions/review-work.md` Step 4's traceability check, and the **Decision Brief (hand-back format)**'s HANDLED block are the readers that exist today; they are illustrative. A step, action, or report added later that reads a builder-authored section inherits this without being remembered here.
 
-**Absence is only silence when you know you looked.** In worktree dispatch mode, if the
-section is in neither place **and this REQ's hand-back is missing or unreadable**, say so
-rather than proceeding as though the builder recorded nothing: `⚠ REQ-NNN: no <section> in
-the REQ and no readable hand-back at <path> — anything the builder recorded there is lost.`
-A hand-back that exists and simply has no such section is a real "the builder recorded
-nothing" and reports nothing. Every reader states which of the two it found — an unread
-hand-back and an empty one are different facts and must never render the same.
+**Absence is only silence when you know you looked.** In worktree dispatch mode, if the section is in neither place **and this REQ's hand-back is missing or unreadable**, say so rather than proceeding as though the builder recorded nothing: `⚠ REQ-NNN: no <section> in the REQ and no readable hand-back at <path> — anything the builder recorded there is lost.` A hand-back that exists and simply has no such section is a real "the builder recorded nothing" and reports nothing. Every reader states which of the two it found — an unread hand-back and an empty one are different facts and must never render the same.
 
 ## Composed Exit Summary (Step 1)
 
-**Exit paths when the scan finds nothing to claim:**
+**Exit paths when the scan finds nothing to claim.** The exit report is **composed**, not picked from disjoint branches. Lead with the headline that matches the actual queue state — `No pending REQs in queue.` when the queue holds no `pending` REQs at all, `No dependency-ready pending REQs.` when every one is dependency-blocked, `No claimable pending REQs — every ready one is assigned to another session.`, or `No claimable pending REQs — every ready one is impact-negligible and --skip-impact-negligible is set.` — then append every section below that holds at least one REQ, in this order. **That condition is the rule**, so a category added later inherits it without anyone re-counting, and the headline never strands the user because its matching section always enumerates them.
 
-The exit report is **composed**, not picked from disjoint branches. Whenever the scan finds no claimable `pending` REQ, lead with the headline that matches the actual queue state — `No pending REQs in queue.` when the queue holds no `pending` REQs at all, `No dependency-ready pending REQs.` when `pending` REQs exist but every one is dependency-blocked, `No claimable pending REQs — every ready one is assigned to another session.` when dependency-ready `pending` REQs exist but every one carries `assigned_to`, `No claimable pending REQs — every ready one is impact-negligible and --skip-impact-negligible is set.` when the flag dropped every otherwise-claimable REQ (in each case the matching section below then enumerates them, so the headline never strands the user). Then append every section that has at least one REQ — **that condition is the rule, and the list below is the set as it stands today**, so a section added later inherits it without anyone re-counting. In this order:
+**Which REQs fall in which category is the typed result's answer, not a second scan.** Each trigger below names evidence the run already holds — `advance`'s queue exclusions and holds, and `recover`'s finalization records — and this table says only what to render from it. Each row's Section cell carries the **exact heading string** to render — write it as written, with `N` replaced by the count — and under it one indented `REQ-NNN — [title] (<fields>)` line per REQ.
 
-1. **Finished-awaiting-archive section** — applies if any REQ in `do-work/queue/` normalizes under the Schema Read Contract to a terminally resolved status. Read the `user_request` frontmatter field from each to group by UR. Render:
+| # | Section | Trigger | Fields on each line | Remedy line |
+|---|---|---|---|---|
+| 1 | Finished-awaiting-archive section — `⚠ N finished REQs awaiting archive (UR-137: 3 REQs, UR-138: 1 REQ, ...):` | a REQ in `do-work/queue/` normalizes to a terminally resolved status | the resolved status, written `(complete → completed)` where an alias was normalized; group the heading by `user_request` (`UR-137: 3 REQs, UR-138: 1 REQ, …`) | `Run do-work cleanup to archive completed work, then do-work recap to see full history.` |
+| 2 | Pending-answers section — `⚠ N REQs awaiting clarification:` | status `pending-answers` | status only — frontmatter at this stage; counting `## Open Questions` is `do-work clarify`'s job | `Run do-work clarify to batch-review the open questions; resolved REQs flip to pending and re-enter the queue.` |
+| 3 | Blocked-on-external-condition section — `⚠ N REQs blocked on external conditions:` | status `blocked` | `blocked by: <condition>`, the age from `blocked_at`, and `[probe failed this run \| no auto-probe]` — Step 1 already re-ran every `blocked_check` | `When a condition is satisfied, re-run do-work run (a blocked_check is re-probed automatically and unblocks on exit 0), or confirm a human-checkable one via do-work clarify. To give up on one, do-work abandon REQ-NNN.` |
+| 3a | …the stakeholder form of row 3 | that REQ also carries `stakeholder:` | `questions for <stakeholder> (N open, K irreversible; since <age>) — report: <latest bundle path from blocked_by>`, led by `⚠ IRREVERSIBLE` when K > 0 | row 3's remedy plus `To ingest a stakeholder's reply, run do-work stakeholder-answers REQ-NNN — share the report path with them first if you haven't.` |
+| 4 | Blocked-archive-collision section — `⚠ N REQs held by archive-collision guard:` | status `blocked-archive-collision` | the queue file path, then indented `already archived at <archive-path>` and `recover: rename the queue file (if this is an intentional re-do) or delete it (if it's a stale duplicate), then flip status back to pending` | — |
+| 5 | Blocked-by-dependencies section — `⚠ N REQs blocked by unmet dependencies:` | a `pending` REQ has an unmet `depends_on`, or a REQ is `blocked-dependency-cycle` | `(pending; depends on REQ-MMM, status: <status>)`, or `(blocked-dependency-cycle; chain: REQ-PPP → REQ-QQQ → REQ-PPP)`. Pending REQs stay `pending` — the gating is dynamic; only cycle-detected REQs carry a held status | `Resolve the blocking REQs first, then re-run. To force a scoped run that ignores dependency gating, use do-work run REQ-NNN. To break a cycle, edit depends_on and flip the status back to pending. A dependency on a cancelled or failed REQ never self-resolves — re-point it, or abandon the dependent too.` |
+| 6 | Assigned-elsewhere section — `⚠ N REQs assigned to another session:` | a `pending` REQ carries a non-empty `assigned_to` | `assigned to <assigned_to, verbatim>` — rendered as written, never normalized | `Skipped as a courtesy, not blocked — nothing confirms that session is running. To take one over here, name it explicitly (do-work run REQ-NNN), which clears the assignment as part of the claim. To drop an assignment without running it, remove the field by hand.` |
+| 7 | Skipped-as-negligible section — `⚠ N REQs skipped as impact-negligible:` | `--skip-impact-negligible` is set and an otherwise-claimable `pending` REQ resolves to `impact-negligible` | the resolved token, never the raw one | `Skipped by --skip-impact-negligible, not blocked — nothing was written to these REQs. Re-run without the flag to include them, or name one explicitly, which overrides the skip for that REQ. A REQ with no impact: reads as impact-user-visible and never appears here.` |
+| 8 | Held-for-heavy-testing section — `⚠ N REQs held for heavy testing:` | a claimed REQ still carries `## Heavy Verification Plan` without `heavy_verified_revision` after the drain ran (`actions/work.md` Step 7.7) | `held: <finding code> <lane>` — a REQ whose selected lanes all executed was finalized by the drain and never appears here | `A skipped browser lane needs an engine: set QUEUE_KANBAN_BROWSER=<path> and re-run do-work run. Plan drift or a stored historical-revalidation plan is a typed finding for a human; the next drain retries once the cause is fixed.` |
+| 9 | Set-aside-by-recovery section — `⚠ N REQs set aside by recovery:` | a `recover` finalization record whose `reason_codes` include `FINALIZATION-SET-ASIDE` | `REQ-NNN (set aside: <reason codes, comma-separated>)`, then an indented `recover: <resolving verb>` | the resolving verb itself, judged as below |
 
-   ```
-   ⚠ N finished REQs awaiting archive (UR-137: 3 REQs, UR-138: 1 REQ, ...):
-     REQ-351 — [title] (complete → completed)
-     REQ-352 — [title] (completed)
-     REQ-353 — [title] (cancelled)
-     ...
+Four rows carry a judgment no typed record makes for you. **Rows 6 and 7 are not held statuses:** those REQs stay `pending`, nothing was written to them, and the same REQ becomes claimable the moment a user names it explicitly — row 7 also renders on the targeted exit path (`actions/work.md` Step 1 → Targeted mode), scoped there to the resolved token set rather than the whole queue. **Row 3a's counts are the one bounded exception to this summary's frontmatter-only stance:** open the body of stakeholder REQs only — at most one per stakeholder, by construction — and fall back to row 3's plain line when a body cannot be read. **Row 9's resolving verb is this summary's judgment, not a field to copy:** pick it exactly as **Stuck Runs Hand Off to Judgment (any step)** picks it, above — `do-work run-with-recovery` when this checkout is the only writer and releaser of the queue, `do-work cleanup` when the archive itself needs repair. That record's `next_argv` is empty on purpose, because the only verb the command could name is the one that just refused, so a missing verb here means the summary skipped the judgment rather than that none exists. The set-aside REQ keeps the claim it already had — recovery does not release it, under `do-work run-with-recovery` either — and its unfinished journal is still on disk.
 
-   Run `do-work cleanup` to archive completed work, then `do-work recap` to see full history.
-   ```
-
-2. **Pending-answers section** — applies if any REQ has status `pending-answers`. Render from frontmatter only — do not open the REQ body to count `## Open Questions` items at this stage (Step 1 reads frontmatter per the queue scan). The count is deferred to `do-work clarify`, which is the action that reads Open Questions sections:
-
-   ```
-   ⚠ N REQs awaiting clarification:
-     REQ-NNN — [title] (pending-answers)
-     ...
-
-   Run `do-work clarify` to batch-review the open questions; resolved REQs flip to `pending` and re-enter the queue.
-   ```
-
-3. **Blocked-on-external-condition section** — applies if any REQ has status `blocked` (waiting on an external condition named in `blocked_by` — a service being up, a person answering, credentials provisioned — not user answers and not another REQ). Render from frontmatter: the `blocked_by` condition, the age from `blocked_at` (now − `blocked_at`), and whether an auto-probe is configured or failed this run. Step 1 already re-ran each `blocked_check` probe before composing this summary, so a REQ that still appears here either has no probe or its probe did not pass this run:
-
-   ```
-   ⚠ N REQs blocked on external conditions:
-     REQ-NNN — [title] (blocked by: <condition>, since <age>) [probe failed this run | no auto-probe]
-     ...
-
-   When a condition is satisfied, re-run `do-work run` (REQs with a `blocked_check` are re-probed automatically and unblock on exit 0),
-   or confirm a human-checkable one via `do-work clarify`. To give up on one, `do-work abandon REQ-NNN`.
-   ```
-
-   **A blocked REQ carrying `stakeholder:` renders in the stakeholder form instead** of the plain line above, led by `⚠ IRREVERSIBLE` when K > 0:
-
-   ```
-     REQ-NNN — questions for <stakeholder> (N open, K irreversible; since <age>) — report: <latest bundle path from blocked_by>
-   ```
-
-   and the section's remedy text gains: `To ingest a stakeholder's reply, run do-work stakeholder-answers REQ-NNN — share the report path with them first if you haven't.` Counting N and K is the one bounded exception to this summary's frontmatter-only stance: open the body of stakeholder REQs only — at most one per stakeholder, by construction — never the rest of the queue; if the body cannot be read, fall back to the plain blocked line for that REQ.
-
-4. **Blocked-archive-collision section** — applies if any REQ has status `blocked-archive-collision`. Render the archive paths from `advance`'s recursive collision evidence:
-
-   ```
-   ⚠ N REQs held by archive-collision guard:
-     REQ-NNN — [title] (queue file: do-work/queue/REQ-NNN-slug.md)
-       already archived at <archive-path>
-       recover: rename the queue file (if this is an intentional re-do) or delete it (if it's a stale duplicate), then flip status back to `pending`
-     ...
-   ```
-
-5. **Blocked-by-dependencies section** — applies if any `pending` REQ has an unmet `depends_on` reference (dependency-blocked) or any REQ has status `blocked-dependency-cycle`. Pending REQs stay `pending` (the gating is dynamic — they become ready as upstream REQs complete); only cycle-detected REQs are flipped to a held status. Render both groups under one heading:
-
-   ```
-   ⚠ N REQs blocked by unmet dependencies:
-     REQ-NNN — [title] (pending; depends on REQ-MMM, status: <pending|claimed|pending-answers|failed|cancelled>)
-     REQ-PPP — [title] (blocked-dependency-cycle; chain: REQ-PPP → REQ-QQQ → REQ-PPP)
-     ...
-
-   Resolve the blocking REQs first, then re-run. To force a scoped run that ignores dependency gating for a specific REQ, use `do-work run REQ-NNN`. To break a dependency cycle, edit the REQ's `depends_on` and flip its status back to `pending`. A dependency on a `cancelled` (or `failed`) REQ never self-resolves — re-point the dependent's `depends_on`, or abandon it too (`do-work abandon REQ-NNN`).
-   ```
-
-6. **Assigned-elsewhere section** — applies if any `pending` REQ carries a non-empty `assigned_to` (earmarked for another session — **Request File Schema — Full Frontmatter**, above). These stay `pending` and are not a held status: the field is advisory, and the same REQ becomes claimable here the moment a user names it explicitly. Render the value verbatim, never normalized:
-
-   ```
-   ⚠ N REQs assigned to another session:
-     REQ-NNN — [title] (assigned to <assigned_to, verbatim>)
-     ...
-
-   Skipped as a courtesy, not blocked — nothing confirms that session is running. To take one over here, name it explicitly (`do-work run REQ-NNN`), which clears the assignment as part of the claim. To drop an assignment without running it, remove the field by hand.
-   ```
-
-7. **Skipped-as-negligible section** — applies only when `--skip-impact-negligible` is set, and then to every otherwise-claimable `pending` REQ whose `impact:` resolves to `impact-negligible` (**Request File Schema — Full Frontmatter**, above). These stay `pending` and are not a held status: the flag reads the field and writes nothing, so re-running without it picks the same REQs straight back up. This section also renders on the targeted exit path (`actions/work.md` Step 1 → Targeted mode) when the flag dropped resolved members — scoped there to the resolved token set, never the whole queue. Render the resolved token, not the raw one:
-
-   ```
-   ⚠ N REQs skipped as impact-negligible:
-     REQ-NNN — [title] (impact-negligible)
-     ...
-
-   Skipped by `--skip-impact-negligible`, not blocked — nothing was written to these REQs. Re-run without the flag to include them, or name one explicitly (`do-work run REQ-NNN --skip-impact-negligible`), which overrides the skip for that REQ. A REQ with no `impact:` reads as `impact-user-visible` and never appears here.
-   ```
-
-8. **Held-for-heavy-testing section** — applies if any claimed REQ in `do-work/working/` still carries `## Heavy Verification Plan` without `heavy_verified_revision` after the heavy-lane drain ran (`actions/work.md` → Step 7.7). A REQ whose selected lanes all executed is finalized by the drain and never reaches this section; one that appears here got no result, and the typed finding names why. Render:
-
-   ```
-   ⚠ N REQs held for heavy testing:
-     REQ-NNN — [title] (held: <finding code> <lane>)
-     ...
-
-   A skipped browser lane needs an engine: set `QUEUE_KANBAN_BROWSER=<path>` and re-run `do-work run`. Plan drift or a stored historical-revalidation plan is a typed finding for a human; the next `do-work run` drain retries once the cause is fixed.
-   ```
-
-9. **Set-aside-by-recovery section** — applies if any `recover` result in this run carried a finalization record whose `reason_codes` include `FINALIZATION-SET-ASIDE`. Recovery refused that one REQ's finalization tail, excluded it from this run's selection, and drained the rest; the REQ keeps the claim it already had — recovery does not release it, under `do-work run-with-recovery` either — and its unfinished journal is still on disk. Render one line per record from the record's own fields:
-
-   ```
-   ⚠ N REQs set aside by recovery:
-     REQ-NNN (set aside: <reason codes, comma-separated>)
-       recover: <resolving verb>
-     ...
-   ```
-
-   **The resolving verb is this summary's judgment, not a field to copy.** Pick it exactly as **Stuck Runs Hand Off to Judgment (any step)** picks it, above: `do-work run-with-recovery` when this checkout is the only writer and releaser of the queue, `do-work cleanup` when the archive itself needs repair. The record's `next_argv` is empty on purpose — the only verb the command could name is the one that just refused — so a missing verb here means the summary skipped the judgment, not that none exists.
-
-**After rendering all applicable sections, exit the work loop.** There is no claimed member. Step 1's contract on this path is "render the composed summary, then stop"; the only path that continues is one whose typed queue result contains a committed claim.
-
-If **no section applies** (no REQs at all in `do-work/queue/`), report completion and exit. Never silently exit when any section applies — every non-pending or non-ready REQ in the queue is something the user needs to see.
-
-**Composition is deliberate.** A queue with both `pending-answers` and `blocked-archive-collision` REQs (and no completed/done) renders both sections back-to-back. A queue hitting every category renders every section. The user sees the full picture in one report instead of a single branch's slice.
+**After rendering all applicable sections, exit the work loop.** There is no claimed member: Step 1's contract on this path is "render the composed summary, then stop", and the only path that continues is one whose typed queue result contains a committed claim. If **no section applies** (no REQs at all in `do-work/queue/`), report completion and exit. Never silently exit when any section applies — every non-pending or non-ready REQ is something the user needs to see, and a queue hitting several categories renders each section back-to-back instead of one branch's slice.
 
 ## In-Progress Record (Step 1)
 
-**Canonical lifecycle transaction boundary.** `do-work-cli recover`, queue-mode `advance`, `advance --checkpoint`, `complete`, `fail`, and `cancel` own deterministic request, checkpoint, archive, UR, calibration, and provenance changes. The action supplies authority and judgment; the commands consume structural evidence and apply guarded transactions. `claim`, `unblock`, and `recover-claim` remain compatibility primitives behind those public compositions. A refusal is actionable; descriptive field/archive rules define semantics, never a free-form fallback.
+**Canonical lifecycle transaction boundary.** `do-work-cli recover`, queue-mode `advance`, `advance --checkpoint`, `complete`, `fail`, and `cancel` own the deterministic request, checkpoint, archive, UR, calibration, and provenance changes; `claim`, `unblock`, and `recover-claim` remain compatibility primitives behind those public compositions. The action supplies authority and judgment and then consumes the typed result — it never executes a second move, collision check, UR consolidation, or calibration append, and never reproduces a refused mutation by hand. A refusal is actionable: read it with **Stuck Runs Hand Off to Judgment (any step)**, above.
 
-**Completion/cancellation archive semantics (declarative).** A standalone or legacy request leaves `working/`/`queue/` for archive root. A UR member moves into its archived UR folder only when the transaction's projected snapshot says every member is terminally resolved; the same transaction consolidates the exact sibling/input paths and removes the active UR directory. A failed/nonterminal sibling keeps the UR open and the just-resolved request archives at root. An already-archived failed cancellation stays at its exact path, and an eligible review follow-up may enter an existing archived UR folder without reopening or relocating that folder. Calibration is derived from the just-archived bytes and appended by `complete`, or returned as typed skipped work. These are postconditions for interpreting the command result; actions never execute a second move, collision check, UR consolidation, or calibration append.
+**One calibration judgment stays here.** The span is read from the just-archived REQ file's own `claimed_at` and `completed_at` at calculation time — never from either stamp held in context earlier in the run.
 
-**Archived review-follow-up semantics (declarative).** When and only when a completed REQ carries `review_generated: true` and an archived `UR-NNN` folder already exists for the same `user_request`, canonical `complete` plans the REQ into that existing folder in place. The archived UR folder is never moved, reopened, or re-consolidated, and this case bypasses the normal active-UR closure branch. These are planner postconditions, not action-side move instructions.
+`do-work/CHECKPOINT.md`'s exact `## In Progress (interrupted)` section is structural claim evidence, and the `writer:` label on an entry is what makes a claim attributable across checkouts. `advance` writes or refreshes the current checkout's entry in the same guarded commit that moves a selected REQ to `working/`; authorized recovery and finalization remove every same-request entry on departure while preserving unrelated labelled or unlabelled records byte-for-byte. Any move of a REQ out of `working/` owes that same removal, and it belongs to the move rather than to a later sweep. The checkpoint grants no lock and no liveness claim.
 
-**Calibration evidence semantics (declarative).**
-
-**At calculation time, read both `claimed_at` and `completed_at` from the just-archived REQ file's frontmatter; never reuse either stamp from a value held in context earlier in the run.**
-
-The canonical `complete` command either appends the planned row once or reports typed skipped work.
-
-`do-work/CHECKPOINT.md`'s exact `## In Progress (interrupted)` section is structural claim evidence. `advance` writes or refreshes the current checkout's entry in the same guarded commit that moves a selected REQ to `working/`; authorized recovery and finalization remove every same-request entry on departure while preserving unrelated labelled or unlabelled records byte-for-byte. The checkpoint grants no lock or liveness claim, and actions never reproduce its mutation.
 ## Triage Section Template (Step 3)
 
 ```markdown
@@ -940,18 +741,13 @@ Q-NN ids are unique within one REQ and never reused — an answered or reclaimed
 
 ## Failure Classification (Step 8)
 
-
 This classification runs at any generation: `review_generated: true` on the failed REQ does **not** suppress its failure follow-up. The critical-only automatic rule in `actions/review-work.md` Step 10 governs review findings, not failed-work recovery; a failed REQ with no successor would die silently.
 
 Before classifying via the symptom table below, **check for upstream failure**. Cascades from a failed prerequisite often present as plausible-looking `code` or `spec` symptoms in the downstream REQ; misclassifying them sends the builder chasing phantom bugs in the wrong domain.
 
 **Upstream-failure short-circuit:**
 
-Read the frontmatter of every REQ this one depends on:
-- `addendum_to` (single parent, if set; or `amends`/`parent`/`amendment_to` as the legacy alias if `addendum_to` is absent — same back-compat shape as the `depends_on`/`dependencies:` pair; `addendum_to` wins when multiple are present)
-- every entry in `depends_on` (if set, or every entry in the legacy `dependencies:` alias if `depends_on` is absent — same back-compat rule as Step 1; `depends_on` wins when both present)
-
-Resolve each ID by globbing `do-work/archive/**/REQ-NNN-*.md`, `do-work/archive/**/REQ-NNN.md`, `do-work/queue/REQ-NNN-*.md`, and `do-work/working/REQ-NNN-*.md`. If any referenced REQ has `status: failed`, skip the symptom table and short-circuit classification:
+Read the frontmatter of every REQ this one depends on — the `addendum_to` parent if set, and every `depends_on` entry, each including the legacy aliases the schema documents. Resolving those ids to exactly one record, and refusing an ambiguous one, is the canonical resolver's job and never a glob spelled out here. If any of them carries `status: failed`, skip the symptom table and short-circuit classification:
 
 - `status: failed`
 - `error_type: spec` (the local approach is downstream-correct only if the upstream is correct; with the upstream broken, the local spec is implicitly unsound)
@@ -974,13 +770,7 @@ If no upstream REQ is `failed`, fall through to the symptom-based classification
 |---|---|---|
 | "This REQ failed on a code bug" | Check whether any `addendum_to` or `depends_on` ancestor (or `dependencies:` alias) is also `failed` first | Downstream failures often inherit upstream rot; misclassifying as `code` chases phantom bugs in the wrong domain |
 
-**Procedure:**
-1. Run the upstream-failure short-circuit. If it fires, jump to step 3.
-2. Otherwise classify using the symptom table above.
-3. Update frontmatter: `status: failed`, `error: "description"`, `error_type: [intent|spec|code|environment]`
-4. For Intent/Spec/Code failures: create the appropriate follow-up REQ (details above). Set `addendum_to` to the failed REQ's ID so context chains. Preserve the original dependency list on the follow-up when the failure was upstream-driven — always emit it under the canonical `depends_on:` key, even if the failed REQ used the legacy `dependencies:` alias.
-5. Move to `archive/` (failed REQs always go to archive root, not into UR folders).
-6. Report to user: `[REQ-NNN] failed ([type]): [description]. Follow-up: [REQ-NNN] / None.` When the short-circuit fired, prefix the report with `(upstream cascade — original failure at REQ-NNN)`.
+**Procedure:** run the upstream-failure short-circuit first and take its verdict when it fires, otherwise classify from the symptom table. Either way the chosen `status`, `error`, and `error_type`, and any follow-up REQ, are authored as finalization intent and applied by the canonical lifecycle transaction — never by a hand edit and never by a hand move into `archive/`. Report `[REQ-NNN] failed ([type]): [description]. Follow-up: [REQ-NNN] / None.`, prefixed `(upstream cascade — original failure at REQ-NNN)` when the short-circuit fired.
 
 ## Changelog Entry Procedure (Step 9)
 
@@ -991,17 +781,12 @@ Choose the version source from affirmative project ownership: prefer the project
 Include a committed lockfile only when it records this package's own version, and author exact old/new payload bytes that change only that package entry. Classify every release target exactly once as project-owned or a suite-maintainer mirror; do not infer ownership from path spelling or Git tracking, create a missing lockfile, rewrite dependencies, or ask a package manager to produce the payload. The planner discovers the mirror set itself: every tracked `VERSION` file or `**Current version**:` line still carrying the old version, and every tracked changelog byte-identical to the declared changelog preimage, must be a declared target, or the release refuses with `RELEASE-MIRROR-UNDECLARED` naming each path.
 
 The house voice is one or two brief sentences leading with why the delivery matters, followed by specific bullets. Load `crew-members/anti-slop.md` for this human-facing text. The action passes its judged title, prose, ownership, bump, mirrors, and exact payload bytes through the single finalization manifest; deterministic validation and publication stay with the finalizer.
+
 ## Commit & Metadata-Commit Procedure (Step 9)
 
-The action judges and authors one strict finalization manifest: exact working REQ/path and request/checkpoint digests, terminal transition and timestamp, writer, exact implementation/lifecycle/release allowlist, commit message, optional release payload, and provenance mode. Use `supplied_commit` with the retained merge hash when an isolated implementation already landed; use `primary_commit` without an implementation hash when finalization creates the primary commit from the declared paths, including an already-green no-release repair or terminal failure.
+The action judges and authors one strict finalization manifest: the exact request id and path, the expected request and checkpoint digests, the terminal transition and timestamp, the writer, the exact implementation/lifecycle/release allowlist, the commit message, any release payload, and the provenance mode. Use `supplied_commit` with the retained merge hash when an isolated implementation already landed; use `primary_commit`, without an implementation hash, when finalization creates the primary commit from the declared paths. Pass that one manifest to the current `advance` continuation. Finalization remains the sole archive, release, commit, provenance, verification, rollback, and journal authority, and there is no hand-edit, helper, or free-form Git fallback.
 
-Consume ordered `finalizations` **one record at a time**; singular `finalization` is compatibility-only when exactly one record exists. Continue on typed success, then read each record on its own: a record is settled when its terminal phase is `cleanup_complete` and its `blocked_paths` and `reason_codes` are empty, and a record whose `reason_codes` carry `FINALIZATION-SET-ASIDE` is one REQ recovery could not finish. **A set-aside excludes that REQ from this run's selection and nothing else** — its own reason codes say what refused, the remaining records still count as settled, and the run keeps draining the queue (**Composed Exit Summary (Step 1)** → *Set-aside-by-recovery section* renders it). A typed refusal is the whole-run stop and is what dirt no REQ owns looks like: a dirty Git index or shared lifecycle, release, or protected paths outside the recovery group refuse without naming a REQ, because no REQ owns that cause; its finding names no REQ, and the verb that resolves it comes from **Stuck Runs Hand Off to Judgment (any step)**, above. Each record supplies exact request/archive/journal identity, discovered/resumed flags, commit paths, created-this-invocation and settled primary/metadata hashes, and non-null collection/next/verification argv; a set-aside's `next_argv` is empty by contract, because the only verb the command could name there is the one that just refused. Global and per-REQ refusals use the same ordered record contract. On interruption, run public `recover` before any later queue read; it invokes finalization discovery first. There is no hand-edit or helper fallback, and no free-form Git fallback.
-
-
-Pass that one manifest to the current `advance` continuation. Finalization remains the sole archive, release, commit, provenance, verification, rollback, and journal authority. Consume ordered `finalizations` rather than the singular compatibility projection, and read each record on its own per the per-record contract above; a settled record's archive path, commit paths, settled/created hashes, and recovery argv are the complete tail evidence.
-## Session Checkpoint Principle (Step 10)
-
-Invoke `advance --checkpoint` when the selector finds no more claimable work. It owns the session-end checkpoint mutation, derives queue state from one snapshot, and preserves every live foreign or unlabelled `## In Progress (interrupted)` record byte-for-byte. The action supplies no parallel checkpoint algorithm.
+Consume ordered `finalizations` **one record at a time** — singular `finalization` is compatibility-only — and judge each record on its own. A record is settled when its terminal phase is `cleanup_complete` with empty `blocked_paths` and `reason_codes`. A record whose `reason_codes` carry `FINALIZATION-SET-ASIDE` is one REQ recovery could not finish, and **that excludes the REQ from this run's selection and nothing else**: its own reason codes say what refused, the remaining records still count as settled, and the run keeps draining the queue (**Composed Exit Summary (Step 1)** → row 9 renders it). A typed refusal is the whole-run stop, and it is what dirt no REQ owns looks like — a dirty index or shared lifecycle, release, or protected paths outside the recovery group refuse without naming a REQ, because no REQ owns that cause: its finding names no REQ, and the verb that resolves it comes from **Stuck Runs Hand Off to Judgment (any step)**, above. On interruption, run public `recover` before any later queue read; it runs finalization discovery first.
 
 ## Progress Reporting Example
 

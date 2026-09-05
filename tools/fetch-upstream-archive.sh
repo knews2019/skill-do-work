@@ -20,15 +20,12 @@ trap 'exit 130' INT
 trap 'exit 143' TERM
 
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
-do_work_cli=''
-for cli_candidate in \
-  "$script_dir/do-work-cli.sh" \
-  "$script_dir/../skills/do-work/tools/do-work-cli.sh"; do
-  if [ -f "$cli_candidate" ]; then
-    do_work_cli="$cli_candidate"
-    break
-  fi
-done
+# The preamble ships beside these launchers and inside the staged package; probe both.
+preamble_path="$script_dir/do-work-cli-preamble.sh"
+[ -f "$preamble_path" ] || preamble_path="$script_dir/../skills/do-work/tools/do-work-cli-preamble.sh"
+[ -f "$preamble_path" ] || { printf 'upstream archive could not be fetched. HTTP route: unavailable (do-work-cli-preamble.sh is missing beside this launcher). Git route: unavailable (do-work-cli-preamble.sh is missing beside this launcher).\nSet DO_WORK_UPSTREAM_URL to a reachable archive URL to route around a blocked host.\n' >&2; exit 1; }
+# shellcheck source-path=SCRIPTDIR source=do-work-cli-preamble.sh
+. "$preamble_path"
 if [ -z "$do_work_cli" ]; then
   printf 'upstream archive could not be fetched. HTTP route: unavailable (do-work-cli.sh is missing beside this launcher). Git route: unavailable (do-work-cli.sh is missing beside this launcher).\n' >&2
   printf 'Set DO_WORK_UPSTREAM_URL to a reachable archive URL to route around a blocked host.\n' >&2
@@ -40,7 +37,8 @@ if [ "$#" -eq 3 ] && [ -n "$3" ]; then
   cli_arguments+=(--repo-url "$3")
 fi
 launcher_status=0
-bash "$do_work_cli" --format text fetch-archive "${cli_arguments[@]}" || launcher_status=$?
+# shellcheck disable=SC2154 # launcher_arguments is set by the sourced preamble.
+bash "$do_work_cli" "${launcher_arguments[@]}" fetch-archive "${cli_arguments[@]}" || launcher_status=$?
 if [ "$launcher_status" -ne 0 ]; then
   exit 1
 fi

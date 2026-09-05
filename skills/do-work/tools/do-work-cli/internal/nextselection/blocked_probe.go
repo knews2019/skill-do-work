@@ -17,6 +17,11 @@ const (
 	blockedProbeDiagnosticLimit = 64 * 1024
 )
 
+// BlockedProbeEvidence carries what the runner observed, not what a caller can
+// guess from the status. Launched is the success of the launch itself and
+// TimedOut is set only by the runner's own timer, so a probe that exits with
+// BlockedProbeTimeoutStatus or BlockedProbeLaunchStatus under its own power
+// stays an ordinary launched completion.
 type BlockedProbeEvidence struct {
 	ExitStatus       int
 	Launched         bool
@@ -92,22 +97,25 @@ func RunBlockedProbeAtRoot(repositoryRoot string, probeBytes []byte, timeoutSeco
 // the owned process-tree and raw-status behavior used by queue selection.
 func RunBlockedProbeEvidenceAtRoot(repositoryRoot string, probeBytes []byte, timeoutSeconds int) (BlockedProbeEvidence, error) {
 	if repositoryRoot == "" {
-		return BlockedProbeEvidence{ExitStatus: BlockedProbeLaunchStatus}, fmt.Errorf("repository root is empty")
+		return unlaunchedProbeEvidence(), fmt.Errorf("repository root is empty")
 	}
 	if timeoutSeconds <= 0 {
-		return BlockedProbeEvidence{ExitStatus: BlockedProbeLaunchStatus}, fmt.Errorf("timeout must be positive")
+		return unlaunchedProbeEvidence(), fmt.Errorf("timeout must be positive")
 	}
 	if len(probeBytes) == 0 {
-		return BlockedProbeEvidence{ExitStatus: BlockedProbeLaunchStatus}, fmt.Errorf("probe is empty")
+		return unlaunchedProbeEvidence(), fmt.Errorf("probe is empty")
 	}
 	diagnosticWriter := &boundedProbeWriter{}
-	status, err := runOwnedProbe(repositoryRoot, probeBytes, time.Duration(timeoutSeconds)*time.Second, diagnosticWriter)
-	diagnostic, diagnosticSHA256 := BlockedProbeDiagnosticIdentity(diagnosticWriter.String(), repositoryRoot)
-	return BlockedProbeEvidence{
-		ExitStatus: status, Launched: status != BlockedProbeLaunchStatus,
-		TimedOut: status == BlockedProbeTimeoutStatus, Diagnostic: diagnostic,
-		DiagnosticSHA256: diagnosticSHA256,
-	}, err
+	evidence, err := runOwnedProbe(repositoryRoot, probeBytes, time.Duration(timeoutSeconds)*time.Second, diagnosticWriter)
+	evidence.Diagnostic, evidence.DiagnosticSHA256 = BlockedProbeDiagnosticIdentity(diagnosticWriter.String(), repositoryRoot)
+	return evidence, err
+}
+
+// unlaunchedProbeEvidence states the facts of a refusal that happens before any
+// process exists, so the booleans are set here rather than inherited from the
+// zero value of the struct.
+func unlaunchedProbeEvidence() BlockedProbeEvidence {
+	return BlockedProbeEvidence{ExitStatus: BlockedProbeLaunchStatus, Launched: false, TimedOut: false}
 }
 
 // BlockedProbeDiagnosticIdentity applies the same bounded-probe normalization

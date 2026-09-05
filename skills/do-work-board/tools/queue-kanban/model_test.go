@@ -30,7 +30,6 @@ func TestNormalizeStatus(t *testing.T) {
 		{"  Cancelled ", "cancelled"},
 		{"pending", "pending"},
 		{"pending-answers", "pending-answers"},
-		{"pending-heavy-testing", "pending-heavy-testing"},
 		{"blocked", "blocked"},
 		{"claimed", "claimed"},
 		{"custom-status", "custom-status"},
@@ -61,9 +60,6 @@ func TestStatusClassifiers(t *testing.T) {
 	}
 	if isNeedsInputOrBlockedStatus("pending") || isNeedsInputOrBlockedStatus("claimed") {
 		t.Fatalf("pending/claimed are their own columns, not needs-input/blocked")
-	}
-	if isNeedsInputOrBlockedStatus("pending-heavy-testing") {
-		t.Fatalf("pending-heavy-testing is a hold the work loop drains itself at queue exhaustion — it must not classify as needs-input, or the board asks the operator for a validation nobody needs")
 	}
 	if isNeedsInputOrBlockedStatus("deferred") {
 		t.Fatalf("deferred is not in the Schema Read Contract enum (actions/work-reference.md) — it must route through the unrecognized-status warning path, not the recognized list")
@@ -96,7 +92,7 @@ func TestStatusClassifiers(t *testing.T) {
 			t.Fatalf("%q should classify as terminally resolved (Terminal-resolved status set, actions/work-reference.md)", resolved)
 		}
 	}
-	for _, notResolved := range []string{"failed", "pending", "claimed", "pending-answers", "pending-heavy-testing"} {
+	for _, notResolved := range []string{"failed", "pending", "claimed", "pending-answers"} {
 		if isTerminalResolvedStatus(notResolved) {
 			t.Fatalf("%q must not classify as terminally resolved", notResolved)
 		}
@@ -1865,35 +1861,5 @@ func TestUnrecognizedErrorTypeFlagsAndWarns(t *testing.T) {
 	}
 	if !warningFound {
 		t.Fatalf("no error_type warning naming the written value; warnings=%v", board.Warnings)
-	}
-}
-
-// The heavy-lane hold is resolved by the work loop, not by a person: it runs the
-// planned lanes at queue exhaustion and flips the REQ back to pending. Before
-// 0.275.3 the status sat in the Needs input · Blocked column, so every held REQ
-// looked like a question waiting on the operator after 0.275.0 had removed the
-// question. It belongs with the queue, in Pending → Waiting, never Ready and
-// never in the inbox.
-func TestHeldForHeavyTestingWaitsInPendingNotNeedsInput(t *testing.T) {
-	held := &RequestTicket{RequestId: "REQ-30", Status: "pending-heavy-testing"}
-	columns, warnings := bucketColumns([]*RequestTicket{
-		{RequestId: "REQ-31", Status: "pending"},
-		held,
-	}, time.Now(), defaultRecentWindow)
-
-	if len(warnings) != 0 {
-		t.Fatalf("a recognized status must not warn, got %v", warnings)
-	}
-	if requestIdSet(columns.NeedsInputOrBlocked)["REQ-30"] {
-		t.Fatalf("held REQ landed in Needs-input/Blocked — that column asks the operator to act, and nobody needs to: %+v", columns.NeedsInputOrBlocked)
-	}
-	if !requestIdSet(columns.Pending)["REQ-30"] || !requestIdSet(columns.PendingWaiting)["REQ-30"] {
-		t.Fatalf("held REQ must wait in Pending → Waiting; pending=%v waiting=%v", requestIdSet(columns.Pending), requestIdSet(columns.PendingWaiting))
-	}
-	if requestIdSet(columns.PendingReady)["REQ-30"] {
-		t.Fatalf("held REQ must never read as Ready — selection walks past it until the drain answers it")
-	}
-	if !requestIdSet(columns.PendingReady)["REQ-31"] {
-		t.Fatalf("the ordinary pending REQ must stay Ready beside the held one")
 	}
 }

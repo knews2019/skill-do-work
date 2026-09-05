@@ -15,12 +15,19 @@ This is the canonical shipped rationale and executable-home contract for determi
 | `scripts/stage-exact-deletion.sh` | Cached-metadata-only exact deletion staging |
 | `../../do-work-knowledge/scripts/lexical-memory-recall.sh` | Query sanitization, lexical ranking, and attribution |
 | `../../do-work-knowledge/scripts/install-memory-hooks.sh` | Independent hook merge, verification, and rollback |
+| `tools/do-work-cli.sh … record-timing-event` | Lifecycle timing: UTC stamping, elapsed derivation, command redaction, and the folded per-request summary |
 | `tools/do-work-cli.sh … generate-report-image` | Backend selection, launched-process-tree ownership, verified exact invocation-private publication, and exact opt-in agentic scratch |
 | `tools/do-work-cli.sh … generate-report-image-batch` | Parallel batch launch, retained per-image statuses, launched-process-tree ownership, and verified all-or-nothing directory publication |
 | `tools/do-work-cli.sh … publish-portfolio-summary` | Verified single-source canonical refresh and snapshot-first exclusive publication |
 | `tools/do-work-cli.sh … install-last30days` | Complete-payload validation and verified exact transactional project-local publication/repair |
 
 `tools/install-do-work-suite.sh` is a compatibility launcher over the `do-work-cli` `install-suite` command, which owns the install transaction. It stays self-contained in one respect only: `--print-bootstrap-command` prints a literal heredoc and needs no Go toolchain, because that snippet has to run before anything is installed. Everything else the installer does requires Go 1.25.0 or newer. Atomic REQ reservation remains owned only by the board package's Go tool; it has no shell twin.
+
+## Lifecycle timing
+
+A step that needs a lifecycle stage or a material external command timed calls `tools/do-work-cli.sh … record-timing-event` for a completed interval, or `tools/do-work-cli.sh … run-timed-command` for a command the suite launches and measures itself. Both own the clock, so no caller derives a timestamp with `date` and no caller invents a second duration format. The wrapper attaches the child's own stdout and stderr to the console rather than a pipe, and exits with the child's status: the child's own code, 128 plus the signal number when a signal killed it, and 127 when the command never launched. That fidelity is what lets it wrap a gate whose exit status is the caller's evidence.
+
+Timing evidence is metadata only. A command reaches the stream as its executable's base name plus an argv token count, never as arguments, so a token or a user-controlled path cannot land in durable evidence. `tools/do-work-cli.sh … fold-timing-summary` turns one run's stream into a single `## Timing` section and deletes the stream; per-test durations stay with the project's own test-duration log rather than being re-derived here.
 
 ## Per-file untracked inventory
 

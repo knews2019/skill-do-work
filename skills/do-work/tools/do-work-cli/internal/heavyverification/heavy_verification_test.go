@@ -390,6 +390,7 @@ func TestRepositoryManifestNamesEveryLaneScopedMaintainerEntryPoint(t *testing.T
 		{"VERSION", []string{"installer"}},
 		{"README.md", []string{"installer"}},
 		{"suite/modules.tsv", []string{"staged-skills", "updater", "installer"}},
+		{"tools/do-work-cli-preamble.sh", []string{"updater", "installer"}},
 		{"tools/install-do-work-suite.sh", []string{"updater", "installer"}},
 		{"tools/validate-suite-manifest.sh", []string{"updater", "installer"}},
 		{"tools/replace-text-section.sh", []string{"updater", "installer"}},

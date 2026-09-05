@@ -59,19 +59,17 @@ done
 [ -n "$project_root" ] || fail '--project-root is required'
 
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
-do_work_cli=''
-for cli_candidate in \
-  "$script_dir/do-work-cli.sh" \
-  "$script_dir/../skills/do-work/tools/do-work-cli.sh"; do
-  if [ -f "$cli_candidate" ]; then
-    do_work_cli="$cli_candidate"
-    break
-  fi
-done
+# The preamble ships beside these launchers and inside the staged package; probe both.
+preamble_path="$script_dir/do-work-cli-preamble.sh"
+[ -f "$preamble_path" ] || preamble_path="$script_dir/../skills/do-work/tools/do-work-cli-preamble.sh"
+[ -f "$preamble_path" ] || fail 'do-work-cli-preamble.sh is missing beside the installer'
+# shellcheck source-path=SCRIPTDIR source=do-work-cli-preamble.sh
+. "$preamble_path"
 [ -n "$do_work_cli" ] || fail 'do-work-cli.sh is missing beside the installer'
 
 # --project-root becomes the CLI's one repository-root concept, the global --repo-root.
-cli_arguments=(--repo-root "$project_root" --format text install-suite)
+# shellcheck disable=SC2154 # launcher_arguments is set by the sourced preamble.
+cli_arguments=(--repo-root "$project_root" "${launcher_arguments[@]}" install-suite)
 if [ -n "$supplied_archive" ]; then
   cli_arguments+=(--archive "$supplied_archive")
 fi

@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 	"testing"
@@ -559,6 +560,199 @@ func TestImplementationSpanMarksReversedStampsAndRefusesUnparseableOnes(t *testi
 	}
 }
 
+// The span OPENS at the earliest lifecycle stamp the REQ carries, not at
+// claimed_at. A claim stamp rewritten after the work happened — REQ-505 carried
+// planning_at 16:49 against a 23:00 claim and a 23:01 completion — otherwise
+// reports 1m 23s for six hours of recorded phase work.
+//
+// created_at stays out because queue wait is not implementation time, and the
+// three non-pipeline stamps (status_changed_at, blocked_at, testing_updated_at)
+// stay out for the same reason: each of them can be written while the REQ is
+// still waiting to be claimed, so admitting them would charge queue time to the
+// work. The end of the span is still completed_at.
+func TestImplementationSpanOpensAtTheEarliestLifecycleStamp(t *testing.T) {
+	for _, testCase := range []struct {
+		caseName     string
+		ticket       *RequestTicket
+		wantMeasured bool
+		wantSpan     time.Duration
+		wantReason   string
+		requirement  string
+	}{
+		{
+			caseName: "a claim stamp rewritten after the phase work still measures the phase work",
+			ticket: &RequestTicket{
+				ClaimedAt:         "2026-09-04T23:00:06Z",
+				PlanningAt:        "2026-09-04T16:49:45Z",
+				DispatchAt:        "2026-09-04T16:52:00Z",
+				BuilderHandbackAt: "2026-09-04T17:24:00Z",
+				IntegrationAt:     "2026-09-04T17:26:00Z",
+				CompletedAt:       "2026-09-04T23:01:29Z",
+			},
+			wantMeasured: true,
+			wantSpan:     6*time.Hour + 11*time.Minute + 44*time.Second,
+			wantReason:   "paused",
+			requirement:  "the origin is planning_at 16:49:45, the earliest stamp, not the 23:00:06 claim",
+		},
+		{
+			caseName: "an earliest claim stamp reads exactly as it did before",
+			ticket: &RequestTicket{
+				ClaimedAt:         "2026-09-01T10:00:00Z",
+				PlanningAt:        "2026-09-01T10:05:00Z",
+				DispatchAt:        "2026-09-01T10:10:00Z",
+				BuilderHandbackAt: "2026-09-01T10:30:00Z",
+				IntegrationAt:     "2026-09-01T10:35:00Z",
+				ReviewAt:          "2026-09-01T10:45:00Z",
+				CompletedAt:       "2026-09-01T11:15:00Z",
+				ReleaseAt:         "2026-09-01T11:20:00Z",
+			},
+			wantMeasured: true,
+			wantSpan:     75 * time.Minute,
+			requirement:  "the control: historical cards whose claim is already earliest must not move",
+		},
+		{
+			caseName: "an unparseable stamp is skipped rather than fatal",
+			ticket: &RequestTicket{
+				ClaimedAt:   "2026-09-01T12:00:00Z",
+				PlanningAt:  "yesterday",
+				DispatchAt:  "2026-09-01T11:00:00Z",
+				CompletedAt: "2026-09-01T13:00:00Z",
+			},
+			wantMeasured: true,
+			wantSpan:     2 * time.Hour,
+			requirement:  "the garbage planning stamp neither wins the minimum nor blocks the good dispatch stamp",
+		},
+		{
+			caseName:     "a completion stamp with no lifecycle stamp at all measures nothing",
+			ticket:       &RequestTicket{CompletedAt: "2026-09-01T13:00:00Z"},
+			wantMeasured: false,
+			requirement:  "no origin means unmeasured, never a span of zero that would print as instant work",
+		},
+		{
+			caseName: "created_at never opens the span",
+			ticket: &RequestTicket{
+				CreatedAt:   "2026-09-01T08:00:00Z",
+				ClaimedAt:   "2026-09-04T10:00:00Z",
+				CompletedAt: "2026-09-04T10:30:00Z",
+			},
+			wantMeasured: true,
+			wantSpan:     30 * time.Minute,
+			requirement:  "queue wait is not implementation time, so three days of waiting stay out of the span",
+		},
+		{
+			caseName: "the non-pipeline state stamps never open the span",
+			ticket: &RequestTicket{
+				StatusChangedAt:  "2026-09-01T08:00:00Z",
+				BlockedAt:        "2026-09-01T09:00:00Z",
+				TestingUpdatedAt: "2026-09-01T09:30:00Z",
+				ClaimedAt:        "2026-09-04T10:00:00Z",
+				CompletedAt:      "2026-09-04T10:30:00Z",
+			},
+			wantMeasured: true,
+			wantSpan:     30 * time.Minute,
+			requirement:  "each of these three is written while a REQ can still be waiting, so they carry queue time, not work",
+		},
+		{
+			caseName: "a reversed pair is still reversed when the origin is not the claim",
+			ticket: &RequestTicket{
+				PlanningAt:  "2026-09-04T12:45:00Z",
+				ClaimedAt:   "2026-09-04T13:00:00Z",
+				CompletedAt: "2026-09-04T10:05:00Z",
+			},
+			wantMeasured: true,
+			wantSpan:     -(2*time.Hour + 40*time.Minute),
+			wantReason:   "reversed",
+			requirement:  "the reversed verdict keys on the origin the span actually used",
+		},
+	} {
+		t.Run(testCase.caseName, func(t *testing.T) {
+			span := measureImplementationSpan(testCase.ticket)
+			if span.StampsParsed != testCase.wantMeasured {
+				t.Fatalf("StampsParsed = %v, want %v (%s)", span.StampsParsed, testCase.wantMeasured, testCase.requirement)
+			}
+			if !testCase.wantMeasured {
+				if span.WallMinutes != 0 || span.ExclusionReason != "" {
+					t.Fatalf("unmeasured span carried %v min / %q, want the zero value (%s)",
+						span.WallMinutes, span.ExclusionReason, testCase.requirement)
+				}
+				return
+			}
+			if span.WallMinutes != testCase.wantSpan.Minutes() {
+				t.Errorf("span = %v min, want %v min (%s)", span.WallMinutes, testCase.wantSpan.Minutes(), testCase.requirement)
+			}
+			if span.ExclusionReason != testCase.wantReason {
+				t.Errorf("verdict = %q, want %q (%s)", span.ExclusionReason, testCase.wantReason, testCase.requirement)
+			}
+		})
+	}
+}
+
+// The anti-drift pin for the origin rule. The eligible set is DERIVED — the
+// declared enumeration in model.go minus the documented exclusions — so this
+// test is the only place the eight work-pipeline field names are written down a
+// second time. That second spelling is the tripwire: a stamp added to the schema
+// becomes origin-eligible by default and fails the comparison below, which is
+// the prompt to decide whether it records work or queue time before a hundred
+// archived cards silently move.
+//
+// The reverse direction matters too. An exclusion naming a field the schema no
+// longer declares is dead weight that reads like a live rule, so every excluded
+// name must still appear in the enumeration.
+func TestImplementationSpanOriginEligibilityCoversTheDeclaredSchema(t *testing.T) {
+	stampInstant := "2026-09-04T10:00:00Z"
+	everyStamp := &RequestTicket{
+		RequestId:         "REQ-909",
+		CreatedAt:         stampInstant,
+		ClaimedAt:         stampInstant,
+		CompletedAt:       stampInstant,
+		PlanningAt:        stampInstant,
+		DispatchAt:        stampInstant,
+		BuilderHandbackAt: stampInstant,
+		IntegrationAt:     stampInstant,
+		ReviewAt:          stampInstant,
+		RemediationAt:     stampInstant,
+		ReReviewAt:        stampInstant,
+		ReleaseAt:         stampInstant,
+		StatusChangedAt:   stampInstant,
+		BlockedAt:         stampInstant,
+		TestingUpdatedAt:  stampInstant,
+	}
+
+	declaredFields := map[string]bool{}
+	var eligibleFields []string
+	for _, lifecycleStamp := range lifecycleTimestampFields(everyStamp) {
+		declaredFields[lifecycleStamp.FieldName] = true
+		if _, excluded := implementationSpanOriginExcludedFields[lifecycleStamp.FieldName]; !excluded {
+			eligibleFields = append(eligibleFields, lifecycleStamp.FieldName)
+		}
+	}
+	sort.Strings(eligibleFields)
+
+	wantEligible := []string{
+		"builder_handback_at",
+		"claimed_at",
+		"dispatch_at",
+		"integration_at",
+		"planning_at",
+		"re_review_at",
+		"remediation_at",
+		"review_at",
+	}
+	if strings.Join(eligibleFields, ",") != strings.Join(wantEligible, ",") {
+		t.Fatalf("origin-eligible stamps = %v, want %v — a stamp joined or left the schema, so classify it as work or as queue/end time before this rule moves archived cards",
+			eligibleFields, wantEligible)
+	}
+
+	for excludedField, reason := range implementationSpanOriginExcludedFields {
+		if !declaredFields[excludedField] {
+			t.Errorf("%q is excluded from span origins (%q) but the schema no longer declares it", excludedField, reason)
+		}
+		if reason == "" {
+			t.Errorf("%q is excluded from span origins with no stated reason", excludedField)
+		}
+	}
+}
+
 // One definition, two readers. A second ceiling — or a second subtraction order —
 // introduced on either side breaks this and nothing else in the suite would.
 //
@@ -655,9 +849,12 @@ func TestPhaseBreakdownUsesObservedPipelineOrderAndKeepsCalibrationSpan(t *testi
 		}
 	}
 
+	// The control for the origin rule at the phase-breakdown seam: claimed_at is
+	// already this ticket's earliest stamp, so the span it opens must still be
+	// the 75 minutes it was before the origin moved off claimed_at.
 	calibration := measureImplementationSpan(ticket)
 	if !calibration.StampsParsed || calibration.WallMinutes != 75 {
-		t.Fatalf("phase stamps changed claimed_at -> completed_at calibration: %#v", calibration)
+		t.Fatalf("an earliest claimed_at no longer measures the whole claim-to-completion span: %#v", calibration)
 	}
 }
 

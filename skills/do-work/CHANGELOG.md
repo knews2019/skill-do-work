@@ -2,6 +2,88 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.293.0 — A Run Can Say Where Its Time Went (2026-09-05)
+
+A finished request could report how long it took but not why. A flat timing stream now attributes one request's elapsed time to its major stages and to the commands that materially contribute wall time, and folds one compact `## Timing` section into the archived record.
+
+- The stream is JSON lines under the Git common directory, so every linked worktree shares it and nothing can be staged. It is deleted once folded.
+- `run-timed-command` measures a child in-process and exits with its status, including 128 plus the signal number when one is killed.
+- Nothing in the model refers to another event, so totals are a sum over independent rows and the gaps between them are the unattributed time. A wrapped command derives its start from its own launch, so the wait before it stays honestly unattributed instead of being absorbed.
+- Deliberately not built, because the requirements forbid it: nesting, exclusive time, a critical path, overlap and parallelism metrics. The request's filename says otherwise; its requirements and the user's own later decision do not.
+- Two of the ten named categories are wired so far; the rest are recorded as follow-up work rather than left to look covered.
+
+## 0.292.0 — Card Wall Time Starts Where the Work Started (2026-09-05)
+
+A completed card measured from `claimed_at`, so a request whose claim stamp was rewritten late reported a span that excluded all of its phase work. One request read 1m 23s for 6h 11m of real work. The span now opens at the earliest lifecycle stamp the request carries and still ends at `completed_at`.
+
+- Queue-wait stamps are excluded: `created_at` as the request asked, and also `status_changed_at`, `blocked_at` and `testing_updated_at`, which are written while a request is waiting rather than being worked.
+- The eligibility map filters the schema's own stamp list rather than keeping a second copy, so a stamp added later is included by default and a tripwire test fails until someone classifies it.
+- An unparseable stamp is skipped rather than fatal; a request with no lifecycle stamp reports no span rather than a misleading zero.
+- Twelve archived cards change by design. Both pinned calibration medians are unmoved.
+
+## 0.291.1 — The Board Forgets a Status That No Longer Exists (2026-09-05)
+
+`pending-heavy-testing` was deleted in 0.287.0, but the board still gave it a status enum entry, a column rule, two timeline cases, a transition label, a calendar group and three stylesheet selectors. All of it is gone, and a record still carrying the value now falls through the ordinary tolerant path: parked, flagged invalid, and named in a warning.
+
+- `timelineChain`'s naming arm now covers any status outside the Schema Read Contract vocabulary, keyed on the schema itself rather than a second status list, so a stale record no longer vanishes from the forecast entirely.
+- The calendar-group deletion is invisible to the standard suite and red in the JavaScript probe lane. It was found by running both lanes rather than reasoning about one.
+- `grep -r pending-heavy-testing skills/do-work-board` now matches only the lessons file, which the request leaves alone by design.
+
+## 0.291.0 — A Release Refuses an Identity It Cannot Read (2026-09-05)
+
+Two release gates guessed instead of refusing. A Cargo or uv source took the first `name` it met, and an npm root lock counted only copies already holding the old version — so a stale mirror silently dropped out of the required set instead of failing. Both now refuse before any mutation.
+
+- `tomlUniqueSectionScalar` collects every declaration across the accepted sections and refuses unless exactly one parses as a quoted scalar.
+- `npmRootVersionCopies` decodes through `json.RawMessage`, so structural presence is the obligation; a present copy holding any other value refuses with its label and value.
+- On the old code all six new refusal fixtures reported success with a real commit, and with both root copies stale the lockfile vanished from the committed paths entirely.
+- A `pyproject.toml` declaring the same name under both `[project]` and `[tool.poetry]` is now refused even when the names agree. That shape appears mid-migration; it fails in the safe direction, but the manifest needs a hand edit before it can release.
+
+## 0.290.0 — One Launcher Preamble, Sourced Everywhere (2026-09-05)
+
+Nine shipped shell files each hand-rolled the do-work-cli launcher resolution in one of two spellings, so nine copies could drift apart. One sourceable preamble now owns it, with its byte-identical mirror under `skills/do-work/tools/`.
+
+- Each launcher probes two depths on purpose: the eight mirrored launchers are the same bytes in two directories, and the install fixture builds an archive root whose `tools/` gets only the launchers while `skills/` is copied whole.
+- Every launcher types its own failure when the preamble is missing, at its own original exit status. Two callers run under `set -u` with no `-e`, where a failed source previously fell through and died on an unbound variable naming neither the missing file nor the launcher.
+- A lock-in pins hand-rolled copies at zero, matched against the two exact repository paths so a third copy under another module cannot pass.
+- The new file is declared in the updater and installer heavy lanes. An uncovered path marks a run uncertain and selects every lane, so leaving it out forced the full heavy set.
+
+## 0.289.0 — A Marker Only Counts Where a Writer Can Put One (2026-09-05)
+
+`do-work answer` decided a terminal status, deleted `blocked_by`, and archived a stakeholder request on finding a token anywhere in prose the caller wrote. It now reads each marker only at a position a writer can occupy, so "still not resolved" and "no code review yet" no longer close a request.
+
+- The evidence region ends at the first line opening a Markdown block construct, tested through CommonMark's punctuation class rather than a list of fence spellings, so an unfamiliar fence character still fences. The region ends rather than toggling, so an unclosed fence cannot hand the rest back as readable.
+- Indentation is measured before any trim. Trimming first destroyed the bytes that constitute the structure, which is what let an indented code block through.
+- A `## Reports` path must be a whole entry field, bare, link-wrapped or backticked, so a `.bak` sibling stays refused in every skin.
+- **This fixes a shipped instruction that could not be followed.** The canonical `**No changes needed.**` form that `stakeholder-answers.md` Step 5 prescribes was itself refused before this change.
+- 46 payloads through the built binary: 33 forgeries refused, 13 controls accepted.
+
+## 0.288.1 — Reference Keeps Only What No Test Owns (2026-09-05)
+
+`work-reference.md` drops the sections whose contract a Go behavior test now enforces, so the prose a reader has to trust is smaller and none of it competes with a command. Every deletion names the test that owns what it said; a section with no owning test stays, which is why worktree dispatch survives intact — the CLI implements no verb for it.
+
+- Deleted with named owners: the repository-gate deferral transaction, the targeted run ledger, the Session Checkpoint Principle, auto-wave's five-condition ready-set computation, the defer-gate fold topology, and the green-gate record internals.
+- The Composed Exit Summary's nine repeated render blocks become one table keyed on `advance`'s typed exclusions, keeping all nine headline strings.
+- A `core-checks.sh` awk boundary that used a deleted heading as its end marker now ends at a live one, instead of capturing to end-of-file.
+- The file is 849 lines, not the under-700 the request asked for. The keep-list alone is 497 and the rest is judgment with no CLI owner, so the target was refused rather than met by deleting an unowned guarantee.
+
+## 0.288.0 — advance Reports What the Test Actually Did (2026-09-05)
+
+A focused test that never launched, or that the timer killed, could be promoted to a satisfied gate. `advance` now reports what it observed rather than reconstructing it from the reserved exit values 124 and 125, so the same exit code means different things depending on whether the process really finished.
+
+- The probe runner returns observed evidence on both build tags: `launched` is set at the actual launch boundary and `timed_out` only in the timer branch, and the three pre-launch refusals state both explicitly rather than inheriting the zero value.
+- Only an execution that launched and finished on its own is compared against the saved baseline; an ineligible one keeps `not_compared` instead of a verdict about the saved record.
+- A `matching_red` comparison can no longer overwrite a failed subordinate.
+- An ordinary child that legitimately exits 124 or 125 is still eligible baseline red — the fix does not invert the old bug.
+- Missing-input continuations are built in the channel that parses them, so substituting one placeholder is the whole remedy.
+
+## 0.287.1 — One Row Per Worktree in Verify (2026-09-05)
+
+A leftover worktree whose branch git cannot resolve used to produce two messages from one fact: an undetermined merge-state finding, and a skipped-probe line saying the committed-queue-state check failed with "no such branch". Now it produces one row, and that row says the queue-state check could not run either.
+
+- `appendWorktreeFindings` runs the committed-queue-state probe only when the merge state is determinable; every other disposition keeps the probe unchanged.
+- The undetermined finding's remedy carries the moved fact and ends "unknown, not clean", so silence never reads as checked-and-clean.
+- Anything counting unverified coverage from `SkippedProbes` alone will no longer see this case; the fact lives in the finding's remedy, which both the CLI report and the board card already render.
+
 ## 0.287.0 — Hold Reviewed Requests as Claimed Until Heavy Lanes Pass (2026-09-05)
 
 The `pending-heavy-testing` status is gone. A request that passed review and has heavy lanes left to run stays `claimed` with its landed commit, its dependents build against that commit right away, and a green drain finalizes it in the same turn instead of sending it back through `pending` for a second claim and review.

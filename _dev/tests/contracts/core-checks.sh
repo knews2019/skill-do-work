@@ -723,7 +723,7 @@ fi
 work_step_eight="$(awk '/^### Step 8:/{capture=1} /^### Step 9:/{capture=0} capture' "$work_action")"
 work_step_nine="$(awk '/^### Step 9:/{capture=1} /^### Step 10:/{capture=0} capture' "$work_action")"
 reference_changelog="$(awk '/^## Changelog Entry Procedure \(Step 9\)/{capture=1} /^## Commit & Metadata-Commit Procedure \(Step 9\)/{capture=0} capture' "$work_reference")"
-reference_commit="$(awk '/^## Commit & Metadata-Commit Procedure \(Step 9\)/{capture=1} /^## Session Checkpoint Principle \(Step 10\)/{capture=0} capture' "$work_reference")"
+reference_commit="$(awk '/^## Commit & Metadata-Commit Procedure \(Step 9\)/{capture=1} /^## Progress Reporting Example/{capture=0} capture' "$work_reference")"
 for judgment_token in 'Fold-First follow-ups' 'Sweep consolidation and impact stamping' 'Terminal judgment' 'Release and lesson judgment' 'author exactly one strict manifest'; do
   if ! grep -qF "$judgment_token" <<<"$work_step_eight"; then
     printf 'FAIL: actions/work.md Step 8 must retain finalization judgment token %s\n' "$judgment_token" >&2

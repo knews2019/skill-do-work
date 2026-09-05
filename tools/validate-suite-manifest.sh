@@ -13,20 +13,18 @@ if [ "$#" -ne 2 ] || [ "$1" != '--root' ]; then
 fi
 
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
-do_work_cli=''
-for cli_candidate in \
-  "$script_dir/do-work-cli.sh" \
-  "$script_dir/../skills/do-work/tools/do-work-cli.sh"; do
-  if [ -f "$cli_candidate" ]; then
-    do_work_cli="$cli_candidate"
-    break
-  fi
-done
+# The preamble ships beside these launchers and inside the staged package; probe both.
+preamble_path="$script_dir/do-work-cli-preamble.sh"
+[ -f "$preamble_path" ] || preamble_path="$script_dir/../skills/do-work/tools/do-work-cli-preamble.sh"
+[ -f "$preamble_path" ] || { printf 'suite manifest: do-work-cli-preamble.sh is missing beside this launcher\n' >&2; exit 2; }
+# shellcheck source-path=SCRIPTDIR source=do-work-cli-preamble.sh
+. "$preamble_path"
 if [ -z "$do_work_cli" ]; then
   printf 'suite manifest: do-work-cli.sh is missing beside this launcher\n' >&2
   exit 2
 fi
 
 launcher_status=0
-bash "$do_work_cli" --format text validate-manifest --root "$2" || launcher_status=$?
+# shellcheck disable=SC2154 # launcher_arguments is set by the sourced preamble.
+bash "$do_work_cli" "${launcher_arguments[@]}" validate-manifest --root "$2" || launcher_status=$?
 exit "$launcher_status"

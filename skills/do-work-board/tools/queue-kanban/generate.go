@@ -209,14 +209,17 @@ type generatedRequest struct {
 	CompletionTime       string `json:"completionTime"`
 	CompletionTimeSource string `json:"completionTimeSource"`
 
-	// The implementation span the Recently-Done card states: completed_at −
-	// claimed_at in minutes, with the read-time rule's verdict already applied
-	// Go-side (durations.go's measureImplementationSpan). Present only for a REQ
-	// that reached terminal SUCCESS and carries both parseable frontmatter
-	// stamps, so `hasImplementationSpan` false is a real "unmeasured" rather than
-	// a span of zero. `implementationSpanReason` is "paused" or "reversed", empty
-	// when the span reads plainly. The client receives only the completed paused
-	// badge text above, never a numeric ceiling it could use as a second rule.
+	// The implementation span the Recently-Done card states: completed_at minus
+	// the EARLIEST origin-eligible lifecycle stamp the REQ carries, in minutes,
+	// with the read-time rule's verdict already applied Go-side (durations.go's
+	// measureImplementationSpan, which owns both the origin rule and the list of
+	// stamps that cannot open a span). Present only for a REQ that reached
+	// terminal SUCCESS and carries a parseable completion stamp plus at least one
+	// parseable origin, so `hasImplementationSpan` false is a real "unmeasured"
+	// rather than a span of zero. `implementationSpanReason` is "paused" or
+	// "reversed", empty when the span reads plainly. The client receives only the
+	// completed paused badge text above, never a numeric ceiling it could use as
+	// a second rule.
 	HasImplementationSpan bool `json:"hasImplementationSpan,omitempty"`
 	// Deliberately NOT omitempty: a genuine zero-minute span is possible (identical
 	// stamps, or date-only stamps on both fields, which parseTimestamp accepts), and

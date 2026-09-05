@@ -540,15 +540,20 @@ func handleBlockedCheck(executionContext commandruntime.ExecutionContext, argume
 	}
 	probeEvidence, runError := nextselection.RunBlockedProbeEvidenceAtRoot(executionContext.RepositoryRoot, probeBytes, timeoutSeconds)
 	status := probeEvidence.ExitStatus
+	// Classify from what the runner observed, never from the integer the child
+	// chose: only a launched execution that finished on its own, without the
+	// runner's timer or an interruption, decided anything about this repository.
+	finishedOnItsOwn := probeEvidence.Launched && !probeEvidence.TimedOut && runError == nil
 	code, outcome, severity := "BLOCKED-PROBE-SUCCEEDED", resultmodel.OutcomeSuccess, resultmodel.SeverityInfo
-	if status != 0 {
-		code, outcome, severity = "BLOCKED-PROBE-FAILED", resultmodel.OutcomeFindings, resultmodel.SeverityWarning
-	}
-	if status == 124 {
-		code = "BLOCKED-PROBE-TIMED-OUT"
-	}
-	if status == 125 || runError != nil {
+	switch {
+	case !probeEvidence.Launched:
 		code, outcome, severity = "BLOCKED-PROBE-LAUNCH-FAILED", resultmodel.OutcomeFailure, resultmodel.SeverityError
+	case probeEvidence.TimedOut:
+		code, outcome, severity = "BLOCKED-PROBE-TIMED-OUT", resultmodel.OutcomeFindings, resultmodel.SeverityWarning
+	case runError != nil:
+		code, outcome, severity = "BLOCKED-PROBE-FAILED", resultmodel.OutcomeFailure, resultmodel.SeverityError
+	case status != 0:
+		code, outcome, severity = "BLOCKED-PROBE-FAILED", resultmodel.OutcomeFindings, resultmodel.SeverityWarning
 	}
 	focusedTest := &resultmodel.FocusedTestResult{
 		ProbeFile: probeFile, ExitStatus: status, Launched: probeEvidence.Launched,
@@ -557,7 +562,7 @@ func handleBlockedCheck(executionContext commandruntime.ExecutionContext, argume
 		CommandText: strings.TrimSpace(string(probeBytes)),
 	}
 	baselineFinding := resultmodel.CommandFinding{}
-	if baselineJSONPath != "" {
+	if baselineJSONPath != "" && finishedOnItsOwn {
 		baselineFinding = compareFocusedBaseline(executionContext.RepositoryRoot, baselineJSONPath, baselineFailuresPath, focusedTest)
 		if baselineFinding.Code != "" && baselineFinding.Severity == resultmodel.SeverityError && outcome == resultmodel.OutcomeSuccess {
 			outcome = resultmodel.OutcomeFindings
@@ -568,7 +573,7 @@ func handleBlockedCheck(executionContext commandruntime.ExecutionContext, argume
 		evidence += ": " + runError.Error()
 	}
 	findings := []resultmodel.CommandFinding{helperFinding(code, severity, []string{probeFile}, evidence,
-		resultmodel.FixabilityManual, map[bool]string{true: "the probe did not clear the blocked condition", false: ""}[status != 0],
+		resultmodel.FixabilityManual, map[bool]string{true: "the probe did not clear the blocked condition", false: ""}[code != "BLOCKED-PROBE-SUCCEEDED"],
 		[]string{"do-work-cli", CommandBlockedCheck, "--probe-file", probeFile}, []string{"do-work-cli", "--format", "json", CommandBlockedCheck, "--probe-file", probeFile})}
 	if baselineFinding.Code != "" {
 		findings = append(findings, baselineFinding)
@@ -576,6 +581,11 @@ func handleBlockedCheck(executionContext commandruntime.ExecutionContext, argume
 	return resultmodel.CommandResult{Outcome: outcome, ExitCodeOverride: status, Findings: findings, FocusedTest: focusedTest}
 }
 
+// compareFocusedBaseline decides how the saved record relates to a current
+// execution the caller has already proved eligible: launched, not stopped by the
+// runner's timer, and finished without a runner error. An ineligible execution
+// never reaches here, so it keeps its not_compared state instead of borrowing a
+// verdict about the saved record.
 func compareFocusedBaseline(repositoryRoot, baselineJSONPath, baselineFailuresPath string, focusedTest *resultmodel.FocusedTestResult) resultmodel.CommandFinding {
 	baselineBytes, readError := os.ReadFile(absoluteFromRoot(repositoryRoot, baselineJSONPath))
 	if os.IsNotExist(readError) {

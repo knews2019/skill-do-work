@@ -436,10 +436,17 @@ func timelineChain(tickets []*RequestTicket, projection TimelineProjection) ([]T
 		switch {
 		case ticket.Status == "pending":
 			pendingTickets = append(pendingTickets, ticket)
-		case ticket.Status == "pending-heavy-testing", isNeedsInputOrBlockedStatus(ticket.Status) && ticket.Status != "failed":
-			// The held REQ is named explicitly: it left the needs-input family when
-			// the loop took over its heavy lanes, and a REQ that is neither pending
-			// nor excluded would vanish from the forecast without a word.
+		case isNeedsInputOrBlockedStatus(ticket.Status) && ticket.Status != "failed",
+			!isKnownSchemaFieldValue("status", ticket.Status):
+			// Two kinds of REQ that get no start time but must still be NAMED. One
+			// waits on a person or an external condition. The other carries a status
+			// outside the Schema Read Contract vocabulary — a typo, or a value
+			// retired from the schema and still sitting in an old file. This is the
+			// only arm that names anything, so whatever falls past it leaves the
+			// chain, the queue-end figure AND the exclusion list at once, which reads
+			// exactly like having no such REQ at all. bucketColumns (model.go)
+			// already warns about the second kind; the forecast owes that reader a
+			// line rather than silence.
 			exclusions = append(exclusions, TimelineExclusion{
 				RequestId: ticket.RequestId,
 				Reason:    timelineExclusionReason(ticket),
@@ -524,8 +531,6 @@ func timelineExclusionReason(ticket *RequestTicket) string {
 	switch ticket.Status {
 	case "pending-answers":
 		return "waiting on an answer from you"
-	case "pending-heavy-testing":
-		return "waiting for the heavy lanes to run at queue exhaustion"
 	case "blocked":
 		return "waiting on an external condition"
 	case "blocked-archive-collision":
@@ -533,7 +538,10 @@ func timelineExclusionReason(ticket *RequestTicket) string {
 	case "blocked-dependency-cycle":
 		return "held: its dependency chain is circular"
 	default:
-		return "not schedulable in its current state"
+		// Every recognized status that reaches here has a case above, so this is
+		// the off-vocabulary arm: say the status is the problem instead of
+		// implying the REQ is merely resting.
+		return "its status is not in the schema vocabulary, so it cannot be scheduled"
 	}
 }
 
