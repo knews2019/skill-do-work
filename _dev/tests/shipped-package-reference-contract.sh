@@ -669,6 +669,120 @@ def heading_anchor_slugs(markdown_file):
     return heading_slug_cache[cache_key]
 
 
+# The section name a citation writes after the arrow, in the `path.md` -> **Named Section**
+# form. Only the delimited bold form is read. An undelimited name ("`path.md` -> Request
+# File Schema") has no closing marker, so where the name stops and the sentence resumes is
+# a guess, and a guess here reports ordinary prose as a broken pointer. A chain
+# ("-> **Section** -> *Subsection*") names its section first, and that first name is the
+# one checked; the rest addresses text inside it.
+#
+# The name may wrap: three shipped citations write "**Worktree Dispatch Mode\n(Step 1)**",
+# and stopping at the newline would leave exactly the citations a hard-wrapped file writes
+# unchecked. It may not cross a blank line, which bounds an unclosed ** to its paragraph.
+arrow_section_shape = re.compile(
+    r"""[`*_)\]"']*[ \t]*→[ \t]*\*\*((?:[^*\n]|\n(?![ \t]*\n))+?)\*\*"""
+)
+bold_run_pattern = re.compile(r"\*\*([^*\n]+?)\*\*")
+section_name_cache = {}
+
+
+def cited_arrow_section(markdown_text, token_end):
+    section_match = arrow_section_shape.match(markdown_text, token_end)
+    if section_match is None:
+        return None
+    return section_match.group(1)
+
+
+def normalize_section_name(name):
+    # Both sides of the comparison pass through here, so a citation and the section it
+    # names match on their rendered words: inline code contributes its content, a link
+    # label replaces its destination, nested emphasis drops out, and the trailing
+    # punctuation a paragraph-leading label carries is not part of the name.
+    rendered = heading_rendered_text(name).replace("`", "")
+    rendered = re.sub(r"[*_]", "", rendered)
+    rendered = re.sub(r"\s+", " ", rendered).strip()
+    return rendered.strip(" .,:;").casefold()
+
+
+def section_names_from_text(markdown_text):
+    # What a cited section may be, decided by what the live arrow citations actually name
+    # (REQ-582): an ATX heading, or a bold label the target declares and other files cite
+    # by that name — "**Named contract - Frontmatter Quoting.**",
+    # "**Named entry point - Stakeholder REQ terminal semantics.**",
+    # "**Populating `write_set`.**". Both forms ship as citation targets, so accepting only
+    # headings would report those correct citations as broken.
+    #
+    # The heading gate reads the masked line and the heading text the raw one, exactly as
+    # heading_anchor_slugs_from_text does and for the same reason: masking blanks inline
+    # code that the rendered heading keeps. A fully masked line is a fenced or indented
+    # code payload, which declares no section.
+    masked_lines = strip_markdown_code(markdown_text).split("\n")
+    collected_names = set()
+    for line_index, raw_line in enumerate(markdown_text.split("\n")):
+        if line_index >= len(masked_lines):
+            break
+        masked_line = masked_lines[line_index]
+        if not masked_line.strip():
+            continue
+        if masked_line.lstrip(" \t").startswith("#"):
+            heading_match = atx_heading_pattern.match(raw_line)
+            if heading_match is not None:
+                heading_text = re.sub(r"[ \t]+#+$", "", heading_match.group(2) or "")
+                collected_names.add(normalize_section_name(heading_text))
+        for bold_match in bold_run_pattern.finditer(raw_line):
+            collected_names.add(normalize_section_name(bold_match.group(1)))
+    collected_names.discard("")
+    return collected_names
+
+
+def section_name_resolves(cited_section, known_section_names):
+    # Whole-word containment, not equality: a citation may name a heading without its
+    # parenthetical qualifier ("Hook Install Internals" for "## Hook Install Internals
+    # (used by ...)") or a label without its declaration prefix ("Frontmatter Quoting" for
+    # "**Named contract - Frontmatter Quoting.**"), and a reader follows both. What it
+    # cannot do is name something the target never says, which is the failure this
+    # reports — "In-Progress Record (Step 2)" beside a target that only has Step 1.
+    normalized_name = normalize_section_name(cited_section)
+    if not normalized_name:
+        return True
+    boundary_shape = re.compile(rf"(?:^|\W){re.escape(normalized_name)}(?:\W|$)")
+    return any(
+        boundary_shape.search(section_name) for section_name in known_section_names
+    )
+
+
+def target_section_names(markdown_file):
+    cache_key = os.fspath(markdown_file)
+    if cache_key not in section_name_cache:
+        try:
+            markdown_text = markdown_file.read_text(encoding="utf-8")
+        except (OSError, UnicodeError):
+            section_name_cache[cache_key] = None
+        else:
+            section_name_cache[cache_key] = section_names_from_text(markdown_text)
+    return section_name_cache[cache_key]
+
+
+def section_failure_messages(cited_section, source_target, read_section_names):
+    # Reached only after the citation's path half resolved in both topologies, so this
+    # never speaks about a file the path branch has already reported. A fragment on a
+    # non-Markdown suffix is that application's own addressing scheme, and so is a section
+    # name beside one.
+    if cited_section is None or source_target.suffix.lower() != ".md":
+        return []
+    known_section_names = read_section_names(source_target)
+    if known_section_names is None:
+        return [f"cannot read cited section target {source_target}"]
+    if section_name_resolves(cited_section, known_section_names):
+        return []
+    # One finding is one line, so a wrapped name is reported on the line it was cited from.
+    reported_section = re.sub(r"\s+", " ", cited_section).strip()
+    return [
+        "cited section is not a heading or bold label in "
+        f"{source_target}: {reported_section}"
+    ]
+
+
 def link_topology_targets(source_target, installed_source_target):
     # Both topologies a pointer has to satisfy, named so the pairing itself is a tested
     # unit rather than an argument list only the live corpus ever builds — and the live
@@ -832,6 +946,125 @@ def run_anchor_slug_fixtures():
             fail(
                 f"anchor fixture {fixture_name!r}: expected {sorted(expected_slugs)!r}, "
                 f"got {sorted(actual_slugs)!r}"
+            )
+            fixture_failures += 1
+
+    if fixture_failures:
+        raise SystemExit(1)
+
+
+def run_section_citation_fixtures():
+    # REQ-582. Two halves, both pinned here: which text after the arrow is read as a
+    # section name, and which target text a name may resolve against. The live corpus is
+    # all-correct once this REQ's two dangling citations are fixed, so without these the
+    # section branch would never report anything anywhere.
+    parse_cases = [
+        (
+            "a bold name after the arrow is the cited section",
+            "see `actions/work.md` → **Input** first",
+            "actions/work.md",
+            "Input",
+        ),
+        (
+            "a chain names its section first",
+            "`actions/work.md` → **Dispatch Mode** → *Fan-Out Dispatch*",
+            "actions/work.md",
+            "Dispatch Mode",
+        ),
+        (
+            # No closing delimiter, so the name's end is a guess and this form is left
+            # alone rather than reported on a guess.
+            "an undelimited name after the arrow is not read",
+            "`actions/work.md` → Request File Schema, then Step 5",
+            "actions/work.md",
+            None,
+        ),
+        (
+            # A rename arrow points at a file, not a section inside one.
+            "an arrow to another path names no section",
+            "`crew-members/karpathy.md` → `crew-members/coding-guardrails.md`",
+            "crew-members/karpathy.md",
+            None,
+        ),
+        (
+            "prose between the citation and the arrow breaks the form",
+            "`actions/work.md` and elsewhere → **Input**",
+            "actions/work.md",
+            None,
+        ),
+        (
+            # Three shipped citations wrap here; the newline is whitespace in the name.
+            "a name wrapped across a line break is still the cited section",
+            "`actions/work.md` → **Worktree Dispatch Mode\n(Step 1)** for the flow",
+            "actions/work.md",
+            "Worktree Dispatch Mode\n(Step 1)",
+        ),
+        (
+            "an unclosed bold marker does not run past its paragraph",
+            "`actions/work.md` → **Input\n\nA new paragraph** follows",
+            "actions/work.md",
+            None,
+        ),
+    ]
+
+    fixture_failures = 0
+    for fixture_name, fixture_line, token, expected_section in parse_cases:
+        token_end = fixture_line.index(token) + len(token)
+        actual_section = cited_arrow_section(fixture_line, token_end)
+        if actual_section != expected_section:
+            fail(
+                f"section citation parse fixture {fixture_name!r}: expected "
+                f"{expected_section!r}, got {actual_section!r}"
+            )
+            fixture_failures += 1
+
+    fixture_document = (
+        "## In-Progress Record (Step 1)\n"
+        "\n"
+        "**Named contract - Frontmatter Quoting.** Governs frontmatter values.\n"
+        "\n"
+        "**Populating `write_set`.** Seed it only when the request names the files.\n"
+        "\n"
+        "## Hook Install Internals (used by actions/setup-memory.md → memory-module)\n"
+        "\n"
+        "```text\n"
+        "## Fenced Heading\n"
+        "```\n"
+    )
+    fixture_section_names = section_names_from_text(fixture_document)
+    resolution_cases = [
+        ("an exact heading resolves", "In-Progress Record (Step 1)", True),
+        (
+            # The failure this whole check exists for: the heading was renamed and the
+            # citation still names the old one.
+            "a near-miss heading is reported",
+            "In-Progress Record (Step 2)",
+            False,
+        ),
+        (
+            "a heading resolves without its parenthetical qualifier",
+            "Hook Install Internals",
+            True,
+        ),
+        (
+            "a bold label resolves without its trailing period",
+            "Populating `write_set`",
+            True,
+        ),
+        (
+            "a bold label resolves without its declaration prefix",
+            "Frontmatter Quoting",
+            True,
+        ),
+        ("a name the target never says is reported", "Recovery Refusals (Step 1)", False),
+        ("a heading inside a code fence is not a section", "Fenced Heading", False),
+    ]
+    for fixture_name, cited_section, expected_resolution in resolution_cases:
+        actual_resolution = section_name_resolves(cited_section, fixture_section_names)
+        if actual_resolution != expected_resolution:
+            fail(
+                f"section citation resolution fixture {fixture_name!r}: expected "
+                f"{expected_resolution!r}, got {actual_resolution!r}"
             )
             fixture_failures += 1
 
@@ -1284,7 +1517,7 @@ def cross_package_target_resolves(
     installed_resolves = (
         installed_source_target is not None and path_exists(installed_source_target)
     )
-    return source_resolves, installed_resolves
+    return source_resolves, installed_resolves, source_target
 
 
 def should_check_same_package(markdown_path, source_root):
@@ -1319,7 +1552,13 @@ def same_package_target_resolves(
     installed_resolves = (
         installed_source_target is not None and path_exists(installed_source_target)
     )
-    return source_resolves, installed_resolves, source_contained, installed_contained
+    return (
+        source_resolves,
+        installed_resolves,
+        source_contained,
+        installed_contained,
+        source_target,
+    )
 
 
 def unresolved_topologies(resolution_pairs):
@@ -1344,6 +1583,8 @@ def citation_messages(
     same_package_content_directories,
     path_exists,
     same_package_check_enabled=True,
+    cited_section=None,
+    read_section_names=None,
 ):
     stripped_span = span_text.strip()
     if not stripped_span:
@@ -1382,15 +1623,15 @@ def citation_messages(
             )
             resolution_pairs.append(resolution_pair)
             if resolution_pair[0] and resolution_pair[1]:
-                return []
+                return section_failure_messages(
+                    cited_section, resolution_pair[2], read_section_names
+                )
         missing_locations = unresolved_topologies(resolution_pairs[-1:])
         return [
             "cross-package citation does not resolve in "
             f"{' and '.join(missing_locations)} topology: {token}"
         ]
 
-    if not same_package_check_enabled:
-        return []
     # Same-package grammar comes from immediate content-directory names that are
     # actually present in the manifest modules. Leadless citations resolve from the
     # owning package root; ../-led citations resolve from the citing directory.
@@ -1399,6 +1640,8 @@ def citation_messages(
 
     owning_module = owning_manifest_module(source_directory, modules)
     if owning_module is None:
+        if not same_package_check_enabled:
+            return []
         return [f"same-package citation has no owning manifest module: {token}"]
 
     resolution_results = []
@@ -1413,7 +1656,16 @@ def citation_messages(
         )
         resolution_results.append(resolution_result)
         if resolution_result[0] and resolution_result[1]:
-            return []
+            # The section half is checked even where the path half is switched off (a
+            # package-root CHANGELOG.md): path checking is off there because a historical
+            # entry may name a file that has since gone, and that reason does not reach a
+            # citation whose file is still present and only whose section name is stale.
+            return section_failure_messages(
+                cited_section, resolution_result[4], read_section_names
+            )
+
+    if not same_package_check_enabled:
+        return []
 
     source_contained = any(result[2] for result in resolution_results)
     installed_contained = any(result[3] for result in resolution_results)
@@ -1769,6 +2021,7 @@ def validate_first_party_url(target, tracked_paths):
 run_parser_fixtures()
 run_anchor_slug_fixtures()
 run_anchor_topology_fixtures()
+run_section_citation_fixtures()
 run_citation_surface_fixtures()
 run_citation_fixtures()
 modules = read_manifest()
@@ -1895,6 +2148,12 @@ for markdown_path in sorted(set(markdown_paths), key=lambda path: path.as_posix(
             lambda candidate: (repo_root / candidate).exists(),
             same_package_check_enabled=should_check_same_package(
                 markdown_path, source_root
+            ),
+            cited_section=cited_arrow_section(
+                raw_markdown_text, span_offset + len(span_content)
+            ),
+            read_section_names=lambda resolved_target: target_section_names(
+                repo_root / resolved_target
             ),
         ):
             span_line_number = raw_markdown_text.count("\n", 0, span_offset) + 1

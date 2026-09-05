@@ -389,7 +389,7 @@ The refusal-clearing rule from 0.266.5 was scoped to one command. It is now the 
 
 `do-work run` and `do-work run-with-recovery` used to treat any `recover-finalization` refusal as a full stop before queue selection. The command refuses whatever it cannot attribute byte-for-byte and has no opinion about what the bytes are, so the orchestrator now forms that opinion and clears the blocker itself.
 
-- New `actions/work-reference.md` → **Recovery Refusals (Step 1)**: judge each blocked path, take the least destructive clearing action (delete or locally exclude non-project files, revert or finish this session's own abandoned write, commit the user's unrelated work on its own with the hash reported), re-run the exact `verification_argv`, and stop only for shared state whose owner the orchestrator cannot decide, naming the verb that resolves it.
+- New `actions/work-reference.md` section **Recovery Refusals (Step 1)**, renamed in 0.266.6 and now `actions/work-reference.md` → **Stuck Runs Hand Off to Judgment (any step)**: judge each blocked path, take the least destructive clearing action (delete or locally exclude non-project files, revert or finish this session's own abandoned write, commit the user's unrelated work on its own with the hash reported), re-run the exact `verification_argv`, and stop only for shared state whose owner the orchestrator cannot decide, naming the verb that resolves it.
 - Judgment covers the obstacle, never the finalization: REQ frontmatter, staging, and provenance still belong to the command.
 - Both `run` and `run-with-recovery` point at the one rule instead of carrying their own stop sentence.
 
