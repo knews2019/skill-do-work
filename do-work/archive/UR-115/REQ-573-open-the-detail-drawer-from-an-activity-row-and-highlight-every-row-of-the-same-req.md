@@ -1,7 +1,7 @@
 ---
 id: REQ-573
 title: 'Open the detail drawer from an Activity row and highlight every row of the same REQ'
-status: claimed
+status: completed
 created_at: 2026-09-04T23:16:00Z
 user_request: UR-115
 domain: frontend
@@ -33,6 +33,8 @@ review_at: 2026-09-05T14:22:50Z
 heavy_verified_at: 2026-09-05T14:22:50Z
 heavy_verified_revision: 7b2673b690a671ccb360c26b0c19c56ecc7356b5
 commit: 2d3981f4
+completed_at: 2026-09-05T14:23:15Z
+release_at: 2026-09-05T14:23:15Z
 ---
 
 # Open the Detail Drawer from an Activity Row and Highlight Every Row of the Same REQ

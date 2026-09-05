@@ -2,6 +2,15 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.300.0 — Click a Request on the Activity View (2026-09-05)
+
+An Activity row was inert: the view could tell you a request moved, but not take you to it. Clicking a request now opens the same detail drawer the Board opens, and every row belonging to that request lights up, so the whole path it took is scannable at a glance.
+
+- The request cell is a real button carrying the drawer's own attributes, so it opens through the existing delegation with no second opener and is reachable by keyboard the way a Board card is.
+- Selection is read from the drawer rather than stored beside it, so a re-render restores the highlight and closing the drawer clears it, with no state that can disagree.
+- The highlight carries three signals — a tint, an inset bar down the request column, and the bold underlined id — so it never depends on colour alone, in either theme.
+- Known gap, recorded on the request: the selected rows carry no `aria-current`, so a screen-reader user gets the drawer content without being told which rows belong to it.
+
 ## 0.299.0 — The Top Bar Stays One Row (2026-09-05)
 
 When the board's three control pills no longer fit beside the identity block, the controls wrapped and the identity block wrapped with them, growing the bar from 68px to about 150px on the view where vertical space matters most. The bar now holds its height.
