@@ -25,6 +25,7 @@ estimate:
 claimed_at: 2026-09-05T09:51:15Z
 review_at: 2026-09-05T10:04:30Z
 completed_at: 2026-09-05T10:04:51Z
+commit: aea9d619121c71fe8586cb05cb3c78a83433c43c
 ---
 
 # Repository gate repair: add the missing shebang to the REQ-572 probe script
