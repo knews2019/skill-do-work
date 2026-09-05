@@ -29,6 +29,10 @@ route: A
 dispatch_at: 2026-09-05T12:23:39Z
 builder_handback_at: 2026-09-05T12:39:24Z
 integration_at: 2026-09-05T12:39:24Z
+review_at: 2026-09-05T14:22:50Z
+heavy_verified_at: 2026-09-05T14:22:50Z
+heavy_verified_revision: 7b2673b690a671ccb360c26b0c19c56ecc7356b5
+commit: 2d3981f4
 ---
 
 # Open the Detail Drawer from an Activity Row and Highlight Every Row of the Same REQ
@@ -180,3 +184,42 @@ Requirements traced: detail attributes on every row, the whole matching set sele
 - A REQ with many rows (REQ-572's own follow-up suggests nine) over a 7-day window, to see whether a left-edge-only signal is enough to track a set down a long table.
 
 *Reviewed by review-work action*
+
+## Remediation
+
+The review returned Acceptance **Partial** at 79 percent on one defect this request introduced (F1): a request drawer opened from anywhere outside the Activity table left the table highlighting the previously open request, because the fallback branch read the drawer's identity from a listener registered ahead of the delegation that sets it. The orchestrator judged that too poor to ship and dispatched a narrow remediation for F1 and F4 rather than archiving the finding as report-only.
+
+**That remediation was superseded before it could be integrated.** While it was building, another session working this same checkout fixed the same defect on main as commit `7443fe11` (released as 0.295.1), by a better route: the drawer's own `setDetailTarget` is now the single writer of the selected identity and tells the Activity view directly, and *both* document click listeners are gone — so the listener-ordering hazard that caused F1 no longer exists rather than being worked around. That commit also carries its own probe, which drives the writer instead of assigning the variables in the order the old listener assumed, plus a source pin that fails if a second writer appears.
+
+The remediation branch `worktree-agent-REQ-573-activity-drawer` (head `9de57c92`) keeps a click listener and would have reintroduced the mechanism main deliberately removed. It is abandoned at the maintainer's decision, unmerged and undeleted — `git branch -d` would refuse on unmerged work, and forcing it would destroy the only evidence that the integration did not happen.
+
+**What ships:** this request's delivered behaviour — the Activity REQ cell as a real keyboard-reachable button carrying the drawer's `data-detail-kind`/`data-detail-id` pair, and every row of the clicked request marked selected with three non-colour signals — plus main's fix for how the selected identity is resolved. Verified green in the heavy queue-kanban lanes at `7b2673b6`, which includes `7443fe11`.
+
+**Still open, report only:** F4 (no `aria-current` or `aria-selected` on the selected rows, so a screen-reader user has no programmatic signal), and F2, F3, F5, F6, F7, F8. F4 is a real accessibility gap; it stays a report-only finding because the rule reserves automatic follow-ups for impact-critical work, and because two other sessions are actively editing those files right now.
+
+## Lessons Learned
+
+**What worked:** Making the REQ cell a real `<button>` carrying the existing delegation's attributes bought drawer-opening and keyboard reachability with no second opener. Reading the selection from the drawer instead of storing a copy made three of the request's requirements fall out with no code of their own.
+
+**What didn't:** Deriving correctness from listener registration order. The builder read the fragment execution manifest, correctly worked out that its listener runs before the delegation, and built the row branch around that fact — then left the fallback branch reading the stale value the same argument had just identified. An argument that a value is stale is an argument not to read it anywhere, not a licence to read it in the other branch. Main's fix removed the ordering dependency entirely, which is why it is the better one.
+
+**Worth knowing:** Two sessions fixed this same defect concurrently in the same checkout, from the same review report, within about twenty minutes of each other. Nothing in the queue made that visible: a report-only finding is not a claim, so nothing stops a second reader from picking it up. That is the cost of the report-only intake brake, and it is worth knowing before the brake is tuned.
+
+## Orientation
+
+Clicking a request on the board's Activity view now opens the same detail drawer the Board opens, and every row belonging to that request lights up, so the whole path a request took can be scanned at a glance. Lives in the queue-kanban board subsystem (`_dev/primes/prime-kanban-board.md`), in the Activity client. The REQ cell is a real button, so it is reachable by keyboard the way a Board card is. No prime was made stale.
+
+## Heavy Verification Result
+
+- **Target revision:** 2d3981f4
+- **Execution revision:** 7b2673b690a671ccb360c26b0c19c56ecc7356b5
+- **Run at:** 2026-09-05T14:22:50Z, from a detached worktree
+
+| Lane | Exit | Wall | Disposition |
+| --- | --- | --- | --- |
+| `queue-kanban-javascript` | 0 | 9s | executed |
+| `queue-kanban-browser` | 0 | 141s | executed |
+| `staged-skills` | 0 | 44s | executed |
+
+Every lane this request selected was present in the run, exited 0, and none was skipped. The execution revision includes `7443fe11`, so the lanes verified the shipped combination of this request's markup and main's identity-resolution fix, not this request's mechanism in isolation.
+
