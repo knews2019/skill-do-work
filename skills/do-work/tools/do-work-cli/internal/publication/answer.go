@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io/fs"
 	"os"
+	"path"
 	"path/filepath"
 	"regexp"
 	"sort"
@@ -34,16 +35,33 @@ const (
 // list bullet, the field after the bracketed date that bullet may carry, and the field after
 // the single em-dash separator an entry uses to close its subject.
 const (
-	historyEntryBullet    = "- "
 	historyFieldSeparator = " — "
+	// bulletListMarkers is CommonMark's own set of bullet list markers, taken wholesale rather
+	// than narrowed to the one spelling this project's writers happen to use. A marker must be
+	// followed by a space or a tab, which is what separates the "*" of a bullet from the "**"
+	// of emphasis.
+	bulletListMarkers = "-+*"
+	// indentedCodeColumns is CommonMark's threshold for an indented code block. Anything at or
+	// beyond it is a picture of a record rather than a record.
+	indentedCodeColumns = 4
+	// atxHeadingMaximumHashes and blockRunMinimumLength are the two lengths CommonMark fixes for
+	// the constructs that end a section: an ATX heading of one to six "#", and a run of three or
+	// more of one punctuation mark, which is how every fence, thematic break and frontmatter
+	// delimiter is built.
+	atxHeadingMaximumHashes = 6
+	blockRunMinimumLength   = 3
 )
 
 // The markers a terminal stakeholder disposition must carry, at the position the writer places
-// them. `actions/stakeholder-answers.md` Step 5 prescribes the first spelling of each; the
-// second Implementation spelling is the earlier form this package's fixtures and the archive
-// both carry. A missing spelling refuses a genuine terminal disposition — visible, and
-// correctable by the caller — where a missing anchor would complete and archive a REQ on the
-// caller's own narrative, so the list may only ever be too short, never too permissive.
+// them. These are spellings, not a condition, and that is deliberate: the set is closed by the
+// writers, not by this reader. `actions/stakeholder-answers.md` Step 5, `actions/clarify.md`
+// Step 4 and `internal/doctor`'s HOLLOW-COMPLETION exception all write and read the first
+// Implementation spelling; the second is the earlier form this package's fixtures carry. Adding
+// a spelling here without adding it there splits two readers of one marker, so a new spelling
+// belongs in the writers first. A missing spelling refuses a genuine terminal disposition —
+// visible, pre-mutation, correctable — where a missing *position* would complete and archive a
+// REQ on the caller's own narrative, so this list may only ever be too short, never too
+// permissive. Positions are stated as conditions below for exactly the opposite reason.
 const blockedResolutionMarker = "resolved"
 
 var implementationNoCodeMarkers = []string{"no changes needed", "no code changes"}
@@ -289,7 +307,7 @@ func BuildAnswerPlan(repositoryRoot string, manifest Manifest, answerTime time.T
 				return refusedPlan(plan, "ANSWER-STAKEHOLDER-EVIDENCE-INVALID", firstError(blockedError, implementationError).Error(), []string{record.RequestID}, requestPath)
 			}
 			if !blockedHistoryRecordsResolution(blockedHistory) || !implementationRecordsNoCodeCompletion(implementation) {
-				return refusedPlan(plan, "ANSWER-STAKEHOLDER-EVIDENCE-INVALID", "terminal evidence must carry resolved Blocked history and an Implementation no-code marker: "+terminalEvidencePositionEvidence(blockedHistory, implementation), []string{record.RequestID}, requestPath)
+				return refusedPlan(plan, "ANSWER-STAKEHOLDER-EVIDENCE-INVALID", "terminal evidence must carry a resolved Blocked history entry and an Implementation no-change note, each at the position its writer places it: "+terminalEvidencePositionEvidence(blockedHistory, implementation), []string{record.RequestID}, requestPath)
 			}
 			if appendError := appendSectionEvidence(document, "## Blocked", blockedHistory, lineEnding); appendError != nil {
 				return refusedPlan(plan, "ANSWER-EDIT-FAILED", appendError.Error(), []string{record.RequestID}, requestPath)
@@ -311,7 +329,7 @@ func BuildAnswerPlan(repositoryRoot string, manifest Manifest, answerTime time.T
 				return refusedPlan(plan, "ANSWER-STAKEHOLDER-REPORT-LINKAGE-INVALID", "blocked_by must exactly match the fresh report path", []string{record.RequestID}, answer.StakeholderReport.BlockedBy)
 			}
 			reportsHistory, _, reportsError := readPayload(repositoryRoot, answer.StakeholderReport.ReportsHistory)
-			if reportsError != nil || !reportsHistoryNamesReportPath(reportsHistory, reportPath) {
+			if reportsError != nil || !reportsHistoryNamesReportPath(reportsHistory, reportPath, requestPath) {
 				reason := "Reports history must name the fresh report path as the path field of one history entry, not merely somewhere in its text"
 				if reportsError != nil {
 					reason = reportsError.Error()
@@ -476,27 +494,85 @@ func answeredSummaryDispositionLabel(question QuestionAnswer) string {
 	return ""
 }
 
-// activeEvidenceLines returns the lines of a caller-supplied evidence payload that can record
-// anything, bounded to the section the payload is published into. The optional heading the
-// payload may open with is dropped; a line under any further "## " heading belongs to another
-// section, and a line inside a fenced block is an example of a record rather than a record, so
-// neither may supply a marker that decides a lifecycle write.
+// lineIndentColumns returns the width in columns of a line's leading whitespace and the byte
+// offset where its content begins, with a tab advancing to the next four-column stop as
+// Markdown counts it. Every caller measures before it trims: a trim run first destroys the very
+// whitespace that constitutes the structure, which is the trap REQ-460 recorded and which is
+// how an indented code block read as a history entry here.
+func lineIndentColumns(line []byte) (int, int) {
+	columns, offset := 0, 0
+	for offset < len(line) {
+		switch line[offset] {
+		case ' ':
+			columns++
+		case '\t':
+			columns += indentedCodeColumns - columns%indentedCodeColumns
+		default:
+			return columns, offset
+		}
+		offset++
+	}
+	return columns, offset
+}
+
+// blockConstructOpensLine reports whether a line opens a Markdown block construct, which ends
+// the region of the payload that records anything.
+//
+// This is the condition, not a list of spellings. Markdown builds every construct that can end
+// a section out of two shapes at a line start: an ATX heading, which is one to six "#" followed
+// by a space, a tab, or nothing; and a run of three or more of one ASCII punctuation mark,
+// which is how backtick fences, tilde fences, thematic breaks, frontmatter delimiters, setext
+// underlines and a dialect's own container fences are all spelled. Taking the whole ASCII
+// punctuation class from isMarkdownBlockPunctuation — the same wholesale move that predicate
+// already makes for summaries — is what stops a fence character this file has never heard of
+// from silently reopening the hole: a new spelling is still punctuation, so it still ends the
+// region.
+//
+// Ending the region rather than toggling a fence pair is deliberate. A toggle has to find a
+// matching close, and an unclosed or mismatched fence then leaves everything after it readable
+// again — the failure this treatment cannot have. Ending instead means a payload that opens any
+// such construct records nothing after it, which refuses rather than accepts.
+func blockConstructOpensLine(line []byte) bool {
+	_, offset := lineIndentColumns(line)
+	content := line[offset:]
+	if len(content) == 0 {
+		return false
+	}
+	if content[0] == '#' {
+		hashes := 0
+		for hashes < len(content) && content[hashes] == '#' {
+			hashes++
+		}
+		if hashes <= atxHeadingMaximumHashes && (hashes == len(content) || content[hashes] == ' ' || content[hashes] == '\t') {
+			return true
+		}
+	}
+	if isMarkdownBlockPunctuation(content[0]) {
+		run := 0
+		for run < len(content) && content[run] == content[0] {
+			run++
+		}
+		if run >= blockRunMinimumLength {
+			return true
+		}
+	}
+	return false
+}
+
+// activeEvidenceLines returns the lines of a caller-supplied evidence payload that belong to the
+// section the payload is published into. The optional heading the payload opens with is dropped;
+// everything from the first line that opens another block construct onwards belongs to something
+// other than this section's records, so none of it may supply a marker that decides a lifecycle
+// write. Whether a surviving line records anything is recordLineContent's question, not this
+// one's.
 func activeEvidenceLines(evidence []byte, heading string) [][]byte {
 	var activeLines [][]byte
-	insideFence := false
 	for lineIndex, rawLine := range bytes.Split(evidence, []byte("\n")) {
 		line := bytes.TrimRight(bytes.TrimSuffix(rawLine, []byte("\r")), " \t")
 		if lineIndex == 0 && bytes.Equal(bytes.TrimSpace(line), []byte(heading)) {
 			continue
 		}
-		if bytes.HasPrefix(bytes.TrimLeft(line, " \t"), []byte("```")) {
-			insideFence = !insideFence
-			continue
-		}
-		if insideFence {
-			continue
-		}
-		if bytes.HasPrefix(line, []byte("## ")) {
+		if blockConstructOpensLine(line) {
 			break
 		}
 		activeLines = append(activeLines, line)
@@ -504,18 +580,38 @@ func activeEvidenceLines(evidence []byte, heading string) [][]byte {
 	return activeLines
 }
 
+// recordLineContent returns a line's content when the line can record something. Four or more
+// columns of leading whitespace is an indented code block, so its bytes are a picture of a
+// record rather than one — the single place that condition is decided, so that both the history
+// readers and the Implementation reader answer it the same way.
+func recordLineContent(line []byte) ([]byte, bool) {
+	columns, offset := lineIndentColumns(line)
+	if columns >= indentedCodeColumns {
+		return nil, false
+	}
+	return line[offset:], true
+}
+
 // historyEntryContent returns the content of a history entry line: the bytes after the list
 // bullet every entry opens with, and after the bracketed date field when the entry carries one.
 // A line that is not an entry offers no field boundary at all and is reported as such, so a
 // sentence of narrative can never stand in for a recorded entry.
+//
+// A bracketed field is only a date when its "]" is not immediately followed by "(". That one
+// byte is what separates "- [2026-09-01] …", whose bracket closes a date, from
+// "- [Title](path)", whose bracket opens a link whose destination is the entry's path field.
 func historyEntryContent(line []byte) ([]byte, bool) {
-	entry := bytes.TrimLeft(line, " \t")
-	if !bytes.HasPrefix(entry, []byte(historyEntryBullet)) {
+	entry, isRecord := recordLineContent(line)
+	if !isRecord || len(entry) < 2 || !strings.ContainsRune(bulletListMarkers, rune(entry[0])) {
 		return nil, false
 	}
-	content := entry[len(historyEntryBullet):]
+	if entry[1] != ' ' && entry[1] != '\t' {
+		return nil, false
+	}
+	content := bytes.TrimLeft(entry[1:], " \t")
 	if bytes.HasPrefix(content, []byte("[")) {
-		if closingIndex := bytes.IndexByte(content, ']'); closingIndex >= 0 {
+		if closingIndex := bytes.IndexByte(content, ']'); closingIndex >= 0 &&
+			(closingIndex+1 == len(content) || content[closingIndex+1] != '(') {
 			content = bytes.TrimLeft(content[closingIndex+1:], " \t")
 		}
 	}
@@ -534,11 +630,46 @@ func historyEntryTrailingField(content []byte) ([]byte, bool) {
 	return content[bytes.Index(content, separator)+len(separator):], true
 }
 
-// markerOpensField reports whether a field opens with a marker as a whole word. Leading
-// emphasis and indentation are the writer's formatting rather than content, so they are stepped
-// over; a letter or digit immediately after the marker means the field opens with a different
-// word that merely starts with the same bytes, which is how "no code review yet" passed for the
-// no-code marker.
+// historyEntryPathField returns the path a history entry names in its first field, and whether
+// the entry opens with one at all.
+//
+// The same path is written three ways in this repository — bare, wrapped in a Markdown link
+// whose destination is the path, and fenced in backticks — and all three are the same evidence
+// wearing different skins, so all three are read. What matters is that each skin carries its own
+// terminator: a link destination ends at its ")", a backticked path at its closing backtick, a
+// bare path at the entry's field separator or the end of the line. Returning the whole field
+// rather than testing a prefix is what keeps a neighbouring bundle whose path merely starts with
+// this one out, in every skin at once.
+func historyEntryPathField(content []byte) ([]byte, bool) {
+	if bytes.HasPrefix(content, []byte("[")) {
+		linkStart := bytes.Index(content, []byte("]("))
+		if linkStart < 0 {
+			return nil, false
+		}
+		destination := content[linkStart+len("]("):]
+		closingIndex := bytes.IndexByte(destination, ')')
+		if closingIndex < 0 {
+			return nil, false
+		}
+		return destination[:closingIndex], true
+	}
+	if bytes.HasPrefix(content, []byte("`")) {
+		closingIndex := bytes.IndexByte(content[1:], '`')
+		if closingIndex < 0 {
+			return nil, false
+		}
+		return content[1 : 1+closingIndex], true
+	}
+	if separatorIndex := bytes.Index(content, []byte(historyFieldSeparator)); separatorIndex >= 0 {
+		return content[:separatorIndex], true
+	}
+	return content, true
+}
+
+// markerOpensField reports whether a field opens with a marker as a whole word. Leading emphasis
+// is the writer's formatting rather than content, so it is stepped over; a letter or digit
+// immediately after the marker means the field opens with a different word that merely starts
+// with the same bytes, which is how "no code review yet" passed for the no-code marker.
 func markerOpensField(field []byte, marker string) bool {
 	candidate := bytes.TrimLeft(field, "*_ \t")
 	if len(candidate) < len(marker) || !strings.EqualFold(string(candidate[:len(marker)]), marker) {
@@ -573,15 +704,22 @@ func blockedHistoryRecordsResolution(evidence []byte) bool {
 	return false
 }
 
-// implementationRecordsNoCodeCompletion reports whether an `## Implementation` payload opens a
-// paragraph with the no-change marker its caller's terminal disposition claims. The marker
-// states the whole note, so it must open one; the same words inside a sentence describe
-// something else, which is what "no code review yet" and "no code changes were needed in the
-// CLI" both are.
+// implementationRecordsNoCodeCompletion reports whether an `## Implementation` payload opens its
+// note with the no-change marker its caller's terminal disposition claims. The marker states the
+// whole note, so it must open one — as a paragraph or as the list item some writers use, which
+// are the same statement in different skins. The same words inside a sentence describe something
+// else, which is what "no code review yet" and "no code changes were needed in the CLI" both are.
 func implementationRecordsNoCodeCompletion(evidence []byte) bool {
 	for _, line := range activeEvidenceLines(evidence, "## Implementation") {
+		statement, isRecord := recordLineContent(line)
+		if !isRecord {
+			continue
+		}
+		if entryContent, isEntry := historyEntryContent(line); isEntry {
+			statement = entryContent
+		}
 		for _, marker := range implementationNoCodeMarkers {
-			if markerOpensField(line, marker) {
+			if markerOpensField(statement, marker) {
 				return true
 			}
 		}
@@ -590,21 +728,38 @@ func implementationRecordsNoCodeCompletion(evidence []byte) bool {
 }
 
 // reportsHistoryNamesReportPath reports whether a `## Reports` payload records the fresh report
-// as the path field of one history entry. The path opens an entry and is closed by the entry's
-// separator or by the end of the line, so a neighbouring bundle whose path merely starts with
-// this one, and a sentence that mentions it, both fail to name it.
-func reportsHistoryNamesReportPath(evidence []byte, reportPath string) bool {
+// as the path field of one history entry, in whichever skin that entry writes it.
+func reportsHistoryNamesReportPath(evidence []byte, reportPath, requestPath string) bool {
 	for _, line := range activeEvidenceLines(evidence, "## Reports") {
 		content, isEntry := historyEntryContent(line)
-		if !isEntry || !bytes.HasPrefix(content, []byte(reportPath)) {
+		if !isEntry {
 			continue
 		}
-		remainder := content[len(reportPath):]
-		if len(remainder) == 0 || bytes.HasPrefix(remainder, []byte(historyFieldSeparator)) {
+		namedPath, hasPath := historyEntryPathField(content)
+		if hasPath && repositoryRelativeEvidencePath(string(namedPath), requestPath) == reportPath {
 			return true
 		}
 	}
 	return false
+}
+
+// repositoryRelativeEvidencePath resolves the path a history entry names into the
+// repository-relative form the manifest declares. A link inside a request document is written
+// relative to that document — this repository's own archive does exactly that — so the request's
+// own directory is the only frame in which such an entry can be read.
+func repositoryRelativeEvidencePath(namedPath, requestPath string) string {
+	namedPath = strings.TrimSpace(namedPath)
+	if namedPath == "" {
+		return ""
+	}
+	if strings.HasPrefix(namedPath, "./") || strings.HasPrefix(namedPath, "../") {
+		namedPath = path.Join(path.Dir(requestPath), namedPath)
+	}
+	// No escape guard sits here on purpose. reportPath has already been through containedPath,
+	// so it is repository-relative and can never equal a path that climbs out of the repository
+	// or starts at the filesystem root — those resolve to something this comparison rejects on
+	// its own, and a guard that cannot change a verdict is a branch no test can pin.
+	return path.Clean(namedPath)
 }
 
 // terminalEvidencePositionEvidence names which half of the terminal evidence failed and where
@@ -618,9 +773,20 @@ func terminalEvidencePositionEvidence(blockedHistory, implementation []byte) str
 			blockedResolutionMarker, historyFieldSeparator))
 	}
 	if !implementationRecordsNoCodeCompletion(implementation) {
-		missing = append(missing, fmt.Sprintf("no Implementation paragraph opens with one of %q", implementationNoCodeMarkers))
+		missing = append(missing, "no Implementation paragraph or list item opens with "+quotedAlternatives(implementationNoCodeMarkers))
 	}
 	return strings.Join(missing, "; ")
+}
+
+// quotedAlternatives renders a set of accepted spellings as prose a caller can act on. Printing
+// the slice with %q hands them Go syntax instead, which reads as a bug in the tool rather than
+// as the two spellings they may choose between.
+func quotedAlternatives(alternatives []string) string {
+	quoted := make([]string, 0, len(alternatives))
+	for _, alternative := range alternatives {
+		quoted = append(quoted, fmt.Sprintf("%q", alternative))
+	}
+	return strings.Join(quoted, " or ")
 }
 
 // resolvedQuestionDisposition returns the text a resolved question line carries at the one
