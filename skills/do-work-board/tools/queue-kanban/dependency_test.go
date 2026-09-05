@@ -13,6 +13,7 @@ type dependencyFixture struct {
 	RequestId    string
 	Status       string
 	DependsOnIds []string
+	CommitHash   string
 }
 
 // buildDependencyBoard seeds a queue of REQs with the given statuses and
@@ -26,6 +27,9 @@ func buildDependencyBoard(t *testing.T, fixtures []dependencyFixture) *Board {
 			"\nstatus: " + fixture.Status + "\n"
 		if len(fixture.DependsOnIds) > 0 {
 			frontmatter += "depends_on: [" + strings.Join(fixture.DependsOnIds, ", ") + "]\n"
+		}
+		if fixture.CommitHash != "" {
+			frontmatter += "commit: " + fixture.CommitHash + "\n"
 		}
 		frontmatter += "---\n\nBody.\n"
 
@@ -107,6 +111,45 @@ func TestCompletedWithIssuesSatisfiesGating(t *testing.T) {
 
 	if !requestIdSet(board.Columns.PendingReady)["REQ-2"] {
 		t.Fatal("REQ-2 depends on a completed-with-issues REQ and must be ready")
+	}
+}
+
+// TestClaimedDependencyHoldingItsCommitSatisfiesGating pins the board to the
+// second arm of the Dependency-source-ready status set: a request held for
+// heavy lanes stays `claimed` while its implementation commit is recorded, and
+// the work loop will select its dependents. A board that still demanded
+// terminal success reported Waiting for a card the loop was about to run.
+func TestClaimedDependencyHoldingItsCommitSatisfiesGating(t *testing.T) {
+	board := buildDependencyBoard(t, []dependencyFixture{
+		{RequestId: "REQ-1", Status: "claimed", CommitHash: "4a12b664"},
+		{RequestId: "REQ-2", Status: "pending", DependsOnIds: []string{"REQ-1"}},
+	})
+
+	if !requestIdSet(board.Columns.PendingReady)["REQ-2"] {
+		t.Fatalf("REQ-2 depends on a claimed REQ holding its commit and must be ready; unmet=%v",
+			board.RequestsById["REQ-2"].UnmetDependencies)
+	}
+	// Source-ready is scheduling authority only. The held request keeps its own
+	// status and its own column; nothing here may promote it to done.
+	if board.RequestsById["REQ-1"].Status != "claimed" {
+		t.Fatalf("held dependency status = %q, want claimed", board.RequestsById["REQ-1"].Status)
+	}
+	if !requestIdSet(board.Columns.Claimed)["REQ-1"] || requestIdSet(board.Columns.RecentlyDone)["REQ-1"] {
+		t.Fatal("a held dependency must stay in Claimed and never appear as recently done")
+	}
+}
+
+// TestClaimedDependencyWithoutACommitBlocksGating covers the fail-closed half:
+// the hold's authority is the recorded commit, and a re-claim strips a prior
+// attempt's, so a claimed request without one must not unblock anyone.
+func TestClaimedDependencyWithoutACommitBlocksGating(t *testing.T) {
+	board := buildDependencyBoard(t, []dependencyFixture{
+		{RequestId: "REQ-1", Status: "claimed"},
+		{RequestId: "REQ-2", Status: "pending", DependsOnIds: []string{"REQ-1"}},
+	})
+
+	if !requestIdSet(board.Columns.PendingWaiting)["REQ-2"] {
+		t.Fatal("REQ-2 depends on a claimed REQ with no commit and must be waiting")
 	}
 }
 

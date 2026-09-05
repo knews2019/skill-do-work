@@ -14,6 +14,7 @@ import (
 
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/commandruntime"
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/publication"
+	"github.com/knews2019/skill-do-work/do-work-cli/internal/releaseownership"
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/resultmodel"
 )
 
@@ -411,10 +412,11 @@ func TestAffirmativeReleaseOwnershipRequiresRootedWorkspaceChain(t *testing.T) {
 			for _, path := range tracked {
 				trackedSet[filepath.ToSlash(filepath.Clean(path))] = true
 			}
-			ownedPaths, ownedManifests, err := affirmativeReleaseOwnership(repositoryRoot, tracked, trackedSet)
+			ownership, err := releaseownership.AffirmativeOwnership(tracked, trackedSet, headReleaseImage(repositoryRoot))
 			if err != nil {
 				t.Fatal(err)
 			}
+			ownedPaths, ownedManifests := ownership.MetadataPaths, ownership.ProjectManifests
 			for _, path := range test.ownedPaths {
 				if !ownedPaths[path] {
 					t.Errorf("owned path %s was not classified", path)

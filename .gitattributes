@@ -51,3 +51,12 @@
 /.gitattributes  export-ignore
 /CLAUDE.md       export-ignore
 /AGENTS.md       export-ignore
+
+# The heavy-lane contract tests read the maintainer's own /_dev tree six levels up
+# (the lane manifest, its runtime fingerprint helper, the maintainer gate script). In an
+# installed copy that walk lands on <project>/.claude/, where /_dev has never shipped, so
+# every one of them fails and takes the installed module's `go test ./...` with it. They
+# cannot be made self-contained: what they pin is the REAL lane manifest, and a vendored
+# fixture would assert nothing. So the one file holding all of them stays maintainer-side.
+# Keep every maintainer-tree read in that file; a new one elsewhere breaks consumers again.
+/skills/do-work/tools/do-work-cli/internal/heavyverification/heavy_maintainer_tree_test.go export-ignore

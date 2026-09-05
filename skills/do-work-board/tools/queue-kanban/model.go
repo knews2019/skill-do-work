@@ -197,7 +197,7 @@ type RequestTicket struct {
 
 	// Derived by annotateDependencyState after every ticket is parsed — never
 	// read from frontmatter.
-	UnmetDependencies []string // DependsOn entries that have not reached terminal success (a dangling id counts as unmet)
+	UnmetDependencies []string // DependsOn entries that are not source-ready (a dangling id counts as unmet)
 	Dependents        []string // REQ ids whose depends_on names this ticket, in id order — the reverse edge
 
 	Route string
@@ -362,7 +362,7 @@ type QueueNote struct {
 // recent window are NOT represented here — they live in Board.Calendar.
 type BoardColumns struct {
 	Pending             []*RequestTicket // status pending and blocked with an unmet dependency (the union of PendingReady and PendingWaiting)
-	PendingReady        []*RequestTicket // status pending with every depends_on target at terminal success — actionable now
+	PendingReady        []*RequestTicket // status pending with every depends_on target source-ready — actionable now
 	PendingWaiting      []*RequestTicket // pending or blocked with at least one unmet dependency — not yet actionable
 	Claimed             []*RequestTicket // status claimed
 	NeedsInputOrBlocked []*RequestTicket // operator-actionable pending-answers / blocked-with-no-unmet-deps / blocked-* / failed
@@ -1013,6 +1013,18 @@ func isCompletedStatus(normalizedStatus string) bool {
 // terminal but NOT successful — it shares the Recently-done column and the
 // calendar with completed work, while success-only readers keep excluding it
 // via isCompletedStatus.
+// isDependencySourceReadyStatus reports whether a dependency has landed source
+// its dependents may build against: terminal success, or a claimed request
+// holding the implementation commit it recorded before a heavy-lane hold. It is
+// the board's half of the Dependency-source-ready status set in
+// actions/work-reference.md, kept in lock-step with DependencySourceReady in
+// the core CLI's schemanormalization package. Scheduling authority only — the
+// held request stays claimed, and completed-work readers keep using
+// isCompletedStatus.
+func isDependencySourceReadyStatus(normalizedStatus, commitHash string) bool {
+	return isCompletedStatus(normalizedStatus) || (normalizedStatus == "claimed" && strings.TrimSpace(commitHash) != "")
+}
+
 func isCancelledStatus(normalizedStatus string) bool {
 	return normalizedStatus == "cancelled"
 }
@@ -1777,14 +1789,25 @@ func buildDependencyGraph(tickets []*RequestTicket, requestsById map[string]*Req
 // reverse edge — what unblocks when this lands). It returns one warning per
 // dangling dependency.
 //
-// A dependency is MET only when its target reached terminal SUCCESS — exactly
-// the `completed` / `completed-with-issues` pair (actions/work-reference.md's
-// Schema Read Contract, which the work loop's Step 1 selection scan gates on).
-// Two consequences follow from that contract and are deliberate here:
+// A dependency is MET when its target is source-ready, which the Schema Read
+// Contract in actions/work-reference.md (§ Dependency-source-ready status set)
+// defines as terminal SUCCESS — the `completed` / `completed-with-issues` pair
+// — or a `claimed` target carrying a nonblank `commit:`. That second arm is a
+// request held for heavy lanes after review: its implementation has landed and
+// passed the fast gate, so the work loop's Step 1 selection scan will offer its
+// dependents. The board reads the same rule, or it reports Waiting for a card
+// the loop is about to run. It does NOT make the held request completed — the
+// dependency keeps its own claimed status and its own column.
+// Three consequences follow from that contract and are deliberate here:
+//
+//   - `claimed` WITHOUT a commit is unmet. The hold's authority is the recorded
+//     implementation commit, and a re-claim strips a prior attempt's `commit:`,
+//     so a withdrawn attempt stops satisfying its dependents again.
 //
 //   - `cancelled` does NOT satisfy a dependency. The dependent presumably needed
 //     the cancelled REQ's output, so it stays waiting until the user re-points
 //     depends_on or abandons it too — it must never quietly read as ready.
+//
 //   - A dangling id (no such REQ anywhere in the tree) counts as UNMET, never as
 //     satisfied. Failing open would silently promote a REQ into Ready on the
 //     strength of a typo'd dependency. It is also surfaced as a warning, because
@@ -1809,7 +1832,7 @@ func annotateDependencyState(board *Board) []string {
 				continue
 			}
 			dependencyTicket.Dependents = append(dependencyTicket.Dependents, ticket.RequestId)
-			if !isCompletedStatus(dependencyTicket.Status) {
+			if !isDependencySourceReadyStatus(dependencyTicket.Status, dependencyTicket.CommitHash) {
 				ticket.UnmetDependencies = append(ticket.UnmetDependencies, dependencyId)
 			}
 		}

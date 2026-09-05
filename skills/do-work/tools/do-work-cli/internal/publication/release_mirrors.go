@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+
+	"github.com/knews2019/skill-do-work/do-work-cli/internal/releaseownership"
 )
 
 // Undeclared-mirror admission. A release manifest names its version and
@@ -15,11 +17,17 @@ import (
 // on the old version until a repair commit. So the planner discovers the mirror
 // set itself and refuses a manifest that would leave a mirror behind.
 //
-// The set is a condition, not a list: every tracked file this planner reads as
-// a plain version file that still carries the old version, plus every tracked
-// changelog whose bytes equal the declared changelog preimage. It matches the
-// rule finalization's recovery-time discovery applies, so plan-time admission
+// The set is a condition, not a list: every file the release owns that this
+// planner reads as a plain version file still carrying the old version, plus
+// every owned changelog whose bytes equal the declared changelog preimage.
+// Ownership comes from internal/releaseownership, the same affirmative
+// evidence finalization's recovery-time discovery uses, so plan-time admission
 // and recovery never disagree about what a mirror is.
+//
+// Ownership is asked BEFORE the version value, because a version value is not
+// ownership evidence: an independently versioned component may legitimately
+// carry the application's version, and reading that coincidence as membership
+// refuses a valid release or drags the component into someone else's bump.
 
 const currentVersionLinePrefix = "**Current version**: "
 
@@ -31,9 +39,17 @@ func undeclaredReleaseMirrors(repositoryRoot, oldVersion string, declared map[st
 	if err != nil {
 		return nil, &Refusal{Code: "RELEASE-MIRROR-ENUMERATION", Reason: "tracked-file enumeration failed, so undeclared mirrors cannot be ruled out: " + err.Error()}
 	}
+	trackedSet := map[string]bool{}
+	for _, path := range tracked {
+		trackedSet[path] = true
+	}
+	ownership, ownershipError := releaseownership.AffirmativeOwnership(tracked, trackedSet, worktreeReleaseImage(repositoryRoot))
+	if ownershipError != nil {
+		return nil, &Refusal{Code: "RELEASE-MIRROR-ENUMERATION", Reason: "release ownership could not be classified, so undeclared mirrors cannot be ruled out: " + ownershipError.Error()}
+	}
 	undeclared := []string{}
 	for _, path := range tracked {
-		if declared[path] || !releaseMirrorCandidate(path) {
+		if declared[path] || !ownership.MetadataPaths[path] || !releaseMirrorCandidate(path) {
 			continue
 		}
 		contents, readError := os.ReadFile(filepath.Join(repositoryRoot, filepath.FromSlash(path)))
@@ -46,6 +62,19 @@ func undeclaredReleaseMirrors(repositoryRoot, oldVersion string, declared map[st
 	}
 	sort.Strings(undeclared)
 	return undeclared, nil
+}
+
+// worktreeReleaseImage adapts the working tree to the shared ownership reader.
+// The planner judges the state it is about to rewrite, not HEAD, so a topology
+// declaration staged for this release counts the moment it is on disk.
+func worktreeReleaseImage(repositoryRoot string) releaseownership.ReadImage {
+	return func(path string) ([]byte, bool) {
+		contents, err := os.ReadFile(filepath.Join(repositoryRoot, filepath.FromSlash(path)))
+		if err != nil {
+			return nil, false
+		}
+		return contents, true
+	}
 }
 
 // releaseMirrorCandidate keeps the read to files the mirror rule can apply to.

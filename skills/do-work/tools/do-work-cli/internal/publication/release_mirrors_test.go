@@ -16,6 +16,7 @@ func TestBuildReleasePlanRefusesUndeclaredMirrorsLeftOnOldVersion(t *testing.T) 
 		writeFixture(t, root, path, []byte("1.0.0\n"), 0o644)
 	}
 	writeFixture(t, root, "skills/do-work/actions/version.md", []byte("# Version Action\n\n**Current version**: 1.0.0\n"), 0o644)
+	writeFixture(t, root, "suite/modules.tsv", []byte("source\tdestination\nskills/do-work\t.claude/skills/do-work\n"), 0o644)
 	for _, path := range []string{"CHANGELOG.md", "skills/do-work/CHANGELOG.md"} {
 		writeFixture(t, root, path, []byte("History\n* old\n"), 0o644)
 	}
@@ -61,6 +62,58 @@ func TestBuildReleasePlanRefusesUndeclaredMirrorsLeftOnOldVersion(t *testing.T) 
 	}}
 	if plan := BuildReleasePlan(root, complete); plan.Refusal != nil || len(plan.Mutations) != 5 {
 		t.Fatalf("complete mirror set refused: %#v", plan)
+	}
+}
+
+// An independently versioned component may legitimately sit on the release's
+// own version — a fresh monorepo starts every package at the same number. The
+// coincidence is not ownership evidence, so a root-only release must still
+// plan, rather than refusing until the component joins someone else's bump.
+func TestBuildReleasePlanIgnoresIndependentComponentSharingTheOldVersion(t *testing.T) {
+	root := initializedGitRepository(t)
+	writeFixture(t, root, "VERSION", []byte("1.0.0\n"), 0o644)
+	writeFixture(t, root, "CHANGELOG.md", []byte("History\n* old\n"), 0o644)
+	writeFixture(t, root, "tools/independent/VERSION", []byte("1.0.0\n"), 0o644)
+	writeFixture(t, root, "payload/version-old", []byte("1.0.0\n"), 0o644)
+	writeFixture(t, root, "payload/version-new", []byte("1.0.1\n"), 0o644)
+	writeFixture(t, root, "payload/log-old", []byte("History\n* old\n"), 0o644)
+	writeFixture(t, root, "payload/log-new", []byte("History\nrelease-1.0.1 Title\n* old\n"), 0o644)
+	runGitFixture(t, root, "add", "-A")
+	manifest := Manifest{Operation: OperationRelease, Release: &ReleaseManifest{
+		OldVersion: "1.0.0", NewVersion: "1.0.1", ProjectOwnedTargets: []string{"VERSION", "CHANGELOG.md"},
+		Targets:    []ReleaseTarget{{Path: "VERSION", ExpectedPayload: PayloadFile{SourcePath: "payload/version-old"}, NewPayload: PayloadFile{SourcePath: "payload/version-new"}, OldVersion: "1.0.0", NewVersion: "1.0.1"}},
+		Changelogs: []ChangelogTarget{{Path: "CHANGELOG.md", ExpectedPayload: PayloadFile{SourcePath: "payload/log-old"}, NewPayload: PayloadFile{SourcePath: "payload/log-new"}, InsertionAnchor: "History\n", EntryKey: "release-1.0.1", EntryTitle: "Title"}},
+	}}
+	if plan := BuildReleasePlan(root, manifest); plan.Refusal != nil || len(plan.Mutations) != 2 {
+		t.Fatalf("independent component on the same version blocked the release: %#v", plan)
+	}
+}
+
+// A workspace member the root manifest claims IS owned, so leaving its VERSION
+// on the old value is the forgotten-mirror case the check exists for.
+func TestBuildReleasePlanRefusesUndeclaredWorkspaceMemberMirror(t *testing.T) {
+	root := initializedGitRepository(t)
+	writeFixture(t, root, "VERSION", []byte("1.0.0\n"), 0o644)
+	writeFixture(t, root, "CHANGELOG.md", []byte("History\n* old\n"), 0o644)
+	writeFixture(t, root, "package.json", []byte("{\"name\":\"root\",\"workspaces\":[\"packages/*\"]}\n"), 0o644)
+	writeFixture(t, root, "packages/widget/package.json", []byte("{\"name\":\"widget\",\"version\":\"1.0.0\"}\n"), 0o644)
+	writeFixture(t, root, "packages/widget/VERSION", []byte("1.0.0\n"), 0o644)
+	writeFixture(t, root, "payload/version-old", []byte("1.0.0\n"), 0o644)
+	writeFixture(t, root, "payload/version-new", []byte("1.0.1\n"), 0o644)
+	writeFixture(t, root, "payload/log-old", []byte("History\n* old\n"), 0o644)
+	writeFixture(t, root, "payload/log-new", []byte("History\nrelease-1.0.1 Title\n* old\n"), 0o644)
+	runGitFixture(t, root, "add", "-A")
+	manifest := Manifest{Operation: OperationRelease, Release: &ReleaseManifest{
+		OldVersion: "1.0.0", NewVersion: "1.0.1", ProjectOwnedTargets: []string{"VERSION", "CHANGELOG.md"},
+		Targets:    []ReleaseTarget{{Path: "VERSION", ExpectedPayload: PayloadFile{SourcePath: "payload/version-old"}, NewPayload: PayloadFile{SourcePath: "payload/version-new"}, OldVersion: "1.0.0", NewVersion: "1.0.1"}},
+		Changelogs: []ChangelogTarget{{Path: "CHANGELOG.md", ExpectedPayload: PayloadFile{SourcePath: "payload/log-old"}, NewPayload: PayloadFile{SourcePath: "payload/log-new"}, InsertionAnchor: "History\n", EntryKey: "release-1.0.1", EntryTitle: "Title"}},
+	}}
+	plan := BuildReleasePlan(root, manifest)
+	if plan.Refusal == nil || plan.Refusal.Code != "RELEASE-MIRROR-UNDECLARED" {
+		t.Fatalf("owned workspace member mirror accepted: %#v", plan.Refusal)
+	}
+	if want := []string{"packages/widget/VERSION"}; !reflect.DeepEqual(plan.Refusal.Paths, want) {
+		t.Fatalf("undeclared paths = %v, want %v", plan.Refusal.Paths, want)
 	}
 }
 
