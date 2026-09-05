@@ -2,6 +2,12 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.303.1 — Archived Lesson Links Follow Their Records Again (2026-09-05)
+
+Closing a user request moves its records into the request's folder, and a lesson link that named the old flat path goes stale the moment it does. This is the second time today; the fix is the same and the sweep that finds it is now written down beside the rule.
+
+- `lessons-do-work-cli.md` points at REQ-574's record at its current `UR-115` path.
+
 ## 0.303.0 — A Citation's Section Name Has to Resolve (2026-09-05)
 
 Shipped prose cites a section by writing the file path and then the section name after an arrow. The contract that guards those citations resolved the path and stopped there, so it reported clean whichever section a citation named — including two that named sections which no longer existed. Every sweep that deletes or renames a section relies on this check, and for that form it was answering yes regardless.
