@@ -2545,6 +2545,12 @@ func TestJavaScriptBehaviorActivityViewHidesTheVerifyFindingsStrip(t *testing.T)
 	functionBlocks := []string{
 		sliceBalancedBlockAfter(t, indexHtml, "function createElement("),
 		sliceBalancedBlockAfter(t, indexHtml, "function renderVerifyFindingsStrip("),
+		// The renderer's own helpers (REQ-579): the strip is a list of rows now,
+		// and applyView still has to see what that renderer drew.
+		sliceBalancedBlockAfter(t, indexHtml, "function formatFindingsSummary("),
+		sliceBalancedBlockAfter(t, indexHtml, "function groupFindingsBySubject("),
+		sliceBalancedBlockAfter(t, indexHtml, "function makeFindingRow("),
+		sliceBalancedBlockAfter(t, indexHtml, "function makeSkippedProbeRow("),
 		sliceBalancedBlockAfter(t, indexHtml, "function applyView("),
 	}
 	javascriptProbe := `
@@ -2611,7 +2617,6 @@ results.withFindingsOnBoard = stripHiddenOnView("board");
 results.withFindingsOnActivity = stripHiddenOnView("activity");
 results.withFindingsBackOnBoard = stripHiddenOnView("board");
 results.withFindingsOnTimeline = stripHiddenOnView("timeline");
-results.skippedDisclosureOnTimeline = nodesById["board-findings-skipped"].hidden;
 
 nodesById = {};
 boardData = { verifyFindings: [], verifySkipped: [] };
@@ -2620,8 +2625,8 @@ results.emptyAfterRender = nodesById["board-findings"].hidden;
 results.emptyOnBoard = stripHiddenOnView("board");
 results.emptyOnActivity = stripHiddenOnView("activity");
 
-// Findings the renderer never drew: only the skipped disclosure has anything to
-// say, and it must survive a trip through the Activity view like the cards do.
+// Findings the renderer never drew: only the skipped probes have anything to
+// say, and the strip must still survive a trip through the Activity view.
 nodesById = {};
 boardData = { verifyFindings: [], verifySkipped: ["one probe could not run"] };
 renderVerifyFindingsStrip();
@@ -2632,17 +2637,16 @@ process.stdout.write(JSON.stringify(results));`
 	probeOutput := runJavaScriptBehaviorProbe(t, "activity view hides the verify findings strip", javascriptProbe)
 
 	var results struct {
-		WithFindingsAfterRender     bool `json:"withFindingsAfterRender"`
-		WithFindingsOnBoard         bool `json:"withFindingsOnBoard"`
-		WithFindingsOnActivity      bool `json:"withFindingsOnActivity"`
-		WithFindingsBackOnBoard     bool `json:"withFindingsBackOnBoard"`
-		WithFindingsOnTimeline      bool `json:"withFindingsOnTimeline"`
-		SkippedDisclosureOnTimeline bool `json:"skippedDisclosureOnTimeline"`
-		EmptyAfterRender            bool `json:"emptyAfterRender"`
-		EmptyOnBoard                bool `json:"emptyOnBoard"`
-		EmptyOnActivity             bool `json:"emptyOnActivity"`
-		SkippedOnlyOnActivity       bool `json:"skippedOnlyOnActivity"`
-		SkippedOnlyBackOnBoard      bool `json:"skippedOnlyBackOnBoard"`
+		WithFindingsAfterRender bool `json:"withFindingsAfterRender"`
+		WithFindingsOnBoard     bool `json:"withFindingsOnBoard"`
+		WithFindingsOnActivity  bool `json:"withFindingsOnActivity"`
+		WithFindingsBackOnBoard bool `json:"withFindingsBackOnBoard"`
+		WithFindingsOnTimeline  bool `json:"withFindingsOnTimeline"`
+		EmptyAfterRender        bool `json:"emptyAfterRender"`
+		EmptyOnBoard            bool `json:"emptyOnBoard"`
+		EmptyOnActivity         bool `json:"emptyOnActivity"`
+		SkippedOnlyOnActivity   bool `json:"skippedOnlyOnActivity"`
+		SkippedOnlyBackOnBoard  bool `json:"skippedOnlyBackOnBoard"`
 	}
 	if decodeError := json.Unmarshal(probeOutput, &results); decodeError != nil {
 		t.Fatalf("decode findings strip visibility results: %v (output %q)", decodeError, probeOutput)
@@ -2658,9 +2662,6 @@ process.stdout.write(JSON.stringify(results));`
 	if results.WithFindingsBackOnBoard || results.WithFindingsOnTimeline {
 		t.Fatalf("the strip did not come back after the Activity view (board=%v, timeline=%v)",
 			results.WithFindingsBackOnBoard, results.WithFindingsOnTimeline)
-	}
-	if results.SkippedDisclosureOnTimeline {
-		t.Fatalf("the probes-could-not-run disclosure lost its own visibility across the view switches")
 	}
 	if !results.EmptyAfterRender || !results.EmptyOnBoard || !results.EmptyOnActivity {
 		t.Fatalf("a strip with nothing to report became visible on a view switch (afterRender=%v, board=%v, activity=%v)",
@@ -2890,4 +2891,256 @@ process.stdout.write(JSON.stringify(results));`
 	if !reflect.DeepEqual(results.AfterOpeningAUserRequestDrawer, []bool{false, false, false}) {
 		t.Fatalf("a UR drawer selected REQ rows by id alone: %#v", results.AfterOpeningAUserRequestDrawer)
 	}
+}
+
+// REQ-579: the strip is a list of warnings, not a set of work items. A finding
+// and a skipped probe are the same kind of thing to the reader — "verify has
+// something to tell you" — so they share one row shape in one list, and the two
+// visual languages that used to split them (a bordered card per finding, a
+// bullet inside a collapsed disclosure per skipped probe) are gone.
+//
+// The weights come from the producer alone: `fixable` means `do-work cleanup`
+// resolves it, and a skipped probe is a non-answer. Nothing here invents a
+// severity the payload did not carry.
+func TestJavaScriptBehaviorVerifyFindingsRenderAsOneRowList(t *testing.T) {
+	indexHtml := generateLiveSite(t)
+	functionBlocks := []string{
+		sliceBalancedBlockAfter(t, indexHtml, "function createElement("),
+		sliceBalancedBlockAfter(t, indexHtml, "function renderVerifyFindingsStrip("),
+		sliceBalancedBlockAfter(t, indexHtml, "function formatFindingsSummary("),
+		sliceBalancedBlockAfter(t, indexHtml, "function groupFindingsBySubject("),
+		sliceBalancedBlockAfter(t, indexHtml, "function makeFindingRow("),
+		sliceBalancedBlockAfter(t, indexHtml, "function makeSkippedProbeRow("),
+	}
+	javascriptProbe := `
+function makeStubNode(tagName) {
+  var node = {
+    stubTag: tagName,
+    children: [],
+    className: "",
+    hidden: false,
+    stubText: "",
+    appendChild: function (childNode) { this.children.push(childNode); return childNode; }
+  };
+  Object.defineProperty(node, "textContent", {
+    get: function () { return this.stubText; },
+    set: function (nodeText) { this.stubText = nodeText; this.children = []; }
+  });
+  return node;
+}
+var createdTagNames = [];
+var nodesById = {};
+var document = {
+  getElementById: function (nodeId) {
+    if (!nodesById[nodeId]) { nodesById[nodeId] = makeStubNode("div"); }
+    return nodesById[nodeId];
+  },
+  createElement: function (tagName) { createdTagNames.push(tagName); return makeStubNode(tagName); }
+};
+var boardData = {};
+` + strings.Join(functionBlocks, "\n") + `
+// Flatten a node's whole subtree so a row's class and its visible words can be
+// read together — a row that carries the muted class but no text proves nothing.
+function subtreeText(node) {
+  if (node.children.length === 0) { return node.stubText; }
+  return node.children.map(subtreeText).join(" ");
+}
+function describeChildren(node) {
+  return node.children.map(function (childNode) {
+    return {
+      tag: childNode.stubTag,
+      classes: childNode.className ? childNode.className.split(" ") : [],
+      text: childNode.stubText,
+      subtreeText: subtreeText(childNode)
+    };
+  });
+}
+
+// The subjectless finding is FIRST in producer order on purpose: grouping has to
+// pull the two worktree rows above it, so the assertions below cannot pass on a
+// renderer that simply echoes the payload order.
+boardData = {
+  verifyFindings: [
+    {
+      category: "CHECKPOINT-GHOST-REQUEST",
+      detail: "do-work/CHECKPOINT.md names REQ-999, which exists nowhere",
+      remedy: "edit that id out of the checkpoint"
+    },
+    {
+      category: "WORKTREE-PRESENT-RUN-IN-FLIGHT",
+      subject: "worktree-agent-REQ-506-focused-evidence",
+      detail: "the worktree exists and its REQ is still in do-work/working/",
+      remedy: "leave it in place"
+    },
+    {
+      category: "MERGED-WORKTREE-LEFTOVER",
+      subject: "worktree-agent-REQ-506-focused-evidence",
+      detail: "the branch is already contained in HEAD",
+      remedy: "cleanup Pass 5 removes it",
+      fixable: true
+    }
+  ],
+  verifySkipped: ["committed-queue-state probe for worktree-agent-REQ-506-focused-evidence: no such branch"]
+};
+renderVerifyFindingsStrip();
+
+// The two hosts are display: contents, so their rows are one list on the page.
+// Reading them back in that same order is what the reader sees. Read through
+// getElementById, not the map: an id the renderer never touched must arrive as an
+// empty node so the assertion below reports what is missing rather than dying on
+// undefined.
+var results = {
+  stripHidden: document.getElementById("board-findings").hidden,
+  headerCount: document.getElementById("board-findings-count").stubText,
+  listChildren: describeChildren(document.getElementById("board-findings-cards"))
+    .concat(describeChildren(document.getElementById("board-findings-skipped-list"))),
+  createdTagNames: createdTagNames
+};
+process.stdout.write(JSON.stringify(results));`
+	probeOutput := runJavaScriptBehaviorProbe(t, "verify findings render as one row list", javascriptProbe)
+
+	var results struct {
+		StripHidden  bool   `json:"stripHidden"`
+		HeaderCount  string `json:"headerCount"`
+		ListChildren []struct {
+			Tag         string   `json:"tag"`
+			Classes     []string `json:"classes"`
+			Text        string   `json:"text"`
+			SubtreeText string   `json:"subtreeText"`
+		} `json:"listChildren"`
+		CreatedTagNames []string `json:"createdTagNames"`
+	}
+	if decodeError := json.Unmarshal(probeOutput, &results); decodeError != nil {
+		t.Fatalf("decode findings row results: %v (output %q)", decodeError, probeOutput)
+	}
+
+	if results.StripHidden {
+		t.Fatal("the strip hid itself while it had two findings and a skipped probe to show")
+	}
+	// The skipped count joins the header only when there is one, so the reader
+	// sees "checked, and here is what went unchecked" in one line.
+	if results.HeaderCount != "3 findings · 1 probe not checked" {
+		t.Errorf("header count = %q, want %q", results.HeaderCount, "3 findings · 1 probe not checked")
+	}
+	for _, createdTag := range results.CreatedTagNames {
+		if createdTag == "details" || createdTag == "summary" {
+			t.Errorf("the collapsed disclosure is still built (createElement(%q)) — skipped probes belong in the list", createdTag)
+		}
+	}
+
+	// One list, in the order the reader sees it: the subject heading, its two
+	// findings, the subjectless finding, then the skipped probe.
+	if len(results.ListChildren) != 5 {
+		t.Fatalf("the list holds %d children, want a subject heading plus four rows: %+v",
+			len(results.ListChildren), results.ListChildren)
+	}
+	subjectHeading := results.ListChildren[0]
+	if !hasClassName(subjectHeading.Classes, "board-findings-subject") {
+		t.Fatalf("the list opens with %v, want the subject heading its two findings share", subjectHeading.Classes)
+	}
+	if subjectHeading.Text != "worktree-agent-REQ-506-focused-evidence" {
+		t.Errorf("subject heading = %q, want the worktree both findings named", subjectHeading.Text)
+	}
+
+	rowMutedStates := []bool{}
+	for _, listChild := range results.ListChildren[1:] {
+		if hasClassName(listChild.Classes, "board-finding") {
+			t.Errorf("a row still carries the old card class: %v", listChild.Classes)
+		}
+		if !hasClassName(listChild.Classes, "board-findings-row") {
+			t.Fatalf("child %v is neither a row nor the one subject heading — the list must be flat", listChild.Classes)
+		}
+		rowMutedStates = append(rowMutedStates, hasClassName(listChild.Classes, "board-findings-row-muted"))
+	}
+	// Normal weight for the two findings a human must resolve; muted for the one a
+	// command fixes and for the probe that never ran.
+	wantMutedStates := []bool{false, true, false, true}
+	if !reflect.DeepEqual(rowMutedStates, wantMutedStates) {
+		t.Errorf("row muted states = %v, want %v (only fixable and skipped rows are muted)",
+			rowMutedStates, wantMutedStates)
+	}
+
+	// Grouping reordered the payload: the subjectless finding came first and must
+	// end up after the group, held away from it so it does not read as the last
+	// heading's third row.
+	subjectlessRow := results.ListChildren[3]
+	if !strings.Contains(subjectlessRow.SubtreeText, "REQ-999") {
+		t.Errorf("row 3 = %q, want the subjectless finding after the grouped ones", subjectlessRow.SubtreeText)
+	}
+	for _, detachedRow := range []int{3, 4} {
+		if !hasClassName(results.ListChildren[detachedRow].Classes, "board-findings-row-detached") {
+			t.Errorf("row %d joins the group above it: %v", detachedRow, results.ListChildren[detachedRow].Classes)
+		}
+	}
+
+	fixableRow := results.ListChildren[2]
+	if !strings.Contains(fixableRow.SubtreeText, "cleanup can fix") {
+		t.Errorf("the fixable row lost its tag: %q", fixableRow.SubtreeText)
+	}
+	if !strings.Contains(fixableRow.SubtreeText, "cleanup Pass 5 removes it") {
+		t.Errorf("the remedy is not on the row: %q", fixableRow.SubtreeText)
+	}
+	skippedRow := results.ListChildren[4]
+	if !strings.Contains(skippedRow.SubtreeText, "not checked") {
+		t.Errorf("the skipped row carries no not-checked chip: %q", skippedRow.SubtreeText)
+	}
+	if !strings.Contains(skippedRow.SubtreeText, "no such branch") {
+		t.Errorf("the skipped row lost the probe text: %q", skippedRow.SubtreeText)
+	}
+
+	// The markup half of the same claim: the card grid and the disclosure are
+	// gone from the shipped template, not merely unused by the renderer.
+	findingsSection := sliceFindingsStripMarkup(t, indexHtml)
+	for _, retiredMarkup := range []string{"<details", "<summary", "board-anomalies-cards", "board-findings-skipped-summary"} {
+		if strings.Contains(findingsSection, retiredMarkup) {
+			t.Errorf("the findings strip still ships %q:\n%s", retiredMarkup, findingsSection)
+		}
+	}
+	// The two hosts sit inside one list element, and the CSS makes them
+	// pass-through, so what ships is one list and not two stacked blocks.
+	if !strings.Contains(findingsSection, `id="board-findings-rows"`) {
+		t.Errorf("the findings strip has no row list wrapping its hosts:\n%s", findingsSection)
+	}
+	// The pass-through rule is the whole "one list" claim and no DOM probe can
+	// see it: without it the two hosts are ordinary blocks and the rows inside
+	// them stop being laid out by the list.
+	groupRuleStart := strings.Index(indexHtml, ".board-findings-group {")
+	if groupRuleStart < 0 {
+		t.Fatal("the shipped page has no .board-findings-group rule")
+	}
+	groupRule := indexHtml[groupRuleStart:]
+	if ruleEnd := strings.Index(groupRule, "}"); ruleEnd >= 0 {
+		groupRule = groupRule[:ruleEnd]
+	}
+	if !strings.Contains(groupRule, "display: contents") {
+		t.Errorf("the row hosts are not pass-through, so the rows render as two blocks: %q", groupRule)
+	}
+}
+
+// hasClassName reports whether a stub node's split className list carries one
+// exact class. Substring matching would answer yes for "board-finding" against
+// "board-findings-row", which is the very distinction these assertions rest on.
+func hasClassName(classNames []string, wantClassName string) bool {
+	for _, className := range classNames {
+		if className == wantClassName {
+			return true
+		}
+	}
+	return false
+}
+
+// sliceFindingsStripMarkup returns the `#board-findings` section's own markup, so
+// a "no <details> here" assertion cannot be satisfied or broken by a disclosure
+// somewhere else on the page.
+func sliceFindingsStripMarkup(t *testing.T, indexHtml string) string {
+	t.Helper()
+	sectionStart := strings.Index(indexHtml, `id="board-findings"`)
+	if sectionStart < 0 {
+		t.Fatal("the generated page has no #board-findings strip")
+	}
+	sectionEnd := strings.Index(indexHtml[sectionStart:], "</section>")
+	if sectionEnd < 0 {
+		t.Fatal("the #board-findings strip is never closed")
+	}
+	return indexHtml[sectionStart : sectionStart+sectionEnd]
 }

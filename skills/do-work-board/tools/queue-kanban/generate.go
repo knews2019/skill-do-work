@@ -607,9 +607,15 @@ func restoreStaticSiteTargets(publishedTargets []string, backups []staticSiteBac
 // generatedVerifyFinding is one verify finding as the page consumes it. `fixable`
 // keeps verify's exact meaning — `do-work cleanup` can mechanically resolve it —
 // because an inflated count sends the reader to a command that will not help.
+//
+// `subject` is the producer's grouping key — the worktree, REQ or file the
+// finding is about. The page groups rows on an exact match of this string and
+// never derives one from the detail sentence, so two probes only share a heading
+// when the producer says they describe the same thing.
 type generatedVerifyFinding struct {
 	Category string `json:"category"`
 	Detail   string `json:"detail"`
+	Subject  string `json:"subject,omitempty"`
 	Remedy   string `json:"remedy,omitempty"`
 	Fixable  bool   `json:"fixable,omitempty"`
 }
@@ -643,8 +649,11 @@ func attachVerifyFindings(data *generatedBoardData, board *Board, now time.Time)
 		data.VerifyFindings = append(data.VerifyFindings, generatedVerifyFinding{
 			Category: finding.Category,
 			Detail:   reduceAbsolutePaths(finding.Detail, board.RepoRoot),
-			Remedy:   reduceAbsolutePaths(finding.Remedy, board.RepoRoot),
-			Fixable:  finding.Fixable,
+			// The subject goes through the same reduction as the prose: a stray
+			// file's subject IS a path, and a static snapshot is shareable.
+			Subject: reduceAbsolutePaths(finding.Subject, board.RepoRoot),
+			Remedy:  reduceAbsolutePaths(finding.Remedy, board.RepoRoot),
+			Fixable: finding.Fixable,
 		})
 	}
 	for _, skipped := range report.SkippedProbes {

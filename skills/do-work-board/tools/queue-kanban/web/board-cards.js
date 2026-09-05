@@ -644,6 +644,13 @@
   // emptiness and nothing else. Every string is set with textContent — a detail
   // or remedy is producer text that can carry any punctuation and must never
   // become markup.
+  //
+  // One flat list, one row shape (REQ-579): a finding and a probe that could not
+  // run are the same kind of thing to the reader, so the bordered card and the
+  // collapsed disclosure are gone. Weight comes from the producer alone —
+  // `fixable` (a command resolves it) and "this probe never ran" are the only
+  // two things that mute a row. No severity, colour scale or re-ordering is
+  // invented here.
 
   function renderVerifyFindingsStrip() {
     var findings = boardData.verifyFindings || [];
@@ -657,39 +664,117 @@
       return;
     }
     strip.hidden = false;
-    document.getElementById("board-findings-count").textContent = String(findings.length);
+    document.getElementById("board-findings-count").textContent =
+      formatFindingsSummary(findings.length, skipped.length);
 
-    var cardsHost = document.getElementById("board-findings-cards");
-    cardsHost.textContent = "";
-    findings.forEach(function (finding) {
-      var card = createElement("div", "board-finding");
-      var head = createElement("div", "board-finding-head");
-      head.appendChild(createElement("span", "board-finding-category", finding.category || "finding"));
-      if (finding.fixable) {
-        // Exactly verify's meaning: `do-work cleanup` can resolve this one
-        // mechanically. Never inferred here — the producer sets the flag.
-        head.appendChild(createElement("span", "board-finding-fixable", "cleanup can fix"));
+    // Two hosts, one list: they are `display: contents`, so every row below is
+    // laid out by the list element that wraps them. The split is per payload
+    // array, and applyView reads these two ids to decide whether the strip has
+    // anything to say (board-controls.js, REQ-578).
+    var findingsHost = document.getElementById("board-findings-cards");
+    findingsHost.textContent = "";
+    groupFindingsBySubject(findings).forEach(function (findingGroup, groupIndex) {
+      if (findingGroup.subject) {
+        findingsHost.appendChild(createElement("div", "board-findings-subject", findingGroup.subject));
       }
-      card.appendChild(head);
-      card.appendChild(createElement("p", "board-finding-detail", finding.detail || ""));
-      if (finding.remedy) {
-        card.appendChild(createElement("p", "board-finding-remedy", finding.remedy));
-      }
-      cardsHost.appendChild(card);
+      findingGroup.findings.forEach(function (finding, findingIndex) {
+        var row = makeFindingRow(finding);
+        // A subject heading says nothing about the rows that are not its own, so
+        // the first subjectless row after a group has to step away from it — on
+        // the rendered page it otherwise reads as that group's last member.
+        if (findingGroup.subject === "" && groupIndex > 0 && findingIndex === 0) {
+          row.className += " board-findings-row-detached";
+        }
+        findingsHost.appendChild(row);
+      });
     });
 
-    var skippedHost = document.getElementById("board-findings-skipped");
-    if (skipped.length === 0) {
-      skippedHost.hidden = true;
-      return;
+    var skippedHost = document.getElementById("board-findings-skipped-list");
+    skippedHost.textContent = "";
+    skipped.forEach(function (skippedProbe, skippedIndex) {
+      var row = makeSkippedProbeRow(skippedProbe);
+      // Same reason: a probe that never ran is not the last finding's tail.
+      if (skippedIndex === 0 && findings.length > 0) {
+        row.className += " board-findings-row-detached";
+      }
+      skippedHost.appendChild(row);
+    });
+  }
+
+  // "2 findings · 1 probe not checked". Each half joins only when it has a count,
+  // so the header never advertises a non-event ("0 probes not checked").
+  function formatFindingsSummary(findingCount, skippedCount) {
+    var summaryParts = [];
+    if (findingCount > 0) {
+      summaryParts.push(findingCount + (findingCount === 1 ? " finding" : " findings"));
     }
-    skippedHost.hidden = false;
-    document.getElementById("board-findings-skipped-count").textContent = String(skipped.length);
-    var skippedList = document.getElementById("board-findings-skipped-list");
-    skippedList.textContent = "";
-    skipped.forEach(function (skippedProbe) {
-      skippedList.appendChild(createElement("li", "board-findings-skipped-item", skippedProbe));
+    if (skippedCount > 0) {
+      summaryParts.push(skippedCount + (skippedCount === 1 ? " probe not checked" : " probes not checked"));
+    }
+    return summaryParts.join(" · ");
+  }
+
+  // Findings sharing one non-empty `subject` become one group, in first-seen
+  // order; findings the producer gave no subject stay in producer order in a
+  // trailing group with no heading. The match is exact string equality on the
+  // payload field — the subject is never parsed back out of the detail sentence,
+  // which is prose and free to change. The lookup map has a null prototype so a
+  // subject spelled like an Object member ("constructor") cannot collide with one.
+  function groupFindingsBySubject(findings) {
+    var groupsBySubject = Object.create(null);
+    var orderedGroups = [];
+    var unsubjectedGroup = { subject: "", findings: [] };
+    findings.forEach(function (finding) {
+      var subject = finding.subject || "";
+      if (subject === "") {
+        unsubjectedGroup.findings.push(finding);
+        return;
+      }
+      if (!groupsBySubject[subject]) {
+        groupsBySubject[subject] = { subject: subject, findings: [] };
+        orderedGroups.push(groupsBySubject[subject]);
+      }
+      groupsBySubject[subject].findings.push(finding);
     });
+    if (unsubjectedGroup.findings.length > 0) {
+      orderedGroups.push(unsubjectedGroup);
+    }
+    return orderedGroups;
+  }
+
+  // One row: the category chip, then the detail, the fixable tag and the remedy
+  // flowing as one wrapping sentence beside it.
+  function makeFindingRow(finding) {
+    var rowClassName = "board-findings-row";
+    if (finding.fixable) {
+      // Exactly verify's meaning: `do-work cleanup` can resolve this one
+      // mechanically. Never inferred here — the producer sets the flag.
+      rowClassName += " board-findings-row-muted";
+    }
+    var row = createElement("div", rowClassName);
+    row.appendChild(createElement("span", "board-findings-chip", finding.category || "finding"));
+    var rowText = createElement("span", "board-findings-text");
+    rowText.appendChild(createElement("span", "board-findings-detail", finding.detail || ""));
+    if (finding.fixable) {
+      rowText.appendChild(createElement("span", "board-findings-fixable", "cleanup can fix"));
+    }
+    if (finding.remedy) {
+      // The same arrow the terminal report puts in front of a remedy.
+      rowText.appendChild(createElement("span", "board-findings-remedy", "\u2192 " + finding.remedy));
+    }
+    row.appendChild(rowText);
+    return row;
+  }
+
+  // A probe that could not run is a row in the same list, muted and chipped "not
+  // checked" — it is not a finding, and it is not nothing either.
+  function makeSkippedProbeRow(skippedProbe) {
+    var row = createElement("div", "board-findings-row board-findings-row-muted");
+    row.appendChild(createElement("span", "board-findings-chip", "not checked"));
+    var rowText = createElement("span", "board-findings-text");
+    rowText.appendChild(createElement("span", "board-findings-detail", skippedProbe));
+    row.appendChild(rowText);
+    return row;
   }
 
   // ---- notes strip (do-work/notes.md) -------------------------------------

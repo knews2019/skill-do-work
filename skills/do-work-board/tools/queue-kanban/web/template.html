@@ -198,16 +198,28 @@
             queue and process problems <code>queue-kanban verify</code> detects — each names what to do about it
           </span>
         </header>
-        <div class="board-anomalies-cards" id="board-findings-cards"></div>
-        <!-- A skipped probe rendered as nothing reads as "checked and clean", which
-             is the one thing it must never read as. Collapsed, but always present
-             when the producer reported any. -->
-        <details class="board-findings-skipped" id="board-findings-skipped" hidden>
-          <summary class="board-findings-skipped-summary">
-            <span id="board-findings-skipped-count">0</span> probe(s) could not run — unverified, not clean
-          </summary>
-          <ul class="board-findings-skipped-list" id="board-findings-skipped-list"></ul>
-        </details>
+        <!-- One flat list of compact rows (REQ-579). A finding and a probe that
+             could not run are the same kind of thing to the reader — verify has
+             something to tell you — so they share one row shape and one list.
+             The card grid and the collapsed disclosure this replaced spent a REQ
+             card's worth of space each on a warning, and borrowing the REQ-card
+             shape made a warning read as a work item. A skipped probe is a row
+             here rather than a footnote because rendering it as nothing reads as
+             "checked and clean", which is the one thing it must never read as.
+             Filled by renderVerifyFindingsStrip in board-cards.js.
+
+             The two hosts inside the list are one list to the reader: they carry
+             `display: contents`, so their rows are laid out by the list itself.
+             They exist, and keep their ids, because applyView (board-controls.js,
+             REQ-578) reads exactly these two ids to decide whether the strip has
+             anything to say — one host per payload array, which is also the split
+             the renderer already works in. Never put `hidden` on either: a
+             `display` rule outranks the hidden attribute's own, so it would not
+             hide anything. Leave a host empty instead. -->
+        <div class="board-findings-rows" id="board-findings-rows">
+          <div class="board-findings-group" id="board-findings-cards"></div>
+          <div class="board-findings-group" id="board-findings-skipped-list"></div>
+        </div>
       </section>
 
       <!-- Flat Kanban columns -->

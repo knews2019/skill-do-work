@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -2342,5 +2343,89 @@ func TestStructuralProbesUseStructuredEvidenceNotWarningProse(t *testing.T) {
 	}
 	if statusFindings[0].Category != verifyCategoryUnrecognizedRequestStatus {
 		t.Errorf("category = %q, want %q", statusFindings[0].Category, verifyCategoryUnrecognizedRequestStatus)
+	}
+}
+
+// REQ-579: the board groups finding rows by the thing the finding is about, and
+// that grouping key comes from the producer — never from parsing the detail
+// sentence, which is prose and changes freely. Two probes are pinned here
+// because they are the two the strip's grouping is worth anything for: several
+// worktree findings can name one builder worktree, and several release findings
+// can name one CHANGELOG.md. The payload leg is asserted through the real JSON
+// encoder, because a missing struct tag is invisible to a Go-side field read.
+func TestVerifyNamesTheSubjectEachFindingIsAbout(t *testing.T) {
+	repoRoot := newWorktreeFixtureRepo(t)
+	worktreeParent := t.TempDir()
+
+	const leftoverName = "worktree-agent-REQ-506-focused-evidence"
+	leftoverWorktree := addFixtureWorktree(t, repoRoot, worktreeParent, leftoverName)
+	commitFixtureWork(t, leftoverWorktree, "builder-output.txt")
+	// A second finding about the SAME worktree, so the grouping key is proved to
+	// be shared rather than merely present once.
+	writeFixtureFile(t, leftoverWorktree, "do-work/queue/REQ-506-builder-wrote-this.md",
+		"---\nid: REQ-506\nstatus: pending\n---\n")
+
+	moment := time.Now()
+	report, verifyError := runVerifyProbes(repoRoot, moment)
+	if verifyError != nil {
+		t.Fatalf("runVerifyProbes: %v", verifyError)
+	}
+
+	subjectsByCategory := map[string]string{}
+	for _, finding := range report.Findings {
+		subjectsByCategory[finding.Category] = finding.Subject
+	}
+	for _, worktreeCategory := range []string{
+		verifyCategoryUnmergedWorktreeLeftover,
+		verifyCategoryWorktreeWroteQueueState,
+	} {
+		subject, found := subjectsByCategory[worktreeCategory]
+		if !found {
+			t.Fatalf("no %s finding to read a subject off:\n%s", worktreeCategory, renderVerifyReport(report))
+		}
+		if subject != leftoverName {
+			t.Errorf("%s subject = %q, want the worktree name %q", worktreeCategory, subject, leftoverName)
+		}
+	}
+
+	board, buildError := buildBoard(repoRoot, moment, defaultRecentWindow, lookupGitCommitDate)
+	if buildError != nil {
+		t.Fatalf("buildBoard: %v", buildError)
+	}
+	boardData, projectError := buildGeneratedBoardData(board)
+	if projectError != nil {
+		t.Fatalf("buildGeneratedBoardData: %v", projectError)
+	}
+	attachVerifyFindings(&boardData, board, moment)
+
+	payloadBytes, marshalError := json.Marshal(boardData.VerifyFindings)
+	if marshalError != nil {
+		t.Fatalf("marshal verifyFindings: %v", marshalError)
+	}
+	wantSubjectField := `"subject":"` + leftoverName + `"`
+	if !strings.Contains(string(payloadBytes), wantSubjectField) {
+		t.Errorf("the board payload carries no %s — the page cannot group rows it never received:\n%s",
+			wantSubjectField, payloadBytes)
+	}
+}
+
+// The release probes all describe one file, so they share one subject and the
+// strip prints that heading once instead of three times.
+func TestVerifyNamesTheChangelogAsTheReleaseFindingSubject(t *testing.T) {
+	repoRoot := writeVerifyFixture(t, []verifyFixtureFile{
+		{"actions/version.md", "# Version Action\n\n**Current version**: 0.163.9\n"},
+		{"CHANGELOG.md", cleanChangelog},
+	})
+
+	report, verifyError := runVerifyProbes(repoRoot, time.Now())
+	if verifyError != nil {
+		t.Fatalf("runVerifyProbes: %v", verifyError)
+	}
+	mismatchFindings := findingsMentioning(report, verifyCategoryVersionChangelogMismatch)
+	if len(mismatchFindings) != 1 {
+		t.Fatalf("got %d version-vs-changelog findings, want 1:\n%s", len(mismatchFindings), renderVerifyReport(report))
+	}
+	if mismatchFindings[0].Subject != "CHANGELOG.md" {
+		t.Errorf("release finding subject = %q, want %q", mismatchFindings[0].Subject, "CHANGELOG.md")
 	}
 }

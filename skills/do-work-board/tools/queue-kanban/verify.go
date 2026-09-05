@@ -72,9 +72,15 @@ const duplicateRequestIdWarningPrefix = "duplicate REQ id "
 // Fixable means specifically: `do-work cleanup` can mechanically resolve it.
 // Everything else is a human decision, and must not be advertised otherwise —
 // an inflated fixable count sends the user to a command that will not help.
+// Subject is the thing the finding is about — a worktree name, a REQ id, a file
+// path — and it exists so a reader can see several findings about one thing as
+// one block. It is set by the probe that knows, and stays empty when a probe has
+// no natural subject; the board groups on an exact string match and never parses
+// it back out of Detail, which is prose and free to change.
 type VerifyFinding struct {
 	Category string
 	Detail   string
+	Subject  string
 	Fixable  bool
 	Remedy   string
 }
@@ -176,12 +182,17 @@ func appendStrayRequestFileFindings(report *VerifyReport, board *Board) {
 		relativePath := filepath.ToSlash(strayRequest.RelativePath)
 		report.Findings = append(report.Findings, VerifyFinding{
 			Category: verifyCategoryStrayRequestFile,
+			Subject:  "do-work/" + relativePath,
 			Detail: fmt.Sprintf("REQ file at do-work/%s is outside queue/, working/, and archive/ and is invisible to normal request/card probes",
 				relativePath),
 			Remedy: "inspect the REQ, then move it to do-work/archive/ if resolved or do-work/queue/ if it still needs work; verify is read-only and relocation is a human decision",
 		})
 	}
 }
+
+// releaseFindingSubject is the one thing all three release probes are about, so
+// the board prints that heading once instead of repeating it per row.
+const releaseFindingSubject = "CHANGELOG.md"
 
 // appendReleaseFindings covers the two release invariants the commit ritual asks a
 // human to verify by eye every time: the version file must agree with the newest
@@ -242,6 +253,7 @@ func appendReleaseFindings(report *VerifyReport, repoRoot string) {
 	case comparison > 0:
 		report.Findings = append(report.Findings, VerifyFinding{
 			Category: verifyCategoryVersionChangelogMismatch,
+			Subject:  releaseFindingSubject,
 			Detail: fmt.Sprintf("version %s is ahead of the newest CHANGELOG.md entry %s (%s) — a bump without its changelog entry",
 				currentVersion, newestEntry.Version, newestEntry.Title),
 			Remedy: "write the entry for " + currentVersion + ", or revert the bump (expected mid-release; a finding only if the release is done)",
@@ -249,6 +261,7 @@ func appendReleaseFindings(report *VerifyReport, repoRoot string) {
 	case comparison < 0:
 		report.Findings = append(report.Findings, VerifyFinding{
 			Category: verifyCategoryVersionChangelogMismatch,
+			Subject:  releaseFindingSubject,
 			Detail: fmt.Sprintf("version %s is behind the newest CHANGELOG.md entry %s (%s) — an entry whose version was never written to the version file",
 				currentVersion, newestEntry.Version, newestEntry.Title),
 			Remedy: "set the version to " + newestEntry.Version + ", or correct the entry heading",
@@ -266,6 +279,7 @@ func appendReleaseFindings(report *VerifyReport, repoRoot string) {
 		}
 		report.Findings = append(report.Findings, VerifyFinding{
 			Category: verifyCategoryChangelogVersionNotAhead,
+			Subject:  releaseFindingSubject,
 			Detail: fmt.Sprintf("newest CHANGELOG.md entry %s is not strictly greater than the earlier entry %s (%s)",
 				newestEntry.Version, earlierEntry.Version, earlierEntry.Date),
 			Remedy: "renumber the newest entry — a duplicate or out-of-order version breaks every version-ordered reader",
@@ -277,6 +291,7 @@ func appendReleaseFindings(report *VerifyReport, repoRoot string) {
 		if strings.EqualFold(earlierEntry.Title, newestEntry.Title) {
 			report.Findings = append(report.Findings, VerifyFinding{
 				Category: verifyCategoryReusedChangelogTitle,
+				Subject:  releaseFindingSubject,
 				Detail: fmt.Sprintf("newest entry title %q is already used by %s (%s)",
 					newestEntry.Title, earlierEntry.Version, earlierEntry.Date),
 				Remedy: "retitle the newest entry so a reader scanning headings can tell them apart",
@@ -333,6 +348,7 @@ func appendStructuralDamageFindings(report *VerifyReport, board *Board) {
 			}
 			report.Findings = append(report.Findings, VerifyFinding{
 				Category: verifyCategoryStructurallyDamagedRequest,
+				Subject:  ticket.RequestId,
 				Detail:   missingFenceDetail,
 				Remedy:   missingFenceRemedy,
 			})
@@ -343,6 +359,7 @@ func appendStructuralDamageFindings(report *VerifyReport, board *Board) {
 		if coerceScalarToString(frontmatterFields["id"]) == "" {
 			report.Findings = append(report.Findings, VerifyFinding{
 				Category: verifyCategoryStructurallyDamagedRequest,
+				Subject:  ticket.RequestId,
 				Detail: fmt.Sprintf("%s has an empty or absent id: field — caution: its id was recovered from the filename, so renaming the file silently renumbers the REQ",
 					ticket.RequestId),
 				Remedy: fmt.Sprintf("write `id: %s` into the frontmatter", ticket.RequestId),
@@ -357,6 +374,7 @@ func appendStructuralDamageFindings(report *VerifyReport, board *Board) {
 		}
 		report.Findings = append(report.Findings, VerifyFinding{
 			Category: verifyCategoryStructurallyDamagedRequest,
+			Subject:  ticket.RequestId,
 			Detail: fmt.Sprintf("%s carries no user_request: pointer, so it belongs to no UR — nothing links it to the input that asked for it, and UR closure cannot see it",
 				ticket.RequestId),
 			Remedy: "write `user_request: UR-NNN` naming the UR this REQ was captured under (do-work/user-requests/); documented stakeholder, code-review, scoped review-generated, and context_ref shapes are exempt",
@@ -447,6 +465,7 @@ func appendUnrecognizedStatusFindings(report *VerifyReport, board *Board) {
 		}
 		report.Findings = append(report.Findings, VerifyFinding{
 			Category: verifyCategoryUnrecognizedRequestStatus,
+			Subject:  ticket.RequestId,
 			Detail:   detail + " — it is parked under Needs input / Blocked, indistinguishable from a genuinely blocked REQ, and no run will claim it",
 			Remedy:   "edit `status:` to a Schema Read Contract value (actions/work-reference.md), or run do-work forensics to route it",
 		})
@@ -484,6 +503,7 @@ func appendCompletionAnomalyFindings(report *VerifyReport, repoRoot string, boar
 		}
 		report.Findings = append(report.Findings, VerifyFinding{
 			Category: verifyCategoryCompletionAnomaly,
+			Subject:  anomalousTicket.RequestId,
 			Detail: fmt.Sprintf("%s (status %s): %s",
 				anomalousTicket.RequestId, anomalousTicket.Status, anomalousTicket.CompletionAnomalyReason),
 			Remedy: "repair the named frontmatter field(s) in the archived REQ — the reason states which stamp or hash is wrong and what to write instead",
@@ -561,6 +581,7 @@ func timestampOrderingFinding(
 	}
 	return VerifyFinding{
 		Category: verifyCategoryTimestampOrdering,
+		Subject:  ticket.RequestId,
 		Detail: fmt.Sprintf("%s (status %s): %s %q is later than %s %q — %s",
 			ticket.RequestId, ticket.Status, earlierField, earlierValue, laterField, laterValue, plainSummary),
 		Fixable: false,
@@ -586,6 +607,7 @@ func appendCheckpointGhostFindings(report *VerifyReport, repoRoot string, board 
 		}
 		report.Findings = append(report.Findings, VerifyFinding{
 			Category: verifyCategoryCheckpointGhostRequest,
+			Subject:  mentionedId,
 			Detail:   fmt.Sprintf("do-work/CHECKPOINT.md names %s, which does not exist in queue/, working/, or archive/", mentionedId),
 			Remedy:   "edit that id's own entry out of the checkpoint rather than deleting the file — the file may also hold entries under another checkout's writer: label, which are live claims there; a later session reads it, and crash recovery classifies against it",
 		})
@@ -629,6 +651,7 @@ func appendClaimFindings(report *VerifyReport, board *Board, now time.Time) {
 		if rawClaimStamp == "" {
 			report.Findings = append(report.Findings, VerifyFinding{
 				Category: verifyCategoryClaimNeedsAttention,
+				Subject:  claimedTicket.RequestId,
 				Detail:   fmt.Sprintf("%s is claimed but carries no claimed_at — its age cannot be known", claimedTicket.RequestId),
 				Remedy:   "run `do-work run`; actions/work-reference.md -> Crash Recovery (Step 1) owns the human reset decision",
 			})
@@ -638,6 +661,7 @@ func appendClaimFindings(report *VerifyReport, board *Board, now time.Time) {
 		if !parsedOk {
 			report.Findings = append(report.Findings, VerifyFinding{
 				Category: verifyCategoryClaimNeedsAttention,
+				Subject:  claimedTicket.RequestId,
 				Detail:   fmt.Sprintf("%s has an unparseable claimed_at (%q)", claimedTicket.RequestId, rawClaimStamp),
 				Remedy:   "fix the stamp to a UTC ISO-8601 instant, or run `do-work run` and use actions/work-reference.md -> Crash Recovery (Step 1) for the reset decision",
 			})
@@ -646,6 +670,7 @@ func appendClaimFindings(report *VerifyReport, board *Board, now time.Time) {
 		if claimInstant.After(skewHorizon) {
 			report.Findings = append(report.Findings, VerifyFinding{
 				Category: verifyCategoryClaimNeedsAttention,
+				Subject:  claimedTicket.RequestId,
 				Detail: fmt.Sprintf("%s has a future-dated claimed_at (%s) — usually %s",
 					claimedTicket.RequestId, rawClaimStamp, futureStampCauseClause),
 				Remedy: "re-stamp it with the current UTC instant — `skills/do-work/tools/do-work-cli.sh --format text now` prints exactly that shape on any platform (the Timestamp rule in actions/work-reference.md)",
@@ -655,6 +680,7 @@ func appendClaimFindings(report *VerifyReport, board *Board, now time.Time) {
 		if claimAge := now.Sub(claimInstant); claimAge >= staleClaimThreshold {
 			report.Findings = append(report.Findings, VerifyFinding{
 				Category: verifyCategoryClaimNeedsAttention,
+				Subject:  claimedTicket.RequestId,
 				Detail: fmt.Sprintf("%s has been claimed for %s (threshold %s) — reported, not judged dead",
 					claimedTicket.RequestId, formatApproximateDuration(claimAge), formatApproximateDuration(staleClaimThreshold)),
 				Remedy: "a long build can legitimately exceed this; run `do-work run` and use actions/work-reference.md -> Crash Recovery (Step 1) to decide whether to take it over",
@@ -678,6 +704,7 @@ func appendStrandedFinishedFindings(report *VerifyReport, board *Board) {
 		}
 		report.Findings = append(report.Findings, VerifyFinding{
 			Category: verifyCategoryStrandedFinishedRequest,
+			Subject:  ticket.RequestId,
 			Detail:   fmt.Sprintf("%s has terminal status %q but still sits in do-work/%s/", ticket.RequestId, ticket.Status, treeSection),
 			Fixable:  true,
 			Remedy:   "cleanup Pass 0 moves it into do-work/archive/",
@@ -708,6 +735,7 @@ func appendAssignedElsewhereFindings(report *VerifyReport, board *Board) {
 		}
 		report.Findings = append(report.Findings, VerifyFinding{
 			Category: verifyCategoryAssignedElsewhereClaimedHere,
+			Subject:  ticket.RequestId,
 			Detail: fmt.Sprintf("%s sits in do-work/working/ but is still assigned to %q — the claim did not clear the marker",
 				ticket.RequestId, ticket.AssignedTo),
 			Remedy: "cleanup asks before touching it: clear assigned_to if this checkout is the one building it, or release the claim if the earmark should stand",
@@ -769,6 +797,7 @@ func appendArchivedUserRequestLiveMemberFindings(report *VerifyReport, board *Bo
 		}
 		report.Findings = append(report.Findings, VerifyFinding{
 			Category: verifyCategoryArchivedUserRequestLiveMember,
+			Subject:  userRequestTicket.UserRequestId,
 			Detail: fmt.Sprintf("%s is archived but still has live member(s) %s in do-work/queue/ or do-work/working/",
 				userRequestTicket.UserRequestId, strings.Join(liveMemberIds, ", ")),
 			Remedy: "keep the UR archived; resolve or abandon each ordinary live member, or correct its user_request association if it does not belong to this UR",
@@ -1050,7 +1079,7 @@ func routeWorktreeLeftover(disposition worktreeLeftoverDisposition, requestId st
 			"this worktree is present, not leftover: " + requestId + " is still in do-work/working/, so the run that owns it has not reached review, remediation, or its final path. Leave it in place — worktree cleanup happens after the REQ is archived, not before"
 	case worktreeLeftoverStateUnknown:
 		return verifyCategoryWorktreePresentStateUnknown, false,
-			"this worktree is present and verify could not establish that it is both clean and finished — the read that failed is named in this report's own skipped-probes list, under the `probe(s) could not run` footer on the board. Inspect it by hand; an unestablished state is never advertised as mechanically removable"
+			"this worktree is present and verify could not establish that it is both clean and finished — the read that failed is named in this report's own skipped-probes list, which the board shows as a `not checked` row in the same list as this finding. Inspect it by hand; an unestablished state is never advertised as mechanically removable"
 	case worktreeLeftoverUnmergedBranch:
 		return verifyCategoryUnmergedWorktreeLeftover, false,
 			"this is either a builder still in flight or work that outlived a dead run — verify cannot tell those apart. Leave it alone during a run; otherwise cleanup Pass 5 asks before discarding it, because the branch may hold the only copy"
@@ -1123,6 +1152,7 @@ func appendWorktreeFindings(report *VerifyReport, repoRoot string, board *Board)
 		category, fixable, remedy := routeWorktreeLeftover(disposition, requestId)
 		report.Findings = append(report.Findings, VerifyFinding{
 			Category: category,
+			Subject:  leftoverName,
 			Detail:   fmt.Sprintf("%s%s exists — %s", worktreeAgentNamePrefix, strings.TrimPrefix(leftoverName, worktreeAgentNamePrefix), locationDetail),
 			Fixable:  fixable,
 			Remedy:   remedy,
@@ -1147,6 +1177,7 @@ func appendWorktreeFindings(report *VerifyReport, repoRoot string, board *Board)
 			case len(committedQueuePaths) > 0:
 				report.Findings = append(report.Findings, VerifyFinding{
 					Category: verifyCategoryWorktreeCommittedQueueState,
+					Subject:  leftoverName,
 					Detail: fmt.Sprintf("%s has committed changes under do-work/ on its branch (%s) — a builder wrote queue state the orchestrator alone owns",
 						leftoverName, strings.Join(committedQueuePaths, ", ")),
 					Remedy: "those commits are in the branch about to be merged — drop or revert them there before integrating; every claim, status flip, and archive move belongs to the main tree",
@@ -1160,6 +1191,7 @@ func appendWorktreeFindings(report *VerifyReport, repoRoot string, board *Board)
 		if dirtyQueuePaths := worktreeDirtyQueueState(worktreePath); len(dirtyQueuePaths) > 0 {
 			report.Findings = append(report.Findings, VerifyFinding{
 				Category: verifyCategoryWorktreeWroteQueueState,
+				Subject:  leftoverName,
 				Detail: fmt.Sprintf("%s has uncommitted changes under do-work/ (%s) — a builder wrote queue state the orchestrator alone owns",
 					worktreePath, strings.Join(dirtyQueuePaths, ", ")),
 				Remedy: "discard those changes in the worktree; every claim, status flip, and archive move belongs to the main tree",
@@ -1436,6 +1468,7 @@ func appendCalibrationLogFindings(report *VerifyReport, repoRoot string, board *
 		}
 		report.Findings = append(report.Findings, VerifyFinding{
 			Category: verifyCategoryCalibrationLogMismatch,
+			Subject:  requestId,
 			Detail: fmt.Sprintf(
 				"do-work/calibration-log.tsv line %d: %s logs wall_minutes %d, but its frontmatter recomputes to %d (claimed_at %q → completed_at %q)",
 				humanLineNumber, requestId, loggedMinutes, recomputedMinutes, ticket.ClaimedAt, ticket.CompletedAt),
