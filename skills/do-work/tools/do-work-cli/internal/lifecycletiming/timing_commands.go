@@ -1,6 +1,7 @@
 package lifecycletiming
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"strconv"
@@ -95,6 +96,23 @@ func handleRunTimedCommand(executionContext commandruntime.ExecutionContext, arg
 	}
 	timing, exitStatus, err := RunTimedCommand(executionContext.RepositoryRoot, eventRequest, options.commandArgv, childOutput)
 	if err != nil {
+		if errors.Is(err, errTimedCommandInput) {
+			return timingUsageFailure(CommandRunTimedCommand, err.Error())
+		}
+		if errors.Is(err, errTimingRecording) {
+			outcome := resultmodel.OutcomeSuccess
+			if exitStatus != 0 {
+				outcome = resultmodel.OutcomeFindings
+			}
+			return resultmodel.CommandResult{
+				Outcome: outcome, ExitCodeOverride: exitStatus,
+				Findings: []resultmodel.CommandFinding{{
+					Code: "TIMED-COMMAND-RECORDING-FAILED", Severity: resultmodel.SeverityWarning,
+					AffectedIDs: []string{options.requestID}, Evidence: []string{err.Error()},
+					Fixability: resultmodel.FixabilityManual,
+				}},
+			}
+		}
 		// A command that never launched exits 127 like a shell's "command not
 		// found", so a caller reading the process status still learns that the
 		// gate did not run rather than that it failed.
@@ -152,7 +170,7 @@ func parseTimingOptions(arguments []string) (timingOptions, error) {
 		if argument == "--" {
 			options.separatorSeen = true
 			options.commandArgv = append([]string(nil), arguments[index+1:]...)
-			return options, nil
+			break
 		}
 		name, value, valueError := timingOptionValue(arguments, &index)
 		if valueError != nil {

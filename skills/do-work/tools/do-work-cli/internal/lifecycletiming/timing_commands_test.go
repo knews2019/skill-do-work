@@ -2,7 +2,10 @@ package lifecycletiming
 
 import (
 	"bytes"
+	"fmt"
 	"io"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -146,5 +149,66 @@ func TestFoldTimingSummaryArgvRefusesAnEscapingRequestPath(t *testing.T) {
 	})
 	if refused.Outcome != resultmodel.OutcomeFailure {
 		t.Fatalf("escaping request path outcome = %s", refused.Outcome)
+	}
+}
+
+func TestInvalidTimingOptionsNeverLaunchChild(t *testing.T) {
+	for _, testCase := range []struct{ name, requestID, runID, category, operation string }{
+		{"category", "REQ-562", "work-test", "unknown-category", "gate"},
+		{"request", "../REQ-562", "work-test", "verification-gate", "gate"},
+		{"missing request", "", "work-test", "verification-gate", "gate"},
+		{"run", "REQ-562", "../outside", "verification-gate", "gate"},
+		{"operation", "REQ-562", "work-test", "verification-gate", "\t"},
+	} {
+		t.Run(testCase.name, func(t *testing.T) {
+			repositoryRoot := newTimingRepository(t)
+			arguments := []string{"--run", testCase.runID, "--category", testCase.category, "--operation", testCase.operation}
+			if testCase.requestID != "" {
+				arguments = append(arguments, "--request", testCase.requestID)
+			}
+			arguments = append(arguments, "--", "sh", "-c", "echo ran > child-output")
+			result := handleRunTimedCommand(commandruntime.ExecutionContext{RepositoryRoot: repositoryRoot}, arguments, io.Discard)
+			if result.Outcome != resultmodel.OutcomeFailure {
+				t.Fatalf("invalid invocation accepted: %#v", result)
+			}
+			if _, err := os.Stat(filepath.Join(repositoryRoot, "child-output")); !os.IsNotExist(err) {
+				t.Fatalf("child ran before rejection: %v", err)
+			}
+			if len(result.Findings) != 1 || result.Findings[0].Code != "TIMING-USAGE" {
+				t.Fatalf("wrong validation error: %#v", result.Findings)
+			}
+		})
+	}
+}
+
+func TestTimingRecordingFailurePreservesChildExitAndDoesNotReportLaunchFailure(t *testing.T) {
+	for _, childStatus := range []int{0, 7, 127} {
+		t.Run(fmt.Sprintf("exit=%d", childStatus), func(t *testing.T) {
+			repositoryRoot := newTimingRepository(t)
+			streamPath, pathError := streamPathFor(repositoryRoot, "work-test", "REQ-562")
+			if pathError != nil {
+				t.Fatal(pathError)
+			}
+			if err := os.MkdirAll(streamPath, 0700); err != nil {
+				t.Fatal(err)
+			}
+			var outputBuffer bytes.Buffer
+			commandRuntime := commandruntime.NewRuntime(&outputBuffer, Handlers(io.Discard))
+			exitStatus := commandRuntime.Run([]string{
+				"--repo-root", repositoryRoot, "--format", "json", CommandRunTimedCommand,
+				"--request", "REQ-562", "--run", "work-test", "--category", "verification-gate",
+				"--", "sh", "-c", fmt.Sprintf("echo ran > child-output; exit %d", childStatus),
+			})
+			if exitStatus != childStatus {
+				t.Fatalf("wrapper exit=%d, child exit=%d: %s", exitStatus, childStatus, outputBuffer.String())
+			}
+			if _, err := os.Stat(filepath.Join(repositoryRoot, "child-output")); err != nil {
+				t.Fatalf("child did not run: %v", err)
+			}
+			outputText := outputBuffer.String()
+			if !strings.Contains(outputText, "TIMED-COMMAND-RECORDING-FAILED") || strings.Contains(outputText, "TIMED-COMMAND-LAUNCH-FAILED") || !strings.Contains(outputText, fmt.Sprintf("exited %d", childStatus)) {
+				t.Fatalf("recording failure hid observed execution: %s", outputText)
+			}
+		})
 	}
 }

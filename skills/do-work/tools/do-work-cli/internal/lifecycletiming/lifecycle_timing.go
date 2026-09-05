@@ -136,14 +136,29 @@ func AppendTimingEvent(repositoryRoot string, eventRequest EventRequest) (result
 	return appendMeasuredEvent(repositoryRoot, eventRequest, endInstant, elapsedSourceWallClock, nil)
 }
 
+var (
+	errTimedCommandInput = errors.New("invalid timed command input")
+	errTimingRecording   = errors.New("timing recording failed")
+)
+
 // RunTimedCommand executes argv, measures it in-process, and records one command
 // event. It returns the child's exit status alongside the typed projection. This
 // is the only path where one process observes both ends of an event, so it is
 // the only path that reports a monotonic elapsed source.
 func RunTimedCommand(repositoryRoot string, eventRequest EventRequest, argv []string, childOutput io.Writer) (resultmodel.LifecycleTimingResult, int, error) {
 	if len(argv) == 0 {
-		return resultmodel.LifecycleTimingResult{}, 0, errors.New("a timed command requires argv after --")
+		return resultmodel.LifecycleTimingResult{}, 0, fmt.Errorf("%w: a timed command requires argv after --", errTimedCommandInput)
 	}
+	if eventRequest.Operation == "" {
+		eventRequest.Operation = redactCommandIdentity(argv)
+	}
+	// The child supplies its outcome; only caller-owned inputs can be checked now.
+	eventRequest.Outcome = "success"
+	validatedRequest, validationError := validateEventRequest(eventRequest)
+	if validationError != nil {
+		return resultmodel.LifecycleTimingResult{}, 0, fmt.Errorf("%w: %v", errTimedCommandInput, validationError)
+	}
+	eventRequest = validatedRequest
 	if childOutput == nil {
 		childOutput = io.Discard
 	}
@@ -172,9 +187,6 @@ func RunTimedCommand(repositoryRoot string, eventRequest EventRequest, argv []st
 	if exitStatus != 0 {
 		eventRequest.Outcome = "failure"
 	}
-	if eventRequest.Operation == "" {
-		eventRequest.Operation = redactCommandIdentity(argv)
-	}
 	// The start is derived from the measured elapsed rather than from the
 	// previous event's end, so wall time spent before the launch stays
 	// unattributed instead of being silently folded into the command.
@@ -184,7 +196,10 @@ func RunTimedCommand(repositoryRoot string, eventRequest EventRequest, argv []st
 
 	elapsedSeconds := int(measuredElapsed.Round(time.Second) / time.Second)
 	result, err := appendMeasuredEvent(repositoryRoot, eventRequest, endInstant.UTC(), elapsedSourceMonotonic, &elapsedSeconds)
-	return result, exitStatus, err
+	if err != nil {
+		return result, exitStatus, fmt.Errorf("%w: command exited %d; %v", errTimingRecording, exitStatus, err)
+	}
+	return result, exitStatus, nil
 }
 
 // childExitStatus reports what a shell reports for this child, which is what the
@@ -208,33 +223,49 @@ func childExitStatus(state *os.ProcessState) int {
 	return signalExitStatusBase
 }
 
-// appendMeasuredEvent is the single write path. Every field is validated and
-// bounded before one JSON line is appended to the stream.
-func appendMeasuredEvent(repositoryRoot string, eventRequest EventRequest, endInstant time.Time, elapsedSource string, measuredSeconds *int) (resultmodel.LifecycleTimingResult, error) {
+// validateEventRequest shares caller-input validation between measured commands
+// and externally recorded events. It does no I/O and cannot run a child.
+func validateEventRequest(eventRequest EventRequest) (EventRequest, error) {
 	runIdentifier := eventRequest.RunIdentifier
 	if runIdentifier == "" {
 		runIdentifier = "standalone"
 	}
 	if !timingRunIDPattern.MatchString(runIdentifier) {
-		return resultmodel.LifecycleTimingResult{}, fmt.Errorf("run identity %q is not a single safe path segment", runIdentifier)
+		return EventRequest{}, fmt.Errorf("run identity %q is not a single safe path segment", runIdentifier)
 	}
 	if !timingRequestIDPattern.MatchString(eventRequest.RequestID) {
-		return resultmodel.LifecycleTimingResult{}, fmt.Errorf("request identity %q is not REQ-NNN", eventRequest.RequestID)
+		return EventRequest{}, fmt.Errorf("request identity %q is not REQ-NNN", eventRequest.RequestID)
 	}
 	if !vocabularyContains(TimingCategoryVocabulary, eventRequest.Category) {
-		return resultmodel.LifecycleTimingResult{}, fmt.Errorf("category %q is not one of %s", eventRequest.Category, strings.Join(TimingCategoryVocabulary, ", "))
+		return EventRequest{}, fmt.Errorf("category %q is not one of %s", eventRequest.Category, strings.Join(TimingCategoryVocabulary, ", "))
 	}
 	operation := boundEvidenceText(eventRequest.Operation)
 	if operation == "" {
-		return resultmodel.LifecycleTimingResult{}, errors.New("an operation name is required")
+		return EventRequest{}, errors.New("an operation name is required")
 	}
 	outcome := eventRequest.Outcome
 	if outcome == "" {
 		outcome = "success"
 	}
 	if !vocabularyContains(TimingOutcomeVocabulary, outcome) {
-		return resultmodel.LifecycleTimingResult{}, fmt.Errorf("outcome %q is not one of %s", outcome, strings.Join(TimingOutcomeVocabulary, ", "))
+		return EventRequest{}, fmt.Errorf("outcome %q is not one of %s", outcome, strings.Join(TimingOutcomeVocabulary, ", "))
 	}
+
+	eventRequest.RunIdentifier = runIdentifier
+	eventRequest.Operation = operation
+	eventRequest.Outcome = outcome
+	return eventRequest, nil
+}
+
+// appendMeasuredEvent is the single write path. Every field is validated and
+// bounded before one JSON line is appended to the stream.
+func appendMeasuredEvent(repositoryRoot string, eventRequest EventRequest, endInstant time.Time, elapsedSource string, measuredSeconds *int) (resultmodel.LifecycleTimingResult, error) {
+	validatedRequest, validationError := validateEventRequest(eventRequest)
+	if validationError != nil {
+		return resultmodel.LifecycleTimingResult{}, validationError
+	}
+	eventRequest = validatedRequest
+	runIdentifier, operation, outcome := eventRequest.RunIdentifier, eventRequest.Operation, eventRequest.Outcome
 
 	streamPath, err := streamPathFor(repositoryRoot, runIdentifier, eventRequest.RequestID)
 	if err != nil {
