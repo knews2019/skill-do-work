@@ -15,6 +15,17 @@ sweep: 'true'
 sweep_key: do-work-cli-test-file-budget
 depends_on: []
 related: [REQ-572]
+estimate:
+  p50_active_minutes: 40
+  confidence: low
+  calculated_at: 2026-09-05T00:00:27Z
+  basis:
+    - Route C
+    - 4-file write set
+    - 3 subsystems involved
+    - 2 acceptance criteria
+    - cross-route regression gates
+    - full-suite verification
 claimed_at: 2026-09-04T23:59:43Z
 ---
 
@@ -40,3 +51,13 @@ Repair the repository-gate failure recorded below so dependency-gated requests c
 - **Diagnostic evidence:** "detached diagnostic worktree at base 7ad53bff (clean tree): FAIL: internal/publication/defer_gate_test.go accumulated 32.52s; each test file must finish under 30s; every test passed; queue-kanban 24s"
 - **Implementation base:** 7ad53bff1d867f1453e1e7765e988dedb308e7e1
 - **Implementation merge:** fbdcd35e0908aca6a01f554cc9b7fd7c85347a49
+
+---
+
+## Triage
+
+**Route: C** - Complex
+
+**Reasoning:** A repository-gate repair minted by defer-gate with `route: C` preset. Four test files across three CLI packages (publication, finalization, corehelpers) overrun the gate's 30-second per-file budget by 1 to 30 seconds depending on machine load, so the plan has to find where the time goes (real git repositories and subprocesses per test, most likely) and decide between speeding the tests up and splitting the files, without weakening what they pin.
+
+**Planning:** Required
