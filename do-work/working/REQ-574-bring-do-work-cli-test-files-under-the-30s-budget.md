@@ -176,3 +176,19 @@ Run per package instead of against the whole module the same files drop further 
 ## Qualification
 
 Passed. `qualify --request-path <this REQ> --diff-range 982e94f0..50569e88` returned success; its one warning is `QUALIFY-UNIFY-DISARMED` (no `[UNIFY]` box), which reflects that the builder and orchestrator roles were played inline in one session rather than handed back across a subagent boundary. `scope-drift --request-path <this REQ>` returned success: the corrected `## Scope` list and the `## Implementation Summary` list are the same four paths.
+
+## Review
+
+**Independent review of `982e94f0..50569e88` — Pass, no findings.** Performed by a separate reviewer session with no part in writing the change, against the stated rule: make the tests genuinely cheaper, weaken no assertion, split no file.
+
+What it verified rather than assumed:
+
+- The direct invocation in `runRetainedInventory` is byte-for-byte the argv and environment `uncommitted-inventory.sh` → `do-work-cli.sh` would have exec'd, checked against both shell scripts, and `moduleDirectory` resolves to the same `module_dir` the shell computes.
+- Shim coverage did not shrink. `TestInventoryStagedAdditionDeletedFromWorktreeIsDeletion` was already the only nil-status caller before this change and still runs the full two-shell chain, so the launcher contract — Go version gate, `go tool -n` probe, exec — keeps an end-to-end test.
+- One risk chased to ground and ruled out: `resolveRetainedInventoryExecutable` runs `go tool -n` while a synthetic case's fake-git PATH stub is active, and on a cold `GOCACHE` that call compiles and links. Had Go's VCS stamping shelled out to `git` during the link it would have hit the stub, which errors on any argv but two. Reproduced with a cold cache and an instrumented fake git: no git subprocess is invoked.
+- `git init --template=` omits `.git/hooks/*.sample`, `.git/description` and `.git/info/exclude` against a plain `git init`, confirmed by diffing both. No test in either package reads any of them, and `.git/hooks` itself is recreated in both `TestMain`s.
+- `os.CopyFS` creates every directory including empty ones, so the recreated `.git/hooks` survives the copy; files land at `0666` plus the source execute bits and directories at `0777`, permissive enough that `RemoveAll` teardown cannot be blocked by read-only git objects.
+- One `TestMain` per package; templates are built before `m.Run()` and only read afterward, and copies write to distinct `t.TempDir()` destinations, so nothing shares mutable state.
+- Re-ran `go test` over the three packages and `go vet`: all pass, clean.
+
+No assertion weakening, no fixture drift, no concurrency hazard.

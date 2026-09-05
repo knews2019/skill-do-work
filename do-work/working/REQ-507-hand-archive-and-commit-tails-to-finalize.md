@@ -260,3 +260,23 @@ Implementation landed on `main` in the merged range `8e3dbf01e0660424965d79acb2e
 ## Qualification
 
 Typed qualification (advance `qualify` + `scope-drift`, merged range `8e3dbf01e0660424965d79acb2e386b6604e4780..ad8bceb7aa0d0c63c230048b6a1f2dae1ef7ccb9`, run 5 September at `5cb094dd`): satisfied. All 12 summary paths match the range and the declared Scope; no undeclared touch, no unused declaration. Two `QUALIFY-NEW-FILE-UNWIRED` warnings on `finalization_gate.go` and `finalization_gate_test.go` are judged not dead code: both are files of the existing `lifecycleadvance` package, and `advance_commands.go` calls `executeAdvanceFinalization` from the first while the second is its `go test` file — Go wires package files by membership, which a filename grep cannot see. Orchestrator judgment: the diff is substantive (four terminal-path tests plus seven refusal tests exercise the new seam through the public command), every requirement traces to a criterion in the builder's C-1 to C-4 evidence, the live data flow (advance → FinalizeBound → ordered records → text/JSON renderers) was read at the current tree, and no debug artifact or unchecked P-A-U box remains.
+
+## Testing
+
+**Tests run:** `bash -c 'cd skills/do-work/tools/do-work-cli && go test -count=1 ./internal/lifecycleadvance ./internal/finalization ./internal/resultmodel'` (preflight baseline at `1012e5e2` and focused probe at `e6005c0e`, both `GOMAXPROCS=2`); `bash _dev/tests/contracts/core-checks.sh` (builder, worktree at `1012e5e2`).
+**Result:** ✓ All passing — lifecycleadvance 25.3s, finalization 67.2s, resultmodel 0.4s (builder run); probe exit 0 recorded as the request-bound `run-blocked-check` record; core-checks exit 0.
+
+**Red-green validation:** traced to the captured `## Red-Green Proof`. RED (4 September, builder): public finalization and phase-matrix tests failed while `advance` still stopped at agent judgment and rejected the manifest input. GREEN (4 September and re-run 5 September): `TestAdvanceFinalizationRunsTerminalPathMatrix` (serial, supplied worktree, completed-with-issues, already-green/no-release) and `TestAdvanceFinalizationRequiresOneBoundManifestWithoutMutation` (missing, duplicate, empty, hostile-token, outer-path, id and path mismatch — each asserting an unchanged tree digest and `HEAD`) pass; the contract suite passes with the Step 8/9 mechanical prose gone. No new RED was owed by the 5 September pass because it changed nothing.
+
+**Repository gate:** `bash _dev/tests/maintainer-verify.sh` run directly and unpiped from the project root, `GOMAXPROCS=2`: pre-build exit 0 at `1012e5e2` (recorded green-gate); final exit 0, started at `5cb094dd` and finished after another session had committed `985fa736` and `e6005c0e` — `git diff --stat 5cb094dd e6005c0e` touches only two `do-work/working/` records, no project byte — so the status was returned to `advance` and recorded with `recorded_revision` `e6005c0e1a15cfae32a3016f250e7d540300a722`. Slowest CLI test file `internal/publication/defer_gate_test.go` 28.55s on the pre-build run (under the 30s budget). Neither run needed the one retry.
+
+**Heavy verification plan:** (typed planner, `_dev/tests/heavy-lanes.json`)
+- Range: `8e3dbf01e0660424965d79acb2e386b6604e4780`..`ad8bceb7aa0d0c63c230048b6a1f2dae1ef7ccb9`
+- `queue-kanban-javascript`: `bash _dev/tests/maintainer-verify.sh --heavy-lane queue-kanban-javascript` — coverage is uncertain for: _dev/tests/contracts/core-checks.sh
+- `queue-kanban-browser`: `bash _dev/tests/maintainer-verify.sh --heavy-lane queue-kanban-browser` — coverage is uncertain for: _dev/tests/contracts/core-checks.sh
+- `do-work-cli-integrations`: `bash _dev/tests/maintainer-verify.sh --heavy-lane do-work-cli-integrations` — coverage is uncertain for: _dev/tests/contracts/core-checks.sh
+- `staged-skills`: `bash _dev/tests/maintainer-verify.sh --heavy-lane staged-skills` — coverage is uncertain for: _dev/tests/contracts/core-checks.sh
+- `updater`: `bash _dev/tests/maintainer-verify.sh --heavy-lane updater` — coverage is uncertain for: _dev/tests/contracts/core-checks.sh
+- `installer`: `bash _dev/tests/maintainer-verify.sh --heavy-lane installer` — coverage is uncertain for: _dev/tests/contracts/core-checks.sh
+
+*Verified by work action*
