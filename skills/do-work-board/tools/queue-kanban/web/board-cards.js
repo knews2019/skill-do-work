@@ -659,6 +659,20 @@
     if (!strip) {
       return; // an older template; the payload is still valid without this strip
     }
+    // Two hosts, one list: they are `display: contents`, so every row below is
+    // laid out by the list element that wraps them. The split is per payload
+    // array, and applyView reads these two ids to decide whether the strip has
+    // anything to say (board-controls.js, REQ-578).
+    //
+    // Both are cleared BEFORE the empty check, so a re-render with nothing to
+    // report leaves nothing behind. Hiding the strip is not enough on its own:
+    // applyView asks these two hosts whether there is content, so stale rows
+    // under a hidden strip would put it back on screen at the next view switch.
+    var findingsHost = document.getElementById("board-findings-cards");
+    var skippedHost = document.getElementById("board-findings-skipped-list");
+    findingsHost.textContent = "";
+    skippedHost.textContent = "";
+
     if (findings.length === 0 && skipped.length === 0) {
       strip.hidden = true;
       return;
@@ -667,12 +681,6 @@
     document.getElementById("board-findings-count").textContent =
       formatFindingsSummary(findings.length, skipped.length);
 
-    // Two hosts, one list: they are `display: contents`, so every row below is
-    // laid out by the list element that wraps them. The split is per payload
-    // array, and applyView reads these two ids to decide whether the strip has
-    // anything to say (board-controls.js, REQ-578).
-    var findingsHost = document.getElementById("board-findings-cards");
-    findingsHost.textContent = "";
     groupFindingsBySubject(findings).forEach(function (findingGroup, groupIndex) {
       if (findingGroup.subject) {
         findingsHost.appendChild(createElement("div", "board-findings-subject", findingGroup.subject));
@@ -689,8 +697,6 @@
       });
     });
 
-    var skippedHost = document.getElementById("board-findings-skipped-list");
-    skippedHost.textContent = "";
     skipped.forEach(function (skippedProbe, skippedIndex) {
       var row = makeSkippedProbeRow(skippedProbe);
       // Same reason: a probe that never ran is not the last finding's tail.
