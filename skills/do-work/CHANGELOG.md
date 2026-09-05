@@ -2,6 +2,15 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.288.1 — Reference Keeps Only What No Test Owns (2026-09-05)
+
+`work-reference.md` drops the sections whose contract a Go behavior test now enforces, so the prose a reader has to trust is smaller and none of it competes with a command. Every deletion names the test that owns what it said; a section with no owning test stays, which is why worktree dispatch survives intact — the CLI implements no verb for it.
+
+- Deleted with named owners: the repository-gate deferral transaction, the targeted run ledger, the Session Checkpoint Principle, auto-wave's five-condition ready-set computation, the defer-gate fold topology, and the green-gate record internals.
+- The Composed Exit Summary's nine repeated render blocks become one table keyed on `advance`'s typed exclusions, keeping all nine headline strings.
+- A `core-checks.sh` awk boundary that used a deleted heading as its end marker now ends at a live one, instead of capturing to end-of-file.
+- The file is 849 lines, not the under-700 the request asked for. The keep-list alone is 497 and the rest is judgment with no CLI owner, so the target was refused rather than met by deleting an unowned guarantee.
+
 ## 0.288.0 — advance Reports What the Test Actually Did (2026-09-05)
 
 A focused test that never launched, or that the timer killed, could be promoted to a satisfied gate. `advance` now reports what it observed rather than reconstructing it from the reserved exit values 124 and 125, so the same exit code means different things depending on whether the process really finished.
