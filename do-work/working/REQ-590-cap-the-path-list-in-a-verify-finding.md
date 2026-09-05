@@ -1,7 +1,7 @@
 ---
 id: REQ-590
 title: 'Cap the path list in a verify finding so one detail cannot be 40 KB'
-status: pending
+status: claimed
 created_at: 2026-09-05T18:29:25Z
 user_request: UR-126
 domain: backend
@@ -11,6 +11,7 @@ maintenance: false
 impact: impact-user-visible
 effort_estimate: effort-mechanical
 write_set: [skills/do-work-board/tools/queue-kanban/verify.go, skills/do-work-board/tools/queue-kanban/verify_test.go]
+claimed_at: 2026-09-05T18:31:50Z
 ---
 
 # Cap the Path List in a Verify Finding
