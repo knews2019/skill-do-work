@@ -52,14 +52,7 @@ func TestBlockedProbeTimeoutKillsDescendantGroup(t *testing.T) {
 		t.Fatal(readError)
 	}
 	pid, _ := strconv.Atoi(strings.TrimSpace(string(pidBytes)))
-	deadline := time.Now().Add(2 * time.Second)
-	for time.Now().Before(deadline) {
-		if syscall.Kill(pid, 0) != nil {
-			return
-		}
-		time.Sleep(20 * time.Millisecond)
-	}
-	t.Fatalf("descendant %d survived timeout", pid)
+	waitForDescendantToDisappear(t, pid)
 }
 
 func TestBlockedProbeCleansBackgroundDescendantAfterLeaderExits(t *testing.T) {
@@ -75,14 +68,7 @@ func TestBlockedProbeCleansBackgroundDescendantAfterLeaderExits(t *testing.T) {
 		t.Fatal(readError)
 	}
 	pid, _ := strconv.Atoi(strings.TrimSpace(string(pidBytes)))
-	deadline := time.Now().Add(2 * time.Second)
-	for time.Now().Before(deadline) {
-		if syscall.Kill(pid, 0) != nil {
-			return
-		}
-		time.Sleep(20 * time.Millisecond)
-	}
-	t.Fatalf("background descendant %d survived successful probe", pid)
+	waitForDescendantToDisappear(t, pid)
 }
 
 func TestBlockedProbeInterruptionIsTypedAndReapsDescendants(t *testing.T) {
@@ -131,16 +117,70 @@ func TestBlockedProbeInterruptionIsTypedAndReapsDescendants(t *testing.T) {
 	if outcome.status != 130 || !errors.As(outcome.err, &interruption) || interruption.InterruptionExitStatus() != 130 {
 		t.Fatalf("status=%d err=%T %v, want typed interruption 130", outcome.status, outcome.err, outcome.err)
 	}
-	deadline = time.Now().Add(2 * time.Second)
+	waitForDescendantToDisappear(t, pid)
+}
+
+// descendantReapBudget bounds the wait for a killed descendant to disappear. Its
+// own parent is already gone by then, so init does the reaping and a zombie still
+// satisfies kill(pid, 0) until it does. On a loaded machine that has been measured
+// close to two seconds, so the budget is deliberately generous: it proves the
+// descendant does not survive, and it is not a latency assertion.
+const descendantReapBudget = 10 * time.Second
+
+func waitForDescendantToDisappear(t *testing.T, pid int) {
+	t.Helper()
+	deadline := time.Now().Add(descendantReapBudget)
 	for time.Now().Before(deadline) {
 		if syscall.Kill(pid, 0) != nil {
 			return
 		}
 		time.Sleep(20 * time.Millisecond)
 	}
-	t.Fatalf("descendant %d survived interruption", pid)
+	t.Fatalf("descendant %d survived %s", pid, descendantReapBudget)
 }
 
 func runBlockedProbeFixture(repositoryRoot string, probeBytes []byte, timeoutSeconds int) (int, error) {
 	return RunBlockedProbeAtRoot(repositoryRoot, probeBytes, timeoutSeconds)
+}
+
+// TestBlockedProbeEvidencePreservesOrdinaryReservedExitValues pins the REQ-506
+// defect from the other side: 124 and 125 are ordinary exit values a probe may
+// choose for itself, so evidence must report them as a launched, non-timed-out
+// completion instead of rebuilding "timed out" or "never launched" from the
+// integer the child happened to pick.
+func TestBlockedProbeEvidencePreservesOrdinaryReservedExitValues(t *testing.T) {
+	for _, reservedStatus := range []int{BlockedProbeTimeoutStatus, BlockedProbeLaunchStatus} {
+		t.Run(fmt.Sprintf("exit %d", reservedStatus), func(t *testing.T) {
+			repositoryRoot := t.TempDir()
+			evidence, err := RunBlockedProbeEvidenceAtRoot(repositoryRoot, []byte(fmt.Sprintf("exit %d", reservedStatus)), 5)
+			if err != nil || evidence.ExitStatus != reservedStatus || !evidence.Launched || evidence.TimedOut {
+				t.Fatalf("evidence=%#v err=%v", evidence, err)
+			}
+		})
+	}
+}
+
+// TestBlockedProbeEvidenceRefusesUnrunnableInputsAsUnlaunched pins the input
+// guards that return before any process exists. They report the launch status
+// today only because false is the zero value of both booleans; once launch and
+// timeout are set from observation these refusals must keep stating the same
+// facts explicitly.
+func TestBlockedProbeEvidenceRefusesUnrunnableInputsAsUnlaunched(t *testing.T) {
+	for _, test := range []struct {
+		name           string
+		repositoryRoot string
+		probeBytes     []byte
+		timeoutSeconds int
+	}{
+		{name: "empty repository root", repositoryRoot: "", probeBytes: []byte("exit 0"), timeoutSeconds: 2},
+		{name: "nonpositive timeout", repositoryRoot: t.TempDir(), probeBytes: []byte("exit 0"), timeoutSeconds: 0},
+		{name: "empty probe", repositoryRoot: t.TempDir(), probeBytes: nil, timeoutSeconds: 2},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			evidence, err := RunBlockedProbeEvidenceAtRoot(test.repositoryRoot, test.probeBytes, test.timeoutSeconds)
+			if err == nil || evidence.ExitStatus != BlockedProbeLaunchStatus || evidence.Launched || evidence.TimedOut {
+				t.Fatalf("evidence=%#v err=%v", evidence, err)
+			}
+		})
+	}
 }

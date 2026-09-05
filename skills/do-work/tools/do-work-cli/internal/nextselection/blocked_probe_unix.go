@@ -12,13 +12,17 @@ import (
 	"time"
 )
 
-func runOwnedProbe(repositoryRoot string, probeBytes []byte, timeout time.Duration, diagnosticWriter io.Writer) (int, error) {
+// runOwnedProbe reports the facts it observes first-hand: Launched becomes true
+// only once command.Start succeeds, and TimedOut only in the timer branch. Every
+// path before the launch keeps Launched false, so no caller has to rebuild either
+// fact from the exit status.
+func runOwnedProbe(repositoryRoot string, probeBytes []byte, timeout time.Duration, diagnosticWriter io.Writer) (BlockedProbeEvidence, error) {
 	signalChannel := make(chan os.Signal, 1)
 	signal.Notify(signalChannel, syscall.SIGHUP, syscall.SIGINT, syscall.SIGTERM)
 	defer signal.Stop(signalChannel)
 	diagnosticReader, diagnosticPipe, pipeError := os.Pipe()
 	if pipeError != nil {
-		return BlockedProbeLaunchStatus, pipeError
+		return BlockedProbeEvidence{ExitStatus: BlockedProbeLaunchStatus}, pipeError
 	}
 	diagnosticDone := make(chan struct{})
 	go func() {
@@ -37,7 +41,7 @@ func runOwnedProbe(repositoryRoot string, probeBytes []byte, timeout time.Durati
 	command.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 	if err := command.Start(); err != nil {
 		finishDiagnostics()
-		return BlockedProbeLaunchStatus, err
+		return BlockedProbeEvidence{ExitStatus: BlockedProbeLaunchStatus}, err
 	}
 	_ = diagnosticPipe.Close()
 	processGroup, err := syscall.Getpgid(command.Process.Pid)
@@ -49,7 +53,9 @@ func runOwnedProbe(repositoryRoot string, probeBytes []byte, timeout time.Durati
 		if err == nil {
 			err = errors.New("probe process group was not isolated")
 		}
-		return BlockedProbeLaunchStatus, err
+		// The child did start, so Launched stays true; the returned error is what
+		// tells a caller this execution was cut short before it decided anything.
+		return BlockedProbeEvidence{ExitStatus: BlockedProbeLaunchStatus, Launched: true}, err
 	}
 	done := make(chan error, 1)
 	go func() { done <- command.Wait() }()
@@ -60,11 +66,11 @@ func runOwnedProbe(repositoryRoot string, probeBytes []byte, timeout time.Durati
 		status := probeExitStatus(waitError)
 		cleanupReapedProcessGroup(processGroup)
 		<-diagnosticDone
-		return status, nil
+		return BlockedProbeEvidence{ExitStatus: status, Launched: true}, nil
 	case <-timer.C:
 		terminateOwnedProcessGroup(processGroup, syscall.SIGTERM, done)
 		<-diagnosticDone
-		return BlockedProbeTimeoutStatus, nil
+		return BlockedProbeEvidence{ExitStatus: BlockedProbeTimeoutStatus, Launched: true, TimedOut: true}, nil
 	case received := <-signalChannel:
 		forwarded, ok := received.(syscall.Signal)
 		if !ok {
@@ -73,7 +79,7 @@ func runOwnedProbe(repositoryRoot string, probeBytes []byte, timeout time.Durati
 		terminateOwnedProcessGroup(processGroup, forwarded, done)
 		<-diagnosticDone
 		status := 128 + int(forwarded)
-		return status, BlockedProbeInterruption{ExitStatus: status}
+		return BlockedProbeEvidence{ExitStatus: status, Launched: true}, BlockedProbeInterruption{ExitStatus: status}
 	}
 }
 
