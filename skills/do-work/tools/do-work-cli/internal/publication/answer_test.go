@@ -765,19 +765,79 @@ func TestStakeholderTerminalEvidenceRefusesMarkersForgedInCallerProse(t *testing
 			"implementation marker is a fragment of a different statement",
 			compatibleBlockedResolutionEntry,
 			"## Implementation\n\nno code review yet\n",
-			"no Implementation paragraph opens with one of",
+			"no Implementation paragraph or list item opens with",
 		},
 		{
 			"implementation marker buried mid-sentence",
 			compatibleBlockedResolutionEntry,
 			"## Implementation\n\nWe shipped the parser rewrite and no code changes were needed in the CLI.\n",
-			"no Implementation paragraph opens with one of",
+			"no Implementation paragraph or list item opens with",
+		},
+		{
+			"blocked marker only inside a tilde fence",
+			"## Blocked\n\nStill waiting on Dana. A finished entry reads:\n\n~~~\n- [2026-09-01] blocked on \"answers from Dana\" — resolved: all questions answered\n~~~\n",
+			compatibleNoCodeImplementation,
+			"no Blocked history entry opens with",
+		},
+		{
+			"blocked marker only inside an indented code block",
+			"## Blocked\n\nStill waiting on Dana. A finished entry reads:\n\n    - [2026-09-01] blocked on \"answers from Dana\" — resolved: all questions answered\n",
+			compatibleNoCodeImplementation,
+			"no Blocked history entry opens with",
+		},
+		{
+			"blocked marker only inside a tab-indented code block",
+			"## Blocked\n\nStill waiting on Dana. A finished entry reads:\n\n\t- [2026-09-01] blocked on \"answers from Dana\" — resolved: all questions answered\n",
+			compatibleNoCodeImplementation,
+			"no Blocked history entry opens with",
+		},
+		{
+			"blocked marker only under a deeper subheading",
+			"## Blocked\n\n- [2026-09-01] blocked on \"answers from Dana\" — awaiting a reply\n\n### Resolution template\n\n- resolved: this line is not Blocked history\n",
+			compatibleNoCodeImplementation,
+			"no Blocked history entry opens with",
+		},
+		{
+			"implementation marker only inside a tilde fence",
+			compatibleBlockedResolutionEntry,
+			"## Implementation\n\nThe work is still open. A no-change note reads:\n\n~~~\nNo code changes. Nothing was built.\n~~~\n",
+			"no Implementation paragraph or list item opens with",
+		},
+		{
+			"implementation marker only inside an indented code block",
+			compatibleBlockedResolutionEntry,
+			"## Implementation\n\nThe work is still open. A no-change note reads:\n\n    No code changes. Nothing was built.\n",
+			"no Implementation paragraph or list item opens with",
+		},
+		{
+			"implementation marker only under a deeper subheading",
+			compatibleBlockedResolutionEntry,
+			"## Implementation\n\nThe parser rewrite is still in flight.\n\n### Template\n\n**No changes needed.** Nothing was built.\n",
+			"no Implementation paragraph or list item opens with",
+		},
+		{
+			"implementation note rephrased outside every writer's spelling",
+			compatibleBlockedResolutionEntry,
+			"## Implementation\n\nNo changes were needed.\n",
+			"no Implementation paragraph or list item opens with",
+		},
+		{
+			"emphasis around the marker is not a list bullet",
+			"## Blocked\n\n*resolved* is the word Dana used, but no answer has arrived.\n",
+			compatibleNoCodeImplementation,
+			"no Blocked history entry opens with",
+		},
+		{
+			"report-style link destination is not a marker position",
+			"## Blocked\n\n- [2026-09-01] [resolved: all questions answered](notes/dana.md) — awaiting a reply\n",
+			compatibleNoCodeImplementation,
+			"no Blocked history entry opens with",
 		},
 		{
 			"implementation marker only inside a fenced example",
 			compatibleBlockedResolutionEntry,
 			"## Implementation\n\nThe work is still open. A no-change note reads:\n\n```\nNo code changes. Nothing was built.\n```\n",
-			"no Implementation paragraph opens with one of",
+			"no Implementation paragraph or list item opens with",
 		},
 	}
 	for _, test := range tests {
@@ -818,6 +878,26 @@ func TestStakeholderTerminalEvidenceKeepsGenuineWriterFormsTerminal(t *testing.T
 			"the earlier form this package's fixtures carry",
 			compatibleBlockedResolutionEntry,
 			compatibleNoCodeImplementation,
+		},
+		{
+			"an asterisk bullet is the same list bullet",
+			"## Blocked\n\n* Resolved 2026-09-01 after stakeholder answer.\n",
+			compatibleNoCodeImplementation,
+		},
+		{
+			"a tab after the bullet is the same list bullet",
+			"## Blocked\n\n-\tResolved 2026-09-01 after stakeholder answer.\n",
+			compatibleNoCodeImplementation,
+		},
+		{
+			"a three-space indent still leaves a list item rather than code",
+			"## Blocked\n\n   - Resolved 2026-09-01 after stakeholder answer.\n",
+			compatibleNoCodeImplementation,
+		},
+		{
+			"the no-change note written as a list item",
+			canonicalBlockedResolutionEntry,
+			"## Implementation\n\n- **No changes needed.** Stakeholder answers collected and routed.\n",
 		},
 		{
 			"a no-change note qualified in the archived house style",
@@ -898,6 +978,30 @@ func TestStakeholderReportLinkageRefusesReportPathForgedInCallerProse(t *testing
 			"## Reports\n\nai-reports/REQ-1/fresh.md — a bundle nobody has generated yet.\n",
 		},
 		{
+			"path only appears inside a tilde fence",
+			"## Reports\n\nNothing regenerated yet. An entry reads:\n\n~~~\n- [2026-09-01] ai-reports/REQ-1/fresh.md — 1 open question at generation\n~~~\n",
+		},
+		{
+			"path only appears inside an indented code block",
+			"## Reports\n\nNothing regenerated yet. An entry reads:\n\n    - [2026-09-01] ai-reports/REQ-1/fresh.md — 1 open question at generation\n",
+		},
+		{
+			"path only appears under a deeper subheading",
+			"## Reports\n\n- [2026-08-01] ai-reports/REQ-1/old.md — 2 open questions at generation\n\n### Template\n\n- [2026-09-01] ai-reports/REQ-1/fresh.md — 1 open question at generation\n",
+		},
+		{
+			"link destination names a longer path that merely starts with it",
+			"## Reports\n\n- [2026-09-01] [Stale bundle](ai-reports/REQ-1/fresh.md.bak) — 1 open question at generation\n",
+		},
+		{
+			"link title names the path while its destination points elsewhere",
+			"## Reports\n\n- [2026-09-01] [ai-reports/REQ-1/fresh.md](notes/dana.md) — 1 open question at generation\n",
+		},
+		{
+			"relative link escaping the repository root resolves to nothing",
+			"## Reports\n\n- [2026-09-01] [Fresh bundle](../../../../ai-reports/REQ-1/fresh.md) — 1 open question at generation\n",
+		},
+		{
 			"path only appears inside a fenced example",
 			"## Reports\n\nNothing regenerated yet. An entry reads:\n\n```\n- [2026-09-01] ai-reports/REQ-1/fresh.md — 1 open question at generation\n```\n",
 		},
@@ -932,6 +1036,22 @@ func TestStakeholderReportLinkageKeepsGenuineHistoryEntriesLinked(t *testing.T) 
 		{
 			"the earlier undated form this package's fixtures carry",
 			"## Reports\n\n- ai-reports/REQ-1/fresh.md — partial stakeholder answers.\n",
+		},
+		{
+			"the Markdown-link form this repository's own archive uses",
+			"## Reports\n\n- [2026-09-01] [Timeline panning, not card dragging — AI report for the decision](ai-reports/REQ-1/fresh.md). Presents the open questions and the verification limits.\n",
+		},
+		{
+			"a link written relative to the request document that carries it",
+			"## Reports\n\n- [2026-09-01] [Fresh bundle](../../ai-reports/REQ-1/fresh.md) — 1 open question at generation\n",
+		},
+		{
+			"a dateless link entry keeps its destination as the path field",
+			"## Reports\n\n- [Fresh bundle](ai-reports/REQ-1/fresh.md) — 1 open question at generation\n",
+		},
+		{
+			"a backticked path is the same path field",
+			"## Reports\n\n- [2026-09-01] `ai-reports/REQ-1/fresh.md` — 1 open question at generation\n",
 		},
 	}
 	for _, test := range tests {
