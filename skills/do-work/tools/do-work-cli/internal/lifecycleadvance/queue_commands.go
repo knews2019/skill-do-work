@@ -137,10 +137,15 @@ func handleQueueAdvance(executionContextRoot string, arguments []string) resultm
 		}
 		selection, selected := selectedByID[member.RequestID]
 		if !selected {
+			// One unavailable member is not a verdict on the members behind it.
+			// It stays unconsumed so a later pass can reconsider it, while this
+			// pass keeps examining the frozen ledger: stopping here strands a
+			// sibling the just-claimed prerequisite made ready, on this pass and
+			// on every replay of the same continuation.
 			if exclusion, excluded := excludedByID[member.RequestID]; excluded {
 				appendQueueSelectionBlocker(&result, queueResult, *member, exclusion)
 			}
-			break
+			continue
 		}
 		freshSnapshot, freshError := discoverAdvanceRepository(executionContextRoot)
 		if freshError != nil {
@@ -178,6 +183,13 @@ func handleQueueAdvance(executionContextRoot string, arguments []string) resultm
 		member.RequestPath = filepath.ToSlash(filepath.Join("do-work", "working", filepath.Base(member.RequestPath)))
 		queueResult.Claimed = append(queueResult.Claimed, *member)
 		claimedCount++
+	}
+	// A blocker recorded before the first successful claim would otherwise report
+	// a hard refusal for a pass that did claim work. This is the same rule
+	// appendQueuePhase applies when a claim precedes the blocker, restated here
+	// because skipping an unavailable member makes either order possible.
+	if len(queueResult.Claimed) > 0 && result.Outcome == resultmodel.OutcomeRefused {
+		result.Outcome = resultmodel.OutcomeFindings
 	}
 	queueResult.Partial = len(queueResult.Claimed) > 0 && result.Outcome != resultmodel.OutcomeSuccess
 	queueResult.ContinuationArgv = continuationArgv(queueAdvanceOptions{

@@ -341,3 +341,53 @@ func readAdvanceQueueFile(t *testing.T, repositoryRoot, relativePath string) str
 	}
 	return string(contents)
 }
+
+// An unavailable frozen member must not hide the members behind it. The frozen
+// ledger keeps queue order, so a member awaiting answers sits between a claimed
+// prerequisite and the sibling that prerequisite unblocks; stopping at the
+// unavailable one strands that sibling on every replay of the same continuation.
+func TestAdvanceQueueContinuationSkipsUnavailableMemberAndClaimsReadySibling(t *testing.T) {
+	repositoryRoot := newAdvanceQueueRepository(t)
+	writeAdvanceRequest(t, repositoryRoot, "queue", "REQ-841", "pending", "user_request: UR-840\n", "")
+	writeAdvanceRequest(t, repositoryRoot, "queue", "REQ-842", "pending-answers", "user_request: UR-840\n", "")
+	writeAdvanceRequest(t, repositoryRoot, "queue", "REQ-843", "pending", "user_request: UR-840\ndepends_on: [REQ-841]\n", "")
+	commitAdvanceQueueFixture(t, repositoryRoot)
+
+	first, status := runAdvanceQueueJSON(t, repositoryRoot, "UR-840")
+	if status != 0 || first.QueueAdvance == nil || !reflect.DeepEqual(queueMemberIDs(first.QueueAdvance.FrozenMembers), []string{"REQ-841", "REQ-842", "REQ-843"}) {
+		t.Fatalf("unavailable member was not frozen between its siblings: status=%d %#v", status, first)
+	}
+	completeClaimedFixture(t, repositoryRoot, "REQ-841")
+	runAdvanceGit(t, repositoryRoot, "add", "do-work")
+	runAdvanceGit(t, repositoryRoot, "commit", "-qm", "integrate prerequisite")
+
+	second, secondStatus := runAdvanceContinuationJSON(t, repositoryRoot, first.QueueAdvance.ContinuationArgv)
+	if len(second.QueueAdvance.Claimed) != 1 || second.QueueAdvance.Claimed[0].RequestID != "REQ-843" {
+		t.Fatalf("ready sibling was stranded behind the unavailable member: status=%d %#v", secondStatus, second.QueueAdvance)
+	}
+	if _, err := os.Stat(filepath.Join(repositoryRoot, "do-work", "queue", "REQ-842-fixture.md")); err != nil {
+		t.Fatalf("unavailable member was consumed instead of preserved: %v", err)
+	}
+	if !queuePhaseReportsFinding(second.QueueAdvance.Phases, "REQ-842", "selection", "STATUS-NOT-PENDING") {
+		t.Fatalf("the unavailable member's exclusion was not reported: %#v", second.QueueAdvance.Phases)
+	}
+	// A pass that claimed work reports findings, never a hard refusal, whichever
+	// side of the claim the blocker was recorded on.
+	if second.Outcome != "findings" || !second.QueueAdvance.Partial {
+		t.Fatalf("partial progress was misreported: outcome=%q partial=%v", second.Outcome, second.QueueAdvance.Partial)
+	}
+}
+
+func queuePhaseReportsFinding(phases []advanceQueuePhase, requestID, phaseName, findingCode string) bool {
+	for _, phase := range phases {
+		if phase.RequestID != requestID || phase.Phase != phaseName {
+			continue
+		}
+		for _, finding := range phase.Findings {
+			if finding.Code == findingCode {
+				return true
+			}
+		}
+	}
+	return false
+}
