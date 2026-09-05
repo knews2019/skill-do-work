@@ -641,6 +641,10 @@ body.is-resizing-detail {
   gap: 10px;
   min-height: 24px;
 }
+/* The subject list is the ONLY part of the closed line allowed to give way.
+   Everything else on that line is a fixed label, so each one holds its width and
+   its own line: without this the flex row shrinks the count first and prints "6"
+   above "findings", and a crowded queue turns the one-line band into three. */
 .board-findings-label {
   display: inline-flex;
   align-items: center;
@@ -650,6 +654,8 @@ body.is-resizing-detail {
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
+  white-space: nowrap;
+  flex: none;
 }
 .board-findings-label svg {
   width: 13px;
@@ -659,6 +665,8 @@ body.is-resizing-detail {
 .board-findings-count {
   color: var(--ink-soft);
   font-size: 0.76rem;
+  white-space: nowrap;
+  flex: none;
 }
 /* The weight channel, and the only one: amber for a finding a human resolves,
    green for one `do-work cleanup` fixes, grey for a probe that never ran. Those
@@ -752,6 +760,7 @@ body.is-resizing-detail {
   font-size: 0.7rem;
   font-weight: 500;
   line-height: 1.5;
+  white-space: nowrap;
   flex: none;
 }
 .board-findings-toggle svg {
