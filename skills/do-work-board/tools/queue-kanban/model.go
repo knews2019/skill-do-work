@@ -1628,7 +1628,7 @@ func lifecycleTimestampFields(ticket *RequestTicket) []LifecycleTimestamp {
 		{"remediation_at", ticket.RemediationAt, "remediation merged"},
 		{"re_review_at", ticket.ReReviewAt, "re-reviewed"},
 		{"release_at", ticket.ReleaseAt, "released"},
-		{"status_changed_at", ticket.StatusChangedAt, statusChangeTransitionForStatus(ticket.Status)},
+		{"status_changed_at", ticket.StatusChangedAt, "status changed"},
 		{"blocked_at", ticket.BlockedAt, "blocked"},
 		{"testing_updated_at", ticket.TestingUpdatedAt, "testing notes updated"},
 	}
@@ -1648,16 +1648,6 @@ func completionTransitionForStatus(status string) string {
 	default:
 		return "completed"
 	}
-}
-
-// statusChangeTransitionForStatus names what a status_changed_at instant
-// records. Every flip reports the status it landed on rather than inventing a
-// phrase for it, so a status added to the schema needs no edit here.
-func statusChangeTransitionForStatus(status string) string {
-	if status == "" {
-		return "status changed"
-	}
-	return "status changed to " + status
 }
 
 // parseTimestamp parses the timestamp shapes seen across REQ frontmatter:

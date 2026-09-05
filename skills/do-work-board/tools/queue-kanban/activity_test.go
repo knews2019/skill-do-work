@@ -84,12 +84,12 @@ func TestBuildActivityRowsOrdersByNewestStampAndNamesTheTransition(t *testing.T)
 	// approximate listing — and the claims that preceded each flip interleave
 	// with the other REQs by time rather than hiding behind the newer stamp.
 	wantOrder := []ActivityRow{
-		{RequestId: "REQ-504", StampField: "status_changed_at", Transition: "status changed to blocked"},
+		{RequestId: "REQ-504", StampField: "status_changed_at", Transition: "status changed"},
 		{RequestId: "REQ-505", StampField: "claimed_at", Transition: "claimed"},
 		{RequestId: "REQ-504", StampField: "claimed_at", Transition: "claimed"},
-		{RequestId: "REQ-567", StampField: "status_changed_at", Transition: "status changed to blocked"},
+		{RequestId: "REQ-567", StampField: "status_changed_at", Transition: "status changed"},
 		{RequestId: "REQ-567", StampField: "claimed_at", Transition: "claimed"},
-		{RequestId: "REQ-503", StampField: "status_changed_at", Transition: "status changed to blocked"},
+		{RequestId: "REQ-503", StampField: "status_changed_at", Transition: "status changed"},
 		{RequestId: "REQ-503", StampField: "claimed_at", Transition: "claimed"},
 		{RequestId: "REQ-485", StampField: "completed_at", Transition: "completed"},
 	}
@@ -308,5 +308,19 @@ func TestLifecycleTimestampFieldsIsTheOneListBothReadersUse(t *testing.T) {
 			t.Fatalf("declared lifecycle stamp %q produced %d activity rows, want exactly 1: %+v",
 				field.FieldName, rowFields[field.FieldName], rows)
 		}
+	}
+}
+
+// A recovery stamp survives later claim and completion writes. Its destination
+// cannot be reconstructed from the request's current status.
+func TestActivityDoesNotLabelPendingRecoveryAsLaterCompletion(t *testing.T) {
+	rows := buildActivityRows([]*RequestTicket{{
+		RequestId: "REQ-1790", Status: "completed",
+		StatusChangedAt: "2026-09-05T00:11:11Z",
+		CompletedAt:     "2026-09-05T01:07:00Z",
+	}})
+	if len(rows) != 2 || rows[0].StampField != "completed_at" || rows[0].Transition != "completed" ||
+		rows[1].StampField != "status_changed_at" || rows[1].Transition != "status changed" {
+		t.Fatalf("historical recovery mislabeled: %+v", rows)
 	}
 }
