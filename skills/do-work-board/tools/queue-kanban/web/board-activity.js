@@ -89,7 +89,7 @@
       // single row. A selector written as "the node for REQ-570" is wrong here.
       tableRow.setAttribute("data-activity-request", row.id);
       [
-        { text: row.id, columnHeaderId: "activity-table-column-req", rowHeader: true },
+        { requestId: row.id, columnHeaderId: "activity-table-column-req", rowHeader: true },
         { text: request.title || "", columnHeaderId: "activity-table-column-title" },
         { text: request.status || "", columnHeaderId: "activity-table-column-status" },
         { text: row.transition || "", columnHeaderId: "activity-table-column-transition" },
@@ -101,7 +101,17 @@
           cell.scope = "row";
         }
         cell.setAttribute("headers", cellDefinition.columnHeaderId);
-        if (cellDefinition.instant) {
+        if (cellDefinition.requestId) {
+          // The REQ cell is a real button, so a row is reachable by Tab exactly
+          // as a Board card is. The data-detail-* pair is the whole opener: the
+          // document-level delegation in board-controls.js reads it and calls
+          // openDetail, which is why nothing here opens a drawer of its own.
+          var detailButton = createElement("button", "activity-req-button", cellDefinition.requestId);
+          detailButton.type = "button";
+          detailButton.setAttribute("data-detail-kind", "req");
+          detailButton.setAttribute("data-detail-id", cellDefinition.requestId);
+          cell.appendChild(detailButton);
+        } else if (cellDefinition.instant) {
           var instantNode = makeInstantWithRelativeNode(cellDefinition.instant);
           if (instantNode) {
             cell.appendChild(instantNode);
@@ -115,6 +125,7 @@
       });
       tableBody.appendChild(tableRow);
     });
+    applyActivitySelectionHighlight(selectedActivityRequestId());
 
     // An empty surface must say which of the two empties it is: nothing moved,
     // or the filters hid what did. Rendering the same blank table for both is
@@ -131,3 +142,57 @@
         + " happened in this window, but the active filters hide "
         + (windowRows.length === 1 ? "it." : "all of them.");
   }
+
+  // ---- row selection ------------------------------------------------------
+  // A REQ owns several rows here, so the reader wants to see the whole sequence
+  // of states it went through, not the one row under the pointer. Selection is
+  // therefore a SET of rows, and the open detail drawer is its only state: a
+  // re-render restores the highlight by reading the drawer back, and closing the
+  // drawer clears it through the same read. A second copy of "which REQ is
+  // selected" would be one more thing that can disagree with the drawer.
+
+  function selectedActivityRequestId() {
+    // The kind matters: a UR drawer whose id happened to look like a REQ id
+    // would otherwise light up rows the reader never asked about.
+    return currentDetailKind === "req" ? currentDetailId : "";
+  }
+
+  function applyActivitySelectionHighlight(selectedRequestId) {
+    var tableBody = document.getElementById("activity-table-body");
+    if (!tableBody) {
+      return;
+    }
+    tableBody.childNodes.forEach(function (tableRow) {
+      tableRow.classList.toggle(
+        "is-activity-selected",
+        !!selectedRequestId && tableRow.getAttribute("data-activity-request") === selectedRequestId
+      );
+    });
+  }
+
+  // board-controls.js registers its [data-detail-kind] delegation AFTER this
+  // fragment (generate.go's execution-order manifest), so on a row click the
+  // drawer still names the previous REQ while this listener runs — the clicked
+  // row's own id is read instead. Every other click re-reads the drawer, which
+  // is how the drawer's close button clears the highlight: its own element-level
+  // listener has already run closeDrawer by the time this one sees the click.
+  function syncActivitySelectionToClick(clickEvent) {
+    var clickedRow = clickEvent.target.closest("[data-activity-request]");
+    applyActivitySelectionHighlight(
+      clickedRow ? clickedRow.getAttribute("data-activity-request") : selectedActivityRequestId()
+    );
+  }
+
+  function syncActivitySelectionToDrawer() {
+    applyActivitySelectionHighlight(selectedActivityRequestId());
+  }
+
+  document.addEventListener("click", syncActivitySelectionToClick);
+  // Escape is the drawer's only other close path. board-detail.js dismisses it
+  // from a capture-phase listener, so this bubble-phase one already sees the
+  // cleared drawer state.
+  document.addEventListener("keydown", function (keyEvent) {
+    if (keyEvent.key === "Escape") {
+      syncActivitySelectionToDrawer();
+    }
+  });

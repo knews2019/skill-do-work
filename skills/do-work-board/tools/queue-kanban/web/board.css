@@ -3214,3 +3214,53 @@ body.is-resizing-detail .detail-resizer::before {
   font-family: var(--font-mono);
   color: var(--ink-faint);
 }
+
+/* The REQ cell is a button, not a styled cell with a click handler, so the row
+   is reachable by Tab. It inherits the cell's mono face and ink; only the
+   pointer and the underline mark it as something you can press. */
+.activity-req-button {
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+.activity-req-button:hover {
+  color: var(--ink-strong);
+  text-decoration: underline;
+}
+
+.activity-req-button:focus-visible {
+  outline: 2px solid var(--accent-claimed);
+  outline-offset: 2px;
+}
+
+/* Selected rows: every row of the REQ the drawer is showing. Three signals,
+   because a tint alone is a colour-only distinction — the inset bar draws a
+   left edge the eye tracks down the table, and the underlined bold id says
+   which cell the selection is about. The bar is an inset shadow rather than a
+   border so a selected row keeps the same cell metrics as its neighbours;
+   under border-collapse a real border would shift the whole row by 3px. */
+.activity-table-scroll tbody tr.is-activity-selected {
+  background: var(--tint-claimed);
+}
+
+/* The REQ column keeps that inset whether or not a row is selected: a padding
+   that appeared only on selection would shove the row's text sideways as the
+   reader clicks through the table. */
+.activity-table-scroll th[id="activity-table-column-req"],
+.activity-table-scroll tbody th {
+  padding-left: 9px;
+}
+
+.activity-table-scroll tbody tr.is-activity-selected th {
+  box-shadow: inset 3px 0 0 var(--accent-claimed);
+}
+
+.activity-table-scroll tbody tr.is-activity-selected .activity-req-button {
+  color: var(--ink-strong);
+  font-weight: 700;
+  text-decoration: underline;
+}

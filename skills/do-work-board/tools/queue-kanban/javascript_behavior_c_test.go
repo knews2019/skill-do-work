@@ -2395,8 +2395,14 @@ process.stdout.write(JSON.stringify(annotateClipboardPayload([{text: ` + mustMar
 func TestJavaScriptBehaviorActivitySummaryCountsTransitionsAndRequests(t *testing.T) {
 	indexHtml := generateLiveSite(t)
 	functionBlocks := []string{
+		// REQ-573 gave the REQ cell a detail button and the rows a selected
+		// class, so renderActivity now reaches createElement and the selection
+		// helpers; the counts this test is about are unchanged.
+		sliceBalancedBlockAfter(t, indexHtml, "function createElement("),
 		sliceBalancedBlockAfter(t, indexHtml, "function activityRowsWithin("),
 		sliceBalancedBlockAfter(t, indexHtml, "function activityWindowPhrase("),
+		sliceBalancedBlockAfter(t, indexHtml, "function selectedActivityRequestId("),
+		sliceBalancedBlockAfter(t, indexHtml, "function applyActivitySelectionHighlight("),
 		sliceBalancedBlockAfter(t, indexHtml, "function renderActivity("),
 	}
 	javascriptProbe := `
@@ -2410,7 +2416,11 @@ function makeStubNode() {
     hidden: false,
     scope: "",
     stubText: "",
+    classList: { toggle: function () {} },
     setAttribute: function (attributeName, attributeValue) { this.attributes[attributeName] = attributeValue; },
+    getAttribute: function (attributeName) {
+      return Object.prototype.hasOwnProperty.call(this.attributes, attributeName) ? this.attributes[attributeName] : null;
+    },
     appendChild: function (childNode) { this.childNodes.push(childNode); return childNode; }
   };
   Object.defineProperty(node, "textContent", {
@@ -2428,6 +2438,11 @@ var document = {
   createElement: function (tagName) { var node = makeStubNode(); node.stubTag = tagName; return node; }
 };
 var viewState = { activityWindowHours: 24 };
+// No drawer is open in any of these cases, so no row is ever selected here;
+// TestJavaScriptBehaviorActivityRowClickSelectsEveryRowOfTheSameRequest owns
+// the selection behavior these two carry.
+var currentDetailKind = "";
+var currentDetailId = "";
 var requestsById = {
   "REQ-800": { title: "Busy request", status: "completed" },
   "REQ-801": { title: "Quiet request", status: "claimed" }
@@ -2656,5 +2671,223 @@ process.stdout.write(JSON.stringify(results));`
 	}
 	if results.SkippedOnlyBackOnBoard {
 		t.Fatalf("a skipped-probes-only strip did not come back on the Board view")
+	}
+}
+
+// TestJavaScriptBehaviorActivityRowClickSelectsEveryRowOfTheSameRequest drives
+// the shipped renderActivity and the shipped selection helpers over the shape
+// REQ-573 was raised for: two rows for one REQ and one row for another. Two
+// halves are proved here. First, the REQ cell is a real button carrying the
+// data-detail-* pair, which is the whole contract with the document-level
+// delegation in board-controls.js — that is what opens the drawer, and adding a
+// second opener is exactly what this REQ must not do. Second, the highlight is
+// a SET: a REQ owns several rows, so clicking one marks all of them, a
+// re-render restores them from the open drawer alone, and clearing the drawer
+// clears them.
+func TestJavaScriptBehaviorActivityRowClickSelectsEveryRowOfTheSameRequest(t *testing.T) {
+	indexHtml := generateLiveSite(t)
+	functionBlocks := []string{
+		sliceBalancedBlockAfter(t, indexHtml, "function createElement("),
+		sliceBalancedBlockAfter(t, indexHtml, "function activityRowsWithin("),
+		sliceBalancedBlockAfter(t, indexHtml, "function activityWindowPhrase("),
+		sliceBalancedBlockAfter(t, indexHtml, "function selectedActivityRequestId("),
+		sliceBalancedBlockAfter(t, indexHtml, "function applyActivitySelectionHighlight("),
+		sliceBalancedBlockAfter(t, indexHtml, "function syncActivitySelectionToClick("),
+		sliceBalancedBlockAfter(t, indexHtml, "function syncActivitySelectionToDrawer("),
+		sliceBalancedBlockAfter(t, indexHtml, "function renderActivity("),
+	}
+	javascriptProbe := `
+// The textContent setter drops children, as the real one does — renderActivity
+// clears the table body that way between renders. closest() supports only the
+// [attribute] form the client actually passes: a stub that pretended to be a
+// selector engine would keep passing after the selector changed.
+function makeStubNode() {
+  var node = {
+    childNodes: [],
+    attributes: {},
+    presentClasses: {},
+    hidden: false,
+    scope: "",
+    stubText: "",
+    parentNode: null,
+    setAttribute: function (attributeName, attributeValue) { this.attributes[attributeName] = attributeValue; },
+    getAttribute: function (attributeName) {
+      return Object.prototype.hasOwnProperty.call(this.attributes, attributeName) ? this.attributes[attributeName] : null;
+    },
+    appendChild: function (childNode) { childNode.parentNode = this; this.childNodes.push(childNode); return childNode; },
+    closest: function (selector) {
+      var attributeName = selector.slice(1, -1);
+      if ("[" + attributeName + "]" !== selector) { throw new Error("unsupported selector " + selector); }
+      var candidate = this;
+      while (candidate) {
+        if (Object.prototype.hasOwnProperty.call(candidate.attributes, attributeName)) { return candidate; }
+        candidate = candidate.parentNode;
+      }
+      return null;
+    }
+  };
+  node.classList = {
+    toggle: function (className, shouldBePresent) {
+      if (shouldBePresent) { node.presentClasses[className] = true; } else { delete node.presentClasses[className]; }
+    },
+    contains: function (className) { return !!node.presentClasses[className]; }
+  };
+  Object.defineProperty(node, "textContent", {
+    get: function () { return this.stubText; },
+    set: function (nodeText) { this.stubText = nodeText; this.childNodes = []; }
+  });
+  return node;
+}
+var nodesById = {};
+var document = {
+  getElementById: function (nodeId) {
+    if (!nodesById[nodeId]) { nodesById[nodeId] = makeStubNode(); }
+    return nodesById[nodeId];
+  },
+  createElement: function (tagName) { var node = makeStubNode(); node.stubTag = tagName; return node; }
+};
+var viewState = { activityWindowHours: 24 };
+// The drawer's own state, which board-detail.js owns. The selection reads it
+// rather than keeping a second copy, so the probe moves it the way the drawer
+// does: openRequestDetail sets both, closeDrawer clears both.
+var currentDetailKind = "";
+var currentDetailId = "";
+var requestsById = {
+  "REQ-570": { title: "Delete the pending-heavy-testing status", status: "claimed" },
+  "REQ-505": { title: "A quieter request", status: "completed" }
+};
+function requestMatchesFilters() { return true; }
+function makeInstantWithRelativeNode() { return null; }
+function hoursAgo(hourCount) { return new Date(Date.now() - hourCount * 3600 * 1000).toISOString(); }
+var boardData = { activity: [
+  { id: "REQ-570", stampField: "claimed_at", stampAt: hoursAgo(1), transition: "claimed" },
+  { id: "REQ-505", stampField: "completed_at", stampAt: hoursAgo(2), transition: "completed" },
+  { id: "REQ-570", stampField: "created_at", stampAt: hoursAgo(3), transition: "captured" }
+] };
+` + strings.Join(functionBlocks, "\n") + `
+function currentRows() { return nodesById["activity-table-body"].childNodes; }
+function reqCellButtonOf(tableRow) { return tableRow.childNodes[0].childNodes[0]; }
+function selectionState() {
+  return currentRows().map(function (tableRow) { return tableRow.classList.contains("is-activity-selected"); });
+}
+function readAcross(readOneRow) { return currentRows().map(readOneRow); }
+var results = {};
+renderActivity();
+results.rowRequestIds = readAcross(function (tableRow) { return tableRow.getAttribute("data-activity-request"); });
+results.reqCellButtonTags = readAcross(function (tableRow) { return reqCellButtonOf(tableRow).stubTag; });
+results.reqCellButtonTypes = readAcross(function (tableRow) { return reqCellButtonOf(tableRow).type; });
+results.reqCellButtonLabels = readAcross(function (tableRow) { return reqCellButtonOf(tableRow).textContent; });
+results.detailKinds = readAcross(function (tableRow) { return reqCellButtonOf(tableRow).getAttribute("data-detail-kind"); });
+results.detailIds = readAcross(function (tableRow) { return reqCellButtonOf(tableRow).getAttribute("data-detail-id"); });
+results.beforeAnyClick = selectionState();
+
+// A click on the first REQ-570 row. board-controls.js registers its delegation
+// after this fragment, so the drawer state still names the PREVIOUS REQ while
+// this listener runs — the probe moves it afterwards, as the delegation does.
+syncActivitySelectionToClick({ target: reqCellButtonOf(currentRows()[0]) });
+results.afterClickingTheFirstReq570Row = selectionState();
+currentDetailKind = "req";
+currentDetailId = "REQ-570";
+
+// A window or filter change re-renders the table; the selection has to come
+// back from the open drawer, with nothing remembered in between.
+renderActivity();
+results.afterReRender = selectionState();
+
+syncActivitySelectionToClick({ target: reqCellButtonOf(currentRows()[1]) });
+results.afterClickingTheReq505Row = selectionState();
+currentDetailKind = "req";
+currentDetailId = "REQ-505";
+
+// A click that lands nowhere near the table re-reads the drawer, which is how
+// the drawer's close button clears the highlight: closeDrawer runs first.
+currentDetailKind = "";
+currentDetailId = "";
+syncActivitySelectionToClick({ target: makeStubNode() });
+results.afterClosingTheDrawer = selectionState();
+
+// Escape is the drawer's other close path and goes through the same re-read.
+currentDetailKind = "req";
+currentDetailId = "REQ-570";
+syncActivitySelectionToDrawer();
+results.afterReopeningWithoutAClick = selectionState();
+currentDetailKind = "";
+currentDetailId = "";
+syncActivitySelectionToDrawer();
+results.afterEscape = selectionState();
+
+// A UR drawer is not a REQ selection: the id would collide with nothing here,
+// but reading currentDetailId without its kind is the mistake worth pinning.
+currentDetailKind = "ur";
+currentDetailId = "REQ-570";
+syncActivitySelectionToDrawer();
+results.afterOpeningAUserRequestDrawer = selectionState();
+process.stdout.write(JSON.stringify(results));`
+	probeOutput := runJavaScriptBehaviorProbe(t, "activity row selection", javascriptProbe)
+
+	var results struct {
+		RowRequestIds                  []string `json:"rowRequestIds"`
+		ReqCellButtonTags              []string `json:"reqCellButtonTags"`
+		ReqCellButtonTypes             []string `json:"reqCellButtonTypes"`
+		ReqCellButtonLabels            []string `json:"reqCellButtonLabels"`
+		DetailKinds                    []string `json:"detailKinds"`
+		DetailIds                      []string `json:"detailIds"`
+		BeforeAnyClick                 []bool   `json:"beforeAnyClick"`
+		AfterClickingTheFirstReq570Row []bool   `json:"afterClickingTheFirstReq570Row"`
+		AfterReRender                  []bool   `json:"afterReRender"`
+		AfterClickingTheReq505Row      []bool   `json:"afterClickingTheReq505Row"`
+		AfterClosingTheDrawer          []bool   `json:"afterClosingTheDrawer"`
+		AfterReopeningWithoutAClick    []bool   `json:"afterReopeningWithoutAClick"`
+		AfterEscape                    []bool   `json:"afterEscape"`
+		AfterOpeningAUserRequestDrawer []bool   `json:"afterOpeningAUserRequestDrawer"`
+	}
+	if decodeError := json.Unmarshal(probeOutput, &results); decodeError != nil {
+		t.Fatalf("decode activity selection results: %v (output %q)", decodeError, probeOutput)
+	}
+
+	wantRowRequestIds := []string{"REQ-570", "REQ-505", "REQ-570"}
+	if !reflect.DeepEqual(results.RowRequestIds, wantRowRequestIds) {
+		t.Fatalf("data-activity-request values = %#v, want %#v", results.RowRequestIds, wantRowRequestIds)
+	}
+	// Keyboard reachability is the element, not a handler: a bare cell with a
+	// click listener is unreachable by Tab, which is what the REQ rules out.
+	if !reflect.DeepEqual(results.ReqCellButtonTags, []string{"button", "button", "button"}) ||
+		!reflect.DeepEqual(results.ReqCellButtonTypes, []string{"button", "button", "button"}) {
+		t.Fatalf("REQ cells are not keyboard-reachable buttons (tags %#v, types %#v)",
+			results.ReqCellButtonTags, results.ReqCellButtonTypes)
+	}
+	if !reflect.DeepEqual(results.ReqCellButtonLabels, wantRowRequestIds) {
+		t.Fatalf("REQ cell button labels = %#v, want the REQ ids %#v", results.ReqCellButtonLabels, wantRowRequestIds)
+	}
+	if !reflect.DeepEqual(results.DetailKinds, []string{"req", "req", "req"}) ||
+		!reflect.DeepEqual(results.DetailIds, wantRowRequestIds) {
+		t.Fatalf("the data-detail-* pair the board-controls.js delegation opens the drawer from is wrong (kinds %#v, ids %#v)",
+			results.DetailKinds, results.DetailIds)
+	}
+	if !reflect.DeepEqual(results.BeforeAnyClick, []bool{false, false, false}) {
+		t.Fatalf("rows rendered already selected with no drawer open: %#v", results.BeforeAnyClick)
+	}
+	wantReq570Selected := []bool{true, false, true}
+	if !reflect.DeepEqual(results.AfterClickingTheFirstReq570Row, wantReq570Selected) {
+		t.Fatalf("clicking one REQ-570 row selected %#v, want %#v — every row of that REQ, and no other REQ's row",
+			results.AfterClickingTheFirstReq570Row, wantReq570Selected)
+	}
+	if !reflect.DeepEqual(results.AfterReRender, wantReq570Selected) {
+		t.Fatalf("re-render dropped the selection for the open REQ: %#v, want %#v", results.AfterReRender, wantReq570Selected)
+	}
+	if !reflect.DeepEqual(results.AfterClickingTheReq505Row, []bool{false, true, false}) {
+		t.Fatalf("clicking the other REQ left the first REQ's rows selected: %#v", results.AfterClickingTheReq505Row)
+	}
+	if !reflect.DeepEqual(results.AfterClosingTheDrawer, []bool{false, false, false}) {
+		t.Fatalf("closing the drawer left rows highlighted: %#v", results.AfterClosingTheDrawer)
+	}
+	if !reflect.DeepEqual(results.AfterReopeningWithoutAClick, wantReq570Selected) {
+		t.Fatalf("a drawer opened from somewhere other than the table did not mark its rows: %#v", results.AfterReopeningWithoutAClick)
+	}
+	if !reflect.DeepEqual(results.AfterEscape, []bool{false, false, false}) {
+		t.Fatalf("Escape closed the drawer but left rows highlighted: %#v", results.AfterEscape)
+	}
+	if !reflect.DeepEqual(results.AfterOpeningAUserRequestDrawer, []bool{false, false, false}) {
+		t.Fatalf("a UR drawer selected REQ rows by id alone: %#v", results.AfterOpeningAUserRequestDrawer)
 	}
 }
