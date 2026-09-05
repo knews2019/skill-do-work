@@ -2,6 +2,15 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.292.0 — Card Wall Time Starts Where the Work Started (2026-09-05)
+
+A completed card measured from `claimed_at`, so a request whose claim stamp was rewritten late reported a span that excluded all of its phase work. One request read 1m 23s for 6h 11m of real work. The span now opens at the earliest lifecycle stamp the request carries and still ends at `completed_at`.
+
+- Queue-wait stamps are excluded: `created_at` as the request asked, and also `status_changed_at`, `blocked_at` and `testing_updated_at`, which are written while a request is waiting rather than being worked.
+- The eligibility map filters the schema's own stamp list rather than keeping a second copy, so a stamp added later is included by default and a tripwire test fails until someone classifies it.
+- An unparseable stamp is skipped rather than fatal; a request with no lifecycle stamp reports no span rather than a misleading zero.
+- Twelve archived cards change by design. Both pinned calibration medians are unmoved.
+
 ## 0.291.1 — The Board Forgets a Status That No Longer Exists (2026-09-05)
 
 `pending-heavy-testing` was deleted in 0.287.0, but the board still gave it a status enum entry, a column rule, two timeline cases, a transition label, a calendar group and three stylesheet selectors. All of it is gone, and a record still carrying the value now falls through the ordinary tolerant path: parked, flagged invalid, and named in a warning.
