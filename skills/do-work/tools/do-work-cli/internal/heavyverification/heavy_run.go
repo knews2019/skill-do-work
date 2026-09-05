@@ -135,6 +135,9 @@ func RunLanes(request LaneRunRequest) (resultmodel.HeavyVerificationRun, []resul
 		if fingerprintError == nil {
 			fingerprint, fingerprintError = laneFingerprint(repositoryRoot, lane, manifest, committedTree)
 		}
+		if err := verifyLaneRevision(repositoryRoot, executionRevision); err != nil {
+			return resultmodel.HeavyVerificationRun{}, nil, err
+		}
 		decision := laneReuseDecision{Disposition: LaneDispositionExecuted, Reason: laneReasonReuseDisabled}
 		if request.EvidenceReuse {
 			decision = decideLaneReuse(evidenceStore, lane, fingerprint, fingerprintError, clockNow())
@@ -149,6 +152,9 @@ func RunLanes(request LaneRunRequest) (resultmodel.HeavyVerificationRun, []resul
 		executedAt := clockNow()
 		execution, skipLine, interrupted, err := runOneLane(repositoryRoot, lane, request.LaneTimeout, request.LaneOutputWriter, interruptions)
 		if err != nil {
+			return resultmodel.HeavyVerificationRun{}, nil, err
+		}
+		if err := verifyLaneRevision(repositoryRoot, executionRevision); err != nil {
 			return resultmodel.HeavyVerificationRun{}, nil, err
 		}
 		execution.Disposition = LaneDispositionExecuted
@@ -175,6 +181,22 @@ func RunLanes(request LaneRunRequest) (resultmodel.HeavyVerificationRun, []resul
 		}
 	}
 	return run, findings, nil
+}
+
+// verifyLaneRevision checks execution boundaries, including a lane that commits
+// its input changes and leaves an apparently clean working tree behind.
+func verifyLaneRevision(repositoryRoot, executionRevision string) error {
+	if err := refuseDirtyTrackedTree(repositoryRoot); err != nil {
+		return err
+	}
+	currentRevision, err := resolveRevision(repositoryRoot, "HEAD")
+	if err != nil {
+		return err
+	}
+	if currentRevision != executionRevision {
+		return refuseLaneRun("HEAVY-RUN-REVISION-CHANGED", "HEAD changed from %s to %s during verification", executionRevision, currentRevision)
+	}
+	return nil
 }
 
 // refuseDirtyTrackedTree refuses when a tracked file outside the queue tree

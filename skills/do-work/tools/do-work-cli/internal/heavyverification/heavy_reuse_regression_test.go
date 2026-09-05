@@ -148,3 +148,54 @@ func TestTrackedSymlinkInputsRemainUncertain(t *testing.T) {
 	result := verifyLanes(t, root, time.Now(), "alpha-lane")
 	assertLaneDisposition(t, laneExecutionRecord(t, result, "alpha-lane"), LaneDispositionExecuted, laneReasonFingerprintUncertain)
 }
+
+func TestLaneMutationCannotPublishOrReuseSuccess(t *testing.T) {
+	for _, commitMutation := range []bool{false, true} {
+		t.Run(fmt.Sprintf("commit=%t", commitMutation), func(t *testing.T) {
+			repositoryRoot := newLaneEvidenceRepository(t)
+			mutatingScript := "echo broken > beta/fixture.txt\n"
+			if commitMutation {
+				mutatingScript += "git add beta/fixture.txt && git commit -qm 'lane changed input'\n"
+			}
+			writeHeavyTestFile(t, repositoryRoot, "lanes/alpha.sh", mutatingScript)
+			writeHeavyTestFile(t, repositoryRoot, "lanes/beta.sh", "echo ran > beta-lane.ran\ntest \"$(cat beta/fixture.txt)\" = 'beta fixture'\n")
+			commitHeavyTestChanges(t, repositoryRoot, "mutating lane")
+			verifyLanes(t, repositoryRoot, time.Now(), "beta-lane")
+			takeLaneRanMarker(t, repositoryRoot, "beta-lane")
+			_, _, runError := RunLanes(LaneRunRequest{
+				RepositoryRoot: repositoryRoot, ManifestPath: "heavy-lanes.json",
+				LaneIDs: []string{"alpha-lane", "beta-lane"}, EvidenceReuse: true,
+			})
+			wantCode := "HEAVY-RUN-DIRTY-TREE"
+			if commitMutation {
+				wantCode = "HEAVY-RUN-REVISION-CHANGED"
+			}
+			if runError == nil || LaneRunRefusalCode(runError) != wantCode {
+				t.Fatalf("input mutation refusal: %v, want %s", runError, wantCode)
+			}
+			if takeLaneRanMarker(t, repositoryRoot, "beta-lane") {
+				t.Fatal("later lane executed after input mutation")
+			}
+			evidenceStore, storeError := openLaneEvidenceStore(repositoryRoot)
+			if storeError != nil {
+				t.Fatal(storeError)
+			}
+			_, foundRecord, readError := evidenceStore.ReadLaneEvidence("alpha-lane")
+			if readError != nil || foundRecord {
+				t.Fatalf("mutating lane published success: found=%t error=%v", foundRecord, readError)
+			}
+		})
+	}
+}
+
+func TestLaneQueueBookkeepingDoesNotInvalidateVerification(t *testing.T) {
+	repositoryRoot := newLaneEvidenceRepository(t)
+	writeHeavyTestFile(t, repositoryRoot, "do-work/CHECKPOINT.md", "before\n")
+	writeHeavyTestFile(t, repositoryRoot, "lanes/alpha.sh", "echo after > do-work/CHECKPOINT.md\n")
+	commitHeavyTestChanges(t, repositoryRoot, "lane updates queue bookkeeping")
+	verifyLanes(t, repositoryRoot, time.Now(), "beta-lane")
+	runResult := verifyLanes(t, repositoryRoot, time.Now(), "alpha-lane", "beta-lane")
+	if laneExecutionRecord(t, runResult, "beta-lane").Disposition != LaneDispositionReused {
+		t.Fatal("queue bookkeeping prevented reuse of unchanged lane inputs")
+	}
+}
