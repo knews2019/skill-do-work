@@ -24,6 +24,8 @@ write_set:
   - skills/do-work/tools/do-work-cli/internal/requeststate/state_apply_test.go
   - skills/do-work/tools/do-work-cli/internal/publication/defer_gate.go
   - skills/do-work/tools/do-work-cli/internal/publication/defer_gate_test.go
+  - skills/do-work/tools/do-work-cli/internal/nextselection/next_selection.go
+  - skills/do-work/tools/do-work-cli/internal/nextselection/next_selection_test.go
   - skills/do-work/actions/work-reference.md
 claimed_at: 2026-09-05T12:00:55Z
 dispatch_at: 2026-09-05T12:06:43Z
@@ -107,3 +109,8 @@ See `do-work/user-requests/UR-116/input.md` for the verbatim input and the REQ-5
 **Planning not required** - Route A: direct to builder
 
 *Skipped by work action*
+
+## Decisions
+
+- **D-06 — the selector's two files were added to this REQ's write set, by the orchestrator, before integration. DECIDE & STATE.** The builder reported D-03 as a scope expansion rather than writing it silently: keeping `claimed_at` through a recover made `internal/nextselection` veto every recovered request as `ALREADY-CLAIMED`, so the writer change alone would have made recovery a one-way door. The REQ's own Builder Guidance settles the direction — "If the builder finds a reader that breaks when a recovered request keeps its old stamps, fix the reader, not the writer" — so the expansion is what the request asked for, not drift. `write_set` now carries `internal/nextselection/next_selection.go` and its test.
+
