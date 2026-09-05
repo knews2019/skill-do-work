@@ -2,6 +2,13 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.303.8 — A Verify Finding Names Five Paths, Then Counts the Rest (2026-09-05)
+
+One long list could take the board over. A builder worktree whose `do-work/` was untracked put roughly 700 paths into a single finding, and every surface that prints a finding printed all of them: the board's findings strip filled the page, the terminal report put them on one line, and the shareable snapshot carried the lot.
+
+- Three `queue-kanban verify` findings now name five entries and then say how many they did not name — uncommitted queue state in a builder worktree, queue state committed on a builder branch, and the live members of an archived user request.
+- A list of five entries or fewer reads exactly as before, so a finding about a single file is unchanged.
+
 ## 0.303.7 — The Verify Findings Strip Is One Line Until You Open It (2026-09-05)
 
 This morning's rows (0.303.2) were still too tall: every remedy printed in full, all the time, inside a card. A remedy is what you read after deciding to act, so it now sits behind a click, and the strip is one line until you open it.
