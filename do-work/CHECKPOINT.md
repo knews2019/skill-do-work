@@ -18,11 +18,4 @@ session_depth: light
 
 ## In Progress (interrupted)
 
-
-
-
-
-
-
-
-
+- REQ-588: Addendum: make each verify-finding row read as one warning line, not a paragraph — claimed 2026-09-05T17:02:32Z — writer: t2s-Virtual-Machine.local:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2

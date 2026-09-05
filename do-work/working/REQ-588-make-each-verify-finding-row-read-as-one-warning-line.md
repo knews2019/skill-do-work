@@ -1,7 +1,7 @@
 ---
 id: REQ-588
 title: 'Addendum: make each verify-finding row read as one warning line, not a paragraph'
-status: pending
+status: claimed
 created_at: 2026-09-05T14:45:41Z
 user_request: UR-124
 addendum_to: REQ-579
@@ -19,6 +19,7 @@ write_set:
   - skills/do-work-board/tools/queue-kanban/verify.go
   - skills/do-work-board/tools/queue-kanban/verify_test.go
 status_changed_at: 2026-09-05T17:00:29Z
+claimed_at: 2026-09-05T17:02:32Z
 ---
 
 # Addendum: Make Each Verify-Finding Row Read as One Warning Line, Not a Paragraph
