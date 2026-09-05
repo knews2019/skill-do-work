@@ -19,3 +19,5 @@ session_depth: light
 ## In Progress (interrupted)
 
 - REQ-572: Show every lifecycle transition of a REQ as its own Activity row — claimed 2026-09-05T12:00:55Z — writer: t2s-Virtual-Machine.local:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2
+
+- REQ-575: [impact-rule-change] Keep every lifecycle stamp: no transition deletes an existing *_at field — claimed 2026-09-05T12:00:55Z — writer: t2s-Virtual-Machine.local:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2

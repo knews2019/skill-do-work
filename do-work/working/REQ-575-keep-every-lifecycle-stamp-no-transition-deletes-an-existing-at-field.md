@@ -1,7 +1,7 @@
 ---
 id: REQ-575
 title: '[impact-rule-change] Keep every lifecycle stamp: no transition deletes an existing *_at field'
-status: pending
+status: claimed
 created_at: 2026-09-04T23:52:00Z
 user_request: UR-116
 domain: backend
@@ -19,6 +19,7 @@ write_set:
   - skills/do-work/tools/do-work-cli/internal/publication/defer_gate.go
   - skills/do-work/tools/do-work-cli/internal/publication/defer_gate_test.go
   - skills/do-work/actions/work-reference.md
+claimed_at: 2026-09-05T12:00:55Z
 ---
 
 # Keep Every Lifecycle Stamp: No Transition Deletes an Existing `*_at` Field
