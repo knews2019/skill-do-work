@@ -3272,6 +3272,16 @@ func TestJavaScriptBehaviorVerifyFindingsBandRulesHideWhatIsNotBeingRead(t *test
 
 	// D2, closed: the subject list is the closed line and gives way to the rows,
 	// and the one control reads Show or Hide depending on which state it is in.
+	// The subject list is the only part of the closed line allowed to give way.
+	// The count is the one that fails first without this: the flex row shrinks it
+	// before anything else and prints "6" above "findings", which turns the
+	// one-line band into three the moment a queue carries a few findings.
+	countRule := sliceBalancedBlockAfter(t, indexHtml, ".board-findings-count {")
+	for _, wantDeclaration := range []string{"white-space: nowrap", "flex: none"} {
+		if !strings.Contains(countRule, wantDeclaration) {
+			t.Errorf("the counts wrap on a crowded closed line — %q missing from %q", wantDeclaration, countRule)
+		}
+	}
 	subjectListWhileOpenRule := sliceBalancedBlockAfter(t, indexHtml, ".board-findings-strip[open] .board-findings-subject-list {")
 	if !strings.Contains(subjectListWhileOpenRule, "display: none") {
 		t.Errorf("the closed line's subjects stay on screen while the rows are open: %q", subjectListWhileOpenRule)
