@@ -32,6 +32,8 @@ dispatch_at: 2026-09-05T12:06:43Z
 route: A
 builder_handback_at: 2026-09-05T12:29:52Z
 integration_at: 2026-09-05T12:29:52Z
+review_at: 2026-09-05T12:40:22Z
+commit: a2c6f4cf977f36217d21fe88c62810ec17d2afb4
 ---
 
 # Keep Every Lifecycle Stamp: No Transition Deletes an Existing `*_at` Field
@@ -158,4 +160,124 @@ Requirements traced: the suffix condition rather than a name list, recover keepi
 **Load note worth keeping:** the builder's first whole-module run reported three files over the 30-second per-file budget with no failing test — 42.63s, 40.25s and 32.75s — and the same three files came in at 22.78s and below on an immediate re-run. All three are untouched by this change. That is machine load from the parallel builders, not this diff, and it is the same shape the 5 September run record already documented.
 
 **Red-green validation** (traced to `## Red-Green Proof`): RED — `TestRecoverAndReclaimPreserveEveryLifecycleStamp` failed with one subtest per stamp, nine in all, each naming the field recover deleted and its original value, and the dumped post-recover document carried only the status fields; `TestDeferGateCreatePublishesOneAtomicDependencyLifecycle` failed at `defer_gate_test.go:39` with an empty claim stamp where the fixture had one. GREEN — both pass, every one of the nine stamps survives byte for byte, the status-change stamp is the recover instant, route and write set are gone, and a re-claim two hours later leaves the original claim stamp in place.
+
+
+## Review
+
+**Overall: 96%** | 2026-09-05T12:37:17Z
+
+| Dimension | Score |
+|-----------|-------|
+| Requirements | 100% |
+| Code Quality | 90% |
+| Test Adequacy | 95% |
+| Scope | 100% |
+| Risk | Low |
+| Acceptance | Pass |
+
+**Verdict: Approve with follow-ups.** Both deletion sites are gone, the rule is keyed on the `_at` suffix instead of a field list, and the two new tests fail when the old behavior is put back (verified independently by mutation, below). Three Important findings are all about the *statement* of the rule and its reach, not about the code that shipped.
+
+### Judgment on the three surviving deletions (asked explicitly)
+
+Faithful, not hollowing. Each of the three withdraws a stamp together with the state it describes, and none of them destroys timing history that nothing else holds — which is the harm UR-116 (the board card reading 1m 23s for six hours of work) set out to stop:
+
+- `heavy_verified_at` on re-claim goes with the `commit` it verified. Keeping it would leave a claim advertising heavy evidence for source a remediation already withdrew, which is a dependency-safety regression on a guard one day old (REQ-570, deleting the pending-heavy-testing status).
+- `blocked_at` on unblock goes with `blocked_by`. The pair is a live condition, not a phase observation; `status_changed_at` and the `## Blocked` history entry both keep the trace.
+- `completed_at` re-stamped on `failed` → `cancelled` was already documented, and the failure instant survives in the `## Cancelled` section's `Previously:` line.
+
+The request's own Context names only the two sites, and REQ-570's guard landed after the capture, so the builder is closing a gap in the request rather than narrowing it. Routing this to the user as a follow-up is the right call. **What is wrong is not the three exceptions but how they are written down** — see finding I2.
+
+### Findings
+
+**Important:**
+- Only `claimed_at` is structurally write-once. Every other lifecycle stamp is written by an agent following prose — `actions/work.md:199` (`planning_at`), `:284` (`dispatch_at`, `builder_handback_at`), `:312` (`integration_at`), `:378` (`review_at`, `remediation_at`, `re_review_at`) — and not one of those four instructions carries the "only when the field is absent" condition. `TransitionRecover` strips `route` and the generated sections, so a recovered Route C REQ is re-triaged and re-planned, and the agent then overwrites `planning_at` with the second attempt's instant. That is exactly the case the new schema paragraph names ("a phase re-entered after a recovery … writes its stamp only when the field is **absent**"), and it is the same class of evidence loss as REQ-505. The CLI cannot fix this alone; the four prose sites need the condition. — impact-user-visible → report only
+- The exception clause is a closed list, and it is already short. `work-reference.md:75` says "**Four** fields are documented exceptions" one sentence after correctly insisting "**The suffix is the condition**, never a list of today's fields". `testing_updated_at` is a fifth `*_at` field defined in the same schema (`work-reference.md:209`), overwritten on every board testing transition and removed outright by the clear action (`skills/do-work-board/tools/queue-kanban/testing.go:451,458`). It is arguably out of scope because the testing track is orthogonal to the work pipeline (`durations.go:168`) and the board is read-only toward it — but nothing in the paragraph or at the field says so, so the next writer reads a contradiction and either "fixes" the board or widens the rule. Re-key the exception clause on its condition (a stamp that carries current state rather than a phase observation is withdrawn with the state it describes; today those are …, illustrative) and mark `testing_updated_at` as outside the lifecycle. This is the project's own **Closed Enumerations Go Stale** rule applied to the exception list rather than to the rule. — impact-rule-change → report only
+- Stale restatement in the board's calibration-log probe. `skills/do-work-board/tools/queue-kanban/verify.go:1374` (doc comment) and `:1445` (the `Remedy` text a human reads out of `queue-kanban verify`) both name "a crash-recovery pass that cleared and re-stamped a claim" as one of the three legitimate reasons a `calibration-log.tsv` row can disagree with frontmatter. After this change recovery never clears or re-stamps `claimed_at`, so that cause is gone and a maintainer reconciling a row is sent to look for something that can no longer happen. The other two causes (the SessionStart repairer, `audit-archive-timestamps.sh --fix`) are still real. — impact-user-visible → report only
+
+**Minor:**
+- `internal/publication/answer.go:321-322` deletes `blocked_at` together with `blocked_by` on the stakeholder-terminal completion path. The schema's `blocked_at` exception is worded "removed together with `blocked_by` when an **unblock** clears the condition"; this path is a terminal stakeholder disposition, not an unblock. The deletion is correct behavior, the exception wording does not reach it. — impact-negligible → report only
+- `TransitionComplete`, `TransitionFail` and `TransitionCancel` all `SetScalar("completed_at", …)` unconditionally (`state_apply.go:623,635,650`). Only the failed → cancelled overwrite is documented as an exception; nothing guards the other two, so any future path that reaches a second terminal transition silently overwrites the first terminal instant without a reader noticing. `release_at` shows the shape a guard can take — `finalization_apply.go:447-449` refuses a different existing value. — impact-negligible → report only
+
+**Nit:**
+- The new comment in `next_selection.go:322-329` breaks mid-clause ("It is evidence of a *live* / claim only while the status still / says claimed"), a leftover of the comment-polish pass. Cosmetic only. — impact-negligible → report only
+
+### Independent verification of the three questions the orchestrator asked
+
+**The selector change does not weaken any real veto.** The `ALREADY-CLAIMED` veto runs at `next_selection.go:186`, *before* the `STATUS-NOT-PENDING` gate at `:240`. So for the case D-03 flags as its risk — a request carrying `claimed_at` under an unrecognized status such as a legacy `in-progress` — the request is still excluded, now by `STATUS-NOT-PENDING` instead of `ALREADY-CLAIMED`; only the exclusion code and its `ClaimEvidence` payload change, never the outcome. `status` has no default in the Schema Read Contract (`schema_normalization.go:30`), so an unrecognized value resolves to itself with a warning and can never resolve to `claimed`; the recognized non-pending holds (`blocked-archive-collision`, `blocked-dependency-cycle`) are excluded by the same gate. The checkpoint-writer branch is untouched and still vetoes on its own, which is what carries a live claim across checkouts. The one behavior that genuinely changes is the intended one: a `pending` request carrying a stamp is selectable again. The gate-deferral parent is unaffected in either direction — it never carried the stamp before (the deletion this REQ removed) and is held by `depends_on` on the repair, exactly as the new comment claims.
+
+**The reader sweep is complete for the readers that matter, and the builder's two specific claims check out.** The board's stale-claim probe (`verify.go:625` `appendClaimFindings`) walks `board.Columns.Claimed` only, so a recovered `pending` request carrying a stamp raises no finding — confirmed at the source. The calibration span is `claimed_at` → `completed_at` at both its writer (`state_plan.go:410-416`) and its independent proof (`finalization_discovery.go:429-438`); after a recover-and-re-claim it measures from the first claim, which the Builder Guidance states as the intended reading, and the calibration's own read-time rule excludes spans over four hours (`durations.go:32`, `actions/estimate-reference.md:92,98`) so an interrupted REQ drops out of the estimator corpus rather than skewing it. Two more readers the sweep did not name, both checked and both clean: `doctor`'s `STUCK-WORK` finding computes claim age from `claimed_at` but is gated on `TreeSection == "working"` (`doctor_scan.go:274`), so a recovered request in `queue/` never reaches it — though note that a *re-claimed* request in `working/` now reports its age from the first claim, which is the intended reading and not a defect; and `addStaleQueueFinding` reads `created_at`/`blocked_at` only. The board's completion-anomaly and `created_at ≤ claimed_at ≤ completed_at` ordering checks (`model.go:1466`, `verify.go:518`) get *safer* under an earlier kept stamp, never noisier.
+
+**Restatement Sweep — applied, one stale restatement found.** The redefined elements are (a) what a lifecycle transition may do to an `*_at` field and (b) what `claimed_at` means on a request that is not currently claimed. Swept: every `claimed_at` / `ClaimedAt` reader in Go across both modules, every `*_at` mention in shipped action prose, `docs/`, primes and `_dev/`, and every phrase pairing recovery with clearing or re-stamping. Verified as still correct: `actions/abandon.md:59`, `actions/estimate-reference.md:92,98`, `actions/work.md:537`, `work-reference.md:112` (`write_set` is not a stamp and recovery still clears it), `work-reference.md:254` and `:512`, `work-reference.md:403` (a concurrent double claim still writes two different values, because each side claims from a stamp-less pending file), `docs/work-guide.md:123,130`, `docs/board-guide.md:23,36,38`, `docs/forensics-guide.md:24,27`. Found stale: the calibration-probe pair above. The `CHANGELOG.md` entries that describe the old behavior (`:4254` and others) are historical record and correctly left alone. The requirement "delete any sentence there that says recovery strips phase observations" is vacuously satisfied — checked `git show cd686ed7:skills/do-work/actions/work-reference.md`, no such sentence existed.
+
+### Requirements Checklist
+
+- [x] Rule keyed on the `_at` suffix, not a name list — delivered (`setLifecycleStampWhenAbsent`, and the ten-name loop replaced by one `DeleteField("route")`, so no list survives to forget a field from)
+- [x] `TransitionRecover` keeps every existing `*_at` stamp — delivered, nine stamps pinned by subtest
+- [x] Recover still resets `status`, `status_changed_at`, `route`, `write_set`, generated sections — delivered, asserted in the same test
+- [x] `status_changed_at` still overwritten, named as the exception — delivered
+- [x] A re-claim keeps the first `claimed_at` — delivered, asserted at a re-claim two hours later
+- [x] Gate deferral leaves `claimed_at` on the parent — delivered, `defer_gate_test.go:35` now requires the original value
+- [x] Rule recorded in the Request File Schema beside the Timestamp rule — delivered (`work-reference.md:75`), with the exception-list caveat in finding I2
+- [x] Delete any sentence saying recovery strips phase observations — N/A, no such sentence existed at `cd686ed7`
+- [x] No new timing file, stream or writer — delivered
+- [x] Doctor stamp repair and `audit-archive-timestamps.sh` untouched — delivered, and the schema paragraph names the repair path as a non-transition
+- [x] `route` and `write_set` recover behavior unchanged — delivered (`write_set` still gated on a `## Scope` section)
+
+### Acceptance Testing
+
+**Result: Pass**
+
+- `go test -count=1 ./internal/requeststate/... ./internal/publication/... ./internal/nextselection/... ./internal/lifecycleadvance/... ./internal/doctor/...` — all five packages `ok` (7.0s / 21.0s / 3.3s / 24.3s / 4.5s). `lifecycleadvance` and `doctor` were added by this review because they hold the two readers most exposed to a kept stamp.
+- `TestRecoverAndReclaimPreserveEveryLifecycleStamp -v` — nine subtests, one per stamp, matching the builder's RED report field for field.
+- **Independent mutation check** (run on a scratch copy of the module, never in the checkout): restoring the ten-name deletion loop in `state_apply.go` fails the test with nine "recover deleted X" lines plus "re-claim overwrote the first claim"; restoring the unconditional `claimed_at` veto in `next_selection.go` fails `TestRecoveredRequestKeepingItsClaimStampStaysSelectable` with `ALREADY-CLAIMED` on REQ-705. Both new assertions are load-bearing, not decorative.
+- Cross-REQ test updates traced: all three changed assertions (`state_apply_test.go:228`, `defer_gate_test.go:35`, `next_selection_test.go:135`) name REQ-575 in a comment stating the behavior they now pin.
+- P-A-U boxes: all three `[x]`, and the `[UNIFY]` claims match the diff (7 files, +191/−14 in the merge range).
+
+### Suggested Additional Testing
+
+- Run one real recover-and-re-run of a Route C REQ end to end and read the board drawer: this is where finding I1 becomes visible, because the agent-written phase stamps are the ones with no write-once guard.
+- Open the board on a re-claimed REQ and confirm the Claimed-row stopwatch and the three-hour stale-claim finding now count from the first claim. That is intended, but it is the first time a live card will show it, and it is worth seeing once before it surprises someone mid-run.
+- Run `queue-kanban verify` on this repo after the next recovery and check that no new `calibration-log-mismatch` rows appear (none are expected — the row is written at completion from the same stamp that now survives).
+
+### Follow-ups created
+None (6 findings report only)
+
+**Important findings (each with its recorded impact token):**
+- Agent-written phase stamps (`work.md:199,284,312,378`) carry no write-once condition, so a re-run after recovery overwrites `planning_at` and its siblings — impact-user-visible → report only
+- The schema's exception clause is a closed list of four and already misses `testing_updated_at` (`work-reference.md:209`, `queue-kanban/testing.go:451,458`) — impact-rule-change → report only
+- `queue-kanban/verify.go:1374,1445` still name a crash-recovery claim re-stamp as a calibration-log mismatch cause that can no longer happen — impact-user-visible → report only
+
+**Minor findings:** `answer.go:321-322` deletes `blocked_at` outside an unblock, which the schema exception's wording does not reach — impact-negligible → report only; `completed_at` is written unconditionally on all three terminal transitions with no guard like `release_at`'s — impact-negligible → report only
+**Acceptance:** Pass — five packages green, both new tests proven mutation-sensitive on a scratch copy
+**Suggested testing:** 3 items
+**Follow-ups created:** None (6 findings report only)
+
+*Reviewed by review-work action*
+
+## Lessons Learned
+
+**What worked:** Keying the rule on the field-name suffix and then *deleting the list* rather than shortening it. Recover no longer has a stamp enumeration at all, so a stamp added to the schema next month is covered without anyone remembering to edit anything. The test does the same thing: it reads the stamp set out of the fixture by suffix, so it covers a future stamp too.
+
+**What didn't:** Changing the writer alone was not enough and would have shipped a one-way door. Keeping the claim stamp through recovery made the selector veto every recovered request as already-claimed, so recovery would have made a request permanently unselectable. An existing test in a third package caught it, not the new ones — which is the argument for running the whole module rather than the two packages the change names.
+
+**Worth knowing:** The exception list in the new schema paragraph is itself a closed enumeration, and the review found a fifth `*_at` field outside it within minutes. The durable form is the condition — a stamp that carries current state is withdrawn with the state it describes, a stamp that records a phase observation is never withdrawn — with today's fields as illustration. Also: only the claim stamp is structurally write-once. The other lifecycle stamps are written by an agent following prose in the work action, and none of those instructions carries the "only when absent" condition, so a recovered request that is re-planned still overwrites its planning stamp. That gap is the same class of evidence loss this request set out to stop, and it goes to the user with the exceptions question.
+
+## Orientation
+
+Lifecycle transitions no longer delete timestamps, so an interrupted request keeps the record of when its work actually started instead of reporting the last few minutes of it. Lives in the do-work-cli request-state subsystem (`skills/do-work/tools/do-work-cli/prime-do-work-cli.md`) with the rule stated once in the request file schema (`_dev/primes/prime-action-files.md`). [MAP CHANGED] — a frontmatter timestamp is now append-only by contract rather than by each writer's habit, and the selector's notion of a live claim moved from "the stamp exists" to "the status says claimed", which is what it always meant. Board-visible consequence: after a recovery and re-claim, the card's wall time and the drawer's Claimed row measure from the first claim. No prime was made stale; the schema section they both point at carries the new rule.
+
+## Heavy Verification Plan
+
+- **Base revision:** cd686ed76961be125db6d3fff214cac5800da819
+- **Target revision:** a2c6f4cf977f36217d21fe88c62810ec17d2afb4
+- **Planned at:** 2026-09-05T12:40:22Z, from `_dev/tests/heavy-lanes.json`
+
+| Lane | Argv | Why it was selected |
+| --- | --- | --- |
+| `do-work-cli-integrations` | `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane do-work-cli-integrations` | the change edits do-work-cli lifecycle state writers and the selector |
+| `staged-skills` | `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane staged-skills` | shipped action prose changed |
+| `updater` | `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane updater` | shipped package content changed |
+| `installer` | `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane installer` | shipped package content changed |
+
+No path was left uncovered by the manifest. The request stays `claimed` with its `commit:` landed until the queue-exhaustion drain.
 
