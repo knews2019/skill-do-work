@@ -52,14 +52,7 @@ func TestBlockedProbeTimeoutKillsDescendantGroup(t *testing.T) {
 		t.Fatal(readError)
 	}
 	pid, _ := strconv.Atoi(strings.TrimSpace(string(pidBytes)))
-	deadline := time.Now().Add(2 * time.Second)
-	for time.Now().Before(deadline) {
-		if syscall.Kill(pid, 0) != nil {
-			return
-		}
-		time.Sleep(20 * time.Millisecond)
-	}
-	t.Fatalf("descendant %d survived timeout", pid)
+	waitForDescendantToDisappear(t, pid)
 }
 
 func TestBlockedProbeCleansBackgroundDescendantAfterLeaderExits(t *testing.T) {
@@ -75,14 +68,7 @@ func TestBlockedProbeCleansBackgroundDescendantAfterLeaderExits(t *testing.T) {
 		t.Fatal(readError)
 	}
 	pid, _ := strconv.Atoi(strings.TrimSpace(string(pidBytes)))
-	deadline := time.Now().Add(2 * time.Second)
-	for time.Now().Before(deadline) {
-		if syscall.Kill(pid, 0) != nil {
-			return
-		}
-		time.Sleep(20 * time.Millisecond)
-	}
-	t.Fatalf("background descendant %d survived successful probe", pid)
+	waitForDescendantToDisappear(t, pid)
 }
 
 func TestBlockedProbeInterruptionIsTypedAndReapsDescendants(t *testing.T) {
@@ -131,14 +117,26 @@ func TestBlockedProbeInterruptionIsTypedAndReapsDescendants(t *testing.T) {
 	if outcome.status != 130 || !errors.As(outcome.err, &interruption) || interruption.InterruptionExitStatus() != 130 {
 		t.Fatalf("status=%d err=%T %v, want typed interruption 130", outcome.status, outcome.err, outcome.err)
 	}
-	deadline = time.Now().Add(2 * time.Second)
+	waitForDescendantToDisappear(t, pid)
+}
+
+// descendantReapBudget bounds the wait for a killed descendant to disappear. Its
+// own parent is already gone by then, so init does the reaping and a zombie still
+// satisfies kill(pid, 0) until it does. On a loaded machine that has been measured
+// close to two seconds, so the budget is deliberately generous: it proves the
+// descendant does not survive, and it is not a latency assertion.
+const descendantReapBudget = 10 * time.Second
+
+func waitForDescendantToDisappear(t *testing.T, pid int) {
+	t.Helper()
+	deadline := time.Now().Add(descendantReapBudget)
 	for time.Now().Before(deadline) {
 		if syscall.Kill(pid, 0) != nil {
 			return
 		}
 		time.Sleep(20 * time.Millisecond)
 	}
-	t.Fatalf("descendant %d survived interruption", pid)
+	t.Fatalf("descendant %d survived %s", pid, descendantReapBudget)
 }
 
 func runBlockedProbeFixture(repositoryRoot string, probeBytes []byte, timeoutSeconds int) (int, error) {
