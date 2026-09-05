@@ -2,6 +2,15 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.291.0 — A Release Refuses an Identity It Cannot Read (2026-09-05)
+
+Two release gates guessed instead of refusing. A Cargo or uv source took the first `name` it met, and an npm root lock counted only copies already holding the old version — so a stale mirror silently dropped out of the required set instead of failing. Both now refuse before any mutation.
+
+- `tomlUniqueSectionScalar` collects every declaration across the accepted sections and refuses unless exactly one parses as a quoted scalar.
+- `npmRootVersionCopies` decodes through `json.RawMessage`, so structural presence is the obligation; a present copy holding any other value refuses with its label and value.
+- On the old code all six new refusal fixtures reported success with a real commit, and with both root copies stale the lockfile vanished from the committed paths entirely.
+- A `pyproject.toml` declaring the same name under both `[project]` and `[tool.poetry]` is now refused even when the names agree. That shape appears mid-migration; it fails in the safe direction, but the manifest needs a hand edit before it can release.
+
 ## 0.290.0 — One Launcher Preamble, Sourced Everywhere (2026-09-05)
 
 Nine shipped shell files each hand-rolled the do-work-cli launcher resolution in one of two spellings, so nine copies could drift apart. One sourceable preamble now owns it, with its byte-identical mirror under `skills/do-work/tools/`.
