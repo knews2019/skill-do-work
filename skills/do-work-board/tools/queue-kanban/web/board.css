@@ -273,12 +273,21 @@ body.is-resizing-detail {
 
 /* One row that never wraps, so the bar keeps its height whatever the controls
    beside it do. Baselines rather than centres: the 18px wordmark and the 12px
-   project and clock sit on one writing line. */
+   project and clock sit on one writing line.
+
+   It keeps its natural width, because the controls beside it are the side that
+   gives (see `.board-controls` below). `min-width: 0` is the floor removal, not
+   the mechanism: it only matters if the identity alone were ever wider than the
+   bar, and it lets the project name ellipsise there instead of pushing the
+   controls off-screen, where `body { overflow: hidden }` puts them out of reach
+   with no scrollbar. That was the shape measured at 800px, where this bar's
+   content wanted 905px. */
 .board-identity {
   display: flex;
   align-items: baseline;
   gap: 8px;
   white-space: nowrap;
+  min-width: 0;
 }
 
 .board-identity-dot {
@@ -307,6 +316,12 @@ body.is-resizing-detail {
   font-weight: 500;
 }
 
+/* The one part of the identity that may be arbitrarily long — every other part is
+   fixed text — so it is the one part with a ceiling. Past it the name truncates
+   with an ellipsis instead of widening the nowrap line until the controls run off
+   the viewport, where `body { overflow: hidden }` puts them out of reach with no
+   scrollbar. The cap is generous enough that this repo's own name, and any name of
+   ordinary length, is never touched. */
 .board-project {
   margin: 0;
   font-size: 12px;
@@ -314,6 +329,9 @@ body.is-resizing-detail {
   color: var(--ink-strong);
   font-family: var(--font-mono);
   letter-spacing: 0.01em;
+  max-width: 28ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* The whole stamp — "Generated <date> <time> UTC" plus the age board.js keeps
@@ -333,12 +351,39 @@ body.is-resizing-detail {
   border: 0;
 }
 
+/* `flex: 1 1 0` is what makes the controls the side that gives. Their natural flex
+   base is their UNWRAPPED width — every group on one line, far wider than the bar —
+   so with an auto basis the row is always in deficit and flexbox shrinks the
+   identity too, ellipsising a project name that had room beside it. A zero basis
+   makes them take the space the identity does not want and wrap inside it, which is
+   what they already do. Row axis only: the stacking block below restores an auto
+   basis, where `1 1 0` would be a zero HEIGHT. */
 .board-controls {
   display: flex;
   align-items: center;
   gap: 18px;
   flex-wrap: wrap;
   justify-content: flex-end;
+  flex: 1 1 0;
+}
+
+/* Below this width the identity and the controls no longer fit beside each other,
+   so the bar stacks and both stay reachable. It used to stack only below 761px,
+   which left the whole 761-999px band laying them out side by side and clipping
+   whatever ran past the viewport. 999px is the width the durations chart already
+   collapses at, reused rather than inventing a second desktop breakpoint. The
+   one-line bar is a wide-screen affordance; the stacked bar is the correct layout
+   here, not a fallback. */
+@media (max-width: 999px) {
+  .board-topbar {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+  .board-controls {
+    justify-content: flex-start;
+    flex: 0 1 auto;
+  }
 }
 
 .control-group {
@@ -2215,15 +2260,9 @@ body.is-resizing-detail .detail-resizer::before {
   }
 }
 
+/* The top bar's own stacking lives beside the top bar rules, at 999px — this block
+   is for what only a phone-width viewport needs. */
 @media (max-width: 760px) {
-  .board-topbar {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 12px;
-  }
-  .board-controls {
-    justify-content: flex-start;
-  }
   .calendar-day {
     grid-template-columns: 1fr;
     gap: 10px;

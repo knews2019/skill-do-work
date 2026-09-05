@@ -2,6 +2,14 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.303.10 — The Top Bar's Controls Stay On Screen at Narrower Widths (2026-09-05)
+
+Making the identity one unwrapping line (0.299.0) also gave it a minimum width, and on a window between roughly 760px and 1000px wide that pushed the filters and view buttons past the right edge. The page hides horizontal overflow, so there was no scrollbar to reach them — measured at 800px, the bar's contents wanted 905px and the last 105px were simply gone.
+
+- The bar now stacks the identity above the controls below 1000px, where it used to stack only below 760px, so both halves stay reachable across that whole band.
+- A project directory name longer than the line can carry truncates with an ellipsis instead of pushing the controls off-screen, and the controls take whatever width the identity does not want.
+- Above 1000px the bar is the same single line 0.299.0 delivered; a browser probe measures both widths, so neither can be fixed at the other's expense.
+
 ## 0.303.9 — A Blocked Request No Longer Strands the Ones Behind It (2026-09-05)
 
 The last two findings of the same review that produced 0.303.5. Both are cases where one item's problem was silently applied to everything after it.
