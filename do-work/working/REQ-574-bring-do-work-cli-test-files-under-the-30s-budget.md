@@ -30,8 +30,8 @@ claimed_at: 2026-09-05T09:44:40Z
 write_set:
   - skills/do-work/tools/do-work-cli/internal/corehelpers/inventory_test.go
   - skills/do-work/tools/do-work-cli/internal/publication/defer_gate_test.go
-  - skills/do-work/tools/do-work-cli/internal/finalization/finalization_recovery_test.go
-  - skills/do-work/tools/do-work-cli/internal/finalization/finalization_req499_test.go
+  - skills/do-work/tools/do-work-cli/internal/publication/publication_commands_test.go
+  - skills/do-work/tools/do-work-cli/internal/finalization/finalization_commands_test.go
 route: C
 ---
 
@@ -115,10 +115,46 @@ The cost is process spawning, not computation. Every case builds a real git repo
 
 - `skills/do-work/tools/do-work-cli/internal/corehelpers/inventory_test.go`
 - `skills/do-work/tools/do-work-cli/internal/publication/defer_gate_test.go`
-- `skills/do-work/tools/do-work-cli/internal/finalization/finalization_recovery_test.go`
-- `skills/do-work/tools/do-work-cli/internal/finalization/finalization_req499_test.go`
+- `skills/do-work/tools/do-work-cli/internal/publication/publication_commands_test.go`
+- `skills/do-work/tools/do-work-cli/internal/finalization/finalization_commands_test.go`
+
+**Scope corrected during implementation, before any code was written to the two new files.** The first declaration named the four *slow* files. The fixtures those files spend their time in are not declared there: `newFinalizationRepository` lives in `finalization_commands_test.go` and `runGitFixture` in `publication_commands_test.go`, and both are shared by their whole package. Changing the fixture where it is defined reaches every caller at once, so `finalization_recovery_test.go` and `finalization_req499_test.go` get faster without being edited at all. Editing them instead would have meant copying a fixture into two files that already share one.
 
 **Acceptance criteria:**
 
 1. Each of the four files finishes well under the 30s per-file budget in the canonical gate, with enough headroom that a concurrent second gate does not push it over.
 2. Every test still runs unskipped, and no assertion is removed, loosened, or moved to another file.
+
+## Implementation Summary
+
+**Files changed:** 4, all test code. Implementation branch `worktree-agent-REQ-574-test-file-budget` at `ebe134f6`, merged `--no-ff` at `50569e88`; range `982e94f0..50569e88`.
+
+| Verb | Path | What changed |
+|---|---|---|
+| modify | `internal/corehelpers/inventory_test.go` | `runRetainedInventory` resolves the do-work-cli executable once per test binary and runs it directly with the argv and environment `uncommitted-inventory.sh` would have used, instead of paying two shells and two Go-toolchain probes per synthetic case. Callers passing a nil status still go through the shim. |
+| modify | `internal/finalization/finalization_commands_test.go` | New `TestMain` builds one initialized, configured, empty repository for the binary; `newFinalizationRepository` copies it instead of running `git init` and two `git config`. `.git/hooks` is recreated empty because `--template=` omits it and one test writes a real pre-commit hook there. |
+| modify | `internal/publication/publication_commands_test.go` | New `TestMain` and `buildDeferGateRepositoryTemplate` build both defer-gate baselines — with and without a second parent request — once for the binary. |
+| modify | `internal/publication/defer_gate_test.go` | `newDeferGateRepository` copies the matching template and keeps the parent claim, which is plain file I/O. Its seven git commands are gone. |
+
+No assertion was added, removed, reworded, or moved to another file, and no file was split.
+
+## Testing
+
+**Like-for-like, `_dev/tests/run-go-tests-with-budget.sh` over the whole module, same machine, before at `9f914188` and after at the merge:**
+
+| file | before | after | headroom after |
+|---|---|---|---|
+| `internal/publication/defer_gate_test.go` | 26.23s | 20.89s | 9.11s |
+| `internal/finalization/finalization_recovery_test.go` | 26.16s | 24.34s | 5.66s |
+| `internal/corehelpers/inventory_test.go` | 24.13s | 20.77s | 9.23s |
+| `internal/finalization/finalization_req499_test.go` | 22.96s | 22.11s | 7.89s |
+
+Worst-file headroom against the 30s limit: 3.77s before, 5.66s after. Module wall time 65s before, 61s after, 772 tests both times.
+
+Run per package instead of against the whole module the same files drop further — `inventory_test.go` 17.25s to 11.04s, `defer_gate_test.go` 22.95s to 14.79s, `finalization_req499_test.go` 25.30s to 18.32s, `finalization_recovery_test.go` 19.87s to 14.21s. The smaller whole-module gain is contention: `go test ./...` runs packages concurrently, so CPU freed in one package is taken immediately by another.
+
+- `DO_WORK_HEAVY_TESTS=1 go test -count=1 ./...` — exit 0, 30 packages, 772 tests, none skipped.
+- `gofmt -l .` — no output. `go vet ./...` — clean, exit 0.
+- Two intermediate failures were found and fixed, not worked around: removing `t.Setenv` broke the in-process `readInventory`, which needs the fake git on the process PATH, so that approach was reverted rather than patched; and `git init --template=` omits `.git/hooks`, which `TestRecoverFinalizationResumesAfterRealPreCommitHookFailure` writes into.
+
+**Acceptance criterion 1 is met for a single gate and not met for two concurrent gates.** Every file is under the limit with 5.66s to 9.23s of room, against 3.77s before. Two full gates sharing 8 cores roughly double every wall time, which is how the same files were recorded at 37-60s earlier the same day; no change to test fixtures survives that, because the remaining cost is the production finalization code doing real git work, which these tests exist to exercise. Making that case safe is a scheduling decision — not running two gates at once, or bounding `GOMAXPROCS` — and it belongs outside a test-speed repair.
