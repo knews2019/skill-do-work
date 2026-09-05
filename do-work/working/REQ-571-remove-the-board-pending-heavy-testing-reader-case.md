@@ -1,7 +1,7 @@
 ---
 id: REQ-571
 title: '[impact-negligible] Remove the board''s pending-heavy-testing reader case'
-status: pending
+status: claimed
 created_at: 2026-09-04T22:52:00Z
 user_request: UR-114
 domain: general
@@ -23,6 +23,7 @@ write_set:
   - skills/do-work-board/tools/queue-kanban/timeline_test.go
   - skills/do-work-board/tools/queue-kanban/web/board-calendar.js
   - skills/do-work-board/tools/queue-kanban/prime-do-kanban.md
+claimed_at: 2026-09-05T00:38:07Z
 ---
 
 # Remove the Board's pending-heavy-testing Reader Case
