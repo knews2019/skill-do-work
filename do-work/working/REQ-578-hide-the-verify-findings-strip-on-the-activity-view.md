@@ -17,6 +17,8 @@ write_set:
   - skills/do-work-board/tools/queue-kanban/web/template.html
   - skills/do-work-board/tools/queue-kanban/javascript_behavior_c_test.go
 claimed_at: 2026-09-05T12:00:56Z
+dispatch_at: 2026-09-05T12:06:43Z
+route: A
 ---
 
 # Hide the Verify-Findings Strip on the Activity View
@@ -57,3 +59,19 @@ The user is certain about the outcome. Keep it to the view switch plus one test;
 - `_dev/primes/lessons-kanban-board.md` (4820 tokens, `slugged: partial`): matches on "Changing queue-kanban views". Over the budget on its own.
 
 *Source: "remove verify finding from this view"*
+
+---
+
+## Triage
+
+**Route: A** - Simple
+
+**Reasoning:** One view-switch rule in a named file (`board-controls.js`), one template comment, one Node behavior test, all three declared in the write set, with a captured RED/GREEN pair. No discovery needed.
+
+**Planning:** Not required
+
+## Plan
+
+**Planning not required** - Route A: direct to builder
+
+*Skipped by work action*

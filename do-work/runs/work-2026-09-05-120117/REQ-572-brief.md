@@ -1,3 +1,66 @@
+# Builder brief — REQ-572
+
+## Where you work
+
+- **Your worktree (cd here first):** `/Users/t2/Desktop/e1-experimental-repos/skill-do-work2/.git/work-run-20260905-1201/worktree-agent-REQ-572-activity-rows`
+- **Your branch (already checked out there):** `worktree-agent-REQ-572-activity-rows`
+- **Route:** B
+- **Base commit:** 09a13839 (main)
+
+You are the builder. The orchestrator runs in the main checkout at `/Users/t2/Desktop/e1-experimental-repos/skill-do-work2` and is the only writer of `do-work/`. Commit your work on your own branch in your own worktree and hand back a manifest; the orchestrator merges.
+
+## Never touch
+
+- Anything under `do-work/` — with exactly one exception, the hand-back file named below, which you write by its absolute main-tree path and never stage or commit.
+- `CHANGELOG.md`, `skills/do-work/CHANGELOG.md`, `VERSION`, `skills/do-work/VERSION` — release paths owned by finalization.
+- Any file outside the write set declared in the REQ below. If you need one, stop and report it to the orchestrator in the hand-back instead of writing it, unless the REQ's own requirements already demand that file class (then flag the contradiction and proceed).
+- Do not run `bash _dev/tests/maintainer-verify.sh` (the repository gate). The orchestrator owns it and concurrent runs corrupt each other's timing budgets. Run only the focused tests named below.
+
+## Rules to load and follow (read these first, from your worktree)
+
+- `/Users/t2/Desktop/e1-experimental-repos/skill-do-work2/skills/do-work/crew-members/general.md`
+- `/Users/t2/Desktop/e1-experimental-repos/skill-do-work2/skills/do-work/crew-members/coding-guardrails.md`
+- `/Users/t2/Desktop/e1-experimental-repos/skill-do-work2/skills/do-work/crew-members/shared-principles.md`
+- `/Users/t2/Desktop/e1-experimental-repos/skill-do-work2/skills/do-work/crew-members/communication-style.md`
+- `/Users/t2/Desktop/e1-experimental-repos/skill-do-work2/skills/do-work/crew-members/testing.md` (the REQ is `tdd: true`)
+
+Also read every path in the REQ's `prime_files`, and the `lessons-<name>.md` satellite beside each prime whose Read-first or Traps entries your change touches.
+
+## P-A-U phasing (mandatory, reported in the hand-back)
+
+The REQ file is the orchestrator's, so report your P-A-U record under a `## P-A-U` heading in the hand-back instead of ticking boxes in the REQ:
+- **[PLAN]** — brief technical approach, written before code.
+- **[APPLY]** — code exactly as planned, strictly inside the declared write set.
+- **[UNIFY]** — run `git diff --stat`, run the native linters (`gofmt -l .`, `go vet ./...` for Go changes), verify no debug artifacts (`console.log`, `debugger`, stray `TODO`) in added lines, and list each file you checked and what you checked.
+
+## Focused tests
+
+Every test-file invocation must finish in under 30 seconds. Use:
+- Go: `bash _dev/tests/run-go-tests-with-budget.sh skills/do-work-board/tools/queue-kanban ./...`
+- Node lane: the same wrapper with `QUEUE_KANBAN_JAVASCRIPT_PROBES=on QUEUE_KANBAN_STRICT_JAVASCRIPT_BEHAVIOR=1 -run '^TestJavaScriptBehavior'`
+
+## Hand-back (write this file, then stop)
+
+Write **`/Users/t2/Desktop/e1-experimental-repos/skill-do-work2/do-work/runs/work-2026-09-05-120117/REQ-572-handback.md`** using that absolute path — it is the one main-tree path you may write, and you must never stage or commit it.
+
+It must contain, each under its own `##` heading:
+- `## Branch` — the branch name and the head commit you left on it.
+- `## File manifest` — every source file created/modified/deleted with the verb, plus tests touched.
+- `## P-A-U` — the three phases above.
+- `## Test evidence` — every command you ran, its exit status, and for a `tdd: true` REQ the RED observation (test name + failure) and the GREEN observation.
+- `## Lesson evidence` — each `required_lessons` entry you read (whole-satellite or family-targeted) and any listed path that was missing.
+- `## Decisions` — significant choices as `D-NN`, each with reasoning. Mark a reversible low-reach choice DECIDE & STATE; mark an irreversible, taste-dependent or contestable one ESCALATE and add `Value:` and `Risk:` lines.
+- `## Discovered Tasks` — out-of-scope findings. Do not fix them inline.
+- `## Integration seams` — any exact line that belongs in a file outside your write set, with where it goes. The orchestrator applies it.
+
+This REQ was built once already: builder branch content was merged at `fbdcd35e` and that merge is still an ancestor of main, so most or all of the change may already be present in the files you are about to read. The saved-range resume proof was rejected because REQ-571 and REQ-576 later committed to the same files, so nothing about the prior work may be assumed. **Start by reading the current state of the six Scope files and checking each acceptance criterion against it.** Where a criterion already holds, say so in the hand-back with the evidence (the code line, the test name). Where it does not, implement it. An empty diff is a legitimate outcome only if you can show every acceptance criterion holds and every listed test passes; say that explicitly rather than committing nothing silently.
+
+The REQ's `## Exploration` findings below were written against the pre-REQ-571/576 tree, so treat them as a map, not as fact.
+
+---
+
+# The request
+
 ---
 id: REQ-572
 title: 'Show every lifecycle transition of a REQ as its own Activity row'
@@ -32,7 +95,7 @@ estimate:
     - 4 acceptance criteria
     - browser evidence
     - cross-route regression gates
-dispatch_at: 2026-09-05T12:06:43Z
+dispatch_at: 2026-09-04T23:29:19Z
 builder_handback_at: 2026-09-04T23:41:02Z
 integration_at: 2026-09-04T23:41:59Z
 gate_deferred: 'true'
@@ -185,3 +248,4 @@ Requirements traced: one row per stamp (loop), newest first with deterministic t
 - **Diagnostic evidence:** "detached diagnostic worktree at base 7ad53bff (clean tree): FAIL: internal/publication/defer_gate_test.go accumulated 32.52s; each test file must finish under 30s; every test passed; queue-kanban 24s"
 - **Implementation base:** 7ad53bff1d867f1453e1e7765e988dedb308e7e1
 - **Implementation merge:** fbdcd35e0908aca6a01f554cc9b7fd7c85347a49
+
