@@ -2,6 +2,16 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.293.0 — A Run Can Say Where Its Time Went (2026-09-05)
+
+A finished request could report how long it took but not why. A flat timing stream now attributes one request's elapsed time to its major stages and to the commands that materially contribute wall time, and folds one compact `## Timing` section into the archived record.
+
+- The stream is JSON lines under the Git common directory, so every linked worktree shares it and nothing can be staged. It is deleted once folded.
+- `run-timed-command` measures a child in-process and exits with its status, including 128 plus the signal number when one is killed.
+- Nothing in the model refers to another event, so totals are a sum over independent rows and the gaps between them are the unattributed time. A wrapped command derives its start from its own launch, so the wait before it stays honestly unattributed instead of being absorbed.
+- Deliberately not built, because the requirements forbid it: nesting, exclusive time, a critical path, overlap and parallelism metrics. The request's filename says otherwise; its requirements and the user's own later decision do not.
+- Two of the ten named categories are wired so far; the rest are recorded as follow-up work rather than left to look covered.
+
 ## 0.292.0 — Card Wall Time Starts Where the Work Started (2026-09-05)
 
 A completed card measured from `claimed_at`, so a request whose claim stamp was rewritten late reported a span that excluded all of its phase work. One request read 1m 23s for 6h 11m of real work. The span now opens at the earliest lifecycle stamp the request carries and still ends at `completed_at`.

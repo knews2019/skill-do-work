@@ -27,7 +27,6 @@ session_depth: light
 
 
 
-- REQ-562: Addendum: record lightweight per-REQ lifecycle timings — claimed 2026-09-05T00:33:24Z — writer: vm:/home/user/skill-do-work
 
 
 
