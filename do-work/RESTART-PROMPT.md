@@ -131,5 +131,10 @@ refusal is the only assertion that the integration actually happened.
 - **A pre-existing intermittent:** `TestLaneMutationCannotPublishOrReuseSuccess/commit=true` failed
   once in four full-gate runs and passes 6/6 in isolation at both revisions. Independently judged
   pre-existing by the reviewer, not caused by REQ-591. If you see it, it is known.
+- **One line of the REQ-591 exploration is wrong and is corrected in place.** Its section 8 says
+  `/usr/bin/time -p` under-reports process-tree CPU and that bash's `time` keyword is needed. That
+  did not reproduce — both agree, including on the toolchain case that matters. An orchestrator
+  correction with the numbers is appended to `do-work/runs/work-2026-09-05-170806/REQ-591-exploration.md`.
+  Do not build a measurement protocol on the original claim.
 - **REQ-556's own baseline is stale** (9 claimed, 7 actual). Re-verify before building, and expect
   to record the new baseline in the lock-in rather than the request's number.

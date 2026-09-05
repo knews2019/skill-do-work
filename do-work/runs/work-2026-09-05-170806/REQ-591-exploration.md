@@ -912,3 +912,27 @@ the last sentence: my numbers above come from a loaded window and are labelled a
 Not recommended as acceptance evidence, though it is a real ~10 s win: moving the four serial
 owner contracts into the parallel probe batch. Requirement 5 rules out concurrency alone as
 acceptance, and it would make the aggregate lane's contention worse before reuse lands.
+
+---
+
+## Orchestrator correction (added after the run, 2026-09-06)
+
+**Section 8's claim that `/usr/bin/time -p` under-reports process-tree CPU, and that bash's `time`
+keyword is needed instead, did not reproduce.** Both instruments were tested on this machine, on a
+synthetic grandchild-behind-a-subshell case and on the real case this request cares about — a
+`go tool -C <fresh module copy> -n do-work-cli`, which is where the SessionStart probe's cost lives:
+
+| case | `/usr/bin/time -p` | bash `time` |
+|---|---|---|
+| ~0.4s CPU burned in a grandchild behind a subshell | real 0.40, user 0.39, sys 0.01 | real 0.448, user 0.433, sys 0.012 |
+| toolchain resolution in a fresh module path | real 1.63, **user 3.77**, sys 1.10 | real 1.117, **user 3.546**, sys 0.840 |
+
+Both capture the toolchain's parallel CPU, and they agree. So a measurement protocol must not be
+built on the premise that one of them is blind — pick either.
+
+That leaves the anomaly the hand-back recorded genuinely open: timing the SessionStart probe as a
+whole reported user 0.28s / sys 1.25s before the change and 0.47s / 0.68s after, which cannot be
+reconciled with seven toolchain resolutions at ~3.5s user each. The hand-back declared it
+unavailable rather than guessing, and `## Testing` in the request keeps that wording. It is a
+question about how that one probe's own process tree is accounted, not about the timing tool, and
+it does not affect the wall-clock comparison the acceptance rests on.
