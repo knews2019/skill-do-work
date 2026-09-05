@@ -27,6 +27,7 @@ estimate:
   basis:
     - trivial short-circuit
 dispatch_at: 2026-09-05T13:26:18Z
+builder_handback_at: 2026-09-05T13:46:18Z
 claimed_at: 2026-09-05T13:24:34Z
 ---
 
