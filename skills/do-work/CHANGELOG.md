@@ -2,6 +2,14 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.303.2 — Each Verify Finding Reads as One Warning Line (2026-09-05)
+
+The board's Verify Findings strip had turned its rows into paragraphs: the detail, an arrow and the remedy ran together and wrapped under the category chip, and the subject heading sat at a size of its own. A warning you have to read instead of scan is a warning that gets skipped.
+
+- Each finding is now a chip, one detail line, and the remedy on its own line beneath it; the chip and the text sit on a two-column grid, so a long remedy wraps inside its column instead of under the chip.
+- Subject, chip and row text share one type scale, with the subject in the mono face because it is an identifier.
+- A finding's detail no longer opens by repeating the subject its heading already names; the terminal `verify` report prints the subject itself, so its lines still say what they are about.
+
 ## 0.303.1 — Archived Lesson Links Follow Their Records Again (2026-09-05)
 
 Closing a user request moves its records into the request's folder, and a lesson link that named the old flat path goes stale the moment it does. This is the second time today; the fix is the same and the sweep that finds it is now written down beside the rule.
