@@ -26,7 +26,6 @@ session_depth: light
 
 
 
-- REQ-544: [impact-critical] Anchor every lifecycle gate that reads caller-authored text — claimed 2026-09-05T00:33:24Z — writer: vm:/home/user/skill-do-work
 
 - REQ-562: Addendum: record lightweight per-REQ lifecycle timings — claimed 2026-09-05T00:33:24Z — writer: vm:/home/user/skill-do-work
 

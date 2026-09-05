@@ -2,6 +2,16 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.289.0 — A Marker Only Counts Where a Writer Can Put One (2026-09-05)
+
+`do-work answer` decided a terminal status, deleted `blocked_by`, and archived a stakeholder request on finding a token anywhere in prose the caller wrote. It now reads each marker only at a position a writer can occupy, so "still not resolved" and "no code review yet" no longer close a request.
+
+- The evidence region ends at the first line opening a Markdown block construct, tested through CommonMark's punctuation class rather than a list of fence spellings, so an unfamiliar fence character still fences. The region ends rather than toggling, so an unclosed fence cannot hand the rest back as readable.
+- Indentation is measured before any trim. Trimming first destroyed the bytes that constitute the structure, which is what let an indented code block through.
+- A `## Reports` path must be a whole entry field, bare, link-wrapped or backticked, so a `.bak` sibling stays refused in every skin.
+- **This fixes a shipped instruction that could not be followed.** The canonical `**No changes needed.**` form that `stakeholder-answers.md` Step 5 prescribes was itself refused before this change.
+- 46 payloads through the built binary: 33 forgeries refused, 13 controls accepted.
+
 ## 0.288.1 — Reference Keeps Only What No Test Owns (2026-09-05)
 
 `work-reference.md` drops the sections whose contract a Go behavior test now enforces, so the prose a reader has to trust is smaller and none of it competes with a command. Every deletion names the test that owns what it said; a section with no owning test stays, which is why worktree dispatch survives intact — the CLI implements no verb for it.
