@@ -1,7 +1,7 @@
 ---
 id: REQ-579
 title: 'Render verify findings and skipped probes as compact rows in one list'
-status: pending
+status: claimed
 created_at: 2026-09-05T00:19:58Z
 user_request: UR-118
 domain: frontend
@@ -20,6 +20,7 @@ write_set:
   - skills/do-work-board/tools/queue-kanban/generate.go
   - skills/do-work-board/tools/queue-kanban/javascript_behavior_c_test.go
   - skills/do-work-board/tools/queue-kanban/verify_test.go
+claimed_at: 2026-09-05T12:21:55Z
 ---
 
 # Render Verify Findings and Skipped Probes as Compact Rows in One List
