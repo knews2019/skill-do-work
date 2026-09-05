@@ -39,6 +39,11 @@ func handleAdvance(executionContext commandruntime.ExecutionContext, arguments [
 	if len(arguments) == 1 && arguments[0] == "--checkpoint" {
 		return handleAdvanceCheckpoint(executionContext)
 	}
+	// A frozen continuation remains queue work after its first target is claimed.
+	// Use the queue parser so gate option values and child argv cannot select it.
+	if options, err := parseQueueAdvanceOptions(arguments); err == nil && options.continuation {
+		return handleQueueAdvance(executionContext.RepositoryRoot, arguments)
+	}
 	if len(arguments) >= 1 && advanceRequestIDPattern.MatchString(arguments[0]) {
 		snapshot, discoveryError := discoverAdvanceRepository(executionContext.RepositoryRoot)
 		if discoveryError != nil {
