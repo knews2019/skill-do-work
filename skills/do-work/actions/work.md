@@ -24,7 +24,7 @@ This living log is also the **trail of intent**. The REQ starts as a validated s
 
 ## Architecture
 
-The per-REQ orchestration pipeline (triage → estimate → plan/explore → implement → qualify → test → review → prepare → finalize) is diagrammed in `actions/work-reference.md` → **Architecture**. The orchestrator owns judgment and authored evidence; canonical commands own deterministic lifecycle, checkpoint, archive, release, and commit mutations.
+The per-REQ orchestration pipeline (triage → estimate → plan/explore → implement → qualify → test → review → prepare → finalize) and the command that owns each deterministic mutation are mapped in `actions/work-reference.md` → **Architecture**. The orchestrator owns judgment and authored evidence; canonical commands own deterministic lifecycle, checkpoint, archive, release, and commit mutations.
 
 > **Remember:** Every completed request gets a git commit (Step 9) before looping to the next request.
 
