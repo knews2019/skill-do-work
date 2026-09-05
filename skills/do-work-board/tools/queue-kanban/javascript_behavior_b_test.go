@@ -1522,7 +1522,8 @@ func TestJavaScriptBehaviorTimelineSummaryCountsRowsDrawnAsBreaks(t *testing.T) 
 function timelineSummaryWithFilter(visibleIds) {
   [
     "timeline-summary", "timeline-axis", "timeline-scroll", "timeline-readout",
-    "timeline-table-body", "timeline-forecast", "timeline-excluded", "timeline-period-state"
+    "timeline-table-body", "timeline-forecast", "timeline-excluded", "timeline-period-state",
+    "board-main"
   ].forEach(function (hostId) { timelineStubHosts[hostId] = makeStubNode("div"); });
   timelineStubVisibleIds = visibleIds;
   renderTimelineView();

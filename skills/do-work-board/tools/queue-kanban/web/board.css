@@ -2614,10 +2614,55 @@ body.is-resizing-detail .detail-resizer::before {
 }
 
 /* ---- timeline view ------------------------------------------------------
-   One bar per REQ the visible time window covers. Rows are virtualized, so .timeline-scroll
-   is the scroll container and the SVG inside it is full height while only the
-   visible rows carry nodes. Everything is drawn in CSS pixels with no viewBox,
-   which is what keeps a pointer's x equal to a plot x at every zoom level. */
+   One bar per REQ the visible time window covers. .board-main is the only scroll
+   surface on this view (REQ-587): .timeline-scroll used to be a 58vh overflow box
+   nested inside the board's own scroll container, so the view carried two
+   scrollbars and the wheel moved whichever one the pointer happened to be over.
+   The rows are still virtualized and the SVG inside .timeline-scroll is still
+   full height while only the visible rows carry nodes — what changed is which
+   element's scroll position that range is computed from, which is now the board's
+   minus the rows box's offset inside it (web/board-timeline.js, rowsScrollTop).
+   .timeline-axis is sticky against the board so the dates stay readable while the
+   rows pass under them. Everything is drawn in CSS pixels with no viewBox, which
+   is what keeps a pointer's x equal to a plot x at every zoom level. */
+
+/* A sticky element pins to its scroll container's CONTENT box, so the board's own
+   24px top padding would be a band the rows scroll through above the axis in
+   plain sight — REQ-585 measured two rows in exactly that band on the Activity
+   view. The padding therefore comes off the board and goes onto whatever the
+   reader actually sees first. That is not always the view panel: the data-warnings
+   banner, the notes details, the completion-anomalies strip and the verify-findings
+   strip all sit outside the view panels and all can precede it, and none of them
+   has a top margin. Keyed on "the first child that is not hidden" rather than on a
+   list of those four, because which of them exist is a property of the queue's data
+   and a hand-maintained list would go stale — the warnings banner is not even in
+   template.html, board-cards.js inserts it as the board's first child.
+
+   margin-top, not padding-top: the strips have a border and a tint, so padding
+   would open a gap INSIDE the coloured box. .board-main has overflow-y: auto,
+   which establishes a block formatting context, so the margin cannot collapse
+   through into the board.
+
+   The arithmetic is a no-op today in both arrangements. With a strip: 24 (this
+   margin) → strip → 20 (the strip's own bottom margin) → view → 16
+   (.timeline-intro), which is what 24 (board padding) → strip → 20 → view → 16
+   already gave. Without one: 24 → view → 16 = the same 40px above the heading.
+   Below the 760px breakpoint the board's own padding is 18px, so the first
+   element gains 6px there; one rule is worth more than tracking six pixels per
+   breakpoint, which is the trade REQ-585 made for the same reason. */
+.board-main:has(> #view-timeline.is-active) {
+  padding-top: 0;
+}
+
+.board-main:has(> #view-timeline.is-active) > :not([hidden]) {
+  margin-top: 24px;
+}
+
+/* And zeroed again on anything a visible sibling already precedes, so exactly one
+   element carries the moved padding however many strips are on screen. */
+.board-main:has(> #view-timeline.is-active) > :not([hidden]) ~ :not([hidden]) {
+  margin-top: 0;
+}
 
 .timeline-intro {
   padding: 16px 24px 0;
@@ -2826,6 +2871,22 @@ body.is-resizing-detail .detail-resizer::before {
   padding: 8px 24px 0;
 }
 
+/* The dates the bars are read against, pinned to the board's top edge so they
+   stay legible however far down the chart the reader has scrolled (REQ-587).
+   The background is --bg-base, the <body> token, NOT a --surface-* one: the
+   chart's own box and its SVGs are transparent, so a surface token would paint a
+   visibly tinted strip over an untinted chart — the defect REQ-321 and REQ-346
+   each paid for once. The 1px rule below the axis used to be .timeline-scroll's
+   border-top; it renders as the same pixel in the same place, but on the element
+   that stays on screen rather than on the one that scrolls away underneath it. */
+.timeline-axis {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--bg-base);
+  border-bottom: 1px solid var(--line-soft);
+}
+
 .timeline-axis-svg,
 .timeline-rows-svg {
   display: block;
@@ -2892,12 +2953,16 @@ body.is-resizing-detail .detail-resizer::before {
   fill: var(--timeline-projected);
 }
 
+/* Named for the box it used to be, like .activity-table-scroll next door. It no
+   longer scrolls — the board does (REQ-587) — and BOTH overflow declarations had
+   to go, not only overflow-y: a `visible` paired with a non-`visible` on the
+   other axis computes to `auto`, so leaving overflow-x: hidden would keep this
+   element a scroll container while it measured scrollHeight == clientHeight and
+   looked fixed. position: relative stays because the rows SVG is positioned
+   against it, and cursor: grab stays because the drag-pan is still this
+   element's. */
 .timeline-scroll {
   position: relative;
-  max-height: 58vh;
-  overflow-y: auto;
-  overflow-x: hidden;
-  border-top: 1px solid var(--line-soft);
   cursor: grab;
 }
 
@@ -2905,9 +2970,28 @@ body.is-resizing-detail .detail-resizer::before {
   cursor: grabbing;
 }
 
-/* Drawn inward: .timeline-scroll is an overflow container flush under the axis,
-   so a positive offset would put the ring where the surrounding card clips it. */
+/* The chart is one tab stop and the hint paragraph tells the reader to Tab to
+   it, but since REQ-587 #timeline-scroll is a full-height element on the board's
+   scroll surface: a ring around it puts its top and bottom edges thousands of
+   pixels apart, both off screen, and the reader sees two vertical lines and no
+   landing signal. The axis is the part of the chart that is always in view, so it
+   carries the ring instead.
+
+   These two rules are one affordance and must be read together. Suppressing the
+   engine's own ring is not optional and not cosmetic: deleting the author rule
+   here brings Chrome's default focus ring back on the same full-height box, in
+   the same wrong shape, and a screenshot is the only thing that sees it (measured
+   on Chrome 152.0.0.0: outline "rgb(0, 95, 204) auto 1px" around a 716px box).
+   The accessible signal is not removed, it is moved one element up. */
 .timeline-scroll:focus-visible {
+  outline: none;
+}
+
+/* :has() is needed because the axis PRECEDES the scroll host, so no sibling
+   combinator reaches it. Drawn inward for the same reason the row ring is: when
+   stuck, the axis is flush with the board's top edge and an outward ring loses
+   that edge to it. */
+.timeline-chart:has(> #timeline-scroll:focus-visible) .timeline-axis {
   outline: 2px solid var(--accent-claimed);
   outline-offset: -2px;
 }

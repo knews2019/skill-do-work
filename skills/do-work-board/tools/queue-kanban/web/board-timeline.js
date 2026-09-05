@@ -1050,15 +1050,6 @@
     return renderedRequests[0].rowIndex;
   }
 
-  // Which rows have SVG nodes. Everything above and below the scrolled window is
-  // absent from the DOM, which is what keeps 560 rows and 5600 rows the same
-  // cost. The overscan is what stops a fast scroll showing blank strips.
-  function timelineVisibleRowRange(scrollTop, viewportHeight, rowCount) {
-    var firstRow = Math.max(0, Math.floor(scrollTop / TIMELINE_ROW_HEIGHT) - TIMELINE_OVERSCAN_ROWS);
-    var visibleCount = Math.ceil(viewportHeight / TIMELINE_ROW_HEIGHT) + TIMELINE_OVERSCAN_ROWS * 2;
-    return { firstRow: firstRow, lastRow: Math.min(rowCount, firstRow + visibleCount) };
-  }
-
   // Which of the RENDERED rows carries the list's single tabindex="0".
   //
   // The rows are virtualized, so the roving row is often not among them — and a render
@@ -1618,7 +1609,16 @@
     var scrollHost = document.getElementById("timeline-scroll");
     var readoutNode = document.getElementById("timeline-readout");
     var tableBody = document.getElementById("timeline-table-body");
-    if (!summaryNode || !axisHost || !scrollHost || !tableBody) {
+    // Since REQ-587 the two roles scrollHost used to play are split. It is still
+    // the DOM host — the rows SVG lives in it and the wheel, pan, focus, hover
+    // and keyboard listeners are all still bound to it — but it no longer
+    // scrolls, so the SCROLL POSITION every virtualization decision reads comes
+    // from the board instead. Looked up by id, never by ".board-main": the Node
+    // behavior lane's stub DOM returns null from querySelector unconditionally,
+    // so a class lookup would send every one of those probes through the guard
+    // below and turn them into assertions about nothing.
+    var boardScrollHost = document.getElementById("board-main");
+    if (!summaryNode || !axisHost || !scrollHost || !boardScrollHost || !tableBody) {
       return;
     }
 
@@ -1750,13 +1750,18 @@
       if (timelineDisplay.items.length === 0) {
         return null;
       }
+      // Read ONCE, in rows coordinates, and used for both the comparison and the
+      // offset. The board's raw scrollTop would make every recorded offset wrong
+      // by the height of everything above the chart and drop the reader several
+      // rows from the REQ they were reading whenever the window chips move.
+      var anchorScrollTop = rowsScrollTop();
       for (var displayIndex = 0; displayIndex < timelineDisplay.items.length; displayIndex++) {
         var displayItem = timelineDisplay.items[displayIndex];
         if (
           displayItem.kind === "request" &&
-          displayItem.topPx + displayItem.height > scrollHost.scrollTop
+          displayItem.topPx + displayItem.height > anchorScrollTop
         ) {
-          return { id: displayItem.row.id, offsetPx: scrollHost.scrollTop - displayItem.topPx };
+          return { id: displayItem.row.id, offsetPx: anchorScrollTop - displayItem.topPx };
         }
       }
       return null;
@@ -1792,9 +1797,12 @@
           // to the OLD maximum and dropped the reader at the bottom of the
           // window they were leaving: from a month window at scrollTop 400 the
           // Fit-all button landed on 465, the old extent's maximum, when the
-          // anchor needed 4900.
+          // anchor needed 4900. Since REQ-587 the clamp being beaten is the
+          // BOARD's, which is the stronger version of the same rule: the board's
+          // scroll height depends on the rows SVG too, so the ordering still has
+          // to grow the extent before the write.
           rowsSvg.setAttribute("height", timelineDisplay.height);
-          scrollHost.scrollTop = displayItem.topPx + anchor.offsetPx;
+          boardScrollHost.scrollTop = rowsOffsetPx() + displayItem.topPx + anchor.offsetPx;
           return;
         }
       }
@@ -2016,6 +2024,72 @@
       measuredPlotWidthPx = null;
     }
 
+    // The board's geometry, memoized on exactly the same terms as plotWidth above
+    // and for the same reason: renderVisibleRows IS the scroll listener and the
+    // pan handler calls renderAll once per frame, so two getBoundingClientRect
+    // calls inside it would add two forced layouts to every frame of a drag.
+    // Neither number can change without a re-render — both move only when the
+    // content ABOVE the chart changes height (a strip appearing, the toolbar
+    // wrapping, the summary line rewrapping), and every one of those is a render.
+    var measuredRowsOffsetPx = null;
+    var measuredStickyAxisHeightPx = null;
+
+    // Where the rows sit inside the BOARD's scroll extent: the distance from the
+    // board's scroll origin to the top of the rows box. scrollTop is measured from
+    // the padding box and .board-main has no border, so its client rect top IS
+    // that origin — which is what makes this hold whatever the board's own top
+    // padding is.
+    function rowsOffsetPx() {
+      if (measuredRowsOffsetPx === null) {
+        measuredRowsOffsetPx =
+          scrollHost.getBoundingClientRect().top -
+          boardScrollHost.getBoundingClientRect().top +
+          boardScrollHost.scrollTop;
+      }
+      return measuredRowsOffsetPx;
+    }
+
+    // Read, never restated (REQ-322): the axis is its SVG plus its own bottom
+    // border, and a scroll target that guessed would leave a focused row under
+    // the pinned strip by exactly the part it guessed wrong.
+    function stickyAxisHeightPx() {
+      if (measuredStickyAxisHeightPx === null) {
+        measuredStickyAxisHeightPx = axisHost.getBoundingClientRect().height;
+      }
+      return measuredStickyAxisHeightPx;
+    }
+
+    function invalidateBoardScrollGeometry() {
+      measuredRowsOffsetPx = null;
+      measuredStickyAxisHeightPx = null;
+    }
+
+    // The board's scroll position expressed in ROWS coordinates — the number every
+    // virtualization site below used to read straight off the inner box. Reading
+    // boardScrollHost.scrollTop instead would be wrong by the height of everything
+    // above the chart — measured at 914px on this repository's own board with a
+    // findings strip on screen, which is fifty rows.
+    //
+    // DELIBERATELY NOT CLAMPED AT ZERO, though it looks like it wants to be. When
+    // the reader is above the chart — which is where the board opens, since the
+    // heading, the toolbar and any strip come first — the honest answer is
+    // negative, and the anchor path round-trips it: topVisibleRowAnchor records
+    // (position − row top) and refreshWindowRows adds it back, so a clamp makes
+    // the write disagree with the read by exactly the offset it swallowed. It did:
+    // clamping scrolled the board down to put the chart's first row against the
+    // top bar every time a window chip was pressed. The one caller that does want
+    // a floor applies it at its own call site and says why.
+    function rowsScrollTop() {
+      return boardScrollHost.scrollTop - rowsOffsetPx();
+    }
+
+    // Where to put the board so a row lands just below the pinned axis. Clamped
+    // because a row near the chart's top would otherwise ask for a negative
+    // scrollTop; a browser clamps that anyway, the Node lane's stub does not.
+    function boardScrollTopForRowTop(rowTopPx) {
+      return Math.max(0, rowsOffsetPx() + rowTopPx - stickyAxisHeightPx());
+    }
+
     // The row the hover readout last announced, so an unchanged row is not
     // announced again and a window move can retract one that is gone.
     var announcedHoverRowId = null;
@@ -2074,12 +2148,13 @@
     function renderVisibleRows() {
       // WHICH ROW HELD FOCUS, captured before the rebuild destroys it.
       //
-      // A scroll event is ASYNCHRONOUS. refreshWindowRows writes scrollHost.scrollTop
-      // to keep the reader's place, and the scroll listener is this function — so the
-      // keydown handler's own focus restore ran, and THEN this rebuild wiped the node
-      // it had just focused, and focus fell to <body>. One arrow press panned the
-      // window and every arrow press after it was dead, because the keydown listener
-      // is on the scroll host and <body> is not inside it.
+      // A scroll event is ASYNCHRONOUS. refreshWindowRows writes the board's
+      // scrollTop to keep the reader's place, and the scroll listener is this
+      // function — so the keydown handler's own focus restore ran, and THEN this
+      // rebuild wiped the node it had just focused, and focus fell to <body>. One
+      // arrow press panned the window and every arrow press after it was dead,
+      // because the keydown listener is on the scroll host and <body> is not
+      // inside it.
       //
       // Restoring here covers every path that rebuilds rows — the keyboard, a scroll,
       // a drag frame, a filter change — rather than only the one the keyboard takes,
@@ -2113,8 +2188,22 @@
       // drawSegment still calls plotWidth() itself; hoisting THAT is REQ-324's
       // job, and doing half of it here would leave two sources for one number.
       var plotWidthPx = plotWidth();
+      // The viewport stays the board's full client height with no subtraction for
+      // the sticky axis: not subtracting it renders a SUPERSET of what is visible,
+      // at most one extra row of nodes hidden behind the strip. Converting the
+      // POSITION is not optional in the same way — without rowsScrollTop the range
+      // walks off the bottom and the top rows go blank. One number has to be
+      // right; the other only has to be generous.
+      //
+      // Floored at zero HERE and not in rowsScrollTop, which has to stay signed so
+      // the anchor's read and write round-trip. The board opens above the chart,
+      // where the true position is negative and nothing is visible at all; the
+      // floor draws the first screenful anyway, which is both a superset (a
+      // negative position can only widen the range upward) and what this view did
+      // before the board became its scroll surface, so the chart is already
+      // populated when it scrolls into view instead of one scroll event later.
       var visible = timelineVisibleDisplayRange(
-        timelineDisplay.items, scrollHost.scrollTop, scrollHost.clientHeight
+        timelineDisplay.items, Math.max(0, rowsScrollTop()), boardScrollHost.clientHeight
       );
       var tabbableRowIndex = timelineTabbableRequestIndex(
         timelineViewState.rovingRowIndex,
@@ -2679,8 +2768,11 @@
     // below reads them.
     function renderAll() {
       // Before anything reads it: the container may have been resized, and every
-      // x in this render has to come from one measurement of one width.
+      // x in this render has to come from one measurement of one width. The board
+      // geometry drops on the same terms — a strip appearing above the chart moves
+      // the rows down without the chart itself changing at all.
       invalidatePlotWidth();
+      invalidateBoardScrollGeometry();
       // Nothing is visible and nothing is measurable, so a render here would only
       // record wrong numbers — a 120px plot and an eight-row viewport — and leave
       // them on screen when the view comes back. The observer below re-enters as
@@ -2774,7 +2866,18 @@
     }
 
     // ---- interaction ----
-    addTimelineListener(scrollHost, "scroll", renderVisibleRows);
+    // The ONE listener that had to follow the scroll position onto the board:
+    // #timeline-scroll no longer scrolls, so it no longer emits scroll, and left
+    // there the virtualized range would freeze at whatever the last render
+    // computed — the reader scrolls, the first screenful stays drawn where it was
+    // and everything below it is blank SVG. Everything else this view binds stays
+    // on the chart, deliberately: the wheel handler's zoom anchor is a per-chart x
+    // origin the axis and the plot must share, a ctrl/meta-wheel listener on the
+    // board would preventDefault over every other view, and capturing pointers on
+    // the board would retarget synthesized clicks everywhere (REQ-336/337).
+    // renderTimelineView releases its listeners before re-registering them and
+    // #board-main outlives every render, so binding here leaks nothing.
+    addTimelineListener(boardScrollHost, "scroll", renderVisibleRows);
 
     // One keydown listener for the whole chart, registered through the teardown
     // registry like every other listener this view binds to a node that outlives
@@ -2800,10 +2903,17 @@
       }
       var rowTopPx = displayItem.topPx;
       var rowBottomPx = rowTopPx + displayItem.height;
-      if (rowTopPx < scrollHost.scrollTop) {
-        scrollHost.scrollTop = rowTopPx;
-      } else if (rowBottomPx > scrollHost.scrollTop + scrollHost.clientHeight) {
-        scrollHost.scrollTop = rowBottomPx - scrollHost.clientHeight;
+      // The upward comparison uses the axis-CLEAR top, not the plain scroll
+      // position: since REQ-587 the axis is pinned over the first rows, so a row
+      // scrolled "to the top" would land underneath it, be invisible while
+      // focused, and read to the reader as the up arrow doing nothing.
+      var visibleTopPx = rowsScrollTop() + stickyAxisHeightPx();
+      var visibleBottomPx = rowsScrollTop() + boardScrollHost.clientHeight;
+      if (rowTopPx < visibleTopPx) {
+        boardScrollHost.scrollTop = boardScrollTopForRowTop(rowTopPx);
+      } else if (rowBottomPx > visibleBottomPx) {
+        boardScrollHost.scrollTop =
+          rowsOffsetPx() + rowBottomPx - boardScrollHost.clientHeight;
       }
     }
 
@@ -3183,7 +3293,12 @@
         var openRowIndex = timelineFirstOpenRowIndex(rows);
         if (openRowIndex >= 0) {
           var openDisplayItem = displayItemForRowIndex(openRowIndex);
-          scrollHost.scrollTop = openDisplayItem ? openDisplayItem.topPx : 0;
+          // The fallback used to mean "scroll the inner box to the very top". On
+          // the board it has to mean the same THING, not the same number: bring
+          // the chart's first row just under the pinned axis.
+          boardScrollHost.scrollTop = boardScrollTopForRowTop(
+            openDisplayItem ? openDisplayItem.topPx : 0
+          );
           renderVisibleRows();
         }
       };

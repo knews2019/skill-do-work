@@ -3320,6 +3320,15 @@ func TestGenerateInlinesImpactAndEffortChipRenderPath(t *testing.T) {
 // the timeline uses: a scroll host with measurable geometry (row virtualization
 // asks for it), classList on the forecast nodes, and the two globals the module
 // reads from its siblings in the assembled client.
+//
+// "board-main" is in the id list because since REQ-587 the renderer reads the
+// BOARD's scroll position rather than the chart's, and the whole render is behind
+// a guard that returns when any host is missing — leave it out and every probe in
+// this lane still passes while measuring nothing. The stub's default
+// getBoundingClientRect().top of 0 and scrollTop of 0 make the rows offset 0, and
+// its clientHeight of 400 is the number #timeline-scroll used to supply, so every
+// row count in this lane is unchanged by the split. A number that moved here means
+// a coordinate conversion is wrong, not that an expectation needs updating.
 const timelineRenderDomStubPreamble = `
 function makeStubNode(nodeName) {
   return {
@@ -3342,7 +3351,8 @@ function makeStubNode(nodeName) {
 var timelineStubHosts = {};
 [
   "timeline-summary", "timeline-axis", "timeline-scroll", "timeline-readout",
-  "timeline-table-body", "timeline-forecast", "timeline-excluded", "timeline-period-state"
+  "timeline-table-body", "timeline-forecast", "timeline-excluded", "timeline-period-state",
+  "board-main"
 ].forEach(function (hostId) { timelineStubHosts[hostId] = makeStubNode("div"); });
 var document = {
   getElementById: function (nodeId) { return timelineStubHosts[nodeId] || null; },
@@ -3400,8 +3410,8 @@ process.stdout.write(JSON.stringify({ rows: drawnRows }));
 //
 // `addTimelineListener(window, "resize", renderAll)` fires while #view-timeline is
 // `hidden`, where the scroll host's clientWidth is 0. plotWidth's floor turned
-// that into Math.max(120, 0 - 184 - 12) = 120 and MEMOISED it, and
-// timelineVisibleRowRange turned clientHeight 0 into eight rows — so a browser
+// that into Math.max(120, 0 - 184 - 12) = 120 and MEMOISED it, and the
+// visible-row range turned clientHeight 0 into eight rows — so a browser
 // resize taken on another view left the Timeline showing three months of archive
 // crushed into a 120-pixel strip with eight rows in it, and only a window move
 // repaired it.

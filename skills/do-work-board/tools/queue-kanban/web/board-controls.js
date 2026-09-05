@@ -31,6 +31,19 @@
       viewPanels[viewName].hidden = !isActiveView;
     });
 
+    // The board is the Timeline's scroll surface since REQ-587, and .board-main's
+    // scroll position is shared by every view with nothing resetting it between
+    // them. That never mattered while the Timeline's chart was capped at 58vh —
+    // the page was short, so arriving from a Kanban board scrolled 800px down
+    // clamped back to near the top. Now the chart is the tall thing on the page,
+    // nothing clamps, and the same arrival would drop the reader 800px into the
+    // middle of it with correct rows and no reason on screen for where they are.
+    // Resetting is what keeps arrival looking the way it does today. It runs
+    // before the first render below, so the first anchor read sees 0.
+    if (viewState.view === "timeline") {
+      document.getElementById("board-main").scrollTop = 0;
+    }
+
     // The grouping lens and the recently-done window only shape the board view;
     // hide their controls elsewhere so the topbar never advertises dead knobs.
     // Shared filters do not shape Durations, and the date window is only the

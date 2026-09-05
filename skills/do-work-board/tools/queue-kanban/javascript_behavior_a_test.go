@@ -2146,7 +2146,8 @@ var matched = { controls: controlState(), summary: timelineStubHosts["timeline-s
 
 // Nothing matches. The early return fires.
 ["timeline-summary", "timeline-axis", "timeline-scroll", "timeline-readout",
- "timeline-table-body", "timeline-forecast", "timeline-excluded", "timeline-period-state"
+ "timeline-table-body", "timeline-forecast", "timeline-excluded", "timeline-period-state",
+ "board-main"
 ].forEach(function (hostId) { timelineStubHosts[hostId] = makeStubNode("div"); });
 timelineStubVisibleIds = [];
 renderTimelineView();
@@ -2154,7 +2155,8 @@ var noMatch = { controls: controlState(), summary: timelineStubHosts["timeline-s
 
 // And back: a filter that matches again must restore every control.
 ["timeline-summary", "timeline-axis", "timeline-scroll", "timeline-readout",
- "timeline-table-body", "timeline-forecast", "timeline-excluded", "timeline-period-state"
+ "timeline-table-body", "timeline-forecast", "timeline-excluded", "timeline-period-state",
+ "board-main"
 ].forEach(function (hostId) { timelineStubHosts[hostId] = makeStubNode("div"); });
 timelineStubVisibleIds = null;
 renderTimelineView();
