@@ -1,7 +1,7 @@
 ---
 id: REQ-507
 title: '[impact-rule-change] Hand the archive and commit tails to finalize'
-status: pending
+status: claimed
 status_changed_at: 2026-09-04T20:57:34Z
 priority: now
 created_at: 2026-09-02T14:37:54Z
@@ -37,6 +37,7 @@ estimate:
 gate_deferred: 'true'
 deferred_implementation_base: 8e3dbf01e0660424965d79acb2e386b6604e4780
 deferred_implementation_merge: ad8bceb7aa0d0c63c230048b6a1f2dae1ef7ccb9
+claimed_at: 2026-09-05T10:05:13Z
 ---
 
 # Hand the Archive and Commit Tails to finalize
