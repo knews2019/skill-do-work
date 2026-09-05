@@ -65,3 +65,61 @@ REQ-448's timing prose in `work.md` and `work-reference.md`, and REQ-510 is at t
 moment deleting sections from `work-reference.md` to bring it under 700 lines. That is a
 semantic collision, not a textual one, so a clean git merge would prove nothing. Its
 builder goes out once REQ-510 is merged.
+
+## Heavy-lane feasibility probe (run ahead of REQ-577's drain)
+
+All six lanes were probed early rather than at queue exhaustion, because a red
+lane there withdraws REQ-577's `commit:` and un-readies REQ-506, which is the
+critical path for REQ-507.
+
+| Lane | Result |
+|---|---|
+| queue-kanban-javascript | exit 0 |
+| staged-skills | exit 0 |
+| updater | exit 0 |
+| installer | exit 0 |
+| queue-kanban-browser | exit 1 — one test, under diagnosis |
+| do-work-cli-integrations | exit 1 — cause found, see below |
+
+Nothing was skipped. Chromium at `/opt/pw-browsers/chromium-1194/chrome-linux/chrome`
+drives the browser lane fine via `QUEUE_KANBAN_BROWSER`, so `HEAVY-RUN-LANE-SKIPPED`
+is not a risk here.
+
+### F-01 — `do-work-cli-integrations` cannot pass on a host whose hostname git rejects
+
+`TestRecoveryRefusesFalseLegacyCheckpointAbsence` builds a git fixture and commits
+into it. The lane argv sets `GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null` on
+purpose, so the fixture has no configured identity and git falls back to
+auto-detecting one from the hostname. This container's hostname is `vm`, git derives
+`root@vm.(none)`, rejects it, and the commit fails with "Author identity unknown".
+
+This is not container-specific in the way it first looks. The fixture depends on the
+host having a hostname git considers valid — true on a developer laptop, not true in
+most containers or CI. Reproduced directly: the identical commit under the same two
+variables fails bare and succeeds with `EMAIL` set.
+
+Worked around for this run by exporting `EMAIL=do-work@localhost` in the run wrapper.
+The durable fix is for the fixture to set its own identity in the repository it
+creates, which is project source outside any currently claimed request. Recorded here
+as discovered work.
+
+### F-02 — the per-file 30s budget makes the gate unreliable under a hot builder fleet
+
+REQ-580's post-merge gate exited 1 with **zero** failing test assertions. Two shell
+fixtures blew the per-file budget instead: `session-start-hook-behavior.sh` at 106s
+against a 30s limit, and `prescribed-shell-canonicalization.sh` at 67s. In the quiet
+baseline run the same two files took 26s and 12s.
+
+The cause is CPU contention: nine builders, a reviewer and the lane probes were all
+running. These are shell fixtures, so `GOMAXPROCS` does not help them — they are
+simply competing for four cores.
+
+The consequence for this run is a real scheduling constraint, not a defect to fix:
+**the canonical gate and a large builder fleet cannot run at the same time.** Since
+integration is serial anyway and every merge invalidates the previous REQ's post-merge
+verification, the answer is to stop adding builders, let the fleet drain, and run the
+per-REQ gates in a quiet window. A gate result that has to be re-run is slower than
+waiting for one that can be trusted.
+
+REQ-574, held by the other run, is "bring do-work-cli test files under the 30s
+budget" — the same budget, a different cause.
