@@ -1,7 +1,7 @@
 ---
 id: REQ-586
 title: 'Keep the board top bar to one line: single-line identity and Touched-in chips inside the Activity view'
-status: pending
+status: claimed
 created_at: 2026-09-05T12:40:00Z
 user_request: UR-121
 domain: frontend
@@ -19,6 +19,7 @@ write_set:
   - skills/do-work-board/tools/queue-kanban/web/board-activity.js
   - skills/do-work-board/tools/queue-kanban/web/board-controls.js
   - skills/do-work-board/tools/queue-kanban/javascript_behavior_c_test.go
+claimed_at: 2026-09-05T13:24:34Z
 ---
 
 # Keep the Board Top Bar to One Line: Single-Line Identity and Touched-In Chips Inside the Activity View
