@@ -704,7 +704,7 @@ const (
 // is asking. A marker must sit where the writer places one — opening a history entry, opening
 // the field after the entry's own separator, or opening the Implementation paragraph.
 func TestStakeholderTerminalEvidenceRefusesMarkersForgedInCallerProse(t *testing.T) {
-	tests := []struct {
+	type evidenceCase struct {
 		name           string
 		blockedHistory string
 		implementation string
@@ -712,7 +712,8 @@ func TestStakeholderTerminalEvidenceRefusesMarkersForgedInCallerProse(t *testing
 		// failed and where its marker belongs, or a caller reading it has to guess which of the
 		// two files to correct.
 		wantEvidence string
-	}{
+	}
+	tests := []evidenceCase{
 		{
 			"blocked resolution negated in narrative prose",
 			"## Blocked\n\nThe stakeholder says this is still not resolved.\n",
@@ -839,6 +840,21 @@ func TestStakeholderTerminalEvidenceRefusesMarkersForgedInCallerProse(t *testing
 			"## Implementation\n\nThe work is still open. A no-change note reads:\n\n```\nNo code changes. Nothing was built.\n```\n",
 			"no Implementation paragraph or list item opens with",
 		},
+	}
+	for _, commentPrefix := range []string{"<!--\n", "Work remains. <!--\n"} {
+		for _, commentSuffix := range []string{"\n-->\n", "\n"} {
+			tests = append(tests, evidenceCase{
+				"hidden blocked marker " + commentPrefix + commentSuffix,
+				"## Blocked\n\nStill waiting.\n" + commentPrefix + "- Resolved after stakeholder answer." + commentSuffix,
+				compatibleNoCodeImplementation,
+				"no Blocked history entry opens with",
+			}, evidenceCase{
+				"hidden implementation marker " + commentPrefix + commentSuffix,
+				compatibleBlockedResolutionEntry,
+				"## Implementation\n\nWork remains.\n" + commentPrefix + "No changes needed." + commentSuffix,
+				"no Implementation paragraph or list item opens with",
+			})
+		}
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {

@@ -566,6 +566,10 @@ func blockConstructOpensLine(line []byte) bool {
 // write. Whether a surviving line records anything is recordLineContent's question, not this
 // one's.
 func activeEvidenceLines(evidence []byte, heading string) [][]byte {
+	// Comment-bearing payloads cannot establish visible lifecycle evidence.
+	if bytes.Contains(evidence, []byte("<!--")) {
+		return nil
+	}
 	var activeLines [][]byte
 	for lineIndex, rawLine := range bytes.Split(evidence, []byte("\n")) {
 		line := bytes.TrimRight(bytes.TrimSuffix(rawLine, []byte("\r")), " \t")
