@@ -33,6 +33,7 @@ write_set:
   - skills/do-work/tools/do-work-cli/internal/publication/publication_commands_test.go
   - skills/do-work/tools/do-work-cli/internal/finalization/finalization_commands_test.go
 route: C
+commit: 50569e88c8f1f5234cbdfaf0efaede671d72b13c
 ---
 
 # Repository gate repair: bring do-work-cli test files under the 30s per-file budget
