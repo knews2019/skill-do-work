@@ -31,6 +31,10 @@ route: B
 dispatch_at: 2026-09-05T12:23:39Z
 builder_handback_at: 2026-09-05T12:46:22Z
 integration_at: 2026-09-05T12:46:22Z
+review_at: 2026-09-05T14:23:29Z
+heavy_verified_at: 2026-09-05T14:23:29Z
+heavy_verified_revision: 7b2673b690a671ccb360c26b0c19c56ecc7356b5
+commit: b169396e
 ---
 
 # Render Verify Findings and Skipped Probes as Compact Rows in One List
@@ -215,3 +219,29 @@ The consumer half of the contract — `applyView` reading those two exact ids in
 **Follow-ups created:** None (6 findings report only)
 
 *Reviewed by review-work action*
+
+## Heavy Verification Result
+
+- **Target revision:** b169396e
+- **Execution revision:** 7b2673b690a671ccb360c26b0c19c56ecc7356b5
+- **Run at:** 2026-09-05T14:23:29Z, from a detached worktree (the shared main tree carried other sessions' uncommitted work, which a lane result must not be attributed to)
+
+| Lane | Exit | Wall | Disposition |
+| --- | --- | --- | --- |
+| `queue-kanban-javascript` | 0 | 9s | executed |
+| `queue-kanban-browser` | 0 | 141s | executed |
+| `staged-skills` | 0 | 44s | executed |
+
+Every lane this request selected was present in the run, exited 0, and none was skipped.
+
+## Lessons Learned
+
+**What worked:** Building the honest version first and letting the test say no. The single-host markup this request's own requirements implied broke the rule another request had just shipped, and the builder found that by running the suite rather than by reasoning about it — then chose the naming wart over handing back a knowingly-red test with a seam someone had to remember to apply. Looking at the rendered page also earned its keep: the extra spacing rule exists because a subjectless row read as the previous group's third row on screen, which no assertion would have caught.
+
+**What didn't:** Deleting an element id that another file reads. The disclosure this request was told to delete held one of two ids a view rule dereferences on every view switch, and the Node lane could not have caught it — its stub `getElementById` manufactures a node for any id it is asked for, so a deleted element reads as present-with-zero-children and the tests stay green while the browser throws.
+
+**Worth knowing:** Two follow-ups landed because the neighbouring request's review looked at this one's plan before it was built. The renderer's early return left stale rows under a hidden strip, which only matters because the view rule now asks those hosts whether there is content — a latent defect that a second reader turned into a caught one. Reviews that read the queue, not only the diff, are where that comes from.
+
+## Orientation
+
+The board's Verify Findings strip is a list of warnings again rather than a set of work items: one compact row per finding and per skipped probe, grouped under the thing each is about — a worktree, a request, the changelog. Lives in the queue-kanban board subsystem (`_dev/primes/prime-kanban-board.md`), with the subject set by the Go probe that knows it and carried through the board payload. [MAP CHANGED] — a finding now carries a subject, which is a new field on the producer's contract and the first thing the client groups on. On a real board the strip is 398px for eight rows where two cards used most of its height.

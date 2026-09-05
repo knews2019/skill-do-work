@@ -153,3 +153,34 @@ Requirements traced: the arrow form resolves and reports; an in-script fixture s
 
 - **D-07 — the root changelog was added to this request's write set by the orchestrator, before integration. DECIDE & STATE.** The builder correctly refused to touch it: it is outside the declared write set, and the check this request changes is the very thing that enforces the two changelog copies staying byte-identical. It handed the exact replacement line back as an integration seam instead. Applying that seam inside the merge commit is the orchestrator's job, and the Scope list and `write_set` were extended to match rather than leaving the touch undeclared. Without it, this request's own check fails with `changelog mirror differs` and takes the repository gate down with it.
 
+
+## Review
+
+**Overall: 90%** | 2026-09-05T13:29:22Z
+
+| Dimension | Score |
+|-----------|-------|
+| Requirements | 100% |
+| Code Quality | 85% |
+| Test Adequacy | 75% |
+| Scope | 100% |
+| Risk | Low |
+| Acceptance | Pass |
+
+**Important findings (each with its recorded impact token — this is the durable audit record the judgment mandates):**
+- D-01's bold-label acceptance is wider than its stated risk: any bold run anywhere in the target counts, and these files habitually write their own section names in bold prose. `skills/do-work/actions/work-reference.md` declares 42 headings but yields 288 accepted names, 246 of them bold-only. Measured: renaming the heading `## Worktree Dispatch Mode (Step 1)`, `## Crash Recovery (Step 1)` or `## In-Progress Record (Step 1)` and leaving every citation on the old name keeps the check GREEN in all three cases, because each old name is still written in bold somewhere in that file. Separately, a citation `` `actions/work-reference.md` `` → **Input** resolves against the bold phrase "advisory input to that pick, never a gate" while no section named Input exists. Verified remedy, not applied here: accepting only a *paragraph-leading* bold run keeps all 74 live arrow citations green (zero false failures) and makes all three simulated renames report — impact-rule-change → report only
+- Nothing pins the wiring between the two checked halves and a reported finding. Mutating `section_failure_messages` to `return []`, or passing `cited_section=None` at the driver call site (`_dev/tests/shipped-package-reference-contract.sh:2165`), leaves the entire suite green at exit 0 — the same "control that cannot fail" class as REQ-581 in this batch. Both halves themselves are pinned and do fail when mutated. `run_citation_fixtures` already calls `citation_messages` and would take one case carrying `cited_section` + `read_section_names` — impact-rule-change → report only
+- Two live shipped citations write the same form with the ASCII arrow and stay invisible: `skills/do-work/actions/forensics.md:54` and `:100` both cite `` `actions/work-reference.md` `` -> **Crash Recovery (Step 1)**. That heading exists (`work-reference.md:302`), so nothing dangles today, but a rename of it escapes silently — the exact failure family this REQ closes. The hand-back census counted `→` only, so this is absent from both the Exploration table and DT-1..DT-4 — impact-rule-change → report only
+
+**Minor findings:**
+- The section half checks only the source topology (`resolution_pair[2]` / `resolution_result[4]`), while the adjacent anchor half checks both through `link_topology_targets` + `anchor_failure_messages` and pins the divergence in `run_anchor_topology_fixtures`. The live corpus resolves both topologies to one file every time, so there is no divergence today — impact-rule-change → report only
+- Restatement Sweep: `_dev/primes/prime-action-files.md:93` is the canonical home for how to write a cross-reference and still describes the checker as enforcing the path/citation-class condition only; it says nothing about the section name now being resolved. `do-work/prose-backlog.md` already carries a REQ-312-era staleness line against the same sentence — impact-rule-change → report only
+- D-04 makes a historical changelog entry's section name permanently checked, so a future section rename can be forced to edit shipped history again. Only one arrow-form citation lives in a changelog today, so the standing cost is near zero — impact-negligible → report only
+
+**Restatement Sweep:** redefined elements were (a) what a citation must satisfy in this contract and (b) the return arity of `cross_package_target_resolves` / `same_package_target_resolves`. Swept: `_dev/primes/prime-action-files.md:93` (stale, above), `_dev/primes/prime-releases.md:9` (mirror rule, still true), `_dev/tests/contracts/probe-lanes.sh:19` (keys on exit status only, unaffected), both resolvers' only consumer is `citation_messages` (grep-verified), and `skills/do-work-board/tools/queue-kanban/citations.go` parses REQ-text citations under a separate contract, unaffected. **No additional dangling citation anywhere in shipped prose:** the check exits 0, and an independent sweep of all 74 live arrow-form citations found 0 dangling and exactly 5 that require the bold-label rule — the same 5 D-01 names.
+
+**Acceptance:** Pass — check green (exit 0, `PASS`); mutating either checked half makes the new fixtures fail (exit 1); end-to-end reporting verified through `citation_messages` with real driver arguments; `bash _dev/tests/action-shell-blocks.sh` exit 0; runtime unchanged (5 runs each: 1.16–1.37 s user before, 1.17–1.26 s user after).
+**Suggested testing:** 3 items
+**Follow-ups created:** None (6 findings report only)
+
+*Reviewed by review-work action*

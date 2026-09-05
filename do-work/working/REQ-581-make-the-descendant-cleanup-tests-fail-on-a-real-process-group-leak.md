@@ -24,6 +24,10 @@ route: A
 dispatch_at: 2026-09-05T12:41:13Z
 builder_handback_at: 2026-09-05T12:59:09Z
 integration_at: 2026-09-05T12:59:09Z
+review_at: 2026-09-05T14:23:29Z
+heavy_verified_at: 2026-09-05T14:23:29Z
+heavy_verified_revision: 7b2673b690a671ccb360c26b0c19c56ecc7356b5
+commit: 92339213
 ---
 
 # Make the Descendant-Cleanup Tests Fail on a Real Process-Group Leak
@@ -176,3 +180,30 @@ All three fail on the descendant assertion, each inside its own budget, each nam
 **Follow-ups created:** None (5 findings report only)
 
 *Reviewed by review-work action*
+
+## Heavy Verification Result
+
+- **Target revision:** 92339213
+- **Execution revision:** 7b2673b690a671ccb360c26b0c19c56ecc7356b5
+- **Run at:** 2026-09-05T14:23:29Z, from a detached worktree (the shared main tree carried other sessions' uncommitted work, which a lane result must not be attributed to)
+
+| Lane | Exit | Wall | Disposition |
+| --- | --- | --- | --- |
+| `do-work-cli-integrations` | 0 | 78s | executed |
+| `staged-skills` | 0 | 44s | executed |
+| `updater` | 0 | 71s | executed |
+| `installer` | 0 | 33s | executed |
+
+Every lane this request selected was present in the run, exited 0, and none was skipped.
+
+## Lessons Learned
+
+**What worked:** Keeping the leak mutation applied while rewriting the fixture, so every edit was measured against the failure it had to detect rather than against a suite that was already green. The reviewer then reproduced the whole thing independently in a scratch copy, which is the only way a claim about a control that could not fail becomes evidence.
+
+**What didn't:** The original fixture could not fail for a structural reason, not a sloppy one. A surviving descendant inherited the parent's diagnostic pipe, so the runner blocked until that descendant exited, and by the time the poll ran the process was always already gone. What the loop actually measured was how long init took to reap a zombie — and its comment claimed the opposite. A leak showed up only as the suite taking thirty seconds instead of three, which nothing asserted on.
+
+**Worth knowing:** A test that has never been observed failing is not a control. This one had passed on every run for as long as it existed, on a tree with a genuine process-group leak. When a test guards a cleanup path, the cheapest honest check is to break the path on purpose and confirm the test notices — and to check *which* assertion fires, because a failure on an unrelated timeout bound is not the test doing its job.
+
+## Orientation
+
+The do-work-cli probe suite can now detect a process-group leak instead of reporting the cleanup path as proven on every run. Lives in the do-work-cli selection subsystem (`skills/do-work/tools/do-work-cli/prime-do-work-cli.md`), in the blocked-probe tests. Test-only: the cleanup code itself was already correct, and what was missing was any way to tell if it stopped being correct. Unmutated runtime is unchanged at 2.610s against a 2.624s baseline.
