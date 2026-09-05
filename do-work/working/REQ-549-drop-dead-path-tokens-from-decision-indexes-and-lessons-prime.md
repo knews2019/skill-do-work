@@ -1,7 +1,7 @@
 ---
 id: REQ-549
 title: '[impact-negligible] Drop the eight dead path tokens from the decision indexes and the lessons prime'
-status: pending
+status: claimed
 priority: later
 created_at: 2026-09-03T19:45:35Z
 user_request: UR-105
@@ -16,6 +16,7 @@ maintenance: true
 impact: impact-negligible
 effort_estimate: effort-mechanical
 write_set: [decisions/topics/_index_skill-architecture.md, decisions/topics/_index_knowledge-base.md, decisions/audits/2026-08-05-shell-logic-in-prose-census.md, decisions/imported-specs/2026-04-12_close-gaps-in-interview.md, _dev/primes/lessons-action-files.md, _dev/tests/audit-lockins.sh]
+claimed_at: 2026-09-05T00:38:07Z
 ---
 
 # Drop the eight dead path tokens from the decision indexes and the lessons prime
