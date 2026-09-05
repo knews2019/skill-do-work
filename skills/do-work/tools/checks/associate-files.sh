@@ -3,8 +3,10 @@
 set -euo pipefail
 
 script_directory="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
+preamble_path="$script_directory/../do-work-cli-preamble.sh"
+[ -f "$preamble_path" ] || { printf 'associate-files: do-work-cli-preamble.sh is missing beside this launcher\n' >&2; exit 2; }
 # shellcheck source-path=SCRIPTDIR source=../do-work-cli-preamble.sh
-. "$script_directory/../do-work-cli-preamble.sh"
+. "$preamble_path"
 if [[ "${1:-}" == "--repo-root" ]]; then
   if [[ "$#" -lt 2 || -z "$2" ]]; then
     exit 2
