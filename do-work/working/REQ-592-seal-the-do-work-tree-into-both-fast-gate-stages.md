@@ -28,6 +28,7 @@ write_set: [_dev/tests/fast-stages.json, skills/do-work/tools/do-work-cli/intern
 title: '[impact-critical] Review fix: seal the do-work tree into both fast gate stages'
 claimed_at: 2026-09-05T22:59:38Z
 route: B
+dispatch_at: 2026-09-05T23:24:40Z
 ---
 
 # Review Fix: Seal the do-work Tree Into Both Fast Gate Stages
@@ -224,3 +225,41 @@ failure each now catches named in a comment.
       the failure it now catches
 - [ ] `do-work/test-durations.tsv` keeps not invalidating its own stage, through an explicit narrow
       exclusion rather than the whole-tree one
+
+## Pre-Flight
+
+**Git:** ✓ Clean. This is a fresh cloud container with only this session in it, so none of the
+foreign hand-back files the previous session had to judge around exist here, and canonical `recover`
+reports `FINALIZATION-NONE`. The three held claims (REQ-583, REQ-587, REQ-591) were taken over from
+the previous session's machine with `recover --take-over` and each reports
+`RECOVERY-CLAIM-HELD-FOR-HEAVY-LANES` with its `commit:` an ancestor of HEAD — untouched, awaiting
+the heavy drain at queue exhaustion.
+
+**Repository gate:** ✓ `bash _dev/tests/maintainer-verify.sh` exited 0 at this REQ's claim revision
+`15e2ec3`, run to completion, load average under 1, no other gate process — **75s wall**, exit status
+read directly from `$?` and never through a pipe. Run with `DO_WORK_FAST_STAGE_REUSE=off`, which is
+the mitigation the request exists to remove: until REQ-592 lands, a `do-work/`-only change reuses
+stale evidence, so any verdict this run relies on is taken with reuse disabled.
+
+**Tests baseline:** ✓ `go -C skills/do-work/tools/do-work-cli test -count=1 ./internal/heavyverification/`
+is the focused lane this REQ changes. **Both exit statuses, as the retry finding requires: the first
+recorded run exited 1, the rerun exited 0.** The exit-1 run happened while the full canonical gate
+was running concurrently in this same checkout, so the two contended for the Go build cache and the
+working tree moved under it. Re-run alone with `-count=2` immediately afterwards: exit 0, 27.2s. The
+baseline is stable and the single red is attributable to that overlap, not to the tree.
+
+**Dependencies:** ✓ Go 1.26.1 (via `GOTOOLCHAIN`, over a 1.24.7 host toolchain), ShellCheck 0.11.0,
+`just` 1.43.0, Node v22.22.2, Chromium at `/opt/pw-browsers/chromium`. All four had to be installed
+or upgraded in this container; the versions below the gate's floors were what made the first three
+baseline attempts red.
+
+**A correction to the inherited hand-off, because it changes what a reviewer should believe.** The
+previous session recorded `TestLaneMutationCannotPublishOrReuseSuccess/commit=true` as a pre-existing
+intermittent that "passes 6/6 in isolation". It is not intermittent. It fails deterministically
+wherever the global Git config sets `commit.gpgsign` with a signing key that cannot sign: the lane's
+mutating script runs `git add && git commit`, the commit fails, the tree stays dirty, and the test
+gets `HEAVY-RUN-DIRTY-TREE` where it asserts `HEAVY-RUN-REVISION-CHANGED`. With signing off it
+passes 2/2 here and the whole gate is green. Anyone who sees it red again should check the signing
+config before calling it a flake.
+
+*Checked by work action*
