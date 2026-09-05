@@ -1,7 +1,7 @@
 ---
 id: REQ-562
 title: 'Addendum: record lightweight per-REQ lifecycle timings'
-status: pending
+status: claimed
 created_at: 2026-09-03T21:28:31Z
 user_request: UR-108
 addendum_to: REQ-448
@@ -14,6 +14,7 @@ maintenance: false
 impact: impact-user-visible
 effort_estimate: effort-substantive
 related: [REQ-448, REQ-531, REQ-539, REQ-542, REQ-559]
+claimed_at: 2026-09-05T00:33:24Z
 ---
 
 # Addendum: Record Lightweight Per-REQ Lifecycle Timings
