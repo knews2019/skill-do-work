@@ -319,7 +319,14 @@ func evaluateCandidate(snapshot *repositorymodel.RepositorySnapshot, candidate s
 func selectionClaimEvidence(requestFile *repositorymodel.RequestFile, identifier string, checkpointClaims []repositorymodel.CheckpointClaimEvidence) []resultmodel.SelectionClaimEvidence {
 	evidence := []resultmodel.SelectionClaimEvidence{}
 	claimedAtField := requestFile.TypedRecord.FieldEvidenceByName["claimed_at"]
-	if strings.TrimSpace(requestFile.TypedRecord.ClaimedAt) != "" {
+	// `claimed_at` is append-only history, so on its own it proves only that the
+	// request was claimed once (the schema section "Stamps are append-only" in
+	// `skills/do-work/actions/work-reference.md`). It is evidence of a *live*
+	// claim only while the status still
+	// says claimed: a recovered request keeps the stamp of the interrupted
+	// attempt and has to stay selectable, and the checkpoint entry below is what
+	// carries a live claim across checkouts.
+	if requestFile.TypedRecord.RequestStatus == "claimed" && strings.TrimSpace(requestFile.TypedRecord.ClaimedAt) != "" {
 		evidence = append(evidence, resultmodel.SelectionClaimEvidence{
 			Source: "request-frontmatter", ClaimedAt: claimedAtField.RawValue,
 			Path: pathForSelection(requestFile), SourceLine: claimedAtField.LineNumber,

@@ -225,7 +225,16 @@ func TestRecoverClaimCommitsCleanOwnershipTransferAndPreservesUnrelatedWork(t *t
 			t.Errorf("recovered request missing %q:\n%s", token, queue)
 		}
 	}
-	for _, token := range []string{"claimed_at:", "planning_at:", "write_set:", "## Scope", "## Testing"} {
+	// REQ-575 made stamps append-only, so this transition no longer removes
+	// claimed_at or planning_at; only the generated sections and the scope
+	// mirror go. TestRecoverAndReclaimPreserveEveryLifecycleStamp pins the
+	// stamps that now survive.
+	for _, token := range []string{"claimed_at: 2026-09-02T01:00:00Z", "planning_at: 2026-09-02T01:10:00Z"} {
+		if !strings.Contains(queue, token) {
+			t.Errorf("recovered request lost %q:\n%s", token, queue)
+		}
+	}
+	for _, token := range []string{"write_set:", "## Scope", "## Testing"} {
 		if strings.Contains(queue, token) {
 			t.Errorf("recovered request retained %q:\n%s", token, queue)
 		}
@@ -246,6 +255,101 @@ func TestRecoverClaimCommitsCleanOwnershipTransferAndPreservesUnrelatedWork(t *t
 	if reclaimed.Outcome != resultmodel.OutcomeRefused || !hasStateFinding(reclaimed, "CLAIM-STATUS") {
 		t.Fatalf("pending-answers must remain unclaimable until clarified: %#v", reclaimed)
 	}
+}
+
+// Lifecycle stamps are append-only evidence (REQ-575). Recovery used to delete
+// claimed_at and every phase stamp, so REQ-505 was re-claimed after a six-hour
+// interruption and reported 1m 23s of wall time for the whole request; the
+// stamps are the only durable timing record the suite keeps, so the deletion
+// destroyed evidence nothing else held. The subtest table is read out of the
+// fixture by the `_at` suffix rather than written as a field list, so a stamp
+// the schema gains later is covered without editing this test.
+func TestRecoverAndReclaimPreserveEveryLifecycleStamp(t *testing.T) {
+	root := newStateRepository(t)
+	configureStateGit(t, root)
+	writeStateRequest(t, root, "do-work/queue/REQ-575.md", "REQ-575", "pending", "write_set: [owned.go]\n")
+	writeStateCheckpoint(t, root, "- REQ-999: Unrelated — claimed earlier — writer: other:/repo\n")
+	runStateGit(t, root, "add", "do-work")
+	runStateGit(t, root, "commit", "-qm", "seed")
+
+	firstClaim := "2026-09-04T16:39:30Z"
+	claimed := handleStateCommand(commandruntime.ExecutionContext{RepositoryRoot: root}, TransitionClaim,
+		[]string{"REQ-575", "--request-path", "do-work/queue/REQ-575.md", "--provenance", "explicit-req", "--writer", "host:/checkout", "--at", firstClaim})
+	assertStateSuccess(t, claimed)
+
+	workingPath := filepath.Join(root, "do-work", "working", "REQ-575.md")
+	working := readStateFile(t, root, "do-work/working/REQ-575.md")
+	phaseStamps := "route: C\nplanning_at: 2026-09-04T16:49:45Z\ndispatch_at: 2026-09-04T16:52:10Z\n" +
+		"builder_handback_at: 2026-09-04T17:10:00Z\nintegration_at: 2026-09-04T17:12:00Z\n" +
+		"review_at: 2026-09-04T17:20:00Z\nremediation_at: 2026-09-04T17:22:00Z\n" +
+		"re_review_at: 2026-09-04T17:25:00Z\nrelease_at: 2026-09-04T17:26:00Z\n"
+	working = strings.Replace(working, "---\nBody\n", phaseStamps+"---\nBody\n\n## Scope\n\nGenerated scope\n", 1)
+	if err := os.WriteFile(workingPath, []byte(working), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	stampsBeforeRecover := lifecycleStampsByFieldName(t, working)
+
+	recoverInstant := "2026-09-04T21:02:00Z"
+	recovered := handleStateCommand(commandruntime.ExecutionContext{RepositoryRoot: root}, TransitionRecover,
+		[]string{"REQ-575", "--request-path", "do-work/working/REQ-575.md", "--checkpoint-writer", "host:/checkout", "--assume-sole-writer", "--commit", "--at", recoverInstant})
+	assertStateSuccess(t, recovered)
+
+	queued := readStateFile(t, root, "do-work/queue/REQ-575.md")
+	stampsAfterRecover := lifecycleStampsByFieldName(t, queued)
+	for fieldName, wantValue := range stampsBeforeRecover {
+		if fieldName == "status_changed_at" {
+			continue
+		}
+		t.Run("recover keeps "+fieldName, func(t *testing.T) {
+			gotValue, present := stampsAfterRecover[fieldName]
+			if !present {
+				t.Fatalf("recover deleted %s (was %s):\n%s", fieldName, wantValue, queued)
+			}
+			if gotValue != wantValue {
+				t.Fatalf("recover rewrote %s: got %s, want %s", fieldName, gotValue, wantValue)
+			}
+		})
+	}
+	if stampsAfterRecover["status_changed_at"] != recoverInstant {
+		t.Errorf("recover must still advance status_changed_at: got %q", stampsAfterRecover["status_changed_at"])
+	}
+	for _, token := range []string{"status: pending", "route:", "write_set:"} {
+		wantPresent := token == "status: pending"
+		if strings.Contains(queued, token) != wantPresent {
+			t.Errorf("recovered request token %q present=%v, want %v:\n%s", token, !wantPresent, wantPresent, queued)
+		}
+	}
+
+	reclaimed := handleStateCommand(commandruntime.ExecutionContext{RepositoryRoot: root}, TransitionClaim,
+		[]string{"REQ-575", "--request-path", "do-work/queue/REQ-575.md", "--provenance", "explicit-req", "--writer", "host:/checkout", "--at", "2026-09-04T23:00:00Z"})
+	assertStateSuccess(t, reclaimed)
+	if got := lifecycleStampsByFieldName(t, readStateFile(t, root, "do-work/working/REQ-575.md"))["claimed_at"]; got != firstClaim {
+		t.Errorf("re-claim overwrote the first claim: got %s, want %s", got, firstClaim)
+	}
+}
+
+// lifecycleStampsByFieldName reads every frontmatter field whose name ends in
+// `_at` out of one request file. The suffix is the condition the append-only
+// rule keys on, so callers never maintain a field list.
+func lifecycleStampsByFieldName(t *testing.T, contents string) map[string]string {
+	t.Helper()
+	_, afterOpener, opened := strings.Cut(contents, "---\n")
+	frontmatter, _, closed := strings.Cut(afterOpener, "\n---")
+	if !opened || !closed {
+		t.Fatalf("request has no frontmatter block:\n%s", contents)
+	}
+	stamps := map[string]string{}
+	for _, line := range strings.Split(frontmatter, "\n") {
+		fieldName, fieldValue, isField := strings.Cut(line, ":")
+		if !isField || !strings.HasSuffix(fieldName, "_at") {
+			continue
+		}
+		stamps[fieldName] = strings.TrimSpace(fieldValue)
+	}
+	if len(stamps) == 0 {
+		t.Fatalf("fixture carries no lifecycle stamps:\n%s", contents)
+	}
+	return stamps
 }
 
 func TestRecoverClaimRequiresSoleAuthorityCheckpointEvidenceAndCommit(t *testing.T) {
