@@ -760,6 +760,60 @@ func TestVerifyReportsAnUndeterminedMergeStateSeparately(t *testing.T) {
 	}
 }
 
+// One fact must produce one row. The branch a detached worktree does not have is
+// what defeats the merge probe AND `git diff <ref>...<name>`, so running the
+// committed-queue-state probe here only re-prints the same missing branch as a
+// skipped-probe line under the finding that already reported it. The probe is
+// skipped instead, and the fact it could not run moves into the undetermined
+// finding's remedy — dropping it would let silence read as "checked and clean".
+//
+// The control is TestVerifyFlagsQueueStateCommittedOnABuilderBranch: a leftover
+// whose merge state git CAN determine still runs the probe and reports what it
+// found, so this skip stays keyed to the undetermined case alone.
+func TestVerifyDoesNotProbeCommittedQueueStateForAnUndeterminedWorktree(t *testing.T) {
+	repoRoot := newWorktreeFixtureRepo(t)
+	worktreeParent := t.TempDir()
+
+	const detachedLeftoverName = "worktree-agent-REQ-005-detached"
+	runGitInFixture(t, repoRoot, "worktree", "add", "--quiet", "--detach",
+		filepath.Join(worktreeParent, detachedLeftoverName))
+
+	report, verifyError := runVerifyProbes(repoRoot, time.Now())
+	if verifyError != nil {
+		t.Fatalf("runVerifyProbes: %v", verifyError)
+	}
+	renderedReport := renderVerifyReport(report)
+
+	var findingsNamingTheLeftover []VerifyFinding
+	for _, finding := range report.Findings {
+		if strings.Contains(finding.Detail, detachedLeftoverName) {
+			findingsNamingTheLeftover = append(findingsNamingTheLeftover, finding)
+		}
+	}
+	if len(findingsNamingTheLeftover) != 1 {
+		t.Fatalf("got %d findings naming %s, want 1 row per worktree:\n%s",
+			len(findingsNamingTheLeftover), detachedLeftoverName, renderedReport)
+	}
+	if findingsNamingTheLeftover[0].Category != verifyCategoryUndeterminedWorktreeLeftover {
+		t.Errorf("the one row must be the undetermined-merge-state finding, got category %q",
+			findingsNamingTheLeftover[0].Category)
+	}
+	for _, skippedProbe := range report.SkippedProbes {
+		if strings.Contains(skippedProbe, detachedLeftoverName) {
+			t.Errorf("no skipped-probe line may repeat the same missing branch, got: %s", skippedProbe)
+		}
+	}
+	// The probe not running is still a reported fact, carried by the finding that
+	// replaced the skipped line.
+	remedy := findingsNamingTheLeftover[0].Remedy
+	if !strings.Contains(remedy, "committed-queue-state") {
+		t.Errorf("the remedy must name the check that could not run, got: %s", remedy)
+	}
+	if !strings.Contains(remedy, "unknown") {
+		t.Errorf("an unrun check must read as unknown, never as clean, got: %s", remedy)
+	}
+}
+
 // mergeFixtureBranchIntoIntegration merges a builder branch into the repo-root
 // checkout, which is what makes `git merge-base --is-ancestor <branch> HEAD`
 // answer "merged". Setup only.
