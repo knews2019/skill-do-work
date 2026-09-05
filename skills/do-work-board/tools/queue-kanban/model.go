@@ -361,9 +361,9 @@ type QueueNote struct {
 // BoardColumns holds the active-work buckets. Completed REQs older than the
 // recent window are NOT represented here — they live in Board.Calendar.
 type BoardColumns struct {
-	Pending             []*RequestTicket // status pending, blocked with an unmet dependency, and pending-heavy-testing (the union of PendingReady and PendingWaiting)
+	Pending             []*RequestTicket // status pending and blocked with an unmet dependency (the union of PendingReady and PendingWaiting)
 	PendingReady        []*RequestTicket // status pending with every depends_on target at terminal success — actionable now
-	PendingWaiting      []*RequestTicket // pending or blocked with at least one unmet dependency, or held for the heavy-lane drain — not yet actionable
+	PendingWaiting      []*RequestTicket // pending or blocked with at least one unmet dependency — not yet actionable
 	Claimed             []*RequestTicket // status claimed
 	NeedsInputOrBlocked []*RequestTicket // operator-actionable pending-answers / blocked-with-no-unmet-deps / blocked-* / failed
 	RecentlyDone        []*RequestTicket // completed*/cancelled whose completion instant is within the window
@@ -1046,10 +1046,7 @@ func isStoppedStatus(normalizedStatus string) bool {
 
 // isNeedsInputOrBlockedStatus reports whether a normalized status belongs in the
 // Needs-input / Blocked column: the statuses where a person has to do something
-// before the work loop can continue. `pending-heavy-testing` is deliberately
-// absent — the loop runs the held lanes itself at queue exhaustion
-// (actions/work.md Step 6.5), so listing it here asked the operator for a
-// validation nobody needed.
+// before the work loop can continue.
 func isNeedsInputOrBlockedStatus(normalizedStatus string) bool {
 	switch normalizedStatus {
 	case "pending-answers",
@@ -1678,10 +1675,8 @@ func parseTimestamp(text string) (time.Time, bool) {
 // status. Dependency readiness (annotated by annotateDependencyState, which must
 // have run first) additionally affects two display cases: pending splits into
 // ready/waiting, while a bare blocked ticket with an unmet dependency joins the
-// waiting group until its upstream completes. A pending-heavy-testing ticket
-// joins the waiting group too, by status alone: the loop resolves that hold
-// without anyone's input. The split is a view, not a status change — each
-// ticket keeps its on-disk status throughout.
+// waiting group until its upstream completes. The split is a view, not a status
+// change — each ticket keeps its on-disk status throughout.
 // Terminally resolved tickets (completed*/cancelled) only enter
 // RecentlyDone when their completion instant falls inside the window; older
 // resolutions are left for the calendar. A status outside the known vocabulary
@@ -1706,12 +1701,6 @@ func bucketColumns(tickets []*RequestTicket, now time.Time, recentWindow time.Du
 			}
 		case ticket.Status == "claimed":
 			columns.Claimed = append(columns.Claimed, ticket)
-		case ticket.Status == "pending-heavy-testing":
-			// Held, not stuck: the implementation is committed and the work loop
-			// runs the planned heavy lanes itself once the queue is empty, then
-			// returns the REQ to pending. It waits with the queue, never in the
-			// operator's inbox.
-			columns.PendingWaiting = append(columns.PendingWaiting, ticket)
 		case isNeedsInputOrBlockedStatus(ticket.Status):
 			columns.NeedsInputOrBlocked = append(columns.NeedsInputOrBlocked, ticket)
 		case isTerminalResolvedStatus(ticket.Status):
