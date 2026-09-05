@@ -7,6 +7,15 @@
 # calls has its own probe in run-go-tests-with-budget-behavior.sh.
 set -uo pipefail
 
+# A test of the reuse wrapper must not read the caller's preference for that
+# wrapper. Both of these names short-circuit run_stage_with_evidence in
+# maintainer-verify.sh before it decides anything, and the measurement protocol
+# runs the whole gate as DO_WORK_FAST_STAGE_REUSE=off, so an inherited value
+# would switch off the exact boundary under test: every case below would then
+# report the caller's environment as nine failures of the code. The probe clears
+# both names for its own runs instead of inheriting either.
+unset DO_WORK_FAST_STAGE_REUSE MAINTAINER_VERIFY_SELFTEST_LOG
+
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 gate_script="${DO_WORK_TEST_MAINTAINER_VERIFY:-$repo_root/_dev/tests/maintainer-verify.sh}"
 probe_temporary_directory="${TMPDIR:-/tmp}"
@@ -106,9 +115,13 @@ expect_case() {
   local case_name="$1" expect_ran="$2" expect_status="$3" expect_line="$4"
   if [ "$stage_ran" != "$expect_ran" ] || [ "$stage_status" -ne "$expect_status" ] || \
     ! grep -qF -- "$expect_line" <<<"$stage_output"; then
-    printf 'FAIL: %s ran=%s (want %s) status=%s (want %s) output=<%s>\n' \
+    # The wanted line is printed beside the output because all three fields are
+    # asserted and only one of them may be wrong: a message that shows a
+    # matching ran, a matching status and an empty output reads as a passing
+    # case, and hides that the missing disposition line is the whole failure.
+    printf 'FAIL: %s ran=%s (want %s) status=%s (want %s) output=<%s> want-line=<%s>\n' \
       "$case_name" "$stage_ran" "$expect_ran" "$stage_status" "$expect_status" \
-      "$(tr '\n' ' ' <<<"$stage_output")" >&2
+      "$(tr '\n' ' ' <<<"$stage_output")" "$expect_line" >&2
     failure_count=$((failure_count + 1))
   fi
 }
