@@ -2,6 +2,15 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.299.0 — The Top Bar Stays One Row (2026-09-05)
+
+When the board's three control pills no longer fit beside the identity block, the controls wrapped and the identity block wrapped with them, growing the bar from 68px to about 150px on the view where vertical space matters most. The bar now holds its height.
+
+- The identity is one line that never wraps, `do-work/ queue · skill-do-work2 · 13:42 UTC`; the full "Generated … · Ns ago" stamp stays in the page for screen readers and shows as the line's tooltip.
+- The Touched-in chips (6h, 24h, 48h, 7d) moved from the top bar onto the Activity view's summary line, where the view panel shows and hides them; the bar keeps two pills on every view.
+- The view buttons now read Board, Activity, Calendar, Timeline, Durations, Testing.
+- Measured in headless Chrome at 1400px: the bar is 68px where it was 126px, and the Activity summary text still starts where it did.
+
 ## 0.298.0 — The Activity View Scrolls as One Surface (2026-09-05)
 
 The Activity view scrolled twice: its transitions table was a 70vh scroll box nested inside the board area, which is the board's own scroll container, so the view showed two scrollbars and the wheel moved whichever one the pointer was over. The table is now ordinary content and the board is the only thing that scrolls.

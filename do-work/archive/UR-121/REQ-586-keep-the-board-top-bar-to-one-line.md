@@ -1,7 +1,7 @@
 ---
 id: REQ-586
 title: 'Keep the board top bar to one line: single-line identity and Touched-in chips inside the Activity view'
-status: claimed
+status: completed
 created_at: 2026-09-05T12:40:00Z
 user_request: UR-121
 domain: frontend
@@ -32,7 +32,11 @@ integration_at: 2026-09-05T13:46:18Z
 review_at: 2026-09-05T13:50:28Z
 kb_status: pending
 commit: 2ea0b1508b579df9fb96b8d27c2c71c7f8180017
+heavy_verified_at: 2026-09-05T13:55:30Z
+heavy_verified_revision: b69b5b36ec54533d5baa84e9ce8559045a717542
 claimed_at: 2026-09-05T13:24:34Z
+completed_at: 2026-09-05T13:56:18Z
+release_at: 2026-09-05T13:56:18Z
 ---
 
 # Keep the Board Top Bar to One Line: Single-Line Identity and Touched-In Chips Inside the Activity View
@@ -222,3 +226,21 @@ Held at Step 7.7 after a passing review. Base `0edce090`, target `2ea0b150` (the
 - `queue-kanban-javascript`: `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane queue-kanban-javascript` — `template.html`, `board.css`, `board-controls.js` and `javascript_behavior_c_test.go` match subtree `skills/do-work-board/tools/queue-kanban`
 - `queue-kanban-browser`: `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane queue-kanban-browser` — same subtree match
 - `staged-skills`: `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane staged-skills` — all four paths match subtree `skills`
+
+## Timing
+
+Observed 2026-09-05T13:26:18Z to 2026-09-05T13:46:18Z: 20m 00s total, 20m 00s attributed across 1 events, 0s unattributed.
+
+| Category | Elapsed | Events |
+| --- | --- | --- |
+| builder-work | 20m 00s | 1 |
+
+Slowest stage: builder-work / implementation, 20m 00s, outcome success.
+
+## Heavy Verification Result
+
+Target revision `2ea0b1508b579df9fb96b8d27c2c71c7f8180017`; executed at `b69b5b36ec54533d5baa84e9ce8559045a717542` (HEAD at the drain, from a detached worktree because the shared main tree was dirty). All three selected lanes ran and exited 0; none was reused from earlier evidence.
+
+- `queue-kanban-javascript`: exit 0, executed (fingerprint_mismatch), 7 s
+- `queue-kanban-browser`: exit 0, executed (fingerprint_uncertain, as every browser lane is), 96 s, with `QUEUE_KANBAN_BROWSER` naming Chrome 152.0.7977.76 after the first attempt skipped for lack of a browser on PATH
+- `staged-skills`: exit 0, executed (fingerprint_mismatch), 38 s
