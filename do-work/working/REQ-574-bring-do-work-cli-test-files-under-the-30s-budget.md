@@ -129,12 +129,17 @@ The cost is process spawning, not computation. Every case builds a real git repo
 
 **Files changed:** 4, all test code. Implementation branch `worktree-agent-REQ-574-test-file-budget` at `ebe134f6`, merged `--no-ff` at `50569e88`; range `982e94f0..50569e88`.
 
+- `skills/do-work/tools/do-work-cli/internal/corehelpers/inventory_test.go`
+- `skills/do-work/tools/do-work-cli/internal/finalization/finalization_commands_test.go`
+- `skills/do-work/tools/do-work-cli/internal/publication/publication_commands_test.go`
+- `skills/do-work/tools/do-work-cli/internal/publication/defer_gate_test.go`
+
 | Verb | Path | What changed |
 |---|---|---|
-| modify | `internal/corehelpers/inventory_test.go` | `runRetainedInventory` resolves the do-work-cli executable once per test binary and runs it directly with the argv and environment `uncommitted-inventory.sh` would have used, instead of paying two shells and two Go-toolchain probes per synthetic case. Callers passing a nil status still go through the shim. |
-| modify | `internal/finalization/finalization_commands_test.go` | New `TestMain` builds one initialized, configured, empty repository for the binary; `newFinalizationRepository` copies it instead of running `git init` and two `git config`. `.git/hooks` is recreated empty because `--template=` omits it and one test writes a real pre-commit hook there. |
-| modify | `internal/publication/publication_commands_test.go` | New `TestMain` and `buildDeferGateRepositoryTemplate` build both defer-gate baselines — with and without a second parent request — once for the binary. |
-| modify | `internal/publication/defer_gate_test.go` | `newDeferGateRepository` copies the matching template and keeps the parent claim, which is plain file I/O. Its seven git commands are gone. |
+| modify | `skills/do-work/tools/do-work-cli/internal/corehelpers/inventory_test.go` | `runRetainedInventory` resolves the do-work-cli executable once per test binary and runs it directly with the argv and environment `uncommitted-inventory.sh` would have used, instead of paying two shells and two Go-toolchain probes per synthetic case. Callers passing a nil status still go through the shim. |
+| modify | `skills/do-work/tools/do-work-cli/internal/finalization/finalization_commands_test.go` | New `TestMain` builds one initialized, configured, empty repository for the binary; `newFinalizationRepository` copies it instead of running `git init` and two `git config`. `.git/hooks` is recreated empty because `--template=` omits it and one test writes a real pre-commit hook there. |
+| modify | `skills/do-work/tools/do-work-cli/internal/publication/publication_commands_test.go` | New `TestMain` and `buildDeferGateRepositoryTemplate` build both defer-gate baselines — with and without a second parent request — once for the binary. |
+| modify | `skills/do-work/tools/do-work-cli/internal/publication/defer_gate_test.go` | `newDeferGateRepository` copies the matching template and keeps the parent claim, which is plain file I/O. Its seven git commands are gone. |
 
 No assertion was added, removed, reworded, or moved to another file, and no file was split.
 
@@ -158,3 +163,15 @@ Run per package instead of against the whole module the same files drop further 
 - Two intermediate failures were found and fixed, not worked around: removing `t.Setenv` broke the in-process `readInventory`, which needs the fake git on the process PATH, so that approach was reverted rather than patched; and `git init --template=` omits `.git/hooks`, which `TestRecoverFinalizationResumesAfterRealPreCommitHookFailure` writes into.
 
 **Acceptance criterion 1 is met for a single gate and not met for two concurrent gates.** Every file is under the limit with 5.66s to 9.23s of room, against 3.77s before. Two full gates sharing 8 cores roughly double every wall time, which is how the same files were recorded at 37-60s earlier the same day; no change to test fixtures survives that, because the remaining cost is the production finalization code doing real git work, which these tests exist to exercise. Making that case safe is a scheduling decision — not running two gates at once, or bounding `GOMAXPROCS` — and it belongs outside a test-speed repair.
+
+### Final canonical repository gate
+
+- **Command:** `["bash","_dev/tests/maintainer-verify.sh"]`, direct and unpiped, run at the merge commit `50569e88` in a detached worktree
+- **Direct exit status:** 0 — no retry needed, "Maintainer verification passed."
+- **do-work-cli lane:** wall 55s, 758 tests, slowest file `internal/finalization/finalization_recovery_test.go` 23.76s against the 30s limit (the same lane measured 67s wall and 28.02s slowest at this REQ's pre-build baseline)
+- **queue-kanban lane:** wall 18s, 384 tests, slowest file `generate_test.go` 8.66s
+- **Failures:** none
+
+## Qualification
+
+Passed. `qualify --request-path <this REQ> --diff-range 982e94f0..50569e88` returned success; its one warning is `QUALIFY-UNIFY-DISARMED` (no `[UNIFY]` box), which reflects that the builder and orchestrator roles were played inline in one session rather than handed back across a subagent boundary. `scope-drift --request-path <this REQ>` returned success: the corrected `## Scope` list and the `## Implementation Summary` list are the same four paths.

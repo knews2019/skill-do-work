@@ -37,6 +37,7 @@ estimate:
 gate_deferred: 'true'
 claimed_at: 2026-09-05T10:05:13Z
 remediation_dispatch_at: 2026-09-05T10:10:08Z
+remediation_at: 2026-09-05T10:15:14Z
 ---
 
 # Hand the Archive and Commit Tails to finalize
@@ -224,3 +225,38 @@ Execution revision: `ad8bceb7aa0d0c63c230048b6a1f2dae1ef7ccb9`
 - Protected paths (`git diff --name-status -M base..merge`, no renames): 12 project files.
 - **Drift:** 8 of the 12 have commit history after the merge — `work.md` (17 commits), `work-reference.md` (16), `prime-do-work-cli.md` (8), `finalization_commands.go` (4), `result_model.go` (3), `core-checks.sh` (2), `advance_commands.go` (1), `result_model_test.go` (1) — from REQ-504, 505, 506, 510, 515, 547, 562, 564, 569 and 570. None has a current staged, unstaged, untracked, deleted, type-changed or renamed state.
 - **Result:** reuse rejected. The saved pair is deleted from the frontmatter, every prior qualification/testing/review verdict is treated as stale (kept above under Prior Evidence), and the request returns to Step 6 as a remediation pass: a builder re-verifies each acceptance criterion against current `main` and implements only what no longer holds (brief: `do-work/runs/work-2026-09-05-094707/REQ-507-brief.md`).
+
+## Decisions (orchestrator, remediation pass)
+
+- **D-07 — The merged range `8e3dbf01..ad8bceb7` stays this REQ's implementation.** The remediation builder re-verified all four acceptance criteria against current `main` with per-criterion evidence and returned no commits (hand-back: `do-work/runs/work-2026-09-05-094707/REQ-507-handback.md`, promoted into this record). The saved-range proof rejected *blind* reuse because later REQs reworked 8 of the 12 files; the verification pass is what replaces that reuse. Qualification therefore reads the real implementation range, every downstream verdict (tests, gate, review, heavy lanes) is renewed at the current tree, and provenance records the merge hash `ad8bceb7aa0d0c63c230048b6a1f2dae1ef7ccb9`. Value: no fabricated re-implementation of work that is already on `main` and tested. Risk: a criterion weaker than its wording in a way neither tests nor predicates detect — mitigated by the builder tracing each criterion to live code and prose lines, and by the fresh independent review below.
+- **D-08 (builder D-04) — Report no gap rather than manufacture one.** All four criteria trace to live artifacts and both focused suites pass; a cosmetic rewrite of `work.md`/`work-reference.md` would only add drift risk.
+- **D-09 (builder D-05) — The red staged-skills lane was the assertion's fault, not this REQ's.** The lane asserted `work.md` must cite the sibling board package, an invariant this REQ deliberately ended; REQ-547 deleted that assertion (`c5dff3db`) with an attributing comment. The lane is re-run in this run's heavy drain, not assumed.
+- **D-10 (builder D-06) — No new predicate for the CLI prime's finalization sentence.** No incident behind it; recorded as a report-only discovered task.
+
+## Implementation Summary
+
+Implementation landed on `main` in the merged range `8e3dbf01e0660424965d79acb2e386b6604e4780..ad8bceb7aa0d0c63c230048b6a1f2dae1ef7ccb9` (4 September); the 5 September remediation pass re-verified every acceptance criterion against the current tree and changed nothing.
+
+- `_dev/tests/contracts/core-checks.sh` (modified) — pins the judgment-only shape of Step 8/9 and the two reference procedures and forbids restored finalization-tail recipes.
+- `skills/do-work/actions/work-reference.md` (modified) — Changelog Entry and Commit & Metadata-Commit procedures reduced to release-content, provenance and typed-result judgment.
+- `skills/do-work/actions/work.md` (modified) — Step 8 reduced to Fold-First, sweep, terminal, release/lesson and finalization-intent judgment; Step 9 to the the advance command continuation and its typed-success condition.
+- `skills/do-work/tools/do-work-cli/internal/finalization/finalization_commands.go` (modified) — exposes bound in-process finalization while preserving the direct command contract.
+- `skills/do-work/tools/do-work-cli/internal/finalization/finalization_prepare.go` (modified) — compares outer request identity inside the single manifest decode before any preparation effect.
+- `skills/do-work/tools/do-work-cli/internal/lifecycleadvance/advance_commands.go` (modified) — classifies oriented work as the mechanical finalize phase and dispatches its input to the composition seam.
+- `skills/do-work/tools/do-work-cli/internal/lifecycleadvance/advance_commands_test.go` (modified) — public phase matrix and exact continuation expectation.
+- `skills/do-work/tools/do-work-cli/internal/lifecycleadvance/finalization_gate.go` (new) — parses exactly one manifest and projects the finalizer's result with the advance identity.
+- `skills/do-work/tools/do-work-cli/internal/lifecycleadvance/finalization_gate_test.go` (new) — four terminal paths and seven no-mutation refusals through the public advance command.
+- `skills/do-work/tools/do-work-cli/internal/resultmodel/result_model.go` (modified) — renders every ordered finalization record in text.
+- `skills/do-work/tools/do-work-cli/internal/resultmodel/result_model_test.go` (modified) — text/JSON parity and multi-record ordering.
+- `skills/do-work/tools/do-work-cli/prime-do-work-cli.md` (modified) — records the advance command as the request-bound finalization composer.
+
+**Remediation pass (5 September):** builder branch `worktree-agent-REQ-507-hand-archive-and-commit-tails-to-finalize` at `1012e5e2`, no commits, `git status` empty; per-criterion evidence C-1 to C-4 in the hand-back; focused suites `go test ./internal/lifecycleadvance ./internal/finalization ./internal/resultmodel` exit 0 and `_dev/tests/contracts/core-checks.sh` exit 0. Worktree and branch removed without force.
+
+## Discovered Tasks
+
+- `impact-negligible` — `_dev/tests/contracts/core-checks.sh` pins the CLI prime's evidence-gate sentence but not the adjacent "request-bound composition of finalization" sentence. → report only
+- `impact-negligible` — `_dev/tests/staged-skills-contract.sh` gates `assert_core_sibling_reference` on `[ -f ... ]`, so a renamed or removed action file silently drops its sibling assertion. Not introduced by this REQ. → report only
+
+## Qualification
+
+Typed qualification (advance `qualify` + `scope-drift`, merged range `8e3dbf01e0660424965d79acb2e386b6604e4780..ad8bceb7aa0d0c63c230048b6a1f2dae1ef7ccb9`, run 5 September at `5cb094dd`): satisfied. All 12 summary paths match the range and the declared Scope; no undeclared touch, no unused declaration. Two `QUALIFY-NEW-FILE-UNWIRED` warnings on `finalization_gate.go` and `finalization_gate_test.go` are judged not dead code: both are files of the existing `lifecycleadvance` package, and `advance_commands.go` calls `executeAdvanceFinalization` from the first while the second is its `go test` file — Go wires package files by membership, which a filename grep cannot see. Orchestrator judgment: the diff is substantive (four terminal-path tests plus seven refusal tests exercise the new seam through the public command), every requirement traces to a criterion in the builder's C-1 to C-4 evidence, the live data flow (advance → FinalizeBound → ordered records → text/JSON renderers) was read at the current tree, and no debug artifact or unchecked P-A-U box remains.
