@@ -27,6 +27,8 @@ dispatch_at: 2026-09-05T12:06:43Z
 route: A
 builder_handback_at: 2026-09-05T12:16:29Z
 integration_at: 2026-09-05T12:16:29Z
+review_at: 2026-09-05T12:24:37Z
+commit: 09aaa9a443f8bb6191b162393403e60b4f8fa6f4
 ---
 
 # Hide the Verify-Findings Strip on the Activity View
@@ -152,3 +154,30 @@ Requirements traced: hidden on Activity even with findings present (the `activit
 **Follow-ups created:** None (5 findings report only)
 
 *Reviewed by review-work action*
+
+## Lessons Learned
+
+**What worked:** Reading the strip's emptiness back off the renderer's own DOM output instead of re-reading `boardData` kept the "is there anything to say" rule in one place, and the review confirmed the no-null-guard choice was safe for a stronger reason than the builder gave: the client JavaScript is inlined into `index.html` at generate time, so the mixed-version tree the renderer's own guard was written for cannot occur.
+
+**What didn't:** The first implementation read the skipped disclosure's `hidden` attribute and made an empty strip visible on a view switch, because the stub node in the test lane carries no template-initial attributes. Reading the skipped list's children removed the dependency on any initial attribute and made the probe and the browser read the same thing.
+
+**Worth knowing:** The Node behavior lane's stub `document.getElementById` manufactures a fresh node for any id it is asked for, so a renamed or deleted element reads as "present with zero children" rather than failing. Any rule that depends on an element existing needs a separate assertion against the generated page text, or it is untested. That matters immediately: REQ-579 rewrites this same strip and plans to delete the disclosure that holds `#board-findings-skipped-list`, which `applyView` now dereferences.
+
+## Orientation
+
+The board's Verify Findings strip now steps out of the way on the Activity view and comes back everywhere else. Lives in the queue-kanban board subsystem (`_dev/primes/prime-kanban-board.md`), in the view switcher rather than in the Activity renderer, so re-rendering the transitions table never touches the strip. No prime was made stale.
+
+## Heavy Verification Plan
+
+- **Base revision:** 7dbb27562f58b5ede067a478453edd7fbe70c3c8
+- **Target revision:** 09aaa9a443f8bb6191b162393403e60b4f8fa6f4
+- **Planned at:** 2026-09-05T12:24:37Z, from `_dev/tests/heavy-lanes.json`
+
+| Lane | Argv | Why it was selected |
+| --- | --- | --- |
+| `queue-kanban-javascript` | `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane queue-kanban-javascript` | every changed path matched subtree `skills/do-work-board/tools/queue-kanban` |
+| `queue-kanban-browser` | `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane queue-kanban-browser` | same subtree match |
+| `staged-skills` | `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane staged-skills` | same subtree match |
+
+No path was left uncovered by the manifest. The browser lane is where the reviewer's suggested manual checks land: a Board → Activity → Board round trip with real findings, the same round trip with only skipped probes, and a zero-finding board where no view switch may make an empty strip appear. The request stays `claimed` with its `commit:` landed until the queue-exhaustion drain.
+
