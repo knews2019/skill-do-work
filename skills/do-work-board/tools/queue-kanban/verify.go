@@ -44,6 +44,30 @@ const (
 	verifyCategoryCalibrationRowUnreconcilable   = "calibration-row-unreconcilable"
 )
 
+// maxNamedItemsInFindingDetail bounds how many entries a finding detail spells
+// out before it stops naming them and says how many are left. Five is enough to
+// recognize what kind of thing the list holds; the count carries the size.
+//
+// The bound exists because the lists these details carry have no natural size.
+// A builder worktree whose do-work/ is untracked expands under
+// `--untracked-files=all` to one path per file — roughly 700 of them when this
+// was observed on 2026-09-05 — and every surface prints the detail whole: the
+// board's findings strip renders producer text verbatim, renderVerifyReport
+// puts it on one terminal line, and the shareable static snapshot embeds it.
+const maxNamedItemsInFindingDetail = 5
+
+// joinCappedItemList renders a list for a finding detail: the first
+// maxNamedItemsInFindingDetail entries, then the exact number it did not name.
+// A list at or under the bound is joined unchanged, so a short detail reads
+// exactly as it always has.
+func joinCappedItemList(items []string) string {
+	if len(items) <= maxNamedItemsInFindingDetail {
+		return strings.Join(items, ", ")
+	}
+	return fmt.Sprintf("%s, and %d more",
+		strings.Join(items[:maxNamedItemsInFindingDetail], ", "), len(items)-maxNamedItemsInFindingDetail)
+}
+
 // staleClaimThreshold is how long a `claimed` REQ may sit before verify reports
 // it. It mirrors the takeover threshold in actions/work-reference.md → Crash
 // Recovery (Step 1), and carries the same meaning there: it bounds how long a
@@ -794,7 +818,7 @@ func appendArchivedUserRequestLiveMemberFindings(report *VerifyReport, board *Bo
 			Category: verifyCategoryArchivedUserRequestLiveMember,
 			Subject:  userRequestTicket.UserRequestId,
 			Detail: fmt.Sprintf("is archived but still has live member(s) %s in do-work/queue/ or do-work/working/",
-				strings.Join(liveMemberIds, ", ")),
+				joinCappedItemList(liveMemberIds)),
 			Remedy: "keep the UR archived; resolve or abandon each ordinary live member, or correct its user_request association if it does not belong to this UR",
 		})
 	}
@@ -1174,7 +1198,7 @@ func appendWorktreeFindings(report *VerifyReport, repoRoot string, board *Board)
 					Category: verifyCategoryWorktreeCommittedQueueState,
 					Subject:  leftoverName,
 					Detail: fmt.Sprintf("has committed changes under do-work/ on its branch (%s) — a builder wrote queue state the orchestrator alone owns",
-						strings.Join(committedQueuePaths, ", ")),
+						joinCappedItemList(committedQueuePaths)),
 					Remedy: "those commits are in the branch about to be merged — drop or revert them there before integrating; every claim, status flip, and archive move belongs to the main tree",
 				})
 			}
@@ -1188,7 +1212,7 @@ func appendWorktreeFindings(report *VerifyReport, repoRoot string, board *Board)
 				Category: verifyCategoryWorktreeWroteQueueState,
 				Subject:  leftoverName,
 				Detail: fmt.Sprintf("has uncommitted changes under do-work/ in %s (%s) — a builder wrote queue state the orchestrator alone owns",
-					worktreePath, strings.Join(dirtyQueuePaths, ", ")),
+					worktreePath, joinCappedItemList(dirtyQueuePaths)),
 				Remedy: "discard those changes in the worktree; every claim, status flip, and archive move belongs to the main tree",
 			})
 		}
