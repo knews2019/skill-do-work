@@ -22,6 +22,8 @@ estimate:
     - 5 acceptance criteria
 route: A
 dispatch_at: 2026-09-05T12:41:13Z
+builder_handback_at: 2026-09-05T12:59:09Z
+integration_at: 2026-09-05T12:59:09Z
 ---
 
 # Make the Descendant-Cleanup Tests Fail on a Real Process-Group Leak
@@ -30,9 +32,9 @@ dispatch_at: 2026-09-05T12:41:13Z
 Three tests in `skills/do-work/tools/do-work-cli/internal/nextselection/blocked_probe_test.go` claim to prove that a probe's descendant process group is terminated. Two of them pass on a tree with a genuine leak, and the third fails on a timeout rather than on its descendant assertion. Rewrite the descendant fixture so a leak fails the assertion that names it.
 
 ## AI Execution State (P-A-U Loop)
-- [ ] **[PLAN]:** (Agent: Read listed `prime_files` and agent rules. Write brief technical approach here. Do not write code yet.)
-- [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
-- [ ] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
+- [x] **[PLAN]:** Builder read the prime, the crew rules and the four matching lesson families, then settled a five-step plan: reproduce the reviewer's numbers under the leak mutation, rewrite the fixture on three points while the mutation stayed applied, raise the interruption test's return bound past the new leader hold, correct the budget comment, then revert and prove the runtime did not move. Recorded under `## P-A-U` in `do-work/runs/work-2026-09-05-120117/REQ-581-handback.md`.
+- [x] **[APPLY]:** One commit on the builder branch (`f5b3faf4`), 59 insertions and 34 deletions in the single declared file.
+- [x] **[UNIFY]:** `git diff --stat` reviewed; `gofmt -l .` empty; `go vet ./...` clean; the scratch mutation reverted with `git checkout --` and proved absent from `git status --porcelain` and from the diff before committing.
 
 ## Why
 A control that cannot fail is worse than no control: it reports the process-cleanup path as proven every time the suite runs, so the next change to that path ships unchecked.
@@ -91,3 +93,34 @@ See `do-work/user-requests/UR-119/input.md` for complete verbatim input.
 **Planning not required** - Route A: direct to builder
 
 *Skipped by work action*
+
+## Implementation Summary
+
+**Files changed:**
+- `skills/do-work/tools/do-work-cli/internal/nextselection/blocked_probe_test.go` (modified)
+
+**What was done:** The descendant fixture now releases its inherited stdout and stderr before sleeping, so a surviving descendant cannot hold the runner's diagnostic pipe open and delay its return — which is the structural reason a leak used to be invisible. The descendant outlives the reap budget, so a leaked process is still alive when the poll looks for it. The probe leader holds itself for a bounded interval instead of waiting on the descendant, which keeps the timeout and interrupt branches firing while capping how long a broken runner can block, and the interruption test's return bound was raised past that hold so it reaches its own descendant assertion. Three copies of pid-file reading collapsed into one helper that tolerates a partially written file and registers its own cleanup kill. The budget comment no longer claims the loop proves something it did not. Merge range `1a06c3bc..92339213`; builder branch head `f5b3faf4`.
+
+## Qualification
+
+**Passed.** Read from the merge range `1a06c3bc..92339213`.
+
+- Test-only change, one file, exactly the declared write set. `blocked_probe_unix.go` — the code under test — is untouched; the builder mutated it as a scratch experiment and proved the revert with both `git status --porcelain` and an empty diff before committing.
+- The fixture change is the real fix, not a budget increase. Releasing the inherited descriptors is what makes a leaked descendant observable at all; making it outlive the budget is what makes the poll mean something. Neither is a timing tweak.
+- The interruption test's raised bound is not a weakening: it is what lets that test reach the assertion it was written for instead of dying at an unrelated bound, which is exactly the defect the request names.
+- Three near-duplicate pid-reading blocks, two of them with unchecked conversions, became one helper. That is a reduction, not an addition.
+
+Requirements traced: all three tests fail under the leak mutation, each inside its own budget, each on the descendant assertion, each naming the surviving process id; no test exits on a timeout bound; the budget comment now describes what the loop measures.
+
+*Checked by work action*
+
+## Testing
+
+**Red-green validation** (traced to `## Red-Green Proof`), four measured states on one machine in one session:
+- Baseline, old fixture, unmutated: all three pass, 1.50s / 0.11s / 0.63s, package 2.624s.
+- RED reproduction, old fixture, leak mutation applied: two tests still PASS at 30.01s each, the third fails at `blocked_probe_test.go:114: interrupted probe did not return` on its 5s bound. This reproduces the reported defect exactly — a leak visible only as elapsed time, which nothing asserts on.
+- RED, new fixture, same mutation: all three FAIL inside their own budget on `descendant NNNNN survived 10s`, each naming the surviving process id. The typed-interruption assertion still passes under the mutation, so the test now separates a broken teardown from a broken result.
+- GREEN, new fixture, mutation reverted: all three pass at 1.50s / 0.11s / 0.65s, package 2.610s against the 2.624s baseline. The runtime constraint holds; the change is timing-neutral.
+
+**Flake check:** `-count=3` over the three tests, no failure.
+
