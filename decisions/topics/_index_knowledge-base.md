@@ -15,7 +15,6 @@ sources:
   - CHANGELOG.md (0.47.0 The Full Crew)
   - SKILL.md
   - actions/bkb-reference.md
-  - actions/build-knowledge-base.md
   - docs/bkb-guide.md
 related:
   - page: adr-009-build-knowledge-base-as-a-compiled-interlinked-wiki
@@ -23,7 +22,7 @@ related:
   - page: adr-010-use-typed-relationships-retrieval-memory-and-agent-crew-in-bkb
     rel: complements
 created: 2026-04-15
-updated: 2026-04-15
+updated: 2026-09-05
 confidence: high
 ---
 
