@@ -18,7 +18,6 @@ session_depth: light
 
 ## In Progress (interrupted)
 
-- REQ-572: Show every lifecycle transition of a REQ as its own Activity row — claimed 2026-09-05T12:00:55Z — writer: t2s-Virtual-Machine.local:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2
 
 
 - REQ-578: Hide the verify-findings strip on the Activity view — claimed 2026-09-05T12:00:56Z — writer: t2s-Virtual-Machine.local:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2

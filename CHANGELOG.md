@@ -2,6 +2,15 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.296.0 — Every Lifecycle Transition Has Its Own Activity Row (2026-09-05)
+
+The board's Activity view showed one row per request — its newest lifecycle stamp and nothing else — so the path a request took to get where it is was readable only in its frontmatter or with `git log`. Every transition is now its own row.
+
+- One row per parseable lifecycle stamp, newest first, with a tie-break that separates two stamps of one request written at the same instant.
+- The summary line counts both units it actually has: transitions, and the distinct requests they belong to.
+- On this repository's own queue that is 2051 rows across 561 requests where the view previously showed 561; a request that was captured, claimed, dispatched, merged, reviewed, released and completed now shows all of it.
+- A request with no parseable stamp is still skipped rather than dated from the zero time, and the payload shape is unchanged.
+
 ## 0.295.1 — Retry Timing and the Activity Highlight (2026-09-05)
 
 Keeping every timestamp through a recovery (0.295.0) was right, but two readers then reported the old instants as if they belonged to the retry: a re-claimed request left no record of its own claim, and a retried builder's wait was measured from the previous attempt's dispatch. Both now report the retry's own instants. Separately, the Activity view's row highlight follows the detail drawer wherever the drawer is opened from.

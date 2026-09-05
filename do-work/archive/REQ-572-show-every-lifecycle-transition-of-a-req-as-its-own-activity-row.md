@@ -1,7 +1,7 @@
 ---
 id: REQ-572
 title: 'Show every lifecycle transition of a REQ as its own Activity row'
-status: claimed
+status: completed
 created_at: 2026-09-04T23:16:00Z
 user_request: UR-115
 domain: general
@@ -40,6 +40,10 @@ depends_on: [REQ-574]
 claimed_at: 2026-09-05T12:00:55Z
 review_at: 2026-09-05T12:21:17Z
 commit: fbdcd35e0908aca6a01f554cc9b7fd7c85347a49
+heavy_verified_at: 2026-09-05T13:16:11Z
+heavy_verified_revision: 9233921395b509d06d440f955e0bdb0c289958bf
+completed_at: 2026-09-05T13:16:28Z
+release_at: 2026-09-05T13:16:28Z
 ---
 
 # Show Every Lifecycle Transition of a REQ as Its Own Activity Row
@@ -336,4 +340,18 @@ The board's Activity view now shows a request's whole path rather than only wher
 | `staged-skills` | `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane staged-skills` | same subtree match |
 
 No path was left uncovered by the manifest. The request stays `claimed` in `do-work/working/` with its `commit:` landed, so dependent work builds against the delivered source while the lanes wait for the queue-exhaustion drain.
+
+## Heavy Verification Result
+
+- **Target revision:** fbdcd35e0908aca6a01f554cc9b7fd7c85347a49
+- **Execution revision:** 9233921395b509d06d440f955e0bdb0c289958bf
+- **Run at:** 2026-09-05T13:16:11Z, from a detached worktree (the shared main tree carried another session's uncommitted work, which a lane result must not be attributed to)
+
+| Lane | Exit | Wall | Disposition |
+| --- | --- | --- | --- |
+| `queue-kanban-javascript` | 0 | 8s | executed |
+| `queue-kanban-browser` | 0 | 119s | executed |
+| `staged-skills` | 0 | 43s | executed |
+
+Every lane this request selected was present in the run, exited 0, and none was skipped. The browser lane executed against Google Chrome rather than skipping, which is what makes it evidence: an earlier pass reported it skipped for a missing browser, and a skipped lane is not a pass.
 
