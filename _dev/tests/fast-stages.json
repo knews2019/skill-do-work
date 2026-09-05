@@ -6,7 +6,8 @@
       "argv": ["run-go-tests-with-budget.sh", "skills/do-work/tools/do-work-cli", "-short", "./..."],
       "coverage": [
         {"kind": "subtree", "path": "skills/do-work/tools/do-work-cli"},
-        {"kind": "subtree", "path": "skills/do-work-board/tools/queue-kanban"}
+        {"kind": "subtree", "path": "skills/do-work-board/tools/queue-kanban"},
+        {"kind": "exact", "path": "do-work/archive/UR-003/input.md"}
       ],
       "fingerprint": {
         "toolchain_probes": [["env", "GIT_CONFIG_NOSYSTEM=1", "GIT_CONFIG_GLOBAL=/dev/null", "python3", "_dev/tests/heavy-runtime-fingerprint.py", "skills/do-work/tools/do-work-cli", "bash", "git", "python3"]]
@@ -16,14 +17,19 @@
       "id": "queue-kanban-fast-tests",
       "argv": ["run-go-tests-with-budget.sh", "skills/do-work-board/tools/queue-kanban", "./..."],
       "coverage": [
-        {"kind": "subtree", "path": "skills/do-work-board/tools/queue-kanban"}
+        {"kind": "subtree", "path": "skills/do-work-board/tools/queue-kanban"},
+        {"kind": "subtree", "path": "do-work"}
       ],
       "fingerprint": {
         "toolchain_probes": [["env", "GIT_CONFIG_NOSYSTEM=1", "GIT_CONFIG_GLOBAL=/dev/null", "python3", "_dev/tests/heavy-runtime-fingerprint.py", "skills/do-work-board/tools/queue-kanban", "bash", "git", "python3"]]
       }
     }
   ],
-  "non_stage_coverage": [
-    {"kind": "subtree", "path": "do-work"}
+  "non_stage_coverage": [],
+  "seal_exclusions": [
+    {"kind": "subtree", "path": "do-work/runs"},
+    {"kind": "subtree", "path": "do-work/deliverables"},
+    {"kind": "subtree", "path": "do-work/.req-reservations"},
+    {"kind": "exact", "path": "do-work/test-durations.tsv"}
   ]
 }

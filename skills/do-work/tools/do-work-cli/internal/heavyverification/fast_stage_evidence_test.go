@@ -15,11 +15,14 @@ import (
 )
 
 // The fixture declares two independently covered stages plus one that declares
-// no fingerprint inputs at all. Each stage's toolchain probe reads a file under
-// do-work/, which is the one tree no seal includes, so a toolchain-change case
-// moves the probe output and nothing else. Everything the manifest classifies
-// nowhere — gate/verify.sh and shared/notes.md — is sealed into BOTH stages, so
-// a change there has to force both of them.
+// no fingerprint inputs at all. It mirrors the shipped manifest's shape: only
+// beta-stage covers do-work/, the way only the queue-kanban stage builds its
+// board from that tree, so a queue change forces beta-stage and leaves
+// alpha-stage reusable. Each stage's toolchain probe reads a file under
+// do-work/runs/, a seal-excluded subtree, so a toolchain-change case moves the
+// probe output and nothing else. Everything the manifest classifies nowhere —
+// gate/verify.sh and shared/notes.md — is sealed into BOTH stages, so a change
+// there has to force both of them.
 const fastStageTestManifest = `{
   "schema_version": 1,
   "stages": [
@@ -28,16 +31,19 @@ const fastStageTestManifest = `{
       "argv": ["sh", "module-alpha/run.sh"],
       "coverage": [{"kind": "subtree", "path": "module-alpha"}],
       "fingerprint": {
-        "toolchain_probes": [["cat", "do-work/alpha-toolchain.txt"]],
+        "toolchain_probes": [["cat", "do-work/runs/alpha-toolchain.txt"]],
         "environment_variables": ["FAST_STAGE_TEST_SELECTOR"]
       }
     },
     {
       "id": "beta-stage",
       "argv": ["sh", "module-beta/run.sh"],
-      "coverage": [{"kind": "subtree", "path": "module-beta"}],
+      "coverage": [
+        {"kind": "subtree", "path": "module-beta"},
+        {"kind": "subtree", "path": "do-work"}
+      ],
       "fingerprint": {
-        "toolchain_probes": [["cat", "do-work/beta-toolchain.txt"]]
+        "toolchain_probes": [["cat", "do-work/runs/beta-toolchain.txt"]]
       }
     },
     {
@@ -46,7 +52,11 @@ const fastStageTestManifest = `{
       "coverage": [{"kind": "subtree", "path": "module-alpha"}]
     }
   ],
-  "non_stage_coverage": [{"kind": "subtree", "path": "do-work"}]
+  "non_stage_coverage": [],
+  "seal_exclusions": [
+    {"kind": "subtree", "path": "do-work/runs"},
+    {"kind": "exact", "path": "do-work/test-durations.tsv"}
+  ]
 }`
 
 const fastStageTestManifestPath = "fast-stages.json"
@@ -69,7 +79,9 @@ func buildFastStageTemplateRepository(t *testing.T) string {
 	runHeavyTestGit(t, templateRoot, "init", "-q")
 	runHeavyTestGit(t, templateRoot, "config", "user.name", "Fast Stage Test")
 	runHeavyTestGit(t, templateRoot, "config", "user.email", "fast-stage@example.test")
-	writeHeavyTestFile(t, templateRoot, ".gitignore", "*.generated\n")
+	// The duration log is Git-ignored here for the same reason it is in the
+	// real repository: the stage writes it, so it is never committed.
+	writeHeavyTestFile(t, templateRoot, ".gitignore", "*.generated\n/do-work/test-durations.tsv\n")
 	writeHeavyTestFile(t, templateRoot, fastStageTestManifestPath, fastStageTestManifest)
 	writeHeavyTestFile(t, templateRoot, "module-alpha/run.sh", "exit 0\n")
 	writeHeavyTestFile(t, templateRoot, "module-alpha/source.txt", "alpha source 1\n")
@@ -79,8 +91,8 @@ func buildFastStageTemplateRepository(t *testing.T) string {
 	writeHeavyTestFile(t, templateRoot, "gate/verify.sh", "# gate script\n")
 	writeHeavyTestFile(t, templateRoot, "shared/notes.md", "shared notes 1\n")
 	writeHeavyTestFile(t, templateRoot, "do-work/queue/REQ-001-fixture.md", "queue state 1\n")
-	writeHeavyTestFile(t, templateRoot, "do-work/alpha-toolchain.txt", "alpha toolchain 1\n")
-	writeHeavyTestFile(t, templateRoot, "do-work/beta-toolchain.txt", "beta toolchain 1\n")
+	writeHeavyTestFile(t, templateRoot, "do-work/runs/alpha-toolchain.txt", "alpha toolchain 1\n")
+	writeHeavyTestFile(t, templateRoot, "do-work/runs/beta-toolchain.txt", "beta toolchain 1\n")
 	commitHeavyTestChanges(t, templateRoot, "fast-stage fixture")
 	return templateRoot
 }
@@ -180,11 +192,47 @@ func TestFastStageReuseDecisionTable(t *testing.T) {
 			expectDisposition: LaneDispositionReused, expectReason: laneReasonFingerprintMatch,
 		},
 		{
-			// The one declared exemption. Queue bookkeeping is not stage input,
-			// and the orchestrator rewrites it while the gate runs.
-			name: "queue state changed", stageID: "alpha-stage",
+			// The failure this catches: appending one newline to
+			// do-work/archive/UR-003/input.md made the do-work-cli stage's own
+			// test fail while the gate printed "Maintainer verification passed."
+			// and exited 0 with that stage REUSED. A stage that reads the queue
+			// tree has to execute when the queue tree moves.
+			name: "queue state changed forces the stage that reads it", stageID: "beta-stage",
 			mutate: func(t *testing.T, root string) {
 				writeHeavyTestFile(t, root, "do-work/queue/REQ-002-fixture.md", "queue state 2\n")
+			},
+			expectDisposition: LaneDispositionExecuted, expectReason: laneReasonFingerprintMismatch,
+		},
+		{
+			// The failure this catches: sealing the queue tree into EVERY stage
+			// would make each REQ claim, move or archive re-run both fast stages,
+			// so reuse would be dead weight during a drain. alpha-stage does not
+			// cover do-work/, exactly as the do-work-cli stage covers only its
+			// one archived fixture file.
+			name: "queue state changed leaves a stage that does not read it reusable", stageID: "alpha-stage",
+			mutate: func(t *testing.T, root string) {
+				writeHeavyTestFile(t, root, "do-work/queue/REQ-002-fixture.md", "queue state 2\n")
+			},
+			expectDisposition: LaneDispositionReused, expectReason: laneReasonFingerprintMatch,
+		},
+		{
+			// The failure this catches: the stage appends this log itself while
+			// it runs, and the fingerprint the gate records is the pre-run one,
+			// so a seal over the log could never match the evidence it
+			// authorized — reuse would be off for that stage on every run.
+			name: "the gate's own duration log still reuses", stageID: "beta-stage",
+			mutate: func(t *testing.T, root string) {
+				writeHeavyTestFile(t, root, "do-work/test-durations.tsv", "probe\tprobe\t0.00\t0\n")
+			},
+			expectDisposition: LaneDispositionReused, expectReason: laneReasonFingerprintMatch,
+		},
+		{
+			// The failure this catches: the orchestrator writes run logs under
+			// do-work/runs/ while the gate runs. No stage reads their bytes, so
+			// sealing them would invalidate a stage mid-run for its own paperwork.
+			name: "a run-log write still reuses", stageID: "beta-stage",
+			mutate: func(t *testing.T, root string) {
+				writeHeavyTestFile(t, root, "do-work/runs/work-x/notes.md", "run notes\n")
 			},
 			expectDisposition: LaneDispositionReused, expectReason: laneReasonFingerprintMatch,
 		},
@@ -266,14 +314,14 @@ func TestFastStageReuseDecisionTable(t *testing.T) {
 		{
 			name: "toolchain probe output changed", stageID: "alpha-stage",
 			mutate: func(t *testing.T, root string) {
-				writeHeavyTestFile(t, root, "do-work/alpha-toolchain.txt", "alpha toolchain 2\n")
+				writeHeavyTestFile(t, root, "do-work/runs/alpha-toolchain.txt", "alpha toolchain 2\n")
 			},
 			expectDisposition: LaneDispositionExecuted, expectReason: laneReasonFingerprintMismatch,
 		},
 		{
 			name: "toolchain probe cannot run", stageID: "alpha-stage",
 			mutate: func(t *testing.T, root string) {
-				if err := os.Remove(filepath.Join(root, "do-work", "alpha-toolchain.txt")); err != nil {
+				if err := os.Remove(filepath.Join(root, "do-work", "runs", "alpha-toolchain.txt")); err != nil {
 					t.Fatal(err)
 				}
 			},
@@ -521,6 +569,10 @@ func TestFastStageManifestDecodingRefusesAmbiguity(t *testing.T) {
 		{"empty coverage", `{"schema_version": 1, "stages": [{"id": "a", "argv": ["sh"], "coverage": []}]}`},
 		{"empty argv", `{"schema_version": 1, "stages": [{"id": "a", "argv": [], "coverage": [{"kind": "subtree", "path": "a"}]}]}`},
 		{"unsupported coverage kind", `{"schema_version": 1, "stages": [{"id": "a", "argv": ["sh"], "coverage": [{"kind": "glob", "path": "a"}]}]}`},
+		// A seal exclusion the manifest cannot evaluate must be refused rather
+		// than ignored: an exclusion that silently matches nothing seals a file
+		// the gate writes itself, and that stage then executes on every run.
+		{"unsupported seal exclusion kind", `{"schema_version": 1, "stages": [{"id": "a", "argv": ["sh"], "coverage": [{"kind": "subtree", "path": "a"}]}], "seal_exclusions": [{"kind": "glob", "path": "do-work/runs"}]}`},
 		{"fingerprint without a probe", `{"schema_version": 1, "stages": [{"id": "a", "argv": ["sh"], "coverage": [{"kind": "subtree", "path": "a"}], "fingerprint": {"toolchain_probes": []}}]}`},
 		{"trailing value", `{"schema_version": 1, "stages": [{"id": "a", "argv": ["sh"], "coverage": [{"kind": "subtree", "path": "a"}]}]} {}`},
 	} {
