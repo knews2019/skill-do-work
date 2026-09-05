@@ -2,6 +2,15 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.301.0 — Verify Findings Read as Warnings, Not Work Items (2026-09-05)
+
+The board's Verify Findings strip rendered each warning as a bordered card in a grid, with skipped probes hidden in a collapsed disclosure below — two visual languages for one idea, using most of the strip's height to say something small. It is now one flat list of compact rows.
+
+- A finding and a skipped probe share a row shape, because they are the same thing to the reader: verify has something to tell you.
+- Findings carry a subject from the producer — the worktree, the request, the changelog — and rows about the same subject group under one heading.
+- Two weights only, both from the payload: a finding a cleanup command can resolve is muted and tagged, a skipped probe is muted. Nothing in the page invents a severity the producer did not send.
+- A skipped probe still never reads as clean.
+
 ## 0.300.0 — Click a Request on the Activity View (2026-09-05)
 
 An Activity row was inert: the view could tell you a request moved, but not take you to it. Clicking a request now opens the same detail drawer the Board opens, and every row belonging to that request lights up, so the whole path it took is scannable at a glance.

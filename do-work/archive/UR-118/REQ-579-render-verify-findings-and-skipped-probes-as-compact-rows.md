@@ -1,7 +1,7 @@
 ---
 id: REQ-579
 title: 'Render verify findings and skipped probes as compact rows in one list'
-status: claimed
+status: completed
 created_at: 2026-09-05T00:19:58Z
 user_request: UR-118
 domain: frontend
@@ -35,6 +35,8 @@ review_at: 2026-09-05T14:23:29Z
 heavy_verified_at: 2026-09-05T14:23:29Z
 heavy_verified_revision: 7b2673b690a671ccb360c26b0c19c56ecc7356b5
 commit: b169396e
+completed_at: 2026-09-05T14:24:17Z
+release_at: 2026-09-05T14:24:17Z
 ---
 
 # Render Verify Findings and Skipped Probes as Compact Rows in One List
