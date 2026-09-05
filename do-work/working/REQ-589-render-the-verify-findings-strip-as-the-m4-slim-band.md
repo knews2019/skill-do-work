@@ -17,6 +17,17 @@ write_set:
   - skills/do-work-board/tools/queue-kanban/web/board-cards.js
   - skills/do-work-board/tools/queue-kanban/web/template.html
   - skills/do-work-board/tools/queue-kanban/javascript_behavior_c_test.go
+estimate:
+  p50_active_minutes: 15
+  confidence: medium
+  calculated_at: 2026-09-05T18:20:44Z
+  basis:
+  - Route A
+  - 4-file write set
+  - 6 acceptance criteria
+route: A
+dispatch_at: 2026-09-05T18:21:42Z
+builder_handback_at: 2026-09-05T18:44:37Z
 claimed_at: 2026-09-05T18:20:43Z
 ---
 
@@ -65,3 +76,19 @@ The user's words: "neither of these is visually nice and they are huge". A remed
 - `_dev/primes/lessons-kanban-board.md` (4959 tokens, `slugged: partial`): matches on "Changing queue-kanban views". Over the budget on its own.
 
 *Source: "neither of these is visually nice and they are huge, please provide better mocks, it's fine to be colapsible as well" / "I want all of the options in the mockup, don't make me imagine what would be, also make it beautiful and professional" / "ok, M4 is good"*
+
+---
+
+## Triage
+
+**Route: A** - Simple
+
+**Reasoning:** The approved mock-up pages are the specification (markup and CSS), the request names the four files, and the renderer change is a restructuring of one function plus its template section. Substantive in size, but nothing to explore or decide. `effort_estimate: effort-substantive`.
+
+**Planning:** Not required
+
+## Plan
+
+**Planning not required** - Route A: Direct implementation
+
+*Skipped by work action*
