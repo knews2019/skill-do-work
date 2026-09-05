@@ -86,6 +86,116 @@ run_budgeted_go_tests() {
     bash "$repo_root/_dev/tests/run-go-tests-with-budget.sh" "$module_directory" "$@"
 }
 
+# Runs one expensive Go test stage, or reports it from stored evidence when the
+# complete relevant inputs of that stage are provably unchanged. The decision,
+# the revocation and the recording are three separate CLI calls on purpose: the
+# revocation has to happen before the stage runs and has to outlive a stage that
+# never finishes, so a failed or interrupted run can never leave an older green
+# reusable. Anything this function cannot determine selects execution.
+#
+# A reused stage writes no per-file duration rows and enforces no per-file budget
+# for that run: it inherits the budget verdict of the run whose evidence it is
+# reusing, and the REUSED line says so. The budget catches tests getting slower
+# as they are added, which is an input-determined property the fingerprint
+# covers; it does not catch a breach caused purely by machine contention, which
+# is the failure this reuse deliberately stops reporting on an unchanged tree.
+run_stage_with_evidence() {
+  local stage_id="$1"
+  local module_directory="$2"
+  shift 2
+  local module_relative_path="${module_directory#"$repo_root/"}"
+  local cli_launcher="$repo_root/skills/do-work/tools/do-work-cli.sh"
+  # A module the prefix strip cannot make repository-relative would be sealed
+  # under a path the manifest cannot declare, which the manifest comparison below
+  # would refuse on every run — reuse silently off, forever, with a green gate.
+  # Stop instead: that is a wiring error, not a test result.
+  if [ "$module_relative_path" = "$module_directory" ]; then
+    printf 'maintainer-verify: stage %s: module %s is not inside %s\n' \
+      "$stage_id" "$module_directory" "$repo_root" >&2
+    return 2
+  fi
+  local decision_line='' decision_status=0 stage_status=0
+  local disposition='' reason='' fingerprint='' recorded_at='' extra_fields=''
+  local stage_argv
+  stage_argv=(run-go-tests-with-budget.sh "$module_relative_path" "$@")
+
+  # The self-test drives this gate through a command shim whose `bash` case
+  # accepts only the aggregate suite, so a decision child would exit 64 there and
+  # fail the fixture. --self-test proves the gate's stage LIST and must keep
+  # counting nine stages exactly once; reuse is proved by its own probe,
+  # _dev/tests/fast-stage-reuse-behavior.sh, where it can be tested far more
+  # thoroughly. DO_WORK_FAST_STAGE_REUSE=off is the measurement escape hatch: it
+  # is read only here, and _dev/ is export-ignored, so it adds no option to any
+  # shipped script.
+  if [ -n "${MAINTAINER_VERIFY_SELFTEST_LOG:-}" ] || [ "${DO_WORK_FAST_STAGE_REUSE:-on}" = 'off' ]; then
+    run_budgeted_go_tests "$module_directory" "$@"
+    return
+  fi
+
+  # The decision child runs from the repository root with three gate-generated
+  # variables removed. DO_WORK_TEST_RUN_ID is a timestamp-plus-PID label,
+  # DO_WORK_TEST_OTHER_GATE_PROCESSES a `ps` sample and DO_WORK_TEST_DURATION_LOG
+  # an output path; OLDPWD is a shell breadcrumb naming the caller's previous
+  # directory. All four change between runs and none decides any assertion, and
+  # the fingerprint seals the whole environment, so with them present no stage
+  # could ever reuse. DO_WORK_TEST_ENFORCE_BUDGET and
+  # DO_WORK_TEST_FILE_BUDGET_SECONDS are deliberately NOT removed: they change
+  # the verdict. Status and output are captured separately, because a decision
+  # command that could not run must read as "execute", never as "nothing
+  # changed".
+  decision_line="$(
+    cd "$repo_root" &&
+      env -u DO_WORK_TEST_RUN_ID -u DO_WORK_TEST_OTHER_GATE_PROCESSES \
+        -u DO_WORK_TEST_DURATION_LOG -u OLDPWD \
+        bash "$cli_launcher" --repo-root "$repo_root" \
+        decide-fast-stage --stage "$stage_id" -- "${stage_argv[@]}"
+  )" || decision_status=$?
+  if [ "$decision_status" -ne 0 ]; then
+    decision_line='executed decision_unavailable - -'
+  fi
+  if ! read -r disposition reason fingerprint recorded_at extra_fields <<< "$decision_line"; then
+    disposition=''
+  fi
+  if [ -z "$disposition" ] || [ -z "$reason" ] || [ -z "$fingerprint" ] || \
+    [ -z "$recorded_at" ] || [ -n "$extra_fields" ]; then
+    disposition='executed'
+    reason='decision_unparseable'
+    fingerprint='-'
+  fi
+
+  if [ "$disposition" = 'reused' ]; then
+    printf 'maintainer-verify: stage %s: REUSED (%s, recorded %s; per-file budget verdict inherited from that run)\n' \
+      "$stage_id" "$reason" "$recorded_at"
+    return 0
+  fi
+  printf 'maintainer-verify: stage %s: EXECUTING (%s)\n' "$stage_id" "$reason"
+  # A prior green this gate cannot revoke is the false-green shape the reuse
+  # rule exists to prevent, so an unrevocable record fails the gate rather than
+  # letting the stage run unprotected.
+  bash "$cli_launcher" --repo-root "$repo_root" \
+    invalidate-fast-stage --stage "$stage_id" > /dev/null
+  run_budgeted_go_tests "$module_directory" "$@" || stage_status=$?
+  if [ "$stage_status" -ne 0 ]; then
+    return "$stage_status"
+  fi
+  if [ "$fingerprint" != '-' ]; then
+    # A recording that does not land costs the next run one execution, which is
+    # the safe direction, so it reports rather than failing a stage that passed.
+    if ! (
+      cd "$repo_root" &&
+        env -u DO_WORK_TEST_RUN_ID -u DO_WORK_TEST_OTHER_GATE_PROCESSES \
+          -u DO_WORK_TEST_DURATION_LOG -u OLDPWD \
+          bash "$cli_launcher" --repo-root "$repo_root" \
+          record-fast-stage --stage "$stage_id" --fingerprint "$fingerprint" \
+          --stage-exit-status 0 -- "${stage_argv[@]}" > /dev/null
+    ); then
+      printf 'maintainer-verify: stage %s: evidence not recorded; the next run executes it again\n' \
+        "$stage_id" >&2
+    fi
+  fi
+  return 0
+}
+
 # Returns 0 when $1 is at or above the floor $2. Compares dot-separated components as
 # integers, so 0.11.0 clears a 0.9.9 floor where a lexical compare would not. A missing
 # component reads as 0 (`0.11` clears `0.11.0`), and a trailing non-digit run is dropped
@@ -500,6 +610,7 @@ run_self_test() {
 
 run_verification() {
   local verification_tier="$1"
+  local gate_started_seconds="$SECONDS"
   local go_version_output
   local go_version_text
   local shellcheck_version_output
@@ -602,11 +713,16 @@ run_verification() {
   # probes never executed; without Node the probes skip and the run says so.
   if [ "$verification_tier" != 'heavy' ]; then
     printf 'maintainer-verify: queue-kanban uncached tests\n'
+    # The selectors stay on this call so the decision child inherits them too:
+    # they decide which tests run at all, and the fingerprint seals the whole
+    # environment, so a decision computed without them would seal a different
+    # command than the one that runs.
     (
       QUEUE_KANBAN_JAVASCRIPT_PROBES=off \
         QUEUE_KANBAN_BROWSER_PROBES=off \
         DO_WORK_GO_TEST_EXCLUDE_PREFIXES=TestJavaScriptBehavior,TestBrowserBehavior \
-        run_budgeted_go_tests "$repo_root/skills/do-work-board/tools/queue-kanban" ./...
+        run_stage_with_evidence queue-kanban-fast-tests \
+          "$repo_root/skills/do-work-board/tools/queue-kanban" ./...
     )
   elif node_engine_available; then
     printf 'maintainer-verify: queue-kanban uncached tests with strict JavaScript behavior probes\n'
@@ -656,9 +772,14 @@ run_verification() {
   if [ "$verification_tier" = 'heavy' ]; then
     DO_WORK_HEAVY_TESTS=1 run_budgeted_go_tests "$repo_root/skills/do-work/tools/do-work-cli" ./...
   else
-    run_budgeted_go_tests "$repo_root/skills/do-work/tools/do-work-cli" -short ./...
+    run_stage_with_evidence do-work-cli-fast-tests \
+      "$repo_root/skills/do-work/tools/do-work-cli" -short ./...
   fi
 
+  # Whole-gate wall time was recorded nowhere before this line, and requirement 5
+  # of REQ-591 asks for it. SECONDS counts from this shell's start, which is this
+  # script's start, so the subtraction needs no extra process.
+  printf 'maintainer-verify: gate wall %ss\n' "$((SECONDS - gate_started_seconds))"
   printf 'Maintainer verification passed.\n'
 }
 
