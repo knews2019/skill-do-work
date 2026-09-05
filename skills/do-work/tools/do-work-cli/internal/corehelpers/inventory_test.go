@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/resultmodel"
@@ -196,6 +197,44 @@ func runSyntheticInventoryPair(t *testing.T, statusBytes []byte) ([]inventoryRow
 	return goRows, retainedRows
 }
 
+// retainedInventoryExecutable caches the do-work-cli executable that the retained
+// launcher chain ends up running, resolved once per test binary.
+//
+// The shipped chain is uncommitted-inventory.sh -> do-work-cli.sh -> the executable.
+// Both shells run on every call, and do-work-cli.sh probes the Go toolchain twice
+// (`go version`, then `go tool -n` over the whole module) before exec'ing an
+// executable the build cache already holds. That probe costs far more than the
+// command it guards, and the synthetic matrices below make 56 of these calls, which
+// is most of why this file spent 28s of the gate's 30s per-file budget. Resolving
+// the executable once and running it directly removes the repetition without
+// removing any comparison: every synthetic case still runs the real command in a
+// real subprocess against a real repository, exactly as the shim would invoke it.
+//
+// The shim itself stays pinned. Callers that pass a nil synthetic status still go
+// through uncommitted-inventory.sh end to end, so the launcher contract keeps a test
+// (TestInventoryStagedAdditionDeletedFromWorktreeIsDeletion) (REQ-574).
+var (
+	retainedInventoryOnce       sync.Once
+	retainedInventoryExecutable string
+	retainedInventoryResolveErr error
+)
+
+func resolveRetainedInventoryExecutable(t *testing.T, moduleDirectory string) string {
+	t.Helper()
+	retainedInventoryOnce.Do(func() {
+		output, err := exec.Command("go", "tool", "-C", moduleDirectory, "-n", "do-work-cli").Output()
+		if err != nil {
+			retainedInventoryResolveErr = fmt.Errorf("resolve do-work-cli executable: %w", err)
+			return
+		}
+		retainedInventoryExecutable = strings.TrimSpace(string(output))
+	})
+	if retainedInventoryResolveErr != nil {
+		t.Fatal(retainedInventoryResolveErr)
+	}
+	return retainedInventoryExecutable
+}
+
 func runRetainedInventory(t *testing.T, repository string, syntheticStatus []byte) []inventoryRow {
 	t.Helper()
 	workingDirectory, err := os.Getwd()
@@ -221,6 +260,14 @@ func runRetainedInventory(t *testing.T, repository string, syntheticStatus []byt
 		t.Setenv("PATH", fakeRoot+string(os.PathListSeparator)+os.Getenv("PATH"))
 	}
 	command := exec.Command(script, repository)
+	if syntheticStatus != nil {
+		// The exact argv and environment uncommitted-inventory.sh would exec, minus
+		// the two shells and the toolchain probe. See retainedInventoryExecutable.
+		moduleDirectory := filepath.Clean(filepath.Join(workingDirectory, "..", ".."))
+		command = exec.Command(resolveRetainedInventoryExecutable(t, moduleDirectory),
+			"--repo-root", repository, "--format", "text", "uncommitted-inventory")
+		command.Env = append(os.Environ(), "DO_WORK_COMPATIBILITY_SHIM=1")
+	}
 	output, runError := command.CombinedOutput()
 	if runError != nil {
 		t.Fatalf("retained inventory: %v: %s", runError, output)

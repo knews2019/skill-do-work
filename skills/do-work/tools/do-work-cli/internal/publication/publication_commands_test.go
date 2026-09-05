@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -338,4 +339,95 @@ func runGitFixture(t *testing.T, repositoryRoot string, arguments ...string) {
 	if output, err := command.CombinedOutput(); err != nil {
 		t.Fatalf("git %v: %v: %s", arguments, err, output)
 	}
+}
+
+// deferGateRepositoryTemplates holds the two baseline repositories the defer-gate tests
+// start from, keyed by whether the fixture carries a second parent request. Both are
+// built once for the whole test binary and copied per fixture.
+//
+// defer_gate_test.go builds thirty of these. Each one cost seven git subprocesses —
+// init, two configs, add, commit, add, commit — before its test asserted anything, and
+// that spawning, not the assertions, is what left the file within three seconds of the
+// gate's 30s per-file duration budget. Copying a finished repository replaces all
+// seven (REQ-574).
+var deferGateRepositoryTemplates = map[bool]string{}
+
+func TestMain(m *testing.M) {
+	templateParent, err := os.MkdirTemp("", "publication-git-templates-")
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "publication fixture templates: %v\n", err)
+		os.Exit(1)
+	}
+	for _, secondParent := range []bool{false, true} {
+		templateRoot := filepath.Join(templateParent, fmt.Sprintf("second-parent-%t", secondParent))
+		if err := buildDeferGateRepositoryTemplate(templateRoot, secondParent); err != nil {
+			fmt.Fprintf(os.Stderr, "publication fixture templates: %v\n", err)
+			os.RemoveAll(templateParent)
+			os.Exit(1)
+		}
+		deferGateRepositoryTemplates[secondParent] = templateRoot
+	}
+	code := m.Run()
+	os.RemoveAll(templateParent)
+	os.Exit(code)
+}
+
+// buildDeferGateRepositoryTemplate writes the exact repository newDeferGateRepository
+// used to build inline, up to but not including the parent claim. The claim stays
+// per-fixture because it is plain file I/O and costs no subprocess.
+func buildDeferGateRepositoryTemplate(templateRoot string, secondParent bool) error {
+	if err := os.MkdirAll(templateRoot, 0o755); err != nil {
+		return err
+	}
+	writeTemplateFile := func(relativePath string, contents []byte) error {
+		absolute := filepath.Join(templateRoot, filepath.FromSlash(relativePath))
+		if err := os.MkdirAll(filepath.Dir(absolute), 0o755); err != nil {
+			return err
+		}
+		return os.WriteFile(absolute, contents, 0o644)
+	}
+	runTemplateGit := func(arguments ...string) error {
+		command := exec.Command("git", append([]string{"-C", templateRoot}, arguments...)...)
+		if output, err := command.CombinedOutput(); err != nil {
+			return fmt.Errorf("git %v: %w: %s", arguments, err, output)
+		}
+		return nil
+	}
+	// `--template=` empty skips the sample hooks, which are most of the files a fresh
+	// .git holds and none of what these tests read.
+	if err := runTemplateGit("init", "-q", "--template="); err != nil {
+		return err
+	}
+	if err := os.MkdirAll(filepath.Join(templateRoot, ".git", "hooks"), 0o755); err != nil {
+		return err
+	}
+	for _, setting := range [][]string{{"user.name", "Test"}, {"user.email", "test@example.com"}} {
+		if err := runTemplateGit("config", setting[0], setting[1]); err != nil {
+			return err
+		}
+	}
+	if err := writeTemplateFile("do-work/working/REQ-101-parent.md", pendingParentBytes("REQ-101", "Parent")); err != nil {
+		return err
+	}
+	if secondParent {
+		if err := writeTemplateFile("do-work/working/REQ-102-second.md", pendingParentBytes("REQ-102", "Second parent")); err != nil {
+			return err
+		}
+	}
+	if err := writeTemplateFile("do-work/CHECKPOINT.md", []byte("# Session Checkpoint\n\n## In Progress (interrupted)\n\n- REQ-999: Foreign — claimed earlier — writer: other:/repo\n  foreign detail\n")); err != nil {
+		return err
+	}
+	if err := runTemplateGit("add", "."); err != nil {
+		return err
+	}
+	if err := runTemplateGit("commit", "-qm", "baseline"); err != nil {
+		return err
+	}
+	if err := writeTemplateFile("gate-merge-evidence.txt", []byte("implementation merge\n")); err != nil {
+		return err
+	}
+	if err := runTemplateGit("add", "gate-merge-evidence.txt"); err != nil {
+		return err
+	}
+	return runTemplateGit("commit", "-qm", "implementation merge evidence")
 }

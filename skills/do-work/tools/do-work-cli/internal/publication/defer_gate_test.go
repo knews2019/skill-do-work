@@ -814,19 +814,11 @@ func TestDeferGateRefusesClaimedMatchingRepairInsteadOfCreatingDuplicate(t *test
 func newDeferGateRepository(t *testing.T, secondParent bool) string {
 	t.Helper()
 	root := t.TempDir()
-	runGitFixture(t, root, "init", "-q")
-	runGitFixture(t, root, "config", "user.name", "Test")
-	runGitFixture(t, root, "config", "user.email", "test@example.com")
-	writeFixture(t, root, "do-work/working/REQ-101-parent.md", pendingParentBytes("REQ-101", "Parent"), 0o644)
-	if secondParent {
-		writeFixture(t, root, "do-work/working/REQ-102-second.md", pendingParentBytes("REQ-102", "Second parent"), 0o644)
+	// The seven git commands this used to run are now in the template that TestMain
+	// builds once; see deferGateRepositoryTemplates in publication_commands_test.go.
+	if err := os.CopyFS(root, os.DirFS(deferGateRepositoryTemplates[secondParent])); err != nil {
+		t.Fatalf("copy defer-gate fixture template: %v", err)
 	}
-	writeFixture(t, root, "do-work/CHECKPOINT.md", []byte("# Session Checkpoint\n\n## In Progress (interrupted)\n\n- REQ-999: Foreign — claimed earlier — writer: other:/repo\n  foreign detail\n"), 0o644)
-	runGitFixture(t, root, "add", ".")
-	runGitFixture(t, root, "commit", "-qm", "baseline")
-	writeFixture(t, root, "gate-merge-evidence.txt", []byte("implementation merge\n"), 0o644)
-	runGitFixture(t, root, "add", "gate-merge-evidence.txt")
-	runGitFixture(t, root, "commit", "-qm", "implementation merge evidence")
 	claimDeferParent(t, root, "REQ-101", "do-work/working/REQ-101-parent.md", "Parent")
 	return root
 }

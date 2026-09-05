@@ -3,6 +3,7 @@ package finalization
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -120,12 +121,57 @@ func TestReadJournalRejectsNoncanonicalPayloadDirectory(t *testing.T) {
 	}
 }
 
+// finalizationRepositoryTemplate is an initialized, configured, empty repository built
+// once for the whole test binary and copied per fixture.
+//
+// This package calls newFinalizationRepository 55 times. Building each fixture with
+// `git init` and two `git config` runs cost three subprocess spawns every time, and
+// subprocess spawning — not the assertions — is what put this package's largest test
+// files near the gate's 30s per-file duration budget. One directory copy over the ten
+// small files a template-free `git init` produces replaces all three (REQ-574).
+var finalizationRepositoryTemplate string
+
+func TestMain(m *testing.M) {
+	templateRoot, err := os.MkdirTemp("", "finalization-git-template-")
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "finalization fixture template: %v\n", err)
+		os.Exit(1)
+	}
+	finalizationRepositoryTemplate = templateRoot
+	// `--template=` empty skips the sample hooks git would otherwise copy in, which is
+	// most of the files a fresh .git holds and none of what these tests read.
+	for _, arguments := range [][]string{
+		{"init", "-q", "--template="},
+		{"config", "user.name", "Finalization Fixture"},
+		{"config", "user.email", "finalization@example.invalid"},
+	} {
+		command := exec.Command("git", append([]string{"-C", templateRoot}, arguments...)...)
+		if output, err := command.CombinedOutput(); err != nil {
+			fmt.Fprintf(os.Stderr, "finalization fixture template: git %v: %v: %s\n", arguments, err, output)
+			os.RemoveAll(templateRoot)
+			os.Exit(1)
+		}
+	}
+	// `--template=` also skips .git/hooks, which an ordinary `git init` always creates
+	// and which TestRecoverFinalizationResumesAfterRealPreCommitHookFailure writes a
+	// real hook into. Recreate the empty directory so a copied fixture is shaped like
+	// a repository git made.
+	if err := os.MkdirAll(filepath.Join(templateRoot, ".git", "hooks"), 0o755); err != nil {
+		fmt.Fprintf(os.Stderr, "finalization fixture template hooks: %v\n", err)
+		os.RemoveAll(templateRoot)
+		os.Exit(1)
+	}
+	code := m.Run()
+	os.RemoveAll(templateRoot)
+	os.Exit(code)
+}
+
 func newFinalizationRepository(t *testing.T) string {
 	t.Helper()
 	root := t.TempDir()
-	runFinalizationGit(t, root, "init", "-q")
-	runFinalizationGit(t, root, "config", "user.name", "Finalization Fixture")
-	runFinalizationGit(t, root, "config", "user.email", "finalization@example.invalid")
+	if err := os.CopyFS(root, os.DirFS(finalizationRepositoryTemplate)); err != nil {
+		t.Fatalf("copy finalization fixture template: %v", err)
+	}
 	return root
 }
 
