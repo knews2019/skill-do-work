@@ -8,6 +8,12 @@ domain: backend
 prime_files: [skills/do-work/tools/do-work-cli/prime-do-work-cli.md, _dev/primes/prime-action-files.md]
 tdd: true
 suggested_spec:
+estimate:
+  p50_active_minutes: 5
+  confidence: high
+  calculated_at: 2026-09-05T12:16:57Z
+  basis:
+    - trivial short-circuit
 depends_on: []
 related: [REQ-570, REQ-562, REQ-576]
 maintenance: false
