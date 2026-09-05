@@ -180,11 +180,14 @@
            of queue and process breakage; before this strip the board rendered three,
            so the rest were invisible to anyone who did not run verify from a shell.
            Modelled on the anomalies strip above and deliberately subordinate to it:
-           anomalies are broken bookkeeping, findings are process drift. Same
-           placement rules — outside the view panels so it survives every view
-           switch, exempt from the recently-done window and the shared filters
-           (a finding must not be hideable by a filter combination), hidden only
-           when there is nothing at all to say. The client renders the producer's
+           anomalies are broken bookkeeping, findings are process drift. Almost
+           the same placement rules — outside the view panels, exempt from the
+           recently-done window and the shared filters (a finding must not be
+           hideable by a filter combination), hidden when there is nothing at all
+           to say. The one view switch that does hide it is the Activity view,
+           where the strip only pushes the transitions table down; that rule
+           lives in applyView (board-controls.js), never in a renderer, so no
+           re-render can undo it (REQ-578). The client renders the producer's
            list blindly; category suppression already happened in Go (REQ-284).
            Filled by board-cards.js. -->
       <section class="board-anomalies board-findings" id="board-findings" aria-label="Verify findings" hidden>

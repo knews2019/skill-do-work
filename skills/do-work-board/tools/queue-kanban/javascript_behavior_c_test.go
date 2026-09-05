@@ -2519,3 +2519,142 @@ process.stdout.write(JSON.stringify(results));`
 		t.Fatalf("nothing-moved empty state = %q (hidden=%v)", results.NothingInWindow.EmptyText, results.NothingInWindow.EmptyHidden)
 	}
 }
+
+// The Verify Findings strip sits outside the view panels, so every view switch
+// used to leave it on screen — including the Activity view, where it only pushed
+// the transitions table down (REQ-578). The rule belongs to the view switch, and
+// it must not turn an empty strip into a visible one on the other views, so both
+// halves are driven here through the real applyView.
+func TestJavaScriptBehaviorActivityViewHidesTheVerifyFindingsStrip(t *testing.T) {
+	indexHtml := generateLiveSite(t)
+	functionBlocks := []string{
+		sliceBalancedBlockAfter(t, indexHtml, "function createElement("),
+		sliceBalancedBlockAfter(t, indexHtml, "function renderVerifyFindingsStrip("),
+		sliceBalancedBlockAfter(t, indexHtml, "function applyView("),
+	}
+	javascriptProbe := `
+function makeStubNode() {
+  var node = {
+    children: [],
+    attributes: {},
+    className: "",
+    hidden: false,
+    stubText: "",
+    classList: { toggle: function () {} },
+    setAttribute: function (attributeName, attributeValue) { this.attributes[attributeName] = attributeValue; },
+    appendChild: function (childNode) { this.children.push(childNode); return childNode; }
+  };
+  Object.defineProperty(node, "textContent", {
+    get: function () { return this.stubText; },
+    set: function (nodeText) { this.stubText = nodeText; this.children = []; }
+  });
+  return node;
+}
+var nodesById = {};
+var document = {
+  getElementById: function (nodeId) {
+    if (!nodesById[nodeId]) { nodesById[nodeId] = makeStubNode(); }
+    return nodesById[nodeId];
+  },
+  createElement: function (tagName) { var node = makeStubNode(); node.stubTag = tagName; return node; }
+};
+var viewState = { view: "board", lens: "flat" };
+var renderedOnce = {
+  userRequestLens: true, calendar: true, durations: true,
+  timeline: true, activity: true, testing: true
+};
+var boardData = {};
+// applyView's neighbours are stubbed: this probe is about the findings strip,
+// and every renderer it can reach needs a live board to say anything.
+function hasActiveVisibleFilters() { return false; }
+function applyLens() {}
+function updateUserRequestActivityVisibility() {}
+function renderCalendar() {}
+function renderDurationsView() {}
+function renderTimelineView() {}
+function renderActivity() {}
+function renderTestingView() {}
+` + strings.Join(functionBlocks, "\n") + `
+function stripHiddenOnView(viewName) {
+  viewState.view = viewName;
+  applyView();
+  return nodesById["board-findings"].hidden;
+}
+var results = {};
+
+nodesById = {};
+boardData = {
+  verifyFindings: [
+    { category: "WORKTREE-MERGE-STATE-UNDETERMINED", detail: "a REQ-506 worktree", remedy: "inspect it" },
+    { category: "WORKTREE-PRESENT-RUN-IN-FLIGHT", detail: "the REQ-570 worktree", fixable: true }
+  ],
+  verifySkipped: ["one probe could not run"]
+};
+renderVerifyFindingsStrip();
+results.withFindingsAfterRender = nodesById["board-findings"].hidden;
+results.withFindingsOnBoard = stripHiddenOnView("board");
+results.withFindingsOnActivity = stripHiddenOnView("activity");
+results.withFindingsBackOnBoard = stripHiddenOnView("board");
+results.withFindingsOnTimeline = stripHiddenOnView("timeline");
+results.skippedDisclosureOnTimeline = nodesById["board-findings-skipped"].hidden;
+
+nodesById = {};
+boardData = { verifyFindings: [], verifySkipped: [] };
+renderVerifyFindingsStrip();
+results.emptyAfterRender = nodesById["board-findings"].hidden;
+results.emptyOnBoard = stripHiddenOnView("board");
+results.emptyOnActivity = stripHiddenOnView("activity");
+
+// Findings the renderer never drew: only the skipped disclosure has anything to
+// say, and it must survive a trip through the Activity view like the cards do.
+nodesById = {};
+boardData = { verifyFindings: [], verifySkipped: ["one probe could not run"] };
+renderVerifyFindingsStrip();
+results.skippedOnlyOnActivity = stripHiddenOnView("activity");
+results.skippedOnlyBackOnBoard = stripHiddenOnView("board");
+
+process.stdout.write(JSON.stringify(results));`
+	probeOutput := runJavaScriptBehaviorProbe(t, "activity view hides the verify findings strip", javascriptProbe)
+
+	var results struct {
+		WithFindingsAfterRender     bool `json:"withFindingsAfterRender"`
+		WithFindingsOnBoard         bool `json:"withFindingsOnBoard"`
+		WithFindingsOnActivity      bool `json:"withFindingsOnActivity"`
+		WithFindingsBackOnBoard     bool `json:"withFindingsBackOnBoard"`
+		WithFindingsOnTimeline      bool `json:"withFindingsOnTimeline"`
+		SkippedDisclosureOnTimeline bool `json:"skippedDisclosureOnTimeline"`
+		EmptyAfterRender            bool `json:"emptyAfterRender"`
+		EmptyOnBoard                bool `json:"emptyOnBoard"`
+		EmptyOnActivity             bool `json:"emptyOnActivity"`
+		SkippedOnlyOnActivity       bool `json:"skippedOnlyOnActivity"`
+		SkippedOnlyBackOnBoard      bool `json:"skippedOnlyBackOnBoard"`
+	}
+	if decodeError := json.Unmarshal(probeOutput, &results); decodeError != nil {
+		t.Fatalf("decode findings strip visibility results: %v (output %q)", decodeError, probeOutput)
+	}
+
+	if results.WithFindingsAfterRender || results.WithFindingsOnBoard {
+		t.Fatalf("two findings rendered but the strip is hidden on the Board view (afterRender=%v, onBoard=%v)",
+			results.WithFindingsAfterRender, results.WithFindingsOnBoard)
+	}
+	if !results.WithFindingsOnActivity {
+		t.Fatalf("the Verify Findings strip is still visible on the Activity view")
+	}
+	if results.WithFindingsBackOnBoard || results.WithFindingsOnTimeline {
+		t.Fatalf("the strip did not come back after the Activity view (board=%v, timeline=%v)",
+			results.WithFindingsBackOnBoard, results.WithFindingsOnTimeline)
+	}
+	if results.SkippedDisclosureOnTimeline {
+		t.Fatalf("the probes-could-not-run disclosure lost its own visibility across the view switches")
+	}
+	if !results.EmptyAfterRender || !results.EmptyOnBoard || !results.EmptyOnActivity {
+		t.Fatalf("a strip with nothing to report became visible on a view switch (afterRender=%v, board=%v, activity=%v)",
+			results.EmptyAfterRender, results.EmptyOnBoard, results.EmptyOnActivity)
+	}
+	if !results.SkippedOnlyOnActivity {
+		t.Fatalf("a skipped-probes-only strip stayed visible on the Activity view")
+	}
+	if results.SkippedOnlyBackOnBoard {
+		t.Fatalf("a skipped-probes-only strip did not come back on the Board view")
+	}
+}
