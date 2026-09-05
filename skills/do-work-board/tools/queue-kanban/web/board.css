@@ -3166,17 +3166,41 @@ body.is-resizing-detail .detail-resizer::before {
 
 /* ---- activity view ------------------------------------------------------
    "What changed on the queue lately." Deliberately plain: this view is a
-   reading surface, not a chart, so it borrows the timeline table's metrics
-   rather than inventing a second table style. The title column is the one
-   that wraps — every other cell is short and fixed-shape, and letting the
-   title wrap is what keeps the row readable instead of scrolling the whole
-   table sideways to reach the stamp. */
+   reading surface, not a chart, so it borrows the timeline table's CELL
+   metrics — padding, borders, type size — rather than inventing a second
+   table style. It does not borrow the timeline's scroll box: .board-main is
+   the only scroll surface on this view (REQ-585). The table used to be a 70vh
+   overflow box nested inside .board-main, which is itself the board's scroll
+   container, so the view carried two scrollbars and the wheel moved whichever
+   one the pointer happened to be over. The title column is the one that wraps
+   — every other cell is short and fixed-shape, and letting the title wrap is
+   what keeps the row readable instead of scrolling the whole table sideways
+   to reach the stamp.
+
+   The two zeroed paddings below are what makes the sticky column header work
+   against the board instead of against the table. A sticky header inside a
+   scroll container pins to that container's CONTENT box, not its padding box,
+   so .board-main's 24px top padding left a band above the stuck header that
+   rows scrolled through in plain sight (measured: two rows visible at 700px
+   of scroll, Chrome 152.0.7977.76). The 24px and #view-activity's own 16px
+   move onto the summary line as one 40px pad, so the summary starts exactly
+   where it did. Below the 760px breakpoint the board's own top padding drops
+   to 18px, so the summary gains 6px there — 40px is written once rather than
+   tracked per breakpoint, because six pixels of leading above one line of
+   text is not worth a second rule to maintain. Scoped to this view: every
+   other view keeps the board's own top padding, and the Kanban view is the
+   one to re-check if this selector is ever edited. */
+.board-main:has(> #view-activity.is-active) {
+  padding-top: 0;
+}
+
 #view-activity {
-  padding: 16px 24px 24px;
+  padding: 0 24px 24px;
 }
 
 .activity-summary {
   margin: 0 0 4px;
+  padding-top: 40px;
   font-size: 13px;
   color: var(--ink-soft);
 }
@@ -3188,9 +3212,10 @@ body.is-resizing-detail .detail-resizer::before {
   max-width: 108ch;
 }
 
+/* Named for the box it used to be. It no longer scrolls; the class is kept
+   because web/template.html and the browser probe address the table through
+   it, and renaming it is a template edit, not a stylesheet one. */
 .activity-table-scroll {
-  max-height: 70vh;
-  overflow: auto;
   margin-top: 8px;
   font-size: 12px;
 }
