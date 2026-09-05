@@ -1,3 +1,70 @@
+# Builder brief — REQ-579
+
+## Where you work
+
+- **Your worktree (cd here first):** `/Users/t2/Desktop/e1-experimental-repos/skill-do-work2/.git/work-run-20260905-1201/worktree-agent-REQ-579-finding-rows`
+- **Your branch (already checked out there):** `worktree-agent-REQ-579-finding-rows`
+- **Route:** B
+- **Base commit:** 5f4821ab
+
+You are the builder. The orchestrator runs in the main checkout at `/Users/t2/Desktop/e1-experimental-repos/skill-do-work2` and is the only writer of `do-work/`. Commit your work on your own branch in your own worktree and hand back a manifest; the orchestrator merges.
+
+## Never touch
+
+- Anything under `do-work/` — with exactly one exception, the hand-back file named below, which you write by its absolute main-tree path and never stage or commit.
+- `CHANGELOG.md`, `skills/do-work/CHANGELOG.md`, `VERSION`, `skills/do-work/VERSION` — release paths owned by finalization.
+- Any file outside the write set declared in the REQ below. If you need one, stop and report it in the hand-back instead of writing it, unless the REQ's own requirements already demand that file class (then flag the contradiction and proceed).
+- Do not run `bash _dev/tests/maintainer-verify.sh` (the repository gate). The orchestrator owns it and concurrent runs corrupt each other's timing budgets. Run only the focused tests named below.
+
+## Rules to load and follow (read these first, from your worktree)
+
+- `/Users/t2/Desktop/e1-experimental-repos/skill-do-work2/skills/do-work/crew-members/general.md`
+- `/Users/t2/Desktop/e1-experimental-repos/skill-do-work2/skills/do-work/crew-members/coding-guardrails.md`
+- `/Users/t2/Desktop/e1-experimental-repos/skill-do-work2/skills/do-work/crew-members/shared-principles.md`
+- `/Users/t2/Desktop/e1-experimental-repos/skill-do-work2/skills/do-work/crew-members/communication-style.md`
+- `/Users/t2/Desktop/e1-experimental-repos/skill-do-work2/skills/do-work/crew-members/testing.md` (the REQ is `tdd: true`)
+- `/Users/t2/Desktop/e1-experimental-repos/skill-do-work2/skills/do-work/crew-members/anti-slop.md` (the strip is a human-facing artifact and the REQ says to load it before styling)
+
+Also read `_dev/primes/prime-kanban-board.md` and, where your change touches what they name, the lesson satellites `_dev/primes/lessons-kanban-board.md` and `skills/do-work-board/tools/queue-kanban/lessons-do-kanban.md`.
+
+## P-A-U phasing (mandatory, reported in the hand-back)
+
+The REQ file is the orchestrator's, so report your P-A-U record under a `## P-A-U` heading in the hand-back instead of ticking boxes in the REQ:
+- **[PLAN]** — brief technical approach, written before code.
+- **[APPLY]** — code exactly as planned, strictly inside the declared write set.
+- **[UNIFY]** — run `git diff --stat`, run the native linters (`gofmt -l .`, `go vet ./...` for Go changes, `node --check` for changed client files), verify no debug artifacts in added lines, and list each file you checked and what you checked.
+
+## Focused tests
+
+Every test-file invocation must finish in under 30 seconds. Use:
+- Go: `bash _dev/tests/run-go-tests-with-budget.sh skills/do-work-board/tools/queue-kanban ./...`
+- Node lane: `QUEUE_KANBAN_JAVASCRIPT_PROBES=on QUEUE_KANBAN_STRICT_JAVASCRIPT_BEHAVIOR=1 bash _dev/tests/run-go-tests-with-budget.sh skills/do-work-board/tools/queue-kanban -run '^TestJavaScriptBehavior' ./...`
+
+## Hand-back (write this file, then stop)
+
+Write **`/Users/t2/Desktop/e1-experimental-repos/skill-do-work2/do-work/runs/work-2026-09-05-120117/REQ-579-handback.md`** using that absolute path — it is the one main-tree path you may write, and you must never stage or commit it.
+
+It must contain, each under its own `##` heading:
+- `## Branch` — the branch name and the head commit you left on it.
+- `## File manifest` — every source file created/modified/deleted with the verb, plus tests touched.
+- `## P-A-U` — the three phases above.
+- `## Test evidence` — every command you ran, its exit status, the RED observation (test name + failure text) and the GREEN observation.
+- `## Lesson evidence` — each lesson satellite you read and any listed path that was missing.
+- `## Decisions` — significant choices as `D-NN`, each with reasoning. Mark a reversible low-reach choice DECIDE & STATE; mark an irreversible, taste-dependent or contestable one ESCALATE and add `Value:` and `Risk:` lines.
+- `## Discovered Tasks` — out-of-scope findings, each stamped with one of exactly these impact tokens: `impact-critical`, `impact-user-visible`, `impact-rule-change`, `impact-negligible`. Do not invent a token outside that set and do not fix the items inline.
+- `## Integration seams` — any exact line that belongs in a file outside your write set, with where it goes. The orchestrator applies it.
+- `## Exploration` — what you found before writing code: the current renderer's shape, the classes you are replacing, and anything the request's own findings got wrong. The orchestrator folds this into the REQ.
+
+This REQ was triaged Route B. Its `## Exploration` was not produced by a separate agent, because the request's own capture-time findings already name the producer, the payload site, the renderer and the classes. **You produce that section**, under `## Exploration` in your hand-back, and you correct anything the capture got wrong rather than trusting it.
+
+REQ-578 landed on main just before your base: `applyView` in `web/board-controls.js` now hides `#board-findings` on the Activity view by reading the renderer's own output — `#board-findings-cards` children and `#board-findings-skipped-list` children — to decide whether the strip has anything to say. **Requirement D5 depends on this.** If your new markup renames or removes either of those element ids, `applyView` stops seeing content and the strip will misbehave on every view. Either keep both ids as the hosts of your new rows, or hand back the exact `board-controls.js` replacement lines as an integration seam — that file is outside your write set, so you must not edit it yourself.
+
+Also generate a board and look at the result before you hand back. The prime asks for it and this is a styling change: `go run . generate --out <a scratch directory> --repo-root <your worktree>` from the queue-kanban module, then read the produced page. Report what you saw.
+
+---
+
+# The request
+
 ---
 id: REQ-579
 title: 'Render verify findings and skipped probes as compact rows in one list'
@@ -28,7 +95,6 @@ write_set:
   - skills/do-work-board/tools/queue-kanban/verify_test.go
 claimed_at: 2026-09-05T12:21:55Z
 route: B
-dispatch_at: 2026-09-05T12:23:39Z
 ---
 
 # Render Verify Findings and Skipped Probes as Compact Rows in One List
@@ -117,3 +183,4 @@ The user is certain about the outcome (rows, not cards) and approved D1 to D3 an
 - [ ] Two weights only, both from the producer: `fixable: true` renders muted with a "cleanup can fix" tag, a skipped probe renders muted, everything else normal
 - [ ] `Subject` exists on `VerifyFinding` and `subject` in the payload; the client groups rows by exact string match and prints each non-empty subject once as a heading, with empty-subject rows after the grouped ones in producer order
 - [ ] The strip still hides when there is nothing to report, and REQ-578's Activity-view hide still works against the same element and attribute
+

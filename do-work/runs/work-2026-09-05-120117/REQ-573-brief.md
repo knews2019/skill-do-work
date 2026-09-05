@@ -1,3 +1,69 @@
+# Builder brief — REQ-573
+
+## Where you work
+
+- **Your worktree (cd here first):** `/Users/t2/Desktop/e1-experimental-repos/skill-do-work2/.git/work-run-20260905-1201/worktree-agent-REQ-573-activity-drawer`
+- **Your branch (already checked out there):** `worktree-agent-REQ-573-activity-drawer`
+- **Route:** A
+- **Base commit:** 5f4821ab
+
+You are the builder. The orchestrator runs in the main checkout at `/Users/t2/Desktop/e1-experimental-repos/skill-do-work2` and is the only writer of `do-work/`. Commit your work on your own branch in your own worktree and hand back a manifest; the orchestrator merges.
+
+## Never touch
+
+- Anything under `do-work/` — with exactly one exception, the hand-back file named below, which you write by its absolute main-tree path and never stage or commit.
+- `CHANGELOG.md`, `skills/do-work/CHANGELOG.md`, `VERSION`, `skills/do-work/VERSION` — release paths owned by finalization.
+- Any file outside the write set declared in the REQ below. If you need one, stop and report it in the hand-back instead of writing it, unless the REQ's own requirements already demand that file class (then flag the contradiction and proceed).
+- Do not run `bash _dev/tests/maintainer-verify.sh` (the repository gate). The orchestrator owns it and concurrent runs corrupt each other's timing budgets. Run only the focused tests named below.
+
+## Rules to load and follow (read these first, from your worktree)
+
+- `/Users/t2/Desktop/e1-experimental-repos/skill-do-work2/skills/do-work/crew-members/general.md`
+- `/Users/t2/Desktop/e1-experimental-repos/skill-do-work2/skills/do-work/crew-members/coding-guardrails.md`
+- `/Users/t2/Desktop/e1-experimental-repos/skill-do-work2/skills/do-work/crew-members/shared-principles.md`
+- `/Users/t2/Desktop/e1-experimental-repos/skill-do-work2/skills/do-work/crew-members/communication-style.md`
+- `/Users/t2/Desktop/e1-experimental-repos/skill-do-work2/skills/do-work/crew-members/testing.md` (the REQ is `tdd: true`)
+
+Also read `_dev/primes/prime-kanban-board.md` and, where your change touches what they name, the lesson satellites `_dev/primes/lessons-kanban-board.md` and `skills/do-work-board/tools/queue-kanban/lessons-do-kanban.md`.
+
+## P-A-U phasing (mandatory, reported in the hand-back)
+
+The REQ file is the orchestrator's, so report your P-A-U record under a `## P-A-U` heading in the hand-back instead of ticking boxes in the REQ:
+- **[PLAN]** — brief technical approach, written before code.
+- **[APPLY]** — code exactly as planned, strictly inside the declared write set.
+- **[UNIFY]** — run `git diff --stat`, run the native linters (`gofmt -l .`, `go vet ./...` for Go changes, `node --check` for changed client files), verify no debug artifacts in added lines, and list each file you checked and what you checked.
+
+## Focused tests
+
+Every test-file invocation must finish in under 30 seconds. Use:
+- Node lane: `QUEUE_KANBAN_JAVASCRIPT_PROBES=on QUEUE_KANBAN_STRICT_JAVASCRIPT_BEHAVIOR=1 bash _dev/tests/run-go-tests-with-budget.sh skills/do-work-board/tools/queue-kanban -run '^TestJavaScriptBehavior' ./...`
+- Go: `bash _dev/tests/run-go-tests-with-budget.sh skills/do-work-board/tools/queue-kanban ./...`
+
+## Hand-back (write this file, then stop)
+
+Write **`/Users/t2/Desktop/e1-experimental-repos/skill-do-work2/do-work/runs/work-2026-09-05-120117/REQ-573-handback.md`** using that absolute path — it is the one main-tree path you may write, and you must never stage or commit it.
+
+It must contain, each under its own `##` heading:
+- `## Branch` — the branch name and the head commit you left on it.
+- `## File manifest` — every source file created/modified/deleted with the verb, plus tests touched.
+- `## P-A-U` — the three phases above.
+- `## Test evidence` — every command you ran, its exit status, the RED observation (test name + failure text) and the GREEN observation.
+- `## Lesson evidence` — each lesson satellite you read and any listed path that was missing.
+- `## Decisions` — significant choices as `D-NN`, each with reasoning. Mark a reversible low-reach choice DECIDE & STATE; mark an irreversible, taste-dependent or contestable one ESCALATE and add `Value:` and `Risk:` lines.
+- `## Discovered Tasks` — out-of-scope findings, each stamped with one of exactly these impact tokens: `impact-critical`, `impact-user-visible`, `impact-rule-change`, `impact-negligible`. Do not invent a token outside that set and do not fix the items inline.
+- `## Integration seams` — any exact line that belongs in a file outside your write set, with where it goes. The orchestrator applies it.
+
+Two things landed on main just before your base and matter to you:
+
+- REQ-572 gave the Activity view one row per lifecycle stamp, so a REQ really can own several rows now. `data-activity-request` is set on every row and is deliberately non-unique — that is what you select on.
+- REQ-578 made `applyView` in `web/board-controls.js` hide `#board-findings` on the Activity view. Do not disturb it; `board-controls.js` is outside your write set anyway.
+
+The drawer opener you must reuse is the existing document-level `data-detail-kind` delegation in `board-controls.js`. Do not add a second opener.
+
+---
+
+# The request
+
 ---
 id: REQ-573
 title: 'Open the detail drawer from an Activity row and highlight every row of the same REQ'
@@ -26,7 +92,6 @@ write_set:
   - skills/do-work-board/tools/queue-kanban/javascript_behavior_c_test.go
 claimed_at: 2026-09-05T12:21:55Z
 route: A
-dispatch_at: 2026-09-05T12:23:39Z
 ---
 
 # Open the Detail Drawer from an Activity Row and Highlight Every Row of the Same REQ
@@ -96,3 +161,4 @@ See `do-work/user-requests/UR-115/input.md` for complete verbatim input.
 **Planning not required** - Route A: direct to builder
 
 *Skipped by work action*
+
