@@ -1,6 +1,6 @@
 ---
 id: REQ-592
-status: pending
+status: claimed
 domain: testing
 created_at: 2026-09-05T22:44:36Z
 user_request: UR-127
@@ -15,6 +15,7 @@ depends_on: []
 related: [REQ-591, REQ-574]
 write_set: [_dev/tests/fast-stages.json, skills/do-work/tools/do-work-cli/internal/heavyverification/fast_stage_evidence.go, skills/do-work/tools/do-work-cli/internal/heavyverification/fast_stage_evidence_test.go, _dev/tests/fast-stage-reuse-behavior.sh]
 title: '[impact-critical] Review fix: seal the do-work tree into both fast gate stages'
+claimed_at: 2026-09-05T22:59:38Z
 ---
 
 # Review Fix: Seal the do-work Tree Into Both Fast Gate Stages
