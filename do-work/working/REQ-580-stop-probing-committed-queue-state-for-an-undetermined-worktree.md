@@ -1,7 +1,7 @@
 ---
 id: REQ-580
 title: 'Stop probing committed queue state for a worktree whose merge state is already undetermined'
-status: pending
+status: claimed
 created_at: 2026-09-05T00:19:58Z
 user_request: UR-118
 domain: backend
@@ -15,6 +15,7 @@ effort_estimate: effort-mechanical
 write_set:
   - skills/do-work-board/tools/queue-kanban/verify.go
   - skills/do-work-board/tools/queue-kanban/verify_test.go
+claimed_at: 2026-09-05T00:38:08Z
 ---
 
 # Stop Probing Committed Queue State for a Worktree Whose Merge State Is Already Undetermined

@@ -35,3 +35,5 @@ session_depth: light
 - REQ-571: [impact-negligible] Remove the board's pending-heavy-testing reader case — claimed 2026-09-05T00:38:07Z — writer: vm:/home/user/skill-do-work
 
 - REQ-549: [impact-negligible] Drop the eight dead path tokens from the decision indexes and the lessons prime — claimed 2026-09-05T00:38:07Z — writer: vm:/home/user/skill-do-work
+
+- REQ-580: Stop probing committed queue state for a worktree whose merge state is already undetermined — claimed 2026-09-05T00:38:08Z — writer: vm:/home/user/skill-do-work
