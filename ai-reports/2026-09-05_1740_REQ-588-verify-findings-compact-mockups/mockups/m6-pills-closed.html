@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Verify findings mockup — M6 · pills (closed)</title>
+<link rel="stylesheet" href="shared.css">
+<style>
+
+/* Slim band instead of a card: no border box, a 3px accent at the left, tight padding. */
+.board-findings { margin: 0 0 14px; padding: 4px 12px 4px 12px; border: 0; border-left: 3px solid var(--accent-pending); border-radius: 4px; background-color: var(--surface-2); }
+.board-anomalies-head { gap: 8px; }
+.board-findings .board-anomalies-title { font-size: 0.7rem; font-weight: 600; }
+.board-findings .board-anomalies-count { font-size: 0.74rem; }
+.board-findings .board-anomalies-hint { display: none; }
+/* Weight dot: amber = a warning to read, green = cleanup can fix, grey = a probe that never ran. */
+.vf-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background-color: var(--accent-pending); vertical-align: 1px; }
+.vf-dot-fixable { background-color: var(--accent-done); }
+.vf-dot-skipped { background-color: var(--ink-faint); }
+.vf-subject { font-family: var(--font-mono); font-size: 0.74rem; font-weight: 600; color: var(--ink-base); }
+.vf-cat { font-size: 0.68rem; color: var(--ink-faint); }
+
+/* M6: one wrapping line of pills. A pill is subject + category; clicking it opens a card with the detail and the remedy. */
+.vf-pills { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.vf-pill { position: relative; }
+.vf-pill summary { display: inline-flex; align-items: baseline; gap: 6px; padding: 2px 9px 2px 8px; border: 1px solid var(--line-soft); border-radius: var(--radius-pill); background-color: var(--surface-1); list-style: none; cursor: pointer; font-size: 0.74rem; line-height: 1.4; }
+.vf-pill summary::-webkit-details-marker { display: none; }
+.vf-pill[open] summary { border-color: var(--line-firm); }
+.vf-card { position: absolute; z-index: 5; top: calc(100% + 6px); left: 0; width: min(560px, 80vw); padding: 10px 12px; border: 1px solid var(--line-firm); border-radius: 8px; background-color: var(--surface-1); box-shadow: 0 8px 24px rgba(0,0,0,0.18); font-size: 0.76rem; line-height: 1.45; color: var(--ink-base); }
+.vf-card .vf-cat { display: block; margin-bottom: 4px; }
+.vf-card .vf-remedy { margin: 6px 0 0; padding-top: 6px; border-top: 1px solid var(--line-soft); color: var(--ink-soft); }
+.vf-bar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+
+</style>
+<script>var q=new URLSearchParams(location.search),t=q.get("theme");if(t==="light"||t==="dark")document.documentElement.setAttribute("data-theme",t);</script>
+</head>
+<body>
+<main class="board-main">
+  <section class="board-anomalies board-findings" id="board-findings" aria-label="Verify findings">
+    <div class="vf-bar"><div class="board-anomalies-head">
+      <strong class="board-anomalies-title">VERIFY</strong>
+      <span class="board-anomalies-count" id="board-findings-count">3 findings · 1 probe not checked</span>
+      <span class="board-anomalies-hint">queue and process problems <code>queue-kanban verify</code> detects — each names what to do about it</span>
+    </div><div class="vf-pills"><details class="vf-pill"><summary><span class="vf-dot"></span><span class="vf-subject">worktree-agent-REQ-573-activity-drawer</span><span class="vf-cat">unmerged worktree leftover</span></summary><div class="vf-card"><span class="vf-cat">unmerged worktree leftover</span>exists at .git/work-run-20260905-1201/worktree-agent-REQ-573-activity-drawer<div class="vf-remedy">this is either a builder still in flight or work that outlived a dead run — verify cannot tell those apart. Leave it alone during a run; otherwise cleanup Pass 5 asks before discarding it, because the branch may hold the only copy</div></div></details><details class="vf-pill"><summary><span class="vf-dot"></span><span class="vf-subject">worktree-agent-REQ-582-arrow-citations</span><span class="vf-cat">worktree present run in flight</span></summary><div class="vf-card"><span class="vf-cat">worktree present run in flight</span>exists at .git/work-run-20260905-1201/worktree-agent-REQ-582-arrow-citations<div class="vf-remedy">this worktree is present, not leftover: REQ-582 is still in do-work/working/, so the run that owns it has not reached review, remediation, or its final path. Leave it in place — worktree cleanup happens after the REQ is archived, not before</div></div></details><details class="vf-pill"><summary><span class="vf-dot vf-dot-fixable"></span><span class="vf-subject">REQ-581</span><span class="vf-cat">stranded finished request</span></summary><div class="vf-card"><span class="vf-cat">stranded finished request</span>has terminal status &quot;completed&quot; but still sits in do-work/working/ <span class="board-findings-fixable">cleanup can fix</span><div class="vf-remedy">cleanup Pass 0 moves it into do-work/archive/</div></div></details><details class="vf-pill"><summary><span class="vf-dot vf-dot-skipped"></span><span class="vf-subject">1 probe not checked</span></summary><div class="vf-card"><span class="vf-cat">not checked</span>committed-queue-state probe for worktree-agent-REQ-573-activity-drawer: `git diff main...worktree-agent-REQ-573-activity-drawer -- do-work/` failed (no such branch, or unrelated histories)</div></details></div></div>
+  </section>
+  <div class="board-columns">
+    <div class="board-column" style="--column-accent: var(--accent-pending)"><div class="column-header"><h2 class="column-title">Pending</h2><span class="column-count">9</span></div></div>
+    <div class="board-column" style="--column-accent: var(--accent-claimed)"><div class="column-header"><h2 class="column-title">Claimed</h2><span class="column-count">1</span></div></div>
+    <div class="board-column" style="--column-accent: var(--accent-blocked)"><div class="column-header"><h2 class="column-title">Needs input · blocked</h2><span class="column-count">0</span></div></div>
+    <div class="board-column" style="--column-accent: var(--accent-done)"><div class="column-header"><h2 class="column-title">Recently done</h2><span class="column-count">41</span></div></div>
+  </div>
+</main>
+<span class="mockup-tag" aria-hidden="true">M6 · pills (closed)</span>
+</body>
+</html>

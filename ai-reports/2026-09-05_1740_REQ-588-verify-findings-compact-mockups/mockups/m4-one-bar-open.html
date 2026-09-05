@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Verify findings mockup — M4 · one bar (open)</title>
+<link rel="stylesheet" href="shared.css">
+<style>
+
+/* Slim band instead of a card: no border box, a 3px accent at the left, tight padding. */
+.board-findings { margin: 0 0 14px; padding: 4px 12px 4px 12px; border: 0; border-left: 3px solid var(--accent-pending); border-radius: 4px; background-color: var(--surface-2); }
+.board-anomalies-head { gap: 8px; }
+.board-findings .board-anomalies-title { font-size: 0.7rem; font-weight: 600; }
+.board-findings .board-anomalies-count { font-size: 0.74rem; }
+.board-findings .board-anomalies-hint { display: none; }
+/* Weight dot: amber = a warning to read, green = cleanup can fix, grey = a probe that never ran. */
+.vf-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background-color: var(--accent-pending); vertical-align: 1px; }
+.vf-dot-fixable { background-color: var(--accent-done); }
+.vf-dot-skipped { background-color: var(--ink-faint); }
+.vf-subject { font-family: var(--font-mono); font-size: 0.74rem; font-weight: 600; color: var(--ink-base); }
+.vf-cat { font-size: 0.68rem; color: var(--ink-faint); }
+
+/* One line per finding: dot · subject · category · detail clipped to the line · chevron. Opening a row shows its remedy under the detail. */
+.vf-rows { margin: 2px 0 0; }
+.vf-row { border-top: 1px solid var(--line-soft); }
+.vf-row:first-child { border-top: 0; }
+.vf-row summary { display: flex; gap: 8px; align-items: baseline; padding: 3px 0; font-size: 0.76rem; line-height: 1.4; list-style: none; cursor: pointer; }
+.vf-row summary::-webkit-details-marker { display: none; }
+.vf-detail { flex: 0 1 auto; min-width: 0; color: var(--ink-soft); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.vf-subject, .vf-cat, .vf-chev, .vf-dot { flex: none; }
+.vf-chev { color: var(--ink-faint); font-size: 0.68rem; transition: transform 120ms; }
+.vf-row[open] .vf-chev { transform: rotate(90deg); }
+.vf-row[open] .vf-detail { white-space: normal; }
+.vf-remedy { margin: 0 0 6px 15px; padding-left: 10px; border-left: 2px solid var(--line-firm); color: var(--ink-soft); font-size: 0.74rem; line-height: 1.45; }
+
+/* M4: the strip is one 30px bar. Its summary line lists the subjects; opening it shows the rows of M5. */
+.vf-strip > summary { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; list-style: none; cursor: pointer; padding: 2px 0; }
+.vf-strip > summary::-webkit-details-marker { display: none; }
+.vf-strip .board-anomalies-head { display: contents; }
+.vf-strip-subjects { display: flex; gap: 6px; flex-wrap: wrap; min-width: 0; }
+.vf-strip-subjects .vf-subject { font-weight: 500; }
+.vf-strip-toggle { margin-left: auto; font-size: 0.7rem; color: var(--accent-claimed); white-space: nowrap; }
+.vf-strip[open] .vf-strip-toggle-closed, .vf-strip:not([open]) .vf-strip-toggle-open { display: none; }
+.vf-strip[open] .vf-strip-subjects { display: none; }
+
+</style>
+<script>var q=new URLSearchParams(location.search),t=q.get("theme");if(t==="light"||t==="dark")document.documentElement.setAttribute("data-theme",t);</script>
+</head>
+<body>
+<main class="board-main">
+  <section class="board-anomalies board-findings" id="board-findings" aria-label="Verify findings">
+    <details class="vf-strip" open><summary><div class="board-anomalies-head">
+      <strong class="board-anomalies-title">VERIFY</strong>
+      <span class="board-anomalies-count" id="board-findings-count">3 findings · 1 probe not checked</span>
+      <span class="board-anomalies-hint">queue and process problems <code>queue-kanban verify</code> detects — each names what to do about it</span>
+    </div><span class="vf-strip-subjects"><span class="vf-subject"><span class="vf-dot"></span> worktree-agent-REQ-573-activity-drawer</span> <span class="vf-subject"><span class="vf-dot"></span> worktree-agent-REQ-582-arrow-citations</span> <span class="vf-subject"><span class="vf-dot vf-dot-fixable"></span> REQ-581</span> <span class="vf-subject"><span class="vf-dot vf-dot-skipped"></span> 1 probe</span></span><span class="vf-strip-toggle vf-strip-toggle-closed">show ▾</span><span class="vf-strip-toggle vf-strip-toggle-open">hide ▴</span></summary>
+<div class="vf-rows">
+<details class="vf-row"><summary><span class="vf-dot"></span><span class="vf-subject">worktree-agent-REQ-573-activity-drawer</span><span class="vf-cat">unmerged worktree leftover</span><span class="vf-detail">exists at .git/work-run-20260905-1201/worktree-agent-REQ-573-activity-drawer</span><span class="vf-chev">▶</span></summary><div class="vf-remedy">this is either a builder still in flight or work that outlived a dead run — verify cannot tell those apart. Leave it alone during a run; otherwise cleanup Pass 5 asks before discarding it, because the branch may hold the only copy</div></details>
+<details class="vf-row"><summary><span class="vf-dot"></span><span class="vf-subject">worktree-agent-REQ-582-arrow-citations</span><span class="vf-cat">worktree present run in flight</span><span class="vf-detail">exists at .git/work-run-20260905-1201/worktree-agent-REQ-582-arrow-citations</span><span class="vf-chev">▶</span></summary><div class="vf-remedy">this worktree is present, not leftover: REQ-582 is still in do-work/working/, so the run that owns it has not reached review, remediation, or its final path. Leave it in place — worktree cleanup happens after the REQ is archived, not before</div></details>
+<details class="vf-row"><summary><span class="vf-dot vf-dot-fixable"></span><span class="vf-subject">REQ-581</span><span class="vf-cat">stranded finished request</span><span class="vf-detail">has terminal status &quot;completed&quot; but still sits in do-work/working/ <span class="board-findings-fixable">cleanup can fix</span></span><span class="vf-chev">▶</span></summary><div class="vf-remedy">cleanup Pass 0 moves it into do-work/archive/</div></details>
+<details class="vf-row"><summary><span class="vf-dot vf-dot-skipped"></span><span class="vf-subject">committed-queue-state probe for worktree-agent-REQ-573-activity-drawer</span><span class="vf-cat">not checked</span><span class="vf-detail">`git diff main...worktree-agent-REQ-573-activity-drawer -- do-work/` failed (no such branch, or unrelated histories)</span><span class="vf-chev">▶</span></summary></details>
+</div></details>
+  </section>
+  <div class="board-columns">
+    <div class="board-column" style="--column-accent: var(--accent-pending)"><div class="column-header"><h2 class="column-title">Pending</h2><span class="column-count">9</span></div></div>
+    <div class="board-column" style="--column-accent: var(--accent-claimed)"><div class="column-header"><h2 class="column-title">Claimed</h2><span class="column-count">1</span></div></div>
+    <div class="board-column" style="--column-accent: var(--accent-blocked)"><div class="column-header"><h2 class="column-title">Needs input · blocked</h2><span class="column-count">0</span></div></div>
+    <div class="board-column" style="--column-accent: var(--accent-done)"><div class="column-header"><h2 class="column-title">Recently done</h2><span class="column-count">41</span></div></div>
+  </div>
+</main>
+<span class="mockup-tag" aria-hidden="true">M4 · one bar (open)</span>
+</body>
+</html>

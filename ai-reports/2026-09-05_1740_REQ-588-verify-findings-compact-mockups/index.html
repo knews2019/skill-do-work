@@ -1,0 +1,186 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Verify Findings — A Slim Band, Three Mockups</title>
+<style>
+:root{
+  --bg:#faf8f4; --surface:#ffffff; --surface-2:#f4f0e8; --ink:#1f2d38; --muted:#66737d;
+  --line:#e3dccd; --accent:#2563eb; --accent-ink:#1d4ed8; --amber:#8a6a3b; --warn:#b45309; --good:#2f7a4f;
+  --display:"Iowan Old Style",Palatino,"Palatino Linotype",Georgia,serif;
+  --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme:dark){
+  :root{--bg:#101417; --surface:#171d21; --surface-2:#1d242a; --ink:#e9e6e0; --muted:#9ba6ae;
+        --line:#2c343a; --accent:#7ea6ff; --accent-ink:#9dbaff; --amber:#c9a273; --warn:#e0a34a; --good:#7fc79a;}
+}
+/* Render-judge switch only: ?theme=dark forces the dark palette so both renders can be checked from one browser. */
+html[data-theme="dark"]{--bg:#101417; --surface:#171d21; --surface-2:#1d242a; --ink:#e9e6e0; --muted:#9ba6ae;
+        --line:#2c343a; --accent:#7ea6ff; --accent-ink:#9dbaff; --amber:#c9a273; --warn:#e0a34a; --good:#7fc79a; color-scheme:dark}
+html[data-theme="light"]{--bg:#faf8f4; --surface:#ffffff; --surface-2:#f4f0e8; --ink:#1f2d38; --muted:#66737d;
+  --line:#e3dccd; --accent:#2563eb; --accent-ink:#1d4ed8; --amber:#8a6a3b; --warn:#b45309; --good:#2f7a4f; color-scheme:light}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);
+  font:16px/1.62 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;-webkit-font-smoothing:antialiased}
+.page{width:100%;padding:0 clamp(20px,2.6vw,60px) 96px}
+.measure{max-width:74ch}
+.row{display:flex;flex-wrap:wrap;gap:26px}
+h1,h2,h3{font-family:var(--display);font-weight:600;letter-spacing:-.01em;margin:0}
+h1{font-size:clamp(30px,3.4vw,44px);line-height:1.1}
+h2{font-size:clamp(23px,2vw,30px);margin-bottom:10px}
+h3{font-size:19px;margin-bottom:6px}
+p{margin:0 0 14px}
+a{color:var(--accent-ink)}
+code{font:13.5px/1.5 var(--mono);background:var(--surface-2);border:1px solid var(--line);border-radius:4px;padding:1px 5px}
+.kicker{font:600 11.5px/1.4 var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin:0 0 10px}
+header.masthead{border-bottom:1px solid var(--line);padding:44px 0 26px;margin-bottom:40px}
+.dateline{font:12.5px/1.6 var(--mono);color:var(--muted);margin-top:14px}
+section{padding:38px 0;border-bottom:1px solid var(--line)}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:20px 22px}
+.verdict{background:var(--surface);border:1px solid var(--line);border-left:3px solid var(--accent);border-radius:8px;padding:24px 26px}
+.verdict p:last-child{margin-bottom:0}
+.tiles{display:flex;flex-wrap:wrap;gap:14px;margin-top:24px}
+.tile{flex:1 1 168px;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px 16px}
+.tile .lab{font:11.5px/1.4 var(--mono);color:var(--muted);text-transform:uppercase;letter-spacing:.09em}
+.tile .val{font:600 38px/1.15 var(--display);margin-top:6px}
+.tile .sub{font:12px/1.45 var(--mono);color:var(--muted);margin-top:4px}
+figure{margin:0}
+.shot{position:relative;max-width:2000px;margin:0 auto;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:var(--surface)}
+.shot img{display:block;width:100%;height:auto}
+.shot svg{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+figcaption{font:14.5px/1.62 inherit;color:var(--muted);margin-top:12px;max-width:110ch}
+.badge{display:inline-block;font:600 10.5px/1 var(--mono);letter-spacing:.09em;text-transform:uppercase;
+  border:1px solid var(--line);border-radius:99px;padding:5px 9px;color:var(--muted);background:var(--surface-2)}
+.badge.live{color:var(--good);border-color:var(--good)}
+.badge.mock{color:var(--warn);border-color:var(--warn)}
+.callout{fill:var(--warn);stroke:#fff;stroke-width:3}
+.callout-num{font:700 30px var(--mono);fill:#fff}
+.callout-box{fill:none;stroke:var(--warn);stroke-width:5;stroke-dasharray:14 8}
+table{width:100%;border-collapse:collapse;font-size:14.5px}
+th,td{text-align:left;padding:9px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font:600 11.5px/1.4 var(--mono);text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+td.num{font-variant-numeric:tabular-nums;font-family:var(--mono);font-size:13px;white-space:nowrap}
+.tablewrap{overflow-x:auto;background:var(--surface);border:1px solid var(--line);border-radius:10px}
+pre{background:var(--surface-2);border:1px solid var(--line);border-radius:8px;padding:16px 18px;margin:0 0 14px;
+  font:13px/1.62 var(--mono);white-space:pre-wrap;overflow-wrap:anywhere}
+.mock{flex:1 1 calc(50% - 13px);min-width:min(100%,560px);background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:18px 20px 20px}
+.mock.reco{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
+.mock .code{font:600 12px/1 var(--mono);color:var(--accent-ink);letter-spacing:.08em}
+.mock h3{margin:8px 0 8px;display:flex;gap:10px;align-items:baseline;flex-wrap:wrap}
+.mock p{font-size:15px;margin-bottom:10px}
+.mock .frame{border:1px solid var(--line);border-radius:8px;overflow:hidden;background:#0c0e12;margin:10px 0 12px}
+.mock iframe{display:block;width:100%;height:560px;border:0}
+.mock .links{font:12.5px/1.7 var(--mono);color:var(--muted);margin:0}
+.mock pre{margin:10px 0 0;font-size:12.5px}
+ul{margin:0 0 14px;padding-left:20px}
+li{margin-bottom:7px}
+.lede{font-size:18px;line-height:1.6}
+.foot{padding:34px 0 0;font:12.5px/1.7 var(--mono);color:var(--muted)}
+.split{flex:1 1 460px;min-width:0}
+.split-wide{flex:2 1 720px;min-width:0}
+.mock iframe{height:230px}
+.pair{display:flex;gap:12px;flex-wrap:wrap}
+.pair figure{flex:1 1 300px;min-width:0}
+.pair .shot{max-width:none}
+</style>
+<script>
+  // Render-judge switch only: ?theme=dark|light forces a palette for the screenshot pass.
+  var forced = new URLSearchParams(location.search).get("theme");
+  if (forced === "dark" || forced === "light") document.documentElement.setAttribute("data-theme", forced);
+</script>
+</head>
+<body>
+<div class="page">
+
+<header class="masthead">
+  <p class="kicker">Proposal, second round · Kanban board · Verify findings strip</p>
+  <h1>A slim band for verify findings</h1>
+  <p class="dateline">2026-09-05 · three mockups, each collapsible, each under 40 px when closed · written before any implementation</p>
+  <p class="dateline">Round one shipped M1 (release 0.303.2), and the verdict on it was "not visually nice and huge". This round keeps nothing from M1 except the one-scale type and the grid idea. The mockups are hand-built pages in the board's own stylesheet with the same three findings and one skipped probe as before; nothing here has shipped.</p>
+</header>
+
+<section>
+  <p class="kicker">Verdict</p>
+  <div class="verdict measure">
+    <p>The strip was huge because it printed every remedy in full, all the time, inside a bordered card. A remedy is what you read once you have decided to act on a finding, so it belongs behind a click. Everything else on a row is short: a subject, a category, one line of detail.</p>
+    <p>All three mockups drop the card for a slim band with a 3 px amber edge, replace the shouting uppercase chip with a lowercase category in faint ink, and put a coloured dot on each finding for its weight (amber: read this, green: cleanup can fix, grey: a probe that never ran). They differ only in how much is visible before a click. <strong>M4 is the recommendation:</strong> closed, the whole strip is one 30 px line that names every subject; open, it is one line per finding with the remedy behind a chevron. M5 is M4 always open. M6 is a row of pills with a card on click, the smallest of the three but the only one that hides the detail too.</p>
+  </div>
+</section>
+
+<section>
+  <p class="kicker">What shipped this afternoon, for comparison</p>
+  <figure>
+    <a href="screenshots/mockup-m1-shipped-light.png" target="_blank" rel="noopener"><div class="shot"><img src="screenshots/mockup-m1-shipped-light.png" alt="M1 as shipped: mono subject headings, chip, one detail line, remedy on its own line; four findings take 300 px." width="1600" height="300"></div></a>
+    <figcaption><span class="badge mock">Mockup of the shipped rows</span> M1 at 1600 px: four items, about 300 px tall, every remedy printed in full. The same four items are 30 px in M4 closed, 120 px in M4 open, and 44 px in M6.</figcaption>
+  </figure>
+</section>
+
+<section>
+  <p class="kicker">Mockups · click show/hide, chevrons and pills</p>
+  <p class="measure lede">Each frame is a live page; the toggles work. Open one full-size to see it at board width, or add <code>?theme=dark</code>. Below each frame, the closed and open states as static captures.</p>
+  <div class="row">
+
+    <div class="mock reco">
+      <span class="code">M4 · ONE BAR · recommended</span>
+      <h3>One line closed, one line per finding open</h3>
+      <p>Closed: "VERIFY · 3 findings · 1 probe not checked" followed by every subject with its weight dot, and "show" at the right. Open: the subjects become rows (dot, subject, category, detail clipped to the line, chevron); a chevron opens that row's remedy under it. The open/closed state would be remembered per browser.</p>
+      <div class="frame"><iframe src="mockups/m4-one-bar-closed.html" title="M4: one bar" loading="lazy"></iframe></div>
+      <p class="links"><a href="mockups/m4-one-bar-closed.html" target="_blank" rel="noopener">open full-size</a> · <a href="mockups/m4-one-bar-open.html" target="_blank" rel="noopener">open, expanded</a> · <a href="screenshots/mockup-m4-one-bar-open-dark.png" target="_blank" rel="noopener">dark capture</a></p>
+      <div class="pair">
+        <figure><a href="screenshots/mockup-m4-one-bar-closed-light.png" target="_blank" rel="noopener"><div class="shot"><img src="screenshots/mockup-m4-one-bar-closed-light.png" alt="M4 closed" width="1600" height="300"></div></a><figcaption>closed, 30 px</figcaption></figure>
+        <figure><a href="screenshots/mockup-m4-one-bar-open-light.png" target="_blank" rel="noopener"><div class="shot"><img src="screenshots/mockup-m4-one-bar-open-light.png" alt="M4 open" width="1600" height="300"></div></a><figcaption>open, one line per finding</figcaption></figure>
+      </div>
+    </div>
+
+    <div class="mock">
+      <span class="code">M5 · COMPACT ROWS</span>
+      <h3>Always one line per finding, remedy behind a chevron</h3>
+      <p>M4's open state with no outer toggle: the rows are always there, each 28 px, the detail clipped with an ellipsis at the line's end, the remedy under the row when its chevron is opened. Nothing to remember, one click fewer to reach a detail, four lines taller than M4 closed.</p>
+      <div class="frame"><iframe src="mockups/m5-compact-rows.html" title="M5: compact rows" loading="lazy"></iframe></div>
+      <p class="links"><a href="mockups/m5-compact-rows.html" target="_blank" rel="noopener">open full-size</a> · <a href="screenshots/mockup-m5-compact-rows-light.png" target="_blank" rel="noopener">light capture</a> · <a href="screenshots/mockup-m5-compact-rows-dark.png" target="_blank" rel="noopener">dark capture</a></p>
+      <div class="pair">
+        <figure><a href="screenshots/mockup-m5-compact-rows-light.png" target="_blank" rel="noopener"><div class="shot"><img src="screenshots/mockup-m5-compact-rows-light.png" alt="M5 with the first remedy open" width="1600" height="300"></div></a><figcaption>first row's remedy open, the rest closed</figcaption></figure>
+      </div>
+    </div>
+
+    <div class="mock">
+      <span class="code">M6 · PILLS</span>
+      <h3>A row of pills, a card on click</h3>
+      <p>Each finding is a pill: dot, subject, category. Clicking a pill opens a card with the detail and the remedy, floating over the board. The strip is one line of pills and never grows; the price is that the detail is hidden too, so you cannot scan what is wrong without clicking.</p>
+      <div class="frame"><iframe src="mockups/m6-pills-closed.html" title="M6: pills" loading="lazy"></iframe></div>
+      <p class="links"><a href="mockups/m6-pills-closed.html" target="_blank" rel="noopener">open full-size</a> · <a href="mockups/m6-pills-open.html" target="_blank" rel="noopener">one pill open</a> · <a href="screenshots/mockup-m6-pills-closed-dark.png" target="_blank" rel="noopener">dark capture</a></p>
+      <div class="pair">
+        <figure><a href="screenshots/mockup-m6-pills-closed-light.png" target="_blank" rel="noopener"><div class="shot"><img src="screenshots/mockup-m6-pills-closed-light.png" alt="M6 closed" width="1600" height="300"></div></a><figcaption>closed, 44 px</figcaption></figure>
+        <figure><a href="screenshots/mockup-m6-pills-open-light.png" target="_blank" rel="noopener"><div class="shot"><img src="screenshots/mockup-m6-pills-open-light.png" alt="M6 with one card open" width="1600" height="300"></div></a><figcaption>one pill's card open</figcaption></figure>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<section>
+  <p class="kicker">What each one costs</p>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Option</th><th>Height, 3 findings + 1 probe</th><th>Clicks to the remedy</th><th>Renderer change</th><th>Trade</th></tr></thead>
+    <tbody>
+      <tr><td>M4</td><td class="num">30 px closed · 120 px open</td><td class="num">2 (show, chevron)</td><td>outer details, rows as details, remembered state</td><td>smallest when closed and still lists every subject; two clicks to a remedy</td></tr>
+      <tr><td>M5</td><td class="num">120 px</td><td class="num">1</td><td>rows as details</td><td>nothing hidden but the remedy; four lines always on screen</td></tr>
+      <tr><td>M6</td><td class="num">44 px</td><td class="num">1</td><td>pills as details with a positioned card</td><td>never grows; the detail is hidden too, and a card floats over the columns</td></tr>
+    </tbody>
+  </table></div>
+  <p class="measure" style="margin-top:14px">All three share the same producer and payload as today (subject, category, detail, remedy, fixable); only the client changes. The lowercase category is the category token with its hyphens shown as spaces, no list in the client.</p>
+</section>
+
+<section>
+  <p class="kicker">Next step</p>
+  <p class="measure">Pick one and it is captured as an addendum to REQ-588 (the M1 rows) and built the same way. Bundle: <code>ai-reports/2026-09-05_1740_REQ-588-verify-findings-compact-mockups/</code>.</p>
+</section>
+
+<script>
+  if (forced === "dark" || forced === "light") document.querySelectorAll(".mock iframe").forEach(function (f) { f.src = f.getAttribute("src") + "?theme=" + forced; });
+</script>
+<p class="foot">Mockups and captures made 2026-09-05 17:40 to 17:50 UTC with headless Chrome at 1600 px, light and dark. Report layout render-verified in both themes.</p>
+</div>
+</body>
+</html>
