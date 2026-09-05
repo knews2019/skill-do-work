@@ -167,7 +167,11 @@ func BuildDeferGatePlan(repositoryRoot string, manifest Manifest) PublicationPla
 	if editError := parentDocument.SetScalar("status", "pending"); editError != nil {
 		return refusedPlan(plan, "DEFER-GATE-PARENT-INVALID", editError.Error(), []string{gate.ParentID}, parentPath)
 	}
-	_ = parentDocument.DeleteField("claimed_at")
+	// The parent keeps claimed_at: lifecycle stamps are append-only (the schema
+	// section "Stamps are append-only" in
+	// `skills/do-work/actions/work-reference.md`), and the repair dependency
+	// added below is what keeps the parent out of selection until the repair
+	// lands.
 	_ = parentDocument.SetScalar("gate_deferred", "true")
 	_ = parentDocument.SetList("depends_on", parentDependencies)
 	if baseCommit == "" {

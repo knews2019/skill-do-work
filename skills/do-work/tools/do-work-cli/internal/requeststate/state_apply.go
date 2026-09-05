@@ -506,6 +506,31 @@ func verifyArchivedCalibrationEvidence(plan StatePlan) error {
 	return nil
 }
 
+// setLifecycleStampWhenAbsent writes a lifecycle timing stamp only when the
+// request does not already carry one.
+//
+// Frontmatter stamps are append-only, and the condition is the field-name
+// suffix rather than a list of today's fields: a transition writes an `*_at`
+// field at most once and never deletes one, so a stamp the schema gains later
+// is covered without editing any transition. A phase re-entered after a
+// recovery keeps the first observation, which is what makes the archived
+// request an honest record of how long the work really took.
+//
+// The exceptions are the stamps that carry current state rather than a phase
+// observation, and each is written or removed openly by the transition below
+// that owns it: `status_changed_at` (the most recent status change, by
+// definition), `blocked_at` (removed with `blocked_by` on unblock),
+// `completed_at` on the failed-to-cancelled path, and `heavy_verified_at`
+// (withdrawn with the `commit` it verified on a re-claim). The schema section
+// "Stamps are append-only" in `skills/do-work/actions/work-reference.md` is the
+// canonical statement of the rule and of why each exception exists.
+func setLifecycleStampWhenAbsent(document *requestmodel.RequestDocument, fieldName string, timestamp string) error {
+	if existing, present := document.FieldValue(fieldName); present && existing.ScalarValue != "" {
+		return nil
+	}
+	return document.SetScalar(fieldName, timestamp)
+}
+
 func lifecycleRequestBytes(plan StatePlan) ([]byte, error) {
 	document, parseError := requestmodel.ParseDocument(plan.ExpectedTargetBytes)
 	if parseError != nil {
@@ -517,7 +542,7 @@ func lifecycleRequestBytes(plan StatePlan) ([]byte, error) {
 		if err := document.SetScalar("status", "claimed"); err != nil {
 			return nil, err
 		}
-		if err := document.SetScalar("claimed_at", timestamp); err != nil {
+		if err := setLifecycleStampWhenAbsent(document, "claimed_at", timestamp); err != nil {
 			return nil, err
 		}
 		if plan.Options.Provenance == ProvenanceExplicit {
@@ -549,10 +574,12 @@ func lifecycleRequestBytes(plan StatePlan) ([]byte, error) {
 				return nil, err
 			}
 		}
-		for _, field := range []string{"claimed_at", "route", "planning_at", "dispatch_at", "builder_handback_at", "integration_at", "review_at", "remediation_at", "re_review_at", "release_at"} {
-			if err := document.DeleteField(field); err != nil {
-				return nil, err
-			}
+		// Recovery resets the routing decision, never the timing record: every
+		// `*_at` stamp the interrupted attempt wrote stays exactly as it is, so
+		// the re-claimed request still reports wall time from the claim that
+		// started the work (see the append-only stamp rule above).
+		if err := document.DeleteField("route"); err != nil {
+			return nil, err
 		}
 		if hasScope {
 			if err := document.DeleteField("write_set"); err != nil {

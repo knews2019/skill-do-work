@@ -132,7 +132,10 @@ func TestExplicitREQOverridesDependencyAssignmentAndNegligibleFilters(t *testing
 
 func TestClaimEvidenceVetoesEverySelectionModeBeforePolicyOrProbe(t *testing.T) {
 	repositoryRoot := t.TempDir()
-	writeCommandRequest(t, repositoryRoot, "do-work/queue/REQ-701-frontmatter.md", "REQ-701", "pending", "user_request: UR-701\nclaimed_at: 2026-09-01T11:00:00Z\neffort_estimate: effort-mechanical\n")
+	// REQ-701 is `claimed`, not `pending`: since REQ-575 made stamps append-only
+	// the claim stamp alone is history, and `status: claimed` is what makes it
+	// evidence of a claim that is still held.
+	writeCommandRequest(t, repositoryRoot, "do-work/queue/REQ-701-frontmatter.md", "REQ-701", "claimed", "user_request: UR-701\nclaimed_at: 2026-09-01T11:00:00Z\neffort_estimate: effort-mechanical\n")
 	writeCommandRequest(t, repositoryRoot, "do-work/queue/REQ-702-checkpoint.md", "REQ-702", "blocked", "user_request: UR-701\nblocked_check: must-not-run\neffort_estimate: effort-mechanical\n")
 	writeCommandRequest(t, repositoryRoot, "do-work/queue/REQ-703-control.md", "REQ-703", "pending", "effort_estimate: effort-mechanical\n")
 	checkpoint := "- REQ-999: Unrelated — claimed earlier — writer: elsewhere:/repo\n" +
@@ -177,6 +180,25 @@ func TestClaimEvidenceVetoesEverySelectionModeBeforePolicyOrProbe(t *testing.T) 
 	}
 	if probeCalls != 0 {
 		t.Fatalf("claimed blocked request ran its probe %d times", probeCalls)
+	}
+}
+
+// The other half of the claim-evidence rule (REQ-575): a request recovery
+// returned to the queue keeps the claim stamp of the interrupted attempt, and
+// vetoing on that stamp alone would make every recovered request permanently
+// unselectable.
+func TestRecoveredRequestKeepingItsClaimStampStaysSelectable(t *testing.T) {
+	repositoryRoot := t.TempDir()
+	writeCommandRequest(t, repositoryRoot, "do-work/queue/REQ-705-recovered.md", "REQ-705", "pending",
+		"claimed_at: 2026-09-01T11:00:00Z\nstatus_changed_at: 2026-09-01T12:00:00Z\neffort_estimate: effort-mechanical\n")
+	writeRepositorySelectionFixture(t, repositoryRoot, "do-work/CHECKPOINT.md", "- REQ-999: Unrelated — claimed earlier — writer: elsewhere:/repo\n")
+	snapshot, err := repositorymodel.DiscoverRepository(repositoryRoot)
+	if err != nil {
+		t.Fatal(err)
+	}
+	result := Select(snapshot, dependencygraph.BuildGraph(snapshot), SelectionOptions{}, nil)
+	if got := selectedRequestIDsFromModel(result.Selected); !equalStrings(got, []string{"REQ-705"}) {
+		t.Fatalf("selected = %v, want [REQ-705]; result = %#v", got, result)
 	}
 }
 

@@ -72,6 +72,8 @@ Obtain the instant from the first of these that applies:
 
 **Never stamp local wall-clock time with a `Z` suffix appended.** In any zone east of UTC that produces a *future* instant, which silently corrupts every elapsed-time reading (queue wait, claim stopwatch) and gets the REQ flagged by `do-work-board board` (a "future stamp" card badge plus a data warning, allowing 2 minutes of clock skew).
 
+**Stamps are append-only.** Once an `*_at` field exists on a REQ, no lifecycle transition deletes it or writes a different instant over it — a phase re-entered after a recovery, a hold, or a gate deferral writes its stamp only when the field is **absent**, so `claimed_at` keeps naming the claim that started the work and the wall time an archived REQ reports is the real one. **The suffix is the condition**, never a list of today's fields, so a stamp this schema gains tomorrow is governed without editing this paragraph. Four fields are documented exceptions because they carry *current state* rather than a phase observation, and each is marked where it is defined below: `status_changed_at` (the most recent status change, by definition), `completed_at` on the `failed` → `cancelled` path, `blocked_at` (removed together with `blocked_by` when an unblock clears the condition), and `heavy_verified_at` / `heavy_verified_revision` (withdrawn together with the `commit` they verified when a REQ is re-claimed). Repairing a stamp that is *detectably wrong* is a different operation and stays allowed: `doctor --repair-timestamps` derives the instant from git history and is never part of a transition.
+
 **Date-only stamps are a different shape and not part of the rule above.** The condition is what selects them, never a list of the sites that currently have one: **any UTC calendar date written into a durable record** — `YYYY-MM-DD` rather than an instant — is governed here. A log filename, a daily heading, a report header, the `**Answered [YYYY-MM-DD]:**` line `actions/clarify.md` writes into every REQ it touches, and the dated reasoning note beside it are all the same shape and take the same answer; they are illustrative, and a site added tomorrow is governed without editing this sentence. **UTC, not a local date**, so a sweep has one answer everywhere and no site-by-site judgment. It is spelled out here so every such site cites one home, but it is **not** an `*_at` value and must never be written into one. Obtain it as `date -u +%F` on POSIX, or `powershell -NoProfile -Command "(Get-Date).ToUniversalTime().ToString('yyyy-MM-dd')"` on Windows. There is no tool subcommand for it: `queue-kanban now` prints the instant only, and adding a date-only mode would spend the skill's narrow compiled-tooling exception (`../../do-work-board/actions/board.md` is the only capability allowed to need a compiler) on something the floor already covers. **A local-time date is a different thing again** and is correct where it is used deliberately (changelog entry headings, run-directory names, report slugs); those sites are not governed here. **A placeholder inside a template artifact is out of scope as well:** where a shipped prompt tells a model to emit a document for the user, a `Date: [today]` line is a fill-in token addressed to that model — a sibling of the `[name]` and `[owner]` placeholders in the same fenced block — not a stamp any step of this skill writes, so the date it ends up carrying belongs to the artifact's reader and their convention. The **condition** is what excludes it, never a list of which templates happen to carry one, so a template written tomorrow is excluded by this sentence without editing it. A sweep walks past every such placeholder instead of converting it, and the citation checker never reaches one — it masks fenced code before it reads. **A time-of-day heading is out of scope too:** the `## HH:MM UTC` daily-log headings (`../../do-work-knowledge/actions/memory-reference.md` → Daily-Log Entry Conventions) are neither an instant nor a date-only stamp — the log's dated filename already carries the date — so this rule deliberately does not govern them; their write sites are marked, and a sweep walks past every `## HH:MM UTC` heading instead of converting it.
 
 **Named contract — Frontmatter Quoting.** The sibling of `actions/clarify.md` Step 4's **Outside-text containment**, which governs the same text once it lands in a do-work Markdown record *body*; this one governs it in frontmatter, and neither restates the other. **The condition is the rule: whenever a frontmatter value carries text nobody in this pipeline composed — a user's own words, a person's name, a command they supplied — write it so that no character in it can be read as YAML syntax.** `title`, `blocked_by`, `blocked_check`, `stakeholder` and `assigned_to` are today's such fields; they are illustrative, never a list to check against, so a field added tomorrow that carries user text is governed without editing this paragraph. Before choosing a scalar form, apply Outside-text containment's accepted-text preflight; a hand-authored frontmatter writer refuses and reports text that fails it instead of normalizing bytes or inventing its own escape table. Two forms, and only these:
@@ -136,12 +138,15 @@ estimate:
     - 12-file write set
     - browser evidence
 
-# Set by work action when claimed
+# Set by work action when claimed — written once (Stamps are append-only, above):
+# a REQ recovered and claimed again keeps this first instant, and crash recovery
+# clears `route` without touching it.
 claimed_at: 2025-01-26T10:30:00Z
 route: A | B | C
 
 # OPTIONAL observations written only after the named work-pipeline event succeeds.
 # Routes that skip an event omit its field; writers never fabricate a skipped phase.
+# No transition removes one afterwards (Stamps are append-only, above).
 planning_at: 2025-01-26T10:32:00Z         # Route C plan saved and validated
 dispatch_at: 2025-01-26T10:33:00Z         # implementation builder accepted the dispatch
 builder_handback_at: 2025-01-26T10:40:00Z # builder returned its completed hand-back
@@ -154,7 +159,7 @@ release_at: 2025-01-26T10:50:00Z          # canonical release transaction succee
 # Set by capture (external-condition task) or by the work pipeline's mid-run blocked flip (Step 8's blocked-flip procedure). Holding state — the REQ stays in do-work/queue/ and the default scan walks past it, exactly like pending-answers.
 status: blocked               # waiting on an EXTERNAL condition — not user answers (that's pending-answers), not another REQ (that's depends_on). Cleared to `pending` by a passing blocked_check probe (work Step 1), a `do-work clarify` confirmation, or a manual edit.
 blocked_by: 'LM Studio running locally'   # free text naming the condition (raw user text — **Frontmatter Quoting** contract above). Legacy note for the board: an old id-LIST value renders joined for display and is NOT a dependency edge — dependency gating is `depends_on` only.
-blocked_at: 2026-07-18T10:00:00Z          # stamped on every flip to blocked — the age anchor the exit summary, board drawer, and forensics read (no enforcement threshold; external conditions legitimately take weeks)
+blocked_at: 2026-07-18T10:00:00Z          # stamped on every flip to blocked — the age anchor the exit summary, board drawer, and forensics read (no enforcement threshold; external conditions legitimately take weeks). One of the four documented exceptions to **Stamps are append-only** (above): an unblock removes it together with blocked_by, because the pair describes a condition that no longer holds.
 blocked_check: 'curl -sf http://localhost:1234/v1/models'   # OPTIONAL shell probe (raw user text — **Frontmatter Quoting** contract above). User-authored content, run VERBATIM by work Step 1 (exit 0 ⇒ unblock to pending; any non-zero / timeout / unreadable ⇒ stays blocked). Absent ⇒ manual/clarify unblock only.
 stakeholder: 'Priya (design)'   # REQUIRED on stakeholder-questions REQs (meaningless elsewhere; raw user text — **Frontmatter Quoting** contract above): the outside person whose confirm-or-override answers this REQ collects — presence is the marker, value is the fold discriminator (actions/capture-reference.md → Fold-First Rule → Stakeholder-audience questions). Verbatim-read class, like assigned_to: no alias map, no case folding, trim-only; greppable by design (grep -rl '^stakeholder: ' do-work/queue/). Always paired with status: blocked + blocked_by naming the person and the latest report bundle path (or "report pending regeneration" until a bundle lands — actions/work.md Step 8) + blocked_at; never with blocked_check (a person is not probeable), and deliberately never with user_request: — UR membership would hold the first source UR open in every closure reader, and nothing waits on this REQ (question provenance lives in per-entry Source: lines). NOT parsed by the board — display rides the existing blocked_by badge, zero parser change. Nothing gates on this REQ: its source REQs completed on the builder's assumptions, and it exists only to route answers back (actions/stakeholder-answers.md); clarify routes it, never yes/no-confirms it (actions/clarify.md Step 5.5).
 
@@ -164,6 +169,8 @@ stakeholder: 'Priya (design)'   # REQUIRED on stakeholder-questions REQs (meanin
 # when that flip happened. Flips with a dedicated stamp (claimed_at, blocked_at,
 # completed_at) do NOT write it. Display-only: the board's pending-tier state timer
 # prefers it over created_at/file-mtime. Timestamp rule applies (current UTC instant).
+# This is the one stamp every transition overwrites on purpose — it means "most
+# recent status change" by definition (**Stamps are append-only**, above).
 status_changed_at: 2026-07-22T20:38:00Z
 
 # Set by work action when finished. STAMPING RULE: every flip to a terminal status
@@ -179,7 +186,10 @@ error: "Description"          # Set when a REQ failed; RETAINED verbatim if that
 error_type: intent|spec|code|environment   # Set with `error` on failure; likewise retained on a failed→cancelled flip
 
 # Written by work.md Step 7.7's drain onto the claimed record before finalization.
-# They prove which execution revision the heavy lanes actually checked.
+# They prove which execution revision the heavy lanes actually checked. A
+# documented exception to **Stamps are append-only** (above): a re-claim deletes
+# both together with the `commit` they verified, so dependents never build
+# against withdrawn work.
 heavy_verified_at: 2026-09-03T12:00:00Z
 heavy_verified_revision: def5678
 
@@ -187,7 +197,7 @@ heavy_verified_revision: def5678
 # paths: a not-yet-finished REQ, and an already-archived `failed` REQ resolved after the
 # fact — the latter keeps its error/error_type, so error-on-cancelled is valid data.
 status: cancelled             # terminal, NOT successful; the reason lives in the REQ body's `## Cancelled` section
-completed_at: 2025-01-26T10:45:00Z  # stamped (or, on the failed→cancelled path, re-stamped to the cancellation instant) — the terminal timestamp the board's recently-done window reads
+completed_at: 2025-01-26T10:45:00Z  # stamped (or, on the failed→cancelled path, re-stamped to the cancellation instant — a documented exception to **Stamps are append-only**, above; the failure instant survives in the `## Cancelled` section's `Previously:` line) — the terminal timestamp the board's recently-done window reads
 
 # Set by kb-lessons handoff (work.md's Lessons-Capture Phase in pipeline mode / review-work.md's Self-Validation & Lessons Learned step standalone). Optional; absent on REQs that predate the handoff.
 kb_status: promoted | pending | declined | skipped

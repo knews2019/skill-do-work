@@ -32,7 +32,10 @@ func TestDeferGateCreatePublishesOneAtomicDependencyLifecycle(t *testing.T) {
 	}
 	parentDocument, _ := requestmodel.ParseDocument(parentBytes)
 	parentRecord := parentDocument.TypedRecord()
-	if parentRecord.RequestStatus != "pending" || parentRecord.GateDeferredValue != "true" || !reflect.DeepEqual(parentRecord.DependsOn, []string{"REQ-901"}) || parentRecord.ClaimedAt != "" {
+	// The parent keeps claimed_at through the deferral (REQ-575): the stamp is
+	// the only record of when work on the parent actually started, and the
+	// repair dependency is what stops it being picked up again.
+	if parentRecord.RequestStatus != "pending" || parentRecord.GateDeferredValue != "true" || !reflect.DeepEqual(parentRecord.DependsOn, []string{"REQ-901"}) || parentRecord.ClaimedAt != "2026-09-02T01:00:00Z" {
 		t.Fatalf("parent record = %#v", parentRecord)
 	}
 	if !bytes.Contains(parentBytes, []byte("## Repository Gate Deferral")) || !bytes.Contains(parentBytes, []byte("- **Direct exit status:** 17")) {
