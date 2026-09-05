@@ -2,6 +2,13 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.294.3 — Board Citations Resolve From the Board Package (2026-09-05)
+
+Three references added in 0.294.2 named `actions/work-reference.md` from inside the do-work-board package, where that path resolves in neither the source nor the installed layout, so the shipped package reference contract failed on every gate run.
+
+- The prime and lesson satellite cite the cross-package path the rest of the package already uses.
+- `actions/board.md`'s parser lock-step paragraph, two sections below the one corrected in 0.294.2, still described a dependency as met only at terminal success; it now names the source-ready rule the board actually applies.
+
 ## 0.294.2 — Release Mirrors Follow Ownership, Not Matching Version Numbers (2026-09-05)
 
 A release refused because an unrelated component happened to carry the same version number, the board reported a request as waiting while the work loop was already selecting it, and an installed copy of the CLI could not run its own test suite. Three defects from one review, each a reader judging from the wrong evidence.
