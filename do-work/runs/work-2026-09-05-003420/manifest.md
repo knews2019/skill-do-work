@@ -163,3 +163,37 @@ so a green from this browser would not be worth trusting either.
 **REQ-577 therefore cannot be finalized in this container.** It stays claimed and held.
 This blocks nothing else: its landed `commit:` already makes it source-ready, which is
 why the canonical selector offers REQ-506 as gate-deferred rather than dependency-unmet.
+
+## Post-merge canonical gate — green
+
+Run at `eabee330`, after all fourteen merges, direct and unpiped.
+
+The first run exited 1 with **zero failing assertions**. The sole failure was
+`session-start-hook-behavior.sh` at 31s against the 30s per-file budget, with
+`SessionStart hook behavior probes passed.` on the line immediately above it.
+Rather than assume contention, the fixture was measured in isolation: **21s,
+twice, exit 0**. It sits at 70% of its budget with no headroom for concurrent
+work.
+
+The one retry the rule allows exited **0**, with zero failures and that same
+fixture at 26s.
+
+| Module | Tests | Wall | Slowest file |
+|---|---|---|---|
+| queue-kanban | 384 | 30s | `generate_test.go` 17.34s |
+| do-work-cli | 751 | 47s | `internal/publication/defer_gate_test.go` 16.90s |
+
+Test counts against the run's own baseline: the board gained 2, the CLI gained
+23. Every test file is inside the budget.
+
+### F-04 — the 30s per-file budget produced three misleading failures this run
+
+All three had green content and were caused by machine load, not code:
+REQ-580's post-merge gate, REQ-549's and REQ-510's contract-suite runs, and
+this one. Two shell fixtures carry the risk — `session-start-hook-behavior.sh`
+at a 21s baseline and `prescribed-shell-canonicalization.sh` — because neither
+has enough headroom to survive a busy machine.
+
+This is the same budget REQ-574 addresses, but REQ-574 is scoped to the Go test
+files. The shell fixtures are not covered by it and deserve the same treatment.
+Recorded here rather than acted on: no request in this run owns those files.
