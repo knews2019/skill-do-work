@@ -40,7 +40,7 @@ queue-kanban — standalone Go module (`tools/queue-kanban/`, own `go.mod`) that
 
 ## Stakes
 - `model.go` + `walk.go` — normalized state → column bucketing (`LoadBoard`)
-  Req:   bucket every REQ by normalized do-work `status`, never tree location, with two derived presentation rules: an exact `blocked` REQ with any unmet dependency joins Pending → Waiting until the dependency gate clears, and a `pending-heavy-testing` REQ joins Pending → Waiting by status alone because the work loop, not the operator, resolves that hold.
+  Req:   bucket every REQ by normalized do-work `status`, never tree location, with one derived presentation rule: an exact `blocked` REQ with any unmet dependency joins Pending → Waiting until the dependency gate clears.
   Value: the board reflects the REAL do-work status vocabulary, so the operator and any manager it's shared with trust what each column means.
   Risk:  if status normalization drifts from `../../../do-work/actions/work-reference.md`'s Schema Read Contract, tickets silently land in the wrong column or vanish from the board. Reversible (re-run after a fix) but actively misleads viewers until caught.
 - `generate.go` + `serve.go` — shared embedded assembled-client contract

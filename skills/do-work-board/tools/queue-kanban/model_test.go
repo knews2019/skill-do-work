@@ -30,7 +30,6 @@ func TestNormalizeStatus(t *testing.T) {
 		{"  Cancelled ", "cancelled"},
 		{"pending", "pending"},
 		{"pending-answers", "pending-answers"},
-		{"pending-heavy-testing", "pending-heavy-testing"},
 		{"blocked", "blocked"},
 		{"claimed", "claimed"},
 		{"custom-status", "custom-status"},
@@ -61,9 +60,6 @@ func TestStatusClassifiers(t *testing.T) {
 	}
 	if isNeedsInputOrBlockedStatus("pending") || isNeedsInputOrBlockedStatus("claimed") {
 		t.Fatalf("pending/claimed are their own columns, not needs-input/blocked")
-	}
-	if isNeedsInputOrBlockedStatus("pending-heavy-testing") {
-		t.Fatalf("pending-heavy-testing is a hold the work loop drains itself at queue exhaustion — it must not classify as needs-input, or the board asks the operator for a validation nobody needs")
 	}
 	if isNeedsInputOrBlockedStatus("deferred") {
 		t.Fatalf("deferred is not in the Schema Read Contract enum (actions/work-reference.md) — it must route through the unrecognized-status warning path, not the recognized list")
@@ -96,7 +92,7 @@ func TestStatusClassifiers(t *testing.T) {
 			t.Fatalf("%q should classify as terminally resolved (Terminal-resolved status set, actions/work-reference.md)", resolved)
 		}
 	}
-	for _, notResolved := range []string{"failed", "pending", "claimed", "pending-answers", "pending-heavy-testing"} {
+	for _, notResolved := range []string{"failed", "pending", "claimed", "pending-answers"} {
 		if isTerminalResolvedStatus(notResolved) {
 			t.Fatalf("%q must not classify as terminally resolved", notResolved)
 		}
@@ -1868,32 +1864,42 @@ func TestUnrecognizedErrorTypeFlagsAndWarns(t *testing.T) {
 	}
 }
 
-// The heavy-lane hold is resolved by the work loop, not by a person: it runs the
-// planned lanes at queue exhaustion and flips the REQ back to pending. Before
-// 0.275.3 the status sat in the Needs input · Blocked column, so every held REQ
-// looked like a question waiting on the operator after 0.275.0 had removed the
-// question. It belongs with the queue, in Pending → Waiting, never Ready and
-// never in the inbox.
-func TestHeldForHeavyTestingWaitsInPendingNotNeedsInput(t *testing.T) {
-	held := &RequestTicket{RequestId: "REQ-30", Status: "pending-heavy-testing"}
+// The heavy-lane hold is a phase of a claimed request, not a status: nothing
+// writes the old held value any more, so the board keeps no placement rule for
+// it. Two cases have to hold together. A claimed request carrying a heavy plan
+// is in progress and belongs in Claimed. A historical record that still carries
+// the deleted value has to render through the ordinary tolerant path — visible
+// in Needs input · Blocked, flagged, and named in a warning — rather than
+// through a bucketing case kept alive for it alone.
+func TestClaimedHeavyHoldIsInProgressAndAHistoricalHoldValueStaysVisible(t *testing.T) {
+	historical := &RequestTicket{RequestId: "REQ-30", Status: "pending-heavy-testing", OriginalStatus: "pending-heavy-testing"}
 	columns, warnings := bucketColumns([]*RequestTicket{
 		{RequestId: "REQ-31", Status: "pending"},
-		held,
+		{RequestId: "REQ-32", Status: "claimed"},
+		historical,
 	}, time.Now(), defaultRecentWindow)
 
-	if len(warnings) != 0 {
-		t.Fatalf("a recognized status must not warn, got %v", warnings)
+	if !requestIdSet(columns.Claimed)["REQ-32"] {
+		t.Fatalf("a claimed request holding a heavy verification plan is in progress and belongs in Claimed; claimed=%v", requestIdSet(columns.Claimed))
 	}
-	if requestIdSet(columns.NeedsInputOrBlocked)["REQ-30"] {
-		t.Fatalf("held REQ landed in Needs-input/Blocked — that column asks the operator to act, and nobody needs to: %+v", columns.NeedsInputOrBlocked)
+	if requestIdSet(columns.Pending)["REQ-30"] || requestIdSet(columns.PendingWaiting)["REQ-30"] {
+		t.Fatalf("the deleted hold value must no longer buy a Pending → Waiting placement; pending=%v waiting=%v",
+			requestIdSet(columns.Pending), requestIdSet(columns.PendingWaiting))
 	}
-	if !requestIdSet(columns.Pending)["REQ-30"] || !requestIdSet(columns.PendingWaiting)["REQ-30"] {
-		t.Fatalf("held REQ must wait in Pending → Waiting; pending=%v waiting=%v", requestIdSet(columns.Pending), requestIdSet(columns.PendingWaiting))
+	if !requestIdSet(columns.NeedsInputOrBlocked)["REQ-30"] || !historical.StatusUnrecognized {
+		t.Fatalf("a historical hold value must stay visible through the unrecognized-status path, never be dropped; needsInput=%v unrecognized=%v",
+			requestIdSet(columns.NeedsInputOrBlocked), historical.StatusUnrecognized)
 	}
-	if requestIdSet(columns.PendingReady)["REQ-30"] {
-		t.Fatalf("held REQ must never read as Ready — selection walks past it until the drain answers it")
+	historicalWarned := false
+	for _, warningText := range warnings {
+		if strings.Contains(warningText, "REQ-30") && strings.Contains(warningText, "pending-heavy-testing") {
+			historicalWarned = true
+		}
+	}
+	if !historicalWarned {
+		t.Fatalf("the warning must name the historical value so it can be corrected; warnings=%v", warnings)
 	}
 	if !requestIdSet(columns.PendingReady)["REQ-31"] {
-		t.Fatalf("the ordinary pending REQ must stay Ready beside the held one")
+		t.Fatalf("the ordinary pending REQ must stay Ready beside the historical record")
 	}
 }
