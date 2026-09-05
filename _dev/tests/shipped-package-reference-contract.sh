@@ -679,8 +679,13 @@ def heading_anchor_slugs(markdown_file):
 # The name may wrap: three shipped citations write "**Worktree Dispatch Mode\n(Step 1)**",
 # and stopping at the newline would leave exactly the citations a hard-wrapped file writes
 # unchecked. It may not cross a blank line, which bounds an unclosed ** to its paragraph.
+#
+# Only closing punctuation that cannot itself be emphasis may sit between the path and the
+# arrow. Stepping over a closing ** would read "`do-work/archive/legacy/`** → **cancellable
+# in place.**" as a section citation, where the arrow means "becomes" and the bold closes
+# the phrase before it — shipped prose that names no section at all.
 arrow_section_shape = re.compile(
-    r"""[`*_)\]"']*[ \t]*→[ \t]*\*\*((?:[^*\n]|\n(?![ \t]*\n))+?)\*\*"""
+    r"""[`)\]"']*[ \t]*→[ \t]*\*\*((?:[^*\n]|\n(?![ \t]*\n))+?)\*\*"""
 )
 bold_run_pattern = re.compile(r"\*\*([^*\n]+?)\*\*")
 section_name_cache = {}
@@ -1003,6 +1008,14 @@ def run_section_citation_fixtures():
             "an unclosed bold marker does not run past its paragraph",
             "`actions/work.md` → **Input\n\nA new paragraph** follows",
             "actions/work.md",
+            None,
+        ),
+        (
+            # actions/abandon.md's live shape: the arrow means "becomes" and the bold
+            # before it closes a phrase. Stepping over that ** would invent a citation.
+            "a bold phrase closing before the arrow is not a citation",
+            "- `status: failed` at `do-work/archive/legacy/`** → **cancellable in place.**",
+            "do-work/archive/legacy/",
             None,
         ),
     ]
