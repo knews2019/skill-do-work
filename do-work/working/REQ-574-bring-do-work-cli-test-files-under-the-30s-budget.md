@@ -1,7 +1,7 @@
 ---
 id: REQ-574
 title: 'Repository gate repair: bring do-work-cli test files under the 30s per-file budget'
-status: pending
+status: claimed
 created_at: 2026-09-04T23:50:46Z
 user_request: UR-115
 domain: backend
@@ -26,6 +26,7 @@ estimate:
     - cross-route regression gates
     - full-suite verification
 status_changed_at: 2026-09-05T09:44:26Z
+claimed_at: 2026-09-05T09:44:40Z
 ---
 
 # Repository gate repair: bring do-work-cli test files under the 30s per-file budget
