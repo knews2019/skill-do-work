@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -2521,5 +2522,153 @@ func TestVerifyFindingDetailsDoNotRepeatTheirSubject(t *testing.T) {
 		if !strings.Contains(renderedReport, subjectTheReportMustName) {
 			t.Errorf("the terminal report never names %s:\n%s", subjectTheReportMustName, renderedReport)
 		}
+	}
+}
+
+// REQ-590: a finding detail that spells out an unbounded list is unreadable on
+// both surfaces that print it. Observed on 2026-09-05: a builder worktree whose
+// do-work/ was untracked expanded to roughly 700 paths under
+// `--untracked-files=all`, and the board's findings strip printed all of them,
+// pushing every column off the screen. The three probes that join a list must
+// name a few entries and then say how many were left unnamed.
+//
+// The list is located through the finding's Category, never by matching a
+// substring of its prose (lessons-do-kanban.md, family
+// subject-not-restated-in-detail).
+
+// The number of entries a capped detail spells out. Written here as the test's
+// own expectation rather than read from the producer, so a change to the
+// production cap fails this lock-in instead of silently moving with it.
+const cappedDetailNamedItems = 5
+
+// countNamedListItems returns how many comma-separated entries a capped detail
+// spelled out, by counting the marker each fixture entry carries. The overflow
+// sentence is not an entry, so it is never counted.
+func countNamedListItems(detail string, itemMarker string) int {
+	return strings.Count(detail, itemMarker)
+}
+
+// The observed case, at the size it was observed: 200 uncommitted paths under
+// do-work/ in one builder worktree.
+func TestVerifyCapsThePathListForUncommittedQueueState(t *testing.T) {
+	repoRoot := newWorktreeFixtureRepo(t)
+	worktreeParent := t.TempDir()
+
+	builderWorktree := addFixtureWorktree(t, repoRoot, worktreeParent, "worktree-agent-REQ-013-many-loose-edits")
+	for pathIndex := 0; pathIndex < 200; pathIndex++ {
+		writeFixtureFile(t, builderWorktree,
+			fmt.Sprintf("do-work/queue/REQ-9%03d-forged-item.md", pathIndex), forgedQueueRequest)
+	}
+
+	report, verifyError := runVerifyProbes(repoRoot, time.Now())
+	if verifyError != nil {
+		t.Fatalf("runVerifyProbes: %v", verifyError)
+	}
+	dirtyFindings := findingsMentioning(report, verifyCategoryWorktreeWroteQueueState)
+	if len(dirtyFindings) != 1 {
+		t.Fatalf("got %d uncommitted-queue-state findings, want 1:\n%s", len(dirtyFindings), renderVerifyReport(report))
+	}
+	detail := dirtyFindings[0].Detail
+	if namedCount := countNamedListItems(detail, "-forged-item.md"); namedCount != cappedDetailNamedItems {
+		t.Errorf("detail names %d of the 200 dirty paths, want %d:\n%s", namedCount, cappedDetailNamedItems, detail)
+	}
+	if !strings.Contains(detail, "and 195 more") {
+		t.Errorf("detail must say how many paths it did not name, got:\n%s", detail)
+	}
+}
+
+// The second site, at a size that proves the same cap for a fraction of the
+// fixture cost: every path here is committed, so each one costs a git index
+// write rather than a file write.
+func TestVerifyCapsThePathListForCommittedQueueState(t *testing.T) {
+	repoRoot := newWorktreeFixtureRepo(t)
+	worktreeParent := t.TempDir()
+
+	builderWorktree := addFixtureWorktree(t, repoRoot, worktreeParent, "worktree-agent-REQ-014-many-committed-edits")
+	for pathIndex := 0; pathIndex < 8; pathIndex++ {
+		writeFixtureFile(t, builderWorktree,
+			fmt.Sprintf("do-work/queue/REQ-8%03d-forged-item.md", pathIndex), forgedQueueRequest)
+	}
+	runGitInFixture(t, builderWorktree, "add", "do-work/queue")
+	runGitInFixture(t, builderWorktree, "commit", "--quiet", "-m", "builder wrote eight queue files")
+
+	report, verifyError := runVerifyProbes(repoRoot, time.Now())
+	if verifyError != nil {
+		t.Fatalf("runVerifyProbes: %v", verifyError)
+	}
+	committedFindings := findingsMentioning(report, verifyCategoryWorktreeCommittedQueueState)
+	if len(committedFindings) != 1 {
+		t.Fatalf("got %d committed-queue-state findings, want 1:\n%s", len(committedFindings), renderVerifyReport(report))
+	}
+	detail := committedFindings[0].Detail
+	if namedCount := countNamedListItems(detail, "-forged-item.md"); namedCount != cappedDetailNamedItems {
+		t.Errorf("detail names %d of the 8 committed paths, want %d:\n%s", namedCount, cappedDetailNamedItems, detail)
+	}
+	if !strings.Contains(detail, "and 3 more") {
+		t.Errorf("detail must say how many paths it did not name, got:\n%s", detail)
+	}
+}
+
+// The third site. Each member is a parsed REQ file, so eight members prove the
+// same cap without building a two-hundred-file board.
+func TestVerifyCapsTheMemberListForAnArchivedUserRequest(t *testing.T) {
+	fixtureFiles := []verifyFixtureFile{
+		{"actions/version.md", cleanVersionFile},
+		{"CHANGELOG.md", cleanChangelog},
+		{"do-work/archive/UR-096/input.md",
+			"---\nid: UR-096\ntitle: closed UR with many live members\nrequests: [REQ-201, REQ-202, REQ-203, REQ-204, REQ-205, REQ-206, REQ-207, REQ-208]\n---\n"},
+	}
+	for memberIndex := 1; memberIndex <= 8; memberIndex++ {
+		memberRequestId := fmt.Sprintf("REQ-2%02d", memberIndex)
+		fixtureFiles = append(fixtureFiles, verifyFixtureFile{
+			fmt.Sprintf("do-work/queue/%s-ordinary-member.md", memberRequestId),
+			fmt.Sprintf("---\nid: %s\nstatus: pending\ntitle: ordinary live member\nuser_request: UR-096\n---\n", memberRequestId),
+		})
+	}
+	repoRoot := writeVerifyFixture(t, fixtureFiles)
+
+	report, verifyError := runVerifyProbes(repoRoot, time.Now())
+	if verifyError != nil {
+		t.Fatalf("runVerifyProbes: %v", verifyError)
+	}
+	liveMemberFindings := findingsMentioning(report, verifyCategoryArchivedUserRequestLiveMember)
+	if len(liveMemberFindings) != 1 {
+		t.Fatalf("got %d archived-UR-live-member findings, want 1:\n%s", len(liveMemberFindings), renderVerifyReport(report))
+	}
+	detail := liveMemberFindings[0].Detail
+	if namedCount := countNamedListItems(detail, "REQ-2"); namedCount != cappedDetailNamedItems {
+		t.Errorf("detail names %d of the 8 live members, want %d:\n%s", namedCount, cappedDetailNamedItems, detail)
+	}
+	if !strings.Contains(detail, "and 3 more") {
+		t.Errorf("detail must say how many members it did not name, got:\n%s", detail)
+	}
+}
+
+// A list at or under the cap keeps the text it has always had: no overflow
+// sentence, nothing elided.
+func TestVerifyLeavesAShortListUncapped(t *testing.T) {
+	repoRoot := newWorktreeFixtureRepo(t)
+	worktreeParent := t.TempDir()
+
+	builderWorktree := addFixtureWorktree(t, repoRoot, worktreeParent, "worktree-agent-REQ-015-few-loose-edits")
+	for pathIndex := 0; pathIndex < cappedDetailNamedItems; pathIndex++ {
+		writeFixtureFile(t, builderWorktree,
+			fmt.Sprintf("do-work/queue/REQ-7%03d-forged-item.md", pathIndex), forgedQueueRequest)
+	}
+
+	report, verifyError := runVerifyProbes(repoRoot, time.Now())
+	if verifyError != nil {
+		t.Fatalf("runVerifyProbes: %v", verifyError)
+	}
+	dirtyFindings := findingsMentioning(report, verifyCategoryWorktreeWroteQueueState)
+	if len(dirtyFindings) != 1 {
+		t.Fatalf("got %d uncommitted-queue-state findings, want 1:\n%s", len(dirtyFindings), renderVerifyReport(report))
+	}
+	detail := dirtyFindings[0].Detail
+	if namedCount := countNamedListItems(detail, "-forged-item.md"); namedCount != cappedDetailNamedItems {
+		t.Errorf("detail names %d of the %d dirty paths, want all of them:\n%s", namedCount, cappedDetailNamedItems, detail)
+	}
+	if strings.Contains(detail, " more") {
+		t.Errorf("a list at the cap must carry no overflow sentence, got:\n%s", detail)
 	}
 }
