@@ -1,7 +1,7 @@
 ---
 id: REQ-587
 title: 'Give the Timeline view one scroll surface, in the same style as the Activity view'
-status: pending
+status: claimed
 created_at: 2026-09-05T12:50:59Z
 user_request: UR-123
 domain: frontend
@@ -13,6 +13,7 @@ related: [REQ-585, REQ-586]
 maintenance: false
 impact: impact-user-visible
 effort_estimate: effort-substantive
+claimed_at: 2026-09-05T17:54:34Z
 ---
 
 # Give the Timeline View One Scroll Surface, in the Same Style as the Activity View
