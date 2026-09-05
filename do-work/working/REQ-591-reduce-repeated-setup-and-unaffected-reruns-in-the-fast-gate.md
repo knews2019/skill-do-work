@@ -39,8 +39,10 @@ route: C
 dispatch_at: 2026-09-05T20:35:46Z
 builder_handback_at: 2026-09-05T21:44:19Z
 remediation_at: 2026-09-05T22:20:13Z
+review_at: 2026-09-05T22:45:16Z
 integration_at: 2026-09-05T21:44:19Z
 planning_at: 2026-09-05T20:34:44Z
+commit: fcf07ea467b8cca5dffe2ec42df2793e8b2c6bd3
 ---
 
 # Reduce Repeated Setup and Unaffected Reruns in the Fast Gate
@@ -315,3 +317,58 @@ Mean **12.44s to 3.31s, a 73% saving**. The four repetitions span a load range o
 **Heavy verification plan:** *(selected lanes are recorded below; held for the drain at queue exhaustion)*
 
 *Verified by work action*
+
+## Review
+
+**Overall: 60%** | 2026-09-05T22:45:16Z
+
+| Dimension | Score |
+|-----------|-------|
+| Requirements | 83% |
+| Code Quality | 88% |
+| Test Adequacy | 90% |
+| Scope | 100% |
+| Risk | Critical |
+| Acceptance | Partial |
+
+**Important findings (each with its recorded impact token — this is the durable audit record the judgment mandates):**
+- `_dev/tests/fast-stages.json` declares `do-work/` as non-stage coverage while both fast stages read the live `do-work/` tree; reproduced as a gate-level false green (gate exit 0 and `REUSED` while `internal/repositorymodel`'s production-fixture test fails on the same tree) — impact-critical → follow-up REQ body supplied in the report; the orchestrator must create it, because this review was directed to write nothing under `do-work/`
+- `skills/do-work/tools/do-work-cli/prime-do-work-cli.md:28` still describes `internal/heavyverification` as sealing committed bytes and running lanes at HEAD, which no longer describes the package; its `## Verify` list also has no entry for the fast-stage engine — impact-rule-change → report only
+- The five excluded environment names are all verified harmless, but the duration log they route lives under `do-work/` and is doubly unsealed, so no reused stage can ever contribute the per-file rows whose verdict D-08 says the next run inherits — impact-user-visible → report only
+
+**Minor findings:**
+- An ignored untracked file that no stage covers is never sealed, and nothing guards what may enter that class — impact-user-visible → report only
+- The shell wrapper's `decision_unparseable` branch is untested — impact-negligible → report only
+- The fast-stage evidence store has no reaper; records for deleted worktrees persist (six records from four worktrees observed, two of them gone) — impact-negligible → report only
+- Two near-duplicate blocks (the record reader and the whole-environment seal), disclosed by the builder as out-of-scope — impact-negligible → report only
+- Independent view on the intermittent `TestLaneMutationCannotPublishOrReuseSuccess/commit=true`: pre-existing, not caused by this change; the hand-back's ruled-out list was re-verified rather than accepted, and the only real connection is added process pressure — impact-negligible → report only
+- D-07's stated reason for keeping `DO_WORK_TEST_ENFORCE_BUDGET` and `DO_WORK_TEST_FILE_BUDGET_SECONDS` sealed is inaccurate; the gate overrides both as command-prefix assignments, so their inherited values never reach the runner — impact-negligible → report only
+- The manifest's `argv` is a drift-detection identity token list rather than the executed command, and reads like the latter — impact-negligible → report only
+
+**Acceptance:** Partial — the feature works end to end (cold gate 119s, warm gate 28s, both stages `REUSED`, exit 0, verified in an isolated detached worktree) and 14 of 17 mutation classes invalidate correctly with one further documented trade-off, but the two `do-work/` classes reuse when they must execute and reproduce a gate-level false green.
+**Suggested testing:** 6 items
+**Follow-ups created:** none written by this review; one impact-critical follow-up REQ body is supplied in the report for the orchestrator to create, because this review was directed to write nothing under `do-work/`
+
+*Reviewed by review-work action*
+
+## Lessons Learned
+
+**What worked:** Measuring the thing before rewriting it. The exploration's single most valuable finding was that the nine module copies in the hook probe cost 0.95s, not the 12.9s everyone would have attributed to them — the cost was that each copy is a new absolute path, and the toolchain reads a new path as a new build-cache action. A rewrite aimed at "the copies are slow" would have shaved a second and declared victory. Sharing one physical root took the probe from 12.44s to 3.31s.
+
+**What didn't:** Believing a cache is working because the gate is green. Two separate failures of exactly that shape landed in one request. The builder's own D-17 records that reuse silently never fired at all until two shell breadcrumbs were excluded from the sealed environment — a green gate the whole time. And the reviewer then reproduced the opposite failure: a warm store, one newline appended to a file under `do-work/`, a stage reporting `REUSED`, the gate printing `Maintainer verification passed.` and exiting 0 — while that stage's own test fails on the same tree. A fail-closed cache that cannot fire and a cache that wrongly fires are indistinguishable from the exit status, which is the whole reason this kind of work needs a mutation matrix rather than a passing suite.
+
+**Worth knowing:** The false green came from inheriting an exclusion that was safe where it came from. The heavy lane skips the queue tree because it refuses a dirty tree and attributes its result to a revision; the fast gate has neither protection, and it runs on a dirty tree by design. An exclusion is only as safe as the guarantees around it, and copying one across a boundary carries the name without the guarantees. That is now REQ-592.
+
+## Orientation
+
+The fast gate can skip a stage whose complete inputs have not moved, and it says so on every run — one line per stage naming the disposition and the reason, plus the gate's own wall time. On a matching tree it drops from about 96 seconds to about 21. Lives in the maintainer verification gate and in the do-work-cli heavy-verification package, which now owns a second evidence mechanism beside the heavy lane's. [MAP CHANGED] — there is a new evidence key space with the opposite seal from the existing one: fast records seal working-tree bytes rather than committed object ids, carry no revision, and are keyed by stage id plus working-tree root. Anything that reads or writes verification evidence from here on has two contracts to tell apart, and `prime-do-work-cli.md` still describes only the first — reported as a stale restatement. The reuse is **not yet trustworthy for changes under `do-work/`**: REQ-592 closes that, and `DO_WORK_FAST_STAGE_REUSE=off` disables reuse entirely in the meantime.
+
+## Heavy Verification Plan
+
+- **Base revision:** `c2a74d2f4bed3cf7015ad3401184ac2ffb90cded`
+- **Target revision:** `fcf07ea467b8cca5dffe2ec42df2793e8b2c6bd3` (the recorded `commit:`)
+- **Changed paths in range:** the eight files of this REQ's diff. No uncovered paths, planner not forced, not uncertain.
+
+All six lanes are selected, because the change reaches both the maintainer test tree and the CLI module: `queue-kanban-javascript`, `queue-kanban-browser`, `staged-skills`, `do-work-cli-integrations`, `updater`, `installer`. Each runs as `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane <id>`.
+
+Held at Step 7.7: the lanes are not run now and the queue loop is not held open. **The browser lane needs `QUEUE_KANBAN_BROWSER` pointing at the installed Chrome at drain time**, or it reports skipped, and a skip is not a pass.
