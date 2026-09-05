@@ -1,7 +1,7 @@
 ---
 id: REQ-585
 title: 'Give the Activity view one scroll surface instead of a scroll box inside the scrolling board'
-status: claimed
+status: completed
 created_at: 2026-09-05T12:26:00Z
 user_request: UR-120
 domain: frontend
@@ -25,7 +25,11 @@ integration_at: 2026-09-05T13:07:15Z
 review_at: 2026-09-05T13:24:00Z
 kb_status: pending
 commit: c08ac2b4b4b60cd9b4713078771e7b46bc10dd73
+heavy_verified_at: 2026-09-05T13:55:30Z
+heavy_verified_revision: b69b5b36ec54533d5baa84e9ce8559045a717542
 claimed_at: 2026-09-05T12:46:41Z
+completed_at: 2026-09-05T13:55:30Z
+release_at: 2026-09-05T13:55:30Z
 ---
 
 # Give the Activity View One Scroll Surface Instead of a Scroll Box Inside the Scrolling Board
@@ -187,3 +191,21 @@ Held at Step 7.7 after a passing review. Base `db36c8ca0aa3da54edc149f73ce678e8c
 - `queue-kanban-javascript`: `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane queue-kanban-javascript` — `activity_scroll_browser_probe_test.go` and `web/board.css` match subtree `skills/do-work-board/tools/queue-kanban`
 - `queue-kanban-browser`: `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane queue-kanban-browser` — same subtree match
 - `staged-skills`: `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane staged-skills` — both paths match subtree `skills`
+
+## Timing
+
+Observed 2026-09-05T12:51:06Z to 2026-09-05T13:07:23Z: 16m 17s total, 16m 17s attributed across 1 events, 0s unattributed.
+
+| Category | Elapsed | Events |
+| --- | --- | --- |
+| builder-work | 16m 17s | 1 |
+
+Slowest stage: builder-work / implementation, 16m 17s, outcome success.
+
+## Heavy Verification Result
+
+Target revision `c08ac2b4b4b60cd9b4713078771e7b46bc10dd73`; executed at `b69b5b36ec54533d5baa84e9ce8559045a717542` (HEAD at the drain, from a detached worktree because the shared main tree was dirty). All three selected lanes ran and exited 0; none was reused from earlier evidence.
+
+- `queue-kanban-javascript`: exit 0, executed (fingerprint_mismatch), 7 s
+- `queue-kanban-browser`: exit 0, executed (fingerprint_uncertain, as every browser lane is), 96 s, with `QUEUE_KANBAN_BROWSER` naming Chrome 152.0.7977.76 after the first attempt skipped for lack of a browser on PATH
+- `staged-skills`: exit 0, executed (fingerprint_mismatch), 38 s

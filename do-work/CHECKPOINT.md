@@ -29,6 +29,5 @@ session_depth: light
 
 - REQ-582: [impact-rule-change] Detect the arrow-form section citation in the shipped-package reference contract — claimed 2026-09-05T12:40:40Z — writer: t2s-Virtual-Machine.local:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2
 
-- REQ-585: Give the Activity view one scroll surface instead of a scroll box inside the scrolling board — claimed 2026-09-05T12:46:41Z — writer: t2s-Virtual-Machine.local:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2
 
 - REQ-586: Keep the board top bar to one line: single-line identity and Touched-in chips inside the Activity view — claimed 2026-09-05T13:24:34Z — writer: t2s-Virtual-Machine.local:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2

@@ -2,6 +2,14 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.298.0 — The Activity View Scrolls as One Surface (2026-09-05)
+
+The Activity view scrolled twice: its transitions table was a 70vh scroll box nested inside the board area, which is the board's own scroll container, so the view showed two scrollbars and the wheel moved whichever one the pointer was over. The table is now ordinary content and the board is the only thing that scrolls.
+
+- The column header keeps its sticky rule and now pins to the board's top edge while rows pass under it.
+- The board's top padding is zeroed on this view only and carried by the summary line instead: a sticky header inside a scroll container pins to the container's content box, so with the padding left in place rows scrolled through a 24px band above the header (measured in Chrome 152).
+- A browser-lane probe renders a 120-row Activity view and asserts that exactly one element scrolls, that the header sits at the top edge after a 700px scroll, and that the padding rule does not leak to the Kanban view.
+
 ## 0.297.0 — The Activity View Keeps Its Own Space (2026-09-05)
 
 The Verify Findings strip sat above every view, so on the Activity view it pushed the transitions table down to make room for warnings that view is not about. It now steps aside there and comes back everywhere else.
