@@ -27,6 +27,8 @@ write_set:
 claimed_at: 2026-09-05T12:21:55Z
 route: A
 dispatch_at: 2026-09-05T12:23:39Z
+builder_handback_at: 2026-09-05T12:39:24Z
+integration_at: 2026-09-05T12:39:24Z
 ---
 
 # Open the Detail Drawer from an Activity Row and Highlight Every Row of the Same REQ
@@ -36,9 +38,9 @@ dispatch_at: 2026-09-05T12:23:39Z
 Clicking a row on the Activity view does nothing today. Make a click open the same REQ detail drawer the Board opens when a card is clicked, and mark every Activity row that carries the same REQ id as selected, so the reader can scan the whole sequence of states that REQ went through to arrive where it is.
 
 ## AI Execution State (P-A-U Loop)
-- [ ] **[PLAN]:** (Agent: Read listed `prime_files` and agent rules. Write brief technical approach here. Do not write code yet.)
-- [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
-- [ ] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
+- [x] **[PLAN]:** Builder read the crew rules, the kanban prime and both lesson satellites, then the five client fragments and the fragment execution-order manifest, and settled a six-step approach: a real button carrying the detail attributes, the drawer's own state as the single selection source, one highlight function, a click path that reads the clicked row rather than the drawer, three non-colour signals, and a mutation check. Recorded under `## P-A-U` in `do-work/runs/work-2026-09-05-120117/REQ-573-handback.md`.
+- [x] **[APPLY]:** One commit on the builder branch (`05484aa6`) touching exactly the three Scope files; 350 insertions, 2 deletions.
+- [x] **[UNIFY]:** `git diff --stat` reviewed (3 files); linters clean; debug-artifact scan over added lines empty; two draft defects were caught in this phase and fixed before the commit. Per-file checks listed in the hand-back.
 
 ## Detailed Requirements
 
@@ -96,3 +98,36 @@ See `do-work/user-requests/UR-115/input.md` for complete verbatim input.
 **Planning not required** - Route A: direct to builder
 
 *Skipped by work action*
+
+## Implementation Summary
+
+**Files changed:**
+- `skills/do-work-board/tools/queue-kanban/web/board-activity.js` (modified)
+- `skills/do-work-board/tools/queue-kanban/web/board.css` (modified)
+- `skills/do-work-board/tools/queue-kanban/javascript_behavior_c_test.go` (modified)
+
+**What was done:** The Activity row's REQ cell is now a real button carrying the drawer's own `data-detail-kind` and `data-detail-id` attributes, so the existing document-level delegation opens the drawer with no second opener and the cell is reachable by keyboard the same way a Board card is. Selection is read live from the drawer's own state rather than stored a second time, which is what makes a re-render restore the highlight, the close button clear it, and a UR drawer unable to select REQ rows — none of those needed code of their own. Every row of the clicked request gets a selected class carrying three signals: a background tint, an inset bar down the REQ column, and the bold underlined id. Merge range `45a9010d..2d3981f4`; builder branch head `05484aa6`. Builder-authored `## Decisions` (D-01 to D-07) and `## Discovered Tasks` live in `do-work/runs/work-2026-09-05-120117/REQ-573-handback.md`.
+
+## Qualification
+
+**Passed.** Read from the merge range `45a9010d..2d3981f4`.
+
+- One selection source. `selectedActivityRequestId()` reads the drawer's kind and id, so there is no module-level copy that can disagree with the drawer. Three of the request's own requirements fall out of that single read instead of being implemented separately.
+- The click path reads the clicked row rather than the drawer, and the builder proved why from the fragment execution-order manifest rather than assuming: this fragment's document listener is registered before the delegation that opens the drawer, so at click time the drawer still names the previous request. Every non-row click falls back to the drawer read, which is what makes the close button clear the highlight.
+- The keyboard path is a real `<button>`, not a click handler on a table cell, which is what the request asked for.
+- The highlight does not depend on colour alone: tint, an inset bar and a bold underlined id, with both tokens defined in the light and dark palettes. The bar is an inset shadow rather than a border because a real border would shift the row under collapsed table borders.
+- One cross-REQ test break, handled correctly: REQ-572's activity-summary test needed its slice list and stub node extended once the renderer started building a button. Not one assertion was changed, weakened or removed — the transition and request counts, the repeated-id contract and both empty states are pinned exactly as REQ-572 left them.
+
+Requirements traced: detail attributes on every row, the whole matching set selected and others cleared, selection surviving a re-render, the highlight readable without colour, closing clearing it, and keyboard reachability. No new definition of a stamp and no client-side re-sorting.
+
+*Checked by work action*
+
+## Testing
+
+**Focused tests (post-merge, main tree at `2d3981f4`):**
+- `QUEUE_KANBAN_JAVASCRIPT_PROBES=on QUEUE_KANBAN_STRICT_JAVASCRIPT_BEHAVIOR=1 bash _dev/tests/run-go-tests-with-budget.sh skills/do-work-board/tools/queue-kanban -run '^TestJavaScriptBehavior' ./...` — exit 0, 58 tests, wall 9s, slowest file `citations_test.go` at 2.42s against the 30s per-file budget.
+
+**Red-green validation** (traced to `## Red-Green Proof`): RED and GREEN observations, plus the builder's mutation check proving the new assertions bite, are recorded in the hand-back's `## Test evidence`.
+
+**Not covered — browser render (builder decision D-04, escalated rather than claimed):** no browser was driven, so the tint, the inset bar and the focus ring were not seen against either palette. Every token used is defined in both palettes and every rule copies an existing pattern in the same stylesheet. The orchestrator routed this to the `queue-kanban-browser` heavy lane rather than a one-off screenshot, since that lane is already selected for this request and runs at the queue-exhaustion drain.
+
