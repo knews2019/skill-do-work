@@ -150,6 +150,14 @@
   // re-render restores the highlight by reading the drawer back, and closing the
   // drawer clears it through the same read. A second copy of "which REQ is
   // selected" would be one more thing that can disagree with the drawer.
+  //
+  // The read happens where the drawer's own state changes — board-detail.js's
+  // setDetailTarget calls syncActivitySelectionToDrawer — so there is no moment
+  // where the table and the drawer name different requests. Watching for clicks
+  // here instead would put this fragment ahead of the delegation that opens the
+  // drawer (generate.go's execution-order manifest), and every open reached
+  // from inside the drawer itself — a dependency ticket link, the user-request
+  // button — would highlight the request the reader just navigated away from.
 
   function selectedActivityRequestId() {
     // The kind matters: a UR drawer whose id happened to look like a REQ id
@@ -170,29 +178,10 @@
     });
   }
 
-  // board-controls.js registers its [data-detail-kind] delegation AFTER this
-  // fragment (generate.go's execution-order manifest), so on a row click the
-  // drawer still names the previous REQ while this listener runs — the clicked
-  // row's own id is read instead. Every other click re-reads the drawer, which
-  // is how the drawer's close button clears the highlight: its own element-level
-  // listener has already run closeDrawer by the time this one sees the click.
-  function syncActivitySelectionToClick(clickEvent) {
-    var clickedRow = clickEvent.target.closest("[data-activity-request]");
-    applyActivitySelectionHighlight(
-      clickedRow ? clickedRow.getAttribute("data-activity-request") : selectedActivityRequestId()
-    );
-  }
-
+  // Every path that opens, switches or closes the drawer runs through
+  // setDetailTarget, which calls this after the new identity is in place. The
+  // close button and Escape reach it the same way, so no close path leaves a
+  // stale highlight and this fragment registers no listeners of its own.
   function syncActivitySelectionToDrawer() {
     applyActivitySelectionHighlight(selectedActivityRequestId());
   }
-
-  document.addEventListener("click", syncActivitySelectionToClick);
-  // Escape is the drawer's only other close path. board-detail.js dismisses it
-  // from a capture-phase listener, so this bubble-phase one already sees the
-  // cleared drawer state.
-  document.addEventListener("keydown", function (keyEvent) {
-    if (keyEvent.key === "Escape") {
-      syncActivitySelectionToDrawer();
-    }
-  });

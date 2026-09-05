@@ -196,7 +196,7 @@ After triage, check if a specification template matches this REQ's domain or tas
 
 Append validation findings to the `## Plan` section (if any issues found). These are **warnings, not blockers** — the builder can adapt. But flag them visibly so the orchestrator and review step are aware.
 
-After the Route C plan is saved and this validation finishes, stamp `planning_at: <now>` using the current UTC instant (Timestamp rule, `actions/work-reference.md`). Stamp only this successful observed event. Routes A and B omit the field.
+After the Route C plan is saved and this validation finishes, stamp `planning_at: <now>` using the current UTC instant (Timestamp rule, `actions/work-reference.md`) — only if the field is absent, because a REQ re-planned after a recovery keeps the first attempt's observation (**Stamps are append-only**, `actions/work-reference.md`). Stamp only this successful observed event. Routes A and B omit the field.
 
 **Routes A and B:** Append a skip note (if not already present):
 
@@ -281,7 +281,7 @@ Spawn a **general-purpose agent** with the loaded rules, any files listed in the
 - **Route B**: Request + exploration output — "follow existing patterns identified above"
 - **Route C**: Request + plan + exploration output — "implement according to the plan"
 
-Once the implementation builder has accepted that dispatch, stamp `dispatch_at: <now>` using the Timestamp rule. If dispatch fails before a builder accepts it, leave the field absent. When the builder returns its completed hand-back, stamp `builder_handback_at: <now>` before the hand-back merge begins. With both stamps in hand, record that delegated wait once through `record-timing-event` (`--category builder-work --started-at <dispatch_at>`), which owns every timestamp, duration and redaction mechanic so no step derives its own.
+Once the implementation builder has accepted that dispatch, take the current UTC instant (Timestamp rule) and hold it. Stamp `dispatch_at` with it only if the field is absent — after a recovery the field still names the first attempt's dispatch and that observation stays (**Stamps are append-only**, `actions/work-reference.md`). If dispatch fails before a builder accepts it, leave the field absent. When the builder returns its completed hand-back, stamp `builder_handback_at: <now>` on the same condition, before the hand-back merge begins. Then record that delegated wait once through `record-timing-event` (`--category builder-work --started-at <the instant you held>`), which owns every timestamp, duration and redaction mechanic so no step derives its own. **Pass the held instant, never `dispatch_at` read back out of the file:** on a retry that field belongs to the earlier attempt, and the recorder would charge this builder with every hour between the two.
 
 All routes include these instructions to the agent (pointers — the underlying rules live in the loaded crew-members files and in the REQ frontmatter the orchestrator already wrote):
 
@@ -309,7 +309,7 @@ All routes include these instructions to the agent (pointers — the underlying 
 
 Hold both hashes — and `<operative_name>` — as literals you re-type into each later command (shell variables do not survive between command blocks), and pass the range `<pre>..<merge_hash>` to Steps 6.3, 7, 8, and 9. The canonical reference carries the full rationale, remediation re-merge handling, and the queue guard's safe-direction over-inclusion caveat.
 
-After the hand-back is successfully merged, stamp `integration_at: <now>` using the Timestamp rule. A failed or empty hand-back does not create an integration observation.
+After the hand-back is successfully merged, stamp `integration_at: <now>` using the Timestamp rule, only if the field is absent (**Stamps are append-only**, `actions/work-reference.md`). A failed or empty hand-back does not create an integration observation.
 
 ### Step 6.25: Implementation Summary
 
@@ -375,7 +375,7 @@ The review reads the REQ (in `do-work/working/`), the original UR, and the curre
   4. Re-run Steps 6.25 through 7 (Summary → Qualification → Testing → Review) on the remediated code.
   5. If still failing after remediation: update frontmatter to `status: completed-with-issues`, `completed_at: <timestamp>` (current UTC instant — Timestamp rule, `actions/work-reference.md`), append a `## Remediation` section documenting both attempts, and route the remaining findings through `actions/review-work.md` Step 10. Only `impact-critical` findings auto-queue; the rest stay in the Review section. Then proceed to archive (Step 8) — the frontmatter is already set, so Step 8 should not overwrite it.
 
-After the first review result is recorded, stamp `review_at: <now>` using the Timestamp rule, regardless of its verdict. If remediation runs, stamp `remediation_at: <now>` only after that builder hand-back is successfully integrated, then stamp `re_review_at: <now>` only after the post-remediation review result is recorded. A passing first review leaves both remediation fields absent.
+After the first review result is recorded, stamp `review_at: <now>` using the Timestamp rule, regardless of its verdict. If remediation runs, stamp `remediation_at: <now>` only after that builder hand-back is successfully integrated, then stamp `re_review_at: <now>` only after the post-remediation review result is recorded. All three are written only if the field is absent (**Stamps are append-only**, `actions/work-reference.md`). A passing first review leaves both remediation fields absent.
 
 The status `completed-with-issues` means the REQ was archived but has known unresolved problems. It counts toward UR completion for archiving purposes. Any critical follow-up remains queued; noncritical findings remain visible in the archived Review until a maintainer explicitly captures one. This status remains visible to recap and every completed-work presentation action; those readers inherit the Terminal-success status set from `actions/work-reference.md` rather than defining a caller-specific filter.
 

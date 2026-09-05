@@ -306,6 +306,18 @@
   var currentDetailKind = "";
   var currentDetailId = "";
 
+  // The ONE writer of the pair above. Every open, every switch from one ticket
+  // to another inside the drawer, and every close goes through here, which is
+  // what lets a second surface follow the drawer without keeping its own copy
+  // of "what is open" — today the Activity view's row highlight. Assigning the
+  // two variables directly somewhere else would leave that surface pointing at
+  // the previous ticket, which is the bug REQ-573 shipped.
+  function setDetailTarget(detailKind, detailId) {
+    currentDetailKind = detailKind;
+    currentDetailId = detailId;
+    syncActivitySelectionToDrawer();
+  }
+
   function appendMetaRow(label, valueNode) {
     var dt = createElement("dt", null, label);
     var dd = createElement("dd");
@@ -595,8 +607,7 @@
 
     drawerBody.innerHTML = request.bodyHtml || "<p>(empty body)</p>";
     renderDetailGlossary(linkifyDetailBody(drawerBody, request.title));
-    currentDetailKind = "req";
-    currentDetailId = requestId;
+    setDetailTarget("req", requestId);
     showDrawer();
   }
 
@@ -620,8 +631,7 @@
 
     drawerBody.innerHTML = userRequest.bodyHtml || "<p>(no input.md body)</p>";
     renderDetailGlossary(linkifyDetailBody(drawerBody, userRequest.title));
-    currentDetailKind = "ur";
-    currentDetailId = userRequestId;
+    setDetailTarget("ur", userRequestId);
     showDrawer();
   }
 
@@ -656,8 +666,7 @@
     }
     drawer.hidden = true;
     detailResizer.hidden = true;
-    currentDetailKind = "";
-    currentDetailId = "";
+    setDetailTarget("", "");
     document.removeEventListener("keydown", onDetailPanelKeydown, true);
     if (lastFocusedElement && typeof lastFocusedElement.focus === "function") {
       lastFocusedElement.focus();

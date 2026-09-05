@@ -279,6 +279,12 @@ func TestRecoverAndReclaimPreserveEveryLifecycleStamp(t *testing.T) {
 
 	workingPath := filepath.Join(root, "do-work", "working", "REQ-575.md")
 	working := readStateFile(t, root, "do-work/working/REQ-575.md")
+	// A first claim has its own dedicated stamp, so it must not also write
+	// status_changed_at: that would give every claim two Activity rows at one
+	// instant saying the same thing.
+	if _, present := lifecycleStampsByFieldName(t, working)["status_changed_at"]; present {
+		t.Fatalf("a first claim recorded status_changed_at beside claimed_at:\n%s", working)
+	}
 	phaseStamps := "route: C\nplanning_at: 2026-09-04T16:49:45Z\ndispatch_at: 2026-09-04T16:52:10Z\n" +
 		"builder_handback_at: 2026-09-04T17:10:00Z\nintegration_at: 2026-09-04T17:12:00Z\n" +
 		"review_at: 2026-09-04T17:20:00Z\nremediation_at: 2026-09-04T17:22:00Z\n" +
@@ -320,11 +326,20 @@ func TestRecoverAndReclaimPreserveEveryLifecycleStamp(t *testing.T) {
 		}
 	}
 
+	reclaimInstant := "2026-09-04T23:00:00Z"
 	reclaimed := handleStateCommand(commandruntime.ExecutionContext{RepositoryRoot: root}, TransitionClaim,
-		[]string{"REQ-575", "--request-path", "do-work/queue/REQ-575.md", "--provenance", "explicit-req", "--writer", "host:/checkout", "--at", "2026-09-04T23:00:00Z"})
+		[]string{"REQ-575", "--request-path", "do-work/queue/REQ-575.md", "--provenance", "explicit-req", "--writer", "host:/checkout", "--at", reclaimInstant})
 	assertStateSuccess(t, reclaimed)
-	if got := lifecycleStampsByFieldName(t, readStateFile(t, root, "do-work/working/REQ-575.md"))["claimed_at"]; got != firstClaim {
+	reclaimedStamps := lifecycleStampsByFieldName(t, readStateFile(t, root, "do-work/working/REQ-575.md"))
+	if got := reclaimedStamps["claimed_at"]; got != firstClaim {
 		t.Errorf("re-claim overwrote the first claim: got %s, want %s", got, firstClaim)
+	}
+	// The re-claim's own instant has nowhere else to go — claimed_at is spoken
+	// for by the first claim — so without this the newest thing the file says
+	// about its status is whatever the recovery stamped hours earlier, and the
+	// board's Activity view dates the claim from that.
+	if got := reclaimedStamps["status_changed_at"]; got != reclaimInstant {
+		t.Errorf("re-claim left status_changed_at at %q, want the re-claim instant %s", got, reclaimInstant)
 	}
 }
 

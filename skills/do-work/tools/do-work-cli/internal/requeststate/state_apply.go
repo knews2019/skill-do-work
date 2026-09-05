@@ -518,8 +518,9 @@ func verifyArchivedCalibrationEvidence(plan StatePlan) error {
 //
 // The exceptions are the stamps that carry current state rather than a phase
 // observation, and each is written or removed openly by the transition below
-// that owns it: `status_changed_at` (the most recent status change, by
-// definition), `blocked_at` (removed with `blocked_by` on unblock),
+// that owns it: `status_changed_at` (the most recent status change that no
+// dedicated stamp could record — including a re-claim, whose `claimed_at` is
+// already spoken for), `blocked_at` (removed with `blocked_by` on unblock),
 // `completed_at` on the failed-to-cancelled path, and `heavy_verified_at`
 // (withdrawn with the `commit` it verified on a re-claim). The schema section
 // "Stamps are append-only" in `skills/do-work/actions/work-reference.md` is the
@@ -542,8 +543,24 @@ func lifecycleRequestBytes(plan StatePlan) ([]byte, error) {
 		if err := document.SetScalar("status", "claimed"); err != nil {
 			return nil, err
 		}
+		// A re-claim after a recovery has no dedicated stamp left to write:
+		// `claimed_at` already names the claim that started the work and keeps
+		// that instant. `status_changed_at` is the field for a status change with
+		// no dedicated stamp of its own, so the re-entry lands there. Without it
+		// the re-claim leaves no record at all, and the board's Activity view
+		// dates this claim from whatever the recovery stamped — the last thing
+		// that touched the field.
+		reclaimed := false
+		if existing, present := document.FieldValue("claimed_at"); present && existing.ScalarValue != "" {
+			reclaimed = true
+		}
 		if err := setLifecycleStampWhenAbsent(document, "claimed_at", timestamp); err != nil {
 			return nil, err
+		}
+		if reclaimed {
+			if err := document.SetScalar("status_changed_at", timestamp); err != nil {
+				return nil, err
+			}
 		}
 		if plan.Options.Provenance == ProvenanceExplicit {
 			if err := document.DeleteField("assigned_to"); err != nil {
