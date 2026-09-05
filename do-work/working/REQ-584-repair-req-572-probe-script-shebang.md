@@ -1,7 +1,7 @@
 ---
 id: REQ-584
 title: 'Repository gate repair: add the missing shebang to the REQ-572 probe script'
-status: pending
+status: claimed
 route: C
 created_at: 2026-09-05T09:50:18Z
 user_request: UR-098
@@ -15,6 +15,7 @@ sweep: 'true'
 sweep_key: do-work-runs-probe-script-missing-shebang
 depends_on: []
 related: [REQ-507]
+claimed_at: 2026-09-05T09:51:15Z
 ---
 
 # Repository gate repair: add the missing shebang to the REQ-572 probe script

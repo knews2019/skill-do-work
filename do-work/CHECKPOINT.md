@@ -20,3 +20,4 @@ session_depth: light
 
 - REQ-574: Repository gate repair: bring do-work-cli test files under the 30s per-file budget — claimed 2026-09-05T09:44:40Z — writer: t2s-Virtual-Machine.local:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2
 
+- REQ-584: Repository gate repair: add the missing shebang to the REQ-572 probe script — claimed 2026-09-05T09:51:15Z — writer: t2s-Virtual-Machine.local:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2
