@@ -17,3 +17,12 @@ Since that merge, 8 of the 12 files were reworked by later REQs (REQ-504, 505, 5
 3. Run the focused tests: `go test -count=1 ./internal/lifecycleadvance ./internal/finalization ./internal/resultmodel` inside `skills/do-work/tools/do-work-cli`, and `bash _dev/tests/contracts/core-checks.sh` from the repository root.
 4. If a criterion no longer holds, implement the gap on your branch, tests first (RED then GREEN), inside the REQ's Scope file list. If every criterion holds, make NO source change.
 5. Hand back `REQ-507-handback.md` in the run directory: the per-criterion evidence table, the file manifest (possibly empty), test commands with results, `## Decisions` (D-04 onward), `## Discovered Tasks`, and lesson evidence. Never write `do-work/` paths or the main tree; never commit on `main`.
+
+## Dispatch details
+
+- Worktree (your working directory, already created at `1012e5e2`): `/Users/t2/Desktop/e1-experimental-repos/skill-do-work2/.git/work-run-20260905/worktree-agent-REQ-507-hand-archive-and-commit-tails-to-finalize`
+- Branch: `worktree-agent-REQ-507-hand-archive-and-commit-tails-to-finalize` (commit here only; prefix every commit message with `[REQ-507] `).
+- Hand-back file (the ONLY main-tree path you may write, absolute): `/Users/t2/Desktop/e1-experimental-repos/skill-do-work2/do-work/runs/work-2026-09-05-094707/REQ-507-handback.md`
+- Never touch: anything under `do-work/` in any tree, `main`, other worktrees, `CHANGELOG.md`, `VERSION`, release mirrors.
+- Rules to read first (all under `/Users/t2/Desktop/e1-experimental-repos/skill-do-work2/skills/do-work/crew-members/`): `general.md`, `coding-guardrails.md`, `shared-principles.md`, `communication-style.md`, `testing.md`, `maintenance.md`. Prime files: `_dev/primes/prime-action-files.md`, `_dev/primes/prime-shell-commands.md`, `skills/do-work/tools/do-work-cli/prime-do-work-cli.md` and their `lessons-*.md` satellites where present.
+- The REQ file to read (main tree, read-only): `/Users/t2/Desktop/e1-experimental-repos/skill-do-work2/do-work/working/REQ-507-hand-archive-and-commit-tails-to-finalize.md`

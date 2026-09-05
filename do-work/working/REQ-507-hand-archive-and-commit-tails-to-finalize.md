@@ -35,9 +35,8 @@ estimate:
     - cross-route regression gates
     - full-suite verification
 gate_deferred: 'true'
-deferred_implementation_base: 8e3dbf01e0660424965d79acb2e386b6604e4780
-deferred_implementation_merge: ad8bceb7aa0d0c63c230048b6a1f2dae1ef7ccb9
 claimed_at: 2026-09-05T10:05:13Z
+remediation_dispatch_at: 2026-09-05T10:10:08Z
 ---
 
 # Hand the Archive and Commit Tails to finalize
@@ -138,7 +137,11 @@ See `do-work/user-requests/UR-098/input.md` for complete verbatim input.
 - **D-02 — Preserve the finalizer as the sole transaction engine.** `advance` composes and projects it; it does not duplicate journal, archive, release, Git, provenance, or rollback logic.
 - **D-03 — Bind before all observable preparation.** The selected request ID and path are compared immediately after the finalizer's single manifest decode, before index inspection, journal lookup, planning, or mutation; only that typed mismatch maps to the dedicated refusal.
 
-## Implementation Summary
+## Prior Evidence (4 September, revision ad8bceb7 — superseded by drift)
+
+The sections below were recorded for the merged range `8e3dbf01..ad8bceb7` before later REQs reworked its files. They are history, not current evidence: the saved-range resume proof on 5 September found drift, so qualification, testing and review are redone against current `main` below.
+
+### Implementation Summary
 
 - `_dev/tests/contracts/core-checks.sh` (modified) — enforces the concise judgment boundary and forbids restored finalization-tail recipes within the affected sections.
 - `skills/do-work/actions/work-reference.md` (modified) — reduces changelog and commit procedures to release-content, provenance, and typed-result judgment.
@@ -153,15 +156,15 @@ See `do-work/user-requests/UR-098/input.md` for complete verbatim input.
 - `skills/do-work/tools/do-work-cli/internal/resultmodel/result_model_test.go` (modified) — proves normalized text/JSON field parity and actual multi-record ordering.
 - `skills/do-work/tools/do-work-cli/prime-do-work-cli.md` (modified) — records advance as the request-bound finalization composer without moving judgment into the CLI.
 
-## Discovered Tasks
+### Discovered Tasks
 
 None.
 
-## Qualification
+### Qualification
 
 Typed qualification passed for exact range `8e3dbf01e0660424965d79acb2e386b6604e4780..ad8bceb7aa0d0c63c230048b6a1f2dae1ef7ccb9`: all 12 implementation paths match the declared Scope, every summary entry matches the merged diff, and scope-drift reported no findings.
 
-## Testing
+### Testing
 
 - **Red-green validation:** Public finalization and phase-matrix tests first failed because `advance` still stopped at agent judgment and rejected the manifest input; after implementation, the four-path/refusal matrix passed in 4.005s and the final focused lifecycle/result rerun passed in 11.022s and 0.343s.
 - **Focused merged-state gate:** the advance-owned probe ran lifecycleadvance, finalization, and resultmodel at the merged tree with exit 0, baseline state green, and diagnostic SHA-256 `e8a829932bae3fc53990317ac388f37816b6e8ddc32fa469c245b7cdac251a06`.
@@ -169,7 +172,7 @@ Typed qualification passed for exact range `8e3dbf01e0660424965d79acb2e386b6604e
 - **Contracts:** the aggregate contract regression suite passed in 15.3s; every fast test file remained under 30s.
 - **Repository gate:** `bash _dev/tests/maintainer-verify.sh` exited 0 at `02b5a2a3fe1831b8dc8088d8c80165617f0ec29f`, covering ShellCheck, gofmt, contracts, vet, 375 board tests, and 677 CLI tests; the slowest CLI test file was 19.28s.
 
-## Heavy Verification Plan
+### Heavy Verification Plan
 
 - Base revision: `8e3dbf01e0660424965d79acb2e386b6604e4780`
 - Target revision: `ad8bceb7aa0d0c63c230048b6a1f2dae1ef7ccb9`
@@ -181,7 +184,7 @@ Typed qualification passed for exact range `8e3dbf01e0660424965d79acb2e386b6604e
 - `installer`: `bash _dev/tests/maintainer-verify.sh --heavy-lane installer` — coverage is uncertain for the changed core contract owner.
 
 
-## Answer Notes
+### Answer Notes
 
 - 2026-09-04 - [ ] Heavy lanes at `ad8bceb7aa0d0c63c230048b6a1f2dae1ef7ccb9`: the work loop runs them at queue exhaustion and records the result here: Heavy verification failed: staged-skills exited 1. Return to remediation.
 > ```
@@ -192,7 +195,7 @@ Typed qualification passed for exact range `8e3dbf01e0660424965d79acb2e386b6604e
 > Scope: record verification only; implementation fixes, fresh review and archiving are left to do-work run. Date and answer timestamp follow skills/do-work/actions/work-reference.md, Timestamp rule and its date-only paragraph.
 > ```
 
-## Heavy Verification Result
+### Heavy Verification Result
 
 Target revision: `ad8bceb7aa0d0c63c230048b6a1f2dae1ef7ccb9`
 Execution revision: `ad8bceb7aa0d0c63c230048b6a1f2dae1ef7ccb9`
@@ -214,3 +217,10 @@ Execution revision: `ad8bceb7aa0d0c63c230048b6a1f2dae1ef7ccb9`
 - **Diagnostic evidence:** "Both direct canonical gate runs at 12d264c2 (detached worktree, clean tree) exited 1 on this one lint finding before any Go test ran. The probe file was committed by another session in 7ba3148a as REQ-572 run evidence and is outside REQ-507's implementation range 8e3dbf01..ad8bceb7, which touches no do-work/runs path."
 - **Implementation base:** 8e3dbf01e0660424965d79acb2e386b6604e4780
 - **Implementation merge:** ad8bceb7aa0d0c63c230048b6a1f2dae1ef7ccb9
+
+## Saved-Range Resume Proof (2026-09-05T10:06:14Z)
+
+- Base `8e3dbf01e0660424965d79acb2e386b6604e4780` and merge `ad8bceb7aa0d0c63c230048b6a1f2dae1ef7ccb9` both resolve; base != merge; base is an ancestor of merge; merge is an ancestor of `HEAD` (`1012e5e2`).
+- Protected paths (`git diff --name-status -M base..merge`, no renames): 12 project files.
+- **Drift:** 8 of the 12 have commit history after the merge — `work.md` (17 commits), `work-reference.md` (16), `prime-do-work-cli.md` (8), `finalization_commands.go` (4), `result_model.go` (3), `core-checks.sh` (2), `advance_commands.go` (1), `result_model_test.go` (1) — from REQ-504, 505, 506, 510, 515, 547, 562, 564, 569 and 570. None has a current staged, unstaged, untracked, deleted, type-changed or renamed state.
+- **Result:** reuse rejected. The saved pair is deleted from the frontmatter, every prior qualification/testing/review verdict is treated as stale (kept above under Prior Evidence), and the request returns to Step 6 as a remediation pass: a builder re-verifies each acceptance criterion against current `main` and implements only what no longer holds (brief: `do-work/runs/work-2026-09-05-094707/REQ-507-brief.md`).
