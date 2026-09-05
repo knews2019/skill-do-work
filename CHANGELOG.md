@@ -2,6 +2,14 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.303.9 — A Blocked Request No Longer Strands the Ones Behind It (2026-09-05)
+
+The last two findings of the same review that produced 0.303.5. Both are cases where one item's problem was silently applied to everything after it.
+
+- A frozen queue continuation used to stop at the first member it could not claim, so a request awaiting answers hid every sibling behind it — including one the just-claimed prerequisite had made ready. Because the continuation is re-emitted unchanged, replaying it stopped in the same place and claimed nothing. The pass now skips that member, leaves it in the queue, still reports why it was excluded, and carries on down the list.
+- An ordinary `### ` sub-heading in a request body was read as an opening fence, which hid the request's own `## Timing` section from replacement: the fold left the stale summary and appended a second heading. Headings enclose nothing, so they no longer open one.
+- Both lessons are recorded in `lessons-do-work-cli.md`.
+
 ## 0.303.8 — A Verify Finding Names Five Paths, Then Counts the Rest (2026-09-05)
 
 One long list could take the board over. A builder worktree whose `do-work/` was untracked put roughly 700 paths into a single finding, and every surface that prints a finding printed all of them: the board's findings strip filled the page, the terminal report put them on one line, and the shareable snapshot carried the lot.
