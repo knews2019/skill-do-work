@@ -21,7 +21,6 @@ sources:
   - actions/interview-reference.md
   - actions/review-work.md
   - actions/work.md
-  - crew-members/karpathy.md
   - interviews/work-operating-model.md
   - specs/README.md
   - tools/queue-kanban/
@@ -42,7 +41,7 @@ related:
   - page: adr-016-vendor-queue-kanban-into-the-skill
     rel: complements
 created: 2026-04-15
-updated: 2026-08-08
+updated: 2026-09-05
 confidence: high
 ---
 
