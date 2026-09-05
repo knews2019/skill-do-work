@@ -2,6 +2,15 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.294.0 — Closing a Request Is One Command (2026-09-05)
+
+Closing a request used to be a page of shell the agent re-read and re-typed every time: archive the record, stage the exact paths, commit, record provenance, verify. Now the same `advance` command that drives every other mechanical phase composes the finalizer from one request-bound manifest, and Step 8 and Step 9 of the work action keep only the judgment: which follow-ups to fold, which terminal status, which release.
+
+- `advance` classifies a reviewed and oriented request as the `finalize` phase, requires exactly one `--finalization-manifest`, binds the manifest's request id and path during the finalizer's single decode, and returns the finalizer's ordered records unchanged; a mismatch is a typed refusal that mutates nothing.
+- Public tests prove the serial, supplied-worktree, completed-with-issues and already-green/no-release paths, plus seven refusals that leave the tree digest and `HEAD` untouched.
+- The Changelog Entry and Commit procedures in the work reference now hold release and provenance judgment only; the contract suite forbids a restored `git add`/`git commit`/`record-commit-hash` recipe in those sections.
+- Ordered finalization records render in text with the same fields as JSON.
+
 ## 0.293.0 — A Run Can Say Where Its Time Went (2026-09-05)
 
 A finished request could report how long it took but not why. A flat timing stream now attributes one request's elapsed time to its major stages and to the commands that materially contribute wall time, and folds one compact `## Timing` section into the archived record.

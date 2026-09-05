@@ -1,7 +1,7 @@
 ---
 id: REQ-507
 title: '[impact-rule-change] Hand the archive and commit tails to finalize'
-status: claimed
+status: completed
 status_changed_at: 2026-09-04T20:57:34Z
 priority: now
 created_at: 2026-09-02T14:37:54Z
@@ -40,6 +40,10 @@ remediation_dispatch_at: 2026-09-05T10:10:08Z
 remediation_at: 2026-09-05T10:15:14Z
 review_at: 2026-09-05T10:25:15Z
 commit: ad8bceb7aa0d0c63c230048b6a1f2dae1ef7ccb9
+heavy_verified_at: 2026-09-05T10:31:18Z
+heavy_verified_revision: c6f3c77daaf500759e5942f8ba3c82b3532ce012
+completed_at: 2026-09-05T10:31:19Z
+release_at: 2026-09-05T10:31:19Z
 ---
 
 # Hand the Archive and Commit Tails to finalize
@@ -376,3 +380,15 @@ No listed lesson file was missing.
 - `staged-skills`: `bash _dev/tests/maintainer-verify.sh --heavy-lane staged-skills` — coverage is uncertain for: _dev/tests/contracts/core-checks.sh
 - `updater`: `bash _dev/tests/maintainer-verify.sh --heavy-lane updater` — coverage is uncertain for: _dev/tests/contracts/core-checks.sh
 - `installer`: `bash _dev/tests/maintainer-verify.sh --heavy-lane installer` — coverage is uncertain for: _dev/tests/contracts/core-checks.sh
+
+## Heavy Verification Result
+
+Target revision: `ad8bceb7aa0d0c63c230048b6a1f2dae1ef7ccb9`
+Execution revision: `c6f3c77daaf500759e5942f8ba3c82b3532ce012` (runner at `HEAD`, 2026-09-05T10:31:18Z; Chromium supplied explicitly through `QUEUE_KANBAN_BROWSER`; every lane executed, none reused)
+
+- queue-kanban-javascript: exit 0, 6s, executed (fingerprint_mismatch) — `bash _dev/tests/maintainer-verify.sh --heavy-lane queue-kanban-javascript`
+- queue-kanban-browser: exit 0, 84s, executed (fingerprint_uncertain) — `bash _dev/tests/maintainer-verify.sh --heavy-lane queue-kanban-browser`
+- do-work-cli-integrations: exit 0, 101s, executed (fingerprint_mismatch) — `bash _dev/tests/maintainer-verify.sh --heavy-lane do-work-cli-integrations`
+- staged-skills: exit 0, 31s, executed (fingerprint_mismatch) — `bash _dev/tests/maintainer-verify.sh --heavy-lane staged-skills`
+- updater: exit 0, 67s, executed (fingerprint_mismatch) — `bash _dev/tests/maintainer-verify.sh --heavy-lane updater`
+- installer: exit 0, 27s, executed (fingerprint_mismatch) — `bash _dev/tests/maintainer-verify.sh --heavy-lane installer`
