@@ -1,108 +1,44 @@
-# Wave 2 completion — 2026-09-05
-
-The targeted resume `do-work run REQ-547 REQ-564 --fan-out 2` is complete. Do not redispatch those builders.
-
-- REQ-547 (finalization without checkpoint claims) completed in release 0.280.0; implementation merge `865dff21`, finalization `c5dff3db`. Archived under `do-work/archive/UR-085/`.
-- REQ-564 (four-hour heavy-lane evidence reuse) completed in release 0.281.0; implementation merge `e9b12501`, including reviewed remediation `0b470b91`. Archived under `do-work/archive/UR-109/`.
-- Full repository verification and all selected heavy lanes passed. REQ-564's real JavaScript lane also proved matching-evidence reuse; browser lanes deliberately always execute.
-- The separate REQ-515 recovery findings documented below remain open. This targeted run completed the two named requests and did not implement those separate fixes.
-
-The original handoff below is retained as history; its wave-2 claims and worktree paths describe the previous session.
-
----
-
-# Restart Prompt — wave 2 of UR-106/UR-099 follow-on run (2026-09-04)
-
 ```
-do-work run REQ-547 REQ-564 --fan-out 2
-
+do-work run UR-115 UR-117
 This command is sufficient; everything below it is context.
 
-Two REQs are claimed by this checkout (writer vm:/home/user/skill-do-work) and
-both already have unmerged builder branches pushed to origin. Neither needs a
-builder re-dispatched.
+You are resuming a do-work run in /Users/t2/Desktop/e1-experimental-repos/skill-do-work2 handed off at 2026-09-05T00:11:20Z. Run one REQ at a time (serial default). Order is already encoded in the queue: REQ-574 (repository gate repair, claimed by this checkout's writer label, resumes at the planning phase) → REQ-572 (gate_deferred, depends_on REQ-574, saved implementation range 7ad53bff..fbdcd35e already merged on main; run the saved-range resume proof, then only qualification, focused tests, the gate and review) → REQ-573 (depends_on REQ-572) → REQ-578 (no dependency; UR-117).
 
-If `recover` reports the claims as another writer's, take them over first:
-  do-work-cli recover --take-over REQ-547
-  do-work-cli recover --take-over REQ-564
-
-REQ-547 is complete on its branch and resumes at the Step 6 hand-back merge.
-REQ-564 is also complete and resumes at the same point. Its branch tip is
-19103f5; the earlier 27b74c8 is a superseded WIP snapshot, not the work.
-
-Before running the repository gate, provision the toolchain this container did
-not ship:
-  export PATH="/root/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.1.linux-amd64/bin:/usr/local/bin:$PATH"
-The gate needs Go 1.26.1, ShellCheck 0.11.0, and a `just` new enough for
-[positional-arguments]. Without all three it cannot start, and a gate that
-cannot start still reads as a red gate.
-
-Each REQ's `## Handoff State` section carries the rest.
+The repository gate (bash _dev/tests/maintainer-verify.sh) is red on time only: four do-work-cli test files exceed the 30-second per-file budget (internal/corehelpers/inventory_test.go, internal/publication/defer_gate_test.go, internal/finalization/finalization_recovery_test.go, internal/finalization/finalization_req499_test.go); every test passes. Three tests own most of it: TestInventoryMatchesRetainedPorcelainXYMatrix 53s, TestDeferGateRollsBackUntrackedCreateAndFoldTopologies 27s, TestRecoverFinalizationResumesEveryDurablePhaseExactlyOnce 22s (per-test log: /private/tmp/claude-501/-Users-t2-Desktop-e1-experimental-repos-skill-do-work2/83001520-580f-484b-a90e-0f2e11fcabac/scratchpad/slow-tests-574.log, may be gone). REQ-574 must give those files real headroom (target under 15s per file with one gate running) by speeding the fixtures, splitting by genuine test family, or moving true integration scenarios to the heavy lane; never by raising the budget. Run every gate and heavy lane from a detached worktree (git worktree add --detach), because other sessions dirty the main tree. Expect recover to refuse on foreign live paths (other sessions' do-work/runs/* and do-work/working/REQ-577/REQ-506 files): judge them foreign, leave them byte-identical, and continue.
 ```
 
 ---
 
 ## Reference
 
-### Wave 1 — done, do not revisit
+### In-flight REQ (ACTIVE, this checkout's writer label)
 
-| REQ | What it did | Released |
-|---|---|---|
-| REQ-559 | Rerun a red repository gate once before deferring or minting a repair REQ | 0.277.0 |
-| REQ-560 | Hand-back and finalize check cleanliness only on the REQ's own paths | 0.278.0 |
-| REQ-515 | Per-REQ recovery findings never stop the loop | 0.279.0 |
-| REQ-561 | Not built — its code shipped in 0.273.0; cancelled against that release | — |
+- **REQ-574** — Repository gate repair: bring do-work-cli test files under the 30s per-file budget. Claimed 2026-09-04T23:59:43Z at 8269a0bb, Route C, estimate P50 40 min, `## Triage` written, no `## Plan` yet. A plan draft exists at do-work/runs/work-2026-09-04-232225/REQ-574-plan.md; it was NOT consumed into the REQ (read it as input, validate it, then write ## Plan and planning_at yourself). Not merged, no builder branch exists, nothing uncommitted of its own (owner evidence committed at 05ab21d5). Evidence: `do-work/working/REQ-574-bring-do-work-cli-test-files-under-the-30s-budget.md`, run dir `do-work/runs/work-2026-09-04-232225/`.
 
-UR-106 and UR-099 both closed with all members archived.
+### Deferred and queued (this UR set)
 
-### Wave 2 — in flight
+- **REQ-572** — merged on main at fbdcd35e (range `7ad53bff..fbdcd35e`, builder head 2d8beb40), qualified, deferred by defer-gate at 35af5c23 behind REQ-574. Frontmatter carries `gate_deferred`, `deferred_implementation_base/merge`. Its `## Qualification` and `## Implementation Summary` sections are present; on resume the classifier will treat them as done, but the reference requires rerunning qualification, focused tests, the gate and review before completion. Hand-back with builder decisions D-01 to D-07: `do-work/runs/work-2026-09-04-232225/REQ-572-handback.md` (untracked scratch, keep).
+- **REQ-573** — pending, depends_on REQ-572. Open the detail drawer from an Activity row and highlight every row of the same REQ. A read-only prep another session wrote (`do-work/runs/work-2026-09-05-005615/activity-prep.md`, committed) proposes its scope including `web/board-detail.js`.
+- **REQ-578** — pending, no dependency, UR-117: hide the verify-findings strip while the Activity view is active (view switch in `board-controls.js`, not the renderer).
 
-**REQ-547** — stop finalize refusing a REQ that has no checkpoint entry.
-- Branch `worktree-agent-REQ-547-finalize-refuses-a-req-with-no-checkpoint-entry` at `b3d25c8`, pushed, **unmerged**.
-- Worktree `/home/user/skill-do-work-worktrees/worktree-agent-REQ-547-...` — **ACTIVE**, clean.
-- Complete hand-back at `do-work/runs/work-2026-09-04-200249/REQ-547-handback.md`.
-- Merge range: not yet captured. `<pre>` is whatever `git rev-parse --short HEAD` reads immediately before the first merge.
-- Remaining: merge → qualify → gate → review → lessons → release → finalize.
+### Worktrees (survey at handoff)
 
-**REQ-564** — reuse matching per-lane verification evidence for four hours.
-- Branch `worktree-agent-REQ-564-reuse-matching-per-lane-verification-evidence-for-four-hours` at `27b74c8`, pushed, **unmerged**.
-- Worktree `/home/user/skill-do-work-worktrees/worktree-agent-REQ-564-...` — **ACTIVE**, clean.
-- Complete hand-back at `do-work/runs/work-2026-09-04-200249/REQ-564-handback.md`. The builder finished after appearing interrupted; its `4526ab9` and `19103f5` sit on top of `27b74c8`, an orchestrator-authored WIP snapshot taken to survive the container. **Read the tip, not the snapshot.**
-- Builder-reported verification: vet, gofmt, full module tests, Windows cross-compile and contract-regressions all clean, with twelve isolating reverts each proved red. No real heavy lane was run, so the merged-tree gate is still owed.
+- `skill-do-work2-worktrees/worktree-agent-REQ-570-…` — FOREIGN (other session; REQ-570 released as 0.287.0, its cleanup is theirs).
+- `skill-do-work2-worktrees/gate-REQ-570` — FOREIGN (other session's detached gate checkout).
+- `.git/work-run-20260905/worktree-agent-REQ-506-focused-evidence` (branch codex/…) — FOREIGN, clean.
+- `.git/work-run-20260905/worktree-agent-REQ-577-launcher-fixture` (branch codex/…) — FOREIGN, clean.
+- REQ-572's builder worktree and branch were removed after the merge (no leftover). No REMOVABLE worktree belongs to this session.
 
 ### Parallelism
 
-`--fan-out 2` is safe. The two REQs are disjoint: REQ-547 is in `internal/requeststate/` and `internal/finalization/`; REQ-564 is in `internal/heavyverification/` and `internal/resultmodel/`. The only shared file is `skills/do-work/actions/work.md`, and they touch different sections. No dependency gate between them, so neither is on the other's critical path. Integration is serial regardless — merge, gate, review and release run one REQ at a time, which is where the wall clock goes.
+- Critical path: REQ-574 → REQ-572 → REQ-573. REQ-578 is independent but shares `javascript_behavior_c_test.go` with REQ-573; run it serially after REQ-573 to avoid an append conflict in the merge (no gate added, per the write_set rule).
+- Serial only. The gate's per-file budget is load-sensitive: with two or three concurrent gate processes the four files measured 31 to 60s; with one they sat at 17 to 28s (history in `do-work/test-durations.tsv`, last column is concurrent gate count).
 
-Both are complete and unblocked; start with either. REQ-547 is the smaller merge.
+### Heads-up (first ten minutes)
 
-### Heads-up list — things that will bite in the first ten minutes
-
-- **The container ships the wrong toolchain.** Go 1.24.7, no ShellCheck, `just` 1.21.0. The gate needs Go 1.26.1, ShellCheck 0.11.0, and a `just` that understands `[positional-arguments]`. Provision all three before the gate, or it fails for reasons that have nothing to do with the code. — next session
-- **One test file straddles its budget.** `_dev/tests/session-start-hook-behavior.sh` measured 27, 30, 32, 39 and 44 seconds across five runs today against a strict 30-second limit, with nobody touching it. It caused two full gate reruns. It is a flake, not a regression. Nothing in the queue covers it; worth capturing. — maintainer
-- **Version numbers collided once already.** This branch and main both released from 0.275.3. Main took 0.275.4 and 0.276.0; this branch renumbered to 0.277.0/0.278.0/0.279.0. Before cutting the next release, re-read `CHANGELOG.md`'s first entry rather than assuming. — next session
-- **REQ-508 is claimed by another checkout** (`t2s-Virtual-Machine.local:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2`). Its checkpoint entry is FOREIGN — leave it byte-identical. — next session
-- **A review is in flight on the pull request right now.** knews2019/skill-do-work#180, Codex triggered manually at 20:24 against commit `ad8e9b4`. Its findings will land after this session ended, so **read the PR's review threads before touching wave 2** — they are unanswered by definition. The same reviewer already found two genuine P1 bugs in REQ-515 that two full independent review passes had missed, so treat its findings as bug reports: verify each against the code, fix what is real, reply on the thread. Note `ad8e9b4` is one commit behind the handoff commit `dd43421`; the difference is handoff documentation and queue state only, no code. — next session
-- **Estimates run low on this queue.** Calibration: REQ-559 25→33, REQ-560 20→51, REQ-515 30→105, REQ-568 50→111. The gap is not building; it is merge, gate, review and remediation. Do not plan wave 2 against the P50 figures. — maintainer
-
-### Open P1 findings on shipped code — do these first
-
-Two P1 findings landed on knews2019/skill-do-work#180 after the handoff was written. Both are on REQ-515's code, **already released as 0.279.0**. I verified both against the source and replied on both threads; neither is fixed. They are the first work of the next session, ahead of wave 2.
-
-**P1-A — recovery accepts a committed-risk transaction.** `skills/do-work/tools/do-work-cli/internal/finalization/finalization_commands.go`, `requestScopedRefusal`. `gittransaction` defines `FailureCommittedRisk = "committed_state_risk"` and `exact_commit.go` returns it from seven sites *after HEAD has advanced*. `requestScopedRefusal` tests only `OutcomeFailure` and `RollbackIncomplete`; a rollback that restored files but not HEAD reports `succeeded`, so no guard fires, the record is accepted as request-scoped, and recovery drains later journals with an unknown commit in history. **This is a widening of what recovery accepts, which REQ-515's own Constraints forbid.** Fix shape: preserve committed risk through `advanceJournal`'s `FINALIZATION-PRIMARY-COMMIT` wrap instead of flattening it to a rolled-back outcome, then have `requestScopedRefusal` treat it as shared state. Pin it with a test that fails without the guard.
-
-**P1-B — a set-aside journal's shared lifecycle images go stale.** Same file, `consumeRecoveryRecord`. When two prepared journals share `do-work/CHECKPOINT.md`, setting the first aside lets the second remove its own claim and commit; the first journal's preimage and postimage then match neither the original nor the current checkpoint, so its next recovery reports `FINALIZATION-LIFECYCLE-CONFLICT` with an incomplete rollback and the queue stops permanently. Fix shape: rebase the set-aside journal's shared lifecycle images as siblings settle, or make its later recovery tolerate sibling-owned checkpoint transitions.
-
-**P1-B was already known and was misjudged.** This REQ's own re-review found it and scored it report-only, reasoning that it fails safe and still beats the old behaviour where the first refused record parked the whole queue. Both points are true and neither makes it acceptable — the promise this REQ shipped is "every other REQ still runs", and that promise holds only within one queue boundary. Treat it as P1.
-
-### Queue-speed recommendation
-
-`do-work run REQ-562` after wave 2. It records per-run lifecycle spans and reports the critical path, which is the only thing that turns the calibration gap above into something actionable. REQ-564 helps but is narrower than its title: this session's nine gate runs were fast-tier, not heavy lanes.
-
-### Worktree verdicts
-
-- `/home/user/skill-do-work` — integration checkout, branch `claude/req-559-560-515-547-564-g82uxl`, clean.
-- `/home/user/skill-do-work-worktrees/worktree-agent-REQ-547-finalize-refuses-a-req-with-no-checkpoint-entry` — **ACTIVE**, clean, unmerged.
-- `/home/user/skill-do-work-worktrees/worktree-agent-REQ-564-reuse-matching-per-lane-verification-evidence-for-four-hours` — **ACTIVE**, clean, unmerged.
-
-No worktree is REMOVABLE. None was removed and no foreign claim was touched.
+- Two other sessions share this checkout: REQ-577 (ShellCheck launcher-fixture repair, claimed 23:58Z) and REQ-506 (deferred behind REQ-577) are theirs; their run dirs `do-work/runs/work-2026-09-05-005615/` and `work-2026-09-05-020017/` and `do-work/CHECKPOINT.md` header edits are foreign. Owner: those sessions.
+- `do-work/CHECKPOINT.md` lists REQ-574 and REQ-577 under In Progress with the same writer label (host:path); recover cannot tell sessions apart. Only REQ-574 is yours. Owner: next session.
+- `stash@{0}: On main: do-work recovery: preserve interrupted REQ-539 orchestration metadata` is parked and easy to pop by accident from any worktree. Owner: the maintainer (apply or drop).
+- The pre-build green-gate record for REQ-572 was never recorded; the test-gate phase needs a direct gate run with `--gate-exit-status`. Owner: next session.
+- The Plan agent for REQ-574 may have died with this session; check the run dir before planning. Owner: next session.
+- `do-work/runs/work-2026-09-04-232225/REQ-572-probe.sh` is the focused-test probe for REQ-572's test gate (untracked scratch). Owner: next session.
