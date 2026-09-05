@@ -11,3 +11,9 @@ User scope: `do-work run REQ-507` (hand the archive and commit tails to finalize
 - REQ-584 completed and archived (commit aea9d619, metadata 14436f51; no release, already-green no-op). Builder worktree for it was unused and removed.
 - REQ-507 re-claimed at 1012e5e2 (explicit target). Saved-range resume proof: drift on 8 of 12 paths → reuse rejected, pair deleted, prior evidence demoted to "Prior Evidence". Direct canonical gate green at 1012e5e2 (recorded green-gate); preflight baseline green (lifecycleadvance, finalization, resultmodel). Foreign do-work/working/baseline.json preserved and restored.
 - REQ-507 builder build_507 dispatched at 2026-09-05T10:10:08Z on worktree-agent-REQ-507-hand-archive-and-commit-tails-to-finalize (.git/work-run-20260905/); expected artifact REQ-507-handback.md.
+
+- REQ-507 remediation builder returned no commits (all four acceptance criteria hold on current main; hand-back promoted into the record and removed). Qualification over 8e3dbf01..ad8bceb7 satisfied; focused probe green; direct canonical gate green (run at 5cb094dd, recorded at e6005c0e, do-work-only drift between); independent review 96% Pass, five report-only findings; six heavy lanes executed green at c6f3c77d.
+- REQ-507 completed and delivered: release 0.294.0 "Closing a Request Is One Command", commit d3be4122 (supplied provenance ad8bceb7), archive do-work/archive/UR-098/REQ-507-hand-archive-and-commit-tails-to-finalize.md; UR-098 closed and archived with all members.
+- Observed collision: the sibling session's commit 985fa736 swept this run's uncommitted REQ-507 working edits into its own "[work run] REQ-574 owner evidence" commit. Nothing was lost; noted for the maintainer.
+
+Status: complete (targeted run REQ-507; repair REQ-584 folded in).
