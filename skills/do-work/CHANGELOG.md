@@ -2,6 +2,16 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.288.0 — advance Reports What the Test Actually Did (2026-09-05)
+
+A focused test that never launched, or that the timer killed, could be promoted to a satisfied gate. `advance` now reports what it observed rather than reconstructing it from the reserved exit values 124 and 125, so the same exit code means different things depending on whether the process really finished.
+
+- The probe runner returns observed evidence on both build tags: `launched` is set at the actual launch boundary and `timed_out` only in the timer branch, and the three pre-launch refusals state both explicitly rather than inheriting the zero value.
+- Only an execution that launched and finished on its own is compared against the saved baseline; an ineligible one keeps `not_compared` instead of a verdict about the saved record.
+- A `matching_red` comparison can no longer overwrite a failed subordinate.
+- An ordinary child that legitimately exits 124 or 125 is still eligible baseline red — the fix does not invert the old bug.
+- Missing-input continuations are built in the channel that parses them, so substituting one placeholder is the whole remedy.
+
 ## 0.287.1 — One Row Per Worktree in Verify (2026-09-05)
 
 A leftover worktree whose branch git cannot resolve used to produce two messages from one fact: an undetermined merge-state finding, and a skipped-probe line saying the committed-queue-state check failed with "no such branch". Now it produces one row, and that row says the queue-state check could not run either.
