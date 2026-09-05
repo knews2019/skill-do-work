@@ -617,16 +617,19 @@ func isMarkdownBlockPunctuation(value byte) bool {
 		value >= '{' && value <= '~'
 }
 
-// isEnclosingFenceCharacter excludes the four marks CommonMark defines as line
+// isEnclosingFenceCharacter excludes the marks CommonMark defines as line
 // constructs that never enclose anything: thematic breaks use "-", "_" and "*",
-// and setext underlines use "-" and "=". Treating those as fences would let the
-// unpaired "---" a request carries above its source line swallow the rest of the
-// document, so the request's own section could never be found again.
+// setext underlines use "-" and "=", and "#" opens an ATX heading. Treating
+// those as fences would let the unpaired "---" a request carries above its
+// source line swallow the rest of the document, or an ordinary "### " heading
+// swallow the request's own Timing section, so that section could never be
+// found again. The exclusion is by construct, not by run length: no run of "#"
+// encloses anything, since seven or more open nothing at all.
 func isEnclosingFenceCharacter(value byte) bool {
 	if value == 0 || !isMarkdownBlockPunctuation(value) {
 		return false
 	}
-	return value != '-' && value != '_' && value != '*' && value != '='
+	return value != '-' && value != '_' && value != '*' && value != '=' && value != '#'
 }
 
 // streamPathFor resolves the Git common directory so every linked worktree of one

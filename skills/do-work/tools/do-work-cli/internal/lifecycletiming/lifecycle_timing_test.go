@@ -628,3 +628,33 @@ func seedStreamForRequest(t *testing.T, repositoryRoot, requestID string) {
 		StartedAt: mustParseTiming(t, "2026-09-05T00:34:20Z"), HasExplicitStart: true,
 	})
 }
+
+// A "###" heading is an ATX heading, never a fence: it encloses nothing, so it
+// cannot hide the request's own Timing section from replacement. Reading it as
+// an opening fence leaves the stale summary in place and appends a second one.
+func TestFoldTimingSummaryReplacesATimingSectionBelowASubHeading(t *testing.T) {
+	repositoryRoot := newTimingRepository(t)
+	requestPath := "do-work/working/REQ-562-record-lifecycle-timings.md"
+	writeTimingTestFile(t, repositoryRoot, requestPath,
+		"---\nid: REQ-562\n---\n\n## Implementation\n\n### Details\n\nOrdinary prose under an ordinary sub-heading.\n\n## Timing\n\nStale summary from an interrupted run.\n\n## Lessons Learned\n\nKeep this.\n")
+	seedDeterministicStream(t, repositoryRoot)
+
+	if _, _, err := FoldTimingSummary(repositoryRoot, FoldRequest{
+		RunIdentifier: "work-2026-09-05-003420", RequestID: "REQ-562", RequestPath: requestPath,
+	}); err != nil {
+		t.Fatalf("fold: %v", err)
+	}
+	folded := readTimingTestFile(t, repositoryRoot, requestPath)
+	if strings.Count(folded, "## Timing") != 1 {
+		t.Fatalf("a sub-heading hid the existing section, so a duplicate was appended:\n%s", folded)
+	}
+	if strings.Contains(folded, "Stale summary") {
+		t.Fatalf("stale summary survived below a sub-heading:\n%s", folded)
+	}
+	if !strings.Contains(folded, "### Details\n\nOrdinary prose under an ordinary sub-heading.\n") {
+		t.Fatalf("the sub-heading section was disturbed:\n%s", folded)
+	}
+	if !strings.Contains(folded, "## Lessons Learned\n\nKeep this.\n") {
+		t.Fatalf("a later section was destroyed:\n%s", folded)
+	}
+}
