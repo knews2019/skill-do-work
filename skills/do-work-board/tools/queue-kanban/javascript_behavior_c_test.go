@@ -2545,12 +2545,17 @@ func TestJavaScriptBehaviorActivityViewHidesTheVerifyFindingsStrip(t *testing.T)
 	functionBlocks := []string{
 		sliceBalancedBlockAfter(t, indexHtml, "function createElement("),
 		sliceBalancedBlockAfter(t, indexHtml, "function renderVerifyFindingsStrip("),
-		// The renderer's own helpers (REQ-579): the strip is a list of rows now,
-		// and applyView still has to see what that renderer drew.
+		// The renderer's own helpers (REQ-579, extended by REQ-589's slim band):
+		// applyView still has to see what that renderer drew, so every function
+		// renderVerifyFindingsStrip reaches has to be in the probe with it.
 		sliceBalancedBlockAfter(t, indexHtml, "function formatFindingsSummary("),
+		sliceBalancedBlockAfter(t, indexHtml, "function formatSkippedProbeCount("),
+		sliceBalancedBlockAfter(t, indexHtml, "function categoryWords("),
 		sliceBalancedBlockAfter(t, indexHtml, "function groupFindingsBySubject("),
+		sliceBalancedBlockAfter(t, indexHtml, "function makeSubjectListItem("),
 		sliceBalancedBlockAfter(t, indexHtml, "function makeFindingRow("),
 		sliceBalancedBlockAfter(t, indexHtml, "function makeSkippedProbeRow("),
+		sliceBalancedBlockAfter(t, indexHtml, "function createFindingChevronIcon("),
 		sliceBalancedBlockAfter(t, indexHtml, "function applyView("),
 	}
 	javascriptProbe := `
@@ -2577,7 +2582,10 @@ var document = {
     if (!nodesById[nodeId]) { nodesById[nodeId] = makeStubNode(); }
     return nodesById[nodeId];
   },
-  createElement: function (tagName) { var node = makeStubNode(); node.stubTag = tagName; return node; }
+  createElement: function (tagName) { var node = makeStubNode(); node.stubTag = tagName; return node; },
+  // The row chevron is real inline SVG (REQ-589), so the renderer this probe
+  // drives reaches for the namespaced factory. Nothing below asserts on it.
+  createElementNS: function (namespaceUri, tagName) { var node = makeStubNode(); node.stubTag = tagName; return node; }
 };
 var viewState = { view: "board", lens: "flat" };
 var renderedOnce = {
@@ -2930,69 +2938,32 @@ process.stdout.write(JSON.stringify(results));`
 	}
 }
 
-// REQ-579: the strip is a list of warnings, not a set of work items. A finding
-// and a skipped probe are the same kind of thing to the reader — "verify has
-// something to tell you" — so they share one row shape in one list, and the two
-// visual languages that used to split them (a bordered card per finding, a
-// bullet inside a collapsed disclosure per skipped probe) are gone.
+// REQ-589: the strip is the M4 slim band. Closed it is one line — the VERIFY
+// label, the counts, and every finding's subject with its weight dot; open it is
+// one row per finding, each row a disclosure whose remedy appears only after the
+// reader clicks it. The failure this pins is REQ-588's shipped list, which put
+// every subject heading, every detail and every remedy on screen at once.
 //
 // The weights come from the producer alone: `fixable` means `do-work cleanup`
 // resolves it, and a skipped probe is a non-answer. Nothing here invents a
 // severity the payload did not carry.
-func TestJavaScriptBehaviorVerifyFindingsRenderAsOneRowList(t *testing.T) {
+func TestJavaScriptBehaviorVerifyFindingsRenderAsTheSlimBand(t *testing.T) {
 	indexHtml := generateLiveSite(t)
 	functionBlocks := []string{
 		sliceBalancedBlockAfter(t, indexHtml, "function createElement("),
 		sliceBalancedBlockAfter(t, indexHtml, "function renderVerifyFindingsStrip("),
 		sliceBalancedBlockAfter(t, indexHtml, "function formatFindingsSummary("),
+		sliceBalancedBlockAfter(t, indexHtml, "function formatSkippedProbeCount("),
+		sliceBalancedBlockAfter(t, indexHtml, "function categoryWords("),
 		sliceBalancedBlockAfter(t, indexHtml, "function groupFindingsBySubject("),
+		sliceBalancedBlockAfter(t, indexHtml, "function makeSubjectListItem("),
 		sliceBalancedBlockAfter(t, indexHtml, "function makeFindingRow("),
 		sliceBalancedBlockAfter(t, indexHtml, "function makeSkippedProbeRow("),
+		sliceBalancedBlockAfter(t, indexHtml, "function createFindingChevronIcon("),
 	}
-	javascriptProbe := `
-function makeStubNode(tagName) {
-  var node = {
-    stubTag: tagName,
-    children: [],
-    className: "",
-    hidden: false,
-    stubText: "",
-    appendChild: function (childNode) { this.children.push(childNode); return childNode; }
-  };
-  Object.defineProperty(node, "textContent", {
-    get: function () { return this.stubText; },
-    set: function (nodeText) { this.stubText = nodeText; this.children = []; }
-  });
-  return node;
-}
-var createdTagNames = [];
-var nodesById = {};
-var document = {
-  getElementById: function (nodeId) {
-    if (!nodesById[nodeId]) { nodesById[nodeId] = makeStubNode("div"); }
-    return nodesById[nodeId];
-  },
-  createElement: function (tagName) { createdTagNames.push(tagName); return makeStubNode(tagName); }
-};
+	javascriptProbe := verifyFindingsStubDocumentProbe + `
 var boardData = {};
 ` + strings.Join(functionBlocks, "\n") + `
-// Flatten a node's whole subtree so a row's class and its visible words can be
-// read together — a row that carries the muted class but no text proves nothing.
-function subtreeText(node) {
-  if (node.children.length === 0) { return node.stubText; }
-  return node.children.map(subtreeText).join(" ");
-}
-function describeChildren(node) {
-  return node.children.map(function (childNode) {
-    return {
-      tag: childNode.stubTag,
-      classes: childNode.className ? childNode.className.split(" ") : [],
-      text: childNode.stubText,
-      subtreeText: subtreeText(childNode)
-    };
-  });
-}
-
 // The subjectless finding is FIRST in producer order on purpose: grouping has to
 // pull the two worktree rows above it, so the assertions below cannot pass on a
 // renderer that simply echoes the payload order.
@@ -3029,9 +3000,9 @@ renderVerifyFindingsStrip();
 var results = {
   stripHidden: document.getElementById("board-findings").hidden,
   headerCount: document.getElementById("board-findings-count").stubText,
-  listChildren: describeChildren(document.getElementById("board-findings-cards"))
-    .concat(describeChildren(document.getElementById("board-findings-skipped-list"))),
-  createdTagNames: createdTagNames
+  subjectItems: document.getElementById("board-findings-subjects").children.map(describeStubNode),
+  rows: document.getElementById("board-findings-cards").children.map(describeStubNode)
+    .concat(document.getElementById("board-findings-skipped-list").children.map(describeStubNode))
 };
 
 // Re-render with nothing to report. Hiding the strip is not the whole job: the
@@ -3042,103 +3013,182 @@ renderVerifyFindingsStrip();
 results.emptyRerender = {
   stripHidden: document.getElementById("board-findings").hidden,
   findingsHostChildren: document.getElementById("board-findings-cards").children.length,
-  skippedHostChildren: document.getElementById("board-findings-skipped-list").children.length
+  skippedHostChildren: document.getElementById("board-findings-skipped-list").children.length,
+  subjectItems: document.getElementById("board-findings-subjects").children.length
 };
 process.stdout.write(JSON.stringify(results));`
-	probeOutput := runJavaScriptBehaviorProbe(t, "verify findings render as one row list", javascriptProbe)
+	probeOutput := runJavaScriptBehaviorProbe(t, "verify findings render as the slim band", javascriptProbe)
 
 	var results struct {
-		StripHidden  bool   `json:"stripHidden"`
-		HeaderCount  string `json:"headerCount"`
-		ListChildren []struct {
-			Tag         string   `json:"tag"`
-			Classes     []string `json:"classes"`
-			Text        string   `json:"text"`
-			SubtreeText string   `json:"subtreeText"`
-		} `json:"listChildren"`
-		CreatedTagNames []string `json:"createdTagNames"`
-		EmptyRerender   struct {
+		StripHidden   bool                `json:"stripHidden"`
+		HeaderCount   string              `json:"headerCount"`
+		SubjectItems  []describedStubNode `json:"subjectItems"`
+		Rows          []describedStubNode `json:"rows"`
+		EmptyRerender struct {
 			StripHidden          bool `json:"stripHidden"`
 			FindingsHostChildren int  `json:"findingsHostChildren"`
 			SkippedHostChildren  int  `json:"skippedHostChildren"`
+			SubjectItems         int  `json:"subjectItems"`
 		} `json:"emptyRerender"`
 	}
 	if decodeError := json.Unmarshal(probeOutput, &results); decodeError != nil {
-		t.Fatalf("decode findings row results: %v (output %q)", decodeError, probeOutput)
+		t.Fatalf("decode slim band results: %v (output %q)", decodeError, probeOutput)
 	}
 
 	if results.StripHidden {
-		t.Fatal("the strip hid itself while it had two findings and a skipped probe to show")
+		t.Fatal("the strip hid itself while it had three findings and a skipped probe to show")
 	}
 	// The skipped count joins the header only when there is one, so the reader
 	// sees "checked, and here is what went unchecked" in one line.
 	if results.HeaderCount != "3 findings · 1 probe not checked" {
 		t.Errorf("header count = %q, want %q", results.HeaderCount, "3 findings · 1 probe not checked")
 	}
-	for _, createdTag := range results.CreatedTagNames {
-		if createdTag == "details" || createdTag == "summary" {
-			t.Errorf("the collapsed disclosure is still built (createElement(%q)) — skipped probes belong in the list", createdTag)
+
+	// D2, the closed line: one entry per FINDING, not per group — two findings on
+	// one worktree are two things to answer for — then the skipped probes summed
+	// into a single grey entry. A finding the producer gave no subject is named by
+	// its category, which is the only identifier it has.
+	wantSubjectEntries := []struct {
+		label    string
+		dotClass string
+	}{
+		{"worktree-agent-REQ-506-focused-evidence", ""},
+		{"worktree-agent-REQ-506-focused-evidence", "board-findings-dot-fixable"},
+		{"checkpoint ghost request", ""},
+		{"1 probe not checked", "board-findings-dot-skipped"},
+	}
+	if len(results.SubjectItems) != len(wantSubjectEntries) {
+		t.Fatalf("the closed line names %d findings, want %d: %+v",
+			len(results.SubjectItems), len(wantSubjectEntries), results.SubjectItems)
+	}
+	for entryIndex, wantEntry := range wantSubjectEntries {
+		subjectItem := results.SubjectItems[entryIndex]
+		if len(subjectItem.Children) != 2 {
+			t.Fatalf("closed-line entry %d holds %d parts, want its dot and its name: %+v",
+				entryIndex, len(subjectItem.Children), subjectItem)
+		}
+		entryDot, entryName := subjectItem.Children[0], subjectItem.Children[1]
+		if !hasClassName(entryDot.Classes, "board-findings-dot") {
+			t.Errorf("closed-line entry %d opens with %v, want the weight dot", entryIndex, entryDot.Classes)
+		}
+		if wantEntry.dotClass != "" && !hasClassName(entryDot.Classes, wantEntry.dotClass) {
+			t.Errorf("closed-line entry %d dot = %v, want %s", entryIndex, entryDot.Classes, wantEntry.dotClass)
+		}
+		if wantEntry.dotClass == "" && len(entryDot.Classes) != 1 {
+			t.Errorf("closed-line entry %d dot = %v, want the plain amber dot", entryIndex, entryDot.Classes)
+		}
+		if entryName.Text != wantEntry.label {
+			t.Errorf("closed-line entry %d = %q, want %q", entryIndex, entryName.Text, wantEntry.label)
 		}
 	}
 
-	// One list, in the order the reader sees it: the subject heading, its two
-	// findings, the subjectless finding, then the skipped probe.
-	if len(results.ListChildren) != 5 {
-		t.Fatalf("the list holds %d children, want a subject heading plus four rows: %+v",
-			len(results.ListChildren), results.ListChildren)
+	// D3, the open rows: grouping reordered the payload, so the subjectless
+	// finding lands after the two that share a worktree, and the skipped probe is
+	// a row of the same shape at the end.
+	if len(results.Rows) != 4 {
+		t.Fatalf("the strip drew %d rows, want one per finding plus the skipped probe: %+v",
+			len(results.Rows), results.Rows)
 	}
-	subjectHeading := results.ListChildren[0]
-	if !hasClassName(subjectHeading.Classes, "board-findings-subject") {
-		t.Fatalf("the list opens with %v, want the subject heading its two findings share", subjectHeading.Classes)
+	wantRowDetails := []string{
+		"the worktree exists and its REQ is still in do-work/working/",
+		"the branch is already contained in HEAD",
+		"do-work/CHECKPOINT.md names REQ-999, which exists nowhere",
+		"committed-queue-state probe for worktree-agent-REQ-506-focused-evidence: no such branch",
 	}
-	if subjectHeading.Text != "worktree-agent-REQ-506-focused-evidence" {
-		t.Errorf("subject heading = %q, want the worktree both findings named", subjectHeading.Text)
-	}
-
-	rowMutedStates := []bool{}
-	for _, listChild := range results.ListChildren[1:] {
-		if hasClassName(listChild.Classes, "board-finding") {
-			t.Errorf("a row still carries the old card class: %v", listChild.Classes)
+	for rowIndex, row := range results.Rows {
+		if row.Tag != "details" {
+			t.Fatalf("row %d is a <%s>, want a details so its remedy stays behind a click", rowIndex, row.Tag)
 		}
-		if !hasClassName(listChild.Classes, "board-findings-row") {
-			t.Fatalf("child %v is neither a row nor the one subject heading — the list must be flat", listChild.Classes)
+		if !hasClassName(row.Classes, "board-findings-row") {
+			t.Fatalf("row %d is %v, want the row class", rowIndex, row.Classes)
 		}
-		rowMutedStates = append(rowMutedStates, hasClassName(listChild.Classes, "board-findings-row-muted"))
-	}
-	// Normal weight for the two findings a human must resolve; muted for the one a
-	// command fixes and for the probe that never ran.
-	wantMutedStates := []bool{false, true, false, true}
-	if !reflect.DeepEqual(rowMutedStates, wantMutedStates) {
-		t.Errorf("row muted states = %v, want %v (only fixable and skipped rows are muted)",
-			rowMutedStates, wantMutedStates)
-	}
-
-	// Grouping reordered the payload: the subjectless finding came first and must
-	// end up after the group, held away from it so it does not read as the last
-	// heading's third row.
-	subjectlessRow := results.ListChildren[3]
-	if !strings.Contains(subjectlessRow.SubtreeText, "REQ-999") {
-		t.Errorf("row 3 = %q, want the subjectless finding after the grouped ones", subjectlessRow.SubtreeText)
-	}
-	for _, detachedRow := range []int{3, 4} {
-		if !hasClassName(results.ListChildren[detachedRow].Classes, "board-findings-row-detached") {
-			t.Errorf("row %d joins the group above it: %v", detachedRow, results.ListChildren[detachedRow].Classes)
+		if len(row.Children) == 0 || row.Children[0].Tag != "summary" {
+			t.Fatalf("row %d does not open with a summary: %+v", rowIndex, row.Children)
+		}
+		if rowDetail := findChildByClassName(row.Children[0], "board-findings-detail"); rowDetail.Text != wantRowDetails[rowIndex] {
+			t.Errorf("row %d detail = %q, want %q", rowIndex, rowDetail.Text, wantRowDetails[rowIndex])
+		}
+		if findChildByClassName(row.Children[0], "board-findings-chevron").Tag != "svg" {
+			t.Errorf("row %d carries no chevron, so nothing says it opens: %+v", rowIndex, row.Children[0].Children)
 		}
 	}
 
-	fixableRow := results.ListChildren[2]
-	if !strings.Contains(fixableRow.SubtreeText, "cleanup can fix") {
-		t.Errorf("the fixable row lost its tag: %q", fixableRow.SubtreeText)
+	// A plain finding: dot, subject, category, detail, chevron — and the remedy
+	// out of the summary entirely, in the row's content.
+	plainRow := results.Rows[0]
+	wantPlainSummaryParts := []string{
+		"board-findings-dot",
+		"board-findings-subject",
+		"board-findings-category",
+		"board-findings-detail",
+		"board-findings-chevron",
 	}
-	if !strings.Contains(fixableRow.SubtreeText, "cleanup Pass 5 removes it") {
-		t.Errorf("the remedy is not on the row: %q", fixableRow.SubtreeText)
+	assertSummaryPartOrder(t, "row 0", plainRow.Children[0], wantPlainSummaryParts)
+	if len(plainRow.Children) != 2 {
+		t.Fatalf("row 0 holds %d parts, want the summary and the remedy: %+v", len(plainRow.Children), plainRow.Children)
 	}
-	skippedRow := results.ListChildren[4]
-	if !strings.Contains(skippedRow.SubtreeText, "not checked") {
-		t.Errorf("the skipped row carries no not-checked chip: %q", skippedRow.SubtreeText)
+	plainRemedy := plainRow.Children[1]
+	if !hasClassName(plainRemedy.Classes, "board-findings-remedy") {
+		t.Fatalf("row 0's second part is %v, want the remedy block", plainRemedy.Classes)
 	}
-	if !strings.Contains(skippedRow.SubtreeText, "no such branch") {
-		t.Errorf("the skipped row lost the probe text: %q", skippedRow.SubtreeText)
+	if len(plainRemedy.Children) != 2 {
+		t.Fatalf("the remedy holds %d parts, want its label and the producer's text: %+v",
+			len(plainRemedy.Children), plainRemedy.Children)
+	}
+	if plainRemedy.Children[0].Text != "What to do:" {
+		t.Errorf("remedy label = %q, want %q", plainRemedy.Children[0].Text, "What to do:")
+	}
+	if plainRemedy.Children[1].Text != "leave it in place" {
+		t.Errorf("remedy text = %q, want the producer's remedy with nothing prepended", plainRemedy.Children[1].Text)
+	}
+	// D5: the category is the producer's token lowercased with its hyphens shown
+	// as spaces — a mechanical transform, so a category the board has never heard
+	// of reads as words too. No uppercase chip survives.
+	if categoryText := findChildByClassName(plainRow.Children[0], "board-findings-category").Text; categoryText != "worktree present run in flight" {
+		t.Errorf("category = %q, want the token as lowercase words", categoryText)
+	}
+	if subjectText := findChildByClassName(plainRow.Children[0], "board-findings-subject").Text; subjectText != "worktree-agent-REQ-506-focused-evidence" {
+		t.Errorf("row 0 subject = %q, want the worktree the producer named", subjectText)
+	}
+
+	// A fixable finding keeps the green dot and the pill, in that summary slot.
+	fixableRow := results.Rows[1]
+	assertSummaryPartOrder(t, "row 1", fixableRow.Children[0], []string{
+		"board-findings-dot",
+		"board-findings-subject",
+		"board-findings-category",
+		"board-findings-detail",
+		"board-findings-fixable",
+		"board-findings-chevron",
+	})
+	if !hasClassName(findChildByClassName(fixableRow.Children[0], "board-findings-dot").Classes, "board-findings-dot-fixable") {
+		t.Errorf("the fixable row's dot is not the green one: %+v", fixableRow.Children[0].Children[0])
+	}
+	if fixText := findChildByClassName(fixableRow.Children[0], "board-findings-fixable").Text; fixText != "cleanup can fix" {
+		t.Errorf("fixable pill = %q, want %q", fixText, "cleanup can fix")
+	}
+
+	// A probe that never ran is a row of the same shape: the grey dot, the
+	// category "not checked", and the producer's whole sentence as the detail. It
+	// carries NO subject, because verify ships a skipped probe as one string with
+	// no subject field and carving one out of that sentence would be reading a
+	// subject back out of prose.
+	skippedRow := results.Rows[3]
+	assertSummaryPartOrder(t, "the skipped row", skippedRow.Children[0], []string{
+		"board-findings-dot",
+		"board-findings-category",
+		"board-findings-detail",
+		"board-findings-chevron",
+	})
+	if !hasClassName(findChildByClassName(skippedRow.Children[0], "board-findings-dot").Classes, "board-findings-dot-skipped") {
+		t.Errorf("the skipped row's dot is not the grey one: %+v", skippedRow.Children[0].Children[0])
+	}
+	if skippedCategory := findChildByClassName(skippedRow.Children[0], "board-findings-category").Text; skippedCategory != "not checked" {
+		t.Errorf("the skipped row's category = %q, want %q", skippedCategory, "not checked")
+	}
+	if len(skippedRow.Children) != 1 {
+		t.Errorf("the skipped row carries %d parts, want its summary alone — a probe that never ran has no remedy: %+v",
+			len(skippedRow.Children), skippedRow.Children)
 	}
 
 	// A strip re-rendered with nothing to report must leave nothing behind.
@@ -3149,19 +3199,31 @@ process.stdout.write(JSON.stringify(results));`
 		t.Errorf("stale rows survived the empty re-render (findings=%d, skipped=%d) — applyView reads those counts and would show the strip again",
 			results.EmptyRerender.FindingsHostChildren, results.EmptyRerender.SkippedHostChildren)
 	}
+	if results.EmptyRerender.SubjectItems != 0 {
+		t.Errorf("the closed line still named %d findings after the empty re-render", results.EmptyRerender.SubjectItems)
+	}
 
-	// The markup half of the same claim: the card grid and the disclosure are
-	// gone from the shipped template, not merely unused by the renderer.
+	// The markup half. The shell is static in the template — the renderer fills
+	// the subject list and the rows and decides nothing about the shape — so
+	// these ids and this nesting are the contract the renderer writes into.
 	findingsSection := sliceFindingsStripMarkup(t, indexHtml)
-	for _, retiredMarkup := range []string{"<details", "<summary", "board-anomalies-cards", "board-findings-skipped-summary"} {
+	for _, shellToken := range []string{
+		`<details class="board-findings-strip" id="board-findings-strip"`,
+		`id="board-findings-count"`,
+		`id="board-findings-subjects"`,
+		`class="board-findings-toggle board-findings-toggle-closed"`,
+		`class="board-findings-toggle board-findings-toggle-open"`,
+	} {
+		if !strings.Contains(findingsSection, shellToken) {
+			t.Errorf("the findings strip ships no %s:\n%s", shellToken, findingsSection)
+		}
+	}
+	// D1: the hint sentence is gone, and with it the header the REQ-579 strip
+	// borrowed from the anomalies strip above.
+	for _, retiredMarkup := range []string{"board-anomalies-hint", "board-anomalies-head", "board-anomalies-title", "board-findings-chip"} {
 		if strings.Contains(findingsSection, retiredMarkup) {
 			t.Errorf("the findings strip still ships %q:\n%s", retiredMarkup, findingsSection)
 		}
-	}
-	// The two hosts sit inside one list element, and the CSS makes them
-	// pass-through, so what ships is one list and not two stacked blocks.
-	if !strings.Contains(findingsSection, `id="board-findings-rows"`) {
-		t.Errorf("the findings strip has no row list wrapping its hosts:\n%s", findingsSection)
 	}
 	// applyView (board-controls.js, REQ-578) counts the children of these two ids
 	// to decide whether the strip has anything to say. It is outside this REQ's
@@ -3180,43 +3242,251 @@ process.stdout.write(JSON.stringify(results));`
 	// The pass-through rule is the whole "one list" claim and no DOM probe can
 	// see it: without it the two hosts are ordinary blocks and the rows inside
 	// them stop being laid out by the list.
-	groupRuleStart := strings.Index(indexHtml, ".board-findings-group {")
-	if groupRuleStart < 0 {
-		t.Fatal("the shipped page has no .board-findings-group rule")
-	}
-	groupRule := indexHtml[groupRuleStart:]
-	if ruleEnd := strings.Index(groupRule, "}"); ruleEnd >= 0 {
-		groupRule = groupRule[:ruleEnd]
-	}
+	groupRule := sliceBalancedBlockAfter(t, indexHtml, ".board-findings-group {")
 	if !strings.Contains(groupRule, "display: contents") {
 		t.Errorf("the row hosts are not pass-through, so the rows render as two blocks: %q", groupRule)
 	}
 }
 
-// REQ-588: a finding row reads as one warning line, not a paragraph. The failure
-// this pins is the shipped REQ-579 row: detail, the fixable tag and the remedy
-// were inline siblings joined by an arrow, so the remedy wrapped into the middle
-// of the detail sentence and the whole row had to be read instead of scanned.
+// REQ-589: the remedy is behind the row's own chevron, and the band is a band.
 //
-// Two halves, because neither proves the other. The renderer half: the remedy is
-// its own element after the detail, carrying the producer's remedy text with no
-// arrow glued to the front — a line does not need a pointer to say it follows.
-// The CSS half: no DOM probe can see that the remedy is a block or that the row
-// is a two-column grid, and without those two rules the same markup renders as
-// exactly the paragraph this REQ removes.
-func TestJavaScriptBehaviorVerifyFindingRemedyIsItsOwnLineAfterTheDetail(t *testing.T) {
+// Two halves, because neither proves the other. The renderer half is in the slim
+// band test above: the remedy is the row disclosure's content, not a line in its
+// summary. This is the CSS half, and no DOM probe can see any of it — without
+// these rules the same markup renders as exactly the always-open paragraph list
+// this REQ replaces.
+func TestJavaScriptBehaviorVerifyFindingsBandRulesHideWhatIsNotBeingRead(t *testing.T) {
 	indexHtml := generateLiveSite(t)
+
+	// D1, the band: an accent edge on a quiet surface, not a bordered card.
+	bandRule := sliceBalancedBlockAfter(t, indexHtml, ".board-findings {")
+	for _, wantDeclaration := range []string{
+		"border-left: 3px solid var(--accent-pending)",
+		"background-color: var(--surface-2)",
+		"border-radius: 8px",
+	} {
+		if !strings.Contains(bandRule, wantDeclaration) {
+			t.Errorf("the strip is not the slim band — %q missing from %q", wantDeclaration, bandRule)
+		}
+	}
+
+	// D2, closed: the subject list is the closed line and gives way to the rows,
+	// and the one control reads Show or Hide depending on which state it is in.
+	subjectListWhileOpenRule := sliceBalancedBlockAfter(t, indexHtml, ".board-findings-strip[open] .board-findings-subject-list {")
+	if !strings.Contains(subjectListWhileOpenRule, "display: none") {
+		t.Errorf("the closed line's subjects stay on screen while the rows are open: %q", subjectListWhileOpenRule)
+	}
+	if !strings.Contains(indexHtml, ".board-findings-strip[open] .board-findings-toggle-closed,") ||
+		!strings.Contains(indexHtml, ".board-findings-strip:not([open]) .board-findings-toggle-open {") {
+		t.Error("the Show and Hide labels are not swapped by the strip's own open state")
+	}
+
+	// D3, open: the detail is clipped to one line while the row is closed and
+	// wraps once it is open — the closed row is scanned, the open one is read.
+	detailRule := sliceBalancedBlockAfter(t, indexHtml, ".board-findings-detail {")
+	for _, wantDeclaration := range []string{"white-space: nowrap", "text-overflow: ellipsis", "min-width: 0"} {
+		if !strings.Contains(detailRule, wantDeclaration) {
+			t.Errorf("the closed row's detail is not clipped to the line — %q missing from %q", wantDeclaration, detailRule)
+		}
+	}
+	openDetailRule := sliceBalancedBlockAfter(t, indexHtml, ".board-findings-row[open] .board-findings-detail {")
+	if !strings.Contains(openDetailRule, "white-space: normal") {
+		t.Errorf("an opened row still clips its own detail: %q", openDetailRule)
+	}
+	// The row is a list item: it answers the pointer and the keyboard, and the
+	// summary marker the browser draws by default is not part of this design.
+	rowSummaryRule := sliceBalancedBlockAfter(t, indexHtml, ".board-findings-row > summary {")
+	for _, wantDeclaration := range []string{"display: flex", "list-style: none", "cursor: pointer"} {
+		if !strings.Contains(rowSummaryRule, wantDeclaration) {
+			t.Errorf("the row summary is not a clickable flex line — %q missing from %q", wantDeclaration, rowSummaryRule)
+		}
+	}
+	for _, wantSelector := range []string{
+		".board-findings-row > summary:hover {",
+		".board-findings-row > summary:focus-visible {",
+		".board-findings-row > summary::-webkit-details-marker {",
+		".board-findings-strip > summary::-webkit-details-marker {",
+	} {
+		if !strings.Contains(indexHtml, wantSelector) {
+			t.Errorf("the shipped page has no %s rule", wantSelector)
+		}
+	}
+	// The remedy is an inset block under its row, with the band's own accent as
+	// its rule, so it reads as an answer to the line above rather than a sibling.
+	remedyRule := sliceBalancedBlockAfter(t, indexHtml, ".board-findings-remedy {")
+	if !strings.Contains(remedyRule, "border-left: 2px solid var(--accent-pending)") {
+		t.Errorf("the remedy block lost its accent rule: %q", remedyRule)
+	}
+	// The three weights the producer allows, and nothing else.
+	dotRule := sliceBalancedBlockAfter(t, indexHtml, ".board-findings-dot {")
+	if !strings.Contains(dotRule, "background-color: var(--accent-pending)") {
+		t.Errorf("the ordinary finding's dot is not the pending accent: %q", dotRule)
+	}
+	fixableDotRule := sliceBalancedBlockAfter(t, indexHtml, ".board-findings-dot-fixable {")
+	if !strings.Contains(fixableDotRule, "background-color: var(--accent-done)") {
+		t.Errorf("the fixable dot is not the done accent: %q", fixableDotRule)
+	}
+	skippedDotRule := sliceBalancedBlockAfter(t, indexHtml, ".board-findings-dot-skipped {")
+	if !strings.Contains(skippedDotRule, "background-color: var(--ink-faint)") {
+		t.Errorf("the skipped dot is not the faint ink: %q", skippedDotRule)
+	}
+	// The REQ-579 rules these replace are gone, not merely unused: dead CSS is how
+	// the next reader learns the wrong shape.
+	for _, retiredRule := range []string{
+		".board-findings-chip {",
+		".board-findings-row-muted {",
+		".board-findings-row-detached {",
+		".board-findings-text {",
+	} {
+		if strings.Contains(indexHtml, retiredRule) {
+			t.Errorf("the shipped stylesheet still carries the retired rule %s", retiredRule)
+		}
+	}
+}
+
+// REQ-589 D4: the strip remembers whether it was open, per browser, in one
+// localStorage key — best-effort exactly like the detail panel's width. Default
+// closed: a reader who has never touched it gets the one-line band.
+//
+// The shell is static in the template, so the wiring runs once at load rather
+// than inside the renderer. That is what this probe drives.
+func TestJavaScriptBehaviorVerifyFindingsStripRemembersItsOpenState(t *testing.T) {
+	indexHtml := generateLiveSite(t)
+	// The key is a top-level declaration, not a function, so the probe cannot
+	// slice it. Pin the exact line instead: the probe below declares the same
+	// spelling, and a rename that touched only one of the two would pass here and
+	// silently forget every reader's choice.
+	const storageKeyDeclaration = `var verifyFindingsOpenStorageKey = "queueKanbanVerifyFindingsOpen";`
+	if !strings.Contains(indexHtml, storageKeyDeclaration) {
+		t.Fatalf("the shipped client does not declare %s", storageKeyDeclaration)
+	}
 	functionBlocks := []string{
-		sliceBalancedBlockAfter(t, indexHtml, "function createElement("),
-		sliceBalancedBlockAfter(t, indexHtml, "function makeFindingRow("),
+		sliceBalancedBlockAfter(t, indexHtml, "function readStoredVerifyFindingsOpenState("),
+		sliceBalancedBlockAfter(t, indexHtml, "function persistVerifyFindingsOpenState("),
+		sliceBalancedBlockAfter(t, indexHtml, "function restoreVerifyFindingsOpenState("),
 	}
 	javascriptProbe := `
+` + storageKeyDeclaration + `
+var storedItems = {};
+var storageThrows = false;
+var localStorage = {
+  getItem: function (itemKey) {
+    if (storageThrows) { throw new Error("storage is denied in this context"); }
+    return Object.prototype.hasOwnProperty.call(storedItems, itemKey) ? storedItems[itemKey] : null;
+  },
+  setItem: function (itemKey, itemValue) {
+    if (storageThrows) { throw new Error("storage is denied in this context"); }
+    storedItems[itemKey] = itemValue;
+  }
+};
+var toggleHandler = null;
+var stripDisclosure = {
+  open: false,
+  addEventListener: function (eventName, eventHandler) {
+    if (eventName === "toggle") { toggleHandler = eventHandler; }
+  }
+};
+var document = { getElementById: function () { return stripDisclosure; } };
+` + strings.Join(functionBlocks, "\n") + `
+var results = {};
+
+// Nothing stored: the band opens closed.
+restoreVerifyFindingsOpenState();
+results.defaultOpen = stripDisclosure.open;
+results.toggleWired = typeof toggleHandler === "function";
+
+// The reader opens it. The toggle event is what the browser fires, and the
+// handler must read the element's own state rather than assume a direction.
+stripDisclosure.open = true;
+toggleHandler();
+results.storedAfterOpening = storedItems[verifyFindingsOpenStorageKey];
+
+// A fresh page load with that value stored renders the band open.
+stripDisclosure.open = false;
+toggleHandler = null;
+restoreVerifyFindingsOpenState();
+results.restoredOpen = stripDisclosure.open;
+
+// Closing it again is remembered too, and reloads closed.
+stripDisclosure.open = false;
+toggleHandler();
+results.storedAfterClosing = storedItems[verifyFindingsOpenStorageKey];
+stripDisclosure.open = true;
+restoreVerifyFindingsOpenState();
+results.restoredClosed = stripDisclosure.open;
+
+// A browser that denies storage loses the memory, never the strip.
+storageThrows = true;
+stripDisclosure.open = true;
+results.deniedStorageThrew = false;
+try {
+  restoreVerifyFindingsOpenState();
+  toggleHandler();
+} catch (deniedStorageError) {
+  results.deniedStorageThrew = true;
+}
+results.deniedStorageOpen = stripDisclosure.open;
+process.stdout.write(JSON.stringify(results));`
+	probeOutput := runJavaScriptBehaviorProbe(t, "verify findings strip remembers its open state", javascriptProbe)
+
+	var results struct {
+		DefaultOpen        bool   `json:"defaultOpen"`
+		ToggleWired        bool   `json:"toggleWired"`
+		StoredAfterOpening string `json:"storedAfterOpening"`
+		RestoredOpen       bool   `json:"restoredOpen"`
+		StoredAfterClosing string `json:"storedAfterClosing"`
+		RestoredClosed     bool   `json:"restoredClosed"`
+		DeniedStorageThrew bool   `json:"deniedStorageThrew"`
+		DeniedStorageOpen  bool   `json:"deniedStorageOpen"`
+	}
+	if decodeError := json.Unmarshal(probeOutput, &results); decodeError != nil {
+		t.Fatalf("decode remembered-state results: %v (output %q)", decodeError, probeOutput)
+	}
+
+	if results.DefaultOpen {
+		t.Error("the band opened itself on a browser that had never stored a choice — the default is closed")
+	}
+	if !results.ToggleWired {
+		t.Fatal("nothing listens for the strip's toggle event, so the choice is never written")
+	}
+	if results.StoredAfterOpening != "open" {
+		t.Errorf("opening the strip stored %q, want %q", results.StoredAfterOpening, "open")
+	}
+	if !results.RestoredOpen {
+		t.Error("a reload with the open state stored still rendered the band closed")
+	}
+	if results.StoredAfterClosing != "closed" {
+		t.Errorf("closing the strip stored %q, want %q", results.StoredAfterClosing, "closed")
+	}
+	if results.RestoredClosed {
+		t.Error("a reload with the closed state stored rendered the band open")
+	}
+	if results.DeniedStorageThrew {
+		t.Error("a storage-denied browser threw out of the strip's wiring instead of falling back to closed")
+	}
+	if results.DeniedStorageOpen {
+		t.Error("a storage-denied browser did not fall back to the closed default")
+	}
+}
+
+// The document stub the verify-findings probes share. It answers getElementById
+// with a manufactured node for any id, so a renderer that writes to a renamed id
+// still runs — which is why the id contract is asserted against the SHIPPED
+// markup and never against this stub. createElementNS is here because the row
+// chevron is real inline SVG: document.createElement would return an HTML element
+// of the same name that never paints.
+const verifyFindingsStubDocumentProbe = `
 function makeStubNode(tagName) {
   var node = {
     stubTag: tagName,
     children: [],
+    attributes: {},
     className: "",
+    hidden: false,
+    open: false,
     stubText: "",
+    setAttribute: function (attributeName, attributeValue) { this.attributes[attributeName] = attributeValue; },
+    addEventListener: function () {},
     appendChild: function (childNode) { this.children.push(childNode); return childNode; }
   };
   Object.defineProperty(node, "textContent", {
@@ -3225,82 +3495,68 @@ function makeStubNode(tagName) {
   });
   return node;
 }
-var document = { createElement: function (tagName) { return makeStubNode(tagName); } };
-` + strings.Join(functionBlocks, "\n") + `
-function describeNode(node) {
+var nodesById = {};
+var document = {
+  getElementById: function (nodeId) {
+    if (!nodesById[nodeId]) { nodesById[nodeId] = makeStubNode("div"); }
+    return nodesById[nodeId];
+  },
+  createElement: function (tagName) { return makeStubNode(tagName); },
+  createElementNS: function (namespaceUri, tagName) {
+    var node = makeStubNode(tagName);
+    node.namespaceUri = namespaceUri;
+    return node;
+  }
+};
+// An SVG element's className is read-only, so its class arrives through
+// setAttribute; read both so one describe function covers HTML and SVG nodes.
+function describeStubNode(node) {
   return {
     tag: node.stubTag,
-    classes: node.className ? node.className.split(" ") : [],
+    classes: (node.className || node.attributes["class"] || "").split(" ").filter(Boolean),
     text: node.stubText,
-    children: node.children.map(describeNode)
+    namespaceUri: node.namespaceUri || "",
+    children: node.children.map(describeStubNode)
   };
 }
-var findingRow = makeFindingRow({
-  category: "STRANDED-FINISHED-REQUEST",
-  subject: "REQ-581",
-  detail: "has terminal status \"completed\" but still sits in do-work/working/",
-  remedy: "cleanup Pass 0 moves it into do-work/archive/",
-  fixable: true
-});
-process.stdout.write(JSON.stringify(describeNode(findingRow)));`
-	probeOutput := runJavaScriptBehaviorProbe(t, "verify finding remedy is its own line", javascriptProbe)
+`
 
-	type describedNode struct {
-		Tag      string          `json:"tag"`
-		Classes  []string        `json:"classes"`
-		Text     string          `json:"text"`
-		Children []describedNode `json:"children"`
-	}
-	var renderedRow describedNode
-	if decodeError := json.Unmarshal(probeOutput, &renderedRow); decodeError != nil {
-		t.Fatalf("decode finding row: %v (output %q)", decodeError, probeOutput)
-	}
+// describedStubNode is one node as the probes above report it: enough to assert
+// what a reader sees (the tag, the classes that style it, its own text) without
+// pulling a DOM implementation into the test.
+type describedStubNode struct {
+	Tag          string              `json:"tag"`
+	Classes      []string            `json:"classes"`
+	Text         string              `json:"text"`
+	NamespaceUri string              `json:"namespaceUri"`
+	Children     []describedStubNode `json:"children"`
+}
 
-	// chip, then one text column. The grid below places these two, so a third
-	// child would land in a column the layout never declared.
-	if len(renderedRow.Children) != 2 {
-		t.Fatalf("the row has %d children, want the chip and the text column: %+v",
-			len(renderedRow.Children), renderedRow.Children)
-	}
-	rowText := renderedRow.Children[1]
-	if !hasClassName(rowText.Classes, "board-findings-text") {
-		t.Fatalf("the row's second child is %v, want the text column", rowText.Classes)
-	}
-	if len(rowText.Children) != 3 {
-		t.Fatalf("the text column holds %d parts, want the detail, the fixable tag and the remedy: %+v",
-			len(rowText.Children), rowText.Children)
-	}
-	// Order is the claim: the fixable tag stays inline at the end of the detail
-	// line, and the remedy is last so it opens the line below it.
-	wantPartClasses := []string{"board-findings-detail", "board-findings-fixable", "board-findings-remedy"}
-	for partIndex, wantClassName := range wantPartClasses {
-		if !hasClassName(rowText.Children[partIndex].Classes, wantClassName) {
-			t.Fatalf("text part %d is %v, want %s", partIndex, rowText.Children[partIndex].Classes, wantClassName)
+// findChildByClassName returns the first direct child carrying one exact class,
+// or a zero node so a missing part fails on its content rather than on an index.
+func findChildByClassName(parentNode describedStubNode, wantClassName string) describedStubNode {
+	for _, childNode := range parentNode.Children {
+		if hasClassName(childNode.Classes, wantClassName) {
+			return childNode
 		}
 	}
-	remedyPart := rowText.Children[2]
-	if remedyPart.Text != "cleanup Pass 0 moves it into do-work/archive/" {
-		t.Errorf("remedy text = %q, want the producer's remedy with nothing prepended", remedyPart.Text)
-	}
-	if strings.Contains(remedyPart.Text, "→") {
-		t.Errorf("the remedy still carries the arrow that joined it to the detail sentence: %q", remedyPart.Text)
-	}
+	return describedStubNode{}
+}
 
-	// The CSS half. `sliceBalancedBlockAfter` returns the rule body, so each check
-	// below reads only the declarations of the rule it names.
-	remedyRule := sliceBalancedBlockAfter(t, indexHtml, ".board-findings-remedy {")
-	if !strings.Contains(remedyRule, "display: block") {
-		t.Errorf("the remedy is not a block, so it still continues the detail sentence: %q", remedyRule)
+// assertSummaryPartOrder pins a row summary's parts AND their order: the order is
+// the design (weight, identity, kind, what happened, what fixes it, the opener),
+// so a set comparison would pass on a row that reads backwards.
+func assertSummaryPartOrder(t *testing.T, rowLabel string, rowSummary describedStubNode, wantPartClasses []string) {
+	t.Helper()
+	if len(rowSummary.Children) != len(wantPartClasses) {
+		t.Fatalf("%s summary holds %d parts, want %v: %+v",
+			rowLabel, len(rowSummary.Children), wantPartClasses, rowSummary.Children)
 	}
-	rowRule := sliceBalancedBlockAfter(t, indexHtml, ".board-findings-row {")
-	if !strings.Contains(rowRule, "display: grid") || !strings.Contains(rowRule, "grid-template-columns") {
-		t.Errorf("the row is not a chip/text grid, so wrapped text falls back under the chip: %q", rowRule)
-	}
-	// D3, one type scale: the subject heading is an identifier at the row's own
-	// size, not a fourth size in its own face.
-	subjectRule := sliceBalancedBlockAfter(t, indexHtml, ".board-findings-subject {")
-	if !strings.Contains(subjectRule, "var(--font-mono)") || !strings.Contains(subjectRule, "font-size: 0.8rem") {
-		t.Errorf("the subject heading is off the row's type scale: %q", subjectRule)
+	for partIndex, wantPartClass := range wantPartClasses {
+		if !hasClassName(rowSummary.Children[partIndex].Classes, wantPartClass) {
+			t.Errorf("%s summary part %d is %v, want %s",
+				rowLabel, partIndex, rowSummary.Children[partIndex].Classes, wantPartClass)
+		}
 	}
 }
 

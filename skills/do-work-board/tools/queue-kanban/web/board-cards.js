@@ -645,12 +645,20 @@
   // or remedy is producer text that can carry any punctuation and must never
   // become markup.
   //
-  // One flat list, one row shape (REQ-579): a finding and a probe that could not
-  // run are the same kind of thing to the reader, so the bordered card and the
-  // collapsed disclosure are gone. Weight comes from the producer alone —
-  // `fixable` (a command resolves it) and "this probe never ran" are the only
-  // two things that mute a row. No severity, colour scale or re-ordering is
-  // invented here.
+  // One row per finding, each behind its own click (REQ-589): a finding and a
+  // probe that could not run are the same kind of thing to the reader, so they
+  // share one row shape in one list, and the remedy — read only after deciding to
+  // act — lives inside the row's own disclosure. Weight comes from the producer
+  // alone: `fixable` (a command resolves it) and "this probe never ran" are the
+  // only two things that colour a dot. No severity, colour scale or re-ordering
+  // is invented here.
+  //
+  // The shell is static in web/template.html — the band, the outer disclosure,
+  // the label, the counts, the Show/Hide labels and the two hosts. This renderer
+  // fills the closed line's subject list and the rows and decides nothing else,
+  // which is what keeps the strip's shape readable in one file.
+
+  var verifyFindingsOpenStorageKey = "queueKanbanVerifyFindingsOpen";
 
   function renderVerifyFindingsStrip() {
     var findings = boardData.verifyFindings || [];
@@ -664,14 +672,16 @@
     // array, and applyView reads these two ids to decide whether the strip has
     // anything to say (board-controls.js, REQ-578).
     //
-    // Both are cleared BEFORE the empty check, so a re-render with nothing to
-    // report leaves nothing behind. Hiding the strip is not enough on its own:
-    // applyView asks these two hosts whether there is content, so stale rows
+    // All three are cleared BEFORE the empty check, so a re-render with nothing
+    // to report leaves nothing behind. Hiding the strip is not enough on its own:
+    // applyView asks the two row hosts whether there is content, so stale rows
     // under a hidden strip would put it back on screen at the next view switch.
     var findingsHost = document.getElementById("board-findings-cards");
     var skippedHost = document.getElementById("board-findings-skipped-list");
+    var subjectsHost = document.getElementById("board-findings-subjects");
     findingsHost.textContent = "";
     skippedHost.textContent = "";
+    subjectsHost.textContent = "";
 
     if (findings.length === 0 && skipped.length === 0) {
       strip.hidden = true;
@@ -681,29 +691,30 @@
     document.getElementById("board-findings-count").textContent =
       formatFindingsSummary(findings.length, skipped.length);
 
-    groupFindingsBySubject(findings).forEach(function (findingGroup, groupIndex) {
-      if (findingGroup.subject) {
-        findingsHost.appendChild(createElement("div", "board-findings-subject", findingGroup.subject));
-      }
-      findingGroup.findings.forEach(function (finding, findingIndex) {
-        var row = makeFindingRow(finding);
-        // A subject heading says nothing about the rows that are not its own, so
-        // the first subjectless row after a group has to step away from it — on
-        // the rendered page it otherwise reads as that group's last member.
-        if (findingGroup.subject === "" && groupIndex > 0 && findingIndex === 0) {
-          row.className += " board-findings-row-detached";
-        }
-        findingsHost.appendChild(row);
+    groupFindingsBySubject(findings).forEach(function (findingGroup) {
+      findingGroup.findings.forEach(function (finding) {
+        // The closed line names every FINDING once, not every group once: two
+        // findings on one worktree are two things to answer for. A finding the
+        // producer gave no subject is named by its category, the only identifier
+        // it has — the subject is never parsed back out of the detail sentence.
+        subjectsHost.appendChild(makeSubjectListItem(
+          finding.subject || categoryWords(finding.category),
+          finding.fixable ? "board-findings-dot board-findings-dot-fixable" : "board-findings-dot"
+        ));
+        findingsHost.appendChild(makeFindingRow(finding));
       });
     });
 
-    skipped.forEach(function (skippedProbe, skippedIndex) {
-      var row = makeSkippedProbeRow(skippedProbe);
-      // Same reason: a probe that never ran is not the last finding's tail.
-      if (skippedIndex === 0 && findings.length > 0) {
-        row.className += " board-findings-row-detached";
-      }
-      skippedHost.appendChild(row);
+    // The probes that never ran collapse to one grey entry on the closed line and
+    // stay one row each below it: the count is what a reader needs before opening.
+    if (skipped.length > 0) {
+      subjectsHost.appendChild(makeSubjectListItem(
+        formatSkippedProbeCount(skipped.length),
+        "board-findings-dot board-findings-dot-skipped"
+      ));
+    }
+    skipped.forEach(function (skippedProbe) {
+      skippedHost.appendChild(makeSkippedProbeRow(skippedProbe));
     });
   }
 
@@ -715,17 +726,31 @@
       summaryParts.push(findingCount + (findingCount === 1 ? " finding" : " findings"));
     }
     if (skippedCount > 0) {
-      summaryParts.push(skippedCount + (skippedCount === 1 ? " probe not checked" : " probes not checked"));
+      summaryParts.push(formatSkippedProbeCount(skippedCount));
     }
     return summaryParts.join(" · ");
   }
 
+  // The same phrase in the header and on the closed line's grey entry, written
+  // once so the two can never disagree about the plural.
+  function formatSkippedProbeCount(skippedCount) {
+    return skippedCount + (skippedCount === 1 ? " probe not checked" : " probes not checked");
+  }
+
+  // The producer's category token as words: lowercased, hyphens shown as spaces
+  // (REQ-589 D5). A mechanical transform and never a lookup table — a category
+  // the board has never heard of has to read as words too, and a table would go
+  // stale the first time verify grows a probe.
+  function categoryWords(category) {
+    return String(category || "finding").toLowerCase().replace(/-/g, " ");
+  }
+
   // Findings sharing one non-empty `subject` become one group, in first-seen
   // order; findings the producer gave no subject stay in producer order in a
-  // trailing group with no heading. The match is exact string equality on the
-  // payload field — the subject is never parsed back out of the detail sentence,
-  // which is prose and free to change. The lookup map has a null prototype so a
-  // subject spelled like an Object member ("constructor") cannot collide with one.
+  // trailing group. The match is exact string equality on the payload field —
+  // the subject is never parsed back out of the detail sentence, which is prose
+  // and free to change. The lookup map has a null prototype so a subject spelled
+  // like an Object member ("constructor") cannot collide with one.
   function groupFindingsBySubject(findings) {
     var groupsBySubject = Object.create(null);
     var orderedGroups = [];
@@ -748,42 +773,123 @@
     return orderedGroups;
   }
 
-  // One row: the category chip, then the text column — the detail with its inline
-  // fixable tag, and the remedy under them on its own line (REQ-588).
+  // One entry on the closed line: the weight dot, then the name in the mono face.
+  function makeSubjectListItem(labelText, dotClassName) {
+    var subjectItem = createElement("span", "board-findings-subject-item");
+    subjectItem.appendChild(createElement("span", dotClassName));
+    subjectItem.appendChild(createElement("span", "board-findings-subject", labelText));
+    return subjectItem;
+  }
+
+  // One row: a disclosure whose summary is the whole scannable line — dot,
+  // subject, category, the detail clipped to the line's end, the "cleanup can
+  // fix" pill, the chevron — and whose content is the remedy. Splitting them this
+  // way is the point of the REQ: the summary says what is wrong, and the reader
+  // asks for what to do about it.
   function makeFindingRow(finding) {
-    var rowClassName = "board-findings-row";
-    if (finding.fixable) {
+    var row = createElement("details", "board-findings-row");
+    var rowSummary = createElement("summary");
+    rowSummary.appendChild(createElement(
+      "span",
       // Exactly verify's meaning: `do-work cleanup` can resolve this one
       // mechanically. Never inferred here — the producer sets the flag.
-      rowClassName += " board-findings-row-muted";
+      finding.fixable ? "board-findings-dot board-findings-dot-fixable" : "board-findings-dot"
+    ));
+    if (finding.subject) {
+      rowSummary.appendChild(createElement("span", "board-findings-subject", finding.subject));
     }
-    var row = createElement("div", rowClassName);
-    row.appendChild(createElement("span", "board-findings-chip", finding.category || "finding"));
-    var rowText = createElement("span", "board-findings-text");
-    rowText.appendChild(createElement("span", "board-findings-detail", finding.detail || ""));
+    rowSummary.appendChild(createElement("span", "board-findings-category", categoryWords(finding.category)));
+    rowSummary.appendChild(createElement("span", "board-findings-detail", finding.detail || ""));
     if (finding.fixable) {
-      rowText.appendChild(createElement("span", "board-findings-fixable", "cleanup can fix"));
+      rowSummary.appendChild(createElement("span", "board-findings-fixable", "cleanup can fix"));
     }
+    rowSummary.appendChild(createFindingChevronIcon());
+    row.appendChild(rowSummary);
     if (finding.remedy) {
-      // No arrow: the remedy is a block on the line below the detail, and a line
-      // does not need a pointer to say it follows. The terminal report keeps its
-      // arrow because there it really is a continuation of the line above.
-      rowText.appendChild(createElement("span", "board-findings-remedy", finding.remedy));
+      var remedyBlock = createElement("div", "board-findings-remedy");
+      remedyBlock.appendChild(createElement("span", "board-findings-remedy-label", "What to do:"));
+      remedyBlock.appendChild(createElement("span", "board-findings-remedy-text", finding.remedy));
+      row.appendChild(remedyBlock);
     }
-    row.appendChild(rowText);
     return row;
   }
 
-  // A probe that could not run is a row in the same list, muted and chipped "not
-  // checked" — it is not a finding, and it is not nothing either.
+  // A probe that could not run is a row of the same shape: the grey dot, the
+  // category "not checked", and the producer's whole sentence as the detail.
+  // That sentence is NOT split into a subject and a reason here — verify ships a
+  // skipped probe as one string with no subject field, so carving one out would
+  // mean reading a subject back out of prose, which is the mistake REQ-588
+  // removed everywhere else. Opening the row unclips the sentence instead of
+  // showing a remedy: a probe that never ran has nothing to recommend.
   function makeSkippedProbeRow(skippedProbe) {
-    var row = createElement("div", "board-findings-row board-findings-row-muted");
-    row.appendChild(createElement("span", "board-findings-chip", "not checked"));
-    var rowText = createElement("span", "board-findings-text");
-    rowText.appendChild(createElement("span", "board-findings-detail", skippedProbe));
-    row.appendChild(rowText);
+    var row = createElement("details", "board-findings-row");
+    var rowSummary = createElement("summary");
+    rowSummary.appendChild(createElement("span", "board-findings-dot board-findings-dot-skipped"));
+    rowSummary.appendChild(createElement("span", "board-findings-category", "not checked"));
+    rowSummary.appendChild(createElement("span", "board-findings-detail", skippedProbe));
+    rowSummary.appendChild(createFindingChevronIcon());
+    row.appendChild(rowSummary);
     return row;
   }
+
+  // Inline SVG must be created in the SVG namespace: document.createElement
+  // returns an HTML element of the same name that never paints. An SVG element's
+  // `className` is read-only, so its class goes through setAttribute. Every value
+  // here is a literal from this file — no payload text reaches an SVG attribute.
+  function createFindingChevronIcon() {
+    var svgNamespaceUri = "http://www.w3.org/2000/svg";
+    var chevronIcon = document.createElementNS(svgNamespaceUri, "svg");
+    chevronIcon.setAttribute("class", "board-findings-chevron");
+    chevronIcon.setAttribute("viewBox", "0 0 16 16");
+    chevronIcon.setAttribute("aria-hidden", "true");
+    var chevronPath = document.createElementNS(svgNamespaceUri, "path");
+    chevronPath.setAttribute("d", "M6 3.5 10.5 8 6 12.5");
+    chevronPath.setAttribute("fill", "none");
+    chevronPath.setAttribute("stroke", "currentColor");
+    chevronPath.setAttribute("stroke-width", "1.6");
+    chevronPath.setAttribute("stroke-linecap", "round");
+    chevronPath.setAttribute("stroke-linejoin", "round");
+    chevronIcon.appendChild(chevronPath);
+    return chevronIcon;
+  }
+
+  // Whether the band is open is remembered per browser under one key (REQ-589
+  // D4), best-effort exactly like the detail panel's width in board-detail.js: a
+  // browser that denies storage loses the memory, never the strip. Default
+  // closed, so a reader who has never touched it gets the one-line band. Row
+  // state is deliberately not remembered — an open remedy is about the finding
+  // being read right now, not a preference.
+  function readStoredVerifyFindingsOpenState() {
+    try {
+      return localStorage.getItem(verifyFindingsOpenStorageKey) === "open";
+    } catch (storageError) {
+      return false; // fall through to the closed default
+    }
+  }
+
+  function persistVerifyFindingsOpenState(isStripOpen) {
+    try {
+      localStorage.setItem(verifyFindingsOpenStorageKey, isStripOpen ? "open" : "closed");
+    } catch (storageError) {
+      // Persistence is best-effort; the strip already opened or closed.
+    }
+  }
+
+  // Wired once at load rather than inside the renderer: the disclosure is static
+  // in the template, so one listener outlives every re-render, and the restore
+  // does not have to wait for a payload it never reads. The handler asks the
+  // element for its own state instead of tracking a direction — `toggle` fires
+  // for a click, for a keypress, and for anything else that opens a <details>.
+  (function restoreVerifyFindingsOpenState() {
+    var stripDisclosure = document.getElementById("board-findings-strip");
+    if (!stripDisclosure) {
+      return; // an older template; the rest of the strip still renders
+    }
+    stripDisclosure.open = readStoredVerifyFindingsOpenState();
+    stripDisclosure.addEventListener("toggle", function () {
+      persistVerifyFindingsOpenState(stripDisclosure.open);
+    });
+  })();
 
   // ---- notes strip (do-work/notes.md) -------------------------------------
   // Notes are plain text, never Markdown: they are appended verbatim by
