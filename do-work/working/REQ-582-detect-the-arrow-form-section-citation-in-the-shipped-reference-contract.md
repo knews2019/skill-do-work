@@ -24,6 +24,10 @@ route: B
 dispatch_at: 2026-09-05T12:41:13Z
 builder_handback_at: 2026-09-05T13:19:20Z
 integration_at: 2026-09-05T13:19:20Z
+review_at: 2026-09-05T14:25:35Z
+heavy_verified_at: 2026-09-05T14:25:35Z
+heavy_verified_revision: 7b2673b690a671ccb360c26b0c19c56ecc7356b5
+commit: 7b2673b690a671ccb360c26b0c19c56ecc7356b5
 ---
 
 # Detect the Arrow-Form Section Citation in the Shipped-Package Reference Contract
@@ -184,3 +188,33 @@ Requirements traced: the arrow form resolves and reports; an in-script fixture s
 **Follow-ups created:** None (6 findings report only)
 
 *Reviewed by review-work action*
+
+## Lessons Learned
+
+**What worked:** Settling the design question against the live corpus instead of against what was easiest to implement. The builder swept all 75 arrow-form citations before choosing what a cited section means, and found five deliberately-declared bold contract labels that a heading-only rule would have reported as broken. That is the difference between a check that answers honestly and one that is merely strict.
+
+**What didn't:** The widening it chose is wider than the risk it stated. The reviewer measured it: one reference file declares 42 headings but yields 288 accepted names, 246 of them bold-only, and renaming three real headings leaves the check green because each old name is still written in bold prose somewhere in the same file. So the failure family this request exists to close — a rename escaping — is narrowed, not closed. The reviewer also verified the tighter rule: accepting only a *paragraph-leading* bold run keeps all 74 live citations green and makes all three simulated renames report.
+
+**Worth knowing:** The new check has both halves pinned, and yet mutating the driver call site that joins them leaves the whole suite green at exit 0. That is the same "a control that cannot fail" defect this batch's other request was raised for, in the batch that fixed it. Pinning the pieces is not pinning the wiring, and the wiring is where a check quietly stops running.
+
+## Orientation
+
+The shipped-package reference contract now reads the section name in a citation, not just the path, so a sweep that renames or deletes a section in shipped prose gets a real answer instead of a clean one. Lives in the maintainer gate's shipped-reference contract, governed by `_dev/primes/prime-shell-commands.md`. [MAP CHANGED] — what a citation must satisfy has widened from "the path resolves" to "the path resolves and the named section is findable in it", which every future sweep over shipped prose now depends on. Two live dangling citations were fixed in passing.
+
+## Heavy Verification Result
+
+- **Target revision:** 7b2673b690a671ccb360c26b0c19c56ecc7356b5
+- **Execution revision:** 7b2673b690a671ccb360c26b0c19c56ecc7356b5
+- **Run at:** 2026-09-05T14:25:35Z, from a detached worktree
+
+| Lane | Exit | Wall | Disposition |
+| --- | --- | --- | --- |
+| `queue-kanban-javascript` | 0 | 9s | executed |
+| `queue-kanban-browser` | 0 | 141s | executed |
+| `do-work-cli-integrations` | 0 | 78s | executed |
+| `staged-skills` | 0 | 44s | executed |
+| `updater` | 0 | 71s | executed |
+| `installer` | 0 | 33s | executed |
+
+All six lanes this request selected were present in the run, exited 0, and none was skipped.
+
