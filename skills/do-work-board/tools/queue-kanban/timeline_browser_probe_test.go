@@ -730,6 +730,13 @@ window.addEventListener("load", function () {
         // The chart sits under a warnings banner and an anomalies board.
         document.querySelector("#view-timeline .timeline-chart")
           .scrollIntoView({ block: "start" });
+        // SETTLE THE VIRTUALIZER, SYNCHRONOUSLY (REQ-587). #board-main is the scroll
+        // surface now, and the rows a scrollIntoView reveals are re-rendered only when
+        // its scroll event fires — one frame after this task. Without it the aim below
+        // measures the rows the PREVIOUS board position drew, off screen, so
+        // elementFromPoint returns null for every one and a chart that is plainly
+        // visible reports "no press point". The dispatch drives the shipped listener.
+        document.getElementById("board-main").dispatchEvent(new Event("scroll"));
         var press = pressPointOverFirstRow();
         var before = windowReadout();
         var during = press.ok
@@ -2543,6 +2550,13 @@ window.addEventListener("load", function () {
       document.getElementById("timeline-zoom-in").click();
       document.getElementById("timeline-zoom-in").click();
       document.querySelector("#view-timeline .timeline-chart").scrollIntoView({ block: "start" });
+      // SETTLE THE VIRTUALIZER, SYNCHRONOUSLY (REQ-587). #board-main is the scroll
+      // surface now, and the rows a scrollIntoView reveals are re-rendered only when
+      // its scroll event fires — one frame after this task. Without it the aim below
+      // measures the rows the PREVIOUS board position drew, off screen, so
+      // elementFromPoint returns null for every one and a chart that is plainly
+      // visible reports "no press point". The dispatch drives the shipped listener.
+      document.getElementById("board-main").dispatchEvent(new Event("scroll"));
 
       // (a) A DRAG RELEASED OUTSIDE THE CHART. The release is dispatched at a point
       // above the host, which is where the engine used to deliver it — leaving the
@@ -2831,6 +2845,13 @@ const timelinePointerCaptureProbeHelpers = `(function () {
   // point by asking what is actually under it rather than assuming.
   probe.aimAtARow = function () {
     document.querySelector("#view-timeline .timeline-chart").scrollIntoView({ block: "start" });
+    // SETTLE THE VIRTUALIZER, SYNCHRONOUSLY (REQ-587). #board-main is the scroll
+    // surface now, and the rows a scrollIntoView reveals are re-rendered only when
+    // its scroll event fires — one frame after this task. Without it the aim below
+    // measures the rows the PREVIOUS board position drew, off screen, so
+    // elementFromPoint returns null for every one and a chart that is plainly
+    // visible reports "no press point". The dispatch drives the shipped listener.
+    document.getElementById("board-main").dispatchEvent(new Event("scroll"));
     var host = probe.plotHost();
     var hostBox = host.getBoundingClientRect();
     var rows = document.querySelectorAll("#view-timeline .timeline-row");
@@ -3571,7 +3592,11 @@ function timelineGroupingSnapshot() {
     tabbableRowCount: rows.filter(function (row) { return row.getAttribute("tabindex") === "0"; }).length,
     renderedNodeCount: headers.length + rows.length,
     svgHeight: Number((host.querySelector("svg") || {}).getAttribute && host.querySelector("svg").getAttribute("height")) || 0,
-    viewportHeight: host.clientHeight
+    // The BOARD's client height, not the host's (REQ-587). The host is the
+    // full-height rows box now, so its clientHeight is the SVG's own height and
+    // the "taller than the viewport" guard below would compare a number with
+    // itself and never fire again.
+    viewportHeight: document.getElementById("board-main").clientHeight
   };
 }
 
