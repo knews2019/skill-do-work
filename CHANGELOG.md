@@ -2,6 +2,16 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.295.0 — Timestamps Survive Every Transition (2026-09-05)
+
+An interrupted request used to lose the record of when its work actually started: recovery stripped ten timestamp fields and the board then reported minutes for hours of work. Lifecycle transitions no longer delete a timestamp, so the durable timing trail survives a crash, a recovery and a re-claim.
+
+- The rule is keyed on the field-name suffix rather than a list, so a timestamp added to the schema later is covered without editing anything; recovery no longer carries a stamp list at all.
+- A re-claim keeps the first claim instant, so wall time is measured from when the work really began.
+- Gate deferral leaves the parent's claim stamp in place.
+- The four fields that carry current state rather than history keep their documented behaviour, each marked where it is defined.
+- A recovered request stays selectable: a claim stamp is evidence of a live claim only while the status says claimed.
+
 ## 0.294.3 — Board Citations Resolve From the Board Package (2026-09-05)
 
 Three references added in 0.294.2 named `actions/work-reference.md` from inside the do-work-board package, where that path resolves in neither the source nor the installed layout, so the shipped package reference contract failed on every gate run.

@@ -1,7 +1,7 @@
 ---
 id: REQ-575
 title: '[impact-rule-change] Keep every lifecycle stamp: no transition deletes an existing *_at field'
-status: claimed
+status: completed
 created_at: 2026-09-04T23:52:00Z
 user_request: UR-116
 domain: backend
@@ -34,6 +34,10 @@ builder_handback_at: 2026-09-05T12:29:52Z
 integration_at: 2026-09-05T12:29:52Z
 review_at: 2026-09-05T12:40:22Z
 commit: a2c6f4cf977f36217d21fe88c62810ec17d2afb4
+heavy_verified_at: 2026-09-05T12:55:39Z
+heavy_verified_revision: c78a0d3dfe98ce57e136ea504115f8ae41436f36
+completed_at: 2026-09-05T12:56:14Z
+release_at: 2026-09-05T12:56:14Z
 ---
 
 # Keep Every Lifecycle Stamp: No Transition Deletes an Existing `*_at` Field
@@ -280,4 +284,19 @@ Lifecycle transitions no longer delete timestamps, so an interrupted request kee
 | `installer` | `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane installer` | shipped package content changed |
 
 No path was left uncovered by the manifest. The request stays `claimed` with its `commit:` landed until the queue-exhaustion drain.
+
+## Heavy Verification Result
+
+- **Target revision:** a2c6f4cf977f36217d21fe88c62810ec17d2afb4
+- **Execution revision:** c78a0d3dfe98ce57e136ea504115f8ae41436f36
+- **Run at:** 2026-09-05T12:55:39Z
+
+| Lane | Exit | Wall | Disposition |
+| --- | --- | --- | --- |
+| `do-work-cli-integrations` | 0 | 66s | executed (fingerprint_mismatch) |
+| `staged-skills` | 0 | 38s | executed (fingerprint_mismatch) |
+| `updater` | 0 | 70s | executed (fingerprint_mismatch) |
+| `installer` | 0 | 42s | executed (fingerprint_mismatch) |
+
+Every lane this request selected was present in the run, exited 0, and none was skipped. No lane was reused from earlier evidence; all four executed against this tree.
 
