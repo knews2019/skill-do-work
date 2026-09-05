@@ -1,7 +1,7 @@
 ---
 id: REQ-585
 title: 'Give the Activity view one scroll surface instead of a scroll box inside the scrolling board'
-status: pending
+status: claimed
 created_at: 2026-09-05T12:26:00Z
 user_request: UR-120
 domain: frontend
@@ -12,6 +12,7 @@ related: [REQ-578, REQ-573]
 maintenance: false
 impact: impact-user-visible
 effort_estimate: effort-mechanical
+claimed_at: 2026-09-05T12:46:41Z
 ---
 
 # Give the Activity View One Scroll Surface Instead of a Scroll Box Inside the Scrolling Board

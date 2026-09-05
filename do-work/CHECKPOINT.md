@@ -31,3 +31,5 @@ session_depth: light
 - REQ-581: [impact-rule-change] Make the descendant-cleanup tests fail on a real process-group leak — claimed 2026-09-05T12:40:39Z — writer: t2s-Virtual-Machine.local:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2
 
 - REQ-582: [impact-rule-change] Detect the arrow-form section citation in the shipped-package reference contract — claimed 2026-09-05T12:40:40Z — writer: t2s-Virtual-Machine.local:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2
+
+- REQ-585: Give the Activity view one scroll surface instead of a scroll box inside the scrolling board — claimed 2026-09-05T12:46:41Z — writer: t2s-Virtual-Machine.local:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2
