@@ -29,7 +29,6 @@ session_depth: light
 
 - REQ-562: Addendum: record lightweight per-REQ lifecycle timings — claimed 2026-09-05T00:33:24Z — writer: vm:/home/user/skill-do-work
 
-- REQ-571: [impact-negligible] Remove the board's pending-heavy-testing reader case — claimed 2026-09-05T00:38:07Z — writer: vm:/home/user/skill-do-work
 
 
 

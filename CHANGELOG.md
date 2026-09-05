@@ -2,6 +2,14 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.291.1 — The Board Forgets a Status That No Longer Exists (2026-09-05)
+
+`pending-heavy-testing` was deleted in 0.287.0, but the board still gave it a status enum entry, a column rule, two timeline cases, a transition label, a calendar group and three stylesheet selectors. All of it is gone, and a record still carrying the value now falls through the ordinary tolerant path: parked, flagged invalid, and named in a warning.
+
+- `timelineChain`'s naming arm now covers any status outside the Schema Read Contract vocabulary, keyed on the schema itself rather than a second status list, so a stale record no longer vanishes from the forecast entirely.
+- The calendar-group deletion is invisible to the standard suite and red in the JavaScript probe lane. It was found by running both lanes rather than reasoning about one.
+- `grep -r pending-heavy-testing skills/do-work-board` now matches only the lessons file, which the request leaves alone by design.
+
 ## 0.291.0 — A Release Refuses an Identity It Cannot Read (2026-09-05)
 
 Two release gates guessed instead of refusing. A Cargo or uv source took the first `name` it met, and an npm root lock counted only copies already holding the old version — so a stale mirror silently dropped out of the required set instead of failing. Both now refuse before any mutation.
