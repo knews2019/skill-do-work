@@ -2,6 +2,15 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.294.2 — Release Mirrors Follow Ownership, Not Matching Version Numbers (2026-09-05)
+
+A release refused because an unrelated component happened to carry the same version number, the board reported a request as waiting while the work loop was already selecting it, and an installed copy of the CLI could not run its own test suite. Three defects from one review, each a reader judging from the wrong evidence.
+
+- Mirror membership now comes from affirmative release ownership — the repository root, a `suite/modules.tsv` module carrying its own VERSION, or a workspace member a tracked project manifest claims — and is asked before any version value is compared. `internal/releaseownership` holds that rule once, for the release planner and for finalization's recovery discovery, each against the image it judges.
+- The honest cost of that narrowing: a repository whose only ownership evidence is its root discovers only root mirrors.
+- The board's dependency annotation reads the Dependency-source-ready status set, so a dependency that is `claimed` while carrying its `commit:` unblocks its dependents exactly as the selector does. The held request keeps its claimed status and its own column.
+- The two heavy-lane contract tests that read the maintainer's `_dev/` tree are export-ignored, so `go test ./...` passes in an installed copy of the CLI module.
+
 ## 0.294.1 — Archived Lesson Links Point at Their UR Folder (2026-09-05)
 
 Three lesson links in the do-work-cli satellite still pointed at the old flat archive path for REQ-503, REQ-504 and REQ-505, which moved into `do-work/archive/UR-098/`. The shipped package reference contract failed on every gate run until now.
