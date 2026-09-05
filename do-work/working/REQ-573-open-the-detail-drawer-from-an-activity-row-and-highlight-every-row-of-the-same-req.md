@@ -1,7 +1,7 @@
 ---
 id: REQ-573
 title: 'Open the detail drawer from an Activity row and highlight every row of the same REQ'
-status: pending
+status: claimed
 created_at: 2026-09-04T23:16:00Z
 user_request: UR-115
 domain: frontend
@@ -18,6 +18,7 @@ write_set:
   - skills/do-work-board/tools/queue-kanban/web/board-activity.js
   - skills/do-work-board/tools/queue-kanban/web/board.css
   - skills/do-work-board/tools/queue-kanban/javascript_behavior_c_test.go
+claimed_at: 2026-09-05T12:21:55Z
 ---
 
 # Open the Detail Drawer from an Activity Row and Highlight Every Row of the Same REQ
