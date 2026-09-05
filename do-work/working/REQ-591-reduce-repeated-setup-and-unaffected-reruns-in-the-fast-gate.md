@@ -1,7 +1,7 @@
 ---
 id: REQ-591
 title: 'Reduce repeated setup and unaffected reruns in the fast gate'
-status: pending
+status: claimed
 created_at: 2026-09-05T19:43:25Z
 user_request: UR-127
 domain: testing
@@ -12,6 +12,7 @@ impact: impact-user-visible
 effort_estimate: effort-substantive
 depends_on: []
 related: [REQ-574]
+claimed_at: 2026-09-05T20:04:13Z
 ---
 
 # Reduce Repeated Setup and Unaffected Reruns in the Fast Gate
