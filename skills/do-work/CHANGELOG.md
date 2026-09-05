@@ -2,6 +2,14 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.303.3 — A Withdrawn Commit Stops Unblocking Dependents (2026-09-05)
+
+The rule that lets a claimed request unblock its dependents rests entirely on the implementation commit it recorded, and a re-claim takes that commit back. Both readers already fail closed when it does; neither had a test saying so, which is how the arm that matters most gets refactored away.
+
+- The board pins the shape a withdrawal actually leaves on disk — the `commit:` key still there with nothing after it — and keeps that request's dependents waiting.
+- The shared `DependencySourceReady` rule pins the same fail-closed answer for a commit that is only whitespace, so no caller can hand it blank-looking authority.
+- `isDependencySourceReadyStatus` carries its own doc comment again; it had been inserted under the comment belonging to the function below it.
+
 ## 0.303.2 — Each Verify Finding Reads as One Warning Line (2026-09-05)
 
 The board's Verify Findings strip had turned its rows into paragraphs: the detail, an arrow and the remedy ran together and wrapped under the category chip, and the subject heading sat at a size of its own. A warning you have to read instead of scan is a warning that gets skipped.
