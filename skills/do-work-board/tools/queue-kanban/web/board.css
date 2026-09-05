@@ -604,32 +604,181 @@ body.is-resizing-detail {
   line-height: 1.4;
 }
 
-/* Verify findings reuse every .board-anomalies-* rule above rather than carrying a
-   parallel palette. These are the only differences, and each is deliberate:
-   the strip is visually subordinate to completion anomalies (broken bookkeeping
-   outranks process drift), and a finding is one line in a list rather than a card,
-   because a warning wearing the REQ-card shape reads as a work item and spends a
-   card's worth of space saying something small (REQ-579). */
+/* Verify findings — the slim band (REQ-589). Not a card and not the anomalies
+   strip's palette: a 3 px amber edge on a quiet surface, one line high while
+   closed. The whole strip is a disclosure whose summary IS that line — the label,
+   the counts, every finding's subject with its weight dot, and one Show control —
+   and whose content is one row per finding. Each row is a disclosure of its own,
+   because a remedy is read after deciding to act: what stays on screen is only
+   what a reader scans. The REQ-579/REQ-588 rows this replaces printed every
+   subject heading, detail and remedy at once, which is what made the strip huge. */
 .board-findings {
-  border-color: var(--border-soft, var(--surface-3));
+  margin: 0 0 16px;
+  padding: 5px 12px;
+  border: 1px solid var(--line-soft);
+  border-left: 3px solid var(--accent-pending);
+  border-radius: 8px;
   background-color: var(--surface-2);
+  color: var(--ink-base);
 }
-.board-findings .board-anomalies-title {
-  color: var(--ink-soft);
+.board-findings-strip > summary {
+  list-style: none;
+  cursor: pointer;
 }
-/* The findings header summary carries words ("2 findings · 1 probe not checked"),
-   so it drops the anomaly count's pill and reads as a subtitle instead. */
-.board-findings .board-anomalies-count {
-  padding: 0;
-  background-color: transparent;
-  color: var(--ink-soft);
-  font-size: 0.8rem;
+/* WebKit and Blink draw a marker from a pseudo-element that `list-style` above
+   never reaches, so both spellings are needed to remove one triangle. */
+.board-findings-strip > summary::-webkit-details-marker {
+  display: none;
 }
-.board-findings-rows {
+.board-findings-strip > summary:focus-visible {
+  outline: 2px solid var(--accent-claimed);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+.board-findings-head {
   display: flex;
-  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  min-height: 24px;
+}
+.board-findings-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--ink-soft);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.board-findings-label svg {
+  width: 13px;
+  height: 13px;
+  color: var(--accent-pending);
+}
+.board-findings-count {
+  color: var(--ink-soft);
+  font-size: 0.76rem;
+}
+/* The weight channel, and the only one: amber for a finding a human resolves,
+   green for one `do-work cleanup` fixes, grey for a probe that never ran. Those
+   are the producer's own two flags — no severity scale is invented here. */
+.board-findings-dot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background-color: var(--accent-pending);
+  flex: none;
+}
+.board-findings-dot-fixable {
+  background-color: var(--accent-done);
+}
+.board-findings-dot-skipped {
+  background-color: var(--ink-faint);
+}
+/* The subject is an identifier — a worktree name, a REQ id, a path — so it keeps
+   the mono face and never shrinks; the detail beside it is what gives way. */
+.board-findings-subject {
+  color: var(--ink-strong);
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  font-weight: 600;
+  flex: none;
+}
+.board-findings-category {
+  color: var(--ink-faint);
+  font-size: 0.68rem;
+  flex: none;
+}
+.board-findings-fixable {
+  padding: 0 6px;
+  border-radius: var(--radius-pill);
+  background-color: var(--tint-done);
+  color: var(--accent-done);
+  font-size: 0.64rem;
+  line-height: 1.7;
+  /* Never break "cleanup can fix" across lines — half a phrase reads as a
+     truncated sentence rather than a label (REQ-285). */
+  white-space: nowrap;
+  flex: none;
+}
+/* Clipped to the line while the row is closed, wrapped once it is open: a closed
+   row is scanned, an open one is read. */
+.board-findings-detail {
+  flex: 0 1 auto;
+  min-width: 0;
+  color: var(--ink-soft);
+  font-size: 0.76rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.board-findings-detail code {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+}
+
+/* The closed line's subject list: every finding named once, so a reader who never
+   opens the band still knows what verify is talking about. It gives way to the
+   rows, which carry the same subjects with more beside them. */
+.board-findings-subject-list {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  min-width: 0;
+  margin-left: 4px;
+}
+.board-findings-subject-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.board-findings-subject-list .board-findings-subject {
+  color: var(--ink-base);
+  font-weight: 500;
+}
+.board-findings-toggle {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
   gap: 5px;
-  margin-top: 10px;
+  padding: 2px 9px 2px 10px;
+  border: 1px solid var(--line-firm);
+  border-radius: var(--radius-pill);
+  background-color: var(--surface-1);
+  color: var(--ink-base);
+  font-size: 0.7rem;
+  font-weight: 500;
+  line-height: 1.5;
+  flex: none;
+}
+.board-findings-toggle svg {
+  width: 11px;
+  height: 11px;
+  color: var(--ink-soft);
+}
+.board-findings-strip > summary:hover .board-findings-toggle {
+  background-color: var(--surface-hover);
+}
+/* Two labels, one control: each is hidden in the state the other names, so the
+   button reads Show while the band is closed and Hide while it is open. Written
+   as CSS rather than as a renderer branch because the browser already owns the
+   open state — a second copy of it in JavaScript is a second thing to keep true. */
+.board-findings-strip[open] .board-findings-toggle-closed,
+.board-findings-strip:not([open]) .board-findings-toggle-open {
+  display: none;
+}
+.board-findings-strip[open] .board-findings-subject-list {
+  display: none;
+}
+.board-findings-strip[open] .board-findings-toggle svg {
+  transform: rotate(180deg);
+}
+
+.board-findings-rows {
+  margin: 2px 0 1px;
 }
 /* The two row hosts are pass-through: their rows are laid out by the list above,
    so findings and skipped probes read as one list. See the template on why the
@@ -637,72 +786,57 @@ body.is-resizing-detail {
 .board-findings-group {
   display: contents;
 }
-/* One heading per subject the producer grouped on, printed once above its rows.
-   It is an identifier — a worktree name, a REQ id, a file path — so it wears the
-   mono face at the row's own size rather than a fourth size of its own (REQ-588). */
-.board-findings-subject {
-  margin-top: 10px;
-  color: var(--ink-base);
-  font-family: var(--font-mono);
-  font-size: 0.8rem;
-  font-weight: 600;
-  letter-spacing: 0;
-  overflow-wrap: anywhere;
+.board-findings-row > summary {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 28px;
+  padding: 0 8px 0 6px;
+  border-radius: 6px;
+  list-style: none;
+  cursor: pointer;
 }
-.board-findings-subject:first-child {
-  margin-top: 0;
+.board-findings-row > summary::-webkit-details-marker {
+  display: none;
 }
-/* Chip and text are two grid columns, not two flex children: wrapped text stays
-   inside the text column instead of falling back under the chip and reading as a
-   paragraph (REQ-588). */
-.board-findings-row {
-  display: grid;
-  grid-template-columns: max-content minmax(0, 1fr);
-  column-gap: 10px;
-  align-items: baseline;
-  font-size: 0.8rem;
-  line-height: 1.45;
+.board-findings-row > summary:hover {
+  background-color: var(--surface-hover);
 }
-/* The lighter of the two weights the producer allows: a finding `do-work cleanup`
-   resolves, and a probe that never ran. Nothing else is muted. */
-.board-findings-row-muted {
-  color: var(--ink-soft);
+.board-findings-row > summary:focus-visible {
+  outline: 2px solid var(--accent-claimed);
+  outline-offset: -2px;
 }
-/* A row that belongs to no subject, and the first probe that never ran, must not
-   read as the tail of the group above them. */
-.board-findings-row-detached {
-  margin-top: 14px;
+/* Transform only — it runs on the compositor, and the shared
+   prefers-reduced-motion rule at the end of this file already stills it. */
+.board-findings-chevron {
+  width: 12px;
+  height: 12px;
+  color: var(--ink-faint);
+  flex: none;
+  transition: transform 120ms ease;
 }
-/* One step below the row text, which is what keeps the category readable as a
-   label rather than as a second voice competing with the finding itself. */
-.board-findings-chip {
-  padding: 1px 7px;
-  border-radius: var(--radius-pill);
-  background-color: var(--surface-3);
-  color: var(--ink-soft);
-  font-size: 0.66rem;
-  line-height: 1.6;
-  letter-spacing: 0.02em;
-  text-transform: uppercase;
+.board-findings-row[open] .board-findings-chevron {
+  transform: rotate(90deg);
 }
-/* The text column: the detail and its inline "cleanup can fix" tag on one line,
-   the remedy on the next. Two lines with one job each is what makes the row
-   scannable — what is wrong, then what to do (REQ-588). */
-.board-findings-text {
-  display: block;
-  overflow-wrap: anywhere;
+.board-findings-row[open] .board-findings-detail {
+  white-space: normal;
 }
+/* The remedy: inset under its own row, behind that row's own click, with the
+   band's accent as its rule so it reads as the answer to the line above. */
 .board-findings-remedy {
-  display: block;
-  margin: 1px 0 0;
+  margin: 0 8px 8px 29px;
+  padding: 6px 10px;
+  border-left: 2px solid var(--accent-pending);
+  border-radius: 0 6px 6px 0;
+  background-color: var(--surface-1);
   color: var(--ink-soft);
+  font-size: 0.75rem;
+  line-height: 1.5;
 }
-.board-findings-fixable {
-  /* Never break "cleanup can fix" across lines — half a phrase reads as a
-     truncated sentence rather than a label (REQ-285). */
-  margin-left: 6px;
-  white-space: nowrap;
-  color: var(--accent-done, var(--ink-soft));
+.board-findings-remedy-label {
+  margin-right: 4px;
+  color: var(--ink-base);
+  font-weight: 600;
 }
 
 .view-panel {

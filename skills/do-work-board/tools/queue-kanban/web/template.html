@@ -189,37 +189,54 @@
            lives in applyView (board-controls.js), never in a renderer, so no
            re-render can undo it (REQ-578). The client renders the producer's
            list blindly; category suppression already happened in Go (REQ-284).
-           Filled by board-cards.js. -->
-      <section class="board-anomalies board-findings" id="board-findings" aria-label="Verify findings" hidden>
-        <header class="board-anomalies-head">
-          <strong class="board-anomalies-title">Verify findings</strong>
-          <span class="board-anomalies-count" id="board-findings-count">0</span>
-          <span class="board-anomalies-hint">
-            queue and process problems <code>queue-kanban verify</code> detects — each names what to do about it
-          </span>
-        </header>
-        <!-- One flat list of compact rows (REQ-579). A finding and a probe that
-             could not run are the same kind of thing to the reader — verify has
-             something to tell you — so they share one row shape and one list.
-             The card grid and the collapsed disclosure this replaced spent a REQ
-             card's worth of space each on a warning, and borrowing the REQ-card
-             shape made a warning read as a work item. A skipped probe is a row
-             here rather than a footnote because rendering it as nothing reads as
-             "checked and clean", which is the one thing it must never read as.
-             Filled by renderVerifyFindingsStrip in board-cards.js.
+           Filled by board-cards.js.
 
-             The two hosts inside the list are one list to the reader: they carry
-             `display: contents`, so their rows are laid out by the list itself.
-             They exist, and keep their ids, because applyView (board-controls.js,
-             REQ-578) reads exactly these two ids to decide whether the strip has
-             anything to say — one host per payload array, which is also the split
-             the renderer already works in. Never put `hidden` on either: a
-             `display` rule outranks the hidden attribute's own, so it would not
-             hide anything. Leave a host empty instead. -->
-        <div class="board-findings-rows" id="board-findings-rows">
-          <div class="board-findings-group" id="board-findings-cards"></div>
-          <div class="board-findings-group" id="board-findings-skipped-list"></div>
-        </div>
+           The shell below is the whole shape of the strip (REQ-589), static here
+           rather than built by the renderer: the band, the disclosure that makes
+           it one line when closed, the label, the counts, the two Show/Hide
+           labels, and the two row hosts. renderVerifyFindingsStrip fills the
+           subject list and the rows and decides nothing else, so what the strip
+           looks like is readable in one place instead of assembled from DOM
+           calls. The open/closed state belongs to the browser's own <details>;
+           the client only restores it from localStorage and writes it back. -->
+      <section class="board-anomalies board-findings" id="board-findings" aria-label="Verify findings" hidden>
+        <details class="board-findings-strip" id="board-findings-strip">
+          <!-- The summary IS the closed band: one line, about 34 px, that a
+               reader scans without opening anything. The subject list inside it
+               is what the CSS swaps for the rows when the strip opens. -->
+          <summary>
+            <div class="board-findings-head">
+              <span class="board-findings-label"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 1.8 15 14H1z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M8 6v4M8 11.6v.6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>Verify</span>
+              <span class="board-findings-count" id="board-findings-count">0</span>
+              <span class="board-findings-subject-list" id="board-findings-subjects"></span>
+              <span class="board-findings-toggle board-findings-toggle-closed">Show <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 6 8 10.5 12.5 6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+              <span class="board-findings-toggle board-findings-toggle-open">Hide <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 6 8 10.5 12.5 6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+            </div>
+          </summary>
+          <!-- One row per finding, each its own disclosure (REQ-589). A finding
+               and a probe that could not run are the same kind of thing to the
+               reader — verify has something to tell you — so they share one row
+               shape and one list. A skipped probe is a row here rather than a
+               footnote because rendering it as nothing reads as "checked and
+               clean", which is the one thing it must never read as. The remedy
+               sits inside the row's own disclosure because it is read after
+               deciding to act; printing every remedy at once is what made the
+               REQ-579/REQ-588 strip too big to scan.
+
+               The two hosts inside the list are one list to the reader: they
+               carry `display: contents`, so their rows are laid out by the list
+               itself. They exist, and keep their ids, because applyView
+               (board-controls.js, REQ-578) reads exactly these two ids to decide
+               whether the strip has anything to say — one host per payload array,
+               which is also the split the renderer already works in. Never put
+               `hidden` on either: a `display` rule outranks the hidden
+               attribute's own, so it would not hide anything. Leave a host empty
+               instead. -->
+          <div class="board-findings-rows" id="board-findings-rows">
+            <div class="board-findings-group" id="board-findings-cards"></div>
+            <div class="board-findings-group" id="board-findings-skipped-list"></div>
+          </div>
+        </details>
       </section>
 
       <!-- Flat Kanban columns -->
