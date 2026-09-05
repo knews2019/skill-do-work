@@ -224,10 +224,11 @@ export REAL_CP="$real_cp"
 HTTP_CALL_LOG="$fixture_root/http-calls.log"
 archive_server_source="$fixture_root/archive-server.go"
 archive_server_binary="$fixture_root/archive-server"
+# The server owns its 120s lifetime; a killed test shell cannot run its EXIT cleanup.
 cat > "$archive_server_source" <<'GOEOF'
 package main
-import("fmt";"net";"net/http";"os";"strconv")
-func main(){payload,err:=os.ReadFile(os.Args[1]);if err!=nil{panic(err)};listener,err:=net.Listen("tcp","127.0.0.1:0");if err!=nil{panic(err)};status:=200;if len(os.Args)>4{status,_=strconv.Atoi(os.Args[4])};if err:=os.WriteFile(os.Args[2],[]byte("http://"+listener.Addr().String()),0600);err!=nil{panic(err)};handler:=http.HandlerFunc(func(response http.ResponseWriter,request *http.Request){handle,_:=os.OpenFile(os.Args[3],os.O_CREATE|os.O_APPEND|os.O_WRONLY,0600);fmt.Fprintln(handle,request.URL.Path);handle.Close();response.WriteHeader(status);_,_=response.Write(payload)});panic(http.Serve(listener,handler))}
+import("fmt";"net";"net/http";"os";"strconv";"time")
+func main(){time.AfterFunc(120*time.Second,func(){os.Exit(124)});payload,err:=os.ReadFile(os.Args[1]);if err!=nil{panic(err)};listener,err:=net.Listen("tcp","127.0.0.1:0");if err!=nil{panic(err)};status:=200;if len(os.Args)>4{status,_=strconv.Atoi(os.Args[4])};if err:=os.WriteFile(os.Args[2],[]byte("http://"+listener.Addr().String()),0600);err!=nil{panic(err)};handler:=http.HandlerFunc(func(response http.ResponseWriter,request *http.Request){handle,_:=os.OpenFile(os.Args[3],os.O_CREATE|os.O_APPEND|os.O_WRONLY,0600);fmt.Fprintln(handle,request.URL.Path);handle.Close();response.WriteHeader(status);_,_=response.Write(payload)});panic(http.Serve(listener,handler))}
 GOEOF
 if ! go build -o "$archive_server_binary" "$archive_server_source"; then
   printf 'FAIL: could not build the in-process archive fixture server.\n' >&2

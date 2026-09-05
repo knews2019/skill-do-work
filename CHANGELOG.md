@@ -2,6 +2,13 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.303.4 — Background Test Workers Stop Themselves (2026-09-05)
+
+Temporary background test work now owns its lifetime limit, so a killed parent cannot leave synthetic load running indefinitely.
+
+- Testing guidance requires a deadline inside each deliberately persistent background worker, limits load experiments to specific evidence, and separates loaded timings from normal performance measurements.
+- Long-lived image and process-group fixtures and the temporary archive server now expire independently of parent cleanup. The shell prime and CLI lessons carry the rule; the repository audit documents existing bounded and finite-operation sites.
+
 ## 0.303.3 — A Withdrawn Commit Stops Unblocking Dependents (2026-09-05)
 
 The rule that lets a claimed request unblock its dependents rests entirely on the implementation commit it recorded, and a re-claim takes that commit back. Both readers already fail closed when it does; neither had a test saying so, which is how the arm that matters most gets refactored away.

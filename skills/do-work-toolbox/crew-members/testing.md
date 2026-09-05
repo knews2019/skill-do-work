@@ -31,6 +31,10 @@ Before writing tests, identify the project's existing test setup. Don't guess â€
 - **More than 3 mocks needed for one test** is a design-smell signal (too many dependencies) â€” note it, don't refactor unless the REQ asks for it.
 - **Encounter a flaky test during implementation? Fix the flakiness before proceeding.** Don't re-run and hope.
 
+## Background Work and Synthetic Load
+
+Follow the core [background-work lifetime and synthetic-load rules](../../do-work/crew-members/testing.md#background-work-and-synthetic-load) whenever a shell backgrounds work it intends to kill later, including temporary test fixtures.
+
 ## Red-Green Workflow (TDD Requests)
 
 When the REQ has `tdd: true`:

@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# Long-lived fixture shells stop themselves after 30s, beyond the cleanup assertions.
+# Parent traps and the existing wait deadlines only provide earlier cleanup.
 # Fixture execution proofs for generate-report-image-batch.
 # shellcheck source=_dev/tests/prescribed-shell-harness.sh
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/prescribed-shell-harness.sh"
@@ -140,13 +142,13 @@ printf '%s\n' \
   '#!/usr/bin/env bash' \
   'while [ "$#" -gt 0 ]; do case "$1" in --output) output_path="$2"; shift 2 ;; --prompt) image_prompt="$2"; shift 2 ;; *) shift ;; esac; done' \
   'printf partial > "$output_path"' \
-  '( while :; do sleep 0.2; done ) &' \
+  '( fixture_deadline=$((SECONDS + 30)); while (( SECONDS < fixture_deadline )); do sleep 0.2; done ) &' \
   'helper_descendant_pid=$!' \
   'case "$image_prompt" in' \
   '  *"<prompt 1>"*) printf "%s\n" "$$" > "$REPLAY_FIRST_PID"; printf "%s\n" "$helper_descendant_pid" > "$REPLAY_FIRST_CHILD_PID"; : > "$REPLAY_FIRST_DONE" ;;' \
   '  *) printf "%s\n" "$$" > "$REPLAY_SECOND_PID"; printf "%s\n" "$helper_descendant_pid" > "$REPLAY_SECOND_CHILD_PID"; : > "$REPLAY_SECOND_DONE" ;;' \
   'esac' \
-  'while :; do sleep 0.2; done' \
+  'fixture_deadline=$((SECONDS + 30)); while (( SECONDS < fixture_deadline )); do sleep 0.2; done' \
   > "$image_interrupt_batch_bin/imagegen"
 chmod +x "$image_interrupt_batch_bin/imagegen"
 
@@ -226,10 +228,10 @@ printf '%s\n' \
   '#!/usr/bin/env bash' \
   'while [ "$#" -gt 0 ]; do case "$1" in --output) output_path="$2"; shift 2 ;; --prompt) image_prompt="$2"; shift 2 ;; *) shift ;; esac; done' \
   'printf partial > "$output_path"' \
-  'case "$image_prompt" in *term-deaf*) printf "%s\n" "$$" > "$IMAGE_BATCH_LIVENESS_BACKEND_PID"; ( trap "" TERM; while :; do sleep 1; done ) & trap "" TERM ;; *) ( while :; do sleep 1; done ) & trap "sleep 0.3; exit 143" TERM ;; esac' \
+  'case "$image_prompt" in *term-deaf*) printf "%s\n" "$$" > "$IMAGE_BATCH_LIVENESS_BACKEND_PID"; ( trap "" TERM; fixture_deadline=$((SECONDS + 30)); while (( SECONDS < fixture_deadline )); do sleep 1; done ) & trap "" TERM ;; *) ( fixture_deadline=$((SECONDS + 30)); while (( SECONDS < fixture_deadline )); do sleep 1; done ) & trap "sleep 0.3; exit 143" TERM ;; esac' \
   'printf "%s\n" "$!" > "$IMAGE_BATCH_LIVENESS_DESCENDANT_PID"' \
   ': > "$IMAGE_BATCH_LIVENESS_READY"' \
-  'while :; do sleep 1; done' \
+  'fixture_deadline=$((SECONDS + 30)); while (( SECONDS < fixture_deadline )); do sleep 1; done' \
   > "$image_batch_liveness_bin/imagegen"
 printf '%s\n' \
   '#!/usr/bin/env bash' \

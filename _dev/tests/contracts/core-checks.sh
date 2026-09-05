@@ -300,6 +300,9 @@ rm -rf -- "$unstaged_deletion_probe_dir"
 # Argument parsing must fail fast. The watchdog keeps a regression from hanging
 # the entire suite forever: the original `shift 2` with one argument left made
 # the loop reread --repo-root indefinitely on Bash 3.2 and newer alike.
+# The current launcher execs the Go argument parser, which returns on this missing
+# value before doing work or waiting. No deliberately persistent child is started;
+# the existing two-second timer is a regression diagnostic and itself exits after signalling.
 associate_missing_value_output="$(mktemp)"
 "$core_root/tools/checks/associate-files.sh" --repo-root </dev/null \
   >"$associate_missing_value_output" 2>&1 &

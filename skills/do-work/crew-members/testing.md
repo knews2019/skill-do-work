@@ -31,6 +31,18 @@ Before writing tests, identify the project's existing test setup. Don't guess â€
 - **More than 3 mocks needed for one test** is a design-smell signal (too many dependencies) â€” note it, don't refactor unless the REQ asks for it.
 - **Encounter a flaky test during implementation? Fix the flakiness before proceeding.** Don't re-run and hope.
 
+## Background Work and Synthetic Load
+
+Whenever a shell backgrounds a process it intends to kill later, the background process must carry its own time bound. Set the deadline inside that process, and bound any children it deliberately leaves running too. A trailing `kill` or an `EXIT` trap is convenient early cleanup, never the only lifetime limit: neither runs when the parent receives SIGKILL or disappears with its session. A finite operation such as `sleep 30` already supplies its own bound; an unbounded wait on another process does not.
+
+For a justified CPU-load experiment, this Bash/zsh worker stops itself even if its parent dies:
+
+```bash
+( load_deadline=$((SECONDS + 120)); while (( SECONDS < load_deadline )); do :; done ) &
+```
+
+Synthetic load is an experiment, not a routine extra test. Name the timing-sensitive failure it probes, choose the smallest worker count, duration and repeat count that answer it, and stop when that evidence is collected. Record those limits with the result. Do not overlap it with another session's gate or benchmark, and do not use measurements from its load window as normal queue-performance evidence. If testing process cleanup, keep the worker's lifetime limit beyond the assertion deadline so natural expiry cannot make a leak pass.
+
 ## Red-Green Workflow (TDD Requests)
 
 When the REQ has `tdd: true`:

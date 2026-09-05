@@ -91,9 +91,12 @@ func TestTerminateGroupReportsAnAlreadyFinishedGroup(t *testing.T) {
 // the moment each signal is sent.
 func TestTerminateGroupEndsParentsThatKeepForkingChildren(t *testing.T) {
 	nestedMarker := filepath.Join(t.TempDir(), "nested.pid")
-	command := exec.Command("sh", "-c",
-		"( while :; do sleep 0.05; done ) & printf '%s\\n' \"$!\" > "+nestedMarker+
-			"; while :; do sleep 0.05; done")
+	// Each respawning shell owns a deadline even if the test process is killed.
+	// Thirty seconds outlasts all failure assertions below; expiry cannot prove cleanup.
+	respawnLoop := "respawn_deadline=$((SECONDS + 30)); while (( SECONDS < respawn_deadline )); do sleep 0.05; done"
+	command := exec.Command("bash", "-c",
+		"( "+respawnLoop+" ) & printf '%s\\n' \"$!\" > "+nestedMarker+
+			"; "+respawnLoop)
 	if !ConfigureGroup(command) {
 		t.Skip("this platform cannot own a process group")
 	}

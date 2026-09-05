@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# Long-lived fixture shells stop themselves after 30s, beyond the cleanup assertions.
+# Parent traps and the existing wait deadlines only provide earlier cleanup.
 # Fixture execution proofs for generate-report-image.
 # shellcheck source=_dev/tests/prescribed-shell-harness.sh
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/prescribed-shell-harness.sh"
@@ -135,7 +137,7 @@ done
 # the old target untouched.
 image_interrupt_bin="$fixture_root/image-interrupt-bin"
 mkdir -p "$image_interrupt_bin"
-printf '%s\n' '#!/usr/bin/env bash' 'while [ "$#" -gt 0 ]; do case "$1" in --output) output_path="$2"; shift 2 ;; *) shift ;; esac; done' 'printf "%s" "$output_path" > "$IMAGE_INTERRUPT_PATH_LOG"' 'printf partial > "$output_path"' ': > "$IMAGE_INTERRUPT_READY"' 'trap "exit 143" TERM INT HUP' 'while :; do sleep 0.1; done' > "$image_interrupt_bin/imagegen"
+printf '%s\n' '#!/usr/bin/env bash' 'while [ "$#" -gt 0 ]; do case "$1" in --output) output_path="$2"; shift 2 ;; *) shift ;; esac; done' 'printf "%s" "$output_path" > "$IMAGE_INTERRUPT_PATH_LOG"' 'printf partial > "$output_path"' ': > "$IMAGE_INTERRUPT_READY"' 'trap "exit 143" TERM INT HUP' 'fixture_deadline=$((SECONDS + 30)); while (( SECONDS < fixture_deadline )); do sleep 0.1; done' > "$image_interrupt_bin/imagegen"
 chmod +x "$image_interrupt_bin/imagegen"
 interrupt_target="$fixture_root/interrupted.png"
 printf stable-interrupt > "$interrupt_target"
@@ -202,11 +204,11 @@ printf '%s\n' \
   'while [ "$#" -gt 0 ]; do case "$1" in --output) output_path="$2"; shift 2 ;; *) shift ;; esac; done' \
   'printf "%s" "$output_path" > "$IMAGE_TREE_STAGE_LOG"' \
   'printf partial > "$output_path"' \
-  '( while :; do sleep 0.2; done ) &' \
+  '( fixture_deadline=$((SECONDS + 30)); while (( SECONDS < fixture_deadline )); do sleep 0.2; done ) &' \
   'printf "%s\n" "$!" > "$IMAGE_TREE_DESCENDANT_PID"' \
   'printf "%s\n" "$$" > "$IMAGE_TREE_BACKEND_PID"' \
   ': > "$IMAGE_TREE_READY"' \
-  'while :; do sleep 0.2; done' \
+  'fixture_deadline=$((SECONDS + 30)); while (( SECONDS < fixture_deadline )); do sleep 0.2; done' \
   > "$image_tree_bin/imagegen"
 chmod +x "$image_tree_bin/imagegen"
 image_tree_target="$fixture_root/process-tree.png"
@@ -268,10 +270,10 @@ printf '%s\n' \
   '#!/usr/bin/env bash' \
   'while [ "$#" -gt 0 ]; do case "$1" in --output) output_path="$2"; shift 2 ;; --prompt) image_prompt="$2"; shift 2 ;; *) shift ;; esac; done' \
   'printf partial > "$output_path"' \
-  'case "$image_prompt" in *term-deaf*) ( trap "" TERM; while :; do sleep 1; done ) & trap "" TERM ;; *) ( while :; do sleep 1; done ) & trap "sleep 0.3; exit 143" TERM ;; esac' \
+  'case "$image_prompt" in *term-deaf*) ( trap "" TERM; fixture_deadline=$((SECONDS + 30)); while (( SECONDS < fixture_deadline )); do sleep 1; done ) & trap "" TERM ;; *) ( fixture_deadline=$((SECONDS + 30)); while (( SECONDS < fixture_deadline )); do sleep 1; done ) & trap "sleep 0.3; exit 143" TERM ;; esac' \
   'printf "%s\n" "$!" > "$IMAGE_LIVENESS_DESCENDANT_PID"' \
   ': > "$IMAGE_LIVENESS_READY"' \
-  'while :; do sleep 1; done' \
+  'fixture_deadline=$((SECONDS + 30)); while (( SECONDS < fixture_deadline )); do sleep 1; done' \
   > "$image_liveness_bin/imagegen"
 printf '%s\n' \
   '#!/usr/bin/env bash' \
@@ -387,7 +389,7 @@ printf '%s\n' \
   'printf "%s\n" "$$" > "$IMAGE_EARLY_BACKEND_PID"' \
   'printf partial > "$output_path"' \
   'trap "exit 143" TERM INT HUP' \
-  'while :; do sleep 0.1; done' \
+  'fixture_deadline=$((SECONDS + 30)); while (( SECONDS < fixture_deadline )); do sleep 0.1; done' \
   > "$image_early_bin/imagegen"
 chmod +x "$image_early_bin/imagegen"
 image_early_target="$fixture_root/early-interrupt.png"
@@ -431,7 +433,7 @@ fi
 # command substitution so the deadline's intentional failure stays out of this file's tally.
 deadline_probe_report="$( {
   deadline_probe_ready="$fixture_root/deadline-probe-ready"
-  ( trap '' TERM; : > "$deadline_probe_ready"; while :; do sleep 0.1; done ) >/dev/null 2>&1 &
+  ( trap '' TERM; : > "$deadline_probe_ready"; fixture_deadline=$((SECONDS + 30)); while (( SECONDS < fixture_deadline )); do sleep 0.1; done ) >/dev/null 2>&1 &
   deadline_probe_pid=$!
   deadline_probe_ticks=0
   while [ ! -e "$deadline_probe_ready" ] && [ "$deadline_probe_ticks" -lt 200 ]; do

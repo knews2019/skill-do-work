@@ -25,6 +25,8 @@ find "$capture_occupied_root/assets/result.png" -name '*.copying.*' -print -quit
   && fail_case 'capture-screenshot occupied-destination case abandoned its private copy inside the occupant'
 
 # capture-screenshot: coordinate two writers so the loser cannot publish the winner's private copy.
+# Both children perform one finite local-file publication and return; neither waits
+# for a later kill. The timeout below diagnoses a regression in that operation.
 capture_root="$fixture_root/capture"
 mkdir -p "$capture_root/a" "$capture_root/b" "$capture_root/assets"
 printf 'dispatch-a' > "$capture_root/a/source.png"
