@@ -337,11 +337,8 @@ func TestVerifyFlagsStaleAndMalformedClaims(t *testing.T) {
 	claimFindings := findingsMentioning(report, verifyCategoryClaimNeedsAttention)
 	flaggedIds := map[string]bool{}
 	for _, finding := range claimFindings {
-		for _, requestId := range []string{"REQ-101", "REQ-102", "REQ-103", "REQ-104", "REQ-105"} {
-			if strings.Contains(finding.Detail, requestId) {
-				flaggedIds[requestId] = true
-			}
-		}
+		// The id is the finding's Subject, not a substring of its detail (REQ-588).
+		flaggedIds[finding.Subject] = true
 	}
 	for _, shouldFlag := range []string{"REQ-101", "REQ-103", "REQ-104", "REQ-105"} {
 		if !flaggedIds[shouldFlag] {
@@ -399,7 +396,9 @@ func TestVerifyFlagsStrayRequestFiles(t *testing.T) {
 	} {
 		matchingCount := 0
 		for _, finding := range strayFindings {
-			if strings.Contains(finding.Detail, expectedPath) {
+			// The path is the finding's Subject, which is what the board groups on
+			// and prints as the row heading (REQ-588).
+			if finding.Subject == expectedPath {
 				matchingCount++
 			}
 			if finding.Fixable {
@@ -440,8 +439,8 @@ func TestAppendStrayRequestFileFindingsUsesStructuredEvidence(t *testing.T) {
 	if finding.Category != verifyCategoryStrayRequestFile {
 		t.Errorf("category = %q, want %q", finding.Category, verifyCategoryStrayRequestFile)
 	}
-	if !strings.Contains(finding.Detail, structuredPath) {
-		t.Errorf("detail %q does not name structured path %q", finding.Detail, structuredPath)
+	if finding.Subject != "do-work/"+structuredPath {
+		t.Errorf("subject %q does not name structured path %q", finding.Subject, structuredPath)
 	}
 	if finding.Fixable {
 		t.Errorf("structured stray finding must remain non-fixable: %+v", finding)
@@ -698,16 +697,8 @@ func TestVerifyClassifiesWorktreeLeftoversByMergeState(t *testing.T) {
 	categoryByLeftover := map[string]string{}
 	for _, category := range []string{verifyCategoryMergedWorktreeLeftover, verifyCategoryUnmergedWorktreeLeftover, verifyCategoryUndeterminedWorktreeLeftover} {
 		for _, finding := range findingsMentioning(report, category) {
-			for _, leftoverName := range []string{
-				"worktree-agent-REQ-001-unmerged-live",
-				"worktree-agent-REQ-002-unmerged-branch",
-				"worktree-agent-REQ-003-merged-live",
-				"worktree-agent-REQ-004-merged-branch",
-			} {
-				if strings.Contains(finding.Detail, leftoverName) {
-					categoryByLeftover[leftoverName] = category
-				}
-			}
+			// The worktree name is the finding's Subject (REQ-588).
+			categoryByLeftover[finding.Subject] = category
 		}
 	}
 
@@ -1431,7 +1422,7 @@ func TestVerifyAllowsReviewGeneratedMemberUnderClosedUserRequest(t *testing.T) {
 	}
 
 	strandedFindings := findingsMentioning(report, verifyCategoryStrandedFinishedRequest)
-	if len(strandedFindings) != 1 || !strings.Contains(strandedFindings[0].Detail, "REQ-094") {
+	if len(strandedFindings) != 1 || strandedFindings[0].Subject != "REQ-094" {
 		t.Fatalf("terminal review-generated member must remain owned by stranded-finished, got %d findings:\n%s",
 			len(strandedFindings), renderVerifyReport(report))
 	}
@@ -1463,8 +1454,11 @@ func TestVerifyFlagsArchivedUserRequestWithALiveMember(t *testing.T) {
 			len(liveMemberFindings), renderVerifyReport(report))
 	}
 	detail := liveMemberFindings[0].Detail
-	if !strings.Contains(detail, "UR-090") || !strings.Contains(detail, "REQ-080") {
-		t.Errorf("finding must name both the archived UR and the live member, got %q", detail)
+	// The archived UR is the finding's Subject and the live members are its detail
+	// (REQ-588): the board prints the UR once as a heading over its rows.
+	if liveMemberFindings[0].Subject != "UR-090" || !strings.Contains(detail, "REQ-080") {
+		t.Errorf("finding must name both the archived UR and the live member, got subject %q detail %q",
+			liveMemberFindings[0].Subject, detail)
 	}
 	if strings.Contains(detail, "REQ-079") {
 		t.Errorf("the terminally-resolved member is not the problem and must not be listed, got %q", detail)
@@ -1611,8 +1605,8 @@ func TestVerifyLiftsCompletionAnomaliesIntoFindings(t *testing.T) {
 	if finding.Category != verifyCategoryCompletionAnomaly {
 		t.Fatalf("category = %q, want %q", finding.Category, verifyCategoryCompletionAnomaly)
 	}
-	if !strings.Contains(finding.Detail, "REQ-9330") || !strings.Contains(finding.Detail, "is earlier than claimed_at") {
-		t.Fatalf("detail = %q, want the ticket id and its reason forwarded", finding.Detail)
+	if finding.Subject != "REQ-9330" || !strings.Contains(finding.Detail, "is earlier than claimed_at") {
+		t.Fatalf("subject %q detail %q, want the ticket id and its reason forwarded", finding.Subject, finding.Detail)
 	}
 
 	cleanReport := VerifyReport{}
@@ -1649,7 +1643,7 @@ func TestHashOnlyAnomalySkippedWhenGitUnavailable(t *testing.T) {
 	}
 	report := VerifyReport{}
 	appendCompletionAnomalyFindings(&report, nonRepoRoot, board)
-	if len(report.Findings) != 1 || !strings.Contains(report.Findings[0].Detail, "REQ-9332") {
+	if len(report.Findings) != 1 || report.Findings[0].Subject != "REQ-9332" {
 		t.Fatalf("findings = %v, want exactly the reversed-span ticket REQ-9332", report.Findings)
 	}
 	sawSkip := false
@@ -1687,7 +1681,10 @@ func TestVerifyFlagsCreatedAfterClaimed(t *testing.T) {
 		t.Fatalf("got %d ordering findings, want 1:\n%s", len(orderingFindings), renderVerifyReport(report))
 	}
 	// Both field names and both raw values, so the reader can repair without reopening the file.
-	for _, required := range []string{"REQ-800", "created_at", "claimed_at",
+	if orderingFindings[0].Subject != "REQ-800" {
+		t.Errorf("ordering finding subject = %q, want the REQ it is about", orderingFindings[0].Subject)
+	}
+	for _, required := range []string{"created_at", "claimed_at",
 		"2026-08-19T12:00:00Z", "2026-08-18T09:00:00Z"} {
 		if !strings.Contains(orderingFindings[0].Detail, required) {
 			t.Errorf("ordering finding detail %q omits %q", orderingFindings[0].Detail, required)
@@ -1865,7 +1862,10 @@ func TestVerifyFlagsCalibrationRowDisagreeingWithFrontmatter(t *testing.T) {
 		t.Fatalf("got %d calibration mismatches, want 1 (the agreeing row must stay silent):\n%s",
 			len(mismatches), renderVerifyReport(report))
 	}
-	for _, required := range []string{"REQ-233", "70", "10"} {
+	if mismatches[0].Subject != "REQ-233" {
+		t.Errorf("calibration mismatch subject = %q, want the REQ whose row disagrees", mismatches[0].Subject)
+	}
+	for _, required := range []string{"70", "10"} {
 		if !strings.Contains(mismatches[0].Detail, required) {
 			t.Errorf("calibration mismatch detail %q omits %q", mismatches[0].Detail, required)
 		}
@@ -2049,13 +2049,17 @@ func structuralDamageFixture(t *testing.T) string {
 	})
 }
 
-// findingsNaming returns every finding whose detail names a REQ id, across all
-// categories — the question a carve-out assertion actually asks ("did anything at
-// all fire on this file?"), which a per-category filter cannot answer.
+// findingsNaming returns every finding about one REQ id, across all categories —
+// the question a carve-out assertion actually asks ("did anything at all fire on
+// this file?"), which a per-category filter cannot answer.
+//
+// A subject-bearing finding names the id in Subject and no longer repeats it in
+// the detail (REQ-588); the detail is still searched for the probes that set no
+// subject, such as the duplicate-id warning forwarded from the parser.
 func findingsNaming(report VerifyReport, requestId string) []VerifyFinding {
 	var matched []VerifyFinding
 	for _, finding := range report.Findings {
-		if strings.Contains(finding.Detail, requestId) {
+		if finding.Subject == requestId || strings.Contains(finding.Detail, requestId) {
 			matched = append(matched, finding)
 		}
 	}
@@ -2215,7 +2219,7 @@ func TestVerifyUserRequestExemptionsRequireTheirSchemaDiscriminator(t *testing.T
 		matched := findingsMentioning(report, verifyCategoryStructurallyDamagedRequest)
 		found := false
 		for _, finding := range matched {
-			if strings.Contains(finding.Detail, mustBeFlagged) && strings.Contains(finding.Detail, "user_request") {
+			if finding.Subject == mustBeFlagged && strings.Contains(finding.Detail, "user_request") {
 				found = true
 			}
 		}
@@ -2427,5 +2431,95 @@ func TestVerifyNamesTheChangelogAsTheReleaseFindingSubject(t *testing.T) {
 	}
 	if mismatchFindings[0].Subject != "CHANGELOG.md" {
 		t.Errorf("release finding subject = %q, want %q", mismatchFindings[0].Subject, "CHANGELOG.md")
+	}
+}
+
+// REQ-588: the board prints the subject as a heading above the rows that share
+// it, so a detail that opens with the same name reads as "REQ-581 REQ-581 has
+// terminal status …". The producer stops repeating it, and the terminal report
+// prints the subject itself so no reader loses the name the detail gave up.
+//
+// One fixture drives every subject-bearing probe that fires without git, and the
+// category coverage is asserted first: a fixture that quietly stopped producing
+// findings would satisfy the prefix rule by having nothing to check.
+func TestVerifyFindingDetailsDoNotRepeatTheirSubject(t *testing.T) {
+	repoRoot := writeVerifyFixture(t, []verifyFixtureFile{
+		// Release probes: version ahead of the newest changelog entry.
+		{"actions/version.md", "# Version Action\n\n**Current version**: 0.163.9\n"},
+		{"CHANGELOG.md", cleanChangelog},
+		// A REQ file outside queue/, working/ and archive/.
+		{"do-work/REQ-910-stray.md", "---\nid: REQ-910\ntitle: Stray\nstatus: pending\nuser_request: UR-900\n---\n"},
+		// Structural damage: no id, and no user_request pointer.
+		{"do-work/queue/REQ-911-no-id.md", "---\ntitle: No id\nstatus: pending\nuser_request: UR-900\n---\n"},
+		{"do-work/queue/REQ-912-no-user-request.md", "---\nid: REQ-912\ntitle: Unlinked\nstatus: pending\n---\n"},
+		// An unrecognized status value.
+		{"do-work/queue/REQ-913-bad-status.md", "---\nid: REQ-913\ntitle: Bad status\nstatus: pendng\nuser_request: UR-900\n---\n"},
+		// Terminal status still sitting in working/.
+		{"do-work/working/REQ-914-stranded.md", "---\nid: REQ-914\ntitle: Stranded\nstatus: completed\nuser_request: UR-900\n---\n"},
+		// Claimed here while another checkout's marker still stands.
+		{"do-work/working/REQ-915-assigned.md", "---\nid: REQ-915\ntitle: Assigned\nstatus: claimed\nassigned_to: cloud-alpha\nclaimed_at: 2026-09-05T10:00:00Z\nuser_request: UR-900\n---\n"},
+		// A claim with no claimed_at at all.
+		{"do-work/working/REQ-916-unclaimed-stamp.md", "---\nid: REQ-916\ntitle: No stamp\nstatus: claimed\nuser_request: UR-900\n---\n"},
+		// Timestamps out of order.
+		{"do-work/archive/REQ-917-out-of-order.md", "---\nid: REQ-917\ntitle: Out of order\nstatus: completed\ncreated_at: 2026-09-05T12:00:00Z\nclaimed_at: 2026-09-05T10:00:00Z\ncompleted_at: 2026-09-05T13:00:00Z\nuser_request: UR-900\n---\n"},
+		// An archived UR whose member is still live.
+		{"do-work/archive/UR-900/input.md", "---\nid: UR-900\ntitle: Closed early\nrequests: [REQ-913]\n---\n"},
+		// A checkpoint naming a REQ that exists nowhere.
+		{"do-work/CHECKPOINT.md", "REQ-999 was mid-flight.\n"},
+		// A calibration row disagreeing with the frontmatter it was derived from.
+		{"do-work/archive/REQ-918-logged-wrong.md", "---\nid: REQ-918\ntitle: Logged wrong\nstatus: completed\nclaimed_at: 2026-08-18T11:00:00Z\ncompleted_at: 2026-08-18T11:10:30Z\nuser_request: UR-900\n---\n"},
+		{"do-work/calibration-log.tsv", "req_id\troute\testimated_p50_minutes\twall_minutes\tcompleted_at\nREQ-918\tB\t25\t70\t2026-08-18T11:10:30Z\n"},
+	})
+
+	report, verifyError := runVerifyProbes(repoRoot, time.Now())
+	if verifyError != nil {
+		t.Fatalf("runVerifyProbes: %v", verifyError)
+	}
+
+	seenCategories := map[string]bool{}
+	for _, finding := range report.Findings {
+		seenCategories[finding.Category] = true
+	}
+	for _, wantCategory := range []string{
+		verifyCategoryVersionChangelogMismatch,
+		verifyCategoryStrayRequestFile,
+		verifyCategoryStructurallyDamagedRequest,
+		verifyCategoryUnrecognizedRequestStatus,
+		verifyCategoryStrandedFinishedRequest,
+		verifyCategoryAssignedElsewhereClaimedHere,
+		verifyCategoryClaimNeedsAttention,
+		verifyCategoryTimestampOrdering,
+		verifyCategoryArchivedUserRequestLiveMember,
+		verifyCategoryCheckpointGhostRequest,
+		verifyCategoryCalibrationLogMismatch,
+	} {
+		if !seenCategories[wantCategory] {
+			t.Fatalf("the fixture no longer produces a %s finding, so this test proves nothing about it:\n%s",
+				wantCategory, renderVerifyReport(report))
+		}
+	}
+
+	subjectBearingFindings := 0
+	for _, finding := range report.Findings {
+		if finding.Subject == "" {
+			continue
+		}
+		subjectBearingFindings++
+		if strings.HasPrefix(finding.Detail, finding.Subject) {
+			t.Errorf("%s detail repeats the subject the board already printed as its heading: subject %q, detail %q",
+				finding.Category, finding.Subject, finding.Detail)
+		}
+	}
+	if subjectBearingFindings == 0 {
+		t.Fatalf("no finding carried a subject, so the rule went unchecked:\n%s", renderVerifyReport(report))
+	}
+
+	// The terminal report has no heading above the line, so it prints the subject
+	// itself. Without this the ids the details gave up would be lost there.
+	renderedReport := renderVerifyReport(report)
+	for _, subjectTheReportMustName := range []string{"REQ-914", "REQ-915", "CHANGELOG.md"} {
+		if !strings.Contains(renderedReport, subjectTheReportMustName) {
+			t.Errorf("the terminal report never names %s:\n%s", subjectTheReportMustName, renderedReport)
+		}
 	}
 }

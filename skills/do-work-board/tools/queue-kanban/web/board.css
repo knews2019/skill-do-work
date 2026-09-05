@@ -637,23 +637,30 @@ body.is-resizing-detail {
 .board-findings-group {
   display: contents;
 }
-/* One heading per subject the producer grouped on, printed once above its rows. */
+/* One heading per subject the producer grouped on, printed once above its rows.
+   It is an identifier — a worktree name, a REQ id, a file path — so it wears the
+   mono face at the row's own size rather than a fourth size of its own (REQ-588). */
 .board-findings-subject {
   margin-top: 10px;
-  color: var(--ink-soft);
-  font-size: 0.72rem;
+  color: var(--ink-base);
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
   font-weight: 600;
-  letter-spacing: 0.02em;
+  letter-spacing: 0;
   overflow-wrap: anywhere;
 }
 .board-findings-subject:first-child {
   margin-top: 0;
 }
+/* Chip and text are two grid columns, not two flex children: wrapped text stays
+   inside the text column instead of falling back under the chip and reading as a
+   paragraph (REQ-588). */
 .board-findings-row {
-  display: flex;
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  column-gap: 10px;
   align-items: baseline;
-  gap: 8px;
-  font-size: 0.82rem;
+  font-size: 0.8rem;
   line-height: 1.45;
 }
 /* The lighter of the two weights the producer allows: a finding `do-work cleanup`
@@ -666,23 +673,28 @@ body.is-resizing-detail {
 .board-findings-row-detached {
   margin-top: 14px;
 }
+/* One step below the row text, which is what keeps the category readable as a
+   label rather than as a second voice competing with the finding itself. */
 .board-findings-chip {
-  flex: none;
-  padding: 1px 8px;
+  padding: 1px 7px;
   border-radius: var(--radius-pill);
   background-color: var(--surface-3);
   color: var(--ink-soft);
-  font-size: 0.72rem;
+  font-size: 0.66rem;
+  line-height: 1.6;
   letter-spacing: 0.02em;
   text-transform: uppercase;
 }
-/* The detail, the fixable tag and the remedy flow as one wrapping sentence beside
-   the chip, so a long finding grows downward instead of pushing the row wide. */
+/* The text column: the detail and its inline "cleanup can fix" tag on one line,
+   the remedy on the next. Two lines with one job each is what makes the row
+   scannable — what is wrong, then what to do (REQ-588). */
 .board-findings-text {
+  display: block;
   overflow-wrap: anywhere;
 }
 .board-findings-remedy {
-  margin-left: 6px;
+  display: block;
+  margin: 1px 0 0;
   color: var(--ink-soft);
 }
 .board-findings-fixable {

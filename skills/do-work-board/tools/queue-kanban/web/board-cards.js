@@ -748,8 +748,8 @@
     return orderedGroups;
   }
 
-  // One row: the category chip, then the detail, the fixable tag and the remedy
-  // flowing as one wrapping sentence beside it.
+  // One row: the category chip, then the text column — the detail with its inline
+  // fixable tag, and the remedy under them on its own line (REQ-588).
   function makeFindingRow(finding) {
     var rowClassName = "board-findings-row";
     if (finding.fixable) {
@@ -765,8 +765,10 @@
       rowText.appendChild(createElement("span", "board-findings-fixable", "cleanup can fix"));
     }
     if (finding.remedy) {
-      // The same arrow the terminal report puts in front of a remedy.
-      rowText.appendChild(createElement("span", "board-findings-remedy", "\u2192 " + finding.remedy));
+      // No arrow: the remedy is a block on the line below the detail, and a line
+      // does not need a pointer to say it follows. The terminal report keeps its
+      // arrow because there it really is a continuation of the line above.
+      rowText.appendChild(createElement("span", "board-findings-remedy", finding.remedy));
     }
     row.appendChild(rowText);
     return row;
