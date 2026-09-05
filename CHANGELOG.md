@@ -2,6 +2,17 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.303.5 — Six Reviewed Defects in Verification, Evidence and Timing (2026-09-05)
+
+A review of the shipped tools found six ways a check could pass without having proven what it claimed. All six are fixed with the machinery already in place — no new caches, schemas, parsers or finalizers.
+
+- Heavy verification now refuses when one lane changes another lane's inputs, whether it dirties the file or commits it. Reused green evidence can no longer describe a tree that has moved underneath it, and queue bookkeeping is still exempt.
+- A Blocked resolution or Implementation no-change marker hidden inside an HTML comment no longer authorizes completion. Comment-bearing evidence is refused outright; the visible forms are unchanged.
+- An explicit queue continuation keeps working after its first request is claimed. It used to stop there, because the request had left the queue and the continuation was dispatched as ordinary single-request work.
+- A request that fails in planning, implementation or before its tests can now be finalized through `advance` instead of keeping its claim. Only the failure transition is admitted early; completion still needs its phase evidence, and identity and preimage checks are unchanged.
+- Timed commands validate their options before launching the child, so an invalid run, request, category or operation no longer executes the command and reports a usage error afterwards. A recording failure now keeps the child's own exit status and says it was the recording that failed, not the launch.
+- The board's Activity view stops labelling an old `status_changed_at` row with the request's current status. A request that went to pending recovery and later completed no longer shows the earlier instant as a completion.
+
 ## 0.303.4 — Background Test Workers Stop Themselves (2026-09-05)
 
 Temporary background test work now owns its lifetime limit, so a killed parent cannot leave synthetic load running indefinitely.
