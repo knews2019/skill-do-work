@@ -1,7 +1,7 @@
 ---
 id: REQ-553
 title: '[impact-negligible] Source one do-work-cli launcher preamble instead of hand-rolling it in every launcher'
-status: pending
+status: claimed
 priority: later
 created_at: 2026-09-03T19:45:35Z
 user_request: UR-105
@@ -16,6 +16,7 @@ maintenance: false
 impact: impact-negligible
 effort_estimate: effort-substantive
 write_set: [tools/do-work-cli-preamble.sh, skills/do-work/tools/do-work-cli-preamble.sh, tools/install-do-work-suite.sh, tools/fetch-upstream-archive.sh, tools/replace-text-section.sh, tools/validate-suite-manifest.sh, skills/do-work/tools/install-do-work-suite.sh, skills/do-work/tools/fetch-upstream-archive.sh, skills/do-work/tools/replace-text-section.sh, skills/do-work/tools/validate-suite-manifest.sh, skills/do-work/tools/checks/associate-files.sh, _dev/tests/staged-skills-contract.sh, _dev/tests/audit-lockins.sh]
+claimed_at: 2026-09-05T00:41:15Z
 ---
 
 # Source one do-work-cli launcher preamble instead of hand-rolling it in every launcher
