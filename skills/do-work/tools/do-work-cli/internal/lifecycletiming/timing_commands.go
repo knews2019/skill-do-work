@@ -95,7 +95,12 @@ func handleRunTimedCommand(executionContext commandruntime.ExecutionContext, arg
 	}
 	timing, exitStatus, err := RunTimedCommand(executionContext.RepositoryRoot, eventRequest, options.commandArgv, childOutput)
 	if err != nil {
-		return timingFailure(CommandRunTimedCommand, "TIMED-COMMAND-LAUNCH-FAILED", err.Error())
+		// A command that never launched exits 127 like a shell's "command not
+		// found", so a caller reading the process status still learns that the
+		// gate did not run rather than that it failed.
+		launchFailure := timingFailure(CommandRunTimedCommand, "TIMED-COMMAND-LAUNCH-FAILED", err.Error())
+		launchFailure.ExitCodeOverride = exitStatus
+		return launchFailure
 	}
 	if exitStatus != 0 {
 		return resultmodel.CommandResult{

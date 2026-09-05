@@ -26,6 +26,7 @@ import (
 	"regexp"
 	"sort"
 	"strings"
+	"syscall"
 	"time"
 	"unicode"
 
@@ -42,6 +43,15 @@ const timingStreamSchemaVersion = 1
 const timingDirectoryName = "do-work-timing"
 
 const timingSectionHeading = "## Timing"
+
+// fenceRunMinimumLength is CommonMark's own floor for a fence or thematic break.
+const fenceRunMinimumLength = 3
+
+// Shell-compatible statuses for a wrapped command that did not exit normally.
+const (
+	timedCommandNotLaunchedStatus = 127
+	signalExitStatusBase          = 128
+)
 
 // Elapsed sources distinguish a duration this process measured end to end from
 // one derived by subtracting two wall-clock instants.
@@ -151,12 +161,10 @@ func RunTimedCommand(repositoryRoot string, eventRequest EventRequest, argv []st
 	case runError == nil:
 	case errors.As(runError, &exitError):
 	default:
-		return resultmodel.LifecycleTimingResult{}, 0, fmt.Errorf("launch %s: %w", filepath.Base(argv[0]), runError)
+		return resultmodel.LifecycleTimingResult{}, timedCommandNotLaunchedStatus,
+			fmt.Errorf("launch %s: %w", filepath.Base(argv[0]), runError)
 	}
-	exitStatus := command.ProcessState.ExitCode()
-	if exitStatus < 0 {
-		exitStatus = 128
-	}
+	exitStatus := childExitStatus(command.ProcessState)
 
 	eventRequest.CommandArgv = argv
 	eventRequest.ExitStatus = &exitStatus
@@ -177,6 +185,27 @@ func RunTimedCommand(repositoryRoot string, eventRequest EventRequest, argv []st
 	elapsedSeconds := int(measuredElapsed.Round(time.Second) / time.Second)
 	result, err := appendMeasuredEvent(repositoryRoot, eventRequest, endInstant.UTC(), elapsedSourceMonotonic, &elapsedSeconds)
 	return result, exitStatus, err
+}
+
+// childExitStatus reports what a shell reports for this child, which is what the
+// shipped prose promises: the child's own code when it exited normally, and 128
+// plus the signal number when a signal killed it. os.ProcessState offers no
+// portable signal accessor, so the reading is taken through an anonymous
+// interface that only a platform with signals satisfies; a platform without them
+// keeps the bare base, still non-zero and still not a code a child chose. A
+// command that never launched is reported by the caller as 127, the shell's own
+// "command not found".
+func childExitStatus(state *os.ProcessState) int {
+	if code := state.ExitCode(); code >= 0 {
+		return code
+	}
+	if waitStatus, readable := state.Sys().(interface {
+		Signaled() bool
+		Signal() syscall.Signal
+	}); readable && waitStatus.Signaled() {
+		return signalExitStatusBase + int(waitStatus.Signal())
+	}
+	return signalExitStatusBase
 }
 
 // appendMeasuredEvent is the single write path. Every field is validated and
@@ -283,9 +312,11 @@ func FoldTimingSummary(repositoryRoot string, foldRequest FoldRequest) (resultmo
 	if !timingRequestIDPattern.MatchString(foldRequest.RequestID) {
 		return resultmodel.LifecycleTimingResult{}, nil, fmt.Errorf("request identity %q is not REQ-NNN", foldRequest.RequestID)
 	}
-	if strings.TrimSpace(foldRequest.RequestPath) == "" {
-		return resultmodel.LifecycleTimingResult{}, nil, errors.New("a request path is required")
+	confinedRequestPath, pathError := repositoryRelativeRequestPath(foldRequest.RequestPath)
+	if pathError != nil {
+		return resultmodel.LifecycleTimingResult{}, nil, pathError
 	}
+	foldRequest.RequestPath = confinedRequestPath
 	streamPath, err := streamPathFor(repositoryRoot, runIdentifier, foldRequest.RequestID)
 	if err != nil {
 		return resultmodel.LifecycleTimingResult{}, nil, err
@@ -331,6 +362,26 @@ func FoldTimingSummary(repositoryRoot string, foldRequest FoldRequest) (resultmo
 	summary.StreamState = streamStateFolded
 	summary.SectionWritten = true
 	return summary, skipped, nil
+}
+
+// repositoryRelativeRequestPath confines the one file this command rewrites to
+// the repository the caller named. The fold takes its target from argv, so an
+// absolute path or one that climbs out of the root would let it rewrite a file
+// the repository does not own; every sibling writer in this module states the
+// same confinement.
+func repositoryRelativeRequestPath(requestPath string) (string, error) {
+	trimmed := strings.TrimSpace(requestPath)
+	if trimmed == "" {
+		return "", errors.New("a request path is required")
+	}
+	if filepath.IsAbs(trimmed) {
+		return "", fmt.Errorf("request path %q must be repository-relative", requestPath)
+	}
+	cleaned := filepath.Clean(filepath.FromSlash(trimmed))
+	if cleaned == "." || cleaned == ".." || strings.HasPrefix(cleaned, ".."+string(filepath.Separator)) {
+		return "", fmt.Errorf("request path %q escapes or names the repository root", requestPath)
+	}
+	return filepath.ToSlash(cleaned), nil
 }
 
 // summarizeStream reduces the flat stream to the four answers the maintainer
@@ -427,12 +478,19 @@ func RenderTimingSection(summary resultmodel.LifecycleTimingResult) string {
 }
 
 // replaceTimingSection puts exactly one `## Timing` section into the document:
-// it replaces an existing one in place and otherwise appends at the end. Every
-// byte outside that span is preserved.
+// it replaces the request's own section in place and otherwise appends at the
+// end. Every byte outside that span is preserved, and the result always ends
+// with exactly one newline because the pipeline appends lesson content after
+// this writer runs.
 func replaceTimingSection(documentBytes []byte, section string) []byte {
 	lines := strings.Split(string(documentBytes), "\n")
+	fencedLine, unclosedFenceStart := markFencedLines(lines)
+
 	sectionStart := -1
 	for index, line := range lines {
+		if fencedLine[index] {
+			continue
+		}
 		if strings.TrimRight(line, " \t\r") == timingSectionHeading {
 			sectionStart = index
 			break
@@ -440,29 +498,104 @@ func replaceTimingSection(documentBytes []byte, section string) []byte {
 	}
 	if sectionStart < 0 {
 		document := string(documentBytes)
-		if !strings.HasSuffix(document, "\n") {
-			document += "\n"
-		}
-		if !strings.HasSuffix(document, "\n\n") {
-			document += "\n"
-		}
+		document = strings.TrimRight(document, "\n") + "\n\n"
 		return []byte(document + section)
 	}
+
 	sectionEnd := len(lines)
 	for index := sectionStart + 1; index < len(lines); index++ {
-		if strings.HasPrefix(lines[index], "## ") {
+		if fencedLine[index] {
+			continue
+		}
+		if strings.HasPrefix(strings.TrimLeft(lines[index], " \t"), "## ") {
 			sectionEnd = index
 			break
 		}
 	}
-	replacement := strings.Split(strings.TrimSuffix(section, "\n"), "\n")
-	if sectionEnd < len(lines) {
-		replacement = append(replacement, "")
+	// An unclosed fence below the heading has no closing line to stop at, so the
+	// span would otherwise run to the end of the file and take that fence and
+	// everything under it with it. Stop at the opener instead: leaving a stray
+	// paragraph behind is recoverable, deleting a caller's content is not.
+	if unclosedFenceStart > sectionStart && unclosedFenceStart < sectionEnd {
+		sectionEnd = unclosedFenceStart
 	}
+
 	rebuilt := append([]string{}, lines[:sectionStart]...)
-	rebuilt = append(rebuilt, replacement...)
-	rebuilt = append(rebuilt, lines[sectionEnd:]...)
-	return []byte(strings.Join(rebuilt, "\n"))
+	rebuilt = append(rebuilt, strings.Split(strings.TrimSuffix(section, "\n"), "\n")...)
+	if sectionEnd < len(lines) {
+		rebuilt = append(rebuilt, "")
+		rebuilt = append(rebuilt, lines[sectionEnd:]...)
+	}
+	return []byte(strings.TrimRight(strings.Join(rebuilt, "\n"), "\n") + "\n")
+}
+
+// markFencedLines reports, for each line, whether it belongs to a fenced region
+// a caller wrote, and where a fence that never closes begins (-1 when none does).
+// A heading inside such a region is an example, never this writer's own section.
+//
+// The rule is a condition, not a list of fence spellings. A fence is a run of
+// three or more of one ASCII punctuation mark, closed by a run of the same mark
+// at least as long, so a dialect fence this package has never heard of still
+// hides what it wraps. Only the marks CommonMark itself defines as line
+// constructs that enclose nothing are excluded, and an unclosed opener fences
+// everything after it, which fails toward appending a duplicate section rather
+// than toward deleting a caller's bytes.
+func markFencedLines(lines []string) ([]bool, int) {
+	fencedLine := make([]bool, len(lines))
+	openCharacter, openLength, openIndex := byte(0), 0, -1
+	for index, line := range lines {
+		runCharacter, runLength := leadingPunctuationRun(line)
+		if openLength > 0 {
+			fencedLine[index] = true
+			if runCharacter == openCharacter && runLength >= openLength {
+				openCharacter, openLength, openIndex = 0, 0, -1
+			}
+			continue
+		}
+		if runLength >= fenceRunMinimumLength && isEnclosingFenceCharacter(runCharacter) {
+			openCharacter, openLength, openIndex = runCharacter, runLength, index
+			fencedLine[index] = true
+		}
+	}
+	return fencedLine, openIndex
+}
+
+// leadingPunctuationRun returns the ASCII punctuation mark a line opens with and
+// how many times it repeats. Leading whitespace is skipped rather than measured,
+// so an indented fence still counts as one.
+func leadingPunctuationRun(line string) (byte, int) {
+	content := strings.TrimLeft(strings.TrimRight(line, " \t\r"), " \t")
+	if content == "" || !isMarkdownBlockPunctuation(content[0]) {
+		return 0, 0
+	}
+	runLength := 0
+	for runLength < len(content) && content[runLength] == content[0] {
+		runLength++
+	}
+	return content[0], runLength
+}
+
+// isMarkdownBlockPunctuation is CommonMark's own ASCII punctuation class, taken
+// wholesale rather than narrowed to the marks today's fence syntax happens to
+// use. The narrower set would be an enumeration to revisit whenever a dialect
+// adds a construct, which is exactly how a fence-blind classifier reopens.
+func isMarkdownBlockPunctuation(value byte) bool {
+	return value >= '!' && value <= '/' ||
+		value >= ':' && value <= '@' ||
+		value >= '[' && value <= '`' ||
+		value >= '{' && value <= '~'
+}
+
+// isEnclosingFenceCharacter excludes the four marks CommonMark defines as line
+// constructs that never enclose anything: thematic breaks use "-", "_" and "*",
+// and setext underlines use "-" and "=". Treating those as fences would let the
+// unpaired "---" a request carries above its source line swallow the rest of the
+// document, so the request's own section could never be found again.
+func isEnclosingFenceCharacter(value byte) bool {
+	if value == 0 || !isMarkdownBlockPunctuation(value) {
+		return false
+	}
+	return value != '-' && value != '_' && value != '*' && value != '='
 }
 
 // streamPathFor resolves the Git common directory so every linked worktree of one

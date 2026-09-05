@@ -471,3 +471,160 @@ func TestRunTimedCommandRealClockCoversTheChildsOwnDuration(t *testing.T) {
 		t.Fatalf("recorded window %s to %s is shorter than the child ran", event.StartedAt, event.EndedAt)
 	}
 }
+
+// A request body may show a fenced example of the section this writer produces.
+// Matching that example and deleting everything up to the next heading destroys
+// the closing fence and whatever follows it, which is the one failure this fold
+// can never have.
+func TestFoldTimingSummaryLeavesAFencedTimingExampleIntact(t *testing.T) {
+	repositoryRoot := newTimingRepository(t)
+	requestPath := "do-work/working/REQ-562-record-lifecycle-timings.md"
+	body := "---\nid: REQ-562\n---\n\n# Example\n\n## What\n\nThe fold writes a section shaped like this:\n\n```markdown\n## Timing\n\nObserved an example window.\n```\n\nThat paragraph must survive the fold.\n\n## Lessons Learned\n\nKeep this too.\n"
+	writeTimingTestFile(t, repositoryRoot, requestPath, body)
+	seedDeterministicStream(t, repositoryRoot)
+
+	if _, _, err := FoldTimingSummary(repositoryRoot, FoldRequest{
+		RunIdentifier: "work-2026-09-05-003420", RequestID: "REQ-562", RequestPath: requestPath,
+	}); err != nil {
+		t.Fatalf("fold: %v", err)
+	}
+	folded := readTimingTestFile(t, repositoryRoot, requestPath)
+	if !strings.Contains(folded, "```markdown\n## Timing\n\nObserved an example window.\n```\n") {
+		t.Fatalf("the fenced example was damaged:\n%s", folded)
+	}
+	if !strings.Contains(folded, "That paragraph must survive the fold.") {
+		t.Fatalf("content after the fenced example was destroyed:\n%s", folded)
+	}
+	if !strings.Contains(folded, "## Lessons Learned\n\nKeep this too.\n") {
+		t.Fatalf("a later section was destroyed:\n%s", folded)
+	}
+	if !strings.Contains(folded, "1h 30m 00s total") {
+		t.Fatalf("the real summary was never written:\n%s", folded)
+	}
+}
+
+// The fence rule is a condition over CommonMark's punctuation class, not a list
+// of spellings, so a dialect fence this package has never heard of still hides
+// what it wraps. The unpaired `---` above a request's source line is the
+// counter-case: it encloses nothing, so it must not hide the real section.
+func TestFoldTimingSummaryReadsFencesAsAConditionNotASpelling(t *testing.T) {
+	repositoryRoot := newTimingRepository(t)
+	unknownFence := "do-work/working/REQ-562-unknown-fence.md"
+	writeTimingTestFile(t, repositoryRoot, unknownFence,
+		"---\nid: REQ-562\n---\n\n:::note\n## Timing\n\nA container-fence example.\n:::\n\nSurvivor paragraph.\n")
+	seedDeterministicStream(t, repositoryRoot)
+	if _, _, err := FoldTimingSummary(repositoryRoot, FoldRequest{
+		RunIdentifier: "work-2026-09-05-003420", RequestID: "REQ-562", RequestPath: unknownFence,
+	}); err != nil {
+		t.Fatalf("fold: %v", err)
+	}
+	folded := readTimingTestFile(t, repositoryRoot, unknownFence)
+	if !strings.Contains(folded, "A container-fence example.\n:::\n\nSurvivor paragraph.\n") {
+		t.Fatalf("an unknown fence spelling did not hide its example:\n%s", folded)
+	}
+
+	sourceRule := "do-work/working/REQ-563-source-rule.md"
+	writeTimingTestFile(t, repositoryRoot, sourceRule,
+		"---\nid: REQ-563\n---\n\n# Body\n\n---\n*Source: \"do it\"*\n")
+	seedDeterministicStream(t, repositoryRoot)
+	for attempt := 0; attempt < 2; attempt++ {
+		if _, _, err := FoldTimingSummary(repositoryRoot, FoldRequest{
+			RunIdentifier: "work-2026-09-05-003420", RequestID: "REQ-563", RequestPath: sourceRule,
+		}); err != nil {
+			t.Fatalf("fold attempt %d: %v", attempt, err)
+		}
+		seedStreamForRequest(t, repositoryRoot, "REQ-563")
+	}
+	refolded := readTimingTestFile(t, repositoryRoot, sourceRule)
+	if strings.Count(refolded, "## Timing") != 1 {
+		t.Fatalf("a thematic break hid the real section, so the fold stacked a second one:\n%s", refolded)
+	}
+}
+
+// The pipeline appends lesson content after the fold, so a folded file whose
+// Timing section is last must still end with a newline or the next writer
+// concatenates onto its final line.
+func TestFoldTimingSummaryKeepsATrailingNewlineWhenTheSectionIsLast(t *testing.T) {
+	repositoryRoot := newTimingRepository(t)
+	requestPath := "do-work/working/REQ-562-trailing-newline.md"
+	writeTimingTestFile(t, repositoryRoot, requestPath, "---\nid: REQ-562\n---\n\n## Timing\n\nStale summary from an interrupted run.\n")
+	seedDeterministicStream(t, repositoryRoot)
+
+	if _, _, err := FoldTimingSummary(repositoryRoot, FoldRequest{
+		RunIdentifier: "work-2026-09-05-003420", RequestID: "REQ-562", RequestPath: requestPath,
+	}); err != nil {
+		t.Fatalf("fold: %v", err)
+	}
+	folded := readTimingTestFile(t, repositoryRoot, requestPath)
+	if !strings.HasSuffix(folded, "\n") || strings.HasSuffix(folded, "\n\n") {
+		t.Fatalf("folded file must end with exactly one newline, got %q", folded[max(0, len(folded)-40):])
+	}
+}
+
+// The fold writes to a path a caller supplies, so it must refuse a path that
+// leaves the repository rather than rewriting a file the repository does not own.
+func TestFoldTimingSummaryRefusesARequestPathOutsideTheRepository(t *testing.T) {
+	repositoryRoot := newTimingRepository(t)
+	seedDeterministicStream(t, repositoryRoot)
+	outsideTarget := filepath.Join(filepath.Dir(repositoryRoot), "outside-target.md")
+	if err := os.WriteFile(outsideTarget, []byte("---\nid: REQ-562\n---\n\n# Outside\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.Remove(outsideTarget) })
+
+	for _, escapingPath := range []string{"../outside-target.md", outsideTarget, "do-work/../../outside-target.md"} {
+		if _, _, err := FoldTimingSummary(repositoryRoot, FoldRequest{
+			RunIdentifier: "work-2026-09-05-003420", RequestID: "REQ-562", RequestPath: escapingPath,
+		}); err == nil {
+			t.Fatalf("fold accepted a request path outside the repository: %q", escapingPath)
+		}
+	}
+	survivor, err := os.ReadFile(outsideTarget)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(survivor), "## Timing") {
+		t.Fatalf("the fold wrote outside the repository:\n%s", survivor)
+	}
+}
+
+// The shipped prose claims the wrapper exits with the child's own status, so a
+// signalled child and a command that never launched must report what a shell
+// reports rather than collapsing to one number.
+func TestRunTimedCommandReportsShellStatusesForSignalsAndMissingExecutables(t *testing.T) {
+	repositoryRoot := newTimingRepository(t)
+	_, signalledStatus, err := RunTimedCommand(repositoryRoot, EventRequest{
+		RunIdentifier: "work-signals", RequestID: "REQ-562",
+		Category: "verification-gate", Operation: "self-terminating probe",
+	}, []string{"sh", "-c", "kill -TERM $$"}, nil)
+	if err != nil {
+		t.Fatalf("signalled run: %v", err)
+	}
+	if signalledStatus != 143 {
+		t.Fatalf("signalled status = %d, want 143 (128 + SIGTERM)", signalledStatus)
+	}
+
+	_, missingStatus, err := RunTimedCommand(repositoryRoot, EventRequest{
+		RunIdentifier: "work-signals", RequestID: "REQ-562",
+		Category: "verification-gate", Operation: "missing executable",
+	}, []string{"do-work-executable-that-does-not-exist"}, nil)
+	if err == nil {
+		t.Fatal("expected a launch failure for a missing executable")
+	}
+	if missingStatus != 127 {
+		t.Fatalf("missing executable status = %d, want 127", missingStatus)
+	}
+}
+
+// seedStreamForRequest writes the same deterministic fixture under another
+// request id, so a re-fold has a stream to summarize.
+func seedStreamForRequest(t *testing.T, repositoryRoot, requestID string) {
+	t.Helper()
+	clock := useSyntheticClock(t, "2026-09-05T00:34:20Z")
+	clock.advance(600 * time.Second)
+	appendOrFail(t, repositoryRoot, EventRequest{
+		RunIdentifier: "work-2026-09-05-003420", RequestID: requestID,
+		Category: "planning", Operation: "route C plan",
+		StartedAt: mustParseTiming(t, "2026-09-05T00:34:20Z"), HasExplicitStart: true,
+	})
+}

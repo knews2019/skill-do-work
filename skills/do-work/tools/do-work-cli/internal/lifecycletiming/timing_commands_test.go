@@ -110,3 +110,41 @@ func TestTimingCommandsRefuseIncompleteArgv(t *testing.T) {
 		t.Fatalf("missing request path outcome = %s", missingRequestPath.Outcome)
 	}
 }
+
+// The shipped prose promises the wrapper exits with the child's own status, so
+// the process status a caller reads must carry a signal and a failed launch too.
+func TestRunTimedCommandArgvCarriesSignalAndLaunchStatusesToTheProcessStatus(t *testing.T) {
+	repositoryRoot := newTimingRepository(t)
+	handlers := Handlers(io.Discard)
+	executionContext := commandruntime.ExecutionContext{RepositoryRoot: repositoryRoot, Format: resultmodel.FormatText}
+
+	signalled := handlers[CommandRunTimedCommand](executionContext, []string{
+		"--request", "REQ-562", "--run", "work-argv-signals", "--category", "verification-gate",
+		"--operation", "self-terminating probe", "--", "sh", "-c", "kill -TERM $$",
+	})
+	if signalled.ExitCodeOverride != 143 {
+		t.Fatalf("signalled exit override = %d, want 143", signalled.ExitCodeOverride)
+	}
+	missing := handlers[CommandRunTimedCommand](executionContext, []string{
+		"--request", "REQ-562", "--run", "work-argv-signals", "--category", "verification-gate",
+		"--operation", "missing executable", "--", "do-work-executable-that-does-not-exist",
+	})
+	if missing.Outcome != resultmodel.OutcomeFailure || missing.ExitCodeOverride != 127 {
+		t.Fatalf("missing executable = %s exit=%d, want failure with 127", missing.Outcome, missing.ExitCodeOverride)
+	}
+}
+
+// The fold is reachable from argv, so its repository-root confinement has to
+// hold at that seam and not only inside the writer.
+func TestFoldTimingSummaryArgvRefusesAnEscapingRequestPath(t *testing.T) {
+	repositoryRoot := newTimingRepository(t)
+	handlers := Handlers(io.Discard)
+	executionContext := commandruntime.ExecutionContext{RepositoryRoot: repositoryRoot, Format: resultmodel.FormatText}
+
+	refused := handlers[CommandFoldTimingSummary](executionContext, []string{
+		"--request", "REQ-562", "--run", "work-smoke", "--request-path", "../outside-target.md",
+	})
+	if refused.Outcome != resultmodel.OutcomeFailure {
+		t.Fatalf("escaping request path outcome = %s", refused.Outcome)
+	}
+}
