@@ -123,3 +123,43 @@ waiting for one that can be trusted.
 
 REQ-574, held by the other run, is "bring do-work-cli test files under the 30s
 budget" — the same budget, a different cause.
+
+### F-03 — `queue-kanban-browser` cannot produce trustworthy evidence in this container
+
+Diagnosed with 23 single-test runs across four configurations. Verdict: environmental,
+and already known to this repository.
+
+The only browser here is `/opt/pw-browsers/chromium-1194/chrome-linux/chrome`, which
+reports **Chromium 141.0.7390.37**. `timeline_browser_probe_test.go:3243-3246` says in
+its own comment that "Chrome 141.0.7390.37 failed this guard and is no longer a
+compatibility target (REQ-375)", and `_dev/primes/prime-kanban-board.md` states the
+strict browser lane targets current stable Chromium with Chrome 141 deprecated. So the
+lane is being asked to run on a build the project has already ruled out.
+
+The mechanism, measured through a scratch overlay rather than inferred: on the
+capture-swallowed trial Chromium 141 dispatches no boundary event at all — no
+`pointerleave`, no `pointerout` — because it does not update the hover chain while a
+mouse button is held. The release `pointermove` is delivered and the pointer really is
+outside the host, so the product behaviour is correct; the only failing assertion is
+the test's own guard that its isolator was exercised. **Every product assertion passed
+in all 23 runs.**
+
+Pre-existing: neither `89ade961` nor `cd179d58` touches the board module, the test file
+is byte-identical between them, and the base revision failed 3 of 4 runs in a throwaway
+worktree. Headed mode under Xvfb does not fix it. No Chromium flag does either — it is
+renderer hit-testing behaviour.
+
+**Consequence for REQ-577.** Without `QUEUE_KANBAN_BROWSER` the lane prints
+`SKIP: no browser is available` and exits 0, which is the designed behaviour for a host
+with no supported browser. Under work Step 7.7 a skipped lane leaves the request
+claimed and held with a `HEAVY-RUN-LANE-SKIPPED` finding for the next drain to retry.
+That is the honest outcome and this run takes it. Setting the variable would instead
+convert a documented deprecated-browser incompatibility into a red lane belonging to no
+change in this run, and a red lane withdraws REQ-577's `commit:` and un-readies REQ-506.
+
+The guard is also not deterministic even on the deprecated build — 2 passes in 23 runs —
+so a green from this browser would not be worth trusting either.
+
+**REQ-577 therefore cannot be finalized in this container.** It stays claimed and held.
+This blocks nothing else: its landed `commit:` already makes it source-ready, which is
+why the canonical selector offers REQ-506 as gate-deferred rather than dependency-unmet.
