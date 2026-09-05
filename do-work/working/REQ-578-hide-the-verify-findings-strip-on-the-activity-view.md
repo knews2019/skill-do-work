@@ -1,7 +1,7 @@
 ---
 id: REQ-578
 title: 'Hide the verify-findings strip on the Activity view'
-status: pending
+status: claimed
 created_at: 2026-09-04T23:58:59Z
 user_request: UR-117
 domain: frontend
@@ -16,6 +16,7 @@ write_set:
   - skills/do-work-board/tools/queue-kanban/web/board-controls.js
   - skills/do-work-board/tools/queue-kanban/web/template.html
   - skills/do-work-board/tools/queue-kanban/javascript_behavior_c_test.go
+claimed_at: 2026-09-05T12:00:56Z
 ---
 
 # Hide the Verify-Findings Strip on the Activity View
