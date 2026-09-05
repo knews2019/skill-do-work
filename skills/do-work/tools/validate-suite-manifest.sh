@@ -16,6 +16,7 @@ script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
 # The preamble ships beside these launchers and inside the staged package; probe both.
 preamble_path="$script_dir/do-work-cli-preamble.sh"
 [ -f "$preamble_path" ] || preamble_path="$script_dir/../skills/do-work/tools/do-work-cli-preamble.sh"
+[ -f "$preamble_path" ] || { printf 'suite manifest: do-work-cli-preamble.sh is missing beside this launcher\n' >&2; exit 2; }
 # shellcheck source-path=SCRIPTDIR source=do-work-cli-preamble.sh
 . "$preamble_path"
 if [ -z "$do_work_cli" ]; then

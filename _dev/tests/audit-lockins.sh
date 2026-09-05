@@ -131,10 +131,14 @@ if [ -n "$dead_routing_tokens" ]; then
 fi
 
 # Finding 2: cli-launcher-preamble-copied (REQ-553)
+# The two exempt paths are named in full, not by trailing path shape: a third copy at
+# skills/do-work-toolbox/tools/do-work-cli-preamble.sh is exactly the hand-rolled preamble
+# this pins at zero, and a suffix filter would read it as the exempt file.
 hand_rolled_preambles="$(
   rg -l --glob '*.sh' 'for cli_candidate in|^launcher_arguments=\(--format text\)$' \
     "$repo_root/skills" "$repo_root/tools" 2>/dev/null \
-    | grep -v '/tools/do-work-cli-preamble\.sh$'
+    | grep -vxF -e "$repo_root/tools/do-work-cli-preamble.sh" \
+                -e "$repo_root/skills/do-work/tools/do-work-cli-preamble.sh"
 )"
 if [ -n "$hand_rolled_preambles" ]; then
   while IFS= read -r f; do

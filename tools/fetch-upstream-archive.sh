@@ -23,6 +23,7 @@ script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
 # The preamble ships beside these launchers and inside the staged package; probe both.
 preamble_path="$script_dir/do-work-cli-preamble.sh"
 [ -f "$preamble_path" ] || preamble_path="$script_dir/../skills/do-work/tools/do-work-cli-preamble.sh"
+[ -f "$preamble_path" ] || { printf 'upstream archive could not be fetched. HTTP route: unavailable (do-work-cli-preamble.sh is missing beside this launcher). Git route: unavailable (do-work-cli-preamble.sh is missing beside this launcher).\nSet DO_WORK_UPSTREAM_URL to a reachable archive URL to route around a blocked host.\n' >&2; exit 1; }
 # shellcheck source-path=SCRIPTDIR source=do-work-cli-preamble.sh
 . "$preamble_path"
 if [ -z "$do_work_cli" ]; then
