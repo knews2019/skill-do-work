@@ -2,6 +2,15 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.303.0 — A Citation's Section Name Has to Resolve (2026-09-05)
+
+Shipped prose cites a section by writing the file path and then the section name after an arrow. The contract that guards those citations resolved the path and stopped there, so it reported clean whichever section a citation named — including two that named sections which no longer existed. Every sweep that deletes or renames a section relies on this check, and for that form it was answering yes regardless.
+
+- A cited section now has to be findable in the file it names: an ATX heading, or a bold label the target declares as a contract. Both forms ship, and the rule was settled against all 75 live citations rather than against the easier half.
+- A citation may name a heading without its parenthetical qualifier, the way a reader would, and still resolve.
+- The two dangling citations are fixed. The changelog one keeps its historical section name as prose and gains a live pointer, because history is not rewritten.
+- Known gap, recorded on the request: the bold-label rule is wider than intended, so a rename can still escape when the old name survives in bold prose elsewhere in the same file.
+
 ## 0.302.0 — A Cleanup Test That Can Actually Fail (2026-09-05)
 
 Three tests claimed to prove that a probe's stray child processes get cleaned up. Two of them passed on a tree with a real leak, and the third failed on an unrelated timeout rather than on the check it was written for — so the cleanup path was reported as proven on every run for as long as those tests existed.

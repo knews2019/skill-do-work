@@ -2,7 +2,7 @@
 
 > **Part of the do-work skill.** Handles version reporting, update checks, and work recaps. User-facing walkthrough: [`docs/version-guide.md`](../docs/version-guide.md).
 
-**Current version**: 0.302.0
+**Current version**: 0.303.0
 
 **Prerequisite:** Go 1.25.0 or newer. The update engine is the `do-work-cli` command; `tools/do-work-cli.sh` runs it through `go tool`, which compiles it on first use and reuses the cached executable while its sources are unchanged, and refuses with an actionable message when the toolchain is missing or too old.
 

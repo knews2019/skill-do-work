@@ -24,6 +24,5 @@ session_depth: light
 
 
 
-- REQ-582: [impact-rule-change] Detect the arrow-form section citation in the shipped-package reference contract — claimed 2026-09-05T12:40:40Z — writer: t2s-Virtual-Machine.local:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2
 
 
