@@ -332,7 +332,7 @@ func TestAuthorizedCheckpointRemovalCanSelectOnlyTheUnlabeledEntry(t *testing.T)
 }
 
 func TestRecoverySectionStripPreservesUserAuthoredSections(t *testing.T) {
-	generated := []string{"Triage", "Exploration", "Plan", "Scope", "Pre-Flight", "Implementation Summary", "Qualification", "Testing", "Review", "Lessons Learned", "Orientation", "Decisions", "Discovered Tasks"}
+	generated := []string{"Triage", "Exploration", "Plan", "Scope", "Pre-Flight", "Implementation Summary", "Qualification", "Testing", "Review", "Lessons Learned", "Orientation", "Decisions", "Discovered Tasks", "Timing"}
 	contents := "---\nid: REQ-501\ntitle: Fixture\nstatus: claimed\n---\n\n# User title\n\nUser introduction.\n"
 	for _, heading := range generated {
 		contents += "\n## " + heading + "\n\ngenerated " + heading + "\n"

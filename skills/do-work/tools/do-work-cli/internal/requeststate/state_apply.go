@@ -937,7 +937,7 @@ func checkpointHasRequestEntry(existing []byte, requestID string) bool {
 	return false
 }
 
-var generatedRecoveryHeading = regexp.MustCompile(`(?m)^## (Triage|Exploration|Plan|Scope|Pre-Flight|Implementation Summary|Qualification|Testing|Review|Lessons Learned|Orientation|Decisions|Discovered Tasks)[ \t]*\r?$`)
+var generatedRecoveryHeading = regexp.MustCompile(`(?m)^## (Triage|Exploration|Plan|Scope|Pre-Flight|Implementation Summary|Qualification|Testing|Review|Lessons Learned|Orientation|Decisions|Discovered Tasks|Timing)[ \t]*\r?$`)
 var markdownHeading = regexp.MustCompile(`(?m)^## [^\r\n]+[ \t]*\r?$`)
 
 func stripGeneratedRecoverySections(contents []byte) ([]byte, error) {
