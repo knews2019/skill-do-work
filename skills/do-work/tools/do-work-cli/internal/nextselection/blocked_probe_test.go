@@ -144,3 +144,45 @@ func TestBlockedProbeInterruptionIsTypedAndReapsDescendants(t *testing.T) {
 func runBlockedProbeFixture(repositoryRoot string, probeBytes []byte, timeoutSeconds int) (int, error) {
 	return RunBlockedProbeAtRoot(repositoryRoot, probeBytes, timeoutSeconds)
 }
+
+// TestBlockedProbeEvidencePreservesOrdinaryReservedExitValues pins the REQ-506
+// defect from the other side: 124 and 125 are ordinary exit values a probe may
+// choose for itself, so evidence must report them as a launched, non-timed-out
+// completion instead of rebuilding "timed out" or "never launched" from the
+// integer the child happened to pick.
+func TestBlockedProbeEvidencePreservesOrdinaryReservedExitValues(t *testing.T) {
+	for _, reservedStatus := range []int{BlockedProbeTimeoutStatus, BlockedProbeLaunchStatus} {
+		t.Run(fmt.Sprintf("exit %d", reservedStatus), func(t *testing.T) {
+			repositoryRoot := t.TempDir()
+			evidence, err := RunBlockedProbeEvidenceAtRoot(repositoryRoot, []byte(fmt.Sprintf("exit %d", reservedStatus)), 5)
+			if err != nil || evidence.ExitStatus != reservedStatus || !evidence.Launched || evidence.TimedOut {
+				t.Fatalf("evidence=%#v err=%v", evidence, err)
+			}
+		})
+	}
+}
+
+// TestBlockedProbeEvidenceRefusesUnrunnableInputsAsUnlaunched pins the input
+// guards that return before any process exists. They report the launch status
+// today only because false is the zero value of both booleans; once launch and
+// timeout are set from observation these refusals must keep stating the same
+// facts explicitly.
+func TestBlockedProbeEvidenceRefusesUnrunnableInputsAsUnlaunched(t *testing.T) {
+	for _, test := range []struct {
+		name           string
+		repositoryRoot string
+		probeBytes     []byte
+		timeoutSeconds int
+	}{
+		{name: "empty repository root", repositoryRoot: "", probeBytes: []byte("exit 0"), timeoutSeconds: 2},
+		{name: "nonpositive timeout", repositoryRoot: t.TempDir(), probeBytes: []byte("exit 0"), timeoutSeconds: 0},
+		{name: "empty probe", repositoryRoot: t.TempDir(), probeBytes: nil, timeoutSeconds: 2},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			evidence, err := RunBlockedProbeEvidenceAtRoot(test.repositoryRoot, test.probeBytes, test.timeoutSeconds)
+			if err == nil || evidence.ExitStatus != BlockedProbeLaunchStatus || evidence.Launched || evidence.TimedOut {
+				t.Fatalf("evidence=%#v err=%v", evidence, err)
+			}
+		})
+	}
+}
