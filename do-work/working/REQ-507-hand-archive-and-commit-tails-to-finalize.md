@@ -1,7 +1,7 @@
 ---
 id: REQ-507
 title: '[impact-rule-change] Hand the archive and commit tails to finalize'
-status: pending
+status: claimed
 status_changed_at: 2026-09-04T20:57:34Z
 priority: now
 created_at: 2026-09-02T14:37:54Z
@@ -22,7 +22,6 @@ exploration_at: 2026-09-04T18:32:49Z
 dispatch_at: 2026-09-04T18:36:04Z
 builder_handback_at: 2026-09-04T19:04:09Z
 integration_at: 2026-09-04T19:04:37Z
-commit: ad8bceb7aa0d0c63c230048b6a1f2dae1ef7ccb9
 estimate:
   p50_active_minutes: 50
   confidence: low
@@ -35,6 +34,7 @@ estimate:
     - dependency depth 3
     - cross-route regression gates
     - full-suite verification
+claimed_at: 2026-09-05T09:47:07Z
 ---
 
 # Hand the Archive and Commit Tails to finalize
