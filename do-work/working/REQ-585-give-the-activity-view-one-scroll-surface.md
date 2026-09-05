@@ -12,6 +12,15 @@ related: [REQ-578, REQ-573]
 maintenance: false
 impact: impact-user-visible
 effort_estimate: effort-mechanical
+route: A
+estimate:
+  p50_active_minutes: 5
+  confidence: high
+  calculated_at: 2026-09-05T12:48:56Z
+  basis:
+    - trivial short-circuit
+dispatch_at: 2026-09-05T12:51:06Z
+builder_handback_at: 2026-09-05T13:06:44Z
 claimed_at: 2026-09-05T12:46:41Z
 ---
 
@@ -44,7 +53,9 @@ REQ-578 (hide the verify-findings strip on the Activity view) has merged, so not
 
 ## Open Questions
 
-- [ ] Which layout: M1 (one page scroll, sticky header; recommended, fewest rules, keeps the board's one-scroll-container rule), M2 (table fills the viewport, board stops scrolling on this view), or M3 (M1 plus the pinned summary line). **Recommended:** M1. The builder proceeds with M1 if this is still open at claim time.
+- [~] Which layout: M1 (one page scroll, sticky header; recommended, fewest rules, keeps the board's one-scroll-container rule), M2 (table fills the viewport, board stops scrolling on this view), or M3 (M1 plus the pinned summary line). **Recommended:** M1. The builder proceeds with M1 if this is still open at claim time. → **D-01**: Builder chose: M1 (one page scroll, sticky header). Reasoning: the recommended answer at capture, the smallest diff (two declarations removed plus one scoped padding move), and the only variant that keeps the board's one-scroll-container rule intact. Value: the double scroll is gone with no new scroll model for readers to learn, and REQ-586 (top bar on one line, chips into the Activity view) builds on the same summary line either way. Risk: if the user wanted the summary count pinned (M3), that is a follow-up of a few CSS lines, fully reversible.
+
+<!-- D-XX counter: last used D-01. Next decision: D-02. -->
 
 ## Required Lessons — Dropped for Budget
 
@@ -56,3 +67,19 @@ REQ-578 (hide the verify-findings strip on the Activity view) has merged, so not
 - `do-work/user-requests/UR-120/assets/REQ-585-screenshot-1-activity-double-scroll.png`: the live board at 127.0.0.1:8090, Activity view, 24h window, generated 12:11 UTC on 2026-09-05. Above the table, the verify-findings strip with five worktree cards. Below it, "234 transitions across 49 REQs in the last 24 hours" and the table (REQ, Title, Status, What happened, When, Stamp). Two scrollbars are visible on the right: a thick one on the table box starting at the column header, and a thin one on the board area behind it starting under the top bar.
 
 *Source: "<- this double scrolling behavior is not good, check REQs that would address it, if none make one"*
+
+---
+
+## Triage
+
+**Route: A** - Simple
+
+**Reasoning:** A styling change in one named stylesheet section with a measured RED and a mockup of the target layout; the request names the file, the rules, and the proof.
+
+**Planning:** Not required
+
+## Plan
+
+**Planning not required** - Route A: Direct implementation
+
+*Skipped by work action*
