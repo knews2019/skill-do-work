@@ -1056,7 +1056,7 @@ func routeWorktreeLeftover(disposition worktreeLeftoverDisposition, requestId st
 			"this is either a builder still in flight or work that outlived a dead run — verify cannot tell those apart. Leave it alone during a run; otherwise cleanup Pass 5 asks before discarding it, because the branch may hold the only copy"
 	default:
 		return verifyCategoryUndeterminedWorktreeLeftover, false,
-			"git could not say whether this is merged (typically a worktree whose branch is gone) — inspect it by hand; cleanup Pass 5 deletes nothing it cannot establish a merge target for"
+			"git could not say whether this is merged (typically a worktree whose branch is gone) — inspect it by hand; cleanup Pass 5 deletes nothing it cannot establish a merge target for. The same unresolved branch stopped the committed-queue-state check, so whether a builder committed queue state under do-work/ on it is unknown, not clean"
 	}
 }
 
@@ -1131,7 +1131,14 @@ func appendWorktreeFindings(report *VerifyReport, repoRoot string, board *Board)
 		// Checked before the worktree guard below: a builder's committed queue edits
 		// live in the branch, so they are detectable — and just as wrong — after the
 		// worktree itself is gone.
-		if integrationRefError == nil {
+		//
+		// Not checked at all when the merge state came back undetermined: the branch
+		// git could not resolve for `merge-base` is the same one `git diff
+		// <ref>...<name>` needs, so the probe would fail for the reason already
+		// reported and print a second row for one fact. The undetermined remedy
+		// carries "this went unchecked" instead — moved, not dropped, because
+		// silence in this report reads as checked-and-clean.
+		if integrationRefError == nil && disposition != worktreeLeftoverMergeStateUndetermined {
 			committedQueuePaths, committedError := worktreeCommittedQueueState(repoRoot, integrationRef, leftoverName)
 			switch {
 			case committedError != nil:
