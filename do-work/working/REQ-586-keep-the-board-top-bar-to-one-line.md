@@ -28,6 +28,10 @@ estimate:
     - trivial short-circuit
 dispatch_at: 2026-09-05T13:26:18Z
 builder_handback_at: 2026-09-05T13:46:18Z
+integration_at: 2026-09-05T13:46:18Z
+review_at: 2026-09-05T13:50:28Z
+kb_status: pending
+commit: 2ea0b1508b579df9fb96b8d27c2c71c7f8180017
 claimed_at: 2026-09-05T13:24:34Z
 ---
 
@@ -41,9 +45,9 @@ The top bar grows whenever its three control groups (filters, views, Touched-in)
 2. **O2, Touched-in chips move into the Activity view.** Delete the `#activity-window-group` pill from the top bar and render the same four chips (6h, 24h, 48h, 7d) on the Activity view's summary line, so it reads "236 transitions across 49 REQs in the last [6h] [24h] [48h] [7d]". The top bar keeps two groups (filters, views) and fits on one row at far narrower widths. The Timeline already keeps its period controls inside its view, so this follows the existing pattern.
 
 ## AI Execution State (P-A-U Loop)
-- [ ] **[PLAN]:** (Agent: Read listed `prime_files` and agent rules. Write brief technical approach here. Do not write code yet.)
-- [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
-- [ ] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
+- [x] **[PLAN]:** Reconciled from the builder hand-back: the generated-at placeholder is substituted once and board.js appends the ticking age into `#board-generated`, so that element keeps the full stamp (clipped) and a new `#board-generated-clock` shows the short time; the chips move into a `.activity-summary-row` beside the summary with the 40 px pad left on the summary; the six view buttons reorder in the template; two Node-lane tests written first.
+- [x] **[APPLY]:** Reconciled from the builder hand-back: four files inside the declared write set (`template.html`, `board.css`, `board-controls.js`, `javascript_behavior_c_test.go`); `board-activity.js` needed no change because the chips keep their ids and their `setActiveButton` call.
+- [x] **[UNIFY]:** Reconciled from the builder hand-back: `git diff --stat` shows four files, 420 insertions and 26 deletions; `gofmt -l .` empty and `go vet ./...` clean; grep of added lines for console.log, debugger, TODO, FIXME, XXX found nothing; each file read in full, REQ-585's `:has()` rule and 40 px pad byte-identical, placeholder still present exactly once, the chip group keeps `role`, `aria-label` and all four `data-activity-window` values.
 
 ## Detailed Requirements
 
@@ -111,3 +115,110 @@ User added:
 **Planning not required** - Route A: Direct implementation
 
 *Skipped by work action*
+
+## Implementation Summary
+
+**Files changed:**
+- `skills/do-work-board/tools/queue-kanban/web/template.html` (modified)
+- `skills/do-work-board/tools/queue-kanban/web/board.css` (modified)
+- `skills/do-work-board/tools/queue-kanban/web/board-controls.js` (modified)
+- `skills/do-work-board/tools/queue-kanban/javascript_behavior_c_test.go` (modified)
+
+**What was done:** The top bar's identity block is one nowrap line, `do-work/ queue · skill-do-work2 · 13:42 UTC`, with the full "Generated … · Ns ago" stamp clip-hidden in `#board-generated` (still written by board.js) and surfaced as the line's tooltip on hover or focus; the Touched-in chips left the top bar for a new `.activity-summary-row` beside the Activity summary line, keeping their ids, values and `aria-pressed` handling, and the hand toggle in `applyView` was deleted; the six view buttons now read Board, Activity, Calendar, Timeline, Durations, Testing. Two Node-lane tests pin the chip ancestry, the deleted toggle, the view order, the shipped window writer and the identity renderer. Measured in headless Chrome 152 at 1400 px: the top bar is 68 px where it was 126 px.
+
+**Implementation range:** `0edce090..2ea0b150`. Builder commit `cc56324f`.
+
+## Qualification
+
+Passed the request-bound advance qualify gate for the range `0edce090..2ea0b150` (`state: satisfied`, no findings). Four files, all inside the declared five-file write set; `board-activity.js` was declared and left untouched because the chips keep their ids and their `setActiveButton` call. Requirements traced against the diff: the identity is one nowrap line with the full stamp in the tooltip and both `board-project` and `board-generated` ids kept (board.js still writes into the latter); `#activity-window-group` is gone from the top bar and sits in a new row beside `#activity-summary` inside `#view-activity`, with the same values, `aria-pressed` handling and group label; the `applyView` hand toggle is deleted; the view buttons read Board, Activity, Calendar, Timeline, Durations, Testing; the 760 px media rule is untouched; REQ-585's `:has()` rule and 40 px pad are byte-identical. The P-A-U boxes were reconciled from the builder hand-back. No debug artifacts in the added lines.
+
+## Testing
+
+**Tests run:** `do-work/runs/work-2026-09-05-124800/REQ-586-probe.sh` through the advance test gate (`run-blocked-check`, raw status 0): the two new Node-lane tests, the other Activity behaviour tests, REQ-585's browser probe, and the generate and assembly tests, run in the detached worktree at the merge revision `2ea0b150` because the shared main tree carried a sibling session's uncommitted edits to the same package.
+**Result:** ✓ All passing. Builder lanes at the branch head `cc56324f`: strict Node lane 61 tests, wall 7 s; Go lane 397 tests, wall 46 s, slowest file 9.25 s; REQ-585's browser probe green in 1.32 s (summary text still at 40.0 px).
+
+**Repository gate:** `bash _dev/tests/maintainer-verify.sh` from a detached worktree at `2ea0b150`, first run exited 0 (13:46 to 13:49 UTC, load 7; slowest do-work-cli test file 24.97 s). Recorded through the advance green gate (`satisfied`).
+
+**Red-green validation:** traced to `## Red-Green Proof`, run before any implementation edit and failing on assertions, not compilation:
+- `TestJavaScriptBehaviorActivityWindowChipsRenderInsideTheActivityView`: ✗ before ("the top bar still carries the Activity window chips"; the four chips missing from the Activity view; "board-controls.js still toggles #activity-window-group by hand"; view pill read board calendar durations timeline activity testing) → ✓ after, with the 48h and 6h clicks driving the shipped `applyActivityWindowSelection` and all four `aria-pressed` values read back.
+- `TestJavaScriptBehaviorTopBarIdentityIsOneLineWithAFullStampTooltip`: ✗ before (identity block missing its parts) → ✓ after.
+- The captured phrase "in the last 48 hours" was adapted to the board's own "in the last 2 days": `activityWindowPhrase` has always spelled whole-day windows in days and this REQ's constraints forbid changing window behaviour (D-05, DT-1).
+- The one-line identity is layout, so it was measured by hand in headless Chrome 152.0.7977.76 at 1400×900 on two static boards generated from this repository: top bar 126.0 px → 68.0 px, identity block 85.0 px → 27.0 px, visible pills three → two, chips inside `#view-activity` false → true, view order as requested, identity `title` "Generated 2026-09-05 13:42 UTC · 14s ago".
+
+**New tests added:**
+- `TestJavaScriptBehaviorActivityWindowChipsRenderInsideTheActivityView` and `TestJavaScriptBehaviorTopBarIdentityIsOneLineWithAFullStampTooltip` in `javascript_behavior_c_test.go`, with helpers `viewTargetsInDocumentOrder` and `sliceMarkupElementAfter`
+
+**Heavy verification plan:** planned with `plan-heavy-verification` over `0edce090..2ea0b150`, uncovered paths none.
+- Range: `0edce090`..`2ea0b150`
+- queue-kanban-javascript: `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane queue-kanban-javascript` — all four changed paths match subtree `skills/do-work-board/tools/queue-kanban`
+- queue-kanban-browser: `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane queue-kanban-browser` — same subtree match
+- staged-skills: `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane staged-skills` — all four paths match subtree `skills`
+
+*Verified by work action*
+
+## Decisions
+
+Copied from the builder hand-back:
+
+- **D-01 — `#board-generated` carries the full stamp; a new `#board-generated-clock` carries the visible time (DECIDE & STATE):** the placeholder is substituted once and `generate_test.go` fails on a leftover, and board.js (outside the write set) appends the ticking age into `#board-generated`, so that element cannot double as the short clock.
+- **D-02 — the full stamp is clip-hidden, not `display: none` (DECIDE & STATE):** a `title` tooltip is poorly announced, so the date stays in the accessibility tree and board.js's ticking node stays alive.
+- **D-03 — the tooltip is rebuilt on `pointerenter` and `focusin`, not on a timer (DECIDE & STATE):** a title set once would say "0s ago" forever and a second interval would duplicate board.js's ticker.
+- **D-04 — the "Touched in" label was dropped when the chips moved (DECIDE & STATE):** the sentence already says what the chips window; the group keeps `role="group"` and `aria-label="Activity window"`.
+- **D-05 — the captured RED phrase "in the last 48 hours" was adapted to the shipped "in the last 2 days" (DECIDE & STATE):** `activityWindowPhrase` spells whole-day windows in days and the REQ's constraints forbid changing window behaviour; the test carries the reason inline. The wording mismatch is DT-1 below.
+- **D-06 — the 40 px pad stays on `.activity-summary`; the row aligns on baselines (DECIDE & STATE):** the summary is the tallest item in the row, so nothing can push its text down; REQ-585's probe measured 40.0 px.
+- **D-07 — `<span>` separators carrying a literal `·`, marked `aria-hidden` (DECIDE & STATE):** keeps the mark out of the accessibility tree and greppable in the template.
+
+## Discovered Tasks
+
+- **DT-1** — the 48h chip's sentence reads "in the last 2 days" while the chip says "48h", because `activityWindowPhrase` spells any whole-day window in days; pre-existing → report only, `impact-user-visible`
+- **DT-2** — the page overflows horizontally by 26 px at a 500 px viewport, identically before and after this change → report only, `impact-user-visible`
+- **DT-3** — headless Chrome clamps its window to 500 px, so the frontend crew's 320 px check needs a device-metrics override; the existing browser probes share the blind spot → report only, `impact-negligible`
+
+## Review
+
+**Overall: 93%** | 2026-09-05T13:50:28Z
+
+| Dimension | Score |
+|-----------|-------|
+| Requirements | 96% |
+| Code Quality | 92% |
+| Test Adequacy | 92% |
+| Scope | 100% |
+| Risk | Low |
+| Acceptance | Pass |
+
+Reviewed in orchestrated mode against the merge range `0edce090..2ea0b150` (four files), the REQ with its addendum, and UR-121 and UR-122's verbatim input. Requirements: the identity is one nowrap line (`do-work/ queue · skill-do-work2 · 13:42 UTC`) with the full stamp clip-hidden and surfaced as the line's tooltip, both ids kept and board.js still writing the ticking age into `#board-generated`; the chips moved into a row beside the Activity summary with values, `aria-pressed`, group role and label intact, and the hand toggle in `applyView` is gone; the view pill reads Board, Activity, Calendar, Timeline, Durations, Testing; the 760 px media rule is untouched; REQ-585's rules are byte-identical. The one requirement not met to the letter is the summary text after clicking 48h: the REQ said "in the last 48 hours" and the board has always said "in the last 2 days" (D-05, DT-1); the builder was right not to change window phrasing under a constraint that forbids window behaviour changes. Code: the tooltip is rebuilt on hover and focus from `#board-generated`'s live child text, so it stays correct without a second ticker; the clip-hide keeps the date in the accessibility tree; the placeholder still appears once. Tests: two Node-lane tests written first and observed failing for the right reasons, both driving the shipped writers rather than assigning state by hand; REQ-585's browser probe still measures the summary text at 40.0 px; the identity line was measured in headless Chrome before and after (top bar 126 px to 68 px at 1400 px). Scope: four of the five declared files, nothing outside.
+
+Restatement sweep: the template comment that explained why the chips lived in the top bar moved with them; no other text restates the identity layout or the button order. The board guide (`skills/do-work-board/docs/board-guide.md`) was checked for a view-order or "Touched in" description: none.
+
+**Important findings (each with its recorded impact token — this is the durable audit record the judgment mandates):**
+- None
+
+**Minor findings:**
+- The 48h chip's sentence says "in the last 2 days" while the chip says "48h" (`activityWindowPhrase` spells whole-day windows in days); pre-existing and outside this REQ's constraints — impact-user-visible → report only
+- The "Touched in" label was dropped with the move (D-04); the sentence carries the meaning and the group keeps its accessible name, but a reader used to the label loses a cue — impact-negligible → report only
+- `renderTopBarIdentity` is called once from `wireControls` and returns silently when any of its three nodes is missing, so a template rename would drop the clock without a test failure; the new identity test pins the ids today — impact-negligible → report only
+
+**Acceptance:** Pass — both RED tests went green, the whole Node lane and the whole package are green, REQ-585's probe still reads 40.0 px, and the before/after render measured the bar at 68 px with the chips inside the Activity view and the buttons in the requested order.
+**Suggested testing:** 2 items — hover the identity line on the served board and confirm the tooltip shows the full stamp with a live age; check the top bar at a width where the two remaining pills wrap (roughly 1000 px) to confirm the identity stays one line.
+**Follow-ups created:** None (3 findings report only)
+
+*Reviewed by review-work action*
+
+## Lessons Learned
+
+**What worked:** Checking what already writes into an element before moving it. The `GENERATED_AT_DISPLAY` placeholder is substituted exactly once and board.js appends into `#board-generated`, so the visible clock had to be a new element and the full stamp had to stay; finding that before coding avoided a second ticker and a failing generate test.
+**What didn't:** The captured RED phrase "in the last 48 hours" did not match the board's own wording for whole-day windows. The test now asserts the words the board uses and says why; the mismatch is a report-only task, not a silent fix.
+**Worth knowing:** Two readers constrain the Activity summary markup: the Node-lane test reads `#activity-summary`'s textContent as the sentence, and REQ-585's browser probe measures where that text starts. Anything placed beside the sentence has to be a sibling, aligned on the baseline, never a child.
+
+## Orientation
+
+Now the top bar stays one row: the identity reads `do-work/ queue · project · HH:MM UTC` with the full stamp as its tooltip, the Touched-in chips live on the Activity view's summary line, and the view buttons read Board, Activity, Calendar, Timeline, Durations, Testing. Lives in the queue-kanban board's template, controls script and stylesheet, pinned by two Node-lane tests. No map change.
+
+## Heavy Verification Plan
+
+Held at Step 7.7 after a passing review. Base `0edce090`, target `2ea0b150` (the landed merge, recorded in `commit:`). Planned with `plan-heavy-verification --manifest _dev/tests/heavy-lanes.json`; uncovered paths none.
+
+- `queue-kanban-javascript`: `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane queue-kanban-javascript` — `template.html`, `board.css`, `board-controls.js` and `javascript_behavior_c_test.go` match subtree `skills/do-work-board/tools/queue-kanban`
+- `queue-kanban-browser`: `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane queue-kanban-browser` — same subtree match
+- `staged-skills`: `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane staged-skills` — all four paths match subtree `skills`
