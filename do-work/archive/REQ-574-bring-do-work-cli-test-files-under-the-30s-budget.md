@@ -1,7 +1,7 @@
 ---
 id: REQ-574
 title: 'Repository gate repair: bring do-work-cli test files under the 30s per-file budget'
-status: claimed
+status: completed
 created_at: 2026-09-04T23:50:46Z
 user_request: UR-115
 domain: backend
@@ -34,6 +34,7 @@ write_set:
   - skills/do-work/tools/do-work-cli/internal/finalization/finalization_commands_test.go
 route: C
 commit: 50569e88c8f1f5234cbdfaf0efaede671d72b13c
+completed_at: 2026-09-05T10:22:37Z
 ---
 
 # Repository gate repair: bring do-work-cli test files under the 30s per-file budget
