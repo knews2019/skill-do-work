@@ -1962,8 +1962,7 @@ var entries = [
   { id: "REQ-6", status: "completed-with-issues" },
   { id: "REQ-7", status: "blockd-dependency-cycle" },
   { id: "REQ-8", status: "claimed" },
-  { id: "REQ-9" },
-  { id: "REQ-10", status: "pending-heavy-testing" }
+  { id: "REQ-9" }
 ];
 process.stdout.write(JSON.stringify(calendarDayBreakdown(entries)));`
 	probeOutput := runJavaScriptBehaviorProbe(t, "calendar day breakdown", javascriptProbe)
@@ -1983,7 +1982,6 @@ process.stdout.write(JSON.stringify(calendarDayBreakdown(entries)));`
 		{"done", 2},
 		{"with-issues", 1},
 		{"claimed", 1},
-		{"needs-heavy-testing", 1},
 		{"blocked", 2},      // `blocked` + `blocked-archive-collision`, one group
 		{"cancelled", 1},    // never folded into done
 		{"unrecognized", 2}, // the typo'd status and the one with no status at all

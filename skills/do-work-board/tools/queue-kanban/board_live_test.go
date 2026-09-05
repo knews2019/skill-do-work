@@ -141,10 +141,6 @@ func TestLiveTreeColumnBucketingMatchesStatus(t *testing.T) {
 			if !claimedColumn[ticket.RequestId] {
 				t.Fatalf("claimed %s is missing from the Claimed column", ticket.RequestId)
 			}
-		case ticket.Status == "pending-heavy-testing":
-			if !pendingColumn[ticket.RequestId] {
-				t.Fatalf("held %s is missing from the Pending column — the loop drains it, so it waits with the queue", ticket.RequestId)
-			}
 		case isNeedsInputOrBlockedStatus(ticket.Status):
 			if !needsInputColumn[ticket.RequestId] {
 				t.Fatalf("needs-input/blocked %s is missing from the Needs-input column", ticket.RequestId)
@@ -157,12 +153,11 @@ func TestLiveTreeColumnBucketingMatchesStatus(t *testing.T) {
 	}
 
 	// Reverse direction: nothing foreign sneaks into a status-driven column.
-	// Pending admits exactly three residents: status pending, a bare blocked
-	// REQ still waiting on a dependency, and the heavy-lane hold the loop
-	// resolves itself (bucketColumns).
+	// Pending admits exactly two residents: status pending, and a bare blocked
+	// REQ still waiting on a dependency (bucketColumns).
 	for _, ticket := range board.Columns.Pending {
 		heldByDependency := ticket.Status == "blocked" && len(ticket.UnmetDependencies) > 0
-		if ticket.Status != "pending" && ticket.Status != "pending-heavy-testing" && !heldByDependency {
+		if ticket.Status != "pending" && !heldByDependency {
 			t.Fatalf("status %q does not belong in the Pending column (%s)", ticket.Status, ticket.RequestId)
 		}
 	}
