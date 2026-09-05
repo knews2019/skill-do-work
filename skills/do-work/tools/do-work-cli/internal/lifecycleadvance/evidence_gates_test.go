@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 
@@ -299,6 +300,19 @@ func gateHasFinding(gate resultmodel.AdvanceGateRecord, code string) bool {
 	return false
 }
 
+// advanceGateFinding returns the one finding a gate record carries under the
+// given code, so a test can assert on its remedy rather than only its presence.
+func advanceGateFinding(t *testing.T, gate resultmodel.AdvanceGateRecord, code string) resultmodel.CommandFinding {
+	t.Helper()
+	for _, finding := range gate.Findings {
+		if finding.Code == code {
+			return finding
+		}
+	}
+	t.Fatalf("gate %q carries no %s finding: %#v", gate.GateID, code, gate.Findings)
+	return resultmodel.CommandFinding{}
+}
+
 func hasAdvanceResultFinding(result resultmodel.CommandResult, code string) bool {
 	for _, finding := range result.Findings {
 		if finding.Code == code {
@@ -437,6 +451,199 @@ func TestAdvanceMissingInputContinuationsPreserveArgumentChannels(t *testing.T) 
 			t.Fatalf("continuation %v status=%d gate=%#v result=%#v", continuation, followedStatus, followedGreenGate, followed)
 		}
 	})
+}
+
+// TestAdvanceRedirectsSubordinateRemediesToItsOwnContinuation pins the remedy
+// redirection, which nothing else in this package reads. A subordinate finding
+// whose own remedy would send the action back into the evidence helper this
+// gate has already run is rewritten to point at the same request-bound advance
+// invocation instead. Deleting either `redirectHelperRemedies` call site in
+// evidence_gates.go — the one in composeCoreGate or the one in composeGreenGate
+// — makes this test fail. It is the only assertion in this file on a *finding's*
+// remedy; every other one reads the record-level NextArgv, which is written
+// elsewhere and survives both deletions.
+//
+// The two negative controls prove the rewrite is selective and not blanket: the
+// sibling FOCUSED-BASELINE-MISSING finding carries no remedy and must still
+// carry none, and the green gate's git remedy diagnoses the failure instead of
+// re-entering the helper, so its owner's argv must survive untouched.
+func TestAdvanceRedirectsSubordinateRemediesToItsOwnContinuation(t *testing.T) {
+	t.Run("core gate call site", func(t *testing.T) {
+		repositoryRoot := t.TempDir()
+		requestPath := writeAdvanceRequest(t, repositoryRoot, "working", "REQ-726", "claimed", "route: A\nestimate:\n  p50_active_minutes: 5\n", focusedGateRouteABody)
+		writeAdvanceFile(t, repositoryRoot, "focused.sh", "exit 0")
+
+		// The fixture is deliberately not a Git repository and carries no saved
+		// baseline, so one invocation produces all three findings: a redirected probe
+		// remedy, a remedy-less baseline finding, and the green gate's git remedy.
+		result, _ := runAdvanceGateJSON(t, repositoryRoot, "REQ-726", "--request-path", requestPath,
+			"--gate-arg", canonicalGateFixtureBinary,
+			"--", "--probe-file", "focused.sh", "--timeout-seconds", "2")
+
+		focusedGate, greenGate := findAdvanceGate(result, "run-blocked-check"), findAdvanceGate(result, "green-gate")
+		if focusedGate == nil || greenGate == nil {
+			t.Fatalf("focused gate=%#v green gate=%#v result=%#v", focusedGate, greenGate, result)
+		}
+		wantContinuation := []string{
+			"do-work-cli", "--format", "json", "advance", "REQ-726", "--request-path", requestPath,
+			"--gate-arg", canonicalGateFixtureBinary, "--", "--probe-file", "focused.sh", "--timeout-seconds", "2",
+		}
+
+		probeFinding := advanceGateFinding(t, *focusedGate, "BLOCKED-PROBE-SUCCEEDED")
+		if !slices.Equal(probeFinding.NextArgv, wantContinuation) {
+			t.Fatalf("the probe finding's remedy was not redirected to this advance invocation:\n got %#v\nwant %#v", probeFinding.NextArgv, wantContinuation)
+		}
+		if !slices.Equal(probeFinding.VerificationArgv, wantContinuation) {
+			t.Fatalf("the probe finding's verification was not redirected to this advance invocation:\n got %#v\nwant %#v", probeFinding.VerificationArgv, wantContinuation)
+		}
+
+		baselineFinding := advanceGateFinding(t, *focusedGate, "FOCUSED-BASELINE-MISSING")
+		if len(baselineFinding.NextArgv) != 0 || len(baselineFinding.VerificationArgv) != 0 {
+			t.Fatalf("the redirection invented a remedy for a finding that has none: next=%#v verification=%#v", baselineFinding.NextArgv, baselineFinding.VerificationArgv)
+		}
+
+		gateEvidenceFinding := advanceGateFinding(t, *greenGate, "GATE-EVIDENCE-CHECK-FAILED")
+		if len(gateEvidenceFinding.NextArgv) == 0 || gateEvidenceFinding.NextArgv[0] != "git" || len(gateEvidenceFinding.VerificationArgv) == 0 || gateEvidenceFinding.VerificationArgv[0] != "git" {
+			t.Fatalf("a diagnostic remedy that does not run do-work-cli was rewritten: next=%#v verification=%#v", gateEvidenceFinding.NextArgv, gateEvidenceFinding.VerificationArgv)
+		}
+	})
+
+	// The green-gate call site has no natural producer: of the findings the two
+	// green-gate helpers can return, the git remedies name another tool and the
+	// not-green remedy is the caller's own gate argv, so none of them re-enters
+	// the helper that just ran. The condition the redirection keys on is
+	// "argv[0] is do-work-cli and its verb is the subordinate command", so this
+	// case supplies that condition through the one channel that can carry it —
+	// the gate argv, which advance copies into the not-green remedy verbatim and
+	// never executes.
+	t.Run("green gate call site", func(t *testing.T) {
+		repositoryRoot := t.TempDir()
+		requestPath := writeAdvanceRequest(t, repositoryRoot, "working", "REQ-727", "claimed", "route: A\nestimate:\n  p50_active_minutes: 5\n", focusedGateRouteABody)
+		writeAdvanceFile(t, repositoryRoot, "focused.sh", "exit 0")
+
+		result, _ := runAdvanceGateJSON(t, repositoryRoot, "REQ-727", "--request-path", requestPath,
+			"--gate-exit-status", "3", "--gate-arg", "do-work-cli", "--gate-arg", "record-green-gate",
+			"--", "--probe-file", "focused.sh", "--timeout-seconds", "2")
+
+		greenGate := findAdvanceGate(result, "green-gate")
+		if greenGate == nil {
+			t.Fatalf("result=%#v", result)
+		}
+		wantContinuation := []string{
+			"do-work-cli", "--format", "json", "advance", "REQ-727", "--request-path", requestPath,
+			"--gate-exit-status", "3", "--gate-arg", "do-work-cli", "--gate-arg", "record-green-gate",
+			"--", "--probe-file", "focused.sh", "--timeout-seconds", "2",
+		}
+		notGreenFinding := advanceGateFinding(t, *greenGate, "GATE-EVIDENCE-NOT-GREEN")
+		if !slices.Equal(notGreenFinding.NextArgv, wantContinuation) {
+			t.Fatalf("the green gate's remedy was not redirected to this advance invocation:\n got %#v\nwant %#v", notGreenFinding.NextArgv, wantContinuation)
+		}
+		// Same finding, other field: its verification names check-green-gate, which
+		// is not the helper this gate ran, so the redirection must leave it alone.
+		if slices.Equal(notGreenFinding.VerificationArgv, wantContinuation) {
+			t.Fatalf("a remedy naming a different helper was rewritten: %#v", notGreenFinding.VerificationArgv)
+		}
+	})
+}
+
+// TestFocusedGateStateKeepsSubordinateAuthority pins the three-part guard that
+// opens focusedGateState, one part per row. Deleting
+// `subordinateState == resultmodel.AdvanceGateFailed ||` reddens the two failed
+// rows; deleting `|| focusedTest.TimedOut` reddens the two timed-out rows;
+// deleting `!focusedTest.Launched ||` reddens the never-launched row. Without
+// the guard each of those executions is cleared by a saved baseline it was
+// never eligible to be compared against.
+//
+// This is the only in-process call to product code in this package's tests, and
+// it is deliberate. The guard is defence in depth: its one current caller,
+// composeCoreGate, receives its FocusedTestResult from run-blocked-check, whose
+// own eligibility check (`finishedOnItsOwn` in internal/corehelpers) already
+// leaves every failed, unlaunched or timed-out execution at
+// FocusedBaselineNotCompared, where the switch below the guard has no case and
+// falls through to the same answer. So no argv reaches these rows through the
+// CLI, and a public test could only reach them once a second producer of
+// FocusedTestResult exists. The rows are therefore keyed on the execution facts
+// the guard reads — Launched, TimedOut and BaselineState — never on the exit
+// statuses that happen to produce them today.
+func TestFocusedGateStateKeepsSubordinateAuthority(t *testing.T) {
+	for _, test := range []struct {
+		name             string
+		subordinateState resultmodel.AdvanceGateState
+		launched         bool
+		timedOut         bool
+		baselineState    resultmodel.FocusedTestBaselineState
+		wantState        resultmodel.AdvanceGateState
+	}{
+		{name: "failed subordinate against a green baseline", subordinateState: resultmodel.AdvanceGateFailed, launched: true, baselineState: resultmodel.FocusedBaselineGreen, wantState: resultmodel.AdvanceGateFailed},
+		{name: "failed subordinate against a matching red baseline", subordinateState: resultmodel.AdvanceGateFailed, launched: true, baselineState: resultmodel.FocusedBaselineMatchingRed, wantState: resultmodel.AdvanceGateFailed},
+		{name: "timed out against a green baseline", subordinateState: resultmodel.AdvanceGateFindings, launched: true, timedOut: true, baselineState: resultmodel.FocusedBaselineGreen, wantState: resultmodel.AdvanceGateFindings},
+		{name: "timed out against a matching red baseline", subordinateState: resultmodel.AdvanceGateFindings, launched: true, timedOut: true, baselineState: resultmodel.FocusedBaselineMatchingRed, wantState: resultmodel.AdvanceGateFindings},
+		{name: "never launched against a green baseline", subordinateState: resultmodel.AdvanceGateFindings, baselineState: resultmodel.FocusedBaselineGreen, wantState: resultmodel.AdvanceGateFindings},
+		// Negative controls: an execution the guard admits is still classified by
+		// its baseline, so the guard is a boundary and not a blanket refusal.
+		{name: "eligible execution cleared by a green baseline", subordinateState: resultmodel.AdvanceGateFindings, launched: true, baselineState: resultmodel.FocusedBaselineGreen, wantState: resultmodel.AdvanceGateSatisfied},
+		{name: "eligible execution cleared by a matching red baseline", subordinateState: resultmodel.AdvanceGateFindings, launched: true, baselineState: resultmodel.FocusedBaselineMatchingRed, wantState: resultmodel.AdvanceGateSatisfied},
+		{name: "eligible execution reddened by a new red baseline", subordinateState: resultmodel.AdvanceGateSatisfied, launched: true, baselineState: resultmodel.FocusedBaselineNewRed, wantState: resultmodel.AdvanceGateFindings},
+		{name: "eligible execution that was never compared", subordinateState: resultmodel.AdvanceGateFindings, launched: true, baselineState: resultmodel.FocusedBaselineNotCompared, wantState: resultmodel.AdvanceGateFindings},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			focusedTest := &resultmodel.FocusedTestResult{Launched: test.launched, TimedOut: test.timedOut, BaselineState: test.baselineState}
+			gotState := focusedGateState(test.subordinateState, focusedTest)
+			if gotState != test.wantState {
+				t.Fatalf("a saved baseline decided the gate for subordinate=%s launched=%t timed_out=%t baseline=%s: got %s, want %s",
+					test.subordinateState, test.launched, test.timedOut, test.baselineState, gotState, test.wantState)
+			}
+		})
+	}
+}
+
+// TestAdvanceFocusedGateReportsAnInterruptedProbeAsAFailure pins the finding
+// code for the one focused-test outcome nothing in this package asserted: a
+// probe that launched, that the runner's timer did not stop, and that the
+// runner reported an error for because the run was interrupted. It reports
+// BLOCKED-PROBE-FAILED at error severity and fails the gate. That code used to
+// be BLOCKED-PROBE-LAUNCH-FAILED, and because both are error severity nothing
+// moved when it changed; restoring the old code reddens the interrupted row.
+//
+// The ordinary red row is what keeps the two conditions apart. Both probes exit
+// 143, so the only difference between the rows is whether the runner observed an
+// interruption — never the integer the child chose. Collapsing the interrupted
+// case into the ordinary non-zero case therefore reddens the interrupted row on
+// severity and gate state as well as on the code.
+func TestAdvanceFocusedGateReportsAnInterruptedProbeAsAFailure(t *testing.T) {
+	for _, test := range []struct {
+		name          string
+		probe         string
+		wantSeverity  resultmodel.FindingSeverity
+		wantGateState resultmodel.AdvanceGateState
+	}{
+		// The probe's parent is the do-work-cli process running this gate, and its
+		// signal handling is already armed, so the probe interrupts the run through
+		// its own parent. The test process never handles a signal itself.
+		{name: "interrupted run", probe: "kill -TERM $PPID; sleep 5", wantSeverity: resultmodel.SeverityError, wantGateState: resultmodel.AdvanceGateFailed},
+		{name: "ordinary red run", probe: "echo failing; exit 143", wantSeverity: resultmodel.SeverityWarning, wantGateState: resultmodel.AdvanceGateFindings},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			repositoryRoot := t.TempDir()
+			requestPath := writeAdvanceRequest(t, repositoryRoot, "working", "REQ-728", "claimed", "route: A\nestimate:\n  p50_active_minutes: 5\n", focusedGateRouteABody)
+			writeAdvanceFile(t, repositoryRoot, "focused.sh", test.probe)
+
+			result, status := runAdvanceGateJSON(t, repositoryRoot, "REQ-728", "--request-path", requestPath,
+				"--", "--probe-file", "focused.sh", "--timeout-seconds", "10")
+			focusedGate := findAdvanceGate(result, "run-blocked-check")
+			if focusedGate == nil || focusedGate.FocusedTest == nil || status == 0 {
+				t.Fatalf("status=%d gate=%#v result=%#v", status, focusedGate, result)
+			}
+			if focusedGate.FocusedTest.ExitStatus != 143 || !focusedGate.FocusedTest.Launched || focusedGate.FocusedTest.TimedOut {
+				t.Fatalf("both rows must reach the gate with the same execution facts: %#v", focusedGate.FocusedTest)
+			}
+			probeFinding := advanceGateFinding(t, *focusedGate, "BLOCKED-PROBE-FAILED")
+			if probeFinding.Severity != test.wantSeverity || focusedGate.State != test.wantGateState {
+				t.Fatalf("an interrupted probe and a probe that chose 143 for itself were classified alike: severity=%s want %s, gate state=%s want %s",
+					probeFinding.Severity, test.wantSeverity, focusedGate.State, test.wantGateState)
+			}
+		})
+	}
 }
 
 func initAdvanceGitFixture(t *testing.T, repositoryRoot string) {
