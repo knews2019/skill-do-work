@@ -21,7 +21,6 @@ session_depth: light
 
 
 
-- REQ-574: Repository gate repair: bring do-work-cli test files under the 30s per-file budget — claimed 2026-09-04T23:59:43Z — writer: t2s-Virtual-Machine.local:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2
 
 
 

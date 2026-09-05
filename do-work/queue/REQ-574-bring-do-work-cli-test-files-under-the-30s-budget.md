@@ -1,8 +1,7 @@
 ---
 id: REQ-574
 title: 'Repository gate repair: bring do-work-cli test files under the 30s per-file budget'
-status: claimed
-route: C
+status: pending
 created_at: 2026-09-04T23:50:46Z
 user_request: UR-115
 domain: backend
@@ -26,7 +25,7 @@ estimate:
     - 2 acceptance criteria
     - cross-route regression gates
     - full-suite verification
-claimed_at: 2026-09-04T23:59:43Z
+status_changed_at: 2026-09-05T09:44:26Z
 ---
 
 # Repository gate repair: bring do-work-cli test files under the 30s per-file budget
@@ -54,10 +53,3 @@ Repair the repository-gate failure recorded below so dependency-gated requests c
 
 ---
 
-## Triage
-
-**Route: C** - Complex
-
-**Reasoning:** A repository-gate repair minted by defer-gate with `route: C` preset. Four test files across three CLI packages (publication, finalization, corehelpers) overrun the gate's 30-second per-file budget by 1 to 30 seconds depending on machine load, so the plan has to find where the time goes (real git repositories and subprocesses per test, most likely) and decide between speeding the tests up and splitting the files, without weakening what they pin.
-
-**Planning:** Required
