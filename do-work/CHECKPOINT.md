@@ -34,7 +34,6 @@ session_depth: light
 
 - REQ-571: [impact-negligible] Remove the board's pending-heavy-testing reader case — claimed 2026-09-05T00:38:07Z — writer: vm:/home/user/skill-do-work
 
-- REQ-549: [impact-negligible] Drop the eight dead path tokens from the decision indexes and the lessons prime — claimed 2026-09-05T00:38:07Z — writer: vm:/home/user/skill-do-work
 
 
 - REQ-576: Start the board card wall time at the earliest lifecycle stamp, not only claimed_at — claimed 2026-09-05T00:38:08Z — writer: vm:/home/user/skill-do-work
