@@ -1,7 +1,7 @@
 ---
 id: REQ-544
 title: '[impact-critical] Anchor every lifecycle gate that reads caller-authored text'
-status: pending
+status: claimed
 priority: now
 created_at: 2026-09-03T09:45:00Z
 user_request: UR-081
@@ -22,6 +22,7 @@ write_set:
   - skills/do-work/tools/do-work-cli/internal/publication/answer_test.go
   - skills/do-work/tools/do-work-cli/internal/cleanup/cleanup_plan.go
   - skills/do-work/tools/do-work-cli/internal/cleanup/cleanup_plan_test.go
+claimed_at: 2026-09-05T00:33:24Z
 ---
 
 # Anchor Every Lifecycle Gate That Reads Caller-Authored Text
