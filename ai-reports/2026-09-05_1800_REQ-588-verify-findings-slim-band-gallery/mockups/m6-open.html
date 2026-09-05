@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Verify findings mockup — M6 · pills · one card</title>
+<link rel="stylesheet" href="shared.css">
+<style>
+
+/* The strip: a slim band, not a card. One accent edge, a quiet label, and rows that read left to right. */
+.board-findings { margin: 0 0 16px; padding: 5px 12px 5px 12px; border: 1px solid var(--line-soft); border-left: 3px solid var(--accent-pending); border-radius: 8px; background-color: var(--surface-2); color: var(--ink-base); }
+.vf-head { display: flex; align-items: center; gap: 10px; min-height: 24px; }
+.vf-label { display: inline-flex; align-items: center; gap: 6px; font-size: 0.68rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-soft); }
+.vf-label svg { width: 13px; height: 13px; color: var(--accent-pending); }
+.vf-count { font-size: 0.76rem; color: var(--ink-soft); }
+.vf-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background-color: var(--accent-pending); flex: none; }
+.vf-dot-fixable { background-color: var(--accent-done); }
+.vf-dot-skipped { background-color: var(--ink-faint); }
+.vf-subject { font-family: var(--font-mono); font-size: 0.75rem; font-weight: 600; color: var(--ink-strong); flex: none; }
+.vf-cat { font-size: 0.68rem; color: var(--ink-faint); flex: none; }
+.vf-fix { font-size: 0.64rem; padding: 0 6px; border-radius: var(--radius-pill); background-color: var(--tint-done); color: var(--accent-done); white-space: nowrap; flex: none; line-height: 1.7; }
+.vf-detail { flex: 0 1 auto; min-width: 0; color: var(--ink-soft); font-size: 0.76rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.vf-detail code { font-family: var(--font-mono); font-size: 0.72rem; }
+
+/* M6: a wrapping line of pills. Each pill opens a card with the detail and the remedy. */
+.vf-bar { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; min-height: 28px; }
+.vf-pills { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.vf-pill { position: relative; }
+.vf-pill > summary { display: inline-flex; align-items: center; gap: 7px; padding: 2px 10px 2px 9px; border: 1px solid var(--line-soft); border-radius: var(--radius-pill); background-color: var(--surface-1); list-style: none; cursor: pointer; font-size: 0.74rem; line-height: 1.5; }
+.vf-pill > summary::-webkit-details-marker { display: none; }
+.vf-pill > summary:hover { border-color: var(--line-bright); background-color: var(--surface-hover); }
+.vf-pill > summary:focus-visible { outline: 2px solid var(--accent-claimed); outline-offset: 1px; }
+.vf-pill[open] > summary { border-color: var(--line-bright); }
+.vf-card { position: absolute; z-index: 5; top: calc(100% + 8px); left: 0; width: min(520px, 80vw); padding: 10px 12px 10px; border: 1px solid var(--line-firm); border-radius: 8px; background-color: var(--surface-1); box-shadow: 0 10px 28px rgba(0,0,0,0.22); font-size: 0.76rem; line-height: 1.5; color: var(--ink-base); }
+.vf-card::before { content: ""; position: absolute; top: -6px; left: 18px; width: 10px; height: 10px; border-left: 1px solid var(--line-firm); border-top: 1px solid var(--line-firm); background-color: var(--surface-1); transform: rotate(45deg); }
+.vf-card .vf-cat { display: block; margin-bottom: 3px; }
+.vf-card .vf-remedy { margin: 8px 0 0; }
+
+</style>
+<script>var q=new URLSearchParams(location.search),t=q.get("theme");if(t==="light"||t==="dark")document.documentElement.setAttribute("data-theme",t);</script>
+</head>
+<body>
+<header class="board-topbar">
+  <div class="board-identity"><h1 class="board-wordmark">do&#8209;work<span class="board-wordmark-mark">/ queue</span></h1><span class="board-identity-dot" aria-hidden="true">·</span><p class="board-project">skill-do-work2</p><span class="board-identity-dot" aria-hidden="true">·</span><span class="board-generated-clock">17:58 UTC</span></div>
+  <nav class="board-controls" aria-label="Board views and lenses">
+    <div class="control-group control-group-filters"><input type="search" class="filter-search" placeholder="Filter id or title" aria-label="Filter"><select class="filter-select" aria-label="Domain"><option>All domains</option></select><select class="filter-select" aria-label="Status"><option>All statuses</option></select></div>
+    <div class="control-group" role="group" aria-label="View"><button type="button" class="control-button is-active">Board</button><button type="button" class="control-button">Activity</button><button type="button" class="control-button">Calendar</button><button type="button" class="control-button">Timeline</button><button type="button" class="control-button">Durations</button><button type="button" class="control-button">Testing</button></div>
+    <div class="control-group" role="group" aria-label="Lens"><span class="control-label">Lens</span><button type="button" class="control-button is-active">Columns</button><button type="button" class="control-button">By UR</button><button type="button" class="control-button">URs only</button></div>
+    <div class="control-group" role="group" aria-label="Recently done"><span class="control-label">Recently done</span><button type="button" class="control-button is-active">24h</button><button type="button" class="control-button">48h</button><button type="button" class="control-button">7d</button></div>
+  </nav>
+</header>
+<main class="board-main">
+  <section class="board-anomalies board-findings" id="board-findings" aria-label="Verify findings">
+    <div class="vf-bar"><div class="vf-head"><span class="vf-label"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 1.8 15 14H1z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M8 6v4M8 11.6v.6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>Verify</span><span class="vf-count">3 findings · 1 probe not checked</span></div><div class="vf-pills"><details class="vf-pill" open><summary><span class="vf-dot"></span><span class="vf-subject">worktree-agent-REQ-573-activity-drawer</span><span class="vf-cat">unmerged worktree leftover</span></summary><div class="vf-card"><span class="vf-cat">unmerged worktree leftover</span>exists at .git/work-run-20260905-1201/worktree-agent-REQ-573-activity-drawer<div class="vf-remedy"><b>What to do:</b> this is either a builder still in flight or work that outlived a dead run — verify cannot tell those apart. Leave it alone during a run; otherwise cleanup Pass 5 asks before discarding it, because the branch may hold the only copy</div></div></details><details class="vf-pill"><summary><span class="vf-dot"></span><span class="vf-subject">worktree-agent-REQ-582-arrow-citations</span><span class="vf-cat">worktree present run in flight</span></summary><div class="vf-card"><span class="vf-cat">worktree present run in flight</span>exists at .git/work-run-20260905-1201/worktree-agent-REQ-582-arrow-citations<div class="vf-remedy"><b>What to do:</b> this worktree is present, not leftover: REQ-582 is still in do-work/working/, so the run that owns it has not reached review, remediation, or its final path. Leave it in place — worktree cleanup happens after the REQ is archived, not before</div></div></details><details class="vf-pill"><summary><span class="vf-dot vf-dot-fixable"></span><span class="vf-subject">REQ-581</span><span class="vf-cat">stranded finished request</span></summary><div class="vf-card"><span class="vf-cat">stranded finished request</span>has terminal status &quot;completed&quot; but still sits in do-work/working/ <span class="vf-fix">cleanup can fix</span><div class="vf-remedy"><b>What to do:</b> cleanup Pass 0 moves it into do-work/archive/</div></div></details><details class="vf-pill"><summary><span class="vf-dot vf-dot-skipped"></span><span class="vf-subject">1 probe not checked</span></summary><div class="vf-card"><span class="vf-cat">not checked</span>committed-queue-state probe for worktree-agent-REQ-573-activity-drawer: `git diff main...worktree-agent-REQ-573-activity-drawer -- do-work/` failed (no such branch, or unrelated histories)</div></details></div></div>
+  </section>
+  <div class="board-columns">
+    <div class="board-column" style="--column-accent: var(--accent-pending)"><div class="column-header"><h2 class="column-title">Pending</h2><span class="column-count">9</span></div></div>
+    <div class="board-column" style="--column-accent: var(--accent-claimed)"><div class="column-header"><h2 class="column-title">Claimed</h2><span class="column-count">1</span></div></div>
+    <div class="board-column" style="--column-accent: var(--accent-blocked)"><div class="column-header"><h2 class="column-title">Needs input · blocked</h2><span class="column-count">0</span></div></div>
+    <div class="board-column" style="--column-accent: var(--accent-done)"><div class="column-header"><h2 class="column-title">Recently done</h2><span class="column-count">41</span></div></div>
+  </div>
+</main>
+<span class="mockup-tag" aria-hidden="true">M6 · pills · one card</span>
+</body>
+</html>
