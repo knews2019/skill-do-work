@@ -1,5 +1,5 @@
 {
-  "test_command": "bash -c cd skills/do-work/tools/do-work-cli \u0026\u0026 go test -count=1 ./internal/schemanormalization ./internal/dependencygraph ./internal/nextselection ./internal/publication ./internal/lifecycleadvance ./internal/requeststate",
+  "test_command": "go -C skills/do-work-board/tools/queue-kanban test ./...",
   "exit_status": 0,
   "launched": true
 }
