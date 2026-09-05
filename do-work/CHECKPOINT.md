@@ -20,7 +20,6 @@ session_depth: light
 
 
 
-- REQ-578: Hide the verify-findings strip on the Activity view — claimed 2026-09-05T12:00:56Z — writer: t2s-Virtual-Machine.local:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2
 
 - REQ-573: Open the detail drawer from an Activity row and highlight every row of the same REQ — claimed 2026-09-05T12:21:55Z — writer: t2s-Virtual-Machine.local:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2
 

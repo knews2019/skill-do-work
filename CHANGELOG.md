@@ -2,6 +2,15 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.297.0 — The Activity View Keeps Its Own Space (2026-09-05)
+
+The Verify Findings strip sat above every view, so on the Activity view it pushed the transitions table down to make room for warnings that view is not about. It now steps aside there and comes back everywhere else.
+
+- The rule lives in the view switcher, not in the Activity renderer, so re-rendering the transitions table never touches the strip.
+- Whether the strip has anything to say is read back off the renderer's own output, so that judgment keeps exactly one definition.
+- A strip carrying only "probe(s) could not run" behaves the same way: it is hidden on Activity by the reader's request, and never rendered as clean anywhere else.
+- This is a deliberate exception to the rule the 0.129.0 entry stated, that no view switch can hide a finding. Activity is the one view where it can.
+
 ## 0.296.0 — Every Lifecycle Transition Has Its Own Activity Row (2026-09-05)
 
 The board's Activity view showed one row per request — its newest lifecycle stamp and nothing else — so the path a request took to get where it is was readable only in its frontmatter or with `git log`. Every transition is now its own row.

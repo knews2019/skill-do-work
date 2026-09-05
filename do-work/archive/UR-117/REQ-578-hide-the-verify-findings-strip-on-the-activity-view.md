@@ -1,7 +1,7 @@
 ---
 id: REQ-578
 title: 'Hide the verify-findings strip on the Activity view'
-status: claimed
+status: completed
 created_at: 2026-09-04T23:58:59Z
 user_request: UR-117
 domain: frontend
@@ -29,6 +29,10 @@ builder_handback_at: 2026-09-05T12:16:29Z
 integration_at: 2026-09-05T12:16:29Z
 review_at: 2026-09-05T12:24:37Z
 commit: 09aaa9a443f8bb6191b162393403e60b4f8fa6f4
+heavy_verified_at: 2026-09-05T13:16:11Z
+heavy_verified_revision: 9233921395b509d06d440f955e0bdb0c289958bf
+completed_at: 2026-09-05T13:16:48Z
+release_at: 2026-09-05T13:16:48Z
 ---
 
 # Hide the Verify-Findings Strip on the Activity View
@@ -180,4 +184,18 @@ The board's Verify Findings strip now steps out of the way on the Activity view 
 | `staged-skills` | `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane staged-skills` | same subtree match |
 
 No path was left uncovered by the manifest. The browser lane is where the reviewer's suggested manual checks land: a Board → Activity → Board round trip with real findings, the same round trip with only skipped probes, and a zero-finding board where no view switch may make an empty strip appear. The request stays `claimed` with its `commit:` landed until the queue-exhaustion drain.
+
+## Heavy Verification Result
+
+- **Target revision:** 09aaa9a443f8bb6191b162393403e60b4f8fa6f4
+- **Execution revision:** 9233921395b509d06d440f955e0bdb0c289958bf
+- **Run at:** 2026-09-05T13:16:11Z, from a detached worktree (the shared main tree carried another session's uncommitted work, which a lane result must not be attributed to)
+
+| Lane | Exit | Wall | Disposition |
+| --- | --- | --- | --- |
+| `queue-kanban-javascript` | 0 | 8s | executed |
+| `queue-kanban-browser` | 0 | 119s | executed |
+| `staged-skills` | 0 | 43s | executed |
+
+Every lane this request selected was present in the run, exited 0, and none was skipped. The browser lane executed against Google Chrome rather than skipping, which is what makes it evidence: an earlier pass reported it skipped for a missing browser, and a skipped lane is not a pass.
 
