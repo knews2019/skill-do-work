@@ -50,6 +50,7 @@ core_files=(
   skills/do-work/tools/checks/qualify.sh
   skills/do-work/tools/checks/record-commit-hash.sh
   skills/do-work/tools/do-work-update.sh
+  skills/do-work/tools/do-work-cli-preamble.sh
   skills/do-work/tools/install-do-work-suite.sh
   skills/do-work/tools/validate-suite-manifest.sh
   skills/do-work/tools/replace-text-section.sh
@@ -88,6 +89,7 @@ for legacy_runtime_path in "${legacy_runtime_paths[@]}"; do
 done
 
 for retained_bootstrap_tool in \
+  tools/do-work-cli-preamble.sh \
   tools/install-do-work-suite.sh \
   tools/validate-suite-manifest.sh \
   tools/replace-text-section.sh

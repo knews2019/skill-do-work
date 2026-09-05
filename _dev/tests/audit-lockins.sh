@@ -130,6 +130,20 @@ if [ -n "$dead_routing_tokens" ]; then
   done <<< "$dead_routing_tokens"
 fi
 
+# Finding 2: cli-launcher-preamble-copied (REQ-553)
+hand_rolled_preambles="$(
+  rg -l --glob '*.sh' 'for cli_candidate in|^launcher_arguments=\(--format text\)$' \
+    "$repo_root/skills" "$repo_root/tools" 2>/dev/null \
+    | grep -v '/tools/do-work-cli-preamble\.sh$'
+)"
+if [ -n "$hand_rolled_preambles" ]; then
+  while IFS= read -r f; do
+    [ -z "$f" ] && continue
+    printf 'FAIL: hand-rolled do-work-cli launcher preamble outside the preamble pair: %s\n' "$f" >&2
+    failure_count=$((failure_count + 1))
+  done <<< "$hand_rolled_preambles"
+fi
+
 if [ "$failure_count" -gt 0 ]; then
   exit 1
 fi
