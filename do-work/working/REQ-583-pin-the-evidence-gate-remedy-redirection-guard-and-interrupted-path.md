@@ -1,7 +1,7 @@
 ---
 id: REQ-583
 title: 'Addendum: pin the evidence-gate remedy redirection, layered guard and interrupted focused-test code'
-status: pending
+status: claimed
 created_at: 2026-09-05T01:30:57Z
 user_request: UR-119
 addendum_to: REQ-506
@@ -13,6 +13,7 @@ tdd: true
 maintenance: false
 impact: impact-user-visible
 effort_estimate: effort-substantive
+claimed_at: 2026-09-05T17:05:17Z
 ---
 
 # Addendum: Pin the Evidence-Gate Remedy Redirection, Layered Guard and Interrupted Focused-Test Code
