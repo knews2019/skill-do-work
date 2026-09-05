@@ -1,7 +1,7 @@
 ---
 id: REQ-577
 title: 'Repository gate repair: remove the launcher fixture single-iteration loop'
-status: claimed
+status: completed-with-issues
 commit: cd179d584c602be956fb6cc7b0bda5c0490f6c87
 review_at: 2026-09-05T00:09:59Z
 route: A
@@ -28,6 +28,7 @@ integration_at: 2026-09-05T00:06:17Z
 builder_handback_at: 2026-09-05T00:06:17Z
 dispatch_at: 2026-09-05T00:04:33Z
 claimed_at: 2026-09-04T23:58:14Z
+completed_at: 2026-09-05T08:16:47Z
 ---
 
 # Repository gate repair: remove the launcher fixture single-iteration loop
@@ -202,3 +203,35 @@ The launcher test fixture now passes warning-level ShellCheck while retaining it
 - **installer** — argv JSON: `["env", "GIT_CONFIG_NOSYSTEM=1", "GIT_CONFIG_GLOBAL=/dev/null", "bash", "_dev/tests/maintainer-verify.sh", "--heavy-lane", "installer"]`; reasons: `["_dev/tests/do-work-cli-launcher-behavior.sh matched subtree _dev/tests"]`.
 
 The claimed request is held for these lanes under work Step7.7. No heavy_verified_at/revision has been written. After all selected lanes pass unskipped, finalization is test-only with no release bump. Preserve the full supplied implementation merge.
+
+## Heavy Verification Result
+
+**Target revision:** `cd179d584c602be956fb6cc7b0bda5c0490f6c87`
+**Execution revision:** `900635a485480c53a45ffa0830f9c26b6d8d7df5`
+**Run at:** 2026-09-05T08:16:37Z
+
+The stored plan was recomputed at its stored base `89ade961` and target `cd179d58` before the drain and **matches byte for byte** — six lanes, same ids, same argv, same reasons. No drift, so the drain was authorised without a hand edit.
+
+| Lane | Result | Wall | Disposition |
+|---|---|---|---|
+| queue-kanban-javascript | exit 0 | 11s | executed, no prior evidence |
+| queue-kanban-browser | **exit 1** | 91s | executed, fingerprint uncertain |
+| do-work-cli-integrations | **skipped** | 35s | executed, no prior evidence |
+| staged-skills | exit 0 | 25s | executed, no prior evidence |
+| updater | exit 0 | 70s | executed, no prior evidence |
+| installer | exit 0 | 15s | executed, no prior evidence |
+
+**Four lanes green. Two lanes are not, and neither is attributable to this repair.** This request's entire diff is one file, `_dev/tests/do-work-cli-launcher-behavior.sh`, and it replaces a single-iteration loop with the equivalent direct command.
+
+**`queue-kanban-browser` — red on an environment-dependent test.** The failure is `TestBrowserBehaviorTimelinePointerCaptureWaitsForThePanEngage`, which reports that "the capture-swallowed outside-release trial never crossed the host pointerleave boundary; the isolator was not exercised and the mutation pair is vacuous". It is refusing to pass vacuously because a headless containerised Chromium has no real pointer crossing a window boundary. The other 30 browser tests pass. This is a board-module pointer-capture test with no relationship to a launcher shell fixture.
+
+**`do-work-cli-integrations` — misclassified, and its real failures are this container's.** The runner reported the lane skipped because it found the literal string `SKIP: no browser is available` in the lane's output. That string was printed by `internal/heavyverification/heavy_run_test.go:66`, a fixture that exists to test skip-line detection. The runner's own skip detection is fooled by a test of skip detection. Captured as a separate request rather than worked here.
+
+Underneath that misclassification the lane exited 1 on two failures, both environmental:
+- `TestRecoveryRefusesFalseLegacyCheckpointAbsence` — `git commit: Author identity unknown`. The lane's declared argv sets `GIT_CONFIG_NOSYSTEM=1` and `GIT_CONFIG_GLOBAL=/dev/null`, so no identity is reachable inside a lane, and the fixture supplies none of its own.
+- `TestBKBAuditEngineCoversDiscoveryHistoryInboundLedgerAndReadOnlyParity` — expected `authors=BKB Fixture`, observed `authors=Claude`. That is the identity supplied to work around the first failure overriding the fixture's own. The two cannot both be satisfied from outside.
+
+**Disposition.** No lane failure is caused by the changed bytes, and no fix for either exists to port. The repair itself is verified independently: existing ShellCheck reproduces SC2043 on the pre-change bytes and passes on the merged fixture, the complete launcher behaviour fixture passes, the full canonical repository gate exits 0 at this revision, and independent review scored it 100% with no findings. Finalizing `completed-with-issues` rather than claiming a green drain, so the record says what was measured.
+
+Log: `.git/work-run-20260905/drain/drain.log`.
+
