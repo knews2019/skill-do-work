@@ -1,7 +1,7 @@
 ---
 id: REQ-482
 title: 'Stack verify-findings cards full width so they stop reading as REQ cards'
-status: pending
+status: cancelled
 priority: later
 created_at: 2026-09-01T11:55:00Z
 user_request: UR-090
@@ -21,6 +21,7 @@ estimate:
   basis:
     - trivial short-circuit
 write_set: [skills/do-work-board/tools/queue-kanban/web/board.css, skills/do-work-board/tools/queue-kanban/web/template.html, skills/do-work-board/tools/queue-kanban/web/board-cards.js, skills/do-work-board/tools/queue-kanban/*_test.go]
+completed_at: 2026-09-05T00:18:48Z
 ---
 
 # Stack Verify-Findings Cards Full Width So They Stop Reading as REQ Cards
@@ -62,3 +63,9 @@ Firm: each finding card full width, findings stacked vertically. Latitude grante
 ## Addendum (2026-09-03, 23:45 local)
 
 User added (23:35 local, applying the velocity report's triage table): deferred until the queue drain finishes. `assigned_to: 'after-drain'` makes the default scan skip and report this REQ; explicit targeting (`do-work run REQ-482`) clears it. Not a judgment on the change, only on when.
+
+## Cancelled
+
+- **When:** 2026-09-05T00:18:48Z
+- **Why:** superseded: the user now wants findings as compact one-line rows, not wider cards; recaptured with the new direction
+- **Decided by:** user, via `do-work abandon`
