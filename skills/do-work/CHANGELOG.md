@@ -2,6 +2,15 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.302.0 — A Cleanup Test That Can Actually Fail (2026-09-05)
+
+Three tests claimed to prove that a probe's stray child processes get cleaned up. Two of them passed on a tree with a real leak, and the third failed on an unrelated timeout rather than on the check it was written for — so the cleanup path was reported as proven on every run for as long as those tests existed.
+
+- A surviving child used to hold the parent's diagnostic pipe open, which made the runner wait for it, which meant the check always looked after it was already gone. The child now releases those handles and outlives the budget, so a leak is still there when the check looks.
+- With the cleanup deliberately broken, all three tests now fail inside their own budget, on the assertion that names the surviving process id.
+- Test-only. The cleanup code was already correct; what was missing was any way to notice if it stopped being.
+- Unchanged runtime: 2.610s against a 2.624s baseline.
+
 ## 0.301.0 — Verify Findings Read as Warnings, Not Work Items (2026-09-05)
 
 The board's Verify Findings strip rendered each warning as a bordered card in a grid, with skipped probes hidden in a collapsed disclosure below — two visual languages for one idea, using most of the strip's height to say something small. It is now one flat list of compact rows.
