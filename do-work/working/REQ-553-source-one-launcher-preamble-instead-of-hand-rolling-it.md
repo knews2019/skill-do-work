@@ -54,7 +54,7 @@ Source: `do-work/audits/audit-2026-09-03.md` (Finding 2, sweep_key `cli-launcher
 
 ## Constraints
 - Scope is exactly this finding class: do not fix nearby code, do not extend behaviour the finding does not name, no test files beyond the lock-in.
-- The lock-in lands as one assertion in `_dev/tests/audit-lockins.sh` (create it on first use, executable, invoked from `_dev/tests/contract-regressions.sh` in the fast tier the way `_dev/tests/defensive-surface-audit.sh` is, with the same missing-or-not-executable FAIL line), pinned at today's value so it is green on day one and red the moment the number regrows; no other test file changes.
+- The lock-in lands as one assertion in `_dev/tests/audit-lockins.sh` (the file already exists, is executable, and is already registered in the fast tier at `_dev/tests/contracts/probe-lanes.sh` -- add one assertion to it; do not create it and do not change its registration), pinned at today's value so it is green on day one and red the moment the number regrows; no other test file changes.
 - No launcher behaviour change: the differential fixtures for the installer and updater must pass unchanged.
 - Prime `_dev/primes/prime-shell-commands.md` first; the sourcing must survive `set -euo pipefail` and a missing Go toolchain the same way the current preambles do.
 - Lock-in limit: hand-rolled launcher preambles outside the preamble pair: 0 after this REQ (today 13); the Reproduce command prints at most 2 paths, the preamble file and its byte-identical mirror (verify repair 2026-09-03: the plan line's "target ≤ 1" counted the helper once, the mirror makes it two).

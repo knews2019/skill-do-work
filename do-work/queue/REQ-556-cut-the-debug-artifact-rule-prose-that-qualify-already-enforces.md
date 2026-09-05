@@ -44,7 +44,7 @@ Source: `do-work/audits/audit-2026-09-03.md` (Finding 1, sweep_key `qualify-debu
 
 ## Constraints
 - Scope is exactly this finding class: do not fix nearby code, do not extend behaviour the finding does not name, no test files beyond the lock-in.
-- The lock-in lands as one assertion in `_dev/tests/audit-lockins.sh` (create it on first use, executable, invoked from `_dev/tests/contract-regressions.sh` in the fast tier the way `_dev/tests/defensive-surface-audit.sh` is, with the same missing-or-not-executable FAIL line), pinned at today's value so it is green on day one and red the moment the number regrows; no other test file changes.
+- The lock-in lands as one assertion in `_dev/tests/audit-lockins.sh` (the file already exists, is executable, and is already registered in the fast tier at `_dev/tests/contracts/probe-lanes.sh` -- add one assertion to it; do not create it and do not change its registration), pinned at today's value so it is green on day one and red the moment the number regrows; no other test file changes.
 - `_dev/tests/contract-regressions.sh` may pin some of these sentences; delete the matching predicates in the same commit rather than keeping a sentence to satisfy a pin.
 - Prime `_dev/primes/prime-action-files.md` first.
 - Lock-in limit: debug-artifact rule mentions across work.md, review-work.md, work-reference.md: ≤ 3 after this REQ (today 9).
