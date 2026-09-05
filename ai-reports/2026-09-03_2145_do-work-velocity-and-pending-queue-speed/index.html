@@ -136,21 +136,21 @@ footer{font-size:14px;}
 <div class="row" style="margin-top:20px">
 <div class="intro-copy">
 <h1>Less work around<br>each request.</h1>
-<p class="lede">Finish the test-budget repair, then close the finalization migration. The heavy-test status fix and the workflow-reference cut are complete; the next gains come from fewer repeated checks and less work around each request.</p>
-<p class="note">Snapshot: 5 September 2026, 12:52 EEST · source revision <code>c5ee4a8c</code> · release 0.293.0.<br>This is a dated report, not a live queue monitor.</p>
+<p class="lede">The test-cost repair and automated finalization are complete. Finish the current run, give its gates a quiet window, and defer negligible cleanup. Another optimization request has less evidence behind it than these scheduling changes.</p>
+<p class="note">Snapshot: 5 September 2026, 15:32 EEST · source revision <code>226374e9</code> · release 0.294.3.<br>This is a dated report, not a live queue monitor.</p>
 </div>
 <aside class="decision" aria-label="Next task recommendation">
-<div class="step-label">Next existing work</div>
-<h3>Finish the test-budget repair</h3>
-<p><a href="../../do-work/working/REQ-574-bring-do-work-cli-test-files-under-the-30s-budget.md">REQ-574: reduce CLI test costs</a> is already claimed. Its plan removes repeated launcher checks and Git fixture setup. Next is <a href="../../do-work/queue/REQ-507-hand-archive-and-commit-tails-to-finalize.md">REQ-507: automate archive and commit completion</a>, which now waits on REQ-584: the claimed probe-script shebang repair, before verification and closure can resume.</p>
-<p><a href="#next">See the four-request order and the evidence</a></p>
-<p class="note">Recommendation only: this report does not change queue priorities or start duplicate workers on claimed requests.</p>
+<div class="step-label">Highest-priority active improvement</div>
+<h3>Finish the timestamp-preservation request</h3>
+<p><a href="../../do-work/working/REQ-575-keep-every-lifecycle-stamp-no-transition-deletes-an-existing-at-field.md">REQ-575: preserve lifecycle timestamps</a> is merged, qualified and tested, but still claimed with review and closure outstanding at this snapshot. Let its owner finish it.</p>
+<p><a href="../../do-work/queue/REQ-556-cut-the-debug-artifact-rule-prose-that-qualify-already-enforces.md">REQ-556: remove duplicated workflow instructions</a> is the next unclaimed workflow cleanup. Its expected cut is about 15 lines, with no measured speedup; keep it for a later maintenance pass.</p>
+<p><a href="#next">See current work and four operating strategies</a></p>
 </aside>
 </div>
 <div class="fact-strip" aria-label="Snapshot facts">
-<div><b>16 + 2</b><span>Pending requests + test-budget and probe-script repairs claimed</span></div>
-<div><b>849 lines</b><span>Workflow reference after REQ-510’s completed prose cut</span></div>
-<div><b>0.293.0</b><span>Latest release at this snapshot</span></div>
+<div><b>11 + 5</b><span>Pending requests + claimed requests; six pending are negligible</span></div>
+<div><b>65 s → 61 s</b><span>Comparable CLI module run before and after the test repair</span></div>
+<div><b>0.294.3</b><span>Latest release at this snapshot</span></div>
 </div>
 </header>
 <nav aria-label="Report sections">
@@ -168,11 +168,14 @@ footer{font-size:14px;}
 <tr><td data-label="Where time was lost">Repeating verification</td><td data-label="What shipped"><span class="status">Shipped · 0.274.1 / 0.281.0</span><br>Automatic gate runner; matching heavy-lane evidence reused for up to four hours</td><td data-label="Why it helps">Recent valid evidence can replace repeated execution. Reuse depends on matching inputs; browser lanes still execute.</td></tr>
 <tr><td data-label="Where time was lost">A transient failure became another request</td><td data-label="What shipped"><span class="status">Shipped · 0.277.0</span><br>One retry of the same gate command</td><td data-label="Why it helps">A green retry avoids the repair-request lifecycle. A second failure still enters diagnosis.</td></tr>
 <tr><td data-label="Where time was lost">Unrelated files or one stuck finalization stopped work</td><td data-label="What shipped"><span class="status">Shipped · 0.278.0–0.280.0</span><br>Scoped cleanliness, per-request recovery, finalization without checkpoint claims</td><td data-label="Why it helps">Unrelated work can continue; the pipeline no longer needs to commit another session’s files to proceed.</td></tr>
-<tr><td data-label="Where time was lost">Shared principles were loaded from several files</td><td data-label="What shipped"><span class="status">Shipped · 0.282.1</span><br><a href="../../do-work/archive/REQ-509-merge-common-rationalizations-into-one-crew-member.md">REQ-509: one shared implementation and review crew member</a></td><td data-label="Why it helps">Provided the prerequisite for the completed reference cut. Moving guidance alone is not a measured speedup.</td></tr>
+<tr><td data-label="Where time was lost">Shared principles were loaded from several files</td><td data-label="What shipped"><span class="status">Shipped · 0.282.1</span><br><a href="../../do-work/archive/UR-098/REQ-509-merge-common-rationalizations-into-one-crew-member.md">REQ-509: one shared implementation and review crew member</a></td><td data-label="Why it helps">Provided the prerequisite for the completed reference cut. Moving guidance alone is not a measured speedup.</td></tr>
 <tr><td data-label="Where time was lost">Passing heavy tests sent work back through the queue</td><td data-label="What shipped"><span class="status">Shipped · 0.287.0 / 0.291.1</span><br><a href="../../do-work/archive/UR-114/REQ-570-delete-the-pending-heavy-testing-status-held-requests-stay-claimed.md">REQ-570: held requests stay claimed</a>; <a href="../../do-work/archive/UR-114/REQ-571-remove-the-board-pending-heavy-testing-reader-case.md">REQ-571: remove the retired board status</a></td><td data-label="Why it helps">A green drain finalizes reviewed work without a second claim and review; dependents retain access to landed source. The old proposal P1 is complete.</td></tr>
-<tr><td data-label="Where time was lost">Reference prose repeated mechanics owned by tests</td><td data-label="What shipped"><span class="status">Shipped · 0.288.1</span><br><a href="../../do-work/archive/REQ-510-sweep-work-reference-sections-owned-by-cli-tests.md">REQ-510: remove obsolete workflow procedures</a></td><td data-label="Why it helps">The reference is now 849 lines, versus 1,072 in the previous snapshot. The under-700 target was declined to preserve guidance without a CLI owner. Runtime savings have not been measured.</td></tr>
+<tr><td data-label="Where time was lost">Reference prose repeated mechanics owned by tests</td><td data-label="What shipped"><span class="status">Shipped · 0.288.1</span><br><a href="../../do-work/archive/UR-098/REQ-510-sweep-work-reference-sections-owned-by-cli-tests.md">REQ-510: remove obsolete workflow procedures</a></td><td data-label="Why it helps">The reference cut shipped at 849 lines, versus 1,072 in the earlier snapshot. It is 859 lines at this snapshot after subsequent changes. The under-700 target was declined to preserve guidance without a CLI owner. Runtime savings have not been measured.</td></tr>
 <tr><td data-label="Where time was lost">Elapsed time did not explain where a request waited</td><td data-label="What shipped"><span class="status">Shipped · 0.293.0</span><br><a href="../../do-work/archive/UR-108/REQ-562-record-per-run-lifecycle-spans-and-report-the-critical-path.md">REQ-562: lightweight lifecycle timings</a></td><td data-label="Why it helps">Adds a flat timing stream and compact final summary. Only builder work and verification are wired: two of ten categories. Unattributed time is not yet a measurement of bookkeeping overhead.</td></tr>
 <tr><td data-label="Where time was lost">The queue generated more maintenance as it drained</td><td data-label="What shipped"><span class="status">Shipped · 0.272.0</span><br>Noncritical findings stay in their reports</td><td data-label="Why it helps">Reduces automatic intake. Critical findings still enter the queue.</td></tr>
+<tr><td data-label="Where time was lost">Tests repeatedly resolved launchers and created Git fixtures</td><td data-label="What shipped"><span class="status">Completed · 5 September</span><br><a href="../../do-work/archive/REQ-574-bring-do-work-cli-test-files-under-the-30s-budget.md">REQ-574: reduce CLI test costs</a></td><td data-label="Why it helps">The comparable module run fell from 65s to 61s, with 772 tests in both runs. No assertion weakened and no file split. The closure record still reports failures with two concurrent gates.</td></tr>
+<tr><td data-label="Where time was lost">Closing each request required repeated shell instructions</td><td data-label="What shipped"><span class="status">Shipped · 0.294.0</span><br><a href="../../do-work/archive/UR-098/REQ-507-hand-archive-and-commit-tails-to-finalize.md">REQ-507: automate archive and commit completion</a></td><td data-label="Why it helps">The advance command composes finalization from one bound manifest. The request and <a href="../../do-work/archive/UR-098/REQ-584-repair-req-572-probe-script-shebang.md">REQ-584: probe-script gate repair</a> are archived. Finalization is no longer an outstanding priority.</td></tr>
+<tr><td data-label="Where time was lost">The board disagreed with the selector about landed dependencies</td><td data-label="What shipped"><span class="status">Shipped · 0.294.2 / 0.294.3</span><br>Source-ready board annotations and repaired package citations</td><td data-label="Why it helps">A claimed dependency with a landed commit is shown as ready for dependents. Incorrect package links that failed every gate were corrected; that removes a recurring validation failure, not a measured runtime cost.</td></tr>
 </tbody></table></div>
 <p class="note">Sources: <a href="../../CHANGELOG.md">release notes</a> and the original report’s gate measurements. These are recorded results, not a fresh benchmark of today’s HEAD.</p>
 </section>
@@ -212,29 +215,41 @@ footer{font-size:14px;}
 </section>
 <section id="next">
 <span class="step-label">03 / Choose the next task</span>
-<h2>Finish the blockers, then improve the feedback.</h2>
-<p class="section-intro">This order targets recurring execution costs and trustworthy timing. It is an assessment of the current records, not the selector’s complete queue order.</p>
+<h2>Close the current work before adding more speed work.</h2>
+<p class="section-intro">The two earlier blockers are complete. Timestamp preservation is the highest-priority active feedback improvement; none of the unclaimed workflow cleanups has a demonstrated large throughput saving.</p>
 <div class="table-wrap"><table>
-<thead><tr><th scope="col">Order and request</th><th scope="col">Current state</th><th scope="col">Why do it next</th></tr></thead>
+<thead><tr><th scope="col">Work</th><th scope="col">Snapshot state</th><th scope="col">Recommended next step</th></tr></thead>
 <tbody>
-<tr><td data-label="Order and request"><strong>1 · <a href="../../do-work/working/REQ-574-bring-do-work-cli-test-files-under-the-30s-budget.md">REQ-574: reduce CLI test costs</a></strong></td><td data-label="Current state">Claimed; repair plan exists.</td><td data-label="Why do it next">Remove repeated launcher resolution and Git fixture setup to reduce test-budget failures and retries. It also unblocks <a href="../../do-work/queue/REQ-572-show-every-lifecycle-transition-of-a-req-as-its-own-activity-row.md">REQ-572: show every lifecycle transition</a>. Splitting files lowers per-file totals but does not itself reduce gate runtime.</td></tr>
-<tr><td data-label="Order and request"><strong>2 · <a href="../../do-work/queue/REQ-507-hand-archive-and-commit-tails-to-finalize.md">REQ-507: automate archive and commit completion</a></strong></td><td data-label="Current state">Pending with merged implementation; depends on REQ-584, the claimed probe-script shebang repair.</td><td data-label="Why do it next">Complete the probe repair, then resume verification, review and closure. The latest gate stopped at ShellCheck SC2148 before Go tests ran. The older staged-skills board-reference assertion is already removed in <a href="../../_dev/tests/staged-skills-contract.sh">current source</a>. The shebang fix is committed at <code>4d47c821</code>; the repair record is still claimed at this snapshot.</td></tr>
-<tr><td data-label="Order and request"><strong>3 · <a href="../../do-work/queue/REQ-575-keep-every-lifecycle-stamp-no-transition-deletes-an-existing-at-field.md">REQ-575: preserve lifecycle timestamps</a></strong></td><td data-label="Current state">Pending; no dependencies.</td><td data-label="Why do it next">Keep recovery and deferral from erasing timing evidence. The request records roughly six hours appearing as one minute after a claim was rewritten. The board now uses the earliest surviving stamp; preserving the original stamps still matters. This improves measurement, not execution speed directly.</td></tr>
-<tr><td data-label="Order and request"><strong>4 · <a href="../../do-work/queue/REQ-556-cut-the-debug-artifact-rule-prose-that-qualify-already-enforces.md">REQ-556: remove duplicated workflow instructions</a></strong></td><td data-label="Current state">Pending; priority <code>later</code>; no dependencies.</td><td data-label="Why do it next">Reduce repeated instructions in the work and review path where the CLI already enforces the rule. A small recurring reading reduction is plausible; no speedup has been measured. Recheck which sites survived the completed reference cut.</td></tr>
+<tr><td data-label="Work"><strong><a href="../../do-work/working/REQ-575-keep-every-lifecycle-stamp-no-transition-deletes-an-existing-at-field.md">REQ-575: preserve lifecycle timestamps</a></strong></td><td data-label="Snapshot state">Claimed; merged at <code>a2c6f4cf</code>, qualification and testing recorded.</td><td data-label="Recommended next step">Finish independent review and closure through the existing owner. Preserving the first timestamps makes elapsed-time evidence trustworthy through recovery and deferral; it is a measurement improvement.</td></tr>
+<tr><td data-label="Work"><strong>Current Activity and findings work</strong></td><td data-label="Snapshot state"><a href="../../do-work/working/REQ-572-show-every-lifecycle-transition-of-a-req-as-its-own-activity-row.md">REQ-572: Activity history</a> and <a href="../../do-work/working/REQ-578-hide-the-verify-findings-strip-on-the-activity-view.md">REQ-578: hide the findings strip</a> have passed review and carry heavy plans. <a href="../../do-work/working/REQ-573-open-the-detail-drawer-from-an-activity-row-and-highlight-every-row-of-the-same-req.md">REQ-573: Activity drawer</a> and <a href="../../do-work/working/REQ-579-render-verify-findings-and-skipped-probes-as-compact-rows.md">REQ-579: compact finding rows</a> are claimed for implementation.</td><td data-label="Recommended next step">Let the existing run finish its selected work, drain the selected heavy lanes at exhaustion and finalize green requests. Five claimed records do not mean five builders are running: reviewed requests can remain held.</td></tr>
+<tr><td data-label="Work"><strong><a href="../../do-work/queue/REQ-556-cut-the-debug-artifact-rule-prose-that-qualify-already-enforces.md">REQ-556: remove duplicated workflow instructions</a></strong></td><td data-label="Snapshot state">Pending; priority <code>later</code>, impact negligible; no dependencies.</td><td data-label="Recommended next step">Keep it for the next maintenance pass. The expected cut is about 15 lines, and some sites may already be gone after the reference cut. Its speed benefit remains unmeasured.</td></tr>
 </tbody></table></div>
 <div class="row">
 <div class="explain">
-<h3>Avoid crowded gate windows</h3>
-<p>The <a href="../../do-work/runs/work-2026-09-05-003420/manifest.md">5 September run record</a> reports a shell fixture taking <strong>26 seconds in the quiet baseline and 106 seconds under load</strong>. Nine builders, a reviewer and lane probes competed for four cores; every assertion passed, but the gate failed its time budget.</p>
-<p>Let the build load drain before canonical gate execution on that host. More workers can increase retries. The CLI repair above does not cover these shell fixtures, and this observation does not establish a universal worker limit.</p>
+<h3>S1 · One owner, up to three builders for now</h3>
+<p>The <a href="../../do-work/runs/work-2026-09-05-120117/manifest.md">current run</a> uses <code>--fan-out 3</code>. Keep claiming, integration and release under that owner; do not add another orchestrator against the same checkout. A <a href="../../do-work/runs/work-2026-09-05-094707/manifest.md">recent run</a> recorded one session committing another session’s unfinished request edits.</p>
 </div>
 <div class="explain">
-<h3>Identified next speed opportunity: batch Git queries</h3>
-<p>The <a href="../../do-work/runs/work-2026-09-04-232225/REQ-574-plan.md">test-budget repair plan</a> already identifies repeated per-path Git queries in finalization and recovery. One 17-path recovery fixture launches over <strong>100 Git processes</strong>.</p>
-<p>Batching those queries is proposed follow-up work, with no matching REQ in the current queue. It affects production transactions, so preserving the same outcomes and refusals needs verification. The plan’s estimated savings have not been benchmarked; this is a candidate, not a measured result.</p>
+<h3>S2 · One canonical gate per machine</h3>
+<p>The <a href="../../do-work/archive/REQ-574-bring-do-work-cli-test-files-under-the-30s-budget.md">test repair’s measured result</a> is 65s to 61s across the module, with the same 772 tests. Its worst file has only 5.66s of room under the 30s limit, and the two-concurrent-gate case remains outside the budget. Give verification a quiet window; reduce build overlap if retries return.</p>
+</div>
+<div class="explain">
+<h3>S3 · Defer negligible cleanup during this drain</h3>
+<p>Six of the eleven pending requests are marked negligible. Applying <code>--skip-impact-negligible</code> to subsequent selection would leave five pending plus five claimed in the current scope. The six cleanup requests stay queued for later; this does not empty the whole backlog.</p>
+</div>
+<div class="explain">
+<h3>S4 · Pause optional intake until closure</h3>
+<p>Give the loop a finite endpoint so it can drain heavy checks and finalize held work. Keep noncritical findings in reports. <a href="../../do-work/queue/REQ-585-give-the-activity-view-one-scroll-surface.md">REQ-585: give Activity one scroll surface</a> is newly captured and included in the count; the suggested intake pause has not been applied by this report.</p>
 </div>
 </div>
-<p class="note">Earlier priorities now completed: <a href="../../do-work/archive/REQ-504-collapse-step-10-and-crash-recovery-prose-into-recovery.md">REQ-504: recovery in the CLI</a>, <a href="../../do-work/archive/REQ-505-move-selection-and-claim-behind-advance.md">REQ-505: selection and claim</a>, <a href="../../do-work/archive/REQ-506-run-evidence-gates-from-advance.md">REQ-506: evidence gates</a>, the held-request status fix, the reference cut and lightweight timing support. Board presentation and general helper cleanup remain lower priorities for direct throughput gains.</p>
+<div class="callout"><strong>The two obsolete worktrees are removed.</strong>
+<p>The completed <a href="../../do-work/archive/UR-098/REQ-506-run-evidence-gates-from-advance.md">REQ-506: evidence gates</a> and <a href="../../do-work/archive/UR-098/REQ-577-repair-launcher-fixture-shellcheck-warning.md">REQ-577: launcher repair</a> worktrees and their <code>codex/</code>-prefixed branches were removed without force after confirming clean trees, full ancestry in main and zero unique commits. Five current-run worktrees now remain: Activity history, Activity drawer, timestamp preservation, strip visibility and compact finding rows. Two new claims explain the increase from the three left immediately after cleanup.</p>
+<p>The <a href="../../skills/do-work-board/tools/queue-kanban/verify.go">board detector</a> still assumes a worktree directory’s basename equals its branch name. Removing the obsolete trees cleared those two cases; it did not fix that naming assumption. Presence alone is not evidence of abandoned work.</p>
+</div>
+<details><summary>Next optimization candidate, still unqueued: batch Git queries</summary>
+<p>The <a href="../../do-work/runs/work-2026-09-04-232225/REQ-574-plan.md">earlier repair plan</a> identifies repeated per-path queries in finalization and recovery, with over 100 Git processes in one 17-path recovery fixture. The completed repair changed test setup, not that production query pattern. Batching remains a candidate requiring equivalent-outcome verification and a benchmark; its proposed savings are not measured results.</p>
+</details>
+<p class="note">These are recommendations, not changes to the run’s flags, queue priorities or capture policy. Completed work should not be rebuilt because an older report still called it pending.</p>
 </section>
 <section id="lessons">
 <span class="step-label">04 / Lessons to keep</span>
@@ -242,12 +257,12 @@ footer{font-size:14px;}
 <div class="row">
 <article class="lesson"><span class="key">L18 · Measurement cost</span><h3>Instrumentation must be cheaper than the work.</h3><p>Write bounded raw events in Git-private state and fold one summary into finalization. Extra planning, artifacts and commits can overwhelm the small measurement they support.</p></article>
 <article class="lesson"><span class="key">L19 · Comparable samples</span><h3>A new median needs its sample beside it.</h3><p>The 65-, 11- and 51-minute figures cover different requests and intervals. Show counts, endpoints and caveats before using them to claim a speedup or regression.</p></article>
-<article class="lesson"><span class="key">L20 · Lifecycle state</span><h3>Implemented and completed are separate states.</h3><p>The finalization migration has code on main while its record waits on a repository-gate repair and closure. Read the evidence before rebuilding pending work, and do not infer a completed lifecycle from an implementation commit.</p></article>
+<article class="lesson"><span class="key">L20 · Lifecycle state</span><h3>Implemented and completed are separate states.</h3><p>The finalization migration is now archived. Timestamp preservation is merged but still claimed, and reviewed Activity requests wait on heavy plans. Read the current phase evidence: a commit proves landed code, not a completed lifecycle.</p></article>
 </div>
 <div class="row">
 <article class="lesson"><span class="key">L21 · Expected return</span><h3>A prerequisite is not the source of the saving.</h3><p>The shared-principles move enabled the now-completed reference cut. The reference is smaller, but neither moving prose nor deleting it proves a runtime saving. Measure comparable requests before assigning a speedup.</p></article>
 <article class="lesson"><span class="key">L22 · Safe reuse</span><h3>Reuse evidence when the inputs match.</h3><p>The heavy-lane cache is bounded by age and fingerprints. A recent timestamp alone cannot prove that changed code or fixtures were checked.</p></article>
-<article class="lesson"><span class="key">L23 · Remaining uncertainty</span><h3>Parallelism is not proven to be the only remaining lever.</h3><p>The reference cut is complete, while test setup, repeated Git queries and load-induced retries remain opportunities. The timing feature covers only two of ten categories; do not read its unattributed total as measured bookkeeping cost.</p></article>
+<article class="lesson"><span class="key">L23 · Remaining uncertainty</span><h3>Parallelism is not proven to be the only remaining lever.</h3><p>The reference cut and cheaper test setup are complete; repeated production Git queries and load-induced retries remain opportunities. The timing feature covers only two of ten categories; do not read its unattributed total as measured bookkeeping cost.</p></article>
 </div>
 <div class="row">
 <article class="lesson"><span class="key">L24 · Passing checks close</span><h3>A check that passes must never lower readiness.</h3><p>The retired green-heavy answer lowered dependency readiness. The held-request fix removed that detour: reviewed work stays claimed, and a green drain finalizes it. Preserve this principle when changing another successful transition.</p></article>
@@ -255,7 +270,11 @@ footer{font-size:14px;}
 </div>
 <div class="row">
 <article class="lesson"><span class="key">L26 · Machine load</span><h3>Passing assertions can still miss a time budget.</h3><p>Record competing work beside timing measurements. Separate gate windows from a crowded build fleet before treating a load-induced timeout as a new product defect.</p></article>
-<article class="lesson"><span class="key">L27 · Actual savings</span><h3>Fewer processes can save time; moving tests only changes attribution.</h3><p>Repeated launcher checks and Git setup are execution costs. Splitting tests across files can satisfy a per-file limit without reducing the total work. Report the two outcomes separately.</p></article>
+<article class="lesson"><span class="key">L27 · Actual savings</span><h3>Fewer processes can save time; moving tests only changes attribution.</h3><p>The completed test repair removed repeated setup and saved four seconds in the comparable module run, without splitting files. A per-package saving and a whole-module saving differ under contention; report the workload beside each number.</p></article>
+</div>
+<div class="row">
+<article class="lesson"><span class="key">L28 · Worktree evidence</span><h3>Read the branch reference before judging a leftover.</h3><p>A directory name omitted the branch’s codex/ prefix, so two fully merged worktrees appeared unresolved. Clean state, actual branch ancestry and a settled request proved removal safe; age and the warning label alone did not.</p></article>
+<article class="lesson"><span class="key">L29 · Drain completion</span><h3>Finish held work as well as building new work.</h3><p>More claimed requests can include reviewed work waiting for heavy checks. Measure completed requests and retries, and give the run a finite endpoint; the number of busy or claimed lanes is not throughput.</p></article>
 </div>
 </section>
 <section id="sources">
@@ -264,20 +283,25 @@ footer{font-size:14px;}
 <div class="row">
 <div class="explain">
 <h3>Inspect the snapshot inputs</h3>
-<pre><code>git show --stat c5ee4a8c
+<pre><code>git show --stat 226374e9
 rg -n '^(id|status|priority|depends_on):' \
   do-work/queue do-work/working
 rg -n '^## 0\.' CHANGELOG.md
-wc -l skills/do-work/actions/work-reference.md</code></pre>
-<p class="note">The snapshot was read from repository files at <code>c5ee4a8c</code>. These queue and file checks return newer state as work moves. This update did not run the queue or benchmark the gates.</p>
+wc -l skills/do-work/actions/work-reference.md
+git worktree list --porcelain</code></pre>
+<p class="note">The snapshot was read from repository files at <code>226374e9</code>. These queue and file checks return newer state as work moves. This update did not run the queue or benchmark the gates.</p>
 </div>
 <div class="explain">
 <h3>Evidence and limits</h3>
-<p><a href="../../CHANGELOG.md">Release notes through 0.293.0</a> and the linked archived requests support the completion updates. <a href="../../skills/do-work/actions/work-reference.md">Workflow reference</a>: 849 lines at this snapshot. <a href="../../do-work/calibration-log.tsv">Calibration log</a>: the fixed historical samples above.</p>
-<p>The <a href="../../do-work/runs/work-2026-09-05-003420/manifest.md">run record</a> supplies the load comparison. The <a href="../../do-work/runs/work-2026-09-04-232225/REQ-574-plan.md">test repair plan</a> supplies the Git-process diagnosis and unmeasured optimization proposal. The <a href="../../do-work/archive/UR-108/REQ-562-record-per-run-lifecycle-spans-and-report-the-critical-path.md">timing feature’s closure record</a> documents its partial coverage.</p>
-<p class="note">This is a queue-priority assessment based on recorded evidence and current source, not a new performance benchmark. The historic medians keep their original samples; they are not a before/after claim for this update.</p>
+<p><a href="../../CHANGELOG.md">Release notes through 0.294.3</a> and the linked archived requests support the completion updates. <a href="../../skills/do-work/actions/work-reference.md">Workflow reference</a>: 859 lines at this snapshot. <a href="../../do-work/calibration-log.tsv">Calibration log</a>: the fixed historical samples above.</p>
+<p>The <a href="../../do-work/archive/REQ-574-bring-do-work-cli-test-files-under-the-30s-budget.md">test-repair closure</a> supplies the comparable module timings and concurrency limit. The <a href="../../do-work/runs/work-2026-09-05-003420/manifest.md">earlier run record</a> supplies the 26s versus 106s shell-fixture load comparison. The <a href="../../do-work/runs/work-2026-09-04-232225/REQ-574-plan.md">test repair plan</a> supplies the Git-process diagnosis and unmeasured optimization proposal. The <a href="../../do-work/archive/UR-108/REQ-562-record-per-run-lifecycle-spans-and-report-the-critical-path.md">timing feature’s closure record</a> documents its partial coverage.</p>
+<p class="note">The worktree removal was performed and verified in this task; current registered worktrees were rechecked for this update. Other timing figures come from recorded runs, not a fresh benchmark. The historic medians keep their original samples; they are not a before/after claim for this update.</p>
 </div>
 </div>
+<details id="midday-snapshot" class="history-item">
+<summary>Previous recommendation · 5 September, 12:52 EEST</summary>
+<div class="history-content"><p>At <code>c5ee4a8c</code> / release 0.293.0, the snapshot had 16 pending and two claimed. Its order was the CLI test-cost repair, finalization after the probe-script repair, timestamp preservation, then duplicated-instruction cleanup. The first two priorities and the probe repair are now complete; timestamp preservation is merged but still claimed. The earlier 01:45 proposal and original measurements remain below.</p></div>
+</details>
 <details id="previous-snapshot" class="history-item">
 <summary>Previous recommendation · 5 September, 01:45 EEST</summary>
 <div class="history-content">
@@ -650,7 +674,7 @@ cd skills/do-work-board/tools/queue-kanban &amp;&amp; go test -count=1 -json ./.
 </details>
 </section>
 </main>
-<footer><p>Updated in place on 5 September at the maintainer’s request: current priorities and completions refreshed, with the previous heavy-hold proposal and original measurements retained as dated history. No external fonts, scripts or build step.</p><p id="render-status">Render-checked in light and dark at 1440 px and 390 px widths. Previous recommendation and historical chart checked expanded. All local links resolve; no page-level horizontal overflow. Timing measurements were not rerun.</p></footer>
+<footer><p>Updated in place on 5 September at the maintainer’s request: current priorities, measured test savings, operating strategies and worktree cleanup refreshed, with previous recommendations and original measurements retained as dated history. No external fonts, scripts or build step.</p><p id="render-status">Render-checked in light and dark at 1440 px and 390 px widths, including a mobile viewport check. Previous recommendations and historical chart checked expanded. All 43 local links resolve; no page-level horizontal overflow. Timing measurements were not rerun.</p></footer>
 </div>
 </body>
 </html>
