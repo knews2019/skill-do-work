@@ -28,6 +28,26 @@ const (
 	discardedLabelPrefix      = "Discarded: "
 )
 
+// The delimiters a `## Blocked`, `## Reports`, or `## Implementation` evidence payload is
+// composed from. Every byte of those payloads is written by the command's caller, so the only
+// positions a reader may attribute are the ones these delimiters open: a history entry's own
+// list bullet, the field after the bracketed date that bullet may carry, and the field after
+// the single em-dash separator an entry uses to close its subject.
+const (
+	historyEntryBullet    = "- "
+	historyFieldSeparator = " — "
+)
+
+// The markers a terminal stakeholder disposition must carry, at the position the writer places
+// them. `actions/stakeholder-answers.md` Step 5 prescribes the first spelling of each; the
+// second Implementation spelling is the earlier form this package's fixtures and the archive
+// both carry. A missing spelling refuses a genuine terminal disposition — visible, and
+// correctable by the caller — where a missing anchor would complete and archive a REQ on the
+// caller's own narrative, so the list may only ever be too short, never too permissive.
+const blockedResolutionMarker = "resolved"
+
+var implementationNoCodeMarkers = []string{"no changes needed", "no code changes"}
+
 // orderedListMarkerPattern matches the one Markdown block opener that starts with a character
 // prose also starts with: a digit run followed by "." or ")". Every other block construct
 // opens with block-significant leading whitespace or with an ASCII punctuation mark, which
@@ -268,8 +288,8 @@ func BuildAnswerPlan(repositoryRoot string, manifest Manifest, answerTime time.T
 			if blockedError != nil || implementationError != nil {
 				return refusedPlan(plan, "ANSWER-STAKEHOLDER-EVIDENCE-INVALID", firstError(blockedError, implementationError).Error(), []string{record.RequestID}, requestPath)
 			}
-			if !bytes.Contains(bytes.ToLower(blockedHistory), []byte("resolved")) || !bytes.Contains(bytes.ToLower(implementation), []byte("no code")) {
-				return refusedPlan(plan, "ANSWER-STAKEHOLDER-EVIDENCE-INVALID", "terminal evidence must carry resolved Blocked history and an Implementation no-code marker", []string{record.RequestID}, requestPath)
+			if !blockedHistoryRecordsResolution(blockedHistory) || !implementationRecordsNoCodeCompletion(implementation) {
+				return refusedPlan(plan, "ANSWER-STAKEHOLDER-EVIDENCE-INVALID", "terminal evidence must carry resolved Blocked history and an Implementation no-code marker: "+terminalEvidencePositionEvidence(blockedHistory, implementation), []string{record.RequestID}, requestPath)
 			}
 			if appendError := appendSectionEvidence(document, "## Blocked", blockedHistory, lineEnding); appendError != nil {
 				return refusedPlan(plan, "ANSWER-EDIT-FAILED", appendError.Error(), []string{record.RequestID}, requestPath)
@@ -291,8 +311,8 @@ func BuildAnswerPlan(repositoryRoot string, manifest Manifest, answerTime time.T
 				return refusedPlan(plan, "ANSWER-STAKEHOLDER-REPORT-LINKAGE-INVALID", "blocked_by must exactly match the fresh report path", []string{record.RequestID}, answer.StakeholderReport.BlockedBy)
 			}
 			reportsHistory, _, reportsError := readPayload(repositoryRoot, answer.StakeholderReport.ReportsHistory)
-			if reportsError != nil || !bytes.Contains(reportsHistory, []byte(reportPath)) {
-				reason := "Reports history must name the fresh report path"
+			if reportsError != nil || !reportsHistoryNamesReportPath(reportsHistory, reportPath) {
+				reason := "Reports history must name the fresh report path as the path field of one history entry, not merely somewhere in its text"
 				if reportsError != nil {
 					reason = reportsError.Error()
 				}
@@ -454,6 +474,153 @@ func answeredSummaryDispositionLabel(question QuestionAnswer) string {
 		}
 	}
 	return ""
+}
+
+// activeEvidenceLines returns the lines of a caller-supplied evidence payload that can record
+// anything, bounded to the section the payload is published into. The optional heading the
+// payload may open with is dropped; a line under any further "## " heading belongs to another
+// section, and a line inside a fenced block is an example of a record rather than a record, so
+// neither may supply a marker that decides a lifecycle write.
+func activeEvidenceLines(evidence []byte, heading string) [][]byte {
+	var activeLines [][]byte
+	insideFence := false
+	for lineIndex, rawLine := range bytes.Split(evidence, []byte("\n")) {
+		line := bytes.TrimRight(bytes.TrimSuffix(rawLine, []byte("\r")), " \t")
+		if lineIndex == 0 && bytes.Equal(bytes.TrimSpace(line), []byte(heading)) {
+			continue
+		}
+		if bytes.HasPrefix(bytes.TrimLeft(line, " \t"), []byte("```")) {
+			insideFence = !insideFence
+			continue
+		}
+		if insideFence {
+			continue
+		}
+		if bytes.HasPrefix(line, []byte("## ")) {
+			break
+		}
+		activeLines = append(activeLines, line)
+	}
+	return activeLines
+}
+
+// historyEntryContent returns the content of a history entry line: the bytes after the list
+// bullet every entry opens with, and after the bracketed date field when the entry carries one.
+// A line that is not an entry offers no field boundary at all and is reported as such, so a
+// sentence of narrative can never stand in for a recorded entry.
+func historyEntryContent(line []byte) ([]byte, bool) {
+	entry := bytes.TrimLeft(line, " \t")
+	if !bytes.HasPrefix(entry, []byte(historyEntryBullet)) {
+		return nil, false
+	}
+	content := entry[len(historyEntryBullet):]
+	if bytes.HasPrefix(content, []byte("[")) {
+		if closingIndex := bytes.IndexByte(content, ']'); closingIndex >= 0 {
+			content = bytes.TrimLeft(content[closingIndex+1:], " \t")
+		}
+	}
+	return content, true
+}
+
+// historyEntryTrailingField returns the field an entry's own separator opens, and whether that
+// position is identifiable. Both sides of the separator are human text — a quoted stakeholder
+// name on one side, a disposition on the other — so an entry carrying more than one separator
+// has no field a reader can attribute, exactly as a resolved question line does not.
+func historyEntryTrailingField(content []byte) ([]byte, bool) {
+	separator := []byte(historyFieldSeparator)
+	if bytes.Count(content, separator) != 1 {
+		return nil, false
+	}
+	return content[bytes.Index(content, separator)+len(separator):], true
+}
+
+// markerOpensField reports whether a field opens with a marker as a whole word. Leading
+// emphasis and indentation are the writer's formatting rather than content, so they are stepped
+// over; a letter or digit immediately after the marker means the field opens with a different
+// word that merely starts with the same bytes, which is how "no code review yet" passed for the
+// no-code marker.
+func markerOpensField(field []byte, marker string) bool {
+	candidate := bytes.TrimLeft(field, "*_ \t")
+	if len(candidate) < len(marker) || !strings.EqualFold(string(candidate[:len(marker)]), marker) {
+		return false
+	}
+	remainder := candidate[len(marker):]
+	if len(remainder) == 0 {
+		return true
+	}
+	next := remainder[0]
+	return !(next >= 'a' && next <= 'z' || next >= 'A' && next <= 'Z' || next >= '0' && next <= '9')
+}
+
+// blockedHistoryRecordsResolution reports whether a `## Blocked` payload records the resolution
+// its caller's terminal disposition claims. The marker is read only where a history entry can
+// place one — opening the entry, or opening the field the entry's own separator closes its
+// subject with — because the payload is caller-authored prose in which "still not resolved"
+// carries the same bytes as a resolution.
+func blockedHistoryRecordsResolution(evidence []byte) bool {
+	for _, line := range activeEvidenceLines(evidence, "## Blocked") {
+		content, isEntry := historyEntryContent(line)
+		if !isEntry {
+			continue
+		}
+		if markerOpensField(content, blockedResolutionMarker) {
+			return true
+		}
+		if trailingField, identifiable := historyEntryTrailingField(content); identifiable && markerOpensField(trailingField, blockedResolutionMarker) {
+			return true
+		}
+	}
+	return false
+}
+
+// implementationRecordsNoCodeCompletion reports whether an `## Implementation` payload opens a
+// paragraph with the no-change marker its caller's terminal disposition claims. The marker
+// states the whole note, so it must open one; the same words inside a sentence describe
+// something else, which is what "no code review yet" and "no code changes were needed in the
+// CLI" both are.
+func implementationRecordsNoCodeCompletion(evidence []byte) bool {
+	for _, line := range activeEvidenceLines(evidence, "## Implementation") {
+		for _, marker := range implementationNoCodeMarkers {
+			if markerOpensField(line, marker) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// reportsHistoryNamesReportPath reports whether a `## Reports` payload records the fresh report
+// as the path field of one history entry. The path opens an entry and is closed by the entry's
+// separator or by the end of the line, so a neighbouring bundle whose path merely starts with
+// this one, and a sentence that mentions it, both fail to name it.
+func reportsHistoryNamesReportPath(evidence []byte, reportPath string) bool {
+	for _, line := range activeEvidenceLines(evidence, "## Reports") {
+		content, isEntry := historyEntryContent(line)
+		if !isEntry || !bytes.HasPrefix(content, []byte(reportPath)) {
+			continue
+		}
+		remainder := content[len(reportPath):]
+		if len(remainder) == 0 || bytes.HasPrefix(remainder, []byte(historyFieldSeparator)) {
+			return true
+		}
+	}
+	return false
+}
+
+// terminalEvidencePositionEvidence names which half of the terminal evidence failed and where
+// the marker it wanted has to sit. A caller cannot correct what the refusal does not name, and
+// the two payloads fail for different reasons often enough that one shared sentence sends the
+// caller to the wrong file.
+func terminalEvidencePositionEvidence(blockedHistory, implementation []byte) string {
+	var missing []string
+	if !blockedHistoryRecordsResolution(blockedHistory) {
+		missing = append(missing, fmt.Sprintf("no Blocked history entry opens with %q, or carries it in the field after its %q separator",
+			blockedResolutionMarker, historyFieldSeparator))
+	}
+	if !implementationRecordsNoCodeCompletion(implementation) {
+		missing = append(missing, fmt.Sprintf("no Implementation paragraph opens with one of %q", implementationNoCodeMarkers))
+	}
+	return strings.Join(missing, "; ")
 }
 
 // resolvedQuestionDisposition returns the text a resolved question line carries at the one
