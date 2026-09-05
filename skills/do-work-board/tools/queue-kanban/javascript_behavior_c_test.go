@@ -2763,6 +2763,17 @@ var results = {
     .concat(describeChildren(document.getElementById("board-findings-skipped-list"))),
   createdTagNames: createdTagNames
 };
+
+// Re-render with nothing to report. Hiding the strip is not the whole job: the
+// hosts are what applyView asks about, so rows left behind here would put the
+// strip back on screen at the next view switch.
+boardData = { verifyFindings: [], verifySkipped: [] };
+renderVerifyFindingsStrip();
+results.emptyRerender = {
+  stripHidden: document.getElementById("board-findings").hidden,
+  findingsHostChildren: document.getElementById("board-findings-cards").children.length,
+  skippedHostChildren: document.getElementById("board-findings-skipped-list").children.length
+};
 process.stdout.write(JSON.stringify(results));`
 	probeOutput := runJavaScriptBehaviorProbe(t, "verify findings render as one row list", javascriptProbe)
 
@@ -2776,6 +2787,11 @@ process.stdout.write(JSON.stringify(results));`
 			SubtreeText string   `json:"subtreeText"`
 		} `json:"listChildren"`
 		CreatedTagNames []string `json:"createdTagNames"`
+		EmptyRerender   struct {
+			StripHidden          bool `json:"stripHidden"`
+			FindingsHostChildren int  `json:"findingsHostChildren"`
+			SkippedHostChildren  int  `json:"skippedHostChildren"`
+		} `json:"emptyRerender"`
 	}
 	if decodeError := json.Unmarshal(probeOutput, &results); decodeError != nil {
 		t.Fatalf("decode findings row results: %v (output %q)", decodeError, probeOutput)
@@ -2855,6 +2871,15 @@ process.stdout.write(JSON.stringify(results));`
 		t.Errorf("the skipped row lost the probe text: %q", skippedRow.SubtreeText)
 	}
 
+	// A strip re-rendered with nothing to report must leave nothing behind.
+	if !results.EmptyRerender.StripHidden {
+		t.Error("the strip stayed visible after a re-render with no findings and no skipped probes")
+	}
+	if results.EmptyRerender.FindingsHostChildren != 0 || results.EmptyRerender.SkippedHostChildren != 0 {
+		t.Errorf("stale rows survived the empty re-render (findings=%d, skipped=%d) — applyView reads those counts and would show the strip again",
+			results.EmptyRerender.FindingsHostChildren, results.EmptyRerender.SkippedHostChildren)
+	}
+
 	// The markup half of the same claim: the card grid and the disclosure are
 	// gone from the shipped template, not merely unused by the renderer.
 	findingsSection := sliceFindingsStripMarkup(t, indexHtml)
@@ -2867,6 +2892,20 @@ process.stdout.write(JSON.stringify(results));`
 	// pass-through, so what ships is one list and not two stacked blocks.
 	if !strings.Contains(findingsSection, `id="board-findings-rows"`) {
 		t.Errorf("the findings strip has no row list wrapping its hosts:\n%s", findingsSection)
+	}
+	// applyView (board-controls.js, REQ-578) counts the children of these two ids
+	// to decide whether the strip has anything to say. It is outside this REQ's
+	// write set, so the ids are a contract, and this assertion reads the SHIPPED
+	// markup rather than the probe's stub: the stub manufactures a node for any id
+	// it is asked for, so a renamed host would read there as present-and-empty.
+	for _, hostIdRequiredByApplyView := range []string{
+		`id="board-findings-cards"`,
+		`id="board-findings-skipped-list"`,
+	} {
+		if !strings.Contains(findingsSection, hostIdRequiredByApplyView) {
+			t.Errorf("the strip dropped %s — applyView reads it to decide visibility and would dereference null:\n%s",
+				hostIdRequiredByApplyView, findingsSection)
+		}
 	}
 	// The pass-through rule is the whole "one list" claim and no DOM probe can
 	// see it: without it the two hosts are ordinary blocks and the rows inside
