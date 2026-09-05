@@ -56,14 +56,14 @@ REQ-505 (moving selection and claim behind `advance`) carries `planning_at` 16:4
 
 ## Builder Guidance
 
-Certainty: firm on the origin rule and on excluding `created_at`. Exploratory on whether the Durations view calibration span should adopt the same origin; the default is to leave it and document the difference.
+Certainty: firm on the origin rule and on excluding `created_at` (user confirmed at verify). Exploratory on whether the Durations view calibration span should adopt the same origin; the default is to leave it and document the difference.
 
 ## Red-Green Proof
 
 **RED prompt/case:** A ticket fixture with `planning_at: 2026-09-04T16:49:45Z`, `claimed_at: 2026-09-04T23:00:06Z`, `completed_at: 2026-09-04T23:01:29Z` passed to `measureImplementationSpan` returns `WallMinutes` of about 1.38 (1m 23s). On the running board, the REQ-505 card reads "wall time 1m 23s".
 **Why RED now:** The helper reads `claimed_at` only.
 **GREEN when:** The same fixture returns about 371.7 minutes (6h 11m 44s), a fixture with `claimed_at` earlier than every phase stamp returns the same value as before the change, and the rebuilt board shows REQ-505 at about "wall time 6h 11m".
-**Validation:** Inferred during capture
+**Validation:** User confirmed (verify-requests, 2026-09-05)
 
 ## Required Lessons — Dropped for Budget
 

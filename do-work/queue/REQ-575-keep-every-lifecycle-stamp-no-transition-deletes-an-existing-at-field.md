@@ -62,14 +62,14 @@ The board's phase breakdown (`queue-kanban/durations.go` `buildPhaseBreakdown`) 
 
 ## Builder Guidance
 
-Certainty: firm on "never delete a stamp"; firm that a re-claim keeps the first `claimed_at` because the user's goal is true wall time from first claim to completion. The board's calibration span (estimate versus actual) also reads `claimed_at`, so after a recover-and-re-claim it will measure from the first claim; that is the intended reading. If the builder finds a reader that breaks when a recovered request keeps its old stamps, fix the reader, not the writer.
+Certainty: firm on "never delete a stamp"; the user confirmed at verify that `status_changed_at` is the one stamp a transition may overwrite; firm that a re-claim keeps the first `claimed_at` because the user's goal is true wall time from first claim to completion. The board's calibration span (estimate versus actual) also reads `claimed_at`, so after a recover-and-re-claim it will measure from the first claim; that is the intended reading. If the builder finds a reader that breaks when a recovered request keeps its old stamps, fix the reader, not the writer.
 
 ## Red-Green Proof
 
 **RED prompt/case:** Plan and apply `TransitionRecover` on a claimed request fixture carrying `claimed_at: 2026-09-04T16:39:30Z` and `planning_at: 2026-09-04T16:49:45Z`. Today the applied document has neither field. Plan and apply a gate deferral on a claimed parent fixture; today the parent loses `claimed_at`.
 **Why RED now:** `state_apply.go` deletes the ten named stamp fields on recover, and `defer_gate.go` deletes `claimed_at` on the parent.
 **GREEN when:** Both applied documents still carry the original `claimed_at` and `planning_at` values byte for byte, `status` and `status_changed_at` changed as before, and a table-driven test over the recover fixture asserts that no `*_at` field present before the transition is absent or different after it, except `status_changed_at`.
-**Validation:** Inferred during capture
+**Validation:** User confirmed (verify-requests, 2026-09-05)
 
 ## Required Lessons — Dropped for Budget
 
