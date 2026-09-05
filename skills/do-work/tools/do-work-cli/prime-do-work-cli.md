@@ -15,6 +15,7 @@ The standard-library Go module under this directory is the canonical implementat
 - `internal/dependencygraph/` derives readiness, reverse edges, cycles, and depth from a repository snapshot.
 - `internal/nextselection/` owns read-only target expansion, queue readiness, process-tree-owned blocked probes, wave/fan-out bounds, estimates, and typed selected/excluded records.
 - `internal/lifecycleadvance/` owns queue selection-and-claim composition, working/archive lifecycle projection, request-bound execution of each mechanical evidence gate, request-bound composition of finalization, the public finalization-first recovery composition — which preserves the claim of a request held for heavy lanes instead of releasing it — and explicit session-end checkpoint mutation. Gate and finalization inputs stay structured and tokenized; judgment remains in the action.
+- `internal/lifecycletiming/` owns the one canonical per-request timing writer: a flat, append-only JSONL stream under the Git common directory keyed by run and request, in-process measurement for a command it launches itself, redaction of every command to an executable base name plus an argv token count, and the fold that writes one `## Timing` summary into the request and deletes the raw stream. There is no parent or child span model, no exclusive time, and no critical path; a run that recorded nothing folds to no section and no error.
 - `internal/corehelpers/` owns the remaining utility handlers and leaf check, inventory, Git, publication, reservation, and survey mechanics; shared download, timestamp, probe, and provenance primitives remain with their domain owners.
 - `internal/hookcommands/` owns core and memory SessionStart plus memory Stop protocols; retained hook scripts only launch these commands.
 - `internal/knowledgecommands/` owns BKB scaffold/status/structural scans, Dream's seven deterministic scans, Interview list/status/export/ingest/reset/version mechanics, and Memory's exact store plans, lexical recall, status/bootstrap/audit probes; actions retain semantic judgment, reports, locks, consent, consolidation, transcript summarization, optional semantic recall, and repair/recommendation choice.
@@ -87,6 +88,7 @@ Exact `##` sections are intermediate evidence. A clean preflight has no durable 
 
 - Focused package: `go test ./internal/<package>`
 - Green-gate evidence: `go test ./internal/gateevidence`
+- Lifecycle timing: `go test ./internal/lifecycletiming`
 - Already-green repair authority: `go test ./internal/repairvalidation ./internal/gateevidence ./internal/resultmodel`
 - Static analysis: `go vet ./...`
 - Module regression: `go test -count=1 ./...`
