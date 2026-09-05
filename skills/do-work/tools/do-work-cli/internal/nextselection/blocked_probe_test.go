@@ -39,42 +39,49 @@ func TestBlockedProbeEvidenceBoundsAndNormalizesDiagnostics(t *testing.T) {
 		t.Fatalf("diagnostic evidence=%#v", evidence)
 	}
 }
+
+// leakedDescendantBody is the background descendant every descendant-cleanup test
+// below plants. It releases its inherited stdout and stderr before sleeping,
+// because a descendant that keeps them holds the runner's own diagnostic pipe
+// open: the runner would then be unable to return until that descendant had
+// already exited, and no assertion could ever observe a leak. It sleeps far past
+// descendantReapBudget so a descendant the probe failed to kill is still running
+// when the poll looks for it.
+const leakedDescendantBody = "exec 1>&- 2>&-; sleep 30"
+
+// probeLeaderHoldSeconds keeps the probe's shell leader alive past the runner's
+// own timeout and past the interrupt below, which is what makes those branches
+// fire at all. When process-group teardown is broken nothing else ends the
+// leader, so this also bounds how long a broken runner can block before the
+// descendant assertion gets to run.
+const probeLeaderHoldSeconds = 4
+
 func TestBlockedProbeTimeoutKillsDescendantGroup(t *testing.T) {
 	directory := t.TempDir()
 	pidPath := filepath.Join(directory, "child.pid")
-	probe := fmt.Sprintf("(trap '' TERM; sleep 30) & echo $! > %q; wait", pidPath)
+	probe := fmt.Sprintf("(trap '' TERM; %s) & echo $! > %q; sleep %d", leakedDescendantBody, pidPath, probeLeaderHoldSeconds)
 	status, err := RunBlockedProbe([]byte(probe), 1)
 	if err != nil || status != BlockedProbeTimeoutStatus {
 		t.Fatalf("status=%d err=%v", status, err)
 	}
-	pidBytes, readError := os.ReadFile(pidPath)
-	if readError != nil {
-		t.Fatal(readError)
-	}
-	pid, _ := strconv.Atoi(strings.TrimSpace(string(pidBytes)))
-	waitForDescendantToDisappear(t, pid)
+	waitForDescendantToDisappear(t, waitForDescendantPid(t, pidPath))
 }
 
 func TestBlockedProbeCleansBackgroundDescendantAfterLeaderExits(t *testing.T) {
 	directory := t.TempDir()
 	pidPath := filepath.Join(directory, "child.pid")
-	probe := fmt.Sprintf("sleep 30 & echo $! > %q; exit 0", pidPath)
+	probe := fmt.Sprintf("(%s) & echo $! > %q; exit 0", leakedDescendantBody, pidPath)
 	status, err := RunBlockedProbe([]byte(probe), 2)
 	if err != nil || status != 0 {
 		t.Fatalf("status=%d err=%v", status, err)
 	}
-	pidBytes, readError := os.ReadFile(pidPath)
-	if readError != nil {
-		t.Fatal(readError)
-	}
-	pid, _ := strconv.Atoi(strings.TrimSpace(string(pidBytes)))
-	waitForDescendantToDisappear(t, pid)
+	waitForDescendantToDisappear(t, waitForDescendantPid(t, pidPath))
 }
 
 func TestBlockedProbeInterruptionIsTypedAndReapsDescendants(t *testing.T) {
 	directory := t.TempDir()
 	pidPath := filepath.Join(directory, "child.pid")
-	probe := fmt.Sprintf("sleep 30 & echo $! > %q; wait", pidPath)
+	probe := fmt.Sprintf("(%s) & echo $! > %q; sleep %d", leakedDescendantBody, pidPath, probeLeaderHoldSeconds)
 	guardSignals := make(chan os.Signal, 1)
 	signal.Notify(guardSignals, syscall.SIGINT)
 	defer signal.Stop(guardSignals)
@@ -88,19 +95,7 @@ func TestBlockedProbeInterruptionIsTypedAndReapsDescendants(t *testing.T) {
 		outcomes <- probeOutcome{status: status, err: err}
 	}()
 
-	var pid int
-	deadline := time.Now().Add(2 * time.Second)
-	for time.Now().Before(deadline) {
-		pidBytes, err := os.ReadFile(pidPath)
-		if err == nil {
-			pid, _ = strconv.Atoi(strings.TrimSpace(string(pidBytes)))
-			break
-		}
-		time.Sleep(20 * time.Millisecond)
-	}
-	if pid == 0 {
-		t.Fatal("probe descendant did not start")
-	}
+	pid := waitForDescendantPid(t, pidPath)
 	// The guard above makes an early delivery safe on the RED implementation;
 	// the short delay lets that implementation reach its late signal.Notify.
 	time.Sleep(100 * time.Millisecond)
@@ -110,7 +105,7 @@ func TestBlockedProbeInterruptionIsTypedAndReapsDescendants(t *testing.T) {
 	var outcome probeOutcome
 	select {
 	case outcome = <-outcomes:
-	case <-time.After(5 * time.Second):
+	case <-time.After(interruptedProbeReturnBudget):
 		t.Fatal("interrupted probe did not return")
 	}
 	var interruption interface{ InterruptionExitStatus() int }
@@ -120,12 +115,42 @@ func TestBlockedProbeInterruptionIsTypedAndReapsDescendants(t *testing.T) {
 	waitForDescendantToDisappear(t, pid)
 }
 
-// descendantReapBudget bounds the wait for a killed descendant to disappear. Its
-// own parent is already gone by then, so init does the reaping and a zombie still
-// satisfies kill(pid, 0) until it does. On a loaded machine that has been measured
-// close to two seconds, so the budget is deliberately generous: it proves the
-// descendant does not survive, and it is not a latency assertion.
+// interruptedProbeReturnBudget bounds the interrupted runner's return. It must
+// outlast probeLeaderHoldSeconds so that a runner which fails to tear the process
+// group down still returns and reaches the descendant assertion, instead of
+// failing here on a bound that names no surviving process.
+const interruptedProbeReturnBudget = 15 * time.Second
+
+// descendantReapBudget bounds how long init may take to reap a descendant the
+// probe already killed: the descendant's own parent is gone by then, and a zombie
+// still satisfies kill(pid, 0) until init collects it. That reap has been measured
+// close to two seconds on a loaded machine, so the budget is generous. It is not
+// what proves the kill — leakedDescendantBody sleeps far longer than this budget,
+// so a pid still answering kill(pid, 0) at the deadline names a process that is
+// genuinely running rather than one waiting to be reaped.
 const descendantReapBudget = 10 * time.Second
+
+// waitForDescendantPid reads the pid the probe recorded, waiting for the file when
+// the probe is still running. It kills whatever the pid names once the test ends,
+// so an assertion that fails on a real leak does not leave the leaked process
+// running on the machine.
+func waitForDescendantPid(t *testing.T, pidPath string) int {
+	t.Helper()
+	deadline := time.Now().Add(2 * time.Second)
+	for {
+		pidBytes, readError := os.ReadFile(pidPath)
+		if readError == nil {
+			if pid, parseError := strconv.Atoi(strings.TrimSpace(string(pidBytes))); parseError == nil && pid > 0 {
+				t.Cleanup(func() { _ = syscall.Kill(pid, syscall.SIGKILL) })
+				return pid
+			}
+		}
+		if !time.Now().Before(deadline) {
+			t.Fatalf("probe descendant pid never appeared at %q", pidPath)
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+}
 
 func waitForDescendantToDisappear(t *testing.T, pid int) {
 	t.Helper()
