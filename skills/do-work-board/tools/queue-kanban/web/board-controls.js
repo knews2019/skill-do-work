@@ -43,7 +43,6 @@
     document.getElementById("recent-window-group").hidden = viewState.view !== "board";
     document.getElementById("durations-colour-group").hidden = viewState.view !== "durations";
     document.getElementById("durations-window-group").hidden = viewState.view !== "durations";
-    document.getElementById("activity-window-group").hidden = viewState.view !== "activity";
     document.getElementById("filter-done-window").hidden = viewState.view !== "testing";
     document.getElementById("filter-clear").hidden = !hasActiveVisibleFilters();
 
@@ -133,7 +132,54 @@
       viewState.view !== "board" || viewState.lens !== "user-request";
   }
 
+  // ---- top bar identity ---------------------------------------------------
+  // The identity is one line — wordmark, project, clock — so the bar keeps its
+  // height when the control pills beside it wrap. The visible clock is the
+  // minute of the stamp; the whole stamp, with the age board.js keeps ticking
+  // beside it, is clipped out of the line and shown as its tooltip.
+
+  // Whatever #board-generated holds right now, joined for a tooltip: the
+  // server's stamp text, and the relative node board.js appends after it. Read
+  // as child text rather than as one string so the two parts can be separated
+  // by a middle dot, and so a change to what board.js appends still reads.
+  function generatedStampTooltipText(generatedNode) {
+    var stampParts = [];
+    Array.prototype.forEach.call(generatedNode.childNodes, function (childNode) {
+      var childText = (childNode.textContent || "").trim();
+      if (childText) {
+        stampParts.push(childText);
+      }
+    });
+    return stampParts.join(" · ");
+  }
+
+  function renderTopBarIdentity() {
+    var identityLine = document.getElementById("board-identity");
+    var generatedNode = document.getElementById("board-generated");
+    var clockNode = document.getElementById("board-generated-clock");
+    if (!identityLine || !generatedNode || !clockNode) {
+      return;
+    }
+    var generatedMs = Date.parse(boardData.generatedAt);
+    // Same instant and same zone the server printed into the full stamp, cut
+    // to the minute: "12:17 UTC".
+    clockNode.textContent = isNaN(generatedMs)
+      ? ""
+      : new Date(generatedMs).toISOString().slice(11, 16) + " UTC";
+
+    identityLine.title = generatedStampTooltipText(generatedNode);
+    // Rebuilt when the pointer arrives rather than on a timer: a tooltip is
+    // only read while it is open, and board.js owns the page's one ticker.
+    var refreshTooltip = function () {
+      identityLine.title = generatedStampTooltipText(generatedNode);
+    };
+    identityLine.addEventListener("pointerenter", refreshTooltip);
+    identityLine.addEventListener("focusin", refreshTooltip);
+  }
+
   function wireControls() {
+    renderTopBarIdentity();
+
     document.querySelectorAll("[data-view-target]").forEach(function (button) {
       button.addEventListener("click", function () {
         viewState.view = button.getAttribute("data-view-target");

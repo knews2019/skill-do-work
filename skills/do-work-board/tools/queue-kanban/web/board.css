@@ -271,10 +271,26 @@ body.is-resizing-detail {
   border-bottom: 1px solid var(--line-soft);
 }
 
+/* One row that never wraps, so the bar keeps its height whatever the controls
+   beside it do. Baselines rather than centres: the 18px wordmark and the 12px
+   project and clock sit on one writing line. */
 .board-identity {
   display: flex;
-  flex-direction: column;
-  gap: 2px;
+  align-items: baseline;
+  gap: 8px;
+  white-space: nowrap;
+}
+
+.board-identity-dot {
+  color: var(--ink-faint);
+  font-size: 12px;
+}
+
+.board-generated-clock {
+  font-size: 12px;
+  color: var(--ink-faint);
+  letter-spacing: 0.01em;
+  font-variant-numeric: tabular-nums;
 }
 
 .board-wordmark {
@@ -300,11 +316,21 @@ body.is-resizing-detail {
   letter-spacing: 0.01em;
 }
 
+/* The whole stamp — "Generated <date> <time> UTC" plus the age board.js keeps
+   ticking beside it. It is taken out of the visible line, not out of the page:
+   a screen reader still reads it, and board-controls.js copies it into the
+   identity line's tooltip. Clipped rather than display:none, which would hide
+   it from assistive tech too. */
 .board-generated {
-  margin: 0;
-  font-size: 12px;
-  color: var(--ink-faint);
-  letter-spacing: 0.01em;
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
 }
 
 .board-controls {
@@ -3198,8 +3224,22 @@ body.is-resizing-detail .detail-resizer::before {
   padding: 0 24px 24px;
 }
 
-.activity-summary {
+/* The sentence and this view's window chips share one line: "236 transitions
+   across 49 REQs in the last 24 hours [6h][24h][48h][7d]". Baseline alignment
+   is what keeps the sentence where it was — the 40px pad below stays on the
+   summary itself, so the pill hangs off that first line's baseline instead of
+   moving it, and the browser probe still measures the text starting 40px below
+   the board's top edge. */
+.activity-summary-row {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 10px;
   margin: 0 0 4px;
+}
+
+.activity-summary {
+  margin: 0;
   padding-top: 40px;
   font-size: 13px;
   color: var(--ink-soft);
