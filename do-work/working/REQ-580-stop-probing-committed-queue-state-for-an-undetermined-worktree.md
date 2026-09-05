@@ -123,3 +123,62 @@ The "one row per worktree" count assertion already held before the fix, which is
 - **T-01 — this change is release-shaped and needs the release payload.** `_dev/primes/prime-releases.md` treats a commit under `skills/` as a release, and `CHANGELOG.md`, its mirror at `skills/do-work/CHANGELOG.md` and the version files are owner-only writes outside this REQ's write set. The user-visible wording change is the remedy text quoted above. → owned by this REQ's finalization, not a follow-up.
 - **T-02 — REQ-579's screenshot description goes stale.** `do-work/queue/REQ-579-render-verify-findings-and-skipped-probes-as-compact-rows.md:66` describes a captured board screenshot whose "2 probe(s) could not run" disclosure is exactly the two committed-queue-state lines this REQ removes. The screenshot still documents the board as of 2026-09-05, but REQ-579 must not expect to reproduce those bullets from an undetermined worktree. → report only.
 - **T-03 — no sibling defect in the same function.** The other two skipped-probe producers in `appendWorktreeFindings` (git missing, integration ref unresolvable) are per-run rather than per-leftover, so they cannot duplicate a finding the same way. → report only.
+
+## Review
+
+**Overall: 95%**
+**Acceptance: Pass.** Independent review approved the change and reproduced every claim itself rather than reading the hand-back. Six findings, all report-only, none Important.
+
+### Independent Review Record
+
+**Approve** — the redundant row is gone, the "not checked" fact still reaches the reader in both the CLI and the board, and RED, GREEN and the control were all reproduced by the reviewer.
+
+Route A | Merge range `7bbbc325..d89efc0b` | Builder `bd29594d`
+
+#### What's built
+
+`appendWorktreeFindings` (verify.go:1141) runs the committed-queue-state probe only when the integration ref resolved and the leftover's disposition is not the merge-state-undetermined one. A detached or branchless leftover now produces one finding row and zero skipped-probe lines. The undetermined remedy (verify.go:1059) gained the clause naming the check that could not run, ending "unknown, not clean". Two files, 63 insertions, 2 deletions, exactly the declared write set.
+
+#### Acceptance testing the reviewer performed
+
+- **R1 — RED reproduced without touching the repository.** Exported the module at `d89efc0b` with `git archive` into a scratch directory, overwrote only `verify.go` with the pre-change bytes from `7bbbc325`, confirmed by diff, and got three real assertion failures in 0.48s. Content byte-identical to the hand-back's claim. No compile or import error, so the RED is genuine.
+- **R2 — GREEN reproduced.** The working tree is byte-identical to `d89efc0b` for this module. `gofmt -l .` silent, `go vet ./...` silent, `go test -count=1 ./...` ok in 91.772s.
+- **R3 — the control proved by mutation, not by passing.** Widening the gate to `if false && ...` in a scratch copy made `TestVerifyFlagsQueueStateCommittedOnABuilderBranch` fail with `got 0 committed-queue-state findings, want 1`, while the new test still passed. The pair is real, and the new test alone would not have caught a widened gate.
+- **R4 — the fact reaches a reader.** Printed the real CLI render for the detached fixture: one finding row carrying the new clause in its remedy, and `SkippedProbes` holding only the unrelated calibration-log entry.
+- **R5 — consumers grepped, not assumed.** `SkippedProbes` has exactly two production consumers, `renderVerifyReport` and `attachVerifyFindings` via `web/board-cards.js`. No JSON field, contract script or `_dev/tests` check reads it. Both consumers carry `Remedy`, so the moved fact renders in both surfaces.
+
+#### Gating-condition analysis
+
+The gate is correct and no other disposition should join it. Undetermined is the only disposition where the branch ref may fail to resolve: the unmerged-branch case requires `merge-base` to have answered, and the state-unknown, in-flight, uncommitted-work and finished-residue cases are all reached only after `merge-base` returned 0. The one case that would break the reasoning, an unborn HEAD, is already caught upstream by the integration-ref check.
+
+#### Findings
+
+**Important:** None.
+
+**Minor (all report only):**
+
+- `VerifyReport`'s doc comment (verify.go:82-90) still says unverified coverage lives in exactly two lists. There is now a third resting place — inside a finding's remedy — and the comment was not amended. A future reader could treat `SkippedProbes` as exhaustive. *impact-rule-change*
+- D-03 argues for hedging the cause, but the shipped text does not hedge: both the new remedy clause and the new code comment assert the unresolved branch as fact, while `classifyWorktreeMergeState` returns undetermined for any git exit code other than 1. *impact-negligible*
+- Discovered task T-03 misdescribes the function. `appendWorktreeFindings` has four other `SkippedProbes` producers, not two, and one is per-leftover rather than per-run: the worktree removability probe at verify.go:1119-1121. T-03's conclusion still holds, but for a different reason — that pair is complementary by design, because its remedy points the reader at the skipped line. *impact-negligible*
+- No lesson or prime note records the new exception. The satellite's `unknown-reads-as-clean` entry still prescribes routing the unknowable arm to a `SkippedProbes` line. The rule's substance holds; the mechanism it names now has one documented exception. Charged to the Lessons-Capture Phase, not to the builder. *impact-rule-change*
+
+**Nit (report only):** the hand-back's RED quote cites test lines 799/806/809 against the shipped 803/810/813, a consistent 4-line offset from a later doc-comment expansion; the three assertions are identical. The new test computes the rendered report but uses it only in failure messages, so it pins the struct field rather than the reader-facing surface.
+
+#### Restatement sweep
+
+One thing is redefined: when the committed-queue-state probe runs, and where its non-coverage is stated. Swept and found not stale: `work-reference.md:488`, `prime-do-kanban.md` § Traps first bullet, the state-unknown remedy at verify.go:1051-1053, and REQ-579's screenshot description. One consequence worth knowing: `forensics.md`'s mapping table sends only skipped probes to its Skipped or Unverified Coverage section, so in a forensics report this particular unverified coverage now appears under Warnings instead. No information lost; it changed sections.
+
+#### Scores
+
+| Dimension | Score | Notes |
+|---|---|---|
+| Requirements | 100% | All four detailed requirements plus the UR-118 batch constraint, independently verified |
+| Code Quality | 88% | Minimal and idiomatic; two wording and doc-comment accuracy gaps |
+| Test Adequacy | 92% | RED reproduced, control proved by mutation; no assertion on the rendered surface |
+| Scope | 100% | Exactly the two declared files, no drift, no debug artifacts |
+| Risk | None | Read-only probe; other dispositions provably unaffected |
+| Acceptance | Pass | Full module suite green in 91.8s; end-to-end render verified |
+
+#### Follow-ups created
+
+None — all six findings are report only.
