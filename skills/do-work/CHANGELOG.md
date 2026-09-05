@@ -2,6 +2,14 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.287.1 — One Row Per Worktree in Verify (2026-09-05)
+
+A leftover worktree whose branch git cannot resolve used to produce two messages from one fact: an undetermined merge-state finding, and a skipped-probe line saying the committed-queue-state check failed with "no such branch". Now it produces one row, and that row says the queue-state check could not run either.
+
+- `appendWorktreeFindings` runs the committed-queue-state probe only when the merge state is determinable; every other disposition keeps the probe unchanged.
+- The undetermined finding's remedy carries the moved fact and ends "unknown, not clean", so silence never reads as checked-and-clean.
+- Anything counting unverified coverage from `SkippedProbes` alone will no longer see this case; the fact lives in the finding's remedy, which both the CLI report and the board card already render.
+
 ## 0.287.0 — Hold Reviewed Requests as Claimed Until Heavy Lanes Pass (2026-09-05)
 
 The `pending-heavy-testing` status is gone. A request that passed review and has heavy lanes left to run stays `claimed` with its landed commit, its dependents build against that commit right away, and a green drain finalizes it in the same turn instead of sending it back through `pending` for a second claim and review.

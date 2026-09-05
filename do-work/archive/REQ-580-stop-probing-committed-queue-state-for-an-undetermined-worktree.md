@@ -1,7 +1,7 @@
 ---
 id: REQ-580
 title: 'Stop probing committed queue state for a worktree whose merge state is already undetermined'
-status: claimed
+status: completed
 created_at: 2026-09-05T00:19:58Z
 user_request: UR-118
 domain: backend
@@ -25,6 +25,9 @@ estimate:
     - Route A
     - 2-file write set
     - 4 acceptance criteria
+completed_at: 2026-09-05T01:51:05Z
+commit: d89efc0b
+release_at: 2026-09-05T01:51:05Z
 ---
 
 # Stop Probing Committed Queue State for a Worktree Whose Merge State Is Already Undetermined
@@ -182,3 +185,15 @@ One thing is redefined: when the committed-queue-state probe runs, and where its
 #### Follow-ups created
 
 None — all six findings are report only.
+
+## Lessons Learned
+
+The board's `unknown-reads-as-clean` rule has one documented exception now, and the satellite that states it does not know. `lessons-do-kanban.md`'s entry from REQ-458 prescribes routing an unknowable arm to a present-and-non-fixable finding **plus a `SkippedProbes` line**. This change keeps the rule's substance — the unknown is still reported — while moving the fact into the finding's own remedy, because two rows for one root cause is what the request existed to remove. The mechanism named in the lesson is therefore no longer the only correct one.
+
+The general form is worth more than this instance: when a report has two channels for "not verified" and one root cause feeds both, the second row is duplication rather than coverage. Deciding which channel keeps the fact is a judgment about who reads it, not about which channel is more official. Here the remedy won because it is the surface a reader already consults for what to do next, and because the alternative needed a new struct field, a renderer change and a payload change that the request explicitly ruled out.
+
+The review found the cost of that move and it is real but small: `forensics.md` routes only `skipped` probes to its Skipped or Unverified Coverage section, so this particular unverified coverage now appears under Warnings instead. Nothing is lost; a consumer counting unverified coverage from `SkippedProbes` alone would undercount.
+
+## Orientation
+
+A leftover worktree whose branch git cannot resolve now produces exactly one row in `queue-kanban verify`, and that row says the committed-queue-state check could not run either. The board and the CLI both render it, because both already carry the finding's remedy. Anything counting unverified coverage from `SkippedProbes` alone will miss this case.
