@@ -1,7 +1,7 @@
 ---
 id: REQ-572
 title: 'Show every lifecycle transition of a REQ as its own Activity row'
-status: pending
+status: claimed
 created_at: 2026-09-04T23:16:00Z
 user_request: UR-115
 domain: general
@@ -39,6 +39,7 @@ gate_deferred: 'true'
 depends_on: [REQ-574]
 deferred_implementation_base: 7ad53bff1d867f1453e1e7765e988dedb308e7e1
 deferred_implementation_merge: fbdcd35e0908aca6a01f554cc9b7fd7c85347a49
+claimed_at: 2026-09-05T12:00:55Z
 ---
 
 # Show Every Lifecycle Transition of a REQ as Its Own Activity Row
