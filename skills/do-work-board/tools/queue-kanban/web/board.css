@@ -581,8 +581,9 @@ body.is-resizing-detail {
 /* Verify findings reuse every .board-anomalies-* rule above rather than carrying a
    parallel palette. These are the only differences, and each is deliberate:
    the strip is visually subordinate to completion anomalies (broken bookkeeping
-   outranks process drift), and a finding is a text card rather than a REQ card,
-   because most categories name no single REQ. */
+   outranks process drift), and a finding is one line in a list rather than a card,
+   because a warning wearing the REQ-card shape reads as a work item and spends a
+   card's worth of space saying something small (REQ-579). */
 .board-findings {
   border-color: var(--border-soft, var(--surface-3));
   background-color: var(--surface-2);
@@ -590,21 +591,57 @@ body.is-resizing-detail {
 .board-findings .board-anomalies-title {
   color: var(--ink-soft);
 }
-.board-finding {
-  padding: 10px 12px;
-  border: 1px solid var(--surface-3);
-  border-radius: var(--radius-card);
-  background-color: var(--surface-1);
+/* The findings header summary carries words ("2 findings · 1 probe not checked"),
+   so it drops the anomaly count's pill and reads as a subtitle instead. */
+.board-findings .board-anomalies-count {
+  padding: 0;
+  background-color: transparent;
+  color: var(--ink-soft);
+  font-size: 0.8rem;
 }
-.board-finding-head {
+.board-findings-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin-top: 10px;
+}
+/* The two row hosts are pass-through: their rows are laid out by the list above,
+   so findings and skipped probes read as one list. See the template on why the
+   hosts exist at all and why neither may be given the hidden attribute. */
+.board-findings-group {
+  display: contents;
+}
+/* One heading per subject the producer grouped on, printed once above its rows. */
+.board-findings-subject {
+  margin-top: 10px;
+  color: var(--ink-soft);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  overflow-wrap: anywhere;
+}
+.board-findings-subject:first-child {
+  margin-top: 0;
+}
+.board-findings-row {
   display: flex;
   align-items: baseline;
-  gap: 6px;
-  flex-wrap: wrap;
-  margin: 0 0 6px;
+  gap: 8px;
+  font-size: 0.82rem;
+  line-height: 1.45;
 }
-.board-finding-category {
-  display: inline-block;
+/* The lighter of the two weights the producer allows: a finding `do-work cleanup`
+   resolves, and a probe that never ran. Nothing else is muted. */
+.board-findings-row-muted {
+  color: var(--ink-soft);
+}
+/* A row that belongs to no subject, and the first probe that never ran, must not
+   read as the tail of the group above them. */
+.board-findings-row-detached {
+  margin-top: 14px;
+}
+.board-findings-chip {
+  flex: none;
   padding: 1px 8px;
   border-radius: var(--radius-pill);
   background-color: var(--surface-3);
@@ -613,39 +650,21 @@ body.is-resizing-detail {
   letter-spacing: 0.02em;
   text-transform: uppercase;
 }
-.board-finding-fixable {
-  /* Never break "cleanup can fix" across lines — half a phrase under a category
-     badge reads as a truncated sentence rather than a label. */
+/* The detail, the fixable tag and the remedy flow as one wrapping sentence beside
+   the chip, so a long finding grows downward instead of pushing the row wide. */
+.board-findings-text {
+  overflow-wrap: anywhere;
+}
+.board-findings-remedy {
+  margin-left: 6px;
+  color: var(--ink-soft);
+}
+.board-findings-fixable {
+  /* Never break "cleanup can fix" across lines — half a phrase reads as a
+     truncated sentence rather than a label (REQ-285). */
+  margin-left: 6px;
   white-space: nowrap;
   color: var(--accent-done, var(--ink-soft));
-  font-size: 0.72rem;
-}
-.board-finding-detail {
-  margin: 0;
-  font-size: 0.82rem;
-  line-height: 1.45;
-  overflow-wrap: anywhere;
-}
-.board-finding-remedy {
-  margin: 6px 0 0;
-  color: var(--ink-soft);
-  font-size: 0.78rem;
-  line-height: 1.4;
-  overflow-wrap: anywhere;
-}
-.board-findings-skipped {
-  margin-top: 12px;
-  font-size: 0.78rem;
-}
-.board-findings-skipped-summary {
-  color: var(--ink-soft);
-  cursor: pointer;
-}
-.board-findings-skipped-list {
-  margin: 8px 0 0;
-  padding-left: 18px;
-  color: var(--ink-soft);
-  line-height: 1.5;
 }
 
 .view-panel {
