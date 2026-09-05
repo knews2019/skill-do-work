@@ -1,7 +1,7 @@
 ---
 id: REQ-510
 title: '[impact-rule-change] Sweep work-reference sections whose contract is now a CLI behavior test'
-status: pending
+status: claimed
 priority: now
 created_at: 2026-09-02T14:37:54Z
 user_request: UR-098
@@ -15,6 +15,7 @@ maintenance: true
 impact: impact-rule-change
 effort_estimate: effort-substantive
 write_set: [skills/do-work/actions/work-reference.md, skills/do-work/actions/work.md, _dev/tests/contract-regressions.sh, skills/do-work/docs/]
+claimed_at: 2026-09-05T00:33:24Z
 ---
 
 # Sweep work-reference Sections Whose Contract Is Now a CLI Behavior Test
