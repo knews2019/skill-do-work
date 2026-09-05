@@ -2,6 +2,13 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.303.6 — Lessons From the Six-Defect Review (2026-09-05)
+
+The five Go lessons behind the 0.303.5 fixes, so the next change in these files starts from what the review found rather than rediscovering it.
+
+- `lessons-do-work-cli.md` records why a cached result must re-prove its inputs at each use, why stripping quoted text does not cover hidden text, why a failure path needs the same authority as the success path, why dispatching on an argv's first token loses commands whose identity is the whole argv, and why validation inside the write path runs after the side effect.
+- `lessons-do-kanban.md` records that a stamp names one past instant while the record's current status names now, and that deriving a row's meaning from a field a later write can change is how a view invents history.
+
 ## 0.303.5 — Six Reviewed Defects in Verification, Evidence and Timing (2026-09-05)
 
 A review of the shipped tools found six ways a check could pass without having proven what it claimed. All six are fixed with the machinery already in place — no new caches, schemas, parsers or finalizers.
