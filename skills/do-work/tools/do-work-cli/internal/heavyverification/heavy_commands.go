@@ -15,6 +15,9 @@ const (
 	CommandPlanHeavyVerification = "plan-heavy-verification"
 	CommandPlanHeavyRevalidation = "plan-heavy-revalidation"
 	CommandRunHeavyVerification  = "run-heavy-verification"
+	CommandDecideFastStage       = "decide-fast-stage"
+	CommandRecordFastStage       = "record-fast-stage"
+	CommandInvalidateFastStage   = "invalidate-fast-stage"
 )
 
 func Handlers() map[string]commandruntime.CommandHandler {
@@ -22,7 +25,170 @@ func Handlers() map[string]commandruntime.CommandHandler {
 		CommandPlanHeavyVerification: handlePlanHeavyVerification,
 		CommandPlanHeavyRevalidation: handlePlanHeavyRevalidation,
 		CommandRunHeavyVerification:  handleRunHeavyVerification,
+		CommandDecideFastStage:       handleDecideFastStage,
+		CommandRecordFastStage:       handleRecordFastStage,
+		CommandInvalidateFastStage:   handleInvalidateFastStage,
 	}
+}
+
+// The fast-stage commands are three separate jobs on purpose. Deciding writes
+// nothing, invalidating revokes a prior success before any attempt, and
+// recording stores one only after a zero exit. Folding them together would put
+// the revocation and the execution in the same process, and the whole point is
+// that the revocation happens first and outlives a stage that never finishes.
+
+func handleDecideFastStage(executionContext commandruntime.ExecutionContext, arguments []string) resultmodel.CommandResult {
+	parsed, err := parseFastStageArguments(CommandDecideFastStage, arguments)
+	if err != nil {
+		return fastStageFailure("FAST-STAGE-USAGE", err)
+	}
+	decisionLine, err := DecideFastStage(FastStageDecisionRequest{
+		RepositoryRoot: executionContext.RepositoryRoot, ManifestPath: parsed.ManifestPath,
+		StageID: parsed.StageID, SuppliedArgv: parsed.SuppliedArgv,
+	})
+	if err != nil {
+		return fastStageFailure("FAST-STAGE-UNVERIFIABLE", err)
+	}
+	return resultmodel.CommandResult{Outcome: resultmodel.OutcomeSuccess, ExactTextOutput: &decisionLine}
+}
+
+func handleRecordFastStage(executionContext commandruntime.ExecutionContext, arguments []string) resultmodel.CommandResult {
+	parsed, err := parseFastStageArguments(CommandRecordFastStage, arguments)
+	if err != nil {
+		return fastStageFailure("FAST-STAGE-USAGE", err)
+	}
+	if parsed.StageExitStatus != 0 {
+		return fastStageFailure("FAST-STAGE-NOT-GREEN", fmt.Errorf(
+			"stage %s exited %d; a failed, skipped, or interrupted stage supplies no evidence",
+			parsed.StageID, parsed.StageExitStatus))
+	}
+	if err := RecordFastStage(FastStageRecordRequest{
+		RepositoryRoot: executionContext.RepositoryRoot, ManifestPath: parsed.ManifestPath,
+		StageID: parsed.StageID, SuppliedArgv: parsed.SuppliedArgv,
+		SuppliedFingerprint: parsed.Fingerprint, StageExitStatus: parsed.StageExitStatus,
+	}); err != nil {
+		return fastStageFailure("FAST-STAGE-UNRECORDED", err)
+	}
+	return resultmodel.CommandResult{Outcome: resultmodel.OutcomeSuccess}
+}
+
+func handleInvalidateFastStage(executionContext commandruntime.ExecutionContext, arguments []string) resultmodel.CommandResult {
+	parsed, err := parseFastStageArguments(CommandInvalidateFastStage, arguments)
+	if err != nil {
+		return fastStageFailure("FAST-STAGE-USAGE", err)
+	}
+	if err := InvalidateFastStage(executionContext.RepositoryRoot, parsed.StageID); err != nil {
+		return fastStageFailure("FAST-STAGE-EVIDENCE-INVALIDATION", err)
+	}
+	return resultmodel.CommandResult{Outcome: resultmodel.OutcomeSuccess}
+}
+
+// fastStageArguments is what all three commands accept, checked per command by
+// requireFastStageArguments so one parser serves them without three copies of
+// the same option loop.
+type fastStageArguments struct {
+	ManifestPath    string
+	StageID         string
+	Fingerprint     string
+	StageExitStatus int
+	SuppliedArgv    []string
+}
+
+// parseFastStageArguments reads the options before a literal `--` and takes
+// everything after it as the command the caller is about to run. That argv is
+// compared against the manifest, so the gate and the manifest cannot silently
+// disagree about what a stage is.
+func parseFastStageArguments(command string, arguments []string) (fastStageArguments, error) {
+	parsed := fastStageArguments{ManifestPath: "_dev/tests/fast-stages.json"}
+	suppliedArgv := []string(nil)
+	exitStatusSupplied := false
+	seen := map[string]bool{}
+	for argumentIndex := 0; argumentIndex < len(arguments); argumentIndex++ {
+		argument := arguments[argumentIndex]
+		if argument == "--" {
+			suppliedArgv = append([]string(nil), arguments[argumentIndex+1:]...)
+			break
+		}
+		optionName, optionValue, hasInlineValue := strings.Cut(argument, "=")
+		switch optionName {
+		case "--manifest", "--stage", "--fingerprint", "--stage-exit-status":
+			if seen[optionName] {
+				return fastStageArguments{}, fmt.Errorf("%s may be supplied only once", optionName)
+			}
+			seen[optionName] = true
+			if !hasInlineValue {
+				argumentIndex++
+				if argumentIndex >= len(arguments) {
+					return fastStageArguments{}, fmt.Errorf("%s requires a value", optionName)
+				}
+				optionValue = arguments[argumentIndex]
+			}
+			if strings.TrimSpace(optionValue) == "" {
+				return fastStageArguments{}, fmt.Errorf("%s requires a value", optionName)
+			}
+			switch optionName {
+			case "--manifest":
+				parsed.ManifestPath = optionValue
+			case "--stage":
+				parsed.StageID = optionValue
+			case "--fingerprint":
+				parsed.Fingerprint = optionValue
+			case "--stage-exit-status":
+				parsedStatus, parseError := strconv.Atoi(optionValue)
+				if parseError != nil || parsedStatus < 0 {
+					return fastStageArguments{}, fmt.Errorf("--stage-exit-status requires a whole number")
+				}
+				parsed.StageExitStatus = parsedStatus
+				exitStatusSupplied = true
+			}
+		default:
+			return fastStageArguments{}, fmt.Errorf("unknown %s option %q", command, argument)
+		}
+	}
+	parsed.SuppliedArgv = suppliedArgv
+	return parsed, requireFastStageArguments(command, parsed, exitStatusSupplied)
+}
+
+func requireFastStageArguments(command string, parsed fastStageArguments, exitStatusSupplied bool) error {
+	if parsed.StageID == "" {
+		return fmt.Errorf("usage: %s %s", command, fastStageUsage(command))
+	}
+	switch command {
+	case CommandInvalidateFastStage:
+		if parsed.Fingerprint != "" || exitStatusSupplied || parsed.SuppliedArgv != nil {
+			return fmt.Errorf("usage: %s %s", command, fastStageUsage(command))
+		}
+	case CommandRecordFastStage:
+		if parsed.Fingerprint == "" || !exitStatusSupplied || len(parsed.SuppliedArgv) == 0 {
+			return fmt.Errorf("usage: %s %s", command, fastStageUsage(command))
+		}
+	default:
+		if parsed.Fingerprint != "" || exitStatusSupplied || len(parsed.SuppliedArgv) == 0 {
+			return fmt.Errorf("usage: %s %s", command, fastStageUsage(command))
+		}
+	}
+	return nil
+}
+
+func fastStageUsage(command string) string {
+	switch command {
+	case CommandInvalidateFastStage:
+		return "--stage <id>"
+	case CommandRecordFastStage:
+		return "[--manifest <path>] --stage <id> --fingerprint <sha256> --stage-exit-status <status> -- <argv>..."
+	default:
+		return "[--manifest <path>] --stage <id> -- <argv>..."
+	}
+}
+
+func fastStageFailure(code string, err error) resultmodel.CommandResult {
+	finding := resultmodel.CommandFinding{
+		Code: code, Severity: resultmodel.SeverityError, Evidence: []string{err.Error()},
+		Fixability: resultmodel.FixabilityManual, AutomationStopReason: "the fast stage cannot reuse evidence safely",
+		NextArgv:         []string{"git", "status", "--short"},
+		VerificationArgv: []string{"do-work-cli", "--format", "text", CommandDecideFastStage},
+	}
+	return resultmodel.CommandResult{Outcome: resultmodel.OutcomeFailure, Findings: []resultmodel.CommandFinding{finding}}
 }
 
 func handlePlanHeavyVerification(executionContext commandruntime.ExecutionContext, arguments []string) resultmodel.CommandResult {
