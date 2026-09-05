@@ -397,3 +397,38 @@ the old behaviour are rewritten in the same change, each naming the failure it n
 than the whole-tree one.
 
 *Checked by work action*
+
+## Testing
+
+**Tests run:** the whole canonical gate, `bash _dev/tests/maintainer-verify.sh`, plus the focused lane
+this REQ changes — `go -C skills/do-work/tools/do-work-cli test -count=1 ./internal/heavyverification/`
+— plus the end-to-end probe `bash _dev/tests/fast-stage-reuse-behavior.sh`, `gofmt -l`, `go vet ./...`
+and `shellcheck --severity=warning` on the one shell file touched.
+
+**Result:** ✓ Green. The canonical gate exited 0 at the merge revision `b21479c`, run to completion
+with `DO_WORK_FAST_STAGE_REUSE=off` so both stages executed and the whole suite really ran against the
+changed code — **73s wall**, load average 3.84 at start, no other gate process. Exit status read
+directly from `$?`, never through a pipe. The focused lane compared green against the recorded
+baseline; the end-to-end probe printed `Fast-stage evidence reuse probes passed.` and exited 0.
+
+**Both exit statuses for the focused baseline, as the pre-flight retry finding requires:** first
+recorded run exit 1, rerun exit 0, and two further runs alone exit 0. The exit-1 run overlapped a full
+canonical gate in this same checkout. Not a property of the tree.
+
+**One mechanical note for the next person, because it cost a cycle here.** The test-gate's focused
+check runs through `run-blocked-check --probe-file`, which reads the file's *bytes* and executes them
+as a script — so `${BASH_SOURCE[0]}` is empty inside it. Handing it
+`_dev/tests/fast-stage-reuse-behavior.sh`, which resolves its repository root from `BASH_SOURCE`,
+makes that script exit 2 for a reason that has nothing to do with the code under test, while the same
+script exits 0 when run by path. The probe file must be self-contained; here it was one line holding
+exactly the baseline's own command text, which is also what makes the baseline comparison meaningful.
+Its default timeout is 30 seconds, below this lane's ~27s warm and well below a cold run, so
+`--timeout-seconds 300` was passed.
+
+**What the gate itself now proves, which it did not before this change.** The RED case is recorded in
+`## Qualification` and reproduced end to end: one newline appended to `do-work/archive/UR-003/input.md`
+used to produce `Maintainer verification passed.` and exit 0 with both stages `REUSED`, while that
+tree's own test failed. It now produces `EXECUTING (fingerprint_mismatch)` for both stages and exit 1
+with that failure in the log.
+
+*Verified by work action*
