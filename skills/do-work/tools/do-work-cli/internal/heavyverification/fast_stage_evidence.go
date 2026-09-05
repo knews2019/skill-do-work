@@ -35,13 +35,26 @@ const (
 	fastStageEvidenceDirectoryName = "do-work-fast-stages"
 )
 
-// fastStageManifest declares the gate stages that may reuse evidence, and the
-// one tree no stage covers. Everything the manifest classifies nowhere is
-// sealed into EVERY stage, so an unclassified change forces all of them.
+// fastStageManifest declares the gate stages that may reuse evidence, the trees
+// no stage covers, and the paths no stage seals. Everything the manifest
+// classifies nowhere is sealed into EVERY stage, so an unclassified change
+// forces all of them.
+//
+// SealExclusions is the only rule that beats a stage's own coverage: a path it
+// names is sealed nowhere, even into a stage whose coverage matches it. Admit a
+// path only when BOTH halves hold — the gate or the orchestrator writes it WHILE
+// a gate runs, and no stage reads its bytes. That condition is the contract, not
+// the entries: the list in _dev/tests/fast-stages.json is only today's set of
+// paths satisfying it, and a new churn directory earns a place by passing the
+// same test rather than by resembling one already listed. The first half is what
+// makes the concept necessary at all: the fingerprint the gate records is the
+// PRE-run one, so a seal over a file the run itself writes can never match the
+// evidence it authorized, and that stage would execute forever.
 type fastStageManifest struct {
 	SchemaVersion    int                 `json:"schema_version"`
 	Stages           []manifestFastStage `json:"stages"`
 	NonStageCoverage []coverageRule      `json:"non_stage_coverage"`
+	SealExclusions   []coverageRule      `json:"seal_exclusions"`
 }
 
 type manifestFastStage struct {
@@ -128,6 +141,11 @@ func decodeFastStageManifest(contents []byte) (fastStageManifest, error) {
 			return fastStageManifest{}, fmt.Errorf("non-stage coverage: %w", err)
 		}
 	}
+	for _, rule := range manifest.SealExclusions {
+		if err := rule.validate(); err != nil {
+			return fastStageManifest{}, fmt.Errorf("seal exclusion: %w", err)
+		}
+	}
 	return manifest, nil
 }
 
@@ -138,6 +156,13 @@ func selectFastStage(manifest fastStageManifest, stageID string) (manifestFastSt
 		}
 	}
 	return manifestFastStage{}, fmt.Errorf("fast-stage manifest declares no stage %q", stageID)
+}
+
+// fastStageSealExcludesPath answers the question that outranks stage coverage:
+// may this path be sealed into any stage at all? See fastStageManifest for the
+// condition an entry has to satisfy.
+func fastStageSealExcludesPath(manifest fastStageManifest, path string) bool {
+	return laneCoversPath(manifest.SealExclusions, path)
 }
 
 func fastStageManifestClassifiesPath(manifest fastStageManifest, path string) bool {
@@ -188,11 +213,11 @@ func workingTreeSeals(repositoryRoot string, stage manifestFastStage, manifest f
 		return nil, false, fmt.Errorf("inspect tracked stage inputs: %w", err)
 	}
 	for _, path := range strings.Split(string(trackedOutput), "\x00") {
-		// The queue tree is bookkeeping no stage reads, and the orchestrator
-		// rewrites it constantly while a gate runs. It is excluded here for the
-		// same reason the heavy lane excludes it from its untracked seal and
-		// from its dirty-tree refusal.
-		if path == "" || strings.HasPrefix(path, queueStatePrefix) {
+		// A seal-excluded path is nobody's input: the gate or the orchestrator
+		// writes it while a gate runs, so sealing it would compare a stage
+		// against bytes its own run produced. This test comes BEFORE the
+		// coverage test below, which is what lets an exclusion beat coverage.
+		if path == "" || fastStageSealExcludesPath(manifest, path) {
 			continue
 		}
 		stageCovered := laneCoversPath(stage.Coverage, path)
@@ -209,7 +234,9 @@ func workingTreeSeals(repositoryRoot string, stage manifestFastStage, manifest f
 	// Go and shell stages read untracked files, Git-ignored build outputs
 	// included, so their bytes are sealed as well. An ignored file the manifest
 	// classifies nowhere is skipped: refusing all of them would disable reuse on
-	// any normal checkout, which carries ignored generated artifacts.
+	// any normal checkout, which carries ignored generated artifacts. Being
+	// ignored is no protection once a stage covers the path, so an ignored file
+	// the gate writes itself needs a seal exclusion, same as a tracked one.
 	for _, ignored := range []bool{false, true} {
 		argv := []string{"ls-files", "-z", "--others", "--exclude-standard"}
 		if ignored {
@@ -220,7 +247,7 @@ func workingTreeSeals(repositoryRoot string, stage manifestFastStage, manifest f
 			return nil, false, fmt.Errorf("inspect untracked stage inputs: %w", err)
 		}
 		for _, path := range strings.Split(string(untrackedOutput), "\x00") {
-			if path == "" || strings.HasPrefix(path, queueStatePrefix) {
+			if path == "" || fastStageSealExcludesPath(manifest, path) {
 				continue
 			}
 			stageCovered := laneCoversPath(stage.Coverage, path)
