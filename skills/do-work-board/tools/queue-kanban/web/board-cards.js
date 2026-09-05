@@ -636,11 +636,14 @@
   // categories the board already shows another way happened in Go (REQ-284), and
   // a second copy of that judgment here is how the two would drift apart.
   //
-  // Same exemptions as the anomalies strip above, for the same reason: it lives
-  // outside the view panels, ignores the recently-done window, and ignores the
-  // shared filters, because a finding must not be hideable by a filter
-  // combination. Every string is set with textContent — a detail or remedy is
-  // producer text that can carry any punctuation and must never become markup.
+  // Nearly the same exemptions as the anomalies strip above, for the same
+  // reason: it lives outside the view panels, ignores the recently-done window,
+  // and ignores the shared filters, because a finding must not be hideable by a
+  // filter combination. The one exception is the Activity view, which hides the
+  // strip from applyView (board-controls.js, REQ-578) — this renderer decides
+  // emptiness and nothing else. Every string is set with textContent — a detail
+  // or remedy is producer text that can carry any punctuation and must never
+  // become markup.
 
   function renderVerifyFindingsStrip() {
     var findings = boardData.verifyFindings || [];

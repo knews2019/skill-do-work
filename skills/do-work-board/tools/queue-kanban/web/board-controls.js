@@ -47,6 +47,17 @@
     document.getElementById("filter-done-window").hidden = viewState.view !== "testing";
     document.getElementById("filter-clear").hidden = !hasActiveVisibleFilters();
 
+    // The Verify Findings strip lives outside the view panels, so it survives
+    // every view switch — except the Activity view, which is a transitions log
+    // the strip only pushes down (REQ-578). Whether it has anything to say is
+    // read back off what the findings renderer drew, never decided again here:
+    // a second copy of that rule is how the two would drift apart.
+    var findingsStrip = document.getElementById("board-findings");
+    var findingsStripHasContent =
+      document.getElementById("board-findings-cards").children.length > 0 ||
+      document.getElementById("board-findings-skipped-list").children.length > 0;
+    findingsStrip.hidden = viewState.view === "activity" || !findingsStripHasContent;
+
     if (viewState.view === "calendar" && !renderedOnce.calendar) {
       renderCalendar();
       renderedOnce.calendar = true;
