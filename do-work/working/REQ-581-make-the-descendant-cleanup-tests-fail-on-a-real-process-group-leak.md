@@ -1,7 +1,7 @@
 ---
 id: REQ-581
 title: '[impact-rule-change] Make the descendant-cleanup tests fail on a real process-group leak'
-status: pending
+status: claimed
 created_at: 2026-09-05T01:30:57Z
 user_request: UR-119
 domain: backend
@@ -11,6 +11,7 @@ tdd: true
 maintenance: false
 impact: impact-rule-change
 effort_estimate: effort-substantive
+claimed_at: 2026-09-05T12:40:39Z
 ---
 
 # Make the Descendant-Cleanup Tests Fail on a Real Process-Group Leak
