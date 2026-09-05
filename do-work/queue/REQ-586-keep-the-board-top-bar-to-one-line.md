@@ -71,3 +71,17 @@ Depends on REQ-585 (give the Activity view one scroll surface): both edit the Ac
 See `do-work/user-requests/UR-121/input.md` for complete verbatim input.
 
 *Source: "this part of the header is still taking up too much vertical space, and that is precious when I want to click a req and I want to highlight all of it's occurances" / "ok, do o1 and o2 capture it first"*
+
+## Addendum (2026-09-05)
+
+User added:
+
+> ````text
+> while we are at it the order should be Board, Activity, Calendar, Timeline, Durations
+> 
+> testing can remain last
+> ````
+
+- Reorder the view buttons in the top bar to: Board, Activity, Calendar, Timeline, Durations, Testing. The order is declared once, in `template.html` lines 71 to 88 (the `data-view-target` buttons); `board-controls.js` reads the buttons from the DOM, so nothing else keeps the list.
+- Asset: `do-work/user-requests/UR-122/assets/REQ-586-screenshot-2-view-tab-order.png`, the view pill today: Board, Calendar, Durations, Timeline (selected, with focus ring), Activity, Testing.
+- Same proof lane as the rest of this REQ: the behavior test can assert the `data-view-target` values of the pill's buttons in document order.
