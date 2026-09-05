@@ -748,7 +748,8 @@ func TestTimelineProjectionReservesTimeForUntimedClaimedWork(t *testing.T) {
 	for _, requestID := range []string{missingStamp.RequestId, malformedStamp.RequestId} {
 		found := false
 		for _, finding := range report.Findings {
-			if finding.Category == verifyCategoryClaimNeedsAttention && strings.Contains(finding.Detail, requestID) {
+			// The REQ id is the finding's Subject, not part of its detail (REQ-588).
+			if finding.Category == verifyCategoryClaimNeedsAttention && finding.Subject == requestID {
 				found = true
 			}
 		}

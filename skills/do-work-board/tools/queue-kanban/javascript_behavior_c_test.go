@@ -3193,6 +3193,117 @@ process.stdout.write(JSON.stringify(results));`
 	}
 }
 
+// REQ-588: a finding row reads as one warning line, not a paragraph. The failure
+// this pins is the shipped REQ-579 row: detail, the fixable tag and the remedy
+// were inline siblings joined by an arrow, so the remedy wrapped into the middle
+// of the detail sentence and the whole row had to be read instead of scanned.
+//
+// Two halves, because neither proves the other. The renderer half: the remedy is
+// its own element after the detail, carrying the producer's remedy text with no
+// arrow glued to the front — a line does not need a pointer to say it follows.
+// The CSS half: no DOM probe can see that the remedy is a block or that the row
+// is a two-column grid, and without those two rules the same markup renders as
+// exactly the paragraph this REQ removes.
+func TestJavaScriptBehaviorVerifyFindingRemedyIsItsOwnLineAfterTheDetail(t *testing.T) {
+	indexHtml := generateLiveSite(t)
+	functionBlocks := []string{
+		sliceBalancedBlockAfter(t, indexHtml, "function createElement("),
+		sliceBalancedBlockAfter(t, indexHtml, "function makeFindingRow("),
+	}
+	javascriptProbe := `
+function makeStubNode(tagName) {
+  var node = {
+    stubTag: tagName,
+    children: [],
+    className: "",
+    stubText: "",
+    appendChild: function (childNode) { this.children.push(childNode); return childNode; }
+  };
+  Object.defineProperty(node, "textContent", {
+    get: function () { return this.stubText; },
+    set: function (nodeText) { this.stubText = nodeText; this.children = []; }
+  });
+  return node;
+}
+var document = { createElement: function (tagName) { return makeStubNode(tagName); } };
+` + strings.Join(functionBlocks, "\n") + `
+function describeNode(node) {
+  return {
+    tag: node.stubTag,
+    classes: node.className ? node.className.split(" ") : [],
+    text: node.stubText,
+    children: node.children.map(describeNode)
+  };
+}
+var findingRow = makeFindingRow({
+  category: "STRANDED-FINISHED-REQUEST",
+  subject: "REQ-581",
+  detail: "has terminal status \"completed\" but still sits in do-work/working/",
+  remedy: "cleanup Pass 0 moves it into do-work/archive/",
+  fixable: true
+});
+process.stdout.write(JSON.stringify(describeNode(findingRow)));`
+	probeOutput := runJavaScriptBehaviorProbe(t, "verify finding remedy is its own line", javascriptProbe)
+
+	type describedNode struct {
+		Tag      string          `json:"tag"`
+		Classes  []string        `json:"classes"`
+		Text     string          `json:"text"`
+		Children []describedNode `json:"children"`
+	}
+	var renderedRow describedNode
+	if decodeError := json.Unmarshal(probeOutput, &renderedRow); decodeError != nil {
+		t.Fatalf("decode finding row: %v (output %q)", decodeError, probeOutput)
+	}
+
+	// chip, then one text column. The grid below places these two, so a third
+	// child would land in a column the layout never declared.
+	if len(renderedRow.Children) != 2 {
+		t.Fatalf("the row has %d children, want the chip and the text column: %+v",
+			len(renderedRow.Children), renderedRow.Children)
+	}
+	rowText := renderedRow.Children[1]
+	if !hasClassName(rowText.Classes, "board-findings-text") {
+		t.Fatalf("the row's second child is %v, want the text column", rowText.Classes)
+	}
+	if len(rowText.Children) != 3 {
+		t.Fatalf("the text column holds %d parts, want the detail, the fixable tag and the remedy: %+v",
+			len(rowText.Children), rowText.Children)
+	}
+	// Order is the claim: the fixable tag stays inline at the end of the detail
+	// line, and the remedy is last so it opens the line below it.
+	wantPartClasses := []string{"board-findings-detail", "board-findings-fixable", "board-findings-remedy"}
+	for partIndex, wantClassName := range wantPartClasses {
+		if !hasClassName(rowText.Children[partIndex].Classes, wantClassName) {
+			t.Fatalf("text part %d is %v, want %s", partIndex, rowText.Children[partIndex].Classes, wantClassName)
+		}
+	}
+	remedyPart := rowText.Children[2]
+	if remedyPart.Text != "cleanup Pass 0 moves it into do-work/archive/" {
+		t.Errorf("remedy text = %q, want the producer's remedy with nothing prepended", remedyPart.Text)
+	}
+	if strings.Contains(remedyPart.Text, "→") {
+		t.Errorf("the remedy still carries the arrow that joined it to the detail sentence: %q", remedyPart.Text)
+	}
+
+	// The CSS half. `sliceBalancedBlockAfter` returns the rule body, so each check
+	// below reads only the declarations of the rule it names.
+	remedyRule := sliceBalancedBlockAfter(t, indexHtml, ".board-findings-remedy {")
+	if !strings.Contains(remedyRule, "display: block") {
+		t.Errorf("the remedy is not a block, so it still continues the detail sentence: %q", remedyRule)
+	}
+	rowRule := sliceBalancedBlockAfter(t, indexHtml, ".board-findings-row {")
+	if !strings.Contains(rowRule, "display: grid") || !strings.Contains(rowRule, "grid-template-columns") {
+		t.Errorf("the row is not a chip/text grid, so wrapped text falls back under the chip: %q", rowRule)
+	}
+	// D3, one type scale: the subject heading is an identifier at the row's own
+	// size, not a fourth size in its own face.
+	subjectRule := sliceBalancedBlockAfter(t, indexHtml, ".board-findings-subject {")
+	if !strings.Contains(subjectRule, "var(--font-mono)") || !strings.Contains(subjectRule, "font-size: 0.8rem") {
+		t.Errorf("the subject heading is off the row's type scale: %q", subjectRule)
+	}
+}
+
 // hasClassName reports whether a stub node's split className list carries one
 // exact class. Substring matching would answer yes for "board-finding" against
 // "board-findings-row", which is the very distinction these assertions rest on.
