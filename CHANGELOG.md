@@ -2,6 +2,15 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.295.1 — Retry Timing and the Activity Highlight (2026-09-05)
+
+Keeping every timestamp through a recovery (0.295.0) was right, but two readers then reported the old instants as if they belonged to the retry: a re-claimed request left no record of its own claim, and a retried builder's wait was measured from the previous attempt's dispatch. Both now report the retry's own instants. Separately, the Activity view's row highlight follows the detail drawer wherever the drawer is opened from.
+
+- A request re-claimed after a recovery stamps `status_changed_at`, so the Activity view dates the new claim from when it happened instead of from the recovery. The first claim instant still stays put.
+- The builder-wait timing event is recorded from the instant this dispatch was accepted rather than from the `dispatch_at` field a retry inherits — a five-minute retry no longer reports 24 hours.
+- The work action's four phase-stamp instructions now say what the schema already required: write the stamp only when the field is absent.
+- Opening a request from inside the detail drawer — a dependency link, the user-request button — moves the Activity view's row highlight with it. The drawer's open identity has one writer now, and the Activity view's two document listeners are gone.
+
 ## 0.295.0 — Timestamps Survive Every Transition (2026-09-05)
 
 An interrupted request used to lose the record of when its work actually started: recovery stripped ten timestamp fields and the board then reported minutes for hours of work. Lifecycle transitions no longer delete a timestamp, so the durable timing trail survives a crash, a recovery and a re-claim.
