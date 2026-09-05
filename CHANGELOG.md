@@ -2,6 +2,15 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.290.0 — One Launcher Preamble, Sourced Everywhere (2026-09-05)
+
+Nine shipped shell files each hand-rolled the do-work-cli launcher resolution in one of two spellings, so nine copies could drift apart. One sourceable preamble now owns it, with its byte-identical mirror under `skills/do-work/tools/`.
+
+- Each launcher probes two depths on purpose: the eight mirrored launchers are the same bytes in two directories, and the install fixture builds an archive root whose `tools/` gets only the launchers while `skills/` is copied whole.
+- Every launcher types its own failure when the preamble is missing, at its own original exit status. Two callers run under `set -u` with no `-e`, where a failed source previously fell through and died on an unbound variable naming neither the missing file nor the launcher.
+- A lock-in pins hand-rolled copies at zero, matched against the two exact repository paths so a third copy under another module cannot pass.
+- The new file is declared in the updater and installer heavy lanes. An uncovered path marks a run uncertain and selects every lane, so leaving it out forced the full heavy set.
+
 ## 0.289.0 — A Marker Only Counts Where a Writer Can Put One (2026-09-05)
 
 `do-work answer` decided a terminal status, deleted `blocked_by`, and archived a stakeholder request on finding a token anywhere in prose the caller wrote. It now reads each marker only at a position a writer can occupy, so "still not resolved" and "no code review yet" no longer close a request.
