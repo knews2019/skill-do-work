@@ -30,6 +30,8 @@ write_set:
 claimed_at: 2026-09-05T12:00:55Z
 dispatch_at: 2026-09-05T12:06:43Z
 route: A
+builder_handback_at: 2026-09-05T12:29:52Z
+integration_at: 2026-09-05T12:29:52Z
 ---
 
 # Keep Every Lifecycle Stamp: No Transition Deletes an Existing `*_at` Field
@@ -39,9 +41,9 @@ route: A
 Make REQ frontmatter timestamps append-only. Once a `*_at` field exists on a request, no lifecycle transition deletes it or writes a different value over it. A transition that re-enters a phase writes its stamp only when the field is absent. Delete the two code paths that still remove stamps: the recover transition's field-strip loop in `state_apply.go` and the gate-deferral parent edit in `defer_gate.go`. State the rule once in the Request File Schema so the next writer inherits it.
 
 ## AI Execution State (P-A-U Loop)
-- [ ] **[PLAN]:** (Agent: Read listed `prime_files` and agent rules. Write brief technical approach here. Do not write code yet.)
-- [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
-- [ ] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
+- [x] **[PLAN]:** Both deletion sites were named in the request, so no discovery was needed. The builder settled on satisfying the suffix condition structurally — no stamp list left to add to by mistake — with one helper carrying the rule, the schema stating it once, and a table-driven test reading the stamp set out of the fixture. Recorded under `## P-A-U` in `do-work/runs/work-2026-09-05-120117/REQ-575-handback.md`.
+- [x] **[APPLY]:** One commit on the builder branch (`afc30a9f`). Seven files, six of them the declared write set plus the selector pair the request's Builder Guidance authorized (D-03, accepted as D-06).
+- [x] **[UNIFY]:** `git diff --stat` reviewed (7 files, +186/-14); `gofmt -l .` empty; `go vet ./...` clean; debug-artifact scan over added lines empty; each file reviewed for what it kept as well as what it changed, with the per-file checks listed in the hand-back.
 
 ## Why
 
@@ -113,4 +115,47 @@ See `do-work/user-requests/UR-116/input.md` for the verbatim input and the REQ-5
 ## Decisions
 
 - **D-06 — the selector's two files were added to this REQ's write set, by the orchestrator, before integration. DECIDE & STATE.** The builder reported D-03 as a scope expansion rather than writing it silently: keeping `claimed_at` through a recover made `internal/nextselection` veto every recovered request as `ALREADY-CLAIMED`, so the writer change alone would have made recovery a one-way door. The REQ's own Builder Guidance settles the direction — "If the builder finds a reader that breaks when a recovered request keeps its old stamps, fix the reader, not the writer" — so the expansion is what the request asked for, not drift. `write_set` now carries `internal/nextselection/next_selection.go` and its test.
+
+## Implementation Summary
+
+**Files changed:**
+- `skills/do-work/tools/do-work-cli/internal/requeststate/state_apply.go` (modified)
+- `skills/do-work/tools/do-work-cli/internal/requeststate/state_apply_test.go` (modified)
+- `skills/do-work/tools/do-work-cli/internal/publication/defer_gate.go` (modified)
+- `skills/do-work/tools/do-work-cli/internal/publication/defer_gate_test.go` (modified)
+- `skills/do-work/tools/do-work-cli/internal/nextselection/next_selection.go` (modified)
+- `skills/do-work/tools/do-work-cli/internal/nextselection/next_selection_test.go` (modified)
+- `skills/do-work/actions/work-reference.md` (modified)
+
+**What was done:** A new helper states the append-only rule once and keys it on the field-name suffix; the claim transition writes its stamp through it, so a re-claim keeps the first value. The recover transition's ten-name strip loop is gone, replaced by a single field deletion for the route, which is what makes the suffix condition structural rather than a longer list. Gate deferral no longer deletes the parent's claim stamp. The request file schema states the rule beside the Timestamp rule and marks each of the four fields that carry current state rather than history. The selector was corrected under the request's own guidance so a recovered request carrying its old claim stamp stays selectable. Merge range `cd686ed7..a2c6f4cf`; builder branch head `afc30a9f`. Builder-authored `## Decisions` (D-01 to D-05) and `## Discovered Tasks` live in `do-work/runs/work-2026-09-05-120117/REQ-575-handback.md`; the orchestrator's D-06 is in this file.
+
+## Qualification
+
+**Passed.** Read from the merge range `cd686ed7..a2c6f4cf`.
+
+- The rule is a condition, not a list. `state_apply.go` gains one helper that writes a stamp only when the field is absent, and recover's ten-name deletion loop is replaced by a single route deletion. There is no enumeration left for a future stamp to be forgotten from, which is exactly what the request asked for.
+- Recover still does everything else it did: status, the status-change stamp, route, write set, and the generated recovery sections. The claim's withdrawal of a prior attempt's commit and heavy-verification fields is untouched.
+- `defer_gate.go` lost exactly one deletion line and kept the parent's move to the queue with its deferral fields and history entry.
+- The selector change is one condition: a frontmatter claim stamp counts as live-claim evidence only while the status says claimed. Checkpoint-writer evidence is untouched and still vetoes on its own. Without it, keeping the stamp would have made every recovered request permanently unselectable — caught by an existing test in another package, not by the new ones.
+- The schema paragraph names its exceptions instead of asserting an absolute rule, and each exception is also marked where its field is defined. A schema sentence claiming transitions never remove a stamp, in a package that removes three, would mislead the next writer.
+
+Requirements traced: the suffix condition rather than a name list, recover keeping every stamp, the status-change stamp still advancing, a re-claim keeping the first claim stamp, gate deferral leaving the parent's stamp, and the rule recorded in the schema. The three deletions the builder kept are judged below.
+
+**Judgment on the builder's two escalations:**
+- **D-01 accepted.** The two remaining deletions withdraw a field together with the state it describes — the heavy-verification stamp with the commit it verified, the blocked stamp with the condition that blocked it — rather than discarding timing history, which is what the request set out to protect. Deleting the heavy-verification stamp is an active guard that stops dependents building against work a remediation withdrew, shipped one day earlier. The request's Context lists only two deletion sites, which suggests it was written before that guard existed. This goes to the user as a follow-up rather than being settled here.
+- **D-03 accepted as D-06.** The request's Builder Guidance names this exact case and says to fix the reader. The builder reported it instead of writing it silently, and the write set was extended before integration.
+
+*Checked by work action*
+
+## Testing
+
+**Focused tests (builder, in its worktree at `afc30a9f`):**
+- `bash _dev/tests/run-go-tests-with-budget.sh skills/do-work/tools/do-work-cli ./internal/requeststate/... ./internal/publication/...` — pass.
+- `bash _dev/tests/run-go-tests-with-budget.sh skills/do-work/tools/do-work-cli ./...` — pass, 760 tests, wall 59s, slowest file `internal/finalization/finalization_recovery_test.go` at 22.78s against the 30s per-file budget.
+- `go test -count=1 ./...` in the module — exit 0, 30 packages ok.
+- `bash _dev/tests/contracts/core-checks.sh`, `bash _dev/tests/shipped-package-reference-contract.sh` and `bash _dev/tests/select-simple-reqs-behavior.sh` — all exit 0, run because the change edits shipped action prose and the selector.
+
+**Load note worth keeping:** the builder's first whole-module run reported three files over the 30-second per-file budget with no failing test — 42.63s, 40.25s and 32.75s — and the same three files came in at 22.78s and below on an immediate re-run. All three are untouched by this change. That is machine load from the parallel builders, not this diff, and it is the same shape the 5 September run record already documented.
+
+**Red-green validation** (traced to `## Red-Green Proof`): RED — `TestRecoverAndReclaimPreserveEveryLifecycleStamp` failed with one subtest per stamp, nine in all, each naming the field recover deleted and its original value, and the dumped post-recover document carried only the status fields; `TestDeferGateCreatePublishesOneAtomicDependencyLifecycle` failed at `defer_gate_test.go:39` with an empty claim stamp where the fixture had one. GREEN — both pass, every one of the nine stamps survives byte for byte, the status-change stamp is the recover instant, route and write set are gone, and a re-claim two hours later leaves the original claim stamp in place.
 
