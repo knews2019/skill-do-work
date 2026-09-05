@@ -29,6 +29,8 @@ write_set:
 claimed_at: 2026-09-05T12:21:55Z
 route: B
 dispatch_at: 2026-09-05T12:23:39Z
+builder_handback_at: 2026-09-05T12:46:22Z
+integration_at: 2026-09-05T12:46:22Z
 ---
 
 # Render Verify Findings and Skipped Probes as Compact Rows in One List
@@ -38,9 +40,9 @@ dispatch_at: 2026-09-05T12:23:39Z
 The Verify Findings strip (`#board-findings`, added by REQ-285) renders each finding as a bordered card in a multi-column grid and lists skipped probes as bullets inside a collapsed disclosure below. Replace both with one flat list of compact rows: one row per finding and one row per skipped probe, no cards, no columns, no separate disclosure. A finding and a skipped probe are the same kind of thing to the reader ("verify has something to tell you"), so they get one visual language.
 
 ## AI Execution State (P-A-U Loop)
-- [ ] **[PLAN]:** (Agent: Read listed `prime_files` and agent rules. Write brief technical approach here. Do not write code yet.)
-- [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
-- [ ] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
+- [x] **[PLAN]:** Five steps settled before code: the producer subject field and its payload mirror, the client's flat row list with subject grouping, the markup deletion, the CSS replacement, then RED in both lanes before implementing and a real render afterwards. Recorded under `## P-A-U` in `do-work/runs/work-2026-09-05-120117/REQ-579-handback.md`.
+- [x] **[APPLY]:** One commit on the builder branch (`1dc13ef7`) touching exactly the seven Scope files.
+- [x] **[UNIFY]:** `git diff --stat` reviewed; `gofmt -l .` empty; `go vet ./...` clean; debug-artifact scan over added lines empty; per-file checks listed in the hand-back.
 
 ## Why
 
@@ -102,13 +104,15 @@ The user is certain about the outcome (rows, not cards) and approved D1 to D3 an
 ## Scope
 
 **Files I will touch:**
-- `skills/do-work-board/tools/queue-kanban/verify.go` (modify) — `Subject` on `VerifyFinding`, set by each probe
-- `skills/do-work-board/tools/queue-kanban/verify_test.go` (modify) — subject assertions per probe
-- `skills/do-work-board/tools/queue-kanban/generate.go` (modify) — `subject` in the board payload
-- `skills/do-work-board/tools/queue-kanban/web/board-cards.js` (modify) — one flat row list replacing the card grid and the disclosure
-- `skills/do-work-board/tools/queue-kanban/web/board.css` (modify) — row classes replacing the `.board-finding*` and `.board-findings-skipped*` classes
-- `skills/do-work-board/tools/queue-kanban/web/template.html` (modify) — strip markup
-- `skills/do-work-board/tools/queue-kanban/javascript_behavior_c_test.go` (modify) — the captured RED case
+- `skills/do-work-board/tools/queue-kanban/verify.go` (modify)
+- `skills/do-work-board/tools/queue-kanban/verify_test.go` (modify)
+- `skills/do-work-board/tools/queue-kanban/generate.go` (modify)
+- `skills/do-work-board/tools/queue-kanban/web/board-cards.js` (modify)
+- `skills/do-work-board/tools/queue-kanban/web/board.css` (modify)
+- `skills/do-work-board/tools/queue-kanban/web/template.html` (modify)
+- `skills/do-work-board/tools/queue-kanban/javascript_behavior_c_test.go` (modify)
+
+The producer gains a subject field set by each probe and mirrored into the board payload; the client replaces the card grid and the disclosure with one flat row list; the stylesheet replaces the card and disclosure rules with row rules; both test lanes gain a case.
 
 **Files I will NOT touch:** the completion-anomalies strip and its cards, `web/board-controls.js` (REQ-578 owns the Activity hide rule and it must keep working against the same `#board-findings` element), `CHANGELOG.md`, `VERSION`, everything under `do-work/`.
 
@@ -117,3 +121,97 @@ The user is certain about the outcome (rows, not cards) and approved D1 to D3 an
 - [ ] Two weights only, both from the producer: `fixable: true` renders muted with a "cleanup can fix" tag, a skipped probe renders muted, everything else normal
 - [ ] `Subject` exists on `VerifyFinding` and `subject` in the payload; the client groups rows by exact string match and prints each non-empty subject once as a heading, with empty-subject rows after the grouped ones in producer order
 - [ ] The strip still hides when there is nothing to report, and REQ-578's Activity-view hide still works against the same element and attribute
+
+## Exploration
+
+The builder produced this section in its hand-back (`do-work/runs/work-2026-09-05-120117/REQ-579-handback.md` → `## Exploration`) in place of a separate Explore agent, per the Triage note above. Read it there; the material findings it changed are recorded in Qualification below.
+
+## Implementation Summary
+
+**Files changed:**
+- `skills/do-work-board/tools/queue-kanban/verify.go` (modified)
+- `skills/do-work-board/tools/queue-kanban/verify_test.go` (modified)
+- `skills/do-work-board/tools/queue-kanban/generate.go` (modified)
+- `skills/do-work-board/tools/queue-kanban/web/template.html` (modified)
+- `skills/do-work-board/tools/queue-kanban/web/board.css` (modified)
+- `skills/do-work-board/tools/queue-kanban/web/board-cards.js` (modified)
+- `skills/do-work-board/tools/queue-kanban/javascript_behavior_c_test.go` (modified)
+
+**What was done:** Findings now carry a subject set by the probe that knows it — the worktree name, the request id, the changelog path — mirrored into the board payload. The card grid and the collapsed disclosure are gone, replaced by one flat list where a finding row and a skipped-probe row share a shape, rows with the same subject group under one heading, and subjectless rows follow in producer order. Two weights only, both from the payload: a fixable finding is muted and tagged, a skipped probe is muted. Merge range `4362ac0d..c78a0d3d`; builder branch head `1dc13ef7`. Builder-authored `## Decisions` (D-01 to D-06), `## Discovered Tasks` and `## Exploration` live in the hand-back.
+
+## Qualification
+
+**Passed.** Read from the merge range `4362ac0d..c78a0d3d`, and the module suite re-run on the merged tree.
+
+- **The trap this request was warned about was not walked into.** REQ-578's rule reads `#board-findings-cards` and `#board-findings-skipped-list` children to decide whether the strip has anything to say, and this request's own D1 said to delete the disclosure that holds the second one. The builder built the honest single-host version first, watched REQ-578's test fail, and reverted to nesting both hosts (as `display: contents`) inside one `#board-findings-rows` list rather than handing back a knowingly-red test with a seam someone had to remember. The page is one list to the reader; the two ids survive as pass-through hosts with the naming wart filed as a follow-up. It also wrote the `display: contents` trap into the template comment beside the ids, since that property outranks the `hidden` attribute's own display rule.
+- Two weights, both from the producer. Nothing in the client invents a severity, an ordering or a colour scale the payload did not carry.
+- Grouping is exact string match on the payload field, never parsed out of the detail text, and the lookup uses a null-prototype object so a subject spelled `constructor` cannot be mistaken for an already-open group.
+- The subject is set at every probe that has one, including categories the board currently suppresses, so the rule is "the probe that knows, sets it" rather than a list to maintain. Findings lifted from warning prose with no parsed id stay empty, as designed.
+- One spacing rule (`.board-findings-row-detached`) exists because the builder looked at the render and saw a subjectless row reading as the previous group's third row. That is the kind of defect only a render finds.
+
+Requirements traced: one flat list with no card and no disclosure (D1), header carrying both counts with nouns on each half (D1), two producer-only weights (D2), subject on the model, in the payload and grouped in the client (D3), and the strip still hiding when there is nothing to report with REQ-578's Activity rule intact (D5).
+
+Scope: the seven touched files are exactly the declared write set. No drift.
+
+*Checked by work action*
+
+## Testing
+
+**Post-merge, main tree at `c78a0d3d`:**
+- `QUEUE_KANBAN_JAVASCRIPT_PROBES=on QUEUE_KANBAN_STRICT_JAVASCRIPT_BEHAVIOR=1 bash _dev/tests/run-go-tests-with-budget.sh skills/do-work-board/tools/queue-kanban ./...` — exit 0, 453 tests, wall 57s, slowest file `generate_test.go` at 11.54s against the 30s per-file budget. That run covers both new tests and REQ-573's, which met this branch in a merge conflict.
+
+**Red-green validation** (traced to `## Red-Green Proof`): RED in both lanes on assertions, not on compile errors — the Go lane reported every finding's subject as empty and the payload carrying none, the Node lane reported the header as a bare count and the row list empty. Each lane's first attempt died on something that was not an assertion (an undeclared field, a stub lookup) and was fixed before the RED was taken, which is the right discipline. GREEN in both lanes afterwards, including REQ-578's hide-on-Activity test driving the real view switcher against the new markup.
+
+**Render evidence (a browser was actually driven):** the generated board was served over HTTP and read in Chromium, twice — once against this repository's real queue (five findings, five distinct subjects, one heading each) and once with a crafted payload, which is the only way to see grouping, muting and skipped rows together. The crafted render measured the header as "6 findings · 2 probes not checked", 8 rows under 3 subject headings, zero `details` elements, zero card elements, both hosts as direct children of the list, and a strip 398px tall for 8 rows where the old cards used most of the strip's height for two.
+
+
+## Review
+
+**Overall: 96%** | 2026-09-05T12:58:03Z
+
+| Dimension | Score |
+|-----------|-------|
+| Requirements | 100% |
+| Code Quality | 90% |
+| Test Adequacy | 92% |
+| Scope | 100% |
+| Risk | Low |
+| Acceptance | Pass |
+
+Reviewed over the full range `4362ac0d..b169396e`, which is two merges: `c78a0d3d` (builder commit `1dc13ef7`) and `b169396e` (builder commit `1de64c4c`). An earlier version of this section covered only the first merge and reported the second commit as unintegrated; it is now in main, so that finding is resolved and is not carried below. The follow-up merge also carried unrelated UR-123 capture commits on the main side; those are not this REQ's work and are not scored here. The two REQ-579 source files in the merged tree are byte-identical to the builder's `1de64c4c`.
+
+**Conflict resolution (checked first).** The merge `c78a0d3d` resolved `javascript_behavior_c_test.go` without losing either side. REQ-573's `TestJavaScriptBehaviorActivityRowClickSelectsEveryRowOfTheSameRequest` is byte-identical to the main-side version at `4362ac0d` (207 lines, every assertion intact); REQ-579's `TestJavaScriptBehaviorVerifyFindingsRenderAsOneRowList` is byte-identical to the builder-side version at `1dc13ef7` (218 lines); REQ-578's `TestJavaScriptBehaviorActivityViewHidesTheVerifyFindingsStrip` took the builder's edited version, which is the intended cross-REQ change (the `skippedDisclosureOnTimeline` assertion read the deleted `<details>` element and would have passed vacuously against the stub `document` forever). The second merge added only the follow-up's 39 test lines and 22 renderer lines; nothing was re-resolved.
+
+**The follow-up, judged.**
+
+*Does clearing before the empty check cover every path?* Yes. The renderer has three exits. The `!strip` guard returns before the clears, which is the only safe order: if `#board-findings` is absent from the template the two hosts are absent too, so clearing first would throw. The empty-payload exit now clears both hosts and then hides the strip. The populated path clears both once and refills them — the follow-up also deleted the two per-host clears further down, so each host is cleared exactly once on every path that can reach it. One behavior change the commit message does not name: the empty path now dereferences both hosts where it previously returned before touching them, so a template carrying `#board-findings` without its two hosts would throw at boot on a board with nothing to report. That state cannot ship — `generate.go:23` embeds `web/template.html`, `web/board.css` and `web/*.js` together and inlines the client into the page, with only `board-data.js` served separately, so template and renderer always travel as one artifact. Fail-fast here is safe.
+
+*Is the markup-id assertion strong enough?* Yes, and it fires on exactly the blind spot it was written for. Verified by mutation in a scratch copy of the module (`do-work/` fixture root, module copied out of the main checkout, main tree never edited):
+
+- Dropping `skippedHost.textContent = ""` → FAIL `javascript_behavior_c_test.go:3112: stale rows survived the empty re-render (findings=0, skipped=1)`.
+- Dropping `findingsHost.textContent = ""` → FAIL, same assertion, `(findings=4, skipped=0)`.
+- Renaming both host ids in `web/template.html` only, leaving the renderer and the probe on the old ids — the case where the stub invents a node for the old id and every DOM assertion passes — → FAIL `javascript_behavior_c_test.go:3139: the strip dropped id="board-findings-cards" — applyView reads it to decide visibility and would dereference null`, and the same for the skipped host. Nothing else in the test fails. This is the assertion doing the exact job the stub cannot.
+- Renaming a host id consistently in both `template.html` and `board-cards.js` → FAIL, but at `javascript_behavior_c_test.go:3050` ("the list holds N children"), which is a `t.Fatalf` and therefore kills the test before the markup-id checks run. See the Minor finding on message shadowing.
+
+The consumer half of the contract — `applyView` reading those two exact ids in `web/board-controls.js:57-58` — is covered by REQ-578's own test, whose findings-only and skipped-only scenarios each leave one host empty, so a wrong id read there flips the visibility assertion rather than passing vacuously.
+
+**Restatement Sweep.** Swept every element the diff redefines: the deleted classes (`.board-finding*`, `.board-findings-skipped*`), the deleted element ids (`board-findings-skipped`, `board-findings-skipped-count`), the deleted `board-anomalies-cards` host in this strip, the retired "probe(s) could not run" footer wording, and the payload shape (`generatedVerifyFinding` gaining `subject`). No stale restatement survives in a shipped file. The one shipped sentence that did go stale — `routeWorktreeLeftover`'s `worktreeLeftoverStateUnknown` remedy, which pointed the reader at the deleted footer — was rewritten in the same commit and now names the `not checked` row. Everything else that still describes the old strip is a historical record that is never rewritten: archived REQ-285/REQ-482, `kb/wiki/sources/`, and `skills/do-work/CHANGELOG.md:1920` (the entry recording what REQ-285 shipped). The REQ's own line about regenerating snapshot fixtures was moot — the queue-kanban module has no `testdata/` or golden files, and `subject` is `omitempty`. REQ-580's overlap in `appendWorktreeFindings` (the undetermined-merge-state short-circuit and its `default` remedy) survived both merges intact with REQ-579's `Subject` fields added beside it.
+
+**Important findings (each with its recorded impact token — this is the durable audit record the judgment mandates):**
+- None
+
+**Minor findings:**
+- Light theme, `.board-findings-fixable` (`web/board.css:662`): the "cleanup can fix" tag is `--accent-done` `#3c875e` on the strip's `--surface-2` `#f1f4f8`, measuring 3.95:1 at 0.82rem — below 4.5:1 for small text. It was 4.36:1 on the old white card, so the move to the tinted strip cost 0.41 and it was already short. Dark theme is fine at 6.92:1. No information is lost either way: the words "cleanup can fix" carry the meaning, so the tag is distinguishable without colour. — impact-user-visible → report only
+- The skipped probes lost their list semantics: they were `<ul>`/`<li>` and are now `<div class="board-findings-row">` with no `role="list"`/`role="listitem"`, and the subject heading (`board-findings-subject`) is a `<div>` rather than a heading element. A screen reader no longer announces "list, N items" nor offers heading navigation over the subjects. The section keeps `aria-label="Verify findings"`, so nothing is unreachable. Adding roles needs a browser check, because the two hosts carry `display: contents` and that changes how the list/listitem relation is exposed. — impact-user-visible → report only
+- The two markup-id assertions (`javascript_behavior_c_test.go:3131-3145`) sit after a `t.Fatalf` on the row count (`:3050`), so on the most likely future edit — a consistent rename across `template.html` and `board-cards.js`, which is exactly the follow-up the builder filed under Discovered Tasks — the test fails with "the list holds N children" and a node dump, and the message that names `applyView` never prints. Coverage is not affected; the diagnostic is. Both checks read only `indexHtml`, which is in hand at the top of the test, so moving them above the DOM read-back costs nothing. — impact-negligible → report only
+- The `display: contents` versus `hidden` trap is real and correctly stated (an author `display` rule outranks the UA stylesheet's `[hidden] { display: none }`, so `hidden` on either host would not hide anything), and it is documented three times at the point of use — `web/template.html:216-218`, `web/board.css:608-610`, and now the renderer comment. It is pinned by nothing: the shipped test asserts the `.board-findings-group { display: contents }` rule exists, but nothing fails if a future editor reintroduces `skippedHost.hidden = true`, and the Node lane's stub sets `hidden` as a plain property with no CSS to lose against. Documentation-only guard on a trap the previous renderer walked into. — impact-negligible → report only
+- The hand-back's file manifest (`do-work/runs/work-2026-09-05-120117/REQ-579-handback.md:19`) cites "(see D-07)" but its Decisions section stops at D-06, so the decision behind the follow-up commit is named but never recorded. Now that the commit is merged, that decision is part of the delivered work and has no entry. — impact-negligible → report only
+
+**Nit findings:**
+- `board-findings-detail` is applied to every row's main text (`web/board-cards.js:757`, `:775`) but has no CSS rule and no test consumer — a styling hook that styles nothing. The builder recorded the reasoning (an unclassed span among classed ones reads as an oversight), which is a fair call; noted only so the next editor knows it is deliberate. — impact-negligible → report only
+
+**Acceptance:** Pass — on the merged tree at HEAD `b169396e`, `TestVerifyNamesTheSubjectEachFindingIsAbout`, `TestVerifyNamesTheChangelogAsTheReleaseFindingSubject`, `TestJavaScriptBehaviorVerifyFindingsRenderAsOneRowList`, REQ-578's `TestJavaScriptBehaviorActivityViewHidesTheVerifyFindingsStrip` and REQ-573's `TestJavaScriptBehaviorActivityRowClickSelectsEveryRowOfTheSameRequest` all pass with `QUEUE_KANBAN_JAVASCRIPT_PROBES=on QUEUE_KANBAN_STRICT_JAVASCRIPT_BEHAVIOR=1` (exit 0). The row-list probe drives the shipped renderer over the generated page and asserts the markup half against the generated HTML, so the "no cards, no disclosure, one list, hosts still present" claim is checked against what ships. Five mutations were run against a scratch copy to confirm the new assertions fail for the right reasons. Contrast was computed from the palette tokens rather than measured in a browser; the browser render was not independently reproduced (the brief forbids driving one).
+**Suggested testing:** 5 items — (1) open a real board and confirm the strip reads as one list at the widths the board targets; (2) a board with 20+ findings, since the collapse the `<details>` gave is gone and the strip now grows without limit; (3) dark theme by eye, where the muted weight and the chip carry more of the distinction; (4) a screen-reader pass over the strip, which is where the lost list semantics show; (5) after the host-id rename follow-up lands, re-run REQ-578's hide test in a browser, not only in the Node lane.
+**Follow-ups created:** None (6 findings report only)
+
+*Reviewed by review-work action*

@@ -131,3 +131,52 @@ Requirements traced: detail attributes on every row, the whole matching set sele
 
 **Not covered — browser render (builder decision D-04, escalated rather than claimed):** no browser was driven, so the tint, the inset bar and the focus ring were not seen against either palette. Every token used is defined in both palettes and every rule copies an existing pattern in the same stylesheet. The orchestrator routed this to the `queue-kanban-browser` heavy lane rather than a one-off screenshot, since that lane is already selected for this request and runs at the queue-exhaustion drain.
 
+
+## Review
+
+**Overall: 79%** | 2026-09-05T12:45:07Z
+
+| Dimension | Score |
+|-----------|-------|
+| Requirements | 95% |
+| Code Quality | 80% |
+| Test Adequacy | 80% |
+| Scope | 100% |
+| Risk | Low |
+| Acceptance | Partial |
+
+**Important findings (each with its recorded impact token — this is the durable audit record the judgment mandates):**
+- F1 — Opening a REQ drawer from anywhere outside the Activity table leaves the highlight on the PREVIOUSLY open REQ, so the table and the drawer name different REQs. `web/board-activity.js:172-177`: when `closest("[data-activity-request]")` misses, `syncActivitySelectionToClick` falls back to `selectedActivityRequestId()` — read in the same instant that D-02 correctly identifies as stale, because `board-activity.js` (manifest position 7) runs before the `[data-detail-kind]` delegation in `board-controls.js` (position 10). D-02 fixes this for the row branch and leaves it in the fallback branch. Nothing recomputes afterwards: `renderActivity()` has exactly three callers (`board-activity.js:31` window buttons, `board-filters.js:190` filter change, `board-controls.js:74` guarded by `renderedOnce.activity`), so the wrong highlight survives until a filter or window change. Reproduced with a probe replaying both listeners in registration order over the shipped function bodies: opening REQ-570 from a drawer ticket link highlights nothing, then opening REQ-505 from the drawer highlights REQ-570's two rows while the drawer shows REQ-505. Same for a Board card click followed by a switch back to an already-rendered Activity view. Cheapest fix: give the fallback branch the delegation's own timing (defer the drawer read by a task, or have `openDetail` call `syncActivitySelectionToDrawer`); moving the fragment after `board-controls.js` also works and breaks nothing, since the row branch never reads the drawer. — impact-user-visible → report only
+
+**Minor findings:**
+- F2 — Clicking any non-REQ cell of a row (title, status, transition, when, stamp) highlights that REQ's whole set but never opens the drawer, because only the REQ cell carries `data-detail-kind`. The highlight and the drawer then disagree until the next re-render snaps the highlight back. The REQ's Detailed Requirements permit the cell-only opener ("Every Activity row (or its REQ cell)"), and the row-wide highlight matches the "clicked id" wording, so this is on-spec — but it contradicts D-01's claim that the drawer is the only selection state, and the UR asked for a click on a REQ to open the detail the way a Board card does, where the whole card is the target. — impact-user-visible → report only
+- F3 — The tint alone is close to invisible in both palettes. Composited over the panel surface, `--tint-claimed` measures about 1.26:1 (dark, rgba(111,156,230,0.14) over #171c26) and about 1.18:1 (light, rgba(58,107,196,0.12) over #ffffff) — far under the 3:1 that a non-text state indicator wants. The state is carried by the 3px inset `--accent-claimed` bar (6.2:1 dark, 5.2:1 light against the same surface) and the bold underlined id, both of which sit only in the leftmost column, so a reader scanning the "when"/"stamp" columns of a wide table has essentially no signal. The REQ's own bar is met (not colour-alone, both palettes defined), so this is a strengthening suggestion, not a miss: roughly double the tint alpha, or extend a signal across the row. — impact-user-visible → report only
+- F4 — The selection has no programmatic signal. No `aria-selected`, `aria-current`, or `aria-pressed` lands on the selected `tr` or its button, so a screen-reader user gets the drawer content but nothing telling them which rows belong to the open REQ. The colour-independence requirement is satisfied visually only. `web/board-activity.js:158-168`. — impact-user-visible → report only
+- F5 — The hand-back's second Discovered Task proposes a test pinning `board-activity.js` ahead of `board-controls.js` in `boardJavaScriptFragmentPaths`. That would lock in the worse of the two orders. Under the reverse order the row branch is unchanged (it reads the clicked row and never the drawer) and the fallback branch becomes correct, which is F1's fix. Fix the fallback rather than pinning the order. — impact-rule-change → report only
+- F6 — The new test asserts a path production never takes, which is what hid F1. `javascript_behavior_c_test.go:2812-2816` sets the drawer state and calls `syncActivitySelectionToDrawer()` directly, then asserts "a drawer opened from somewhere other than the table did not mark its rows". No production code calls `syncActivitySelectionToDrawer` on a drawer open — its only caller is the Escape `keydown` listener. A real click on a `[data-detail-kind]` element outside the table goes through `syncActivitySelectionToClick`'s fallback and produces the wrong set. The case is not vacuous (it does bite on the kind check), but it is mis-labelled and covers a hole it does not test. — impact-negligible → report only
+
+**Nit findings:**
+- F7 — Restatement Sweep result. `ai-reports/2026-09-05_1520_activity-view-double-scroll-mockups/mockups/mockup.js:40-48` builds the Activity REQ cell as plain text on a bare `th`, with `data-activity-request` but no detail button. That mockup set was authored after this REQ's dispatch and is what a later double-scroll change would be built from, so it would silently drop this REQ's opener. Out of this REQ's declared scope; recorded here per Restatement Sweep step 3. — impact-negligible → report only
+- F8 — The Activity button's accessible name is the bare id. `makeRequestCard` (`web/board-cards.js:123`), the pattern the diff says it mirrors, sets `aria-label` to "REQ-570: title". In table-reading mode the adjacent title cell supplies it, so nothing is lost in practice. — impact-negligible → report only
+
+**Sweep record (Step 6 Restatement Sweep):** The diff redefines the Activity REQ cell's content shape (text node → button element) and introduces `activity-req-button` / `is-activity-selected`; `data-activity-request` semantics are unchanged. Swept all five tokens repo-wide. Consumers found and verified: `web/template.html:480` (column header only, unaffected), `javascript_behavior_c_test.go:2464-2516` (REQ-572's test, updated correctly — see below), `_dev/primes/prime-kanban-board.md` (no restatement of the activity row shape or of listener order). One stale restatement found — F7.
+
+**Cross-REQ test edit (D-05) verified clean.** `git diff --stat` records 2 deletions repo-wide and both are in `web/board-activity.js`; the test file has zero deleted lines, so no assertion could have been removed or rewritten. The edit to `TestJavaScriptBehaviorActivitySummaryCountsTransitionsAndRequests` is three added slice targets (`createElement`, `selectedActivityRequestId`, `applyActivitySelectionHighlight`), a no-op `classList.toggle` and a real `getAttribute` on the stub node, and two empty drawer-state variables. Every original assertion — transition count, distinct-REQ count, the repeated `data-activity-request` contract, both empty-state strings — is byte-identical and still runs against the shipped `renderActivity`. The no-op `toggle` cannot make anything vacuous because that test asserts no class state. Traceability to REQ-572 is stated in a comment in the file and in D-05.
+
+**Escape and close paths (D-03) verified from source.** `closeDrawer` has exactly two callers: `board-controls.js:249` (`#detail-close`, an element-level listener that runs before any document bubble listener) and `board-detail.js:672` (`onDetailPanelKeydown`, registered with `capture = true` at `board-detail.js:650`, so it runs before the fragment's bubble `keydown`). Both leave `currentDetailKind`/`currentDetailId` empty by the time `syncActivitySelectionToClick`/`syncActivitySelectionToDrawer` reads them, so no close path leaves a stale highlight. The one leftover-highlight case is F2's — a highlight created without a drawer at all.
+
+**Table semantics.** A `<button>` inside `<th scope="row">` does not break the row-header role; the header's accessible name is computed from its contents, and the `headers` attribute association is untouched. No finding.
+
+**Acceptance:** Partial — Node behavior lane re-run post-merge (`go test -run '^TestJavaScriptBehaviorActivity'`, 3 tests, PASS, 2.8s); drawer opening, row-set selection, re-render restore, both close paths and keyboard reachability verified from source; opening the drawer from outside the table produces a wrong highlight (F1, reproduced); no render evidence in either palette.
+**Suggested testing:** 5 items
+**Follow-ups created:** None (8 findings report only)
+
+### Suggested Additional Testing
+
+- Browser render in both colour schemes: the tint against the panel surface, the 3px inset bar on a `th` under `border-collapse: collapse` (the case D-04 named as most likely to surprise), and the focus ring at `outline-offset: 2px` inside the scroll container.
+- Keyboard walk: Tab into the table, confirm the ring is visible and not clipped by `.activity-table-scroll`'s `overflow: auto`, and that Enter and Space both open the drawer.
+- The F1 repro by hand: open the Activity view, open a REQ drawer from a Board card or a ticket link inside the drawer body, and check which rows are highlighted.
+- Screen-reader pass (VoiceOver table mode) on a selected row — confirms F4's gap and that the button does not disturb row-header announcement.
+- A REQ with many rows (REQ-572's own follow-up suggests nine) over a 7-day window, to see whether a left-edge-only signal is enough to track a set down a long table.
+
+*Reviewed by review-work action*

@@ -124,3 +124,55 @@ Requirements traced: all three tests fail under the leak mutation, each inside i
 
 **Flake check:** `-count=3` over the three tests, no failure.
 
+
+## Review
+
+**Overall: 95%** | 2026-09-05T13:05:35Z
+
+| Dimension | Score |
+|-----------|-------|
+| Requirements | 100% |
+| Code Quality | 90% |
+| Test Adequacy | 90% |
+| Scope | 100% |
+| Risk | None |
+| Acceptance | Pass |
+
+**Reviewer's own mutation run (independent of the builder's).** The module was copied to a scratch directory; the main checkout was never mutated. `cleanupReapedProcessGroup` and `terminateOwnedProcessGroup` in `internal/nextselection/blocked_probe_unix.go` were reduced to no-op bodies there, and the whole `./internal/nextselection` package was run:
+
+```
+--- FAIL: TestBlockedProbeTimeoutKillsDescendantGroup (14.02s)
+    blocked_probe_test.go:67: descendant 65381 survived 10s
+--- FAIL: TestBlockedProbeCleansBackgroundDescendantAfterLeaderExits (10.03s)
+    blocked_probe_test.go:78: descendant 65867 survived 10s
+--- FAIL: TestBlockedProbeInterruptionIsTypedAndReapsDescendants (14.02s)
+    blocked_probe_test.go:115: descendant 66223 survived 10s
+```
+
+All three fail on the descendant assertion, each inside its own budget, each naming the surviving process id. No test in the package exits on a timeout bound. Unmutated, the same scratch tree passes at 1.51s / 0.11s / 0.65s. The fix is real.
+
+**Runtime constraint measured.** Two interleaved full-package rounds in the same scratch, old fixture against new: old 2.474s / 2.470s, new 2.491s / 2.491s. About +20ms (0.8%), inside noise. The unmutated runtime is not raised.
+
+**Flake check under load.** `-count=5` over the three tests with six busy CPU loops running: 15/15 pass, per-test timings identical to the unloaded run (1.51s / 0.11s / 0.65s). No time-dependence observed.
+
+**The raised bound is not a weakening.** `interruptedProbeReturnBudget` 5s → 15s bounds "the interrupted runner returns rather than hanging forever". The healthy return is 0.65s, so the bound is still ~23x the real value and still catches a hang. Under the leak mutation the leader holds 4s, so any bound at or under 5s fires there instead of at the descendant assertion — which is exactly the defect the request names. The only cost is that a genuine hang is reported after 15s instead of 5s.
+
+**Restatement Sweep.** The diff redefines what `descendantReapBudget` measures. Swept `descendantReapBudget`, `waitForDescendantToDisappear`, "latency assertion", "reaping-latency" and `blocked_probe_test` across the repository. Every other occurrence is a historical record in `do-work/` (UR-119 input, REQ-506 archive, run briefs and hand-backs) describing the defect as it was found; those stay accurate as history. No shipped file, prime, lessons satellite, or changelog entry restates the old meaning. `prime-do-work-cli.md` line 76 (`[family: reaped-by-its-own-parent]`) is about the implementation contract and is unaffected. Sweep clean, no stale restatement.
+
+**Important findings (each with its recorded impact token — this is the durable audit record the judgment mandates):**
+- None
+
+**Minor findings:**
+- The SIGKILL escalation inside `cleanupReapedProcessGroup` (`blocked_probe_unix.go:92-94`) is still unreachable by any test. Reviewer mutation: delete only those three lines and the 100ms sleep, leaving the initial SIGTERM. `TestBlockedProbeCleansBackgroundDescendantAfterLeaderExits` stays green in 0.319s, because its descendant dies on the plain SIGTERM. The equivalent mutation on `terminateOwnedProcessGroup` is caught — T1 and T3 both fail on the descendant assertion — so only this one branch is uncovered. A `trap '' TERM` in that test's descendant, as T1 already carries, would close it for roughly 100ms of runtime. Narrower than this request's stated RED, so not a missed requirement. — impact-negligible → report only
+- `waitForDescendantPid`'s `t.Cleanup` SIGKILL (`blocked_probe_test.go:144`) kills the recorded pid, which on this machine's `/bin/sh` is the subshell, not the `sleep 30` it forks. Verified twice: `ps` shows the subshell and a separate `sleep 30` child for both fixture shapes, and after the mutated run pid 64147 (`sleep 30`, ppid 1) was still alive on the host. So a failing run does leave one orphaned `sleep` per test for the remainder of its 30 seconds. The hand-back's D-05 claims the cleanup prevents this; it prevents most of it. Bounded and self-clearing, no effect on any assertion. — impact-negligible → report only
+- `waitForDescendantPid` does not detect the partial-write case the hand-back's [APPLY] says it tolerates. A truncated file whose content is a valid integer prefix (`671` of `67123`) parses and passes the `pid > 0` guard, yielding a wrong pid. Requiring a trailing newline would deliver the claimed property. Practically unreachable — `echo $! > file` is one small `write()` — and the helper is still a real improvement over the two ignored `strconv.Atoi` errors it replaced. The overstatement is in the hand-back prose, not in the shipped comment. — impact-negligible → report only
+- The timeout and interrupt branches now depend on the leader outliving the runner's own deadline by ~3s (`probeLeaderHoldSeconds = 4` against a 1s timeout in T1 and a ~0.1s interrupt in T3), where the old `wait` fixture gave ~29s. If a runner deadline ever fired more than 3s late the test would fail on its status assertion rather than flake silently, and 15 loaded repeats showed no drift at all, so this is a recorded margin change and not an observed defect. — impact-negligible → report only
+
+**Nit findings:**
+- `runBlockedProbeFixture` (`blocked_probe_test.go:167`) is a one-line passthrough to `RunBlockedProbeAtRoot` with a single caller. Pre-existing, already recorded by the builder under Discovered Tasks. — impact-negligible → report only
+
+**Acceptance:** Pass — reviewer's own leak mutation makes all three tests fail on the descendant assertion inside their own budgets; unmutated they pass with the package runtime unchanged.
+**Suggested testing:** 3 items — (1) run the three tests on a Linux host where `/bin/sh` is `dash`: `dash` exec-optimizes the last command in a subshell, so the recorded pid is the `sleep` itself rather than a subshell, and `exec 1>&- 2>&-` closure behavior should be confirmed there; (2) add `trap '' TERM` to `TestBlockedProbeCleansBackgroundDescendantAfterLeaderExits`'s descendant to cover the `cleanupReapedProcessGroup` SIGKILL escalation, then re-run the reviewer's narrow mutation to confirm it now fails; (3) exercise the three tests on a CI box under heavier load than this host to re-measure the 3s slack between `probeLeaderHoldSeconds` and the runner's own deadlines
+**Follow-ups created:** None (5 findings report only)
+
+*Reviewed by review-work action*
