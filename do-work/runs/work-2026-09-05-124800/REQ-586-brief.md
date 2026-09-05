@@ -1,3 +1,77 @@
+# Builder brief — REQ-586
+
+## Where you work
+
+- **Your worktree (cd here first):** `/Users/t2/Desktop/e1-experimental-repos/skill-do-work2/.git/work-run-20260905-1248/worktree-agent-REQ-586-top-bar-one-line`
+- **Your branch (already checked out there):** `worktree-agent-REQ-586-top-bar-one-line`
+- **Route:** A
+- **Base commit:** 59f169d0 (main; contains REQ-585's merge c08ac2b4, the Activity view's single-scroll change)
+
+You are the builder. The orchestrator runs in the main checkout at `/Users/t2/Desktop/e1-experimental-repos/skill-do-work2` and is the only writer of `do-work/`. Commit your work on your own branch in your own worktree and hand back a manifest; the orchestrator merges.
+
+## Never touch
+
+- Anything under `do-work/` — with exactly one exception, the hand-back file named below, which you write by its absolute main-tree path and never stage or commit.
+- `CHANGELOG.md`, `skills/do-work/CHANGELOG.md`, `VERSION`, `skills/do-work/VERSION`, `skills/do-work-board/tools/queue-kanban/VERSION` — release paths owned by finalization.
+- Any file outside the write set declared in the REQ below. If you need one, stop and report it to the orchestrator in the hand-back instead of writing it, unless the REQ's own requirements already demand that file class (then flag the contradiction and proceed).
+- Do not run `bash _dev/tests/maintainer-verify.sh` (the repository gate). The orchestrator owns it and concurrent runs corrupt each other's timing budgets. Run only the focused tests named below.
+- Do not build or serve the board on port 8090: a live board owned by the user is running there. Use another port if you serve one at all.
+
+## Rules to load and follow (read these first, from your worktree)
+
+- `/Users/t2/Desktop/e1-experimental-repos/skill-do-work2/skills/do-work/crew-members/general.md`
+- `/Users/t2/Desktop/e1-experimental-repos/skill-do-work2/skills/do-work/crew-members/coding-guardrails.md`
+- `/Users/t2/Desktop/e1-experimental-repos/skill-do-work2/skills/do-work/crew-members/shared-principles.md`
+- `/Users/t2/Desktop/e1-experimental-repos/skill-do-work2/skills/do-work/crew-members/communication-style.md`
+- `/Users/t2/Desktop/e1-experimental-repos/skill-do-work2/skills/do-work/crew-members/frontend.md`
+- `/Users/t2/Desktop/e1-experimental-repos/skill-do-work2/skills/do-work/crew-members/testing.md` (the REQ is `tdd: true`)
+
+Also read every path in the REQ's `prime_files` (`_dev/primes/prime-kanban-board.md`), the shipped prime it points at (`skills/do-work-board/tools/queue-kanban/prime-do-kanban.md`), and the `lessons-<name>.md` satellite beside each whose Read-first or Traps entries your change touches. The REQ's `## Required Lessons — Dropped for Budget` names both satellites as over budget; that is a record, not a prohibition — read the parts that touch the web assets and the Node behaviour lane.
+
+## What to build
+
+Three changes, all in the REQ below (read its Detailed Requirements and the Addendum):
+
+1. **One-line identity** in `web/template.html` lines 16–19: the wordmark, project and time on a single `nowrap` line, `do-work/ queue · skill-do-work2 · 12:17 UTC`, with the full "Generated 2026-09-05 12:17 UTC · 37s ago" text in a `title` tooltip on that line. Keep `id="board-project"` and `id="board-generated"`: `web/board.js` line 60 reads `board-generated` and the serve-mode refresh writes into it. Check what it writes before deciding which element carries the visible short time and which carries the full text.
+2. **Touched-in chips move into the Activity view.** Delete `#activity-window-group` from the top bar and render the same four buttons (same `data-activity-window` values, `aria-pressed`, `setActiveButton` call in `board-activity.js`) beside the Activity summary line, so the line reads "236 transitions across 49 REQs in the last [6h] [24h] [48h] [7d]". `board-controls.js` line 46 (`document.getElementById("activity-window-group").hidden = viewState.view !== "activity"`) becomes unnecessary once the group lives inside `#view-activity`; delete it.
+   Two existing readers constrain the markup: `javascript_behavior_c_test.go` line 2466 reads `#activity-summary`'s `textContent` as the sentence, and REQ-585's `activity_scroll_browser_probe_test.go` measures where `#activity-summary`'s text starts (40 px below the board's top edge). So keep `#activity-summary` as the sentence-only element and put the chips in a sibling inside one row container (a `<p>` cannot hold the pill `div`); if the 40 px top padding REQ-585 put on `.activity-summary` moves to that row container, the probe's measurement must still come out at 40 px. Run that probe.
+3. **View button order** in `web/template.html` lines 71–88: Board, Activity, Calendar, Timeline, Durations, Testing. The order is declared only there; `board-controls.js` reads the buttons from the DOM.
+
+REQ-585's Activity block in `web/board.css` (the `:has()` padding rule and the 40 px summary padding) is the base you build on; extend it, do not undo it.
+
+## P-A-U phasing (mandatory, reported in the hand-back)
+
+The REQ file is the orchestrator's, so report your P-A-U record under a `## P-A-U` heading in the hand-back instead of ticking boxes in the REQ:
+- **[PLAN]** — brief technical approach, written before code.
+- **[APPLY]** — code exactly as planned, strictly inside the declared write set.
+- **[UNIFY]** — run `git diff --stat`, run the native linters (`gofmt -l .`, `go vet ./...` for Go changes), verify no debug artifacts (`console.log`, `debugger`, stray `TODO`) in added lines, and list each file you checked and what you checked.
+
+## Focused tests
+
+Every test-file invocation must finish in under 30 seconds. From the repo root of your worktree:
+- Node lane (the RED/GREEN lane): `QUEUE_KANBAN_JAVASCRIPT_PROBES=on QUEUE_KANBAN_STRICT_JAVASCRIPT_BEHAVIOR=1 bash _dev/tests/run-go-tests-with-budget.sh skills/do-work-board/tools/queue-kanban -run '^TestJavaScriptBehavior' ./...`
+- Go: `bash _dev/tests/run-go-tests-with-budget.sh skills/do-work-board/tools/queue-kanban ./...`
+- REQ-585's browser probe, which your markup change must keep green: `QUEUE_KANBAN_BROWSER_PROBES=on QUEUE_KANBAN_BROWSER="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" go test ./... -run '^TestBrowserBehaviorActivityViewHasOneScrollSurface$' -count=1` inside `skills/do-work-board/tools/queue-kanban`.
+
+`tdd: true`. The `## Red-Green Proof` in the REQ is the captured RED/GREEN pair: write the Node-lane test first (the 24h chip is a descendant of `#view-activity`, not of `.board-topbar`; clicking 48h updates the summary text and `aria-pressed`; the button order in the view pill), observe it fail, then make it pass. The one-line identity is a layout fact the Node lane cannot see: verify it in a real engine (extend the browser probe or measure it by hand) and record the numbers.
+
+## Hand-back (write this file, then stop)
+
+Write **`/Users/t2/Desktop/e1-experimental-repos/skill-do-work2/do-work/runs/work-2026-09-05-124800/REQ-586-handback.md`** using that absolute path — it is the one main-tree path you may write, and you must never stage or commit it.
+
+It must contain, each under its own `##` heading:
+- `## Branch` — the branch name and the head commit you left on it.
+- `## File manifest` — every source file created/modified/deleted with the verb, plus tests touched.
+- `## P-A-U` — the three phases above.
+- `## Test evidence` — every command you ran, its exit status, the RED observation (test name + failure) and the GREEN observation, and the identity-line measurement.
+- `## Lesson evidence` — each lesson satellite or family you read, and any listed path that was missing.
+- `## Decisions` — significant choices as `D-NN` starting at **D-01**, each with reasoning. Mark a reversible low-reach choice DECIDE & STATE; mark an irreversible, taste-dependent or contestable one ESCALATE and add `Value:` and `Risk:` lines.
+- `## Discovered Tasks` — out-of-scope findings. Do not fix them inline.
+- `## Integration seams` — any exact line that belongs in a file outside your write set, with where it goes. The orchestrator applies it.
+
+---
+
+# The request
 ---
 id: REQ-586
 title: 'Keep the board top bar to one line: single-line identity and Touched-in chips inside the Activity view'
@@ -26,7 +100,6 @@ estimate:
   calculated_at: 2026-09-05T13:24:56Z
   basis:
     - trivial short-circuit
-dispatch_at: 2026-09-05T13:26:18Z
 claimed_at: 2026-09-05T13:24:34Z
 ---
 
