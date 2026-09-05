@@ -1,7 +1,7 @@
 ---
 id: REQ-588
 title: 'Addendum: make each verify-finding row read as one warning line, not a paragraph'
-status: pending-answers
+status: pending
 created_at: 2026-09-05T14:45:41Z
 user_request: UR-124
 addendum_to: REQ-579
@@ -18,6 +18,7 @@ write_set:
   - skills/do-work-board/tools/queue-kanban/javascript_behavior_c_test.go
   - skills/do-work-board/tools/queue-kanban/verify.go
   - skills/do-work-board/tools/queue-kanban/verify_test.go
+status_changed_at: 2026-09-05T17:00:29Z
 ---
 
 # Addendum: Make Each Verify-Finding Row Read as One Warning Line, Not a Paragraph
@@ -50,7 +51,7 @@ The user's words: "verify findings styling is broken". The strip exists to be sc
 
 ## Open Questions
 
-- [ ] Which row layout from the mock-up report should ship?
+- [x] Which row layout from the mock-up report should ship? → M1, remedy on its own line under the detail, chip and text on a two-column grid, subject headings kept. Picked from the mock-up report ai-reports/2026-09-05_1445_REQ-588-verify-findings-row-mockups/ over M2 (subject as a row-label column) and M3 (remedy behind a toggle); both stay out of scope.
   Recommended: M1 (remedy on its own line under the detail, chip and text on a two-column grid) — the smallest change that fixes all three defects, and it keeps REQ-579's subject heading and row order untouched.
   Also: M2 (subject as a row label in a leading column, chips aligned in one column, remedy under the detail) — the most scannable, costs a small renderer change; M3 (one-line rows, remedy revealed by a per-row toggle) — the smallest strip, costs a click to read what to do.
 
@@ -70,3 +71,11 @@ The user's words: "verify findings styling is broken". The strip exists to be sc
 - `_dev/primes/lessons-kanban-board.md` (4959 tokens, `slugged: partial`): matches on "Changing queue-kanban views". Over the budget on its own.
 
 *Source: "verify findings styling is broken, which req should fix it?" / "capture it and fix it" / "also it's make do-work ai-report with mock-ups so I have options to choose from"*
+
+
+## Answer Notes
+
+- 2026-09-05 - [ ] Which row layout from the mock-up report should ship?: M1, remedy on its own line under the detail, chip and text on a two-column grid, subject headings kept. Picked from the mock-up report ai-reports/2026-09-05_1445_REQ-588-verify-findings-row-mockups/ over M2 (subject as a row-label column) and M3 (remedy behind a toggle); both stay out of scope.
+> ```
+> M1 remedy under detail (Recommended)
+> ```
