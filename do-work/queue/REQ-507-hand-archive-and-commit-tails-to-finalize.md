@@ -1,7 +1,7 @@
 ---
 id: REQ-507
 title: '[impact-rule-change] Hand the archive and commit tails to finalize'
-status: claimed
+status: pending
 status_changed_at: 2026-09-04T20:57:34Z
 priority: now
 created_at: 2026-09-02T14:37:54Z
@@ -10,7 +10,7 @@ domain: general
 prime_files: [_dev/primes/prime-action-files.md, _dev/primes/prime-shell-commands.md]
 tdd: true
 suggested_spec:
-depends_on: [REQ-506]
+depends_on: [REQ-506, REQ-584]
 batch: orchestrator-simplification
 maintenance: true
 impact: impact-rule-change
@@ -34,7 +34,9 @@ estimate:
     - dependency depth 3
     - cross-route regression gates
     - full-suite verification
-claimed_at: 2026-09-05T09:47:07Z
+gate_deferred: 'true'
+deferred_implementation_base: 8e3dbf01e0660424965d79acb2e386b6604e4780
+deferred_implementation_merge: ad8bceb7aa0d0c63c230048b6a1f2dae1ef7ccb9
 ---
 
 # Hand the Archive and Commit Tails to finalize
@@ -200,3 +202,14 @@ Execution revision: `ad8bceb7aa0d0c63c230048b6a1f2dae1ef7ccb9`
 - staged-skills: exit 1, 29s — `bash _dev/tests/maintainer-verify.sh --heavy-lane staged-skills`
 - updater: exit 0, 56s — `bash _dev/tests/maintainer-verify.sh --heavy-lane updater`
 - installer: exit 0, 38s — `bash _dev/tests/maintainer-verify.sh --heavy-lane installer`
+
+## Repository Gate Deferral
+
+- **Gate command (argv JSON):** ["bash","_dev/tests/maintainer-verify.sh"]
+- **Direct exit status:** 1
+- **Diagnostic fingerprint:** shellcheck:sc2148:do-work-runs-req-572-probe:missing-shebang
+- **Repair dependency:** REQ-584
+- **Diagnostic evidence:** "ShellCheck error SC2148 in do-work/runs/work-2026-09-04-232225/REQ-572-probe.sh line 1: Tips depend on target shell and yours is unknown. Add a shebang or a 'shell' directive."
+- **Diagnostic evidence:** "Both direct canonical gate runs at 12d264c2 (detached worktree, clean tree) exited 1 on this one lint finding before any Go test ran. The probe file was committed by another session in 7ba3148a as REQ-572 run evidence and is outside REQ-507's implementation range 8e3dbf01..ad8bceb7, which touches no do-work/runs path."
+- **Implementation base:** 8e3dbf01e0660424965d79acb2e386b6604e4780
+- **Implementation merge:** ad8bceb7aa0d0c63c230048b6a1f2dae1ef7ccb9
