@@ -10,8 +10,9 @@ import (
 //
 // Everything here is derived from tickets the board has already parsed — no new
 // frontmatter field, no second walk of the archive. A REQ contributes one sample
-// when it reached terminal success and BOTH its claim and completion stamps
-// parse.
+// when it reached terminal success, its completion stamp parses, and it carries
+// at least one parseable origin-eligible lifecycle stamp to open the span
+// (measureImplementationSpan below).
 //
 // The wall span is recorded raw and signed. A negative span is data, not an
 // error to swallow: it is the reversed-stamp anomaly class the board learned to
@@ -55,7 +56,7 @@ type DurationSample struct {
 	Route          string    // normalized route ("A"/"B"/"C"), "" when the REQ predates routing
 	CompletionTime time.Time // the parsed completed_at instant
 	DayKey         string    // "2006-01-02" UTC bucket, shared with the calendar view
-	WallMinutes    float64   // completed_at − claimed_at, raw and signed
+	WallMinutes    float64   // completed_at − earliest origin-eligible lifecycle stamp, raw and signed
 
 	// Why the read-time rule excluded this sample from the day medians:
 	// "paused" (over the ceiling), "reversed" (negative), or "" when it counts.
@@ -131,19 +132,68 @@ func buildDurationAggregate(tickets []*RequestTicket) DurationAggregate {
 	return aggregate
 }
 
-// ImplementationSpan is one REQ's measured claim-to-completion span with the
-// read-time rule's verdict already applied. It is the single place that span and
-// that verdict are decided: the Durations view's samples and the Recently-Done
-// card's duration reading are both readers of it, so the ceiling above keeps
-// exactly one definition and a card can never disagree with the chart.
+// ImplementationSpan is one REQ's measured earliest-stamp-to-completion span
+// with the read-time rule's verdict already applied. It is the single place that
+// span and that verdict are decided: the Durations view's samples and the
+// Recently-Done card's duration reading are both readers of it, so the ceiling
+// above keeps exactly one definition and a card can never disagree with the
+// chart.
 //
 // StampsParsed false is a real state, not a span of zero — a zero would print as
 // instant work on the card instead of as unmeasured.
 type ImplementationSpan struct {
 	StampsParsed      bool
 	CompletionInstant time.Time // parsed completed_at, in UTC
-	WallMinutes       float64   // completed_at − claimed_at, raw and signed
+	WallMinutes       float64   // completed_at − earliest origin-eligible lifecycle stamp, raw and signed
 	ExclusionReason   string    // "paused" (over the ceiling), "reversed" (negative), "" when it reads plainly
+}
+
+// implementationSpanOriginExcludedFields names the lifecycle stamps that may NOT
+// open an implementation span, and says why each one is out. Everything else
+// model.go declares is origin-eligible, so a work-pipeline stamp added to the
+// schema reaches this reader from that one edit — the exclusion is the list, not
+// the inventory of eligible fields.
+//
+// The roles the exclusions cover are the ones model.go's RequestTicket already
+// documents: capture, the two ends, and the stamps that are not work-pipeline
+// milestones at all. Those last three can each be written while a REQ is still
+// waiting to be claimed, so admitting them would charge queue wait to the work —
+// the same reason created_at is out.
+var implementationSpanOriginExcludedFields = map[string]string{
+	"created_at":         "capture — queue wait is not implementation time",
+	"completed_at":       "the span's end, never its origin",
+	"release_at":         "an end: it records shipping, which happens after completion",
+	"status_changed_at":  "queue-side state flip, written on holds and resets before any claim",
+	"blocked_at":         "the blocked flip, which a REQ can take while still pending",
+	"testing_updated_at": "the testing track, orthogonal to the work pipeline",
+}
+
+// earliestImplementationOrigin returns the earliest parseable instant among the
+// ticket's origin-eligible lifecycle stamps, and false when it carries none.
+//
+// The candidates come from model.go's lifecycleTimestampFields — the one
+// enumeration of what REQ frontmatter can carry — filtered by role through
+// implementationSpanOriginExcludedFields above, so no second field list exists
+// here to drift from the schema. An unparseable stamp is skipped rather than
+// fatal: bookkeeping damage in one field must not erase the span the other
+// fields can still state.
+func earliestImplementationOrigin(ticket *RequestTicket) (time.Time, bool) {
+	var earliestInstant time.Time
+	originFound := false
+	for _, lifecycleStamp := range lifecycleTimestampFields(ticket) {
+		if _, excluded := implementationSpanOriginExcludedFields[lifecycleStamp.FieldName]; excluded {
+			continue
+		}
+		instant, parsed := parseTimestamp(lifecycleStamp.RawValue)
+		if !parsed {
+			continue
+		}
+		if !originFound || instant.Before(earliestInstant) {
+			earliestInstant = instant
+			originFound = true
+		}
+	}
+	return earliestInstant, originFound
 }
 
 // measureImplementationSpan reads both instants off the ticket's FRONTMATTER and
@@ -153,17 +203,32 @@ type ImplementationSpan struct {
 // would make a card state a duration for exactly the REQs the Durations view
 // excludes. A REQ whose completion instant came from git therefore has no span.
 //
+// The span runs from the EARLIEST recorded lifecycle stamp to completion, not
+// from claimed_at. A claim stamp rewritten after the work happened would
+// otherwise erase every phase that preceded it: REQ-505 carried planning_at at
+// 16:49 against a 23:00 claim and a 23:01 completion, and the card read 1m 23s
+// for six hours of recorded work. Where claimed_at IS the earliest stamp — every
+// REQ whose bookkeeping ran in order — the reading is unchanged.
+//
+// This is NOT the interval the timeline's work bar draws. That bar splits a REQ
+// into created_at→claimed_at waiting and claimed_at→completed_at working, which
+// is a statement about the claim itself; this span is a statement about how long
+// the recorded work took, so a rewritten claim moves one and not the other.
+//
+// A REQ carrying no origin-eligible stamp has no span at all (StampsParsed
+// false) rather than a span of zero — a zero would print as instant work.
+//
 // The caller decides WHICH tickets to ask about — this says nothing about status.
 func measureImplementationSpan(ticket *RequestTicket) ImplementationSpan {
 	if ticket == nil {
 		return ImplementationSpan{}
 	}
-	claimedInstant, claimedParsed := parseTimestamp(ticket.ClaimedAt)
+	originInstant, originFound := earliestImplementationOrigin(ticket)
 	completedInstant, completedParsed := parseTimestamp(ticket.CompletedAt)
-	if !claimedParsed || !completedParsed {
+	if !originFound || !completedParsed {
 		return ImplementationSpan{}
 	}
-	wallSpan := completedInstant.Sub(claimedInstant)
+	wallSpan := completedInstant.Sub(originInstant)
 	return ImplementationSpan{
 		StampsParsed:      true,
 		CompletionInstant: completedInstant.UTC(),
