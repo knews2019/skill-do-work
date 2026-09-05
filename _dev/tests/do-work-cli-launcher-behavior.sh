@@ -53,9 +53,7 @@ fi
 exit 72
 FAKE_GO
 chmod +x "$fixture_root/fake-bin/go"
-for command_name in bash; do
-  ln -s "$(command -v "$command_name")" "$fixture_root/no-go-bin/$command_name"
-done
+ln -s "$(command -v bash)" "$fixture_root/no-go-bin/bash"
 
 fake_log="$fixture_root/go.log"
 : > "$fake_log"
