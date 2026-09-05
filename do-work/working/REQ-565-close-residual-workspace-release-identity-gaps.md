@@ -1,7 +1,7 @@
 ---
 id: REQ-565
 title: '[impact-critical] Review fix: Close residual workspace release identity gaps'
-status: pending
+status: claimed
 created_at: 2026-09-03T23:26:06Z
 user_request: UR-110
 domain: backend
@@ -16,6 +16,7 @@ review_generated: true
 addendum_to: REQ-512
 sweep: true
 sweep_key: legacy-finalization-workspace-identity-residual
+claimed_at: 2026-09-05T00:41:15Z
 ---
 
 # Close Residual Workspace Release Identity Gaps

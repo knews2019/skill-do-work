@@ -39,3 +39,5 @@ session_depth: light
 - REQ-580: Stop probing committed queue state for a worktree whose merge state is already undetermined — claimed 2026-09-05T00:38:08Z — writer: vm:/home/user/skill-do-work
 
 - REQ-576: Start the board card wall time at the earliest lifecycle stamp, not only claimed_at — claimed 2026-09-05T00:38:08Z — writer: vm:/home/user/skill-do-work
+
+- REQ-565: [impact-critical] Review fix: Close residual workspace release identity gaps — claimed 2026-09-05T00:41:15Z — writer: vm:/home/user/skill-do-work
