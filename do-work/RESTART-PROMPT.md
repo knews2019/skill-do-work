@@ -1,118 +1,135 @@
 ```
-do-work run --fan-out 2
+do-work run
 
 This command is sufficient; everything below it is context.
 
-You are picking up a do-work queue in the skill-do-work2 checkout. Nine requests
-are pending, six of them ready now. Nothing is claimed, nothing is half-merged,
-`do-work/working/` holds no request, and the canonical gate is green.
+Three requests are claimed in do-work/working/ and all three are merged, verified green and
+reviewed. They are held for the heavy-lane drain and nothing about them needs rebuilding. Seven
+more sit pending in do-work/queue/. Run the loop; it will drain the held three at queue
+exhaustion and finalize each one.
 
-Three things to know while you build, none of which change the command above:
+Four things to know before you start, because each will otherwise cost you time:
 
-1. Other sessions write to this same checkout. Before every merge, re-read the
-   tip; never revert, stash or commit another session's bytes. Run the canonical
-   gate and the heavy lanes from a detached worktree whenever the shared tree is
-   dirty, and seed `do-work/test-durations.tsv` with its header line there or
-   the staged-skills lane fails instantly with an invalid-header error.
+1. The fast gate now caches. `bash _dev/tests/maintainer-verify.sh` prints one line per Go test
+   stage saying EXECUTING or REUSED with a reason, and a gate wall line. On a matching tree it
+   takes about 21 seconds instead of about 96. That reuse is NOT yet trustworthy for changes under
+   do-work/: REQ-592 in the queue is the impact-critical fix, and until it lands you can disable
+   reuse entirely for any run with DO_WORK_FAST_STAGE_REUSE=off, which is verified to work and
+   needs no code change. Prefer that for any gate run whose verdict you are going to rely on.
 
-2. The browser heavy lane reports SKIPPED, not failed, when it finds no browser,
-   and a skipped lane is not a pass. Export
-   QUEUE_KANBAN_BROWSER="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
-   before running heavy lanes, then check each lane's wall_seconds — a lane that
-   took 0s did not run. Never pipe the heavy runner through `tail`; the per-lane
-   JSON is the only record of what actually executed.
+2. Canonical recover currently REFUSES with FINALIZATION-DISCOVERY-AMBIGUOUS. Its blocked_paths are
+   three untracked hand-back files under do-work/runs/ that belong to OTHER live sessions in this
+   same checkout (REQ-588, REQ-589, REQ-590). They are not finalization tails and they are not
+   yours. Judge it and continue, exactly as the previous session did — do not delete them, do not
+   commit them, and do not let the refusal park the queue. If they are still there and still
+   foreign when you finish, say so in your own hand-off.
 
-3. Closing a user request moves its members into `do-work/archive/UR-NNN/`, which
-   silently breaks any shipped file linking one of those records by its old flat
-   path, and the canonical gate then goes red on a request that has nothing to do
-   with it. That fired twice on 2026-09-05. Before each release, run:
+3. Never run the canonical gate while another gate process is running on this machine. Check with
+   `ps -Ao args= | grep -c '[m]aintainer-verify'` and with `uptime` first. Five gate runs in the
+   previous session failed on per-test-file wall-clock budgets, on four different files, none of
+   them touched by any request in the run — purely from sibling sessions' load. The same files
+   pass in a quiet window. A load average above about 10 predicts a budget failure.
 
-   for f in $(grep -rl 'blob/main/do-work/archive/' skills/); do grep -o 'blob/main/do-work/archive/[^)#]*' "$f" | sed 's#blob/main/##' | sort -u | while read p; do [ -e "$p" ] || echo "MISSING in $f: $p"; done; done
+4. Capture the gate's own exit status directly. Never pipe it to tail: the shell reports the
+   pipe's status, and a red gate reads as green. That mistake cost the previous session a wasted
+   cycle.
 
-Leave the worktree `worktree-agent-REQ-573-activity-drawer` alone. It is an
-abandoned remediation, deliberately unmerged, and must not be force-deleted.
+The browser heavy lane needs QUEUE_KANBAN_BROWSER="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
+at drain time. Without it the lane reports skipped, and a skip is not a pass.
 ```
 
 ---
 
-# Reference
+## Reference
 
-Written 2026-09-05 at the close of run `work-2026-09-05-120117`. This section is for humans and debugging; the paste block above stands alone.
+### What is done, and what remains
 
-## State at handoff
+Three requests are claimed, merged, verified green, independently reviewed, and held at Step 7.7
+for the heavy-lane drain. None needs rebuilding. Each has its full pipeline record in its own file
+in `do-work/working/`, and every explorer, planner, builder and reviewer report for the run is
+committed under `do-work/runs/work-2026-09-05-170806/`.
 
-- **Integration branch:** `main`, tip `64b78ea8`.
-- **Version:** 0.303.1. Canonical gate `bash _dev/tests/maintainer-verify.sh` green at `87097144`, recorded as a reusable green-gate record.
-- **`do-work/working/`:** empty of requests. `do-work-cli recover` returns `finalization_passed: true`, no claims, findings `FINALIZATION-NONE` / `RECOVERY-NONE`.
-- **Queue:** 9 pending, 6 ready. No request is `pending-answers` or `blocked`, so `do-work clarify` has nothing to do.
+| REQ | What it delivered | Merge range | `commit:` | Review |
+|---|---|---|---|---|
+| REQ-583 | Tests that pin three evidence-gate behaviours which could previously be deleted with the package staying green | `a22ddfcf..722f5ada` | `722f5ada` | 96%, Pass, 6 findings all report-only |
+| REQ-587 | The Timeline view scrolls once, with the date axis pinned, like the Activity view | `93ec7792..8fad73b2` | `8fad73b2` | 92%, Pass, 6 findings all report-only |
+| REQ-591 | The fast gate skips a stage whose inputs have not moved; the SessionStart probe stopped relinking a byte-identical binary nine times | `c2a74d2f..fcf07ea4` (cumulative, one remediation) | `fcf07ea4` | 60%, **Partial**, Risk **Critical**, one impact-critical finding now queued as REQ-592 |
 
-## What this run finished
+Remaining, all `pending`: REQ-592 (the critical fix above), REQ-486, REQ-552, REQ-554, REQ-555,
+REQ-556, REQ-557, REQ-558.
 
-Seven requests, each merged, qualified, independently reviewed, heavy-lane verified, archived and released:
+### The one thing that is actually wrong right now
 
-| Request | Release | Merge range |
-|---|---|---|
-| REQ-572 — every lifecycle transition as its own Activity row | 0.296.0 | `7ad53bff..fbdcd35e` |
-| REQ-573 — click an Activity row to open the drawer | 0.300.0 | `45a9010d..2d3981f4` |
-| REQ-575 — timestamps are append-only across transitions | 0.295.0 | `cd686ed7..a2c6f4cf` |
-| REQ-578 — the Verify Findings strip steps aside on Activity | 0.297.0 | `7dbb2756..09aaa9a4` |
-| REQ-579 — verify findings as compact rows | 0.301.0 | `4362ac0d..b169396e` |
-| REQ-581 — a cleanup test that can actually fail | 0.302.0 | `1a06c3bc..92339213` |
-| REQ-582 — a citation's section name has to resolve | 0.303.0 | `43be2af6..7b2673b6` |
+REQ-591 shipped a real false green and it is live in this repository's gate. `_dev/tests/fast-stages.json`
+declares `do-work/` as a tree no fast stage reads. Both stages read it. The reviewer reproduced it
+end to end: warm evidence store, one newline appended to `do-work/archive/UR-003/input.md`, the
+do-work-cli stage reports `REUSED`, the gate prints `Maintainer verification passed.` and exits 0 —
+while `TestDiscoverRepositoryAcceptsProductionLegacyArchiveInputClass` fails on that same tree.
 
-Two standalone maintainer commits outside the pipeline, both unblocking a red gate caused by stale archive links: `09a13839` (0.294.1) and `87097144` (0.303.1). The second was caused by this run's own UR-115 closure.
+REQ-592 carries the fix and the RED/GREEN case. Note that two existing assertions currently pin the
+wrong behaviour and must move with it: `fast_stage_evidence_test.go`'s `queue state changed` case
+and `_dev/tests/fast-stage-reuse-behavior.sh`'s `queue state alone still reuses` case.
 
-Run artifacts: `do-work/runs/work-2026-09-05-120117/` — manifest, seven briefs, seven hand-backs, all committed.
+Mitigation until then, verified working: `DO_WORK_FAST_STAGE_REUSE=off`.
 
-## Worktree verdicts
+### Parallelism
 
-The survey found two worktrees.
+The paste block says `do-work run` with no `--fan-out`, deliberately. Six of the seven pending
+requests — REQ-552, REQ-554, REQ-555, REQ-556, REQ-557, REQ-558 — each append one assertion to the
+same file, `_dev/tests/audit-lockins.sh`. Their `write_set` fields overlap on it, so any two of them
+running concurrently produce a merge conflict on every hand-back. That constraint is not encoded as
+dependency gates because it is a merge-collision constraint rather than a real dependency, and
+inventing `depends_on` edges to express it would corrupt the dependency graph's meaning. Serial is
+the honest encoding, and the gate is now fast enough that serial costs little.
 
-- `/Users/t2/Desktop/e1-experimental-repos/skill-do-work2` — the main checkout, branch `main`. Clean.
-- `.git/work-run-20260905-1201/worktree-agent-REQ-573-activity-drawer`, head `9de57c92`, **clean, branch unmerged**. This is mine and it is **deliberately abandoned**, not removable. It fails the first REMOVABLE condition: the branch is not in the survey's merged list. It holds a remediation for REQ-573's F1 finding that was superseded mid-flight when another session fixed the same defect on main at `7443fe11` by a better route (the drawer's own setter became the single writer and both document click listeners were deleted). The maintainer chose main's fix. `git branch -d` will refuse, and forcing it would destroy the only evidence that the integration did not happen. If you want it gone, that is a maintainer decision to make explicitly:
+The dependency gates that ARE real are already in the queue and need nothing from you: REQ-555
+depends on REQ-554, REQ-557 depends on REQ-550 and REQ-552, REQ-558 depends on REQ-557.
 
-  ```
-  git worktree remove .git/work-run-20260905-1201/worktree-agent-REQ-573-activity-drawer
-  git branch -D worktree-agent-REQ-573-activity-drawer   # -D only, because it is unmerged on purpose
-  ```
+Critical path: REQ-592 first — it fixes the gate you are about to rely on. Then the audit batch in
+dependency order. REQ-486 (collapsible UR groups with progress summaries) is the only board-side
+request and the only one that could safely run beside an audit request, but it is also the largest
+single piece of work left and is `priority: later`.
 
-No foreign worktree was touched and none was removed.
+### Pre-exploration already done for four pending requests
 
-## Uncommitted files at handoff
+Read these before triaging; they were produced this run and each re-verified its request's claims
+against HEAD rather than against the audited commit:
 
-None. Two files were untracked when the survey ran and are now committed:
+- `do-work/runs/work-2026-09-05-170806/REQ-556-exploration.md` — **the request's baseline is stale.**
+  It claims 9 prose sites; there are 7 at HEAD. Two were already removed by the REQ-504→REQ-506
+  chain. It also establishes that "keep one sentence naming the three finding codes" is an
+  *addition*, not a retention: those codes appear in no shipped prose today.
+- `do-work/runs/work-2026-09-05-170806/REQ-552-exploration.md` — both exec sites still present at
+  HEAD, the claim holds; includes the exact replacement primitives and a paste-ready lock-in
+  assertion. The lock-in must keep `--glob '!*_test.go'` or it is red on day one.
+- `do-work/runs/work-2026-09-05-170806/REQ-554-exploration.md` — the shared-line count, the
+  destination guide's structure, and the ratchet constants that need re-baselining.
+- `do-work/runs/work-2026-09-05-170806/REQ-486-exploration.md` — the prior UR-lens implementation,
+  where a shared summary function belongs, and whether the board can already read the nested P50.
 
-- `do-work/runs/work-2026-09-05-124800/REQ-585-handback.md`
-- `do-work/runs/work-2026-09-05-124800/REQ-586-handback.md`
+### Worktree verdicts
 
-They belonged to another session's run, which had already finished — both records archived under UR-120 and UR-121, both released as 0.298.0 and 0.299.0, that run's manifest closed at `d460759f`, and the rest of its run directory already tracked. The session that owned them had ended. While they sat untracked, `do-work-cli recover` refused with a typed `FINALIZATION-DISCOVERY-AMBIGUOUS` naming exactly those two paths, and because `do-work run` runs `recover` first and treats a typed refusal as a whole-run stop, **every session in this checkout was blocked behind two orphaned files.** Committed unmodified on their own as `64b78ea8`, which is the least destructive clearing action `actions/work.md` prescribes for unrelated work with no live owner.
+| Path | Verdict |
+|---|---|
+| `../skill-do-work2-worktrees/worktree-agent-REQ-583-…` | **ACTIVE** — merged and clean, but its claim is still in `do-work/working/`. Remove only after finalization: `git worktree remove ../skill-do-work2-worktrees/worktree-agent-REQ-583-pin-the-evidence-gate-remedy-redirection-guard-and-interrupted-path` then `git branch -d worktree-agent-REQ-583-pin-the-evidence-gate-remedy-redirection-guard-and-interrupted-path` |
+| `../skill-do-work2-worktrees/worktree-agent-REQ-587-…` | **ACTIVE** — same; remove after finalization |
+| `../skill-do-work2-worktrees/worktree-agent-REQ-591-…` | **ACTIVE** — same; remove after finalization |
+| `.git/work-run-20260905-1201/worktree-agent-REQ-573-activity-drawer` | **FOREIGN** — unmerged, clean, from an earlier run that is not this session's. Leave it. `actions/cleanup.md` Pass 5 owns it. |
+| the previous session's scratchpad measurement worktrees | **already removed** — two detached, branchless worktrees under the session scratchpad, taken out with `git worktree remove` plus `git worktree prune` before this handoff was finished. `git worktree list` should show only the four in the rows above plus the main checkout. |
 
-## Parallelism analysis
+All three builder branches are in `git branch --merged main`. Do not `-D` any of them; `-d`'s
+refusal is the only assertion that the integration actually happened.
 
-`--fan-out 2`, and start with the two `priority: next` requests.
+### Heads-up list — what bites in the first ten minutes
 
-**Safe to run concurrently.** REQ-583 (pinning the evidence-gate remedy redirection) declares exactly one file, `internal/lifecycleadvance/evidence_gates_test.go`, which nothing else in the queue names. It is disjoint from every other pending request and pairs safely with anything.
-
-**Expect a conflict, but do not gate on it.** Six requests — REQ-552, REQ-554, REQ-555, REQ-556, REQ-557, REQ-558 — every one of them declares `_dev/tests/audit-lockins.sh`. That file takes an appended lock-in per request, so two builders touching it produce an ordinary append/append conflict at integration, cheap to resolve by keeping both. This is a "you will merge by hand", not a "these must never run together", so it is deliberately **not** encoded as a dependency gate: inventing gates the maintainer did not write would distort the queue's real shape to describe a two-line merge. The merge is the non-interference proof, which is the design.
-
-**Undeclared write sets — treat as unknown, not safe.** REQ-486 (collapsible UR groups with progress summaries) and REQ-587 (giving the Timeline view one scroll surface) declare no `write_set`. Both are queue-kanban board client work and will land in some overlap of `web/template.html`, `web/board.css` and the `web/board-*.js` fragments. Three separate sessions collided in exactly those files on 2026-09-05. An absent declaration reads as *unknown*, never as safe, so do not run these two as a pair; put one of them beside REQ-583 instead.
-
-**Already serialised by dependency gates, no action needed:** REQ-552 → REQ-557 → REQ-558, and REQ-554 → REQ-555. Those chains are the queue's critical path for the audit batch; the selector already honours them.
-
-**Critical path.** REQ-552 → REQ-557 → REQ-558 is three deep and REQ-557 alone declares nine Go files, so start that chain early rather than leaving it for last. REQ-583 and one board request fill the other builder while it runs.
-
-## Findings left open, and what it would take to promote them
-
-Both are recorded in their archived requests' `## Review` sections. Neither auto-queued, because the rule reserves automatic follow-ups for `impact-critical` work, and this project's standing preference is to keep noncritical findings in the report rather than mint requests for them. Promote either with one `do-work capture-request:` if you want it built.
-
-- **Append-only timestamps kept three exceptions** (`do-work/archive/UR-116/REQ-575-*.md`). A verification stamp and a blocked stamp are withdrawn together with the state they describe, and one terminal stamp is re-written on the cancel path. The reviewer judged that faithful to the intent, and separately measured that **only the claim stamp is structurally write-once** — the other lifecycle stamps are written by prose in `actions/work.md` that carries no "only when absent" condition, so a recovered request that is re-planned still overwrites its planning stamp. That is the same evidence loss the request set out to stop.
-- **The citation checker's bold-label rule is wider than intended** (`do-work/archive/REQ-582-*.md`). Measured: one reference file declares 42 headings but yields 288 accepted names, 246 bold-only; renaming three real headings leaves the check green because each old name survives in bold prose. The reviewer verified a tighter rule — accept only a *paragraph-leading* bold run — which keeps all 74 live citations green and makes all three simulated renames report. Two further findings ride along: nothing pins the wiring between the check's two halves (mutating the driver call leaves the suite green, the same "control that cannot fail" class REQ-581 was raised for), and two live citations using the ASCII `->` arrow are invisible to the check entirely.
-
-## Heads-up list — what will bite in the first ten minutes
-
-- **The heavy browser lane skips silently.** It exits 0 with `wall_seconds: 0` and a `HEAVY-RUN-LANE-SKIPPED` finding when no browser is on PATH; Chrome is installed here but not under a name the probe looks for. Export `QUEUE_KANBAN_BROWSER` as the paste block shows. *Next session.*
-- **Never pipe the heavy runner through `tail`.** The per-lane JSON is the only record of which lanes ran; truncating it costs a full re-run. *Next session.*
-- **Detached-worktree lane runs need a seeded durations header.** `printf 'run_id\tfile\tseconds\tother_gate_processes\n' > do-work/test-durations.tsv` in the detached worktree, or `staged-skills` fails in 0s on an invalid header that looks like a real failure. *Next session.*
-- **Closing a user request breaks archive links in shipped files.** Run the sweep in the paste block before every release. Both occurrences and the rule are recorded in `_dev/primes/lessons-releases.md` under `[family: canonical-link-outlives-its-target]`. *Next session.*
-- **Other sessions are live in this checkout.** On 2026-09-05 three sessions wrote here at once; two independently fixed the same review finding twenty minutes apart, because a report-only finding is not a claim and nothing makes a second reader visible to the first. If you pick up a finding from a report, expect that someone else may already be on it. *Maintainer, if the intake brake is ever tuned.*
-- **The finalization manifest has no dry-run.** `advance --finalization-manifest` iterates on typed refusals; the release manifest must be wrapped as `{"operation":"release", "release":{...}}` with `maintainer_release: true`, and `commit_paths` must be a superset of everything the planner plans — closing a user request pulls in every sibling record and asset on both the archive and user-requests sides. Submit, read the refusal, add the named paths. *Next session.*
+- **The gate caches now and its reuse is wrong for `do-work/` changes.** You. See above.
+- **`recover` refuses on three foreign hand-backs.** You, by judging and continuing. Not a stop.
+- **Another session shares this checkout and commits every few minutes.** Expect `HEAD` to move
+  under you between a gate run and its green record; check `git diff --name-only <gate-rev> HEAD`
+  and re-run only if source moved. Expect uncommitted foreign edits in `skills/` — leave them, and
+  work in a worktree so they cannot reach your build.
+- **A pre-existing intermittent:** `TestLaneMutationCannotPublishOrReuseSuccess/commit=true` failed
+  once in four full-gate runs and passes 6/6 in isolation at both revisions. Independently judged
+  pre-existing by the reviewer, not caused by REQ-591. If you see it, it is known.
+- **REQ-556's own baseline is stale** (9 claimed, 7 actual). Re-verify before building, and expect
+  to record the new baseline in the lock-in rather than the request's number.
