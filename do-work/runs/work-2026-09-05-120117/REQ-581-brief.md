@@ -1,3 +1,68 @@
+# Builder brief — REQ-581
+
+## Where you work
+
+- **Your worktree (cd here first):** `/Users/t2/Desktop/e1-experimental-repos/skill-do-work2/.git/work-run-20260905-1201/worktree-agent-REQ-581-descendant-fixture`
+- **Your branch (already checked out there):** `worktree-agent-REQ-581-descendant-fixture`
+- **Route:** A
+- **Base commit:** 961697bb
+
+You are the builder. The orchestrator runs in the main checkout at `/Users/t2/Desktop/e1-experimental-repos/skill-do-work2` and is the only writer of `do-work/`. Commit your work on your own branch in your own worktree and hand back a manifest; the orchestrator merges.
+
+## Never touch
+
+- Anything under `do-work/` — with exactly one exception, the hand-back file named below, which you write by its absolute main-tree path and never stage or commit.
+- `CHANGELOG.md`, `skills/do-work/CHANGELOG.md`, `VERSION`, `skills/do-work/VERSION` — release paths owned by finalization.
+- Any file outside the write set declared in the REQ below. If you need one, stop and report it in the hand-back instead of writing it, unless the REQ's own requirements already demand that file class (then flag the contradiction and proceed).
+- Do not run `bash _dev/tests/maintainer-verify.sh` (the repository gate). The orchestrator owns it and concurrent runs corrupt each other's timing budgets. Run only the focused tests named below.
+
+## Rules to load and follow (read these first, from your worktree)
+
+- `/Users/t2/Desktop/e1-experimental-repos/skill-do-work2/skills/do-work/crew-members/general.md`
+- `/Users/t2/Desktop/e1-experimental-repos/skill-do-work2/skills/do-work/crew-members/coding-guardrails.md`
+- `/Users/t2/Desktop/e1-experimental-repos/skill-do-work2/skills/do-work/crew-members/shared-principles.md`
+- `/Users/t2/Desktop/e1-experimental-repos/skill-do-work2/skills/do-work/crew-members/communication-style.md`
+- `/Users/t2/Desktop/e1-experimental-repos/skill-do-work2/skills/do-work/crew-members/testing.md` (the REQ is `tdd: true`)
+
+Also read every path in the request's `prime_files`, and the `lessons-<name>.md` satellite beside each prime whose Read-first or Traps entries your change touches.
+
+## P-A-U phasing (mandatory, reported in the hand-back)
+
+The REQ file is the orchestrator's, so report your P-A-U record under a `## P-A-U` heading in the hand-back instead of ticking boxes in the REQ:
+- **[PLAN]** — brief technical approach, written before code.
+- **[APPLY]** — code exactly as planned, strictly inside the declared write set.
+- **[UNIFY]** — run `git diff --stat`, run the native linters (`gofmt -l .`, `go vet ./...` for Go changes, `node --check` for changed client files), verify no debug artifacts in added lines, and list each file you checked and what you checked.
+
+## Focused tests
+
+Every test-file invocation must finish in under 30 seconds. Use:
+- `bash _dev/tests/run-go-tests-with-budget.sh skills/do-work/tools/do-work-cli ./internal/nextselection/...`
+- Then the whole module once: `bash _dev/tests/run-go-tests-with-budget.sh skills/do-work/tools/do-work-cli ./...`
+
+## Hand-back (write this file, then stop)
+
+Write **`/Users/t2/Desktop/e1-experimental-repos/skill-do-work2/do-work/runs/work-2026-09-05-120117/REQ-581-handback.md`** using that absolute path — it is the one main-tree path you may write, and you must never stage or commit it.
+
+It must contain, each under its own `##` heading:
+- `## Branch` — the branch name and the head commit you left on it.
+- `## File manifest` — every source file created/modified/deleted with the verb, plus tests touched.
+- `## P-A-U` — the three phases above.
+- `## Test evidence` — every command you ran, its exit status, the RED observation (test name + failure text) and the GREEN observation.
+- `## Lesson evidence` — each lesson satellite you read and any listed path that was missing.
+- `## Decisions` — significant choices as `D-NN`, each with reasoning. Mark a reversible low-reach choice DECIDE & STATE; mark an irreversible, taste-dependent or contestable one ESCALATE and add `Value:` and `Risk:` lines.
+- `## Discovered Tasks` — out-of-scope findings, each stamped with one of exactly these impact tokens: `impact-critical`, `impact-user-visible`, `impact-rule-change`, `impact-negligible`. Do not invent a token outside that set and do not fix the items inline.
+- `## Integration seams` — any exact line that belongs in a file outside your write set, with where it goes. The orchestrator applies it.
+
+Work the mutation first, exactly as the request's Builder Guidance says. Reduce `terminateOwnedProcessGroup` and `cleanupReapedProcessGroup` in `internal/nextselection/blocked_probe_unix.go` to no-op bodies, keep that mutation applied while you rewrite the fixture, and revert it only once all three tests fail on their own descendant assertion rather than on a timeout bound. That file is NOT in your write set — the mutation is a scratch experiment and must be reverted with `git checkout --` before you commit. Prove it is reverted: `git status --porcelain` must be empty of it, and your hand-back must say so.
+
+Report the elapsed time of the three tests both mutated and unmutated. The request forbids raising the package's unmutated runtime out of its current range, and another request (REQ-574) just spent effort bringing this module's test files under the 30-second per-file budget, so a fixture that adds seconds is a regression even if it is correct.
+
+Other builders are running Go tests on this machine at the same time. If a run comes in slower than you expect, re-run before concluding anything about timing.
+
+---
+
+# The request
+
 ---
 id: REQ-581
 title: '[impact-rule-change] Make the descendant-cleanup tests fail on a real process-group leak'

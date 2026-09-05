@@ -1,3 +1,72 @@
+# Builder brief — REQ-582
+
+## Where you work
+
+- **Your worktree (cd here first):** `/Users/t2/Desktop/e1-experimental-repos/skill-do-work2/.git/work-run-20260905-1201/worktree-agent-REQ-582-arrow-citations`
+- **Your branch (already checked out there):** `worktree-agent-REQ-582-arrow-citations`
+- **Route:** B
+- **Base commit:** 961697bb
+
+You are the builder. The orchestrator runs in the main checkout at `/Users/t2/Desktop/e1-experimental-repos/skill-do-work2` and is the only writer of `do-work/`. Commit your work on your own branch in your own worktree and hand back a manifest; the orchestrator merges.
+
+## Never touch
+
+- Anything under `do-work/` — with exactly one exception, the hand-back file named below, which you write by its absolute main-tree path and never stage or commit.
+- `CHANGELOG.md`, `skills/do-work/CHANGELOG.md`, `VERSION`, `skills/do-work/VERSION` — release paths owned by finalization.
+- Any file outside the write set declared in the REQ below. If you need one, stop and report it in the hand-back instead of writing it, unless the REQ's own requirements already demand that file class (then flag the contradiction and proceed).
+- Do not run `bash _dev/tests/maintainer-verify.sh` (the repository gate). The orchestrator owns it and concurrent runs corrupt each other's timing budgets. Run only the focused tests named below.
+
+## Rules to load and follow (read these first, from your worktree)
+
+- `/Users/t2/Desktop/e1-experimental-repos/skill-do-work2/skills/do-work/crew-members/general.md`
+- `/Users/t2/Desktop/e1-experimental-repos/skill-do-work2/skills/do-work/crew-members/coding-guardrails.md`
+- `/Users/t2/Desktop/e1-experimental-repos/skill-do-work2/skills/do-work/crew-members/shared-principles.md`
+- `/Users/t2/Desktop/e1-experimental-repos/skill-do-work2/skills/do-work/crew-members/communication-style.md`
+- `/Users/t2/Desktop/e1-experimental-repos/skill-do-work2/skills/do-work/crew-members/testing.md` (the REQ is `tdd: true`)
+
+Also read every path in the request's `prime_files`, and the `lessons-<name>.md` satellite beside each prime whose Read-first or Traps entries your change touches.
+
+## P-A-U phasing (mandatory, reported in the hand-back)
+
+The REQ file is the orchestrator's, so report your P-A-U record under a `## P-A-U` heading in the hand-back instead of ticking boxes in the REQ:
+- **[PLAN]** — brief technical approach, written before code.
+- **[APPLY]** — code exactly as planned, strictly inside the declared write set.
+- **[UNIFY]** — run `git diff --stat`, run the native linters (`gofmt -l .`, `go vet ./...` for Go changes, `node --check` for changed client files), verify no debug artifacts in added lines, and list each file you checked and what you checked.
+
+## Focused tests
+
+Every test-file invocation must finish in under 30 seconds. Use:
+- `bash _dev/tests/shipped-package-reference-contract.sh` (the check you are changing — run it before and after)
+- `bash _dev/tests/action-shell-blocks.sh` (ShellCheck lint over shipped shell, which your edit must keep passing)
+
+## Hand-back (write this file, then stop)
+
+Write **`/Users/t2/Desktop/e1-experimental-repos/skill-do-work2/do-work/runs/work-2026-09-05-120117/REQ-582-handback.md`** using that absolute path — it is the one main-tree path you may write, and you must never stage or commit it.
+
+It must contain, each under its own `##` heading:
+- `## Branch` — the branch name and the head commit you left on it.
+- `## File manifest` — every source file created/modified/deleted with the verb, plus tests touched.
+- `## P-A-U` — the three phases above.
+- `## Test evidence` — every command you ran, its exit status, the RED observation (test name + failure text) and the GREEN observation.
+- `## Lesson evidence` — each lesson satellite you read and any listed path that was missing.
+- `## Decisions` — significant choices as `D-NN`, each with reasoning. Mark a reversible low-reach choice DECIDE & STATE; mark an irreversible, taste-dependent or contestable one ESCALATE and add `Value:` and `Risk:` lines.
+- `## Discovered Tasks` — out-of-scope findings, each stamped with one of exactly these impact tokens: `impact-critical`, `impact-user-visible`, `impact-rule-change`, `impact-negligible`. Do not invent a token outside that set and do not fix the items inline.
+- `## Integration seams` — any exact line that belongs in a file outside your write set, with where it goes. The orchestrator applies it.
+- `## Exploration` — what the sweep over all 75 arrow-form citations found, including every additional dangling citation. The orchestrator folds this into the request.
+
+
+This is Route B and you owe an `## Exploration` section in the hand-back — the sweep over all 75 arrow-form citations is the exploration.
+
+The real decision is the one the request names: does "section" mean an ATX heading only, or also a bold contract label that leads a paragraph? Both forms ship live. Settle it against what the 75 citations actually do, record it as a `D-NN` decision with reasoning, and expect the first honest pass to surface more dangling citations than the two already named. **Report the extra ones, do not fix prose outside this request's scope.**
+
+`skills/do-work/CHANGELOG.md` is in your write set for one line only, and it needs care: a changelog entry describes what shipped on the day it shipped, so silently retargeting it at a renamed heading rewrites history. Read `_dev/primes/prime-releases.md` before touching it and say in your hand-back which remedy you chose and why. Note that the root `CHANGELOG.md` and `skills/do-work/CHANGELOG.md` are required to stay byte-identical by this very check — if your fix changes one, the other needs the same change, and the root copy is NOT in your write set, so hand it back as an integration seam.
+
+You are editing shipped shell. Read `_dev/primes/prime-shell-commands.md` first; it is the request's own prime and it holds the trap list.
+
+---
+
+# The request
+
 ---
 id: REQ-582
 title: '[impact-rule-change] Detect the arrow-form section citation in the shipped-package reference contract'
