@@ -1,7 +1,7 @@
 ---
 id: REQ-506
 title: '[impact-rule-change] Run the evidence gates from advance'
-status: pending
+status: claimed
 priority: now
 created_at: 2026-09-02T14:37:54Z
 user_request: UR-098
@@ -54,6 +54,7 @@ builder_handback_at: 2026-09-04T18:15:00Z
 integration_at: 2026-09-04T18:15:22Z
 status_changed_at: 2026-09-04T20:57:34Z
 gate_deferred: 'true'
+claimed_at: 2026-09-05T00:33:23Z
 ---
 
 # Run the Evidence Gates From advance
