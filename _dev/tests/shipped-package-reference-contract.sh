@@ -684,8 +684,17 @@ def heading_anchor_slugs(markdown_file):
 # arrow. Stepping over a closing ** would read "`do-work/archive/legacy/`** → **cancellable
 # in place.**" as a section citation, where the arrow means "becomes" and the bold closes
 # the phrase before it — shipped prose that names no section at all.
+
+# The gap between the path, the arrow and the name. A hard-wrapped file may break at either
+# gap, so the same soft break the name already tolerates has to be tolerated around it: a
+# break before or after the arrow left the whole citation unmatched, and an unmatched
+# citation reports nothing at all rather than reporting a missing section — silent
+# acceptance, the one failure direction this check must not have. The lookahead is what
+# bounds it: two newlines in a row are a blank line, so the gap crosses at most one break
+# and never leaves the paragraph.
+soft_wrap_gap = r"(?:[ \t]|\n(?![ \t]*\n))*"
 arrow_section_shape = re.compile(
-    r"""[`)\]"']*[ \t]*→[ \t]*\*\*((?:[^*\n]|\n(?![ \t]*\n))+?)\*\*"""
+    rf"""[`)\]"']*{soft_wrap_gap}→{soft_wrap_gap}\*\*((?:[^*\n]|\n(?![ \t]*\n))+?)\*\*"""
 )
 bold_run_pattern = re.compile(r"\*\*([^*\n]+?)\*\*")
 section_name_cache = {}
@@ -734,8 +743,17 @@ def section_names_from_text(markdown_text):
             if heading_match is not None:
                 heading_text = re.sub(r"[ \t]+#+$", "", heading_match.group(2) or "")
                 collected_names.add(normalize_section_name(heading_text))
-        for bold_match in bold_run_pattern.finditer(raw_line):
-            collected_names.add(normalize_section_name(bold_match.group(1)))
+        # Bold runs are located on the masked line and read from the raw one. A real
+        # declaration's ** markers sit outside any code span and survive masking, so a
+        # bold run that exists only inside inline code — "Example: `**Removed Section**`
+        # is old syntax" — declares nothing and is no longer collected. The name still
+        # comes from the raw line, because masking blanks inline code that a declared
+        # label keeps ("**Populating `write_set`.**"), and masking preserves length, so a
+        # masked span indexes the raw line directly.
+        for bold_match in bold_run_pattern.finditer(masked_line):
+            collected_names.add(
+                normalize_section_name(raw_line[bold_match.start(1) : bold_match.end(1)])
+            )
     collected_names.discard("")
     return collected_names
 
@@ -1011,6 +1029,26 @@ def run_section_citation_fixtures():
             None,
         ),
         (
+            # A hard-wrapped file breaks wherever the column runs out, including at the
+            # two gaps around the arrow. Missing these reported nothing at all.
+            "a break before the arrow is still a citation",
+            "`actions/work.md`\n→ **Input** for the flow",
+            "actions/work.md",
+            "Input",
+        ),
+        (
+            "a break after the arrow is still a citation",
+            "`actions/work.md` →\n**Input** for the flow",
+            "actions/work.md",
+            "Input",
+        ),
+        (
+            "a blank line before the arrow ends the citation",
+            "`actions/work.md`\n\n→ **Input** starts a new paragraph",
+            "actions/work.md",
+            None,
+        ),
+        (
             # actions/abandon.md's live shape: the arrow means "becomes" and the bold
             # before it closes a phrase. Stepping over that ** would invent a citation.
             "a bold phrase closing before the arrow is not a citation",
@@ -1037,6 +1075,8 @@ def run_section_citation_fixtures():
         "**Named contract - Frontmatter Quoting.** Governs frontmatter values.\n"
         "\n"
         "**Populating `write_set`.** Seed it only when the request names the files.\n"
+        "\n"
+        "Example: `**Removed Section**` is the old syntax, quoted rather than declared.\n"
         "\n"
         "## Hook Install Internals (used by actions/setup-memory.md → memory-module)\n"
         "\n"
@@ -1071,6 +1111,13 @@ def run_section_citation_fixtures():
         ),
         ("a name the target never says is reported", "Recovery Refusals (Step 1)", False),
         ("a heading inside a code fence is not a section", "Fenced Heading", False),
+        (
+            # Quoting a bold run is not declaring one. Collected from the raw line, this
+            # satisfied any citation naming it.
+            "a bold run inside inline code is not a section",
+            "Removed Section",
+            False,
+        ),
     ]
     for fixture_name, cited_section, expected_resolution in resolution_cases:
         actual_resolution = section_name_resolves(cited_section, fixture_section_names)
