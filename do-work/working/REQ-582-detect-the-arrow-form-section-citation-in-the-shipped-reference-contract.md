@@ -1,7 +1,7 @@
 ---
 id: REQ-582
 title: '[impact-rule-change] Detect the arrow-form section citation in the shipped-package reference contract'
-status: pending
+status: claimed
 created_at: 2026-09-05T01:30:57Z
 user_request: UR-119
 domain: general
@@ -11,6 +11,7 @@ tdd: true
 maintenance: false
 impact: impact-rule-change
 effort_estimate: effort-substantive
+claimed_at: 2026-09-05T12:40:40Z
 ---
 
 # Detect the Arrow-Form Section Citation in the Shipped-Package Reference Contract
