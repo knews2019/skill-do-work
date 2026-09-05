@@ -1,7 +1,7 @@
 ---
 id: REQ-576
 title: 'Start the board card wall time at the earliest lifecycle stamp, not only claimed_at'
-status: pending
+status: claimed
 created_at: 2026-09-04T23:52:00Z
 user_request: UR-116
 domain: frontend
@@ -18,6 +18,7 @@ write_set:
   - skills/do-work-board/tools/queue-kanban/durations_test.go
   - skills/do-work-board/tools/queue-kanban/generate.go
   - skills/do-work-board/tools/queue-kanban/web/board-cards.js
+claimed_at: 2026-09-05T00:38:08Z
 ---
 
 # Start the Board Card Wall Time at the Earliest Lifecycle Stamp, Not Only `claimed_at`
