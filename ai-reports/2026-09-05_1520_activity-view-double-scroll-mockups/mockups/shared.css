@@ -1,0 +1,90 @@
+/* Mockup stylesheet: the board's own tokens and Activity-view rules copied from
+   skills/do-work-board/tools/queue-kanban/web/board.css (0.236.20), trimmed to
+   the top bar and the Activity view. Each mockup page overrides the few rules
+   that differ; the diff is the proposal. */
+[hidden] { display: none !important; }
+:root {
+  color-scheme: light dark;
+  --bg-base: #0c0e12; --surface-1: #131720; --surface-2: #171c26; --surface-3: #1e2530;
+  --line-soft: rgba(255,255,255,0.07); --line-firm: rgba(255,255,255,0.13);
+  --ink-strong: #eef1f5; --ink-base: #c7cdd6; --ink-soft: #99a1ad; --ink-faint: #6b7480;
+  --accent-claimed: #6f9ce6; --accent-pending: #d8a24a;
+  --radius-pill: 999px;
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", "JetBrains Mono", "Menlo", "Consolas", monospace;
+  --topbar-height: 68px;
+  --topbar-bg: rgba(12,14,18,0.88);
+}
+@media (prefers-color-scheme: light) {
+  :root {
+    --bg-base: #f5f7fa; --surface-1: #ffffff; --surface-2: #f1f4f8; --surface-3: #e8ecf2;
+    --line-soft: rgba(17,24,39,0.08); --line-firm: rgba(17,24,39,0.15);
+    --ink-strong: #161b24; --ink-base: #39414f; --ink-soft: #59636f; --ink-faint: #6c7480;
+    --accent-claimed: #3a6bc4; --accent-pending: #8f5e10;
+    --topbar-bg: rgba(245,247,250,0.9);
+  }
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; }
+body {
+  background-color: var(--bg-base); color: var(--ink-base);
+  font-family: var(--font-sans); font-size: 15px; line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  display: grid; grid-template-rows: auto minmax(0, 1fr); grid-template-columns: minmax(0, 1fr);
+  overflow: hidden;
+}
+/* Top bar, as shipped. */
+.board-topbar {
+  z-index: 30; display: flex; align-items: center; justify-content: space-between; gap: 24px;
+  min-height: var(--topbar-height); padding: 12px 28px;
+  background-color: var(--topbar-bg); backdrop-filter: saturate(140%) blur(12px);
+  border-bottom: 1px solid var(--line-soft);
+}
+.board-identity { display: flex; flex-direction: column; gap: 2px; }
+.board-wordmark { margin: 0; font-size: 18px; font-weight: 650; letter-spacing: -0.01em; color: var(--ink-strong); font-family: var(--font-mono); }
+.board-wordmark-mark { color: var(--ink-faint); font-weight: 500; }
+.board-project { margin: 0; font-size: 12px; font-weight: 600; color: var(--ink-strong); font-family: var(--font-mono); }
+.board-generated { margin: 0; font-size: 12px; color: var(--ink-faint); }
+.board-controls { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; justify-content: flex-end; }
+.control-group { display: inline-flex; align-items: center; gap: 4px; padding: 4px; background-color: var(--surface-1); border: 1px solid var(--line-soft); border-radius: var(--radius-pill); }
+.control-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-faint); padding: 0 8px 0 6px; }
+.control-button { appearance: none; border: 0; background: transparent; color: var(--ink-soft); font: inherit; font-size: 13px; font-weight: 550; padding: 6px 14px; border-radius: var(--radius-pill); cursor: pointer; }
+.control-button:hover { color: var(--ink-strong); background-color: var(--surface-2); }
+.control-button.is-active { background-color: var(--surface-3); color: var(--ink-strong); box-shadow: inset 0 0 0 1px var(--line-firm); }
+.control-button:focus-visible { outline: 2px solid var(--accent-claimed); outline-offset: 2px; }
+.filter-search { appearance: none; border: 0; background: transparent; color: var(--ink-strong); font: inherit; font-size: 13px; padding: 6px 10px; width: 170px; border-radius: var(--radius-pill); }
+.filter-select { appearance: none; border: 0; background: transparent; color: var(--ink-soft); font: inherit; font-size: 13px; font-weight: 550; padding: 6px 10px; }
+
+/* The board is the scroll container, not the page (shipped rule). */
+.board-main { grid-row: 2; min-width: 0; min-height: 0; overflow-y: auto; padding: 24px 28px 56px; outline: none; }
+.view-panel { display: none; }
+.view-panel.is-active { display: block; }
+
+/* Verify-findings strip, shipped shape (only the "current" mockup shows it; it
+   is hidden on the Activity view since REQ-578 merged). */
+.board-anomalies { margin: 0 0 24px; padding: 18px 20px 20px; background: var(--surface-1); border: 1px solid var(--line-soft); border-radius: 14px; }
+.board-anomalies-head { display: flex; align-items: baseline; gap: 12px; margin-bottom: 14px; }
+.board-anomalies-title { margin: 0; font-size: 12px; font-weight: 650; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-soft); }
+.board-anomalies-count { font-family: var(--font-mono); font-size: 12px; padding: 1px 8px; border-radius: 6px; background: var(--surface-3); color: var(--ink-strong); }
+.board-anomalies-hint { font-size: 12px; color: var(--ink-faint); }
+.board-anomalies-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 14px; }
+.anomaly-card { background: var(--surface-2); border: 1px solid var(--line-soft); border-radius: 10px; padding: 12px 12px 14px; font-size: 12px; line-height: 1.45; }
+.anomaly-kind { display: inline-block; font-family: var(--font-mono); font-size: 10.5px; letter-spacing: 0.06em; text-transform: uppercase; background: var(--surface-3); color: var(--ink-soft); padding: 3px 8px; border-radius: 6px; margin-bottom: 8px; }
+.anomaly-detail { color: var(--ink-strong); margin: 0 0 8px; overflow-wrap: anywhere; }
+.anomaly-remedy { color: var(--ink-soft); margin: 0; }
+
+/* Activity view, shipped rules. */
+#view-activity { padding: 16px 24px 24px; }
+.activity-summary { margin: 0 0 4px; font-size: 13px; color: var(--ink-soft); }
+.activity-table-scroll { max-height: 70vh; overflow: auto; margin-top: 8px; font-size: 12px; }
+.activity-table-scroll table { border-collapse: collapse; width: 100%; }
+.activity-table-scroll th, .activity-table-scroll td { text-align: left; padding: 5px 12px 5px 0; border-bottom: 1px solid var(--line-soft); white-space: nowrap; vertical-align: top; }
+.activity-table-scroll thead th { position: sticky; top: 0; z-index: 1; background: var(--surface-1); color: var(--ink-faint); font-weight: 600; }
+.activity-table-scroll tbody th { font-family: var(--font-mono); font-weight: 600; }
+.activity-table-scroll td[headers="activity-table-column-title"] { white-space: normal; min-width: 28ch; }
+.activity-table-scroll td[headers="activity-table-column-stamp"] { font-family: var(--font-mono); color: var(--ink-faint); }
+.activity-table-scroll td[headers="activity-table-column-when"] small { color: var(--ink-faint); }
+
+/* Mockup-only: a tag in the corner naming which variant this page is, so the
+   screenshots stay tellable apart. Not part of the proposal. */
+.mockup-tag { position: fixed; right: 14px; bottom: 12px; z-index: 40; font: 600 11px/1 var(--font-mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-strong); background: var(--accent-pending); padding: 6px 10px; border-radius: 6px; opacity: 0.92; }

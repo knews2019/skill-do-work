@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Activity mockup — M0 · current</title>
+<link rel="stylesheet" href="shared.css">
+<style>
+/* No overrides: this is the shipped layout (strip included, as on the 12:11 board). */
+</style>
+</head>
+<body>
+  <header class="board-topbar">
+    <div class="board-identity">
+      <p class="board-wordmark"><span class="board-wordmark-mark">do‑work/</span> queue</p>
+      <p class="board-project">skill-do-work2</p>
+      <p class="board-generated">Generated 2026-09-05 12:17 UTC</p>
+    </div>
+    <div class="board-controls">
+      <div class="control-group"><input class="filter-search" placeholder="Filter id or title" aria-label="Filter"><select class="filter-select" aria-label="Domain"><option>All domains</option></select><select class="filter-select" aria-label="Status"><option>All statuses</option></select></div>
+      <div class="control-group" role="group" aria-label="View">
+        <button type="button" class="control-button">Board</button><button type="button" class="control-button">Calendar</button><button type="button" class="control-button">Durations</button><button type="button" class="control-button">Timeline</button><button type="button" class="control-button is-active" aria-pressed="true">Activity</button><button type="button" class="control-button">Testing</button>
+      </div>
+      <div class="control-group" id="activity-window-group" role="group" aria-label="Activity window">
+        <span class="control-label">Touched in</span>
+        <button type="button" class="control-button" data-activity-window="6">6h</button>
+        <button type="button" class="control-button" data-activity-window="24">24h</button>
+        <button type="button" class="control-button" data-activity-window="48">48h</button>
+        <button type="button" class="control-button" data-activity-window="168">7d</button>
+      </div>
+    </div>
+  </header>
+  <main class="board-main" id="board-main" tabindex="-1">
+      <section class="board-anomalies board-findings" aria-label="Verify findings">
+        <div class="board-anomalies-head"><h2 class="board-anomalies-title">Verify findings</h2><span class="board-anomalies-count">5</span><span class="board-anomalies-hint">queue and process problems queue-kanban verify detects — each names what to do about it</span></div>
+        <div class="board-anomalies-cards">
+          <article class="anomaly-card"><span class="anomaly-kind">worktree-merge-state-undetermined</span><p class="anomaly-detail">worktree-agent-REQ-506-focused-evidence exists — .git/work-run-20260905/worktree-agent-REQ-506-focused-evidence</p><p class="anomaly-remedy">git could not say whether this is merged (typically a worktree whose branch is gone) — inspect it by hand; cleanup Pass 5 deletes nothing it cannot establish a merge target for. The same unresolved branch stopped the committed-queue-state check, so whether a builder committed queue state under do-work/ on it is unknown, not clean</p></article>
+          <article class="anomaly-card"><span class="anomaly-kind">worktree-present-run-in-flight</span><p class="anomaly-detail">worktree-agent-REQ-572-activity-rows exists — .git/work-run-20260905-1201/worktree-agent-REQ-572-activity-rows</p><p class="anomaly-remedy">this worktree is present, not leftover: REQ-572 is still in do-work/working/, so the run that owns it has not reached review, remediation, or its final path. Leave it in place — worktree cleanup happens after the REQ is archived, not before</p></article>
+          <article class="anomaly-card"><span class="anomaly-kind">worktree-present-run-in-flight</span><p class="anomaly-detail">worktree-agent-REQ-575-append-only-stamps exists — .git/work-run-20260905-1201/worktree-agent-REQ-575-append-only-stamps</p><p class="anomaly-remedy">this worktree is present, not leftover: REQ-575 is still in do-work/working/, so the run that owns it has not reached review, remediation, or its final path. Leave it in place — worktree cleanup happens after the REQ is archived, not before</p></article>
+          <article class="anomaly-card"><span class="anomaly-kind">worktree-merge-state-undetermined</span><p class="anomaly-detail">worktree-agent-REQ-577-launcher-fixture exists — .git/work-run-20260905/worktree-agent-REQ-577-launcher-fixture</p><p class="anomaly-remedy">git could not say whether this is merged (typically a worktree whose branch is gone) — inspect it by hand; cleanup Pass 5 deletes nothing it cannot establish a merge target for. The same unresolved branch stopped the committed-queue-state check, so whether a builder committed queue state under do-work/ on it is unknown, not clean</p></article>
+          <article class="anomaly-card"><span class="anomaly-kind">worktree-present-run-in-flight</span><p class="anomaly-detail">worktree-agent-REQ-578-findings-strip exists — .git/work-run-20260905-1201/worktree-agent-REQ-578-findings-strip</p><p class="anomaly-remedy">this worktree is present, not leftover: REQ-578 is still in do-work/working/, so the run that owns it has not reached review, remediation, or its final path. Leave it in place — worktree cleanup happens after the REQ is archived, not before</p></article>
+        </div>
+      </section>
+    <section id="view-activity" class="view-panel is-active" aria-label="Recently touched REQs">
+      <p class="activity-summary" id="activity-summary"></p>
+      <div class="activity-table-scroll">
+        <table>
+          <thead><tr>
+            <th scope="col" id="activity-table-column-req">REQ</th>
+            <th scope="col" id="activity-table-column-title">Title</th>
+            <th scope="col" id="activity-table-column-status">Status</th>
+            <th scope="col" id="activity-table-column-transition">What happened</th>
+            <th scope="col" id="activity-table-column-when">When</th>
+            <th scope="col" id="activity-table-column-stamp">Stamp</th>
+          </tr></thead>
+          <tbody id="activity-table-body"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+  <span class="mockup-tag" aria-hidden="true">M0 · current</span>
+  <script src="data.js"></script>
+  <script src="mockup.js"></script>
+</body>
+</html>

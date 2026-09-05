@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Activity mockup — M3 · one scroll, pinned summary</title>
+<link rel="stylesheet" href="shared.css">
+<style>
+/* M3: M1 plus the summary line pinned together with the column header, so the
+   transition count stays readable however far down the reader is. One scroll surface.
+   Same padding move as M1, for the same reason. */
+.board-main { padding-top: 0; }
+#view-activity { padding-top: 0; }
+.activity-table-scroll { max-height: none; overflow: visible; margin-top: 0; }
+.activity-summary { position: sticky; top: 0; z-index: 2; margin: 0; height: 40px; line-height: 40px; background: var(--bg-base); }
+.activity-table-scroll thead th { top: 40px; }
+</style>
+</head>
+<body>
+  <header class="board-topbar">
+    <div class="board-identity">
+      <p class="board-wordmark"><span class="board-wordmark-mark">do‑work/</span> queue</p>
+      <p class="board-project">skill-do-work2</p>
+      <p class="board-generated">Generated 2026-09-05 12:17 UTC</p>
+    </div>
+    <div class="board-controls">
+      <div class="control-group"><input class="filter-search" placeholder="Filter id or title" aria-label="Filter"><select class="filter-select" aria-label="Domain"><option>All domains</option></select><select class="filter-select" aria-label="Status"><option>All statuses</option></select></div>
+      <div class="control-group" role="group" aria-label="View">
+        <button type="button" class="control-button">Board</button><button type="button" class="control-button">Calendar</button><button type="button" class="control-button">Durations</button><button type="button" class="control-button">Timeline</button><button type="button" class="control-button is-active" aria-pressed="true">Activity</button><button type="button" class="control-button">Testing</button>
+      </div>
+      <div class="control-group" id="activity-window-group" role="group" aria-label="Activity window">
+        <span class="control-label">Touched in</span>
+        <button type="button" class="control-button" data-activity-window="6">6h</button>
+        <button type="button" class="control-button" data-activity-window="24">24h</button>
+        <button type="button" class="control-button" data-activity-window="48">48h</button>
+        <button type="button" class="control-button" data-activity-window="168">7d</button>
+      </div>
+    </div>
+  </header>
+  <main class="board-main" id="board-main" tabindex="-1">
+    <section id="view-activity" class="view-panel is-active" aria-label="Recently touched REQs">
+      <p class="activity-summary" id="activity-summary"></p>
+      <div class="activity-table-scroll">
+        <table>
+          <thead><tr>
+            <th scope="col" id="activity-table-column-req">REQ</th>
+            <th scope="col" id="activity-table-column-title">Title</th>
+            <th scope="col" id="activity-table-column-status">Status</th>
+            <th scope="col" id="activity-table-column-transition">What happened</th>
+            <th scope="col" id="activity-table-column-when">When</th>
+            <th scope="col" id="activity-table-column-stamp">Stamp</th>
+          </tr></thead>
+          <tbody id="activity-table-body"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+  <span class="mockup-tag" aria-hidden="true">M3 · one scroll, pinned summary</span>
+  <script src="data.js"></script>
+  <script src="mockup.js"></script>
+</body>
+</html>

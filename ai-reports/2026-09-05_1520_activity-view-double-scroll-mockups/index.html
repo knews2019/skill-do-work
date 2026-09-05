@@ -1,0 +1,291 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Activity View — One Scroll, Three Mockups</title>
+<style>
+:root{
+  --bg:#faf8f4; --surface:#ffffff; --surface-2:#f4f0e8; --ink:#1f2d38; --muted:#66737d;
+  --line:#e3dccd; --accent:#2563eb; --accent-ink:#1d4ed8; --amber:#8a6a3b; --warn:#b45309; --good:#2f7a4f;
+  --display:"Iowan Old Style",Palatino,"Palatino Linotype",Georgia,serif;
+  --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme:dark){
+  :root{--bg:#101417; --surface:#171d21; --surface-2:#1d242a; --ink:#e9e6e0; --muted:#9ba6ae;
+        --line:#2c343a; --accent:#7ea6ff; --accent-ink:#9dbaff; --amber:#c9a273; --warn:#e0a34a; --good:#7fc79a;}
+}
+/* Render-judge switch only: ?theme=dark forces the dark palette so both renders can be checked from one browser. */
+html[data-theme="dark"]{--bg:#101417; --surface:#171d21; --surface-2:#1d242a; --ink:#e9e6e0; --muted:#9ba6ae;
+        --line:#2c343a; --accent:#7ea6ff; --accent-ink:#9dbaff; --amber:#c9a273; --warn:#e0a34a; --good:#7fc79a; color-scheme:dark}
+html[data-theme="light"]{--bg:#faf8f4; --surface:#ffffff; --surface-2:#f4f0e8; --ink:#1f2d38; --muted:#66737d;
+  --line:#e3dccd; --accent:#2563eb; --accent-ink:#1d4ed8; --amber:#8a6a3b; --warn:#b45309; --good:#2f7a4f; color-scheme:light}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);
+  font:16px/1.62 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;-webkit-font-smoothing:antialiased}
+.page{width:100%;padding:0 clamp(20px,2.6vw,60px) 96px}
+.measure{max-width:74ch}
+.row{display:flex;flex-wrap:wrap;gap:26px}
+h1,h2,h3{font-family:var(--display);font-weight:600;letter-spacing:-.01em;margin:0}
+h1{font-size:clamp(30px,3.4vw,44px);line-height:1.1}
+h2{font-size:clamp(23px,2vw,30px);margin-bottom:10px}
+h3{font-size:19px;margin-bottom:6px}
+p{margin:0 0 14px}
+a{color:var(--accent-ink)}
+code{font:13.5px/1.5 var(--mono);background:var(--surface-2);border:1px solid var(--line);border-radius:4px;padding:1px 5px}
+.kicker{font:600 11.5px/1.4 var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin:0 0 10px}
+header.masthead{border-bottom:1px solid var(--line);padding:44px 0 26px;margin-bottom:40px}
+.dateline{font:12.5px/1.6 var(--mono);color:var(--muted);margin-top:14px}
+section{padding:38px 0;border-bottom:1px solid var(--line)}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:20px 22px}
+.verdict{background:var(--surface);border:1px solid var(--line);border-left:3px solid var(--accent);border-radius:8px;padding:24px 26px}
+.verdict p:last-child{margin-bottom:0}
+.tiles{display:flex;flex-wrap:wrap;gap:14px;margin-top:24px}
+.tile{flex:1 1 168px;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px 16px}
+.tile .lab{font:11.5px/1.4 var(--mono);color:var(--muted);text-transform:uppercase;letter-spacing:.09em}
+.tile .val{font:600 38px/1.15 var(--display);margin-top:6px}
+.tile .sub{font:12px/1.45 var(--mono);color:var(--muted);margin-top:4px}
+figure{margin:0}
+.shot{position:relative;max-width:2000px;margin:0 auto;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:var(--surface)}
+.shot img{display:block;width:100%;height:auto}
+.shot svg{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+figcaption{font:14.5px/1.62 inherit;color:var(--muted);margin-top:12px;max-width:110ch}
+.badge{display:inline-block;font:600 10.5px/1 var(--mono);letter-spacing:.09em;text-transform:uppercase;
+  border:1px solid var(--line);border-radius:99px;padding:5px 9px;color:var(--muted);background:var(--surface-2)}
+.badge.live{color:var(--good);border-color:var(--good)}
+.badge.mock{color:var(--warn);border-color:var(--warn)}
+.callout{fill:var(--warn);stroke:#fff;stroke-width:3}
+.callout-num{font:700 30px var(--mono);fill:#fff}
+.callout-box{fill:none;stroke:var(--warn);stroke-width:5;stroke-dasharray:14 8}
+table{width:100%;border-collapse:collapse;font-size:14.5px}
+th,td{text-align:left;padding:9px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font:600 11.5px/1.4 var(--mono);text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+td.num{font-variant-numeric:tabular-nums;font-family:var(--mono);font-size:13px;white-space:nowrap}
+.tablewrap{overflow-x:auto;background:var(--surface);border:1px solid var(--line);border-radius:10px}
+pre{background:var(--surface-2);border:1px solid var(--line);border-radius:8px;padding:16px 18px;margin:0 0 14px;
+  font:13px/1.62 var(--mono);white-space:pre-wrap;overflow-wrap:anywhere}
+.mock{flex:1 1 calc(50% - 13px);min-width:min(100%,560px);background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:18px 20px 20px}
+.mock.reco{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
+.mock .code{font:600 12px/1 var(--mono);color:var(--accent-ink);letter-spacing:.08em}
+.mock h3{margin:8px 0 8px;display:flex;gap:10px;align-items:baseline;flex-wrap:wrap}
+.mock p{font-size:15px;margin-bottom:10px}
+.mock .frame{border:1px solid var(--line);border-radius:8px;overflow:hidden;background:#0c0e12;margin:10px 0 12px}
+.mock iframe{display:block;width:100%;height:560px;border:0}
+.mock .links{font:12.5px/1.7 var(--mono);color:var(--muted);margin:0}
+.mock pre{margin:10px 0 0;font-size:12.5px}
+ul{margin:0 0 14px;padding-left:20px}
+li{margin-bottom:7px}
+.lede{font-size:18px;line-height:1.6}
+.foot{padding:34px 0 0;font:12.5px/1.7 var(--mono);color:var(--muted)}
+.split{flex:1 1 460px;min-width:0}
+.split-wide{flex:2 1 720px;min-width:0}
+</style>
+</head>
+<body>
+<script>
+  // Render-judge switch only: ?theme=dark|light forces a palette for the screenshot pass.
+  var forced = new URLSearchParams(location.search).get("theme");
+  if (forced === "dark" || forced === "light") document.documentElement.setAttribute("data-theme", forced);
+</script>
+<div class="page">
+
+<header class="masthead">
+  <p class="kicker">Proposal · Kanban board · Activity view</p>
+  <h1>One scroll for the Activity view</h1>
+  <p class="dateline">2026-09-05 · one cause, three mockups you can scroll, one captured request · written before any implementation</p>
+  <p class="dateline">This is a design proposal, not a completed-work report. Nothing here has shipped. The mockups below are hand-built pages that copy the board's own stylesheet and today's real Activity rows; they are not the board.</p>
+</header>
+
+<section>
+  <p class="kicker">Verdict</p>
+  <div class="verdict measure">
+    <p>The double scroll has one cause. The Activity table sits in its own scroll box capped at 70% of the viewport height, and that box sits inside the board area, which is itself the page's scroll container. Two nested scroll regions means two scrollbars, and the mouse wheel moves whichever one the pointer happens to be over.</p>
+    <p>The fix is to leave exactly one scroll surface. Three ways to do that are mocked up below. <strong>M1 (the board scrolls, the table is plain content, the column header sticks to the top) is the recommendation:</strong> it deletes two CSS declarations, keeps the board's one-scroll-container rule that every other view already follows, and changes nothing about how rows are drawn.</p>
+    <p>M3 is M1 plus the transition count pinned above the header. M2 makes the table fill the viewport with its own scroll and turns the board's scrolling off for this view; it looks clean but gives the Activity view a different scroll model from every other view.</p>
+  </div>
+
+  <div class="tiles">
+    <div class="tile"><div class="lab">Scroll regions today</div><div class="val">2</div><div class="sub">board area + table box</div></div>
+    <div class="tile"><div class="lab">Board area</div><div class="val">1231<span style="font-size:20px"> px</span></div><div class="sub">showing 1442 px of content</div></div>
+    <div class="tile"><div class="lab">Table box</div><div class="val">926<span style="font-size:20px"> px</span></div><div class="sub">showing 6815 px of rows</div></div>
+    <div class="tile"><div class="lab">Rows in 24h window</div><div class="val">236</div><div class="sub">across 49 REQs · 12:17 UTC</div></div>
+    <div class="tile"><div class="lab">CSS lines to change (M1)</div><div class="val">2</div><div class="sub">plus moving one padding</div></div>
+    <div class="tile"><div class="lab">Existing REQs covering this</div><div class="val">0</div><div class="sub">REQ-585 captured today</div></div>
+  </div>
+</section>
+
+<section>
+  <p class="kicker">The problem, as reported</p>
+  <div class="row">
+    <div class="split-wide">
+      <figure>
+        <a href="screenshots/user-report-2026-09-05-1211utc.png" target="_blank" rel="noopener">
+        <div class="shot">
+          <img src="screenshots/user-report-2026-09-05-1211utc.png" alt="The live board's Activity view at 12:11 UTC with two scrollbars: one on the transitions table and one on the board area behind it." width="2000" height="1115">
+          <svg viewBox="0 0 2000 1115" aria-hidden="true">
+            <rect class="callout-box" x="1926" y="480" width="26" height="120" rx="6"/>
+            <circle class="callout" cx="1880" cy="540" r="26"/><text class="callout-num" x="1880" y="551" text-anchor="middle">1</text>
+            <rect class="callout-box" x="1984" y="96" width="14" height="260" rx="6"/>
+            <circle class="callout" cx="1940" cy="226" r="26"/><text class="callout-num" x="1940" y="237" text-anchor="middle">2</text>
+            <rect class="callout-box" x="18" y="128" width="1230" height="292" rx="10"/>
+            <circle class="callout" cx="1290" cy="274" r="26"/><text class="callout-num" x="1290" y="285" text-anchor="middle">3</text>
+          </svg>
+        </div>
+        </a>
+        <figcaption><span class="badge live">Live capture</span> The board at 127.0.0.1:8090, Activity view, 24h window, 12:11 UTC on 2026-09-05, as sent with the report. Callout 1 is the table's own scrollbar (926 px box holding 6815 px of rows). Callout 2 is the board area's scrollbar behind it, still needed because the verify-findings strip and the summary line push the table below the fold. Callout 3 is that strip; REQ-578 (hide the verify-findings strip on the Activity view) has since merged, so it is already gone from a freshly served board, but the two scrollbars remain because the 70vh cap is independent of the strip.</figcaption>
+      </figure>
+    </div>
+    <div class="split">
+      <div class="card">
+        <p class="kicker">Cause, in the shipped stylesheet</p>
+        <p>Two rules in <code>skills/do-work-board/tools/queue-kanban/web/board.css</code> (board 0.236.20) nest one scroll container inside another:</p>
+<pre>/* line 421: the board area is THE scroll container by design */
+.board-main {
+  min-height: 0;
+  overflow-y: auto;
+  padding: 24px 28px 56px;
+}
+
+/* line 3172: the Activity table gets a second one */
+.activity-table-scroll {
+  max-height: 70vh;
+  overflow: auto;
+  margin-top: 8px;
+  font-size: 12px;
+}</pre>
+        <p>The block comment above the board rule says it: "The board, not the page, is the scroll container." The Activity view's comment says it "borrows the timeline table's metrics"; the Timeline table also has a scroll box, but there it sits inside a collapsed <code>&lt;details&gt;</code> under a chart, where a cap makes sense. On Activity the table is the whole view, so the cap only splits the scroll in two.</p>
+        <p style="margin-bottom:0">Measured on the live page at 2466×1323 CSS px: the board area is 1231 px tall with 1442 px of content, and the table box is 926 px tall with 6815 px of rows. Both scroll.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <p class="kicker">Mockups · scroll each one</p>
+  <p class="measure lede">Each frame is a live page: wheel over it, click the 6h / 24h / 48h / 7d chips, or open it full-size. The rows are the real 2051 Activity rows served by the board at 12:17 UTC today, rendered by a copy of the board's row logic. Only the CSS block printed under each frame differs from the shipped stylesheet. The bottom-right tag is a mockup label, not part of the proposal.</p>
+  <div class="row">
+
+    <div class="mock">
+      <span class="code">M0 · CURRENT</span>
+      <h3>Two scroll boxes, one inside the other <span class="badge mock">Mockup of today</span></h3>
+      <p>The shipped layout, including the strip, so the comparison starts from what the screenshot shows. Wheel over the strip and the board scrolls; wheel over the rows and only the table scrolls until it hits its end, then the board takes over.</p>
+      <div class="frame"><iframe src="mockups/m0-current.html" title="M0: current layout" loading="lazy"></iframe></div>
+      <p class="links"><a href="mockups/m0-current.html" target="_blank" rel="noopener">open full-size</a> · <a href="screenshots/mockup-m0-current.jpg" target="_blank" rel="noopener">static capture</a></p>
+<pre>/* no change: shipped rules as printed above */</pre>
+    </div>
+
+    <div class="mock reco">
+      <span class="code">M1 · ONE PAGE SCROLL · RECOMMENDED</span>
+      <h3>The board scrolls; the header sticks to its top edge</h3>
+      <p>The table stops being a scroll box and becomes ordinary content of the board area. The column header keeps its existing <code>position: sticky</code> and now sticks to the top of the board area instead of the top of the table box. The summary line scrolls away with the rows, like a caption.</p>
+      <div class="frame"><iframe src="mockups/m1-one-page-scroll.html" title="M1: one page scroll" loading="lazy"></iframe></div>
+      <p class="links"><a href="mockups/m1-one-page-scroll.html" target="_blank" rel="noopener">open full-size</a> · <a href="screenshots/mockup-m1-one-page-scroll.jpg" target="_blank" rel="noopener">static capture</a></p>
+<pre>.activity-table-scroll { max-height: none; overflow: visible; }
+/* the board's 24px top padding is scrollable content, so rows
+   would show through above the stuck header; move it onto the
+   summary line instead */
+.board-main       { padding-top: 0; }   /* Activity view only */
+#view-activity    { padding-top: 0; }
+.activity-summary { padding-top: 40px; }</pre>
+    </div>
+
+    <div class="mock">
+      <span class="code">M2 · TABLE FILLS THE VIEWPORT</span>
+      <h3>The table owns the scroll; the board stops scrolling</h3>
+      <p>The Activity view becomes a column that fills the board area: the summary stays at the top, the table takes every remaining pixel and is the only thing that scrolls. Nothing sits below the fold, so the board's own scrollbar never appears on this view. Feels like a log viewer. The cost is that Activity gets a scroll model no other view has, and the board rule "the board is the scroll container" gains a per-view exception.</p>
+      <div class="frame"><iframe src="mockups/m2-table-fills-viewport.html" title="M2: table fills the viewport" loading="lazy"></iframe></div>
+      <p class="links"><a href="mockups/m2-table-fills-viewport.html" target="_blank" rel="noopener">open full-size</a> · <a href="screenshots/mockup-m2-table-fills-viewport.jpg" target="_blank" rel="noopener">static capture</a></p>
+<pre>.board-main { overflow: hidden; display: flex; flex-direction: column;
+              padding-bottom: 0; }      /* Activity view only */
+#view-activity.is-active { display: flex; flex-direction: column;
+              flex: 1 1 auto; min-height: 0; padding-bottom: 0; }
+.activity-table-scroll { flex: 1 1 auto; min-height: 0;
+              max-height: none; overflow: auto; }</pre>
+    </div>
+
+    <div class="mock">
+      <span class="code">M3 · ONE SCROLL, PINNED SUMMARY</span>
+      <h3>M1, plus the transition count stays visible</h3>
+      <p>Same single scroll as M1. The summary line ("236 transitions across 49 REQs in the last 24 hours") is pinned above the column header, so the count and the window stay readable however far down the reader is. Costs one more sticky element and a fixed summary height so the header offset matches it.</p>
+      <div class="frame"><iframe src="mockups/m3-one-scroll-pinned-summary.html" title="M3: one scroll with pinned summary" loading="lazy"></iframe></div>
+      <p class="links"><a href="mockups/m3-one-scroll-pinned-summary.html" target="_blank" rel="noopener">open full-size</a> · <a href="screenshots/mockup-m3-one-scroll-pinned-summary.jpg" target="_blank" rel="noopener">static capture</a></p>
+<pre>.activity-table-scroll { max-height: none; overflow: visible; margin-top: 0; }
+.board-main    { padding-top: 0; }      /* Activity view only */
+#view-activity { padding-top: 0; }
+.activity-summary { position: sticky; top: 0; z-index: 2; margin: 0;
+              height: 40px; line-height: 40px; background: var(--bg-base); }
+.activity-table-scroll thead th { top: 40px; }</pre>
+    </div>
+
+  </div>
+</section>
+
+<section>
+  <p class="kicker">Side by side</p>
+  <div class="tablewrap">
+    <table>
+      <thead><tr><th>Variant</th><th>Scroll surfaces</th><th>What stays visible while scrolling</th><th>Where the wheel goes</th><th>Change to the board's scroll rule</th><th>Rules touched</th></tr></thead>
+      <tbody>
+        <tr><td><strong>M0</strong> current</td><td class="num">2</td><td>Column header, inside the table box only</td><td>Depends on where the pointer is</td><td>None (the violation is the bug)</td><td class="num">0</td></tr>
+        <tr><td><strong>M1</strong> one page scroll</td><td class="num">1</td><td>Column header</td><td>Always the board</td><td>None; Activity starts following it</td><td class="num">4</td></tr>
+        <tr><td><strong>M2</strong> table fills the viewport</td><td class="num">1</td><td>Summary line and column header</td><td>Always the table</td><td>Per-view exception: board does not scroll on Activity</td><td class="num">3</td></tr>
+        <tr><td><strong>M3</strong> one scroll, pinned summary</td><td class="num">1</td><td>Summary line and column header</td><td>Always the board</td><td>None; Activity starts following it</td><td class="num">6</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p style="margin-top:14px" class="measure">"Rules touched" counts CSS declarations that change or move in the Activity section of the board stylesheet; the M1 and M3 padding moves are scoped to the Activity view so other views keep their 24 px top padding. The detail drawer, filters, and window chips are unaffected in every variant because none of them live inside the table box.</p>
+</section>
+
+<section>
+  <p class="kicker">What was captured</p>
+  <div class="row">
+    <div class="split">
+      <div class="card">
+        <p>No queued or in-flight request covered this. REQ-573 (open the detail drawer from an Activity row) and REQ-579 (render verify findings and skipped probes as compact rows) touch the same view but neither mentions scrolling, and REQ-578 (hide the verify-findings strip) removes content above the table without touching the table's own cap.</p>
+        <p>So one request was captured: <strong>REQ-585 (give the Activity view one scroll surface)</strong> under UR-120, with this folder named as the mockup reference and the layout choice recorded as its one open question, recommended answer M1. Answer it with <code>do-work clarify</code> or by editing the REQ before the next run picks it up.</p>
+        <p style="margin-bottom:0">The request depends on nothing: REQ-578 has merged, so the strip is already out of the way.</p>
+      </div>
+    </div>
+    <div class="split">
+      <div class="card">
+        <p class="kicker">Proof the builder will use</p>
+        <p><strong>RED today:</strong> on the served board's Activity view with the 24h window, both <code>.board-main</code> and <code>.activity-table-scroll</code> report <code>scrollHeight &gt; clientHeight</code>, and two scrollbars are visible.</p>
+        <p style="margin-bottom:0"><strong>GREEN:</strong> exactly one element scrolls. In M1 or M3 that is <code>.board-main</code> and the table reports <code>scrollHeight === clientHeight</code>; in M2 it is the table and the board reports it. The column header remains visible after scrolling 700 px in every case.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <p class="kicker">Verify it yourself</p>
+  <div class="row">
+    <div class="split">
+      <p><strong>Open the mockups over HTTP</strong> (run, this is what produced the captures above):</p>
+<pre>cd "$(git rev-parse --show-toplevel)"
+python3 -m http.server 8765 --bind 127.0.0.1
+# then open
+# http://127.0.0.1:8765/ai-reports/2026-09-05_1520_activity-view-double-scroll-mockups/</pre>
+      <p><strong>Measure the live board</strong> (run at 12:15 UTC in the browser console on 127.0.0.1:8090, Activity view):</p>
+<pre>const m = document.querySelector('.board-main'),
+      t = document.querySelector('.activity-table-scroll');
+({ boardScrolls: m.scrollHeight > m.clientHeight,   // true today
+   tableScrolls: t.scrollHeight > t.clientHeight }) // true today</pre>
+    </div>
+    <div class="split">
+      <p><strong>Read the cause</strong> (run):</p>
+<pre>grep -n -A5 '^\.activity-table-scroll {' \
+  skills/do-work-board/tools/queue-kanban/web/board.css
+grep -n -B2 -A4 'overflow-y: auto' \
+  skills/do-work-board/tools/queue-kanban/web/board.css | sed -n 1,12p</pre>
+      <p><strong>Read the request</strong> (run after the capture commit):</p>
+<pre>cat do-work/queue/REQ-585-*.md
+cat do-work/user-requests/UR-120/input.md</pre>
+    </div>
+  </div>
+</section>
+
+<p class="foot">Bundle: <code>ai-reports/2026-09-05_1520_activity-view-double-scroll-mockups/</code> · <code>index.html</code>, <code>mockups/</code> (four pages, one shared stylesheet copied from the board, one renderer, the real rows as <code>data.js</code>), <code>screenshots/</code> (one live capture sent with the report, one live capture taken at 12:15 UTC, four mockup captures at 1512×811 downscaled from a 2466 px viewport). No generated images. Rendered and judged in light and dark at 2466 px wide; narrower widths rely on flex-wrap and were not render-verified (the judge browser would not resize).</p>
+
+</div>
+</body>
+</html>
