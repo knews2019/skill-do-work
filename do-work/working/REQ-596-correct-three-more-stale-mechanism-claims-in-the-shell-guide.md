@@ -29,9 +29,17 @@ claimed_at: 2026-09-06T05:20:24Z
 # Correct Three More Stale Mechanism Claims in the Prescribed-Shell Guide
 
 ## AI Execution State (P-A-U Loop)
-- [ ] **[PLAN]:** (Agent: Read listed `prime_files` and agent rules. Write brief technical approach here. Do not write code yet.)
-- [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
-- [ ] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
+- [x] **[PLAN]:** Read `_dev/primes/prime-shell-commands.md` and ran a 69-claim sweep of the guide
+  against the Go implementations before touching the file. Approach: correct every claim the sweep
+  proved false inside the two sections the request's three sit in, using fixtures rather than reading,
+  and capture the ten in other sections as their own request.
+- [x] **[APPLY]:** One file changed, `skills/do-work/docs/prescribed-shell-primitives.md`: eleven
+  corrections in two sections. No Go source, no route column, no Mechanics column, no heading, nothing
+  under `_dev/tests/`.
+- [x] **[UNIFY]:** `git diff --numstat` — the guide at +8/-7, one file. Each replacement was checked
+  against the fixture output the sweep produced and against the code it cites. All three guards over
+  this file pass: `audit-lockins.sh`, `prescribed-shell-canonicalization.sh` and the new
+  `quiet-grep-pipeline-audit.sh` each exit 0. No debug artifacts, no code change.
 
 ## What
 
@@ -178,3 +186,54 @@ and the one guard that could pin a prose claim already exists.
 - [ ] No sentence generalizes over two commands that behave differently
 - [ ] `_dev/tests/audit-lockins.sh` and `_dev/tests/prescribed-shell-canonicalization.sh` both still exit 0
 - [ ] The ten findings outside these two sections are captured rather than fixed
+
+## Pre-Flight
+
+**Green gate at `06be3df`.** `bash _dev/tests/maintainer-verify.sh` printed
+`Maintainer verification passed.` and exited 0, gate wall 88s.
+
+**Three guards over this file are green and must stay green.** `_dev/tests/audit-lockins.sh` Finding 7
+now pins three things: the route column, the orchestration claim, and the Mechanics column's shell
+vocabulary. `_dev/tests/prescribed-shell-canonicalization.sh` pins twelve headings in this document plus
+sixteen pointer sites. None of the three columns and no heading changes here.
+
+**This request writes prose only, so no existing lane reads the sentences that change.** The correctness
+evidence is the sweep's fixtures — each of the 21 findings was produced by running a fixture through the
+real command, not by reading the code — re-checked by the orchestrator for the three the request names.
+Saying "no lane reads this" is a statement about the lanes, not about what is possible: REQ-595 added a
+guard over the Mechanics column for exactly that reason. Nothing here is guardable the same way, because
+these are by-hand procedures whose correctness is a comparison between prose and behaviour.
+
+## Implementation Summary
+
+**Files changed:**
+- `skills/do-work/docs/prescribed-shell-primitives.md` (modified)
+
+**What was done:** Eleven corrections, all inside the two sections the request's three claims sit in.
+Ten in "Protected inventory fallbacks" and one in the atomic download section.
+
+**The three the request names.** The secret pattern is `*credential*`, matching the code's
+`strings.Contains(base, "credential")`, and `credential.txt` joins the examples. The conflict-resolution
+rule now says the archived/in-flight distinction plays no part, and says what actually decides a tie:
+the first claim found, with `working/` read first. The publication sentence no longer generalizes across
+two commands that differ — the screenshot install verifies and the download does not, and the sentence
+now says which does what.
+
+**Eight more in the same two sections, each found by running a fixture.** The `XD` tag covers a
+secret-*derived* deletion as well as a secret-shaped one. `X` gained the reading rule it never had,
+which matters because `X` is produced for ordinary additions promoted by the ambiguity rule, and a
+reader who applies the closest listed rule reads one as a new file and opens it. The by-hand inventory
+now drops the metadata the tool drops, classifies a rename origin without giving it a row, and writes
+the quarantine the way `start` writes it — replacing, not adding, and with no overlay of its own. The
+by-hand association now counts a `working/` REQ whatever its status says, which is what stops every
+claimed REQ being filtered out, and uses `find` instead of a `**` glob that needs `globstar` and still
+misses the files sitting directly in `do-work/archive/`.
+
+**The by-hand fallbacks are the reason this is not cosmetic.** They are what a person executes when the
+tool will not run. A pattern narrower than the code's leaves a secret unquarantined; a status test the
+tool does not apply leaves every in-flight REQ's files unassociated. Both were wrong.
+
+**Ten more findings are not fixed here.** They are in sections this request never opened — lifecycle
+timing, the merge-aware commit diff, the commit file listing, the verified-exact-publication rule and
+the portfolio summary. The request's own line is "the sections these three sit in", and widening past it
+a third time in one file is how a review finds prose nobody asked for.
