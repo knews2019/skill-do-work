@@ -128,6 +128,14 @@ run_all_cases() {
     run_case_samples "reused-stage" "reused" \
       bash "$repo_root/_dev/tests/fast-stage-reuse-behavior.sh"
   fi
+
+  # 7. go-discovery (A7)
+  if [ "$target_case" = "all" ] || [ "$target_case" = "go-discovery" ]; then
+    printf 'Measuring case: go-discovery (%d runs)...\n' "$runs" >&2
+    run_case_samples "go-discovery" "warm" \
+      env DO_WORK_TEST_REPO_ROOT="$repo_root" QUEUE_KANBAN_JAVASCRIPT_PROBES=off QUEUE_KANBAN_BROWSER_PROBES=off DO_WORK_GO_TEST_EXCLUDE_PREFIXES=TestJavaScriptBehavior,TestBrowserBehavior \
+      bash "$repo_root/_dev/tests/run-go-tests-with-budget.sh" "$repo_root/skills/do-work-board/tools/queue-kanban" -run '^TestVerify' ./...
+  fi
 }
 
 run_all_cases

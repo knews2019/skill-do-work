@@ -17,24 +17,45 @@ cleanup_result() {
 }
 trap cleanup_result EXIT
 
+escape_go_test_regex() {
+  local input="$1"
+  local output=""
+  local i char
+  for ((i = 0; i < ${#input}; i++)); do
+    char="${input:i:1}"
+    case "$char" in
+      "\\"|"."|"*"|"+"|"?"|"^"|"$"|"("|")"|"["|"]"|"{"|"}"|"|")
+        output+="\\$char"
+        ;;
+      *)
+        output+="$char"
+        ;;
+    esac
+  done
+  printf '%s' "$output"
+}
+
 started_at="$(date +%s)"
 test_status=0
 if [ -n "$excluded_test_prefixes" ]; then
-  test_run_pattern="$({
-    cd "$module_directory"
-    go test -list '^Test'
-  } | python3 -c '
-import re
-import sys
-
-prefixes = tuple(filter(None, sys.argv[1].split(",")))
-names = [line.strip() for line in sys.stdin if line.startswith("Test")]
-selected = [name for name in names if not name.startswith(prefixes)]
-if not selected:
-    raise SystemExit("no fast Go tests remain after applying the heavy prefixes")
-print("^(" + "|".join(re.escape(name) for name in selected) + ")$")
-' "$excluded_test_prefixes")"
-  set -- -run "$test_run_pattern" "$@"
+  skip_pattern=""
+  old_ifs="$IFS"
+  IFS=','
+  for prefix in $excluded_test_prefixes; do
+    prefix="${prefix#"${prefix%%[![:space:]]*}"}"
+    prefix="${prefix%"${prefix##*[![:space:]]}"}"
+    [ -z "$prefix" ] && continue
+    escaped="$(escape_go_test_regex "$prefix")"
+    if [ -z "$skip_pattern" ]; then
+      skip_pattern="$escaped"
+    else
+      skip_pattern="$skip_pattern|$escaped"
+    fi
+  done
+  IFS="$old_ifs"
+  if [ -n "$skip_pattern" ]; then
+    set -- -skip "^($skip_pattern)" "$@"
+  fi
 fi
 (
   cd "$module_directory"
@@ -63,7 +84,7 @@ PY
     "$module_directory" "$elapsed_seconds" "$test_status" >&2
 fi
 
-python3 - "$result_file" "$module_directory" "$test_budget_seconds" "$elapsed_seconds" "$test_status" <<'PY'
+python3 - "$result_file" "$module_directory" "$test_budget_seconds" "$elapsed_seconds" "$test_status" "$excluded_test_prefixes" <<'PY'
 import json
 import os
 import pathlib
@@ -75,6 +96,7 @@ module_directory = sys.argv[2]
 budget_seconds = float(sys.argv[3])
 wall_seconds = int(sys.argv[4])
 test_status = int(sys.argv[5])
+excluded_test_prefixes = sys.argv[6] if len(sys.argv) > 6 else ""
 enforce_budget = os.environ.get("DO_WORK_TEST_ENFORCE_BUDGET", "yes") == "yes" and test_status == 0
 durations = []
 test_file_by_name = {}
@@ -92,14 +114,19 @@ for line in result_path.read_text(encoding="utf-8").splitlines():
     if event.get("Action") in {"pass", "fail"} and test_name and "/" not in test_name:
         durations.append((float(event.get("Elapsed", 0)), event.get("Package", ""), test_name))
 
+if excluded_test_prefixes and not durations and test_status == 0:
+    print("no fast Go tests remain after applying the heavy prefixes", file=sys.stderr)
+    sys.exit(1)
+
 file_durations = {}
 for elapsed, _, test_name in durations:
     test_file = test_file_by_name.get(test_name, "<unknown test file>")
     file_durations[test_file] = file_durations.get(test_file, 0.0) + elapsed
 duration_log_path = os.environ.get("DO_WORK_TEST_DURATION_LOG")
 duration_run_id = os.environ.get("DO_WORK_TEST_RUN_ID")
-if duration_log_path and duration_run_id:
-    repository_root = pathlib.Path(os.environ["DO_WORK_TEST_REPO_ROOT"])
+repo_root_env = os.environ.get("DO_WORK_TEST_REPO_ROOT")
+if duration_log_path and duration_run_id and repo_root_env:
+    repository_root = pathlib.Path(repo_root_env)
     module_path = pathlib.Path(module_directory)
     module_relative = module_path.relative_to(repository_root)
     concurrent_count = os.environ.get("DO_WORK_TEST_OTHER_GATE_PROCESSES", "0")
