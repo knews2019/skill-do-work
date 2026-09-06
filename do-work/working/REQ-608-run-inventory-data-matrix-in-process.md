@@ -1,7 +1,7 @@
 ---
 id: REQ-608
 title: 'A3: Run the inventory data matrix without subprocesses'
-status: pending
+status: claimed
 created_at: 2026-09-06T13:16:35Z
 user_request: UR-128
 domain: testing
@@ -14,6 +14,7 @@ batch: test-efficiency
 depends_on: [REQ-606]
 related: [REQ-606, REQ-607, REQ-609, REQ-610, REQ-611, REQ-612, REQ-613, REQ-614]
 write_set: [skills/do-work/tools/do-work-cli/internal/corehelpers/inventory.go, skills/do-work/tools/do-work-cli/internal/corehelpers/inventory_test.go]
+claimed_at: 2026-09-06T14:14:41Z
 ---
 # A3: Run the inventory data matrix without subprocesses
 
