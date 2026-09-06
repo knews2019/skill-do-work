@@ -2075,6 +2075,48 @@ body.is-resizing-detail .detail-resizer::before {
 .detail-dep-id {
   font-family: var(--font-mono);
 }
+
+/* A foldable meta row: the label is a real button inside its <dt>, so it is
+   keyboard-reachable and announces the state of the <dd> it controls. The
+   appearance reset and the focus outline are the ones .ur-group-detail already
+   carries — the board has one fold look, not two. */
+.detail-fold {
+  appearance: none;
+  background: transparent;
+  border: 0;
+  padding: 0;
+  color: inherit;
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+}
+.detail-fold:hover {
+  color: var(--ink-strong);
+}
+.detail-fold:focus-visible {
+  outline: 2px solid var(--accent-ur);
+  outline-offset: 2px;
+}
+.detail-fold-marker {
+  font-size: 9px;
+  line-height: 1;
+  transition: transform 120ms ease;
+}
+.detail-fold[aria-expanded="false"] .detail-fold-marker {
+  transform: rotate(-90deg);
+}
+/* The reported problem: a UR with dozens of grouped REQs pushed input.md and
+   the rendered body out of the panel. The cap fixes that with zero clicks, and
+   the fold above stays as the hide-it-entirely escape. Scoped to the foldable
+   row so "Depends on" and "Blocked by" keep their natural height. */
+.detail-foldable-value .detail-dep-list {
+  max-height: 40vh;
+  overflow-y: auto;
+}
 .detail-dep-status {
   font-size: 11px;
   color: var(--ink-faint);

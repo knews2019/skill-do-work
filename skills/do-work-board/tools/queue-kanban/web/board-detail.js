@@ -330,6 +330,32 @@
     drawerMeta.appendChild(dd);
   }
 
+  // appendMetaRow with its label turned into a fold control. drawerMeta is a
+  // <dl>, so the button goes inside the <dt> and the value keeps its own <dd>:
+  // a control between the pairs would break the pairing the list is made of.
+  // The value is hidden through el.hidden rather than removed — it is already
+  // built, so nothing has to be rebuilt when it comes back and there is no
+  // teardown to get wrong. drawerMeta is emptied on every open, so fold state
+  // is per-open by design and nothing else has to reset it.
+  function appendFoldableMetaRow(label, valueNode, valueNodeId) {
+    var dt = createElement("dt");
+    var foldButton = createElement("button", "detail-fold", label);
+    foldButton.type = "button";
+    foldButton.setAttribute("aria-expanded", "true");
+    foldButton.setAttribute("aria-controls", valueNodeId);
+    foldButton.appendChild(createElement("span", "detail-fold-marker", "▾"));
+    dt.appendChild(foldButton);
+    var dd = createElement("dd", "detail-foldable-value");
+    dd.id = valueNodeId;
+    dd.appendChild(valueNode);
+    foldButton.addEventListener("click", function () {
+      dd.hidden = !dd.hidden;
+      foldButton.setAttribute("aria-expanded", dd.hidden ? "false" : "true");
+    });
+    drawerMeta.appendChild(dt);
+    drawerMeta.appendChild(dd);
+  }
+
   // Emptied on every open beside drawerMeta, because nothing else clears the
   // section: without this a UR opened after a REQ would wear the REQ's glossary.
   function clearDetailGlossary() {
@@ -625,7 +651,11 @@
     var requestIds = userRequest.requestIds || [];
     appendMetaRow("Grouped REQs", String(requestIds.length));
     if (requestIds.length > 0) {
-      appendMetaRow("REQ ids", makeTicketLinkList(requestIds));
+      // A UR with dozens of members turned this row into a wall that pushed
+      // input.md and the body out of the panel. The list is capped in CSS so it
+      // stays readable without a click, and folds away entirely for a reader
+      // who wants the body instead.
+      appendFoldableMetaRow("REQ ids", makeTicketLinkList(requestIds), "detail-meta-request-ids");
     }
     appendMetaRow("input.md", userRequest.inputFilePresent ? "present" : "synthesized from REQ pointers");
 
