@@ -2,8 +2,6 @@ package corehelpers
 
 import (
 	"encoding/json"
-	"net/http"
-	"net/http/httptest"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -360,83 +358,107 @@ func commandExitStatus(err error) int {
 	return 127
 }
 
-func TestAtomicDownloadOccupancyRule(t *testing.T) {
-	repository := t.TempDir()
-	targetFile := filepath.Join(repository, "occupied.txt")
-	if err := os.WriteFile(targetFile, []byte("existing content"), 0o600); err != nil {
+// installFakeCurl puts a `curl` on PATH whose body is the given shell script. The
+// script receives curl's real argument list; `$output_path` is pre-parsed from `-o`.
+func installFakeCurl(t *testing.T, body string) {
+	t.Helper()
+	binDirectory := t.TempDir()
+	script := "#!/bin/sh\noutput_path=\"\"\nwhile [ \"$#\" -gt 0 ]; do case \"$1\" in -o) output_path=\"$2\"; shift 2 ;; *) shift ;; esac; done\n" + body + "\n"
+	if err := os.WriteFile(filepath.Join(binDirectory, "curl"), []byte(script), 0o755); err != nil {
 		t.Fatal(err)
 	}
-
-	dryRunResult := handleAtomicDownload(testContext(repository), []string{
-		"--source-url", "https://example.invalid/file.txt",
-		"--target-path", targetFile,
-		"--dry-run",
-	})
-	liveResult := handleAtomicDownload(testContext(repository), []string{
-		"--source-url", "https://example.invalid/file.txt",
-		"--target-path", targetFile,
-	})
-
-	// Both dry-run and live against occupying regular file give the same exit status (2) and same finding
-	if resultmodel.ExitCode(dryRunResult.Outcome) != 2 {
-		t.Fatalf("dry-run exit=%d want 2", resultmodel.ExitCode(dryRunResult.Outcome))
-	}
-	if resultmodel.ExitCode(liveResult.Outcome) != 2 {
-		t.Fatalf("live exit=%d want 2", resultmodel.ExitCode(liveResult.Outcome))
-	}
-	if len(dryRunResult.Findings) == 0 || dryRunResult.Findings[0].Code != "DOWNLOAD-TARGET-OCCUPIED" {
-		t.Fatalf("dry-run findings = %#v", dryRunResult.Findings)
-	}
-	if len(liveResult.Findings) == 0 || liveResult.Findings[0].Code != "DOWNLOAD-TARGET-OCCUPIED" {
-		t.Fatalf("live findings = %#v", liveResult.Findings)
-	}
-	if dryRunResult.Findings[0].Evidence[0] != liveResult.Findings[0].Evidence[0] {
-		t.Fatalf("dry-run evidence %q != live evidence %q", dryRunResult.Findings[0].Evidence[0], liveResult.Findings[0].Evidence[0])
-	}
-	if dryRunResult.Findings[0].AutomationStopReason != liveResult.Findings[0].AutomationStopReason {
-		t.Fatalf("dry-run stop reason %q != live stop reason %q", dryRunResult.Findings[0].AutomationStopReason, liveResult.Findings[0].AutomationStopReason)
-	}
-
-	// Live against a directory is unchanged: exit 1, OutcomeFindings, "target is a directory"
-	targetDir := filepath.Join(repository, "occupied-dir")
-	if err := os.MkdirAll(targetDir, 0o755); err != nil {
-		t.Fatal(err)
-	}
-	dirResult := handleAtomicDownload(testContext(repository), []string{
-		"--source-url", "https://example.invalid/file.txt",
-		"--target-path", targetDir,
-	})
-	if resultmodel.ExitCode(dirResult.Outcome) != 1 {
-		t.Fatalf("directory exit=%d want 1", resultmodel.ExitCode(dirResult.Outcome))
-	}
-	if len(dirResult.Findings) == 0 || dirResult.Findings[0].Evidence[0] != "target is a directory" {
-		t.Fatalf("directory evidence = %#v", dirResult.Findings)
-	}
+	t.Setenv("PATH", binDirectory+string(os.PathListSeparator)+os.Getenv("PATH"))
 }
 
-func TestAtomicDownloadStatFailureDoesNotPanic(t *testing.T) {
+func atomicDownloadArguments(targetPath string, extra ...string) []string {
+	return append([]string{"--source-url", "https://example.invalid/file.txt", "--target-path", targetPath}, extra...)
+}
+
+func TestAtomicDownloadOccupancyRule(t *testing.T) {
+	repository := t.TempDir()
+
+	t.Run("non-empty regular file is refused the same way in both modes", func(t *testing.T) {
+		targetFile := filepath.Join(repository, "occupied.txt")
+		if err := os.WriteFile(targetFile, []byte("existing content"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		installFakeCurl(t, "printf payload > \"$output_path\"")
+		dryRunResult := handleAtomicDownload(testContext(repository), atomicDownloadArguments(targetFile, "--dry-run"))
+		liveResult := handleAtomicDownload(testContext(repository), atomicDownloadArguments(targetFile))
+		for name, result := range map[string]resultmodel.CommandResult{"dry-run": dryRunResult, "live": liveResult} {
+			if resultmodel.ExitCode(result.Outcome) != 2 {
+				t.Fatalf("%s exit=%d want 2", name, resultmodel.ExitCode(result.Outcome))
+			}
+			if len(result.Findings) == 0 || result.Findings[0].Code != "DOWNLOAD-TARGET-OCCUPIED" {
+				t.Fatalf("%s findings = %#v", name, result.Findings)
+			}
+		}
+		if dryRunResult.Findings[0].Evidence[0] != liveResult.Findings[0].Evidence[0] || dryRunResult.Findings[0].AutomationStopReason != liveResult.Findings[0].AutomationStopReason {
+			t.Fatalf("dry-run finding %#v differs from live finding %#v", dryRunResult.Findings[0], liveResult.Findings[0])
+		}
+		if content, _ := os.ReadFile(targetFile); string(content) != "existing content" {
+			t.Fatalf("occupied target was changed to %q", content)
+		}
+	})
+
+	t.Run("directory is refused with exit 1", func(t *testing.T) {
+		targetDir := filepath.Join(repository, "occupied-dir")
+		if err := os.MkdirAll(targetDir, 0o755); err != nil {
+			t.Fatal(err)
+		}
+		dirResult := handleAtomicDownload(testContext(repository), atomicDownloadArguments(targetDir))
+		if resultmodel.ExitCode(dirResult.Outcome) != 1 {
+			t.Fatalf("directory exit=%d want 1", resultmodel.ExitCode(dirResult.Outcome))
+		}
+		if len(dirResult.Findings) == 0 || dirResult.Findings[0].Evidence[0] != "target is a directory" {
+			t.Fatalf("directory evidence = %#v", dirResult.Findings)
+		}
+	})
+
+	// install.md's detect step reads a zero-byte SKILL.md as absent (`test -s`) so that a
+	// re-run repairs an interrupted download. The refusal must not close that path.
+	t.Run("zero-byte regular file is repaired, not refused", func(t *testing.T) {
+		targetFile := filepath.Join(repository, "interrupted.txt")
+		if err := os.WriteFile(targetFile, nil, 0o600); err != nil {
+			t.Fatal(err)
+		}
+		dryRunResult := handleAtomicDownload(testContext(repository), atomicDownloadArguments(targetFile, "--dry-run"))
+		if resultmodel.ExitCode(dryRunResult.Outcome) != 0 {
+			t.Fatalf("dry-run exit=%d want 0: %#v", resultmodel.ExitCode(dryRunResult.Outcome), dryRunResult.Findings)
+		}
+		installFakeCurl(t, "printf repaired-payload > \"$output_path\"")
+		liveResult := handleAtomicDownload(testContext(repository), atomicDownloadArguments(targetFile))
+		if resultmodel.ExitCode(liveResult.Outcome) != 0 {
+			t.Fatalf("live exit=%d want 0: %#v", resultmodel.ExitCode(liveResult.Outcome), liveResult.Findings)
+		}
+		if content, _ := os.ReadFile(targetFile); string(content) != "repaired-payload" {
+			t.Fatalf("zero-byte target was not repaired: %q", content)
+		}
+	})
+}
+
+// A transfer that reports success but leaves no private file (curl removed or moved
+// its output) is caught by the byte-count stat BEFORE the rename, and the finding says
+// nothing was published. Before this the byte count was read from the target AFTER
+// the rename, so a stat failure there reported a publication that had happened as one
+// that had not, and a missing private file surfaced only as a bare rename error.
+func TestAtomicDownloadUninspectableTransferPublishesNothing(t *testing.T) {
 	repository := t.TempDir()
 	targetFile := filepath.Join(repository, "dest.txt")
+	installFakeCurl(t, "rm -f \"$output_path\"; exit 0")
 
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusOK)
-		_, _ = w.Write([]byte("downloaded payload"))
-	}))
-	defer server.Close()
-
-	atomicDownloadStat = func(path string) (os.FileInfo, error) {
-		return nil, os.ErrNotExist
-	}
-	defer func() { atomicDownloadStat = os.Stat }()
-
-	res := handleAtomicDownload(testContext(repository), []string{
-		"--source-url", server.URL + "/file.txt",
-		"--target-path", targetFile,
-	})
+	res := handleAtomicDownload(testContext(repository), atomicDownloadArguments(targetFile))
 	if resultmodel.ExitCode(res.Outcome) != 2 {
 		t.Fatalf("exit code = %d, want 2", resultmodel.ExitCode(res.Outcome))
 	}
-	if len(res.Findings) == 0 || res.Findings[0].Code != "DOWNLOAD-FAILED" {
+	if len(res.Findings) == 0 || res.Findings[0].Code != "DOWNLOAD-FAILED" || !strings.Contains(res.Findings[0].AutomationStopReason, "no target was published") {
 		t.Fatalf("findings = %#v", res.Findings)
+	}
+	if _, err := os.Stat(targetFile); !os.IsNotExist(err) {
+		t.Fatalf("target exists after an uninspectable transfer: %v", err)
+	}
+	leftovers, _ := filepath.Glob(filepath.Join(repository, "dest.txt.download.*"))
+	if len(leftovers) != 0 {
+		t.Fatalf("private scratch leaked: %v", leftovers)
 	}
 }

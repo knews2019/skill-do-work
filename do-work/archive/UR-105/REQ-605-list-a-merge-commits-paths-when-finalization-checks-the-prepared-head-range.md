@@ -104,7 +104,7 @@ None.
 
 ## Decisions
 
-- **D1 Use `-m` rather than `--first-parent`:** `git diff-tree` does not accept `--first-parent` (which is a log/rev-list option); `-m` is the canonical `diff-tree` flag to show separate diffs with respect to each parent commit, accurately capturing all files altered across any merged branch.
+- **D1 Use `-m` rather than `--first-parent`:** ~~`git diff-tree` does not accept `--first-parent` (which is a log/rev-list option);~~ Correction (audit, 0.305.30): `git diff-tree --first-parent <merge>` is accepted on git 2.50 and simply prints nothing without `-m`; `-m --first-parent` prints the first-parent paths. The real reason to reject first-parent semantics is that they hide paths a merge brought in through a side parent, so the exactness check could accept a merge that changed files outside the prepared range. `-m` is the canonical `diff-tree` flag to show separate diffs with respect to each parent commit, accurately capturing all files altered across any merged branch.
 
 ## Qualification
 

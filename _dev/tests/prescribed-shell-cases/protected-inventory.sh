@@ -18,4 +18,21 @@ association_output="$(cd "$inventory_repo" && "$core_scripts/protected-inventory
 grep -q $'REQ-001\tsafe.txt' <<<"$association_output" || fail_case 'protected-inventory associate case lost the safe owner'
 grep -q '.env.local' <<<"$association_output" && fail_case 'protected-inventory associate case leaked the quarantined path'
 
+# protected-inventory: --repo-root reaches the CLI from outside the repository, in both
+# spellings and on either side of the mode token. This was the defect REQ-603 named first,
+# and the launcher's own `set -u` crash on an empty argument array (bash 3.2) hid behind
+# the same missing case: every call above passes no global flag at all.
+outside_output="$(cd "$fixture_root" && "$core_scripts/protected-inventory.sh" --repo-root "$inventory_repo" associate)" \
+  || fail_case 'protected-inventory --repo-root case returned nonzero from outside the repository'
+[ "$outside_output" = "$association_output" ] \
+  || fail_case 'protected-inventory --repo-root case did not produce the in-repository association'
+outside_output="$(cd "$fixture_root" && "$core_scripts/protected-inventory.sh" associate "--repo-root=$inventory_repo")" \
+  || fail_case 'protected-inventory --repo-root= case returned nonzero with the flag after the mode'
+[ "$outside_output" = "$association_output" ] \
+  || fail_case 'protected-inventory --repo-root= case did not produce the in-repository association'
+(cd "$fixture_root" && "$core_scripts/protected-inventory.sh" --repo-root 2>"$fixture_root/inventory-usage-err") \
+  && fail_case 'protected-inventory missing-value case did not exit nonzero'
+[ -s "$fixture_root/inventory-usage-err" ] \
+  || fail_case 'protected-inventory missing-value case exited silently'
+
 prescribed_shell_finish

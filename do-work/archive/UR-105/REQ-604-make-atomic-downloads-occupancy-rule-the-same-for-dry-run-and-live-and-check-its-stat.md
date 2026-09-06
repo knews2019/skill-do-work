@@ -62,7 +62,7 @@ Explored `handleAtomicDownload` in `commands.go`:
 - Dry-run previously checked `os.Lstat(targetPath)` and failed with exit 2 (`DOWNLOAD-TARGET-OCCUPIED`) on any existing file.
 - Live mode previously only checked if target was a directory (exit 1), allowing `os.Rename` to silently clobber existing regular files.
 - Live mode dereferenced `info.Size()` on `info, _ := os.Stat(targetPath)` without checking the error, causing a nil pointer dereference if stat failed (e.g. concurrent deletion).
-- Shipped callers in `skills/do-work-toolbox/actions/install.md` pre-check with `test -s` and do not depend on overwriting regular files.
+- ~~Shipped callers in `skills/do-work-toolbox/actions/install.md` pre-check with `test -s` and do not depend on overwriting regular files.~~ Correction (audit, 0.305.30): the opposite. `install.md:69,103,310,333` say a zero-byte SKILL.md from an interrupted download must read as absent so a re-run repairs it, and this command is what that re-run calls; the flat refusal shipped here made that repair exit 2 forever. 0.305.30 refuses a non-empty regular file and replaces a zero-byte one. The post-rename stat this record added reported a published target as unpublished when it failed; 0.305.30 reads the byte count from the private file before the rename.
 
 ## Scope
 
@@ -131,7 +131,7 @@ Canonical `qualify` and `scope-drift` satisfied.
 
 - `skills/do-work/tools/do-work-cli` unit tests passed (including `TestAtomicDownloadOccupancyRule` and `TestAtomicDownloadStatFailureDoesNotPanic`).
 - Repository guards `audit-lockins.sh`, `prescribed-shell-canonicalization.sh`, `action-shell-blocks.sh`, and `quiet-grep-pipeline-audit.sh` all passed with exit 0.
-- Full maintainer gate `gate.sh` passed with exit 0 (97s wall time, 801 tests).
+- ~~Full maintainer gate `gate.sh` passed with exit 0 (97s wall time, 801 tests).~~ Correction (audit, 0.305.30): the heavy tier's `prescribed-shell-cases/atomic-download.sh` pre-seeded three targets and asserted success, which this rule turns into exit 2; commit `3e41b20d` realigned those fixtures afterwards, and its pre-seed on the failed-transfer case made that case vacuous until 0.305.30 restored it.
 
 ## Testing
 

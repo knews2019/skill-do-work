@@ -162,7 +162,7 @@ Canonical `qualify` and `scope-drift` both satisfied.
 
 - `skills/do-work/tools/do-work-cli` unit tests passed (including new tests in `inventory_test.go`).
 - Repository guards `audit-lockins.sh`, `prescribed-shell-canonicalization.sh`, `action-shell-blocks.sh`, and `quiet-grep-pipeline-audit.sh` all passed with exit 0.
-- Full maintainer gate `gate.sh` passed with exit 0 (126s wall time, 799 tests).
+- Full maintainer gate `gate.sh` passed with exit 0 (126s wall time, 799 tests). ~~That gate ran the launcher under its own bash.~~ Correction (audit, 0.305.30): the launcher as merged expanded `"${global_arguments[@]}"` with the array empty, which is fatal under `set -u` on macOS `/bin/bash` 3.2, so every plain `start` or `associate` call died on stock macOS bash; patched in `3e41b20d` and released in 0.305.30, where the `--repo-root` case this record never added was also added. The `--format` forwarding this record claims was dead code (the hard-coded `--format text` always won) and is removed in 0.305.30.
 
 ## Testing
 

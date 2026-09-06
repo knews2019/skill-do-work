@@ -828,8 +828,6 @@ func recordedTimestampChange(changes []resultmodel.RecordedChange, path string, 
 	return false
 }
 
-var atomicDownloadStat = os.Stat
-
 func handleAtomicDownload(_ commandruntime.ExecutionContext, arguments []string) resultmodel.CommandResult {
 	filtered, dryRun, dryRunError := extractDryRun(arguments)
 	if dryRunError != nil {
@@ -866,10 +864,15 @@ func handleAtomicDownload(_ commandruntime.ExecutionContext, arguments []string)
 		if info.IsDir() {
 			return resultmodel.CommandResult{Outcome: resultmodel.OutcomeFindings, Findings: []resultmodel.CommandFinding{helperFinding("DOWNLOAD-TARGET-OCCUPIED", resultmodel.SeverityError, []string{targetPath}, "target is a directory", resultmodel.FixabilityRefused, "existing directory left unchanged", nil, []string{"test", "-d", targetPath})}}
 		}
-		return resultmodel.CommandResult{Outcome: resultmodel.OutcomeFailure, Findings: []resultmodel.CommandFinding{helperFinding("DOWNLOAD-TARGET-OCCUPIED", resultmodel.SeverityError, []string{targetPath}, "target already exists", resultmodel.FixabilityManual, "preserves the occupied target", nil, []string{"test", "-e", targetPath})}}
+		// A zero-byte regular file is an interrupted earlier download, not an occupant:
+		// install.md's detect step reads it as absent (`test -s`) so that a re-run repairs
+		// it, and this is the command that re-run calls. Anything else that exists is kept.
+		if !info.Mode().IsRegular() || info.Size() > 0 {
+			return resultmodel.CommandResult{Outcome: resultmodel.OutcomeFailure, Findings: []resultmodel.CommandFinding{helperFinding("DOWNLOAD-TARGET-OCCUPIED", resultmodel.SeverityError, []string{targetPath}, "target already exists", resultmodel.FixabilityManual, "preserves the occupied target", nil, []string{"test", "-s", targetPath})}}
+		}
 	}
 	if dryRun {
-		return resultmodel.CommandResult{Outcome: resultmodel.OutcomeSuccess, Changes: []resultmodel.RecordedChange{{Path: targetPath, Kind: "created", Detail: "would fetch and publish private HTTP bytes after transfer validation"}}, Findings: []resultmodel.CommandFinding{helperFinding("DOWNLOAD-DRY-RUN", resultmodel.SeverityInfo, []string{targetPath}, "request and target arguments validated; network and filesystem were not mutated", resultmodel.FixabilityAutomatic, "", nil, []string{"test", "!", "-e", targetPath})}}
+		return resultmodel.CommandResult{Outcome: resultmodel.OutcomeSuccess, Changes: []resultmodel.RecordedChange{{Path: targetPath, Kind: "created", Detail: "would fetch and publish private HTTP bytes after transfer validation"}}, Findings: []resultmodel.CommandFinding{helperFinding("DOWNLOAD-DRY-RUN", resultmodel.SeverityInfo, []string{targetPath}, "request and target arguments validated; network and filesystem were not mutated", resultmodel.FixabilityAutomatic, "", nil, []string{"test", "!", "-s", targetPath})}}
 	}
 	temporary, err := os.CreateTemp(filepath.Dir(targetPath), filepath.Base(targetPath)+".download.*")
 	if err != nil {
@@ -885,14 +888,17 @@ func handleAtomicDownload(_ commandruntime.ExecutionContext, arguments []string)
 	curlArguments = append(curlArguments, "-o", temporaryPath, sourceURL)
 	command := exec.Command("curl", curlArguments...)
 	if output, runError := command.CombinedOutput(); runError != nil {
-		return resultmodel.CommandResult{Outcome: resultmodel.OutcomeFailure, Findings: []resultmodel.CommandFinding{helperFinding("DOWNLOAD-FAILED", resultmodel.SeverityError, []string{targetPath}, strings.TrimSpace(string(output))+": "+runError.Error(), resultmodel.FixabilityManual, "no target was published", []string{"do-work-cli", CommandAtomicDownload, "--source-url", sourceURL, "--target-path", targetPath}, []string{"test", "!", "-e", targetPath})}}
+		return resultmodel.CommandResult{Outcome: resultmodel.OutcomeFailure, Findings: []resultmodel.CommandFinding{helperFinding("DOWNLOAD-FAILED", resultmodel.SeverityError, []string{targetPath}, strings.TrimSpace(string(output))+": "+runError.Error(), resultmodel.FixabilityManual, "no target was published", []string{"do-work-cli", CommandAtomicDownload, "--source-url", sourceURL, "--target-path", targetPath}, []string{"test", "!", "-s", targetPath})}}
+	}
+	// The byte count is read from the private file BEFORE the rename: after it, the
+	// target is published, and a failed stat there would report a publication that
+	// happened as one that did not.
+	info, err := os.Stat(temporaryPath)
+	if err != nil {
+		return resultmodel.CommandResult{Outcome: resultmodel.OutcomeFailure, Findings: []resultmodel.CommandFinding{helperFinding("DOWNLOAD-FAILED", resultmodel.SeverityError, []string{targetPath}, err.Error(), resultmodel.FixabilityManual, "downloaded bytes could not be inspected; no target was published", nil, []string{"test", "!", "-s", targetPath})}}
 	}
 	if err := os.Rename(temporaryPath, targetPath); err != nil {
-		return resultmodel.CommandResult{Outcome: resultmodel.OutcomeFailure, Findings: []resultmodel.CommandFinding{helperFinding("DOWNLOAD-FAILED", resultmodel.SeverityError, []string{targetPath}, err.Error(), resultmodel.FixabilityManual, "downloaded bytes were discarded", nil, []string{"test", "!", "-e", targetPath})}}
-	}
-	info, err := atomicDownloadStat(targetPath)
-	if err != nil {
-		return resultmodel.CommandResult{Outcome: resultmodel.OutcomeFailure, Findings: []resultmodel.CommandFinding{helperFinding("DOWNLOAD-FAILED", resultmodel.SeverityError, []string{targetPath}, err.Error(), resultmodel.FixabilityManual, "downloaded bytes could not be inspected", nil, []string{"test", "!", "-e", targetPath})}}
+		return resultmodel.CommandResult{Outcome: resultmodel.OutcomeFailure, Findings: []resultmodel.CommandFinding{helperFinding("DOWNLOAD-FAILED", resultmodel.SeverityError, []string{targetPath}, err.Error(), resultmodel.FixabilityManual, "downloaded bytes were discarded", nil, []string{"test", "!", "-s", targetPath})}}
 	}
 	return successResult([]resultmodel.RecordedChange{{Path: targetPath, Kind: "created", Detail: fmt.Sprintf("published %d bytes with mode 0600", info.Size())}}, nil)
 }

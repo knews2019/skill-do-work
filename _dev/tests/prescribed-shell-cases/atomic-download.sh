@@ -8,9 +8,10 @@ atomic_bin="$fixture_root/atomic-bin"
 mkdir -p "$atomic_bin"
 printf '%s\n' '#!/usr/bin/env bash' 'output_path=""' 'while [ "$#" -gt 0 ]; do case "$1" in -o) output_path="$2"; shift 2 ;; *) shift ;; esac; done' 'printf partial > "$output_path"' 'exit 22' > "$atomic_bin/curl"
 chmod +x "$atomic_bin/curl"
-printf 'stable' > "$fixture_root/atomic-target"
+# The target must be absent here: an occupied target is refused before curl runs, and a
+# refusal would satisfy every assertion below without a failed transfer ever happening.
 PATH="$atomic_bin:$PATH" "$core_scripts/atomic-download.sh" https://example.invalid/fail "$fixture_root/atomic-target" >/dev/null 2>&1 && fail_case 'atomic-download partial-publication case accepted a failed transfer'
-[ "$(cat "$fixture_root/atomic-target")" = stable ] || fail_case 'atomic-download partial-publication case changed the final target'
+[ ! -e "$fixture_root/atomic-target" ] || fail_case 'atomic-download partial-publication case published a failed transfer'
 leaked_private_paths="$(find "$fixture_root" -name 'atomic-target.download.*' -print -quit)" \
   || fail_case 'atomic-download partial-publication case could not search the fixture tree for private scratch'
 [ -n "$leaked_private_paths" ] \
@@ -113,5 +114,25 @@ leaked_private_paths="$(find "$atomic_occupied_target" -name '*.download.*' -pri
   || fail_case 'atomic-download occupied-target case could not search the occupying directory'
 [ -n "$leaked_private_paths" ] \
   && fail_case 'atomic-download occupied-target case abandoned its private file inside the occupant'
+
+# atomic-download: a target occupied by a NON-EMPTY regular file is refused with its bytes
+# intact, and a ZERO-BYTE regular file is repaired. The zero-byte case is what install.md's
+# `test -s` detect step relies on: an interrupted download leaves an empty SKILL.md, the
+# re-run reads it as absent, and this command is what that re-run calls.
+atomic_nonempty_target="$fixture_root/atomic-nonempty-target"
+printf 'kept' > "$atomic_nonempty_target"
+PATH="$atomic_success_bin:$PATH" \
+  "$core_scripts/atomic-download.sh" https://example.invalid/payload "$atomic_nonempty_target" >/dev/null 2>&1 \
+  && fail_case 'atomic-download non-empty-target case replaced an occupied regular file'
+[ "$(cat "$atomic_nonempty_target")" = kept ] \
+  || fail_case 'atomic-download non-empty-target case disturbed the occupying bytes'
+
+atomic_empty_target="$fixture_root/atomic-empty-target"
+: > "$atomic_empty_target"
+PATH="$atomic_success_bin:$PATH" \
+  "$core_scripts/atomic-download.sh" https://example.invalid/payload "$atomic_empty_target" >/dev/null 2>&1 \
+  || fail_case 'atomic-download zero-byte-target case refused to repair an interrupted download'
+[ "$(cat "$atomic_empty_target")" = complete-payload ] \
+  || fail_case 'atomic-download zero-byte-target case did not publish over the empty target'
 
 prescribed_shell_finish
