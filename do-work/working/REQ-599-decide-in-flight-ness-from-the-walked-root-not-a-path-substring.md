@@ -1,19 +1,29 @@
 ---
 id: REQ-599
-status: pending
+status: claimed
 domain: backend
 created_at: 2026-09-06T06:31:11Z
 user_request: UR-105
 review_generated: true
 impact: impact-user-visible
 effort_estimate: effort-mechanical
+route: A
 prime_files: [skills/do-work/tools/do-work-cli/prime-do-work-cli.md]
 tdd: true
+estimate:
+  p50_active_minutes: 20
+  confidence: medium
+  calculated_at: 2026-09-06T07:26:22Z
+  basis:
+    - Route A
+    - 1-file write set plus its test
+    - 3 acceptance criteria
 maintenance: false
 depends_on: []
 related: [REQ-596]
 write_set: [skills/do-work/tools/do-work-cli/internal/corehelpers/inventory.go]
 title: 'Decide a REQ in-flight from the root being walked, not from a substring of its absolute path'
+claimed_at: 2026-09-06T07:26:22Z
 ---
 
 # Decide In-Flight-ness From the Walked Root, Not a Path Substring
@@ -68,3 +78,22 @@ blocked REQ is reported as the path's owner.
 ## Open Questions
 
 None.
+
+## Triage
+
+**Route: A** — Build directly.
+
+**Reasoning:** The defect is one expression at a known line, the intended rule is already stated
+correctly in the guide, and the reproduction is a fixture whose absolute path contains a `working`
+component. There is nothing to discover: the walk loop already knows which of its two roots it is in,
+and the fix is to ask that instead of the path. The test is the point as much as the fix — no test in the
+package reaches the archived-with-non-terminal-status case today, which is why the substring could sit
+there.
+
+**Planning:** Skipped.
+
+## Plan
+
+**Planning not required** — Route A: one expression, one test that fails on the current code.
+
+*Skipped by work action*
