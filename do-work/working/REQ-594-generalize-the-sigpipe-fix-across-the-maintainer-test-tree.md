@@ -31,9 +31,20 @@ claimed_at: 2026-09-06T03:36:45Z
 # Generalize the SIGPIPE Fix Across the Maintainer Test Tree
 
 ## AI Execution State (P-A-U Loop)
-- [ ] **[PLAN]:** (Agent: Read listed `prime_files` and agent rules. Write brief technical approach here. Do not write code yet.)
-- [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
-- [ ] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
+- [x] **[PLAN]:** Three read-only censuses plus a judge that re-measured every load-bearing claim by
+  running commands. `_dev/primes/prime-shell-commands.md` read before any shell was written. Approach:
+  convert the sites whose producer status is already asserted mechanically, give the sites whose
+  producer can fail an explicit status assertion, then move the guard out of one probe file and give it
+  the whole repository.
+- [x] **[APPLY]:** 25 files changed, all inside the declared write set: 24 under `_dev/tests/` plus the
+  one shipped line the guard's scope would otherwise have to be drawn around. Three builders in
+  sequence in one worktree, twelve commits, so a failure is attributable to one step.
+- [x] **[UNIFY]:** `git diff --stat` over the merge — 25 files, 488 insertions, 249 deletions. Every
+  converted file re-scanned individually with REQ-593's own scanner and reporting zero; `bash -n` and
+  the ShellCheck lane form (every tracked `*.sh` in one invocation) both exit 0. The whole-tree scanner
+  reports **0** offending logical lines, down from 129. No debug artifacts: the one site the first pass
+  rewrote outside the defect class was reverted and the conversion tool tightened to require an
+  early-leaving option.
 
 ## What
 
@@ -299,3 +310,85 @@ carrying `commit.gpgsign = false`, and `QUEUE_KANBAN_BROWSER` at the container's
 **The builder works in an isolated worktree** at
 `../skill-do-work-worktrees/worktree-agent-REQ-594-quiet-grep-pipelines`, branched from `ceeea69`, and
 hands back one file to the main checkout without staging or committing anything there.
+
+## Implementation Summary
+
+**Files changed:** 25, all repository-relative and all inside the declared write set.
+
+- `_dev/tests/quiet-grep-pipeline-audit.sh` (new, executable) — the guard's new home
+- `_dev/tests/contracts/probe-lanes.sh` (modified) — two lines, fast-tier registration
+- `_dev/tests/update-script-behavior.sh` (modified) — 94 lines deleted, deletion only
+- `_dev/tests/contracts/core-checks.sh`, `_dev/tests/contracts/queue-kanban.sh`,
+  `_dev/tests/select-simple-reqs-behavior.sh`, `_dev/tests/p50-estimator-determinism.sh`,
+  `_dev/tests/audit-lockins.sh`, `_dev/tests/staged-skills-contract.sh`,
+  `_dev/tests/install-suite-behavior.sh` (modified) — the fast-tier and judgment sites
+- `_dev/tests/prescribed-shell-cases/qualify.sh`,
+  `_dev/tests/prescribed-shell-cases/audit-archive-timestamps.sh`,
+  `_dev/tests/prescribed-shell-cases/repair-req-timestamps.sh`,
+  `_dev/tests/prescribed-shell-cases/generate-report-image.sh`,
+  `_dev/tests/prescribed-shell-cases/generate-report-image-batch.sh`,
+  `_dev/tests/prescribed-shell-cases/publish-portfolio-summary.sh`,
+  `_dev/tests/prescribed-shell-cases/atomic-download.sh`,
+  `_dev/tests/prescribed-shell-cases/cleanup-req-reservations.sh`,
+  `_dev/tests/prescribed-shell-cases/protected-inventory.sh`,
+  `_dev/tests/prescribed-shell-cases/capture-screenshot.sh`,
+  `_dev/tests/prescribed-shell-cases/show-commit-diff.sh`,
+  `_dev/tests/prescribed-shell-cases/lexical-memory-recall.sh`,
+  `_dev/tests/prescribed-shell-cases/install-memory-hooks.sh`,
+  `_dev/tests/prescribed-shell-cases/architecture-report-preflight.sh` (modified) — the heavy-tier sites
+- `skills/do-work/tools/select-simple-reqs.sh` (modified) — one line, and the reason this is a release
+
+**What was done: 129 offending logical lines became 0**, measured with REQ-593's own scanner over
+`git ls-files -z -- '*.sh'` at both ends. 122 sites were mechanical — the producer replays a variable
+whose status is asserted on its capture line. Seven needed a decision, and each got an explicit status
+assertion rather than a bare herestring, because capturing a producer's output discards the status the
+pipeline used to carry.
+
+**Two of the 129 were not latent.** `staged-skills-contract.sh:82` and `install-suite-behavior.sh:142`
+are `find … -print -quit | grep -q .` guards. Reproduced broken with a stub that prints a leftover file
+and then exits non-zero — which is what real `find` does when a sibling directory is unreadable: under
+`pipefail` the guard stayed silent and reported the legacy runtime as retired. Both fire now.
+
+**The guard left one probe file and covers the repository.** `quiet_grep_pipeline_offenders` moved into
+`_dev/tests/quiet-grep-pipeline-audit.sh`, which walks `git ls-files -z -- '*.sh'` — the same
+enumeration the ShellCheck lane uses — and runs in the fast tier at 0.20s over 94 files. Its fixture
+carries 14 must-flag and 7 must-not-flag shapes, each asserted by name, and 16 mutations of the scanner
+each produce a failure naming the shape that was lost. The scanner also gained a one-condition fix: a
+comment line between the pipe and the reader is invisible to bash and was invisible to the scanner too.
+That fix is additive — both scanner bodies produce byte-identical output over every tracked file at the
+branch point, 129 findings each.
+
+**`verify_output_matchers_read_greps_verdict` stayed behind.** It drives the two shipped matchers over a
+256 KiB variable and is the only thing proving the mechanism on real data. It is not the scanner.
+
+**One shipped line changed**, `skills/do-work/tools/select-simple-reqs.sh:47`, so this request is a
+release. Drawing the guard's scope around `_dev/tests/` to avoid that would have been an exemption list
+with one entry, aimed at the only known instance of the defect the guard forbids. The conversion is
+provably lossless: that producer's status is captured and asserted four lines earlier, so the pipeline
+had no producer status left to lose, and the two forms were checked byte- and verdict-identical over
+five output shapes.
+
+## Decisions — implementation
+
+- **D-01 — the guard's scope is a condition, not a directory. DECIDE & STATE.**
+  `git ls-files -z -- '*.sh'` covers every tracked shell file. Verified that the suffix is not a partial
+  enumeration: no tracked shell file lacks it, and one that did would be invisible to the ShellCheck
+  lane too — one problem, one place to fix.
+- **D-02 — the guard runs in the fast tier. DECIDE & STATE.** A violation now blocks an ordinary commit
+  rather than only a `--heavy` run. Measured cost 0.20s over 94 files against a 30s per-file budget.
+- **D-03 — the shipped line is converted and the release is paid. DECIDE & STATE.** See above.
+- **D-04 — the fixture asserts by name, not by count. DECIDE & STATE.** 16 mutations, each naming the
+  shape it lost. A count would have said only that something broke.
+- **D-05 — `find`'s exit status is asserted at all 21 leak checks. DECIDE & STATE**, with its own
+  caveat: it is right at all 21 because every search root is created by the fixture before the check. A
+  future case searching a root that may legitimately be absent must not copy the form blindly.
+- **D-06 — one site was reverted rather than converted.** `repair-req-timestamps.sh:262` pipes into
+  `grep -c`, which reads to EOF, so there is no early-leaving reader and no defect. The conversion tool
+  was tightened to require an early-leaving option, matching the scanner's own definition, so the diff
+  carries only the class this request is about.
+- **D-07 — one statement had to be split rather than converted.** `core-checks.sh:349` stayed flagged
+  after every reader on it was converted: the scanner splits on a bare pipe and cannot see a
+  command-substitution boundary, so a `printf | associate-files.sh` capture inside `$( )` counted as a
+  stage feeding three herestring greps that shared the line through continuations. Reaching zero needed
+  the statement split into an `if` capture plus `elif` reads. That is the plan's stated R3 risk showing
+  up as a real edit.
