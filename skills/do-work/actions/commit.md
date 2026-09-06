@@ -50,13 +50,13 @@ Before protected association or reading any uncommitted path, invoke the canonic
 
 Continue only on typed `success`, and read the ordered `finalizations` one record at a time: a record carrying `FINALIZATION-SET-ASIDE` in its `reason_codes` is one REQ recovery excluded, and the remaining records still count as settled when their `blocked_paths` and `reason_codes` are empty. **A set-aside REQ's paths are not this action's to commit.** Its journal, working claim, and implementation changes are deliberately left in place with an open finalization transaction, so treat every path in that record's `commit_paths` exactly as a recovered path: excluded from the inventory grouping below, never associated with another REQ, never committed as an ordinary or unassociated change. Committing them here would bypass the unfinished transaction and leave its lifecycle and provenance unresolved. Name each excluded REQ once in the report and continue with what is left — a set-aside is not a reason for this action to stop. Recovery commits all safe finalization groups in its returned order, preserves unfinished working claims without authority, and refuses before this action selects ordinary groups when staged, protected, shared, or multiply-owned evidence remains ambiguous. Group only the changes left after recovery; never re-associate a recovered path.
 
-Start the protected inventory wrapper; it owns the worktree-safe run quarantine and delegates low-level classification to the existing checks:
+Start the protected inventory wrapper from the project root; it owns the worktree-safe run quarantine, takes no `--repo-root`, and uses the current directory as the repository root, so from a subdirectory Step 3's `associate` exits 2 as if `do-work/` were missing:
 
 ```bash
 <skill-root>/scripts/protected-inventory.sh start
 ```
 
-It enumerates every uncommitted path and prints one `<tag>\t<path>` row per file. The tag legend, the secret-shaped basename patterns, and the by-hand inventory to fall back on are canonical in [Protected inventory fallbacks](../docs/prescribed-shell-primitives.md#protected-inventory-fallbacks); below is only what this action does with those rows.
+It enumerates every uncommitted path except an untracked hidden file under `do-work/`, which it drops as editor or operating-system metadata, and prints one `<tag>\t<path>` row per remaining file. The tag legend, the secret-shaped basename patterns, and the by-hand inventory to fall back on are canonical in [Protected inventory fallbacks](../docs/prescribed-shell-primitives.md#protected-inventory-fallbacks); below is only what this action does with those rows.
 
 Exit 1 means the working tree is clean — report "Nothing to commit" and exit. Exit 2 means this is not a git repo — report and exit.
 
@@ -76,17 +76,17 @@ The goal is to understand each file well enough to group it with related changes
 
 ### Step 3: Associate with REQs
 
-Feed the current protected M/A/D/XD paths into association, excluding every path quarantined as `X` during the run:
+Feed the current protected M/A/D/XD paths into association, excluding every path quarantined as `X` during the run; run it from the project root, as in Step 1:
 
 ```bash
 <skill-root>/scripts/protected-inventory.sh associate
 ```
 
-The wrapper re-derives the repository root and moves paths through files rather than interpolating them into shell source. It appends the new X rows to Step 1's quarantine before filtering, so both current X rows and paths excluded by an earlier inventory stay out. M/A/D/XD participate in association only when the path has never been X. The delegated check scans `do-work/archive/**/REQ-*.md` and `do-work/working/REQ-*.md`, reads each REQ's `## Implementation Summary` file list, and prints one `<owner>\t<path>` row per candidate — a `REQ-NNN` id, or `-` for unassociated. Exit 1 means there were no candidates other than X; continue with the reported X rows only. Exit 2 means a usage error or no `do-work/` directory; skip REQ tracing and send the remaining safe M/A/D/XD files to Step 4.
+The wrapper moves paths through files rather than interpolating them into shell source. It appends the new X rows to Step 1's quarantine before filtering, so both current X rows and paths excluded by an earlier inventory stay out. M/A/D/XD participate in association only when the path has never been X. The delegated check walks `do-work/working/` and `do-work/archive/` to any depth, skipping symlinks, reads the `## Implementation Summary` file list of each `REQ-*.md` there that counts (the next paragraph links what counts), and prints one `<owner>\t<path>` row only for a candidate a REQ claims; it prints no placeholder for the rest. Exit 1 means there were no candidates other than X; continue with the reported X rows only. Exit 2 means nothing was associated. A failure before association starts, such as a wrong invocation, `associate` before `start`, or a directory that is not a Git repository, prints a `HELPER-USAGE` finding that names it; a failure inside association, such as no `do-work/` directory, a REQ file it cannot read, or an unmatched backtick in an `## Implementation Summary` line, prints nothing. Either way, skip REQ tracing and send the remaining safe M/A/D/XD files to Step 4.
 
 [Protected inventory fallbacks](../docs/prescribed-shell-primitives.md#protected-inventory-fallbacks) states what the script settles — terminal-success aliases, in-flight REQs, conflict resolution, metadata exclusion, partial matches — and the by-hand association to fall back on.
 
-Files that come back `-` remain unassociated and move to Step 4.
+A path from Step 1 that appears in no row is unassociated and moves to Step 4. A quarantined `X` path is absent from this output too, even when a REQ claims it, so match rows only against the M/A/D/XD set that survived the quarantine overlay; a missing row is never permission to read, stage, or commit an `X` path.
 
 ### Step 4: Group Unassociated Files
 
