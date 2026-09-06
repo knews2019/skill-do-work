@@ -7,11 +7,21 @@ user_request: UR-105
 review_generated: true
 impact: impact-user-visible
 effort_estimate: effort-substantive
+route: C
 prime_files: [_dev/primes/prime-shell-commands.md]
 tdd: true
 maintenance: false
 depends_on: [REQ-593]
 related: [REQ-593]
+estimate:
+  p50_active_minutes: 55
+  confidence: low
+  calculated_at: 2026-09-06T03:37:11Z
+  basis:
+    - Route C
+    - 24-file write set
+    - 3 subsystems involved
+    - 4 acceptance criteria
 write_set: []
 title: 'Generalize the SIGPIPE fix: about 130 quiet-grep pipelines remain across the maintainer test tree'
 claimed_at: 2026-09-06T03:36:45Z
@@ -64,3 +74,26 @@ destination.
 
 See the REQ-593 review in `do-work/archive/` (or `do-work/working/` while it is in flight) for the
 five evasion spellings with their reproductions, and the site census by file.
+
+## Triage
+
+**Route: C** — Explore, plan, then build.
+
+**Reasoning:** The technique is settled — REQ-593 shipped a widened scanner that catches all five
+evasion spellings — but the census is not. `grep -rc -E '\|[[:space:]]*grep[[:space:]]+-[A-Za-z]*q'
+_dev/tests/` returns 23 files and about 139 matches, and a spot check of the two files REQ-593 already
+fixed shows two of their four matches are comments and one is a herestring, so the real site count is
+unknown and the raw number over-reports. Each conversion is also a judgment: REQ-593 proved that
+capturing a producer's output and discarding its exit status can silently narrow the assertion it
+replaced, so a mechanical rewrite of 130 sites is exactly the shape that ships 130 quiet narrowings.
+Every site must be read for what its assertion measures before it is converted.
+
+**Planning:** Required. The plan must settle where the repository-wide guard lives, how it avoids
+flagging its own documentation and the fixture that pins it, and the per-file conversion order so a
+failure is attributable.
+
+**One requirement is already partly met and must not be re-done.**
+`_dev/tests/update-script-behavior.sh` carries `quiet_grep_pipeline_offenders`, which already matches
+on the defect's ingredients rather than one spelling and already has a five-shape fixture. The work is
+to give it a repository-wide scope and a home that is not one probe file — not to write a second
+scanner beside it.
