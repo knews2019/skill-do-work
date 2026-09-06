@@ -2,6 +2,7 @@ package finalization
 
 import (
 	"os/exec"
+	"strings"
 	"testing"
 )
 
@@ -12,6 +13,7 @@ func TestMatchingHeadCommitRejectsMergeWithDisallowedPaths(t *testing.T) {
 	runFinalizationGit(t, repositoryRoot, "add", ".")
 	runFinalizationGit(t, repositoryRoot, "commit", "-qm", "initial")
 	preparedHead := currentHead(repositoryRoot)
+	baseBranch := strings.TrimSpace(runFinalizationGit(t, repositoryRoot, "branch", "--show-current"))
 
 	// Branch 2: branched from preparedHead, updates unrelated.txt
 	runFinalizationGit(t, repositoryRoot, "checkout", "-qb", "unrelated-branch", preparedHead)
@@ -19,9 +21,9 @@ func TestMatchingHeadCommitRejectsMergeWithDisallowedPaths(t *testing.T) {
 	runFinalizationGit(t, repositoryRoot, "add", "unrelated.txt")
 	runFinalizationGit(t, repositoryRoot, "commit", "-qm", "unrelated commit")
 
-	// Back on master (preparedHead), create merge commit that merges unrelated-branch
+	// Back on base branch (preparedHead), create merge commit that merges unrelated-branch
 	// and also carries the feature.txt change in the merge
-	runFinalizationGit(t, repositoryRoot, "checkout", "-q", "main")
+	runFinalizationGit(t, repositoryRoot, "checkout", "-q", baseBranch)
 	runFinalizationGit(t, repositoryRoot, "merge", "--no-ff", "--no-commit", "unrelated-branch")
 	writeFinalizationFile(t, repositoryRoot, "feature.txt", "feature change\n")
 	runFinalizationGit(t, repositoryRoot, "add", "feature.txt")
@@ -56,8 +58,9 @@ func TestMatchingHeadCommitAcceptsCleanMergeMatchingEffectivePaths(t *testing.T)
 	runFinalizationGit(t, repositoryRoot, "add", ".")
 	runFinalizationGit(t, repositoryRoot, "commit", "-qm", "initial")
 	preparedHead := currentHead(repositoryRoot)
+	baseBranch := strings.TrimSpace(runFinalizationGit(t, repositoryRoot, "branch", "--show-current"))
 
-	// Branch 1 (main): update part1.txt
+	// Branch 1: update part1.txt
 	writeFinalizationFile(t, repositoryRoot, "part1.txt", "part1 change\n")
 	runFinalizationGit(t, repositoryRoot, "add", "part1.txt")
 	runFinalizationGit(t, repositoryRoot, "commit", "-qm", "part1 commit")
@@ -68,8 +71,8 @@ func TestMatchingHeadCommitAcceptsCleanMergeMatchingEffectivePaths(t *testing.T)
 	runFinalizationGit(t, repositoryRoot, "add", "part2.txt")
 	runFinalizationGit(t, repositoryRoot, "commit", "-qm", "part2 commit")
 
-	// Back on main, merge feature-branch with no-ff
-	runFinalizationGit(t, repositoryRoot, "checkout", "-q", "main")
+	// Back on base branch, merge feature-branch with no-ff
+	runFinalizationGit(t, repositoryRoot, "checkout", "-q", baseBranch)
 	runFinalizationGit(t, repositoryRoot, "merge", "--no-ff", "-m", "clean merge", "feature-branch")
 	mergeCommit := currentHead(repositoryRoot)
 
