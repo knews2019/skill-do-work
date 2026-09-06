@@ -143,8 +143,13 @@ Merge range `dc5d8180..890ed0c8`, two files, 43 insertions and 6 deletions.
   wrote in REQ-596.** It says "when the timestamps are equal or missing the first claim found stands".
   `ParseTimestamp` yields the zero time for a missing `completed_at` and the comparison is
   `completed.After(current.completed)`, so a `working/` REQ with no timestamp — every in-flight REQ —
-  loses the path to any `archive/` REQ that has one, whatever the walk order. Only when **both** are
-  missing does the first found stand. Folded into REQ-601, whose write set now includes the guide.
+  loses the path to any `archive/` REQ that has one, whatever the walk order. ~~Only when **both** are
+  missing does the first found stand.~~ **Corrected after review:** the first claim found stands whenever
+  the two timestamps compare equal, present or missing, because the comparison is a strict `After`; and
+  `ParseTimestamp`'s error is discarded at the call, so an unparseable `completed_at` counts as missing.
+  The sentence REQ-601 should write: a REQ with a parseable `completed_at` beats one without, whichever
+  root is read first; when both parse equal, or neither parses, the first claim found stands (`working/`
+  before `archive/`, name order within a root). Folded into REQ-601, whose write set now includes the guide.
 
 ## Qualification
 
@@ -170,6 +175,27 @@ Canonical `qualify` satisfied.
   wrote the opposite into the guide. It is folded into REQ-601 rather than fixed here, because this
   request's write set is one Go file and its test.
 
+### Remediation qualification (after review)
+
+**Passed by inspection of the range `98deb1c..75da24a`**, two files, 7 insertions and 8 deletions,
+both already named in the Implementation Summary; the canonical gate cannot be re-invoked at the review
+phase, and the earlier `qualify` and `scope-drift` over `dc5d818..890ed0c` stand.
+
+- **The test now pins the rule, not the bug.** The fixture sits under `<tmp>/do-work/working/project`,
+  so a narrower substring test on the absolute path (`"/do-work/working/"`) fails it where the walked-root
+  flag passes. Before, that mutation passed: the test defeated the exact substring the bug used and no
+  other. The fixture-path guard, true by construction, and the `git init` the walk never runs are gone.
+- **The dead field is deleted, not re-plumbed.** `claims` stored an `active` value nothing read; the
+  original change rewrote the literal to carry `walkedRoot.active` and the record called that the
+  smallest fix. It was not. The value is `{id, completed}` now.
+- **The comment says why a slice.** Walk order decides equal-timestamp ties, so `working/` before
+  `archive/` is deliberate and a map would make the tie-break unspecified.
+- **One output change the record did not name, now named.** A blocked REQ stored under
+  `do-work/archive/working/` in an ordinary checkout was treated as in flight by the old substring test and
+  is filtered now. That is the same defect reached by a second route and the stated rule's answer; it is
+  not a regression, and the Detailed Requirements' "no observable change for a repository checked out
+  anywhere else" was one route too narrow.
+
 ## Testing
 
 **Red, then green, on the same test.**
@@ -183,3 +209,102 @@ Canonical `qualify` satisfied.
 
 **Gate at the builder's head:** `Maintainer verification passed.`, exit 0, wall 86s, CLI module at
 **797** tests — one more than the 796 at the branch point, which is this test.
+
+### Remediation testing (after review)
+
+- `go test -count=1 ./internal/corehelpers/` at `75da24a` — `ok`, exit 0; `gofmt -l` prints nothing;
+  `go build ./...` and `go vet ./internal/corehelpers/` exit 0.
+- **The narrower-substring mutation is red against the deepened fixture**: with the flag test replaced by
+  `!strings.Contains(filepath.ToSlash(path), "/do-work/working/")`, the test fails at
+  `inventory_test.go:394` with `owner="REQ-905"`. Against the old fixture the same mutation passed.
+- **The two flag mutations stay red**: every root inactive fails at `:397` with `owner=""`; every root
+  active fails at `:394` with `owner="REQ-905"`. Each restored from a copy and the restore diffed.
+- Fast gate at `75da24a`: `Maintainer verification passed.`, exit 0, gate wall 101s.
+
+## Review
+
+**Overall: 88%** | 2026-09-06T09:10:00Z
+
+| Dimension | Score |
+|-----------|-------|
+| Requirements | 95% |
+| Code Quality | 85% |
+| Test Adequacy | 78% |
+| Scope | 98% |
+| Risk | Low |
+| Acceptance | Accept; tidy-ups applied before archive |
+
+**Verdict: Accept.** Three independent reviewers (fix-and-test, behaviour preservation by differential
+testing of the parent and merge binaries, quality-and-record) and a synthesizer who reproduced every
+finding. The substring test is gone, the roots carry the flag, the new test is red on the parent and green
+at the merge, and every mechanical claim in the record reproduced: build, vet, gofmt, package green, diff
+stat, the test count by the gate's counter, canonical qualify. The seven findings that survived are all
+low or informational, and all seven are applied in the remediation above rather than deferred.
+
+**Findings that survived verification:**
+
+- **F1 (low, applied)** The test did not pin "never from the path": replacing the flag with a narrower
+  `"/do-work/working/"` substring kept it and the whole package green. Fixture deepened; the mutation is
+  red now.
+- **F2 (low, applied)** `claims.active` was written and never read, and the change re-plumbed it rather
+  than deleting it. Deleted.
+- **F3 (low, recorded)** "No observable change elsewhere" missed the `do-work/archive/working/` route,
+  where an archived blocked REQ flips from owner to unowned. Rule-consistent; named in the remediation
+  qualification.
+- **F4 (low, applied)** The Discovered Task's tie-break sentence said first-found stands only when both
+  timestamps are missing; it stands on any equal comparison, and an unparseable timestamp counts as
+  missing. Corrected in place with the sentence REQ-601 should write.
+- **F5 (low, applied)** The test ran `git init`, which the walk never needs. Deleted.
+- **F6 (info, applied)** The comment stated the in-flight rule but not why the roots must stay a slice.
+  One sentence added.
+- **F7 (info, applied)** The fixture-path guard was true by construction. Deleted with the fixture change.
+
+**Findings that did not survive:** "the record does not say this is a release" (that judgment belongs to
+finalization, which had not run); "gate exit 0 could not be reproduced" (two `heavyverification` tests
+fail in the reviewers' sandbox at the parent as well, so environmental, and the builder's hand-back
+records exit 0 with the heavy probes skipped); "797 tests not reproduced" (`go test -list` gives 811 and
+the gate's counter 797; the record uses the gate's number and both show the same +1); one reviewer's
+`QUALIFY-SUMMARY-MISSING` came from a clone whose record predated the Implementation Summary.
+
+**Disagreements and how settled:** whether the dead field was a finding (settled by removing it: builds,
+vets and passes, 1 insertion and 3 deletions); whether the test pinned the design claim (settled by
+running the narrower mutation: it passed); whether the `archive/working/` flip was a finding (settled by a
+scratch test on parent and merge sources: owner on the parent, unowned at the merge).
+
+## Lessons Learned
+
+- **A test that defeats the bug you found does not pin the rule you stated.** The fixture mirrored the
+  exact substring the bug used, so every narrower substring passed it. Pin the rule by making the fixture
+  hostile to the whole family: put the forbidden token where the most specific wrong fix would still see it.
+- **"Smallest fix" is checked field by field.** The change touched a struct and rewrote a literal to keep
+  carrying a value nothing reads. When a change touches a struct, ask of each field whether anything reads
+  it; a field that survives a change only because it was there before is the drift the delete-before-add
+  rule exists for.
+- **Say what a fix changes, not only what it preserves.** The old bug also fired for a REQ stored under
+  `do-work/archive/working/`, so the fix changes output there. The record said "no observable change
+  elsewhere" because the author had one route in mind. A differential run of the two binaries found the
+  other one in minutes.
+- **A correction of a rule needs the code's whole condition, not the case that was noticed.** The
+  tie-break sentence written here to correct REQ-596's was itself incomplete: it named the missing
+  timestamp case and missed equal present timestamps and unparseable ones, which the same strict `After`
+  decides the same way. Read the comparison, then write the sentence.
+
+## Orientation
+
+`AssociateProjectPaths` in `skills/do-work/tools/do-work-cli/internal/corehelpers/inventory.go` decides
+which REQ owns a changed project path. It walks two roots in a fixed order, `do-work/working` then
+`do-work/archive`, each carried as a `{directory, active}` pair in a slice, and the walk callback reads
+the pair. **In-flight-ness comes from the root being walked, never from the absolute path.** A `working/`
+REQ counts whatever its status says; an `archive/` REQ counts only on a terminal-success alias
+(`terminalSuccessStatus`). A REQ file stored under `do-work/archive/working/` is an archive REQ.
+
+**Ties.** The winner is `!exists || completed.After(current.completed)`, a strict comparison, so a REQ
+with a later parseable `completed_at` wins whichever root is read first, and on an equal comparison the
+claim seen first stands. `ParseTimestamp`'s error is discarded at the call: a missing or unparseable
+`completed_at` is the zero time. That is why the roots must stay a slice and why `working/` is read
+first; the comment above `walkedRoots` says so.
+
+**The pin.** `TestAssociationUnderWorkingDirectoryCheckoutSkipsBlockedArchivedRequest` builds its
+checkout under `<tmp>/do-work/working/project`, so a blocked archived REQ must be skipped and a blocked
+working REQ must claim. That fixture is hostile to every path-substring fix, not only the one that shipped:
+reverting to any substring test on the absolute path makes it red.
