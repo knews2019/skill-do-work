@@ -58,10 +58,10 @@ inspect action
 
 ### Step 1: Preflight
 
-Start the core protected-inventory wrapper with inspect's own worktree-safe quarantine:
+Start the core protected-inventory wrapper from the project root, with inspect's own worktree-safe quarantine named by `--quarantine-name`. The wrapper reads the repository root from the current directory and rejects a root argument; run from a subdirectory, `start` prints the same rows but Step 3's `associate` exits 2 as if `do-work/` were missing. Without `--quarantine-name` the wrapper writes `commit`'s file, `do-work-commit-secret-quarantine`:
 
 ```bash
-<skill-root>/../do-work/scripts/protected-inventory.sh start "$(git rev-parse --show-toplevel)" do-work-inspect-secret-quarantine
+<skill-root>/../do-work/scripts/protected-inventory.sh start --quarantine-name do-work-inspect-secret-quarantine
 ```
 
 It enumerates every uncommitted path and prints one `<tag>\t<path>` row per file. The tag legend, the secret-shaped basename patterns, and the by-hand inventory to fall back on are canonical in [Protected inventory fallbacks](../../do-work/docs/prescribed-shell-primitives.md#protected-inventory-fallbacks); below is only what this read-only action does with those rows.
@@ -108,10 +108,10 @@ Uncommitted files that are **not** in the target REQ's Implementation Summary re
 
 #### Unscoped mode (default)
 
-Feed the current protected M/A/D/XD paths into association, excluding every path quarantined as `X` during this inspect run:
+Feed the current protected M/A/D/XD paths into association, excluding every path quarantined as `X` during this inspect run. Run it from the project root with the same `--quarantine-name` as Step 1: `associate` reads the quarantine file `start` wrote, and exits 2 with a `HELPER-USAGE` finding when that file is missing:
 
 ```bash
-<skill-root>/../do-work/scripts/protected-inventory.sh associate "$(git rev-parse --show-toplevel)" do-work-inspect-secret-quarantine
+<skill-root>/../do-work/scripts/protected-inventory.sh associate --quarantine-name do-work-inspect-secret-quarantine
 ```
 
 The wrapper re-derives the repository root and moves paths through files rather than interpolating them into shell source. It appends the new X rows to Step 1's quarantine before filtering, so both current X rows and paths excluded by an earlier inventory stay out. M/A/D/XD participate in association only when the path has never been X. The delegated check scans `do-work/archive/**/REQ-*.md` and `do-work/working/REQ-*.md`, reads each REQ's `## Implementation Summary` file list, and prints one `<owner>\t<path>` row per candidate — a `REQ-NNN` id, or `-` for unassociated. Exit 1 means there were no candidates other than X; continue with the reported X rows only. Exit 2 means a usage error or no `do-work/` directory, which is the skip condition already stated above.
