@@ -432,3 +432,60 @@ tree's own test failed. It now produces `EXECUTING (fingerprint_mismatch)` for b
 with that failure in the log.
 
 *Verified by work action*
+
+## Review
+
+**Overall: 74%** | 2026-09-06T00:10:21Z
+
+| Dimension | Score |
+|-----------|-------|
+| Requirements | 95% |
+| Code Quality | 85% |
+| Test Adequacy | 55% |
+| Scope | 100% |
+| Risk | Medium |
+| Acceptance | Pass |
+
+**Verdict: Approve with follow-ups.** The fix works and no reviewer could build a stale green against the real tree, but two mutations survive the test suite. The bigger one: reverting the shipped file `_dev/tests/fast-stages.json` (the gate's stage manifest, which says which parts of the queue tree each fast stage reads) back to its pre-fix content brings back the exact false green REQ-592 (making the fast gate stop reusing stale test evidence when queue files change) exists to remove, and every test still passes. All three reviewers found that gap independently. The code is pinned. The data file that is the actual fix is pinned by nothing.
+
+**Important findings (each with its recorded impact token — this is the durable audit record the judgment mandates):**
+- The shipped manifest `_dev/tests/fast-stages.json` is read by no test, so the whole fix can be reverted or broken while the suite stays green. Restoring the file from `fce57fcc` gives `ok github.com/knews2019/skill-do-work/do-work-cli/internal/heavyverification` and `Fast-stage evidence reuse probes passed.` Deleting only line 10 (the exact coverage rule on `do-work/archive/UR-003/input.md`) brings back the original bug. Broadening line 30 from `do-work/runs` to `do-work` turns the seal off for the whole tree, because an exclusion beats coverage by design. The heavy lane already has the pattern this lane lacks: `heavy_maintainer_tree_test.go:201-225` reads the real `_dev/tests/heavy-lanes.json` and cross-checks it. Fix: one Go test that decodes the real manifest and asserts by name that the do-work-cli stage covers `do-work/archive/UR-003/input.md` and that no seal exclusion matches that path. — impact-rule-change → report only
+- Surviving mutation in the new code: the exclusion check in the tracked loop (`fast_stage_evidence.go:220`) can be deleted and everything stays green. Replacing `if path == "" || fastStageSealExcludesPath(manifest, path) { continue }` with `if path == "" { continue }` there gives `ok` on the Go package and `Fast-stage evidence reuse probes passed.` The same deletion in the untracked loop (`:250`) turns three cases red, so only one of the two branches is tested. The untested branch is the one that carries production weight: 231 tracked files under `do-work/runs` and 162 under `do-work/.req-reservations` pass through it. Cause is fixture shape — every excluded path a case mutates is untracked. Fix: one extra table case that mutates a tracked file under `do-work/runs` and expects reuse. — impact-negligible → report only
+
+**Reviewer disagreement, resolved:** reviewer 1 rated the tracked-loop mutation Minor because it fails closed (reuse dies quietly, the gate stays slow but correct); reviewer 2 rated it Important because the mutation demonstrably survives. Taking Important. Two reviewers reproduced the surviving mutation independently, and a demonstrated surviving mutation is the bar for Important here. The impact token stays `impact-negligible`, which is where the fail-closed argument belongs. On the first finding, reviewers split on the token (rule-change, user-visible, rule-change). Taking `impact-rule-change`: nothing is wrong for a user today, and the remedy is a new guard test.
+
+**Minor findings:**
+- An unstaged rename or delete under `do-work/` makes the queue-kanban stage report `fingerprint_uncertain`, and `maintainer-verify.sh:189` only records evidence when the fingerprint is not `-`, so that run stores nothing. A plain `mv` of a REQ file from `do-work/queue/` to `do-work/working/`, which is what claiming work does, puts the tree in that state, and two gate runs in a row both execute the stage. `git mv` does not do this. Fails closed, so it is cost, not a wrong verdict, but a maintainer will read `EXECUTING (fingerprint_uncertain)` as a fault. — impact-user-visible → report only
+- The do-work-cli half of the fix — an `exact` coverage rule on a single path that sits inside another stage's covered subtree — appears in no fixture manifest in either test file. The rewritten Go case `queue state changed forces the stage that reads it` names the real do-work-cli incident in its comment but runs beta-stage over a whole-subtree coverage, which is the queue-kanban shape. — impact-negligible → report only
+- The REQ's Qualification claims that moving the fixture probe inputs restored what the two toolchain cases test. Reviewer 2 reverted the move and both cases still pass, in the Go fixture and the shell probe. Reason: both cases use `alpha-stage`, whose coverage is `module-alpha` only, so a `do-work/` path was never sealed into that stage either way. Taking this finding — it is the only reviewer who tested the claim, and the mechanism is checkable. The move is harmless, the claim is not accurate. — impact-negligible → report only
+- The Implementation Summary and Qualification say all five new assertions were shown red before acceptance. Red output exists for four. No prior red run exists for `queue state changed leaves a stage that does not read it reusable`, which is the one case that passes both when the feature works and when it never fires. Reviewer 2 checked it and it does bite, so the assertion is fine and the provenance claim is what is wrong. — impact-negligible → report only
+- Three of the four `seal_exclusions` entries are only true because `queue-kanban/walk.go:181-197` prunes `runs`, `deliverables` and dotted directories from the board walk. That is the same set enumerated in two modules with no pointer either way and no test tying them, which is the second half of the Closed Enumerations Go Stale rule. One clause in the struct doc naming `isSkippedSection` closes it. — impact-rule-change → report only
+- `workingTreeSeals`' doc comment at `fast_stage_evidence.go:180-184` still says the seal covers every tracked and untracked path the stage covers. After this change that is false. The inline comment and the struct doc were both fixed; this one was missed. — impact-negligible → report only
+- `heavy_run.go:28-31` still declares that the queue tree is never lane input. The manifest committed in this same change says the opposite for the fast gate, and the heavy do-work-cli lane runs the same test that byte-checks `do-work/archive/UR-003/input.md`. Outside this REQ's write set, so it belongs with the heavy-lane follow-up. — impact-rule-change → report only
+- The admission condition for a new exclusion says "no stage reads its bytes", which is true, but it gives the next reader no hint that existence-level reads exist and sit outside the test. The board stats every repo-relative path mentioned in a REQ or UR body (`filementions.go:35-56`), and those mentions reach `do-work/runs` and `do-work/deliverables`. Adding "bytes, not existence" to the condition keeps the next entry honest. — impact-rule-change → report only
+
+**Nit findings:**
+- The shell fixture's `do-work/runs` seal exclusion is dead weight. Removing it alone leaves the probe green, because the only file under it never changes during the run. Both entries are individually pinned in the Go table, so behaviour is covered. — impact-negligible → report only
+- `do-work/deliverables` is admitted by prediction, not by an observed write. The directory does not exist in this checkout and `git ls-files` never emits a path under it. — impact-negligible → report only
+
+**Requirements checklist:**
+- [x] A change to any `do-work/` path a fast gate stage reads forces that stage to execute — delivered. Verified against the real manifest through the real `decide-fast-stage` command: editing `do-work/archive/UR-003/input.md` moves the do-work-cli fingerprint, and editing `do-work/CHECKPOINT.md`, adding a file under `do-work/audits/`, or moving a REQ between `queue/` and `working/` with `git mv` all move the queue-kanban fingerprint. Deletions yield `fingerprint_uncertain`, which executes.
+- [x] `non_stage_coverage` states only trees no stage reads, verified rather than assumed — delivered. It is empty. The four replacement exclusions were checked by mutating every tracked file under `do-work/runs` and `do-work/.req-reservations` and by deleting all 393 of them, and the queue-kanban suite stayed green both times.
+- [x] The two tests that pinned the old behaviour are updated in place, each naming the failure it now catches — delivered. Both rewritten, neither deleted. Both bite: the shell case fails under the old guard, the Go case fails when the predicate is hardcoded back to `strings.HasPrefix(path, "do-work/")`. Caveat in the second Minor finding.
+- [x] `do-work/test-durations.tsv` keeps not invalidating its own stage, through a narrow exclusion rather than the whole-tree one — delivered. Single `exact` rule, pinned independently in both fixtures.
+- [x] New names satisfy Naming for Reach — delivered. `SealExclusions`, `seal_exclusions`, `fastStageSealExcludesPath`.
+- [x] Shell is free of the prime's traps and passes shellcheck — delivered. ShellCheck 0.11.0 exit 0 plain and at `--severity=warning`, `gofmt -l` empty, `go vet` clean.
+- [x] Nothing outside the declared four-file write set changed — delivered. `git diff --stat fce57fcc..2d932a47` is exactly four files, 146 insertions, 40 deletions.
+- [ ] Release obligation discharged — not delivered. Two shipped files under `skills/` changed and no version or changelog moved. This commit is a release. Five files need updating at finalization: `/VERSION`, `/skills/do-work/VERSION`, `/skills/do-work/actions/version.md:5` (all three still read `0.303.10`), `/CHANGELOG.md`, and `/skills/do-work/CHANGELOG.md` as a byte-identical copy. Patch bump is the honest call, since the new `seal_exclusions` field is additive and the only manifest using it does not ship. Sequencing caution: REQ-591 (the change that added fast-stage evidence reuse in the first place) is still claimed and unreleased with its shipped changes already committed, so if it is finalized first this version number follows from that one, not from `0.303.10`. The builder correctly left this to the finalizer rather than breaking its four-file scope.
+
+**Acceptance:** Pass — three reviewers independently ran the Go decision table and the shell probe green at merge revision `2d932a47`, and the strongest attack (deleting or mutating all 393 tracked files under the excluded trees, then running the queue-kanban suite with the gate's own selectors) produced `ok` in 58.6s, so there was no failure for the reuse to hide.
+
+**Suggested testing:** 4 items
+- Add a Go test that decodes the real `_dev/tests/fast-stages.json` and asserts the do-work-cli stage covers `do-work/archive/UR-003/input.md` and that no seal exclusion matches it. This is the one that closes the headline gap.
+- Add a table case that mutates a tracked file under `do-work/runs` and expects reuse, to pin the tracked-loop half of the exclusion check.
+- Add a fixture stage with an `exact` coverage rule on a path inside another stage's covered subtree, so the do-work-cli shape is exercised somewhere.
+- Add a drift ratchet: scan the do-work-cli test corpus for path literals that resolve under `do-work/` and assert the set equals that stage's declared coverage. Today that is one path, and it would fail the day someone adds a second.
+
+**Follow-ups created:** None (12 findings report only)
+
+*Reviewed by review-work action*
