@@ -7,7 +7,6 @@ import (
 	"path/filepath"
 	"reflect"
 	"strings"
-	"sync"
 	"testing"
 
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/resultmodel"
@@ -31,7 +30,7 @@ func TestInventoryStagedAdditionDeletedFromWorktreeIsDeletion(t *testing.T) {
 		t.Fatalf("raw porcelain does not contain AD fixture: %q", porcelain)
 	}
 
-	retained := runRetainedInventory(t, repository, nil)
+	retained := runRetainedInventory(t, repository)
 	if !reflect.DeepEqual(retained, []inventoryRow{{Classification: "D", Path: "ephemeral.txt"}}) {
 		t.Fatalf("retained AD rows=%+v, want D ephemeral.txt", retained)
 	}
@@ -101,13 +100,13 @@ func TestInventoryMatchesRetainedPorcelainXYMatrix(t *testing.T) {
 				origin = "origin.txt"
 			}
 			statusBytes := porcelainStatusBytes(status, "ordinary.txt", origin)
-			goRows, retainedRows := runSyntheticInventoryPair(t, statusBytes)
+			goRows, err := parseInventoryBytes(statusBytes)
+			if err != nil {
+				t.Fatalf("status %q parse: %v", status, err)
+			}
 			want := expectedOrdinaryInventoryClass(status)
 			if len(goRows) != 1 || goRows[0].Classification != want || goRows[0].Path != "ordinary.txt" || goRows[0].Origin != origin {
 				t.Fatalf("status %q Go rows=%+v, want class=%s path=ordinary.txt origin=%q", status, goRows, want, origin)
-			}
-			if err := compareInventoryProjection(goRows, retainedRows); err != nil {
-				t.Fatalf("status %q retained differential: %v", status, err)
 			}
 			assertInventoryFindingProjection(t, goRows)
 		})
@@ -133,12 +132,12 @@ func TestInventoryMatchesRetainedSecretOriginAndAmbiguityMatrix(t *testing.T) {
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			goRows, retainedRows := runSyntheticInventoryPair(t, test.statusBytes)
+			goRows, err := parseInventoryBytes(test.statusBytes)
+			if err != nil {
+				t.Fatalf("parse: %v", err)
+			}
 			if !reflect.DeepEqual(goRows, test.want) {
 				t.Fatalf("Go rows=%+v, want %+v", goRows, test.want)
-			}
-			if err := compareInventoryProjection(goRows, retainedRows); err != nil {
-				t.Fatal(err)
 			}
 			assertInventoryFindingProjection(t, goRows)
 		})
@@ -147,23 +146,114 @@ func TestInventoryMatchesRetainedSecretOriginAndAmbiguityMatrix(t *testing.T) {
 
 func TestInventoryDifferentialComparatorRejectsClassPathAndOrderMutations(t *testing.T) {
 	statusBytes := append(porcelainStatusBytes(" M", "first.txt", ""), porcelainStatusBytes(" D", "second.txt", "")...)
-	goRows, retainedRows := runSyntheticInventoryPair(t, statusBytes)
-	if err := compareInventoryProjection(goRows, retainedRows); err != nil {
+	goRows, err := parseInventoryBytes(statusBytes)
+	if err != nil {
+		t.Fatal(err)
+	}
+	expected := []inventoryRow{{"M", "first.txt", ""}, {"D", "second.txt", ""}}
+	if err := compareInventoryProjection(goRows, expected); err != nil {
 		t.Fatal(err)
 	}
 	mutations := []struct {
 		name string
 		rows []inventoryRow
 	}{
-		{"class", []inventoryRow{{"A", "first.txt", ""}, goRows[1]}},
-		{"path", []inventoryRow{{goRows[0].Classification, "wrong.txt", ""}, goRows[1]}},
-		{"order", []inventoryRow{goRows[1], goRows[0]}},
+		{"class", []inventoryRow{{"A", "first.txt", ""}, expected[1]}},
+		{"path", []inventoryRow{{expected[0].Classification, "wrong.txt", ""}, expected[1]}},
+		{"order", []inventoryRow{expected[1], expected[0]}},
 	}
 	for _, mutation := range mutations {
-		if err := compareInventoryProjection(mutation.rows, retainedRows); err == nil {
+		if err := compareInventoryProjection(mutation.rows, expected); err == nil {
 			t.Errorf("%s mutation escaped retained differential", mutation.name)
 		}
 	}
+}
+
+func TestParseInventoryBytesContract(t *testing.T) {
+	t.Run("malformed short records rejected", func(t *testing.T) {
+		for _, short := range [][]byte{
+			[]byte("M\x00"),
+			[]byte("AD\x00"),
+			[]byte("M \x00"),
+			[]byte("M  \x00"),
+		} {
+			_, err := parseInventoryBytes(short)
+			if err == nil || !strings.Contains(err.Error(), "short porcelain record") {
+				t.Errorf("expected short porcelain record error for %q, got %v", short, err)
+			}
+		}
+	})
+
+	t.Run("missing rename origin rejected", func(t *testing.T) {
+		for _, invalid := range [][]byte{
+			[]byte("R  destination.txt\x00"),
+			[]byte("R  destination.txt\x00\x00"),
+			[]byte("C  destination.txt\x00"),
+			[]byte("C  destination.txt\x00\x00"),
+		} {
+			_, err := parseInventoryBytes(invalid)
+			if err == nil || !strings.Contains(err.Error(), "rename origin missing") {
+				t.Errorf("expected rename origin missing error for %q, got %v", invalid, err)
+			}
+		}
+	})
+
+	t.Run("record ordering preserved", func(t *testing.T) {
+		statusBytes := append(
+			append(porcelainStatusBytes(" M", "first.txt", ""), porcelainStatusBytes(" D", "second.txt", "")...),
+			porcelainStatusBytes("??", "third.txt", "")...,
+		)
+		rows, err := parseInventoryBytes(statusBytes)
+		if err != nil {
+			t.Fatal(err)
+		}
+		want := []inventoryRow{
+			{Classification: "M", Path: "first.txt", Origin: ""},
+			{Classification: "D", Path: "second.txt", Origin: ""},
+			{Classification: "A", Path: "third.txt", Origin: ""},
+		}
+		if !reflect.DeepEqual(rows, want) {
+			t.Fatalf("rows=%+v, want %+v", rows, want)
+		}
+	})
+
+	t.Run("metadata exclusions drop only untracked hidden files under do-work", func(t *testing.T) {
+		statusBytes := append(
+			append(porcelainStatusBytes("??", "do-work/.DS_Store", ""), porcelainStatusBytes("??", "do-work/queue/.REQ.swp", "")...),
+			append(porcelainStatusBytes("??", "do-work/.req-reservations/042", ""), porcelainStatusBytes("??", ".DS_Store", "")...)...,
+		)
+		rows, err := parseInventoryBytes(statusBytes)
+		if err != nil {
+			t.Fatal(err)
+		}
+		want := []inventoryRow{
+			{Classification: "A", Path: "do-work/.req-reservations/042", Origin: ""},
+			{Classification: "A", Path: ".DS_Store", Origin: ""},
+		}
+		if !reflect.DeepEqual(rows, want) {
+			t.Fatalf("rows=%+v, want %+v", rows, want)
+		}
+	})
+
+	t.Run("cross-row secret promotion promotes additions only", func(t *testing.T) {
+		statusBytes := append(
+			append(porcelainStatusBytes("??", "first.txt", ""), porcelainStatusBytes("??", "second.txt", "")...),
+			append(porcelainStatusBytes(" M", "modified.txt", ""), porcelainStatusBytes(" M", "secret.key", "")...)...,
+		)
+		rows, err := parseInventoryBytes(statusBytes)
+		if err != nil {
+			t.Fatal(err)
+		}
+		want := []inventoryRow{
+			{Classification: "X", Path: "first.txt", Origin: ""},
+			{Classification: "X", Path: "second.txt", Origin: ""},
+			{Classification: "M", Path: "modified.txt", Origin: ""},
+			{Classification: "X", Path: "secret.key", Origin: ""},
+		}
+		if !reflect.DeepEqual(rows, want) {
+			t.Fatalf("rows=%+v, want %+v", rows, want)
+		}
+	})
 }
 
 func expectedOrdinaryInventoryClass(status string) string {
@@ -186,56 +276,7 @@ func porcelainStatusBytes(status, path, origin string) []byte {
 	return output
 }
 
-func runSyntheticInventoryPair(t *testing.T, statusBytes []byte) ([]inventoryRow, []inventoryRow) {
-	t.Helper()
-	repository := t.TempDir()
-	retainedRows := runRetainedInventory(t, repository, statusBytes)
-	goRows, err := readInventory(repository)
-	if err != nil {
-		t.Fatalf("read synthetic Go inventory: %v", err)
-	}
-	return goRows, retainedRows
-}
-
-// retainedInventoryExecutable caches the do-work-cli executable that the retained
-// launcher chain ends up running, resolved once per test binary.
-//
-// The shipped chain is uncommitted-inventory.sh -> do-work-cli.sh -> the executable.
-// Both shells run on every call, and do-work-cli.sh probes the Go toolchain twice
-// (`go version`, then `go tool -n` over the whole module) before exec'ing an
-// executable the build cache already holds. That probe costs far more than the
-// command it guards, and the synthetic matrices below make 56 of these calls, which
-// is most of why this file spent 28s of the gate's 30s per-file budget. Resolving
-// the executable once and running it directly removes the repetition without
-// removing any comparison: every synthetic case still runs the real command in a
-// real subprocess against a real repository, exactly as the shim would invoke it.
-//
-// The shim itself stays pinned. Callers that pass a nil synthetic status still go
-// through uncommitted-inventory.sh end to end, so the launcher contract keeps a test
-// (TestInventoryStagedAdditionDeletedFromWorktreeIsDeletion) (REQ-574).
-var (
-	retainedInventoryOnce       sync.Once
-	retainedInventoryExecutable string
-	retainedInventoryResolveErr error
-)
-
-func resolveRetainedInventoryExecutable(t *testing.T, moduleDirectory string) string {
-	t.Helper()
-	retainedInventoryOnce.Do(func() {
-		output, err := exec.Command("go", "tool", "-C", moduleDirectory, "-n", "do-work-cli").Output()
-		if err != nil {
-			retainedInventoryResolveErr = fmt.Errorf("resolve do-work-cli executable: %w", err)
-			return
-		}
-		retainedInventoryExecutable = strings.TrimSpace(string(output))
-	})
-	if retainedInventoryResolveErr != nil {
-		t.Fatal(retainedInventoryResolveErr)
-	}
-	return retainedInventoryExecutable
-}
-
-func runRetainedInventory(t *testing.T, repository string, syntheticStatus []byte) []inventoryRow {
+func runRetainedInventory(t *testing.T, repository string) []inventoryRow {
 	t.Helper()
 	workingDirectory, err := os.Getwd()
 	if err != nil {
@@ -245,35 +286,16 @@ func runRetainedInventory(t *testing.T, repository string, syntheticStatus []byt
 	if _, err := os.Stat(script); err != nil {
 		t.Fatalf("retained inventory script: %v", err)
 	}
-	if syntheticStatus != nil {
-		fakeRoot := t.TempDir()
-		statusPath := filepath.Join(fakeRoot, "status.bin")
-		if err := os.WriteFile(statusPath, syntheticStatus, 0o600); err != nil {
-			t.Fatal(err)
-		}
-		fakeGit := filepath.Join(fakeRoot, "git")
-		fakeGitBytes := []byte("#!/bin/sh\ncase \" $* \" in\n  *\" rev-parse --git-dir \"*) printf '.git\\n'; exit 0 ;;\n  *\" status \"*) command cat \"$DO_WORK_INVENTORY_STATUS_FIXTURE\"; exit $? ;;\nesac\nprintf 'unexpected fake git arguments: %s\\n' \"$*\" >&2\nexit 97\n")
-		if err := os.WriteFile(fakeGit, fakeGitBytes, 0o700); err != nil {
-			t.Fatal(err)
-		}
-		t.Setenv("DO_WORK_INVENTORY_STATUS_FIXTURE", statusPath)
-		t.Setenv("PATH", fakeRoot+string(os.PathListSeparator)+os.Getenv("PATH"))
-	}
 	command := exec.Command(script, repository)
-	if syntheticStatus != nil {
-		// The exact argv and environment uncommitted-inventory.sh would exec, minus
-		// the two shells and the toolchain probe. See retainedInventoryExecutable.
-		moduleDirectory := filepath.Clean(filepath.Join(workingDirectory, "..", ".."))
-		command = exec.Command(resolveRetainedInventoryExecutable(t, moduleDirectory),
-			"--repo-root", repository, "--format", "text", "uncommitted-inventory")
-		command.Env = append(os.Environ(), "DO_WORK_COMPATIBILITY_SHIM=1")
-	}
 	output, runError := command.CombinedOutput()
 	if runError != nil {
 		t.Fatalf("retained inventory: %v: %s", runError, output)
 	}
 	rows := []inventoryRow{}
 	for _, line := range strings.Split(strings.TrimSuffix(string(output), "\n"), "\n") {
+		if line == "" {
+			continue
+		}
 		parts := strings.SplitN(line, "\t", 2)
 		if len(parts) != 2 {
 			t.Fatalf("malformed retained row %q", line)
@@ -349,6 +371,25 @@ func TestInventoryPreservesSecretRenameOriginAndQuarantinesAmbiguousAdds(t *test
 	}
 	if len(want) != 0 {
 		t.Fatalf("missing=%v rows=%+v", want, rows)
+	}
+
+	retained := runRetainedInventory(t, repository)
+	wantRetained := map[string]string{".envrc": "XD", "visible-config.txt": "X", "ordinary.txt": "X"}
+	for _, row := range retained {
+		if expected, ok := wantRetained[row.Path]; ok {
+			if row.Classification != expected {
+				t.Fatalf("retained %s=%s want %s (rows=%+v)", row.Path, row.Classification, expected, retained)
+			}
+			delete(wantRetained, row.Path)
+		}
+	}
+	if len(wantRetained) != 0 {
+		t.Fatalf("missing retained=%v rows=%+v", wantRetained, retained)
+	}
+
+	result := handleInventory(testContext(repository), nil)
+	if result.Outcome != resultmodel.OutcomeSuccess || !hasFinding(result, "INVENTORY-XD") || !hasFinding(result, "INVENTORY-X") {
+		t.Fatalf("Go result=%#v, want INVENTORY-XD and INVENTORY-X", result)
 	}
 }
 

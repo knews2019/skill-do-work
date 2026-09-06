@@ -87,6 +87,10 @@ func readInventory(repositoryRoot string) ([]inventoryRow, error) {
 	if err != nil {
 		return nil, err
 	}
+	return parseInventoryBytes(output)
+}
+
+func parseInventoryBytes(output []byte) ([]inventoryRow, error) {
 	records := bytes.Split(output, []byte{0})
 	rows := []inventoryRow{}
 	hasExcluded := false
