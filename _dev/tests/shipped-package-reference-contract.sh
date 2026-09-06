@@ -696,7 +696,16 @@ soft_wrap_gap = r"(?:[ \t]|\n(?![ \t]*\n))*"
 arrow_section_shape = re.compile(
     rf"""[`)\]"']*{soft_wrap_gap}→{soft_wrap_gap}\*\*((?:[^*\n]|\n(?![ \t]*\n))+?)\*\*"""
 )
-bold_run_pattern = re.compile(r"\*\*((?:[^*\n]|\n(?![ \t]*\n))+?)\*\*")
+# Declared bold labels are scanned per LINE. A whole-document scan lets the ** markers of a
+# line holding an odd number of them re-pair with the next line's, which both drops the
+# next line's real label and admits the prose between the two as a name; measured over
+# the shipped tree that lost 29 labels and gained 51 non-labels, fail-open. A label that
+# wraps once is admitted by the second pattern, anchored at a line start (after an
+# optional list marker) and bounded by the paragraph like the citation shape above.
+bold_run_pattern = re.compile(r"\*\*([^*\n]+?)\*\*")
+wrapped_bold_label_pattern = re.compile(
+    r"^[ \t]*(?:[-*+]|\d+\.)?[ \t]*\*\*([^*\n]+\n(?![ \t]*\n)[^*\n]+?)\*\*", re.MULTILINE
+)
 section_name_cache = {}
 
 
@@ -744,10 +753,20 @@ def section_names_from_text(markdown_text):
             if heading_match is not None:
                 heading_text = re.sub(r"[ \t]+#+$", "", heading_match.group(2) or "")
                 collected_names.add(normalize_section_name(heading_text))
-    # Locate bold markers across soft line breaks in masked text, so quoted examples
-    # still declare nothing. Read names from the raw span to retain inline code such
-    # as `write_set`; masking preserves offsets. Blank lines bound unclosed labels.
-    for bold_match in bold_run_pattern.finditer(masked_markdown_text):
+    # Bold runs are located on the masked text, so a run that exists only inside inline
+    # code or a fence declares nothing, and read from the raw text, because masking blanks
+    # inline code a declared label keeps ("**Populating `write_set`.**") while preserving
+    # offsets. Per line first (see bold_run_pattern), then the wrapped-label pass.
+    raw_lines = markdown_text.split("\n")
+    for line_index, masked_line in enumerate(masked_lines):
+        if line_index >= len(raw_lines):
+            break
+        raw_line = raw_lines[line_index]
+        for bold_match in bold_run_pattern.finditer(masked_line):
+            collected_names.add(
+                normalize_section_name(raw_line[bold_match.start(1) : bold_match.end(1)])
+            )
+    for bold_match in wrapped_bold_label_pattern.finditer(masked_markdown_text):
         collected_names.add(
             normalize_section_name(
                 markdown_text[bold_match.start(1) : bold_match.end(1)]
@@ -1091,6 +1110,14 @@ def run_section_citation_fixtures():
         "```\n"
         "\n"
         "**Separate\n \t\nParagraphs**\n"
+        "\n"
+        # A line with an odd number of ** markers must not re-pair with the label that
+        # starts the next line: a whole-document scan read "**two\n**" as one run and
+        # then lost "Odd Count Label" (and named the prose between). Real shape from
+        # actions/capture.md, where "Impact assessment" disappeared that way.
+        "Note **one** and **two\n"
+        "**Odd Count Label.** Declared on its own line after an odd-count line.\n"
+        "- **Listed\nWrapped Label.** A wrapped label after a list marker.\n"
     )
     fixture_section_names = section_names_from_text(fixture_document)
     resolution_cases = [
@@ -1124,6 +1151,9 @@ def run_section_citation_fixtures():
         ("a quoted wrapped label is not a section", "Quoted Label", False),
         ("a fenced wrapped label is not a section", "Fenced Label", False),
         ("a bold label cannot cross a blank line", "Separate Paragraphs", False),
+        ("a label after an odd-count line resolves", "Odd Count Label", True),
+        ("a wrapped label after a list marker resolves", "Listed Wrapped Label", True),
+        ("the run an odd-count line would re-pair is not a section", "two Odd Count Label", False),
         (
             # Quoting a bold run is not declaring one. Collected from the raw line, this
             # satisfied any citation naming it.
