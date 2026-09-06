@@ -313,30 +313,33 @@ hands back one file to the main checkout without staging or committing anything 
 
 ## Implementation Summary
 
-**Files changed:** 25, all repository-relative and all inside the declared write set.
+**Files changed:** 25, every path repository-relative and every one inside the declared write set.
 
-- `_dev/tests/quiet-grep-pipeline-audit.sh` (new, executable) — the guard's new home
-- `_dev/tests/contracts/probe-lanes.sh` (modified) — two lines, fast-tier registration
-- `_dev/tests/update-script-behavior.sh` (modified) — 94 lines deleted, deletion only
-- `_dev/tests/contracts/core-checks.sh`, `_dev/tests/contracts/queue-kanban.sh`,
-  `_dev/tests/select-simple-reqs-behavior.sh`, `_dev/tests/p50-estimator-determinism.sh`,
-  `_dev/tests/audit-lockins.sh`, `_dev/tests/staged-skills-contract.sh`,
-  `_dev/tests/install-suite-behavior.sh` (modified) — the fast-tier and judgment sites
-- `_dev/tests/prescribed-shell-cases/qualify.sh`,
-  `_dev/tests/prescribed-shell-cases/audit-archive-timestamps.sh`,
-  `_dev/tests/prescribed-shell-cases/repair-req-timestamps.sh`,
-  `_dev/tests/prescribed-shell-cases/generate-report-image.sh`,
-  `_dev/tests/prescribed-shell-cases/generate-report-image-batch.sh`,
-  `_dev/tests/prescribed-shell-cases/publish-portfolio-summary.sh`,
-  `_dev/tests/prescribed-shell-cases/atomic-download.sh`,
-  `_dev/tests/prescribed-shell-cases/cleanup-req-reservations.sh`,
-  `_dev/tests/prescribed-shell-cases/protected-inventory.sh`,
-  `_dev/tests/prescribed-shell-cases/capture-screenshot.sh`,
-  `_dev/tests/prescribed-shell-cases/show-commit-diff.sh`,
-  `_dev/tests/prescribed-shell-cases/lexical-memory-recall.sh`,
-  `_dev/tests/prescribed-shell-cases/install-memory-hooks.sh`,
-  `_dev/tests/prescribed-shell-cases/architecture-report-preflight.sh` (modified) — the heavy-tier sites
-- `skills/do-work/tools/select-simple-reqs.sh` (modified) — one line, and the reason this is a release
+- `_dev/tests/quiet-grep-pipeline-audit.sh` — new, executable — the guard's new home
+- `_dev/tests/contracts/probe-lanes.sh` — two lines, fast-tier registration
+- `_dev/tests/update-script-behavior.sh` — 94 lines deleted, deletion only
+- `_dev/tests/contracts/core-checks.sh` — 13 logical lines carrying 19 grep invocations, one of them split into if/elif
+- `_dev/tests/contracts/queue-kanban.sh` — 2 sites
+- `_dev/tests/select-simple-reqs-behavior.sh` — 15 sites
+- `_dev/tests/p50-estimator-determinism.sh` — 1 site
+- `_dev/tests/audit-lockins.sh` — 1 site
+- `_dev/tests/staged-skills-contract.sh` — 4 sites, all judgment, one of them already broken
+- `_dev/tests/install-suite-behavior.sh` — 2 sites, both judgment, one of them already broken
+- `_dev/tests/prescribed-shell-cases/qualify.sh` — 31 sites
+- `_dev/tests/prescribed-shell-cases/audit-archive-timestamps.sh` — 15 sites, two of them three-stage
+- `_dev/tests/prescribed-shell-cases/repair-req-timestamps.sh` — 13 sites
+- `_dev/tests/prescribed-shell-cases/generate-report-image.sh` — 6 sites
+- `_dev/tests/prescribed-shell-cases/generate-report-image-batch.sh` — 6 sites
+- `_dev/tests/prescribed-shell-cases/publish-portfolio-summary.sh` — 4 sites
+- `_dev/tests/prescribed-shell-cases/atomic-download.sh` — 3 sites
+- `_dev/tests/prescribed-shell-cases/cleanup-req-reservations.sh` — 3 sites
+- `_dev/tests/prescribed-shell-cases/protected-inventory.sh` — 3 sites, one the security-relevant negative assertion
+- `_dev/tests/prescribed-shell-cases/capture-screenshot.sh` — 2 sites
+- `_dev/tests/prescribed-shell-cases/show-commit-diff.sh` — 1 site
+- `_dev/tests/prescribed-shell-cases/lexical-memory-recall.sh` — 1 site
+- `_dev/tests/prescribed-shell-cases/install-memory-hooks.sh` — 1 site
+- `_dev/tests/prescribed-shell-cases/architecture-report-preflight.sh` — 1 site
+- `skills/do-work/tools/select-simple-reqs.sh` — one line, and the reason this is a release
 
 **What was done: 129 offending logical lines became 0**, measured with REQ-593's own scanner over
 `git ls-files -z -- '*.sh'` at both ends. 122 sites were mechanical — the producer replays a variable
@@ -392,3 +395,70 @@ five output shapes.
   stage feeding three herestring greps that shared the line through continuations. Reaching zero needed
   the statement split into an `if` capture plus `elif` reads. That is the plan's stated R3 risk showing
   up as a real edit.
+
+## Qualification
+
+**Passed.** Read from the merge range `234eda9c..4edde87`, 25 files, 488 insertions and 249 deletions.
+Canonical `qualify` and `scope-drift` both satisfied.
+
+- **The number this request exists to drive is measured at both ends with the same instrument.**
+  REQ-593's shipped scanner, run verbatim over `git ls-files -z -- '*.sh'`, reports **129** offending
+  logical lines across 22 of 93 tracked files at the branch point and **0** across 94 files now. The
+  request's own regex reports 140 matches over 23 files; it was not used, because it counts comments and
+  already-converted herestrings and cannot see `--quiet`, `--silent`, a continuation or a prefixed grep.
+- **Two of the 129 were live defects, reproduced before they were fixed.** The stub is a `find` that
+  reaches a leftover file, prints it, and then exits non-zero because a sibling directory is unreadable
+  — which is what real `find` does. Under `pipefail` the shipped guard at
+  `staged-skills-contract.sh:82` and its twin at `install-suite-behavior.sh:142` stayed silent with the
+  leftover file sitting there, and reported the legacy runtime as retired. Both fire now.
+- **Seven sites got an explicit producer-status assertion rather than a bare herestring**, and each was
+  mutation-tested in both directions. The one that matters most is the twenty `find … -print -quit` leak
+  checks: a planted leftover reports the leak, and a missing search root reports "could not search",
+  where the old form passed silently.
+- **The guard's self-exemption is three mechanisms and none of them is a path list.** Prose is `.md` and
+  outside `git ls-files -- '*.sh'` by construction. Both fixture heredocs interpolate the pipe and hash
+  characters, so the audit's own bytes never carry the shape — verified by running the whole-tree scan
+  with the new file in the index and getting 0 across all 94 files. And a `#` suppresses exactly what
+  bash suppresses, so moving a real offender into a comment deletes the check rather than hiding it.
+- **The scanner's own fix is additive, and that was proven rather than argued.** Both scanner bodies —
+  the shipped one and the comment-fixed one — run over every tracked shell file at the branch point
+  produce byte-identical output, 129 findings each. So the fix adds two shapes and removes nothing.
+- **The fixture is asserted by name and survives 16 mutations.** Every one of the 21 shapes is covered
+  by at least one mutation, and each failure names the shape that was lost rather than a count.
+- **The 94-line deletion left the surviving probe intact**, which the updater heavy lane is what proves.
+  `verify_output_matchers_read_greps_verdict` stayed behind deliberately: it drives the two shipped
+  matchers over a 256 KiB variable and is the only thing proving the mechanism on real data.
+- **One site was reverted rather than converted, and one statement had to be split.** Neither is a
+  concession — see D-06 and D-07. The split at `core-checks.sh:349` is the plan's own R3 risk arriving
+  as a real edit: the scanner splits on a bare pipe and cannot see a command-substitution boundary.
+- **The release is paid rather than avoided.** One shipped line is in the diff, so this request carries a
+  version bump. Drawing the guard's scope around `_dev/tests/` would have been an exemption list with one
+  entry, pointed at the only known instance of the defect the guard forbids.
+
+## Testing
+
+**Three heavy lanes and the fast gate, each with its own exit line, because a lane that skips reports
+success.** Two thirds of this change (90 of the 128 `_dev/tests` sites) lives under
+`prescribed-shell-cases/` and is reached only through `staged-skills-contract.sh:189`, inside the heavy
+block — a fast run alone would have been no evidence at all.
+
+- Fast gate — `Maintainer verification passed.`, exit 0, gate wall 99s at the builder's final head and
+  79s on the merged tree, CLI module at 796 tests. The audit's own line:
+  `quiet-grep pipeline audit passed (94 tracked shell files, 14 must-flag and 7 must-not-flag shapes).`
+- `--heavy-lane staged-skills` — EXIT 0, wall 24s,
+  `Prescribed shell script behavior probes passed (110 named script cases across 18 per-script files).`
+  This is the lane that reaches all 90 prescribed-shell-case conversions.
+- `--heavy-lane updater` — EXIT 0, wall 72s, `update-script behavior probes passed.` This is the lane
+  that proves the 94-line deletion left the surviving probe intact.
+- `--heavy-lane installer` — EXIT 0, wall 16s, `suite installer behavior probes passed.`
+
+**Beyond the lanes:** every touched probe and case file was also run standalone and reported zero
+failures, and the ShellCheck lane form — every tracked `*.sh` in one invocation from the repository root
+— exits 0.
+
+**The guard's own cost was measured, not estimated.** `time bash _dev/tests/quiet-grep-pipeline-audit.sh`
+reports 0.196s at 93 files and 0.201s at 94, against a 30s per-file fast budget. The gate's launcher
+reports it as 2s because it measures in whole seconds.
+
+**The two already-broken guards were mutation-tested on the real files**, not only in the harness: a
+planted leftover fires the replacement, and the shipped form on the same fixture reports zero failures.
