@@ -1,7 +1,7 @@
 ---
 id: REQ-613
 title: 'A8: Reduce the cost of proving tests can be reused'
-status: pending
+status: claimed
 created_at: 2026-09-06T13:16:35Z
 user_request: UR-128
 domain: testing
@@ -13,6 +13,7 @@ maintenance: false
 batch: test-efficiency
 depends_on: [REQ-606]
 related: [REQ-606, REQ-607, REQ-608, REQ-609, REQ-610, REQ-611, REQ-612, REQ-614]
+claimed_at: 2026-09-06T15:17:31Z
 ---
 # A8: Reduce the cost of proving tests can be reused
 
