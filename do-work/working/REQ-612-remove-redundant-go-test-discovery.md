@@ -1,7 +1,7 @@
 ---
 id: REQ-612
 title: 'A7: Remove redundant Go test discovery'
-status: pending
+status: claimed
 created_at: 2026-09-06T13:16:35Z
 user_request: UR-128
 domain: testing
@@ -13,6 +13,7 @@ maintenance: false
 batch: test-efficiency
 depends_on: [REQ-606]
 related: [REQ-606, REQ-607, REQ-608, REQ-609, REQ-610, REQ-611, REQ-613, REQ-614]
+claimed_at: 2026-09-06T15:03:52Z
 ---
 # A7: Remove redundant Go test discovery
 
