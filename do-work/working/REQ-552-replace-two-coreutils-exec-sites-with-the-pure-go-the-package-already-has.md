@@ -301,3 +301,58 @@ both are green, and against a scratch build with the two guards removed both fai
 case is passing vacuously.
 
 *Verified by work action*
+
+## Review
+
+**Overall: 68%** | 2026-09-06T00:00:00Z
+
+| Dimension | Score |
+|-----------|-------|
+| Requirements | 70% |
+| Code Quality | 90% |
+| Test Adequacy | 55% |
+| Scope | 95% |
+| Risk | Low |
+| Acceptance | Partial |
+
+**Verdict: Approve with follow-ups** — the Go code in REQ-552 (replacing two places where the CLI started the external `find` and `cp` programs with Go code that does the same job) is correct and all three reviewers failed to break it, but one of the two rewritten test cases passes for the wrong reason and the version bump is still owed. Commit ca61a0a9.
+
+Where the three reviewers split, and the call taken:
+
+- Two reviewers rated the vacuous `architecture-report-preflight` case Important, the third rated it Minor because the copy's happy path is pinned by two other cases in the same file. Taken as **Important**: two reviewers deleted the new error handling and the case stayed green, so the acceptance criterion "both rewritten cases still detect the failure they name" is demonstrably false, whatever else happens to be covered.
+- Two reviewers judged the lock-in acceptance criterion unmet, the third judged it met. Taken as **unmet**: the third only injected `exec.Command("mkdir", ...)`, which the pattern does catch. The other two injected `exec.CommandContext(runContext, "cp", ...)` into a shipped file and the lock-in printed "Audit lock-in regressions passed." That is a shown failing scenario, not a worry.
+
+**Important findings (each with its recorded impact token — this is the durable audit record the judgment mandates):**
+- `_dev/tests/prescribed-shell-cases/architecture-report-preflight.sh:195-216` — the rewritten failed-copy case never runs the line this REQ changed. Pointing TMPDIR at a regular file breaks `os.CreateTemp` at `architecture.go:126`, so the new `os.WriteFile` at line 137 is never reached. Two reviewers independently ablated the new error handling (one replaced it with `_ = os.WriteFile(...)`, one deleted the copy) and the case stayed green at 9 cases, 0 failures. A third ran the base binary with only the two rewritten fixture files restored: the archive case went red with 3 failures, this one stayed green. Its only assertion greps for `ARCHITECTURE-PREFLIGHT-FAILED`, which four sites in the same function emit, so it does not name its own failure and decision D-06 is false for this case. Working remedy verified on both binaries: `ulimit -f 1` with a draft over 512 bytes lets `CreateTemp` succeed and makes the write fail with `draft copy failed: write ...: file too large` — [impact-rule-change → report only]
+- Release is owed and not delivered: two of the five touched files ship under `skills/`, so per `_dev/primes/prime-releases.md` this is a release. Patch bump 0.303.10 to 0.303.11 across `VERSION`, `skills/do-work/VERSION`, `skills/do-work/actions/version.md:5`, plus a changelog entry in `CHANGELOG.md` mirrored byte-identically into `skills/do-work/CHANGELOG.md`. Do not touch `skills/do-work-board/tools/queue-kanban/VERSION` (0.236.20, independently versioned, untouched by this change). One caveat for whoever finalizes: HEAD has moved past this merge and carries other unreleased shipped changes under `skills/do-work-board`, so if the release covers the accumulated set the bump size needs judging against all of it — [impact-rule-change → report only]
+
+**Minor findings:**
+- The lock-in in `_dev/tests/audit-lockins.sh:158-162` only matches a context argument spelled exactly `ctx`. Two reviewers injected `exec.CommandContext(runContext, "cp", a, b)` into shipped code and got zero FAIL lines; renaming the variable to `ctx` produced one. The same module already spells it `invocationContext` in `last30days.go`, and the Naming for Reach rule pushes new code toward the longer spelling, so the most likely future regression is the one the lock-in cannot see. One-character fix: `exec\.Command(Context)?\([^)]*"(find|cp|...)"`. `exec.Command` never takes a context, so widening creates no false positives — [impact-rule-change → report only]
+- Undisclosed behavioural divergence: `filepath.WalkDir` builds absolute paths and fails with ENAMETOOLONG on a subtree deeper than PATH_MAX, where GNU `find` (which uses fts and chdir) exits 0. Two reviewers built the tree and confirmed both halves. Detection is now a strict superset, not the same set, and the REQ's own wording says "the same error string class is returned when the archive is unreadable". The rewritten archive fixture uses exactly this divergence as its mechanism, so it pins new behaviour rather than preserved behaviour. Real-world reachability in a do-work archive is near zero, which is why this is Minor. The accepted-difference list should name it — [impact-negligible → report only]
+- The lock-in block discards rg's exit status and sends its stderr to `/dev/null`, then decides on emptiness alone. One reviewer ran the exact invocation against two non-existent directories: rg exited 2, printed nothing, and the guard took the pass branch. If either hard-coded module directory is ever renamed the lock-in reports PASS forever. The command list is a closed enumeration that D-03 answers well; the module-path enumeration in the same block is a second one that nothing answers. Same shape as the pre-existing Finding 2 and Finding 10 blocks, so it matches local style — [impact-negligible → report only]
+- No case anywhere in the suite covers the failure the REQ actually names, an archive that cannot be read because of permissions. The suite runs as root (uid=0 confirmed), so `chmod 000` is a no-op, and the new case covers only ENAMETOOLONG. The old case did not cover it either, so this is not a regression — the record should say the class is uncovered instead of implying the rewrite restored coverage — [impact-negligible → report only]
+
+**Nit findings:**
+- Two real behaviour differences in the copy path, both improvements, neither disclosed: the draft bytes are now snapshotted at `architecture.go:117` instead of re-read by `cp` at copy time, so the published bytes are always the ones the guards ran against; and `copyError.Error()` is never empty, where `cp` killed by SIGXFSZ wrote nothing to stderr and left the evidence as the bare string `draft copy failed: ` — [impact-negligible → report only]
+- The compatibility-shim block at `architecture.go:125-142` is now a pure round-trip (write `data` to a temp file, read the same bytes back into `data`, delete on defer), which makes the "same mode" acceptance criterion unobservable by any test. Two reviewers raised this; a third confirmed the reasoning behind the mode claim is sound but untestable. Leaving the block in place is the right call here, but the simplification it exposes is not recorded as a discovered task — [impact-negligible → report only]
+- The REQ's Constraints section still says "no test files beyond the lock-in" while the frontmatter `write_set` and Scope both list the two fixture files. D-01 records the override with the measurement that forced it, which is the right handling, but the constraint line itself was never amended — [impact-negligible → report only]
+
+**Acceptance:** Partial — the shipped Go behaviour holds under differential execution (12-case fixture matrix as root and uid 65534, plus base-versus-head publish runs on normal, zero-byte, symlink, ENOSPC, broken-TMPDIR and `ulimit -f` drafts, all byte-identical on success and same finding code on failure), the heavy tier is green at 11 and 9 cases, shellcheck is clean at the gate severity `--severity=warning`, `gofmt`, `go vet` and the package tests pass, and the write set is exactly the five declared files. Two of the five acceptance criteria fail as written: the lock-in does not fire on `exec.CommandContext` with a non-`ctx` variable, and one of the two rewritten cases does not detect the failure it names.
+
+**Requirements checklist:**
+- [x] Neither `find` nor `cp` is spawned by shipped code in either Go module — delivered (lock-in red at 7eadf50e with two FAIL lines, green at ca61a0a9; the only remaining `cp` match is a test file, excluded on purpose)
+- [x] The archive-walk failure is still detected and still produces non-empty evidence — delivered, with the superset caveat above (no case found where `find` errored and `WalkDir` did not; the Go 1.26 walk source confirms every non-nil return reaches the callback with a non-nil error, so the evidence string cannot be empty)
+- [x] The draft copy still lands at the staged path with the same bytes and the same mode — bytes delivered and proven by ablation (writing corrupt bytes fails two publication-content cases); mode reasoned but unobservable, since the staged file is deleted on defer
+- [ ] A lock-in assertion fails if a coreutils exec site returns to shipped code — not delivered for `exec.CommandContext` with a context variable not named `ctx`
+- [ ] The heavy tier is green and both rewritten cases still detect the failure they name — heavy tier green, but the `architecture-report-preflight` case does not detect the failure it names
+
+**Suggested testing:** 5 items
+- Rewrite the failed-copy case to use `ulimit -f 1` in a subshell with a draft over 512 bytes, so `os.CreateTemp` succeeds and the write fails, and assert on the string `draft copy failed` rather than the shared `ARCHITECTURE-PREFLIGHT-FAILED` code. Verified reachable on both binaries.
+- Re-run both rewritten case files against the base Go code with only the fixture files restored. Any case that stays green there is not discriminating.
+- Widen the lock-in pattern to `exec\.Command(Context)?\([^)]*"(find|cp|...)"` and re-inject `exec.CommandContext(runContext, "cp", a, b)` to confirm it goes red.
+- Guard each hard-coded module directory in the lock-in with a `[ -d ]` check, then rename one directory and confirm the lock-in fails loudly instead of passing.
+- If permission-denied archive coverage is wanted, drive it through an unshare-based user namespace or a non-root helper, since `chmod 000` cannot work in a root-run suite.
+
+**Follow-ups created:** None (9 findings report only)
+
+*Reviewed by review-work action*
