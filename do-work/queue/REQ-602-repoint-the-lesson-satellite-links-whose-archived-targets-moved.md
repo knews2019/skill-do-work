@@ -1,6 +1,6 @@
 ---
 id: REQ-602
-status: claimed
+status: pending
 domain: general
 created_at: 2026-09-06T08:10:39Z
 user_request: UR-105
@@ -8,7 +8,6 @@ review_generated: true
 impact: impact-negligible
 effort_estimate: effort-mechanical
 prime_files: [_dev/primes/prime-action-files.md]
-route: A
 estimate:
   p50_active_minutes: 15
   confidence: medium
@@ -23,6 +22,7 @@ related: [REQ-243, REQ-238]
 write_set: [_dev/primes/lessons-shell-commands.md, _dev/primes/lessons-action-files.md, _dev/primes/lessons-kanban-board.md, _dev/tests/audit-lockins.sh]
 title: 'Repoint the lesson-satellite links whose archived targets moved, and check satellite links'
 claimed_at: 2026-09-06T08:12:01Z
+status_changed_at: 2026-09-06T12:38:00Z
 ---
 
 # Repoint the Lesson-Satellite Links Whose Archived Targets Moved, and Check Satellite Links
@@ -87,57 +87,3 @@ for shipped Markdown; `_dev/primes/` is not shipped and nothing reads these link
 
 None.
 
-## Triage
-
-**Route: A** — Direct build.
-
-**Reasoning:** Fifteen link targets are known and listed with where each file now lives; the check is
-one condition over three files whose shape `audit-lockins.sh` already has a dozen examples of. Nothing to
-explore: the dead links were found by resolving every relative link in the three satellites against the
-tree, and the list is that resolution's output.
-
-**Planning:** Skipped.
-
-**The check goes in before the repointing so the red is real.** Fifteen dead links are the fixture; a
-check written after they are fixed has never failed.
-
-## Plan
-
-**Planning not required** — Route A: one check, fifteen link edits, three index rows.
-
-*Skipped by work action*
-
-## Implementation Summary
-
-**Files changed:**
-- `_dev/tests/audit-lockins.sh` (modified)
-- `_dev/primes/lessons-action-files.md` (modified)
-- `_dev/primes/lessons-kanban-board.md` (modified)
-- `_dev/primes/lessons-shell-commands.md` (modified)
-- `do-work/lessons-index.md` (modified)
-
-**The check, in its own commit first.** A new block in `audit-lockins.sh` headed "Lesson-satellite links
-resolve (REQ-602)": a satellite is any `_dev/primes/lessons-*.md` (a glob, with a FAIL when it matches
-nothing); a relative link is any `](target)` whose target is non-empty, does not start with `#` and is
-not an absolute URL; the target, fragment stripped, must resolve from `_dev/primes/`. One FAIL line per
-broken link, naming the satellite, the line and the target as written. At `a70a04f`, with the links
-still broken, the lock-ins exit 1 with exactly the fifteen FAIL lines the request lists and no other
-(re-run by the orchestrator after the builder).
-
-**The repointing.** Fifteen links in three satellites now name the `UR-0xx/` directory each target moved
-under; bullet text and family markers unchanged. Three `lessons-index.md` rows recomputed by program
-(tokens and families). Lock-ins green at head and on the merged tree.
-
-**The shipped satellite's canonical URLs** were reported, not edited: see the hand-back's URL report
-(`do-work/runs/work-2026-09-05-231943/REQ-602-handback.md`).
-
-**Owed to the next session:** the independent verifier and the review did not run (session limit);
-canonical `qualify` over the merge range, the three-lens review, and finalization (not a release: no
-shipped file changed).
-
-## Decisions
-
-- **D1 The check lives in `audit-lockins.sh`**, beside the other lock-ins the gate already runs, rather
-  than in a fifth script.
-- **D2 The satellite bullets' text is untouched**, only the link targets: the lesson wording is the
-  archive's, not this request's.
