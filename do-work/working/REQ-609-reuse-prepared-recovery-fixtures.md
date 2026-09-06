@@ -1,7 +1,7 @@
 ---
 id: REQ-609
 title: 'A4: Copy prepared recovery states, not just empty repositories'
-status: pending
+status: claimed
 created_at: 2026-09-06T13:16:35Z
 user_request: UR-128
 domain: testing
@@ -13,6 +13,7 @@ maintenance: false
 batch: test-efficiency
 depends_on: [REQ-607, REQ-608]
 related: [REQ-606, REQ-607, REQ-608, REQ-610, REQ-611, REQ-612, REQ-613, REQ-614]
+claimed_at: 2026-09-06T14:25:47Z
 ---
 # A4: Copy prepared recovery states, not just empty repositories
 
