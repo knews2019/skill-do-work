@@ -1,7 +1,7 @@
 ---
 id: REQ-611
 title: 'A6: Batch shell audits while preserving diagnostics'
-status: pending
+status: claimed
 created_at: 2026-09-06T13:16:35Z
 user_request: UR-128
 domain: testing
@@ -13,6 +13,7 @@ maintenance: false
 batch: test-efficiency
 depends_on: [REQ-606]
 related: [REQ-606, REQ-607, REQ-608, REQ-609, REQ-610, REQ-612, REQ-613, REQ-614]
+claimed_at: 2026-09-06T14:56:21Z
 ---
 # A6: Batch shell audits while preserving diagnostics
 
