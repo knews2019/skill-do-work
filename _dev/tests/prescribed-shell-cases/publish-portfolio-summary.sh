@@ -37,7 +37,9 @@ cmp -s "$portfolio_source" "$portfolio_canonical" \
   || fail_case 'publish-portfolio-summary canonical-only case consumed the retained source'
 [ "$portfolio_canonical_output" = "$portfolio_canonical" ] \
   || fail_case 'publish-portfolio-summary canonical-only case did not report the canonical path'
-find "$portfolio_root/deliverables/portfolio-snapshots" -type f -print -quit | grep -q . \
+portfolio_snapshot_paths="$(find "$portfolio_root/deliverables/portfolio-snapshots" -type f -print -quit)" \
+  || fail_case 'publish-portfolio-summary canonical-only case could not search the snapshots directory'
+[ -n "$portfolio_snapshot_paths" ] \
   && fail_case 'publish-portfolio-summary canonical-only case created a snapshot'
 
 # publish-portfolio-summary: the preservation branch publishes a snapshot first, then
@@ -93,7 +95,9 @@ printf 'stable before snapshot failure\n' > "$portfolio_canonical"
   || fail_case 'publish-portfolio-summary snapshot-failure case changed the prior canonical'
 [ ! -e "$portfolio_failure_candidate" ] \
   || fail_case 'publish-portfolio-summary snapshot-failure case left a published snapshot'
-find "$portfolio_root/deliverables" -name '.portfolio-summary.md.publishing.*' -print -quit | grep -q . \
+leaked_private_paths="$(find "$portfolio_root/deliverables" -name '.portfolio-summary.md.publishing.*' -print -quit)" \
+  || fail_case 'publish-portfolio-summary snapshot-failure case could not search the deliverables directory'
+[ -n "$leaked_private_paths" ] \
   && fail_case 'publish-portfolio-summary snapshot-failure case leaked private bytes'
 
 # publish-portfolio-summary: a later canonical replacement failure retains the
@@ -116,7 +120,9 @@ printf 'stable before canonical failure\n' > "$portfolio_late_failure_canonical/
   || fail_case 'publish-portfolio-summary canonical-failure case changed the prior canonical'
 cmp -s "$portfolio_source" "$portfolio_late_failure_candidate" \
   || fail_case 'publish-portfolio-summary canonical-failure case did not retain the published snapshot'
-find "$portfolio_root/deliverables" -name '.portfolio-summary.md.publishing.*' -print -quit | grep -q . \
+leaked_private_paths="$(find "$portfolio_root/deliverables" -name '.portfolio-summary.md.publishing.*' -print -quit)" \
+  || fail_case 'publish-portfolio-summary canonical-failure case could not search the deliverables directory'
+[ -n "$leaked_private_paths" ] \
   && fail_case 'publish-portfolio-summary canonical-failure case leaked private bytes'
 
 # publish-portfolio-summary: `ln` links *into* a directory operand instead of colliding
@@ -146,7 +152,9 @@ printf 'canonical occupant\n' > "$portfolio_directory_canonical/occupant.txt"
   && fail_case 'publish-portfolio-summary canonical-directory case reported success'
 [ -d "$portfolio_directory_canonical" ] && [ "$(ls -A "$portfolio_directory_canonical")" = occupant.txt ] \
   || fail_case 'publish-portfolio-summary canonical-directory case did not leave the occupying directory unchanged'
-find "$portfolio_root/deliverables" -name '.canonical-as-directory.md.publishing.*' -print -quit | grep -q . \
+leaked_private_paths="$(find "$portfolio_root/deliverables" -name '.canonical-as-directory.md.publishing.*' -print -quit)" \
+  || fail_case 'publish-portfolio-summary canonical-directory case could not search the deliverables directory'
+[ -n "$leaked_private_paths" ] \
   && fail_case 'publish-portfolio-summary canonical-directory case leaked private bytes'
 
 prescribed_shell_finish
