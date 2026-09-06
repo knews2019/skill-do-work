@@ -304,3 +304,41 @@ defects the builders measured on the way are captured below rather than fixed in
   `architecture-report.md` and `work-reference.md`.
 - **The lifecycle timing category vocabulary is closed** (ten names; `verification` alone is rejected)
   and not documented where a caller would look. Noted; no request, the guide now names the categories.
+
+## Qualification
+
+**Passed.** Read from the range `804a8ba..d5cf28b`, three files, 23 insertions and 23 deletions.
+Canonical `qualify` and `scope-drift` both satisfied; scope-drift first flagged two backticked tokens in
+the Scope prose (`-` and `protected-inventory.sh`) as declared paths, and the prose was reworded, not the
+parser fought.
+
+- **The behaviour change is the two `inspect.md` blocks, and it is measured in both directions.** Before:
+  exit 2, `unknown option <root>`, no quarantine written, from both blocks. After: `start` exit 0 with the
+  four rows and a 0600 quarantine; `associate` exit 0 with the two association rows and none for the
+  orphan or the quarantined file. That is the first time `inspect` has associated a file with a REQ.
+- **Every replacement sentence has a run behind it, not a reading.** The builders' hand-back lists the
+  fixture and output per sentence; five of the prior verification's drafts were rejected on measurement
+  and not used, which is the rule REQ-596's review set for this file class and the reason a third builder
+  chain was worth its cost.
+- **Widening is inside the request's own fourth requirement.** Sixteen claims, not ten, and line 24 and
+  line 137 besides: all in sections the request opened and checked whole.
+- **All four guards over the three files exit 0** on the merged tree: `audit-lockins.sh`,
+  `prescribed-shell-canonicalization.sh`, `quiet-grep-pipeline-audit.sh`, `action-shell-blocks.sh`.
+- **Five discovered tasks captured, none folded into this prose request:** REQ-603, REQ-604, REQ-605 for
+  the measured code defects; REQ-601 widened for the twelve further phantom-script sites.
+
+## Testing
+
+**No lane reads the sentences that changed; the evidence is the fixtures.** Everything below the
+guards was measured by the builders on fixtures kept under the scratchpad (`req597-inspect/`,
+`req597-guide/`, `req597-callers/`) and is re-executed independently by the three-lens review.
+
+- `bash _dev/tests/audit-lockins.sh` — `Audit lock-in regressions passed.`, exit 0.
+- `bash _dev/tests/prescribed-shell-canonicalization.sh` — passed, exit 0.
+- `bash _dev/tests/quiet-grep-pipeline-audit.sh` — `quiet-grep pipeline audit passed (95 tracked shell
+  files, 19 must-flag and 7 must-not-flag shapes).`, exit 0.
+- `bash _dev/tests/action-shell-blocks.sh` — `Shell-block lint passed: 74 fenced blocks and 33 shipped
+  shell files; ShellCheck enabled.`, exit 0. The two rewritten `inspect.md` blocks are among the 74.
+- Fast gate on the merged tree at `d5cf28b`: `Maintainer verification passed.`, exit 0, gate wall 84s.
+- Builders' gate from the worktree at each stage: `Maintainer verification passed.`, exit 0 (wall 83s at
+  stage 1).
