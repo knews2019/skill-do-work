@@ -2,6 +2,16 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.304.6 — Three Lifecycle Behaviours Are Now Held By Tests That Name What They Catch (2026-09-06)
+
+Three things the lifecycle gate does could be deleted from the code and every test would still pass. Each one now has a test that fails when it is deleted, and each test says in its own comment which deletion it catches.
+
+- When a finding's suggested command belongs to a helper rather than to the current step, the gate rewrites it to point at the step you are actually on. That rewrite is now checked at both places it happens, by reading the rewritten command itself rather than a summary line beside it.
+- Three negative controls prove the rewrite is selective rather than blanket: a neighbouring finding whose command must stay empty, a git command whose own wording must survive untouched, and one finding where one field is rewritten and the other deliberately is not.
+- The guard that decides whether a focused test run counts as evidence is pinned by a nine-row table keyed on the facts the code actually reads — did it launch, did it time out, what was the baseline — rather than on the exit numbers that happen to produce those facts today. Four of the nine rows prove the guard still admits a valid run instead of refusing everything.
+- An interrupted focused test is pinned by a case that signals the tool from inside the probe, paired with an ordinary failing run at the same exit status, so the only difference between them is whether the interruption was observed.
+- No behaviour changed. Each of the three behaviours was temporarily broken to watch its new test fail, then restored and checked byte-for-byte.
+
 ## 0.304.5 — The Heavy Test Tier Stops Reporting a Failed Run as a Passed One (2026-09-06)
 
 The heavy verification tier could tell you a lane passed when it had failed, and could tell you a run succeeded when it had verified nothing. Three separate routes to a false green are closed, each with a test that fails when the fix is taken back out.
