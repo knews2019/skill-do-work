@@ -1,7 +1,7 @@
 ---
 id: REQ-552
 title: '[impact-negligible] Replace two coreutils exec sites with the pure Go the package already has'
-status: pending
+status: claimed
 priority: later
 created_at: 2026-09-03T19:45:35Z
 user_request: UR-105
@@ -16,6 +16,7 @@ maintenance: false
 impact: impact-negligible
 effort_estimate: effort-mechanical
 write_set: [skills/do-work/tools/do-work-cli/internal/corehelpers/commands.go, skills/do-work/tools/do-work-cli/internal/toolboxcommands/architecture.go, _dev/tests/audit-lockins.sh]
+claimed_at: 2026-09-06T00:38:56Z
 ---
 
 # Replace two coreutils exec sites with the pure Go the package already has
