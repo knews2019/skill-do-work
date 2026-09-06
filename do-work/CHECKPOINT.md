@@ -32,3 +32,5 @@ session_depth: light
 - REQ-594: Generalize the SIGPIPE fix: about 130 quiet-grep pipelines remain across the maintainer test tree — claimed 2026-09-06T03:36:45Z — writer: vm:/home/user/skill-do-work
 
 - REQ-596: Correct three more stale mechanism claims in the prescribed-shell guide, in sections REQ-595 never opened — claimed 2026-09-06T05:20:24Z — writer: vm:/home/user/skill-do-work
+
+- REQ-558: [impact-negligible] Keep one nil-root guard in git_transaction.go and delete the other eight — claimed 2026-09-06T05:50:44Z — writer: vm:/home/user/skill-do-work

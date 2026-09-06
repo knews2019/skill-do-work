@@ -1,7 +1,7 @@
 ---
 id: REQ-558
 title: '[impact-negligible] Keep one nil-root guard in git_transaction.go and delete the other eight'
-status: pending
+status: claimed
 priority: later
 created_at: 2026-09-03T19:45:35Z
 user_request: UR-105
@@ -16,6 +16,7 @@ maintenance: false
 impact: impact-negligible
 effort_estimate: effort-substantive
 write_set: [skills/do-work/tools/do-work-cli/internal/gittransaction/git_transaction.go, _dev/tests/audit-lockins.sh]
+claimed_at: 2026-09-06T05:50:44Z
 ---
 
 # Keep one nil-root guard in git_transaction.go and delete the other eight
