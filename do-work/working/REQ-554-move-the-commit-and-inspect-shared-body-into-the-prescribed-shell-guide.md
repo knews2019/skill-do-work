@@ -179,3 +179,26 @@ dressed as deduplication.
 - **D-02 — nothing is re-baselined in `prescribed-shell-canonicalization.sh`, because it counts
   nothing. DECIDE & STATE.** The request asks for a re-baseline there. The file has no numeric
   constants at all; the only change it needs is the new heading in its membership list.
+
+## Pre-Flight
+
+**Git:** ✓ Clean. Canonical `recover` reports `FINALIZATION-NONE`. Six claims sit in `do-work/working/`:
+REQ-583, REQ-587, REQ-591 and REQ-592 held at Step 7.7 for the heavy drain; REQ-486 in flight on the
+board module; REQ-552 merged and awaiting review. None of them touches this request's five files, and
+REQ-552's own edit to `_dev/tests/audit-lockins.sh` is already merged, so this request appends beside
+it rather than colliding with it.
+
+**Repository gate:** ✓ `bash _dev/tests/maintainer-verify.sh` exited 0 at this REQ's claim revision
+`2876d96` — **65s wall**, exit status read directly from `$?`.
+
+**Tests baseline:** ✓ `bash _dev/tests/prescribed-shell-canonicalization.sh` exited 0, launched true.
+That is the probe this request's new heading has to satisfy.
+
+**Dependencies:** ✓ `depends_on` is empty. Go 1.26.1, ShellCheck 0.11.0, `just` 1.43.0 all at or above
+the gate's floors.
+
+**Machine condition:** 4 CPUs, load average around 5 with a sibling builder running. The brief caps
+this request at one full canonical gate run for that reason and names the targeted probes to iterate
+on instead.
+
+*Checked by work action*

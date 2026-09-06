@@ -1,5 +1,5 @@
 {
-  "test_command": "go -C skills/do-work/tools/do-work-cli test -count=1 ./internal/corehelpers/ ./internal/toolboxcommands/",
+  "test_command": "bash _dev/tests/prescribed-shell-canonicalization.sh",
   "exit_status": 0,
   "launched": true
 }
