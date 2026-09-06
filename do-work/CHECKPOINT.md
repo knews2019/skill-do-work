@@ -18,4 +18,3 @@ session_depth: light
 
 ## In Progress (interrupted)
 
-- REQ-601: Correct stale mechanism claims in four shipped callers of the shell guide — claimed 2026-09-06T12:58:52Z — writer: t2s-Virtual-Machine.local:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2

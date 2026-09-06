@@ -2,6 +2,18 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.305.13 — Correct Stale Mechanism and Script Claims Across Shipped Callers (2026-09-06)
+
+Documentation and action files across toolbox, board, and core now accurately describe underlying Go command implementations, staging paths, error conditions, and conflict resolution semantics.
+
+- `ai-report-reference.md` documents that single-image and batch image generation stage in the system temporary directory rather than adjacent to the target, and removes nonexistent retained script fallback references.
+- `install.md` documents temporary skill downloads landing in `SKILL.md.download.<random>`, specifies that local Git ignores are managed inline following the canonical contract rather than calling an external helper, and removes nonexistent compatibility script references.
+- `present-work.md` clarifies that portfolio summary publication reads the source once and writes both outputs from that buffer, and removes nonexistent compatibility script references.
+- `board.md` clarifies that adding a local git exclude on non-git projects exits zero with a `GIT-EXCLUDE-NOT-A-REPOSITORY` warning finding.
+- `prescribed-shell-primitives.md` accurately describes inventory conflict resolution: a parseable `completed_at` beats an unparseable or missing timestamp regardless of walk order, and ties fall back to `working/` before `archive/`.
+- `architecture-report.md` removes nonexistent compatibility script references.
+- `work-reference.md` clarifies that `run-timed-command` connects both child streams directly to the CLI's stderr handle.
+
 ## 0.305.12 — Rollback Decides the Handle Once and Closes Nil-Handle Panic (2026-09-06)
 
 Transaction rollback now settles the rooted filesystem handle once upon entering `rollbackFailure`. If `os.OpenRoot` fails, the transaction immediately executes `rollbackWithoutRoot` to perform Git unstaging, tracked restoration from HEAD, and preimage restoration by pathname while safely recording unavailable root errors for rooted mutations. The missing guard in `quarantineAndRollbackPrivate` that caused a nil-pointer dereference panic when rolling back identity-recorded private untracked files is eliminated, and all eight downstream nil checks across rollback loops 1–3 were removed and pinned at zero.
