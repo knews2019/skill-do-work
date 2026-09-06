@@ -200,3 +200,26 @@ the way the pattern set was.
   with another's work
 - [ ] The three guards over the guide exit 0
 - [ ] The four out-of-scope callers are captured, not fixed
+
+## Pre-Flight
+
+**Green gate at `34077d8`**, the revision the builder branches from.
+`bash _dev/tests/maintainer-verify.sh` printed `Maintainer verification passed.` and exited 0, gate
+wall 75s. One `SKIP` line, the heavy-only one every fast run prints.
+
+**Three guards over the guide are green and must stay green**: `audit-lockins.sh` (the route column,
+the orchestration claim, the Mechanics column's shell vocabulary, and the secret pattern set derived
+from `secretPath`), `prescribed-shell-canonicalization.sh` (twelve headings, sixteen pointer sites),
+and `quiet-grep-pipeline-audit.sh`. None of those columns, headings or pointers changes here.
+
+**The one behaviour change has a before and an after that can be run.** The two `inspect.md` blocks
+exit 2 with `unknown option` against any repository today; the corrected form is confirmed in a fixture
+to exit 0 and print association rows. That is the builder's first proof, before any prose moves.
+
+**The prior sweep's drafts are input, not answers.** Four of its ten guide suggestions were false when
+re-derived. The builder is given those four by name, and every replacement it ships must cite the code
+it was derived from and the fixture it was checked against.
+
+**The builder works in an isolated worktree** at
+`../skill-do-work-worktrees/worktree-agent-REQ-597-guide-and-callers`, branched from `34077d8`, and
+hands back one file to the main checkout without staging or committing anything there.
