@@ -446,6 +446,42 @@ Canonical `qualify` and `scope-drift` both satisfied.
   version bump. Drawing the guard's scope around `_dev/tests/` would have been an exemption list with one
   entry, pointed at the only known instance of the defect the guard forbids.
 
+### Remediation qualification (after review)
+
+**Passed.** Remediation range `ea71f09e..90f1b6e` plus one follow-up commit, one file. The review scored
+86% and answered its own central question cleanly — **no conversion narrowed an assertion** — and then
+failed the guard on its second requirement.
+
+- **Five ordinary spellings walked past the guard, in two families, and the request's own Requirement
+  named exactly this risk.** The parser skipped comment lines but not blank ones, so a blank line after
+  a pipe or after a continuation flushed the joined command and the reader was then scanned as a fresh
+  pipe-free command. A note after the pipe on the same line left the line not ending in `|`, closing the
+  command before the reader arrived. And the option class was anchored so a digit immediately after `q`
+  or `m` blocked every backtrack — which is why `grep -m 1` was pinned and `grep -m1` was not. All five
+  are one running pipeline in bash and all five reproduce the defect at exit 141.
+- **The three fixes are additive, proven rather than argued.** Both scanner bodies — the one shipped at
+  the branch point and the widened one — report **exactly 129** offending lines over the 93 tracked shell
+  files at that revision, and the widened one reports **0** over all 94 at HEAD. So the widening adds
+  five shapes and changes nothing about what it already caught.
+- **The five join the fixture by name**, taking it to 19 must-flag and 7 must-not-flag shapes, and three
+  mutations each name the shapes they lose: dropping the blank-line rule loses two, dropping the
+  note-after-pipe strip loses one, narrowing the option class loses two.
+- **The header claimed coverage the parser did not have.** It said "there is no state where the offender
+  is both hidden and live" — and a note after an open pipe was exactly that state. That claim is gone,
+  replaced by what the parser does plus an explicit list of what no source scan can see: a non-grep
+  reader, a runtime-assembled pipeline, and three textual false-positive shapes that are all loud.
+- **The comment skip's own false-positive class is now disclosed too.** Making the skip unconditional
+  also joins a backslash-continued command to the next one when a comment terminates it. The additive
+  proof showed nothing was removed; it says nothing about what was added on that side, and a reviewer
+  said so.
+- **Four counts in this record are corrected rather than defended**: the mechanical/judgment split is
+  99/30 and not 122/7, find's status is asserted at 20 of 21 leak checks and not all 21, three of those
+  21 sit in `if false` blocks that never execute, and 96 of 128 sites are heavy-only rather than 90. The
+  delivered work was right in every case; the record described it wrongly.
+- **Two findings outside this request are captured as REQ-600**: the prime `CLAUDE.md` calls the
+  hard-won trap list still does not mention this class after two requests and 140 fixed sites, and one
+  shipped ```bash block that agents copy carries the forbidden shape.
+
 ## Testing
 
 **Three heavy lanes and the fast gate, each with its own exit line, because a lane that skips reports
@@ -476,3 +512,209 @@ reports it as 2s because it measures in whole seconds.
 
 **The two already-broken guards were mutation-tested on the real files**, not only in the harness: a
 planted leftover fires the replacement, and the shipped form on the same fixture reports zero failures.
+
+### Remediation testing (after review)
+
+**The five evasions were shown to be real defects before they were fixed.** Each was run as a shell
+fragment with a 400,000-line producer whose first line carries the marker, under `pipefail`: a blank
+line after the pipe, a blank line after a continuation, `grep -m1`, `grep -qm1`, and a note after the
+pipe on the same line all exit **141** — the writer's SIGPIPE death reported as the reader's verdict,
+where a correct verdict is 0. The control, a plain `grep -q`, exits 141 too.
+
+**And they were shown invisible to the shipped guard**, in a scratch repository holding a verbatim copy
+of the audit plus one file carrying all five shapes and two controls: the audit reported only the two
+controls and passed on all five evasions.
+
+**Additive proof, run at both ends.** Both scanner bodies over the 93 tracked shell files at the branch
+point: `TOTAL 129` each. The widened body over all 94 files at HEAD: `TOTAL 0`. The audit's own line:
+`quiet-grep pipeline audit passed (94 tracked shell files, 19 must-flag and 7 must-not-flag shapes).`
+
+**Three mutations, each naming what it lost:**
+
+- the blank-line rule removed → `a blank line between the pipe and the reader`, `a blank line between
+  the backslash continuation and the reader`
+- the note-after-pipe strip removed → `a note after the pipe on the same line, with the reader on the
+  next`
+- the option class narrowed back → `grep -m1, with no space before the count`, `grep -qm1, quiet bundled
+  with a count`
+
+**Lint and gate.** `bash -n` and `shellcheck --severity=warning` on the audit both exit 0. The fast gate
+at the remediation revision prints `Maintainer verification passed.`, exit 0, gate wall 75s, with the
+audit's own passing line inside it.
+
+**The reviewers re-ran the original evidence rather than reading it**, including the three heavy lanes,
+the two already-broken guards, and a direction check on the security-relevant site: with 200,000 lines
+after a leaked `.env.local`, the old form of `protected-inventory.sh:19` reported zero failures — the
+secret leaked and the check passed — and the new form fires.
+
+## Review
+
+**Overall: 86%** | 2026-09-06T08:30:00Z
+
+| Dimension | Score |
+|-----------|-------|
+| Requirements | 82% |
+| Code Quality | 85% |
+| Test Adequacy | 84% |
+| Scope | 92% |
+| Risk | Low |
+| Acceptance | Accept with remediation |
+
+**Verdict: Accept with remediation.** The central question answers cleanly: **no conversion turned a
+real check into a weaker one.** The synthesizer verified that four independent ways, all executed — a
+mechanical producer/reader pairing across all 129 sites (106 pairs matched with zero variable
+mismatches, identical grep flags and identical pattern bytes; the 5 unpaired only because their patterns
+contain a literal `|`, each read by hand); a flag-and-pattern multiset diff per file, where the only
+matchers that disappear anywhere are the leak checks, each replaced by an emptiness test plus a new
+`find`-status assertion; an empty-input equivalence check running all 112 head matchers against a single
+empty line, since `printf '%s' ""` emits zero bytes where `<<<""` emits one; and a direction check on
+the security-relevant site.
+
+What failed was the guard's own second requirement — "not defeatable by ordinary shell". Five more
+spellings survived it. Both findings are closed in the remediation.
+
+Where the reviewers disagreed, and what was picked:
+
+- The runtime. Two reviewers and the record said 0.20s; one measured 0.32-0.40s. Settled by seven
+  consecutive runs with timestamps taken outside the measured region: 0.192-0.203s. Picked the 0.20s.
+- Which evasions defeat the guard. One reviewer named three, another named three different ones with one
+  overlap. Settled by running each candidate as a real pipeline and then against the shipped audit; five
+  survive in total, the union of both lists minus one that does not reproduce.
+- The mechanical/judgment split. One reviewer said the record's justification is false for at least 33 of
+  the 122; another said the real split is 99/30. Both describe the same defect; the measured numbers are
+  99 and 30.
+- Whether the reader-set limitation is disclosed. One reviewer said nowhere; it is in this record's
+  Risks section verbatim and in the hand-back. Rejected.
+
+**Important findings:**
+
+- Five ordinary grep spellings walk past the repository-wide guard — a blank line after the pipe, a blank
+  line after a continuation, a note after the pipe on the same line, `grep -m1` and `grep -qm1`. All five
+  reproduce the defect at exit 141 and all five are silent to the audit. None exists in the tree today,
+  so 129-to-0 stands; what was at risk is the guard's only job. — impact-rule-change → fixed in
+  remediation
+- The audit's own header stated two things about its coverage that are false, including "there is no
+  state where the offender is both hidden and live" — which is exactly the state a note after an open
+  pipe occupies. — impact-rule-change → fixed in remediation
+
+**Minor findings:**
+
+- The record's mechanical/judgment split is wrong by a factor of four on the exact axis the review tests:
+  99 variable-replay producers and 30 real-command producers, not 122 and 7. Every one of the 30 did get
+  its status assertion, so the work was right and the summary was not. — impact-negligible → corrected
+- D-05 said find's status is asserted at all 21 leak checks; it is 20, and the Qualification in the same
+  record already said twenty. — impact-negligible → corrected
+- Three of the 21 sit in pre-existing `if false` blocks and never execute, so "every search root is
+  created by the fixture" is proven for 18. In the hand-back, not in this record. — impact-negligible →
+  corrected
+- "90 of the 128 sites are heavy-only" is 96: the two contract files refuse to run outside the heavy tier
+  too. Both lanes were required and run, so no evidence was missing. — impact-negligible → corrected
+- The comment fix adds an undisclosed false-positive class: an unconditional comment skip joins a
+  backslash-continued command to the next one when a comment terminates it. Loud, never silent, zero
+  instances. — impact-negligible → disclosed in the audit's header
+- One shipped ```bash block that agents copy carries the forbidden shape, so "prose is .md" is not the
+  whole reason the walk's boundary is where it is. — impact-rule-change → REQ-600
+- The prime `CLAUDE.md` names as the hard-won trap list still carries no mention of this class, after two
+  requests and about 140 fixed sites. — impact-rule-change → REQ-600
+
+**Findings raised and rejected:**
+
+- "The must-not-flag fixture pins a helper-function reader as safe" — the fixture line is a
+  file-reading grep, not a pipeline.
+- "The reader-set limitation is admitted nowhere" — it is in this record's Risks section, naming the
+  same five readers.
+- "The release is not in the reviewed range" — the shipped line is in the range; the version bump and
+  changelog belong to finalization, which is where every request in this batch puts them.
+- "Three leak checks in dead code" as a standalone medium — correct and reproduced, but the `if false`
+  blocks predate this change.
+
+**Requirements checklist:**
+
+- [x] No check under `_dev/tests/` decides on a quiet grep fed by a pipeline whose writer can die —
+  delivered, 129 to 0 measured with the same instrument at both ends
+- [x] The guard is repository-wide rather than per-file — delivered, walking the same enumeration the
+  ShellCheck lane uses
+- [ ] → [x] The guard is not defeatable by ordinary shell — **not delivered at review**, five spellings
+  survived; **delivered in remediation**, with the widening proven additive
+- [x] Each conversion preserves what its assertion measured — delivered, verified four ways
+- [x] → A probe fixture carries every evasion spelling — delivered for the fourteen named shapes at
+  review, nineteen after the remediation
+- [x] The two already-broken guards fire on the input that used to pass silently — delivered
+- [x] The release lands before the repository-wide guard, so the gate is never red between steps —
+  delivered
+- [x] Scope is exactly the declared write set — delivered, set difference empty in both directions
+- [x] The guard fires on a real reintroduced offender, not only on its fixture — delivered
+
+**Acceptance testing**
+
+**Result: Partial at review, Pass after remediation.** Three reviewers re-ran the gate, the three heavy
+lanes, the two already-broken guards and the additive proof themselves, and left the working tree clean.
+
+**Follow-ups created:** 1 — REQ-600, for the prime and the one shipped block.
+
+*Reviewed by review-work action*
+
+## Lessons Learned
+
+- **A guard written to catch five known evasions catches five known evasions.** REQ-593's scanner was
+  walked past by five spellings a reviewer found in minutes; this request widened it and it was walked
+  past by five more. The second five were not exotic — a blank line, a note after a pipe, a missing
+  space before a count. The lesson is not "widen again": it is that a textual scanner's coverage is
+  bounded by the author's imagination, and the only honest response is to say in the file what it cannot
+  see. That list is now longer than the list of what it can.
+- **`grep -m 1` was pinned and `grep -m1` was not, and the fixture said nothing.** The option class
+  ended in `[A-Za-z]*`, so a digit right after `q` or `m` blocked every backtrack. A fixture that pins
+  the spelling you wrote proves the scanner matches the spelling you wrote. Vary the whitespace, the
+  bundling and the punctuation of every shape you pin, because that is exactly what the next author will
+  vary without thinking about it.
+- **"Additive" needs proving in one direction and disclosing in the other.** Running both scanner bodies
+  over the branch-point tree and getting 129 each proves nothing was removed. It says nothing about
+  false positives added, and a reviewer had to point that out. Two different claims, two different
+  experiments.
+- **A comment that overclaims survives longer than code that does.** "There is no state where the
+  offender is both hidden and live" was written as a reassurance and was false for a shape three lines
+  of awk away. Code gets exercised; a comment is believed until someone tests it, and the person most
+  likely to believe it is the next author deciding not to look further.
+- **Counting the easy category first makes the hard one look small.** The record said 122 mechanical and
+  7 judgment; the measured split is 99 and 30. The work was right — every one of the 30 got its status
+  assertion — but the summary described the change as four times more mechanical than it was, on the
+  exact axis a reviewer would use to decide how hard to look.
+- **The guard is not where authors read.** After two requests and about 140 fixed sites, the prime
+  `CLAUDE.md` calls the hard-won trap list still does not mention this class. A guard catches the defect
+  after it is written; a prime stops it being written. Both are needed, and only one of them existed.
+
+## Orientation
+
+The defect: a writer piped into an early-leaving reader under `set -o pipefail` reports the writer's
+SIGPIPE death as the reader's verdict. Silent below roughly 36 KB of producer output, certain above
+about 200 KB, and **wrong in both directions** — a positive matcher misses a pattern that is present, a
+negative one fails to flag one it should. The negative ones are the dangerous half: a dead writer makes
+`&& fail` pass.
+
+**The guard is `_dev/tests/quiet-grep-pipeline-audit.sh`**, registered as a fast-tier probe in
+`_dev/tests/contracts/probe-lanes.sh`. It walks `git ls-files -z -- '*.sh'` — the same enumeration the
+ShellCheck lane uses at `maintainer-verify.sh:670` — and runs in 0.20s over 94 files. Its fixture pins
+**19 must-flag and 7 must-not-flag shapes, each by name**, so a mutation says which shape it lost rather
+than that a count moved.
+
+**Read the header before changing the parser.** It carries the three things that make it work — logical
+lines rather than physical, any pipe stage after the first, any early-leaving option — and, more
+importantly, what it cannot see: a reader that is not grep (`rg -q`, `head`, `sed -n '1p;q'`,
+`awk '/x/{exit}'`, `read`), a pipeline assembled at runtime, and three textual false-positive shapes
+that are all loud rather than silent.
+
+**Converting a site is not mechanical when the producer can fail.** 99 of the 129 replayed a variable
+whose status was already asserted; 30 had a live producer status, and each of those got an explicit
+assertion, because capturing output into a variable discards the status the pipeline used to carry. That
+is the trap REQ-593 proved: a truncated archive still produced a listing whose first line carried the
+marker, so a naive herestring passed where the pipeline had failed.
+
+Two guards in this tree were **already broken** and are fixed: `staged-skills-contract.sh` and
+`install-suite-behavior.sh` each had a `find … -print -quit | grep -q .` check that reported the legacy
+runtime as retired whenever `find` exited non-zero. If you write another `find`-based leak check, assert
+`find`'s status — 20 of the 21 here do, and the 21st is a readiness poll that says in place why it
+differs.
+
+Recorded and unfixed: the class is still missing from `_dev/primes/prime-shell-commands.md`, and one
+shipped ```bash block at `skills/do-work-knowledge/actions/memory-reference.md:88` carries the shape.
+Both are REQ-600.
