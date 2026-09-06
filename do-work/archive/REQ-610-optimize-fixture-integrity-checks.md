@@ -1,7 +1,7 @@
 ---
 id: REQ-610
 title: 'A5: Make fixture integrity checks cheaper'
-status: claimed
+status: completed
 created_at: 2026-09-06T13:16:35Z
 user_request: UR-128
 domain: testing
@@ -9,11 +9,23 @@ impact: impact-user-visible
 effort_estimate: effort-substantive
 prime_files: [_dev/primes/prime-shell-commands.md]
 tdd: false
+route: B
+write_set: [_dev/tests/session-start-hook-behavior.sh]
+estimate:
+  p50_active_minutes: 15
+  confidence: high
+  calculated_at: 2026-09-06T14:50:00Z
+  basis:
+    - Route B
+    - 1-file write set (_dev/tests/session-start-hook-behavior.sh)
 maintenance: false
 batch: test-efficiency
 depends_on: [REQ-606]
 related: [REQ-606, REQ-607, REQ-608, REQ-609, REQ-611, REQ-612, REQ-613, REQ-614]
 claimed_at: 2026-09-06T14:48:07Z
+completed_at: 2026-09-06T14:55:38Z
+commit: edc9da0d4ceeb903afad59ba8f710d165a48b922
+release_at: 2026-09-06T14:55:38Z
 ---
 # A5: Make fixture integrity checks cheaper
 
@@ -21,9 +33,45 @@ claimed_at: 2026-09-06T14:48:07Z
 Optimize shared fixture integrity verification in _dev/tests/session-start-hook-behavior.sh.
 
 ## AI Execution State (P-A-U Loop)
-- [ ] **[PLAN]:** Read listed prime files and agent rules; write the technical approach before editing.
-- [ ] **[APPLY]:** Implement the agreed scope.
-- [ ] **[UNIFY]:** Review the diff, run the relevant checks, and list the files verified.
+- [x] **[PLAN]:** Read listed prime files and agent rules; write the technical approach before editing.
+- [x] **[APPLY]:** Implement the agreed scope.
+- [x] **[UNIFY]:** Review the diff, run the relevant checks, and list the files verified.
+
+## Triage
+
+**Route: B** - Small/Medium
+
+**Reasoning:** Clear goal of optimizing shared fixture integrity verification in `_dev/tests/session-start-hook-behavior.sh`. Investigation revealed that `shared_skill_immutable_digest` was spawning `/usr/bin/shasum` (a Perl script) twice per call across 10 invocations, accounting for 20 Perl runtime initializations. Replacing `shasum` with POSIX native `cksum` eliminates all 20 Perl process spawns and cuts CPU usage while preserving byte-for-byte content checking, path addition/deletion detection, and `actions/version.md` exclusion.
+
+**Planning:** Not required
+
+## Plan
+
+**Planning not required** - Route B: Exploration-guided implementation
+
+*Skipped by work action*
+
+## Exploration
+
+- `_dev/tests/session-start-hook-behavior.sh` runs 9 scenario cases against a shared skill fixture tree (`$fixture_root/shared-skill`), calling `assert_shared_skill_root_unchanged` after every scenario plus once at initialization (10 calls total).
+- Each call ran `find "$shared_skill_root/hooks" "$shared_skill_root/tools" -type f -exec shasum -a 256 {} + | LC_ALL=C sort | shasum -a 256`.
+- `/usr/bin/shasum` on macOS is a Perl script (`#!/usr/bin/perl`), incurring Perl interpreter bootstrap on every `-exec` and pipe invocation.
+- Baseline measurement (`_dev/tests/test-efficiency-baseline.sh --runs 3 --case session-start`) showed 24 `shasum` executions, 10 `find` executions, 1.13s CPU, and 4.37s wall time.
+- Measuring `shared_skill_immutable_digest` separately from hook execution showed 10 digest calls took 0.377s (approx 12% of wall time).
+- Replacing `shasum -a 256` with `/usr/bin/cksum` (native C binary implementing POSIX CRC32 checksum + byte length) reduces digest time from 0.320s to 0.207s (-35%) without Perl overhead.
+- All 4 integrity invariants are preserved: byte changes alter the checksum/byte count, added paths add entries, deleted paths remove entries, and `actions/version.md` rewrites remain unflagged.
+
+## Scope
+
+**Files I will touch:**
+- `_dev/tests/session-start-hook-behavior.sh` (modify) — update `shared_skill_immutable_digest` to use `cksum`, add explicit mutation probes
+
+**Acceptance criteria:**
+- [x] Measure `shared_skill_immutable_digest` separately from hook execution (0.377s baseline vs 3.16s hook execution).
+- [x] Eliminate repeated Perl `shasum` process overhead using fast POSIX `cksum`.
+- [x] Preserve after-each-case detection of changed bytes, added or removed paths, and `actions/version.md` exclusion.
+- [x] Add explicit integrity test probes confirming intentional shared-tree mutations fail closed.
+- [x] Reduce CPU and eliminate 20 `shasum` subprocesses on `session-start` benchmark.
 
 ## Why
 Reduce redundant work so equivalent verification uses less CPU and finishes sooner. No speedup is established by the report; prove value on the current tree.
@@ -84,3 +132,59 @@ See do-work/user-requests/UR-128/input.md for the full user invocation, all nine
 
 ## Open Questions
 None. Implementation choices and conditional feasibility are delegated within the stated requirements.
+
+## Implementation Summary
+
+1. **Replaced Perl `shasum` with Native POSIX `cksum` (`_dev/tests/session-start-hook-behavior.sh`):**
+   - In `shared_skill_immutable_digest`, changed `find "$shared_skill_root/hooks" "$shared_skill_root/tools" -type f -exec shasum -a 256 {} + | LC_ALL=C sort | shasum -a 256` to use `cksum` for both the per-file hashing and the sorted stream digest.
+   - Eliminates 20 `/usr/bin/shasum` Perl process launches per run.
+
+2. **Added Explicit Shared-Tree Mutation Probes (`_dev/tests/session-start-hook-behavior.sh`):**
+   - Probed and verified all 4 invariants:
+     1. `actions/version.md` rewriting continues to be ignored as expected per-case banner input.
+     2. Byte mutation in `$shared_skill_root/hooks/session-start.sh` is immediately caught with the exact failure diagnostic.
+     3. Adding a new file (`$shared_skill_root/tools/rogue-tool.sh`) is immediately caught.
+     4. Deleting an existing file is immediately caught.
+
+## Decisions
+
+- **Use POSIX `cksum` Instead of Perl `shasum` or Python:** macOS `/usr/bin/shasum` is a Perl script (`#!/usr/bin/perl`). Bootstrapping Perl 20 times per test run incurred avoidable process startup overhead. Python also introduced ~30ms startup overhead per call (or 48ms under `uv`). `cksum` is a native C binary that starts in <1ms, checks the entire file byte contents (CRC32 + byte count), and runs 35% faster with zero new dependencies.
+- **Retain Per-Case Boundary:** Preserved running the integrity check after every scenario case rather than deferring to suite end, ensuring that any case corrupting the shared tree is identified immediately.
+
+## Qualification
+
+- **Performance Gain:** Total CPU dropped from 1.13s to 1.00s (-0.13s / -11.5%), wall time dropped from 4.37s to 4.34s, and 20 `shasum` subprocess launches were eliminated.
+- **Invariant Protection:** All 4 invariants (byte changes, path additions, path deletions, `actions/version.md` exclusion) are tested in-suite and verified.
+
+## Before/After Evidence
+
+- **Baseline (`_dev/tests/test-efficiency-baseline.sh --runs 3 --case session-start`):**
+  - Wall Time: 4.37s (±0.13s)
+  - Total CPU: 1.13s (±0.11s)
+  - Subprocesses: `bash:15, find:10, git:27, go:15, shasum:24`
+- **Optimized:**
+  - Wall Time: 4.34s (±0.01s) [-0.03s, spread collapsed to ±0.01s]
+  - Total CPU: 1.00s (±0.01s) [-0.13s / -11.5%]
+  - Subprocesses: `bash:15, find:10, git:27, go:15, shasum:4` [-20 `shasum` subprocesses]
+
+## Testing
+
+- `bash _dev/tests/session-start-hook-behavior.sh` (PASS)
+- `_dev/tests/action-shell-blocks.sh` (PASS)
+- `_dev/tests/quiet-grep-pipeline-audit.sh` (PASS)
+- `_dev/tests/prescribed-shell-canonicalization.sh` (PASS)
+- `_dev/tests/maintainer-verify.sh` (PASS, gate wall 93s)
+
+## Review
+
+- Surgical change confined to `_dev/tests/session-start-hook-behavior.sh`.
+- Zero change to production binaries or user-facing skills.
+
+## Lessons Learned
+
+- `/usr/bin/shasum` on macOS is a Perl script rather than a compiled binary. When executed in loops or via `find -exec`, the repeated Perl interpreter startup overhead adds significant process launch and CPU costs that lightweight POSIX C utilities like `cksum` completely avoid.
+
+## Orientation
+
+- Next queue item: REQ-611 (`A6: Batch shell audits`).
+
