@@ -72,11 +72,11 @@ func AffirmativeOwnership(tracked []string, trackedSet map[string]bool, readImag
 		if base != "package.json" && base != "Cargo.toml" && base != "pyproject.toml" {
 			continue
 		}
-		if _, exists := readImage(manifestPath); !exists {
-			return Ownership{}, fmt.Errorf("read tracked project manifest %s", manifestPath)
-		}
 		directory := NormalizedDirectory(manifestPath)
 		if directory == "" || pathWithinReleaseRoots(manifestPath, maintainerRoots) {
+			if _, exists := readImage(manifestPath); !exists {
+				return Ownership{}, fmt.Errorf("read tracked project manifest %s", manifestPath)
+			}
 			ownedRoots[directory] = true
 			ownedManifests[manifestPath] = true
 		}
@@ -90,6 +90,9 @@ func AffirmativeOwnership(tracked []string, trackedSet map[string]bool, readImag
 				continue
 			}
 			if _, _, ok := FindOwnedWorkspaceOwner(trackedSet, ownedManifests, manifestPath, base, readImage); ok {
+				if _, exists := readImage(manifestPath); !exists {
+					return Ownership{}, fmt.Errorf("read tracked project manifest %s", manifestPath)
+				}
 				directory := NormalizedDirectory(manifestPath)
 				ownedRoots[directory] = true
 				ownedManifests[manifestPath] = true

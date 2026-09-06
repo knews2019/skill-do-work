@@ -2,6 +2,13 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.305.32 — Release Planning Ignores Unrelated Missing Manifests (2026-09-06)
+
+A root-only release can now proceed when an independent component's tracked project manifest has an unstaged deletion.
+
+- Require manifest reads only after establishing root, suite, or workspace ownership. Missing owned declarations still refuse release planning.
+- Regression coverage checks unrelated Node, Rust, and Python manifest deletions, plus missing root and nested-workspace declarations.
+
 ## 0.305.31 — Finalization Refuses a Release Whose Implementation Ships Nothing (2026-09-06)
 
 A release is a change to shipped files. Four entries below (0.305.17, 0.305.21, 0.305.22 and 0.305.23) bumped the version for changes under `_dev/tests` alone; the finalizer checked the release payload and never the implementation. Those four entries stand as history, and this entry closes the gap.
