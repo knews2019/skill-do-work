@@ -1,6 +1,6 @@
 ---
 id: REQ-596
-status: claimed
+status: completed
 domain: general
 created_at: 2026-09-06T05:18:15Z
 user_request: UR-105
@@ -24,6 +24,9 @@ related: [REQ-555, REQ-595]
 write_set: [skills/do-work/docs/prescribed-shell-primitives.md]
 title: 'Correct three more stale mechanism claims in the prescribed-shell guide, in sections REQ-595 never opened'
 claimed_at: 2026-09-06T05:20:24Z
+completed_at: 2026-09-06T06:58:37Z
+commit: 0bbd10d299efef80e78cbe2b1d7b61f00e55fbb2
+release_at: 2026-09-06T06:58:37Z
 ---
 
 # Correct Three More Stale Mechanism Claims in the Prescribed-Shell Guide

@@ -2,6 +2,17 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.305.6 — The Manual Fallbacks in the Shell Guide Now Give the Tool's Answer (2026-09-06)
+
+Two procedures in the shell guide tell you what to do by hand when the inventory tool will not run. Both gave different answers from the tool. That matters more than an ordinary documentation slip, because a person only reaches for them when the tool is already unavailable.
+
+- The pattern list for secret-shaped filenames was narrower than the code's, so a by-hand inventory left `credential.json` unquarantined where the tool excludes it. A maintainer check now derives the expected patterns from the code itself and fails if the guide does not name every one — it catches a pattern added to the code, a pattern dropped from the guide, and the code's own function being renamed away.
+- The by-hand classification said a renamed file's new path is always "modified". The code checks for deletion first, so a rename whose new path is then deleted is a deletion — and the guide told you to run a diff on a file that is no longer there.
+- The by-hand association filtered out every in-flight request, which is the exact failure the paragraph above it exists to prevent. It also used a shell glob that skips the request files sitting directly in the archive directory, failed outright on a project that has never archived anything, and could name a different owner from the tool when two requests tie, because the file search returned a different order.
+- The rule for resolving that tie said an archived request outranks an in-flight one. Nothing in the code compares those; the latest completion time wins, and on a tie the in-flight one is what stands.
+- The excluded-file tag now has a reading rule of its own. An ordinary new file is marked excluded whenever a secret is present in the same inventory, and until now the closest rule told you to read it.
+- Two descriptions of publication were also corrected: only one of the two commands verifies what it wrote, and the other reports a byte count without checking anything.
+
 ## 0.305.5 — Maintainer Checks Stop Reporting a Passed Check When Their Input Died (2026-09-06)
 
 A shell check written as `producer | grep -q PATTERN` reports the producer's death as the pattern's absence. Under the shell setting these checks all run with, that makes the check report the wrong answer — and it is wrong in both directions, so a check written to fail when it finds something can quietly pass instead. It is invisible below roughly 36 KB of output from the producer and certain above about 200 KB.
