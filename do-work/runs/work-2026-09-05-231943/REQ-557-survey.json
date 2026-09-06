@@ -1,0 +1,807 @@
+[
+ {
+  "definitions": [
+   {
+    "name": "uniqueSorted",
+    "file": "/home/user/skill-do-work/skills/do-work/tools/do-work-cli/internal/corehelpers/checks.go",
+    "line": 846,
+    "package": "corehelpers",
+    "exported": false,
+    "body_summary": "func uniqueSorted(paths []string) []string { set := stringSet(paths); out := make([]string,0,len(set)); for path := range set { out = append(out, path) }; sort.Strings(out); return out } \u2014 plain set-dedupe plus sort. Keeps every value verbatim, including \"\", absolute paths, \"./a\", \"a/\". Always returns a non-nil slice.",
+    "behaviour_notes": "The only copy that preserves empty strings. No path cleaning, no validation, no error path. Helper stringSet is defined in the same file at line 856."
+   },
+   {
+    "name": "uniqueSorted",
+    "file": "/home/user/skill-do-work/skills/do-work/tools/do-work-cli/internal/finalization/finalization_prepare.go",
+    "line": 379,
+    "package": "finalization",
+    "exported": false,
+    "body_summary": "func uniqueSorted(paths []string) []string { result, _ := normalizeRepositoryPaths(paths); return result } \u2014 a two-line wrapper that discards the error. normalizeRepositoryPaths (same file, line 345) rejects \"\" and absolute paths, rejects \".\", \"..\" and \"../\u2026\" after Clean, then applies filepath.Clean + filepath.ToSlash to every survivor before set-dedupe and sort.",
+    "behaviour_notes": "Not a dedupe helper at all \u2014 it is a validator whose refusal is thrown away. On ANY rejected element it returns nil for the WHOLE list, not just that element. It also rewrites values: \"./a\", \"a/\" and \"a\" all collapse to \"a\"; \"a/../b\" becomes \"b\"; backslashes are left alone on Linux."
+   },
+   {
+    "name": "uniqueSorted",
+    "file": "/home/user/skill-do-work/skills/do-work/tools/do-work-cli/internal/knowledgecommands/interview_commands.go",
+    "line": 1337,
+    "package": "knowledgecommands",
+    "exported": false,
+    "body_summary": "func uniqueSorted(values []string) []string { seen := map[string]bool{}; result := []string{}; for _, value := range values { if value != \"\" && !seen[value] { seen[value] = true; result = append(result, value) } }; sort.Strings(result); return result } \u2014 insertion-order append with a seen-map, then sort. Skips empty strings.",
+    "behaviour_notes": "Because it sorts at the end, the insertion-order build is not observable \u2014 output is identical to a set-based sort. The only observable difference from the corehelpers copy is that \"\" is dropped. Always non-nil."
+   },
+   {
+    "name": "uniqueSorted",
+    "file": "/home/user/skill-do-work/skills/do-work/tools/do-work-cli/internal/repairvalidation/already_green.go",
+    "line": 442,
+    "package": "repairvalidation",
+    "exported": false,
+    "body_summary": "func uniqueSorted(values []string) []string { set := map[string]bool{}; for _, value := range values { if value != \"\" { set[value] = true } }; result := make([]string,0,len(set)); for value := range set { result = append(result, value) }; sort.Strings(result); return result } \u2014 set-dedupe plus sort, skipping empty strings.",
+    "behaviour_notes": "Observationally identical to the knowledgecommands copy for every input I tested. Parameter is named values, not paths, and it is used for reason codes as well as paths. Always non-nil."
+   },
+   {
+    "name": "subtractPaths",
+    "file": "/home/user/skill-do-work/skills/do-work/tools/do-work-cli/internal/corehelpers/checks.go",
+    "line": 827,
+    "package": "corehelpers",
+    "exported": false,
+    "body_summary": "func subtractPaths(left, right []string) []string { set := stringSet(right); out := []string{}; for _, path := range left { if !set[path] { out = append(out, path) } }; return out } \u2014 set-difference preserving left's order and left's duplicates.",
+    "behaviour_notes": "Uses the shared stringSet helper (checks.go:856). Returns a non-nil empty slice when nothing survives."
+   },
+   {
+    "name": "subtractPaths",
+    "file": "/home/user/skill-do-work/skills/do-work/tools/do-work-cli/internal/finalization/finalization_prepare.go",
+    "line": 365,
+    "package": "finalization",
+    "exported": false,
+    "body_summary": "func subtractPaths(left, right []string) []string { set := map[string]bool{}; for _, path := range right { set[path] = true }; result := []string{}; for _, path := range left { if !set[path] { result = append(result, path) } }; return result } \u2014 identical algorithm with the set built inline.",
+    "behaviour_notes": "Behaviourally identical to the corehelpers copy. The only textual differences are the inlined set construction (finalization has no stringSet helper) and the local variable name out vs result. Verified by diffing the two bodies."
+   },
+   {
+    "name": "firstError",
+    "file": "/home/user/skill-do-work/skills/do-work/tools/do-work-cli/internal/corehelpers/checks.go",
+    "line": 871,
+    "package": "corehelpers",
+    "exported": false,
+    "body_summary": "func firstError(first, second error) error { if first != nil { return first }; return second }",
+    "behaviour_notes": "Byte-identical to the publication copy."
+   },
+   {
+    "name": "firstError",
+    "file": "/home/user/skill-do-work/skills/do-work/tools/do-work-cli/internal/publication/capture_files.go",
+    "line": 361,
+    "package": "publication",
+    "exported": false,
+    "body_summary": "func firstError(first, second error) error { if first != nil { return first }; return second }",
+    "behaviour_notes": "Byte-identical to the corehelpers copy. Verified by printing both bodies side by side \u2014 same five lines, same parameter names."
+   }
+  ],
+  "call_sites": [
+   {
+    "name": "uniqueSorted",
+    "file": "/home/user/skill-do-work/skills/do-work/tools/do-work-cli/internal/corehelpers/checks.go",
+    "line": 741,
+    "which_definition": "corehelpers (checks.go:846)",
+    "depends_on_the_difference": true,
+    "why": "scopeDeclaredPaths returns backticked paths lifted from a human-written REQ markdown file. backtickedPathsOnLine already skips empty segments, so \"\" cannot arrive. But a REQ can legitimately contain `/etc/passwd`, `../x` or `./a` inside backticks, and the corehelpers copy passes them through verbatim so the scope-drift check can report them. Swapping in the finalization copy would return nil for the whole list and make scope-drift report nothing."
+   },
+   {
+    "name": "uniqueSorted",
+    "file": "/home/user/skill-do-work/skills/do-work/tools/do-work-cli/internal/corehelpers/checks.go",
+    "line": 782,
+    "which_definition": "corehelpers (checks.go:846)",
+    "depends_on_the_difference": true,
+    "why": "firstBacktickedPaths, same markdown-sourced input. The `if rest[:second] != \"\"` guard at line 779 already excludes empty strings, so drop-empty semantics would be a no-op; normalize semantics would not."
+   },
+   {
+    "name": "uniqueSorted",
+    "file": "/home/user/skill-do-work/skills/do-work/tools/do-work-cli/internal/corehelpers/checks.go",
+    "line": 804,
+    "which_definition": "corehelpers (checks.go:846)",
+    "depends_on_the_difference": true,
+    "why": "allBacktickedPaths feeds the Implementation Summary side of scope-drift. Same markdown source, same `parts[index] != \"\"` pre-filter at line 799. Absolute or dot-relative entries must survive so SCOPE-UNDECLARED-TOUCH can name them."
+   },
+   {
+    "name": "uniqueSorted",
+    "file": "/home/user/skill-do-work/skills/do-work/tools/do-work-cli/internal/corehelpers/checks.go",
+    "line": 906,
+    "which_definition": "corehelpers (checks.go:846)",
+    "depends_on_the_difference": false,
+    "why": "porcelainPaths. Each record is guaranteed len >= 4 (line 897 errors otherwise), so record[3:] is at least one byte; the rename/copy origin is rejected when empty at line 900. Git emits repository-relative already-clean paths, so all four copies would agree."
+   },
+   {
+    "name": "uniqueSorted",
+    "file": "/home/user/skill-do-work/skills/do-work/tools/do-work-cli/internal/corehelpers/inventory.go",
+    "line": 419,
+    "which_definition": "corehelpers (checks.go:846)",
+    "depends_on_the_difference": false,
+    "why": "union of nonblankLines(existing quarantine file) and protected. nonblankLines (checks.go:863) drops blank lines by construction; protected comes from readInventory rows, whose Path is record[3:] of a len>=4 porcelain record. No empty string is reachable."
+   },
+   {
+    "name": "uniqueSorted",
+    "file": "/home/user/skill-do-work/skills/do-work/tools/do-work-cli/internal/corehelpers/inventory.go",
+    "line": 460,
+    "which_definition": "corehelpers (checks.go:846)",
+    "depends_on_the_difference": false,
+    "why": "newlineList is called only from inventory.go:392 with protected and inventory.go:421 with union \u2014 both already non-empty, git-derived, repository-relative."
+   },
+   {
+    "name": "uniqueSorted",
+    "file": "/home/user/skill-do-work/skills/do-work/tools/do-work-cli/internal/finalization/finalization_apply.go",
+    "line": 233,
+    "which_definition": "finalization (finalization_prepare.go:379)",
+    "depends_on_the_difference": true,
+    "why": "ownedPaths comes from journal.LifecyclePostimages and journal.ReleasePostimages \u2014 values read back from a JSON journal on disk, not freshly computed. If any image Path is empty or absolute, the whole slice becomes nil, `len(ownedPaths) > 0` is false, and the `git reset -q HEAD --` that clears finalizer-owned index entries during rollback is silently skipped."
+   },
+   {
+    "name": "uniqueSorted",
+    "file": "/home/user/skill-do-work/skills/do-work/tools/do-work-cli/internal/finalization/finalization_apply.go",
+    "line": 518,
+    "which_definition": "finalization (finalization_prepare.go:379)",
+    "depends_on_the_difference": false,
+    "why": "owned is built from corehelpers.ReadProtectedInventory rows, i.e. git porcelain paths \u2014 non-empty and repository-relative. The nil-on-error shape is dangerous here (a nil owned would skip the FINALIZATION-PROTECTED-DECLARED-PATH refusal at line 519) but no reachable input triggers it."
+   },
+   {
+    "name": "uniqueSorted",
+    "file": "/home/user/skill-do-work/skills/do-work/tools/do-work-cli/internal/finalization/finalization_apply.go",
+    "line": 522,
+    "which_definition": "finalization (finalization_prepare.go:379)",
+    "depends_on_the_difference": false,
+    "why": "blocked is built from the same inventory rows. Same guard-bypass shape (a nil result would skip FINALIZATION-AMBIGUOUS-SHARED-STATE) with no reachable trigger."
+   },
+   {
+    "name": "uniqueSorted",
+    "file": "/home/user/skill-do-work/skills/do-work/tools/do-work-cli/internal/finalization/finalization_discovery.go",
+    "line": 67,
+    "which_definition": "finalization (finalization_prepare.go:379)",
+    "depends_on_the_difference": false,
+    "why": "protectedStaged, git-derived. The refusal decision is already made on the pre-call slice at line 66, so a nil return would only empty the evidence list, and no reachable input produces one."
+   },
+   {
+    "name": "uniqueSorted",
+    "file": "/home/user/skill-do-work/skills/do-work/tools/do-work-cli/internal/finalization/finalization_discovery.go",
+    "line": 70,
+    "which_definition": "finalization (finalization_prepare.go:379)",
+    "depends_on_the_difference": false,
+    "why": "staged paths from git. Evidence list for FINALIZATION-DISCOVERY-FOREIGN-STAGED only."
+   },
+   {
+    "name": "uniqueSorted",
+    "file": "/home/user/skill-do-work/skills/do-work/tools/do-work-cli/internal/finalization/finalization_discovery.go",
+    "line": 132,
+    "which_definition": "finalization (finalization_prepare.go:379)",
+    "depends_on_the_difference": false,
+    "why": "paths are requestRepositoryPath(candidate.request.RelativePath) values, all under do-work/. Evidence list for FINALIZATION-MULTIPLE-TAILS."
+   },
+   {
+    "name": "uniqueSorted",
+    "file": "/home/user/skill-do-work/skills/do-work/tools/do-work-cli/internal/finalization/finalization_discovery.go",
+    "line": 162,
+    "which_definition": "finalization (finalization_prepare.go:379)",
+    "depends_on_the_difference": false,
+    "why": "Same request-path source as line 132, same refusal code."
+   },
+   {
+    "name": "uniqueSorted",
+    "file": "/home/user/skill-do-work/skills/do-work/tools/do-work-cli/internal/finalization/finalization_discovery.go",
+    "line": 188,
+    "which_definition": "finalization (finalization_prepare.go:379)",
+    "depends_on_the_difference": false,
+    "why": "ambiguous, accumulated from git-derived dirty paths and release-metadata paths. Evidence list for FINALIZATION-DISCOVERY-AMBIGUOUS."
+   },
+   {
+    "name": "uniqueSorted",
+    "file": "/home/user/skill-do-work/skills/do-work/tools/do-work-cli/internal/finalization/finalization_discovery.go",
+    "line": 194,
+    "which_definition": "finalization (finalization_prepare.go:379)",
+    "depends_on_the_difference": false,
+    "why": "candidate.effectivePaths. This one is a fail-silent shape worth noting: line 196 admits the candidate only when len(effectivePaths) > 0, so a nil return would drop the whole REQ from discovery instead of refusing. Inputs are git-status paths, so it is unreachable today."
+   },
+   {
+    "name": "uniqueSorted",
+    "file": "/home/user/skill-do-work/skills/do-work/tools/do-work-cli/internal/finalization/finalization_discovery.go",
+    "line": 195,
+    "which_definition": "finalization (finalization_prepare.go:379)",
+    "depends_on_the_difference": false,
+    "why": "candidate.attributedPaths, same git-derived source."
+   },
+   {
+    "name": "uniqueSorted",
+    "file": "/home/user/skill-do-work/skills/do-work/tools/do-work-cli/internal/finalization/finalization_discovery.go",
+    "line": 205,
+    "which_definition": "finalization (finalization_prepare.go:379)",
+    "depends_on_the_difference": false,
+    "why": "Request paths of admitted candidates, evidence for FINALIZATION-MULTIPLE-TAILS."
+   },
+   {
+    "name": "uniqueSorted",
+    "file": "/home/user/skill-do-work/skills/do-work/tools/do-work-cli/internal/finalization/finalization_discovery.go",
+    "line": 573,
+    "which_definition": "finalization (finalization_prepare.go:379)",
+    "depends_on_the_difference": false,
+    "why": "paths collected from the dirty map keys (git status) filtered by releaseownership.IsReleaseMetadataPath. Line 574 then short-circuits on len(paths) == 0, so a nil return would abort release association silently \u2014 unreachable with git-derived keys."
+   },
+   {
+    "name": "uniqueSorted",
+    "file": "/home/user/skill-do-work/skills/do-work/tools/do-work-cli/internal/finalization/finalization_discovery.go",
+    "line": 627,
+    "which_definition": "finalization (finalization_prepare.go:379)",
+    "depends_on_the_difference": false,
+    "why": "unowned paths, evidence for FINALIZATION-DISCOVERY-RELEASE-OWNERSHIP. The refusal fires on the pre-call slice at line 626."
+   },
+   {
+    "name": "uniqueSorted",
+    "file": "/home/user/skill-do-work/skills/do-work/tools/do-work-cli/internal/finalization/finalization_discovery.go",
+    "line": 640,
+    "which_definition": "finalization (finalization_prepare.go:379)",
+    "depends_on_the_difference": false,
+    "why": "Return value for unassociated release paths. The caller decides on the returned length, so a nil return would convert a real refusal into a pass. Inputs are dirty-map and configured.paths values, all git- or manifest-derived and repository-relative."
+   },
+   {
+    "name": "uniqueSorted",
+    "file": "/home/user/skill-do-work/skills/do-work/tools/do-work-cli/internal/finalization/finalization_discovery.go",
+    "line": 649,
+    "which_definition": "finalization (finalization_prepare.go:379)",
+    "depends_on_the_difference": false,
+    "why": "Same return-length-decides shape for missingRequired, drawn from configured.paths."
+   },
+   {
+    "name": "uniqueSorted",
+    "file": "/home/user/skill-do-work/skills/do-work/tools/do-work-cli/internal/finalization/finalization_discovery.go",
+    "line": 844,
+    "which_definition": "finalization (finalization_prepare.go:379)",
+    "depends_on_the_difference": false,
+    "why": "manifestPaths from changedSources map keys; used purely to iterate deterministically."
+   },
+   {
+    "name": "uniqueSorted",
+    "file": "/home/user/skill-do-work/skills/do-work/tools/do-work-cli/internal/finalization/finalization_discovery.go",
+    "line": 895,
+    "which_definition": "finalization (finalization_prepare.go:379)",
+    "depends_on_the_difference": false,
+    "why": "configuredReleaseSet.paths, including lockPath values produced by filepath.Join, which is already clean and relative."
+   },
+   {
+    "name": "uniqueSorted",
+    "file": "/home/user/skill-do-work/skills/do-work/tools/do-work-cli/internal/finalization/finalization_discovery.go",
+    "line": 1422,
+    "which_definition": "finalization (finalization_prepare.go:379)",
+    "depends_on_the_difference": false,
+    "why": "ambiguousSharedRemainder over dirty map keys (git status)."
+   },
+   {
+    "name": "uniqueSorted",
+    "file": "/home/user/skill-do-work/skills/do-work/tools/do-work-cli/internal/finalization/finalization_discovery.go",
+    "line": 1432,
+    "which_definition": "finalization (finalization_prepare.go:379)",
+    "depends_on_the_difference": false,
+    "why": "candidate.effectivePaths again, this time to build the discovered journal's path list."
+   },
+   {
+    "name": "uniqueSorted",
+    "file": "/home/user/skill-do-work/skills/do-work/tools/do-work-cli/internal/finalization/finalization_discovery.go",
+    "line": 1470,
+    "which_definition": "finalization (finalization_prepare.go:379)",
+    "depends_on_the_difference": false,
+    "why": "discoveredImages iterates the deduped paths to read HEAD and working-tree images. Inputs are candidate lifecycle/release paths, git-derived."
+   },
+   {
+    "name": "uniqueSorted",
+    "file": "/home/user/skill-do-work/skills/do-work/tools/do-work-cli/internal/finalization/finalization_discovery.go",
+    "line": 1518,
+    "which_definition": "finalization (finalization_prepare.go:379)",
+    "depends_on_the_difference": false,
+    "why": "Implementation Summary backticked paths. The loop at lines 1511-1516 already applies filepath.Clean and rejects \".\", \"..\", \"../\u2026\" and absolute paths, so normalizeRepositoryPaths can never fail here and the Clean is idempotent. This is the one site where the finalization copy's validation is genuinely redundant."
+   },
+   {
+    "name": "uniqueSorted",
+    "file": "/home/user/skill-do-work/skills/do-work/tools/do-work-cli/internal/finalization/finalization_prepare.go",
+    "line": 162,
+    "which_definition": "finalization (finalization_prepare.go:379)",
+    "depends_on_the_difference": true,
+    "why": "missing := subtractPaths(uniqueSorted(requiredCommitPaths), effectiveCommitPaths), guarding the 'commit_paths omits planned lifecycle or release targets' error at line 164. requiredCommitPaths mixes statePlan.TargetPaths with journal release-image Paths. If any element is empty or absolute, uniqueSorted returns nil, subtractPaths(nil, \u2026) returns an empty slice, len(missing) is 0, and the guard passes silently \u2014 the exact opposite of what the same input would produce two lines earlier at line 153, where normalizeRepositoryPaths is called directly and its error IS honoured."
+   },
+   {
+    "name": "uniqueSorted",
+    "file": "/home/user/skill-do-work/skills/do-work/tools/do-work-cli/internal/finalization/finalization_recovery_test.go",
+    "line": 574,
+    "which_definition": "finalization (finalization_prepare.go:379)",
+    "depends_on_the_difference": false,
+    "why": "TEST FILE. semanticLegacyFixture builds an expected ownedPaths list from hardcoded clean relative paths. It relies on the sort, not on the validation. Swapping in any of the other three copies would produce the same fixture."
+   },
+   {
+    "name": "uniqueSorted",
+    "file": "/home/user/skill-do-work/skills/do-work/tools/do-work-cli/internal/knowledgecommands/interview_commands.go",
+    "line": 495,
+    "which_definition": "knowledgecommands (interview_commands.go:1337)",
+    "depends_on_the_difference": false,
+    "why": "mapKeysBytes(writes) \u2014 map keys are all built with filepath.ToSlash(filepath.Join(...)), so never empty. The empty-string filter is dead code on this path."
+   },
+   {
+    "name": "uniqueSorted",
+    "file": "/home/user/skill-do-work/skills/do-work/tools/do-work-cli/internal/knowledgecommands/interview_commands.go",
+    "line": 584,
+    "which_definition": "knowledgecommands (interview_commands.go:1337)",
+    "depends_on_the_difference": false,
+    "why": "oldPaths plus writes map keys; both are do-work/interview/... joins. No empty string reachable."
+   },
+   {
+    "name": "uniqueSorted",
+    "file": "/home/user/skill-do-work/skills/do-work/tools/do-work-cli/internal/knowledgecommands/interview_commands.go",
+    "line": 596,
+    "which_definition": "knowledgecommands (interview_commands.go:1337)",
+    "depends_on_the_difference": false,
+    "why": "dirs built from filepath.Dir, which never returns \"\" (worst case \".\"). Even if \"\" arrived, absentDirectories would Lstat(root) and find it existing, so it would not be added either way."
+   },
+   {
+    "name": "uniqueSorted",
+    "file": "/home/user/skill-do-work/skills/do-work/tools/do-work-cli/internal/knowledgecommands/interview_commands.go",
+    "line": 601,
+    "which_definition": "knowledgecommands (interview_commands.go:1337)",
+    "depends_on_the_difference": false,
+    "why": "mapKeysBytes(writes) again, inside the transaction body, used to publish files in deterministic order."
+   },
+   {
+    "name": "uniqueSorted",
+    "file": "/home/user/skill-do-work/skills/do-work/tools/do-work-cli/internal/knowledgecommands/interview_commands.go",
+    "line": 1323,
+    "which_definition": "knowledgecommands (interview_commands.go:1337)",
+    "depends_on_the_difference": false,
+    "why": "absentDirectories, sole call point for the dirs lists above. filepath.Dir output, never empty."
+   },
+   {
+    "name": "uniqueSorted",
+    "file": "/home/user/skill-do-work/skills/do-work/tools/do-work-cli/internal/knowledgecommands/interview_commands.go",
+    "line": 1332,
+    "which_definition": "knowledgecommands (interview_commands.go:1337)",
+    "depends_on_the_difference": false,
+    "why": "plannedChanges turns write targets into RecordedChange rows. Same join-built path source."
+   },
+   {
+    "name": "uniqueSorted",
+    "file": "/home/user/skill-do-work/skills/do-work/tools/do-work-cli/internal/knowledgecommands/memory_commands.go",
+    "line": 563,
+    "which_definition": "knowledgecommands (interview_commands.go:1337)",
+    "depends_on_the_difference": false,
+    "why": "mapKeysBytes(writes) for the memory-forget transaction targets. Keys are do-work/memory/... joins."
+   },
+   {
+    "name": "uniqueSorted",
+    "file": "/home/user/skill-do-work/skills/do-work/tools/do-work-cli/internal/knowledgecommands/memory_commands.go",
+    "line": 756,
+    "which_definition": "knowledgecommands (interview_commands.go:1337)",
+    "depends_on_the_difference": false,
+    "why": "mapKeysBytes(writes) for the memory bootstrap-import transaction targets. Same source."
+   },
+   {
+    "name": "uniqueSorted",
+    "file": "/home/user/skill-do-work/skills/do-work/tools/do-work-cli/internal/repairvalidation/already_green.go",
+    "line": 266,
+    "which_definition": "repairvalidation (already_green.go:442)",
+    "depends_on_the_difference": false,
+    "why": "This is the closest thing to a real empty-string site and it still is not one. CanonicalCompletionPaths is filled from dryRun.Changes[].Path. I traced every RecordedChange construction in requeststate/state_plan.go: SourcePath and DestinationPath are always non-empty (DestinationPath defaults to SourcePath at line 53, otherwise a do-work/... join), and CheckpointPath and CalibrationPath are guarded by explicit != \"\" checks at lines 451 and 455. Even if \"\" did arrive, the only downstream use is the allowed set at line 273, checked against StagedPaths, which come from gitPaths and can never contain \"\"."
+   },
+   {
+    "name": "uniqueSorted",
+    "file": "/home/user/skill-do-work/skills/do-work/tools/do-work-cli/internal/repairvalidation/already_green.go",
+    "line": 283,
+    "which_definition": "repairvalidation (already_green.go:442)",
+    "depends_on_the_difference": false,
+    "why": "ReasonCodes, not paths \u2014 the values are the string literals REPAIR-CANONICAL-COMPLETION-REFUSED and REPAIR-STAGED-PATH-NOT-CANONICAL. Any copy behaves identically. This is also the site that proves the helper is not path-specific, which matters if the canonical version keeps the parameter name paths."
+   },
+   {
+    "name": "uniqueSorted",
+    "file": "/home/user/skill-do-work/skills/do-work/tools/do-work-cli/internal/repairvalidation/already_green.go",
+    "line": 284,
+    "which_definition": "repairvalidation (already_green.go:442)",
+    "depends_on_the_difference": false,
+    "why": "OffendingPaths, drawn from validation.StagedPaths, which comes from gitPaths -> strings.FieldsFunc, and FieldsFunc never emits empty fields."
+   },
+   {
+    "name": "uniqueSorted",
+    "file": "/home/user/skill-do-work/skills/do-work/tools/do-work-cli/internal/repairvalidation/already_green.go",
+    "line": 408,
+    "which_definition": "repairvalidation (already_green.go:442)",
+    "depends_on_the_difference": false,
+    "why": "gitStatusPaths appends record[3:] only when len(record) >= 4, so every element has at least one byte."
+   },
+   {
+    "name": "uniqueSorted",
+    "file": "/home/user/skill-do-work/skills/do-work/tools/do-work-cli/internal/repairvalidation/already_green.go",
+    "line": 416,
+    "which_definition": "repairvalidation (already_green.go:442)",
+    "depends_on_the_difference": false,
+    "why": "gitPaths passes strings.FieldsFunc output, which by definition contains no empty strings."
+   },
+   {
+    "name": "subtractPaths",
+    "file": "/home/user/skill-do-work/skills/do-work/tools/do-work-cli/internal/corehelpers/checks.go",
+    "line": 177,
+    "which_definition": "corehelpers (checks.go:827)",
+    "depends_on_the_difference": false,
+    "why": "missing := subtractPaths(declared, implemented) in handleScopeDrift. The two copies are behaviourally identical, so this call cannot depend on a difference."
+   },
+   {
+    "name": "subtractPaths",
+    "file": "/home/user/skill-do-work/skills/do-work/tools/do-work-cli/internal/corehelpers/checks.go",
+    "line": 178,
+    "which_definition": "corehelpers (checks.go:827)",
+    "depends_on_the_difference": false,
+    "why": "extra := subtractPaths(implemented, declared), the mirror of line 177. Identical reasoning."
+   },
+   {
+    "name": "subtractPaths",
+    "file": "/home/user/skill-do-work/skills/do-work/tools/do-work-cli/internal/finalization/finalization_prepare.go",
+    "line": 162,
+    "which_definition": "finalization (finalization_prepare.go:365)",
+    "depends_on_the_difference": false,
+    "why": "The commit_paths completeness guard. subtractPaths itself is identical across both copies; the risk at this line comes entirely from the uniqueSorted argument nested inside it."
+   },
+   {
+    "name": "firstError",
+    "file": "/home/user/skill-do-work/skills/do-work/tools/do-work-cli/internal/corehelpers/checks.go",
+    "line": 153,
+    "which_definition": "corehelpers (checks.go:871)",
+    "depends_on_the_difference": false,
+    "why": "firstError(scopeError, summaryError).Error() inside a branch already gated on scopeError != nil || summaryError != nil, so the result is never nil and .Error() cannot panic. The two copies are byte-identical anyway."
+   },
+   {
+    "name": "firstError",
+    "file": "/home/user/skill-do-work/skills/do-work/tools/do-work-cli/internal/publication/answer.go",
+    "line": 307,
+    "which_definition": "publication (capture_files.go:361)",
+    "depends_on_the_difference": false,
+    "why": "firstError(blockedError, implementationError).Error(), gated at line 306 on either being non-nil. Same guard shape, no difference to depend on."
+   },
+   {
+    "name": "firstError",
+    "file": "/home/user/skill-do-work/skills/do-work/tools/do-work-cli/internal/publication/capture_files.go",
+    "line": 151,
+    "which_definition": "publication (capture_files.go:361)",
+    "depends_on_the_difference": false,
+    "why": "firstError(expectedError, newError).Error(), gated at line 150. Same shape."
+   },
+   {
+    "name": "firstError",
+    "file": "/home/user/skill-do-work/skills/do-work/tools/do-work-cli/internal/publication/release.go",
+    "line": 44,
+    "which_definition": "publication (capture_files.go:361)",
+    "depends_on_the_difference": false,
+    "why": "firstError(expectedError, newError).Error(), gated at line 43. Same shape."
+   }
+  ],
+  "behaviour_differences": [
+   {
+    "name": "uniqueSorted \u2014 empty strings",
+    "difference": "corehelpers keeps empty strings; knowledgecommands and repairvalidation drop them; finalization returns nil for the entire slice as soon as one element is empty. Measured with a standalone program that copied all four bodies verbatim: input [\"a\",\"\",\"b\"] gives corehelpers [\"\",\"a\",\"b\"] (len 3), finalization nil (len 0), knowledgecommands [\"a\",\"b\"], repairvalidation [\"a\",\"b\"]. Input [\"\"] gives corehelpers [\"\"] (len 1), finalization nil, and empty non-nil slices from the other two.",
+    "callers_that_care": "None at HEAD. I traced every one of the 42 call sites to its input source and no reachable input contains an empty string. The producers are: markdown backtick parsers that already skip empty segments (corehelpers/checks.go:749, 779, 799), git porcelain records guarded by len(record) >= 4 (corehelpers/checks.go:897, corehelpers/inventory.go:97, repairvalidation/already_green.go:404), strings.FieldsFunc (repairvalidation/already_green.go:416), filepath.Join / filepath.ToSlash map keys (all knowledgecommands sites), filepath.Dir output (knowledgecommands absentDirectories), and requeststate plan paths whose only two nullable fields are explicitly != \"\" guarded (requeststate/state_plan.go:451, 455). The empty-string filters in the knowledgecommands and repairvalidation copies are dead code today.",
+    "evidence": "Program at /tmp/claude-0/-home-user-skill-do-work/213e30ac-5958-56c8-9fd2-faaaaf9c4ea6/scratchpad/uqprobe/main.go, run with go run . \u2014 full comparison table across 10 inputs. Source tracing done by reading each producer function at HEAD (3fc69bc8b14e09f75853174c54894d684212174a)."
+   },
+   {
+    "name": "uniqueSorted \u2014 the finalization copy is a validator, not a deduper",
+    "difference": "finalization/finalization_prepare.go:379 is `result, _ := normalizeRepositoryPaths(paths); return result`. It throws away a real error and returns nil for the WHOLE list when any single element is empty, absolute, \".\", \"..\" or \"../\u2026\". It also rewrites surviving values with filepath.Clean + filepath.ToSlash. Measured: [\"/abs/x\",\"b\"] -> nil, [\"../escape\",\"b\"] -> nil, [\"a\",\"./a\",\"a/\"] -> [\"a\"] (one element) where all three other copies return three elements, [\"a/../b\",\"c\"] -> [\"b\",\"c\"] where the others return [\"a/../b\",\"c\"].",
+    "callers_that_care": "Structurally, three finalization call sites turn that nil into a silently skipped safety check: finalization_prepare.go:162 (nil makes subtractPaths return empty, so the 'commit_paths omits planned lifecycle or release targets' error at line 164 never fires), finalization_apply.go:233 (nil skips the git reset that clears finalizer-owned index entries during rollback), and finalization_discovery.go:194 (nil drops a candidate REQ out of `admitted` at line 196 instead of refusing). finalization_discovery.go:640 and :649 have the same return-length-decides shape. The inconsistency is visible inside one function: finalization_prepare.go:153 calls normalizeRepositoryPaths directly and DOES propagate the error, nine lines before line 162 calls the wrapper that discards it. No current input reaches the failure branch, so nothing is broken today \u2014 but any canonical replacement that keeps corehelpers semantics would change these five sites from 'silently pass' to 'keep the paths', which is the safer direction and should still be called out in the REQ.",
+    "evidence": "Bodies at finalization/finalization_prepare.go:345-382 read directly; behaviour confirmed by the uqprobe program. Guard shapes read at finalization_prepare.go:153-166, finalization_apply.go:229-236 and 514-524, finalization_discovery.go:193-198, 636-651."
+   },
+   {
+    "name": "uniqueSorted \u2014 path normalization",
+    "difference": "Only the finalization copy applies filepath.Clean and filepath.ToSlash. The other three treat \"a\", \"./a\" and \"a/\" as three distinct values. On Linux none of them touches backslashes: [\"do-work\\\\x\",\"b\"] comes back unchanged from all four.",
+    "callers_that_care": "finalization_discovery.go:1518 is the only site that would notice, and there it is redundant \u2014 the loop at lines 1511-1516 already applied filepath.Clean and already rejected \".\", \"..\", \"../\u2026\" and absolute paths before appending. Every other finalization caller feeds it git-derived paths that are already clean. If the canonical helper drops normalization, no finalization call site changes behaviour on reachable input.",
+    "evidence": "uqprobe comparison rows for [\"a\",\"./a\",\"a/\"], [\"a/../b\",\"c\"] and [\"do-work\\\\x\",\"b\"]; guard code read at finalization_discovery.go:1509-1519."
+   },
+   {
+    "name": "uniqueSorted \u2014 nil vs empty slice on the return",
+    "difference": "corehelpers, knowledgecommands and repairvalidation always return a non-nil slice (they use make or a []string{} literal). finalization returns nil on any validation failure. For empty and nil input all four agree and return a non-nil empty slice.",
+    "callers_that_care": "repairvalidation/already_green.go:283-284 assigns straight into validation.ReasonCodes and validation.OffendingPaths, which are serialized. A nil would render as JSON null instead of []. All four copies return non-nil for the empty-input case, so a swap between the three non-finalization copies is JSON-safe; a swap TO the finalization copy would not be.",
+    "evidence": "uqprobe output rows for []string{} and []string(nil) show nil=false for all four; the [\"a\",\"\",\"b\"] and absolute/escape rows show nil=true only for the finalization copy."
+   },
+   {
+    "name": "uniqueSorted \u2014 insertion order is not observable",
+    "difference": "The knowledgecommands copy builds its result in first-seen order with a `seen` map and only then calls sort.Strings, so the ordering work is thrown away. Its output is identical to the set-based repairvalidation copy for every input I tested.",
+    "callers_that_care": "None. The two drop-empty copies are interchangeable, which means the four uniqueSorted definitions collapse to three distinct behaviours, not four.",
+    "evidence": "uqprobe rows: `know` and `repair` lines are identical across all 10 inputs."
+   },
+   {
+    "name": "subtractPaths \u2014 no behavioural difference",
+    "difference": "None. Both copies build a membership set from `right` and return the elements of `left` not in it, preserving left's order and left's duplicates, returning a non-nil empty slice when nothing survives. The only textual differences are that corehelpers reuses the local stringSet helper (checks.go:856) while finalization inlines the map build, and the result variable is named `out` vs `result`.",
+    "callers_that_care": "None. All three call sites (corehelpers/checks.go:177, 178 and finalization/finalization_prepare.go:162) would behave identically under either copy. Note that finalization has no stringSet helper, so a straight lift of the corehelpers body would not compile there \u2014 the canonical version needs the set built inline or stringSet moved with it.",
+    "evidence": "diff of the two bodies (corehelpers/checks.go:827-836 vs finalization/finalization_prepare.go:365-376) shows only the inlined set and the variable rename."
+   },
+   {
+    "name": "firstError \u2014 no behavioural difference",
+    "difference": "None. The two bodies are byte-identical, including parameter names: `func firstError(first, second error) error { if first != nil { return first }; return second }`.",
+    "callers_that_care": "None. All four call sites (corehelpers/checks.go:153, publication/answer.go:307, publication/capture_files.go:151, publication/release.go:44) sit inside a branch already gated on `aError != nil || bError != nil` and immediately call .Error() on the result, so the nil-nil case is unreachable at every one of them. This is the cleanest deduplication in the whole REQ \u2014 a pure lift with zero behavioural risk.",
+    "evidence": "Both bodies printed and compared side by side; each call site's guard read at the line immediately above the call."
+   }
+  ],
+  "import_facts": "VERIFIED WITH `go list -deps` AT HEAD (3fc69bc8b14e09f75853174c54894d684212174a); `go build ./...` is clean.\n\ncorehelpers internal dependency closure (13 packages): resultmodel, commandruntime, atomicfile, ownedprocess, gittransaction, schemanormalization, requestmodel, repositorymodel, dependencygraph, requeststate, cleanup, doctor, nextselection.\n\nWho imports corehelpers today (5 sites): cmd/do-work-cli/main.go:8, internal/finalization/finalization_apply.go:15, internal/finalization/finalization_discovery.go:15, internal/hookcommands/session_start.go:13, internal/lifecycleadvance/evidence_gates.go:9.\n\nNO IMPORT CYCLE for any caller in this slice. corehelpers' dependency closure contains none of knowledgecommands, repairvalidation, publication, releaseownership, gateevidence or settingshooks, so all four duplicator packages can import corehelpers safely. Exporting UniqueSorted / SubtractPaths / FirstError from corehelpers is cycle-free for every one of them.\n\nBUT only ONE of the four already imports corehelpers:\n- finalization: YES, already imports it and already calls corehelpers.ReadProtectedInventory (finalization_apply.go:467). Free move.\n- knowledgecommands: NO. Its closure today is just 5 packages (resultmodel, commandruntime, ownedprocess, gittransaction, settingshooks). Importing corehelpers would add 9 packages it does not use.\n- repairvalidation: NO. Closure is 11 packages; corehelpers would add doctor, nextselection, cleanup.\n- publication: NO. Closure is 9 packages; corehelpers would add dependencygraph, requeststate, cleanup, doctor, nextselection, schemanormalization-adjacent weight.\n\nLIGHTER HOMES THAT EVERY DUPLICATOR ALREADY IMPORTS. Four packages are in the closure of all five packages involved (corehelpers, finalization, knowledgecommands, repairvalidation, publication), and each has a tiny closure of its own, so none of them can gain a cycle:\n- resultmodel \u2014 closure is itself only. Lightest possible home.\n- commandruntime \u2014 closure is resultmodel.\n- ownedprocess \u2014 closure is itself only.\n- gittransaction \u2014 closure is ownedprocess + resultmodel.\nIf the goal is 'canonical home the duplicator already imports', resultmodel or commandruntime satisfies it for all four packages at once; corehelpers satisfies it only for finalization. Note the semantic mismatch though: repairvalidation/already_green.go:283 uses uniqueSorted on reason codes, not paths, so the canonical signature should take `values []string`, not `paths []string`.",
+  "corrections_to_the_request": "C1. The count is 15, not 14. `rg -c` over the six names at HEAD sums to 15 non-test definitions. The baseline command's own output lists 15 lines. My slice holds 8 of them: four uniqueSorted, two subtractPaths, two firstError.\n\nC2. The audited commit dc8a64e3 is confirmed absent. `git cat-file -t dc8a64e3` returns \"fatal: Not a valid object name dc8a64e3\". Everything above was re-derived from HEAD = 3fc69bc8b14e09f75853174c54894d684212174a. Working tree is clean apart from two untracked handback markdown files under do-work/runs/, neither of which is Go code.\n\nC3. \"One uniqueSorted copy silently drops empty strings\" is wrong in both directions. TWO copies drop empty strings (knowledgecommands/interview_commands.go:1337 and repairvalidation/already_green.go:442), and they are observationally identical to each other. A THIRD copy does something much larger than dropping: finalization/finalization_prepare.go:379 wraps normalizeRepositoryPaths and discards its error, so a single empty, absolute or repository-escaping element nils the ENTIRE result slice. Only corehelpers/checks.go:846 preserves empty strings. The four definitions collapse to three distinct behaviours.\n\nC4. The empty-string question turns out to be a non-issue at every call site. I traced all 42 uniqueSorted call sites back to their producers and none can deliver an empty string on reachable input. The filters in the two drop-empty copies are dead code today. If the REQ's plan is 'unify on the copy that does not drop empties', nothing observable changes anywhere \u2014 which also means the REQ cannot justify itself on the empty-string difference. The real defect worth naming is C5.\n\nC5. The genuine risk the request does not mention: finalization/finalization_prepare.go:379 discards a validation error, and five call sites turn the resulting nil into a silently skipped safety check rather than a refusal \u2014 most visibly finalization_prepare.go:162, where the \"commit_paths omits planned lifecycle or release targets\" guard degrades to a pass, nine lines after line 153 in the same function calls normalizeRepositoryPaths directly and correctly propagates the same error. That inconsistency is a defect in its own right and should be fixed by making the wrapper honour its error (or deleting the wrapper), not by folding it into a shared helper that hides the discard behind a common name.\n\nC6. subtractPaths and firstError have zero behavioural differences between their copies. firstError is byte-identical in both files and every call site is guarded so the nil-nil case is unreachable \u2014 a pure lift. subtractPaths is algorithmically identical, but corehelpers' body calls the local helper stringSet (checks.go:856), which does not exist in finalization, so a canonical version must inline the set build or move stringSet along with it.\n\nC7. \"canonical home is always a package the duplicator already imports\" cannot be satisfied by corehelpers. Only finalization already imports corehelpers; knowledgecommands, repairvalidation and publication do not. resultmodel or commandruntime is already in the closure of all five packages and would satisfy the stated constraint for every duplicator at once. No cycle exists either way \u2014 see import_facts.\n\nC8. Signature note the REQ should carry: repairvalidation/already_green.go:283 calls uniqueSorted on ReasonCodes, which are error-code strings, not paths. A canonical helper named or parameterised around paths would be wrong at that call site."
+ },
+ {
+  "definitions": [
+   {
+    "name": "requestIDLess",
+    "file": "/home/user/skill-do-work/skills/do-work/tools/do-work-cli/internal/dependencygraph/dependency_graph.go",
+    "line": 307,
+    "package": "dependencygraph",
+    "exported": false,
+    "body_summary": "func requestIDLess(leftID string, rightID string) bool \u2014 calls the package-local requestNumber() on both sides; if both parse AND the numbers differ, returns leftNumber < rightNumber; otherwise falls back to raw string compare leftID < rightID. The comparison skeleton is byte-identical to the other two copies; only the parser it calls differs.",
+    "behaviour_notes": "Its parser is requestNumber at dependency_graph.go:316 (hand-rolled byte scan): TrimSpace; reject if len<5 or !strings.EqualFold(trimmed[:4],\"REQ-\"); advance digitEnd over the ASCII digit run starting at index 4; reject if the run is empty; strconv.Atoi(trimmed[4:digitEnd]). Because it slices at digitEnd it IGNORES any trailing non-digit characters \u2014 \"REQ-12a\" parses as 12. Case-insensitive prefix. Leading zeros absorbed by Atoi. Overflow (digit run too long for int) makes Atoi error, so parsed=false."
+   },
+   {
+    "name": "requestIDLess",
+    "file": "/home/user/skill-do-work/skills/do-work/tools/do-work-cli/internal/nextselection/next_types.go",
+    "line": 83,
+    "package": "nextselection",
+    "exported": false,
+    "body_summary": "func requestIDLess(leftID, rightID string) bool \u2014 calls numericID(id, \"REQ-\") on both sides; if both parse AND the numbers differ, returns leftNumber < rightNumber; otherwise falls back to raw string compare leftID < rightID. Same skeleton as the other two.",
+    "behaviour_notes": "Its parser is numericID at next_types.go:60 (whole-remainder digit check): TrimSpace; reject if len(trimmed)<=len(prefix) or !strings.EqualFold(trimmed[:len(prefix)],prefix); then it ranges over EVERY remaining rune and rejects the whole identifier if any rune is outside '0'..'9'; finally strconv.Atoi(digits). This is the strict one: \"REQ-12a\" does NOT parse. Case-insensitive prefix, leading zeros fine, overflow -> Atoi error -> false. numericID is generic over prefix and is also reused for \"UR-\" by canonicalToken (next_types.go:75), which is why this copy cannot simply be deleted without keeping numericID."
+   },
+   {
+    "name": "requestIDLess",
+    "file": "/home/user/skill-do-work/skills/do-work/tools/do-work-cli/internal/repositorymodel/repository_model.go",
+    "line": 654,
+    "package": "repositorymodel",
+    "exported": false,
+    "body_summary": "func requestIDLess(leftID string, rightID string) bool \u2014 calls requestNumberFromText() on both sides; if both parse AND the numbers differ, returns leftNumber < rightNumber; otherwise falls back to raw string compare leftID < rightID. Same skeleton as the other two.",
+    "behaviour_notes": "Its parser is requestNumberFromText at repository_model.go:624, driven by requestNumberPattern at repository_model.go:24: regexp.MustCompile(`(?i)^REQ-0*([0-9]+)`). TrimSpace, then FindStringSubmatch. The pattern is anchored only at the START, so a trailing non-digit tail is ignored exactly like the dependencygraph copy \u2014 \"REQ-12a\" parses as 12. The `0*` strips leading zeros before the capture, which produces the same integer Atoi would have produced anyway. Case-insensitive via (?i). Overflow -> Atoi error -> false."
+   }
+  ],
+  "call_sites": [
+   {
+    "name": "requestIDLess",
+    "file": "/home/user/skill-do-work/skills/do-work/tools/do-work-cli/internal/dependencygraph/dependency_graph.go",
+    "line": 115,
+    "which_definition": "dependencygraph (permissive)",
+    "depends_on_the_difference": true,
+    "why": "Tie-break inside the sort of graph.DependencyEdges: when two edges share a RequestID, their DependencyID values are compared. DependencyIDs come from uniqueSortedIDs(requestFile.TypedRecord.DependsOn) at line 102, i.e. raw unvalidated `depends_on:` tokens copied straight out of REQ front matter. Nothing canonicalises them first, so a token like \"REQ-12a\" reaches this comparator verbatim."
+   },
+   {
+    "name": "requestIDLess",
+    "file": "/home/user/skill-do-work/skills/do-work/tools/do-work-cli/internal/dependencygraph/dependency_graph.go",
+    "line": 117,
+    "which_definition": "dependencygraph (permissive)",
+    "depends_on_the_difference": true,
+    "why": "Primary key of the same graph.DependencyEdges sort, comparing edge RequestID values. Those come from the snapshot request IDs, which prefer the raw front-matter `id:` scalar over the canonicalised FilenameID."
+   },
+   {
+    "name": "requestIDLess",
+    "file": "/home/user/skill-do-work/skills/do-work/tools/do-work-cli/internal/dependencygraph/dependency_graph.go",
+    "line": 249,
+    "which_definition": "dependencygraph (permissive)",
+    "depends_on_the_difference": true,
+    "why": "Sorts graph.DependencyCycles by each cycle's first member ID. Cycle members are OrderedIDs entries, so the same raw front-matter IDs flow in."
+   },
+   {
+    "name": "requestIDLess",
+    "file": "/home/user/skill-do-work/skills/do-work/tools/do-work-cli/internal/dependencygraph/dependency_graph.go",
+    "line": 303,
+    "which_definition": "dependencygraph (permissive)",
+    "depends_on_the_difference": true,
+    "why": "Inside sortRequestIDs (line 301), the shared sorter used by uniqueSortedIDs (line 286) for node.DependencyIDs and node.DependentIDs, and directly for graph.OrderedIDs at line 91. This is the widest-reach call site of the three packages."
+   },
+   {
+    "name": "requestIDLess",
+    "file": "/home/user/skill-do-work/skills/do-work/tools/do-work-cli/internal/nextselection/next_targets.go",
+    "line": 97,
+    "which_definition": "nextselection (strict)",
+    "depends_on_the_difference": true,
+    "why": "Final tie-break when ordering user-request members after priority and graph depth. leftID/rightID come from requestID(requestFile) at next_types.go:50, which returns requestFile.TypedRecord.RequestID (the raw `id:` scalar) when non-empty and only falls back to the canonical FilenameID when it is empty."
+   },
+   {
+    "name": "requestIDLess",
+    "file": "/home/user/skill-do-work/skills/do-work/tools/do-work-cli/internal/nextselection/next_targets.go",
+    "line": 151,
+    "which_definition": "nextselection (strict)",
+    "depends_on_the_difference": true,
+    "why": "Sole sort key for queueCandidates \u2014 the order the whole `next` queue is considered in. Same raw-`id:` provenance via requestID(). Verified end to end: a queue holding id \"REQ-2\" and id \"REQ-12a\" comes out of nextselection.Select as [REQ-12a, REQ-2] while dependencygraph.BuildGraph reports OrderedIDs [REQ-2, REQ-12a] for the identical snapshot."
+   },
+   {
+    "name": "requestIDLess",
+    "file": "/home/user/skill-do-work/skills/do-work/tools/do-work-cli/internal/repositorymodel/repository_model.go",
+    "line": 305,
+    "which_definition": "repositorymodel (permissive)",
+    "depends_on_the_difference": false,
+    "why": "Sorts snapshot.CollisionEntries by RequestID. This is the one call site that CANNOT hit the disagreement: the keys are built at lines 276-290 where each claimID is passed through requestIDFromText() and replaced by the canonical formatRequestID output \"REQ-%03d\" whenever it parses. So any key reaching this sort is either canonical REQ-<digits> or a string that no parser accepts (e.g. \"UR-001\"), and all three parsers agree on both classes."
+   },
+   {
+    "name": "requestIDLess",
+    "file": "/home/user/skill-do-work/skills/do-work/tools/do-work-cli/internal/repositorymodel/repository_model.go",
+    "line": 319,
+    "which_definition": "repositorymodel (permissive)",
+    "depends_on_the_difference": true,
+    "why": "Sorts snapshot.RequestFiles, the base ordering every downstream package inherits. Lines 307-315 pick TypedRecord.RequestID (raw `id:` front matter) and only fall back to FilenameID when it is empty, so raw suffixed IDs are compared here. Confirmed by probe: RequestFiles came out [REQ-2, REQ-12a, REQ-050]."
+   }
+  ],
+  "behaviour_differences": [
+   {
+    "name": "Non-digit tail after the leading digit run \u2014 the ONLY axis on which any two of the three disagree",
+    "difference": "nextselection/numericID rejects an identifier if ANY character after \"REQ-\" is not a digit; dependencygraph/requestNumber and repositorymodel/requestNumberFromText both stop at the end of the leading digit run and ignore whatever follows. So for \"REQ-12a\": dependencygraph=(12,true), repositorymodel=(12,true), nextselection=(0,false). When the parse fails, requestIDLess falls through to raw byte-wise string comparison, so the failing side is ordered lexically instead of numerically. Concrete ID pairs where the two orderings differ: (1) \"REQ-2\" vs \"REQ-12a\" \u2014 permissive says 2<12 so REQ-2 first; strict falls back to strings and \"REQ-12a\"<\"REQ-2\" because '1'<'2', so REQ-12a first. (2) \"REQ-100\" vs \"REQ-12-fix\" \u2014 permissive orders REQ-12-fix first (12<100); strict orders REQ-100 first (\"REQ-100\"<\"REQ-12-fix\"). (3) \"REQ-1\" vs \"REQ-007b\" \u2014 permissive REQ-1 first (1<7); strict REQ-007b first lexically. (4) \"REQ-020\" vs \"REQ-9x\" \u2014 permissive REQ-9x first (9<20); strict REQ-020 first. Other tails behave the same way: \"REQ-12.5\", \"REQ-1_a\", \"REQ-1\u00e9\".",
+    "callers_that_care": "All eight call sites except repositorymodel:305. dependencygraph:115 sorts raw `depends_on:` tokens; dependencygraph:117/249/303 and repositorymodel:319 and nextselection:97/151 all sort IDs that prefer the raw front-matter `id:` scalar over the canonicalised FilenameID. repositorymodel:305 is immune because its keys are canonicalised through requestIDFromText first.",
+    "evidence": "Read each body character by character, then ran a differential program over a 36-case table plus 3,000,000 randomly generated inputs (alphabet including REQreq-, digits, letters, punctuation, whitespace, a multi-byte rune). Results: dependencygraph vs nextselection parsers disagreed on 429,938 of 3,000,000 random inputs and on 122 ordered pairs of the 36-case table. End-to-end probe on a real fixture repository (three queue files with front-matter ids REQ-2, REQ-12a, REQ-050) printed repositorymodel snapshot.RequestFiles = [REQ-2 REQ-12a REQ-050], dependencygraph OrderedIDs = [REQ-2 REQ-12a REQ-050], nextselection.Select = [REQ-12a REQ-2 REQ-050]. Same snapshot, opposite order for the first two."
+   },
+   {
+    "name": "dependencygraph and repositorymodel are byte-for-byte DIFFERENT implementations but exactly EQUIVALENT behaviour",
+    "difference": "A hand-rolled byte scan (dependencygraph:316) and a regex `(?i)^REQ-0*([0-9]+)` (repositorymodel:24/624) produce identical (value, ok) pairs on every input tested. The regex's `0*` prefix looks like it should differ on leading zeros, but it does not: stripping zeros before Atoi yields the same integer Atoi would have produced with them. Both are anchored only at the start, so both ignore trailing tails identically. Both are case-insensitive (strings.EqualFold vs (?i)). Both require at least one digit immediately after the prefix, so \"REQ-\", \"REQ- 5\", \"REQ-+5\" and \"REQ-NNN\" fail in both.",
+    "callers_that_care": "None \u2014 unifying these two changes nothing observable. This matters for the dedup plan: merging dependencygraph's copy into repositorymodel's is a pure no-op refactor, while merging nextselection's is a real semantic decision that needs a stated winner.",
+    "evidence": "3,000,000-input randomized differential: 0 disagreements between the dependencygraph and repositorymodel parsers. Exhaustive pairwise ordering check over the 36-case table: 0 disagreeing ordered pairs."
+   },
+   {
+    "name": "Axes the request implies might differ, which in fact do NOT",
+    "difference": "Leading zeros: \"REQ-0452\", \"REQ-00452\" and \"REQ-452\" all parse to 452 in all three. Case: \"req-452\", \"Req-007\" parse in all three (EqualFold in two, (?i) in the third). Missing/short prefix: \"REQ005\", \"R-5\", \"UR-005\", \"REQ-\" are rejected by all three. Overflow: \"REQ-9999999999999999999999\" makes strconv.Atoi return ErrRange in all three, so all three report ok=false and fall back to string comparison together. Surrounding whitespace: all three TrimSpace first. So of the five candidate axes named in the task, only the non-numeric-suffix one is real.",
+    "callers_that_care": "Nobody. Notably the one test in the tree that deliberately uses a leading-zero ID \u2014 /home/user/skill-do-work/skills/do-work/tools/do-work-cli/internal/nextselection/next_targets_test.go:16, fixture \"do-work/queue/REQ-0452-second.md\" with front matter id REQ-0452 \u2014 sits on an axis where all three agree, so it does not pin the difference.",
+    "evidence": "Direct table run printing (value, ok) from all three parsers side by side for REQ-0452, REQ-452, req-452, \"REQ-452 \", REQ-00452 \u2014 allAgree=true on every row. The 36-case disagreement dump contains only tail cases; no leading-zero, case, prefix or overflow input appears in it."
+   },
+   {
+    "name": "The disagreement shape does not occur anywhere in this repository's actual data",
+    "difference": "Scanned every .md file under /home/user/skill-do-work/do-work/, parsing only the leading `---` front-matter block (not prose or fenced code): 717 `id:` values (696 distinct) and 1,814 `depends_on`/`addendum_to`/`related` tokens (395 distinct). Tokens matching \"REQ-<digits><non-digit tail>\" \u2014 the disagreement shape: ZERO in both sets. Every REQ-shaped value is canonical REQ-<digits>; the remaining non-REQ values are UR-NNN identifiers, which all three parsers reject alike.",
+    "callers_that_care": "Today, none \u2014 the divergence is latent, not active. It is still reachable: nothing in the Go code validates the `id:` or `depends_on:` shape before these sorts run. nextselection.canonicalToken (next_types.go:75) is the only shape validator, and it is applied to CLI target tokens at next_targets.go:49/66, not to file contents. So a hand-typed \"REQ-12-fix\" in a `depends_on:` list would silently produce two different orderings in one command run.",
+    "evidence": "Python front-matter scan over the do-work tree (counts above). Contrast with a naive `grep -rh 'depends_on:'` which returns 400 'tokens' \u2014 that number is prose contamination from audit write-ups and should not be used. Reachability proven separately by the fixture probe, which drove \"REQ-12a\" from front matter all the way through DiscoverRepository, BuildGraph and Select without any rejection."
+   },
+   {
+    "name": "No test in the module pins the difference in either direction",
+    "difference": "Every ordering assertion in the three packages uses canonical zero-padded IDs (REQ-001, REQ-002, REQ-021, REQ-563, REQ-811) where all three parsers agree. dependency_graph_test.go:77 (DependentIDs == [REQ-002 REQ-003]) and :83 (cycle == [REQ-005 REQ-006]) are parser-agnostic. next_commands_test.go:67 asserts [REQ-813 REQ-812 REQ-811], but line 70 shows that order is fixed by SelectionPriority (RepositoryGateRepair, DeferredParent, Ordinary), not by requestIDLess. No test file references requestIDLess, sortRequestIDs, numericID or requestNumberFromText by name.",
+    "callers_that_care": "Whoever picks the surviving semantics \u2014 the test suite will not object either way, so the choice must be made on intent and written down, and a new test should pin whichever behaviour is chosen.",
+    "evidence": "Two mutation experiments on scratchpad copies of the module, each compared against a pristine-copy baseline failure set. Experiment 1: nextselection's requestIDLess switched to the permissive regex parser -> identical failing-package set. Experiment 2: dependencygraph's and repositorymodel's requestIDLess switched to the strict whole-remainder parser -> identical failing-package set (diff reported NO NEW FAILURES). The baseline itself has 6 pre-existing failures (corehelpers, doctor, heavyverification, knowledgecommands, publication, suiteinstall) caused solely by copying the module out of the repo so its sibling checks/*.sh fixtures are missing; in the real checkout `go test ./internal/dependencygraph/ ./internal/nextselection/ ./internal/repositorymodel/` is green (ok 0.009s / 6.925s / 0.009s)."
+   }
+  ],
+  "import_facts": "Verified with `go list -deps` and by reading the import blocks. nextselection DOES import repositorymodel \u2014 directly, at /home/user/skill-do-work/skills/do-work/tools/do-work-cli/internal/nextselection/next_types.go:10. dependencygraph DOES import repositorymodel \u2014 directly, at /home/user/skill-do-work/skills/do-work/tools/do-work-cli/internal/dependencygraph/dependency_graph.go:10. repositorymodel imports NEITHER of them: its full in-module dependency closure is atomicfile, requestmodel and schemanormalization (repository_model.go:17-18 imports atomicfile and requestmodel; schemanormalization arrives transitively through requestmodel). nextselection additionally imports dependencygraph. So the edge direction is uniformly nextselection -> dependencygraph -> repositorymodel, and repositorymodel is already the leaf. Making repositorymodel the home for a shared requestIDLess creates NO import cycle. One practical caveat that is not a cycle: nextselection's numericID (next_types.go:60) is generic over the prefix and is separately used for \\\"UR-\\\" by canonicalToken (next_types.go:75) and for \\\"REQ-\\\" by next_targets.go:104 and :139, so nextselection must keep numericID even after its requestIDLess is removed.",
+  "corrections_to_the_request": "C1. The audited commit dc8a64e3 is confirmed absent from this clone. HEAD is 3fc69bc (\"[work run] REQ-486 remediation evidence; REQ-555 and REQ-557 triage and estimates\"). Everything below was re-derived at HEAD.\n\nC2. \"fourteen times\" is wrong at HEAD \u2014 the baseline command returns FIFTEEN definitions, not fourteen. Breakdown: corehelpers 3 (checks.go:827 subtractPaths, :846 uniqueSorted, :871 firstError), knowledgecommands 3 (commands.go:147 physicalPath, interview_commands.go:1337 uniqueSorted, :1535 compareSemver), finalization 2 (finalization_prepare.go:365 subtractPaths, :379 uniqueSorted), publication 2 (capture_files.go:361 firstError, release.go:210 compareSemver), plus one each in dependencygraph, nextselection, repositorymodel, repairvalidation and suiteinstall. The count almost certainly moved because corehelpers and publication were edited twice earlier in this work run, exactly as the task warned.\n\nC3. \"three copies\" is CORRECT for requestIDLess. Three non-test definitions at HEAD, all unexported: dependencygraph/dependency_graph.go:307, nextselection/next_types.go:83, repositorymodel/repository_model.go:654. No fourth copy hides in a _test.go file.\n\nC4. \"two different number parsers\" is HALF wrong, and the half that is wrong is the half that matters for the dedup plan. There are THREE distinct parser implementations, not two: a hand-rolled byte scan (dependency_graph.go:316), a whole-remainder digit check (next_types.go:60), and a regex `(?i)^REQ-0*([0-9]+)` (repository_model.go:24 + :624). They collapse to only TWO distinct behaviours, because the byte scan and the regex are exactly equivalent \u2014 0 disagreements over 3,000,000 randomized inputs. Stating it as \"two parsers\" hides that one of the three merges for free while the other is a real semantic choice. The correct framing: dependencygraph's copy can be deleted as a pure no-op; nextselection's copy is the odd one out and deleting it changes behaviour.\n\nC5. The task's suggested disagreement axes are mostly wrong. Of \"non-numeric suffixes, leading zeros, missing prefix, overflow, differing case\", only NON-NUMERIC SUFFIXES is a real axis. Leading zeros, missing prefix, overflow and case are all handled identically by all three (evidence in behaviour_differences entry 3). Anyone auditing this should not spend time on the other four.\n\nC6. Scope correction on impact. The divergence is latent, not live: zero of 717 front-matter `id:` values and zero of 1,814 dependency tokens in this repository have the disagreement shape. But it is genuinely reachable \u2014 no Go code validates the `id:` or `depends_on:` shape before these sorts, and a fixture probe drove \"REQ-12a\" from front matter through DiscoverRepository, BuildGraph and Select, producing OrderedIDs [REQ-2 REQ-12a REQ-050] from dependencygraph and [REQ-12a REQ-2 REQ-050] from nextselection for the same snapshot. So this is a correctness bug worth fixing, not merely duplication.\n\nC7. Warning for whoever writes the fix. The test suite does not constrain the choice \u2014 both unification directions were mutation-tested and neither produced a single new failure. Do not read a green suite as endorsement of whichever parser you happen to keep. The permissive semantics are the majority (two of three copies, and the ones repositorymodel already uses for canonicalisation via requestIDFromText), so repositorymodel's requestNumberFromText is the natural survivor; that choice needs one new test pinning the \"REQ-2\" vs \"REQ-12a\" ordering, since nothing today does.\n\nC8. Read-only compliance: `git status --porcelain` is empty. All experiments ran on copies under the scratchpad directory; the checkout was not modified."
+ },
+ {
+  "definitions": [
+   {
+    "name": "compareSemver",
+    "file": "/home/user/skill-do-work/skills/do-work/tools/do-work-cli/internal/knowledgecommands/interview_commands.go",
+    "line": 1535,
+    "package": "knowledgecommands",
+    "exported": false,
+    "body_summary": "func compareSemver(first, second string) int. Splits both strings on \".\", loops index < 3 && index < len(a) && index < len(b), does ai, _ := strconv.Atoi(a[index]) discarding the parse error, returns -1 when first's component is smaller, +1 when larger, 0 otherwise. Standard orientation: negative means the FIRST argument is older. No length validation, no parse validation, no error return. A sibling helper semverMajor (interview_commands.go:1528) does validate len(parts)==3 and returns an error, but it is a separate function and compareSemver never calls it.",
+    "behaviour_notes": "Ignored Atoi error means any non-numeric component silently becomes 0, so \"1.a.0\" compares as \"1.0.0\". Because the loop bound is min(3, len(a), len(b)), a short string compares only its prefix: compareSemver(\"1.0\",\"1.0.5\") == 0. Leading zeros are accepted (\"01\" parses as 1). Empty string yields component 0, so compareSemver(\"\",\"1.0.0\") == -1."
+   },
+   {
+    "name": "compareSemver",
+    "file": "/home/user/skill-do-work/skills/do-work/tools/do-work-cli/internal/publication/release.go",
+    "line": 210,
+    "package": "publication",
+    "exported": false,
+    "body_summary": "func compareSemver(oldVersion, newVersion string) int. Calls parseSemver (release.go:227) on both; if EITHER fails to parse it returns 0. Otherwise it loops the three components and returns +1 when newParts[index] > oldParts[index], -1 when smaller. INVERTED orientation relative to the knowledgecommands copy: positive means the SECOND argument is newer. parseSemver requires exactly three dot-separated parts, rejects an empty part, rejects a leading zero on a multi-character part, rejects a non-integer, and rejects a negative.",
+    "behaviour_notes": "Never returns an error; unparseable input collapses to 0, which its only caller then treats as a refusal. Strictly validating: \"1.0\", \"01.2.3\", \"abc\", \"\" and \"1.a.0\" all yield 0."
+   },
+   {
+    "name": "physicalPath",
+    "file": "/home/user/skill-do-work/skills/do-work/tools/do-work-cli/internal/suiteinstall/update_transaction.go",
+    "line": 209,
+    "package": "suiteinstall",
+    "exported": false,
+    "body_summary": "func physicalPath(path string) (string, error). Four lines: filepath.EvalSymlinks(path), return the error if any, then return filepath.Abs(resolved). Contract is \"resolve a path that must already exist, and guarantee the result is absolute\". EvalSymlinks fails with ENOENT if the path or any ancestor is missing, so absence is reported as an error.",
+    "behaviour_notes": "Verified by running the body: a missing leaf under an existing dir returns lstat ...: no such file or directory. filepath.Abs guarantees an absolute result even for a relative existing input (\"proj/sub\" -> \"/tmp/.../proj/sub\"). Empty string is NOT an error: EvalSymlinks(\"\") returns \".\" and Abs makes it the current working directory."
+   },
+   {
+    "name": "physicalPath",
+    "file": "/home/user/skill-do-work/skills/do-work/tools/do-work-cli/internal/knowledgecommands/commands.go",
+    "line": 147,
+    "package": "knowledgecommands",
+    "exported": false,
+    "body_summary": "func physicalPath(path string) (string, error). Walks upward with os.Lstat collecting the basenames of components that do not exist, stopping at the first existing ancestor (or erroring when filepath.Dir stops changing, or on a non-ENOENT stat error). EvalSymlinks the existing ancestor, then re-joins the collected missing components in reverse order and returns filepath.Clean of the result. Contract is \"resolve the real location a path WILL occupy, whether or not it exists yet\". There is no filepath.Abs call.",
+    "behaviour_notes": "Two axes differ from the suiteinstall copy, not one. (1) A missing path succeeds instead of erroring. (2) The result is NOT made absolute: a relative existing input stays relative (\"proj/sub\" -> \"proj/sub\"), where the suiteinstall copy returns an absolute path. Symlink resolution is preserved when the path exists, because Lstat does not follow the leaf and EvalSymlinks is still applied to the deepest existing ancestor. Empty string returns \".\" (relative), where the suiteinstall copy returns the absolute cwd."
+   }
+  ],
+  "call_sites": [
+   {
+    "name": "compareSemver",
+    "file": "/home/user/skill-do-work/skills/do-work/tools/do-work-cli/internal/publication/release.go",
+    "line": 26,
+    "which_definition": "publication/release.go:210 (inverted orientation, strict parse)",
+    "depends_on_the_difference": true,
+    "why": "BuildReleasePlan does `if compareSemver(oldVersion, newVersion) != 1 { return refusedPlan(plan, \"RELEASE-VERSION-NOT-INCREASING\", ...) }`. It requires +1 to mean \"newVersion is strictly greater\". Under the knowledgecommands orientation +1 means the FIRST argument is greater, so the branch inverts and it is a WRONG branch, not an error branch. Verified by running both bodies against the caller's predicate: 1.0.0 -> 1.1.0 flips from accept to REFUSE, and 2.0.0 -> 1.0.0 (a version downgrade) flips from refuse to ACCEPT. A release that walks the version backwards would be planned and executed. Separately, old=\"9\" new=\"1.0.0\" flips from refuse to accept because the knowledgecommands copy compares only the shared prefix."
+   },
+   {
+    "name": "compareSemver",
+    "file": "/home/user/skill-do-work/skills/do-work/tools/do-work-cli/internal/knowledgecommands/interview_commands.go",
+    "line": 820,
+    "which_definition": "knowledgecommands/interview_commands.go:1535 (standard orientation, lenient parse)",
+    "depends_on_the_difference": true,
+    "why": "Inside migrateInterviewSession, under the guard `oldMajor == newMajor`, the code does `if compareSemver(old, template.Version) < 0 { session[\"template_version\"] = template.Version }`. It requires -1 to mean \"the session version is older than the template\". Under the publication orientation -1 means the SECOND argument is older, so the branch inverts silently. Verified against the caller's predicate: session 1.0.0 with template 1.1.0 flips from bump to NO bump (session keeps a stale version stamp forever), and session 1.1.0 with template 1.0.0 flips from no-bump to BUMP, writing an OLDER version into the session. Both are wrong branches with no error surfaced. Note the majors are already validated by semverMajor at lines 811-815, but the minor and patch components are not, so 1.a.0 reaches compareSemver and also flips (bump -> no bump)."
+   },
+   {
+    "name": "physicalPath",
+    "file": "/home/user/skill-do-work/skills/do-work/tools/do-work-cli/internal/knowledgecommands/commands.go",
+    "line": 144,
+    "which_definition": "knowledgecommands/commands.go:147 (walks missing ancestors)",
+    "depends_on_the_difference": true,
+    "why": "This is the tail of ensureSafeTarget, whose whole job is to resolve a target that is about to be CREATED. The path routinely does not exist. handleBKBInit (bkb_init.go:566) calls ensureSafeTarget and maps any error to OutcomeRefused with code BKB-INIT-UNSAFE-TARGET and the reason \"a symlink or unsafe target component prevents confined publication\". Under the suiteinstall contract every genuinely new knowledge base would hit that refusal, and the message would blame a symlink for a path that is merely absent. Confirmed against the built binary: in a fresh repo, `do-work-cli --format json bkb-init --kb newkb --dry-run` returns outcome \"success\" with planned_create changes today; the suiteinstall body errors on that same missing path (verified separately). Other affected entry points through ensureSafeTarget: bkb_init.go:773, dream_scan.go:35, dream_scan.go:47, bkb_scan.go:442."
+   },
+   {
+    "name": "physicalPath",
+    "file": "/home/user/skill-do-work/skills/do-work/tools/do-work-cli/internal/suiteinstall/update_transaction.go",
+    "line": 179,
+    "which_definition": "suiteinstall/update_transaction.go:209 (EvalSymlinks + Abs)",
+    "depends_on_the_difference": true,
+    "why": "skillRoot comes from the user-supplied --skill-root flag (suite_commands.go:163-166), so it may be relative and may not exist. Two things break under the walking contract. First, the missing-path error here IS the existence check: the error maps to \"the installed do-work skill could not be located\". Under the walking contract a missing skill root returns a synthesized path with no error, and the failure surfaces later as \"SKILL.md is missing at <synthesized path>\" - still a refusal, but blaming the wrong thing. Second and worse, the walking copy omits filepath.Abs, so a RELATIVE --skill-root that exists stays relative; the very next guard is `strings.HasPrefix(skillRoot, projectRoot+string(filepath.Separator))` against an absolute projectRoot, which then fails and refuses a legitimate update with \"skill is outside this project ... refusing to update a shared install\". That is a false refusal, not an error branch. Verified: the walking body returns \"proj/sub\" for a relative existing input where the suiteinstall body returns the absolute path."
+   },
+   {
+    "name": "physicalPath",
+    "file": "/home/user/skill-do-work/skills/do-work/tools/do-work-cli/internal/suiteinstall/update_transaction.go",
+    "line": 175,
+    "which_definition": "suiteinstall/update_transaction.go:209 (EvalSymlinks + Abs)",
+    "depends_on_the_difference": false,
+    "why": "options.ProjectRoot is guarded three lines earlier by os.Stat plus info.IsDir() (lines 171-174), so the path always exists by the time physicalPath runs and the missing-path axis cannot fire. The absoluteness axis is latent rather than live: ProjectRoot is context.RepositoryRoot, which is absolute in practice, so the walking contract would return the same value. Result feeds the projectRoot side of the HasPrefix containment guard at line 183."
+   },
+   {
+    "name": "physicalPath",
+    "file": "/home/user/skill-do-work/skills/do-work/tools/do-work-cli/internal/suiteinstall/update_transaction.go",
+    "line": 199,
+    "which_definition": "suiteinstall/update_transaction.go:209 (EvalSymlinks + Abs)",
+    "depends_on_the_difference": false,
+    "why": "The input is the trimmed output of `git rev-parse --show-toplevel`, which is always an absolute path to an existing directory, and line 197 already rejects the empty/error case. Both contracts return the same string. Result is compared for exact equality against projectRoot at line 203."
+   },
+   {
+    "name": "physicalPath",
+    "file": "/home/user/skill-do-work/skills/do-work/tools/do-work-cli/internal/knowledgecommands/memory_commands.go",
+    "line": 1216,
+    "which_definition": "knowledgecommands/commands.go:147 (walks missing ancestors)",
+    "depends_on_the_difference": false,
+    "why": "resolveMemoryRoot passes filepath.Clean(repositoryRoot), an existing directory, so the missing-path axis cannot fire and both contracts agree. The result is used as the base for filepath.Join and for filepath.Rel at line 1240, both of which need it absolute; that need is met today only because the caller already supplies an absolute repository root, not because this copy guarantees it."
+   },
+   {
+    "name": "physicalPath",
+    "file": "/home/user/skill-do-work/skills/do-work/tools/do-work-cli/internal/knowledgecommands/memory_commands.go",
+    "line": 1227,
+    "which_definition": "knowledgecommands/commands.go:147 (walks missing ancestors)",
+    "depends_on_the_difference": false,
+    "why": "The memory root may legitimately be absent. Today physicalPath succeeds on a missing path and the very next os.Stat (line 1231) catches it and returns the friendly \"memory root does not exist: %s\". Under the suiteinstall contract physicalPath itself errors and the raw lstat error is returned at line 1229 instead. Both paths refuse, so this is a message-quality regression, not a wrong branch."
+   },
+   {
+    "name": "physicalPath",
+    "file": "/home/user/skill-do-work/skills/do-work/tools/do-work-cli/internal/knowledgecommands/interview_commands.go",
+    "line": 396,
+    "which_definition": "knowledgecommands/commands.go:147 (walks missing ancestors)",
+    "depends_on_the_difference": false,
+    "why": "Input is filepath.Clean(executionContext.RepositoryRoot), an existing directory, so both contracts return the same value. The result feeds pathInside(physicalRepositoryRoot, kbAbsolute) on the same line as the error check."
+   },
+   {
+    "name": "physicalPath",
+    "file": "/home/user/skill-do-work/skills/do-work/tools/do-work-cli/internal/knowledgecommands/interview_commands.go",
+    "line": 683,
+    "which_definition": "knowledgecommands/commands.go:147 (walks missing ancestors)",
+    "depends_on_the_difference": false,
+    "why": "locateKnowledgeRoot probes candidate directories that may not exist, but it follows physicalPath with `if err != nil { continue }` and then os.Stat + info.IsDir(). Today the err branch is nearly dead (the walking copy synthesizes rather than errors) and the IsDir check does the filtering; under the suiteinstall contract the err branch fires instead. Same final selection either way. Worth noting only because it shows the `continue` was written for the erroring contract."
+   },
+   {
+    "name": "physicalPath",
+    "file": "/home/user/skill-do-work/skills/do-work/tools/do-work-cli/internal/knowledgecommands/memory_commands_test.go",
+    "line": 390,
+    "which_definition": "knowledgecommands/commands.go:147 (walks missing ancestors)",
+    "depends_on_the_difference": false,
+    "why": "The only test in internal/ that names either helper directly. It calls physicalPath(filepath.Join(root, \"memory\")) on a path the test has already created. It is the one site REQ-557's acceptance line \"tests unchanged except where a test named a deleted private helper directly\" actually applies to. No test anywhere in internal/ locks compareSemver, parseSemver, semverMajor or ensureSafeTarget, so every behaviour difference below is currently unguarded by the suite."
+   }
+  ],
+  "behaviour_differences": [
+   {
+    "name": "compareSemver",
+    "difference": "ARGUMENT ORDER IS INVERTED. knowledgecommands returns -1 when the FIRST argument is older (the conventional Go three-way compare). publication returns +1 when the SECOND argument is newer. For every pair where the two versions differ, the two functions return opposite signs. Measured by running both bodies verbatim: (1.0.0, 1.1.0) -> kc=-1, pub=+1; (1.1.0, 1.0.0) -> kc=+1, pub=-1; (2.0.0, 1.0.0) -> kc=+1, pub=-1; (1.0.0, 2.0.0) -> kc=-1, pub=+1. They agree only on equal versions and on a couple of unparseable pairs that both collapse to 0.",
+    "callers_that_care": "Both of them, and both take a wrong branch rather than an error branch. publication/release.go:26 would accept a version downgrade (2.0.0 -> 1.0.0 stops being refused) and refuse every legitimate increase (1.0.0 -> 1.1.0 starts being refused). knowledgecommands/interview_commands.go:820 would stop bumping the session stamp on real upgrades and would start writing an OLDER template version into the session on downgrades.",
+    "evidence": "Read both bodies at knowledgecommands/interview_commands.go:1535 and publication/release.go:210, then compiled verbatim copies of both plus each caller's exact predicate (`!= 1` and `< 0`) and ran them over an 11-pair table. Nine of eleven pairs disagree in sign; the publication caller's branch flips on 5 pairs and the knowledgecommands caller's branch flips on 7. This is the dominant difference between the two copies and REQ-557 does not mention it at all."
+   },
+   {
+    "name": "compareSemver",
+    "difference": "Unparseable input is handled by two different mechanisms, and NEITHER function rejects it. publication delegates to parseSemver, which enforces exactly three dot-separated parts, no empty part, no leading zero on a multi-character part, integer-only, non-negative; on failure compareSemver returns 0. knowledgecommands discards the strconv.Atoi error (`ai, _ := strconv.Atoi(...)`), so a bad component silently becomes 0, and it compares only min(3, len(a), len(b)) components so a short string compares by prefix.",
+    "callers_that_care": "publication/release.go:26 converts the 0 into the RELEASE-VERSION-NOT-INCREASING refusal, so at the caller level publication does end up rejecting garbage. knowledgecommands/interview_commands.go:820 has no such conversion; it gets a fabricated ordering. Concretely: compareSemver(\"1.a.0\", \"1.2.0\") is -1 in knowledgecommands (bumps the session) and 0 in publication (does not).",
+    "evidence": "Ran both bodies over garbage inputs. \"abc\" vs \"1.0.0\": kc=-1, pub=0. \"9\" vs \"1.0.0\": kc=+1, pub=0. \"01.2.3\" vs \"1.2.4\": kc=-1, pub=0. \"1.0\" vs \"1.0.5\": both 0, but for different reasons (kc compares only the two shared components, pub rejects the 2-part string outright). \"\" vs \"1.0.0\": kc=-1, pub=0. Neither function has an error return in its signature; both return a bare int."
+   },
+   {
+    "name": "physicalPath",
+    "difference": "Two different contracts under one name, on TWO axes rather than the one REQ-557 names. Axis 1 (the one the request cites): suiteinstall errors when the path or any ancestor is absent; knowledgecommands succeeds and synthesizes the path the caller will create. Axis 2 (unmentioned): suiteinstall ends with filepath.Abs and therefore always returns an absolute path; knowledgecommands ends with filepath.Clean and therefore returns a RELATIVE path for a relative existing input.",
+    "callers_that_care": "Axis 1 splits the callers into two irreconcilable groups. knowledgecommands/commands.go:144 (ensureSafeTarget, feeding bkb-init, bkb-scan and dream-scan) REQUIRES success on a missing path, because the target is what is about to be created. suiteinstall/update_transaction.go:179 USES the error as its existence check for the installed skill. Axis 2 matters at suiteinstall/update_transaction.go:179 and 183, where the result is fed straight into `strings.HasPrefix(skillRoot, projectRoot+separator)`; a relative result makes that containment guard reject a legitimate relative --skill-root.",
+    "evidence": "Ran both bodies over a temp tree. Existing dir: identical results. Missing leaf under an existing dir: suiteinstall errors `lstat .../does-not-exist-yet.md: no such file or directory`, knowledgecommands returns the full synthesized path with nil error. Two missing ancestors: same split. Relative existing input \"proj/sub\": suiteinstall returns \"/tmp/.../proj/sub\" (absolute), knowledgecommands returns \"proj/sub\" (relative). Empty string: suiteinstall returns the absolute cwd with nil error, knowledgecommands returns \".\" with nil error - so neither guards the empty case, but they disagree on it too. Symlinked ancestor with missing leaf (\"link/newfile.md\"): suiteinstall errors, knowledgecommands correctly resolves the symlink and returns \"/tmp/.../proj/newfile.md\", confirming symlink resolution is preserved in the walking copy."
+   },
+   {
+    "name": "physicalPath",
+    "difference": "Recommendation on the naming question the task raises: these should NOT share a name, and merging them into one function is not the honest fix either. The knowledgecommands body is a strict superset of the suiteinstall body only on Axis 1; on Axis 2 it is strictly weaker (no Abs guarantee). A single merged function cannot satisfy both suiteinstall/update_transaction.go:179, which needs absence to be an error, and knowledgecommands/commands.go:144, which needs absence to be normal. Any merge silently changes one of them.",
+    "callers_that_care": "Two clearly different exported names, both absolute-guaranteeing, keyed on the condition each caller actually asserts. Suggested shape, following the two-word-minimum naming rule in coding-guardrails.md section 5: ResolveExistingPhysicalPath (EvalSymlinks + Abs, error when absent) for suiteinstall lines 175, 179, 199 and knowledgecommands lines 396 and 1216; ResolvePlannedPhysicalPath (walk missing ancestors, then Abs) for knowledgecommands lines 144, 683 and 1227. Adding the missing filepath.Abs to the second one is a real fix, not a refactor artifact.",
+    "evidence": "Derived from the call-site audit above: of the nine non-test call sites, three assert the path exists and use the error as the check, three tolerate absence deliberately (one of them, memory_commands.go:1227, even re-checks existence with os.Stat immediately afterward), and three pass paths that always exist. No single contract covers the first two groups."
+   }
+  ],
+  "import_facts": "REQ-557 line 35 asserts that \"in every case the duplicating package already imports the package holding an earlier copy\", and line 61 restates it as an acceptance criterion (\"the canonical home is always a package the duplicator already imports\"). For both names in this slice that assertion is FALSE at HEAD.\n\nVerified with the Go toolchain (go1.26.1), `go list -deps` on each package, filtered to do-work-cli internal packages:\n\n- knowledgecommands: resultmodel, commandruntime, ownedprocess, gittransaction, settingshooks.\n- suiteinstall: archivefetch, resultmodel, commandruntime, managedsection, settingshooks, suitemanifest.\n- publication: atomicfile, resultmodel, commandruntime, ownedprocess, gittransaction, releaseownership, schemanormalization, requestmodel, repositorymodel.\n- corehelpers: resultmodel, commandruntime, atomicfile, ownedprocess, gittransaction, schemanormalization, requestmodel, repositorymodel, dependencygraph, requeststate, cleanup, doctor, nextselection.\n\nphysicalPath: the request routes \"the path and error helpers\" to corehelpers. corehelpers does not appear in the transitive dependency set of knowledgecommands OR suiteinstall. Moving physicalPath there adds a brand-new dependency edge for both duplicating packages, and it is a heavy one - corehelpers drags in dependencygraph, requeststate, cleanup, doctor and nextselection, none of which either package uses today. No import cycle results (corehelpers depends on neither knowledgecommands nor suiteinstall), so the build would still succeed; the cost is coupling, not breakage. The genuinely already-shared packages between knowledgecommands and suiteinstall are commandruntime, resultmodel and settingshooks.\n\ncompareSemver: knowledgecommands does not import publication and publication does not import knowledgecommands, so there is no \"package holding an earlier copy\" that the other already imports. REQ-557 never names a canonical home for compareSemver at all - line 35 assigns homes only for the path and error helpers (corehelpers) and requestIDLess (repositorymodel). corehelpers is not imported by knowledgecommands either, so it is not an available home here. The only packages both knowledgecommands and publication already import are commandruntime, resultmodel, gittransaction and ownedprocess; none is a helpers package, and putting a semver comparator in any of them is a worse fit than leaving two copies. A new leaf package (no internal dependencies) is the only option that satisfies the stated no-new-edges intent.",
+  "corrections_to_the_request": "Every claim below was re-verified against HEAD (c7adc63). The cited commit dc8a64e3 is confirmed absent from this clone (`git cat-file -t dc8a64e3` -> \"Not a valid object name\"), so none of the request's numbers could be taken on trust.\n\nC1. The count is wrong: the baseline command prints FIFTEEN lines at HEAD, not fourteen. The extra copy is `uniqueSorted` at internal/repairvalidation/already_green.go:442. The request's own file list accounts for exactly fourteen, which is why the number is off - repairvalidation is never mentioned anywhere in REQ-557. Outside this slice, but it invalidates the headline figure and the write_set.\n\nC2. The write_set is missing a file this slice cannot be done without. Line 28 lists internal/publication/capture_files.go (which holds firstError) but NOT internal/publication/release.go, which holds one of the two compareSemver definitions. release.go appears only in prose at line 53. Reconciling compareSemver requires editing release.go, so the declared write set is incomplete. It is also missing internal/repairvalidation/already_green.go per C1.\n\nC3. \"compareSemver returns 0 for unparseable input while internal/publication/release.go rejects it\" (line 53) is wrong in two ways. Neither function rejects anything - both have signature `func(string, string) int` with no error return, and the publication copy also returns 0 for unparseable input. What actually happens is that publication's single caller converts that 0 into a refusal via `!= 1`. The \"rejection\" lives in parseSemver's ok=false and in the caller's predicate, not in compareSemver. The knowledgecommands copy is the one that behaves badly here: it discards the strconv.Atoi error and fabricates an ordering, so \"abc\" vs \"1.0.0\" returns -1 rather than 0.\n\nC4. The request MISSES the largest difference between the two compareSemver copies, and it is not a parsing difference at all: the argument order is INVERTED. knowledgecommands returns -1 when the first argument is older; publication returns +1 when the second argument is newer. Nine of eleven test pairs return opposite signs. Both callers take a wrong branch, not an error branch, if either adopts the other's contract - publication/release.go:26 would accept a version DOWNGRADE (2.0.0 -> 1.0.0), and knowledgecommands/interview_commands.go:820 would write an older template version into the session. Whoever plans this REQ must treat compareSemver as a semantic reconciliation with a sign flip, not as a parse-strictness tweak. Reconciling it by naively picking one body will corrupt a release or a session stamp silently.\n\nC5. \"physicalPath is EvalSymlinks+Abs; knowledgecommands walks missing ancestors; same name, different contract\" (line 54) is directionally right but incomplete. There is a second contract axis the request does not name: the knowledgecommands copy has NO filepath.Abs, so it returns a relative path for a relative existing input, where the suiteinstall copy always returns an absolute one. That axis is live at suiteinstall/update_transaction.go:179, whose result feeds a `strings.HasPrefix` containment guard and whose --skill-root flag is user-supplied and may be relative. A merge that only reconciles the missing-path axis would silently break relative --skill-root.\n\nC6. The no-import-cycles acceptance criterion at line 61 rests on a false premise for this slice. Neither knowledgecommands nor suiteinstall imports corehelpers today (verified via go list -deps), and neither knowledgecommands nor publication imports the other. No cycle would be created, but the claim that no new edges are needed is wrong, and REQ-557 assigns no canonical home for compareSemver at all. See import_facts.\n\nC7. Line 43 calls these \"latent correctness drift\". For physicalPath that is accurate. For compareSemver it understates the risk: the inversion means any deduplication done by pattern-matching on the name alone produces an active, silent correctness bug in release planning. Recommend the REQ carry an explicit decision recording the chosen orientation and the caller predicate rewrite that goes with it.\n\nC8. Nothing in the test suite guards any of this. The only test naming either helper is knowledgecommands/memory_commands_test.go:390 (physicalPath, on a path the test creates first). No test anywhere in internal/ exercises compareSemver, parseSemver, semverMajor or ensureSafeTarget. Every behaviour difference reported here would pass CI unnoticed, so the REQ's acceptance line about tests being \"unchanged except where a test named a deleted private helper directly\" is satisfiable while shipping C4's bug. New tests are required, not optional.\n\nMethod note: findings come from reading the four bodies and all nine non-test call sites, from compiling verbatim copies of all four functions and running them against each caller's exact predicate, and from building the real CLI and confirming that `bkb-init --kb newkb --dry-run` succeeds against a non-existent target today. The git checkout was not modified (`git status --porcelain` empty)."
+ }
+]

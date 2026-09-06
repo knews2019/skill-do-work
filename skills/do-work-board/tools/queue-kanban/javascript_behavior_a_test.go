@@ -1466,6 +1466,10 @@ func TestJavaScriptBehaviorUserRequestsOnlyLensFoldsCardsUntilARowIsOpened(t *te
 		sliceBalancedBlockAfter(t, indexHtml, "function recentlyDoneIds("),
 		sliceBalancedBlockAfter(t, indexHtml, "function renderUserRequestLens("),
 	}
+	// REQ-486: the By UR header now builds a progress strip, so the renderer
+	// reaches into the summary fragment. Without these blocks the probe dies with
+	// a ReferenceError rather than measuring anything.
+	functionBlocks = append(userRequestSummaryCallSiteBlocks(t, indexHtml), functionBlocks...)
 	javascriptProbe := `
 Date.now = function () { return Date.parse("2026-08-15T12:00:00Z"); };
 var boardData = {
@@ -1549,11 +1553,13 @@ function describeGroups(groups) {
     collectByClassName(group, "ur-group-cards").forEach(function (cardsNode) {
       cardsNode.childNodes.forEach(function (card) { cardIds.push(card.requestId); });
     });
+    var detailButton = collectByClassName(group, "ur-group-detail")[0];
     return {
       userRequestId: collectByClassName(group, "ur-id")[0].textContent,
       expanded: headOf(group).getAttribute("aria-expanded") || "",
       cardIds: cardIds,
-      drawerTriggers: collectDrawerTriggers(group)
+      drawerTriggers: collectDrawerTriggers(group),
+      detailButtonId: (detailButton && detailButton.dataset.detailId) || ""
     };
   });
 }
@@ -1647,10 +1653,30 @@ process.stdout.write(JSON.stringify({
 	if strings.Join(result.ScopedFolded[0].CardIds, ",") != "REQ-601" {
 		t.Fatalf("opened row under a status filter showed %#v, want only the matching REQ-601", result.ScopedFolded[0].CardIds)
 	}
-	// The fold is the folded lens's alone: a by-UR head announces no expanded state.
-	if result.ScopedByUserRequest[0].Expanded != "" {
-		t.Fatalf("by-UR head carries aria-expanded=%q; the fold must not leak into the always-open lens",
-			result.ScopedByUserRequest[0].Expanded)
+	// REQ-486 inverted this assertion. It used to demand that a by-UR head carry
+	// NO aria-expanded, because only URs only could fold. Both readings fold now,
+	// and the only difference left is where each one starts — so the pair is
+	// asserted together, in one place, and a reader who finds this line cannot
+	// mistake the new expectation for a regression of the old one. A build that
+	// simply stops setting aria-expanded on the by-UR head silently drops the
+	// fold; a build that starts the by-UR head collapsed changes what the lens
+	// is for.
+	byUserRequestHead := result.ScopedByUserRequest[0]
+	urOnlyHead := result.FoldedInitial[0]
+	if byUserRequestHead.Expanded != "true" || len(byUserRequestHead.CardIds) == 0 ||
+		urOnlyHead.Expanded != "false" || len(urOnlyHead.CardIds) != 0 {
+		t.Fatalf("fold defaults = by-UR %q with %d cards, URs only %q with %d cards; REQ-486 wants by-UR open (\"true\", cards present) and URs only collapsed (\"false\", no cards)",
+			byUserRequestHead.Expanded, len(byUserRequestHead.CardIds),
+			urOnlyHead.Expanded, len(urOnlyHead.CardIds))
+	}
+	// One element must not mean two things in either reading: the head is the
+	// fold control, the sibling button is the drawer trigger. If the head still
+	// carried data-detail-*, this group would report two drawer triggers.
+	for _, row := range append(append([]renderedUserRequestRow{}, result.FoldedInitial...), result.ScopedByUserRequest...) {
+		if row.DetailButtonId != row.UserRequestId || len(row.DrawerTriggers) != 1 || row.DrawerTriggers[0] != row.UserRequestId {
+			t.Fatalf("row %s: Details button names %q and the group reports drawer triggers %#v; want exactly one trigger, on the sibling button",
+				row.UserRequestId, row.DetailButtonId, row.DrawerTriggers)
+		}
 	}
 }
 

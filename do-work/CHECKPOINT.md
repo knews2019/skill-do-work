@@ -1,7 +1,7 @@
 ---
-session_ended: 2026-09-05T22:45:45Z
+session_ended: 2026-09-06T08:57:08Z
 last_completed: REQ-483
-queue_state: [8 pending, 0 pending-answers, 0 blocked, 0 blocked-archive-collision, 0 blocked-dependency-cycle, 3 in-progress]
+queue_state: [4 pending, 0 pending-answers, 0 blocked, 0 blocked-archive-collision, 0 blocked-dependency-cycle, 4 in-progress]
 reqs_processed_this_session: 1
 session_depth: light
 ---
@@ -19,8 +19,24 @@ session_depth: light
 ## In Progress (interrupted)
 
 
-- REQ-583: Addendum: pin the evidence-gate remedy redirection, layered guard and interrupted focused-test code — claimed 2026-09-05T17:05:17Z — writer: t2s-Virtual-Machine.local:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2
 
-- REQ-587: Give the Timeline view one scroll surface, in the same style as the Activity view — claimed 2026-09-05T17:54:34Z — writer: t2s-Virtual-Machine.local:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2
 
-- REQ-591: Reduce repeated setup and unaffected reruns in the fast gate — claimed 2026-09-05T20:04:13Z — writer: t2s-Virtual-Machine.local:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2
+
+
+
+
+
+
+
+
+
+
+
+- REQ-597: Correct ten stale claims across the rest of the prescribed-shell guide — claimed 2026-09-06T06:59:15Z — writer: vm:/home/user/skill-do-work
+
+
+- REQ-600: Put the SIGPIPE trap in the prime shell authors read, and fix the one shipped block that carries it — claimed 2026-09-06T07:26:22Z — writer: vm:/home/user/skill-do-work
+
+- REQ-598: Close the live nil-handle panic in transaction rollback, and decide the handle once instead of eleven times — claimed 2026-09-06T07:40:57Z — writer: vm:/home/user/skill-do-work
+
+- REQ-602: Repoint the lesson-satellite links whose archived targets moved, and check satellite links — claimed 2026-09-06T08:12:01Z — writer: vm:/home/user/skill-do-work

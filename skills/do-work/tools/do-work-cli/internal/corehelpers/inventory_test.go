@@ -372,6 +372,32 @@ func TestTerminalSuccessAliases(t *testing.T) {
 	}
 }
 
+func TestAssociationUnderWorkingDirectoryCheckoutSkipsBlockedArchivedRequest(t *testing.T) {
+	// A checkout beneath a directory named "working" must not turn every archived
+	// REQ into an in-flight one. In-flight-ness comes from the root being walked
+	// (do-work/working versus do-work/archive), never from the checkout's path.
+	// The fixture sits under a do-work/working/ directory so that no substring of
+	// the absolute path, however specific, can stand in for the walked root.
+	repository := filepath.Join(t.TempDir(), "do-work", "working", "project")
+	if err := os.MkdirAll(repository, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	writeMatrixFile(t, repository, "do-work/archive/REQ-905-blocked.md", "---\nid: REQ-905\nstatus: blocked\n---\n\n## Implementation Summary\n- `project.txt` (modified)\n")
+	writeMatrixFile(t, repository, "do-work/working/REQ-906-blocked-in-flight.md", "---\nid: REQ-906\nstatus: blocked\n---\n\n## Implementation Summary\n- `in-flight.txt` (modified)\n")
+	writeMatrixFile(t, repository, "project.txt", "uncommitted\n")
+	writeMatrixFile(t, repository, "in-flight.txt", "uncommitted\n")
+	associations, err := AssociateProjectPaths(repository, []string{"project.txt", "in-flight.txt"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if owner := associations["project.txt"]; owner != "" {
+		t.Fatalf("blocked archived request claimed project.txt through the checkout path: owner=%q", owner)
+	}
+	if owner := associations["in-flight.txt"]; owner != "REQ-906" {
+		t.Fatalf("working request must claim in-flight.txt whatever its status says: owner=%q", owner)
+	}
+}
+
 func TestProtectedInventoryPersistsLaterXAndRequiresStartedState(t *testing.T) {
 	repository := newGitFixture(t)
 	if err := os.WriteFile(filepath.Join(repository, "first.txt"), []byte("changed\n"), 0o600); err != nil {

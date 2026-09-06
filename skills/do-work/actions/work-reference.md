@@ -129,6 +129,14 @@ effort_estimate: effort-substantive   # OPTIONAL triage bit: effort-mechanical |
 # Written by the work action's ensure-estimate step or by verify-requests after a
 # material repair, produced deterministically by tools/estimate-p50.sh. Extraction
 # guide, confidence rubric, and presentation formats: actions/estimate-reference.md.
+# p50_active_minutes is DISPLAY ONLY on the board: parsed by
+# ../../do-work-board/tools/queue-kanban/model.go into the UR progress summary's
+# remaining-active-time figure, with no column logic, no ordering, and no
+# scheduling — the Timeline keeps forecasting from its own completed-work median.
+# Keep that parser in lock-step with this block, both changing in the same commit.
+# It is the only nested block the board reads, and only through the STRICT parse:
+# the salvage path for a malformed sibling line is flat and drops it, which the
+# board reports as an unknown forecast rather than as zero minutes.
 estimate:
   p50_active_minutes: 75
   confidence: medium            # low | medium | high
@@ -601,7 +609,6 @@ Four rows carry a judgment no typed record makes for you. **Rows 6 and 7 are not
 |---|---|---|
 | "The summary says files changed" | Check the file system | The summary is a claim, not evidence |
 | "Tests pass so requirements are met" | Compare requirements to diff, word by word | Tests can be incomplete |
-| "The builder checked the UNIFY box" | Read the actual diff for debug artifacts | A checked box is a claim, not a fact |
 | "This works on my test case" | Test at least 2 additional cases including an edge case | One test case proves nothing about generality |
 | "The existing code was already like this" | Flag it in Discovered Tasks | Pre-existing problems are still problems |
 | "It's just a small deviation from the plan" | Log it as a Decision (D-XX) | Unlogged deviations break traceability |

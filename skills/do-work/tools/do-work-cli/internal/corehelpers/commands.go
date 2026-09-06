@@ -721,9 +721,19 @@ func archiveWalkFailure(repositoryRoot string) string {
 	if err != nil || !info.IsDir() {
 		return fmt.Sprint(err)
 	}
-	command := exec.Command("find", archiveRoot, "-name", "REQ-*.md", "-print0")
-	if output, err := command.CombinedOutput(); err != nil {
-		return strings.TrimSpace(string(output) + " " + err.Error())
+	// Readability probe, not a match: any entry the walk cannot traverse is the failure,
+	// whether or not the unreadable subtree holds a REQ file. DiscoverRepository downgrades
+	// the same errors to warnings (repositorymodel.DiscoverRepository), so this is the only
+	// place an unreadable archive turns into a hard finding.
+	var archiveWalkEvidence string
+	if walkError := filepath.WalkDir(archiveRoot, func(entryPath string, entry os.DirEntry, entryError error) error {
+		if entryError != nil {
+			archiveWalkEvidence = fmt.Sprintf("%s: %v", entryPath, entryError)
+			return entryError
+		}
+		return nil
+	}); walkError != nil {
+		return archiveWalkEvidence
 	}
 	return ""
 }

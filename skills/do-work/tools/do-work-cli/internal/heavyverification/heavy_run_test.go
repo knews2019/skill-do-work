@@ -7,6 +7,7 @@
 package heavyverification
 
 import (
+	"io"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -39,6 +40,11 @@ const heavyRunTestManifest = `{
       "coverage": [{"kind": "exact", "path": "lanes/skip.sh"}]
     },
     {
+      "id": "skip-then-fail-lane",
+      "argv": ["sh", "lanes/skip-then-fail.sh"],
+      "coverage": [{"kind": "exact", "path": "lanes/skip-then-fail.sh"}]
+    },
+    {
       "id": "slow-lane",
       "argv": ["sh", "lanes/slow.sh"],
       "coverage": [{"kind": "exact", "path": "lanes/slow.sh"}]
@@ -57,24 +63,31 @@ const slowLaneChildFile = "slow-lane-child.pid"
 
 // newHeavyRunRepository commits a manifest whose lanes are real scripts: one
 // green lane that takes a measurable second, one red lane, one lane that
-// announces a skip, and one lane that backgrounds a TERM-deaf descendant.
+// announces a skip, one lane that announces a skip and then fails anyway, and
+// one lane that backgrounds a TERM-deaf descendant.
 func newHeavyRunRepository(t *testing.T) string {
 	t.Helper()
 	repositoryRoot, _ := newHeavyTestRepository(t, heavyRunTestManifest)
 	writeHeavyTestFile(t, repositoryRoot, "lanes/green.sh", "echo ran > "+greenLaneMarkerFile+"\nsleep 1\nexit 0\n")
 	writeHeavyTestFile(t, repositoryRoot, "lanes/red.sh", "exit 3\n")
 	writeHeavyTestFile(t, repositoryRoot, "lanes/skip.sh", "printf 'SKIP: no browser is available\\n'\nexit 0\n")
+	writeHeavyTestFile(t, repositoryRoot, "lanes/skip-then-fail.sh", "printf 'SKIP: no browser is available\\n'\nexit 4\n")
 	writeHeavyTestFile(t, repositoryRoot, "lanes/slow.sh", "(trap '' TERM; sleep 30) &\necho $! > "+slowLaneChildFile+"\nwait\n")
 	writeHeavyTestFile(t, repositoryRoot, "do-work/queue/REQ-900-orchestrator-bookkeeping.md", "queue state\n")
 	commitHeavyTestChanges(t, repositoryRoot, "lane scripts")
 	return repositoryRoot
 }
 
+// runHeavyLanes discards the lane output tee rather than letting it reach this
+// process's stderr. The fixture lanes below print `SKIP:` announcements on
+// purpose, and the heavy lane that runs this package's tests is watched for
+// exactly that prefix on its own output.
 func runHeavyLanes(t *testing.T, repositoryRoot string, arguments ...string) resultmodel.CommandResult {
 	t.Helper()
-	return handleRunHeavyVerification(
+	return runHeavyVerificationLanes(
 		commandruntime.ExecutionContext{RepositoryRoot: repositoryRoot},
 		append([]string{"--manifest", "heavy-lanes.json"}, arguments...),
+		io.Discard,
 	)
 }
 
@@ -133,6 +146,107 @@ func TestRunLanesMarksSkipFromExplicitSkipLine(t *testing.T) {
 	}
 	if !strings.Contains(strings.Join(result.Findings[0].Evidence, " "), "SKIP: no browser is available") {
 		t.Fatalf("skip finding lost the announcing line: %#v", result.Findings[0])
+	}
+}
+
+// TestRunLanesReportsARedLaneThatAlsoPrintedASkipLine pins the misreport a
+// heavy run hit at revision 6646ba51: the do-work-cli lane exited non-zero with
+// a failing test, printed a fixture's `SKIP:` line along the way, and was
+// recorded as a lane that did not run. A skip line is an announcement; a
+// non-zero exit status is a result, and the result decides.
+func TestRunLanesReportsARedLaneThatAlsoPrintedASkipLine(t *testing.T) {
+	repositoryRoot := newHeavyRunRepository(t)
+
+	result := runHeavyLanes(t, repositoryRoot, "--lane", "skip-then-fail-lane")
+
+	if result.Outcome != resultmodel.OutcomeSuccess || result.HeavyVerificationRun == nil {
+		t.Fatalf("run result = %#v", result)
+	}
+	lanes := result.HeavyVerificationRun.Lanes
+	if len(lanes) != 1 || lanes[0].Skipped || lanes[0].ExitStatus != 4 {
+		t.Fatalf("a lane that ran and failed was recorded as skipped: %#v", lanes)
+	}
+	if len(result.Findings) != 1 || result.Findings[0].Code != "HEAVY-RUN-LANE-RED" {
+		t.Fatalf("failed lane finding = %#v", result.Findings)
+	}
+	// The verdict is the exit status and the announcement is the lane's own
+	// reason; an operator needs both, so the red finding carries the line the
+	// skipped finding would have carried.
+	redEvidence := strings.Join(result.Findings[0].Evidence, "\n")
+	if !strings.Contains(redEvidence, "exited 4") || !strings.Contains(redEvidence, "SKIP: no browser is available") {
+		t.Fatalf("the red finding dropped the lane's own announcement: %#v", result.Findings[0].Evidence)
+	}
+}
+
+// TestRunLanesRefusesARunThatNamesNoLane pins the second zero-value rule in
+// RunLanes, the same shape as the LaneTimeout one below. An empty LaneIDs used
+// to select no lanes and return a successful run with an empty lane list: the
+// heavy tier reporting green for verifying nothing. The CLI parser refuses it
+// too, but a caller that builds the struct in process never reaches the parser.
+func TestRunLanesRefusesARunThatNamesNoLane(t *testing.T) {
+	repositoryRoot := newHeavyRunRepository(t)
+
+	run, findings, err := RunLanes(LaneRunRequest{
+		RepositoryRoot: repositoryRoot, ManifestPath: "heavy-lanes.json",
+		LaneOutputWriter: io.Discard,
+	})
+	if err == nil {
+		t.Fatalf("a run naming no lane succeeded: lanes=%d findings=%d", len(run.Lanes), len(findings))
+	}
+	if refusalCode := LaneRunRefusalCode(err); refusalCode != "HEAVY-RUN-NO-LANE-REQUESTED" {
+		t.Fatalf("refusal code = %q, want HEAVY-RUN-NO-LANE-REQUESTED (err = %v)", refusalCode, err)
+	}
+	if len(run.Lanes) != 0 {
+		t.Fatalf("a refused run still reported lanes: %#v", run.Lanes)
+	}
+}
+
+// TestNestedLaneOutputNeverReachesThisProcessStderr is the assertion the writer
+// seam was missing. The lane that runs this package's tests is watched for
+// `SKIP:` on its own output, so a fixture lane's announcement reaching this
+// process's stderr is read by the parent runner as "the real lane did not run".
+// Compiling this package and running its test binary directly is the only way
+// that leak is visible from outside, which is why the lane it breaks cannot
+// catch it; this test watches the writer the leak travels through instead.
+func TestNestedLaneOutputNeverReachesThisProcessStderr(t *testing.T) {
+	repositoryRoot := newHeavyRunRepository(t)
+	readCapturedStderr := captureProcessStderr(t)
+
+	result := runHeavyLanes(t, repositoryRoot, "--lane", "skip-lane")
+
+	if result.Outcome != resultmodel.OutcomeSuccess || result.HeavyVerificationRun == nil {
+		t.Fatalf("run result = %#v", result)
+	}
+	for _, capturedLine := range strings.Split(readCapturedStderr(), "\n") {
+		if strings.HasPrefix(capturedLine, laneSkipPrefix) {
+			t.Fatalf("a fixture lane's announcement reached this process's stderr: %q; the enclosing heavy lane reads that as its own skip", capturedLine)
+		}
+	}
+}
+
+// captureProcessStderr redirects this process's stderr to a file for the rest
+// of the test and returns a reader for what landed there. It swaps the
+// os.Stderr variable rather than file descriptor 2, because that variable is
+// the seam: it is what the CLI handler passes as the lane output writer, and
+// what an in-package caller would pass by mistake.
+func captureProcessStderr(t *testing.T) func() string {
+	t.Helper()
+	captureFile, err := os.CreateTemp(t.TempDir(), "process-stderr-*.log")
+	if err != nil {
+		t.Fatalf("create the stderr capture file: %v", err)
+	}
+	originalStderr := os.Stderr
+	os.Stderr = captureFile
+	t.Cleanup(func() {
+		os.Stderr = originalStderr
+		_ = captureFile.Close()
+	})
+	return func() string {
+		capturedBytes, err := os.ReadFile(captureFile.Name())
+		if err != nil {
+			t.Fatalf("read the stderr capture file: %v", err)
+		}
+		return string(capturedBytes)
 	}
 }
 
@@ -220,4 +334,30 @@ func readSlowLaneChildPID(t *testing.T, repositoryRoot string) int {
 		t.Fatalf("parse slow lane child pid %q: %v", contents, err)
 	}
 	return descendantPID
+}
+
+// TestRunLanesWithoutLaneTimeoutUsesTheDefaultBound pins the zero-value rule in
+// RunLanes. The 1800-second default is chosen by the CLI argument parser, so an
+// in-process caller that leaves LaneTimeout unset once armed time.NewTimer(0)
+// and had its lane terminated while it was still starting — a green lane
+// reported red, and only under load. green-lane sleeps a full second, far past
+// an instant bound and far below the default.
+func TestRunLanesWithoutLaneTimeoutUsesTheDefaultBound(t *testing.T) {
+	repositoryRoot := newHeavyRunRepository(t)
+
+	run, _, err := RunLanes(LaneRunRequest{
+		RepositoryRoot: repositoryRoot, ManifestPath: "heavy-lanes.json",
+		LaneIDs: []string{"green-lane"}, LaneOutputWriter: io.Discard,
+	})
+	if err != nil {
+		t.Fatalf("run with no LaneTimeout: %v", err)
+	}
+	if len(run.Lanes) != 1 {
+		t.Fatalf("lanes = %#v", run.Lanes)
+	}
+	lane := run.Lanes[0]
+	if lane.ExitStatus != 0 {
+		t.Fatalf("lane with no LaneTimeout = %#v, want exit 0; exit %d is the lane-timeout status, meaning the unset field armed an instant bound",
+			lane, HeavyLaneTimeoutStatus)
+	}
 }

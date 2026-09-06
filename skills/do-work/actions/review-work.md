@@ -491,7 +491,6 @@ Shared conditions live in [shared-principles.md](../crew-members/shared-principl
 If any of these are true, escalate review depth regardless of route:
 
 - Implementation Summary lists files but `git diff` shows no changes in those files
-- Builder checked all P-A-U boxes but the diff contains `console.log`, `debugger`, or TODO/FIXME
 - New files exist but nothing imports them (dead code)
 - Tests pass but test file has trivial assertions (`expect(true).toBe(true)` style)
 - Scope section declares 3 files but Implementation Summary lists 8

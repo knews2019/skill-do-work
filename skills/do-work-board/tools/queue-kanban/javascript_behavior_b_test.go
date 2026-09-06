@@ -84,6 +84,11 @@ func TestJavaScriptBehaviorByUserRequestLensCountsRecentlyDoneAsActive(t *testin
 	}
 
 	functionBlocks := []string{
+		// REQ-486 re-expressed isTerminalResolvedStatus as isCompletedStatus plus
+		// "cancelled", mirroring model.go's composition instead of carrying a
+		// fourth literal status list in the client. Slicing the composed function
+		// without its sibling throws.
+		sliceBalancedBlockAfter(t, indexHtml, "function isCompletedStatus("),
 		sliceBalancedBlockAfter(t, indexHtml, "function isTerminalResolvedStatus("),
 		sliceBalancedBlockAfter(t, indexHtml, "function userRequestHasOpenOrRecentWork("),
 		sliceBalancedBlockAfter(t, indexHtml, "function recentlyDoneIds("),

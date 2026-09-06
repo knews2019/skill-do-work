@@ -43,7 +43,7 @@ fi
 # --- the spec's uncalibrated example printed 125). ------------------------
 expect_line() {
   local probe_name="$1" output="$2" wanted_line="$3"
-  if ! printf '%s\n' "$output" | grep -qxF -- "$wanted_line"; then
+  if ! grep -qxF -- "$wanted_line" <<<"$output"; then
     report_failure "$probe_name: expected line '$wanted_line' missing from output: $(printf '%s' "$output" | tr '\n' '|')"
   fi
 }

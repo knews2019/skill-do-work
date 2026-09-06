@@ -11,7 +11,10 @@ chmod +x "$atomic_bin/curl"
 printf 'stable' > "$fixture_root/atomic-target"
 PATH="$atomic_bin:$PATH" "$core_scripts/atomic-download.sh" https://example.invalid/fail "$fixture_root/atomic-target" >/dev/null 2>&1 && fail_case 'atomic-download partial-publication case accepted a failed transfer'
 [ "$(cat "$fixture_root/atomic-target")" = stable ] || fail_case 'atomic-download partial-publication case changed the final target'
-find "$fixture_root" -name 'atomic-target.download.*' -print -quit | grep -q . && fail_case 'atomic-download partial-publication case leaked private scratch'
+leaked_private_paths="$(find "$fixture_root" -name 'atomic-target.download.*' -print -quit)" \
+  || fail_case 'atomic-download partial-publication case could not search the fixture tree for private scratch'
+[ -n "$leaked_private_paths" ] \
+  && fail_case 'atomic-download partial-publication case leaked private scratch'
 
 # atomic-download: a rate-limited host answers 429 once and then succeeds. The fake curl
 # below models curl's own internal retry loop, so it survives that 429 only if the caller
@@ -60,7 +63,9 @@ GH_TOKEN='' GITHUB_TOKEN='' PATH="$atomic_retry_bin:$PATH" \
   || fail_case 'atomic-download retry case did not let curl retry the rate-limited transfer'
 [ -z "$(cat "$fixture_root/atomic-header")" ] \
   || fail_case 'atomic-download retry case sent an Authorization header with no token configured'
-find "$fixture_root" -name 'atomic-retry-target.download.*' -print -quit | grep -q . \
+leaked_private_paths="$(find "$fixture_root" -name 'atomic-retry-target.download.*' -print -quit)" \
+  || fail_case 'atomic-download retry case could not search the fixture tree for private scratch'
+[ -n "$leaked_private_paths" ] \
   && fail_case 'atomic-download retry case leaked private scratch'
 
 # atomic-download: an opt-in token becomes a bearer credential; GH_TOKEN wins over GITHUB_TOKEN.
@@ -107,7 +112,9 @@ PATH="$atomic_success_bin:$PATH" \
   || fail_case 'atomic-download occupied-target case did not leave the occupying directory in place'
 [ "$(cat "$atomic_occupied_target/pre-existing.txt")" = occupant ] \
   || fail_case 'atomic-download occupied-target case disturbed the occupying directory contents'
-find "$atomic_occupied_target" -name '*.download.*' -print -quit | grep -q . \
+leaked_private_paths="$(find "$atomic_occupied_target" -name '*.download.*' -print -quit)" \
+  || fail_case 'atomic-download occupied-target case could not search the occupying directory'
+[ -n "$leaked_private_paths" ] \
   && fail_case 'atomic-download occupied-target case abandoned its private file inside the occupant'
 
 prescribed_shell_finish

@@ -21,7 +21,9 @@ printf 'occupant\n' > "$capture_occupied_root/assets/result.png/pre-existing.txt
   || fail_case 'capture-screenshot occupied-destination case did not leave the occupying directory in place'
 [ "$(cat "$capture_occupied_root/assets/result.png/pre-existing.txt")" = occupant ] \
   || fail_case 'capture-screenshot occupied-destination case disturbed the occupying directory contents'
-find "$capture_occupied_root/assets/result.png" -name '*.copying.*' -print -quit | grep -q . \
+leaked_private_paths="$(find "$capture_occupied_root/assets/result.png" -name '*.copying.*' -print -quit)" \
+  || fail_case 'capture-screenshot occupied-destination case could not search the occupying directory'
+[ -n "$leaked_private_paths" ] \
   && fail_case 'capture-screenshot occupied-destination case abandoned its private copy inside the occupant'
 
 # capture-screenshot: coordinate two writers so the loser cannot publish the winner's private copy.
@@ -71,6 +73,9 @@ fi
 [ -n "$capture_winner" ] && [ ! -e "$capture_root/$capture_winner/source.png" ] \
   && [ "$(cat "$capture_root/$capture_loser/source.png" 2>/dev/null)" = "dispatch-$capture_loser" ] \
   || fail_case 'capture-screenshot coordinated-race case did not preserve only the loser source'
-find "$capture_root/assets" -name 'result.png.copying.*' -print -quit | grep -q . && fail_case 'capture-screenshot coordinated-race case leaked private scratch'
+leaked_private_paths="$(find "$capture_root/assets" -name 'result.png.copying.*' -print -quit)" \
+  || fail_case 'capture-screenshot coordinated-race case could not search the assets directory'
+[ -n "$leaked_private_paths" ] \
+  && fail_case 'capture-screenshot coordinated-race case leaked private scratch'
 
 prescribed_shell_finish

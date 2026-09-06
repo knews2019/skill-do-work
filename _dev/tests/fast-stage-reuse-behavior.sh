@@ -31,10 +31,14 @@ mkdir -p \
   "$project_root/_dev/tests" \
   "$project_root/skills/do-work/tools" \
   "$project_root/module-alpha" \
-  "$project_root/do-work/queue"
+  "$project_root/do-work/queue" \
+  "$project_root/do-work/runs"
 
-# The stage's own toolchain probe reads a file under do-work/, which is the one
-# tree no seal includes, so it moves the probe output and nothing else.
+# alpha-stage covers do-work/ the way the shipped queue-kanban stage does: that
+# stage builds its board from the real tree, so a change there must force it.
+# The stage's own toolchain probe reads a file under do-work/runs/, which the
+# manifest excludes from every seal, so the probe cases move the probe output and
+# nothing else.
 cat > "$project_root/_dev/tests/fast-stages.json" <<'MANIFEST'
 {
   "schema_version": 1,
@@ -42,17 +46,24 @@ cat > "$project_root/_dev/tests/fast-stages.json" <<'MANIFEST'
     {
       "id": "alpha-stage",
       "argv": ["run-go-tests-with-budget.sh", "module-alpha", "./..."],
-      "coverage": [{"kind": "subtree", "path": "module-alpha"}],
+      "coverage": [
+        {"kind": "subtree", "path": "module-alpha"},
+        {"kind": "subtree", "path": "do-work"}
+      ],
       "fingerprint": {
-        "toolchain_probes": [["cat", "do-work/toolchain.txt"]]
+        "toolchain_probes": [["cat", "do-work/runs/toolchain.txt"]]
       }
     }
   ],
-  "non_stage_coverage": [{"kind": "subtree", "path": "do-work"}]
+  "non_stage_coverage": [],
+  "seal_exclusions": [
+    {"kind": "subtree", "path": "do-work/runs"},
+    {"kind": "exact", "path": "do-work/test-durations.tsv"}
+  ]
 }
 MANIFEST
 printf 'alpha source 1\n' > "$project_root/module-alpha/source.txt"
-printf 'toolchain 1\n' > "$project_root/do-work/toolchain.txt"
+printf 'toolchain 1\n' > "$project_root/do-work/runs/toolchain.txt"
 printf -- '---\nid: REQ-001\n---\n' > "$project_root/do-work/queue/REQ-001-fixture.md"
 # The wrapper reaches the CLI through the skill's canonical launcher path. The
 # shim forwards to the real launcher in this repository so the command under
@@ -140,9 +151,19 @@ change_covered_input 2
 run_stage
 expect_case 'a covered input change executes' yes 0 'EXECUTING (fingerprint_mismatch)'
 
+# The failure this catches: a do-work/-only edit reused stale evidence, so the
+# gate printed "Maintainer verification passed." and exited 0 while the stage's
+# own test failed on that same tree.
 printf -- '---\nid: REQ-002\n---\n' > "$project_root/do-work/queue/REQ-002-fixture.md"
 run_stage
-expect_case 'queue state alone still reuses' no 0 'REUSED (fingerprint_match, recorded '
+expect_case 'a queue-tree change executes the stage that reads it' yes 0 'EXECUTING (fingerprint_mismatch)'
+
+# The failure this catches: the stage appends this log itself while it runs, and
+# the recorded fingerprint is the pre-run one, so a seal over the log could never
+# match the evidence it authorized and the stage would never reuse again.
+printf 'probe\tprobe\t0.00\t0\n' >> "$project_root/do-work/test-durations.tsv"
+run_stage
+expect_case "the gate's own duration log alone still reuses" no 0 'REUSED (fingerprint_match, recorded '
 
 change_covered_input 3
 stage_exit_status=9

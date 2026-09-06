@@ -65,6 +65,7 @@ fi
 
 for required_heading in \
   '## Per-file untracked inventory' \
+  '## Protected inventory fallbacks' \
   '## Merge-aware commit diff' \
   '## Commit file listing' \
   '## Local Git ignore' \

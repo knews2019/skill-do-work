@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/releaseownership"
+	"github.com/knews2019/skill-do-work/do-work-cli/internal/sharedprimitives"
 )
 
 // Undeclared-mirror admission. A release manifest names its version and
@@ -106,7 +107,7 @@ func plainVersionFileValue(path string, contents []byte) (string, bool) {
 			}
 		}
 	}
-	if _, ok := parseSemver(value); !ok {
+	if _, ok := sharedprimitives.ParseSemanticVersion(value); !ok {
 		return "", false
 	}
 	return value, true

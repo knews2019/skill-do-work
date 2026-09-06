@@ -283,3 +283,66 @@ func manifestSelectedLaneIDs(manifest laneManifest, changedPath string) []string
 	}
 	return selectedLaneIDs
 }
+
+// TestShippedFastStageManifestSealsTheQueuePathsItsStagesRead pins the half of
+// the fix that lives in data rather than in code. Every case above runs a
+// fixture manifest, so the shipped _dev/tests/fast-stages.json could be reverted
+// to its pre-fix content — declaring do-work/ as a tree no stage reads — and the
+// whole suite stayed green while the gate went back to reporting a false pass
+// for a do-work/-only change.
+//
+// It reads the real _dev/tests/fast-stages.json, so it lives in this
+// export-ignored file like every other maintainer-tree test: a directory-keyed
+// skip in a shipped file mistook any consumer whose install sits under a
+// directory that also has _dev/tests for this repository, and then failed on
+// the manifest that does not ship. Here there is no skip: a manifest that was
+// renamed, deleted or made undecodable fails instead of passing silently.
+func TestShippedFastStageManifestSealsTheQueuePathsItsStagesRead(t *testing.T) {
+	repositoryRoot, err := filepath.Abs("../../../../../..")
+	if err != nil {
+		t.Fatal(err)
+	}
+	manifestContents, err := os.ReadFile(filepath.Join(repositoryRoot, "_dev", "tests", "fast-stages.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	manifest, err := decodeFastStageManifest(manifestContents)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// The incident this pins by name: the do-work-cli stage's
+	// TestDiscoverRepositoryAcceptsProductionLegacyArchiveInputClass reads and
+	// byte-checks this one archived file, and appending a single newline to it
+	// made that test fail while the gate reported the stage REUSED and exited 0.
+	const archivedInputTheDoWorkCLIStageReads = "do-work/archive/UR-003/input.md"
+	if _, err := os.Stat(filepath.Join(repositoryRoot, filepath.FromSlash(archivedInputTheDoWorkCLIStageReads))); err != nil {
+		t.Fatalf("the archived input the do-work-cli stage byte-checks is no longer there: %v", err)
+	}
+	for _, coverageExpectation := range []struct{ stageID, path string }{
+		{"do-work-cli-fast-tests", archivedInputTheDoWorkCLIStageReads},
+		// The queue-kanban stage builds its board from the whole real tree, so
+		// its coverage has to reach the same path for the same reason.
+		{"queue-kanban-fast-tests", archivedInputTheDoWorkCLIStageReads},
+	} {
+		stage, err := selectFastStage(manifest, coverageExpectation.stageID)
+		if err != nil {
+			t.Errorf("%v", err)
+			continue
+		}
+		if !laneCoversPath(stage.Coverage, coverageExpectation.path) {
+			t.Errorf("stage %s does not cover %s, so a change there cannot force it to execute",
+				coverageExpectation.stageID, coverageExpectation.path)
+		}
+	}
+	// An exclusion beats coverage, so one that reaches this path would undo both
+	// coverage rules above without touching either of them.
+	if fastStageSealExcludesPath(manifest, archivedInputTheDoWorkCLIStageReads) {
+		t.Errorf("a seal exclusion matches %s, so no stage seals it however wide its coverage is",
+			archivedInputTheDoWorkCLIStageReads)
+	}
+	if laneCoversPath(manifest.NonStageCoverage, archivedInputTheDoWorkCLIStageReads) {
+		t.Errorf("non_stage_coverage claims no stage reads %s, and the do-work-cli stage byte-checks it",
+			archivedInputTheDoWorkCLIStageReads)
+	}
+}

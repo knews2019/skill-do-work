@@ -19,7 +19,7 @@ fixture_repo_commit_all "$reservation_project" 'captured fixtures'
 ln -s REQ-000203 "$reservation_project/do-work/.req-reservations/REQ-000777"
 reservation_output="$("$core_scripts/cleanup-req-reservations.sh" "$reservation_project")" \
   || fail_case 'cleanup-req-reservations redundant-marker case returned nonzero'
-printf '%s' "$reservation_output" | grep -q 'removed 2 stale REQ reservation marker' \
+grep -q 'removed 2 stale REQ reservation marker' <<<"$reservation_output" \
   || fail_case 'cleanup-req-reservations redundant-marker case did not report exactly two removals'
 [ ! -e "$reservation_project/do-work/.req-reservations/REQ-000203" ] \
   || fail_case 'cleanup-req-reservations redundant-marker case kept the queue-claimed marker'
@@ -45,7 +45,7 @@ reservation_uncommitted_output="$("$core_scripts/cleanup-req-reservations.sh" "$
 fixture_repo_commit_all "$reservation_project" 'captured REQ-500'
 reservation_committed_output="$("$core_scripts/cleanup-req-reservations.sh" "$reservation_project")" \
   || fail_case 'cleanup-req-reservations committed-capture case returned nonzero'
-printf '%s' "$reservation_committed_output" | grep -q 'removed 1 stale REQ reservation marker' \
+grep -q 'removed 1 stale REQ reservation marker' <<<"$reservation_committed_output" \
   || fail_case 'cleanup-req-reservations committed-capture case did not reap the landed marker'
 [ ! -e "$reservation_project/do-work/.req-reservations/REQ-000500" ] \
   || fail_case 'cleanup-req-reservations committed-capture case kept the landed marker'
@@ -65,7 +65,7 @@ reservation_inflight_output="$("$core_scripts/cleanup-req-reservations.sh" "$res
 touch -m -t 202001010000 "$reservation_project/do-work/.req-reservations/REQ-000999"
 reservation_timeout_output="$("$core_scripts/cleanup-req-reservations.sh" "$reservation_project")" \
   || fail_case 'cleanup-req-reservations timeout-marker case returned nonzero'
-printf '%s' "$reservation_timeout_output" | grep -q 'removed 1 stale REQ reservation marker' \
+grep -q 'removed 1 stale REQ reservation marker' <<<"$reservation_timeout_output" \
   || fail_case 'cleanup-req-reservations timeout-marker case did not report the timeout removal'
 [ ! -e "$reservation_project/do-work/.req-reservations/REQ-000999" ] \
   || fail_case 'cleanup-req-reservations timeout-marker case kept the abandoned marker'

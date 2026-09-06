@@ -94,7 +94,7 @@ func resolveTargets(snapshot *repositorymodel.RepositorySnapshot, graph *depende
 				if leftDepth != rightDepth {
 					return leftDepth < rightDepth
 				}
-				return requestIDLess(leftID, rightID)
+				return repositorymodel.RequestIDLess(leftID, rightID)
 			})
 			if len(members) == 0 {
 				exclusions = append(exclusions, targetNotFound(canonical, ProvenanceUserRequest))
@@ -148,7 +148,7 @@ func queueCandidates(snapshot *repositorymodel.RepositorySnapshot, provenance st
 		}
 	}
 	sort.SliceStable(candidates, func(leftIndex, rightIndex int) bool {
-		return requestIDLess(candidates[leftIndex].RequestID, candidates[rightIndex].RequestID)
+		return repositorymodel.RequestIDLess(candidates[leftIndex].RequestID, candidates[rightIndex].RequestID)
 	})
 	return candidates
 }

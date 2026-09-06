@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"log"
+	"math"
 	"os"
 	"os/exec"
 	"path"
@@ -239,6 +240,22 @@ type RequestTicket struct {
 	EffortEstimate             string
 	OriginalEffortEstimate     string // verbatim frontmatter effort_estimate before normalization ("" when absent)
 	EffortEstimateUnrecognized bool
+
+	// The informational forecast from the nested `estimate:` block —
+	// p50_active_minutes, roughly a 50% chance of finishing within that many
+	// ACTIVE agent minutes. READ ONLY, and read by exactly one consumer: the
+	// board's UR progress summary states each unfinished member's remaining
+	// active time from it. Nothing schedules, gates, orders, or buckets on it,
+	// and the Timeline deliberately keeps using its own projection median (see
+	// timelineChainStart) rather than this value. The block is nested, so it
+	// survives only the STRICT frontmatter parse; the salvage path is flat by
+	// design and drops it, which is why presence is a separate flag — absence
+	// there means "could not be read", never zero minutes.
+	// Keep this parser in lock-step with the `estimate:` block in
+	// actions/work-reference.md — a change to either lands in the same commit
+	// as the other.
+	HasEstimateP50ActiveMinutes bool
+	EstimateP50ActiveMinutes    float64
 
 	// FrontmatterMarkdown is the ORIGINAL fence bytes — everything up to and
 	// including the closing `---` and its newline — sliced at the body offset
@@ -795,6 +812,11 @@ func parseRequestTicket(filePath string, treeSection string) (*RequestTicket, er
 		normalizedEffortEstimate, effortEstimateRecognized = resolveSchemaField("effort_estimate", originalEffortEstimate)
 		effortEstimateUnrecognized = !effortEstimateRecognized
 	}
+	// The nested informational forecast, beside the effort bit it is deliberately
+	// NOT part of: effort_estimate is a two-value triage bit, this is the
+	// estimation system. Presence and value ship as a pair — see
+	// RequestTicket.EstimateP50ActiveMinutes on why absence cannot be a zero.
+	estimateP50ActiveMinutes, hasEstimateP50ActiveMinutes := coerceNestedScalarToFloat(fields["estimate"], "p50_active_minutes")
 	// impact carries the identical present-value-only shape. The absence branch
 	// is the load-bearing half: a REQ that never declared the field must leave ""
 	// here so the chip never fires on it, even though the contract default is
@@ -877,11 +899,14 @@ func parseRequestTicket(filePath string, treeSection string) (*RequestTicket, er
 		EffortEstimate:             normalizedEffortEstimate,
 		OriginalEffortEstimate:     originalEffortEstimate,
 		EffortEstimateUnrecognized: effortEstimateUnrecognized,
-		Batch:                      coerceScalarToString(fields["batch"]),
-		FrontmatterMarkdown:        frontmatterMarkdown,
-		BodyMarkdown:               bodyText,
-		FilePath:                   filePath,
-		TreeSection:                treeSection,
+
+		HasEstimateP50ActiveMinutes: hasEstimateP50ActiveMinutes,
+		EstimateP50ActiveMinutes:    estimateP50ActiveMinutes,
+		Batch:                       coerceScalarToString(fields["batch"]),
+		FrontmatterMarkdown:         frontmatterMarkdown,
+		BodyMarkdown:                bodyText,
+		FilePath:                    filePath,
+		TreeSection:                 treeSection,
 	}
 	if ticket.Sweep {
 		ticket.SweepInstancesOpen, ticket.SweepInstancesDone = countSweepInstances(bodyText)
@@ -2147,6 +2172,44 @@ func coerceScalarToString(value any) string {
 	default:
 		return strings.TrimSpace(fmt.Sprintf("%v", typed))
 	}
+}
+
+// coerceNestedScalarToFloat reads one numeric scalar out of a nested frontmatter
+// block — the `estimate:` map the strict parser returns whole. It is a lookup,
+// not a parser: parseFrontmatterFields already hands the block back as a
+// map[string]any whenever the record parses strictly.
+//
+// It returns ok=false for every way the value can be unusable — a nil or absent
+// block, a scalar where a map belongs, a missing key, a non-numeric value, a
+// non-finite one, and a value at or below zero (the schema floors
+// p50_active_minutes at 5, so zero is not a forecast anyone wrote). The caller
+// ships that verdict as a presence flag beside the value, because a reader that
+// cannot tell "no estimate" from "zero minutes" states a confident zero for the
+// records whose bookkeeping was worst.
+func coerceNestedScalarToFloat(value any, nestedKey string) (float64, bool) {
+	nestedBlock, isMap := value.(map[string]any)
+	if !isMap {
+		return 0, false
+	}
+	nestedValue, keyPresent := nestedBlock[nestedKey]
+	if !keyPresent {
+		return 0, false
+	}
+	var number float64
+	switch typed := nestedValue.(type) {
+	case int:
+		number = float64(typed)
+	case int64:
+		number = float64(typed)
+	case float64:
+		number = typed
+	default:
+		return 0, false
+	}
+	if math.IsNaN(number) || math.IsInf(number, 0) || number <= 0 {
+		return 0, false
+	}
+	return number, true
 }
 
 // coerceToStringList normalizes a YAML value into a string slice: a sequence maps

@@ -139,7 +139,9 @@ func TestBrowserBehaviorUserRequestCopyAllIncludesGroupedRequests(t *testing.T) 
         }
 
         function openUserRequest(userRequestId) {
-          var trigger = document.querySelector('.ur-group-head[data-detail-id="' + userRequestId + '"]');
+          // The head folds the group in both readings since REQ-486, so the
+          // drawer trigger is the sibling Details button, not the head.
+          var trigger = document.querySelector('.ur-group-detail[data-detail-id="' + userRequestId + '"]');
           if (!trigger) {
             throw new Error("no By-UR trigger for " + userRequestId);
           }

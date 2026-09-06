@@ -274,13 +274,13 @@ run_set_ids() {
 selected_ids="$(run_set_ids)"
 
 assert_selected() {
-  if ! printf '%s\n' "$selected_ids" | grep -qx "$1"; then
+  if ! grep -qx "$1" <<<"$selected_ids"; then
     report_failure "$2 — $1 was not selected; selected set was: $(printf '%s' "$selected_ids" | tr '\n' ' ')"
   fi
 }
 
 assert_not_selected() {
-  if printf '%s\n' "$selected_ids" | grep -qx "$1"; then
+  if grep -qx "$1" <<<"$selected_ids"; then
     report_failure "$2 — $1 was selected and must not be"
   fi
 }
@@ -305,14 +305,14 @@ assert_selected REQ-109 "T4 tdd is not a veto: test-first work carries an object
 # T6 — default keeps the negligible REQ; the flag removes it.
 assert_selected REQ-114 "T6 default: an impact-negligible REQ is mechanical work and stays selected without the flag"
 negligible_filtered_ids="$(run_set_ids --skip-impact-negligible)"
-if printf '%s\n' "$negligible_filtered_ids" | grep -qx REQ-114; then
+if grep -qx REQ-114 <<<"$negligible_filtered_ids"; then
   report_failure "T6 --skip-impact-negligible: REQ-114 must be dropped by the selector, since forwarding the flag to the handoff is inert"
 fi
-if ! printf '%s\n' "$negligible_filtered_ids" | grep -qx REQ-104; then
+if ! grep -qx REQ-104 <<<"$negligible_filtered_ids"; then
   report_failure "T6 --skip-impact-negligible: the flag must remove only negligible REQs, not narrow the set further"
 fi
 negligible_filtered_report="$(bash "$selector" --repo-root "$fixture_root" --skip-impact-negligible 2>/dev/null)"
-if ! printf '%s' "$negligible_filtered_report" | grep -q 'REQ-114'; then
+if ! grep -q 'REQ-114' <<<"$negligible_filtered_report"; then
   report_failure "T6 --skip-impact-negligible: the dropped REQ must still be reported with its reason"
 fi
 
@@ -321,10 +321,10 @@ assert_selected REQ-115 "T7 alias precedence: depends_on wins when both keys are
 
 # T8 — warn on a present-but-unrecognized value, never silently default.
 typo_warnings="$(bash "$selector" --repo-root "$fixture_root" 2>&1 >/dev/null)"
-if ! printf '%s' "$typo_warnings" | grep -q 'REQ-116'; then
+if ! grep -q 'REQ-116' <<<"$typo_warnings"; then
   report_failure "T8 warn-on-fallback: an unrecognized effort_estimate must be reported naming the REQ, not silently defaulted"
 fi
-if ! printf '%s' "$typo_warnings" | grep -q 'effort-mechanial'; then
+if ! grep -q 'effort-mechanial' <<<"$typo_warnings"; then
   report_failure "T8 warn-on-fallback: the warning must quote the value as written, so the typo is diagnosable"
 fi
 assert_not_selected REQ-116 "T8 warn-on-fallback: the documented default still applies — an unrecognized value reads as effort-substantive"
@@ -338,7 +338,7 @@ assert_selected REQ-119 "T11 promotion: a typo'd domain normalizes to general, s
 for promotion_case in 'REQ-118 impact impact-critcal' 'REQ-119 domain securty'; do
   set -- $promotion_case
   for promotion_needle in "$1" "$3"; do
-    if ! printf '%s' "$promotion_warnings" | grep -q -- "$promotion_needle"; then
+    if ! grep -q -- "$promotion_needle" <<<"$promotion_warnings"; then
       report_failure "T11 promotion: the $2 warn leg must name '$promotion_needle' — with the veto silently not firing, this warning is the only thing standing between a typo and a cheaper model building $1"
     fi
   done
@@ -346,15 +346,15 @@ done
 
 # T9 — no GNU-only tool flags, against the stated stock-macOS floor.
 selector_code_only="$(sed 's/[[:space:]]*#.*$//' "$selector")"
-if printf '%s' "$selector_code_only" | grep -qE 'xargs.*(-r\b|--no-run-if-empty)'; then
+if grep -qE 'xargs.*(-r\b|--no-run-if-empty)' <<<"$selector_code_only"; then
   report_failure "T9 portability: xargs -r is a GNU extension absent from the BSD xargs macOS ships; with the pipeline broken and no set -e the scan would report an empty selection and exit 0"
 fi
 
 # T12 — one canonical selector, no shell-side request parser.
-if ! printf '%s' "$selector_code_only" | grep -q 'do-work-cli.sh.*next --simple'; then
+if ! grep -q 'do-work-cli.sh.*next --simple' <<<"$selector_code_only"; then
   report_failure "T12 canonical delegation: the compatibility script must invoke do-work-cli next --simple"
 fi
-if printf '%s' "$selector_code_only" | grep -qE 'find .*REQ-|function normalize_|known_status\['; then
+if grep -qE 'find .*REQ-|function normalize_|known_status\[' <<<"$selector_code_only"; then
   report_failure "T12 canonical delegation: the compatibility script must not retain its own queue parser or readiness index"
 fi
 
@@ -375,11 +375,11 @@ assert_not_selected REQ-113 "control: a REQ assigned to another session must not
 # lets a user fix a mis-tagged REQ instead of wondering where it went.
 report_output="$(bash "$selector" --repo-root "$fixture_root" 2>/dev/null)"
 for held_back_id in REQ-103 REQ-106 REQ-107 REQ-108; do
-  if ! printf '%s' "$report_output" | grep -q "$held_back_id"; then
+  if ! grep -q "$held_back_id" <<<"$report_output"; then
     report_failure "held-back $held_back_id must appear in the report with its reason, not be dropped silently"
   fi
 done
-if ! printf '%s' "$report_output" | grep -q '^run_set: '; then
+if ! grep -q '^run_set: ' <<<"$report_output"; then
   report_failure "report must end with a run_set: line — it is the contract actions/run-simple-reqs.md reads"
 fi
 
@@ -395,10 +395,10 @@ write_req_empty_case() {
 }
 write_req_empty_case
 if empty_output="$(bash "$selector" --repo-root "$empty_root")"; then
-  if ! printf '%s' "$empty_output" | grep -q 'No pending REQ currently qualifies'; then
+  if ! grep -q 'No pending REQ currently qualifies' <<<"$empty_output"; then
     report_failure "T5 empty selection: must state that nothing qualifies"
   fi
-  if ! printf '%s' "$empty_output" | grep -qx 'run_set: '; then
+  if ! grep -qx 'run_set: ' <<<"$empty_output"; then
     report_failure "T5 empty selection: run_set: line must still be emitted, and empty"
   fi
 else

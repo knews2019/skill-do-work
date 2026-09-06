@@ -1,0 +1,100 @@
+{
+ "overall_percent": 88,
+ "dimensions": {
+  "requirements": 95,
+  "code_quality": 85,
+  "test_adequacy": 78,
+  "scope": 98,
+  "risk": "low: two files in one package, the only behaviour differences from the parent binary are (1) the intended one under a checkout whose path contains a working component and (2) a rule-consistent flip for an archived REQ stored under do-work/archive/working/; whole corehelpers package green, qualify success, gate fast tier 797 tests",
+  "acceptance": "accept as is; the surviving findings are low-severity tidy-ups (a stronger fixture path, a dead struct field, an unneeded git init, two record sentences) that can ride on REQ-601 or a later tidy"
+ },
+ "verdict": "The fix is correct and minimal in the sense that matters: the `/working/` substring test on the absolute path is gone, the two roots carry an active flag read in the callback, and the new test is red on the parent (exit 1, owner=\"REQ-905\") and green at the merge. Every mechanical claim in the record reproduced: build, vet, gofmt, package green, diff stat 2 files +43/-6, 796 to 797 tests by the gate's own counter, canonical qualify success. What did not fully hold is at the edges: the test does not pin the design claim in D-01 (a narrower `/do-work/working/` substring fix passes it), the change re-plumbs a `claims.active` field nothing reads, and two record sentences (no output change elsewhere; the tie-break Discovered Task) are slightly off. None of these change the verdict.",
+ "confirmed_findings": [
+  {
+   "title": "The new test does not pin 'never from the path': a narrower substring fix passes it",
+   "severity": "low",
+   "impact_token": "test-strength",
+   "detail": "Record D-01 says reading the flag off the root pair is the only design in which the path's spelling cannot change the answer, and D-03 says the test pins both halves. The test defeats exactly the old `/working/` substring but not the family of substring fixes. Replacing the flag check at inventory.go:292 with `!strings.Contains(filepath.ToSlash(path), \"/do-work/working/\")` keeps the new test and the whole corehelpers package green, though a checkout under a directory literally named do-work/working/ would again make every archived REQ active. Nesting the fixture one level deeper makes every substring approach fail while the real fix still passes. Verified in the scratchpad clone at 890ed0c; all edits reverted. Reviewer 1 raised this; reviewers 2 and 3 did not check it.",
+   "reproduction": "cd <scratchpad>/clone/skills/do-work/tools/do-work-cli; sed -i 's|if !walkedRoot.active \\&\\& !terminalSuccessStatus(status) {|if !strings.Contains(filepath.ToSlash(path), \"/do-work/working/\") \\&\\& !terminalSuccessStatus(status) {|' internal/corehelpers/inventory.go; go test -count=1 -run '^TestAssociationUnderWorkingDirectoryCheckoutSkipsBlockedArchivedRequest$' ./internal/corehelpers/ -> ok, exit=0. Then with the fixture changed to filepath.Join(t.TempDir(), \"do-work\", \"working\", \"project\"): real fix -> ok exit=0; narrower substring -> inventory_test.go:396 owner=\"REQ-905\", FAIL exit=1. The three D-03 mutations also reproduced as recorded: all-inactive fails at :399 owner=\"\"; all-active and reversed flags fail at :396 owner=\"REQ-905\".",
+   "suggested_fix": "inventory_test.go:379: `repository := filepath.Join(t.TempDir(), \"do-work\", \"working\", \"project\")`, and either drop the guard at :382-384 or change its string to \"/do-work/working/\"."
+  },
+  {
+   "title": "The `active` field in the claims map is dead and the change re-plumbed it instead of deleting it",
+   "severity": "low",
+   "impact_token": "dead-state",
+   "detail": "claims stores {id, completed, active} but only `.id` is read (`output[candidate] = claims[candidate].id`). The field was dead before this change too, but the diff rewrote the literal at inventory.go:316 to `{record.RequestID, completed, walkedRoot.active}` and the record calls the fix 'the smallest one'. Under the maintainer's delete-before-you-add rule the smaller change removes the field. All three reviewers noted this; I confirmed nothing reads it.",
+   "reproduction": "Removed `active bool` from the map value type (inventory.go:251-254) and the literal (:313-317) in the clone: `git diff --stat` -> 1 file changed, 1 insertion(+), 3 deletions(-); `go build ./... && go vet ./internal/corehelpers/ && go test -count=1 ./internal/corehelpers/` -> ok, exit=0. `grep -rn '\\.active' internal/ | grep -v _test` afterwards shows only the read of walkedRoot.active at :291. Reverted.",
+   "suggested_fix": "Drop `active bool` from both struct literals; the claims value becomes {id, completed}."
+  },
+  {
+   "title": "Record overstates 'no observable change elsewhere': an archived REQ under do-work/archive/working/ flips from owner to unowned in a normal checkout",
+   "severity": "low",
+   "impact_token": "record-completeness",
+   "detail": "The record (Detailed Requirements) says the observable rule must not change for a repository checked out anywhere else, and Qualification says the normal-checkout rule is unchanged. The rule is unchanged, but the output is not for one layout: a blocked archived REQ whose file sits under do-work/archive/working/ was treated as in flight by the old substring test and is now correctly filtered. This is the same defect closed by a second route, so it is rule-consistent and not a regression, but the record does not name it and no test pins it. Reviewer 2 found this; I reproduced it on parent and merge sources.",
+   "reproduction": "Scratch test in the corehelpers package with a plain checkout path (<tmp>/plain/project) and do-work/archive/working/REQ-600-sub.md (status: blocked) claiming archive-working-sub.txt. Parent dc5d818: archive-working-sub.txt -> \"REQ-600\". Merge 890ed0c: archive-working-sub.txt -> \"\". Every other fixture line identical between the two.",
+   "suggested_fix": "One sentence in the record's Implementation Summary or Qualification naming the second route; optionally one more assertion in the new test (or a normal-path fixture) with a blocked REQ under do-work/archive/working/."
+  },
+  {
+   "title": "Discovered Task's tie-break sentence is incomplete: first-found also stands on equal present timestamps, and an unparseable timestamp counts as missing",
+   "severity": "low",
+   "impact_token": "record-accuracy",
+   "detail": "The record says 'Only when both are missing does the first found stand.' In the code the comparison is `completed.After(current.completed)`, so the first claim stands whenever the timestamps are equal, present or not. Also ParseTimestamp's error is discarded at inventory.go:302, so an unparseable completed_at behaves as missing. The core claim (a working/ REQ with no timestamp loses to an archived REQ with one regardless of walk order) is correct. This matters because REQ-601 is to rewrite the guide from this sentence. Reviewer 2 found this; reproduced.",
+   "reproduction": "Same scratch test, merge source, then with the two walkedRoots entries swapped. Normal order: tie-w-vs-a.txt (both 2026-04-01T00:00:00Z) -> REQ-400 (working); both-missing.txt -> REQ-504 (working); missing-w-has-a.txt -> REQ-501 (archive); bad-ts.txt (working has `completed_at: yesterday`) -> REQ-507 (archive). Reversed order: tie-w-vs-a.txt -> REQ-401; both-missing.txt -> REQ-505; missing-w-has-a.txt -> REQ-501 unchanged; bad-ts.txt -> REQ-507 unchanged. ParseTimestamp at request_model.go:404-417 returns time.Time{} plus an error on an unsupported value.",
+   "suggested_fix": "Reword for REQ-601: the REQ with a parseable completed_at beats one without, whichever root is read first; when both timestamps are equal, or neither parses, the first claim found stands (working/ before archive/, name order within a root)."
+  },
+  {
+   "title": "The new test runs git init, which AssociateProjectPaths never needs",
+   "severity": "low",
+   "impact_token": "test-noise",
+   "detail": "AssociateProjectPaths walks do-work/working and do-work/archive with filepath.WalkDir and reads files; it never invokes git. The `runFixtureGitCommand(t, repository, \"init\", \"-q\")` line at inventory_test.go:386 spawns a subprocess and implies a dependency that does not exist. Reviewer 3 found this; reproduced.",
+   "reproduction": "sed -i '/^\\trunFixtureGitCommand(t, repository, \"init\", \"-q\")$/d' internal/corehelpers/inventory_test.go; git diff --stat -> 1 deletion; go test -count=1 -run '^TestAssociationUnderWorkingDirectoryCheckoutSkipsBlockedArchivedRequest$' ./internal/corehelpers/ -> ok exit=0. Reverted.",
+   "suggested_fix": "Delete line 386."
+  },
+  {
+   "title": "The code comment states the in-flight rule but not why the roots must stay a slice",
+   "severity": "info",
+   "impact_token": "comment-completeness",
+   "detail": "Record D-02 says a slice, not a map, so walk order is preserved because equal-timestamp ties go to the claim seen first. The four-line comment at inventory.go:255-258 says nothing about order. A later cleanup to map[string]bool would compile and keep the new test green while making the tie-break unspecified. The record says the comment 'states the rule'; it states half. Reviewer 3 found this; I confirmed by reading the comment and by the reversed-order experiment above (ties flip when order changes).",
+   "reproduction": "sed -n 255,258p inventory.go: no mention of order or ties. Reversed-order build flips both-missing.txt REQ-504 -> REQ-505 and tie-w-vs-a.txt REQ-400 -> REQ-401.",
+   "suggested_fix": "Add one sentence: walked in this order on purpose; equal completed_at goes to the claim seen first, so this must stay a slice."
+  },
+  {
+   "title": "The fixture-path guard in the test is true by construction",
+   "severity": "info",
+   "impact_token": "record-wording",
+   "detail": "The record says the test 'guards that the fixture path really contains /working/'. The path is built with filepath.Join(t.TempDir(), \"working\", \"project\"), so the guard cannot trip on any machine. It is documentation, not a check. Reviewer 1 raised it; it follows from the code and needs no experiment beyond reading lines 379-384.",
+   "reproduction": "inventory_test.go:379 builds the path with a literal \"working\" component; :382 checks for \"/working/\" after ToSlash. Always true.",
+   "suggested_fix": "Delete the guard or stop describing it as a check; if the fixture is deepened per F1, update or drop it."
+  }
+ ],
+ "rejected_findings": [
+  "Reviewer 3: 'The record does not say this is a release.' Not a builder defect. The record is status: claimed; prime-releases.md line 5 and work.md line 464 assign the release judgment, bump and changelog entry to Step 9 finalization, which has not run. The releaser will record a patch bump from 0.305.7. No REQ-599 entry in CHANGELOG.md is expected at this stage.",
+  "Reviewer 3: 'The gate's exit 0 could not be reproduced.' I reproduced the same failure (gate exit=1, TestShippedRuntimeEvidenceTracksEffectiveGoSettingsAndBinaryBytes and TestShippedGitIsolationPreservesGenericLaneInheritance in internal/heavyverification) at the merge, and the same two tests fail on a clone at the parent dc5d818 in a package this change does not touch. The builder's hand-back (do-work/runs/work-2026-09-05-231943/REQ-599-handback.md) reports exit 0 with tests=797 via a wrapper gate.sh in its own environment. Environmental and pre-existing; not a finding against REQ-599. The gate's own counter here also prints tests=797.",
+  "Reviewer 1: 'CLI module at 797 tests' not reproduced as absolute numbers (811/810 by go test -list). Both counts reproduced on my side: go test -list gives 810 at parent and 811 at merge; the gate's counter gives 797 at merge, matching the record. Different counting methods, same +1 delta. The record's figure holds.",
+  "Reviewer 3's canonical qualify success: my first run returned QUALIFY-SUMMARY-MISSING because the clone's record at the merge commit predates the Implementation Summary the orchestrator wrote afterwards, and a three-dot range returns QUALIFY-DIFF-RANGE-INVALID. With the current record copied into the clone and the two-dot range dc5d818..890ed0c, qualify returns outcome success with no findings. The record's claim holds; the earlier failures were my invocation."
+ ],
+ "disagreements_and_how_settled": [
+  "Whether the dead `claims.active` field is a real finding: reviewer 1 counted it against the record's 'smallest fix' claim (low), reviewers 2 and 3 called it info and optional. Settled by experiment: removing the field builds, vets and passes the suite (1 insertion, 3 deletions). Kept as low because the diff touched exactly that line and CLAUDE.md says delete before you add, but it is pre-existing and does not affect behaviour.",
+  "Whether the test pins the design claim (D-01): reviewer 1 showed a narrower substring fix passes; reviewers 2 and 3 accepted the record's D-03 mutations as sufficient. Settled by running both: the three D-03 mutations fail as recorded, and the narrower substring mutation passes on the shipped fixture but fails once the fixture is nested at do-work/working/project while the real fix still passes. Reviewer 1's finding stands.",
+  "Whether the archive/working/ output flip is a finding: only reviewer 2 saw it. Settled by a scratch test on parent and merge sources: parent reports REQ-600 as owner, merge reports unowned. Accepted as low record-completeness, not as a regression, because the new behaviour is what the stated rule requires.",
+  "Gate exit 0: reviewer 3 could not reproduce, reviewers 1 and 2 did not run it. I ran it: exit 1 here with two heavyverification failures that also fail at the parent. Treated as environmental; the builder's hand-back documents exit 0 in its own environment with the heavy probes skipped.",
+  "Test count 797 vs 811: reviewers 1 and 2 got 811/810 by go test -list, reviewer 3 got 797/796 by the gate's json method. I reproduced both; the record uses the gate's number, so the claim holds."
+ ],
+ "requirements_checklist": [
+  "[met] In-flight-ness decided from the walked root, not a path substring: `strings.Contains(filepath.ToSlash(path), \"/working/\")` deleted; walkedRoots is a slice of {directory, active}; callback reads walkedRoot.active at inventory.go:292.",
+  "[met] Normal-checkout rule unchanged: working/ REQ counts whatever its status, archive/ REQ only on a terminal-success alias. corehelpers package green at merge (ok 4.558s, exit 0); scratch semantics identical between parent and merge for every case except the archive/working/ route noted in F3.",
+  "[met] A test that fails on the current code: red on parent dc5d818 with only the test hunk applied (owner=\"REQ-905\", exit 1), green at 890ed0c (exit 0).",
+  "[met] Constraint: one Go file plus its test, no prose change. git diff --stat: inventory.go +15/-6, inventory_test.go +28, 2 files, 43 insertions, 6 deletions.",
+  "[met] Constraint: existing tests stay green unchanged. Test file diff is purely additive; package passes.",
+  "[met] Walk order preserved: slice in the same order as the old []string{working, archive}; reversed-order experiment confirms order decides ties, so the choice matters.",
+  "[met] go build ./... exit 0, go vet exit 0, gofmt -l prints nothing on both files.",
+  "[met] Canonical qualify over dc5d818..890ed0c returns outcome success, no findings (with the current record).",
+  "[met] 796 -> 797 tests by the gate's counter; 810 -> 811 by go test -list.",
+  "[partly met] D-03 'the test pins both halves': true for the three listed mutations, but a narrower path-substring fix still passes (F1).",
+  "[partly met] 'The fix is the smallest one': the dead claims.active field was re-plumbed rather than removed (F2).",
+  "[partly met] 'Observable output does not change elsewhere': one rule-consistent flip under do-work/archive/working/ is unrecorded (F3).",
+  "[not verifiable here] 'Maintainer verification passed., exit 0': gate exits 1 in this sandbox with two pre-existing environmental heavyverification failures that also fail at the parent; not attributable to this change."
+ ],
+ "remediation_needed": false,
+ "remediation_brief": "No remediation required to accept. Optional tidy, in order of value: (1) inventory_test.go:379 nest the fixture at filepath.Join(t.TempDir(), \\\"do-work\\\", \\\"working\\\", \\\"project\\\") so the test rejects every path-substring fix, and drop or update the guard at :382-384; (2) delete the git init line at :386; (3) drop `active bool` from the claims struct at inventory.go:251-254 and :313-317; (4) add one sentence to the comment at :255-258 saying the slice order is deliberate because equal timestamps go to the first claim seen; (5) in the record, name the do-work/archive/working/ route and correct the Discovered Task's tie-break sentence before REQ-601 rewrites the guide from it."
+}

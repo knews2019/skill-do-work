@@ -192,21 +192,36 @@ legacy_record="$(cd "$legacy_repo" && "$preflight_script" --scan ai-reports)" \
 [ "$(scan_field "$legacy_record" prior_report)" = 'ai-reports/2026-01-01_0900_architecture-report/index.html' ] \
   || fail_case 'architecture-report-preflight chose a newer Markdown or unfinished bundle over HTML'
 
-# architecture-report-preflight: a failed copy cannot expose partial HTML as a prior baseline.
+# architecture-report-preflight: a draft copy that could not be staged cannot leave a
+# publication behind for a later scan to read as a prior baseline.
+# The copy runs inside the command now, so the failure has to be provoked at the write
+# itself: `ulimit -f 1` caps every file this subshell creates at 512 bytes and the draft is
+# larger, so `os.CreateTemp` still succeeds and the staged write fails with EFBIG. Two traps
+# decide that spelling. Breaking TMPDIR instead fails `os.CreateTemp` one guard earlier, so
+# the copy line this case exists for never runs at all. And the assertion names the write
+# error rather than the shared ARCHITECTURE-PREFLIGHT-FAILED code that four sites in the same
+# function emit: the `cp` this REQ replaced was killed by SIGXFSZ and wrote nothing to stderr,
+# leaving the evidence as the bare string `draft copy failed: `, so a case keyed on the
+# finding code alone stayed green against the coreutils version too. The launcher's `go tool`
+# build must already be cached when the subshell runs — the earlier cases in this file warm
+# it; if it is not, the launcher exits 2 and this assertion fails loudly rather than passing
+# on an unrelated failure.
 partial_repo="$fixture_root/partial"
 fixture_repo_init "$partial_repo"
 printf 'seed\n' > "$partial_repo/README.md"
 fixture_repo_commit_all "$partial_repo" base
-mkdir -p "$partial_repo/drafts" "$partial_repo/bin"
-printf '<!doctype html><title>Complete</title>\n' > "$partial_repo/drafts/report.html"
-cat > "$partial_repo/bin/cp" <<'SH'
-#!/usr/bin/env bash
-printf '<!doctype html><title>Partial' > "$2"
-exit 1
-SH
-chmod +x "$partial_repo/bin/cp"
-(cd "$partial_repo" && PATH="$partial_repo/bin:$PATH" "$preflight_script" --publish drafts/report.html "$publish_candidate" >/dev/null 2>&1)
-[ "$?" -ne 0 ] || fail_case 'architecture-report-preflight reported a failed copy as published'
+mkdir -p "$partial_repo/drafts" "$fixture_root/architecture-stage-tmp"
+{
+  printf '<!doctype html><title>Complete</title>\n'
+  head -c 2048 /dev/zero | tr '\0' 'x'
+  printf '\n'
+} > "$partial_repo/drafts/report.html"
+partial_publish_output="$( (cd "$partial_repo" && ulimit -f 1 \
+  && TMPDIR="$fixture_root/architecture-stage-tmp" \
+    "$preflight_script" --publish drafts/report.html "$publish_candidate" 2>&1) )" \
+  && fail_case 'architecture-report-preflight reported a failed copy as published'
+grep -q 'draft copy failed: write ' <<<"$partial_publish_output" \
+  || fail_case 'architecture-report-preflight did not report the staged write failure as the copy failure'
 [ ! -e "$partial_repo/$publish_candidate/index.html" ] \
   || fail_case 'architecture-report-preflight exposed partial HTML after a failed copy'
 partial_record="$(cd "$partial_repo" && "$preflight_script" --scan ai-reports)" \

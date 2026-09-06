@@ -56,9 +56,13 @@ core_files=(
   skills/do-work/tools/replace-text-section.sh
 )
 
+# This is a positive test for a forbidden state, so a git that cannot answer prints nothing,
+# matches nothing, and the check would pass on absent evidence. Read git's own status first,
+# then read the text it printed.
 for cutover_export_path in VERSION suite skills; do
-  if git -C "$repo_root" check-attr export-ignore -- "$cutover_export_path" \
-    | grep -q 'export-ignore: set'; then
+  if ! cutover_export_attribute_line="$(git -C "$repo_root" check-attr export-ignore -- "$cutover_export_path")"; then
+    fail "could not read the export-ignore attribute for /$cutover_export_path"
+  elif grep -q 'export-ignore: set' <<<"$cutover_export_attribute_line"; then
     fail "live modular archive must export /$cutover_export_path"
   fi
 done
@@ -78,13 +82,22 @@ legacy_runtime_paths=(
   tools/queue-kanban
   tools/prime-do-work-update.md
 )
+# `find … -print -quit | grep -q .` reported find's own failure as "no leftover files": under
+# pipefail a find that prints a leftover path and then exits non-zero on an unreadable
+# subdirectory left this guard silent and the legacy runtime reported as retired. Read find's
+# status and the path it printed as two separate facts, because both are failures here.
 for legacy_runtime_path in "${legacy_runtime_paths[@]}"; do
-  if [ -f "$repo_root/$legacy_runtime_path" ] \
-    || { [ -d "$repo_root/$legacy_runtime_path" ] \
-      && find "$repo_root/$legacy_runtime_path" -type f \
-        ! -path "$repo_root/tools/queue-kanban/queue-kanban" -print -quit \
-        | grep -q .; }; then
+  if [ -f "$repo_root/$legacy_runtime_path" ]; then
     fail "legacy root runtime must be retired at modular cutover: $legacy_runtime_path"
+  elif [ -d "$repo_root/$legacy_runtime_path" ]; then
+    legacy_leftover_path=''
+    if ! legacy_leftover_path="$(find "$repo_root/$legacy_runtime_path" -type f \
+      ! -path "$repo_root/tools/queue-kanban/queue-kanban" -print -quit)"; then
+      fail "could not scan $legacy_runtime_path for leftover files"
+    fi
+    if [ -n "$legacy_leftover_path" ]; then
+      fail "legacy root runtime must be retired at modular cutover: $legacy_runtime_path ($legacy_leftover_path)"
+    fi
   fi
 done
 
@@ -266,8 +279,16 @@ do
   fi
 done
 
-if sed -n '/^## Routing/,/^## Dispatch/p' "$repo_root/skills/do-work/SKILL.md" \
-  | grep -Eq '^\|[^|]*`(pipeline|full)`'; then
+# Both routing contracts below read the same section, so it is extracted once. sed exits
+# non-zero on an unreadable SKILL.md and prints nothing if either heading is ever renamed;
+# either way the two tests would pass on absent evidence, so the capture is guarded for both.
+core_routing_section=''
+if ! core_routing_section="$(sed -n '/^## Routing/,/^## Dispatch/p' "$repo_root/skills/do-work/SKILL.md")"; then
+  fail 'could not read the core Routing section of skills/do-work/SKILL.md'
+elif [ -z "$core_routing_section" ]; then
+  fail 'core SKILL.md must carry a Routing section that ends at the Dispatch heading'
+fi
+if grep -Eq '^\|[^|]*`(pipeline|full)`' <<<"$core_routing_section"; then
   fail 'core router must not retain the pipeline/full compatibility route'
 fi
 if grep -Fq 'do-work/pipeline.json' "$repo_root/.gitignore" \
@@ -305,8 +326,7 @@ fi
 if [ -e "$repo_root/skills/do-work/actions/moved-command-shim.md" ]; then
   fail 'the one-release moved-command shim must be absent after the migration window'
 fi
-if sed -n '/^## Routing/,/^## Dispatch/p' "$repo_root/skills/do-work/SKILL.md" \
-  | grep -Fq 'moved-command-shim.md'; then
+if grep -Fq 'moved-command-shim.md' <<<"$core_routing_section"; then
   fail 'core routing must not retain moved-command compatibility rows'
 fi
 
@@ -747,7 +767,8 @@ then
   fail 'live shipped surfaces must use sibling-owned commands and permanent updater contracts'
 fi
 
-core_routing_section="$(sed -n '/^## Routing/,/^## Dispatch/p' "$repo_root/skills/do-work/SKILL.md")"
+# $core_routing_section is the same range this file already captures and guards above the
+# pipeline/full route contract; re-extracting it here would be a second unguarded producer.
 for sibling_route_contract in "${sibling_route_contracts[@]}"; do
   IFS='|' read -r sibling_owner public_action <<< "$sibling_route_contract"
   expected_action_path="$repo_root/skills/$sibling_owner/actions/$public_action.md"

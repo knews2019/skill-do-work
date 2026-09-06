@@ -20,6 +20,7 @@ import (
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/requestmodel"
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/requeststate"
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/resultmodel"
+	"github.com/knews2019/skill-do-work/do-work-cli/internal/sharedprimitives"
 )
 
 var afterFinalizationPhase = func(Phase) error { return nil }
@@ -230,7 +231,7 @@ func rollbackBeforePrimary(repositoryRoot string, journal *Journal) ([]string, [
 	if len(rollbackErrors) > 0 {
 		return actions, rollbackErrors
 	}
-	ownedPaths := uniqueSorted(append(imagePaths(journal.LifecyclePostimages), imagePaths(journal.ReleasePostimages)...))
+	ownedPaths := sharedprimitives.UniqueSortedStrings(append(imagePaths(journal.LifecyclePostimages), imagePaths(journal.ReleasePostimages)...))
 	if len(ownedPaths) > 0 {
 		arguments := append([]string{"-C", repositoryRoot, "reset", "-q", "HEAD", "--"}, ownedPaths...)
 		if output, err := exec.Command("git", arguments...).CombinedOutput(); err != nil {
@@ -515,11 +516,11 @@ func commitSafety(repositoryRoot string, journal *Journal) (string, string, []st
 			blocked = append(blocked, row.Path)
 		}
 	}
-	owned = uniqueSorted(owned)
+	owned = sharedprimitives.UniqueSortedStrings(owned)
 	if len(owned) > 0 {
 		return "FINALIZATION-PROTECTED-DECLARED-PATH", "protected-classified paths the journal declares cannot be committed by this transaction", owned, true
 	}
-	blocked = uniqueSorted(blocked)
+	blocked = sharedprimitives.UniqueSortedStrings(blocked)
 	if len(blocked) > 0 {
 		return "FINALIZATION-AMBIGUOUS-SHARED-STATE", "shared lifecycle, release, or protected paths remain outside the exact recovery group", blocked, false
 	}

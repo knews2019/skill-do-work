@@ -44,7 +44,7 @@ if [ "$selector_status" -ne 0 ]; then
   exit "$selector_status"
 fi
 
-if printf '%s\n' "$selector_output" | grep -qx 'run_set: '; then
+if grep -qx 'run_set: ' <<<"$selector_output"; then
   printf 'No pending REQ currently qualifies for a cheaper model.\n'
 fi
 printf '%s\n' "$selector_output"

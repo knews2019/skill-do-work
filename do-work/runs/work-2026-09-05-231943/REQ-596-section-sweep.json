@@ -1,0 +1,575 @@
+[
+ {
+  "section": "Protected inventory fallbacks (skills/do-work/docs/prescribed-shell-primitives.md lines 45-76)",
+  "claims": [
+   {
+    "line": 47,
+    "claim": "\"`scripts/protected-inventory.sh start` prints one `<tag>\\t<path>` row per uncommitted file; its `associate` mode prints one `<owner>\\t<path>` row per candidate.\"",
+    "verdict": "partly-stale",
+    "what_the_code_does": "start prints every classified row (inventory.go:402-409), but readInventory drops untracked hidden files under do-work/ before classification (inventory.go:102-103 calling untrackedDoWorkMetadata at inventory.go:141-143). associate's compatibility output loop skips every finding whose code is not ASSOCIATION-FOUND (inventory.go:445-453), so a candidate no REQ claims produces NO row at all; the '-' placeholder exists only in the separate `associate` command's own shim output (inventory.go:231-241), which this wrapper does not reach.",
+    "evidence": "Fixture /tmp/claude-0/-home-user-skill-do-work/213e30ac-5958-56c8-9fd2-faaaaf9c4ea6/scratchpad/audit596/r2: candidates shared.txt, onlyarch.txt, onlywork.txt, nobodys.txt; `protected-inventory associate` printed three rows and nothing for the unowned nobodys.txt. Second fixture: `?? do-work/.DS_Store` present in `git status -uall` but absent from the start output.",
+    "suggested_text": "`scripts/protected-inventory.sh start` prints one `<tag>\\t<path>` row per uncommitted file, except an untracked hidden file under `do-work/`, which it drops as editor or operating-system metadata; its `associate` mode prints one `<owner>\\t<path>` row for each candidate a REQ claims and no row at all for the rest, so a candidate missing from that output is unassociated."
+   },
+   {
+    "line": 47,
+    "claim": "\"Both modes resolve the run-level quarantine file with `git rev-parse --git-path <quarantine name>` and exit 2 when that resolution fails, which is what happens outside a Git repository.\"",
+    "verdict": "accurate",
+    "what_the_code_does": "The rev-parse call happens once before the mode branch (inventory.go:358-365); its failure returns usageResult (commands.go:424-429), whose OutcomeFailure maps to exit 2 (resultmodel/result_model.go:648-660).",
+    "evidence": "Run in a non-repo directory: `HELPER-USAGE ... git rev-parse --git-path do-work-commit-secret-quarantine: exit status 128`, process exit=2.",
+    "suggested_text": "No change."
+   },
+   {
+    "line": 51,
+    "claim": "\"**M** \u2014 modified (a renamed path is tagged M too: read its diff, don't re-read it as new content)\"",
+    "verdict": "accurate",
+    "what_the_code_does": "classifyInventory falls through to M for any status without D and without a leading A or ?? (inventory.go:145-155), which covers R and C statuses.",
+    "evidence": "Fixture r3/r2: `R oldname.txt -> newname.txt` produced the row `M\\tnewname.txt`.",
+    "suggested_text": "No change."
+   },
+   {
+    "line": 52,
+    "claim": "\"**A** \u2014 added, covering both staged-new and untracked\"",
+    "verdict": "accurate",
+    "what_the_code_does": "inventory.go:153 tags A for `??` and for any index-column A.",
+    "evidence": "Fixture: staged `A  copy-of-source.txt` and untracked `?? ordinary-new.txt` both classified as additions before the ambiguity promotion.",
+    "suggested_text": "No change."
+   },
+   {
+    "line": 53,
+    "claim": "\"**D** \u2014 deleted\"",
+    "verdict": "accurate",
+    "what_the_code_does": "inventory.go:151-152 tags D whenever either porcelain column carries D, including AD.",
+    "evidence": "Fixture r3: `D victim.env` classified as a deletion (then XD by the secret patterns).",
+    "suggested_text": "No change."
+   },
+   {
+    "line": 54,
+    "claim": "\"**X** \u2014 non-deleted excluded path: secret-shaped, secret-derived, or an ambiguous addition beside `X`/`XD`\"",
+    "verdict": "accurate",
+    "what_the_code_does": "inventory.go:156-161 returns X for a non-deleted path whose own basename or whose origin basename is secret-shaped; inventory.go:123-129 promotes every remaining A to X when any X or XD exists.",
+    "evidence": "Fixture r3: a lone `XD victim.env` promoted `ordinary-new.txt` and `copy-of-source.txt` to X.",
+    "suggested_text": "No change."
+   },
+   {
+    "line": 55,
+    "claim": "\"**XD** \u2014 deleted secret-shaped path\"",
+    "verdict": "partly-stale",
+    "what_the_code_does": "XD is also assigned to a deleted path that is only secret-derived: classifyInventory tests `secretPath(path) || secretPath(origin)` and returns XD when the classification is D (inventory.go:156-159), so a deletion whose destination name is ordinary but whose rename origin is secret-shaped is tagged XD. The X bullet above names the secret-derived case; this one does not.",
+    "evidence": "Fixture .../audit596/r4: `git mv api-secret.pem plain-name.txt` then `rm plain-name.txt` gives porcelain `RD api-secret.pem -> plain-name.txt`; the tool printed `XD\\tapi-secret.pem` and `XD\\tplain-name.txt`.",
+    "suggested_text": "- **XD** \u2014 deleted excluded path: secret-shaped, or derived from a secret-shaped origin"
+   },
+   {
+    "line": 57,
+    "claim": "\"Secret-shaped matching is case-insensitive and applies to the basename only: `.env*` or `*.env`, `*credentials*`, `*.pem`/`*.key`/`*.p12`/`*.pfx`, and `*secret*`.\"",
+    "verdict": "partly-stale",
+    "what_the_code_does": "secretPath lowercases the basename and tests `strings.Contains(base, \"credential\")` \u2014 singular (inventory.go:169). The guide's plural `*credentials*` is narrower than the code, so a by-hand builder leaves files unquarantined that the tool quarantines. Every other pattern in the sentence matches the code exactly: `.env` prefix, `.env` suffix, `.pem`/`.key`/`.p12`/`.pfx` suffixes, `secret` substring, all on `strings.ToLower(filepath.Base(path))` (inventory.go:168-169). The four examples and the `secrets/` directory carve-out are correct.",
+    "evidence": "Fixture .../audit596/repo: `credential.txt` and `MyCredential.YAML` both came back as X rows; neither is matched by the glob `*credentials*`.",
+    "suggested_text": "Secret-shaped matching is case-insensitive and applies to the basename only: `.env*` or `*.env`, `*credential*`, `*.pem`/`*.key`/`*.p12`/`*.pfx`, and `*secret*`. Thus `.ENV`, `credential.txt`, `AuthCredentials.json`, `private.PEM`, and `UPPER-SECRET.txt` are all secret-shaped, while an ordinary file beneath a directory named `secrets/` is not classified from the directory name alone."
+   },
+   {
+    "line": 59,
+    "claim": "\"Read each tag class this way, and no other way:\" followed by rules for M, A, D and XD only.",
+    "verdict": "partly-stale",
+    "what_the_code_does": "The tool emits five tags. X rows are produced both for real secrets (inventory.go:156-161) and for ordinary additions promoted by the ambiguity rule (inventory.go:123-129), and X is the only tag the list leaves without a rule. A reader who applies the closest listed rule reads an X row as a new/untracked file, which is exactly what `actions/commit.md` forbids (\"never read, diff, stage, or commit them\").",
+    "evidence": "Fixture .../audit596/repo: `brandnew.txt`, an ordinary new file, came back as `X` because a secret-shaped path was present in the same inventory. The sentence generalizes over all five tags of the legend at lines 51-55 while covering four.",
+    "suggested_text": "Add a fifth bullet after the New/untracked one: \"- **Excluded files (`X`)**: Note the path and the tag only. Do not read, diff, stage, or commit the file, and do not relax that because the name looks ordinary \u2014 an addition promoted by the ambiguity rule carries the same prohibition as a secret-shaped one.\""
+   },
+   {
+    "line": 61,
+    "claim": "The four per-tag reading rules (M read the diff; A read contents with the binary and >500-line carve-outs; D note path and infer; XD note path only, never `git diff`/`show`/`log -p`).",
+    "verdict": "accurate",
+    "what_the_code_does": "These are caller policy, not mechanism, and nothing in the Go code contradicts them. The two facts they lean on hold: a rename destination is tagged M so its diff is the right surface (inventory.go:145-155), and XD marks a deleted path whose contents the tool never reads or reproduces (inventory.go:113-116, 156-159).",
+    "evidence": "Fixture r2/r4 outputs; no code path in internal/corehelpers/inventory.go reads file contents for any tag.",
+    "suggested_text": "No change."
+   },
+   {
+    "line": 66,
+    "claim": "\"build the inventory by hand from the complete NUL-delimited output of `git -c status.renames=copies status --porcelain=v1 --untracked-files=all -z`\"",
+    "verdict": "partly-stale",
+    "what_the_code_does": "The command line is exactly the tool's (inventory.go:86), but the tool does not treat the output as complete: it drops every record whose status is `??` and whose path is a hidden file under `do-work/` (inventory.go:102-103, 141-143), because such a path is editor or operating-system metadata, never pipeline state. A by-hand inventory built from the raw output gains rows the tool suppresses, and with any X present the ambiguity rule then promotes them into the quarantine.",
+    "evidence": "Fixture r2: `git status --porcelain=v1 -uall` listed `?? do-work/.DS_Store`; the tool's start output listed eight rows and not that one.",
+    "suggested_text": "If the script is missing or will not run, build the inventory by hand from the NUL-delimited output of `git -c status.renames=copies status --porcelain=v1 --untracked-files=all -z`, dropping any untracked path whose basename begins with `.` beneath `do-work/` \u2014 that is editor or operating-system metadata, not pipeline state; the command-line copy setting is required even when repository configuration disables rename detection."
+   },
+   {
+    "line": 66,
+    "claim": "\"First classify every path as M/A/D, including each rename or copy record's second NUL-delimited origin path\"",
+    "verdict": "partly-stale",
+    "what_the_code_does": "The origin path never becomes a row of its own except in one case. readInventory keeps the origin only as a field of the destination's row (inventory.go:105-112, 121) and emits a separate row for it solely when the status contains R and the origin is secret-shaped, where that row is XD (inventory.go:113-116). A non-secret rename origin gets no row, so following this instruction literally adds a D row for every renamed file's old path that the tool never prints.",
+    "evidence": "Fixture .../audit596/repo: `git mv oldname.txt newname.txt` produced exactly one row, `M\\tnewname.txt`; there was no `D\\toldname.txt`. The same run's secret rename produced both `XD\\tsecret-old.pem` and `X\\tsecret-new.pem`.",
+    "suggested_text": "First classify each record's own path as M/A/D \u2014 a rename or copy destination is M \u2014 and run each rename or copy record's second NUL-delimited origin path through the secret patterns without giving it a row of its own, then lowercase every basename with `tr '[:upper:]' '[:lower:]'` and apply the patterns above."
+   },
+   {
+    "line": 66,
+    "claim": "\"a secret-shaped rename origin is XD and its destination is X, while a destination copied from a secret-shaped origin is X without an XD source row\"",
+    "verdict": "accurate",
+    "what_the_code_does": "The extra origin row is gated on `strings.Contains(status, \"R\")`, so a copy record (C) never produces one (inventory.go:113-116), while the destination is still X through `secretPath(origin)` (inventory.go:156-160).",
+    "evidence": "Fixture .../audit596/repo: `git mv secret-old.pem secret-new.pem` gave `XD\\tsecret-old.pem` plus `X\\tsecret-new.pem`.",
+    "suggested_text": "No change."
+   },
+   {
+    "line": 66,
+    "claim": "\"If the finished inventory contains any X or XD and any remaining A, provenance is ambiguous ... so change every A to X.\"",
+    "verdict": "accurate",
+    "what_the_code_does": "hasExcluded is set by an X or an XD row, including the synthetic XD origin row, and the second pass rewrites every A to X (inventory.go:113-129).",
+    "evidence": "Fixture r3: the only excluded row was `XD victim.env`, and both additions came back as X.",
+    "suggested_text": "No change."
+   },
+   {
+    "line": 66,
+    "claim": "\"Finally add all X paths to the run-level quarantine and overlay that quarantine before any row is consumed.\"",
+    "verdict": "partly-stale",
+    "what_the_code_does": "Only the X set is written, which the sentence gets right (inventory.go:384-390), but `start` replaces the file with this run's X set rather than adding to it, and deletes a leftover file outright when the tree is clean (inventory.go:370-380, 391-401). `start` also performs no overlay: it prints the rows it classified. The union with earlier X paths and the filtering of quarantined candidates happen in `associate` (inventory.go:412-437), and the overlay onto rows is the caller's step.",
+    "evidence": "Fixture r3: after a first start wrote two quarantine paths, a second start on a tree holding only `later-new.txt` left the quarantine file empty and printed `A\\tlater-new.txt`, not X.",
+    "suggested_text": "Finally write all X paths to the run-level quarantine, replacing whatever an earlier run left there, and overlay that set on the rows before any is consumed \u2014 `start` only writes the file, and the union with later X paths belongs to `associate`."
+   },
+   {
+    "line": 66,
+    "claim": "\"The `-uall` flag is not optional ... That is a secret-leak path, and `../../do-work-toolbox/actions/stray-check.md`'s Red Flags record that it has been hit.\"",
+    "verdict": "accurate",
+    "what_the_code_does": "readInventory passes --untracked-files=all (inventory.go:86), and the cited Red Flag exists.",
+    "evidence": "skills/do-work-toolbox/actions/stray-check.md:161 records untracked junk inside a brand-new directory being missed because plain `git status --porcelain` collapsed the directory.",
+    "suggested_text": "No change."
+   },
+   {
+    "line": 70,
+    "claim": "\"Terminal-success matching honors the Schema Read Contract's aliases, so `completed`, `completed-with-issues`, and `complete`/`done`/`finished`/`closed` all qualify.\"",
+    "verdict": "accurate",
+    "what_the_code_does": "terminalSuccessStatus accepts exactly those six values, trimmed and lowercased (inventory.go:323-330).",
+    "evidence": "The alias table in skills/do-work/actions/work-reference.md:242 maps `complete`/`done`/`finished`/`closed` to `completed`, matching the switch.",
+    "suggested_text": "No change."
+   },
+   {
+    "line": 71,
+    "claim": "\"In-flight `working/` REQs are included regardless of status, since a claimed REQ is never terminal.\"",
+    "verdict": "accurate",
+    "what_the_code_does": "The terminal filter is skipped when the path contains `/working/` (inventory.go:281-285).",
+    "evidence": "Fixture r2 case C: REQ-901 with `status: blocked` under do-work/working/lane-2/ still claimed nobodys.txt.",
+    "suggested_text": "No change."
+   },
+   {
+    "line": 72,
+    "claim": "\"**Conflict resolution:** a path claimed by two REQs goes to the one with the latest `completed_at`.\"",
+    "verdict": "accurate",
+    "what_the_code_does": "The only comparison is `completed.After(current.completed)` on the parsed completed_at (inventory.go:293, 301-308).",
+    "evidence": "Fixture r2 case A: with the working REQ at 2026-09-04 and the archived REQ at 2026-09-01, shared.txt went to REQ-900.",
+    "suggested_text": "No change."
+   },
+   {
+    "line": 72,
+    "claim": "\"An archived REQ outranks an in-flight one.\"",
+    "verdict": "stale",
+    "what_the_code_does": "The `active` flag is computed (inventory.go:281) and stored in the claim struct (inventory.go:303-307) but never read anywhere; the winner is decided only by `!exists || completed.After(current.completed)` (inventory.go:302). Because `do-work/working` is walked before `do-work/archive` (inventory.go:254) and the comparison is strictly After, an equal or missing timestamp leaves the in-flight claim in place \u2014 the opposite of what the sentence says.",
+    "evidence": "Fixture r2 case A: in-flight REQ-900 with the later completed_at won shared.txt over archived REQ-800. Case B: with both completed_at blank, shared.txt still went to REQ-900, the working one.",
+    "suggested_text": "**Conflict resolution:** a path claimed by two REQs goes to the one with the latest `completed_at`. Whether a REQ is archived or in-flight plays no part in that comparison; when the timestamps are equal or missing, the first claim found stands, and `working/` is read before `archive/`."
+   },
+   {
+    "line": 73,
+    "claim": "\"**`do-work/` metadata paths are excluded** from association, matching `tools/checks/scope-drift.sh`.\"",
+    "verdict": "accurate",
+    "what_the_code_does": "AssociateProjectPaths skips a claimed path equal to `do-work` or prefixed `do-work/` (inventory.go:294-300), so such a candidate resolves to the empty owner; scope-drift applies the same filter through withoutDoWork (checks.go:176-177, 828-836).",
+    "evidence": "Both filters use the identical `path != \"do-work\" && !strings.HasPrefix(path, \"do-work/\")` test.",
+    "suggested_text": "No change."
+   },
+   {
+    "line": 74,
+    "claim": "\"**Partial matches count.** If 3 out of 5 files in a REQ's Implementation Summary are among the uncommitted files, group all 3 under that REQ.\"",
+    "verdict": "accurate",
+    "what_the_code_does": "Ownership is a per-candidate map lookup against every claimed path; no rule requires a REQ's full file list to be present (inventory.go:294-319).",
+    "evidence": "Fixture r2: REQ-800 listed shared.txt and onlyarch.txt and owned both without its list being complete in the working tree.",
+    "suggested_text": "No change."
+   },
+   {
+    "line": 76,
+    "claim": "\"read each REQ's `status` (accepting every terminal-success alias listed above)\" \u2014 applied to both the archive and the working glob.",
+    "verdict": "stale",
+    "what_the_code_does": "The status test runs only for non-working REQs: `if !active && !terminalSuccessStatus(status) { return nil }` (inventory.go:281-285). A `working/` REQ is read whatever its status says. A reader following this fallback filters in-flight REQs out \u2014 every `claimed`, `in-progress` or `blocked` REQ \u2014 and their files then come back unassociated, which is the failure the bullet at line 71 exists to prevent.",
+    "evidence": "Fixture r2 case C: REQ-901 with `status: blocked` was included by the tool. In this repository, do-work/working/REQ-596 carries `status: claimed`, so the by-hand procedure would drop it.",
+    "suggested_text": "... read each REQ's `status` \u2014 a `working/` REQ counts whatever its status says, an `archive/` REQ only on a terminal-success alias listed above \u2014 and its `## Implementation Summary` list ..."
+   },
+   {
+    "line": 76,
+    "claim": "\"glob `do-work/archive/**/REQ-*.md` and `do-work/working/REQ-*.md`\"",
+    "verdict": "partly-stale",
+    "what_the_code_does": "The tool walks both roots recursively with filepath.WalkDir and takes any `REQ-*.md` at any depth (inventory.go:254-271). The two globs do not reproduce that: without `shopt -s globstar` bash expands `**` as a single `*`, so `do-work/archive/**/REQ-*.md` requires exactly one intervening directory and misses every REQ file sitting directly in `do-work/archive/`, and `do-work/working/REQ-*.md` never descends at all.",
+    "evidence": "Verified expansion in a fixture: with globstar off, `do-work/archive/**/REQ-*.md` matched only the nested file and skipped `do-work/archive/REQ-800.md`. This repository's archive holds 569 REQ files, 10 of them directly under `do-work/archive/`. Fixture r2 case C confirmed the tool finds do-work/working/lane-2/REQ-901.md.",
+    "suggested_text": "If the script is missing or will not run, associate by hand: collect every `REQ-*.md` under `do-work/working/` and `do-work/archive/` at any depth (`find do-work/working do-work/archive -name 'REQ-*.md'` \u2014 a `**` glob needs `shopt -s globstar` and still skips the files sitting directly in `do-work/archive/`), read each REQ's `status` \u2014 a `working/` REQ counts whatever its status says, an `archive/` REQ only on a terminal-success alias listed above \u2014 and its `## Implementation Summary` list, path-match, and tie-break on the latest `completed_at`."
+   },
+   {
+    "line": 76,
+    "claim": "\"path-match, and tie-break on the latest `completed_at`\"",
+    "verdict": "accurate",
+    "what_the_code_does": "Matches the only comparison the code performs (inventory.go:302), and correctly omits the archived-outranks-in-flight rule that line 72 asserts.",
+    "evidence": "Fixture r2 cases A and B.",
+    "suggested_text": "No change."
+   }
+  ],
+  "claims_checked_total": 25,
+  "notes": "Method: built the CLI from source (go1.26.1) to /tmp/claude-0/-home-user-skill-do-work/213e30ac-5958-56c8-9fd2-faaaaf9c4ea6/scratchpad/audit596/dwcli and ran `DO_WORK_COMPATIBILITY_SHIM=1 dwcli --format text protected-inventory start|associate` against four throwaway repos in the same directory (repo = renames plus secret patterns, r2 = association conflicts, r3 = copy and ambiguity promotion, r4 = secret-derived deletion). Nothing in /home/user/skill-do-work was written.\n\nBoth known-false claims are confirmed: line 57 (`*credentials*` vs the code's singular `credential`) and line 72 (\"An archived REQ outranks an in-flight one\", where the active flag at inventory.go:281 is stored and never read). The same pass found six more, four of them in the two by-hand fallbacks a reader executes when the tool is gone: the associate half of line 47 (unowned candidates get no row at all), the raw-status-output claim at line 66 (the tool drops untracked hidden files under do-work/), the origin-classification instruction at line 66 (a non-secret rename origin never gets a row), the quarantine sentence at line 66 (start replaces the file and performs no overlay), the status filter at line 76 (working REQs are included whatever their status), and the globs at line 76 (they need globstar and still miss the 10 archived REQs sitting directly in do-work/archive/). Two defects of the REQ-555 shape appear here: line 59 says \"Read each tag class this way, and no other way\" and then covers four of the five tags in the legend directly above it, leaving X \u2014 including an ordinary file promoted by the ambiguity rule \u2014 with no rule; and line 55 defines XD as a deleted secret-shaped path when the code also tags a deleted secret-derived path XD, the case the X bullet one line up does name.\n\nOut of section, same defect family, not fixed by this request: skills/do-work/actions/commit.md:85 and skills/do-work-toolbox/actions/inspect.md:117 both say associate \"prints one `<owner>\\\\t<path>` row per candidate \u2014 a `REQ-NNN` id, or `-` for unassociated\"; the wrapper prints no row for an unowned candidate, so commit.md's \"Files that come back `-`\" branch is unreachable. Separately, inspect.md:64 and :114 call `protected-inventory.sh start \"$(git rev-parse --show-toplevel)\" do-work-inspect-secret-quarantine`, and the launcher forwards positionals unchanged; the command accepts only --dry-run and --quarantine-name, so that call fails with \"unknown option /path\" and exit 2 (verified). That contradicts line 24's \"most launchers translate a legacy positional call into the flags the subcommand requires\", which belongs to the Shipped executable homes section, not mine."
+ },
+ {
+  "section": "## Atomic download publication (lines 110-125 of /home/user/skill-do-work/skills/do-work/docs/prescribed-shell-primitives.md)",
+  "claims": [
+   {
+    "line": 112,
+    "claim": "\"The shipped helper downloads to a private adjacent temporary file, publishes by rename only after curl succeeds, and preserves failures\"",
+    "verdict": "accurate",
+    "what_the_code_does": "os.CreateTemp(filepath.Dir(targetPath), filepath.Base(targetPath)+\".download.*\") makes a 0600 file next to the target; curl runs with -o pointing at that temp file; a nonzero curl status returns DOWNLOAD-FAILED before any rename, and only a zero status reaches os.Rename.",
+    "evidence": "/home/user/skill-do-work/skills/do-work/tools/do-work-cli/internal/corehelpers/commands.go:872 (CreateTemp adjacent, mode 0600), :878 (deferred os.Remove of the temp on every failure path), :883-:887 (curl -o temp, CombinedOutput failure returns DOWNLOAD-FAILED with \"no target was published\"), :888 (os.Rename only after that).",
+    "suggested_text": "No change needed."
+   },
+   {
+    "line": 115,
+    "claim": "The invocation form `scripts/atomic-download.sh \"$source_url\" \"$target_path\"` is what a caller runs.",
+    "verdict": "accurate",
+    "what_the_code_does": "The launcher converts exactly two positional arguments into --source-url and --target-path and execs the CLI subcommand, which requires those flags and rejects anything else. The two-argument form works only through the launcher, which is what the guide's line 24 already says.",
+    "evidence": "/home/user/skill-do-work/skills/do-work/scripts/atomic-download.sh:6-9 (`if [[ \"$#\" -eq 2 ]]; then set -- --source-url \"$1\" --target-path \"$2\"; fi`); /home/user/skill-do-work/skills/do-work/tools/do-work-cli/internal/corehelpers/commands.go:840-:858 (flag parsing, \"unknown option\" default, both flags required).",
+    "suggested_text": "No change needed."
+   },
+   {
+    "line": 118,
+    "claim": "\"The helper retries transient failures itself (`--retry 3 --retry-delay 2 --retry-max-time 60`)\"",
+    "verdict": "accurate",
+    "what_the_code_does": "The curl argument slice is built with exactly those three options, in that order, on every invocation.",
+    "evidence": "/home/user/skill-do-work/skills/do-work/tools/do-work-cli/internal/corehelpers/commands.go:879 \u2014 `curlArguments := []string{\"-fsSL\", \"--retry\", \"3\", \"--retry-delay\", \"2\", \"--retry-max-time\", \"60\"}`.",
+    "suggested_text": "No change needed."
+   },
+   {
+    "line": 118,
+    "claim": "\"Plain `--retry` has treated 429 as transient since curl 7.51.0; `--retry-all-errors` is deliberately not used because it would raise the required curl version to 7.71 without adding anything here.\"",
+    "verdict": "accurate",
+    "what_the_code_does": "The flag set contains no --retry-all-errors, so the code half of the claim holds. The two version numbers are upstream curl history and cannot be checked from this repository; they match curl's published record (429 became a transient status for --retry in 7.51.0, --retry-all-errors was added in 7.71.0).",
+    "evidence": "/home/user/skill-do-work/skills/do-work/tools/do-work-cli/internal/corehelpers/commands.go:879 \u2014 the slice ends at --retry-max-time; nothing later appends --retry-all-errors (:880-:883 append only the auth header, -o, and the URL).",
+    "suggested_text": "No change needed."
+   },
+   {
+    "line": 120,
+    "claim": "\"When `GH_TOKEN` or `GITHUB_TOKEN` is non-empty the helper sends `Authorization: Bearer <token>`; absent or empty, the request goes out exactly as it would without them.\"",
+    "verdict": "accurate",
+    "what_the_code_does": "firstNonempty(os.Getenv(\"GH_TOKEN\"), os.Getenv(\"GITHUB_TOKEN\")) picks GH_TOKEN first and falls through to GITHUB_TOKEN; only a non-empty result appends -H \"Authorization: Bearer \"+token, so an empty or unset pair leaves the argument list unchanged.",
+    "evidence": "/home/user/skill-do-work/skills/do-work/tools/do-work-cli/internal/corehelpers/commands.go:880-:882, with firstNonempty at :895-:902.",
+    "suggested_text": "No change needed."
+   },
+   {
+    "line": 122,
+    "claim": "\"Cleanup never converts a failed download into success.\" (plus the caller rule about re-deriving the reviewed path between command blocks)",
+    "verdict": "accurate",
+    "what_the_code_does": "The deferred os.Remove deletes the private temp file on every failure path, and each failure returns OutcomeFailure (process exit 2) with evidence that no target was published; nothing in the cleanup path can produce OutcomeSuccess. The second sentence is caller policy for later command blocks, not a behavior of this helper, and nothing in the code contradicts it.",
+    "evidence": "/home/user/skill-do-work/skills/do-work/tools/do-work-cli/internal/corehelpers/commands.go:878 (defer os.Remove), :886 and :889 (both failures are OutcomeFailure); /home/user/skill-do-work/skills/do-work/tools/do-work-cli/internal/resultmodel/result_model.go:648-:662 (OutcomeFailure -> 2).",
+    "suggested_text": "No change needed."
+   },
+   {
+    "line": 124,
+    "claim": "\"Publication here makes the [Verified exact publication](#verified-exact-publication) check, and so does the screenshot install that shares these mechanics: each verifies the path it actually wrote, removes only its own nested artifact, and exits nonzero with the occupying directory untouched.\"",
+    "verdict": "partly-stale",
+    "what_the_code_does": "Three clauses generalized over two commands that behave differently. Clause 1, \"verifies the path it actually wrote\": TRUE of capture-screenshot only \u2014 it byte-compares source against its staged copy and then confirms the published name is the same inode it staged. FALSE of atomic-download \u2014 after os.Rename the only stat reads the size for the recorded change and its error is discarded; there is no byte or identity check, so the rename's exit status is exactly what it trusts, which is the thing the Verified exact publication section says is not proof. Clause 2, \"removes only its own nested artifact\": TRUE of NEITHER \u2014 neither command can nest anything. atomic-download refuses a directory target before it fetches, and its os.Rename would fail anyway; capture-screenshot refuses any existing destination before it stages, and its rooted link would fail anyway. I confirmed both syscalls empirically: rename onto a directory and linkat onto an existing name both return EEXIST and leave the directory with zero entries. What each actually removes on failure is its own adjacent staging file. Clause 3, \"exits nonzero with the occupying directory untouched\": TRUE of both, by different codes \u2014 atomic-download returns OutcomeFindings (exit 1), capture-screenshot returns OutcomeFailure (exit 2). Also \"shares these mechanics\" is wrong: the download is curl plus a clobbering rename, the screenshot is a verified private copy plus a no-clobber link. The final sentence of line 124 about the staged source is accurate and should survive.",
+    "evidence": "atomic-download, /home/user/skill-do-work/skills/do-work/tools/do-work-cli/internal/corehelpers/commands.go:869-:870 (directory target -> OutcomeFindings, \"existing directory left unchanged\", before any temp or fetch), :888 (os.Rename is the publication), :891-:892 (`info, _ := os.Stat(targetPath)` \u2014 size only, error discarded). capture-screenshot, /home/user/skill-do-work/skills/do-work/tools/do-work-cli/internal/corehelpers/publication.go:132-:136 (any existing destination refused before staging), :166-:176 (bytes.Equal of source against staged copy), :178-:186 (no-clobber Link then os.SameFile identity check), :147-:152 (unpublished staging file removed), :71-:72 (failure -> OutcomeFailure). Exit codes: /home/user/skill-do-work/skills/do-work/tools/do-work-cli/internal/resultmodel/result_model.go:648-:662 (OutcomeFindings -> 1, OutcomeFailure -> 2). Empirical syscall check (Go 1.25, scratchpad program): \"os.Rename over dir: file exists / dir entries after rename: 0\" and \"Root.Link onto dir: linkat ... file exists / dir entries after link: 0\".",
+    "suggested_text": "The two publications answer the [Verified exact publication](#verified-exact-publication) check differently, and only one of them verifies. The screenshot install byte-compares its private copy against the source, publishes it with a link that will not clobber, and then confirms the published name is the same file it staged; a destination that already exists, directory or not, is refused before anything is staged. That is what protects the staged source, since a staged capture is removed only after a publication that verifiably happened. The download inspects nothing afterwards: it refuses a target that is already a directory before it fetches, and then trusts the rename, which fails rather than descending into a directory the way `mv` would. Neither command can strand a private file inside an occupying directory, so neither has a nested artifact to remove \u2014 each removes only its own adjacent staging file, and both exit nonzero with the occupying directory untouched."
+   }
+  ],
+  "claims_checked_total": 7,
+  "notes": "Section boundary: \"## Atomic download publication\" runs from line 110 to line 125 (next heading \"## Portfolio summary publication\" is line 126).\n\nTwo things the section does not claim but a reader could get wrong, for whoever owns the fix (not written into my replacement text, since neither is a false statement in the guide today):\n\n1. atomic-download silently replaces an occupied regular-file target. Only a directory is refused (commands.go:869); os.Rename over an existing file overwrites it (commands.go:888). The live path and the dry-run path disagree: --dry-run refuses ANY existing target with DOWNLOAD-TARGET-OCCUPIED (commands.go:864-865). A caller who tests with --dry-run and then runs for real gets a different answer about an occupied file. This is a code inconsistency, not a doc defect, so I left it out of the replacement paragraph.\n\n2. \"The screenshot install\" no longer names anything a shipped action runs. /home/user/skill-do-work/skills/do-work/actions/capture.md:220 says scripts/capture-screenshot.sh is \"the retired invocation prefix retained for compatibility discovery only; capture must not invoke it now that the transaction owns asset publication.\" The capture-screenshot subcommand still exists and still behaves as I described, so the sentence is not false, but the section owner may want a name that matches what still calls it.\n\nMethod note on the one clause the request flagged: rather than assume, I compiled a small Go program in the scratchpad against Go 1.25 to run os.Rename onto an occupied directory and os.Root.Link onto an occupied name. Both returned EEXIST and left the occupying directory empty. That is why my verdict on the nesting clause is \"true of neither command\" rather than \"true of one\" \u2014 the shell-level nesting that the Verified exact publication section warns about (mv and ln treating a directory as a container) does not reproduce in either Go path."
+ },
+ {
+  "section": "All \"## \" sections of skills/do-work/docs/prescribed-shell-primitives.md outside \"Protected inventory fallbacks\", \"Shipped executable homes\", and \"Report image batch publication\": Lifecycle timing, Per-file untracked inventory, Merge-aware commit diff, Commit file listing, Local Git ignore, Verified exact publication, Atomic download publication, Portfolio summary publication, Raw text before shell quoting, Diff output filtering, State across command blocks.",
+  "claims": [
+   {
+    "line": 30,
+    "claim": "A step calls `tools/do-work-cli.sh \u2026 record-timing-event` for a completed interval, or `tools/do-work-cli.sh \u2026 run-timed-command` for a command the suite launches and measures itself.",
+    "verdict": "accurate",
+    "what_the_code_does": "Both subcommands are registered under exactly those names and behave as described: record-timing-event appends one already-completed interval, run-timed-command executes argv and measures both ends in-process.",
+    "evidence": "internal/lifecycletiming/timing_commands.go:16-18 defines CommandRecordTimingEvent = \"record-timing-event\" and CommandRunTimedCommand = \"run-timed-command\"; internal/lifecycletiming/lifecycle_timing.go:144-148 RunTimedCommand \"executes argv, measures it in-process\".",
+    "suggested_text": ""
+   },
+   {
+    "line": 30,
+    "claim": "\"Both own the clock, so no caller derives a timestamp with `date` and no caller invents a second duration format.\"",
+    "verdict": "partly-stale",
+    "what_the_code_does": "True of run-timed-command, which reads the clock at both ends itself. Not true of record-timing-event: it accepts `--started-at <RFC3339>` from the caller, and the shipped action that uses it passes one. actions/work.md Step 5 says to \"take the current UTC instant (Timestamp rule) and hold it\" and then record the interval with `--category builder-work --started-at <the instant you held>`; the Timestamp rule's option 2 is literally `date -u +%Y-%m-%dT%H:%M:%SZ`. So a caller does derive a timestamp with `date` on the POSIX floor path. Only the duration format half is true of both.",
+    "evidence": "internal/lifecycletiming/timing_commands.go:171-176 parses `--started-at` as RFC3339 into options.startedAt/hasStartedAt; internal/lifecycletiming/lifecycle_timing.go:278-281 uses that explicit start instead of chaining. Caller: skills/do-work/actions/work.md:284 passes `--started-at <the instant you held>`; skills/do-work/actions/work-reference.md:67-68 gives `do-work-cli.sh --format text now` first and `date -u +%Y-%m-%dT%H:%M:%SZ` as the emergency floor.",
+    "suggested_text": "Both own the elapsed derivation and the one stream format, so no caller invents a second duration shape. `run-timed-command` owns the clock outright \u2014 it reads both ends itself. `record-timing-event` chains a boundary event to the previous event's end when no start is given, and takes an explicit `--started-at` only for a delegated interval whose start the caller already held, obtained through the Timestamp rule rather than a hand-rolled format."
+   },
+   {
+    "line": 30,
+    "claim": "\"The wrapper attaches the child's own stdout and stderr to the console rather than a pipe\".",
+    "verdict": "partly-stale",
+    "what_the_code_does": "The wrapper sets both `command.Stdout` and `command.Stderr` to one writer, and main passes `os.Stderr` for it. The child's stdout is therefore merged onto the CLI's stderr, not left on stdout \u2014 deliberately, so stdout stays free for the rendered CommandResult. \"Rather than a pipe\" is correct; \"stdout and stderr to the console\" is true of stderr and only indirectly of stdout, and a caller who redirects the CLI's stdout captures the JSON result, never the wrapped gate's output.",
+    "evidence": "internal/lifecycletiming/lifecycle_timing.go:167-168 `command.Stdout = childOutput` and `command.Stderr = childOutput`; internal/lifecycletiming/timing_commands.go:22-23 \"childOutput receives a wrapped command's own stdout and stderr, which keeps stdout free for the rendered CommandResult; main passes os.Stderr\"; cmd/do-work-cli/main.go:47 `lifecycletiming.Handlers(os.Stderr)`.",
+    "suggested_text": "The wrapper hands the child the CLI's own stderr handle for both its stdout and its stderr rather than a pipe \u2014 that keeps the CLI's stdout free for the rendered result \u2014 and exits with the child's status:"
+   },
+   {
+    "line": 30,
+    "claim": "\"exits with the child's status: the child's own code, 128 plus the signal number when a signal killed it, and 127 when the command never launched.\"",
+    "verdict": "accurate",
+    "what_the_code_does": "childExitStatus returns the child's own exit code when it exited normally, and signalExitStatusBase (128) plus the signal number when Signaled(). A command that never launched returns timedCommandNotLaunchedStatus (127). Each of those becomes the process exit status through ExitCodeOverride, which the runtime honours for any value 1..255.",
+    "evidence": "internal/lifecycletiming/lifecycle_timing.go:52-53 (127 and 128 constants), :213-226 childExitStatus, :178-180 the 127 launch path; internal/lifecycletiming/timing_commands.go:108/120/125 set ExitCodeOverride; internal/commandruntime/command_runtime.go:74-75 returns it verbatim.",
+    "suggested_text": ""
+   },
+   {
+    "line": 32,
+    "claim": "\"A command reaches the stream as its executable's base name plus an argv token count, never as arguments, so a token or a user-controlled path cannot land in durable evidence.\"",
+    "verdict": "partly-stale",
+    "what_the_code_does": "The first half holds: redactCommandIdentity emits only `<base name> (N argv tokens)`, and record-timing-event's `--command` text is reduced the same way. The trailing conclusion does not generalize. `--operation`, `--agent` and `--revision` are free caller text that reaches the stream and the folded `## Timing` section as written; boundEvidenceText only strips control characters and `|`, collapses whitespace, and cuts at 120 runes \u2014 it does not redact tokens or paths. RenderTimingSection prints the operation into the request file, which is committed evidence.",
+    "evidence": "internal/lifecycletiming/lifecycle_timing.go:702-710 redactCommandIdentity; :716-731 boundEvidenceText (control-character strip plus a 120-rune bound, evidenceTextLimit at :104); :307 CommandIdentity is the only redacted field while Operation/Revision/ResponsibleAgent pass through; :498-505 RenderTimingSection writes SlowestStage.Operation and SlowestCommand.Operation into the `## Timing` section.",
+    "suggested_text": "Timing evidence is metadata only where the command itself is concerned. A command reaches the stream as its executable's base name plus an argv token count, never as arguments, so no argument value can land in durable evidence. The caller-written `--operation`, `--agent` and `--revision` labels are the exception and travel as written into both the stream and the folded `## Timing` section, stripped only of control characters and cut to 120 characters \u2014 so never put a token or a user-controlled path in one."
+   },
+   {
+    "line": 32,
+    "claim": "\"`tools/do-work-cli.sh \u2026 fold-timing-summary` turns one run's stream into a single `## Timing` section and deletes the stream\".",
+    "verdict": "accurate",
+    "what_the_code_does": "FoldTimingSummary summarizes the stream, replaces or appends exactly one `## Timing` section in the request file through an atomic replace, then removes the stream file and best-effort removes the now-empty run directory. An absent stream is not an error and changes no bytes.",
+    "evidence": "internal/lifecycletiming/lifecycle_timing.go:378-394 (ReplaceExisting, then os.Remove(streamPath), then `_ = os.Remove(filepath.Dir(streamPath))`); :516-519 replaceTimingSection \"puts exactly one `## Timing` section into the document\"; :373-376 empty stream returns streamStateAbsent.",
+    "suggested_text": ""
+   },
+   {
+    "line": 32,
+    "claim": "\"per-test durations stay with the project's own test-duration log rather than being re-derived here.\"",
+    "verdict": "accurate",
+    "what_the_code_does": "A wrapped test command produces exactly one command event with one elapsed figure. Nothing in the package parses per-test output or derives per-test durations.",
+    "evidence": "internal/lifecycletiming/lifecycle_timing.go:13-16 package doc: \"Per-test durations are deliberately out of scope here: a wrapped test command is one command event\"; the only elapsed values written are the whole-command measurement at :196-198.",
+    "suggested_text": ""
+   },
+   {
+    "line": 36,
+    "claim": "\"Plain `git status --porcelain` may collapse a wholly untracked directory into one directory row, hiding every file beneath it.\"",
+    "verdict": "accurate",
+    "what_the_code_does": "Verified directly against git in a scratch repository: with two untracked files under a wholly untracked `nested/`, `git status --porcelain` printed the single row `?? nested/`, while `--untracked-files=all` printed both files.",
+    "evidence": "Scratch repo run: `git status --porcelain` -> `?? nested/`; `git status --porcelain --untracked-files=all` -> `?? nested/deep/one.txt` and `?? nested/deep/two.txt`.",
+    "suggested_text": ""
+   },
+   {
+    "line": 39,
+    "claim": "\"Use `git status --porcelain --untracked-files=all` (`-uall`) when tracked and untracked states must share one inventory.\"",
+    "verdict": "accurate",
+    "what_the_code_does": "The shipped inventory reader uses exactly this form, with `-z` and the copy-detection setting, and classifies tracked and untracked rows from that one command.",
+    "evidence": "internal/corehelpers/inventory.go:82-84 `gitOutput(repositoryRoot, \"-c\", \"status.renames=copies\", \"status\", \"--porcelain=v1\", \"--untracked-files=all\", \"-z\")`.",
+    "suggested_text": ""
+   },
+   {
+    "line": 40,
+    "claim": "\"consume the second path carried by rename/copy records.\"",
+    "verdict": "accurate",
+    "what_the_code_does": "readInventory advances one extra NUL record whenever the status contains R or C, treats a missing origin as a hard parse error, and classifies the origin path in its own right.",
+    "evidence": "internal/corehelpers/inventory.go:99-110: on `strings.ContainsAny(status, \"RC\")` it reads records[index+1] as `origin`, errors with \"rename origin missing\" when absent, and emits an XD row for a secret-shaped rename origin.",
+    "suggested_text": ""
+   },
+   {
+    "line": 41,
+    "claim": "\"A check for tracked files that should be ignored is separate: feed tracked paths to `git check-ignore --no-index`.\"",
+    "verdict": "accurate",
+    "what_the_code_does": "Verified against git: on a tracked path that a `.gitignore` rule covers, plain `git check-ignore` reports no match, while `--no-index` reports the matching rule. No shipped Go code implements this check, so it stands purely as a caller rule and the rule is correct.",
+    "evidence": "Scratch repo with `build/` ignored and `build/artifact.o` force-added: `git check-ignore -v -- build/artifact.o` -> no match; `git check-ignore -v --no-index -- build/artifact.o` -> `.gitignore:1:build/\\tbuild/artifact.o`.",
+    "suggested_text": ""
+   },
+   {
+    "line": 43,
+    "claim": "\"`actions/commit.md` and `../../do-work-toolbox/actions/inspect.md` invoke the wrapper\".",
+    "verdict": "accurate",
+    "what_the_code_does": "Both action files invoke scripts/protected-inventory.sh in both modes, and both cite this guide's fallback section for the legend.",
+    "evidence": "skills/do-work/actions/commit.md:56 and :82 (`start`, `associate`); skills/do-work-toolbox/actions/inspect.md:64 and :114 invoke `<skill-root>/../do-work/scripts/protected-inventory.sh` with its own quarantine name.",
+    "suggested_text": ""
+   },
+   {
+    "line": 80,
+    "claim": "\"Before treating a REQ's `commit:` hash as a diff source, invoke `scripts/show-commit-diff.sh <commit>`.\"",
+    "verdict": "accurate",
+    "what_the_code_does": "The retained launcher accepts exactly one positional commit, translates it to `--commit`, and execs the CLI with `--format text show-commit-diff`.",
+    "evidence": "skills/do-work/scripts/show-commit-diff.sh:6-9; caller at skills/do-work/actions/review-work.md:74.",
+    "suggested_text": ""
+   },
+   {
+    "line": 80,
+    "claim": "\"It detects the quoted second parent and emits `git show --first-parent -m` for a merge or ordinary `git show` otherwise.\"",
+    "verdict": "partly-stale",
+    "what_the_code_does": "The branch selection is right, but \"quoted\" describes shell quoting that no longer happens. The Go handler builds `revision + \"^2\"` as an argv element and runs `git rev-parse --verify -q <rev>^2` through exec.Command with no shell in between, so there is nothing quoted; the detection is a rev-parse verification of the second parent.",
+    "evidence": "internal/corehelpers/git_helpers.go:99-107: `revision := strings.TrimSpace(string(resolved))`, then `exec.Command(\"git\", \"-C\", root, \"rev-parse\", \"--verify\", \"-q\", revision+\"^2\").Run() == nil` selects `{\"show\", \"--first-parent\", \"-m\", revision}` and otherwise `{\"show\", revision}`.",
+    "suggested_text": "It verifies the second parent with `git rev-parse --verify -q <commit>^2` and emits `git show --first-parent -m` for a merge or ordinary `git show` otherwise."
+   },
+   {
+    "line": 80,
+    "claim": "\"A normal show of a merge produces a combined view that is commonly empty, so it cannot be used as evidence that the REQ changed nothing.\"",
+    "verdict": "accurate",
+    "what_the_code_does": "Verified against git: on a real two-parent merge, plain `git show` printed only the commit header with no diff hunks, and `git show --name-only --format=` printed nothing at all, while `--first-parent -m` (the branch this helper takes) yielded the changed paths.",
+    "evidence": "Scratch repo merge commit: `git show HEAD` -> header only; `git show --name-only --format= HEAD` -> empty; `git diff-tree --no-commit-id --name-only -r -m HEAD` -> `side.txt`, `main.txt`.",
+    "suggested_text": ""
+   },
+   {
+    "line": 82,
+    "claim": "\"An orchestrated worktree build is different: the owner passes `<pre>..<merge_hash>` and the reader uses that range. Do not rediscover an endpoint from `HEAD`.\"",
+    "verdict": "accurate",
+    "what_the_code_does": "The orchestrator captures both endpoints and passes the range to every evidence step, and the reference states the reason for not using live HEAD in the exact terms this line summarizes.",
+    "evidence": "skills/do-work/actions/work-reference.md:441 \"Use the *captured* `<merge_hash>` as the upper bound, never live `HEAD`: HEAD moves when finalization commits its lifecycle/release group\"; skills/do-work/actions/work.md:310 passes the range to Steps 6.3, 7, 8 and 9; skills/do-work/actions/review-work.md:30 and :72 read it.",
+    "suggested_text": ""
+   },
+   {
+    "line": 92,
+    "claim": "\"This emits paths for ordinary and merge commits without letting commit-header or message text become phantom filenames.\"",
+    "verdict": "accurate",
+    "what_the_code_does": "Verified against git on a merge whose message deliberately named `phantom.txt`, and whose merged-in commit message named `base.txt` and `other/path.txt`: the prescribed form printed only the two real paths and no header or message text.",
+    "evidence": "Scratch repo: `git diff-tree --no-commit-id --name-only -r -m HEAD` -> `side.txt`, `main.txt` only, with the merge message containing \"mentions phantom.txt here\".",
+    "suggested_text": ""
+   },
+   {
+    "line": 92,
+    "claim": "\"`git show --name-only --format=` is acceptable when a caller genuinely needs show\".",
+    "verdict": "partly-stale",
+    "what_the_code_does": "True for an ordinary commit, false for a merge \u2014 and a merge is the case this guide's neighbouring section exists for. On a two-parent merge that form prints nothing at all, which a path-only consumer reads as \"this commit touched no files\": the same silent-empty trap the Merge-aware commit diff section warns about eleven lines earlier.",
+    "evidence": "Scratch repo merge commit: `git show --name-only --format= HEAD` produced no output; the same commit's real paths are `side.txt` and `main.txt` as shown by the `-m` diff-tree form.",
+    "suggested_text": "`git show --name-only --format=` is acceptable for an ordinary commit when a caller genuinely needs show, but never for a merge: without `-m` it prints nothing at all there, which a path-only consumer reads as a commit that changed no files."
+   },
+   {
+    "line": 92,
+    "claim": "\"the diff-tree form above is the suite default for path-only consumers.\"",
+    "verdict": "stale",
+    "what_the_code_does": "There are three path-only diff-tree consumers in the shipped Go and they use three different forms; none matches the form printed above. gateevidence adds `-z`. finalization drops `-m` entirely. gittransaction drops `-m` and adds `--root` and `-z`. Only one of the three carries the `-m` that the prescribed form makes central.",
+    "evidence": "internal/gateevidence/gate_evidence.go:377 `diff-tree --no-commit-id --name-only -r -m -z <commit>`; internal/finalization/finalization_apply.go:545 `diff-tree --no-commit-id --name-only -r <candidate>`; internal/gittransaction/git_transaction.go:1368 `diff-tree --root --no-commit-id --name-only -r -z <commitSHA>`.",
+    "suggested_text": "`-m` is what makes the form work on a merge, and `-z` is what makes it safe for a filename carrying a space, quote or newline. Shipped consumers add what their own input needs: `gateevidence` reads arbitrary commits after a green gate and carries both flags, while `gittransaction` reads a commit it just created and carries `--root -z` without `-m`. Take the flags from the input, not from a single house form."
+   },
+   {
+    "line": 99,
+    "claim": "\"scripts/add-local-git-exclude.sh <path> '**/<path>'\" is the invocation.",
+    "verdict": "accurate",
+    "what_the_code_does": "The launcher accepts one or two positionals and translates them to `--probe-path` and `--pattern`, defaulting the pattern to `**/<path>` with any `./` prefix stripped. The Go handler applies the same default when `--pattern` is empty.",
+    "evidence": "skills/do-work/scripts/add-local-git-exclude.sh:6-10 `set -- --probe-path \"$1\" --pattern \"${2:-**/${1#./}}\"`; internal/corehelpers/git_helpers.go:46-48 `pattern = \"**/\" + strings.TrimPrefix(filepath.ToSlash(probePath), \"./\")`.",
+    "suggested_text": ""
+   },
+   {
+    "line": 102,
+    "claim": "\"Use `git rev-parse --git-path`; constructing `<repo>/.git/info/exclude` breaks linked worktrees and submodules.\"",
+    "verdict": "accurate",
+    "what_the_code_does": "The handler resolves the exclude file through `git rev-parse --git-path info/exclude` and joins a relative answer to the repository root; it never composes a `.git` path itself.",
+    "evidence": "internal/corehelpers/git_helpers.go:57-63. Confirmed against git: from a subdirectory the command answers relatively (`../.git/info/exclude`), which is why the join at :61-63 exists.",
+    "suggested_text": ""
+   },
+   {
+    "line": 102,
+    "claim": "\"The `**/` prefix keeps an interior-slash pattern and a cwd-relative `git check-ignore` probe aligned from subdirectories.\"",
+    "verdict": "accurate",
+    "what_the_code_does": "Verified against git: an interior-slash pattern in info/exclude is anchored at the repository root, so a probe issued from a subdirectory misses it; the `**/` form matches at any depth and hits. The probe really is cwd-relative in practice, because the handler runs `git -C <RepositoryRoot> check-ignore` and RepositoryRoot defaults to the process working directory when `--repo-root` is not passed \u2014 which the retained launcher never passes.",
+    "evidence": "Scratch repo: with `build/out.txt` in info/exclude, `git check-ignore -- build/out.txt` from `sub/` reported no match; with `**/build/out.txt` it matched. internal/corehelpers/git_helpers.go:54 `exec.Command(\"git\", \"-C\", executionContext.RepositoryRoot, \"check-ignore\", \"-q\", \"--\", probePath)`; internal/commandruntime/command_runtime.go:104-106 defaults RepositoryRoot to os.Getwd().",
+    "suggested_text": ""
+   },
+   {
+    "line": 102,
+    "claim": "\"The command makes an untracked path ignorable, not a tracked path safe\".",
+    "verdict": "accurate",
+    "what_the_code_does": "The handler probes check-ignore, resolves the exclude file, and appends the pattern idempotently. It never consults the index, so a tracked path stays tracked and committable after a successful run.",
+    "evidence": "internal/corehelpers/git_helpers.go:15-93 \u2014 the whole handler; no `ls-files`, no index read anywhere in it.",
+    "suggested_text": ""
+   },
+   {
+    "line": 106,
+    "claim": "\"Whenever a publication's destination could already be occupied, the publishing step verifies the path it actually wrote; the rename's or link's exit status is not that proof\" \u2014 extended at line 108 to \"every publication described below\".",
+    "verdict": "partly-stale",
+    "what_the_code_does": "True of one of the three publications in these sections. capture-screenshot re-stats the destination and its stage after the link and compares them with os.SameFile. atomic-download publishes with os.Rename and then only stats the target for a byte count in its change record. publish-portfolio-summary's rootedPublishFile takes the Link's or Rename's return value as the whole answer with no post-publication identity check. The two that skip verification are safe for a different reason \u2014 Go's syscalls refuse an occupied destination \u2014 but they do exactly what this sentence says is not proof.",
+    "evidence": "Verifies: internal/corehelpers/publication.go:176-181 (`parentRoot.Link`, then Stat both names and `os.SameFile`). Does not verify: internal/corehelpers/commands.go:888-892 (`os.Rename` then `info, _ := os.Stat(targetPath)` for the size only); internal/toolboxcommands/mutation.go:184-204 (`parent.Rename` / `parent.Link`, `keep = true`, return).",
+    "suggested_text": "Whenever a publication's destination could already be occupied, the publishing step must be able to name what it actually wrote. `capture-screenshot` proves it outright, re-stating the destination against its own stage with `os.SameFile` after the link. `atomic-download` and `publish-portfolio-summary` take the proof from the syscall instead, which refuses an occupied destination rather than writing under it. Both answer the same check; shell written by hand has neither and must verify the path itself."
+   },
+   {
+    "line": 106,
+    "claim": "\"`ln` and `mv` treat a directory standing in the destination's place as a container rather than a collision, so the payload lands inside it under the private staging name, the command exits zero, and the destination is still the directory it was.\"",
+    "verdict": "stale",
+    "what_the_code_does": "This describes shell that no longer runs in any publication path. Every shipped publication publishes through Go \u2014 os.Rename, os.Link, or os.Root.Link \u2014 and all three refuse an occupied destination instead of nesting under it. I confirmed this on the same filesystem: os.Rename, os.Link and Root.Link each returned \"file exists\" against a directory destination and wrote nothing, while shell `mv` and `ln` both exited 0 and deposited the staging file inside the directory. The one remaining shell `mv` in the suite is in the installer's bootstrap heredoc, into a fresh mktemp directory, not a publication.",
+    "evidence": "internal/corehelpers/publication.go:176 `parentRoot.Link(...)`; internal/corehelpers/commands.go:889 `os.Rename(temporaryPath, targetPath)`; internal/toolboxcommands/mutation.go:190/196 `parent.Rename` / `parent.Link`; internal/atomicfile/atomic_replace_unix.go:8 `os.Rename`. Measured: Go -> \"rename ...: file exists\", \"link ...: file exists\", \"linkat ...: file exists\"; shell -> `mv` exit 0 and `ln` exit 0, both leaving `.dest.publishing.*` inside `dest/`. Only shell mv left: skills/do-work/tools/install-do-work-suite.sh:25, inside the bootstrap heredoc.",
+    "suggested_text": "Go's `os.Rename` and `os.Link` refuse a destination that already exists, so no shipped publication can nest its payload inside an occupying directory or exit zero over one. Shell does the opposite \u2014 `mv` and `ln` treat that directory as a container, land the payload inside it under the private staging name, and exit zero with the destination still the directory it was \u2014 so hand-written shell has to make the check that the syscall makes for the helpers."
+   },
+   {
+    "line": 112,
+    "claim": "\"The shipped helper downloads to a private adjacent temporary file, publishes by rename only after curl succeeds, and preserves failures\".",
+    "verdict": "accurate",
+    "what_the_code_does": "handleAtomicDownload creates a temp file with os.CreateTemp in the target's own directory (mode 0600), runs curl into it, and only on curl exit zero renames it onto the target. Every failure path returns without publishing and the deferred Remove discards the stage. It also refuses up front when the target is an existing directory. Note: this is the corehelpers curl route, not archivefetch.DownloadAtomic, which is the installer's separate net/http path.",
+    "evidence": "internal/corehelpers/commands.go:869-892; the directory pre-check at :868.",
+    "suggested_text": ""
+   },
+   {
+    "line": 118,
+    "claim": "The helper retries with `--retry 3 --retry-delay 2 --retry-max-time 60`.",
+    "verdict": "accurate",
+    "what_the_code_does": "Those four flags are passed verbatim to curl, alongside `-fsSL`.",
+    "evidence": "internal/corehelpers/commands.go:879 `curlArguments := []string{\"-fsSL\", \"--retry\", \"3\", \"--retry-delay\", \"2\", \"--retry-max-time\", \"60\"}`.",
+    "suggested_text": ""
+   },
+   {
+    "line": 120,
+    "claim": "\"When `GH_TOKEN` or `GITHUB_TOKEN` is non-empty the helper sends `Authorization: Bearer <token>`; absent or empty, the request goes out exactly as it would without them.\"",
+    "verdict": "accurate",
+    "what_the_code_does": "The helper takes the first non-empty of GH_TOKEN then GITHUB_TOKEN and appends `-H \"Authorization: Bearer <token>\"` only in that case; with neither set the curl argv is unchanged.",
+    "evidence": "internal/corehelpers/commands.go:880-882 with firstNonempty at :895-902.",
+    "suggested_text": ""
+   },
+   {
+    "line": 128,
+    "claim": "\"The canonical command copies and verifies that source into a private file adjacent to the canonical target, once per output.\"",
+    "verdict": "partly-stale",
+    "what_the_code_does": "Two things are off. The source is read once into memory, not copied once per output, and each output is written from that one buffer. And the private staging file sits adjacent to the output being published, not adjacent to the canonical target \u2014 for `--with-snapshot` the snapshot's stage is created in the snapshot directory, which is a different directory from the canonical file's. There is also no read-back verification of the staged bytes; the only verification before a replace is that the existing canonical target is unchanged.",
+    "evidence": "internal/toolboxcommands/portfolio.go:31 `data, readErr := os.ReadFile(source)` \u2014 the single read; :120 and :143 both call rootedPublishFile with that same `data`. internal/toolboxcommands/mutation.go:140-141 the stage's parent is `filepath.Dir(relative)` of the output being published; :162 `temporary := \".\" + leaf + \".publishing-\" + hex...`; :184-189 the pre-replace check compares the target against itself, not the stage against the source. Caller directories differ: skills/do-work-toolbox/actions/present-work.md:133-134 (canonical `do-work/deliverables/portfolio-summary.md`, snapshot under `do-work/deliverables/portfolio-snapshots/`).",
+    "suggested_text": "The canonical command reads that source once and publishes every output from those same bytes, staging each one in a private file adjacent to its own target \u2014 the snapshot beside the snapshot, the canonical beside the canonical."
+   },
+   {
+    "line": 128,
+    "claim": "\"`--canonical-only` atomically replaces only the canonical file. `--with-snapshot` first publishes an exclusive snapshot from its own verified copy, advances occupied candidates with numeric suffixes, and only then atomically replaces the canonical file from the same bytes.\"",
+    "verdict": "accurate",
+    "what_the_code_does": "Modes and ordering match. --canonical-only touches one path. --with-snapshot loops for the first free candidate (`-2`, `-3`, \u2026 before the extension), publishes it exclusively via a no-clobber link, and only then publishes the canonical from the same in-memory bytes.",
+    "evidence": "internal/toolboxcommands/portfolio.go:22-27 mode parsing and arity; :110-133 the snapshot loop, breaking only after a successful exclusive publish; :134-149 the canonical publish afterwards; firstFreePortfolioPath at :198-215 for the numeric suffixes; internal/toolboxcommands/mutation.go:196 `parent.Link` for the exclusive create.",
+    "suggested_text": ""
+   },
+   {
+    "line": 128,
+    "claim": "\"Missing, failed, or malformed canonical tooling stops the caller; the retained toolbox script is not a fallback.\"",
+    "verdict": "stale",
+    "what_the_code_does": "There is no retained toolbox script \u2014 for portfolio publication or anything else. skills/do-work-toolbox contains only SKILL.md, actions/, crew-members/ and docs/; it ships no scripts/ or tools/ directory at all, and no file named for portfolio publication exists anywhere in the suite outside the Go package. The sentence names an artifact that does not exist. The instruction it carries (do not fall back) is still right, so only the naming needs to go.",
+    "evidence": "`ls -R skills/do-work-toolbox` -> SKILL.md, actions, crew-members, docs only. `find skills -iname \"*portfolio*\"` -> internal/toolboxcommands/portfolio.go and portfolio_test.go only. skills/do-work/scripts/ contains no publish-portfolio-summary launcher (11 scripts, none for portfolio).",
+    "suggested_text": "Missing, failed, or malformed canonical tooling stops the caller; there is no script fallback for this publication in either skill."
+   },
+   {
+    "line": 130,
+    "claim": "\"The two outputs carry identical bytes but never share storage: a snapshot linked to the canonical file would follow every later in-place edit of it.\"",
+    "verdict": "accurate",
+    "what_the_code_does": "Each output is written independently from the same in-memory buffer into its own private stage, then published. The hard link that rootedPublishFile uses only ever links a stage to its own leaf, never one output to another, so the two published files are separate inodes.",
+    "evidence": "internal/toolboxcommands/portfolio.go:120 and :143 \u2014 two separate rootedPublishFile calls with the same `data`; internal/toolboxcommands/mutation.go:163-196 \u2014 each call opens its own O_EXCL stage and links that stage to its own leaf.",
+    "suggested_text": ""
+   },
+   {
+    "line": 130,
+    "claim": "\"a snapshot candidate occupied by a directory advances to the next suffix, a canonical path occupied by a directory fails closed, and neither leaves a private file nested inside it.\"",
+    "verdict": "accurate",
+    "what_the_code_does": "All three hold. firstFreePortfolioPath Lstats each candidate and skips anything that exists, directory included; if a publish still races, the loop re-checks and continues to the next suffix. An occupied canonical path is Lstat'd and rejected as unsafe when it is not a regular file, which exits 1. And no private file can nest, because the stage is created in the output's parent directory and the link/rename onto an occupied name fails rather than writing under it.",
+    "evidence": "internal/toolboxcommands/portfolio.go:207-214 (Lstat-and-advance), :121-126 (retry on a still-occupied candidate), :137-144 (`!info.Mode().IsRegular()` -> PORTFOLIO-CANONICAL-UNSAFE) and :84-86 in the transaction path; internal/resultmodel/result_model.go:652-653 maps OutcomeFindings to exit 1; internal/toolboxcommands/mutation.go:140-141 and :167-172 (stage in the output's parent, removed unless kept).",
+    "suggested_text": ""
+   },
+   {
+    "line": 132,
+    "claim": "\"An exclusive snapshot failure leaves the prior canonical unchanged. A later canonical replacement failure leaves the new snapshot published and reports that partial outcome. Existing snapshots are never truncated, replaced, or automatically removed.\"",
+    "verdict": "accurate",
+    "what_the_code_does": "The snapshot is published before the canonical is touched, so a snapshot failure returns with the canonical untouched. A canonical failure after a published snapshot adds a second finding naming the retained snapshot. Snapshots are created with a no-clobber link onto a path that was Lstat-verified free, and nothing in the command removes an existing one.",
+    "evidence": "internal/toolboxcommands/portfolio.go:117-126 (snapshot failures return with \"canonical was not changed\"); :146-148 (canonical failure carries \"snapshot retained when present\"); :171-176 portfolioDirectFailure appends PORTFOLIO-SNAPSHOT-RETAINED \"intentionally retained\"; internal/toolboxcommands/mutation.go:196 uses Link (no overwrite) for the create path.",
+    "suggested_text": ""
+   },
+   {
+    "line": 146,
+    "claim": "\"An apostrophe is enough to break na\u00efve single-quote interpolation; command syntax inside the text can then execute rather than remain data.\"",
+    "verdict": "accurate",
+    "what_the_code_does": "This section prescribes a rule for action authors and names no shipped helper, so there is no Go implementation to compare it against. The shell claim itself is correct: an apostrophe inside a single-quoted string terminates the quote, leaving the rest of the text in command position.",
+    "evidence": "No shipped Go or shell command implements or contradicts this section \u2014 it is a rule for action prose, unlike every other section in this guide, which names a route or a command.",
+    "suggested_text": ""
+   },
+   {
+    "line": 150,
+    "claim": "\"`-x` matches file and directory basenames, so a same-named source directory disappears too.\"",
+    "verdict": "accurate",
+    "what_the_code_does": "Verified against diff: with both a `generated/` directory and a `generated.png` file present in each tree, `diff -r -x generated` suppressed the directory's contents entirely while still reporting `generated.png` and `other.txt`. The exclusion is matched on basenames of both kinds.",
+    "evidence": "Scratch trees: `diff -r a b` reported generated/f.txt, generated.png and other.txt; `diff -r -x generated a b` reported only generated.png and other.txt.",
+    "suggested_text": ""
+   },
+   {
+    "line": 154,
+    "claim": "\"Prescribed command blocks are independent invocations. Shell variables, traps, and random `mktemp` paths from an earlier block are unavailable later \u2026 the action carries the literal in its durable/context record and re-types it.\"",
+    "verdict": "accurate",
+    "what_the_code_does": "Nothing in the suite persists shell state between blocks \u2014 every mechanic that must survive is either re-derived deterministically from git or carried as a re-typed literal. The worktree dispatch sequence follows exactly that: both merge endpoints are held as literals and re-typed into each later command, and the reference gives the concrete failure of doing otherwise.",
+    "evidence": "skills/do-work/actions/work-reference.md:439 \"a `\\\"$pre..$merge_hash\\\"` composed in a fresh shell expands to `\\\"..\\\"`, which git rejects\"; skills/do-work/actions/work.md:310 \"Hold both hashes \u2026 as literals you re-type into each later command (shell variables do not survive between command blocks)\"; skills/do-work/actions/work-reference.md:420 applies the same holding rule to `<operative_name>`.",
+    "suggested_text": ""
+   }
+  ],
+  "claims_checked_total": 37,
+  "notes": "Scope note: the prompt's exclusion list removes the section containing line 124 (that is \"## Atomic download publication\", lines 110-124) but the pay-attention list names atomic download publication. I audited it anyway and report three claims from it (lines 112, 118, 120), all accurate \u2014 the guide's curl description is correct because `atomic-download` really does shell out to curl (internal/corehelpers/commands.go:879-887). Worth flagging for whoever merges the batch: there are TWO download implementations, and only one matches the guide. `archivefetch.DownloadAtomic` (internal/archivefetch/archive_fetch.go:153-180) is a net/http reimplementation with a hand-rolled 4-attempt loop, a 2s delay and a 60s budget, publishing by rooted hard link rather than rename; it serves the suite installer. If anyone ever re-points `atomic-download` at that package, every curl sentence in that section goes stale at once.\n\nHighest-value findings, in order: (F1) line 106's `ln`/`mv` sentence is stale shell \u2014 every shipped publication uses Go's os.Rename/os.Link/Root.Link, which I measured returning \"file exists\" against a directory destination while shell mv and ln both exit 0 and nest the payload. (F2) line 92's \"suite default\" claim \u2014 three shipped diff-tree consumers, three different flag sets, none matching the printed form. (F3) line 128's \"retained toolbox script\" names a file that does not exist; do-work-toolbox ships no scripts/ or tools/ directory at all.\n\nThree findings are the generalize-over-N defect class the batch targets: line 30 \"Both own the clock, so no caller derives a timestamp with `date`\" (true of run-timed-command, false of record-timing-event, whose shipped caller at actions/work.md:284 passes `--started-at` from the Timestamp rule whose floor is `date -u`); line 32 \"a token or a user-controlled path cannot land in durable evidence\" (true of the command argv, false of `--operation`/`--agent`/`--revision`, which reach the committed `## Timing` section as written); line 106/108 \"the publishing step verifies the path it actually wrote \u2026 for every publication described below\" (true of capture-screenshot only; atomic-download and publish-portfolio-summary rely on the syscall's own refusal, which is exactly the \"exit status is not that proof\" the sentence rules out).\n\nEmpirical checks I ran rather than reasoned about: git status collapsing an untracked directory, diff-tree/-m and `git show --name-only --format=` on a real merge, the `**/` prefix against a subdirectory probe, `git check-ignore --no-index` on a tracked path, `diff -x` on a same-named directory, and Go vs shell rename/link into an occupied directory. Scratch files are under the session scratchpad and touch nothing in the repository; I made no edits, stages, or commits."
+ }
+]

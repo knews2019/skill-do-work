@@ -14,8 +14,8 @@ repair_mtime_output="$("$core_scripts/repair-req-timestamps.sh" "$repair_mtime_p
   || fail_case 'repair-req-timestamps future-stamp case returned nonzero'
 grep -q '^created_at: 2026-08-10T12:00:00Z$' "$repair_mtime_project/do-work/queue/REQ-801-future.md" \
   || fail_case 'repair-req-timestamps future-stamp case did not rewrite the stamp to the file mtime'
-printf '%s' "$repair_mtime_output" \
-  | grep -q 'REQ-801-future.md created_at: 2093-01-01T00:00:00Z -> 2026-08-10T12:00:00Z (file mtime)' \
+grep -q 'REQ-801-future.md created_at: 2093-01-01T00:00:00Z -> 2026-08-10T12:00:00Z (file mtime)' \
+  <<<"$repair_mtime_output" \
   || fail_case 'repair-req-timestamps future-stamp case did not log the correction'
 
 # repair-req-timestamps: impossible orderings in working/ are repaired and
@@ -32,7 +32,7 @@ grep -q '^claimed_at: 2026-08-10T12:00:00Z$' "$repair_order_project/do-work/work
   || fail_case 'repair-req-timestamps ordering case did not clamp claimed_at up to created_at'
 grep -q '^completed_at: 2026-08-10T12:00:00Z$' "$repair_order_project/do-work/working/REQ-802-order.md" \
   || fail_case 'repair-req-timestamps ordering case did not clamp completed_at up to the repaired claimed_at'
-printf '%s' "$repair_order_output" | grep -q 'clamped to 2026-08-10T12:00:00Z' \
+grep -q 'clamped to 2026-08-10T12:00:00Z' <<<"$repair_order_output" \
   || fail_case 'repair-req-timestamps ordering case did not log the clamp'
 
 # repair-req-timestamps: a committed file that matches HEAD is repaired to the
@@ -50,7 +50,7 @@ repair_blame_output="$("$core_scripts/repair-req-timestamps.sh" "$repair_blame_p
   || fail_case 'repair-req-timestamps committed-file case returned nonzero'
 grep -q '^claimed_at: 2026-08-15T14:00:00Z$' "$repair_blame_project/do-work/queue/REQ-803-committed.md" \
   || fail_case 'repair-req-timestamps committed-file case did not use the introducing commit author time (quoted stamps must be repairable too)'
-printf '%s' "$repair_blame_output" | grep -q 'author time' \
+grep -q 'author time' <<<"$repair_blame_output" \
   || fail_case 'repair-req-timestamps committed-file case did not name the commit author time as the replacement source'
 
 # repair-req-timestamps: a clean fixture passes through byte-identical — including
@@ -94,7 +94,7 @@ repair_guard_output="$("$core_scripts/repair-req-timestamps.sh" "$repair_guard_p
   && fail_case 'repair-req-timestamps tripped-guard case exited zero on a truncated file'
 cmp -s "$fixture_root/repair-guard-before.md" "$repair_guard_project/do-work/queue/REQ-806-truncated.md" \
   || fail_case 'repair-req-timestamps tripped-guard case modified the truncated file'
-printf '%s' "$repair_guard_output" | grep -q 'content was lost before this run' \
+grep -q 'content was lost before this run' <<<"$repair_guard_output" \
   || fail_case 'repair-req-timestamps tripped-guard case did not name the truncation as the reason'
 
 # repair-req-timestamps: an unquoted space-separated future instant is repaired
@@ -111,8 +111,8 @@ grep -q '^created_at: 2026-08-10T12:00:00Z$' "$repair_space_project/do-work/queu
   || fail_case 'repair-req-timestamps space-separated case did not rewrite the whole value to the canonical form'
 grep -q '00:00:00$' "$repair_space_project/do-work/queue/REQ-807-space.md" \
   && fail_case 'repair-req-timestamps space-separated case left a phantom time-of-day suffix behind'
-printf '%s' "$repair_space_output" \
-  | grep -q 'REQ-807-space.md created_at: 2093-01-01 00:00:00 -> 2026-08-10T12:00:00Z (file mtime)' \
+grep -q 'REQ-807-space.md created_at: 2093-01-01 00:00:00 -> 2026-08-10T12:00:00Z (file mtime)' \
+  <<<"$repair_space_output" \
   || fail_case 'repair-req-timestamps space-separated case did not report the full old value in the audit line'
 
 # repair-req-timestamps: a quoted space-separated future instant is repaired to
@@ -127,7 +127,7 @@ repair_quoted_space_output="$("$core_scripts/repair-req-timestamps.sh" "$repair_
   || fail_case 'repair-req-timestamps quoted-space case returned nonzero'
 grep -q '^created_at: 2026-08-10T12:00:00Z$' "$repair_quoted_space_project/do-work/queue/REQ-808-quoted-space.md" \
   || fail_case 'repair-req-timestamps quoted-space case did not repair the quoted instant to the canonical unquoted form'
-printf '%s' "$repair_quoted_space_output" | grep -q 'REQ-808-quoted-space.md created_at' \
+grep -q 'REQ-808-quoted-space.md created_at' <<<"$repair_quoted_space_output" \
   || fail_case 'repair-req-timestamps quoted-space case did not log the correction'
 
 # repair-req-timestamps: a CRLF-fenced file is scanned like the board scans it,
@@ -144,7 +144,7 @@ grep -q $'^created_at: 2026-08-10T12:00:00Z\r$' "$repair_crlf_project/do-work/qu
   || fail_case 'repair-req-timestamps CRLF case did not repair the stamp behind the CRLF fence (or dropped the CR)'
 [ "$(grep -c $'\r$' "$repair_crlf_project/do-work/queue/REQ-809-crlf.md")" -eq 6 ] \
   || fail_case 'repair-req-timestamps CRLF case did not preserve every CRLF line ending'
-printf '%s' "$repair_crlf_output" | grep -q 'REQ-809-crlf.md created_at: 2093-03-03T03:03:03Z -> 2026-08-10T12:00:00Z' \
+grep -q 'REQ-809-crlf.md created_at: 2093-03-03T03:03:03Z -> 2026-08-10T12:00:00Z' <<<"$repair_crlf_output" \
   || fail_case 'repair-req-timestamps CRLF case did not log the correction'
 
 # repair-req-timestamps: a BOM-prefixed file is scanned like the board scans it
@@ -161,7 +161,7 @@ grep -q '^created_at: 2026-08-10T12:00:00Z$' "$repair_bom_project/do-work/queue/
   || fail_case 'repair-req-timestamps BOM case did not repair the stamp behind the BOM-prefixed fence'
 [ "$(head -c 3 "$repair_bom_project/do-work/queue/REQ-810-bom.md")" = "$(printf '\xef\xbb\xbf')" ] \
   || fail_case 'repair-req-timestamps BOM case did not keep the BOM bytes in place'
-printf '%s' "$repair_bom_output" | grep -q 'REQ-810-bom.md created_at: 2093-04-04T04:04:04Z -> 2026-08-10T12:00:00Z' \
+grep -q 'REQ-810-bom.md created_at: 2093-04-04T04:04:04Z -> 2026-08-10T12:00:00Z' <<<"$repair_bom_output" \
   || fail_case 'repair-req-timestamps BOM case did not log the correction'
 
 # repair-req-timestamps: a shape-valid but calendar-impossible stamp is left
@@ -192,7 +192,7 @@ for impossible_fixture in REQ-811-impossible REQ-812-april-31 REQ-813-not-a-leap
 done
 grep -q '^created_at: 2026-08-10T12:00:00Z$' "$repair_calendar_project/do-work/queue/REQ-814-real-leap-day.md" \
   || fail_case 'repair-req-timestamps calendar case refused a real leap-day future stamp the board parses'
-printf '%s' "$repair_calendar_output" | grep -q 'REQ-811\|REQ-812\|REQ-813' \
+grep -q 'REQ-811\|REQ-812\|REQ-813' <<<"$repair_calendar_output" \
   && fail_case 'repair-req-timestamps calendar case logged a correction for a value it must not touch'
 
 # repair-req-timestamps: a numeric UTC offset or fractional seconds is refused
@@ -290,7 +290,7 @@ grep -q '^claimed_at: 2026-08-11T12:00:00Z$' "$repair_duplicate_project/do-work/
   || fail_case 'repair-req-timestamps duplicate-anchor case rewrote the shadowed first occurrence'
 cmp -s "$fixture_root/repair-shadowed-before.md" "$repair_duplicate_project/do-work/working/REQ-816-shadowed-first.md" \
   || fail_case 'repair-req-timestamps duplicate-anchor case touched a future first occurrence no YAML reader can see'
-printf '%s' "$repair_duplicate_output" | grep -q 'REQ-815-duplicate-anchor.md claimed_at: 2026-08-01T09:00:00Z -> 2026-08-12T12:00:00Z' \
+grep -q 'REQ-815-duplicate-anchor.md claimed_at: 2026-08-01T09:00:00Z -> 2026-08-12T12:00:00Z' <<<"$repair_duplicate_output" \
   || fail_case 'repair-req-timestamps duplicate-anchor case did not log the effective-occurrence correction'
 
 # repair-req-timestamps: a file whose opening fence is never closed is refused
@@ -339,9 +339,9 @@ grep -q '^created_at: 2026-08-10T12:00:00Z$' "$repair_padded_quote_project/do-wo
   || fail_case 'repair-req-timestamps padded-quote case refused a padded quoted instant the board parses and future-badges'
 cmp -s "$fixture_root/repair-non-ascii-pad-before.md" "$repair_padded_quote_project/do-work/queue/REQ-826-non-ascii-pad.md" \
   || fail_case 'repair-req-timestamps padded-quote case repaired a non-ASCII-padded value — the header states that residual is refused'
-printf '%s' "$repair_padded_quote_output" | grep -q 'REQ-825-padded-quote.md created_at: "2093-01-01 00:00:00 " -> 2026-08-10T12:00:00Z' \
+grep -q 'REQ-825-padded-quote.md created_at: "2093-01-01 00:00:00 " -> 2026-08-10T12:00:00Z' <<<"$repair_padded_quote_output" \
   || fail_case 'repair-req-timestamps padded-quote case did not report the full padded old value in the audit line'
-printf '%s' "$repair_padded_quote_output" | grep -q 'REQ-826' \
+grep -q 'REQ-826' <<<"$repair_padded_quote_output" \
   && fail_case 'repair-req-timestamps padded-quote case logged a correction for the refused non-ASCII-padded value'
 
 # The retired implementation's two awk-failure probes now belong to the Go
@@ -379,7 +379,7 @@ mkdir -p "$repair_floor_bin"
 chmod +x "$repair_floor_bin/git"
 repair_floor_output="$(PATH="$repair_floor_bin:$PATH" "$core_scripts/repair-req-timestamps.sh" "$repair_floor_project" 2>&1)" \
   && fail_case 'repair-req-timestamps unreadable-floor case exited zero with the truncation floor unchecked'
-printf '%s' "$repair_floor_output" | grep -q 'truncation floor' \
+grep -q 'truncation floor' <<<"$repair_floor_output" \
   || fail_case 'repair-req-timestamps unreadable-floor case did not say which guard could not run'
 cmp -s "$fixture_root/repair-floor-before.md" "$repair_floor_project/do-work/queue/REQ-924-future.md" \
   || fail_case 'repair-req-timestamps unreadable-floor case repaired a file whose truncation floor it never read'

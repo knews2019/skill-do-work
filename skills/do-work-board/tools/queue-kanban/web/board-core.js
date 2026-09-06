@@ -233,8 +233,10 @@
     }
   }
 
-  function refreshRelativeTimeNodes() {
-    var nowMs = Date.now();
+  // Takes its instant as an argument rather than reading the clock, so every
+  // surface a single tick touches states the same "now" — see
+  // refreshTickingSurfaces below, which is the one caller.
+  function refreshRelativeTimeNodes(nowMs) {
     var relativeNodes = document.querySelectorAll("[data-instant-ms]");
     for (var nodeIndex = 0; nodeIndex < relativeNodes.length; nodeIndex++) {
       var relativeNode = relativeNodes[nodeIndex];
@@ -252,14 +254,42 @@
     }
   }
 
+  // The board's ONE tick. web/board.js's interval calls this and nothing else,
+  // so this function is where "what moves every second" is stated.
+  //
+  // The order is load-bearing. refreshRelativeTimeNodes runs FIRST, with the
+  // captured instant, because it drives every claim stopwatch, every relative
+  // time, every state timer and the clock-skew tooltip on the page. If the
+  // newer UR-summary pass below ever threw, the interval callback would die and
+  // the whole board would freeze at its first paint — looking exactly like a
+  // queue full of very young claims. Running the older pass first means such a
+  // throw could not also cost those surfaces their current tick. The real
+  // containment is that the rollup is total by narrowing (see
+  // board-user-request-summary.js); this order is the belt beside it. Both are
+  // asserted: a probe drives a tick whose summary pass throws on purpose and
+  // checks the claim stopwatch still advanced, so swapping these two lines
+  // fails the suite.
+  function refreshTickingSurfaces() {
+    var nowMs = Date.now();
+    refreshRelativeTimeNodes(nowMs);
+    refreshUserRequestSummaryNodes(nowMs);
+  }
+
   // ---- dependency helpers -------------------------------------------------
   // Mirrors model.go's isTerminalResolvedStatus / isCompletedStatus. The board
   // never re-derives which dependencies are unmet — the Go side annotates that
   // (a dangling id counts as unmet, and `cancelled` never satisfies a
   // dependency) and ships it as request.unmetDependencies.
 
+  // "Successful": the work shipped, with or without recorded issues. Composed
+  // into the resolved set below exactly the way model.go composes them, so the
+  // client never carries a fourth literal list of statuses.
+  function isCompletedStatus(status) {
+    return status === "completed" || status === "completed-with-issues";
+  }
+
   function isTerminalResolvedStatus(status) {
-    return status === "completed" || status === "completed-with-issues" || status === "cancelled";
+    return isCompletedStatus(status) || status === "cancelled";
   }
 
   // The REQs still waiting on this one. A dependent that already resolved is not

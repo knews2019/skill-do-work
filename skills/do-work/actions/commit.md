@@ -50,21 +50,13 @@ Before protected association or reading any uncommitted path, invoke the canonic
 
 Continue only on typed `success`, and read the ordered `finalizations` one record at a time: a record carrying `FINALIZATION-SET-ASIDE` in its `reason_codes` is one REQ recovery excluded, and the remaining records still count as settled when their `blocked_paths` and `reason_codes` are empty. **A set-aside REQ's paths are not this action's to commit.** Its journal, working claim, and implementation changes are deliberately left in place with an open finalization transaction, so treat every path in that record's `commit_paths` exactly as a recovered path: excluded from the inventory grouping below, never associated with another REQ, never committed as an ordinary or unassociated change. Committing them here would bypass the unfinished transaction and leave its lifecycle and provenance unresolved. Name each excluded REQ once in the report and continue with what is left — a set-aside is not a reason for this action to stop. Recovery commits all safe finalization groups in its returned order, preserves unfinished working claims without authority, and refuses before this action selects ordinary groups when staged, protected, shared, or multiply-owned evidence remains ambiguous. Group only the changes left after recovery; never re-associate a recovered path.
 
-Start the protected inventory wrapper; it owns the worktree-safe run quarantine and delegates low-level classification to the existing checks:
+Start the protected inventory wrapper from the project root; it owns the worktree-safe run quarantine, takes no `--repo-root`, and uses the current directory as the repository root, so from a subdirectory Step 3's `associate` exits 2 as if `do-work/` were missing:
 
 ```bash
 <skill-root>/scripts/protected-inventory.sh start
 ```
 
-It gates on `git rev-parse --git-dir`, enumerates every uncommitted path, and prints one `<tag>\t<path>` row per file:
-
-- **M** — modified (a renamed path is tagged M too: read its diff, don't re-read it as new content)
-- **A** — added, covering both staged-new and untracked
-- **D** — deleted
-- **X** — non-deleted excluded path: secret-shaped, secret-derived, or an ambiguous addition beside `X`/`XD`; fully excluded
-- **XD** — deleted secret-shaped path; eligible for a deletion-only commit
-
-Secret-shaped matching is case-insensitive and applies to the basename only: `.env*` or `*.env`, `*credentials*`, `*.pem`/`*.key`/`*.p12`/`*.pfx`, and `*secret*`. Thus `.ENV`, `AuthCredentials.json`, `private.PEM`, and `UPPER-SECRET.txt` are all secret-shaped, while an ordinary file beneath a directory named `secrets/` is not classified from the directory name alone.
+It enumerates every uncommitted path except an untracked hidden file under `do-work/`, which it drops as editor or operating-system metadata, and prints one `<tag>\t<path>` row per remaining file. The tag legend, the secret-shaped basename patterns, and the by-hand inventory to fall back on are canonical in [Protected inventory fallbacks](../docs/prescribed-shell-primitives.md#protected-inventory-fallbacks); below is only what this action does with those rows.
 
 Exit 1 means the working tree is clean — report "Nothing to commit" and exit. Exit 2 means this is not a git repo — report and exit.
 
@@ -76,41 +68,25 @@ If an X path was already staged before this action began, stop before making any
 
 **`XD` rows are also reported, but only the deletion may proceed.** Never read, diff, reconstruct, or retrieve the former contents from the index, a commit, or any other Git history. The path and its current deletion state are the complete inspection surface.
 
-If the script is missing or will not run, do it by hand from the complete NUL-delimited output of `git -c status.renames=copies status --porcelain=v1 --untracked-files=all -z`; the command-line copy setting is required even when repository configuration disables rename detection. First classify every path as M/A/D, including each rename or copy record's second NUL-delimited origin path, then lowercase its basename with `tr '[:upper:]' '[:lower:]'` and apply the patterns above. Change a non-deleted secret-shaped tag to X and a deleted one to XD; a secret-shaped rename origin is XD and its destination is X, while a destination copied from a secret-shaped origin is X without an XD source row. Buffer the complete classification before using it. If the finished inventory contains any X or XD and any remaining A, provenance is ambiguous — Git cannot identify a copy when both source and destination are untracked — so change every A to X. Finally add all X paths to the run-level quarantine and overlay that quarantine before any row is consumed. The `-uall` flag is not optional; preserve the canonical [Per-file untracked inventory](../docs/prescribed-shell-primitives.md#per-file-untracked-inventory) contract or files beneath a brand-new directory can escape the exclusion scan. That is a secret-leak path, and `../../do-work-toolbox/actions/stray-check.md`'s Red Flags record that it has been hit.
-
 ### Step 2: Read Changes
 
-Build a semantic understanding of each uncommitted file:
-
-- **Modified files**: Read the `git diff` for each file. Understand what changed and why.
-- **New/untracked files**: Read the file contents. Skip binary files (detect by extension: images, compiled assets, archives). For large files (>500 lines), read the first 100 lines and last 50 lines to understand purpose.
-- **Deleted files (`D`)**: Note the path and what the file likely was (infer from path and name).
-- **Deleted secret-shaped files (`XD`)**: Note only the path and that it is deleted. Do not run `git diff`, `git show`, `git log -p`, or any equivalent that reads, reconstructs, or displays former contents.
+Build a semantic understanding of each uncommitted file, reading each tag class exactly as [Protected inventory fallbacks](../docs/prescribed-shell-primitives.md#protected-inventory-fallbacks) prescribes.
 
 The goal is to understand each file well enough to group it with related changes and write a meaningful commit message.
 
 ### Step 3: Associate with REQs
 
-Feed the current protected M/A/D/XD paths into association, excluding every path quarantined as `X` during the run:
+Feed the current protected M/A/D/XD paths into association, excluding every path quarantined as `X` during the run; run it from the project root, as in Step 1:
 
 ```bash
 <skill-root>/scripts/protected-inventory.sh associate
 ```
 
-The wrapper re-derives the repository root and moves paths through files rather than interpolating them into shell source. It appends the new X rows to Step 1's quarantine before filtering, so both current X rows and paths excluded by an earlier inventory stay out. M/A/D/XD participate in association only when the path has never been X. The delegated check scans `do-work/archive/**/REQ-*.md` and `do-work/working/REQ-*.md`, reads each REQ's `## Implementation Summary` file list, and prints one `<owner>\t<path>` row per candidate — a `REQ-NNN` id, or `-` for unassociated. Exit 1 means there were no candidates other than X; continue with the reported X rows only. Exit 2 means a usage error or no `do-work/` directory; skip REQ tracing and send the remaining safe M/A/D/XD files to Step 4.
+The wrapper moves paths through files rather than interpolating them into shell source. It appends the new X rows to Step 1's quarantine before filtering, so both current X rows and paths excluded by an earlier inventory stay out. M/A/D/XD participate in association only when the path has never been X. The delegated check walks `do-work/working/` and `do-work/archive/` to any depth, skipping symlinks, reads the `## Implementation Summary` file list of each `REQ-*.md` there that counts (the next paragraph links what counts), and prints one `<owner>\t<path>` row only for a candidate a REQ claims; it prints no placeholder for the rest. Exit 1 means there were no candidates other than X; continue with the reported X rows only. Exit 2 means nothing was associated. A failure before association starts, such as a wrong invocation, `associate` before `start`, or a directory that is not a Git repository, prints a `HELPER-USAGE` finding that names it; a failure inside association, such as no `do-work/` directory, a REQ file it cannot read, or an unmatched backtick in an `## Implementation Summary` line, prints nothing. Either way, skip REQ tracing and send the remaining safe M/A/D/XD files to Step 4.
 
-What the script settles, so this prose no longer has to:
+[Protected inventory fallbacks](../docs/prescribed-shell-primitives.md#protected-inventory-fallbacks) states what the script settles — terminal-success aliases, in-flight REQs, conflict resolution, metadata exclusion, partial matches — and the by-hand association to fall back on.
 
-- **Terminal-success matching honors the Schema Read Contract's aliases**, so `completed`, `completed-with-issues`, and `complete`/`done`/`finished`/`closed` all qualify. Testing only for the literal `completed` is the bug in the Red Flags below — it drops every remediated-with-issues REQ, and its files then never get associated.
-- **In-flight `working/` REQs are included** regardless of status, since a claimed REQ is never terminal.
-- **Conflict resolution:** a path claimed by two REQs goes to the one with the latest `completed_at`. An archived REQ outranks an in-flight one.
-- **`do-work/` metadata paths are excluded** from association, matching `tools/checks/scope-drift.sh`.
-
-**Partial matches count.** If 3 out of 5 files in a REQ's Implementation Summary are among the uncommitted files, group all 3 under that REQ.
-
-Files that come back `-` remain unassociated and move to Step 4.
-
-If the script is missing or will not run, do it by hand: glob both directories, read each REQ's `status` (accepting every alias above) and `## Implementation Summary` list, path-match, and tie-break on the latest `completed_at`.
+A path from Step 1 that appears in no row is unassociated and moves to Step 4. A quarantined `X` path is absent from this output too, even when a REQ claims it, so match rows only against the M/A/D/XD set that survived the quarantine overlay; a missing row is never permission to read, stage, or commit an `X` path.
 
 ### Step 4: Group Unassociated Files
 

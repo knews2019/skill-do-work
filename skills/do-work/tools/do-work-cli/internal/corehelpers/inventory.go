@@ -12,6 +12,7 @@ import (
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/commandruntime"
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/requestmodel"
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/resultmodel"
+	"github.com/knews2019/skill-do-work/do-work-cli/internal/sharedprimitives"
 )
 
 type inventoryRow struct{ Classification, Path, Origin string }
@@ -248,11 +249,23 @@ func AssociateProjectPaths(repositoryRoot string, candidates []string) (map[stri
 	claims := map[string]struct {
 		id        string
 		completed time.Time
-		active    bool
 	}{}
-	roots := []string{filepath.Join(repositoryRoot, "do-work", "working"), filepath.Join(repositoryRoot, "do-work", "archive")}
-	for _, root := range roots {
-		walkError := filepath.WalkDir(root, func(path string, entry os.DirEntry, walkErr error) error {
+	// A working/ REQ is in flight whatever its status says; an archive/ REQ
+	// counts only on a terminal-success alias. Which case applies comes from
+	// the root being walked, never from the absolute path: a checkout beneath a
+	// directory named "working" must not make every archived REQ look active.
+	// A slice, not a map, because walk order decides ties: on an equal
+	// completed_at the claim seen first stands, so working/ is read before
+	// archive/ on purpose.
+	walkedRoots := []struct {
+		directory string
+		active    bool
+	}{
+		{filepath.Join(repositoryRoot, "do-work", "working"), true},
+		{filepath.Join(repositoryRoot, "do-work", "archive"), false},
+	}
+	for _, walkedRoot := range walkedRoots {
+		walkError := filepath.WalkDir(walkedRoot.directory, func(path string, entry os.DirEntry, walkErr error) error {
 			if walkErr != nil {
 				if os.IsNotExist(walkErr) {
 					return nil
@@ -277,9 +290,8 @@ func AssociateProjectPaths(repositoryRoot string, candidates []string) (map[stri
 				return nil
 			}
 			record := document.TypedRecord()
-			active := strings.Contains(filepath.ToSlash(path), "/working/")
 			status := record.RequestStatus
-			if !active && !terminalSuccessStatus(status) {
+			if !walkedRoot.active && !terminalSuccessStatus(status) {
 				return nil
 			}
 			paths, found, parseErr := allBacktickedPaths(string(contents), "Implementation Summary")
@@ -302,8 +314,7 @@ func AssociateProjectPaths(repositoryRoot string, candidates []string) (map[stri
 					claims[claimed] = struct {
 						id        string
 						completed time.Time
-						active    bool
-					}{record.RequestID, completed, active}
+					}{record.RequestID, completed}
 				}
 			}
 			return nil
@@ -416,7 +427,7 @@ func handleProtectedInventory(executionContext commandruntime.ExecutionContext, 
 	if readError != nil {
 		return usageResult(CommandProtectedInventory, readError.Error())
 	}
-	union := uniqueSorted(append(nonblankLines(existing), protected...))
+	union := sharedprimitives.UniqueSortedStrings(append(nonblankLines(existing), protected...))
 	if !dryRun {
 		if err := writePrivateAtomic(quarantinePath, newlineList(union), 0o600); err != nil {
 			return usageResult(CommandProtectedInventory, err.Error())
@@ -457,7 +468,7 @@ func handleProtectedInventory(executionContext commandruntime.ExecutionContext, 
 }
 
 func newlineList(values []string) []byte {
-	values = uniqueSorted(values)
+	values = sharedprimitives.UniqueSortedStrings(values)
 	if len(values) == 0 {
 		return nil
 	}

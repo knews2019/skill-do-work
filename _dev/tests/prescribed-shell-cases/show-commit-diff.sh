@@ -17,6 +17,6 @@ fixture_repo_commit_all "$merge_repo" main
 git -C "$merge_repo" merge --no-ff -qm merge feature
 merge_commit="$(git -C "$merge_repo" rev-parse HEAD)"
 merge_output="$(cd "$merge_repo" && "$core_scripts/show-commit-diff.sh" "$merge_commit" 2>&1)" || fail_case 'show-commit-diff real-merge case returned nonzero'
-printf '%s' "$merge_output" | grep -q 'feature.txt' || fail_case 'show-commit-diff real-merge case hid the merged file'
+grep -q 'feature.txt' <<<"$merge_output" || fail_case 'show-commit-diff real-merge case hid the merged file'
 
 prescribed_shell_finish

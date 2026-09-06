@@ -24,6 +24,7 @@ import (
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/gittransaction"
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/resultmodel"
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/settingshooks"
+	"github.com/knews2019/skill-do-work/do-work-cli/internal/sharedprimitives"
 )
 
 func handleInstallMemoryHooks(_ commandruntime.ExecutionContext, arguments []string) resultmodel.CommandResult {
@@ -560,7 +561,7 @@ func handleMemoryForget(executionContext commandruntime.ExecutionContext, argume
 			private = append(private, path)
 		}
 	}
-	targets := uniqueSorted(mapKeysBytes(writes))
+	targets := sharedprimitives.UniqueSortedStrings(mapKeysBytes(writes))
 	if options.commit && !containsMemoryString(targets, filepath.ToSlash(filepath.Join(memoryRelative, "working-memory.md"))) {
 		return memoryFindingResult(CommandMemoryForget, "MEMORY-COMMIT-NO-TRACKED-TARGET", resultmodel.SeverityWarning, memoryRelative, "confirmed matches are private-only; there is no committable target", resultmodel.OutcomeRefused)
 	}
@@ -753,7 +754,7 @@ func handleMemoryBootstrap(executionContext commandruntime.ExecutionContext, arg
 		writes[path] = data
 	}
 	writes[sentinelRelative] = []byte(operationTime.UTC().Format("2006-01-02") + "\n")
-	targets := uniqueSorted(mapKeysBytes(writes))
+	targets := sharedprimitives.UniqueSortedStrings(mapKeysBytes(writes))
 	createdDirs := absentDirectories(executionContext.RepositoryRoot, []string{filepath.ToSlash(filepath.Join(memoryRelative, "logs"))})
 	transaction := gittransaction.ExecuteTransaction(context.Background(), gittransaction.TransactionOptions{RepositoryRoot: executionContext.RepositoryRoot, TargetPaths: targets, PrivateUntrackedTargetPaths: targets, CreatedDirectoryPaths: createdDirs, DryRun: options.dryRun}, func(recorder *gittransaction.MutationRecorder) error {
 		if err := createTransactionDirectories(executionContext.RepositoryRoot, recorder, createdDirs); err != nil {

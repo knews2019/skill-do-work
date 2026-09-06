@@ -302,7 +302,7 @@ func DiscoverRepository(repositoryRoot string) (*RepositorySnapshot, error) {
 		snapshot.CollisionEntries = append(snapshot.CollisionEntries, CollisionEvidence{RequestID: requestID, ClaimPaths: paths})
 	}
 	sort.Slice(snapshot.CollisionEntries, func(leftIndex, rightIndex int) bool {
-		return requestIDLess(snapshot.CollisionEntries[leftIndex].RequestID, snapshot.CollisionEntries[rightIndex].RequestID)
+		return RequestIDLess(snapshot.CollisionEntries[leftIndex].RequestID, snapshot.CollisionEntries[rightIndex].RequestID)
 	})
 	sort.Slice(snapshot.RequestFiles, func(leftIndex, rightIndex int) bool {
 		leftID := snapshot.RequestFiles[leftIndex].TypedRecord.RequestID
@@ -316,7 +316,7 @@ func DiscoverRepository(repositoryRoot string) (*RepositorySnapshot, error) {
 		if leftID == rightID {
 			return snapshot.RequestFiles[leftIndex].AbsolutePath < snapshot.RequestFiles[rightIndex].AbsolutePath
 		}
-		return requestIDLess(leftID, rightID)
+		return RequestIDLess(leftID, rightID)
 	})
 	sort.Slice(snapshot.UserRequestFiles, func(leftIndex, rightIndex int) bool {
 		return snapshot.UserRequestFiles[leftIndex].AbsolutePath < snapshot.UserRequestFiles[rightIndex].AbsolutePath
@@ -651,7 +651,11 @@ func formatRequestID(requestNumber int) string {
 	return fmt.Sprintf("REQ-%03d", requestNumber)
 }
 
-func requestIDLess(leftID string, rightID string) bool {
+// RequestIDLess orders two request ids by their numeric part, falling back to a
+// plain string comparison when either id carries no number. It uses the same
+// permissive parser that assigns request identity elsewhere in this package, so
+// ordering and naming cannot disagree about which request an id names.
+func RequestIDLess(leftID string, rightID string) bool {
 	leftNumber, leftParsed := requestNumberFromText(leftID)
 	rightNumber, rightParsed := requestNumberFromText(rightID)
 	if leftParsed && rightParsed && leftNumber != rightNumber {

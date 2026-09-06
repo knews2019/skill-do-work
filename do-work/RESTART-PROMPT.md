@@ -1,140 +1,158 @@
 ```
-do-work run
-
+do-work run --fan-out 3
 This command is sufficient; everything below it is context.
 
-Three requests are claimed in do-work/working/ and all three are merged, verified green and
-reviewed. They are held for the heavy-lane drain and nothing about them needs rebuilding. Seven
-more sit pending in do-work/queue/. Run the loop; it will drain the held three at queue
-exhaustion and finalize each one.
-
-Four things to know before you start, because each will otherwise cost you time:
-
-1. The fast gate now caches. `bash _dev/tests/maintainer-verify.sh` prints one line per Go test
-   stage saying EXECUTING or REUSED with a reason, and a gate wall line. On a matching tree it
-   takes about 21 seconds instead of about 96. That reuse is NOT yet trustworthy for changes under
-   do-work/: REQ-592 in the queue is the impact-critical fix, and until it lands you can disable
-   reuse entirely for any run with DO_WORK_FAST_STAGE_REUSE=off, which is verified to work and
-   needs no code change. Prefer that for any gate run whose verdict you are going to rely on.
-
-2. Canonical recover currently REFUSES with FINALIZATION-DISCOVERY-AMBIGUOUS. Its blocked_paths are
-   three untracked hand-back files under do-work/runs/ that belong to OTHER live sessions in this
-   same checkout (REQ-588, REQ-589, REQ-590). They are not finalization tails and they are not
-   yours. Judge it and continue, exactly as the previous session did — do not delete them, do not
-   commit them, and do not let the refusal park the queue. If they are still there and still
-   foreign when you finish, say so in your own hand-off.
-
-3. Never run the canonical gate while another gate process is running on this machine. Check with
-   `ps -Ao args= | grep -c '[m]aintainer-verify'` and with `uptime` first. Five gate runs in the
-   previous session failed on per-test-file wall-clock budgets, on four different files, none of
-   them touched by any request in the run — purely from sibling sessions' load. The same files
-   pass in a quiet window. A load average above about 10 predicts a budget failure.
-
-4. Capture the gate's own exit status directly. Never pipe it to tail: the shell reports the
-   pipe's status, and a red gate reads as green. That mistake cost the previous session a wasted
-   cycle.
-
-The browser heavy lane needs QUEUE_KANBAN_BROWSER="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
-at drain time. Without it the lane reports skipped, and a skip is not a pass.
+You are the agent working on do-work itself, on branch claude/do-work-queue-drain-4ee2xl (the
+integration branch; never main). Push often with git push -u origin claude/do-work-queue-drain-4ee2xl
+and open no pull request. End every commit message with the attribution trailers your session
+prescribes. Four REQs are in do-work/working/ with claims from the previous session; take each over
+with the canonical command the oracle prints (do-work-cli recover --take-over REQ-NNN) and then let
+advance drive the phase. The maintainer gate in this container needs an environment scrub: run
+do-work/runs/work-2026-09-05-231943/handoff-tools/gate.sh (add --heavy for the heavy tier), never
+bare _dev/tests/maintainer-verify.sh. Finalize one REQ with handoff-tools/finalize-req.sh; its
+neighbour FINALIZATION-RECIPE.md says why each step is in its order. Every run artifact you need
+(review syntheses, the judged plan and its verified patch, the workflow scripts, a changelog draft)
+is under do-work/runs/work-2026-09-05-231943/. Reviews are three independent lenses plus a
+synthesizer that reproduces every finding; remediate rather than defend, and correct record claims
+in place with strikethrough. Sections in a REQ record must carry repo-relative paths, one per line,
+and no backticked token in Scope that is not a path.
 ```
 
 ---
 
 ## Reference
 
-### What is done, and what remains
+Written 2026-09-06 after the previous session hit its usage limit mid-run. Head of the integration
+branch when this was written: see the commit that adds this file. VERSION is 0.305.9 (0.305.9 was a
+direct fix of two Codex findings on pull request 182, released after the first version of this file). Nothing is
+dirty in any checkout. Four background workflows died to the session limit (REQ-598 build, REQ-602
+verify, REQ-597 review) and one landed (REQ-600 review); nothing else went wrong.
 
-Three requests are claimed, merged, verified green, independently reviewed, and held at Step 7.7
-for the heavy-lane drain. None needs rebuilding. Each has its full pipeline record in its own file
-in `do-work/working/`, and every explorer, planner, builder and reviewer report for the run is
-committed under `do-work/runs/work-2026-09-05-170806/`.
+### In-flight REQs, in the order to work them
 
-| REQ | What it delivered | Merge range | `commit:` | Review |
-|---|---|---|---|---|
-| REQ-583 | Tests that pin three evidence-gate behaviours which could previously be deleted with the package staying green | `a22ddfcf..722f5ada` | `722f5ada` | 96%, Pass, 6 findings all report-only |
-| REQ-587 | The Timeline view scrolls once, with the date axis pinned, like the Activity view | `93ec7792..8fad73b2` | `8fad73b2` | 92%, Pass, 6 findings all report-only |
-| REQ-591 | The fast gate skips a stage whose inputs have not moved; the SessionStart probe stopped relinking a byte-identical binary nine times | `c2a74d2f..fcf07ea4` (cumulative, one remediation) | `fcf07ea4` | 60%, **Partial**, Risk **Critical**, one impact-critical finding now queued as REQ-592 |
+**REQ-600 — put the SIGPIPE trap in the shell prime, fix the one shipped block.**
+Merged as `a25c7522`, full range `9e00a092cf29842506bea920137b52c952a62638..a25c7522566bea9d9d29c382e159b6a10157a9f1`.
+Qualify and scope-drift satisfied; Qualification and Testing written; review recorded at 83 percent
+(`do-work/runs/work-2026-09-05-231943/REQ-600-review.json`, and the record's Review section). Remaining,
+in order: remediate the six findings the Review lists (the important one is the false safe-zone
+sentence at `_dev/primes/prime-shell-commands.md:53`; the review gives the replacement; also the
+scanner's stale comment at `_dev/tests/quiet-grep-pipeline-scanner.sh:18` and `:11`, the block prose
+"first hit wins", the prime's line 51 list split, and this record's two mis-stated sentences), run the
+four guards, commit; write Lessons Learned and Orientation; finalize as a **release** at 0.305.10 with
+`handoff-tools/changelog-req600.md` (already headed 0.305.10; re-check the heading is unused). Carry the
+lesson satellite lines inside the finalization commit via `EXTRA_COMMIT_PATHS` (see below). Worktree:
+`worktree-agent-REQ-600-sigpipe-prime`, clean, merged. No uncommitted files.
 
-Remaining, all `pending`: REQ-592 (the critical fix above), REQ-486, REQ-552, REQ-554, REQ-555,
-REQ-556, REQ-557, REQ-558.
+**REQ-597 — correct the stale claims across the rest of the shell guide and its two callers.**
+Merged as `d5cf28b`, full range `804a8ba32129a3cd12a4aaa7e89346db1b95115c..d5cf28b996a6deb0a0df908cbe4aa722cf2a6ad8`
+(three builder commits `a1e652f`, `6913dc4`, `7df6488`; three shipped prose files, +23/-23). Qualify and
+scope-drift satisfied; Implementation Summary, Decisions, Discovered Tasks, Qualification and Testing
+written; the oracle's next phase is **review** and the review never ran (session limit). Remaining: run
+`handoff-tools/req597-three-lens-review.workflow.js` (edit nothing but the paths if your scratchpad
+differs; it clones the repo and executes the prescribed blocks against fixtures), remediate, write
+Lessons and Orientation, finalize as a **release** (next patch version after REQ-600's). The builders'
+per-sentence evidence is in `REQ-597-handback.md` and `REQ-597-builders.json`; their fixtures lived in
+the old session's scratchpad and are gone, but `REQ-597-verification.json` and the hand-back say how to
+rebuild them. Worktree: `worktree-agent-REQ-597-guide-and-callers`, clean, merged. No uncommitted files.
 
-### The one thing that is actually wrong right now
+**REQ-602 — repoint fifteen lesson-satellite links, add a satellite link check.**
+Merged as `ef8274b`, full range `66e9992f559627a280b113eda4fd1ad476016f07..ef8274bef8ea83c6961b6ad3d1d12848c011c5e8`
+(five files, +69/-18: three maintainer satellites, `_dev/tests/audit-lockins.sh`, `do-work/lessons-index.md`).
+The orchestrator re-ran the red (15 FAIL lines at `a70a04f`) and the green (lock-ins pass at head and
+on the merged tree); the independent verifier never ran. Remaining: canonical `advance REQ-602
+--diff-range <range above>` for qualify and scope-drift, Qualification and Testing, a three-lens review
+(model it on the REQ-600 script; a fixture-driven verifier is in `req602-build-and-verify.workflow.js`),
+Lessons and Orientation, finalize (**not a release**: nothing under `skills/` changed). Its hand-back
+also reports the shipped satellite's canonical URLs; act on that report if any did not resolve.
+Worktree: `worktree-agent-REQ-602-satellite-links`, clean, merged. No uncommitted files.
 
-REQ-591 shipped a real false green and it is live in this repository's gate. `_dev/tests/fast-stages.json`
-declares `do-work/` as a tree no fast stage reads. Both stages read it. The reviewer reproduced it
-end to end: warm evidence store, one newline appended to `do-work/archive/UR-003/input.md`, the
-do-work-cli stage reports `REUSED`, the gate prints `Maintainer verification passed.` and exits 0 —
-while `TestDiscoverRepositoryAcceptsProductionLegacyArchiveInputClass` fails on that same tree.
+**REQ-598 — close the nil-handle panic in transaction rollback.**
+Not built. Route C; the judged plan (Plan B, decide the handle once at its open) is in the record's Plan,
+Exploration, Scope and Pre-Flight, and in `REQ-598-judged-plan.json`. The verified tree is
+`req598-final.patch` (557 lines; `git apply --check` passed on `521e4a7`, and the three files it touches
+have not changed since), the exact test is `req598-final-test-func.go.txt`, and the rejected minimum
+shape is `req598-minimum-shape.patch`. `depends_on` now includes REQ-602 because both edit
+`_dev/tests/audit-lockins.sh` (REQ-602 is merged, so the gate clears when it archives). The builder
+must take its own RED evidence (seam and test first, panic at `root.Mkdir`), then the restructure, then
+the lock-in rewrite (pin at zero), then canary, `-U0` diff, differential, `-race`, `GOOS=windows go vet`,
+gate; `req598-build-and-verify.workflow.js` is that brief. Worktree `worktree-agent-REQ-598-rollback-handle`
+is stale at `9e00a09` and clean; reset its branch to the integration head before building
+(`git -C <path> checkout -B worktree-agent-REQ-598-rollback-handle claude/do-work-queue-drain-4ee2xl`)
+or remove it and let the builder create `worktree-agent-REQ-598-decide-once`. Release when finalized.
 
-REQ-592 carries the fix and the RED/GREEN case. Note that two existing assertions currently pin the
-wrong behaviour and must move with it: `fast_stage_evidence_test.go`'s `queue state changed` case
-and `_dev/tests/fast-stage-reuse-behavior.sh`'s `queue state alone still reuses` case.
+### Queue
 
-Mitigation until then, verified working: `DO_WORK_FAST_STAGE_REUSE=off`.
+- **REQ-605** (finalization `diff-tree` without `-m`): free; `do-work run` selects it first.
+- **REQ-601** (phantom-script claims in seven shipped callers, plus the guide's tie-break sentence):
+  waits on REQ-597.
+- **REQ-603** (protected-inventory launcher and shim): waits on REQ-597 and REQ-601.
+- **REQ-604** (atomic-download occupancy rule and unchecked stat): waits on REQ-601.
 
-### Parallelism
+### Parallelism (mirrored into the gates above)
 
-The paste block says `do-work run` with no `--fan-out`, deliberately. Six of the seven pending
-requests — REQ-552, REQ-554, REQ-555, REQ-556, REQ-557, REQ-558 — each append one assertion to the
-same file, `_dev/tests/audit-lockins.sh`. Their `write_set` fields overlap on it, so any two of them
-running concurrently produce a merge conflict on every hand-back. That constraint is not encoded as
-dependency gates because it is a merge-collision constraint rather than a real dependency, and
-inventing `depends_on` edges to express it would corrupt the dependency graph's meaning. Serial is
-the honest encoding, and the gate is now fast enough that serial costs little.
+Safe together: REQ-600, REQ-597, REQ-602 and REQ-605 touch disjoint files (prime and scanner comment;
+three prose files under review; `_dev` satellites and the lock-in; `internal/finalization`). Must not run
+together, and gated: REQ-598 with REQ-602 (`audit-lockins.sh`); REQ-601, REQ-603 and REQ-604 with each
+other (all edit `skills/do-work/docs/prescribed-shell-primitives.md`; REQ-603 also edits `commit.md`
+and `inspect.md`, which REQ-597 just rewrote, hence its REQ-597 gate). Critical path: REQ-597 review
+and finalize, then REQ-601, then REQ-603. `--fan-out 3` covers the three in-flight REQs at review or
+finalize while REQ-605 builds.
 
-The dependency gates that ARE real are already in the queue and need nothing from you: REQ-555
-depends on REQ-554, REQ-557 depends on REQ-550 and REQ-552, REQ-558 depends on REQ-557.
+### Canonical recover results (writer evidence)
 
-Critical path: REQ-592 first — it fixes the gate you are about to rely on. Then the audit batch in
-dependency order. REQ-486 (collapsible UR groups with progress summaries) is the only board-side
-request and the only one that could safely run beside an audit request, but it is also the largest
-single piece of work left and is `priority: later`.
+`do-work-cli --format text recover` reports all four working claims as
+`RECOVERY-TAKEOVER-AVAILABLE`, writer `vm:/home/user/skill-do-work` at `do-work/CHECKPOINT.md` lines
+35 (REQ-597), 38 (REQ-600), 40 (REQ-598), 42 (REQ-602), each `takeover available; claim preserved`.
+Takeover command per claim: `do-work-cli recover --take-over REQ-NNN`. `recover-claim` requires
+`--assume-sole-writer`; there is no other session.
 
-### Pre-exploration already done for four pending requests
+### Worktrees (none removed; re-check all three conditions before removing)
 
-Read these before triaging; they were produced this run and each re-verified its request's claims
-against HEAD rather than against the audited commit:
+- `/home/user/skill-do-work-worktrees/worktree-agent-REQ-597-guide-and-callers` — **ACTIVE**: merged
+  (`d5cf28b`), clean, claim still in `working/`. After REQ-597 archives:
+  `git worktree remove /home/user/skill-do-work-worktrees/worktree-agent-REQ-597-guide-and-callers && git branch -D worktree-agent-REQ-597-guide-and-callers`
+- `/home/user/skill-do-work-worktrees/worktree-agent-REQ-600-sigpipe-prime` — **ACTIVE**: merged
+  (`a25c752`), clean, claim in `working/`. After REQ-600 archives:
+  `git worktree remove /home/user/skill-do-work-worktrees/worktree-agent-REQ-600-sigpipe-prime && git branch -D worktree-agent-REQ-600-sigpipe-prime`
+- `/home/user/skill-do-work-worktrees/worktree-agent-REQ-602-satellite-links` — **ACTIVE**: merged
+  (`ef8274b`), clean, claim in `working/`. After REQ-602 archives:
+  `git worktree remove /home/user/skill-do-work-worktrees/worktree-agent-REQ-602-satellite-links && git branch -D worktree-agent-REQ-602-satellite-links`
+- `/home/user/skill-do-work-worktrees/worktree-agent-REQ-598-rollback-handle` — **ACTIVE**: no
+  commits beyond the old base `9e00a09`, clean, claim in `working/`; reset or replace before building.
 
-- `do-work/runs/work-2026-09-05-170806/REQ-556-exploration.md` — **the request's baseline is stale.**
-  It claims 9 prose sites; there are 7 at HEAD. Two were already removed by the REQ-504→REQ-506
-  chain. It also establishes that "keep one sentence naming the three finding codes" is an
-  *addition*, not a retention: those codes appear in no shipped prose today.
-- `do-work/runs/work-2026-09-05-170806/REQ-552-exploration.md` — both exec sites still present at
-  HEAD, the claim holds; includes the exact replacement primitives and a paste-ready lock-in
-  assertion. The lock-in must keep `--glob '!*_test.go'` or it is red on day one.
-- `do-work/runs/work-2026-09-05-170806/REQ-554-exploration.md` — the shared-line count, the
-  destination guide's structure, and the ratchet constants that need re-baselining.
-- `do-work/runs/work-2026-09-05-170806/REQ-486-exploration.md` — the prior UR-lens implementation,
-  where a shared summary function belongs, and whether the board can already read the nested P50.
+### Lesson satellites owed (work.md Step 8 substep 4)
 
-### Worktree verdicts
+The previous session skipped the satellite append for every REQ it archived, then backfilled the three
+maintainer satellites in `a38a8c4`. Still owed, and to be carried inside REQ-600's finalization commit
+with `EXTRA_COMMIT_PATHS="skills/do-work/tools/do-work-cli/lessons-do-work-cli.md _dev/primes/lessons-shell-commands.md do-work/lessons-index.md"`
+(a change under `skills/` is a release, which is why they ride that commit):
+- `skills/do-work/tools/do-work-cli/lessons-do-work-cli.md` (canonical-URL form, family marker first):
+  REQ-583 (keep each mutation applied while writing the test that catches it; two behaviours were inert,
+  not dead), REQ-592 (a request's own statement of why something is safe is a claim to verify), REQ-593
+  (three fixes in one change is where one covers for another's missing test), REQ-599 (a test that
+  defeats the bug does not pin the rule; put the forbidden token where the most specific wrong fix would
+  still see it). Each REQ's Lessons Learned section carries the wording.
+- `_dev/primes/lessons-shell-commands.md`: REQ-600's own line, once its Lessons are written.
+- Recompute the two index rows (tokens = (bytes + 3) / 4; families = sorted marker set).
+- Fix the satellite headers that cite "Step 8 substep 7" (there is no such substep).
 
-| Path | Verdict |
-|---|---|
-| `../skill-do-work2-worktrees/worktree-agent-REQ-583-…` | **ACTIVE** — merged and clean, but its claim is still in `do-work/working/`. Remove only after finalization: `git worktree remove ../skill-do-work2-worktrees/worktree-agent-REQ-583-pin-the-evidence-gate-remedy-redirection-guard-and-interrupted-path` then `git branch -d worktree-agent-REQ-583-pin-the-evidence-gate-remedy-redirection-guard-and-interrupted-path` |
-| `../skill-do-work2-worktrees/worktree-agent-REQ-587-…` | **ACTIVE** — same; remove after finalization |
-| `../skill-do-work2-worktrees/worktree-agent-REQ-591-…` | **ACTIVE** — same; remove after finalization |
-| `.git/work-run-20260905-1201/worktree-agent-REQ-573-activity-drawer` | **FOREIGN** — unmerged, clean, from an earlier run that is not this session's. Leave it. `actions/cleanup.md` Pass 5 owns it. |
-| the previous session's scratchpad measurement worktrees | **already removed** — two detached, branchless worktrees under the session scratchpad, taken out with `git worktree remove` plus `git worktree prune` before this handoff was finished. `git worktree list` should show only the four in the rows above plus the main checkout. |
+### Heads-up
 
-All three builder branches are in `git branch --merged main`. Do not `-D` any of them; `-d`'s
-refusal is the only assertion that the integration actually happened.
-
-### Heads-up list — what bites in the first ten minutes
-
-- **The gate caches now and its reuse is wrong for `do-work/` changes.** You. See above.
-- **`recover` refuses on three foreign hand-backs.** You, by judging and continuing. Not a stop.
-- **Another session shares this checkout and commits every few minutes.** Expect `HEAD` to move
-  under you between a gate run and its green record; check `git diff --name-only <gate-rev> HEAD`
-  and re-run only if source moved. Expect uncommitted foreign edits in `skills/` — leave them, and
-  work in a worktree so they cannot reach your build.
-- **A pre-existing intermittent:** `TestLaneMutationCannotPublishOrReuseSuccess/commit=true` failed
-  once in four full-gate runs and passes 6/6 in isolation at both revisions. Independently judged
-  pre-existing by the reviewer, not caused by REQ-591. If you see it, it is known.
-- **One line of the REQ-591 exploration is wrong and is corrected in place.** Its section 8 says
-  `/usr/bin/time -p` under-reports process-tree CPU and that bash's `time` keyword is needed. That
-  did not reproduce — both agree, including on the toolchain case that matters. An orchestrator
-  correction with the numbers is appended to `do-work/runs/work-2026-09-05-170806/REQ-591-exploration.md`.
-  Do not build a measurement protocol on the original claim.
-- **REQ-556's own baseline is stale** (9 claimed, 7 actual). Re-verify before building, and expect
-  to record the new baseline in the lock-in rather than the request's number.
+- The four workflows that died at 08:5x UTC left nothing dirty; do not look for half-applied work.
+- 0.305.9 fixed two Codex findings directly (a maintainer-only test moved into the export-ignored file;
+  skewed claims subscribed to the board's summary ticker). Both threads on pull request 182 are resolved.
+  `handoff-tools/release-direct.sh <version> <entry-file>` is the release bookkeeping for a fix with no REQ.
+- Board JavaScript behaviour probes SKIP unless `QUEUE_KANBAN_JAVASCRIPT_PROBES=on`; a green `go test`
+  without it proves nothing about a probe. The gate sets it.
+- `git merge -F -` does not read stdin here; write the message to a file. `pkill -f <pattern>` kills
+  your own shell when the pattern is in its command line. `set -o pipefail` plus `grep -q` after a pipe
+  is the defect REQ-593/594/600 exist for; the guard will fail your shell if you write it.
+- `finalize-req.sh` needs the full 40-character merge hash and an empty index; the changelog entry file's
+  first line must be `## <version> — <Title> (<date>)`; the finalizer refuses a title already used.
+- The `heavyverification` package shows two failures in reviewers' clones under a bare `go test`; under
+  `gate.sh` on the main checkout the heavy tier passed (wall 356s). Record the pair, do not chase it.
+- Backticked tokens in a record's Scope or Implementation Summary are read as paths: `-` and `.sh`
+  both tripped scope-drift this run. One repo-relative path per line; no comma-grouped bullets.
+- The maintainer prime lessons index (`do-work/lessons-index.md`) has no test; recompute rows by program.
+- Two structural suggestions were offered to the user and not started (by-hand fallbacks as tested
+  scripts; one whole-file fixture-driven audit REQ for the shell guide). Wait for the user's word.

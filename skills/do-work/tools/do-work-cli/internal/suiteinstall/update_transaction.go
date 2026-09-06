@@ -172,11 +172,11 @@ func resolveUpdateRoots(options UpdateOptions) (projectRoot string, skillRoot st
 	if statErr != nil || !info.IsDir() {
 		return "", "", fmt.Errorf("project root does not exist: %s", options.ProjectRoot)
 	}
-	projectRoot, err = physicalPath(options.ProjectRoot)
+	projectRoot, err = existingPhysicalPath(options.ProjectRoot)
 	if err != nil {
 		return "", "", fmt.Errorf("project root does not exist: %s", options.ProjectRoot)
 	}
-	skillRoot, err = physicalPath(options.InstalledSkillRoot)
+	skillRoot, err = existingPhysicalPath(options.InstalledSkillRoot)
 	if err != nil {
 		return "", "", fmt.Errorf("the installed do-work skill could not be located")
 	}
@@ -196,7 +196,7 @@ func resolveUpdateRoots(options UpdateOptions) (projectRoot string, skillRoot st
 	if gitErr != nil || strings.TrimSpace(gitRoot) == "" {
 		return "", "", fmt.Errorf("the project must be a Git repository so a failed suite update can be recovered")
 	}
-	physicalGitRoot, gitPathErr := physicalPath(strings.TrimSpace(gitRoot))
+	physicalGitRoot, gitPathErr := existingPhysicalPath(strings.TrimSpace(gitRoot))
 	if gitPathErr != nil {
 		return "", "", fmt.Errorf("the project must be a Git repository so a failed suite update can be recovered")
 	}
@@ -206,7 +206,14 @@ func resolveUpdateRoots(options UpdateOptions) (projectRoot string, skillRoot st
 	return projectRoot, skillRoot, nil
 }
 
-func physicalPath(path string) (string, error) {
+// existingPhysicalPath resolves an EXISTING path to its absolute, symlink-free
+// location. A path that does not exist is an error, and every caller here depends on
+// that: in resolveUpdateRoots the refusal IS the existence check for the installed
+// skill root, before the HasPrefix test decides whether the skill lives inside this
+// project. The name says "existing" because knowledgecommands carries a same-shaped
+// resolver that walks missing ancestors instead; one name for two contracts is the
+// defect REQ-557 removed.
+func existingPhysicalPath(path string) (string, error) {
 	resolved, err := filepath.EvalSymlinks(path)
 	if err != nil {
 		return "", err

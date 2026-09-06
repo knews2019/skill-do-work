@@ -131,20 +131,33 @@ do
   fi
 done
 
+# This is a positive test for a forbidden state, so a git that cannot answer prints nothing,
+# matches nothing, and the check would pass on absent evidence. Read git's own status first,
+# then read the text it printed.
 for cutover_export_path in VERSION suite skills; do
-  if git -C "$repo_root" check-attr export-ignore -- "$cutover_export_path" \
-    | grep -q 'export-ignore: set'; then
+  if ! cutover_export_attribute_line="$(git -C "$repo_root" check-attr export-ignore -- "$cutover_export_path")"; then
+    fail "could not read the export-ignore attribute for /$cutover_export_path"
+  elif grep -q 'export-ignore: set' <<<"$cutover_export_attribute_line"; then
     fail "fresh-install archive still excludes /$cutover_export_path"
   fi
 done
 
+# `find … -print -quit | grep -q .` reported find's own failure as "no leftover files": under
+# pipefail a find that prints a leftover path and then exits non-zero on an unreadable
+# subdirectory left this guard silent and the legacy runtime reported as retired. Read find's
+# status and the path it printed as two separate facts, because both are failures here.
 for retired_runtime_path in SKILL.md actions tools/do-work-update.sh tools/queue-kanban; do
-  if [ -f "$repo_root/$retired_runtime_path" ] \
-    || { [ -d "$repo_root/$retired_runtime_path" ] \
-      && find "$repo_root/$retired_runtime_path" -type f \
-        ! -path "$repo_root/tools/queue-kanban/queue-kanban" -print -quit \
-        | grep -q .; }; then
+  if [ -f "$repo_root/$retired_runtime_path" ]; then
     fail "fresh-install source still carries legacy root runtime: $retired_runtime_path"
+  elif [ -d "$repo_root/$retired_runtime_path" ]; then
+    retired_runtime_leftover_path=''
+    if ! retired_runtime_leftover_path="$(find "$repo_root/$retired_runtime_path" -type f \
+      ! -path "$repo_root/tools/queue-kanban/queue-kanban" -print -quit)"; then
+      fail "could not scan $retired_runtime_path for leftover files"
+    fi
+    if [ -n "$retired_runtime_leftover_path" ]; then
+      fail "fresh-install source still carries legacy root runtime: $retired_runtime_path ($retired_runtime_leftover_path)"
+    fi
   fi
 done
 

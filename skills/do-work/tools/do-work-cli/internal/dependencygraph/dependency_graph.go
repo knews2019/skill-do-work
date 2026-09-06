@@ -5,7 +5,6 @@ package dependencygraph
 import (
 	"fmt"
 	"sort"
-	"strconv"
 	"strings"
 
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/repositorymodel"
@@ -112,9 +111,9 @@ func BuildGraph(snapshot *repositorymodel.RepositorySnapshot) *DependencyGraph {
 	}
 	sort.Slice(graph.DependencyEdges, func(leftIndex, rightIndex int) bool {
 		if graph.DependencyEdges[leftIndex].RequestID == graph.DependencyEdges[rightIndex].RequestID {
-			return requestIDLess(graph.DependencyEdges[leftIndex].DependencyID, graph.DependencyEdges[rightIndex].DependencyID)
+			return repositorymodel.RequestIDLess(graph.DependencyEdges[leftIndex].DependencyID, graph.DependencyEdges[rightIndex].DependencyID)
 		}
-		return requestIDLess(graph.DependencyEdges[leftIndex].RequestID, graph.DependencyEdges[rightIndex].RequestID)
+		return repositorymodel.RequestIDLess(graph.DependencyEdges[leftIndex].RequestID, graph.DependencyEdges[rightIndex].RequestID)
 	})
 
 	detectCycles(graph)
@@ -246,7 +245,7 @@ func detectCycles(graph *DependencyGraph) {
 		}
 	}
 	sort.Slice(graph.DependencyCycles, func(leftIndex, rightIndex int) bool {
-		return requestIDLess(graph.DependencyCycles[leftIndex].RequestIDs[0], graph.DependencyCycles[rightIndex].RequestIDs[0])
+		return repositorymodel.RequestIDLess(graph.DependencyCycles[leftIndex].RequestIDs[0], graph.DependencyCycles[rightIndex].RequestIDs[0])
 	})
 }
 
@@ -300,33 +299,8 @@ func uniqueSortedIDs(requestIDs []string) []string {
 
 func sortRequestIDs(requestIDs []string) {
 	sort.Slice(requestIDs, func(leftIndex, rightIndex int) bool {
-		return requestIDLess(requestIDs[leftIndex], requestIDs[rightIndex])
+		return repositorymodel.RequestIDLess(requestIDs[leftIndex], requestIDs[rightIndex])
 	})
-}
-
-func requestIDLess(leftID string, rightID string) bool {
-	leftNumber, leftParsed := requestNumber(leftID)
-	rightNumber, rightParsed := requestNumber(rightID)
-	if leftParsed && rightParsed && leftNumber != rightNumber {
-		return leftNumber < rightNumber
-	}
-	return leftID < rightID
-}
-
-func requestNumber(requestID string) (int, bool) {
-	trimmedID := strings.TrimSpace(requestID)
-	if len(trimmedID) < 5 || !strings.EqualFold(trimmedID[:4], "REQ-") {
-		return 0, false
-	}
-	digitEnd := 4
-	for digitEnd < len(trimmedID) && trimmedID[digitEnd] >= '0' && trimmedID[digitEnd] <= '9' {
-		digitEnd++
-	}
-	if digitEnd == 4 {
-		return 0, false
-	}
-	parsedNumber, parseError := strconv.Atoi(trimmedID[4:digitEnd])
-	return parsedNumber, parseError == nil
 }
 
 func containsID(requestIDs []string, targetID string) bool {

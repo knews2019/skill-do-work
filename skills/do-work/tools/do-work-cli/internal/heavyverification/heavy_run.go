@@ -63,7 +63,9 @@ type LaneRunRequest struct {
 	ManifestPath   string
 	// LaneIDs are the manifest lanes to verify, in any order; they are run in
 	// manifest order.
-	LaneIDs     []string
+	LaneIDs []string
+	// LaneTimeout bounds one lane's wall time. Zero (or negative) selects
+	// defaultLaneTimeoutSeconds rather than an instant termination.
 	LaneTimeout time.Duration
 	// LaneOutputWriter receives a tee of each executed lane's output.
 	LaneOutputWriter io.Writer
@@ -87,6 +89,17 @@ type LaneRunRequest struct {
 // command. Lane output is teed to LaneOutputWriter so a caller watching a long
 // drain still sees progress.
 func RunLanes(request LaneRunRequest) (resultmodel.HeavyVerificationRun, []resultmodel.CommandFinding, error) {
+	// A request that names no lane is not "run nothing, successfully".
+	// LaneRunRequest is a struct, so an in-process caller that never set LaneIDs
+	// leaves it nil, selectManifestLanes matches nothing without complaint, the
+	// loop below runs zero times, and the run returns success with no lanes and
+	// no findings — a green heavy verdict for a tier that verified nothing. The
+	// CLI parser refuses this as well, but a guard only the CLI holds is not a
+	// guard on this function. Refused before anything else, so an invalid
+	// request cannot come back wearing another refusal's code.
+	if len(request.LaneIDs) == 0 {
+		return resultmodel.HeavyVerificationRun{}, nil, refuseLaneRun("HEAVY-RUN-NO-LANE-REQUESTED", "a heavy lane run must name at least one lane; a run of zero lanes is not evidence that anything is green")
+	}
 	repositoryRoot := request.RepositoryRoot
 	_, manifestRelativePath, err := resolveManifestPath(repositoryRoot, request.ManifestPath)
 	if err != nil {
@@ -110,6 +123,16 @@ func RunLanes(request LaneRunRequest) (resultmodel.HeavyVerificationRun, []resul
 	clockNow := time.Now
 	if !request.EvaluatedAt.IsZero() {
 		clockNow = func() time.Time { return request.EvaluatedAt }
+	}
+	// An unset LaneTimeout means "use the default bound", not "terminate now".
+	// LaneRunRequest is a struct, so an in-process caller with no opinion about
+	// the bound leaves the field zero; without this, runOneLane arms
+	// time.NewTimer(0) and the lane is killed while it is still starting, which
+	// turns a green lane red under load. The CLI path fills the field in from
+	// --lane-timeout, so this only ever applies to a caller that omitted it.
+	laneTimeout := request.LaneTimeout
+	if laneTimeout <= 0 {
+		laneTimeout = defaultLaneTimeoutSeconds * time.Second
 	}
 	// The tree is read once, after the dirty-tree refusal, so every lane's
 	// fingerprint describes the same pre-run repository state.
@@ -150,7 +173,7 @@ func RunLanes(request LaneRunRequest) (resultmodel.HeavyVerificationRun, []resul
 			return resultmodel.HeavyVerificationRun{}, nil, refuseLaneRun("HEAVY-RUN-EVIDENCE-INVALIDATION", "invalidate prior evidence for %s before execution: %v", lane.ID, err)
 		}
 		executedAt := clockNow()
-		execution, skipLine, interrupted, err := runOneLane(repositoryRoot, lane, request.LaneTimeout, request.LaneOutputWriter, interruptions)
+		execution, skipLine, interrupted, err := runOneLane(repositoryRoot, lane, laneTimeout, request.LaneOutputWriter, interruptions)
 		if err != nil {
 			return resultmodel.HeavyVerificationRun{}, nil, err
 		}
@@ -165,7 +188,7 @@ func RunLanes(request LaneRunRequest) (resultmodel.HeavyVerificationRun, []resul
 		case execution.Skipped:
 			findings = append(findings, laneSkippedFinding(execution, skipLine))
 		case execution.ExitStatus != 0:
-			findings = append(findings, laneRedFinding(execution))
+			findings = append(findings, laneRedFinding(execution, skipLine))
 		default:
 			// Only a green, unskipped lane with a determinable fingerprint is
 			// ever stored, and the stamp is the instant it actually ran: a
@@ -301,14 +324,24 @@ func runOneLane(repositoryRoot string, lane manifestLane, laneTimeout time.Durat
 		interrupted = true
 	}
 	skipWatcher.FlushPendingLine()
+	// A lane that genuinely skips returns immediately and exits zero, so a
+	// non-zero status outranks whatever the lane printed: the status is a
+	// result and the line is only an announcement. A lane's output is not a
+	// trustworthy channel on its own either — the do-work-cli lane runs this
+	// package's own tests, and their fixture lanes print `SKIP:` lines.
+	// Reporting "did not run" for a lane that ran and failed hides the failure.
+	// The announcement is returned whatever the status, because the verdict and
+	// the reason the lane gave are not exclusive: a red lane that also said why
+	// it thought it could not run is more useful than either half alone.
+	announcedSkipLine := skipWatcher.SkipLine()
 	execution := resultmodel.HeavyLaneExecution{
 		LaneID:      lane.ID,
 		CommandArgv: append([]string(nil), lane.Argv...),
 		ExitStatus:  exitStatus,
-		Skipped:     skipWatcher.SkipLine() != "",
+		Skipped:     exitStatus == 0 && announcedSkipLine != "",
 		WallSeconds: int(time.Since(startedAt).Seconds()),
 	}
-	return execution, skipWatcher.SkipLine(), interrupted, nil
+	return execution, announcedSkipLine, interrupted, nil
 }
 
 func laneExitStatus(waitError error) int {
@@ -393,10 +426,18 @@ func laneSkippedFinding(execution resultmodel.HeavyLaneExecution, skipLine strin
 	}
 }
 
-func laneRedFinding(execution resultmodel.HeavyLaneExecution) resultmodel.CommandFinding {
+// laneRedFinding reports a lane that ran and failed. A lane that also announced
+// a skip keeps that announcement as a second evidence line: the exit status
+// decides the verdict, and the announcement is the only place the lane said
+// what it believed was missing.
+func laneRedFinding(execution resultmodel.HeavyLaneExecution, announcedSkipLine string) resultmodel.CommandFinding {
+	evidence := []string{fmt.Sprintf("heavy lane %s exited %d after %ds", execution.LaneID, execution.ExitStatus, execution.WallSeconds)}
+	if announcedSkipLine != "" {
+		evidence = append(evidence, fmt.Sprintf("the lane also announced: %s", announcedSkipLine))
+	}
 	return resultmodel.CommandFinding{
 		Code: "HEAVY-RUN-LANE-RED", Severity: resultmodel.SeverityWarning,
-		Evidence:             []string{fmt.Sprintf("heavy lane %s exited %d after %ds", execution.LaneID, execution.ExitStatus, execution.WallSeconds)},
+		Evidence:             evidence,
 		Fixability:           resultmodel.FixabilityManual,
 		AutomationStopReason: "a red heavy lane is a result to record, not a failure of this command",
 		NextArgv:             append([]string(nil), execution.CommandArgv...),

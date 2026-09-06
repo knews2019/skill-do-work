@@ -130,8 +130,11 @@ func architecturePublish(ctx commandruntime.ExecutionContext, draft, candidate s
 		stagedPath := staged.Name()
 		_ = staged.Close()
 		defer os.Remove(stagedPath)
-		if output, copyError := exec.Command("cp", draftPath, stagedPath).CombinedOutput(); copyError != nil {
-			return architectureFailure("draft copy failed: " + strings.TrimSpace(string(output)))
+		// The draft bytes are already in hand; staging round-trips them through the temp file
+		// the shim expects. os.CreateTemp made stagedPath at 0600 and os.WriteFile truncates
+		// an existing file without re-applying the mode, which is what `cp` did here too.
+		if copyError := os.WriteFile(stagedPath, data, 0o600); copyError != nil {
+			return architectureFailure("draft copy failed: " + copyError.Error())
 		}
 		data, err = os.ReadFile(stagedPath)
 		if err != nil {
