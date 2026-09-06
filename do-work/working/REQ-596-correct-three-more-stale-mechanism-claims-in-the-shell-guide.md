@@ -7,8 +7,17 @@ user_request: UR-105
 review_generated: true
 impact: impact-negligible
 effort_estimate: effort-mechanical
+route: B
 prime_files: [_dev/primes/prime-shell-commands.md]
 tdd: false
+estimate:
+  p50_active_minutes: 15
+  confidence: medium
+  calculated_at: 2026-09-06T05:21:33Z
+  basis:
+    - Route B
+    - 1-file write set
+    - 4 acceptance criteria
 maintenance: true
 depends_on: [REQ-595]
 related: [REQ-555, REQ-595]
@@ -69,3 +78,26 @@ Depends on REQ-595, which rewrote three Mechanics cells and two prose claims in 
 ## Open Questions
 
 None.
+
+## Triage
+
+**Route: B** — Explore then build.
+
+**Reasoning:** The three named claims are already settled — each was verified against the code by the
+REQ-595 reviewer and re-verified here before the route was chosen. What makes exploration real is the
+request's fourth requirement: check the sections these three sit in for the same class in the same pass.
+That is the requirement that turned REQ-595 from a one-cell edit into a three-cell one, and the same
+argument applies here — the sentence that was reported says nothing about its neighbours.
+
+**Planning:** Skipped. One file, and the work is whatever the sweep finds.
+
+**One of the three has a safety edge and is the reason this is not "later".** The guide's by-hand
+secret-quarantine fallback lists `*credentials*`; the code matches `credential`. A reader following the
+guide when the tool is unavailable would not quarantine `credential.json`. The fallback is what someone
+executes by hand, so a pattern narrower than the code's is a miss, not a nit.
+
+## Plan
+
+**Planning not required** — Route B: one file, and the edits are whatever the section sweep confirms.
+
+*Skipped by work action*
