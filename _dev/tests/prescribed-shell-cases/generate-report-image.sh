@@ -85,7 +85,9 @@ PATH="$image_bin:$PATH" \
   || fail_case 'generate-report-image direct-backend case did not atomically replace the target with inert-prompt output'
 [ "$(cat "$fixture_root/image-staged-path")" != "$image_output" ] \
   || fail_case 'generate-report-image direct-backend case wrote directly to the final target'
-find "$fixture_root" -name '.report.png.generating.*' -print -quit | grep -q . \
+leaked_private_paths="$(find "$fixture_root" -name '.report.png.generating.*' -print -quit)" \
+  || fail_case 'generate-report-image direct-backend case could not search the fixture tree for private staging'
+[ -n "$leaked_private_paths" ] \
   && fail_case 'generate-report-image direct-backend case leaked private staging after success'
 
 # generate-report-image: a failed backend may leave an old target recoverable, but
@@ -100,7 +102,9 @@ PATH="$image_failure_bin:$PATH" DO_WORK_AI_REPORT_ALLOW_AGENTIC_BACKEND=0 \
   && fail_case 'generate-report-image stale-target case accepted a failed backend'
 [ "$(cat "$image_output")" = stable-old-png ] \
   || fail_case 'generate-report-image stale-target case changed the recoverable old target'
-find "$fixture_root" -name '.report.png.generating.*' -print -quit | grep -q . \
+leaked_private_paths="$(find "$fixture_root" -name '.report.png.generating.*' -print -quit)" \
+  || fail_case 'generate-report-image stale-target case could not search the fixture tree for private staging'
+[ -n "$leaked_private_paths" ] \
   && fail_case 'generate-report-image stale-target case leaked private staging after failure'
 
 # generate-report-image caller contract: mixed results retain both PIDs/statuses and
@@ -190,7 +194,9 @@ PATH="$agentic_bin" AGENTIC_INVOKED_MARKER="$agentic_marker" TMPDIR="$fixture_ro
   || fail_case 'generate-report-image agentic opt-in case rejected exact value 1'
 [ -e "$agentic_marker" ] && [ "$(cat "$fixture_root/agentic-1.png")" = agentic-png ] \
   || fail_case 'generate-report-image agentic opt-in case did not publish the explicitly authorized output'
-find "$fixture_root" \( -name '.*.generating.*' -o -name 'do-work-ai-report-image.*' \) -print -quit | grep -q . \
+leaked_private_paths="$(find "$fixture_root" \( -name '.*.generating.*' -o -name 'do-work-ai-report-image.*' \) -print -quit)" \
+  || fail_case 'generate-report-image agentic opt-in case could not search the fixture tree for private paths'
+[ -n "$leaked_private_paths" ] \
   && fail_case 'generate-report-image agentic opt-in case leaked private paths'
 
 # generate-report-image, interrupted directly: the helper owns the process tree it
@@ -369,7 +375,9 @@ PATH="$image_directory_bin:$PATH" DO_WORK_AI_REPORT_ALLOW_AGENTIC_BACKEND=0 \
   || fail_case 'generate-report-image output-is-a-directory case did not preserve the occupying directory byte-for-byte'
 [ "$(ls -A "$image_directory_target" 2>/dev/null)" = keep.txt ] \
   || fail_case 'generate-report-image output-is-a-directory case left its staged image nested inside the occupying directory'
-find "$image_directory_parent" -name '.report.png.generating.*' -print -quit | grep -q . \
+leaked_private_paths="$(find "$image_directory_parent" -name '.report.png.generating.*' -print -quit)" \
+  || fail_case 'generate-report-image output-is-a-directory case could not search the output parent directory'
+[ -n "$leaked_private_paths" ] \
   && fail_case 'generate-report-image output-is-a-directory case leaked private staging'
 
 # The Go command installs its signal context before allocating staging; pre-cancelled
@@ -401,7 +409,10 @@ image_early_helper_pid=$!
 background_process_ids="$background_process_ids $image_early_helper_pid"
 image_early_stage_ticks=0
 while [ "$image_early_stage_ticks" -lt 500 ]; do
-  find "$fixture_root" -name '.early-interrupt.png.generating.*' -print -quit | grep -q . && break
+  # Poll for the staged path rather than assert on it: a search that finds nothing yet is
+  # the loop's normal state, and the tick bound below is what ends the wait.
+  early_stage_paths="$(find "$fixture_root" -name '.early-interrupt.png.generating.*' -print -quit)"
+  [ -n "$early_stage_paths" ] && break
   sleep 0.002
   image_early_stage_ticks=$((image_early_stage_ticks + 1))
 done
@@ -421,7 +432,9 @@ if [ -n "$image_early_backend_pid" ]; then
   kill -0 "$image_early_backend_pid" 2>/dev/null \
     && fail_case "generate-report-image early-interruption case left backend $image_early_backend_pid alive"
 fi
-find "$fixture_root" -name '.early-interrupt.png.generating.*' -print -quit | grep -q . \
+leaked_private_paths="$(find "$fixture_root" -name '.early-interrupt.png.generating.*' -print -quit)" \
+  || fail_case 'generate-report-image early-interruption case could not search the fixture tree for private staging'
+[ -n "$leaked_private_paths" ] \
   && fail_case 'generate-report-image early-interruption case leaked private staging'
 [ "$(cat "$image_early_target")" = stable-early ] \
   || fail_case 'generate-report-image early-interruption case changed the old target'

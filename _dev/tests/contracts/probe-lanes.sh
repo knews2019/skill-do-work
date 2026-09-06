@@ -38,6 +38,8 @@ register_probe go_test_budget_probe "$repo_root/_dev/tests/run-go-tests-with-bud
   'Go test budget behavior probes failed (see the FAIL lines above).'
 register_probe fast_stage_reuse_probe "$repo_root/_dev/tests/fast-stage-reuse-behavior.sh" \
   'fast-stage evidence reuse probes failed (see the FAIL lines above).'
+register_probe quiet_grep_pipeline_probe "$repo_root/_dev/tests/quiet-grep-pipeline-audit.sh" \
+  'a check is deciding on a quiet grep fed from a pipeline (see the FAIL lines above).'
 
 if [ "$verification_tier" = heavy ]; then
   shared_cli_binary="$probe_batch_root/do-work-cli"

@@ -13,9 +13,9 @@ fixture_repo_commit_all "$inventory_repo" base
 printf 'change\n' >> "$inventory_repo/safe.txt"
 printf 'secret\n' > "$inventory_repo/.env.local"
 inventory_output="$(cd "$inventory_repo" && "$core_scripts/protected-inventory.sh" start)" || fail_case 'protected-inventory start case returned nonzero'
-printf '%s' "$inventory_output" | grep -q $'X\t.env.local' || fail_case 'protected-inventory start case did not quarantine the secret path'
+grep -q $'X\t.env.local' <<<"$inventory_output" || fail_case 'protected-inventory start case did not quarantine the secret path'
 association_output="$(cd "$inventory_repo" && "$core_scripts/protected-inventory.sh" associate)" || fail_case 'protected-inventory associate case returned nonzero'
-printf '%s' "$association_output" | grep -q $'REQ-001\tsafe.txt' || fail_case 'protected-inventory associate case lost the safe owner'
-printf '%s' "$association_output" | grep -q '.env.local' && fail_case 'protected-inventory associate case leaked the quarantined path'
+grep -q $'REQ-001\tsafe.txt' <<<"$association_output" || fail_case 'protected-inventory associate case lost the safe owner'
+grep -q '.env.local' <<<"$association_output" && fail_case 'protected-inventory associate case leaked the quarantined path'
 
 prescribed_shell_finish

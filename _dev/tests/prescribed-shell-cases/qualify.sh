@@ -28,7 +28,7 @@ printf 'print("site check: all sites cited")\n' >> "$qualify_repo/site-checker.s
 printf 'console.log("report written");\n' >> "$qualify_repo/report-writer.js"
 qualify_reporting_output="$(cd "$qualify_repo" && "$core_checks/qualify.sh" do-work/REQ-950-reporting.md 2>&1)" \
   || fail_case 'qualify reporter-output serial case FAILed a check file on its own success line'
-printf '%s' "$qualify_reporting_output" | grep -q 'reporting' \
+grep -q 'reporting' <<<"$qualify_reporting_output" \
   || fail_case 'qualify reporter-output serial case did not name the pass reason (reporting)'
 fixture_repo_commit_all "$qualify_repo" reporting
 qualify_reporting_commit="$(git -C "$qualify_repo" rev-parse HEAD)"
@@ -46,9 +46,9 @@ printf '%s\n' '## Implementation Summary' \
 printf 'print(raw_text)\n' >> "$qualify_repo/src/value_parser.py"
 qualify_instrumentation_output="$(cd "$qualify_repo" && "$core_checks/qualify.sh" do-work/REQ-951-instrumentation.md 2>&1)" \
   && fail_case 'qualify instrumentation serial case passed a debug print in library code'
-printf '%s' "$qualify_instrumentation_output" | grep -q 'instrumentation' \
+grep -q 'instrumentation' <<<"$qualify_instrumentation_output" \
   || fail_case 'qualify instrumentation serial case did not name the FAIL reason (instrumentation)'
-printf '%s' "$qualify_instrumentation_output" | grep -q 'src/value_parser.py' \
+grep -q 'src/value_parser.py' <<<"$qualify_instrumentation_output" \
   || fail_case 'qualify instrumentation serial case did not name the offending file'
 fixture_repo_commit_all "$qualify_repo" instrumentation
 qualify_instrumentation_commit="$(git -C "$qualify_repo" rev-parse HEAD)"
@@ -67,7 +67,7 @@ printf '%s\n' '## Implementation Summary' \
 printf '# TODO: tighten the site regex\n' >> "$qualify_repo/site-checker.sh"
 qualify_marker_output="$(cd "$qualify_repo" && "$core_checks/qualify.sh" do-work/REQ-952-marker.md 2>&1)" \
   && fail_case 'qualify unfinished-marker case let a reporter file carry a fresh TODO'
-printf '%s' "$qualify_marker_output" | grep -q 'debug artifacts' \
+grep -q 'debug artifacts' <<<"$qualify_marker_output" \
   || fail_case 'qualify unfinished-marker case did not report the TODO as a debug artifact'
 git -C "$qualify_repo" checkout -q -- site-checker.sh
 
@@ -83,7 +83,7 @@ printf '%s\n' 'print(raw_text)' '' 'if _run_as_script:' '    import sys' '    sy
   >> "$qualify_repo/src/value_parser.py"
 qualify_same_diff_output="$(cd "$qualify_repo" && "$core_checks/qualify.sh" do-work/REQ-953-same-diff-exit.md 2>&1)" \
   && fail_case 'qualify same-diff-exit case let an exit added in this diff excuse a debug print in library code'
-printf '%s' "$qualify_same_diff_output" | grep -q 'never ends its own process' \
+grep -q 'never ends its own process' <<<"$qualify_same_diff_output" \
   || fail_case 'qualify same-diff-exit case did not FAIL on the base-revision ownership verdict'
 git -C "$qualify_repo" checkout -q -- src/value_parser.py
 
@@ -117,7 +117,7 @@ printf '%s\n' '## Implementation Summary' \
 printf 'print("debug", raw_text)\n' >> "$qualify_repo/src/value_renderer.py"
 qualify_docstring_output="$(cd "$qualify_repo" && "$core_checks/qualify.sh" do-work/REQ-955-docstring-exit.md 2>&1)" \
   && fail_case 'qualify docstring-exit case let docstring prose "exit 1 on failure" pass as process-exit ownership'
-printf '%s' "$qualify_docstring_output" | grep -q 'src/value_renderer.py' \
+grep -q 'src/value_renderer.py' <<<"$qualify_docstring_output" \
   || fail_case 'qualify docstring-exit case did not name the offending file'
 
 # qualify: the DOCUMENTED RESIDUAL of that narrowing, pinned so the boundary is a stated
@@ -151,7 +151,7 @@ printf '%s\n' '## Implementation Summary' \
 printf 'print("site check: %%d sites" %% site_total)\n' >> "$qualify_repo/site-checker.sh"
 qualify_warn_lines_output="$(cd "$qualify_repo" && "$core_checks/qualify.sh" do-work/REQ-957-warn-lines.md 2>&1)" \
   || fail_case 'qualify warn-lines case FAILed a reporter file on its own success line'
-printf '%s' "$qualify_warn_lines_output" | grep -q 'site check: %d sites' \
+grep -q 'site check: %d sites' <<<"$qualify_warn_lines_output" \
   || fail_case 'qualify warn-lines case WARNed without printing the matched line — the FAIL branch prints its lines and the WARN must too'
 git -C "$qualify_repo" checkout -q -- site-checker.sh
 
@@ -174,13 +174,13 @@ printf '%s\n' 'console.log("ignored debug");' '// TODO: ignored marker' \
   > "$qualify_repo/ignored-helper.js"
 qualify_untracked_output="$(cd "$qualify_repo" && "$core_checks/qualify.sh" do-work/REQ-958-untracked.md 2>&1)" \
   && fail_case 'qualify untracked case passed an untracked file carrying a console.log and a TODO'
-printf '%s' "$qualify_untracked_output" | grep -q 'src/untracked_helper.js' \
+grep -q 'src/untracked_helper.js' <<<"$qualify_untracked_output" \
   || fail_case 'qualify untracked case did not name the untracked file'
-printf '%s' "$qualify_untracked_output" | grep -q 'debug artifacts' \
+grep -q 'debug artifacts' <<<"$qualify_untracked_output" \
   || fail_case 'qualify untracked case missed the TODO — the unfinished-marker scan still does not read untracked files'
-printf '%s' "$qualify_untracked_output" | grep -q 'leftover instrumentation' \
+grep -q 'leftover instrumentation' <<<"$qualify_untracked_output" \
   || fail_case 'qualify untracked case missed the console.log — the output-primitive scan still does not read untracked files'
-printf '%s' "$qualify_untracked_output" | grep -q 'ignored-helper.js' \
+grep -q 'ignored-helper.js' <<<"$qualify_untracked_output" \
   && fail_case 'qualify untracked case scanned a correctly-ignored file — --exclude-standard is the ignore filter and must be honored'
 
 # qualify: worktree dispatch mode reads committed work, so an untracked file left lying in
@@ -202,7 +202,7 @@ qualify_range_untracked_output="$(cd "$qualify_repo" \
   && DO_WORK_DIFF_RANGE="$qualify_untracked_base..$qualify_untracked_range_commit" \
   "$core_checks/qualify.sh" do-work/REQ-959-range-untracked.md 2>&1)" \
   || fail_case 'qualify range-untracked case FAILed on an untracked file that worktree dispatch mode must not read'
-printf '%s' "$qualify_range_untracked_output" | grep -q 'stray_helper.js' \
+grep -q 'stray_helper.js' <<<"$qualify_range_untracked_output" \
   && fail_case 'qualify range-untracked case scanned an untracked file in worktree dispatch mode — that mode reads committed work only'
 rm -f "$qualify_repo/src/stray_helper.js" "$qualify_repo/src/untracked_helper.js" "$qualify_repo/ignored-helper.js"
 
@@ -215,13 +215,13 @@ printf '%s\n' '## Implementation Summary' \
   > "$qualify_repo/do-work/REQ-960-no-pau.md"
 printf 'print(raw_text)\n' >> "$qualify_repo/src/value_parser.py"
 qualify_no_pau_output="$(cd "$qualify_repo" && "$core_checks/qualify.sh" do-work/REQ-960-no-pau.md 2>&1)"
-printf '%s' "$qualify_no_pau_output" | grep -q 'DISARMED' \
+grep -q 'DISARMED' <<<"$qualify_no_pau_output" \
   || fail_case 'qualify no-P-A-U case printed no disarmed-audit warning — a REQ with no P-A-U section still passes Check 4 silently'
 git -C "$qualify_repo" checkout -q -- src/value_parser.py
 
 # qualify: the vacuity guard on that warning — a REQ that DOES carry the section must not
 # get it, or the warning would fire on every run and mean nothing (REQ-264).
-printf '%s' "$qualify_reporting_output" | grep -q 'DISARMED' \
+grep -q 'DISARMED' <<<"$qualify_reporting_output" \
   && fail_case 'qualify no-P-A-U warning fired on a REQ that carries the section — the check is keying on the wrong thing'
 
 # qualify: a MOVED debug-artifact marker is not an added one (REQ-301). Every scan reads
@@ -245,7 +245,7 @@ printf '%s\n' '#!/usr/bin/env bash' 'source relocation/alpha.sh' \
   'case_beta() {' '  printf "# FIXME: beta fixture\n" > g' '}' > "$qualify_repo/relocation/suite.sh"
 qualify_relocated_output="$(cd "$qualify_repo" && "$core_checks/qualify.sh" do-work/REQ-970-relocated-marker.md 2>&1)" \
   || fail_case 'qualify relocated-marker case FAILed a marker that was moved, not added — every code-relocation REQ trips this'
-printf '%s' "$qualify_relocated_output" | grep -q 'relocated, not added' \
+grep -q 'relocated, not added' <<<"$qualify_relocated_output" \
   || fail_case 'qualify relocated-marker case did not name the moved marker — a relocation must be downgraded to a named WARN, never dropped'
 
 # qualify: the masking risk the REQ names, pinned. A marker DUPLICATED rather than moved
@@ -263,7 +263,7 @@ printf '%s\n' '#!/usr/bin/env bash' 'case_gamma() {' '  printf "# FIXME: beta fi
   > "$qualify_repo/relocation/gamma.sh"
 qualify_duplicated_output="$(cd "$qualify_repo" && "$core_checks/qualify.sh" do-work/REQ-971-duplicated-marker.md 2>&1)" \
   && fail_case 'qualify duplicated-marker case excused a marker that was copied rather than moved — mere presence at base was used as the test instead of occurrence count'
-printf '%s' "$qualify_duplicated_output" | grep -q 'relocation/gamma.sh' \
+grep -q 'relocation/gamma.sh' <<<"$qualify_duplicated_output" \
   || fail_case 'qualify duplicated-marker case did not name the file that gained the extra copy'
 rm -f "$qualify_repo/relocation/gamma.sh"
 
@@ -278,9 +278,9 @@ printf '%s\n' '## Implementation Summary' \
 printf '%s\n' '  # TODO: brand new leftover' >> "$qualify_repo/relocation/alpha.sh"
 qualify_mixed_output="$(cd "$qualify_repo" && "$core_checks/qualify.sh" do-work/REQ-972-fresh-beside-moved.md 2>&1)" \
   && fail_case 'qualify fresh-beside-moved case passed a genuinely new marker because a moved one shared its file'
-printf '%s' "$qualify_mixed_output" | grep -q 'brand new leftover' \
+grep -q 'brand new leftover' <<<"$qualify_mixed_output" \
   || fail_case 'qualify fresh-beside-moved case did not name the fresh marker in its FAIL'
-printf '%s' "$qualify_mixed_output" | grep -q 'relocated, not added' \
+grep -q 'relocated, not added' <<<"$qualify_mixed_output" \
   || fail_case 'qualify fresh-beside-moved case dropped the moved marker instead of reporting it alongside the FAIL'
 rm -rf "$qualify_repo/relocation" "$qualify_repo/do-work/REQ-97"*.md
 
@@ -295,9 +295,9 @@ printf '%s\n' '## Implementation Summary' \
   > "$qualify_repo/do-work/REQ-961-no-unify-box.md"
 printf 'print(raw_text)\n' >> "$qualify_repo/src/value_parser.py"
 qualify_no_unify_output="$(cd "$qualify_repo" && "$core_checks/qualify.sh" do-work/REQ-961-no-unify-box.md 2>&1)"
-printf '%s' "$qualify_no_unify_output" | grep -q 'DISARMED' \
+grep -q 'DISARMED' <<<"$qualify_no_unify_output" \
   || fail_case 'qualify no-UNIFY-box case printed no disarmed-audit warning — a REQ keeping PLAN and APPLY but dropping UNIFY still passes Check 4 silently'
-printf '%s' "$qualify_no_unify_output" | grep -q 'no \[UNIFY\] box' \
+grep -q 'no \[UNIFY\] box' <<<"$qualify_no_unify_output" \
   || fail_case 'qualify no-UNIFY-box case did not distinguish a missing UNIFY box from a missing section — the remedies differ'
 git -C "$qualify_repo" checkout -q -- src/value_parser.py
 
@@ -318,7 +318,7 @@ printf '%s\n' 'print("debug", raw_text)' '' 'if True:' '    import sys' '    sys
   >> "$qualify_repo/src/row_renderer_v2.py"
 qualify_renamed_output="$(cd "$qualify_repo" && "$core_checks/qualify.sh" do-work/REQ-962-renamed-ownership.md 2>&1)" \
   && fail_case 'qualify renamed-ownership case let a rename plus a same-change exit idiom excuse a debug print — ownership was judged on post-change content instead of the base path'
-printf '%s' "$qualify_renamed_output" | grep -q 'src/row_renderer_v2.py' \
+grep -q 'src/row_renderer_v2.py' <<<"$qualify_renamed_output" \
   || fail_case 'qualify renamed-ownership case did not name the renamed file'
 git -C "$qualify_repo" checkout -q -- . 2>/dev/null || true
 git -C "$qualify_repo" reset -q 2>/dev/null || true
@@ -340,7 +340,7 @@ printf '%s\n' 'def parse_total(raw_text):' '    # TODO' '    return raw_text' \
   > "$qualify_repo/src/total_parser.py"
 qualify_substring_output="$(cd "$qualify_repo" && "$core_checks/qualify.sh" do-work/REQ-973-substring-not-relocation.md 2>&1)" \
   && fail_case 'qualify substring-not-relocation case excused a brand-new marker because its text is a substring of a line that was removed — the relocation test is counting substrings instead of whole lines'
-printf '%s' "$qualify_substring_output" | grep -q 'debug artifacts' \
+grep -q 'debug artifacts' <<<"$qualify_substring_output" \
   || fail_case 'qualify substring-not-relocation case did not FAIL the fresh marker as a debug artifact'
 git -C "$qualify_repo" checkout -q -- src/total_parser.py
 
@@ -362,10 +362,12 @@ printf '%s\n' 'print("debug", raw_text)' '' 'if True:' '    import sys' '    sys
   >> "$qualify_repo/src/cell_renderer_v2.py"
 qualify_untracked_rename_output="$(cd "$qualify_repo" && "$core_checks/qualify.sh" do-work/REQ-974-untracked-rename-ownership.md 2>&1)" \
   && fail_case 'qualify untracked-rename case let a plain mv plus a same-change exit idiom excuse a debug print — the rename destination was untracked, so ownership fell through to post-change content'
-printf '%s' "$qualify_untracked_rename_output" | grep -q 'never ends its own process' \
+grep -q 'never ends its own process' <<<"$qualify_untracked_rename_output" \
   || fail_case 'qualify untracked-rename case did not reach the base-revision ownership verdict for an untracked rename destination'
 # The private index must not disturb the real one: the move is still unstaged afterwards.
-git -C "$qualify_repo" diff --cached --name-only | grep -q 'cell_renderer' \
+qualify_cached_paths="$(git -C "$qualify_repo" diff --cached --name-only)" \
+  || fail_case 'qualify untracked-rename case could not read the fixture repo index'
+grep -q 'cell_renderer' <<<"$qualify_cached_paths" \
   && fail_case 'qualify untracked-rename case left the fixture repo index modified — the rename probe must build its post-change tree in a PRIVATE index, never the real one'
 rm -f "$qualify_repo/src/cell_renderer_v2.py"
 git -C "$qualify_repo" checkout -q -- . 2>/dev/null || true
@@ -413,9 +415,9 @@ mkdir -p "$qualify_repo/assets"
 printf 'ICON\000 TODO \000 print( \000\n' > "$qualify_repo/assets/thumbnail.bin"
 qualify_binary_scan_output="$(cd "$qualify_repo" && "$core_checks/qualify.sh" do-work/REQ-976-binary-untracked-scan.md 2>&1)" \
   && fail_case 'qualify binary-untracked-scan case passed a debug print in an untracked text file — the binary guard must skip binaries only'
-printf '%s' "$qualify_binary_scan_output" | grep -q 'src/new_helper.py' \
+grep -q 'src/new_helper.py' <<<"$qualify_binary_scan_output" \
   || fail_case 'qualify binary-untracked-scan case stopped scanning untracked TEXT files — the binary guard is over-skipping real source'
-printf '%s' "$qualify_binary_scan_output" | grep -q 'thumbnail.bin' \
+grep -q 'thumbnail.bin' <<<"$qualify_binary_scan_output" \
   && fail_case 'qualify binary-untracked-scan case reported an untracked BINARY asset as a source artifact — the scans must skip binaries before reading them'
 rm -rf "$qualify_repo/assets" "$qualify_repo/src/new_helper.py"
 git -C "$qualify_repo" checkout -q -- . 2>/dev/null || true
@@ -436,7 +438,7 @@ printf '%s\n' '## Implementation Summary' \
   > "$qualify_summary_repo/do-work/REQ-980-multi-path-mismatch.md"
 qualify_multi_path_mismatch_output="$(cd "$qualify_summary_repo" && "$core_checks/qualify.sh" do-work/REQ-980-multi-path-mismatch.md 2>&1)" \
   && fail_case 'qualify multi-path mismatch case passed because only the first Implementation Summary path reached Check 1'
-printf '%s' "$qualify_multi_path_mismatch_output" | grep -q 'listed (modified) but not on disk: src/missing-later.txt' \
+grep -q 'listed (modified) but not on disk: src/missing-later.txt' <<<"$qualify_multi_path_mismatch_output" \
   || fail_case 'qualify multi-path mismatch case did not name the missing later path'
 git -C "$qualify_summary_repo" checkout -q -- .
 
@@ -452,7 +454,7 @@ printf '%s\n' '## Implementation Summary' \
   > "$qualify_summary_repo/do-work/REQ-981-multi-path-match.md"
 qualify_multi_path_match_output="$(cd "$qualify_summary_repo" && "$core_checks/qualify.sh" do-work/REQ-981-multi-path-match.md 2>&1)" \
   || fail_case 'qualify matching multi-path case rejected two real modified paths'
-printf '%s' "$qualify_multi_path_match_output" | grep -q 'phantom-file.txt' \
+grep -q 'phantom-file.txt' <<<"$qualify_multi_path_match_output" \
   && fail_case 'qualify matching multi-path case treated a backticked prose span as a file claim'
 git -C "$qualify_summary_repo" checkout -q -- .
 
@@ -466,7 +468,7 @@ printf '%s\n' '## Implementation Summary' \
   > "$qualify_summary_repo/do-work/REQ-982-root-path.md"
 qualify_root_path_output="$(cd "$qualify_summary_repo" && "$core_checks/qualify.sh" do-work/REQ-982-root-path.md 2>&1)" \
   && fail_case 'qualify root-path case dropped a filename-only later path'
-printf '%s' "$qualify_root_path_output" | grep -q 'listed (modified) but not on disk: missing-root.txt' \
+grep -q 'listed (modified) but not on disk: missing-root.txt' <<<"$qualify_root_path_output" \
   || fail_case 'qualify root-path case did not name the missing root-level filename'
 git -C "$qualify_summary_repo" checkout -q -- .
 
@@ -480,7 +482,7 @@ printf '%s\n' '## Implementation Summary' \
   > "$qualify_summary_repo/do-work/REQ-983-later-wiring.md"
 qualify_later_wiring_output="$(cd "$qualify_summary_repo" && "$core_checks/qualify.sh" do-work/REQ-983-later-wiring.md 2>&1)" \
   || fail_case 'qualify later-wiring case rejected two real new paths'
-printf '%s' "$qualify_later_wiring_output" | grep -q 'new) file has no static reference anywhere: src/later_widget.js' \
+grep -q 'new) file has no static reference anywhere: src/later_widget.js' <<<"$qualify_later_wiring_output" \
   || fail_case 'qualify later-wiring case never sent the later path through Check 5'
 rm -f "$qualify_summary_repo/src/first_new.js" "$qualify_summary_repo/src/later_widget.js"
 
@@ -494,7 +496,7 @@ printf '%s\n' '## Implementation Summary' \
   > "$qualify_summary_repo/do-work/REQ-984-unmatched-summary.md"
 qualify_unmatched_summary_output="$(cd "$qualify_summary_repo" && "$core_checks/qualify.sh" do-work/REQ-984-unmatched-summary.md 2>&1)" \
   && fail_case 'qualify unmatched-summary case accepted a partial Implementation Summary path list'
-printf '%s' "$qualify_unmatched_summary_output" | grep -q 'FAIL:.*unmatched backtick' \
+grep -q 'FAIL:.*unmatched backtick' <<<"$qualify_unmatched_summary_output" \
   || fail_case 'qualify unmatched-summary case did not fail loudly on the malformed path-led bullet'
 
 prescribed_shell_finish

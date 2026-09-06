@@ -60,7 +60,9 @@ batch_escape_status=$?
 batch_unpaired_status=$?
 [ "$batch_unpaired_status" -eq 2 ] \
   || fail_case "generate-report-image-batch unpaired-argument case returned $batch_unpaired_status instead of the usage status 2"
-find "$batch_arguments_root/ai-reports/report" -name '.generated.staging.*' -print -quit | grep -q . \
+leaked_private_paths="$(find "$batch_arguments_root/ai-reports/report" -name '.generated.staging.*' -print -quit)" \
+  || fail_case 'generate-report-image-batch usage-error cases could not search the report directory for invocation-private staging'
+[ -n "$leaked_private_paths" ] \
   && fail_case 'generate-report-image-batch usage-error cases allocated invocation-private staging'
 
 # generate-report-image-batch: the shipped batch owns staging, launch, wait-all,
@@ -101,7 +103,9 @@ run_ai_report_batch_replay image-all-failed "$image_all_failed_bin" \
   || fail_case 'ai-report all-failed batch replay returned nonzero instead of falling back'
 [ ! -e "$fixture_root/image-all-failed/ai-reports/<report-slug>/generated" ] \
   || fail_case 'ai-report all-failed batch replay published an empty generated/ directory'
-find "$fixture_root/image-all-failed/ai-reports/<report-slug>" -name '.generated.staging.*' -print -quit | grep -q . \
+leaked_private_paths="$(find "$fixture_root/image-all-failed/ai-reports/<report-slug>" -name '.generated.staging.*' -print -quit)" \
+  || fail_case 'ai-report all-failed batch replay could not search the report directory for invocation-private staging'
+[ -n "$leaked_private_paths" ] \
   && fail_case 'ai-report all-failed batch replay leaked invocation-private staging'
 [ -e "$fixture_root/image-all-failed/first.done" ] && [ -e "$fixture_root/image-all-failed/second.done" ] \
   || fail_case 'ai-report all-failed batch replay did not wait for every launched job'
@@ -121,7 +125,9 @@ run_ai_report_batch_replay image-batch-mixed "$image_batch_mixed_bin" \
 [ "$(cat "$fixture_root/image-batch-mixed/ai-reports/<report-slug>/generated/01-architecture.png" 2>/dev/null)" = current-success ] \
   && [ ! -e "$fixture_root/image-batch-mixed/ai-reports/<report-slug>/generated/02-dataflow.png" ] \
   || fail_case 'ai-report mixed batch replay did not publish only the status-backed successful image'
-find "$fixture_root/image-batch-mixed/ai-reports/<report-slug>" -name '.generated.staging.*' -print -quit | grep -q . \
+leaked_private_paths="$(find "$fixture_root/image-batch-mixed/ai-reports/<report-slug>" -name '.generated.staging.*' -print -quit)" \
+  || fail_case 'ai-report mixed batch replay could not search the report directory for invocation-private staging'
+[ -n "$leaked_private_paths" ] \
   && fail_case 'ai-report mixed batch replay leaked invocation-private staging'
 [ -e "$fixture_root/image-batch-mixed/first.done" ] && [ -e "$fixture_root/image-batch-mixed/second.done" ] \
   || fail_case 'ai-report mixed batch replay did not wait for every launched job'
@@ -209,7 +215,9 @@ while [ "$interrupt_survivor_ticks" -lt 40 ]; do
 done
 [ "$interrupt_survivors" -eq 0 ] \
   || fail_case "ai-report interrupted batch replay left $interrupt_survivors helper process(es) or descendant(s) alive"
-find "$interrupt_batch_root/ai-reports/<report-slug>" -name '.generated.staging.*' -print -quit | grep -q . \
+leaked_private_paths="$(find "$interrupt_batch_root/ai-reports/<report-slug>" -name '.generated.staging.*' -print -quit)" \
+  || fail_case 'ai-report interrupted batch replay could not search the report directory for invocation-private staging'
+[ -n "$leaked_private_paths" ] \
   && fail_case 'ai-report interrupted batch replay leaked invocation-private staging'
 [ ! -e "$interrupt_batch_root/ai-reports/<report-slug>/generated" ] \
   || fail_case 'ai-report interrupted batch replay published generated/'
@@ -342,7 +350,9 @@ REPLAY_COLLISION_DESTINATION="$publish_collision_generated" \
   || fail_case 'ai-report publish-collision replay did not preserve the colliding destination byte-for-byte'
 [ "$(ls -A "$publish_collision_generated" 2>/dev/null)" = keep.txt ] \
   || fail_case 'ai-report publish-collision replay left its staged batch nested inside the colliding destination'
-find "$fixture_root/image-publish-collision/ai-reports/<report-slug>" -name '.generated.staging.*' -print -quit | grep -q . \
+leaked_private_paths="$(find "$fixture_root/image-publish-collision/ai-reports/<report-slug>" -name '.generated.staging.*' -print -quit)" \
+  || fail_case 'ai-report publish-collision replay could not search the report directory for invocation-private staging'
+[ -n "$leaked_private_paths" ] \
   && fail_case 'ai-report publish-collision replay leaked invocation-private staging'
 
 # The Go command installs its signal context before allocating staging; that ordering
@@ -422,7 +432,9 @@ else
   wait "$early_batch_pid" || early_batch_status=$?
   [ "$early_batch_status" -eq 143 ] \
     || fail_case "ai-report early-interrupted batch replay exited $early_batch_status instead of the TERM status 143"
-  find "$early_batch_root/ai-reports/<report-slug>" -name '.generated.staging.*' -print -quit | grep -q . \
+  leaked_private_paths="$(find "$early_batch_root/ai-reports/<report-slug>" -name '.generated.staging.*' -print -quit)" \
+    || fail_case 'ai-report early-interrupted batch replay could not search the report directory for invocation-private staging'
+  [ -n "$leaked_private_paths" ] \
     && fail_case 'ai-report early-interrupted batch replay leaked invocation-private staging'
   [ ! -e "$early_batch_root/ai-reports/<report-slug>/generated" ] \
     || fail_case 'ai-report early-interrupted batch replay published generated/'

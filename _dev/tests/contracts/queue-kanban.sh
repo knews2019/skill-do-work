@@ -47,11 +47,11 @@ if [ "$stuck_listener_status" -ne 1 ]; then
   printf 'FAIL: run-kanban shutdown must refuse startup when a listener remains after the bounded wait; got exit %s.\n' "$stuck_listener_status" >&2
   fail_count=$((fail_count + 1))
 fi
-if ! printf '%s\n' "$stuck_listener_output" | grep -qF 'pid 4242'; then
+if ! grep -qF 'pid 4242' <<<"$stuck_listener_output"; then
   printf 'FAIL: run-kanban stuck-listener refusal must name pid 4242.\n' >&2
   fail_count=$((fail_count + 1))
 fi
-if ! printf '%s\n' "$stuck_listener_output" | grep -qF '/tmp/queue-kanban serve --port 8090'; then
+if ! grep -qF '/tmp/queue-kanban serve --port 8090' <<<"$stuck_listener_output"; then
   printf 'FAIL: run-kanban stuck-listener refusal must name the listener command.\n' >&2
   fail_count=$((fail_count + 1))
 fi

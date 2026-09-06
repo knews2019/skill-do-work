@@ -220,7 +220,7 @@ partial_publish_output="$( (cd "$partial_repo" && ulimit -f 1 \
   && TMPDIR="$fixture_root/architecture-stage-tmp" \
     "$preflight_script" --publish drafts/report.html "$publish_candidate" 2>&1) )" \
   && fail_case 'architecture-report-preflight reported a failed copy as published'
-printf '%s' "$partial_publish_output" | grep -q 'draft copy failed: write ' \
+grep -q 'draft copy failed: write ' <<<"$partial_publish_output" \
   || fail_case 'architecture-report-preflight did not report the staged write failure as the copy failure'
 [ ! -e "$partial_repo/$publish_candidate/index.html" ] \
   || fail_case 'architecture-report-preflight exposed partial HTML after a failed copy'
