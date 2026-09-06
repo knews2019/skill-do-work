@@ -2,6 +2,16 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.305.7 — One Redundant Rollback Check Removed, Eight Load-Bearing Ones Kept and Pinned (2026-09-06)
+
+A maintenance audit counted nine places where the transaction rollback tests a filesystem handle for nil and asked for eight of them to go. Tracing every path that can reach them showed the opposite: eight are the only thing between a failed handle and a crash in the middle of restoring the tree.
+
+- When the rollback cannot open its rooted handle it records that and keeps going, so a failed transaction still unstages its paths and still reports what it could not restore. That one missing handle then reaches eleven places, and each decides for itself what to do without it. Removing any one of seven of those checks turns a reported incomplete rollback into a crash mid-rollback.
+- Exactly one check re-tested a handle every caller had already settled. That one is gone, and its precondition is stated where the callers can read it.
+- A maintainer check pins the count at eight in both directions and counts the checks themselves, not any line that happens to mention them, so a deleted check cannot be paid for with a comment.
+- Found on the way and not yet fixed: one place the rollback hands that possibly-missing handle onward with no check at all, so a transaction with a recorded private untracked target can crash during rollback when the handle cannot be opened. That is queued as its own fix with the package's first test for the no-handle path.
+- This change was already present in 0.305.5 and 0.305.6, which were released on top of it while it was held for review; it changes no behaviour a user sees.
+
 ## 0.305.6 — The Manual Fallbacks in the Shell Guide Now Give the Tool's Answer (2026-09-06)
 
 Two procedures in the shell guide tell you what to do by hand when the inventory tool will not run. Both gave different answers from the tool. That matters more than an ordinary documentation slip, because a person only reaches for them when the tool is already unavailable.
