@@ -67,9 +67,10 @@ Source: `do-work/audits/audit-2026-09-03.md` (Finding 9, sweep_key `exec-where-p
 - Reproduce at dc8a64e3 (prints the two sites): `rg -n 'exec\.Command(Context)?\((ctx, )?"(find|cp|mkdir|grep|sed|ls|rm|mv|cat|touch|head|tail|wc)"' skills/do-work/tools/do-work-cli skills/do-work-board/tools/queue-kanban --glob '!*_test.go'`
 
 ## Constraints
-- Scope is exactly this finding class: do not fix nearby code, do not extend behaviour the finding does not name, no test files beyond the lock-in.
+- Scope is exactly this finding class: do not fix nearby code, do not extend behaviour the finding does not name, ~~no test files beyond the lock-in~~.
+  **Overridden — see D-01.** Two heavy-tier fixture cases drive the very calls this REQ makes in-process, so they were measured to go inert and are in the `write_set` alongside the lock-in.
 - The lock-in lands as one assertion in `_dev/tests/audit-lockins.sh` (the file already exists, is executable, and is already registered in the fast tier at `_dev/tests/contracts/probe-lanes.sh` -- add one assertion to it; do not create it and do not change its registration), pinned at today's value so it is green on day one and red the moment the number regrows; no other test file changes.
-- Tests unchanged; the existing package tests are the safety net.
+- ~~Tests unchanged; the existing package tests are the safety net.~~ **Overridden — see D-01**, same reason: the package tests cannot see the two fixture cases that went inert.
 - Lock-in limit: coreutils exec sites in the two Go modules: 0 after this REQ (today 2).
 
 ## Dependencies
