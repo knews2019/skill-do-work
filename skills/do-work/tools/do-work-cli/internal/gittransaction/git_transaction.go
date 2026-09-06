@@ -1271,11 +1271,18 @@ func rootedRegularPreimage(root *os.Root, path string) (os.FileInfo, [sha256.Siz
 	return rootedOpenSnapshot(root, path, "private target", "after-private-preimage-lstat")
 }
 
+// rootedOpenSnapshot requires a usable rooted filesystem handle and does not re-check one.
+// Callers satisfy that in one of two ways: they hold a handle from an os.OpenRoot whose
+// failure already returned, or they take their own explicit no-root branch before calling.
+// Which branch is right depends on the target in hand, so it is decided at the call site and
+// not here — today inspectCreatedObject reports the created object as replaced,
+// trackedPublicationStillOwned reports the publication as unowned, rollbackDirtyTracked
+// reports the rollback root as unavailable, and rollbackFailure skips privateStateStillOriginal
+// outright. One caller does neither: rollbackFailure hands its unchecked handle to
+// quarantineAndRollbackPrivate, which dereferences it long before reaching this function, so a
+// test here never covered that path either.
 func rootedOpenSnapshot(root *os.Root, path, targetDescription, hookStage string) (os.FileInfo, [sha256.Size]byte, []byte, error) {
 	var empty [sha256.Size]byte
-	if root == nil {
-		return nil, empty, nil, errors.New("rooted filesystem handle is unavailable")
-	}
 	rootPath := filepath.FromSlash(path)
 	lstatInfo, err := root.Lstat(rootPath)
 	if err != nil {
