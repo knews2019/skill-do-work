@@ -32,3 +32,5 @@ session_depth: light
 
 
 - REQ-558: [impact-negligible] Keep one nil-root guard in git_transaction.go and delete the other eight — claimed 2026-09-06T05:50:44Z — writer: vm:/home/user/skill-do-work
+
+- REQ-597: Correct ten stale claims across the rest of the prescribed-shell guide — claimed 2026-09-06T06:59:15Z — writer: vm:/home/user/skill-do-work

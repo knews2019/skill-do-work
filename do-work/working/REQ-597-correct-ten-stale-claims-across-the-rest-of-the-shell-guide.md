@@ -1,19 +1,29 @@
 ---
 id: REQ-597
-status: pending
+status: claimed
 domain: general
 created_at: 2026-09-06T05:49:08Z
 user_request: UR-105
 review_generated: true
 impact: impact-negligible
 effort_estimate: effort-mechanical
+route: B
 prime_files: [_dev/primes/prime-shell-commands.md]
 tdd: false
+estimate:
+  p50_active_minutes: 25
+  confidence: medium
+  calculated_at: 2026-09-06T06:59:15Z
+  basis:
+    - Route B
+    - 3-file write set
+    - 4 acceptance criteria
 maintenance: true
 depends_on: [REQ-596]
 related: [REQ-555, REQ-595, REQ-596]
 write_set: [skills/do-work/docs/prescribed-shell-primitives.md, skills/do-work/actions/commit.md, skills/do-work-toolbox/actions/inspect.md]
 title: 'Correct ten stale claims across the rest of the prescribed-shell guide'
+claimed_at: 2026-09-06T06:59:15Z
 ---
 
 # Correct Ten Stale Claims Across the Rest of the Prescribed-Shell Guide
@@ -80,3 +90,27 @@ Depends on REQ-596, which corrected the other eleven findings from the same swee
 ## Open Questions
 
 None.
+
+## Triage
+
+**Route: B** — Explore then build.
+
+**Reasoning:** The ten claims are named with file-and-line citations from a sweep that has already run,
+so their existence is settled. What is not settled is their replacements. REQ-596 shipped a replacement
+sentence that was false in its own right — it compressed a correct finding into an incorrect one — and
+the review caught it. Every replacement here has to be re-derived from the code rather than transcribed
+from the sweep's suggestion, and the sections these ten sit in have to be checked whole, because that is
+the requirement that turned REQ-595 from one cell into three and REQ-596 from three claims into eleven.
+
+**Planning:** Skipped. Three files, and the edit set is whatever the re-verification confirms.
+
+**The caller drift is the newest part and the least examined.** `actions/commit.md` names a glob the
+guide replaced one request ago and describes a `-` row the command never prints. Nobody has checked
+`inspect.md` for the same two claims, or the other shipped callers for anything similar.
+
+## Plan
+
+**Planning not required** — Route B: three files, and the work is whatever the re-verification and the
+section sweep confirm.
+
+*Skipped by work action*
