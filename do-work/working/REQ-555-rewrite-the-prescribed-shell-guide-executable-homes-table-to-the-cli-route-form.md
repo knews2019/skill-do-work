@@ -34,9 +34,23 @@ claimed_at: 2026-09-06T03:16:18Z
 The "Shipped executable homes" table in `skills/do-work/docs/prescribed-shell-primitives.md` assigns owned mechanics to nine `*.sh` paths that are each a 6-to-11-line `exec` shim over `do-work-cli.sh` (the mechanics moved to Go at 0.260.1), and one sentence below it says `scripts/protected-inventory.sh` "orchestrates" two check scripts, which a six-line shim cannot do. Reword the route column to the `tools/do-work-cli.sh … <subcommand>` form the toolbox rows already use and delete the orchestration sentence.
 
 ## AI Execution State (P-A-U Loop)
-- [ ] **[PLAN]:** (Agent: Read listed `prime_files` and agent rules. Write brief technical approach here. Do not write code yet.)
-- [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
-- [ ] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
+- [x] **[PLAN]:** Read `_dev/primes/prime-shell-commands.md` (§ Unchecked Exit Status Reads as
+  Content, § Closed Enumerations Go Stale) and re-verified every claim the request makes against
+  HEAD before choosing Route A. Approach: take each route from the shim's own `exec` line, delete
+  the false orchestration clause, and pin both shapes with one assertion block that fails loudly
+  when its target is renamed.
+- [x] **[APPLY]:** Two files changed, both in the declared write set:
+  `skills/do-work/docs/prescribed-shell-primitives.md` and `_dev/tests/audit-lockins.sh`. Nothing
+  else was touched. `_dev/tests/prescribed-shell-canonicalization.sh` was declared and turned out
+  not to need a change; that is stated in the summary rather than papered over with an edit.
+- [x] **[UNIFY]:** `git diff --stat` — `_dev/tests/audit-lockins.sh` +53, the guide +12/-10. Both
+  files read in full. The guide: fourteen table rows now read the same way, each subcommand
+  checked against its shim's `exec` line, and the added sentence states a condition rather than a
+  count. The lock-in: every command's exit status is read, the awk pass exits 3 when the heading
+  is gone and that status is checked, and `rg`'s 0/1/>1 are told apart. No debug artifacts, no
+  commented-out code, no `TODO`. `bash _dev/tests/audit-lockins.sh` exits 0 and
+  `bash _dev/tests/prescribed-shell-canonicalization.sh` exits 0; four ablations each print the
+  intended FAIL line and exit 1.
 
 ## Why
 The guide is the pointer target from 16 shipped files (ratchet-enforced) and it currently misroutes readers to shims and describes an orchestration that no longer exists.
@@ -107,3 +121,95 @@ rather than racing it.
 named by the request, and every claim was re-checked against HEAD before the route was chosen.
 
 *Skipped by work action*
+
+## Implementation Summary
+
+**Files changed:**
+- `skills/do-work/docs/prescribed-shell-primitives.md` (modified)
+- `_dev/tests/audit-lockins.sh` (modified)
+
+**What was done:** The nine `.sh` rows in the "Shipped executable homes" table now name the
+`tools/do-work-cli.sh … <subcommand>` route, taken from each shim's own `exec` line rather than
+guessed, so all fourteen rows read the same way. The false orchestration clause is deleted. One
+assertion block in `_dev/tests/audit-lockins.sh` pins both shapes.
+
+**One sentence was added, and it is earned.** Rewriting the route column alone leaves the guide
+contradicting itself: the table would name only CLI subcommands while the paragraph below it still
+says the inventory ships behind `scripts/protected-inventory.sh`, which is true — `actions/commit.md`
+and `../../do-work-toolbox/actions/inspect.md` invoke that path today. A reader following the table
+would conclude the launchers are gone and could delete one. The added sentence states the condition
+(where a route also ships a retained launcher of the same name) rather than listing which nine, so it
+cannot go stale as rows move, and it says plainly that a behaviour change is made in the command and
+never in the launcher.
+
+**The expected net line delta was -5; the actual guide delta is +2** (12 insertions, 10 deletions).
+The nine rewritten rows are net zero, the deleted clause was part of a longer line, and the added
+sentence is +2 with its blank line. The estimate assumed a pure deletion; the correctness of the guide
+was preferred to the number.
+
+`_dev/tests/prescribed-shell-canonicalization.sh` is in the declared write set and was not changed: it
+checks only that the nine shims exist and are executable, which this request does not touch. Declaring
+a file and then not needing it is recorded rather than papered over.
+
+## Decisions — implementation
+
+- **D-01 — the route column names the subcommand each shim actually execs. DECIDE & STATE.** Every one
+  of the nine was read: `show-commit-diff`, `add-local-git-exclude`, `atomic-download`,
+  `capture-screenshot`, `run-blocked-check`, `protected-inventory`, `stage-exact-deletion`,
+  `lexical-memory-recall`, `install-memory-hooks`. None was inferred from the file name.
+- **D-02 — the retained launchers are stated once, keyed on a condition, not counted. DECIDE &
+  STATE.** "Where a route above also ships a retained `scripts/*.sh` launcher of the same name" holds
+  as rows are added or removed. A sentence saying "the first nine rows" would be a hand-maintained
+  list, which `_dev/primes/prime-shell-commands.md` § Closed Enumerations Go Stale bans.
+- **D-03 — the shims themselves are untouched, and so is the sentence that routes readers to one.**
+  The 0.260.1 decision retained them and shipped actions still invoke them by path. Rewriting those
+  invocations is a different change with a different blast radius, and this request does not name it.
+- **D-04 — the lock-in pins two shapes in one block because they are one defect. DECIDE & STATE.** A
+  shim in the route column and the claim that a six-line launcher orchestrates two scripts are both
+  "the prose describes a shell ownership that no longer exists". The request asks for one assertion,
+  and splitting them would have produced two.
+- **D-05 — a missing guide or a renamed heading fails rather than reads clean. DECIDE & STATE.** The
+  awk pass exits 3 when it never sees the heading, and that status is checked. A ratchet that goes
+  quiet when its target is renamed is the failure mode REQ-552 and REQ-554 both hit in this same file.
+
+## Qualification
+
+**Passed.** Read from the range `a49a542f..ad8a8050`, two files, 65 insertions and 10 deletions.
+Canonical `qualify` is satisfied.
+
+- **Every claim in the request holds at HEAD, and each was checked rather than assumed.** The nine
+  paths are 9, 10, 9, 9, 11, 6, 9, 6 and 6 lines, and every one of them `exec`s
+  `do-work-cli.sh --format text <subcommand> "$@"`. The orchestration clause was still present. This is
+  the opposite of the sibling REQ-556, whose stated baseline did not survive contact with HEAD.
+- **The orchestration clause is false in two independent ways, both verified.**
+  `scripts/protected-inventory.sh` is six lines, and `tools/checks/uncommitted-inventory.sh` and
+  `tools/checks/associate-files.sh` are themselves 9-line and 19-line compatibility launchers over the
+  same command. Nothing under `internal/` launches either of them: the only matches in the Go tree are
+  in `inventory_test.go`, which drives the launcher chain deliberately to hold the launcher contract.
+- **One sentence was added, and the addition is declared rather than smuggled.** `maintenance.md` asks
+  for a concrete case that fails without it, and that case is the paragraph immediately below the table,
+  which still routes readers to `scripts/protected-inventory.sh` because that is genuinely what
+  `commit.md` and `inspect.md` invoke. Without the sentence the table and the paragraph contradict each
+  other. It is stated in the Implementation Summary as an addition and is the reason the net line delta
+  is +2 rather than the expected -5.
+- **The declared write set is a ceiling that was not filled.**
+  `_dev/tests/prescribed-shell-canonicalization.sh` was declared and not changed, because it only
+  asserts the nine shims exist and are executable, which this request does not touch. It still exits 0.
+
+## Testing
+
+**The lock-in was proven red four ways before it was accepted**, and the guide was restored to the
+green state after each.
+
+- One shim row returned: `prescribed-shell-primitives.md:9 routes owned mechanics to a shim
+  (\`scripts/show-commit-diff.sh\`)`, exit 1.
+- All nine returned: nine `FAIL:` lines, one per row, exit 1. The count is what the request pins at 0.
+- The orchestration clause returned, reworded to a shorter sentence than the deleted one: caught, exit
+  1. The check matches the claim, not the original wording.
+- The table heading renamed from `## Shipped executable homes` to `## Executable homes`: `the "##
+  Shipped executable homes" heading is gone ... (awk exit 3); the route ratchet cannot run`, exit 1.
+  This is the case that matters most — a rename is how a ratchet goes quiet instead of red.
+
+Green at HEAD: `bash _dev/tests/audit-lockins.sh` prints `Audit lock-in regressions passed.` and exits
+0; `bash _dev/tests/prescribed-shell-canonicalization.sh` prints its passed line and exits 0. The full
+fast gate is run once for the batch rather than per request.
