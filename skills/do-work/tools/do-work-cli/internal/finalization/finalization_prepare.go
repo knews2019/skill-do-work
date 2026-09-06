@@ -126,6 +126,10 @@ func prepareBoundJournal(ctx context.Context, repositoryRoot, manifestPath, expe
 			return nil, false, prepareError
 		}
 		releaseManifest = &preparedRelease
+		if err := releaseShippedChangeError(repositoryRoot, manifest); err != nil {
+			_ = os.RemoveAll(payloadDirectory)
+			return nil, false, err
+		}
 		releasePlan := publication.BuildReleasePlan(repositoryRoot, preparedRelease)
 		if !releasePlan.Runnable() {
 			_ = os.RemoveAll(payloadDirectory)

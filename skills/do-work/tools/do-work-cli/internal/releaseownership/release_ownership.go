@@ -62,7 +62,7 @@ func NormalizedDirectory(path string) string {
 func AffirmativeOwnership(tracked []string, trackedSet map[string]bool, readImage ReadImage) (Ownership, error) {
 	ownedRoots := map[string]bool{"": true}
 	ownedManifests := map[string]bool{}
-	maintainerRoots, err := declaredMaintainerReleaseRoots(trackedSet, readImage)
+	maintainerRoots, err := DeclaredMaintainerReleaseRoots(trackedSet, readImage)
 	if err != nil {
 		return Ownership{}, err
 	}
@@ -118,10 +118,10 @@ func pathWithinReleaseRoots(path string, roots []string) bool {
 	return false
 }
 
-// declaredMaintainerReleaseRoots reads suite/modules.tsv, the suite's only
+// DeclaredMaintainerReleaseRoots reads suite/modules.tsv, the suite's only
 // source declaration for its sibling packages. A module is a release root only
 // when it carries its own tracked VERSION file.
-func declaredMaintainerReleaseRoots(trackedSet map[string]bool, readImage ReadImage) ([]string, error) {
+func DeclaredMaintainerReleaseRoots(trackedSet map[string]bool, readImage ReadImage) ([]string, error) {
 	if !trackedSet["suite/modules.tsv"] {
 		return nil, nil
 	}
