@@ -2,6 +2,13 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.305.16 — List Merge Commit Paths with Diff-Tree -m in Finalization Range Check (2026-09-06)
+
+`matchingHeadCommit` in the finalization subsystem now passes `-m` to `git diff-tree` when verifying candidate commits in the `PreparedHead..HEAD` range, preventing merge commits from emitting empty path listings and bypassing exactness path constraints.
+
+- `internal/finalization/finalization_apply.go` invokes `git diff-tree` with `-m` so candidate merge commits enumerate paths modified across each parent against `EffectiveCommitPaths`.
+- `internal/finalization/finalization_apply_test.go` verifies rejection of merge commits containing foreign paths and acceptance of clean merges.
+
 ## 0.305.15 — Unify Atomic-Download Occupancy and Handle Post-Publish Stat Error (2026-09-06)
 
 The `atomic-download` core helper now enforces the same occupancy rule in live execution as it does during dry-run, refusing an existing regular file with exit 2 (`DOWNLOAD-TARGET-OCCUPIED`) rather than silently replacing it, and checks the error on post-rename `os.Stat` to prevent nil pointer panics under concurrent races.
