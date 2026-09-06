@@ -28,6 +28,10 @@ func TestHeavyBeta(t *testing.T) {
 }
 
 func TestSpecialLiteral(t *testing.T) {}
+
+func TestOptionalBackend(t *testing.T) {
+	t.Skip("optional backend unavailable")
+}
 GO
 duration_log="$fixture_root/test-durations.tsv"
 printf 'run_id\tfile\tseconds\tother_gate_processes\n' > "$duration_log"
@@ -115,6 +119,31 @@ DO_WORK_TEST_DURATION_LOG="$duration_log" \
 
 if [ "$meta_status" -ne 0 ]; then
   printf 'FAIL: metacharacter escape run returned %s; regex escaping failed.\n' "$meta_status" >&2
+  exit 1
+fi
+
+# A matching caller-directory filename must not turn a literal prefix into an exclusion.
+: > "$fixture_root/TestFailingFile"
+glob_status=0
+glob_output="$(
+  cd "$fixture_root"
+  DO_WORK_GO_TEST_EXCLUDE_PREFIXES='Test*' \
+    run_fixture literal-prefix-run '^(TestPassingFile|TestFailingFile)$' 2>&1
+)" || glob_status=$?
+if [ "$glob_status" -ne 1 ] || ! grep -Fq 'intentional fixture failure' <<< "$glob_output"; then
+  printf 'FAIL: a matching filename hid the failing test under a literal exclusion prefix: %s\n' \
+    "$glob_output" >&2
+  exit 1
+fi
+
+# A selected test that skips itself is not an empty selection.
+skip_status=0
+skip_output="$(
+  DO_WORK_GO_TEST_EXCLUDE_PREFIXES=TestHeavy \
+    run_fixture optional-backend-run '^TestOptionalBackend$' 2>&1
+)" || skip_status=$?
+if [ "$skip_status" -ne 0 ]; then
+  printf 'FAIL: a selected test that called t.Skip was refused: %s\n' "$skip_output" >&2
   exit 1
 fi
 
