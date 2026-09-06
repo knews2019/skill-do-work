@@ -15,6 +15,46 @@ maintenance: false
 impact: impact-user-visible
 effort_estimate: effort-substantive
 claimed_at: 2026-09-06T00:26:09Z
+estimate:
+  p50_active_minutes: 85
+  confidence: low
+  calculated_at: 2026-09-06T00:35:00Z
+  basis:
+    - Route C
+    - 22-file write set
+    - 3 new files
+    - 3 subsystems involved
+    - 8 acceptance criteria
+    - dependency depth 1
+    - browser evidence
+    - async lifecycle behavior
+    - cross-route regression gates
+    - full-suite verification
+write_set:
+  - skills/do-work-board/tools/queue-kanban/web/board-cards.js
+  - skills/do-work-board/tools/queue-kanban/web/board-detail.js
+  - skills/do-work-board/tools/queue-kanban/web/board-core.js
+  - skills/do-work-board/tools/queue-kanban/web/board-user-request-summary.js
+  - skills/do-work-board/tools/queue-kanban/web/board.js
+  - skills/do-work-board/tools/queue-kanban/web/board.css
+  - skills/do-work-board/tools/queue-kanban/model.go
+  - skills/do-work-board/tools/queue-kanban/generate.go
+  - skills/do-work-board/tools/queue-kanban/timeline.go
+  - skills/do-work-board/tools/queue-kanban/frontmatter_test.go
+  - skills/do-work-board/tools/queue-kanban/model_test.go
+  - skills/do-work-board/tools/queue-kanban/generate_test.go
+  - skills/do-work-board/tools/queue-kanban/javascript_behavior_a_test.go
+  - skills/do-work-board/tools/queue-kanban/javascript_behavior_d_test.go
+  - skills/do-work-board/tools/queue-kanban/user_request_clipboard_browser_probe_test.go
+  - skills/do-work-board/tools/queue-kanban/user_request_progress_browser_probe_test.go
+  - skills/do-work-board/docs/board-guide.md
+  - skills/do-work-board/actions/board.md
+  - skills/do-work/actions/work-reference.md
+  - skills/do-work/actions/version.md
+  - CHANGELOG.md
+  - skills/do-work/CHANGELOG.md
+route: C
+planning_at: 2026-09-06T00:35:06Z
 ---
 
 # Addendum: Make UR Groups Collapsible and Show Progress Summaries
@@ -114,3 +154,193 @@ See `do-work/user-requests/UR-093/input.md` for the complete verbatim input.
 
 ---
 *Source: approved capture plan in UR-093; screenshot preserved in the UR asset directory.*
+
+## Triage
+
+**Route: C** — Complex.
+
+**Reasoning:** Two features welded into one request, crossing two languages and three verification
+lanes. The fold half is a net deletion of existing branch code. The summary half adds a nested
+frontmatter read to the Go model and payload, a new shared JavaScript rollup with its own status
+predicate, a clock fan-out on the board's single ticker, two independent rendering surfaces that must
+agree byte-for-byte, and a layout that has to survive three widths in two themes. The request also
+contains one internal contradiction — its Detailed Requirements say active time is claim-to-completion
+while its Interfaces section orders reuse of the existing duration authority, which measures from the
+earliest lifecycle stamp — and that has to be settled in writing before anything is typed. A plan
+decides both.
+
+**Planning:** Required. Run as a judge panel: three independent plans from different angles
+(smallest-increment, risk-first, reader-first), then a synthesis. The panel disagreed on six points of
+substance and the synthesis records which reading won and why.
+
+**Deferral resolved.** The `depends_on: [REQ-510]` edge was the deferral behind the
+UR-098 orchestrator-simplification chain. REQ-510 is archived, so queue-mode `advance` selected this
+request as dependency-ready. The `## Deferral (2026-09-03)` note above is now historical.
+
+## Plan
+
+*Judge panel: three independent plans (smallest-increment, risk-first, reader-first) then a synthesis.
+The full synthesized plan, with every task's file list, all fifteen decisions, the per-lane testing
+argv and the split analysis, is in the run directory as `do-work/runs/work-2026-09-05-231943/REQ-486-plan.md`. This
+section is the durable record.*
+
+**Scope judgment: keep the request whole, build it in two increments.** The synthesis recommends
+splitting at the fold/summary seam, and the recommendation is right about the shape — the fold half is
+five files and a net deletion, the summary half is seventeen files across two languages and all three
+lanes. It is not right about this request. The REQ's own acceptance requires both surfaces to report
+identical values, and the fold half alone cannot meet that; splitting would be rewriting this
+request's acceptance rather than sequencing its work. So the seam is honored as a **commit boundary**,
+not a REQ boundary: T1 and T2 land and are verified as their own increment before T3 starts, exactly
+as the synthesis says to do if the split is refused. Recorded as a Step 4 warning rather than acted on.
+
+**Tasks.** T1 fold the By UR groups by deleting the head's two-branch shape and parameterizing only
+the initial state; T2 fold the drawer's REQ-id list and cap its height; T3 read
+`estimate.p50_active_minutes` into the Go model and payload and correct the `timeline.go` comment that
+says the board cannot; T4 the shared rollup, its two call sites and the single clock instant; T5 the
+browser lane, the docs and the release.
+
+**The fifteen decisions are in the run-directory plan.** Six settle disagreements between the three
+panels; the four that change what a reader sees are here:
+
+- **D1 — active time is origin-to-completion, not the REQ's literal claim-to-completion. DECIDE &
+  STATE.** The REQ contradicts itself: Detailed Requirements say claim-to-completion, Interfaces orders
+  reuse of the existing duration authority, and that authority measures from the earliest lifecycle
+  stamp. The Interfaces sentence names an authority, so it wins. `durations.go:204-211` records why:
+  REQ-505 carried a `planning_at` seven hours before its claim, and claim-to-completion read 1m 23s
+  for six hours of recorded work. Origin-to-completion is also the only reading under which the header
+  can never disagree with the `took …` badges on the cards below it. **Value:** one authority, no
+  second opinion in the browser. **Risk:** for a UR whose claim stamps were rewritten late the figure
+  is wider than the REQ's literal words promise. Reversible — it is which existing payload field the
+  client sums.
+- **D5 — no tick-subscriber registry; one attribute pass per tick. DECIDE & STATE.** This overrules the
+  exploration. `renderUserRequestLens` rebuilds its host on every render, so a registry accumulates
+  references to detached nodes and needs deregistration on drawer close. A node out of the document is
+  simply not selected.
+- **D10 — no segmented progress meter. DECIDE & STATE.** One panel proposed one and escalated it. The
+  REQ asks for five text figures and a layout that can wrap, not a new visual channel; a meter makes
+  colour carry meaning and would need its own two-theme contrast proof for something nobody asked for.
+  Purely additive later.
+- **D14 — disclosure is carried by words and symbols, never by a second ink tone. DECIDE & STATE.**
+  `--ink-faint` against `--ink-soft` measures 1.29:1 light and 1.82:1 dark. The obvious fainter-tone
+  move has already failed this board twice.
+
+Nothing is escalated. The two questions the panels wanted to escalate are both settled by sentences
+already in the REQ.
+
+**The biggest risk, and why it is not a test-coverage problem.** `web/board.js:68` is the board's only
+ticker — every claim stopwatch, every relative time, every state timer, the clock-skew tooltip. T4
+points it at a function that runs a second pass. If anything in that pass throws, the interval callback
+dies, the board renders perfectly on load, and then nothing updates again. The current suite cannot
+see it: `setInterval` never runs inside a Node probe, every probe calls render functions directly, and
+the browser lane does not wait a second and re-measure. The containment is ordered: the existing
+refresh runs first with the captured instant, so an unguarded throw in the new pass cannot cost the
+existing surfaces their tick; the rollup is kept total by narrowing rather than by `try`/`catch`,
+because a swallowed exception hides the bug instead of the freeze; and T4 carries a positive
+freeze-guard assertion driving the tick against an incomplete UR payload.
+
+### Plan validation (orchestrator)
+
+- **Requirement coverage: complete.** The run-directory plan maps every Detailed Requirement, Interface
+  and Constraint to a task in a table, twenty-six rows. The one place the delivery diverges from the
+  REQ's literal words is D1, and it arrives decided with its value, its risk and its reversal.
+- **One orphan, named rather than hidden.** Two browser-probe selector repairs
+  (`user_request_clipboard_browser_probe_test.go:142`, `generate_test.go:1037`) trace to no REQ
+  sentence. They are forced by the requirement that Details stays a separate control, and they must
+  land in the same commit as the markup change or the heavy browser lane breaks while the fast stage
+  stays green. Two of the three panels missed them entirely.
+- **Task count: five, at the threshold — flagged, not split.** See the scope judgment above.
+- **Consumer field contract.** The `write_set` above is mirrored from the plan's "Files I will touch"
+  list, one direction only, and every entry is a repo-relative literal path — `annotateWriteSetOverlap`
+  compares with `path.Match`, so an absolute path would silently never overlap and a directory entry
+  would never match a file inside it. The payload's presence flag and value field are declared as a
+  pair, which is the consumer contract the client's three forecast arms read.
+
+## Exploration
+
+Explore agent, read-only, re-verified against HEAD rather than against the prior exploration's
+baseline. Full report in the run directory as `do-work/runs/work-2026-09-05-231943/REQ-486-exploration.md`.
+
+**Five statements the request or its prior exploration carries no longer hold at HEAD.** The prior
+exploration's line anchors for `renderUserRequestLens` have shifted; its claim of zero
+`p50_active_minutes` hits under `skills/do-work-board/` is stale; commit `456ee9d`, named in the REQ
+as REQ-236's implementation commit, is not reachable in this repository; the model and generate
+anchors it cited have moved by a few lines; and the deferral is over — REQ-510 is archived, which is
+why queue-mode `advance` selected this request at all.
+
+**The fold half is a deletion, not new mechanism.** `renderUserRequestLens` already builds two shapes
+of group head: the always-open By UR one, where the head is itself the drawer trigger and the cards
+are eager, and the folded URs-only one, where the head is a fold toggle, `Details` lives on a sibling
+`button.ur-group-detail` inside `div.ur-group-row`, and the cards are lazy. REQ-236 already solved
+every problem the By UR fold has, because a head cannot be both the fold control and the drawer
+trigger. Merging the two branches and parameterizing only the initial state gives the By UR reading a
+real `<button>` with `aria-expanded`, keeps `Details` a separate control, and removes code.
+
+**The summary half needs a reader the board does not have.** There is no `RequestTicket` field, no
+read in `parseRequestTicket`, and no payload key for `estimate.p50_active_minutes`.
+`parseFrontmatter` already returns the whole `estimate` block as a map whenever it parses strictly,
+so the read is a lookup rather than a parser change — but the salvage path drops nested maps by
+design, so the payload has to carry presence and value as a pair and the tests have to assert absence
+rather than zero. `timeline.go` currently gives "the board parses no nested frontmatter blocks" as
+the reason a bar uses the projection median; that reason becomes false and the comment has to say the
+stronger thing instead.
+
+**The request contradicts itself about active time**, and the contradiction is load-bearing rather
+than cosmetic. Detailed Requirements say claim-to-completion; Interfaces orders reuse of the existing
+duration authority, which measures from the earliest lifecycle stamp. Settled as D1 in the plan.
+
+**Three lanes, three different questions, and only one of them runs in the fast stage.** The fast
+stage excludes `TestJavaScriptBehavior` and `TestBrowserBehavior` by prefix, so every semantic claim
+about the rollup belongs to the heavy JavaScript lane and every pixel claim to the heavy browser lane.
+Both engines exist in this container — Node v22 at `/opt/node22/bin/node`, Chromium at
+`/opt/pw-browsers/chromium` — and both lanes were run green at HEAD before planning, so a later red
+has a known-green predecessor. A lane that skips reports success, so each lane's own exit line has to
+be recorded rather than the gate's.
+
+*Generated by Explore agent*
+
+## Scope
+
+**Files I will touch:**
+- `skills/do-work-board/tools/queue-kanban/web/board-cards.js` (modify) — merge the group head's two branches, parameterize the initial fold state
+- `skills/do-work-board/tools/queue-kanban/web/board-detail.js` (modify) — the drawer's REQ-id list becomes a foldable, height-capped row
+- `skills/do-work-board/tools/queue-kanban/web/board-core.js` (modify) — `isCompletedStatus`, the recomposed resolved predicate, the clock fan-out
+- `skills/do-work-board/tools/queue-kanban/web/board-user-request-summary.js` (new) — the shared rollup, at fragment manifest position 7
+- `skills/do-work-board/tools/queue-kanban/web/board.js` (modify) — the single ticker points at the fan-out
+- `skills/do-work-board/tools/queue-kanban/web/board.css` (modify) — the summary strip as a sibling row, the drawer fold, the height cap
+- `skills/do-work-board/tools/queue-kanban/model.go` (modify) — the nested-scalar coercer and the two `RequestTicket` fields
+- `skills/do-work-board/tools/queue-kanban/generate.go` (modify) — the payload pair and the fragment manifest entry
+- `skills/do-work-board/tools/queue-kanban/timeline.go` (modify, comment only) — the reason that stops being true
+- `skills/do-work-board/tools/queue-kanban/frontmatter_test.go` (modify) — strict versus salvage, asserting absence not zero
+- `skills/do-work-board/tools/queue-kanban/model_test.go` (modify) — the parse-level read
+- `skills/do-work-board/tools/queue-kanban/generate_test.go` (modify) — the projection-level read, both pinned copies of the fragment manifest, one browser-probe selector repair
+- `skills/do-work-board/tools/queue-kanban/javascript_behavior_a_test.go` (modify) — invert the REQ-236 assertion in place, in the same commit that sets `aria-expanded`
+- `skills/do-work-board/tools/queue-kanban/javascript_behavior_d_test.go` (new) — every semantic claim about the rollup
+- `skills/do-work-board/tools/queue-kanban/user_request_clipboard_browser_probe_test.go` (modify) — selector repair forced by the markup change
+- `skills/do-work-board/tools/queue-kanban/user_request_progress_browser_probe_test.go` (new) — wrap, collision, containment, contrast, real-button tab order
+- `skills/do-work-board/docs/board-guide.md` (modify) — name the third lens, both fold defaults, what the summary refuses to report
+- `skills/do-work-board/actions/board.md` (modify) — the new field in the field-by-field list
+- `skills/do-work/actions/work-reference.md` (modify) — the `estimate:` block earns the lock-step clause its display-only siblings carry
+- `skills/do-work/actions/version.md` (modify) — release
+- `CHANGELOG.md` (modify) — release
+- `skills/do-work/CHANGELOG.md` (modify) — byte-identical mirror
+
+**Files I will NOT touch:** `skills/do-work-board/tools/queue-kanban/durations.go` and the Timeline
+projection — the REQ forbids changing their behaviour and D1 reuses them rather than competing with
+them. `frontmatter.go` — its salvage contract comment is accurate and stays. `board-controls.js` — the
+delegated `[data-detail-kind]` handler finds the attribute on whichever node carries it, so moving the
+attribute needs no handler edit. `_dev/tests/contract-regressions.sh` — this REQ adds no write
+surface, so the pinned count stays at three.
+
+**Acceptance criteria (restated from REQ):**
+- [ ] By UR groups fold independently, start expanded, several can be open at once, and the fold
+      control is a real button that announces `aria-expanded`
+- [ ] `Details` stays a separate control from the fold
+- [ ] The drawer's REQ-id list folds, starts expanded, and hides only the ids
+- [ ] The URs-only reading keeps its collapsed default, its filters and its DOM-only fold state
+- [ ] Both surfaces show request count, active time, remaining forecast, successful progress and
+      resolved progress, computed by one shared function, and report identical values
+- [ ] Membership is complete: a filter never moves the summary or its denominator
+- [ ] Missing, excluded and unusable evidence is disclosed rather than counted as zero, and a partial
+      forecast says so
+- [ ] Live contributions refresh from the board's existing clock without drift, and no existing live
+      surface stops ticking
