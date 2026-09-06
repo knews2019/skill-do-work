@@ -180,3 +180,32 @@ design change and its own request.
 - [ ] Every test in `state_apply_test.go` that commits sets its own identity
 - [ ] Both matchers in `update-script-behavior.sh` report grep's verdict, never the writer's status
 - [ ] Each fix carries an assertion that fails when the fix is reverted
+
+## Pre-Flight
+
+**Git:** ✓ Clean. Canonical `recover` reports `FINALIZATION-NONE`. Seven claims sit in
+`do-work/working/`: REQ-583, REQ-587, REQ-591 and REQ-592 held at Step 7.7; REQ-486 in flight on the
+board module; REQ-552 and REQ-554 merged, reviewed, remediated and waiting on the very heavy drain this
+request unblocks. None of them touches this request's five files.
+
+**Repository gate:** ✓ `bash _dev/tests/maintainer-verify.sh` exited 0 at this REQ's claim revision
+`2693306` — **76s wall**, exit status read directly from `$?`. The fast tier has never seen any of
+these three defects, which is the point: two of the three files this request fixes run only at heavy
+tier, and the third is a race that needs a long output to open.
+
+**Tests baseline:** ✓ `go -C skills/do-work/tools/do-work-cli test -count=1 ./internal/heavyverification/
+./internal/requeststate/` exited 0, launched true — under the *inherited* git configuration. Under the
+lane's own configuration it does not, and that is H2.
+
+**The failing state is recorded rather than described.** At this same revision,
+`env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane do-work-cli-integrations`
+exits **1** with exactly one failing test, `TestRecoveryRefusesFalseLegacyCheckpointAbsence`, and the
+same lane driven through `do-work-cli run-heavy-verification` reports it as **skipped in 29s** with a
+`HEAVY-RUN-LANE-SKIPPED` finding. Those two facts together are the request.
+
+**Dependencies:** ✓ Go 1.26.1, ShellCheck 0.11.0, `just` 1.43.0, Node v22, Chromium present. `git`
+2.43.0. The container hostname is `vm` with no domain, which is what makes H2 visible here and
+invisible on a workstation — but H2 is not a container defect: the lane argv strips the configuration
+that would otherwise hide it.
+
+*Checked by work action*
