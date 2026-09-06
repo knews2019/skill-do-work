@@ -251,9 +251,19 @@ func AssociateProjectPaths(repositoryRoot string, candidates []string) (map[stri
 		completed time.Time
 		active    bool
 	}{}
-	roots := []string{filepath.Join(repositoryRoot, "do-work", "working"), filepath.Join(repositoryRoot, "do-work", "archive")}
-	for _, root := range roots {
-		walkError := filepath.WalkDir(root, func(path string, entry os.DirEntry, walkErr error) error {
+	// A working/ REQ is in flight whatever its status says; an archive/ REQ
+	// counts only on a terminal-success alias. Which case applies comes from
+	// the root being walked, never from the absolute path: a checkout beneath a
+	// directory named "working" must not make every archived REQ look active.
+	walkedRoots := []struct {
+		directory string
+		active    bool
+	}{
+		{filepath.Join(repositoryRoot, "do-work", "working"), true},
+		{filepath.Join(repositoryRoot, "do-work", "archive"), false},
+	}
+	for _, walkedRoot := range walkedRoots {
+		walkError := filepath.WalkDir(walkedRoot.directory, func(path string, entry os.DirEntry, walkErr error) error {
 			if walkErr != nil {
 				if os.IsNotExist(walkErr) {
 					return nil
@@ -278,9 +288,8 @@ func AssociateProjectPaths(repositoryRoot string, candidates []string) (map[stri
 				return nil
 			}
 			record := document.TypedRecord()
-			active := strings.Contains(filepath.ToSlash(path), "/working/")
 			status := record.RequestStatus
-			if !active && !terminalSuccessStatus(status) {
+			if !walkedRoot.active && !terminalSuccessStatus(status) {
 				return nil
 			}
 			paths, found, parseErr := allBacktickedPaths(string(contents), "Implementation Summary")
@@ -304,7 +313,7 @@ func AssociateProjectPaths(repositoryRoot string, candidates []string) (map[stri
 						id        string
 						completed time.Time
 						active    bool
-					}{record.RequestID, completed, active}
+					}{record.RequestID, completed, walkedRoot.active}
 				}
 			}
 			return nil
