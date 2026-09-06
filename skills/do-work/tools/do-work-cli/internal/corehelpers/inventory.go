@@ -12,6 +12,7 @@ import (
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/commandruntime"
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/requestmodel"
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/resultmodel"
+	"github.com/knews2019/skill-do-work/do-work-cli/internal/sharedprimitives"
 )
 
 type inventoryRow struct{ Classification, Path, Origin string }
@@ -416,7 +417,7 @@ func handleProtectedInventory(executionContext commandruntime.ExecutionContext, 
 	if readError != nil {
 		return usageResult(CommandProtectedInventory, readError.Error())
 	}
-	union := uniqueSorted(append(nonblankLines(existing), protected...))
+	union := sharedprimitives.UniqueSortedStrings(append(nonblankLines(existing), protected...))
 	if !dryRun {
 		if err := writePrivateAtomic(quarantinePath, newlineList(union), 0o600); err != nil {
 			return usageResult(CommandProtectedInventory, err.Error())
@@ -457,7 +458,7 @@ func handleProtectedInventory(executionContext commandruntime.ExecutionContext, 
 }
 
 func newlineList(values []string) []byte {
-	values = uniqueSorted(values)
+	values = sharedprimitives.UniqueSortedStrings(values)
 	if len(values) == 0 {
 		return nil
 	}

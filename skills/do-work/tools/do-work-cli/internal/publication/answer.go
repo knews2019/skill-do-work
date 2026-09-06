@@ -15,6 +15,7 @@ import (
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/repositorymodel"
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/requestmodel"
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/schemanormalization"
+	"github.com/knews2019/skill-do-work/do-work-cli/internal/sharedprimitives"
 )
 
 var openQuestionPattern = regexp.MustCompile(`(?m)^- \[ \] `)
@@ -304,7 +305,7 @@ func BuildAnswerPlan(repositoryRoot string, manifest Manifest, answerTime time.T
 			blockedHistory, _, blockedError := readPayload(repositoryRoot, answer.StakeholderTerminal.BlockedHistory)
 			implementation, _, implementationError := readPayload(repositoryRoot, answer.StakeholderTerminal.Implementation)
 			if blockedError != nil || implementationError != nil {
-				return refusedPlan(plan, "ANSWER-STAKEHOLDER-EVIDENCE-INVALID", firstError(blockedError, implementationError).Error(), []string{record.RequestID}, requestPath)
+				return refusedPlan(plan, "ANSWER-STAKEHOLDER-EVIDENCE-INVALID", sharedprimitives.FirstNonNilError(blockedError, implementationError).Error(), []string{record.RequestID}, requestPath)
 			}
 			if !blockedHistoryRecordsResolution(blockedHistory) || !implementationRecordsNoCodeCompletion(implementation) {
 				return refusedPlan(plan, "ANSWER-STAKEHOLDER-EVIDENCE-INVALID", "terminal evidence must carry a resolved Blocked history entry and an Implementation no-change note, each at the position its writer places it: "+terminalEvidencePositionEvidence(blockedHistory, implementation), []string{record.RequestID}, requestPath)

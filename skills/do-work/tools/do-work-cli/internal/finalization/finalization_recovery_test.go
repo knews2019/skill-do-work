@@ -15,6 +15,7 @@ import (
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/nextselection"
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/requeststate"
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/resultmodel"
+	"github.com/knews2019/skill-do-work/do-work-cli/internal/sharedprimitives"
 )
 
 func TestRecoverFinalizationDiscoversLegacyNoJournalTail(t *testing.T) {
@@ -571,7 +572,7 @@ func seedSemanticLegacyTail(t *testing.T, repositoryRoot string) semanticLegacyF
 	writeFinalizationFile(t, repositoryRoot, "CHANGELOG.md", changelog)
 	writeFinalizationFile(t, repositoryRoot, "skills/do-work/CHANGELOG.md", changelog)
 	writeFinalizationFile(t, repositoryRoot, "notes.txt", "unrelated\n")
-	return semanticLegacyFixture{ownedPaths: uniqueSorted([]string{
+	return semanticLegacyFixture{ownedPaths: sharedprimitives.UniqueSortedStrings([]string{
 		"CHANGELOG.md", "VERSION", archivePath, "do-work/CHECKPOINT.md", "do-work/archive/REQ-699-prior.md",
 		"do-work/archive/UR-700/REQ-699-prior.md", "do-work/archive/UR-700/input.md", "do-work/calibration-log.tsv",
 		"do-work/queue/REQ-701-follow-up.md", "do-work/user-requests/UR-700/input.md", "implementation.txt",

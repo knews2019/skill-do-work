@@ -16,6 +16,7 @@ import (
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/repositorymodel"
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/requestmodel"
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/requeststate"
+	"github.com/knews2019/skill-do-work/do-work-cli/internal/sharedprimitives"
 )
 
 var (
@@ -159,7 +160,11 @@ func prepareBoundJournal(ctx context.Context, repositoryRoot, manifestPath, expe
 	for _, image := range releasePostimages {
 		requiredCommitPaths = append(requiredCommitPaths, image.Path)
 	}
-	missing := subtractPaths(uniqueSorted(requiredCommitPaths), effectiveCommitPaths)
+	missing, missingError := missingCommitPaths(requiredCommitPaths, effectiveCommitPaths)
+	if missingError != nil {
+		_ = os.RemoveAll(payloadDirectory)
+		return nil, false, missingError
+	}
 	if len(missing) > 0 {
 		_ = os.RemoveAll(payloadDirectory)
 		return nil, false, fmt.Errorf("commit_paths omits planned lifecycle or release targets: %s", strings.Join(missing, ", "))
@@ -362,21 +367,19 @@ func normalizeRepositoryPaths(paths []string) ([]string, error) {
 	return result, nil
 }
 
-func subtractPaths(left, right []string) []string {
-	set := map[string]bool{}
-	for _, path := range right {
-		set[path] = true
+// missingCommitPaths reports the planned lifecycle and release targets that the
+// manifest's commit_paths does not cover.
+//
+// It normalizes the required paths itself and PROPAGATES the refusal. The
+// helper it replaces threw that error away and returned nil for the whole
+// slice, so a single unusable required path emptied the required set, the
+// subtraction found nothing, and the caller's "commit_paths omits planned
+// lifecycle or release targets" guard could never fire. An unusable required
+// path must refuse, not read as "nothing is missing".
+func missingCommitPaths(requiredCommitPaths, effectiveCommitPaths []string) ([]string, error) {
+	normalizedRequired, normalizeError := normalizeRepositoryPaths(requiredCommitPaths)
+	if normalizeError != nil {
+		return nil, normalizeError
 	}
-	result := []string{}
-	for _, path := range left {
-		if !set[path] {
-			result = append(result, path)
-		}
-	}
-	return result
-}
-
-func uniqueSorted(paths []string) []string {
-	result, _ := normalizeRepositoryPaths(paths)
-	return result
+	return sharedprimitives.SubtractStringValues(normalizedRequired, effectiveCommitPaths), nil
 }

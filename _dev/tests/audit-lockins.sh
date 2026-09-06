@@ -508,6 +508,53 @@ else
   fi
 fi
 
+# Finding 4: per-req-duplicate-go-helpers (REQ-557)
+# Six helper names carried fifteen definitions across the CLI's internal packages, each
+# duplicate sitting in a package that already imported a package holding an earlier copy.
+# Three of the names had copies that DISAGREED: one uniqueSorted dropped empty strings, the
+# two compareSemver bodies were inverted, and physicalPath carried two contracts.
+#
+# The union of the old names and the canonical names that replaced them is pinned at exactly
+# seven — a floor as well as a ceiling. A ceiling alone catches a seventh copy but not a
+# helper quietly moved back into a per-REQ file under a name this pattern no longer sees; a
+# floor alone catches the reverse. Both halves matter, so the count is compared for equality.
+#
+# This name list is the pinned set itself, so it is exhaustive by construction rather than
+# illustrative: adding a name to it means changing the expected count in the same edit.
+#
+# Both path resolvers are counted and both are legitimate. REQ-557 decided NOT to merge them:
+# suiteinstall's existingPhysicalPath treats absence as an error, and that refusal is the
+# existence check for the installed skill root, while knowledgecommands' physicalPath walks
+# missing ancestors. Two names, two contracts, one definition each — which is why the pinned
+# total is seven and not six.
+shared_helper_definition_root="$repo_root/skills/do-work/tools/do-work-cli/internal"
+shared_helper_expected_definitions=7
+shared_helper_definitions="$(rg -n --glob '*.go' --glob '!*_test.go' \
+  '^func (uniqueSorted|UniqueSortedStrings|subtractPaths|SubtractStringValues|requestIDLess|RequestIDLess|firstError|FirstNonNilError|compareSemver|CompareSemanticVersions|physicalPath|existingPhysicalPath)\(' \
+  "$shared_helper_definition_root")"
+shared_helper_scan_status=$?
+# rg's status is read, not its output: exit 1 (no match) and exit 2 (could not search) both
+# produce empty output, and a ratchet that only judged the text would read a scan that never
+# ran as "no duplicates found".
+if [ "$shared_helper_scan_status" -gt 1 ]; then
+  printf 'FAIL: could not scan %s for shared-helper definitions (rg exit %s); the duplicate-helper ratchet did not run.\n' \
+    "${shared_helper_definition_root#"$repo_root/"}" "$shared_helper_scan_status" >&2
+  failure_count=$((failure_count + 1))
+elif [ "$shared_helper_scan_status" -eq 1 ]; then
+  printf 'FAIL: no definition of any shared helper name remains under %s; REQ-557 pinned exactly %s.\n' \
+    "${shared_helper_definition_root#"$repo_root/"}" "$shared_helper_expected_definitions" >&2
+  failure_count=$((failure_count + 1))
+else
+  shared_helper_definition_count="$(printf '%s\n' "$shared_helper_definitions" | wc -l | tr -d ' ')"
+  if [ "$shared_helper_definition_count" -ne "$shared_helper_expected_definitions" ]; then
+    printf 'FAIL: %s definitions of the shared helper names under %s; REQ-557 pinned exactly %s, one per canonical name plus the two deliberately separate path resolvers:\n' \
+      "$shared_helper_definition_count" "${shared_helper_definition_root#"$repo_root/"}" \
+      "$shared_helper_expected_definitions" >&2
+    printf '%s\n' "$shared_helper_definitions" | sed 's|^|  |' >&2
+    failure_count=$((failure_count + 1))
+  fi
+fi
+
 if [ "$failure_count" -gt 0 ]; then
   exit 1
 fi

@@ -13,6 +13,7 @@ import (
 
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/commandruntime"
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/resultmodel"
+	"github.com/knews2019/skill-do-work/do-work-cli/internal/sharedprimitives"
 )
 
 type baselineRecord struct {
@@ -150,7 +151,7 @@ func handleScopeDrift(executionContext commandruntime.ExecutionContext, argument
 	declared, scopeFound, touchHeaderFound, scopeError := scopeDeclaredPaths(string(contents))
 	implemented, summaryFound, summaryError := allBacktickedPaths(string(contents), "Implementation Summary")
 	if scopeError != nil || summaryError != nil {
-		result := resultmodel.CommandResult{Outcome: resultmodel.OutcomeFindings, Findings: []resultmodel.CommandFinding{helperFinding("SCOPE-PATH-LIST-MALFORMED", resultmodel.SeverityError, []string{requestPath}, firstError(scopeError, summaryError).Error(), resultmodel.FixabilityManual, "the path lists cannot be compared", nil, nil)}}
+		result := resultmodel.CommandResult{Outcome: resultmodel.OutcomeFindings, Findings: []resultmodel.CommandFinding{helperFinding("SCOPE-PATH-LIST-MALFORMED", resultmodel.SeverityError, []string{requestPath}, sharedprimitives.FirstNonNilError(scopeError, summaryError).Error(), resultmodel.FixabilityManual, "the path lists cannot be compared", nil, nil)}}
 		if os.Getenv("DO_WORK_COMPATIBILITY_SHIM") == "1" {
 			exact := "FAIL: the request path list has an unmatched backtick — close every backticked path\n"
 			result.ExactTextOutput = &exact
@@ -174,8 +175,8 @@ func handleScopeDrift(executionContext commandruntime.ExecutionContext, argument
 	}
 	declared = withoutDoWork(declared)
 	implemented = withoutDoWork(implemented)
-	missing := subtractPaths(declared, implemented)
-	extra := subtractPaths(implemented, declared)
+	missing := sharedprimitives.SubtractStringValues(declared, implemented)
+	extra := sharedprimitives.SubtractStringValues(implemented, declared)
 	findings := []resultmodel.CommandFinding{}
 	for _, path := range missing {
 		findings = append(findings, helperFinding("SCOPE-DECLARED-NOT-TOUCHED", resultmodel.SeverityWarning, []string{path}, "declared in Scope but absent from Implementation Summary", resultmodel.FixabilityManual, "the declared write set was not fully implemented", nil, nil))
@@ -738,7 +739,7 @@ func scopeDeclaredPaths(contents string) ([]string, bool, bool, error) {
 			paths = append(paths, parsed...)
 		}
 	}
-	return uniqueSorted(paths), scopeFound, headerFound, nil
+	return sharedprimitives.UniqueSortedStrings(paths), scopeFound, headerFound, nil
 }
 
 func backtickedPathsOnLine(line string) ([]string, error) {
@@ -779,7 +780,7 @@ func firstBacktickedPaths(contents, heading string, pathLed bool) ([]string, boo
 			paths = append(paths, rest[:second])
 		}
 	}
-	return uniqueSorted(paths), found, nil
+	return sharedprimitives.UniqueSortedStrings(paths), found, nil
 }
 func allBacktickedPaths(contents, heading string) ([]string, bool, error) {
 	lines, found, err := sectionLines(contents, heading)
@@ -801,7 +802,7 @@ func allBacktickedPaths(contents, heading string) ([]string, bool, error) {
 			}
 		}
 	}
-	return uniqueSorted(paths), found, nil
+	return sharedprimitives.UniqueSortedStrings(paths), found, nil
 }
 func sectionLines(contents, heading string) ([]string, bool, error) {
 	lines := strings.Split(strings.ReplaceAll(contents, "\r\n", "\n"), "\n")
@@ -824,16 +825,6 @@ func sectionLines(contents, heading string) ([]string, bool, error) {
 	}
 	return output, found, nil
 }
-func subtractPaths(left, right []string) []string {
-	set := stringSet(right)
-	out := []string{}
-	for _, path := range left {
-		if !set[path] {
-			out = append(out, path)
-		}
-	}
-	return out
-}
 func withoutDoWork(paths []string) []string {
 	out := []string{}
 	for _, path := range paths {
@@ -841,15 +832,6 @@ func withoutDoWork(paths []string) []string {
 			out = append(out, path)
 		}
 	}
-	return out
-}
-func uniqueSorted(paths []string) []string {
-	set := stringSet(paths)
-	out := make([]string, 0, len(set))
-	for path := range set {
-		out = append(out, path)
-	}
-	sort.Strings(out)
 	return out
 }
 func stringSet(paths []string) map[string]bool {
@@ -867,12 +849,6 @@ func nonblankLines(contents []byte) []string {
 		}
 	}
 	return out
-}
-func firstError(first, second error) error {
-	if first != nil {
-		return first
-	}
-	return second
 }
 func gitOutput(root string, args ...string) ([]byte, error) {
 	command := exec.Command("git", append([]string{"-C", root}, args...)...)
@@ -903,7 +879,7 @@ func porcelainPaths(output []byte) ([]string, error) {
 			paths = append(paths, string(records[index]))
 		}
 	}
-	return uniqueSorted(paths), nil
+	return sharedprimitives.UniqueSortedStrings(paths), nil
 }
 func writePrivateAtomic(path string, contents []byte, mode os.FileMode) error {
 	directory := filepath.Dir(path)

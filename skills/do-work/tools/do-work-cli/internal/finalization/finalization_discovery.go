@@ -17,6 +17,7 @@ import (
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/repositorymodel"
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/requestmodel"
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/resultmodel"
+	"github.com/knews2019/skill-do-work/do-work-cli/internal/sharedprimitives"
 )
 
 type discoveryCandidate struct {
@@ -64,10 +65,10 @@ func discoverFinalizationJournals(repositoryRoot string, assumeSoleReleaser bool
 			}
 		}
 		if len(protectedStaged) > 0 {
-			failure := discoveryRefusal(repositoryRoot, "FINALIZATION-DISCOVERY-PROTECTED-STAGED", "protected paths are already staged", uniqueSorted(protectedStaged))
+			failure := discoveryRefusal(repositoryRoot, "FINALIZATION-DISCOVERY-PROTECTED-STAGED", "protected paths are already staged", sharedprimitives.UniqueSortedStrings(protectedStaged))
 			return nil, &failure
 		}
-		failure := discoveryRefusal(repositoryRoot, "FINALIZATION-DISCOVERY-FOREIGN-STAGED", "foreign staged entries prevent exact finalization recovery", uniqueSorted(staged))
+		failure := discoveryRefusal(repositoryRoot, "FINALIZATION-DISCOVERY-FOREIGN-STAGED", "foreign staged entries prevent exact finalization recovery", sharedprimitives.UniqueSortedStrings(staged))
 		return nil, &failure
 	}
 
@@ -129,7 +130,7 @@ func discoverFinalizationJournals(repositoryRoot string, assumeSoleReleaser bool
 			for _, candidate := range active {
 				paths = append(paths, requestRepositoryPath(candidate.request.RelativePath))
 			}
-			failure := discoveryRefusal(repositoryRoot, "FINALIZATION-MULTIPLE-TAILS", "sole-releaser attribution requires exactly one legacy finalization tail", uniqueSorted(paths))
+			failure := discoveryRefusal(repositoryRoot, "FINALIZATION-MULTIPLE-TAILS", "sole-releaser attribution requires exactly one legacy finalization tail", sharedprimitives.UniqueSortedStrings(paths))
 			return nil, &failure
 		}
 	}
@@ -159,7 +160,7 @@ func discoverFinalizationJournals(repositoryRoot string, assumeSoleReleaser bool
 			for _, candidate := range active {
 				paths = append(paths, requestRepositoryPath(candidate.request.RelativePath))
 			}
-			failure := discoveryRefusal(repositoryRoot, "FINALIZATION-MULTIPLE-TAILS", "sole-releaser attribution requires exactly one legacy finalization tail", uniqueSorted(paths))
+			failure := discoveryRefusal(repositoryRoot, "FINALIZATION-MULTIPLE-TAILS", "sole-releaser attribution requires exactly one legacy finalization tail", sharedprimitives.UniqueSortedStrings(paths))
 			return nil, &failure
 		}
 		if len(active) == 1 {
@@ -185,14 +186,14 @@ func discoverFinalizationJournals(repositoryRoot string, assumeSoleReleaser bool
 	}
 	ambiguous = append(ambiguous, releaseAmbiguous...)
 	if len(ambiguous) > 0 {
-		failure := discoveryRefusal(repositoryRoot, "FINALIZATION-DISCOVERY-AMBIGUOUS", "shared, foreign-hunk, or multiply-owned state cannot be associated exactly", uniqueSorted(ambiguous))
+		failure := discoveryRefusal(repositoryRoot, "FINALIZATION-DISCOVERY-AMBIGUOUS", "shared, foreign-hunk, or multiply-owned state cannot be associated exactly", sharedprimitives.UniqueSortedStrings(ambiguous))
 		return nil, &failure
 	}
 
 	admitted := make([]*discoveryCandidate, 0, len(candidates))
 	for _, candidate := range candidates {
-		candidate.effectivePaths = uniqueSorted(candidate.effectivePaths)
-		candidate.attributedPaths = uniqueSorted(candidate.attributedPaths)
+		candidate.effectivePaths = sharedprimitives.UniqueSortedStrings(candidate.effectivePaths)
+		candidate.attributedPaths = sharedprimitives.UniqueSortedStrings(candidate.attributedPaths)
 		if len(candidate.effectivePaths) > 0 {
 			admitted = append(admitted, candidate)
 		}
@@ -202,7 +203,7 @@ func discoverFinalizationJournals(repositoryRoot string, assumeSoleReleaser bool
 		for _, candidate := range admitted {
 			paths = append(paths, requestRepositoryPath(candidate.request.RelativePath))
 		}
-		failure := discoveryRefusal(repositoryRoot, "FINALIZATION-MULTIPLE-TAILS", "sole-releaser attribution requires exactly one legacy finalization tail", uniqueSorted(paths))
+		failure := discoveryRefusal(repositoryRoot, "FINALIZATION-MULTIPLE-TAILS", "sole-releaser attribution requires exactly one legacy finalization tail", sharedprimitives.UniqueSortedStrings(paths))
 		return nil, &failure
 	}
 	sort.Slice(admitted, func(left, right int) bool {
@@ -570,7 +571,7 @@ func associateReleaseMetadata(repositoryRoot string, dirty map[string]bool, cand
 			paths = append(paths, path)
 		}
 	}
-	paths = uniqueSorted(paths)
+	paths = sharedprimitives.UniqueSortedStrings(paths)
 	if len(paths) == 0 {
 		return nil, nil
 	}
@@ -624,7 +625,7 @@ func associateReleaseMetadata(repositoryRoot string, dirty map[string]bool, cand
 		}
 	}
 	if len(unowned) > 0 {
-		return nil, &releaseDiscoveryFailure{code: "FINALIZATION-DISCOVERY-RELEASE-OWNERSHIP", reason: "release metadata lacks affirmative repository-owned or maintainer-mirror topology evidence", paths: uniqueSorted(unowned)}
+		return nil, &releaseDiscoveryFailure{code: "FINALIZATION-DISCOVERY-RELEASE-OWNERSHIP", reason: "release metadata lacks affirmative repository-owned or maintainer-mirror topology evidence", paths: sharedprimitives.UniqueSortedStrings(unowned)}
 	}
 	configuredPaths := map[string]bool{}
 	for _, path := range configured.paths {
@@ -637,7 +638,7 @@ func associateReleaseMetadata(repositoryRoot string, dirty map[string]bool, cand
 		}
 	}
 	if len(unassociated) > 0 {
-		return uniqueSorted(unassociated), nil
+		return sharedprimitives.UniqueSortedStrings(unassociated), nil
 	}
 	missingRequired := []string{}
 	for _, requiredPath := range configured.paths {
@@ -646,7 +647,7 @@ func associateReleaseMetadata(repositoryRoot string, dirty map[string]bool, cand
 		}
 	}
 	if len(missingRequired) > 0 {
-		return uniqueSorted(missingRequired), nil
+		return sharedprimitives.UniqueSortedStrings(missingRequired), nil
 	}
 	newVersion := ""
 	for version := range versions {
@@ -841,7 +842,7 @@ func configuredReleaseMetadataPaths(repositoryRoot, oldVersion string, changelog
 	for manifestPath := range changedSources {
 		manifestPaths = append(manifestPaths, manifestPath)
 	}
-	for _, manifestPath := range uniqueSorted(manifestPaths) {
+	for _, manifestPath := range sharedprimitives.UniqueSortedStrings(manifestPaths) {
 		change := changedSources[manifestPath]
 		base := filepath.Base(manifestPath)
 		if !ownedManifests[manifestPath] || change.oldVersion != oldVersion {
@@ -892,7 +893,7 @@ func configuredReleaseMetadataPaths(repositoryRoot, oldVersion string, changelog
 		mirrors[lockPath] = mirror
 		paths = append(paths, lockPath)
 	}
-	return configuredReleaseSet{paths: uniqueSorted(paths), ownedPaths: ownedPaths, workspaceMirrors: mirrors}, nil
+	return configuredReleaseSet{paths: sharedprimitives.UniqueSortedStrings(paths), ownedPaths: ownedPaths, workspaceMirrors: mirrors}, nil
 }
 
 func appendWorkspaceReleaseMember(members []workspaceReleaseMember, member workspaceReleaseMember) []workspaceReleaseMember {
@@ -1419,7 +1420,7 @@ func ambiguousSharedRemainder(dirty map[string]bool) []string {
 			blocked = append(blocked, path)
 		}
 	}
-	return uniqueSorted(blocked)
+	return sharedprimitives.UniqueSortedStrings(blocked)
 }
 
 func discoveredJournal(repositoryRoot string, candidate *discoveryCandidate) (*Journal, error) {
@@ -1429,7 +1430,7 @@ func discoveredJournal(repositoryRoot string, candidate *discoveryCandidate) (*J
 	if err != nil {
 		return nil, err
 	}
-	paths := uniqueSorted(candidate.effectivePaths)
+	paths := sharedprimitives.UniqueSortedStrings(candidate.effectivePaths)
 	lifecyclePreimages, lifecyclePostimages, err := discoveredImages(repositoryRoot, candidate.lifecyclePaths)
 	if err != nil {
 		return nil, err
@@ -1467,7 +1468,7 @@ func discoveredJournal(repositoryRoot string, candidate *discoveryCandidate) (*J
 func discoveredImages(repositoryRoot string, paths []string) ([]FileImage, []FileImage, error) {
 	preimages := make([]FileImage, 0, len(paths))
 	postimages := make([]FileImage, 0, len(paths))
-	for _, path := range uniqueSorted(paths) {
+	for _, path := range sharedprimitives.UniqueSortedStrings(paths) {
 		before, err := headFileImage(repositoryRoot, path)
 		if err != nil {
 			return nil, nil, err
@@ -1515,7 +1516,7 @@ func implementationSummaryPaths(contents string) ([]string, error) {
 			}
 		}
 	}
-	return uniqueSorted(paths), nil
+	return sharedprimitives.UniqueSortedStrings(paths), nil
 }
 
 func headFileImage(repositoryRoot, path string) (FileImage, error) {
