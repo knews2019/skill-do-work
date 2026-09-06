@@ -24,7 +24,7 @@ delegate_findings="$(
       printf '%s\t%s\n' "$name" "$loc"
     else
       target_line="$(sed -n "${loc##*:}"'{n;p;}' "${loc%%:*}")"
-      if echo "$target_line" | grep -Eq '^\t(return )?[a-z][a-zA-Z0-9_]*\('; then
+      if grep -Eq '^\t(return )?[a-z][a-zA-Z0-9_]*\(' <<<"$target_line"; then
         prod=$(rg -c "\b$name\(" --glob '*.go' --glob '!*_test.go' "$repo_root/skills/" 2>/dev/null | grep -v "${loc%%:*}" | wc -l | tr -d ' ')
         [ "$prod" -eq 0 ] && printf '%s\t%s\n' "$name" "$loc"
       fi
