@@ -10,6 +10,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"sync"
 	"syscall"
 	"testing"
 	"time"
@@ -428,19 +429,47 @@ func singleProcessorEnvironment() []string {
 	return append(os.Environ(), "GOMAXPROCS=1")
 }
 
+var (
+	builtTestCLIBinaryOnce sync.Once
+	builtTestCLIBinaryPath string
+	builtTestCLIBinaryDir  string
+	builtTestCLIBinaryErr  error
+)
+
+func TestMain(m *testing.M) {
+	code := m.Run()
+	if builtTestCLIBinaryDir != "" {
+		_ = os.RemoveAll(builtTestCLIBinaryDir)
+	}
+	os.Exit(code)
+}
+
 func buildTestCLIBinary(t *testing.T) string {
 	t.Helper()
-	moduleRoot, err := filepath.Abs(filepath.Join("..", ".."))
-	if err != nil {
-		t.Fatal(err)
+	builtTestCLIBinaryOnce.Do(func() {
+		moduleRoot, err := filepath.Abs(filepath.Join("..", ".."))
+		if err != nil {
+			builtTestCLIBinaryErr = err
+			return
+		}
+		temporaryDirectory, err := os.MkdirTemp("", "suiteinstall-cli-test-*")
+		if err != nil {
+			builtTestCLIBinaryErr = err
+			return
+		}
+		builtTestCLIBinaryDir = temporaryDirectory
+		builtTestCLIBinaryPath = filepath.Join(temporaryDirectory, "do-work-cli")
+		command := exec.Command("go", "build", "-o", builtTestCLIBinaryPath, "./cmd/do-work-cli")
+		command.Dir = moduleRoot
+		if output, err := command.CombinedOutput(); err != nil {
+			builtTestCLIBinaryErr = fmt.Errorf("build do-work-cli: %w: %s", err, output)
+			return
+		}
+	})
+	if builtTestCLIBinaryErr != nil {
+		t.Fatalf("resolve test CLI binary: %v", builtTestCLIBinaryErr)
 	}
-	binaryPath := filepath.Join(t.TempDir(), "do-work-cli")
-	command := exec.Command("go", "build", "-o", binaryPath, "./cmd/do-work-cli")
-	command.Dir = moduleRoot
-	if output, err := command.CombinedOutput(); err != nil {
-		t.Fatalf("build do-work-cli: %v: %s", err, output)
-	}
-	return binaryPath
+	return builtTestCLIBinaryPath
 }
 
 func runBuiltCLIAtBlockedConfirmation(t *testing.T, binaryPath string, interrupt os.Signal, arguments []string) {
