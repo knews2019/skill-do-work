@@ -378,17 +378,44 @@ D-01 through D-05 are the builder's, authored in
   old `queue state changed` case became two: one proving the stage that reads the tree executes, one
   proving the stage that does not still reuses. Measured on the real gate: a newline appended to
   `do-work/CHECKPOINT.md` re-runs queue-kanban and leaves do-work-cli reused, 56s against 75s cold.
-- **The two fixture probe inputs were moved out of the newly-sealed tree**, which the exploration
-  flagged as the trap that makes two existing cases pass for the wrong reason. Without the move,
+- **The two fixture probe inputs were moved out of the newly-sealed tree.** ~~Without the move,
   `toolchain probe output changed` would be satisfied by the file's own byte seal moving rather than
   by the probe's output changing, and `toolchain probe cannot run` would reach `fingerprint_uncertain`
-  through a missing seal input instead of a failing probe. Both would have kept passing while testing
-  nothing they name.
+  through a missing seal input instead of a failing probe.~~ **Corrected at review: that claim
+  overstates what the move achieved.** A reviewer reverted the move and both cases still passed,
+  because both use `alpha-stage`, whose coverage is `module-alpha` only — so a `do-work/` path was
+  never sealed into that stage either way. The move stays, because it keeps the fixture's intent
+  legible, but it is not load-bearing and the remediation builder established that it cannot be made
+  so: both cases assert a disposition plus a reason code, and the reason codes are identical under
+  either mechanism, so a test that depended on the move would have to assert on internals.
 - **The one requirement that could have been met dishonestly was met by verification.**
   `non_stage_coverage` is now empty because the board's own prune rules (`walk.go:192,195,198`) and its
   file-mention stat (`filementions.go:35-56`) were read to decide which subtrees are genuinely unread —
   and the answer was "essentially none", so the churn trees went to `seal_exclusions` instead of being
   declared unread. Declaring them unread would have been the same false green in a new place.
+
+### Remediation qualification (after review)
+
+**Passed.** Remediation merge range `1f923bb9..df1d2b92`, two files, 112 insertions, 10 deletions —
+both already in the declared `write_set`, so the scope held. Cumulative range for the whole request is
+`fce57fcc..df1d2b92`.
+
+- **The review's headline gap is closed, and closed with a test that bites four ways.** Restoring
+  `_dev/tests/fast-stages.json` to its pre-fix content now fails with three named messages instead of
+  passing silently; deleting either stage's coverage rule fails with the message that names that
+  stage; and broadening the `do-work/runs` exclusion to `do-work` fails with `a seal exclusion matches
+  do-work/archive/UR-003/input.md`. Before this, all four of those mutations left the whole suite
+  green — which meant the data half of the fix was pinned by nothing.
+- **The second surviving mutation is closed, and the pin is exactly one case.** A tracked file under
+  the excluded run-log subtree joined the fixture, so deleting the tracked loop's exclusion guard now
+  fails `a tracked run-log file changed still reuses` and nothing else. That it is the *only* failure
+  is the evidence that the case is the sole pin on that branch.
+- **The new manifest test follows the shipped-module rule.** It skips when the `_dev/tests` directory
+  is absent, which is the installed-copy case, but a renamed or undecodable manifest inside a
+  maintainer checkout still fails. Confirmed under `-v` that it runs rather than skips here.
+- **One record was corrected rather than defended** — see the struck-through bullet above about the
+  fixture probe-input move. The reviewer's reproduction stood, the builder confirmed the claim could
+  not be made true without asserting on internals, and the claim was corrected instead.
 
 Requirements traced: a change to any `do-work/` path a fast stage reads forces that stage to execute;
 `non_stage_coverage` states only verified-unread trees, and states none; both assertions that pinned
@@ -424,6 +451,15 @@ script exits 0 when run by path. The probe file must be self-contained; here it 
 exactly the baseline's own command text, which is also what makes the baseline comparison meaningful.
 Its default timeout is 30 seconds, below this lane's ~27s warm and well below a cold run, so
 `--timeout-seconds 300` was passed.
+
+**Remediation testing.** The canonical gate exited 0 again at the remediation merge revision
+`df1d2b92`, run to completion with `DO_WORK_FAST_STAGE_REUSE=off` so both stages executed —
+**73s wall**, exit status read directly from `$?`. Focused lane `go -C skills/do-work/tools/do-work-cli
+test -count=1 ./internal/heavyverification/` ok in 12.98s; `bash _dev/tests/fast-stage-reuse-behavior.sh`
+printed `Fast-stage evidence reuse probes passed.` and exited 0; `gofmt -l` empty; `go vet ./...`
+clean. Both new assertions were confirmed under `-v` to run rather than skip. Five ablations were run
+to show them red first, and every ablated file was restored and verified restored — `git diff` on
+`_dev/tests/fast-stages.json` is empty.
 
 **What the gate itself now proves, which it did not before this change.** The RED case is recorded in
 `## Qualification` and reproduced end to end: one newline appended to `do-work/archive/UR-003/input.md`
@@ -489,3 +525,47 @@ with that failure in the log.
 **Follow-ups created:** None (12 findings report only)
 
 *Reviewed by review-work action*
+
+## Lessons Learned
+
+- **A cache's manifest is data the code reads and no test read.** The engine was pinned by fifteen
+  assertions; the one file that decides what the engine is allowed to skip was pinned by none, so the
+  entire fix could be reverted with the suite green. The heavy lane already had the guard this lane
+  needed — `heavy_maintainer_tree_test.go` decodes the real `_dev/tests/heavy-lanes.json` and
+  cross-checks it — and REQ-591 copied the engine without copying the guard. The general shape: when a
+  new mechanism is configured by a shipped data file, the assertion that the data says what the design
+  requires is part of the mechanism, not an extra.
+- **An assertion that something *still reuses* passes twice: when the feature works, and when the
+  feature never fires.** Four of the five new cases had that shape. The only thing that separates them
+  is an ablation, and the ablation has to disable one branch at a time — removing `seal_exclusions`
+  from both fixtures at once disabled the tracked and untracked seal loops together, which is why the
+  tracked loop looked pinned when it was not. Ablate the code, one guard at a time, not the data.
+- **"Pre-existing intermittent" is a diagnosis, and it needs the same evidence as any other.**
+  `TestLaneMutationCannotPublishOrReuseSuccess/commit=true` was carried across two hand-offs as a flake
+  that "passes 6/6 in isolation". It reproduced 3/3 here, and the cause was a global
+  `commit.gpgsign` pointing at an unusable key: the lane's script commits, the commit fails, and the
+  test sees a dirty tree where it asserts a new revision. A failure that reproduces is not a flake, and
+  a flake that has never been explained is an open question, not a known issue.
+- **A request's own statement of why something is safe is a claim to verify, not context to accept.**
+  REQ-592 said the heavy lane's `do-work/` exclusion is safe because heavy refuses a dirty tree. The
+  refusal exempts `do-work/` by construction, so heavy has the same hole for an uncommitted tracked
+  edit. The exploration caught it because it read `heavy_run.go` instead of reading the sentence.
+
+## Orientation
+
+A future reader changing the fast gate's reuse rule starts in three places.
+`skills/do-work/tools/do-work-cli/internal/heavyverification/fast_stage_evidence.go` holds the engine:
+the `fastStageManifest` struct doc carries the admission condition for a new seal exclusion, and
+`workingTreeSeals` holds the two loops where an exclusion is tested before coverage.
+`_dev/tests/fast-stages.json` is the data half — what each stage covers, what is sealed nowhere — and
+it is now pinned by `TestShippedFastStageManifestSealsTheQueuePathsItsStagesRead`, so a wrong line
+there fails a test rather than producing a quiet false green.
+`_dev/tests/fast-stage-reuse-behavior.sh` drives the shipped gate wrapper end to end against a
+synthetic repository.
+
+Two things are deliberately not solved here and are recorded as follow-ups. The heavy lane still has
+the same false-green shape for an uncommitted tracked `do-work/` edit, and `heavy_run.go`'s
+`queueStatePrefix` doc still asserts the contract this change replaced. And the seal is byte-level
+while part of the board's real dependency on `do-work/` is existence-level, through
+`filementions.go`'s repo-file-mention stat — no fast-stage assertion reads that map today, which is
+the only reason the run and deliverable exclusions are safe.
