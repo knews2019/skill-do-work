@@ -47,7 +47,7 @@ In every command above, resolve `PROJECT_ROOT` first:
 PROJECT_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
 ```
 
-Every skill-file download follows the canonical [Atomic download publication](../../do-work/docs/prescribed-shell-primitives.md#atomic-download-publication) contract: land in a `SKILL.md.download` sibling, rename into place only on success, and remove the temporary file while preserving a failure status. The table keeps each executable command inline because every target must remain independently runnable.
+Every skill-file download follows the canonical [Atomic download publication](../../do-work/docs/prescribed-shell-primitives.md#atomic-download-publication) contract: land in a `SKILL.md.download.<random>` sibling, rename into place only on success, and remove the temporary file while preserving a failure status. The table keeps each executable command inline because every target must remain independently runnable.
 
 ## Steps
 
@@ -243,7 +243,7 @@ The upstream repo keeps the actual skill at `skills/last30days/` (self-contained
 
 If the block prints FAILED (offline, incomplete upstream payload, copy failure, or publication failure), **stop here** and report the error. The final path remains either the prior incomplete tree or a fully validated replacement; the installer never merges files from different upstream versions and cleans private staging/backup paths on exit.
 
-The installer then makes the ignore claim true with the canonical [Local Git ignore](../../do-work/docs/prescribed-shell-primitives.md#local-git-ignore) helper and rejects an already-tracked vendored copy. It never touches the project's committable `.gitignore`.
+The installer then makes the ignore claim true inline following the canonical [Local Git ignore](../../do-work/docs/prescribed-shell-primitives.md#local-git-ignore) contract without invoking the external helper, and rejects an already-tracked vendored copy. It never touches the project's committable `.gitignore`.
 
 Two hard constraints on this phase:
 
@@ -258,7 +258,7 @@ Check every guarantee the workflow promises, one line per component (this is als
 <skill-root>/../do-work/tools/do-work-cli.sh --repo-root <project-root> --format json install-last30days check <project-root>
 ```
 
-Missing, failed, or malformed canonical tooling stops actionably; do not fall back to the compatibility script, a fresh clone, or direct filesystem mutation.
+Missing, failed, or malformed canonical tooling stops actionably; do not fall back to a fresh clone or direct filesystem mutation.
 
 Report "Installed successfully" only when no line prints FAILED. The engine resolves a Python 3.12+ interpreter at run time (upstream keeps it in `LAST30DAYS_PYTHON`), so no qualifying interpreter is a real failure, not a warning — report the install as failed and name Python 3.12+ as the missing piece. A FAILED ignore line means the vendored ~15 MB is committable in the consuming repo — that's a broken install even though the engine itself would run.
 
@@ -332,7 +332,7 @@ do-work-toolbox install ideation-adhd  Parallel cognitive-frame ideation skill
 - The install command reported success but the verify step shows the file is empty — the URL may have changed; investigate before claiming success.
 - `<project-root>/.claude/skills/<skill-name>/SKILL.md` exists but has zero size and Phase 1 still reported "already installed" — the detect command regressed to a bare existence check (`ls`); it must be `test -s` so a re-run repairs the failed download.
 - An install command writes `SKILL.md` directly instead of following the canonical [Atomic download publication](../../do-work/docs/prescribed-shell-primitives.md#atomic-download-publication) shape — restore the temporary sibling, rename-on-success, and failure-preserving cleanup.
-- A stray `SKILL.md.download` file sits next to an installed skill — a prior run's failure cleanup didn't run; delete it (the rename-on-success flow never leaves one behind).
+- A stray `SKILL.md.download.<random>` file sits next to an installed skill — a prior run's failure cleanup didn't run; delete it (the rename-on-success flow never leaves one behind).
 - You installed into `~/.claude/skills/` instead of the project — undo and re-install to the correct path.
 - `git rev-parse --show-toplevel` fails (not in a git repo) and you installed into `pwd` — acceptable, but warn the user the path may drift if they `cd` elsewhere.
 - (bowser) `playwright-cli --help` succeeds but `playwright-cli install` fails silently — browsers aren't actually installed; headless runs will error later.

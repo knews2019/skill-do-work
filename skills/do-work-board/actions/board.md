@@ -84,7 +84,7 @@ From `<skill-root>/tools/queue-kanban`:
   (cd "$(git rev-parse --show-toplevel 2>/dev/null || pwd)" && <skill-root>/../do-work/scripts/add-local-git-exclude.sh build/queue-kanban-board/index.html '/build/queue-kanban-board/')
   ```
 
-  This generated snapshot uses the canonical [Local Git ignore](../../do-work/docs/prescribed-shell-primitives.md#local-git-ignore) primitive with a project-root-specific pattern. The local exclude preserves the action's read-only contract for tracked project files, the guard is idempotent, and a non-git project skips it silently.
+  This generated snapshot uses the canonical [Local Git ignore](../../do-work/docs/prescribed-shell-primitives.md#local-git-ignore) primitive with a project-root-specific pattern. The local exclude preserves the action's read-only contract for tracked project files, the guard is idempotent, and a non-git project exits zero with a `GIT-EXCLUDE-NOT-A-REPOSITORY` warning finding.
 - **summary** — `./queue-kanban summary --repo-root "$REPO_ROOT"` and relay the printed counts.
 - **open-work** — `./queue-kanban open-work --repo-root "$REPO_ROOT"` and relay the printed digest. Terminal-resolved REQs never appear in it (recently-done is history, not open work — the calendar is a different surface and does carry open work), and parse warnings arrive as a count pointing at `summary` — if the user wants those details, that's the summary mode, not a second command here.
 - **verify** — `./queue-kanban verify --repo-root "$REPO_ROOT"`. Relay its findings; exit 1 is the expected findings status, not a launcher failure. The probe set and each invariant's meaning are owned by `../../do-work/actions/forensics.md` Check 14.

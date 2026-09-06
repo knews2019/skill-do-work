@@ -70,7 +70,7 @@ What `associate` settles, so no caller's prose has to:
 
 - **Terminal-success matching honors the Schema Read Contract's aliases**, so `completed`, `completed-with-issues`, and `complete`/`done`/`finished`/`closed` all qualify. Testing only for the literal `completed` drops every remediated-with-issues REQ, and its files then never get associated.
 - **In-flight `working/` REQs are included** regardless of status, since a claimed REQ is never terminal.
-- **Conflict resolution:** a path claimed by two REQs goes to the one with the latest `completed_at`. Whether a REQ is archived or in-flight plays no part in that comparison; when the timestamps are equal or missing the first claim found stands, and `working/` is read before `archive/`.
+- **Conflict resolution:** a path claimed by two REQs goes to the one with the latest `completed_at`. A REQ with a parseable `completed_at` beats one without, whichever root is read first; when both parse equal, or neither parses, the first claim found stands (`working/` before `archive/`, name order within a root).
 - **`do-work/` metadata paths are excluded** from association, matching `tools/checks/scope-drift.sh`.
 - **Partial matches count.** If 3 out of 5 files in a REQ's Implementation Summary are among the uncommitted files, group all 3 under that REQ.
 
