@@ -1,7 +1,7 @@
 ---
 id: REQ-486
 title: 'Addendum: make UR groups collapsible and show progress summaries'
-status: claimed
+status: completed
 priority: later
 created_at: 2026-09-01T17:29:43Z
 user_request: UR-093
@@ -61,6 +61,9 @@ route: C
 dispatch_at: 2026-09-06T02:22:21Z
 builder_handback_at: 2026-09-06T02:22:21Z
 planning_at: 2026-09-06T00:35:06Z
+completed_at: 2026-09-06T03:26:33Z
+commit: cbfcec76e75e1ab47315b197726169ded59d8d3a
+release_at: 2026-09-06T03:26:33Z
 ---
 
 # Addendum: Make UR Groups Collapsible and Show Progress Summaries

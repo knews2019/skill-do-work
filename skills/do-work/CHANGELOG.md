@@ -2,6 +2,16 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.304.4 — The User Request Progress Figures Say When They Are Guessing (2026-09-06)
+
+An independent review of 0.304.0 found the new per-user-request progress strip printing a confident number in two cases where it did not have one, and found the browser probe that was supposed to prove the layout measuring a page two of its three widths never had.
+
+- A user request whose members have all run past their estimates now reads `~0 min (2 over estimate)` instead of a bare `~0 min`. On a real board this was 4 of the 5 user requests with a live claim, one of them 9.4 hours against a saved 20-minute estimate, and the reader could not tell "almost done" from "every member has blown its estimate".
+- A claim timestamp the board rejects is now counted as unknown remaining time rather than as zero time spent. Before, the member was quietly charged its full estimate and the figure rendered with no qualifier, even though the same rejected stamp already showed a warning on the Active figure.
+- The browser probe measures the real layout again. It reuses one page across three widths, and two things leaked between measurements: a detail drawer left open, which is a grid column rather than an overlay at these widths, and the probe's own result block, which lands in the same grid and can be a 32,000px-wide line. The group column measured 273 / 259 / 579 CSS px; it now measures 273 / 697 / 1209 again, and the probe fails if the measured box does not match the width its own case claims.
+- Three claims that were written as if a test enforced them are now enforced by tests: the order of the two refresh passes inside a tick, and the absence of `try`/`catch` and of a completion timestamp read in the summary code path.
+- A misspelled field name is corrected so a plain-text search finds every use of it.
+
 ## 0.304.3 — The Debug-Artifact Rule Is Stated Once, Where It Is Enforced (2026-09-06)
 
 Three shipped action files repeated the same debug-artifact and P-A-U honesty rule seven times between them. The rule is enforced in code, so every prose copy was a restatement that could drift away from what actually runs.
