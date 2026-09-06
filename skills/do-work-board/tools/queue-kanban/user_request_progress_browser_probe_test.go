@@ -140,39 +140,38 @@ func userRequestProgressFixtureBoard(t *testing.T) *Board {
 	return fixtureBoard
 }
 
-// runUserRequestProgressProbeAtWidth drives the probe page at an EXACT layout
-// viewport width.
+// measureUserRequestProgressAtWidth sets the layout viewport on an already-open
+// engine and asks the page to measure once.
 //
-// --window-size cannot express 320: Chromium clamps a window to 500 CSS px, lays
-// the page out at 500, and the probe then reports a pass for a width it never
-// saw — a silent skip wearing a green. Emulation.setDeviceMetricsOverride is the
-// only way to measure the narrow case, and the page waits for the override
-// before it measures anything. The result is checked against the requested width
-// below, so a future engine that ignores the override fails loudly.
-func runUserRequestProgressProbeAtWidth(
-	t *testing.T, probeName string, siteDirectory string, probePage string,
-	viewportWidth int, colourFlag string,
+// Two things it exists for. --window-size cannot express 320: Chromium clamps a
+// window to 500 CSS px, lays the page out at 500, and a probe asking for 320
+// then reports a pass for a width it never saw — a silent skip wearing a green.
+// Emulation.setDeviceMetricsOverride is the only way to reach the narrow case,
+// and the caller checks the width the page reports back, so an engine that
+// ignored the override fails loudly.
+//
+// It also keeps this probe cheap on a shared machine. One engine per theme
+// measures all three widths and the page hands its result back as a resolved
+// promise, so a case costs two protocol round trips rather than an engine launch
+// plus a poll loop. Under the full heavy gate that poll loop was enough traffic
+// to time a Runtime.evaluate out at 30s — which fails as a transport error and
+// says nothing at all about the layout.
+func measureUserRequestProgressAtWidth(
+	t *testing.T, session *trustedInputBrowserSession, viewportWidth int,
 ) []byte {
 	t.Helper()
-	session := startTrustedInputBrowserSession(
-		t, probeName, siteDirectory, probePage, "--window-size=1280,1100", colourFlag)
-	defer session.closeBrowserSession()
 	session.callDevToolsMethod(t, "Emulation.setDeviceMetricsOverride", map[string]any{
 		"width":             viewportWidth,
 		"height":            1100,
 		"deviceScaleFactor": 1,
 		"mobile":            false,
 	}, true)
-	session.evaluateInPage(t, "(window.__queueKanbanProbeStart = true)")
-	resultNodeExpression := `document.getElementById("` + browserProbeResultElementId + `")`
-	session.waitForPageCondition(t, "completed browser result node",
-		resultNodeExpression+" && "+resultNodeExpression+".textContent.trim() !== \"\"")
 	var resultText string
-	session.decodeResult(t, "completed probe result",
-		session.evaluateInPage(t, resultNodeExpression+".textContent"), &resultText)
+	session.decodeResult(t, "UR progress measurement",
+		session.evaluateInPage(t, "window.__queueKanbanMeasure()"), &resultText)
 	resultText = strings.TrimSpace(resultText)
 	if !strings.HasPrefix(resultText, "{") {
-		t.Fatalf("%s result node holds %q, not the JSON object the contract expects", probeName, resultText)
+		t.Fatalf("the page returned %q, not the JSON object the contract expects", resultText)
 	}
 	return []byte(resultText)
 }
@@ -261,11 +260,18 @@ func TestBrowserBehaviorUserRequestProgressStripSurvivesEveryWidth(t *testing.T)
           return detailButton.closest(".ur-group");
         }
 
-        async function runProbe() {
-          // The Go side sets this after applying the viewport override, so every
-          // rect below is measured at the width the case names rather than at
-          // whatever width the engine happened to open with.
-          await waitFor(function () { return window.__queueKanbanProbeStart === true; }, "probe start");
+        function nextFrame() {
+          return new Promise(function (resolve) { requestAnimationFrame(function () { resolve(); }); });
+        }
+
+        // Re-callable on purpose. The Go side changes the layout viewport through
+        // the protocol and calls this once per width, so ONE engine measures all
+        // three instead of three engines measuring one each. Every step is
+        // idempotent: the lens click lands on the lens already showing, and
+        // reopening a drawer rebuilds the same rows.
+        async function measureProbePage() {
+          await nextFrame();
+          await nextFrame();
           document.querySelector('#lens-group [data-lens-target="user-request"]:not([data-ur-cards])').click();
           await waitFor(function () {
             return !document.getElementById("user-request-lens").hidden;
@@ -345,7 +351,7 @@ func TestBrowserBehaviorUserRequestProgressStripSurvivesEveryWidth(t *testing.T)
             return term.textContent.trim() === "input.md";
           });
 
-          resultNode.textContent = JSON.stringify({
+          return JSON.stringify({
             locationHref: location.href,
             userAgent: navigator.userAgent,
             resolvedScheme: matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light",
@@ -378,12 +384,23 @@ func TestBrowserBehaviorUserRequestProgressStripSurvivesEveryWidth(t *testing.T)
           });
         }
 
-        runProbe().catch(function (probeError) {
-          resultNode.textContent = JSON.stringify({
-            locationHref: location.href,
-            consoleErrors: window.__queueKanbanProbeErrors.concat([String((probeError && probeError.message) || probeError)])
+        // Resolves rather than rejects on failure: the caller reads one JSON
+        // object either way, and a probe reporting its own error is easier to act
+        // on than a protocol exception. The result node is still written so the
+        // page carries its own evidence.
+        window.__queueKanbanMeasure = function () {
+          return measureProbePage().then(function (resultText) {
+            resultNode.textContent = resultText;
+            return resultText;
+          }, function (probeError) {
+            var failureText = JSON.stringify({
+              locationHref: location.href,
+              consoleErrors: window.__queueKanbanProbeErrors.concat([String((probeError && probeError.message) || probeError)])
+            });
+            resultNode.textContent = failureText;
+            return failureText;
           });
-        });
+        };
       })();
 `
 
@@ -402,123 +419,138 @@ func TestBrowserBehaviorUserRequestProgressStripSurvivesEveryWidth(t *testing.T)
 	clientCloseIndex += len("})();")
 	probePage = probePage[:clientCloseIndex] + "\n" + probeScript + probePage[clientCloseIndex:]
 
-	for _, viewport := range []struct {
+	for _, theme := range []struct {
 		name       string
-		width      int
 		colourFlag string
-		wantScheme string
 	}{
-		{name: "light-320", width: 320, colourFlag: "--force-light-mode", wantScheme: "light"},
-		{name: "dark-320", width: 320, colourFlag: "--force-dark-mode", wantScheme: "dark"},
-		{name: "light-768", width: 768, colourFlag: "--force-light-mode", wantScheme: "light"},
-		{name: "dark-768", width: 768, colourFlag: "--force-dark-mode", wantScheme: "dark"},
-		{name: "light-1280", width: 1280, colourFlag: "--force-light-mode", wantScheme: "light"},
-		{name: "dark-1280", width: 1280, colourFlag: "--force-dark-mode", wantScheme: "dark"},
+		{name: "light", colourFlag: "--force-light-mode"},
+		{name: "dark", colourFlag: "--force-dark-mode"},
 	} {
-		viewport := viewport
-		t.Run(viewport.name, func(t *testing.T) {
-			resultJSON := runUserRequestProgressProbeAtWidth(
-				t, "UR progress strip "+viewport.name, siteDirectory, probePage,
-				viewport.width, viewport.colourFlag,
-			)
-			var result userRequestProgressProbeResult
-			if decodeError := json.Unmarshal(resultJSON, &result); decodeError != nil {
-				t.Fatalf("decode UR progress probe: %v\n%s", decodeError, resultJSON)
-			}
-			if len(result.ConsoleErrors) != 0 {
-				t.Fatalf("UR progress probe browser errors: %q", result.ConsoleErrors)
-			}
-			if !strings.HasSuffix(result.LocationHref, "/"+browserProbePageFileName) {
-				t.Fatalf("probe measured %q, not its own page", result.LocationHref)
-			}
-			// The build these numbers came from, recorded beside them: a green here
-			// is evidence about this engine, not a compatibility claim.
-			t.Logf("%s: %s, resolved scheme %s, body ground %s, viewport %.0f CSS px",
-				viewport.name, result.UserAgent, result.ResolvedScheme, result.BodyBackground, result.ViewportWidth)
-
-			// Without the colour-scheme flag Chromium resolves prefers-color-scheme
-			// to light and the dark palette is never measured by anything.
-			// The width the numbers below actually describe.
-			if int(result.ViewportWidth) != viewport.width {
-				t.Fatalf("the engine laid the page out at %.0f CSS px, not the %d this case names; "+
-					"every measurement below would describe a width nobody asked about",
-					result.ViewportWidth, viewport.width)
-			}
-			if result.ResolvedScheme != viewport.wantScheme {
-				t.Fatalf("engine resolved the %s case as %q; the dark palette would never be measured",
-					viewport.name, result.ResolvedScheme)
-			}
-
-			// The strip is its own row under the head, at every width.
-			if result.StripRect.Top < result.HeadRowRect.Bottom-0.5 {
-				t.Fatalf("summary strip top %.1f sits above the head row bottom %.1f — the metrics are sharing the title's line",
-					result.StripRect.Top, result.HeadRowRect.Bottom)
-			}
-			if len(result.MetricRects) != 5 {
-				t.Fatalf("the strip laid out %d metric boxes, want the five figures the request names", len(result.MetricRects))
-			}
-			if len(result.OverlappingPairs) != 0 {
-				t.Fatalf("boxes collide at %d CSS px: %v", viewport.width, result.OverlappingPairs)
-			}
-			if len(result.EscapedMetrics) != 0 {
-				t.Fatalf("metric boxes escaped their .ur-group at %d CSS px: %v", viewport.width, result.EscapedMetrics)
-			}
-
-			// Nothing is clipped, and everything clears the contrast floor against
-			// the ground it is actually painted on.
-			if len(result.TextBoxes) != 10 {
-				t.Fatalf("measured %d label/value boxes, want a label and a value for each of the five metrics",
-					len(result.TextBoxes))
-			}
-			for _, textBox := range result.TextBoxes {
-				if textBox.ScrollWidth > textBox.ClientWidth+1 {
-					t.Errorf("%s %q is clipped at %d CSS px (scroll %.1f > client %.1f)",
-						textBox.ClassName, textBox.Text, viewport.width, textBox.ScrollWidth, textBox.ClientWidth)
-				}
-				if textBox.Contrast < 4.5 {
-					t.Errorf("%s %q measures %.2f:1 in %s against %s, below the 4.5:1 floor",
-						textBox.ClassName, textBox.Text, textBox.Contrast, result.ResolvedScheme, result.BodyBackground)
-				}
-			}
-
-			// Both surfaces, in the page a person opens.
-			if len(result.DrawerMetricTexts) != 5 {
-				t.Fatalf("the UR drawer rendered %d summary values, want five", len(result.DrawerMetricTexts))
-			}
-			for metricIndex, headerText := range result.HeaderMetricTexts {
-				if !strings.HasSuffix(headerText, result.DrawerMetricTexts[metricIndex]) {
-					t.Fatalf("header metric %d reads %q while the drawer reads %q; the two surfaces render one rollup",
-						metricIndex, headerText, result.DrawerMetricTexts[metricIndex])
-				}
-			}
-
-			// Keyboard reachability. Trusted Tab is a browser default action this
-			// lane does not synthesize; being real focusable <button> elements in
-			// fold-then-Details document order is what delivers the order.
-			if result.HeadTagName != "BUTTON" || result.DetailTagName != "BUTTON" {
-				t.Fatalf("fold control is <%s> and Details is <%s>; both must be real buttons",
-					result.HeadTagName, result.DetailTagName)
-			}
-			if result.HeadTabIndex < 0 || result.DetailTabIndex < 0 {
-				t.Fatalf("tabIndex fold=%d details=%d; a negative index takes the control out of the tab ring",
-					result.HeadTabIndex, result.DetailTabIndex)
-			}
-			if !result.HeadPrecedesDetil || !result.HeadFocusable || !result.DetailFocusable {
-				t.Fatalf("fold precedes Details=%v, fold focusable=%v, Details focusable=%v",
-					result.HeadPrecedesDetil, result.HeadFocusable, result.DetailFocusable)
-			}
-
-			// The drawer with a 43-member UR: the reason the id list was capped.
-			if result.LargeMemberCount != 43 || !result.IdListExpanded {
-				t.Fatalf("large UR drawer listed %d ids with the fold expanded=%v, want 43 and an open list",
-					result.LargeMemberCount, result.IdListExpanded)
-			}
-			if result.InputRowRect.Bottom > result.DrawerRect.Bottom+0.5 || result.InputRowRect.Top < result.DrawerRect.Top-0.5 {
-				t.Errorf("the input.md row sits at %.1f-%.1f outside the drawer panel %.1f-%.1f at %d CSS px; "+
-					"the summary rows plus an expanded 43-id list pushed it out again",
-					result.InputRowRect.Top, result.InputRowRect.Bottom,
-					result.DrawerRect.Top, result.DrawerRect.Bottom, viewport.width)
+		theme := theme
+		t.Run(theme.name, func(t *testing.T) {
+			// One engine per THEME measures all three widths. Without a
+			// colour-scheme flag Chromium resolves prefers-color-scheme to light,
+			// so every case would measure the light palette and nothing automated
+			// would ever see the dark one — which on this board is the :root base
+			// the light block overrides.
+			session := startTrustedInputBrowserSession(
+				t, "UR progress strip "+theme.name, siteDirectory, probePage,
+				"--window-size=1280,1100", theme.colourFlag)
+			defer session.closeBrowserSession()
+			for _, viewportWidth := range []int{320, 768, 1280} {
+				viewportWidth := viewportWidth
+				t.Run(fmt.Sprintf("%dpx", viewportWidth), func(t *testing.T) {
+					checkUserRequestProgressStrip(t, session, viewportWidth, theme.name)
+				})
 			}
 		})
+	}
+}
+
+// The assertions for one theme at one width. Split out of the loop above so the
+// engine can be reused across widths without nesting the whole body two levels
+// deeper.
+func checkUserRequestProgressStrip(
+	t *testing.T, session *trustedInputBrowserSession, viewportWidth int, wantScheme string,
+) {
+	t.Helper()
+	resultJSON := measureUserRequestProgressAtWidth(t, session, viewportWidth)
+	var result userRequestProgressProbeResult
+	if decodeError := json.Unmarshal(resultJSON, &result); decodeError != nil {
+		t.Fatalf("decode UR progress probe: %v\n%s", decodeError, resultJSON)
+	}
+	if len(result.ConsoleErrors) != 0 {
+		t.Fatalf("UR progress probe browser errors: %q", result.ConsoleErrors)
+	}
+	if !strings.HasSuffix(result.LocationHref, "/"+browserProbePageFileName) {
+		t.Fatalf("probe measured %q, not its own page", result.LocationHref)
+	}
+	// The build these numbers came from, recorded beside them: a green here
+	// is evidence about this engine, not a compatibility claim.
+	t.Logf("%s: %s, resolved scheme %s, body ground %s, viewport %.0f CSS px",
+		wantScheme, result.UserAgent, result.ResolvedScheme, result.BodyBackground, result.ViewportWidth)
+
+	// Without the colour-scheme flag Chromium resolves prefers-color-scheme
+	// to light and the dark palette is never measured by anything.
+	// The width the numbers below actually describe.
+	if int(result.ViewportWidth) != viewportWidth {
+		t.Fatalf("the engine laid the page out at %.0f CSS px, not the %d this case names; "+
+			"every measurement below would describe a width nobody asked about",
+			result.ViewportWidth, viewportWidth)
+	}
+	if result.ResolvedScheme != wantScheme {
+		t.Fatalf("engine resolved the %s case as %q; the dark palette would never be measured",
+			wantScheme, result.ResolvedScheme)
+	}
+
+	// The strip is its own row under the head, at every width.
+	if result.StripRect.Top < result.HeadRowRect.Bottom-0.5 {
+		t.Fatalf("summary strip top %.1f sits above the head row bottom %.1f — the metrics are sharing the title's line",
+			result.StripRect.Top, result.HeadRowRect.Bottom)
+	}
+	if len(result.MetricRects) != 5 {
+		t.Fatalf("the strip laid out %d metric boxes, want the five figures the request names", len(result.MetricRects))
+	}
+	if len(result.OverlappingPairs) != 0 {
+		t.Fatalf("boxes collide at %d CSS px: %v", viewportWidth, result.OverlappingPairs)
+	}
+	if len(result.EscapedMetrics) != 0 {
+		t.Fatalf("metric boxes escaped their .ur-group at %d CSS px: %v", viewportWidth, result.EscapedMetrics)
+	}
+
+	// Nothing is clipped, and everything clears the contrast floor against
+	// the ground it is actually painted on.
+	if len(result.TextBoxes) != 10 {
+		t.Fatalf("measured %d label/value boxes, want a label and a value for each of the five metrics",
+			len(result.TextBoxes))
+	}
+	for _, textBox := range result.TextBoxes {
+		if textBox.ScrollWidth > textBox.ClientWidth+1 {
+			t.Errorf("%s %q is clipped at %d CSS px (scroll %.1f > client %.1f)",
+				textBox.ClassName, textBox.Text, viewportWidth, textBox.ScrollWidth, textBox.ClientWidth)
+		}
+		if textBox.Contrast < 4.5 {
+			t.Errorf("%s %q measures %.2f:1 in %s against %s, below the 4.5:1 floor",
+				textBox.ClassName, textBox.Text, textBox.Contrast, result.ResolvedScheme, result.BodyBackground)
+		}
+	}
+
+	// Both surfaces, in the page a person opens.
+	if len(result.DrawerMetricTexts) != 5 {
+		t.Fatalf("the UR drawer rendered %d summary values, want five", len(result.DrawerMetricTexts))
+	}
+	for metricIndex, headerText := range result.HeaderMetricTexts {
+		if !strings.HasSuffix(headerText, result.DrawerMetricTexts[metricIndex]) {
+			t.Fatalf("header metric %d reads %q while the drawer reads %q; the two surfaces render one rollup",
+				metricIndex, headerText, result.DrawerMetricTexts[metricIndex])
+		}
+	}
+
+	// Keyboard reachability. Trusted Tab is a browser default action this
+	// lane does not synthesize; being real focusable <button> elements in
+	// fold-then-Details document order is what delivers the order.
+	if result.HeadTagName != "BUTTON" || result.DetailTagName != "BUTTON" {
+		t.Fatalf("fold control is <%s> and Details is <%s>; both must be real buttons",
+			result.HeadTagName, result.DetailTagName)
+	}
+	if result.HeadTabIndex < 0 || result.DetailTabIndex < 0 {
+		t.Fatalf("tabIndex fold=%d details=%d; a negative index takes the control out of the tab ring",
+			result.HeadTabIndex, result.DetailTabIndex)
+	}
+	if !result.HeadPrecedesDetil || !result.HeadFocusable || !result.DetailFocusable {
+		t.Fatalf("fold precedes Details=%v, fold focusable=%v, Details focusable=%v",
+			result.HeadPrecedesDetil, result.HeadFocusable, result.DetailFocusable)
+	}
+
+	// The drawer with a 43-member UR: the reason the id list was capped.
+	if result.LargeMemberCount != 43 || !result.IdListExpanded {
+		t.Fatalf("large UR drawer listed %d ids with the fold expanded=%v, want 43 and an open list",
+			result.LargeMemberCount, result.IdListExpanded)
+	}
+	if result.InputRowRect.Bottom > result.DrawerRect.Bottom+0.5 || result.InputRowRect.Top < result.DrawerRect.Top-0.5 {
+		t.Errorf("the input.md row sits at %.1f-%.1f outside the drawer panel %.1f-%.1f at %d CSS px; "+
+			"the summary rows plus an expanded 43-id list pushed it out again",
+			result.InputRowRect.Top, result.InputRowRect.Bottom,
+			result.DrawerRect.Top, result.DrawerRect.Bottom, viewportWidth)
 	}
 }
