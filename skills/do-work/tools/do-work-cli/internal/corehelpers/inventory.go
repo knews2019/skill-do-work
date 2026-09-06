@@ -249,12 +249,14 @@ func AssociateProjectPaths(repositoryRoot string, candidates []string) (map[stri
 	claims := map[string]struct {
 		id        string
 		completed time.Time
-		active    bool
 	}{}
 	// A working/ REQ is in flight whatever its status says; an archive/ REQ
 	// counts only on a terminal-success alias. Which case applies comes from
 	// the root being walked, never from the absolute path: a checkout beneath a
 	// directory named "working" must not make every archived REQ look active.
+	// A slice, not a map, because walk order decides ties: on an equal
+	// completed_at the claim seen first stands, so working/ is read before
+	// archive/ on purpose.
 	walkedRoots := []struct {
 		directory string
 		active    bool
@@ -312,8 +314,7 @@ func AssociateProjectPaths(repositoryRoot string, candidates []string) (map[stri
 					claims[claimed] = struct {
 						id        string
 						completed time.Time
-						active    bool
-					}{record.RequestID, completed, walkedRoot.active}
+					}{record.RequestID, completed}
 				}
 			}
 			return nil
