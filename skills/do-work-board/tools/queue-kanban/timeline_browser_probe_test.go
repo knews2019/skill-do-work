@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 )
 
 // The Timeline's status colours, measured in a real engine.
@@ -1787,8 +1788,51 @@ window.addEventListener("load", function () {
 // markup and the window is a claim about what the READER sees: the assertion
 // below reads #timeline-range-readout, the same text on screen, rather than any
 // internal state.
+func generateLiveSiteInDirAtRangeEnd(t *testing.T) string {
+	t.Helper()
+	workingDirectory, getwdError := os.Getwd()
+	if getwdError != nil {
+		t.Fatalf("getwd: %v", getwdError)
+	}
+	repoRoot, resolveError := resolveRepoRoot(workingDirectory)
+	if resolveError != nil {
+		t.Fatalf("resolveRepoRoot: %v", resolveError)
+	}
+	stubGitLookup := func(string, string) (time.Time, bool) { return time.Time{}, false }
+	now := time.Now()
+	preBoard, buildError := buildBoard(repoRoot, now, 7*24*time.Hour, stubGitLookup)
+	if buildError != nil {
+		t.Fatalf("buildBoard: %v", buildError)
+	}
+	hasOpen := false
+	var latestCompletion time.Time
+	for _, ticket := range preBoard.AllRequests {
+		if !isStoppedStatus(ticket.Status) {
+			hasOpen = true
+			break
+		}
+		if !ticket.CompletionTime.IsZero() && ticket.CompletionTime.After(latestCompletion) {
+			latestCompletion = ticket.CompletionTime
+		} else if ct, ok := parseTimestamp(ticket.CompletedAt); ok && ct.After(latestCompletion) {
+			latestCompletion = ct
+		}
+	}
+	if !hasOpen && !latestCompletion.IsZero() {
+		now = latestCompletion
+		preBoard, buildError = buildBoard(repoRoot, now, 7*24*time.Hour, stubGitLookup)
+		if buildError != nil {
+			t.Fatalf("buildBoard: %v", buildError)
+		}
+	}
+	outputDirectory := t.TempDir()
+	if generateError := generateStaticSite(outputDirectory, preBoard); generateError != nil {
+		t.Fatalf("generateStaticSite: %v", generateError)
+	}
+	return outputDirectory
+}
+
 func TestBrowserBehaviorTimelineTrailingWindowsEndAtNow(t *testing.T) {
-	siteDirectory := generateLiveSiteInDir(t)
+	siteDirectory := generateLiveSiteInDirAtRangeEnd(t)
 	indexBytes, readError := os.ReadFile(filepath.Join(siteDirectory, "index.html"))
 	if readError != nil {
 		t.Fatalf("read generated index.html: %v", readError)

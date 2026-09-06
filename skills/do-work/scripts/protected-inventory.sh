@@ -36,5 +36,5 @@ while [[ "$#" -gt 0 ]]; do
   esac
 done
 
-DO_WORK_COMPATIBILITY_SHIM=1 exec bash "$script_directory/../tools/do-work-cli.sh" "${global_arguments[@]}" --format text protected-inventory "${command_arguments[@]}"
+DO_WORK_COMPATIBILITY_SHIM=1 exec bash "$script_directory/../tools/do-work-cli.sh" ${global_arguments[@]+"${global_arguments[@]}"} --format text protected-inventory ${command_arguments[@]+"${command_arguments[@]}"}
 

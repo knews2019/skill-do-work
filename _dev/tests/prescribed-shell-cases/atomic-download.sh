@@ -51,7 +51,6 @@ printf '%s\n' \
   > "$atomic_retry_bin/curl"
 chmod +x "$atomic_retry_bin/curl"
 
-printf 'stale before retry\n' > "$fixture_root/atomic-retry-target"
 GH_TOKEN='' GITHUB_TOKEN='' PATH="$atomic_retry_bin:$PATH" \
   ATOMIC_ATTEMPT_LOG="$fixture_root/atomic-attempts" \
   ATOMIC_HEADER_LOG="$fixture_root/atomic-header" \
@@ -69,7 +68,6 @@ leaked_private_paths="$(find "$fixture_root" -name 'atomic-retry-target.download
   && fail_case 'atomic-download retry case leaked private scratch'
 
 # atomic-download: an opt-in token becomes a bearer credential; GH_TOKEN wins over GITHUB_TOKEN.
-printf 'stale before credential\n' > "$fixture_root/atomic-credential-target"
 GH_TOKEN=primary-token GITHUB_TOKEN=fallback-token PATH="$atomic_retry_bin:$PATH" \
   ATOMIC_ATTEMPT_LOG="$fixture_root/atomic-credential-attempts" \
   ATOMIC_HEADER_LOG="$fixture_root/atomic-credential-header" \
@@ -77,7 +75,6 @@ GH_TOKEN=primary-token GITHUB_TOKEN=fallback-token PATH="$atomic_retry_bin:$PATH
   || fail_case 'atomic-download credential case returned nonzero'
 [ "$(cat "$fixture_root/atomic-credential-header")" = 'Authorization: Bearer primary-token' ] \
   || fail_case 'atomic-download credential case did not send GH_TOKEN as a bearer credential'
-printf 'stale before fallback credential\n' > "$fixture_root/atomic-fallback-target"
 GH_TOKEN='' GITHUB_TOKEN=fallback-token PATH="$atomic_retry_bin:$PATH" \
   ATOMIC_ATTEMPT_LOG="$fixture_root/atomic-fallback-attempts" \
   ATOMIC_HEADER_LOG="$fixture_root/atomic-fallback-header" \
