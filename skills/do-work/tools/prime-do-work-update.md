@@ -26,10 +26,10 @@ The five public shell entry points are compatibility launchers over the `do-work
 
 ## Stakes
 
-- `do-work-cli.sh` → `update-suite` — project-local overwrite boundary
-  Req: reject a skill root outside the invoking project, require `--repo-root` to name the Git worktree root, refuse an upstream version that is not newer, review the diff and take the single confirmation through the install transaction (whose declined confirmation is a success with skipped work, not a failure), and verify the installed version afterward. Missing, failed, or malformed canonical tooling stops; compatibility launchers are never mutation fallbacks.
-  Value: users can update without an agent turn while retaining the protection against clobbering a shared install or local customization.
-  Risk: weakening any guard can overwrite user work or runtime queue data. The update transaction requires the project Git root and validates the suite archive before delegating to the install transaction in-process. That transaction reviews modules plus every owned configuration change, snapshots exact managed originals, and restores them plus the Git index on failure — a new managed surface earns a diff section, a backup, a recovery branch, and a post-write byte check in the same commit that adds it. Runtime, KB, application paths, unrelated settings, and any bytes outside a managed marker span must never enter that plan. Dirty module changes are named before the one confirmation; accepting discards them from both index and worktree before installation. `_dev/tests/update-script-behavior.sh` holds current-suite, hostile-manifest, dirty-consent, and forced-recovery behavior.
+- `do-work-cli/internal/suiteinstall/update_transaction.go` + `do-work-cli/internal/suiteinstall/install_transaction.go` — project-local update boundary
+  Req: require the project Git root and an installed skill inside it; validate the archive, skip equal versions successfully, reject older upstream versions, and obtain the install transaction's single confirmation before writes.
+  Value: callers can update the suite while retaining consumer configuration outside owned spans; declining confirmation is a successful no-change result.
+  Risk: accepting the diff discards dirty managed-module content. The install transaction must snapshot and restore managed originals and the Git index on failure, then verify the installed version; queue, KB and application paths must stay outside its plan.
 
 ## Lessons
 
