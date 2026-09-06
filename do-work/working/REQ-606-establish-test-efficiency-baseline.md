@@ -1,8 +1,9 @@
 ---
 id: REQ-606
 title: 'A1: Establish an honest performance baseline'
-status: pending
+status: claimed
 created_at: 2026-09-06T13:16:35Z
+claimed_at: 2026-09-06T13:34:15Z
 user_request: UR-128
 domain: testing
 impact: impact-user-visible
