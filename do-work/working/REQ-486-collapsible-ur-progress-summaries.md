@@ -557,7 +557,7 @@ skips reports success and the gate's summary cannot tell the difference. Plus
   with both heavy-lane lines present: `queue-kanban uncached tests with strict JavaScript behavior
   probes — wall=65s tests=479` and `queue-kanban strict browser behavior lane — wall=99s tests=35`
 - canonical gate at the merge revision `b8398be` — `Maintainer verification passed.`, exit 0,
-  **73s wall**, exit status read directly from `$?`
+  **80s wall**, exit status read directly from `$?`
 - `contract-regressions.sh` green with the write-surface count unchanged at three, which is the
   independent check that this request added no write surface; `shipped-package-reference-contract.sh`
   green, so the changelog mirror is byte-identical

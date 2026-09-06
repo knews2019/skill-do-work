@@ -24,6 +24,8 @@ estimate:
     - cross-route regression gates
     - full-suite verification
 route: B
+dispatch_at: 2026-09-06T02:26:22Z
+builder_handback_at: 2026-09-06T02:26:22Z
 write_set: [skills/do-work/tools/do-work-cli/internal/heavyverification/heavy_run.go, skills/do-work/tools/do-work-cli/internal/heavyverification/heavy_commands.go, skills/do-work/tools/do-work-cli/internal/heavyverification/heavy_run_test.go, skills/do-work/tools/do-work-cli/internal/requeststate/state_apply_test.go, _dev/tests/update-script-behavior.sh]
 title: '[impact-critical] Make the heavy tier report a red lane as red, and fix two fixtures that cannot pass under the lane environment'
 claimed_at: 2026-09-06T02:03:03Z
@@ -32,9 +34,18 @@ claimed_at: 2026-09-06T02:03:03Z
 # Make the Heavy Tier's Verdict Honest
 
 ## AI Execution State (P-A-U Loop)
-- [ ] **[PLAN]:** (Agent: Read listed `prime_files` and agent rules. Write brief technical approach here. Do not write code yet.)
-- [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
-- [ ] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
+- [x] **[PLAN]:** Both `prime_files` read, plus the crew rules and the three diagnoses. The candidate
+  patch from the diagnosis was read and deliberately not taken as written — see D-01.
+- [x] **[APPLY]:** Five files, exactly the declared `write_set`. One sixth file was needed to fix a
+  flake found on the way and the builder stopped and reported it rather than editing it.
+- [x] **[UNIFY]:** `git diff --stat` on the merge range reports five files, 100 insertions, 8 deletions.
+  Linters: `gofmt -l` on both packages — empty; `go vet` on both — exit 0;
+  `shellcheck --severity=warning` and `bash -n` on the shell file — exit 0. No debug artifacts. Per
+  file: `heavy_run.go` (the exit-status rule, in the record writer rather than the finding chooser),
+  `heavy_commands.go` (the writer becomes a parameter, the registered handler signature unchanged),
+  `heavy_run_test.go` (the skip-then-fail lock-in and the writer redirection),
+  `state_apply_test.go` (one added call), `update-script-behavior.sh` (two matcher bodies and one
+  deterministic self-check).
 
 ## What
 
@@ -207,5 +218,112 @@ same lane driven through `do-work-cli run-heavy-verification` reports it as **sk
 2.43.0. The container hostname is `vm` with no domain, which is what makes H2 visible here and
 invisible on a workstation — but H2 is not a container defect: the lane argv strips the configuration
 that would otherwise hide it.
+
+*Checked by work action*
+
+## Implementation Summary
+
+**Files changed:**
+- `skills/do-work/tools/do-work-cli/internal/heavyverification/heavy_run.go`
+- `skills/do-work/tools/do-work-cli/internal/heavyverification/heavy_commands.go`
+- `skills/do-work/tools/do-work-cli/internal/heavyverification/heavy_run_test.go`
+- `skills/do-work/tools/do-work-cli/internal/requeststate/state_apply_test.go`
+- `_dev/tests/update-script-behavior.sh`
+
+**What was done:** A lane's exit status now outranks anything it printed, and the rule sits where the
+record is written rather than where the finding is chosen — `Skipped` is printed, stored as lane
+evidence and copied back on reuse, so the record has to be honest and not merely the message. The lane
+output writer became an explicit parameter, so the heavy verification package's own fixture lanes can
+no longer leak their output onto the enclosing lane's stderr; that was proved end to end rather than by
+unit assertion, with zero lines beginning with `SKIP:` where the pre-fix run leaked one. The one
+fixture that committed without a git identity now sets one like its eleven siblings. And both matchers
+in the updater probe read grep's verdict instead of the writer's exit status.
+
+**The sizing was measured before the fix was chosen.** The pipeline form produces 0 false failures in
+50 runs at 36 KB, and 50 in 50 at 200 KB — and in every broken run *both* directions were wrong: a
+present pattern went unmatched, and the same pattern went unflagged by the negative matcher. That is
+why the lock-in is a deterministic self-check at 256 KiB driving the shipped matchers, rather than a
+replay of the 2-in-500 race the diagnosis started from.
+
+Merge range `b8398be7..30bb2733`, five files, 100 insertions, 8 deletions. Builder branch head
+`cbd8f2b0`.
+
+## Decisions — implementation
+
+- **D-01 — the lane output writer is a parameter, not package state. DECIDE & STATE.** The candidate
+  patch from the diagnosis proposed a package-level `io.Writer` the tests would point at `io.Discard`.
+  A parameter needs no save-and-restore in every test, cannot be left pointing at the wrong place by a
+  test that fails before its cleanup, and leaves the registered handler signature unchanged.
+- **D-02 — the exit-status rule lives in `runOneLane`, not in the `RunLanes` switch. DECIDE & STATE.**
+  Reordering the switch would produce the right *finding* while leaving `Skipped` true on the stored
+  record, and that field is printed, persisted as lane evidence and copied back by `reusedLaneExecution`.
+  A correct message over a false record is the shape this whole request exists to remove.
+- **D-03 — the shell lock-in is a deterministic self-check, not a replay of the race. DECIDE & STATE.**
+  A 2-in-500 flake is too weak to lock anything in. The self-check drives the two shipped matchers
+  through bash dynamic scope — not copies of them — and asserts both directions.
+- **D-04 — nine sibling pipelines in the same file were reported rather than fixed. ESCALATE, and
+  overturned by the orchestrator.** The builder's reasoning was that the requirement names the two
+  assertion helpers. The counter-argument is stronger: the nine are the same mechanism in the same file
+  under the same `pipefail`, seven of them are `tar tzf … | grep -q` over an archive listing, and one
+  of them *fired during this very session*. Leaving a known impact-critical false-failure mechanism in
+  a file already being edited is the failure this request is about. Taken as a remediation.
+
+## Discovered Tasks
+
+- **impact-critical, taken here as a remediation — nine more `writer | grep -q` pipelines** in
+  `_dev/tests/update-script-behavior.sh` (lines 607, 610, 615, 627, 630, 675, 678, 722, 725), the same
+  SIGPIPE mechanism the two named helpers had. One produced
+  `FAIL: upstream fetcher: requested branch archive omitted its marker` during this session on an
+  archive that does contain the marker.
+- **impact-critical, taken here as a remediation — `RunLanes` applies no default lane timeout.** The
+  1800-second default lives in `parseRunArguments`, on the CLI path only, so an in-process caller that
+  omits `LaneTimeout` gets `time.NewTimer(0)` and a lane terminated while it is still starting. That is
+  why `TestLaneMutationCannotPublishOrReuseSuccess` flakes under gate load, reporting
+  `HEAVY-RUN-DIRTY-TREE` where it expects `HEAVY-RUN-REVISION-CHANGED` — a false verdict from the heavy
+  runner, arriving by a different route than H1.
+- **report only — `_dev/tests/test-duration-log.sh` seeds its header non-atomically**, so a concurrent
+  append can leave a headerless git-ignored duration log that fails every subsequent lane until a human
+  deletes it, and the failure message does not name that remedy. Seen once this session.
+
+## Qualification
+
+**Passed.** Read from the merge range `b8398be7..30bb273a`; canonical `qualify` and `scope-drift` both
+satisfied. Five files, 100 insertions, 8 deletions — the declared set exactly.
+
+- **Each of the three fixes was reverted alone, with the other two in place, and its assertion watched
+  to fail.** That matters more here than usual: three unrelated mechanisms in one change is exactly the
+  shape where one fix quietly covers for another's missing test. H1's revert produces
+  `LaneID:"skip-then-fail-lane", ExitStatus:4, Skipped:true` — byte-for-byte the misreport the heavy run
+  at `6646ba51` produced. H2's revert produces `Author identity unknown` under the lane's own stripped
+  git configuration. H3's revert fails the new self-check by name.
+- **The writer seam was proved end to end, not by unit assertion.** Zero lines beginning with `SKIP:`
+  in both the direct lane run and the runner's stderr, where the pre-fix run leaked exactly one. A unit
+  test could have asserted the parameter is threaded; only the lane run shows the leak is gone.
+- **The shell fix was sized before it was chosen.** 0 false failures in 50 runs at 36 KB, 50 in 50 at
+  200 KB, 50 in 50 at 1 MB — and in every broken run *both* matchers were wrong, the positive one
+  missing a present pattern and the negative one failing to flag it. That measurement is what rejected
+  a replay of the original 2-in-500 race as the lock-in and produced a deterministic 256 KiB self-check
+  driving the shipped matchers rather than copies of them.
+- **The lane the request exists to fix now reports its real disposition.** Direct:
+  `exit 0, 795 tests, wall 27s`, zero `--- FAIL` lines. Through the runner:
+  `lane do-work-cli-integrations: exit 0 in 26s [executed: no_prior_evidence]`, no findings. Before this
+  change the same lane exited 1 with a failing test and was recorded as *skipped*.
+- **One failure was found on the way, correctly not fixed, and correctly not dismissed.** The single
+  canonical gate run exited 1 on `TestLaneMutationCannotPublishOrReuseSuccess/commit=true`, in a file
+  outside the five-file scope. The builder did not call it a flake: it reproduces 0/5 in isolation, 0/6
+  pinned to one CPU, and green in the whole-module and lane runs — and then it named the mechanism.
+  `RunLanes` applies no default when `LaneTimeout` is zero, so an in-process caller gets
+  `time.NewTimer(0)` and the lane is killed before its own `git commit`. That is a false verdict from
+  the heavy runner under load, and it is taken as a remediation because the fix belongs in
+  `heavy_run.go`, which is in scope.
+- **This also corrects something recorded earlier in this run.** REQ-592's pre-flight attributed that
+  same test's failure entirely to a global `commit.gpgsign` with an unusable key. That attribution was
+  right about what it saw — with signing off it passes deterministically — but incomplete: there are two
+  independent causes, and the second one only shows under gate contention.
+
+Requirements traced: a lane that ran and exited non-zero reports red whatever it printed; a test's own
+fixture output cannot be mistaken for the enclosing lane's announcement; every test in
+`state_apply_test.go` that commits sets its own identity; both matchers report grep's verdict; and each
+fix carries an assertion that fails when the fix is reverted.
 
 *Checked by work action*
