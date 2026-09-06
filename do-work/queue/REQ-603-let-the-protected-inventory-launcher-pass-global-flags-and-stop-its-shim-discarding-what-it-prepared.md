@@ -6,7 +6,7 @@ created_at: 2026-09-06T08:19:05Z
 user_request: UR-105
 review_generated: true
 impact: impact-user-visible
-effort_estimate: effort-moderate
+effort_estimate: effort-substantive
 prime_files: [skills/do-work/tools/do-work-cli/prime-do-work-cli.md, _dev/primes/prime-shell-commands.md]
 tdd: true
 depends_on: [REQ-597, REQ-601]
