@@ -18,8 +18,8 @@ audit_fix_output="$("$core_scripts/audit-archive-timestamps.sh" --fix "$audit_fi
   || fail_case 'audit-archive-timestamps fixing case returned nonzero'
 grep -q '^completed_at: 2026-08-12T10:00:00Z$' "$audit_fix_project/do-work/archive/UR-901/REQ-901-future.md" \
   || fail_case 'audit-archive-timestamps fixing case did not rewrite the stamp to the introducing commit author time'
-printf '%s' "$audit_fix_output" \
-  | grep -Eq 'REQ-901-future\.md completed_at: 2093-05-05T05:05:05Z -> 2026-08-12T10:00:00Z \(commit [0-9a-f]{7} author time\)' \
+grep -Eq 'REQ-901-future\.md completed_at: 2093-05-05T05:05:05Z -> 2026-08-12T10:00:00Z \(commit [0-9a-f]{7} author time\)' \
+  <<<"$audit_fix_output" \
   || fail_case 'audit-archive-timestamps fixing case did not log the correction with its sourcing commit hash'
 
 # audit-archive-timestamps: without --fix the default run only reports — the pending
@@ -36,8 +36,8 @@ GIT_AUTHOR_DATE='2026-08-12T10:00:00Z' GIT_COMMITTER_DATE='2026-08-12T10:05:00Z'
 cp "$audit_report_project/do-work/archive/REQ-902-future.md" "$fixture_root/audit-report-before.md"
 audit_report_output="$("$core_scripts/audit-archive-timestamps.sh" "$audit_report_project")" \
   && fail_case 'audit-archive-timestamps report-only case exited zero with a correction pending'
-printf '%s' "$audit_report_output" \
-  | grep -q 'would repair do-work/archive/REQ-902-future.md completed_at: 2093-05-05T05:05:05Z -> 2026-08-12T10:00:00Z' \
+grep -q 'would repair do-work/archive/REQ-902-future.md completed_at: 2093-05-05T05:05:05Z -> 2026-08-12T10:00:00Z' \
+  <<<"$audit_report_output" \
   || fail_case 'audit-archive-timestamps report-only case did not print the pending correction'
 cmp -s "$fixture_root/audit-report-before.md" "$audit_report_project/do-work/archive/REQ-902-future.md" \
   || fail_case 'audit-archive-timestamps report-only case changed bytes without --fix'
@@ -59,7 +59,7 @@ cp "$audit_clean_project/do-work/archive/REQ-903-clean.md" "$fixture_root/audit-
 cp "$audit_clean_project/do-work/queue/REQ-904-queue.md" "$fixture_root/audit-queue-before.md"
 audit_clean_output="$("$core_scripts/audit-archive-timestamps.sh" --fix "$audit_clean_project")" \
   || fail_case 'audit-archive-timestamps clean-archive case returned nonzero'
-printf '%s' "$audit_clean_output" | grep -q 'archive audit clean' \
+grep -q 'archive audit clean' <<<"$audit_clean_output" \
   || fail_case 'audit-archive-timestamps clean-archive case did not report a clean audit'
 cmp -s "$fixture_root/audit-clean-before.md" "$audit_clean_project/do-work/archive/REQ-903-clean.md" \
   || fail_case 'audit-archive-timestamps clean-archive case changed a clean archived file'
@@ -83,7 +83,7 @@ grep -q '^claimed_at: 2026-08-10T12:00:00Z$' "$audit_order_project/do-work/archi
   || fail_case 'audit-archive-timestamps ordering case did not clamp claimed_at up to created_at'
 grep -q '^completed_at: 2026-08-10T12:00:00Z$' "$audit_order_project/do-work/archive/REQ-905-order.md" \
   || fail_case 'audit-archive-timestamps ordering case did not clamp completed_at up to the repaired claimed_at'
-printf '%s' "$audit_order_output" | grep -q 'clamped to 2026-08-10T12:00:00Z' \
+grep -q 'clamped to 2026-08-10T12:00:00Z' <<<"$audit_order_output" \
   || fail_case 'audit-archive-timestamps ordering case did not log the clamp'
 
 # audit-archive-timestamps: an archived defect whose introducing commit cannot be
@@ -98,9 +98,9 @@ TZ=UTC touch -m -t 202608101200.00 "$audit_blameless_project/do-work/archive/REQ
 cp "$audit_blameless_project/do-work/archive/REQ-906-untracked.md" "$fixture_root/audit-blameless-before.md"
 audit_blameless_output="$("$core_scripts/audit-archive-timestamps.sh" --fix "$audit_blameless_project")" \
   && fail_case 'audit-archive-timestamps blameless case exited zero on an unrepairable defect'
-printf '%s' "$audit_blameless_output" | grep -q 'FAILED to repair' \
+grep -q 'FAILED to repair' <<<"$audit_blameless_output" \
   || fail_case 'audit-archive-timestamps blameless case did not report the unrepairable defect'
-printf '%s' "$audit_blameless_output" | grep -q 'file mtime' \
+grep -q 'file mtime' <<<"$audit_blameless_output" \
   && fail_case 'audit-archive-timestamps blameless case offered the file mtime as a source'
 cmp -s "$fixture_root/audit-blameless-before.md" "$audit_blameless_project/do-work/archive/REQ-906-untracked.md" \
   || fail_case 'audit-archive-timestamps blameless case changed the file it could not derive for'
@@ -133,8 +133,8 @@ grep -q $'^created_at: 2026-08-12T10:00:00Z\r$' "$audit_shapes_project/do-work/a
   || fail_case 'audit-archive-timestamps widened-shapes case did not repair the CRLF file (or dropped the CR)'
 [ "$(head -c 3 "$audit_shapes_project/do-work/archive/REQ-910-bom.md")" = "$(printf '\xef\xbb\xbf')" ] \
   || fail_case 'audit-archive-timestamps widened-shapes case did not keep the BOM bytes in place'
-printf '%s' "$audit_shapes_output" \
-  | grep -q 'REQ-907-space.md created_at: 2093-01-01 00:00:00 -> 2026-08-12T10:00:00Z' \
+grep -q 'REQ-907-space.md created_at: 2093-01-01 00:00:00 -> 2026-08-12T10:00:00Z' \
+  <<<"$audit_shapes_output" \
   || fail_case 'audit-archive-timestamps widened-shapes case did not report the full old value in the audit line'
 
 # audit-archive-timestamps: the refused and duplicate-key shapes hold through
@@ -167,7 +167,11 @@ grep -q '^claimed_at: 2026-08-12T10:00:00Z$' "$audit_parity_project/do-work/arch
   || fail_case 'audit-archive-timestamps refusal-parity case did not repair the effective (last) anchor occurrence'
 grep -q '^claimed_at: 2026-08-11T12:00:00Z$' "$audit_parity_project/do-work/archive/REQ-912-duplicate-anchor.md" \
   || fail_case 'audit-archive-timestamps refusal-parity case rewrote the shadowed first occurrence'
-printf '%s' "$audit_parity_output" | grep -E '(would repair|repaired) ' | grep -qE 'REQ-911|REQ-913' \
+# Filter into a variable first, so the second grep's verdict is its own rather than the
+# first grep's exit status. Finding no correction lines at all is the passing answer here,
+# so the filter's non-zero status is expected and not asserted.
+audit_parity_correction_lines="$(grep -E '(would repair|repaired) ' <<<"$audit_parity_output")" || true
+grep -qE 'REQ-911|REQ-913' <<<"$audit_parity_correction_lines" \
   && fail_case 'audit-archive-timestamps refusal-parity case logged a refused stamp as a correction'
 
 # audit-archive-timestamps: the fence and padding shapes reach the archive scan
@@ -192,7 +196,10 @@ cmp -s "$fixture_root/audit-unterminated-before.md" "$audit_shape_project/do-wor
   || fail_case 'audit-archive-timestamps shape-parity case rewrote an archived file whose fence never closes'
 grep -q '^created_at: 2026-08-12T10:00:00Z$' "$audit_shape_project/do-work/archive/REQ-915-padded-quote.md" \
   || fail_case 'audit-archive-timestamps shape-parity case refused a padded quoted instant in the archive'
-printf '%s' "$audit_shape_output" | grep -E '(would repair|repaired) ' | grep -q 'REQ-914' \
+# Same two-reader chain as the refusal-parity case above: filter into a variable, then
+# read that variable, so the second grep decides on its own.
+audit_shape_correction_lines="$(grep -E '(would repair|repaired) ' <<<"$audit_shape_output")" || true
+grep -q 'REQ-914' <<<"$audit_shape_correction_lines" \
   && fail_case 'audit-archive-timestamps shape-parity case logged a correction for the refused unterminated file'
 
 # audit-archive-timestamps: a value the recognizer refused is voiced, and the summary
@@ -208,11 +215,11 @@ fixture_repo_commit_all "$audit_voiced_project" fixture
 cp "$audit_voiced_project/do-work/archive/REQ-916-impossible.md" "$fixture_root/audit-voiced-before.md"
 audit_voiced_output="$("$core_scripts/audit-archive-timestamps.sh" "$audit_voiced_project")" \
   || fail_case 'audit-archive-timestamps voiced-refusal case exited nonzero on a permanent refusal'
-printf '%s' "$audit_voiced_output" | grep -q 'REQ-916-impossible.md' \
+grep -q 'REQ-916-impossible.md' <<<"$audit_voiced_output" \
   || fail_case 'audit-archive-timestamps voiced-refusal case did not name the file holding the refused value'
-printf '%s' "$audit_voiced_output" | grep -q 'refused' \
+grep -q 'refused' <<<"$audit_voiced_output" \
   || fail_case 'audit-archive-timestamps voiced-refusal case did not say the value was refused'
-printf '%s' "$audit_voiced_output" | grep -q 'audit clean' \
+grep -q 'audit clean' <<<"$audit_voiced_output" \
   && fail_case 'audit-archive-timestamps voiced-refusal case still reported clean for a value it never inspected'
 cmp -s "$fixture_root/audit-voiced-before.md" "$audit_voiced_project/do-work/archive/REQ-916-impossible.md" \
   || fail_case 'audit-archive-timestamps voiced-refusal case changed the file it refused'
@@ -239,11 +246,11 @@ audit_walk_segment="$(printf 'untraversable-depth%0181d' 0)"
 ) || fail_case 'audit-archive-timestamps failed-walk case could not build an untraversable archive subtree'
 audit_walk_output="$("$core_scripts/audit-archive-timestamps.sh" "$audit_walk_project" 2>&1)" \
   && fail_case 'audit-archive-timestamps failed-walk case exited zero after the walk failed'
-printf '%s' "$audit_walk_output" | grep -q 'audit clean' \
+grep -q 'audit clean' <<<"$audit_walk_output" \
   && fail_case 'audit-archive-timestamps failed-walk case reported clean for an archive it never scanned'
 # Without this the case would pass on any nonzero exit the deep subtree happens to provoke.
 # That is how its fake-`find` predecessor went inert the moment the walk stopped shelling out.
-printf '%s' "$audit_walk_output" | grep -q 'walk failed' \
+grep -q 'walk failed' <<<"$audit_walk_output" \
   || fail_case 'audit-archive-timestamps failed-walk case did not name the walk as what failed'
 
 # audit-archive-timestamps: without its shared library the auditor inspects nothing, so
@@ -259,7 +266,7 @@ audit_lone_dir="$fixture_root/audit-lone-dir"
 fixture_repo_clone_script "$core_scripts/audit-archive-timestamps.sh" "$audit_lone_dir/audit-archive-timestamps.sh"
 audit_lone_output="$("$audit_lone_dir/audit-archive-timestamps.sh" "$audit_lone_project" 2>&1)" \
   && fail_case 'audit-archive-timestamps missing-library case exited zero with its shared machinery absent'
-printf '%s' "$audit_lone_output" | grep -q 'audit clean' \
+grep -q 'audit clean' <<<"$audit_lone_output" \
   && fail_case 'audit-archive-timestamps missing-library case reported clean without its detection predicate'
 
 prescribed_shell_finish
