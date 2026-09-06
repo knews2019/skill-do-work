@@ -1,6 +1,6 @@
 ---
 id: REQ-600
-status: pending
+status: claimed
 domain: general
 created_at: 2026-09-06T06:53:35Z
 user_request: UR-105
@@ -22,7 +22,7 @@ depends_on: [REQ-594]
 related: [REQ-593, REQ-594]
 title: 'Put the SIGPIPE trap in the prime shell authors read, and fix the one shipped block that carries it'
 claimed_at: 2026-09-06T07:26:22Z
-status_changed_at: 2026-09-06T12:37:59Z
+status_changed_at: 2026-09-06T12:38:32Z
 ---
 
 # Put the SIGPIPE Trap Where Shell Authors Read It
