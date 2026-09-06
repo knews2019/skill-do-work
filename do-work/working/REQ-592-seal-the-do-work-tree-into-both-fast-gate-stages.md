@@ -569,3 +569,24 @@ the same false-green shape for an uncommitted tracked `do-work/` edit, and `heav
 while part of the board's real dependency on `do-work/` is existence-level, through
 `filementions.go`'s repo-file-mention stat — no fast-stage assertion reads that map today, which is
 the only reason the run and deliverable exclusions are safe.
+
+## Heavy Verification Plan
+
+- **Base revision:** `fce57fccb19338491fea9d01bb0721a71f6d988b`
+- **Target revision:** `bb5118a9c2f77d416d118528128d2158ffa8bc96` (the recorded `commit:`)
+- **Changed paths in range:** the four files of this REQ's diff plus this run's own `do-work/`
+  artifacts. No uncovered paths, planner not forced, not uncertain.
+
+All six lanes are selected, because the change reaches both the maintainer test tree and the CLI
+module: `queue-kanban-javascript`, `queue-kanban-browser`, `staged-skills`,
+`do-work-cli-integrations`, `updater`, `installer`. Each runs as
+`env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane <id>`.
+
+Held at Step 7.7 beside REQ-583, REQ-587 and REQ-591, which select the same six lanes. Draining all
+four holds together at queue exhaustion runs the lanes once at the final revision instead of four
+times. **This container has Chromium at `/opt/pw-browsers/chromium` and Node v22 at
+`/opt/node22/bin/node`, so both engine-gated lanes can actually run** — set
+`QUEUE_KANBAN_BROWSER=/opt/pw-browsers/chromium` at drain time or the browser lane reports skipped,
+and a skip is not a pass.
+
+commit: bb5118a9c2f77d416d118528128d2158ffa8bc96
