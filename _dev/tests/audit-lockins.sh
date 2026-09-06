@@ -279,21 +279,42 @@ fi
 # Finding 1: qualify-debug-artifact-prose-restated (REQ-556)
 # do-work-cli qualify owns the debug-artifact and P-A-U-honesty rule
 # (QUALIFY-DEBUG-ARTIFACT, QUALIFY-PAU-UNCHECKED, QUALIFY-UNIFY-DISARMED in
-# skills/do-work/tools/do-work-cli/internal/corehelpers/checks.go), so the action files
-# carry one pointer instead of a second copy of the rule. Counted, not name-listed: a new
-# restatement is the regression whatever words it uses. The two mentions the ceiling allows
-# are review-work.md's standalone-review hygiene bullet (a read qualify never makes) and the
-# emitted P-A-U template payload, which is byte-identical in four shipped files -- neither is
-# a restatement, so do not chase the count below the ceiling by cutting them.
-# A missing target file FAILs instead of counting zero: a rename must not retire this lock-in
-# silently (_dev/primes/prime-shell-commands.md -> Unchecked Exit Status Reads as Content).
-debug_rule_mention_ceiling=2
+# skills/do-work/tools/do-work-cli/internal/corehelpers/checks.go), so the action files carry
+# one pointer instead of a second copy of the rule.
+#
+# Matches are counted, not lines. review-work.md carries two matched strings on one physical
+# line, so a line count turned a pure reflow of that bullet -- splitting it after "no debug
+# artifacts --" with no word changed -- into a FAIL that claimed a restatement had returned.
+# rg -o emits one row per match, so the number moves only when the words do. rg's own exit
+# status is read rather than folded into the count: exit 1 is "no matches", 2 or more is a
+# scan that never ran, which _dev/primes/prime-shell-commands.md
+# -> Unchecked Exit Status Reads as Content bans reading as zero. No pipeline, so nothing
+# can die upstream of a count that still looks legitimate.
+#
+# The pin is exact, not a ceiling. Above it, a restatement came back. Below it, one of the
+# two mentions that are not restatements was cut: review-work.md's standalone-review hygiene
+# bullet (a read qualify never makes, because standalone review sees a diff qualify never
+# saw) and the emitted P-A-U template payload, which is byte-identical in four shipped files.
+# A deliberate change to how often these files name debug markers moves this pin in the same
+# commit, with the reason in the commit message.
+#
+# The pattern set is the marker vocabulary checks.go:24 matches plus the two spellings the
+# cut prose used, matched case-insensitively and singular-or-plural, so a reworded paste-back
+# is caught and not only a byte-identical one -- capitalised "Debug artifacts", singular
+# "debug artifact" and a bullet that keeps only the marker words all hit. The three marker
+# words are split across adjacent quoted strings for the reason checks.go splits the same
+# three: a literal here would make qualify flag this file's own diff as a debug artifact.
+# What this does not catch: a restatement written in neither vocabulary, such as a
+# rationalization row about leftover print statements. Finding those is the audit's job.
+debug_rule_mention_pin=3
+debug_rule_marker_pattern='console\.log|debug artifacts?|\b(debug''ger|TO''DO|FIX''ME)\b'
 debug_rule_scanned_files=(
   "$repo_root/skills/do-work/actions/work.md"
   "$repo_root/skills/do-work/actions/review-work.md"
   "$repo_root/skills/do-work/actions/work-reference.md"
 )
 debug_rule_mention_count=0
+debug_rule_mention_sites=()
 for debug_rule_file in "${debug_rule_scanned_files[@]}"; do
   if [ ! -f "$debug_rule_file" ]; then
     printf 'FAIL: debug-artifact prose lock-in cannot read %s; the file moved and the lock-in is dead\n' \
@@ -301,13 +322,78 @@ for debug_rule_file in "${debug_rule_scanned_files[@]}"; do
     failure_count=$((failure_count + 1))
     continue
   fi
-  debug_rule_file_hits=$(grep -c -e 'console\.log' -e 'debug artifacts' "$debug_rule_file")
-  debug_rule_mention_count=$((debug_rule_mention_count + debug_rule_file_hits))
+  debug_rule_matches="$(rg -n -o -i -e "$debug_rule_marker_pattern" -- "$debug_rule_file" 2>/dev/null)"
+  debug_rule_scan_status=$?
+  if [ "$debug_rule_scan_status" -gt 1 ]; then
+    printf 'FAIL: could not scan %s for debug-artifact rule prose (rg exit %s).\n' \
+      "${debug_rule_file#"$repo_root/"}" "$debug_rule_scan_status" >&2
+    failure_count=$((failure_count + 1))
+    continue
+  fi
+  [ -n "$debug_rule_matches" ] || continue
+  while IFS= read -r debug_rule_match_row; do
+    [ -z "$debug_rule_match_row" ] && continue
+    debug_rule_mention_sites+=("${debug_rule_file#"$repo_root/"}:${debug_rule_match_row%%:*} (${debug_rule_match_row#*:})")
+    debug_rule_mention_count=$((debug_rule_mention_count + 1))
+  done <<< "$debug_rule_matches"
 done
-if [ "$debug_rule_mention_count" -gt "$debug_rule_mention_ceiling" ]; then
-  printf 'FAIL: %s debug-artifact rule mentions across work.md, review-work.md and work-reference.md; ceiling is %s (do-work-cli qualify owns the rule)\n' \
-    "$debug_rule_mention_count" "$debug_rule_mention_ceiling" >&2
+if [ "$debug_rule_mention_count" -ne "$debug_rule_mention_pin" ]; then
+  if [ "$debug_rule_mention_count" -gt "$debug_rule_mention_pin" ]; then
+    printf 'FAIL: %s debug-artifact rule mentions across work.md, review-work.md and work-reference.md; the pin is %s and do-work-cli qualify owns the rule, so a new mention restates it. Sites:\n' \
+      "$debug_rule_mention_count" "$debug_rule_mention_pin" >&2
+  else
+    printf 'FAIL: the debug-artifact rule mention count fell to %s across work.md, review-work.md and work-reference.md; the pin is %s. The two mentions that are not restatements must survive: review-work.md standalone-review hygiene bullet, and the emitted P-A-U template payload. Sites still present:\n' \
+      "$debug_rule_mention_count" "$debug_rule_mention_pin" >&2
+  fi
+  if [ "${#debug_rule_mention_sites[@]}" -gt 0 ]; then
+    for debug_rule_mention_site in "${debug_rule_mention_sites[@]}"; do
+      printf '  %s\n' "$debug_rule_mention_site" >&2
+    done
+  fi
   failure_count=$((failure_count + 1))
+fi
+
+# Companion pin for the same finding: work.md names QUALIFY-* codes so the reader can judge
+# the findings instead of re-deriving the rule. The prose calls its list illustrative, so
+# completeness is deliberately not pinned -- but every code it does name must still exist in
+# checks.go, or the pointer that replaced the restated rule is itself the stale prose.
+# The lookup is a substring match, so a code that is a prefix of a longer one still finds it
+# (QUALIFY-DEBUG-ARTIFACT inside QUALIFY-DEBUG-ARTIFACT-RELOCATED). That pair is emitted by
+# one check and only ever moves together, so the looser match costs nothing here.
+qualify_code_source="$repo_root/skills/do-work/tools/do-work-cli/internal/corehelpers/checks.go"
+if [ ! -f "$qualify_code_source" ]; then
+  printf 'FAIL: cannot read %s; the QUALIFY-* codes named in the action files cannot be checked\n' \
+    "${qualify_code_source#"$repo_root/"}" >&2
+  failure_count=$((failure_count + 1))
+else
+  for debug_rule_file in "${debug_rule_scanned_files[@]}"; do
+    [ -f "$debug_rule_file" ] || continue
+    named_qualify_codes="$(rg -n -o -e 'QUALIFY(-[A-Z]+)+' -- "$debug_rule_file" 2>/dev/null)"
+    named_qualify_scan_status=$?
+    if [ "$named_qualify_scan_status" -gt 1 ]; then
+      printf 'FAIL: could not scan %s for QUALIFY-* code names (rg exit %s).\n' \
+        "${debug_rule_file#"$repo_root/"}" "$named_qualify_scan_status" >&2
+      failure_count=$((failure_count + 1))
+      continue
+    fi
+    [ -n "$named_qualify_codes" ] || continue
+    while IFS= read -r named_qualify_row; do
+      [ -z "$named_qualify_row" ] && continue
+      named_qualify_code="${named_qualify_row#*:}"
+      rg -q --fixed-strings -- "$named_qualify_code" "$qualify_code_source" 2>/dev/null
+      named_qualify_lookup_status=$?
+      [ "$named_qualify_lookup_status" -eq 0 ] && continue
+      if [ "$named_qualify_lookup_status" -gt 1 ]; then
+        printf 'FAIL: could not search %s for %s (rg exit %s).\n' \
+          "${qualify_code_source#"$repo_root/"}" "$named_qualify_code" "$named_qualify_lookup_status" >&2
+      else
+        printf 'FAIL: %s:%s names %s, which no longer exists in %s; the pointer is stale prose.\n' \
+          "${debug_rule_file#"$repo_root/"}" "${named_qualify_row%%:*}" "$named_qualify_code" \
+          "${qualify_code_source#"$repo_root/"}" >&2
+      fi
+      failure_count=$((failure_count + 1))
+    done <<< "$named_qualify_codes"
+  done
 fi
 
 if [ "$failure_count" -gt 0 ]; then
