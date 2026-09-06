@@ -29,9 +29,9 @@ claimed_at: 2026-09-06T06:59:15Z
 # Correct Ten Stale Claims Across the Rest of the Prescribed-Shell Guide
 
 ## AI Execution State (P-A-U Loop)
-- [ ] **[PLAN]:** (Agent: Read listed `prime_files` and agent rules. Write brief technical approach here. Do not write code yet.)
-- [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
-- [ ] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
+- [x] **[PLAN]:** Route B. Three builders in one worktree, stacked: the two broken `inspect.md` blocks first, then the sixteen guide claims re-derived from the code, then the two callers' association prose.
+- [x] **[APPLY]:** Three commits `a1e652f`, `6913dc4`, `7df6488`, merged as `d5cf28b`. Three files, all in the write set.
+- [x] **[UNIFY]:** `git diff --stat 804a8ba..d5cf28b`: 3 files, +23/-23. Four guards green on the merged tree (audit-lockins, prescribed-shell-canonicalization, quiet-grep-pipeline-audit, action-shell-blocks). No debug artifacts, no version or changelog touched.
 
 ## What
 
@@ -223,3 +223,84 @@ it was derived from and the fixture it was checked against.
 **The builder works in an isolated worktree** at
 `../skill-do-work-worktrees/worktree-agent-REQ-597-guide-and-callers`, branched from `34077d8`, and
 hands back one file to the main checkout without staging or committing anything there.
+
+## Implementation Summary
+
+**Files changed:**
+- `skills/do-work-toolbox/actions/inspect.md` (modified)
+- `skills/do-work/actions/commit.md` (modified)
+- `skills/do-work/docs/prescribed-shell-primitives.md` (modified)
+
+**The two `inspect.md` blocks run now.** They passed the repository root and the quarantine name as
+positionals to a launcher that forwards `"$@"` unchanged to a command that takes only a mode and two
+flags, so every run exited 2 with `unknown option <root>`, and line 117 read exit 2 as the skip
+condition: `inspect` had never associated a file with a REQ in any project. Both blocks now pass
+`--quarantine-name do-work-inspect-secret-quarantine` and nothing else. Measured on a fixture with a
+working REQ, an archived REQ, an orphan and an untracked `.env.local`: `start` exits 0 with the four rows
+and writes the quarantine at mode 0600; `associate` exits 0 with two association rows and none for the
+orphan or the quarantined file. The lead-in sentences say what the wrapper actually does with the root:
+it reads it from the current directory and rejects a root argument; from a subdirectory `start` prints
+the same rows but `associate` exits 2 as if `do-work/` were missing; without `--quarantine-name` it
+writes `commit`'s file; `associate` exits 2 with a `HELPER-USAGE` finding when the quarantine is missing.
+Each of those was run, not read.
+
+**The association prose in both callers describes the wrapper's real walk and rows.** The inventory
+drops an untracked hidden file under `do-work/` as metadata and the prose now says so; the `-` row the
+prose told readers to look for is never printed, so "a path from Step 1 that appears in no row is
+unassociated" replaces it; a quarantined `X` path is absent from the output even when a REQ claims it,
+so rows are matched only against the set that survived the overlay; "re-derives the repository root" is
+gone because it does not.
+
+**Sixteen guide claims across five sections, plus line 24 and line 137.** Each replacement was derived
+from the code by the builder and checked against a fixture; five of the prior sweep's drafts were
+rejected as false on measurement (among them "resolves the repository itself and takes no root
+argument", which is half true, and an `EEXIST`/`EISDIR` pair that no single shipped call reports). The
+publication sentence that credited every command with a verification only one performs now says which
+command does what; the portfolio summary is described as reading its source once and writing every
+output from those bytes, with no "retained toolbox script", because none exists; the report image batch
+on line 137 had the same phantom script and was corrected on the request's fourth requirement; line 24 no
+longer implies the launcher translates positionals. The per-claim evidence, with the fixture and output
+for each, is in `do-work/runs/work-2026-09-05-231943/REQ-597-handback.md`.
+
+**Not changed:** any Go source. Where the code is surprising the description now says so, and the code
+defects the builders measured on the way are captured below rather than fixed in a prose request.
+
+## Decisions
+
+- **D1 The blocks changed to the form the launcher accepts, not the launcher to accept the blocks.** The
+  launcher's contract is the CLI's, and `commit.md` already used the flag form. That the launcher cannot
+  pass `--repo-root` at all, so neither caller can run from anywhere but the root, is a code defect with
+  its own request (REQ-603); this request's prose states the dependence in the meantime.
+- **D2 Line 24 and line 137 corrected beyond the sixteen.** Both are the class the request names, both
+  sit in sections the request opened, and the fourth requirement says to check those sections whole.
+- **D3 Drafts were inputs, not answers.** Five of the verification's suggested sentences were false on
+  measurement and were not used. Every shipped sentence was re-derived, which is the rule REQ-596's
+  review established for this file.
+- **D4 No changelog in the builder commits.** Three shipped files make this a release; finalization writes
+  one entry covering the three commits, as every recent release commit in the log does.
+
+## Discovered Tasks
+
+- **The protected-inventory launcher cannot pass a global flag and its compatibility shim discards the
+  text it prepares.** `scripts/protected-inventory.sh:6` puts `"$@"` after the command token, so
+  `--repo-root` is an unknown option and the runtime takes the current directory as the root; the shim
+  loop at `inventory.go:445-456` replaces the result text unconditionally, so `NO-DO-WORK-DIR`,
+  `PARSE-FAILED` and a walk error's finding never reach a caller and the exit is a silent 2, which both
+  callers read as "skip REQ tracing". Also: `commit.md:67` tells a re-run to append to the retained
+  quarantine, but `start` replaces it and only `associate` unions; `commit.md:61`'s exit-2 reading also
+  covers a `git status` or quarantine-write failure; `associate` after `start --dry-run` exits 2 as
+  not-started. Captured as **REQ-603**.
+- **`atomic-download`'s occupancy policy is asymmetric and one stat is unchecked.** `--dry-run` refuses
+  any existing target (exit 2) while the live run refuses only a directory and `os.Rename` silently
+  replaces an occupying regular file, reported as `created`; `commands.go:891` discards the error from
+  `os.Stat` and then reads `info.Size()`. Captured as **REQ-604**.
+- **`finalization_apply.go:545` runs `diff-tree` without `-m`**, so a merge commit among the candidates
+  lists no paths and the `exact` loop stays true; only the preceding binary-diff digest match keeps it
+  unreachable. Captured as **REQ-605**.
+- **The same phantom-script class in more out-of-write-set callers**: `present-work.md:136` and `:140`,
+  `ai-report-reference.md:31`, `:37`, `:47`, `architecture-report.md:46`, `install.md:50`, `:246`, `:261`,
+  `:335`, `board.md:87`, and `work-reference.md:322` ("hands the child the console's own handles"; both
+  child streams get the CLI's stderr). Appended to **REQ-601**, whose write set gains
+  `architecture-report.md` and `work-reference.md`.
+- **The lifecycle timing category vocabulary is closed** (ten names; `verification` alone is rejected)
+  and not documented where a caller would look. Noted; no request, the guide now names the categories.
