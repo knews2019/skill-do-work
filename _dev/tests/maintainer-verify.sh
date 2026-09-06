@@ -99,7 +99,11 @@ run_budgeted_go_tests() {
 # as they are added, which is an input-determined property the fingerprint
 # covers; it does not catch a breach caused purely by machine contention, which
 # is the failure this reuse deliberately stops reporting on an unchanged tree.
-run_stage_with_evidence() {
+run_stage_with_evidence() (
+  # The manifest's runtime probes exclude global and system Git configuration.
+  # Execute under that same configuration so a cached pass and a fresh test see
+  # the same Git behavior. The subshell keeps this isolation local to the stage.
+  export GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null
   local stage_id="$1"
   local module_directory="$2"
   shift 2
@@ -124,10 +128,8 @@ run_stage_with_evidence() {
   # fail the fixture. --self-test proves the gate's stage LIST and must keep
   # counting nine stages exactly once; reuse is proved by its own probe,
   # _dev/tests/fast-stage-reuse-behavior.sh, where it can be tested far more
-  # thoroughly. DO_WORK_FAST_STAGE_REUSE=off is the measurement escape hatch: it
-  # is read only here, and _dev/ is export-ignored, so it adds no option to any
-  # shipped script.
-  if [ -n "${MAINTAINER_VERIFY_SELFTEST_LOG:-}" ] || [ "${DO_WORK_FAST_STAGE_REUSE:-on}" = 'off' ]; then
+  # thoroughly.
+  if [ -n "${MAINTAINER_VERIFY_SELFTEST_LOG:-}" ]; then
     run_budgeted_go_tests "$module_directory" "$@"
     return
   fi
@@ -145,15 +147,21 @@ run_stage_with_evidence() {
   # the verdict. Status and output are captured separately, because a decision
   # command that could not run must read as "execute", never as "nothing
   # changed".
-  decision_line="$(
-    cd "$repo_root" &&
-      env -u DO_WORK_TEST_RUN_ID -u DO_WORK_TEST_OTHER_GATE_PROCESSES \
-        -u DO_WORK_TEST_DURATION_LOG -u OLDPWD -u SHLVL \
-        bash "$cli_launcher" --repo-root "$repo_root" \
-        decide-fast-stage --stage "$stage_id" -- "${stage_argv[@]}"
-  )" || decision_status=$?
-  if [ "$decision_status" -ne 0 ]; then
-    decision_line='executed decision_unavailable - -'
+  if [ "${DO_WORK_FAST_STAGE_REUSE:-on}" = 'off' ]; then
+    # The measurement escape hatch skips reuse and recording, but must still
+    # revoke any old pass before execution can fail or be interrupted.
+    decision_line='executed reuse_disabled - -'
+  else
+    decision_line="$(
+      cd "$repo_root" &&
+        env -u DO_WORK_TEST_RUN_ID -u DO_WORK_TEST_OTHER_GATE_PROCESSES \
+          -u DO_WORK_TEST_DURATION_LOG -u OLDPWD -u SHLVL \
+          bash "$cli_launcher" --repo-root "$repo_root" \
+          decide-fast-stage --stage "$stage_id" -- "${stage_argv[@]}"
+    )" || decision_status=$?
+    if [ "$decision_status" -ne 0 ]; then
+      decision_line='executed decision_unavailable - -'
+    fi
   fi
   if ! read -r disposition reason fingerprint recorded_at extra_fields <<< "$decision_line"; then
     disposition=''
@@ -175,7 +183,7 @@ run_stage_with_evidence() {
   # rule exists to prevent, so an unrevocable record fails the gate rather than
   # letting the stage run unprotected.
   bash "$cli_launcher" --repo-root "$repo_root" \
-    invalidate-fast-stage --stage "$stage_id" > /dev/null
+    invalidate-fast-stage --stage "$stage_id" > /dev/null || return $?
   run_budgeted_go_tests "$module_directory" "$@" || stage_status=$?
   if [ "$stage_status" -ne 0 ]; then
     return "$stage_status"
@@ -196,7 +204,7 @@ run_stage_with_evidence() {
     fi
   fi
   return 0
-}
+)
 
 # Returns 0 when $1 is at or above the floor $2. Compares dot-separated components as
 # integers, so 0.11.0 clears a 0.9.9 floor where a lexical compare would not. A missing

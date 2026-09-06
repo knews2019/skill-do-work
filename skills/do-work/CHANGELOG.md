@@ -2,6 +2,14 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.305.29 — Keep Cached and Fresh Test Results Consistent (2026-09-06)
+
+Fast-stage reuse now matches the Git configuration used by fresh tests, and forced runs revoke earlier passes before execution.
+
+- Isolate global and system Git configuration for both evidence decisions and test execution.
+- Revoke old evidence before forced runs and stop if revocation fails, so failures and interruptions cannot leave a stale pass reusable.
+- Make finalization fixtures select their initial branch explicitly and cover the stale-result failures with regression checks.
+
 ## 0.305.28 — Correct Test Reuse and Integrity Checks; Remove Unused Paths (2026-09-06)
 
 Covered ignored files now invalidate test reuse even when their directory names have Git pathspec meaning, and fixture-integrity self-tests retain their failures.

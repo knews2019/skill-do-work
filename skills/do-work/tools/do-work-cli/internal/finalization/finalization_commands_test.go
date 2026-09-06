@@ -154,7 +154,7 @@ func TestMain(m *testing.M) {
 	// `--template=` empty skips the sample hooks git would otherwise copy in, which is
 	// most of the files a fresh .git holds and none of what these tests read.
 	for _, arguments := range [][]string{
-		{"init", "-q", "--template="},
+		{"init", "-q", "--template=", "-b", "main"},
 		{"config", "user.name", "Finalization Fixture"},
 		{"config", "user.email", "finalization@example.invalid"},
 	} {

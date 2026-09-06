@@ -8,11 +8,11 @@
 set -uo pipefail
 
 # A test of the reuse wrapper must not read the caller's preference for that
-# wrapper. Both of these names short-circuit run_stage_with_evidence in
-# maintainer-verify.sh before it decides anything, and the measurement protocol
-# runs the whole gate as DO_WORK_FAST_STAGE_REUSE=off, so an inherited value
+# wrapper. Both of these names suppress reuse in run_stage_with_evidence in
+# maintainer-verify.sh, and the measurement protocol runs the whole gate as
+# DO_WORK_FAST_STAGE_REUSE=off, so an inherited value
 # would switch off the exact boundary under test: every case below would then
-# report the caller's environment as nine failures of the code. The probe clears
+# report the caller's environment as failures of the code. The probe clears
 # both names for its own runs instead of inheriting either.
 unset DO_WORK_FAST_STAGE_REUSE MAINTAINER_VERIFY_SELFTEST_LOG
 
@@ -72,6 +72,7 @@ printf '*.ignored\n' > "$project_root/.gitignore"
 # copied module directory.
 printf '#!/usr/bin/env bash\nexec bash %q "$@"\n' \
   "$repo_root/skills/do-work/tools/do-work-cli.sh" > "$project_root/skills/do-work/tools/do-work-cli.sh"
+cp "$project_root/skills/do-work/tools/do-work-cli.sh" "$probe_fixture_root/cli-launcher.sh"
 git -C "$project_root" init -q
 git -C "$project_root" config user.email fixture@example.invalid
 git -C "$project_root" config user.name Fixture
@@ -108,6 +109,10 @@ run_budgeted_go_tests() {
     # a killed stage really produces. The child dies immediately and owns no
     # lifetime beyond this call.
     bash -c 'kill -TERM $$'
+    return
+  fi
+  if [ "$stage_behavior" = 'git-commit' ]; then
+    git -C "$project_root" commit -q --allow-empty -m 'stage config fixture'
     return
   fi
   return "$stage_exit_status"
@@ -194,6 +199,88 @@ expect_case 'an interrupted stage returns its signal status' yes 143 'EXECUTING 
 stage_behavior=normal
 run_stage
 expect_case 'an interrupted stage left no reusable evidence' yes 0 'EXECUTING (no_prior_evidence)'
+
+# A forced run must revoke the green it bypasses even when the covered inputs
+# stay unchanged. Otherwise the next normal run can reuse that stale pass.
+DO_WORK_FAST_STAGE_REUSE=off
+stage_exit_status=9
+run_stage
+expect_case 'a forced failure returns its exact status' yes 9 'EXECUTING (reuse_disabled)'
+unset DO_WORK_FAST_STAGE_REUSE
+run_stage
+expect_case 'a forced failure revoked the earlier pass' yes 9 'EXECUTING (no_prior_evidence)'
+stage_exit_status=0
+run_stage
+expect_case 'a fresh pass after forced failure executes' yes 0 'EXECUTING (no_prior_evidence)'
+
+DO_WORK_FAST_STAGE_REUSE=off
+stage_behavior=interrupted
+run_stage
+expect_case 'a forced interruption returns its signal status' yes 143 'EXECUTING (reuse_disabled)'
+unset DO_WORK_FAST_STAGE_REUSE
+run_stage
+expect_case 'a forced interruption revoked the earlier pass' yes 143 'EXECUTING (no_prior_evidence)'
+stage_behavior=normal
+run_stage
+expect_case 'a fresh pass after forced interruption executes' yes 0 'EXECUTING (no_prior_evidence)'
+
+# Refusing revocation must stop before launching the stage, including when the
+# function's caller captures its status with || (which disables errexit).
+cat > "$project_root/skills/do-work/tools/do-work-cli.sh" <<'LAUNCHER'
+#!/usr/bin/env bash
+exit 17
+LAUNCHER
+DO_WORK_FAST_STAGE_REUSE=off
+run_stage
+expect_case 'a forced run cannot proceed without revocation' no 17 'EXECUTING (reuse_disabled)'
+unset DO_WORK_FAST_STAGE_REUSE
+cp "$probe_fixture_root/cli-launcher.sh" "$project_root/skills/do-work/tools/do-work-cli.sh"
+
+# The production runtime probes exclude global and system Git configuration.
+# A fresh stage must share that isolation: changing a config file at the same
+# path cannot leave a reusable pass while causing that stage's Git calls to fail.
+# Each case owns its configuration in a subshell; no user config is changed.
+check_git_config_scope() (
+  local config_kind="$1"
+  local config_file="$probe_fixture_root/$config_kind.gitconfig"
+  local hook_directory="$probe_fixture_root/$config_kind-hooks"
+  failure_count=0
+  export GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_SYSTEM=/dev/null
+  unset GIT_CONFIG_NOSYSTEM
+  if [ "$config_kind" = global ]; then
+    export GIT_CONFIG_GLOBAL="$config_file"
+  else
+    export GIT_CONFIG_SYSTEM="$config_file"
+  fi
+  mkdir -p "$hook_directory"
+  printf '#!/bin/sh\nexit 23\n' > "$hook_directory/pre-commit"
+  chmod +x "$hook_directory/pre-commit"
+  : > "$config_file"
+  stage_behavior=git-commit
+  run_stage
+  expect_case "$config_kind config baseline executes" yes 0 'EXECUTING ('
+  run_stage
+  expect_case "$config_kind config baseline reuses" no 0 'REUSED ('
+
+  git config --file "$config_file" core.hooksPath "$hook_directory"
+  if git -C "$project_root" commit -q --allow-empty -m 'must fail outside stage'; then
+    printf 'FAIL: %s config negative control did not reject the commit.\n' "$config_kind" >&2
+    failure_count=$((failure_count + 1))
+  fi
+  run_stage
+  expect_case "$config_kind config remains excluded from reused evidence" no 0 'REUSED ('
+  # Read by the sourced stage wrapper.
+  # shellcheck disable=SC2034
+  DO_WORK_FAST_STAGE_REUSE=off
+  run_stage
+  expect_case "$config_kind config is also excluded from fresh execution" yes 0 'EXECUTING (reuse_disabled)'
+  unset DO_WORK_FAST_STAGE_REUSE
+  run_stage
+  expect_case "$config_kind config fresh success left no older evidence" yes 0 'EXECUTING (no_prior_evidence)'
+  [ "$failure_count" -eq 0 ]
+)
+check_git_config_scope global || failure_count=$((failure_count + 1))
+check_git_config_scope system || failure_count=$((failure_count + 1))
 
 mv "$project_root/_dev/tests/fast-stages.json" "$probe_fixture_root/fast-stages.json.aside"
 run_stage
