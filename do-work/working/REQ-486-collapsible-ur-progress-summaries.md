@@ -344,3 +344,31 @@ surface, so the pinned count stays at three.
       forecast says so
 - [ ] Live contributions refresh from the board's existing clock without drift, and no existing live
       surface stops ticking
+
+## Pre-Flight
+
+**Git:** ✓ Clean. Canonical `recover` reports `FINALIZATION-NONE`. Four claims sit in `do-work/working/`
+— REQ-583, REQ-587, REQ-591 and REQ-592 — all held at Step 7.7 for the heavy-lane drain, none of them
+touching this request's files.
+
+**Repository gate:** ✓ `bash _dev/tests/maintainer-verify.sh` exited 0 at this REQ's claim revision
+`a2497c6`, run to completion — **77s wall**, both fast stages reporting `EXECUTING (no_prior_evidence)`
+so the whole suite really ran. Exit status read directly from `$?`, never through a pipe. This is the
+first gate run since REQ-592 landed, and it is the first one whose reuse decision can be trusted for a
+`do-work/` change.
+
+**Tests baseline:** ✓ `go -C skills/do-work-board/tools/queue-kanban test -count=1 ./...` exited 0,
+launched true. That is the module this request changes, so a later red in it is attributable.
+
+**Heavy-lane engines:** ✓ Both exist in this container and both must actually run, because a skipped
+lane reports success. Node v22.22.2 at `/opt/node22/bin/node`; Chromium at `/opt/pw-browsers/chromium`,
+which `QUEUE_KANBAN_BROWSER` must name. The plan requires a green baseline of both heavy lanes taken
+before the first edit, so a later red has a known-green predecessor.
+
+**Dependencies:** ✓ Go 1.26.1 via `GOTOOLCHAIN`, ShellCheck 0.11.0, `just` 1.43.0. Both Go modules
+build; the build cache is warm.
+
+**Machine condition:** 4 CPUs, load average under 1 at the gate's start. The plan caps this request at
+two full canonical gate runs for that reason; the per-lane commands are what the builder iterates on.
+
+*Checked by work action*
