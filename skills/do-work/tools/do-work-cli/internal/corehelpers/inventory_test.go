@@ -606,3 +606,79 @@ func hasFinding(result resultmodel.CommandResult, code string) bool {
 	}
 	return false
 }
+
+func TestProtectedInventoryCompatibilityShimPreservesErrors(t *testing.T) {
+	t.Setenv("DO_WORK_COMPATIBILITY_SHIM", "1")
+
+	t.Run("preserves NO-DO-WORK-DIR", func(t *testing.T) {
+		repository := newGitFixture(t)
+		if err := os.WriteFile(filepath.Join(repository, "file.txt"), []byte("changed\n"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		start := handleProtectedInventory(testContext(repository), []string{"start"})
+		if start.Outcome != resultmodel.OutcomeSuccess {
+			t.Fatalf("start failed: %#v", start)
+		}
+		associate := handleProtectedInventory(testContext(repository), []string{"associate"})
+		rendered, err := resultmodel.RenderResult(associate, resultmodel.FormatText)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !strings.Contains(string(rendered), "NO-DO-WORK-DIR") {
+			t.Fatalf("expected NO-DO-WORK-DIR in rendered output, got: %q", string(rendered))
+		}
+	})
+
+	t.Run("preserves PARSE-FAILED", func(t *testing.T) {
+		repository := newGitFixture(t)
+		if err := os.WriteFile(filepath.Join(repository, "file.txt"), []byte("changed\n"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		start := handleProtectedInventory(testContext(repository), []string{"start"})
+		if start.Outcome != resultmodel.OutcomeSuccess {
+			t.Fatalf("start failed: %#v", start)
+		}
+		workingReq := filepath.Join(repository, "do-work", "working", "REQ-999.md")
+		if err := os.MkdirAll(filepath.Dir(workingReq), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(workingReq, []byte("---\nid: REQ-999\nstatus: claimed\n---\n\n## Implementation Summary\n- `unmatched\n"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		associate := handleProtectedInventory(testContext(repository), []string{"associate"})
+		rendered, err := resultmodel.RenderResult(associate, resultmodel.FormatText)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !strings.Contains(string(rendered), "PARSE-FAILED") {
+			t.Fatalf("expected PARSE-FAILED in rendered output, got: %q", string(rendered))
+		}
+	})
+
+	t.Run("preserves walk error HELPER-USAGE finding", func(t *testing.T) {
+		repository := newGitFixture(t)
+		if err := os.WriteFile(filepath.Join(repository, "file.txt"), []byte("changed\n"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		start := handleProtectedInventory(testContext(repository), []string{"start"})
+		if start.Outcome != resultmodel.OutcomeSuccess {
+			t.Fatalf("start failed: %#v", start)
+		}
+		workingReq := filepath.Join(repository, "do-work", "working", "REQ-999.md")
+		if err := os.MkdirAll(filepath.Dir(workingReq), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(workingReq, []byte("unreadable\n"), 0o000); err != nil {
+			t.Fatal(err)
+		}
+		defer os.Chmod(workingReq, 0o644)
+		associate := handleProtectedInventory(testContext(repository), []string{"associate"})
+		rendered, err := resultmodel.RenderResult(associate, resultmodel.FormatText)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !strings.Contains(string(rendered), "HELPER-USAGE") {
+			t.Fatalf("expected HELPER-USAGE in rendered output, got: %q", string(rendered))
+		}
+	})
+}

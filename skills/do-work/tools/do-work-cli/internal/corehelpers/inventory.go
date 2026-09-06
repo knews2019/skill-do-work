@@ -453,16 +453,18 @@ func handleProtectedInventory(executionContext commandruntime.ExecutionContext, 
 	}
 	result.Changes = append([]resultmodel.RecordedChange{{Path: quarantinePath, Kind: "git-private", Detail: detail}}, result.Changes...)
 	if os.Getenv("DO_WORK_COMPATIBILITY_SHIM") == "1" {
-		var output strings.Builder
-		for _, finding := range result.Findings {
-			if finding.Code != "ASSOCIATION-FOUND" || len(finding.AffectedPaths) == 0 || len(finding.Evidence) == 0 {
-				continue
+		if result.Outcome == resultmodel.OutcomeSuccess {
+			var output strings.Builder
+			for _, finding := range result.Findings {
+				if finding.Code != "ASSOCIATION-FOUND" || len(finding.AffectedPaths) == 0 || len(finding.Evidence) == 0 {
+					continue
+				}
+				owner := strings.TrimPrefix(finding.Evidence[0], "owned by ")
+				fmt.Fprintf(&output, "%s\t%s\n", owner, finding.AffectedPaths[0])
 			}
-			owner := strings.TrimPrefix(finding.Evidence[0], "owned by ")
-			fmt.Fprintf(&output, "%s\t%s\n", owner, finding.AffectedPaths[0])
+			exact := output.String()
+			result.ExactTextOutput = &exact
 		}
-		exact := output.String()
-		result.ExactTextOutput = &exact
 	}
 	return result
 }

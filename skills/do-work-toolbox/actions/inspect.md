@@ -58,7 +58,7 @@ inspect action
 
 ### Step 1: Preflight
 
-Start the core protected-inventory wrapper from the project root, with inspect's own worktree-safe quarantine named by `--quarantine-name`. The wrapper reads the repository root from the current directory and rejects a root argument; run from a subdirectory, `start` prints the same rows but Step 3's `associate` exits 2 as if `do-work/` were missing. Without `--quarantine-name` the wrapper writes `commit`'s file, `do-work-commit-secret-quarantine`:
+Start the core protected-inventory wrapper, with inspect's own worktree-safe quarantine named by `--quarantine-name`. The wrapper defaults to the current directory and accepts `--repo-root <root>` (placed before or after the mode) when running from a subdirectory. Without `--quarantine-name` the wrapper writes `commit`'s file, `do-work-commit-secret-quarantine`:
 
 ```bash
 <skill-root>/../do-work/scripts/protected-inventory.sh start --quarantine-name do-work-inspect-secret-quarantine
@@ -108,13 +108,13 @@ Uncommitted files that are **not** in the target REQ's Implementation Summary re
 
 #### Unscoped mode (default)
 
-Feed the current protected M/A/D/XD paths into association, excluding every path quarantined as `X` during this inspect run. Run it from the project root with the same `--quarantine-name` as Step 1: `associate` reads the quarantine file `start` wrote, and exits 2 with a `HELPER-USAGE` finding when that file is missing:
+Feed the current protected M/A/D/XD paths into association, excluding every path quarantined as `X` during this inspect run. Run it with the same `--quarantine-name` as Step 1 (and pass `--repo-root <root>` if running from a subdirectory): `associate` reads the quarantine file `start` wrote, and exits 2 with a `HELPER-USAGE` finding when that file is missing (or when `start` was run with `--dry-run`):
 
 ```bash
 <skill-root>/../do-work/scripts/protected-inventory.sh associate --quarantine-name do-work-inspect-secret-quarantine
 ```
 
-The wrapper moves paths through files rather than interpolating them into shell source. It appends the new X rows to Step 1's quarantine before filtering, so both current X rows and paths excluded by an earlier inventory stay out. M/A/D/XD participate in association only when the path has never been X. The delegated check walks `do-work/working/` and `do-work/archive/` to any depth, skipping symlinks, reads the `## Implementation Summary` file list of each `REQ-*.md` there that counts (the next paragraph links what counts), and prints one `<owner>\t<path>` row only for a candidate a REQ claims; it prints no placeholder for the rest. Exit 1 means there were no candidates other than X; continue with the reported X rows only. Exit 2 means nothing was associated. A failure before association starts, such as a wrong invocation or a directory that is not a Git repository, prints a `HELPER-USAGE` finding that names it; a failure inside association, such as no `do-work/` directory (the skip condition already stated above), a REQ file it cannot read, or an unmatched backtick in an `## Implementation Summary` line, prints nothing. Either way, skip REQ tracing.
+The wrapper moves paths through files rather than interpolating them into shell source. It appends the new X rows to Step 1's quarantine before filtering, so both current X rows and paths excluded by an earlier inventory stay out. M/A/D/XD participate in association only when the path has never been X. The delegated check walks `do-work/working/` and `do-work/archive/` to any depth, skipping symlinks, reads the `## Implementation Summary` file list of each `REQ-*.md` there that counts (the next paragraph links what counts), and prints one `<owner>\t<path>` row only for a candidate a REQ claims; it prints no placeholder for the rest. Exit 1 means there were no candidates other than X; continue with the reported X rows only. Exit 2 with `NO-DO-WORK-DIR: nothing to associate against` means no `do-work/` directory exists (the skip condition already stated above) — skip REQ tracing. Any other exit 2, such as `PARSE-FAILED: ...` or a `HELPER-USAGE` finding (a wrong invocation, running outside a Git repository, an unreadable REQ file, or running `associate` before `start` or after `start --dry-run`), is an error to report, not a silent skip.
 
 [Protected inventory fallbacks](../../do-work/docs/prescribed-shell-primitives.md#protected-inventory-fallbacks) states what the script settles — terminal-success aliases, in-flight REQs, conflict resolution, metadata exclusion, partial matches — and the by-hand association to fall back on.
 
