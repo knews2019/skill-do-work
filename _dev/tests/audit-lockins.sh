@@ -641,6 +641,70 @@ else
     failure_count=$((failure_count + 1))
   fi
 fi
+# Finding 3: guide pattern drift against the code that classifies (REQ-596)
+# The guide's "Secret-shaped matching" sentence is what a person applies BY HAND when the tool will
+# not run. It drifted: the guide said `*credentials*` where secretPath tests for `credential`, so a
+# by-hand inventory left credential.json unquarantined while the tool excluded it.
+#
+# The expected globs are DERIVED from the Go source, not listed here: each HasPrefix(base, X) must
+# appear in the guide as `X*`, each HasSuffix as `*X`, and each Contains as `*X*`. Adding a pattern to
+# secretPath without adding it to the guide fails; so does narrowing one in either place.
+#
+# WHAT THIS DOES NOT CATCH, so its silence is not read as coverage: it checks that each pattern the
+# code tests is NAMED in the guide, not that the guide names nothing extra, and not that the surrounding
+# prose describes the classification correctly. The review that produced this block also found the
+# by-hand classification order and the association fallback wrong; neither is reachable by a text scan.
+secret_pattern_source="$repo_root/skills/do-work/tools/do-work-cli/internal/corehelpers/inventory.go"
+secret_pattern_guide="$repo_root/skills/do-work/docs/prescribed-shell-primitives.md"
+if [ ! -f "$secret_pattern_source" ] || [ ! -f "$secret_pattern_guide" ]; then
+  printf 'FAIL: cannot read %s or %s; the secret-pattern drift check cannot run\n' \
+    "${secret_pattern_source#"$repo_root/"}" "${secret_pattern_guide#"$repo_root/"}" >&2
+  failure_count=$((failure_count + 1))
+else
+  expected_secret_globs="$(awk '
+    /^func secretPath\(/ { inside_secret_path = 1; saw_secret_path = 1 }
+    inside_secret_path && /^}/ { inside_secret_path = 0 }
+    inside_secret_path {
+      line = $0
+      while (match(line, /strings\.(HasPrefix|HasSuffix|Contains)\(base, "[^"]+"\)/)) {
+        call = substr(line, RSTART, RLENGTH)
+        line = substr(line, RSTART + RLENGTH)
+        match(call, /strings\.[A-Za-z]+/); kind = substr(call, RSTART + 8, RLENGTH - 8)
+        match(call, /"[^"]+"/); literal = substr(call, RSTART + 1, RLENGTH - 2)
+        if (kind == "HasPrefix") printf "%s*\n", literal
+        else if (kind == "HasSuffix") printf "*%s\n", literal
+        else printf "*%s*\n", literal
+      }
+    }
+    END { if (!saw_secret_path) exit 3 }
+  ' "$secret_pattern_source")"
+  secret_pattern_scan_status=$?
+  if [ "$secret_pattern_scan_status" -ne 0 ]; then
+    printf 'FAIL: secretPath is gone from %s (awk exit %s); the secret-pattern drift check cannot run.\n' \
+      "${secret_pattern_source#"$repo_root/"}" "$secret_pattern_scan_status" >&2
+    failure_count=$((failure_count + 1))
+  elif [ -z "$expected_secret_globs" ]; then
+    printf 'FAIL: secretPath in %s tests no basename pattern; the drift check has nothing to compare.\n' \
+      "${secret_pattern_source#"$repo_root/"}" >&2
+    failure_count=$((failure_count + 1))
+  else
+    while IFS= read -r expected_secret_glob; do
+      [ -z "$expected_secret_glob" ] && continue
+      rg -q --fixed-strings -- "\`$expected_secret_glob\`" "$secret_pattern_guide" 2>/dev/null
+      secret_glob_lookup_status=$?
+      [ "$secret_glob_lookup_status" -eq 0 ] && continue
+      if [ "$secret_glob_lookup_status" -gt 1 ]; then
+        printf 'FAIL: could not search %s for the pattern `%s` (rg exit %s).\n' \
+          "${secret_pattern_guide#"$repo_root/"}" "$expected_secret_glob" "$secret_glob_lookup_status" >&2
+      else
+        printf 'FAIL: secretPath tests `%s` and %s does not name it; a by-hand inventory built from the guide would miss what the tool excludes.\n' \
+          "$expected_secret_glob" "${secret_pattern_guide#"$repo_root/"}" >&2
+      fi
+      failure_count=$((failure_count + 1))
+    done <<< "$expected_secret_globs"
+  fi
+fi
+
 
 if [ "$failure_count" -gt 0 ]; then
   exit 1
