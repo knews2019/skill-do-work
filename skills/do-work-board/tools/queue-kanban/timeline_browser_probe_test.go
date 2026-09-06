@@ -1788,44 +1788,31 @@ window.addEventListener("load", function () {
 // markup and the window is a claim about what the READER sees: the assertion
 // below reads #timeline-range-readout, the same text on screen, rather than any
 // internal state.
+//
+// The board is built from a fixture tree holding an OPEN request, not from this
+// checkout. The board ends its range at the last event when nothing is open (by
+// design), so on a drained queue a trailing window cannot end at now and the test's
+// own vacuity guard refuses. Moving `now` back to the last completion satisfied that
+// guard but changed what the test measured; an open request is the data the
+// assertion is about, and a fixture has one whatever state the live queue is in.
 func generateLiveSiteInDirAtRangeEnd(t *testing.T) string {
 	t.Helper()
-	workingDirectory, getwdError := os.Getwd()
-	if getwdError != nil {
-		t.Fatalf("getwd: %v", getwdError)
-	}
-	repoRoot, resolveError := resolveRepoRoot(workingDirectory)
-	if resolveError != nil {
-		t.Fatalf("resolveRepoRoot: %v", resolveError)
-	}
-	stubGitLookup := func(string, string) (time.Time, bool) { return time.Time{}, false }
-	now := time.Now()
-	preBoard, buildError := buildBoard(repoRoot, now, 7*24*time.Hour, stubGitLookup)
+	now := time.Now().UTC()
+	stamp := func(earlier time.Duration) string { return now.Add(-earlier).Format("2006-01-02T15:04:05Z") }
+	fixtureRoot := t.TempDir()
+	// One open request captured two hours ago, so the range ends at now; one completed
+	// 35 days ago, so the range starts outside the 30-day window and the chip trims it.
+	writeFixtureRepoFile(t, fixtureRoot, "do-work/queue/REQ-0001-open.md",
+		"---\nid: REQ-0001\ntitle: Open fixture\nstatus: pending\ncreated_at: "+stamp(2*time.Hour)+"\n---\n\n# REQ-0001\n")
+	writeFixtureRepoFile(t, fixtureRoot, "do-work/archive/REQ-0002-done.md",
+		"---\nid: REQ-0002\ntitle: Done fixture\nstatus: completed\ncreated_at: "+stamp(45*24*time.Hour)+
+			"\nclaimed_at: "+stamp(40*24*time.Hour)+"\ncompleted_at: "+stamp(35*24*time.Hour)+"\n---\n\n# REQ-0002\n")
+	board, buildError := buildBoard(fixtureRoot, now, 7*24*time.Hour, stubGitLookupNever)
 	if buildError != nil {
 		t.Fatalf("buildBoard: %v", buildError)
 	}
-	hasOpen := false
-	var latestCompletion time.Time
-	for _, ticket := range preBoard.AllRequests {
-		if !isStoppedStatus(ticket.Status) {
-			hasOpen = true
-			break
-		}
-		if !ticket.CompletionTime.IsZero() && ticket.CompletionTime.After(latestCompletion) {
-			latestCompletion = ticket.CompletionTime
-		} else if ct, ok := parseTimestamp(ticket.CompletedAt); ok && ct.After(latestCompletion) {
-			latestCompletion = ct
-		}
-	}
-	if !hasOpen && !latestCompletion.IsZero() {
-		now = latestCompletion
-		preBoard, buildError = buildBoard(repoRoot, now, 7*24*time.Hour, stubGitLookup)
-		if buildError != nil {
-			t.Fatalf("buildBoard: %v", buildError)
-		}
-	}
 	outputDirectory := t.TempDir()
-	if generateError := generateStaticSite(outputDirectory, preBoard); generateError != nil {
+	if generateError := generateStaticSite(outputDirectory, board); generateError != nil {
 		t.Fatalf("generateStaticSite: %v", generateError)
 	}
 	return outputDirectory
