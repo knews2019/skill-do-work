@@ -2,6 +2,14 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.305.20 — Copy Prepared Recovery States in Finalization Tests (2026-09-06)
+
+Extended fixture reuse in `internal/finalization` tests to copy prepared semantic legacy and planned recovery baseline states, eliminating repetitive Git seed commits and repository construction.
+
+- `internal/finalization/finalization_commands_test.go` defines thread-safe singletons and lazy initializers for semantic legacy and planned finalization template repositories, cleaning them up in `TestMain`.
+- `internal/finalization/finalization_recovery_test.go` updates `seedSemanticLegacyTail` and `seedPlannedFinalization` to instantiate isolated copies via `os.CopyFS`, eliminating 69 Git subprocess executions and reducing cold wall time by 13.4% (-6.45s) and CPU by 14.0% (-5.38s).
+- Adds `TestPreparedRecoveryTemplateIsolation` proving complete filesystem and Git history isolation across copies and underlying templates, with mutation tests confirming robust defect rejection.
+
 ## 0.305.19 — Run Inventory Data Matrix In-Process Without Subprocesses (2026-09-06)
 
 Decoupled porcelain byte parsing from Git acquisition in `internal/corehelpers/inventory.go`, allowing synthetic inventory test matrices to run completely in-process without spawning Git and CLI subprocesses.
