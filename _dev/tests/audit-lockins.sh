@@ -397,57 +397,116 @@ else
 fi
 
 # Finding 7: stale-shell-ownership-prose (REQ-555)
-# The executable-homes table exists to route a reader to the home that OWNS a mechanic.
-# Every retained scripts/*.sh launcher is a few lines that exec a do-work-cli subcommand,
-# so a .sh path in the route column sends the reader to a shim and away from the code that
-# decides anything. Two shapes are pinned together because they are the same defect: a shim
-# in the route column, and the claim that a six-line launcher orchestrates two other
-# scripts. The table is located by its heading rather than by line number, and a missing
-# guide or missing heading is a failure rather than a clean read, so a rename cannot retire
-# this check silently.
+# The executable-homes table exists to route a reader to the home that OWNS a mechanic. When the
+# mechanics moved into Go, nine rows still named the retained shell launchers, and one sentence still
+# said a six-line launcher orchestrates two other scripts.
+#
+# Both halves are keyed on the CONDITION, not on the spelling the first version of this check happened
+# to delete — a review put the identical defect back seven ways past a negative "no backticked .sh in
+# cell two" test, including the table's own `…` house style, an unbackticked path, a shim moved into
+# the Mechanics cell, one leading space, an inserted sub-heading, and an emptied table.
+#
+#   Route rows: every table is found by its own header row rather than by the heading above it, so a
+#   sub-heading or a second table cannot hide one. A row is an offender when it names a `.sh` path that
+#   is itself a do-work-cli launcher — read from the file, not guessed from the name — so a genuinely
+#   shell-owned route would pass and a renamed shim would not. A table with no rows fails too, because
+#   an empty table is as silent as a missing one.
+#
+#   The orchestration claim: any line that names the protected-inventory launcher AND one of the two
+#   check launchers it was said to drive. A rewording ("that orchestrates", "coordinates", "a wrapper
+#   that orchestrates") is the same false claim, and all three used to pass a fixed-string test.
 shell_ownership_guide="$repo_root/skills/do-work/docs/prescribed-shell-primitives.md"
 if [ ! -f "$shell_ownership_guide" ]; then
   printf 'FAIL: cannot read %s; the executable-homes table cannot be checked\n' \
     "${shell_ownership_guide#"$repo_root/"}" >&2
   failure_count=$((failure_count + 1))
 else
-  shim_route_rows="$(awk '
-    /^## Shipped executable homes$/ { inside_table_section = 1; saw_table_section = 1; next }
-    inside_table_section && /^## / { inside_table_section = 0 }
-    inside_table_section && /^\|/ {
-      split($0, table_cells, "|")
-      if (table_cells[2] ~ /\.sh`/) printf "%s\t%s\n", FNR, table_cells[2]
+  # Resolves a route path the way the guide writes them: `../../<pkg>/...` is a sibling package under
+  # skills/, anything else is relative to the do-work package.
+  resolve_guide_route_path() {
+    case "$1" in
+      ../../*) printf '%s/skills/%s\n' "$repo_root" "${1#../../}" ;;
+      *) printf '%s/skills/do-work/%s\n' "$repo_root" "$1" ;;
+    esac
+  }
+
+  route_row_findings="$(awk '
+    /^[[:space:]]*\|[[:space:]]*Canonical executable route[[:space:]]*\|/ {
+      inside_route_table = 1; saw_route_table = 1; route_row_count = 0; next
     }
-    END { if (!saw_table_section) exit 3 }
+    inside_route_table && /^[[:space:]]*\|[[:space:]]*:?-/ { next }
+    inside_route_table && !/^[[:space:]]*\|/ {
+      if (route_row_count == 0) printf "emptytable\t%s\t\n", FNR
+      inside_route_table = 0
+    }
+    inside_route_table {
+      route_row_count++
+      row = $0
+      while (match(row, /[A-Za-z0-9_.\/-]+\.sh/)) {
+        candidate = substr(row, RSTART, RLENGTH)
+        row = substr(row, RSTART + RLENGTH)
+        if (candidate ~ /do-work-cli\.sh$/) continue
+        printf "candidate\t%s\t%s\n", FNR, candidate
+      }
+    }
+    END {
+      if (!saw_route_table) exit 3
+      if (inside_route_table && route_row_count == 0) printf "emptytable\t%s\t\n", FNR
+    }
   ' "$shell_ownership_guide")"
-  shim_route_scan_status=$?
-  if [ "$shim_route_scan_status" -ne 0 ]; then
-    printf 'FAIL: the "## Shipped executable homes" heading is gone from %s (awk exit %s); the route ratchet cannot run.\n' \
-      "${shell_ownership_guide#"$repo_root/"}" "$shim_route_scan_status" >&2
+  route_row_scan_status=$?
+  if [ "$route_row_scan_status" -ne 0 ]; then
+    printf 'FAIL: no "| Canonical executable route |" table header remains in %s (awk exit %s); the route ratchet cannot run.\n' \
+      "${shell_ownership_guide#"$repo_root/"}" "$route_row_scan_status" >&2
     failure_count=$((failure_count + 1))
-  elif [ -n "$shim_route_rows" ]; then
-    while IFS=$'\t' read -r shim_route_line shim_route_cell; do
-      [ -z "$shim_route_line" ] && continue
-      printf 'FAIL: %s:%s routes owned mechanics to a shim (%s); the route column names the do-work-cli subcommand that owns them.\n' \
-        "${shell_ownership_guide#"$repo_root/"}" "$shim_route_line" \
-        "$(printf '%s' "$shim_route_cell" | tr -d ' ')" >&2
-      failure_count=$((failure_count + 1))
-    done <<< "$shim_route_rows"
+  elif [ -n "$route_row_findings" ]; then
+    while IFS=$'\t' read -r route_finding_kind route_finding_line route_finding_path; do
+      [ -z "$route_finding_kind" ] && continue
+      if [ "$route_finding_kind" = 'emptytable' ]; then
+        printf 'FAIL: %s: the executable-homes table ending at line %s has no rows; an empty table names no home.\n' \
+          "${shell_ownership_guide#"$repo_root/"}" "$route_finding_line" >&2
+        failure_count=$((failure_count + 1))
+        continue
+      fi
+      resolved_route_path="$(resolve_guide_route_path "$route_finding_path")"
+      if [ ! -f "$resolved_route_path" ]; then
+        printf 'FAIL: %s:%s names %s as a canonical route and no such file exists.\n' \
+          "${shell_ownership_guide#"$repo_root/"}" "$route_finding_line" "$route_finding_path" >&2
+        failure_count=$((failure_count + 1))
+        continue
+      fi
+      rg -q --fixed-strings -- 'do-work-cli.sh' "$resolved_route_path" 2>/dev/null
+      route_launcher_status=$?
+      if [ "$route_launcher_status" -eq 0 ]; then
+        printf 'FAIL: %s:%s routes owned mechanics to %s, which is itself a do-work-cli launcher; the row names the subcommand that owns them.\n' \
+          "${shell_ownership_guide#"$repo_root/"}" "$route_finding_line" "$route_finding_path" >&2
+        failure_count=$((failure_count + 1))
+      elif [ "$route_launcher_status" -gt 1 ]; then
+        printf 'FAIL: could not read %s to decide whether it is a launcher (rg exit %s).\n' \
+          "$route_finding_path" "$route_launcher_status" >&2
+        failure_count=$((failure_count + 1))
+      fi
+    done <<< "$route_row_findings"
   fi
 
-  rg -q --fixed-strings -- 'which orchestrates' "$shell_ownership_guide" 2>/dev/null
-  orchestration_claim_status=$?
-  if [ "$orchestration_claim_status" -eq 0 ]; then
-    printf 'FAIL: %s claims a launcher orchestrates other scripts; the do-work-cli subcommand owns the whole check and launches nothing.\n' \
-      "${shell_ownership_guide#"$repo_root/"}" >&2
+  orchestration_claim_lines="$(awk '
+    /scripts\/protected-inventory\.sh/ &&
+      (/tools\/checks\/uncommitted-inventory\.sh/ || /tools\/checks\/associate-files\.sh/) { print FNR }
+  ' "$shell_ownership_guide")"
+  orchestration_scan_status=$?
+  if [ "$orchestration_scan_status" -ne 0 ]; then
+    printf 'FAIL: could not scan %s for the orchestration claim (awk exit %s).\n' \
+      "${shell_ownership_guide#"$repo_root/"}" "$orchestration_scan_status" >&2
     failure_count=$((failure_count + 1))
-  elif [ "$orchestration_claim_status" -gt 1 ]; then
-    printf 'FAIL: could not scan %s for the orchestration claim (rg exit %s).\n' \
-      "${shell_ownership_guide#"$repo_root/"}" "$orchestration_claim_status" >&2
-    failure_count=$((failure_count + 1))
+  elif [ -n "$orchestration_claim_lines" ]; then
+    while IFS= read -r orchestration_claim_line; do
+      [ -z "$orchestration_claim_line" ] && continue
+      printf 'FAIL: %s:%s names the protected-inventory launcher beside a check launcher it was said to drive; the do-work-cli subcommand owns the whole check and launches neither.\n' \
+        "${shell_ownership_guide#"$repo_root/"}" "$orchestration_claim_line" >&2
+      failure_count=$((failure_count + 1))
+    done <<< "$orchestration_claim_lines"
   fi
 fi
-
 
 if [ "$failure_count" -gt 0 ]; then
   exit 1
