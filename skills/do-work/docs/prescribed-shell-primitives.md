@@ -38,7 +38,40 @@ Any step that inspects untracked paths individually must receive individual file
 - When filenames may contain spaces, quotes, newlines, or rename/copy provenance, consume `git ... -z`; never store NUL-delimited output in command substitution, and consume the second path carried by rename/copy records.
 - A check for tracked files that should be ignored is separate: feed tracked paths to `git check-ignore --no-index`. Do not apply an untracked skip list before a tracked-artifact check.
 
-The complete secret-aware inventory and REQ association ship behind `scripts/protected-inventory.sh`, which orchestrates `tools/checks/uncommitted-inventory.sh` and `tools/checks/associate-files.sh` without duplicating their low-level logic. `actions/commit.md` and `../../do-work-toolbox/actions/inspect.md` invoke the wrapper; their manual fallback must preserve `-uall`, NUL parsing, rename/copy consumption, secret quarantine, and the scripts' documented exit meanings.
+The complete secret-aware inventory and REQ association ship behind `scripts/protected-inventory.sh`, which orchestrates `tools/checks/uncommitted-inventory.sh` and `tools/checks/associate-files.sh` without duplicating their low-level logic. `actions/commit.md` and `../../do-work-toolbox/actions/inspect.md` invoke the wrapper; [Protected inventory fallbacks](#protected-inventory-fallbacks) below is the single home for its tag legend, its per-tag reading rules, its association semantics, and the by-hand procedure each mode falls back to.
+
+## Protected inventory fallbacks
+
+`scripts/protected-inventory.sh start` prints one `<tag>\t<path>` row per uncommitted file; its `associate` mode prints one `<owner>\t<path>` row per candidate. Both modes gate on `git rev-parse --git-dir`. This section owns what a tag means, how each tag class is read, what association settles, and the by-hand procedure for each mode. It does not own what a caller then does with an `X` or `XD` row: a writing action may stage an `XD` deletion where a read-only action may not, so each caller states its own handling and its own exit-status responses.
+
+Tag legend:
+
+- **M** — modified (a renamed path is tagged M too: read its diff, don't re-read it as new content)
+- **A** — added, covering both staged-new and untracked
+- **D** — deleted
+- **X** — non-deleted excluded path: secret-shaped, secret-derived, or an ambiguous addition beside `X`/`XD`
+- **XD** — deleted secret-shaped path
+
+Secret-shaped matching is case-insensitive and applies to the basename only: `.env*` or `*.env`, `*credentials*`, `*.pem`/`*.key`/`*.p12`/`*.pfx`, and `*secret*`. Thus `.ENV`, `AuthCredentials.json`, `private.PEM`, and `UPPER-SECRET.txt` are all secret-shaped, while an ordinary file beneath a directory named `secrets/` is not classified from the directory name alone.
+
+Read each tag class this way, and no other way:
+
+- **Modified files**: Read the `git diff` for each file. Understand what changed and why.
+- **New/untracked files**: Read the file contents. Skip binary files (detect by extension: images, compiled assets, archives). For large files (>500 lines), read the first 100 lines and last 50 lines to understand purpose.
+- **Deleted files (`D`)**: Note the path and what the file likely was (infer from path and name).
+- **Deleted secret-shaped files (`XD`)**: Note only the path and that it is deleted. Do not run `git diff`, `git show`, `git log -p`, or any equivalent that reads, reconstructs, or displays former contents.
+
+If the script is missing or will not run, build the inventory by hand from the complete NUL-delimited output of `git -c status.renames=copies status --porcelain=v1 --untracked-files=all -z`; the command-line copy setting is required even when repository configuration disables rename detection. First classify every path as M/A/D, including each rename or copy record's second NUL-delimited origin path, then lowercase its basename with `tr '[:upper:]' '[:lower:]'` and apply the patterns above. Change a non-deleted secret-shaped tag to X and a deleted one to XD; a secret-shaped rename origin is XD and its destination is X, while a destination copied from a secret-shaped origin is X without an XD source row. Buffer the complete classification before using it. If the finished inventory contains any X or XD and any remaining A, provenance is ambiguous — Git cannot identify a copy when both source and destination are untracked — so change every A to X. Finally add all X paths to the run-level quarantine and overlay that quarantine before any row is consumed. The `-uall` flag is not optional; preserve the [Per-file untracked inventory](#per-file-untracked-inventory) contract above or files beneath a brand-new directory can escape the exclusion scan. That is a secret-leak path, and `../../do-work-toolbox/actions/stray-check.md`'s Red Flags record that it has been hit.
+
+What `associate` settles, so no caller's prose has to:
+
+- **Terminal-success matching honors the Schema Read Contract's aliases**, so `completed`, `completed-with-issues`, and `complete`/`done`/`finished`/`closed` all qualify. Testing only for the literal `completed` drops every remediated-with-issues REQ, and its files then never get associated.
+- **In-flight `working/` REQs are included** regardless of status, since a claimed REQ is never terminal.
+- **Conflict resolution:** a path claimed by two REQs goes to the one with the latest `completed_at`. An archived REQ outranks an in-flight one.
+- **`do-work/` metadata paths are excluded** from association, matching `tools/checks/scope-drift.sh`.
+- **Partial matches count.** If 3 out of 5 files in a REQ's Implementation Summary are among the uncommitted files, group all 3 under that REQ.
+
+If the script is missing or will not run, associate by hand: glob both directories, read each REQ's `status` (accepting every terminal-success alias listed above) and `## Implementation Summary` list, path-match, and tie-break on the latest `completed_at`.
 
 ## Merge-aware commit diff
 
