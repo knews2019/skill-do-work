@@ -2,6 +2,10 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.305.26 — Restore Single-Image Staging Claim to Adjacent to Target (2026-09-06)
+
+Corrected the single-image generation command description in `skills/do-work-toolbox/actions/ai-report-reference.md` to reflect that `generateImage` stages its invocation-private file adjacent to the target output path (`filepath.Dir(outputPath)`), rather than in the system temporary directory.
+
 ## 0.305.25 — Batch Repeated Git Reads in Finalization and Request State (2026-09-06)
 
 Profiled recovery and state planning to batch repeated Git reads and memoize historical commits during finalization discovery.

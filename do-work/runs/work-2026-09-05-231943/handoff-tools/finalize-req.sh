@@ -85,6 +85,7 @@ PY
   release_paths=(VERSION CHANGELOG.md skills/do-work/VERSION skills/do-work/CHANGELOG.md skills/do-work/actions/version.md)
 fi
 # Lesson satellites and other already-edited files the transaction must carry (work.md Step 8
+# substep 4: "include their exact paths in the manifest"). Space-separated, repo-relative.
 read -r -a extra_paths <<<"${EXTRA_COMMIT_PATHS:-}"
 if [ -n "${EXTRA_COMMIT_PATHS:-}" ]; then
   release_paths+=("${extra_paths[@]}")

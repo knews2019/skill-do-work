@@ -38,7 +38,7 @@ awk -v anchor="$anchor" -v entry_file="$changelog_entry_file" '
 [ "$(grep -c "^## $new_version " "$work_dir/changelog-new")" -eq 1 ] || \
   { echo "FATAL: the new entry heading does not appear exactly once" >&2; exit 1; }
 
-python3 - "$work_dir" "$old_version" "$new_version" "$anchor" "$entry_title" <<'PY'
+uv run python3 - "$work_dir" "$old_version" "$new_version" "$anchor" "$entry_title" <<'PY'
 import json, sys
 work, old, new, anchor, title = sys.argv[1:6]
 def target(path, oldf, newf):
