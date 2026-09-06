@@ -12,7 +12,7 @@ tdd: false
 maintenance: true
 depends_on: [REQ-596]
 related: [REQ-555, REQ-595, REQ-596]
-write_set: [skills/do-work/docs/prescribed-shell-primitives.md]
+write_set: [skills/do-work/docs/prescribed-shell-primitives.md, skills/do-work/actions/commit.md, skills/do-work-toolbox/actions/inspect.md]
 title: 'Correct ten stale claims across the rest of the prescribed-shell guide'
 ---
 
@@ -53,8 +53,17 @@ before rewriting it, because a replacement sentence that is also wrong is worse 
 - Check every other claim in each section you open, the way REQ-595 checked all fourteen Mechanics cells
   and REQ-596 checked its two sections. The sweep reports 37 claims checked across these sections; a
   claim it marked accurate is evidence, but a claim it did not reach is not.
-- No sentence may generalize over two commands that behave differently. That shape has now shipped
-  twice in this file.
+- No sentence may generalize over two commands that behave differently. That shape has been caught three
+  times in this file within the visible history — REQ-555, REQ-595 and REQ-596 — and the sentence
+  REQ-596 replaced predates that history.
+- **Two shipped callers now contradict the guide and are in this request's write set.**
+  `skills/do-work/actions/commit.md:85` still names the `do-work/archive/**/REQ-*.md` glob REQ-596
+  replaced, and still says the delegated check "prints one `<owner>\t<path>` row per candidate — a
+  `REQ-NNN` id, or `-` for unassociated", with line 87 adding that files coming back `-` remain
+  unassociated. `protected-inventory associate` never prints a `-` row; only the separate
+  `associate-files.sh` entry point does. Check `../do-work-toolbox/actions/inspect.md` for the same two
+  claims. The guide is the canonical home those actions point at, so a caller disagreeing with it is the
+  same defect one file over.
 
 ## Constraints
 
