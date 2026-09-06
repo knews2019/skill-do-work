@@ -32,7 +32,6 @@ session_depth: light
 
 
 
-- REQ-597: Correct ten stale claims across the rest of the prescribed-shell guide — claimed 2026-09-06T06:59:15Z — writer: vm:/home/user/skill-do-work
 
 
 - REQ-600: Put the SIGPIPE trap in the prime shell authors read, and fix the one shipped block that carries it — claimed 2026-09-06T07:26:22Z — writer: vm:/home/user/skill-do-work
