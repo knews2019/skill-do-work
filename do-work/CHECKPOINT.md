@@ -18,3 +18,4 @@ session_depth: light
 
 ## In Progress (interrupted)
 
+- REQ-604: Make atomic-download refuse an occupied target the same way in dry-run and live, and check its stat — claimed 2026-09-06T13:15:49Z — writer: t2s-Virtual-Machine.local:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2

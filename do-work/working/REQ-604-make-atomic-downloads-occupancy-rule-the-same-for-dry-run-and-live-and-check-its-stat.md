@@ -1,6 +1,6 @@
 ---
 id: REQ-604
-status: pending
+status: claimed
 domain: general
 created_at: 2026-09-06T08:19:05Z
 user_request: UR-105
@@ -13,6 +13,7 @@ depends_on: [REQ-601]
 related: [REQ-597]
 write_set: [skills/do-work/tools/do-work-cli/internal/corehelpers/commands.go, skills/do-work/tools/do-work-cli/internal/corehelpers/commands_test.go, skills/do-work/docs/prescribed-shell-primitives.md]
 title: 'Make atomic-download refuse an occupied target the same way in dry-run and live, and check its stat'
+claimed_at: 2026-09-06T13:15:49Z
 ---
 
 # Make Atomic-Download Refuse an Occupied Target the Same Way in Dry-Run and Live, and Check Its Stat
