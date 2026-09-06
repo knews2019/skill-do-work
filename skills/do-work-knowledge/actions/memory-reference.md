@@ -85,9 +85,10 @@ The script owns tokenization, scoring, recency weighting, attribution, sorting, 
 Probe for an embedding backend; first hit wins. The list is illustrative — any backend that can embed text qualifies:
 
 ```bash
-ollama list 2>/dev/null | grep -qiE 'embed'   # a local embedding model is pulled
-command -v embed >/dev/null 2>&1               # a standalone embed CLI
-[ -n "${OPENAI_API_KEY:-}${VOYAGE_API_KEY:-}" ] # an embeddings API key is exported
+ollama_models="$(ollama list 2>/dev/null || true)"  # no ollama, or a stopped daemon, means no model: the empty listing is the answer
+grep -qiE 'embed' <<<"$ollama_models"               # a local embedding model is pulled
+command -v embed >/dev/null 2>&1                    # a standalone embed CLI
+[ -n "${OPENAI_API_KEY:-}${VOYAGE_API_KEY:-}" ]     # an embeddings API key is exported
 ```
 
 If a backend is found: chunk candidates by daily-log `##` headings (working-memory.md is one chunk per section), embed query + chunks, rank by cosine similarity, then **merge with the lexical results by reciprocal-rank fusion** (score = Σ 1/(60 + rank) across both lists) and keep each chunk's attribution. If no backend is found: silently proceed lexical-only — same graceful degradation as `../../do-work-board/actions/board.md` without Go. Never install, download, or prompt for a backend from inside `recall`.
