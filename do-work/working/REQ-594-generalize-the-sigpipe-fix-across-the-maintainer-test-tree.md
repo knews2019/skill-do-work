@@ -274,3 +274,28 @@ are prose and outside the walk by file type rather than by exemption.
   explicit status assertion rather than a bare herestring
 - [ ] The two already-broken guards fire on the input that used to pass silently
 - [ ] The release lands before the repository-wide guard, so the gate is never red between steps
+
+## Pre-Flight
+
+**Green gate at `ceeea69`**, the revision the builder branches from.
+`bash _dev/tests/maintainer-verify.sh` printed `Maintainer verification passed.` and exited 0, gate
+wall 61s. One `SKIP` line, the heavy-only one every fast run prints.
+
+**A fast gate is not sufficient evidence for this request, and the builder is told so.** 90 of the 128
+`_dev/tests` sites live under `prescribed-shell-cases/`, reached only through
+`staged-skills-contract.sh:189`, which `probe-lanes.sh` registers inside the heavy block. Two thirds of
+the conversions are invisible to a fast run, so the `staged-skills`, `updater` and `installer` heavy
+lanes are required evidence, each reporting its own exit line.
+
+**The baseline is re-measured at the branch point rather than replayed from the request.** REQ-593's
+shipped scanner over `git ls-files -z -- '*.sh'` reports 129 offending logical lines in 22 of 93 files;
+the request's own regex reports 140 matches over 23 files. The scanner's number is the one this request
+drives to zero.
+
+**The environment the gate needs**, recorded once: `NODE_OPTIONS` and the `GIT_CONFIG_COUNT` /
+`GIT_CONFIG_KEY_*` / `GIT_CONFIG_VALUE_*` triples unset, `GIT_CONFIG_GLOBAL` pointed at a config
+carrying `commit.gpgsign = false`, and `QUEUE_KANBAN_BROWSER` at the container's Chromium.
+
+**The builder works in an isolated worktree** at
+`../skill-do-work-worktrees/worktree-agent-REQ-594-quiet-grep-pipelines`, branched from `ceeea69`, and
+hands back one file to the main checkout without staging or committing anything there.
