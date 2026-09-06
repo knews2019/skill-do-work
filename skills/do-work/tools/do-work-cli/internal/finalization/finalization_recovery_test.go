@@ -520,7 +520,7 @@ type semanticLegacyFixture struct {
 	ownedPaths []string
 }
 
-func seedSemanticLegacyTail(t *testing.T, repositoryRoot string) semanticLegacyFixture {
+func buildSemanticLegacyFixture(t testing.TB, repositoryRoot string) semanticLegacyFixture {
 	t.Helper()
 	workingPath := "do-work/working/REQ-700-semantic.md"
 	archivePath := "do-work/archive/UR-700/REQ-700-semantic.md"
@@ -580,6 +580,24 @@ func seedSemanticLegacyTail(t *testing.T, repositoryRoot string) semanticLegacyF
 	})}
 }
 
+func seedSemanticLegacyTail(t *testing.T, repositoryRoot string) semanticLegacyFixture {
+	t.Helper()
+	entries, err := os.ReadDir(repositoryRoot)
+	if err == nil && (len(entries) == 0 || (len(entries) == 1 && entries[0].Name() == ".git")) {
+		initSemanticLegacyTemplate(t)
+		if err := os.RemoveAll(filepath.Join(repositoryRoot, ".git")); err != nil {
+			t.Fatalf("clean repositoryRoot before copying template: %v", err)
+		}
+		if err := os.CopyFS(repositoryRoot, os.DirFS(semanticLegacyTemplateRoot)); err != nil {
+			t.Fatalf("copy semantic legacy template: %v", err)
+		}
+		return semanticLegacyFixture{
+			ownedPaths: append([]string(nil), semanticLegacyOwnedPaths...),
+		}
+	}
+	return buildSemanticLegacyFixture(t, repositoryRoot)
+}
+
 func seedSimpleDiscoveredTail(t *testing.T, repositoryRoot, requestID, ownedPath string) {
 	t.Helper()
 	archivePath := "do-work/archive/" + requestID + "-fixture.md"
@@ -606,23 +624,20 @@ func seedTwoSimpleDiscoveredTails(t *testing.T, repositoryRoot string) {
 
 func seedPlannedFinalization(t *testing.T, provenanceMode string) (string, string) {
 	t.Helper()
-	repositoryRoot := newFinalizationRepository(t)
+	initPlannedFinalizationTemplate(t)
+	repositoryRoot := t.TempDir()
+	if err := os.CopyFS(repositoryRoot, os.DirFS(plannedFinalizationTemplateRoot)); err != nil {
+		t.Fatalf("copy planned finalization template: %v", err)
+	}
 	requestPath := "do-work/working/REQ-720.md"
 	checkpointPath := "do-work/CHECKPOINT.md"
-	writeFinalizationFile(t, repositoryRoot, requestPath, "---\nid: REQ-720\ntitle: Planned fixture\nstatus: claimed\nclaimed_at: 2026-09-02T08:00:00Z\ncommit:\n---\n\n## Implementation Summary\n- `implementation.txt` (modified)\n")
-	writeFinalizationFile(t, repositoryRoot, checkpointPath, "# Session Checkpoint\n\n## In Progress (interrupted)\n\n- REQ-720: Planned fixture — claimed now — writer: host:/repo\n")
-	writeFinalizationFile(t, repositoryRoot, "implementation.txt", "before\n")
-	runFinalizationGit(t, repositoryRoot, "add", ".")
-	runFinalizationGit(t, repositoryRoot, "commit", "-qm", "seed")
-	seedCommit := strings.TrimSpace(runFinalizationGit(t, repositoryRoot, "rev-parse", "--short=12", "HEAD"))
-	writeFinalizationFile(t, repositoryRoot, "implementation.txt", "after\n")
 	manifest := Manifest{
 		RequestID: "REQ-720", RequestPath: requestPath, WriterLabel: "host:/repo", Transition: "complete", TerminalStatus: "completed",
-		CompletedAt: "2026-09-02T09:00:00Z", ExpectedRequestSHA256: digestFile(t, repositoryRoot, requestPath), ExpectedCheckpointSHA256: digestFile(t, repositoryRoot, checkpointPath),
+		CompletedAt: "2026-09-02T09:00:00Z", ExpectedRequestSHA256: plannedFinalizationRequestSHA256, ExpectedCheckpointSHA256: plannedFinalizationCheckpointSHA256,
 		CommitPaths: []string{requestPath, "do-work/archive/REQ-720.md", checkpointPath, "implementation.txt"}, CommitMessage: "[REQ-720] finalize planned fixture", ProvenanceMode: provenanceMode,
 	}
 	if provenanceMode == ProvenanceSuppliedCommit {
-		manifest.ImplementationHash = seedCommit
+		manifest.ImplementationHash = plannedFinalizationSeedCommit
 	}
 	manifestPath := filepath.Join(t.TempDir(), "manifest.json")
 	contents, err := json.Marshal(manifest)
@@ -907,4 +922,89 @@ func seedTwoPlannedFinalizations(t *testing.T) string {
 		}
 	}
 	return repositoryRoot
+}
+
+func TestPreparedRecoveryTemplateIsolation(t *testing.T) {
+	t.Run("semantic legacy template isolation", func(t *testing.T) {
+		repoA := newFinalizationRepository(t)
+		repoB := newFinalizationRepository(t)
+		fixtureA := seedSemanticLegacyTail(t, repoA)
+		fixtureB := seedSemanticLegacyTail(t, repoB)
+
+		if !reflect.DeepEqual(fixtureA.ownedPaths, fixtureB.ownedPaths) {
+			t.Fatalf("fixtures disagree on ownedPaths: %#v vs %#v", fixtureA.ownedPaths, fixtureB.ownedPaths)
+		}
+
+		// Mutate repoA: working file edits, new file, new commit, deletion
+		writeFinalizationFile(t, repoA, "implementation.txt", "mutated A\n")
+		writeFinalizationFile(t, repoA, "isolated-dirt.txt", "dirt A\n")
+		runFinalizationGit(t, repoA, "add", ".")
+		runFinalizationGit(t, repoA, "commit", "-qm", "mutated A commit")
+		_ = os.Remove(filepath.Join(repoA, "notes.txt"))
+
+		// Verify repoB is completely unaffected
+		if got := readFinalizationFile(t, repoB, "implementation.txt"); got != "after\n" {
+			t.Fatalf("repoB implementation.txt leaked mutation: %q", got)
+		}
+		if _, err := os.Stat(filepath.Join(repoB, "isolated-dirt.txt")); !os.IsNotExist(err) {
+			t.Fatalf("repoB contains repoA's new file: %v", err)
+		}
+		if got := readFinalizationFile(t, repoB, "notes.txt"); got != "unrelated\n" {
+			t.Fatalf("repoB notes.txt affected by repoA deletion: %q", got)
+		}
+		if headB := strings.TrimSpace(runFinalizationGit(t, repoB, "log", "-1", "--format=%s")); headB != "seed" {
+			t.Fatalf("repoB head commit changed: %q", headB)
+		}
+
+		// Verify underlying template root is also untouched
+		if got := readFinalizationFile(t, semanticLegacyTemplateRoot, "implementation.txt"); got != "after\n" {
+			t.Fatalf("template implementation.txt was mutated: %q", got)
+		}
+		if _, err := os.Stat(filepath.Join(semanticLegacyTemplateRoot, "isolated-dirt.txt")); !os.IsNotExist(err) {
+			t.Fatalf("template root contains repoA's new file: %v", err)
+		}
+	})
+
+	t.Run("planned finalization template isolation", func(t *testing.T) {
+		repo1, manifestPath1 := seedPlannedFinalization(t, ProvenancePrimaryCommit)
+		repo2, _ := seedPlannedFinalization(t, ProvenancePrimaryCommit)
+
+		// Mutate repo1: modify implementation, add new file, commit
+		writeFinalizationFile(t, repo1, "implementation.txt", "mutated 1\n")
+		writeFinalizationFile(t, repo1, "extra-1.txt", "extra\n")
+		runFinalizationGit(t, repo1, "add", ".")
+		runFinalizationGit(t, repo1, "commit", "-qm", "commit 1")
+
+		// Verify repo2 is completely unaffected
+		if got := readFinalizationFile(t, repo2, "implementation.txt"); got != "after\n" {
+			t.Fatalf("repo2 implementation.txt leaked mutation: %q", got)
+		}
+		if _, err := os.Stat(filepath.Join(repo2, "extra-1.txt")); !os.IsNotExist(err) {
+			t.Fatalf("repo2 contains repo1's new file: %v", err)
+		}
+		if head2 := strings.TrimSpace(runFinalizationGit(t, repo2, "log", "-1", "--format=%s")); head2 != "seed" {
+			t.Fatalf("repo2 head commit changed: %q", head2)
+		}
+
+		// Verify template root is untouched
+		if got := readFinalizationFile(t, plannedFinalizationTemplateRoot, "implementation.txt"); got != "after\n" {
+			t.Fatalf("template implementation.txt was mutated: %q", got)
+		}
+		if _, err := os.Stat(filepath.Join(plannedFinalizationTemplateRoot, "extra-1.txt")); !os.IsNotExist(err) {
+			t.Fatalf("template root contains repo1's new file: %v", err)
+		}
+
+		// Verify manifest1 is valid and points to repo1
+		var m1 Manifest
+		data, err := os.ReadFile(manifestPath1)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := json.Unmarshal(data, &m1); err != nil {
+			t.Fatal(err)
+		}
+		if m1.RequestID != "REQ-720" || m1.ProvenanceMode != ProvenancePrimaryCommit {
+			t.Fatalf("unexpected manifest1: %#v", m1)
+		}
+	})
 }

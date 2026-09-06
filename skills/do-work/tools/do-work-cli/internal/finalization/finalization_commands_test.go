@@ -8,6 +8,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/commandruntime"
@@ -129,7 +130,19 @@ func TestReadJournalRejectsNoncanonicalPayloadDirectory(t *testing.T) {
 // subprocess spawning — not the assertions — is what put this package's largest test
 // files near the gate's 30s per-file duration budget. One directory copy over the ten
 // small files a template-free `git init` produces replaces all three (REQ-574).
-var finalizationRepositoryTemplate string
+var (
+	finalizationRepositoryTemplate string
+
+	semanticLegacyTemplateOnce sync.Once
+	semanticLegacyTemplateRoot string
+	semanticLegacyOwnedPaths   []string
+
+	plannedFinalizationTemplateOnce     sync.Once
+	plannedFinalizationTemplateRoot     string
+	plannedFinalizationSeedCommit       string
+	plannedFinalizationRequestSHA256    string
+	plannedFinalizationCheckpointSHA256 string
+)
 
 func TestMain(m *testing.M) {
 	templateRoot, err := os.MkdirTemp("", "finalization-git-template-")
@@ -162,11 +175,60 @@ func TestMain(m *testing.M) {
 		os.Exit(1)
 	}
 	code := m.Run()
+	if semanticLegacyTemplateRoot != "" {
+		_ = os.RemoveAll(semanticLegacyTemplateRoot)
+	}
+	if plannedFinalizationTemplateRoot != "" {
+		_ = os.RemoveAll(plannedFinalizationTemplateRoot)
+	}
 	os.RemoveAll(templateRoot)
 	os.Exit(code)
 }
 
-func newFinalizationRepository(t *testing.T) string {
+func initSemanticLegacyTemplate(t testing.TB) {
+	semanticLegacyTemplateOnce.Do(func() {
+		root, err := os.MkdirTemp("", "finalization-semantic-legacy-template-")
+		if err != nil {
+			t.Fatalf("create semantic legacy template dir: %v", err)
+		}
+		if err := os.CopyFS(root, os.DirFS(finalizationRepositoryTemplate)); err != nil {
+			_ = os.RemoveAll(root)
+			t.Fatalf("copy base repo template to semantic legacy template: %v", err)
+		}
+		fixture := buildSemanticLegacyFixture(t, root)
+		semanticLegacyTemplateRoot = root
+		semanticLegacyOwnedPaths = fixture.ownedPaths
+	})
+}
+
+func initPlannedFinalizationTemplate(t testing.TB) {
+	plannedFinalizationTemplateOnce.Do(func() {
+		root, err := os.MkdirTemp("", "finalization-planned-template-")
+		if err != nil {
+			t.Fatalf("create planned finalization template dir: %v", err)
+		}
+		if err := os.CopyFS(root, os.DirFS(finalizationRepositoryTemplate)); err != nil {
+			_ = os.RemoveAll(root)
+			t.Fatalf("copy base repo template to planned finalization template: %v", err)
+		}
+		requestPath := "do-work/working/REQ-720.md"
+		checkpointPath := "do-work/CHECKPOINT.md"
+		writeFinalizationFile(t, root, requestPath, "---\nid: REQ-720\ntitle: Planned fixture\nstatus: claimed\nclaimed_at: 2026-09-02T08:00:00Z\ncommit:\n---\n\n## Implementation Summary\n- `implementation.txt` (modified)\n")
+		writeFinalizationFile(t, root, checkpointPath, "# Session Checkpoint\n\n## In Progress (interrupted)\n\n- REQ-720: Planned fixture — claimed now — writer: host:/repo\n")
+		writeFinalizationFile(t, root, "implementation.txt", "before\n")
+		runFinalizationGit(t, root, "add", ".")
+		runFinalizationGit(t, root, "commit", "-qm", "seed")
+		seedCommit := strings.TrimSpace(runFinalizationGit(t, root, "rev-parse", "--short=12", "HEAD"))
+		writeFinalizationFile(t, root, "implementation.txt", "after\n")
+
+		plannedFinalizationTemplateRoot = root
+		plannedFinalizationSeedCommit = seedCommit
+		plannedFinalizationRequestSHA256 = digestFile(t, root, requestPath)
+		plannedFinalizationCheckpointSHA256 = digestFile(t, root, checkpointPath)
+	})
+}
+
+func newFinalizationRepository(t testing.TB) string {
 	t.Helper()
 	root := t.TempDir()
 	if err := os.CopyFS(root, os.DirFS(finalizationRepositoryTemplate)); err != nil {
@@ -175,7 +237,7 @@ func newFinalizationRepository(t *testing.T) string {
 	return root
 }
 
-func runFinalizationGit(t *testing.T, root string, arguments ...string) string {
+func runFinalizationGit(t testing.TB, root string, arguments ...string) string {
 	t.Helper()
 	command := exec.Command("git", append([]string{"-C", root}, arguments...)...)
 	output, err := command.CombinedOutput()
@@ -185,7 +247,7 @@ func runFinalizationGit(t *testing.T, root string, arguments ...string) string {
 	return string(output)
 }
 
-func writeFinalizationFile(t *testing.T, root, path, contents string) {
+func writeFinalizationFile(t testing.TB, root, path, contents string) {
 	t.Helper()
 	absolute := filepath.Join(root, filepath.FromSlash(path))
 	if err := os.MkdirAll(filepath.Dir(absolute), 0o755); err != nil {
@@ -196,7 +258,7 @@ func writeFinalizationFile(t *testing.T, root, path, contents string) {
 	}
 }
 
-func readFinalizationFile(t *testing.T, root, path string) string {
+func readFinalizationFile(t testing.TB, root, path string) string {
 	t.Helper()
 	contents, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(path)))
 	if err != nil {
@@ -205,7 +267,7 @@ func readFinalizationFile(t *testing.T, root, path string) string {
 	return string(contents)
 }
 
-func digestFile(t *testing.T, root, path string) string {
+func digestFile(t testing.TB, root, path string) string {
 	t.Helper()
 	contents, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(path)))
 	if err != nil {
