@@ -18,3 +18,4 @@ session_depth: light
 
 ## In Progress (interrupted)
 
+- REQ-614: A9: Batch repeated Git reads in the exercised code — claimed 2026-09-06T15:36:25Z — writer: t2s-Virtual-Machine.local:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2
