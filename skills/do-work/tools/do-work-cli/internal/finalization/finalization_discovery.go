@@ -34,10 +34,70 @@ var enumerateTrackedReleasePaths = func(repositoryRoot string) ([]string, error)
 	return gitLines(repositoryRoot, "ls-files")
 }
 
+type discoverySession struct {
+	repositoryRoot string
+	headCommit     string
+	headImages     map[string]FileImage
+	trackedPaths   []string
+}
+
+func newDiscoverySession(repositoryRoot string) *discoverySession {
+	return &discoverySession{
+		repositoryRoot: repositoryRoot,
+		headCommit:     currentHead(repositoryRoot),
+		headImages:     make(map[string]FileImage),
+	}
+}
+
+func (s *discoverySession) headFileImage(path string) (FileImage, error) {
+	clean := filepath.ToSlash(filepath.Clean(path))
+	clean = strings.TrimPrefix(clean, "./")
+	clean = strings.TrimPrefix(clean, "/")
+	if img, ok := s.headImages[clean]; ok {
+		return img, nil
+	}
+	ref := "HEAD:" + clean
+	if s.headCommit != "" {
+		ref = s.headCommit + ":" + clean
+	}
+	contents, err := exec.Command("git", "-C", s.repositoryRoot, "show", ref).Output()
+	if err != nil {
+		img := FileImage{Path: path, Exists: false}
+		s.headImages[clean] = img
+		return img, nil
+	}
+	img := FileImage{Path: path, Exists: true, Bytes: contents, Mode: uint32(0o644)}
+	s.headImages[clean] = img
+	return img, nil
+}
+
+func (s *discoverySession) headReleaseImage() releaseownership.ReadImage {
+	return func(path string) ([]byte, bool) {
+		image, err := s.headFileImage(path)
+		if err != nil || !image.Exists {
+			return nil, false
+		}
+		return image.Bytes, true
+	}
+}
+
+func (s *discoverySession) trackedReleasePaths() ([]string, error) {
+	if s.trackedPaths != nil {
+		return s.trackedPaths, nil
+	}
+	paths, err := enumerateTrackedReleasePaths(s.repositoryRoot)
+	if err != nil {
+		return nil, err
+	}
+	s.trackedPaths = paths
+	return paths, nil
+}
+
 // discoverFinalizationJournals freezes one protected inventory before reading
 // request bytes. Staged state always refuses. Unstaged X/XD rows are deliberately
 // omitted from association, so their contents are never read, staged, or changed.
 func discoverFinalizationJournals(repositoryRoot string, assumeSoleReleaser bool) ([]*Journal, *resultmodel.CommandResult) {
+	session := newDiscoverySession(repositoryRoot)
 	rows, err := corehelpers.ReadProtectedInventory(repositoryRoot)
 	if err != nil {
 		failure := commandFailure(repositoryRoot, CommandRecoverFinalization, "FINALIZATION-DISCOVERY-INVENTORY", err.Error())
@@ -142,7 +202,7 @@ func discoverFinalizationJournals(repositoryRoot string, assumeSoleReleaser bool
 		}
 		matches := []*discoveryCandidate{}
 		for _, candidate := range candidates {
-			if lifecyclePathProves(repositoryRoot, path, origins[path], destinations[path], candidate) {
+			if lifecyclePathProves(session, path, origins[path], destinations[path], candidate) {
 				matches = append(matches, candidate)
 			}
 		}
@@ -179,7 +239,7 @@ func discoverFinalizationJournals(repositoryRoot string, assumeSoleReleaser bool
 	} else {
 		ambiguous = append(ambiguous, unresolvedShared...)
 	}
-	releaseAmbiguous, releaseFailure := associateReleaseMetadata(repositoryRoot, dirty, candidates)
+	releaseAmbiguous, releaseFailure := associateReleaseMetadata(session, dirty, candidates)
 	if releaseFailure != nil {
 		failure := discoveryRefusal(repositoryRoot, releaseFailure.code, releaseFailure.reason, releaseFailure.paths)
 		return nil, &failure
@@ -214,7 +274,7 @@ func discoverFinalizationJournals(repositoryRoot string, assumeSoleReleaser bool
 	})
 	journals := make([]*Journal, 0, len(admitted))
 	for _, candidate := range admitted {
-		journal, buildError := discoveredJournal(repositoryRoot, candidate)
+		journal, buildError := discoveredJournal(session, candidate)
 		if buildError != nil {
 			failure := discoveryRefusal(repositoryRoot, "FINALIZATION-DISCOVERY-INVALID", buildError.Error(), candidate.effectivePaths)
 			return nil, &failure
@@ -321,7 +381,7 @@ func legacyCandidates(snapshot *repositorymodel.RepositorySnapshot) []*discovery
 	return candidates
 }
 
-func lifecyclePathProves(repositoryRoot, path, origin, destination string, candidate *discoveryCandidate) bool {
+func lifecyclePathProves(session *discoverySession, path, origin, destination string, candidate *discoveryCandidate) bool {
 	record := candidate.request.TypedRecord
 	requestID := record.RequestID
 	requestPath := requestRepositoryPath(candidate.request.RelativePath)
@@ -330,27 +390,27 @@ func lifecyclePathProves(repositoryRoot, path, origin, destination string, candi
 		if path != requestPath && (destination != "" || strings.HasPrefix(path, "do-work/working/")) {
 			requestOrigin = path
 		}
-		if lifecycleRequestMoveProves(repositoryRoot, requestPath, requestOrigin, destination, requestID) {
+		if lifecycleRequestMoveProves(session, requestPath, requestOrigin, destination, requestID) {
 			return true
 		}
 	}
 	if path == "do-work/CHECKPOINT.md" {
-		return checkpointRemovalProves(repositoryRoot, path, requestID)
+		return checkpointRemovalProves(session, path, requestID)
 	}
 	if path == "do-work/calibration-log.tsv" {
-		return calibrationAppendProves(repositoryRoot, path, record)
+		return calibrationAppendProves(session, path, record)
 	}
 	if !strings.HasPrefix(path, "do-work/") {
 		return false
 	}
-	if followupPathProves(repositoryRoot, path, requestID) {
+	if sessionFollowupPathProves(session, path, requestID) {
 		return true
 	}
-	return userRequestMoveProves(repositoryRoot, path, origin, destination, record.UserRequestID, requestID)
+	return userRequestMoveProves(session, path, origin, destination, record.UserRequestID, requestID)
 }
 
-func lifecycleRequestMoveProves(repositoryRoot, requestPath, origin, destination, requestID string) bool {
-	after, err := currentImage(repositoryRoot, requestPath)
+func lifecycleRequestMoveProves(session *discoverySession, requestPath, origin, destination, requestID string) bool {
+	after, err := currentImage(session.repositoryRoot, requestPath)
 	if err != nil || !after.Exists {
 		return false
 	}
@@ -365,9 +425,9 @@ func lifecycleRequestMoveProves(repositoryRoot, requestPath, origin, destination
 	if beforePath == "" {
 		beforePath = "do-work/working/" + filepath.Base(requestPath)
 	}
-	before, err := headFileImage(repositoryRoot, beforePath)
+	before, err := session.headFileImage(beforePath)
 	if err != nil || !before.Exists {
-		before, err = headFileImage(repositoryRoot, requestPath)
+		before, err = session.headFileImage(requestPath)
 	}
 	if err != nil || !before.Exists {
 		return false
@@ -383,12 +443,13 @@ func lifecycleRequestMoveProves(repositoryRoot, requestPath, origin, destination
 	return bytes.Equal(beforeDocument.DocumentBytes(), afterDocument.DocumentBytes())
 }
 
-func checkpointRemovalProves(repositoryRoot, checkpointPath, requestID string) bool {
-	before, err := exec.Command("git", "-C", repositoryRoot, "show", "HEAD:"+checkpointPath).Output()
-	if err != nil {
+func checkpointRemovalProves(session *discoverySession, checkpointPath, requestID string) bool {
+	beforeImage, err := session.headFileImage(checkpointPath)
+	if err != nil || !beforeImage.Exists {
 		return false
 	}
-	after, err := currentImage(repositoryRoot, checkpointPath)
+	before := beforeImage.Bytes
+	after, err := currentImage(session.repositoryRoot, checkpointPath)
 	if err != nil || !after.Exists {
 		return false
 	}
@@ -418,12 +479,12 @@ func checkpointRemovalProves(repositoryRoot, checkpointPath, requestID string) b
 	return true
 }
 
-func calibrationAppendProves(repositoryRoot, path string, record requestmodel.RequestRecord) bool {
-	before, err := exec.Command("git", "-C", repositoryRoot, "show", "HEAD:"+path).Output()
-	if err != nil {
-		before = nil
+func calibrationAppendProves(session *discoverySession, path string, record requestmodel.RequestRecord) bool {
+	var before []byte
+	if beforeImage, err := session.headFileImage(path); err == nil && beforeImage.Exists {
+		before = beforeImage.Bytes
 	}
-	after, err := currentImage(repositoryRoot, path)
+	after, err := currentImage(session.repositoryRoot, path)
 	if err != nil || !after.Exists || !bytes.HasPrefix(after.Bytes, before) {
 		return false
 	}
@@ -442,7 +503,11 @@ func calibrationAppendProves(repositoryRoot, path string, record requestmodel.Re
 }
 
 func followupPathProves(repositoryRoot, path, requestID string) bool {
-	current, err := currentImage(repositoryRoot, path)
+	return sessionFollowupPathProves(newDiscoverySession(repositoryRoot), path, requestID)
+}
+
+func sessionFollowupPathProves(session *discoverySession, path, requestID string) bool {
+	current, err := currentImage(session.repositoryRoot, path)
 	if err != nil || !current.Exists {
 		return false
 	}
@@ -450,7 +515,7 @@ func followupPathProves(repositoryRoot, path, requestID string) bool {
 	if err != nil || document.TypedRecord().AddendumTo != requestID {
 		return false
 	}
-	before, err := headFileImage(repositoryRoot, path)
+	before, err := session.headFileImage(path)
 	if err != nil {
 		return false
 	}
@@ -488,7 +553,7 @@ func boundedFollowupFoldProves(appended []byte, requestID string) bool {
 	return terminalMarker.Match(appended)
 }
 
-func userRequestMoveProves(repositoryRoot, path, origin, destination, userRequestID, requestID string) bool {
+func userRequestMoveProves(session *discoverySession, path, origin, destination, userRequestID, requestID string) bool {
 	if userRequestID == "" {
 		return false
 	}
@@ -514,8 +579,8 @@ func userRequestMoveProves(repositoryRoot, path, origin, destination, userReques
 			return false
 		}
 	}
-	before, beforeError := headFileImage(repositoryRoot, sourcePath)
-	after, afterError := currentImage(repositoryRoot, destinationPath)
+	before, beforeError := session.headFileImage(sourcePath)
+	after, afterError := currentImage(session.repositoryRoot, destinationPath)
 	if beforeError != nil || afterError != nil || !before.Exists || !after.Exists || !bytes.Equal(before.Bytes, after.Bytes) {
 		return false
 	}
@@ -564,7 +629,7 @@ type configuredReleaseSet struct {
 	workspaceMirrors map[string]workspaceReleaseMirror
 }
 
-func associateReleaseMetadata(repositoryRoot string, dirty map[string]bool, candidates []*discoveryCandidate) ([]string, *releaseDiscoveryFailure) {
+func associateReleaseMetadata(session *discoverySession, dirty map[string]bool, candidates []*discoveryCandidate) ([]string, *releaseDiscoveryFailure) {
 	paths := []string{}
 	for path := range dirty {
 		if releaseownership.IsReleaseMetadataPath(path) {
@@ -581,8 +646,8 @@ func associateReleaseMetadata(repositoryRoot string, dirty map[string]bool, cand
 	changelogPaths := []string{}
 	var firstChangelogBefore, firstChangelogAfter []byte
 	for _, path := range paths {
-		before, _ := headFileImage(repositoryRoot, path)
-		after, err := currentImage(repositoryRoot, path)
+		before, _ := session.headFileImage(path)
+		after, err := currentImage(session.repositoryRoot, path)
 		if err != nil || !before.Exists || !after.Exists {
 			return paths, nil
 		}
@@ -614,7 +679,7 @@ func associateReleaseMetadata(repositoryRoot string, dirty map[string]bool, cand
 	for version := range oldVersions {
 		oldVersion = version
 	}
-	configured, err := configuredReleaseMetadataPaths(repositoryRoot, oldVersion, firstChangelogBefore, changedSources)
+	configured, err := configuredReleaseMetadataPaths(session, oldVersion, firstChangelogBefore, changedSources)
 	if err != nil {
 		return nil, &releaseDiscoveryFailure{code: "FINALIZATION-DISCOVERY-RELEASE-ENUMERATION", reason: "configured release-member enumeration failed closed: " + err.Error(), paths: paths}
 	}
@@ -657,8 +722,8 @@ func associateReleaseMetadata(repositoryRoot string, dirty map[string]bool, cand
 		if strings.HasPrefix(filepath.Base(path), "CHANGELOG") {
 			continue
 		}
-		before, _ := headFileImage(repositoryRoot, path)
-		after, _ := currentImage(repositoryRoot, path)
+		before, _ := session.headFileImage(path)
+		after, _ := currentImage(session.repositoryRoot, path)
 		if mirror, ok := configured.workspaceMirrors[path]; ok {
 			if !workspaceMirrorReplacement(path, before.Bytes, after.Bytes, oldVersion, newVersion, mirror) {
 				return paths, nil
@@ -678,8 +743,8 @@ func associateReleaseMetadata(repositoryRoot string, dirty map[string]bool, cand
 		}
 		valid := true
 		for _, path := range changelogPaths {
-			before, _ := headFileImage(repositoryRoot, path)
-			after, _ := currentImage(repositoryRoot, path)
+			before, _ := session.headFileImage(path)
+			after, _ := currentImage(session.repositoryRoot, path)
 			inserted, ok := singleInsertion(before.Bytes, after.Bytes)
 			if !ok || !bytes.Contains(inserted, []byte(candidate.request.TypedRecord.RequestID)) || !bytes.Contains(inserted, []byte(newVersion)) {
 				valid = false
@@ -797,8 +862,8 @@ func tomlSectionVersion(contents []byte, acceptedSections []string) (string, boo
 	return "", false
 }
 
-func configuredReleaseMetadataPaths(repositoryRoot, oldVersion string, changelogBefore []byte, changedSources map[string]releaseVersionChange) (configuredReleaseSet, error) {
-	tracked, err := enumerateTrackedReleasePaths(repositoryRoot)
+func configuredReleaseMetadataPaths(session *discoverySession, oldVersion string, changelogBefore []byte, changedSources map[string]releaseVersionChange) (configuredReleaseSet, error) {
+	tracked, err := session.trackedReleasePaths()
 	if err != nil {
 		return configuredReleaseSet{}, err
 	}
@@ -806,7 +871,7 @@ func configuredReleaseMetadataPaths(repositoryRoot, oldVersion string, changelog
 	for _, path := range tracked {
 		trackedSet[filepath.ToSlash(filepath.Clean(path))] = true
 	}
-	ownership, err := releaseownership.AffirmativeOwnership(tracked, trackedSet, headReleaseImage(repositoryRoot))
+	ownership, err := releaseownership.AffirmativeOwnership(tracked, trackedSet, session.headReleaseImage())
 	if err != nil {
 		return configuredReleaseSet{}, err
 	}
@@ -817,7 +882,7 @@ func configuredReleaseMetadataPaths(repositoryRoot, oldVersion string, changelog
 		if !ownedPaths[path] || !releaseownership.IsReleaseMetadataPath(path) {
 			continue
 		}
-		before, err := headFileImage(repositoryRoot, path)
+		before, err := session.headFileImage(path)
 		if err != nil || !before.Exists {
 			return configuredReleaseSet{}, fmt.Errorf("read tracked release member %s", path)
 		}
@@ -848,7 +913,7 @@ func configuredReleaseMetadataPaths(repositoryRoot, oldVersion string, changelog
 		if !ownedManifests[manifestPath] || change.oldVersion != oldVersion {
 			continue
 		}
-		manifest, readError := headFileImage(repositoryRoot, manifestPath)
+		manifest, readError := session.headFileImage(manifestPath)
 		if readError != nil || !manifest.Exists {
 			return configuredReleaseSet{}, fmt.Errorf("read tracked workspace member %s", manifestPath)
 		}
@@ -862,7 +927,7 @@ func configuredReleaseMetadataPaths(repositoryRoot, oldVersion string, changelog
 			mirror := mirrors[rootLockPath]
 			mirror.kind = kind
 			if kind == "npm" {
-				before, err := headFileImage(repositoryRoot, rootLockPath)
+				before, err := session.headFileImage(rootLockPath)
 				if err != nil || !before.Exists {
 					return configuredReleaseSet{}, fmt.Errorf("read tracked workspace lock %s", rootLockPath)
 				}
@@ -879,7 +944,7 @@ func configuredReleaseMetadataPaths(repositoryRoot, oldVersion string, changelog
 				paths = append(paths, rootLockPath)
 			}
 		}
-		workspaceManifest, memberPath, ok := releaseownership.FindOwnedWorkspaceOwner(trackedSet, ownedManifests, manifestPath, base, headReleaseImage(repositoryRoot))
+		workspaceManifest, memberPath, ok := releaseownership.FindOwnedWorkspaceOwner(trackedSet, ownedManifests, manifestPath, base, session.headReleaseImage())
 		if !ok {
 			continue
 		}
@@ -1423,19 +1488,19 @@ func ambiguousSharedRemainder(dirty map[string]bool) []string {
 	return sharedprimitives.UniqueSortedStrings(blocked)
 }
 
-func discoveredJournal(repositoryRoot string, candidate *discoveryCandidate) (*Journal, error) {
+func discoveredJournal(session *discoverySession, candidate *discoveryCandidate) (*Journal, error) {
 	requestID := candidate.request.TypedRecord.RequestID
 	requestPath := requestRepositoryPath(candidate.request.RelativePath)
-	journalPath, _, err := journalLocations(repositoryRoot, requestID)
+	journalPath, _, err := journalLocations(session.repositoryRoot, requestID)
 	if err != nil {
 		return nil, err
 	}
 	paths := sharedprimitives.UniqueSortedStrings(candidate.effectivePaths)
-	lifecyclePreimages, lifecyclePostimages, err := discoveredImages(repositoryRoot, candidate.lifecyclePaths)
+	lifecyclePreimages, lifecyclePostimages, err := discoveredImages(session, candidate.lifecyclePaths)
 	if err != nil {
 		return nil, err
 	}
-	releasePreimages, releasePostimages, err := discoveredImages(repositoryRoot, candidate.releasePaths)
+	releasePreimages, releasePostimages, err := discoveredImages(session, candidate.releasePaths)
 	if err != nil {
 		return nil, err
 	}
@@ -1447,7 +1512,7 @@ func discoveredJournal(repositoryRoot string, candidate *discoveryCandidate) (*J
 		CommitMessage: "[" + requestID + "] finalize recovered legacy tail", ProvenanceMode: ProvenancePrimaryCommit,
 	}
 	manifestBytes, _ := json.Marshal(manifest)
-	preparedHead, preparedDiff, err := preparedCommitIdentity(repositoryRoot, paths)
+	preparedHead, preparedDiff, err := preparedCommitIdentity(session.repositoryRoot, paths)
 	if err != nil {
 		return nil, err
 	}
@@ -1465,15 +1530,15 @@ func discoveredJournal(repositoryRoot string, candidate *discoveryCandidate) (*J
 	return journal, nil
 }
 
-func discoveredImages(repositoryRoot string, paths []string) ([]FileImage, []FileImage, error) {
+func discoveredImages(session *discoverySession, paths []string) ([]FileImage, []FileImage, error) {
 	preimages := make([]FileImage, 0, len(paths))
 	postimages := make([]FileImage, 0, len(paths))
 	for _, path := range sharedprimitives.UniqueSortedStrings(paths) {
-		before, err := headFileImage(repositoryRoot, path)
+		before, err := session.headFileImage(path)
 		if err != nil {
 			return nil, nil, err
 		}
-		after, err := currentImage(repositoryRoot, path)
+		after, err := currentImage(session.repositoryRoot, path)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -1520,24 +1585,14 @@ func implementationSummaryPaths(contents string) ([]string, error) {
 }
 
 func headFileImage(repositoryRoot, path string) (FileImage, error) {
-	contents, err := exec.Command("git", "-C", repositoryRoot, "show", "HEAD:"+path).Output()
-	if err != nil {
-		return FileImage{Path: path}, nil
-	}
-	return FileImage{Path: path, Exists: true, Bytes: contents, Mode: uint32(0o644)}, nil
+	return newDiscoverySession(repositoryRoot).headFileImage(path)
 }
 
 // headReleaseImage adapts the committed image to the shared ownership
 // reader. Recovery classifies work that is already committed, so HEAD is
 // the image its ownership judgment must be made against.
 func headReleaseImage(repositoryRoot string) releaseownership.ReadImage {
-	return func(path string) ([]byte, bool) {
-		image, err := headFileImage(repositoryRoot, path)
-		if err != nil || !image.Exists {
-			return nil, false
-		}
-		return image.Bytes, true
-	}
+	return newDiscoverySession(repositoryRoot).headReleaseImage()
 }
 
 func preparedCommitIdentity(repositoryRoot string, paths []string) (string, string, error) {

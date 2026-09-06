@@ -470,13 +470,44 @@ func planTargets(plan *StatePlan) {
 }
 
 func existingDirtyTrackedPaths(repositoryRoot string, paths []string) []string {
-	var dirty []string
-	for _, path := range paths {
-		if command := exec.Command("git", "-C", repositoryRoot, "ls-files", "--error-unmatch", "--", path); command.Run() != nil {
+	if len(paths) == 0 {
+		return nil
+	}
+	arguments := append([]string{"-C", repositoryRoot, "status", "--porcelain=v1", "-z", "--untracked-files=no", "--"}, paths...)
+	output, err := exec.Command("git", arguments...).Output()
+	if err != nil {
+		var dirty []string
+		for _, path := range paths {
+			if command := exec.Command("git", "-C", repositoryRoot, "ls-files", "--error-unmatch", "--", path); command.Run() != nil {
+				continue
+			}
+			output, statusError := exec.Command("git", "-C", repositoryRoot, "status", "--porcelain=v1", "-z", "--untracked-files=all", "--", path).Output()
+			if statusError == nil && len(output) > 0 {
+				dirty = append(dirty, path)
+			}
+		}
+		return dirty
+	}
+	dirtyMap := map[string]bool{}
+	entries := strings.Split(string(output), "\x00")
+	for i := 0; i < len(entries); i++ {
+		entry := entries[i]
+		if len(entry) < 4 {
 			continue
 		}
-		output, statusError := exec.Command("git", "-C", repositoryRoot, "status", "--porcelain=v1", "-z", "--untracked-files=all", "--", path).Output()
-		if statusError == nil && len(output) > 0 {
+		statusCode := entry[:2]
+		path := entry[3:]
+		dirtyMap[filepath.ToSlash(filepath.Clean(path))] = true
+		if strings.HasPrefix(statusCode, "R") || strings.HasPrefix(statusCode, "C") {
+			if i+1 < len(entries) && entries[i+1] != "" {
+				dirtyMap[filepath.ToSlash(filepath.Clean(entries[i+1]))] = true
+				i++
+			}
+		}
+	}
+	var dirty []string
+	for _, path := range paths {
+		if dirtyMap[filepath.ToSlash(filepath.Clean(path))] {
 			dirty = append(dirty, path)
 		}
 	}
@@ -506,13 +537,36 @@ func preimageProvenDirtyPaths(repositoryRoot string, dirtyPaths []string, accept
 }
 
 func existingUntrackedPaths(repositoryRoot string, paths []string) []string {
-	var untracked []string
+	var existing []string
 	for _, path := range paths {
-		if _, statError := os.Lstat(filepath.Join(repositoryRoot, filepath.FromSlash(path))); statError != nil {
-			continue
+		if _, statError := os.Lstat(filepath.Join(repositoryRoot, filepath.FromSlash(path))); statError == nil {
+			existing = append(existing, path)
 		}
-		command := exec.Command("git", "-C", repositoryRoot, "--literal-pathspecs", "ls-files", "--error-unmatch", "--", path)
-		if command.Run() != nil {
+	}
+	if len(existing) == 0 {
+		return nil
+	}
+	arguments := append([]string{"-C", repositoryRoot, "--literal-pathspecs", "ls-files", "-z", "--"}, existing...)
+	output, err := exec.Command("git", arguments...).Output()
+	if err != nil {
+		var untracked []string
+		for _, path := range existing {
+			command := exec.Command("git", "-C", repositoryRoot, "--literal-pathspecs", "ls-files", "--error-unmatch", "--", path)
+			if command.Run() != nil {
+				untracked = append(untracked, path)
+			}
+		}
+		return untracked
+	}
+	tracked := map[string]bool{}
+	for _, entry := range strings.Split(string(output), "\x00") {
+		if entry != "" {
+			tracked[filepath.ToSlash(filepath.Clean(entry))] = true
+		}
+	}
+	var untracked []string
+	for _, path := range existing {
+		if !tracked[filepath.ToSlash(filepath.Clean(path))] {
 			untracked = append(untracked, path)
 		}
 	}

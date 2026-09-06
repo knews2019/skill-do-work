@@ -1,6 +1,9 @@
 package requeststate
 
 import (
+	"os"
+	"os/exec"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -140,6 +143,105 @@ func TestCancelMultilineReasonRequiresSafeSummary(t *testing.T) {
 		plan := BuildPlan(snapshot, dependencygraph.BuildGraph(snapshot), StateOptions{Transition: TransitionCancel, RequestID: "REQ-223", CancellationConfirmed: true, DependentDisposition: "leave", CancellationReason: "line one\nline two", CancellationSummary: summary})
 		if plan.Refusal == nil || (plan.Refusal.Code != "CANCEL-REASON-SUMMARY-MISSING" && plan.Refusal.Code != "CANCEL-REASON-UNSAFE") {
 			t.Fatalf("unsafe/missing summary %q plan = %#v", summary, plan)
+		}
+	}
+}
+
+func TestBatchedExistingUntrackedAndDirtyTrackedPaths(t *testing.T) {
+	repositoryRoot := t.TempDir()
+	for _, args := range [][]string{
+		{"init", "-q"},
+		{"config", "user.name", "Test"},
+		{"config", "user.email", "test@test"},
+	} {
+		cmd := exec.Command("git", append([]string{"-C", repositoryRoot}, args...)...)
+		if err := cmd.Run(); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	cleanFile := "clean.txt"
+	modFile := "mod.txt"
+	stagedFile := "staged.txt"
+	delFile := "del.txt"
+	untrackedFile := "untracked.txt"
+	untrackedSpaceFile := "untracked with spaces.txt"
+	missingFile := "missing.txt"
+
+	writeFile := func(relPath, content string) {
+		full := filepath.Join(repositoryRoot, filepath.FromSlash(relPath))
+		if err := os.MkdirAll(filepath.Dir(full), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(full, []byte(content), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	writeFile(cleanFile, "clean\n")
+	writeFile(modFile, "mod\n")
+	writeFile(stagedFile, "staged\n")
+	writeFile(delFile, "del\n")
+
+	gitCmd := func(args ...string) {
+		cmd := exec.Command("git", append([]string{"-C", repositoryRoot}, args...)...)
+		if output, err := cmd.CombinedOutput(); err != nil {
+			t.Fatalf("git %v: %v: %s", args, err, output)
+		}
+	}
+
+	gitCmd("add", cleanFile, modFile, stagedFile, delFile)
+	gitCmd("commit", "-qm", "initial")
+
+	// Now modify files
+	writeFile(modFile, "mod dirty\n")
+	writeFile(stagedFile, "staged dirty\n")
+	gitCmd("add", stagedFile)
+	if err := os.Remove(filepath.Join(repositoryRoot, delFile)); err != nil {
+		t.Fatal(err)
+	}
+	writeFile(untrackedFile, "untracked\n")
+	writeFile(untrackedSpaceFile, "untracked spaces\n")
+
+	// Test empty paths
+	if got := existingUntrackedPaths(repositoryRoot, nil); len(got) != 0 {
+		t.Fatalf("expected nil/empty for nil paths, got %v", got)
+	}
+	if got := existingDirtyTrackedPaths(repositoryRoot, nil); len(got) != 0 {
+		t.Fatalf("expected nil/empty for nil paths, got %v", got)
+	}
+
+	allPaths := []string{
+		cleanFile,
+		modFile,
+		delFile,
+		stagedFile,
+		untrackedFile,
+		untrackedSpaceFile,
+		missingFile,
+	}
+
+	// 1. Untracked paths: must return only untracked files that exist on disk
+	untracked := existingUntrackedPaths(repositoryRoot, allPaths)
+	expectedUntracked := []string{untrackedFile, untrackedSpaceFile}
+	if len(untracked) != len(expectedUntracked) {
+		t.Fatalf("existingUntrackedPaths = %v, want %v", untracked, expectedUntracked)
+	}
+	for i, p := range expectedUntracked {
+		if untracked[i] != p {
+			t.Errorf("untracked[%d] = %q, want %q", i, untracked[i], p)
+		}
+	}
+
+	// 2. Dirty tracked paths: must return mod, del, staged (in the order requested)
+	dirty := existingDirtyTrackedPaths(repositoryRoot, allPaths)
+	expectedDirty := []string{modFile, delFile, stagedFile}
+	if len(dirty) != len(expectedDirty) {
+		t.Fatalf("existingDirtyTrackedPaths = %v, want %v", dirty, expectedDirty)
+	}
+	for i, p := range expectedDirty {
+		if dirty[i] != p {
+			t.Errorf("dirty[%d] = %q, want %q", i, dirty[i], p)
 		}
 	}
 }
