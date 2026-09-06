@@ -1,6 +1,6 @@
 ---
 id: REQ-593
-status: pending
+status: claimed
 domain: testing
 created_at: 2026-09-06T02:02:41Z
 user_request: UR-105
@@ -14,6 +14,7 @@ depends_on: []
 related: [REQ-552, REQ-554, REQ-585, REQ-592]
 write_set: [skills/do-work/tools/do-work-cli/internal/heavyverification/heavy_run.go, skills/do-work/tools/do-work-cli/internal/heavyverification/heavy_commands.go, skills/do-work/tools/do-work-cli/internal/heavyverification/heavy_run_test.go, skills/do-work/tools/do-work-cli/internal/requeststate/state_apply_test.go, _dev/tests/update-script-behavior.sh]
 title: '[impact-critical] Make the heavy tier report a red lane as red, and fix two fixtures that cannot pass under the lane environment'
+claimed_at: 2026-09-06T02:03:03Z
 ---
 
 # Make the Heavy Tier's Verdict Honest
