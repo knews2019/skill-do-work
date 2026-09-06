@@ -14,7 +14,7 @@ if command -v jq >/dev/null 2>&1; then
   grep -q 'foreign.sh' "$hooks_project/.claude/settings.json" || fail_case 'install-memory-hooks partial-merge case clobbered a foreign hook'
 else
   manual_output="$(PATH=/usr/bin:/bin "$knowledge_scripts/install-memory-hooks.sh" "$hooks_project" "$repo_root/skills/do-work-knowledge/hooks/memory-hooks.json")" || fail_case 'install-memory-hooks no-jq case returned nonzero'
-  printf '%s' "$manual_output" | grep -q 'MANUAL STEP' || fail_case 'install-memory-hooks no-jq case omitted manual status'
+  grep -q 'MANUAL STEP' <<<"$manual_output" || fail_case 'install-memory-hooks no-jq case omitted manual status'
 fi
 
 prescribed_shell_finish
