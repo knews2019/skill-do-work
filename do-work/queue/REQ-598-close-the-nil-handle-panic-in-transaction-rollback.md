@@ -12,7 +12,7 @@ tdd: true
 maintenance: false
 depends_on: [REQ-558]
 related: [REQ-558]
-write_set: [skills/do-work/tools/do-work-cli/internal/gittransaction/git_transaction.go]
+write_set: [skills/do-work/tools/do-work-cli/internal/gittransaction/git_transaction.go, skills/do-work/tools/do-work-cli/internal/gittransaction/git_transaction_test.go, _dev/tests/audit-lockins.sh]
 title: 'Close the live nil-handle panic in transaction rollback, and decide the handle once instead of eleven times'
 ---
 
@@ -68,9 +68,12 @@ pinned the rest at eight. The full trace is in
 
 ## Constraints
 
-- One file plus the lock-in count in `_dev/tests/audit-lockins.sh`, which REQ-558 pinned at 8 as a
-  floor and a ceiling. Changing the guard count without changing the pin fails the gate, which is the
-  pin working.
+- One source file, its test file, and the lock-in count in `_dev/tests/audit-lockins.sh`, which
+  REQ-558 pinned at 8 as a floor and a ceiling. **The pin blocks this request by design**: the minimum
+  fix adds a ninth guard and the preferred fix removes all eight, and either fails the fast tier until
+  the pin moves in the same change. REQ-558's review reproduced that — its stated minimum fix, applied
+  verbatim, fails `audit-lockins.sh` with `9 nil-root guards`. Move the pin to the new count in this
+  request, and say in the block's comment why it moved.
 - This is a transaction boundary. Every change is behaviour-preserving on the paths that work today, and
   the package's existing transaction and rollback tests must stay green unchanged.
 - Do not remove the keep-going behaviour at the open site without replacing what it delivers.

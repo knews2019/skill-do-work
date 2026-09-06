@@ -614,11 +614,20 @@ fi
 # package suite cannot stand in for the floor: no test in it reaches any no-handle branch, so
 # every one of those deletions compiles and passes.
 #
-# The pattern is the audit finding's own reproduce expression, so the finding, the request and
-# this ratchet all count the same sites.
+# The pattern is anchored to a guard SHAPE — an `if` on a non-comment line testing root against
+# nil in either operand order — rather than to the audit's bare `root [=!]= nil` text. The review
+# of REQ-558 showed the bare text lets one comment line pay for one deleted guard: delete a guard
+# whose absence panics a rollback, write `// assumes root != nil` above the function, and the count
+# is still eight. It also showed `if nil == root` dropping the count for a no-op rewrite. Both are
+# closed here. What the pattern still cannot see: a guard rewritten as a helper call
+# (`if hasRoot(root)`), which is a change to the pinned shape and is expected to move this pin
+# consciously.
+#
+# The pin is expected to move once more: REQ-598 owns the one consumer of the handle that has no
+# guard at all, quarantineAndRollbackPrivate, and either adds a ninth guard or makes all eight dead.
 nil_root_guard_file="$repo_root/skills/do-work/tools/do-work-cli/internal/gittransaction/git_transaction.go"
 nil_root_guard_expected_sites=8
-nil_root_guard_sites="$(rg -n 'root [=!]= nil' "$nil_root_guard_file")"
+nil_root_guard_sites="$(rg -n '^[[:space:]]*(\}[[:space:]]*else[[:space:]]+)?if\b[^/]*\b(root [=!]= nil|nil [=!]= root)\b' "$nil_root_guard_file")"
 nil_root_guard_scan_status=$?
 # rg's status is read, not its output: exit 1 (no match) and exit 2 (could not search) both
 # print nothing, and a ratchet that judged the text alone would read a scan that never ran as a
@@ -634,7 +643,7 @@ elif [ "$nil_root_guard_scan_status" -eq 1 ]; then
 else
   nil_root_guard_site_count="$(printf '%s\n' "$nil_root_guard_sites" | wc -l | tr -d ' ')"
   if [ "$nil_root_guard_site_count" -ne "$nil_root_guard_expected_sites" ]; then
-    printf 'FAIL: %s nil-root guards in %s; REQ-558 pinned exactly %s — one per consumer of the rollback handle, and no more:\n' \
+    printf 'FAIL: %s nil-root guards in %s; REQ-558 pinned exactly %s after tracing every consumer of the rollback handle — one consumer, quarantineAndRollbackPrivate, is still unguarded and REQ-598 owns it:\n' \
       "$nil_root_guard_site_count" "${nil_root_guard_file#"$repo_root/"}" \
       "$nil_root_guard_expected_sites" >&2
     printf '%s\n' "$nil_root_guard_sites" | sed 's|^|  |' >&2
