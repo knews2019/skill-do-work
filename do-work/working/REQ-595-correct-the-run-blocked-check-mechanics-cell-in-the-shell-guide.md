@@ -91,3 +91,9 @@ whatever the audit finds.
 **This request exists because REQ-555 declined to widen.** The stale cell was found during REQ-555's
 review and was equally stale before that change, so folding it in would have broken that request's
 "scope is exactly this finding class" constraint. Same finding class, its own request.
+
+## Plan
+
+**Planning not required** — Route B: one file, and the work is whatever the fourteen-cell audit finds.
+
+*Skipped by work action*
