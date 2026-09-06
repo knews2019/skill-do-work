@@ -2,6 +2,13 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.305.33 — Compact Prime Routing and Recurring-Lesson Traps (2026-09-06)
+
+Prime readers load less repeated detail while keeping access to the original guidance and incident history.
+
+- Move oversized action, shell and CLI reference material into paired lesson satellites and refresh their routing-index estimates.
+- Add missing Stakes, correct the updater’s equal-version outcome, and promote eight recurring lesson families into prime traps.
+
 ## 0.305.32 — Release Planning Ignores Unrelated Missing Manifests (2026-09-06)
 
 A root-only release can now proceed when an independent component's tracked project manifest has an unstaged deletion.

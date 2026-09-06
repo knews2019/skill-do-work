@@ -12,72 +12,7 @@ Before an action file is added, state — in its description blockquote or an ac
 
 ## Template
 
-Action files follow a consistent structure. When adding or modifying actions, use this template:
-
-```markdown
-# [Action Name] Action
-
-> **Part of the do-work skill.** [1 sentence: what it does and when it's invoked.]
-
-[Optional: read-only flag, philosophy, or key principles — 1-2 paragraphs max]
-
-## When to Use
-
-**Use when:** [2-4 bullets — positive triggers]
-**Do NOT use when:** [2-3 bullets — explicit exclusions, with redirect to correct action]
-
-## Input
-
-[What parameters drive behavior: $ARGUMENTS, target REQ/UR, modes]
-
-## Steps
-
-### Step 1: [First action]
-
-### Step 2: [...]
-
-### Step N: [Final action]
-
-## Output Format
-
-[What gets produced — report structure, file changes, or user-facing output]
-
-## Rules
-
-[Include only if earned — see below. Constraints specific to this action, not restated engineering hygiene.]
-
-## Common Rationalizations
-
-[Include only if earned — see below.]
-
-| If you're thinking...              | STOP. Instead...     | Because...               |
-| ---------------------------------- | -------------------- | ------------------------ |
-| [Shortcut the agent might attempt] | [What to do instead] | [Why the shortcut fails] |
-
-## Red Flags
-
-[Include only if earned — see below.]
-
-- [Observable symptom that something went wrong — helps reviewers detect problems after the fact]
-
-## Verification Checklist
-
-[Include only if earned — see below.]
-
-- [ ] [Concrete exit criterion with evidence requirement]
-```
-
-**Required:** Description blockquote, Steps (numbered). **Common:** Input, Output Format, When to Use.
-
-**Earned, not mandatory: Rules, Common Rationalizations, Red Flags, Verification Checklist.** Add one only when the file has something a capable model would otherwise get wrong — do-work machinery (a queue/pipeline mechanic, a frontmatter or schema contract) or a hard-won failure mode with a traceable origin (a real REQ or incident this stops from recurring). "This is generic engineering advice a capable model already follows" is an explicit *non*-reason — true or not, it doesn't earn a section.
-
-**The test, not a vibe:** before adding a Common Rationalizations row, ask *can I name the specific failure this row prevents, and where it happened?* No → don't add the row. If every row in a table fails that test, omit the whole section — a generic table is worse than no table: it teaches the reader the section is decorative, so they stop reading the ones that aren't. Apply the same test to Rules and Red Flags — specific to this action, not restated hygiene ("write tests," "don't skip validation"). When a file has nothing that passes, omit the section entirely; don't ship it empty or generic to satisfy the template.
-
-**State intent, not a directive rule, when a capable model can infer the rest.** "Report drift, don't fix it inline" gives the model this action's boundary in one line — a five-line Rules section re-deriving why inline fixes are bad adds nothing a capable model didn't already know.
-
-`_dev/tests/contract-regressions.sh` locks in the Common Rationalizations rule: a new action file's table must contain at least one do-work-specific noun (illustrative, not exhaustive, per Closed Enumerations Go Stale in `prime-shell-commands.md` — e.g. REQ, UR, queue, frontmatter, pipeline, archive) or the suite fails, naming the file and the fix.
-
-**Section order when present:** Philosophy → When to Use → Input → Steps → Output → Rules → Common Rationalizations → Red Flags → Verification Checklist.
+See [the action template and earned-section rules](lessons-action-files.md#template).
 
 ## Accepted Variants
 
@@ -109,11 +44,14 @@ A skill or action description is loaded whether or not the thing gets used, so i
 
 ## Agent Compatibility
 
-Action files must work with **any** agentic coding tool:
+See [`lessons-action-files.md#agent-compatibility`](lessons-action-files.md#agent-compatibility).
 
-- Use generalized language ("spawn a subagent", "use your environment's ask-user prompt") — no tool-specific APIs in action files.
-- Each action file should work as a standalone prompt pasted into a basic chat interface.
-- Design for the floor: the simplest agent that can read/write files and run shell commands must be able to follow the instructions. Subagents and parallel execution are nice-to-haves.
+## Stakes
+
+- Action routing and authored artifacts
+  Req: keep owning skill routers, emitted fields and downstream readers aligned.
+  Value: the requested action is discoverable and its output remains usable across agents.
+  Risk: a local prose change can silently bypass a workflow or strand records; follow the Cross-Referencing contract before shipping.
 
 ## Lessons
 
