@@ -306,3 +306,29 @@ wording; the lock-in fails when the prose returns and passes on the scaffold bot
 the canonicalization probe accepts the new section; the gate is green.
 
 *Checked by work action*
+
+## Testing
+
+**Tests run:** the canonical gate, plus every probe that could plausibly notice prose moving between
+shipped instruction files — `audit-lockins.sh`, `prescribed-shell-canonicalization.sh`,
+`action-shell-blocks.sh`, `defensive-surface-audit.sh`, `contract-regressions.sh`, and the heavy-tier
+`prescribed-shell-scripts-behavior.sh`.
+
+**Result:** ✓ Green. The canonical gate exited 0 at the merge revision `f45a913` — **79s wall**, exit
+status read directly from `$?`. Each probe's own line:
+`Audit lock-in regressions passed.`;
+`Prescribed shell primitive canonicalization checks passed.`;
+`Shell-block lint passed: 74 fenced blocks and 33 shipped shell files; ShellCheck enabled.`;
+`Defensive-surface exact deletion regressions passed.`;
+`Contract regression checks passed.` — which also reports `near_identical_cross_file_pairs 0`, the
+independent check that the duplication is gone rather than reworded;
+and `Prescribed shell script behavior probes passed (110 named script cases across 18 per-script files).`
+
+**The assertion's red was taken against the pre-move tree, not asserted.** Extracted standalone and run
+against `git show`-restored copies of both action files at the base revision, it printed
+`FAIL: commit.md and inspect.md share 46 identical lines; ceiling is 30.` plus four
+`FAIL: manual "do it by hand" fallback remains in a shipped action:` lines naming each site by path
+and line. Those four sites are what proves the glob is live — the version this request inherited used
+`*/actions/*.md`, which matches nothing because a single `*` does not cross a directory separator.
+
+*Verified by work action*
