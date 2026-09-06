@@ -2,6 +2,16 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.305.11 — The Rest of the Shell Guide Accurately Describes Shipped Primitives, and Inspect Associates Files (2026-09-06)
+
+Sixteen stale claims across five sections of the prescribed shell primitives guide, plus the association prose in commit and inspect, now truthfully describe what the Go implementations and syscalls do. The two prescribed blocks in inspect that called the protected inventory wrapper with positional arguments now pass --quarantine-name, so inspect associates files with requests rather than failing with an unknown option error.
+
+- inspect.md now passes `--quarantine-name do-work-inspect-secret-quarantine` to `protected-inventory.sh` rather than positional arguments, enabling the action to associate modified files with requests.
+- Both `commit` and `inspect` now accurately document that the protected inventory wrapper takes no `--repo-root` argument, uses the current directory as the repository root, drops untracked hidden files under `do-work/` as metadata, and prints no placeholder rows for unassociated candidates.
+- The prescribed shell guide's Verified Exact Publication section accurately distinguishes syscall semantics (`rename(2)` silently replacing a regular file while refusing a directory, `link(2)` refusing all existing targets) from shell `mv` and `ln` nesting.
+- Lifecycle timing claims now truthfully state that elapsed seconds are derived by the command, that child processes inherit the CLI's stderr handle directly, and that redaction applies to the executable name rather than caller parameters.
+- Commit file listing guidance clarifies quoting rules and the necessity of `--root` for the initial commit, and documents that `publish-portfolio-summary` and report image batch generation run through Go commands rather than non-existent retained shell scripts.
+
 ## 0.305.10 — Every Shipped Shell Block Is Now Checked for the Pipe Shape That Hides a Failed Command (2026-09-06)
 
 0.305.5 removed `producer | grep -q PATTERN` from the repository's own scripts because, under the shell setting they all run with, the producer's death reads as the pattern's absence. One shipped block still carried it: the probe in the memory guidance that asks a local model server whether an embedding model is pulled. It could not misfire in practice, because that listing is far smaller than the size where the shape starts to fail, but it is the block agents copy, and copied guidance is where the shape spreads from.

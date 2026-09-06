@@ -18,5 +18,4 @@ session_depth: light
 
 ## In Progress (interrupted)
 
-- REQ-597: Correct ten stale claims across the rest of the prescribed-shell guide — claimed 2026-09-06T12:38:06Z — writer: t2s-Virtual-Machine.local:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2
 
