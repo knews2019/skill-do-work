@@ -270,6 +270,37 @@ satisfied.
   `find` reported every unreadable subdirectory; the walk stops at the first. Both yield a non-empty
   evidence string, so the gate behaves identically — only the evidence text differs.
 
+### Remediation qualification (after review)
+
+**Passed.** Remediation merge range `f45a9137..ce64a0a4`, three files — two of the five already-declared
+write-set files plus this request's own record. Cumulative range `7eadf50e..ce64a0a4`.
+
+- **The review's headline finding is closed with the proof it actually needed.** The failed-copy case
+  now runs the publish under a file-size limit with a real staging directory, so `os.CreateTemp`
+  succeeds and the staged write itself fails, and it asserts the in-process write error rather than the
+  finding code four sites in that function share. The obligation was to show it red against the
+  PRE-CHANGE tree: restored onto a full rebuild of `7eadf50e` — verified to still carry
+  `exec.Command("cp", …)` and `exec.Command("find", …)` — the case reports
+  `architecture-report-preflight: 9 cases, 1 failure.` and exits 1. Against the shipped code with the
+  new error handling ablated it fails four ways. The old case did neither.
+- **A trap in the new mechanism is recorded rather than left to bite.** The launcher builds its binary
+  with `go tool`, which cannot write under the file-size limit, so the build must already be warm.
+  Earlier cases in the same file warm it; if they ever stop, the launcher exits 2 and this case fails
+  loudly instead of passing on the wrong failure. That is written into the fixture beside the limit.
+- **The lock-in fix deviates from the remedy the review named, and the deviation is right.** The
+  review's `exec\.Command(Context)?\([^)]*"(find|cp|…)"` also matches
+  `exec.Command("git", "rm", "-r", path)` — 85 of this module's exec sites run git, so that false
+  positive is reachable. The committed pattern still requires the coreutils name to be the command
+  argument itself, first for `exec.Command` and straight after the context for `exec.CommandContext`.
+  Both spellings were injected into shipped code and both go red; the git spelling does not.
+- **The stale-path blindness is closed loudly.** The two module directories moved into one array with a
+  `[ -d ]` guard that fails and counts. Renaming a scanned directory in a scratch tree now prints
+  `FAIL: coreutils lock-in cannot scan a missing module directory: …` and exits 1, where it previously
+  reported clean forever because rg's exit status was discarded and its stderr sent to `/dev/null`.
+- **The record was corrected where it was false.** The request's own Constraints section still forbade
+  the test changes its write set declared; both clauses are struck through and pointed at D-01, which
+  carries the measurement that forced the override.
+
 Requirements traced: no coreutils spawn in shipped code in either module; the archive-walk failure
 still detected with non-empty evidence; the draft copy still landing with the same bytes and mode; a
 lock-in that fails when a site returns; and the heavy tier green, not just the fast gate.
@@ -300,6 +331,14 @@ green; with the Go edits applied and the `PATH` shims still in place, five asser
 files flipped red — which is the measurement that justified widening the write set. After the rewrite
 both are green, and against a scratch build with the two guards removed both fail again, so neither
 case is passing vacuously.
+
+**Remediation testing.** The canonical gate exited 0 again at the remediation merge revision
+`ce64a0a4` — **79s wall**, exit status read directly from `$?`. The heavy-tier lane reported
+`Prescribed shell script behavior probes passed (110 named script cases across 18 per-script files).`
+with both rewritten files' own counts unchanged at 9 and 11. `bash _dev/tests/audit-lockins.sh` prints
+`Audit lock-in regressions passed.`; injecting either `exec.Command` or `exec.CommandContext` with a
+coreutils name turns it red, and injecting `exec.Command("git", "rm", …)` does not.
+`shellcheck --severity=warning -x` on both touched shell files exits 0.
 
 *Verified by work action*
 
@@ -357,3 +396,46 @@ Where the three reviewers split, and the call taken:
 **Follow-ups created:** None (9 findings report only)
 
 *Reviewed by review-work action*
+
+## Lessons Learned
+
+- **A fixture that controls behaviour with a fake binary on `PATH` dies silently the moment the code
+  stops shelling out.** Two of them did here, and both had been green for as long as they existed. The
+  general shape: any test whose mechanism is *outside* the process under test stops being a test when
+  the work moves inside it, and nothing in the suite says so — it just keeps passing. When a change
+  removes a subprocess, every fixture that shimmed that subprocess is suspect by construction, and the
+  cheap check is to restore the fixture onto the pre-change code and confirm it still goes red.
+- **"Assert a nonzero exit" is not an assertion.** Both rewritten cases initially passed on a failure
+  that was not the one they named — one of them on a guard the request had not even touched. A case
+  that names a failure must assert the text of that failure, or it will eventually pass on whatever
+  else happens to break first. The first remediation of this request existed entirely because that rule
+  was applied to only one of the two cases.
+- **A mechanism chosen to provoke a failure usually breaks something earlier than you think.**
+  Pointing `TMPDIR` at a regular file was supposed to fail the copy; it failed the temp-file creation
+  one guard above. Breaking `TMPDIR` also breaks the `go tool` build inside the CLI launcher unless
+  `GOTMPDIR` is set beside it. And `chmod 000` cannot make anything unreadable for a suite running as
+  root. Each of those was found by measuring, not by reading.
+- **A pattern that names a variable is a pattern that will miss.** The lock-in matched a context
+  argument spelled exactly `ctx` — while this repository's own naming rule pushes new code toward
+  `invocationContext`. The most likely future regression was the one the lock-in could not see.
+- **A guard that reads emptiness must first prove the thing it read was real.** The lock-in discarded
+  rg's exit status and its stderr, so a renamed directory would have reported clean forever. That is the
+  prime's "unchecked exit status reads as content" trap, in a file whose whole job is to catch drift.
+
+## Orientation
+
+The two replaced call sites are `archiveWalkFailure` in
+`skills/do-work/tools/do-work-cli/internal/corehelpers/commands.go` and the staged-draft copy in
+`skills/do-work/tools/do-work-cli/internal/toolboxcommands/architecture.go`. Neither has a Go test of
+its failure path; both are covered by heavy-tier fixture cases in
+`_dev/tests/prescribed-shell-cases/`, which run only under `DO_WORK_MAINTAINER_TIER=heavy` — a green
+fast gate says nothing about them. The lock-in that keeps a coreutils spawn from returning is Finding 9
+in `_dev/tests/audit-lockins.sh`, beside REQ-554's Finding 6.
+
+Three things are deliberately not solved here. The `filepath.WalkDir` probe reports a failure `find`
+did not — a subtree deeper than `PATH_MAX` — so detection is a strict superset rather than the same
+set; that divergence is what the archive fixture's own mechanism now depends on. No case anywhere
+covers a permission-denied archive, because the suite runs as root. And the compatibility-shim block in
+`architecture.go` is now a pure round-trip — it writes bytes to a temp file and reads the same bytes
+back before deleting it — which makes this request's "same mode" criterion unobservable by any test;
+the simplification that exposes is a follow-up, not this request's.
