@@ -169,6 +169,85 @@ func TestRunLanesReportsARedLaneThatAlsoPrintedASkipLine(t *testing.T) {
 	if len(result.Findings) != 1 || result.Findings[0].Code != "HEAVY-RUN-LANE-RED" {
 		t.Fatalf("failed lane finding = %#v", result.Findings)
 	}
+	// The verdict is the exit status and the announcement is the lane's own
+	// reason; an operator needs both, so the red finding carries the line the
+	// skipped finding would have carried.
+	redEvidence := strings.Join(result.Findings[0].Evidence, "\n")
+	if !strings.Contains(redEvidence, "exited 4") || !strings.Contains(redEvidence, "SKIP: no browser is available") {
+		t.Fatalf("the red finding dropped the lane's own announcement: %#v", result.Findings[0].Evidence)
+	}
+}
+
+// TestRunLanesRefusesARunThatNamesNoLane pins the second zero-value rule in
+// RunLanes, the same shape as the LaneTimeout one below. An empty LaneIDs used
+// to select no lanes and return a successful run with an empty lane list: the
+// heavy tier reporting green for verifying nothing. The CLI parser refuses it
+// too, but a caller that builds the struct in process never reaches the parser.
+func TestRunLanesRefusesARunThatNamesNoLane(t *testing.T) {
+	repositoryRoot := newHeavyRunRepository(t)
+
+	run, findings, err := RunLanes(LaneRunRequest{
+		RepositoryRoot: repositoryRoot, ManifestPath: "heavy-lanes.json",
+		LaneOutputWriter: io.Discard,
+	})
+	if err == nil {
+		t.Fatalf("a run naming no lane succeeded: lanes=%d findings=%d", len(run.Lanes), len(findings))
+	}
+	if refusalCode := LaneRunRefusalCode(err); refusalCode != "HEAVY-RUN-NO-LANE-REQUESTED" {
+		t.Fatalf("refusal code = %q, want HEAVY-RUN-NO-LANE-REQUESTED (err = %v)", refusalCode, err)
+	}
+	if len(run.Lanes) != 0 {
+		t.Fatalf("a refused run still reported lanes: %#v", run.Lanes)
+	}
+}
+
+// TestNestedLaneOutputNeverReachesThisProcessStderr is the assertion the writer
+// seam was missing. The lane that runs this package's tests is watched for
+// `SKIP:` on its own output, so a fixture lane's announcement reaching this
+// process's stderr is read by the parent runner as "the real lane did not run".
+// Compiling this package and running its test binary directly is the only way
+// that leak is visible from outside, which is why the lane it breaks cannot
+// catch it; this test watches the writer the leak travels through instead.
+func TestNestedLaneOutputNeverReachesThisProcessStderr(t *testing.T) {
+	repositoryRoot := newHeavyRunRepository(t)
+	readCapturedStderr := captureProcessStderr(t)
+
+	result := runHeavyLanes(t, repositoryRoot, "--lane", "skip-lane")
+
+	if result.Outcome != resultmodel.OutcomeSuccess || result.HeavyVerificationRun == nil {
+		t.Fatalf("run result = %#v", result)
+	}
+	for _, capturedLine := range strings.Split(readCapturedStderr(), "\n") {
+		if strings.HasPrefix(capturedLine, laneSkipPrefix) {
+			t.Fatalf("a fixture lane's announcement reached this process's stderr: %q; the enclosing heavy lane reads that as its own skip", capturedLine)
+		}
+	}
+}
+
+// captureProcessStderr redirects this process's stderr to a file for the rest
+// of the test and returns a reader for what landed there. It swaps the
+// os.Stderr variable rather than file descriptor 2, because that variable is
+// the seam: it is what the CLI handler passes as the lane output writer, and
+// what an in-package caller would pass by mistake.
+func captureProcessStderr(t *testing.T) func() string {
+	t.Helper()
+	captureFile, err := os.CreateTemp(t.TempDir(), "process-stderr-*.log")
+	if err != nil {
+		t.Fatalf("create the stderr capture file: %v", err)
+	}
+	originalStderr := os.Stderr
+	os.Stderr = captureFile
+	t.Cleanup(func() {
+		os.Stderr = originalStderr
+		_ = captureFile.Close()
+	})
+	return func() string {
+		capturedBytes, err := os.ReadFile(captureFile.Name())
+		if err != nil {
+			t.Fatalf("read the stderr capture file: %v", err)
+		}
+		return string(capturedBytes)
+	}
 }
 
 func TestRunLanesRefusesUnknownLaneBeforeExecuting(t *testing.T) {

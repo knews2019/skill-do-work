@@ -26,7 +26,7 @@ estimate:
 route: B
 dispatch_at: 2026-09-06T02:26:22Z
 builder_handback_at: 2026-09-06T02:26:22Z
-write_set: [skills/do-work/tools/do-work-cli/internal/heavyverification/heavy_run.go, skills/do-work/tools/do-work-cli/internal/heavyverification/heavy_commands.go, skills/do-work/tools/do-work-cli/internal/heavyverification/heavy_run_test.go, skills/do-work/tools/do-work-cli/internal/requeststate/state_apply_test.go, _dev/tests/update-script-behavior.sh]
+write_set: [skills/do-work/tools/do-work-cli/internal/heavyverification/heavy_run.go, skills/do-work/tools/do-work-cli/internal/heavyverification/heavy_commands.go, skills/do-work/tools/do-work-cli/internal/heavyverification/heavy_run_test.go, skills/do-work/tools/do-work-cli/internal/requeststate/state_apply_test.go, _dev/tests/update-script-behavior.sh, skills/do-work/tools/do-work-cli/prime-do-work-cli.md]
 title: '[impact-critical] Make the heavy tier report a red lane as red, and fix two fixtures that cannot pass under the lane environment'
 claimed_at: 2026-09-06T02:03:03Z
 ---

@@ -148,14 +148,56 @@ fi
 # first match. Reverting any converted site reintroduces that shape and is caught here rather
 # than trusted to a race that may not reproduce. `||` is not a pipe, and a grep reading a file
 # or a herestring has no writer to kill, so neither is flagged.
-verify_no_check_reads_a_quiet_grep_pipeline() {
-  local offending_lines
+# quiet_grep_pipeline_offenders prints every logical line in the named file that feeds an
+# early-leaving grep from a pipeline. The defect is a condition, not a spelling: a reader that
+# can exit before its writer is done, downstream of a pipe, under pipefail. So the scan works on
+# the condition's three ingredients instead of on the one spelling that was converted —
+# ordinary shell writes the same defect at least five other ways, and a regex naming only
+# today's shape goes stale the first time someone writes another (prime-shell-commands.md,
+# "Closed Enumerations Go Stale").
+#   * logical lines, not physical: a pipeline continued after a trailing `|` or `\` is one command;
+#   * any pipe stage after the first, so `command grep`, `LC_ALL=C grep` and `/usr/bin/grep` count;
+#   * any early-leaving option: -q, bundled -Eq, --quiet, --silent, -m/--max-count.
+quiet_grep_pipeline_offenders() {
   # awk rather than a grep pipeline so the scan reports its own failure instead of an
   # unreadable file reading as a clean file.
-  offending_lines="$(awk '
-    /^[[:space:]]*#/ { next }
-    /[^|]\|[[:space:]]*grep[[:space:]]+-[A-Za-z]*q/ { printf "%d: %s\n", NR, $0 }
-  ' "${BASH_SOURCE[0]}")" || return 1
+  awk '
+    function feeds_an_early_leaving_grep(command_text,   pipe_stages, stage_count, stage_index) {
+      gsub(/\|\|/, " OR ", command_text)
+      stage_count = split(command_text, pipe_stages, "|")
+      for (stage_index = 2; stage_index <= stage_count; stage_index++) {
+        if (pipe_stages[stage_index] ~ /(^|[^-[:alnum:]_])(e|f)?grep([[:space:]]|$)/ \
+          && pipe_stages[stage_index] ~ /(^|[[:space:]])(-[A-Za-z]*[qm][A-Za-z]*|--quiet|--silent|--max-count)([[:space:]=]|$)/) {
+          return 1
+        }
+      }
+      return 0
+    }
+    joined_command == "" && /^[[:space:]]*#/ { next }
+    {
+      physical_line = $0
+      sub(/[[:space:]]+$/, "", physical_line)
+      if (joined_command == "") { first_line_number = NR }
+      if (physical_line ~ /\|$/ || physical_line ~ /\\$/) {
+        sub(/\\$/, "", physical_line)
+        joined_command = joined_command physical_line
+        next
+      }
+      joined_command = joined_command physical_line
+      if (feeds_an_early_leaving_grep(joined_command)) { printf "%d: %s\n", first_line_number, joined_command }
+      joined_command = ""
+    }
+    END {
+      if (joined_command != "" && feeds_an_early_leaving_grep(joined_command)) {
+        printf "%d: %s\n", first_line_number, joined_command
+      }
+    }
+  ' "$1"
+}
+
+verify_no_check_reads_a_quiet_grep_pipeline() {
+  local offending_lines
+  offending_lines="$(quiet_grep_pipeline_offenders "${BASH_SOURCE[0]}")" || return 1
   [ -z "$offending_lines" ] && return 0
   printf 'quiet grep fed from a pipeline:\n%s\n' "$offending_lines" >&2
   return 1
@@ -164,6 +206,34 @@ verify_no_check_reads_a_quiet_grep_pipeline() {
 if ! verify_no_check_reads_a_quiet_grep_pipeline; then
   record_failure "this script feeds grep -q from a pipeline: under pipefail the writer's SIGPIPE death is reported as grep's verdict"
 fi
+
+# The scanner above is the only guard for the converted sites that carry no behavioral
+# assertion of their own, so the scanner itself is pinned. Each fixture line below is the same
+# SIGPIPE defect written a different ordinary way; all five passed the first regex unnoticed.
+# The pipe character is interpolated so this file's own source does not carry the shape its own
+# scanner looks for.
+verify_the_quiet_grep_scanner_catches_every_evasion() {
+  local fixture_path="$1" pipe_character='|' caught_count expected_count=5
+  cat > "$fixture_path" <<FIXTURE
+tar tzf archive.tgz $pipe_character
+  grep -q marker
+tar tzf archive.tgz $pipe_character grep --quiet marker
+tar tzf archive.tgz $pipe_character grep --silent marker
+tar tzf archive.tgz $pipe_character LC_ALL=C grep -q marker
+tar tzf archive.tgz $pipe_character command grep -q marker
+FIXTURE
+  caught_count="$(quiet_grep_pipeline_offenders "$fixture_path" | wc -l)"
+  [ "$caught_count" -eq "$expected_count" ] && return 0
+  printf 'the quiet-grep scanner caught %s of %s evasions:\n' "$caught_count" "$expected_count" >&2
+  quiet_grep_pipeline_offenders "$fixture_path" >&2
+  return 1
+}
+
+scanner_fixture_directory="$(mktemp -d)"
+if ! verify_the_quiet_grep_scanner_catches_every_evasion "$scanner_fixture_directory/evasions.sh"; then
+  record_failure "the quiet-grep scanner misses an ordinary spelling of the pipeline it exists to forbid"
+fi
+rm -rf "$scanner_fixture_directory"
 
 init_project() {
   local project_path="$1"
@@ -654,6 +724,13 @@ else
     "$upstream_fixture_repo" 2>&1)"
   probe_status=$?
   assert_status 0 'upstream fetcher: requested branch exits 0'
+  # Capturing the listing discards tar's exit status, which the old pipeline form reported
+  # through pipefail. A truncated archive whose partial listing still contains the marker would
+  # otherwise pass every check below, so readability is asserted separately, the way the
+  # fallback archive's is above.
+  if ! tar tzf "$requested_branch_archive" >/dev/null 2>&1; then
+    record_failure 'upstream fetcher: the requested branch archive is not readable'
+  fi
   requested_branch_listing="$(tar tzf "$requested_branch_archive" 2>/dev/null)"
   if ! grep -q 'requested-branch-marker\.txt' <<<"$requested_branch_listing"; then
     record_failure 'upstream fetcher: requested branch archive omitted its marker'
@@ -703,6 +780,9 @@ else
     "$rate_limited_url/unparseable.tar.gz" "$upstream_fixture_repo" 2>&1)"
   probe_status=$?
   assert_status 0 'upstream fetcher: unparseable URL uses default HEAD'
+  if ! tar tzf "$default_branch_archive" >/dev/null 2>&1; then
+    record_failure 'upstream fetcher: the default branch archive is not readable'
+  fi
   default_branch_listing="$(tar tzf "$default_branch_archive" 2>/dev/null)"
   if ! grep -q 'default-branch-marker\.txt' <<<"$default_branch_listing"; then
     record_failure 'upstream fetcher: unparseable URL archive omitted the default marker'
