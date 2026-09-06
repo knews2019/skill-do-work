@@ -28,6 +28,8 @@ estimate:
     - full-suite verification
 write_set: [skills/do-work/actions/commit.md, skills/do-work-toolbox/actions/inspect.md, skills/do-work/docs/prescribed-shell-primitives.md, _dev/tests/prescribed-shell-canonicalization.sh, _dev/tests/audit-lockins.sh]
 route: B
+dispatch_at: 2026-09-06T01:19:09Z
+builder_handback_at: 2026-09-06T01:19:09Z
 claimed_at: 2026-09-06T00:38:56Z
 ---
 
@@ -37,9 +39,17 @@ claimed_at: 2026-09-06T00:38:56Z
 `skills/do-work/actions/commit.md` and `skills/do-work-toolbox/actions/inspect.md` share 46 byte-identical non-blank lines in runs of three or more: the M/A/D/X/XD classification legend, four file-reading bullets, and two complete "If the script is missing or will not run, do it by hand" fallbacks that restate the algorithms `internal/corehelpers/inventory.go` and `associate-files` implement. Move the legend, the two fallbacks, and the bullets into one section of `skills/do-work/docs/prescribed-shell-primitives.md` (which already owns the protected-inventory heading), cite it from both actions, and keep only the read-only-versus-staging deltas local.
 
 ## AI Execution State (P-A-U Loop)
-- [ ] **[PLAN]:** (Agent: Read listed `prime_files` and agent rules. Write brief technical approach here. Do not write code yet.)
-- [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
-- [ ] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
+- [x] **[PLAN]:** Both `prime_files` read — `_dev/primes/prime-action-files.md` is what establishes the
+  seventeen-line scaffold floor that makes the request's own ceiling unreachable — plus
+  `crew-members/maintenance.md`, which this REQ's `maintenance: true` marker requires.
+- [x] **[APPLY]:** Five files, exactly the declared `write_set`.
+- [x] **[UNIFY]:** `git diff --stat` on the merge range reports five files, 92 insertions, 56
+  deletions. Linters: `bash _dev/tests/action-shell-blocks.sh` — `Shell-block lint passed: 74 fenced
+  blocks and 33 shipped shell files; ShellCheck enabled.`, exit 0. No debug artifacts. Per file:
+  the guide gained one section and the back-reference it needed to keep resolving; `commit.md` and
+  `inspect.md` each lost the moved prose and gained a pointer, keeping their own mode-specific
+  wordings; the canonicalization probe gained one heading in its membership list; the lock-in gained
+  one block beside REQ-552's.
 
 ## Why
 Two prose files stating one rule drift; this is the only non-crew-member prose pair with duplicated three-line windows in the audited surface, and no INLINE RESIDUE row in `decisions/audits/2026-08-11-prescribed-shell-primitives.md` covers it.
@@ -143,9 +153,9 @@ moved line.
 ## Scope
 
 **Files I will touch:**
-- `skills/do-work/docs/prescribed-shell-primitives.md` (modify) — one new `##` section holding the
+- `skills/do-work/docs/prescribed-shell-primitives.md` (modify) — one new heading-level section holding the
   inventory tag legend, the secret-shaped matching sentence, the four file-reading bullets, the
-  association semantics and both manual fallbacks, inserted before `## Merge-aware commit diff`
+  association semantics and both manual fallbacks, inserted before the merge-aware commit diff section
 - `skills/do-work/actions/commit.md` (modify) — delete the moved prose and point at the new section;
   keep the two wordings that differ between the two actions rather than forcing them together
 - `skills/do-work-toolbox/actions/inspect.md` (modify) — the mirror of the same deletion at its own
@@ -200,5 +210,99 @@ the gate's floors.
 **Machine condition:** 4 CPUs, load average around 5 with a sibling builder running. The brief caps
 this request at one full canonical gate run for that reason and names the targeted probes to iterate
 on instead.
+
+*Checked by work action*
+
+## Implementation Summary
+
+**Files changed:**
+- `skills/do-work/docs/prescribed-shell-primitives.md` (modified)
+- `skills/do-work/actions/commit.md` (modified)
+- `skills/do-work-toolbox/actions/inspect.md` (modified)
+- `_dev/tests/prescribed-shell-canonicalization.sh` (modified)
+- `_dev/tests/audit-lockins.sh` (modified)
+
+**What was done:** The inventory tag legend, the secret-shaped matching sentence, the four
+file-reading bullets, the association semantics and both manual fallbacks now live once, in a new
+section of the prescribed-shell guide, with both actions pointing at it. What each action *does* with
+an excluded row stayed where it was — a writing action lets only the deletion proceed, a read-only one
+inspects only the path and deletion state — because collapsing those would have been a behaviour claim
+dressed as deduplication. The guide says in one sentence that this part is caller policy it does not
+own.
+
+**The ceiling is 30, measured, and its composition is written into the assertion.** Seventeen lines are
+scaffold `_dev/primes/prime-action-files.md:70-80` requires both actions to carry; four are structural
+rows inside each action's own flow diagram and error table; eight are the Step 4 semantic clustering
+algorithm, deliberately left duplicated because it is caller policy the guide's own charter excludes;
+one routes unassociated files to each action's own step number. The request asked for ten, which is
+below the scaffold floor and would have been red on day one.
+
+**The assertion was proven red before it was accepted**, which matters because the version this
+request inherited was green on day one: its `--glob '*/actions/*.md'` matched zero files, since a
+single `*` does not cross a directory separator. The shipped assertion uses `**/actions/*.md` and
+reads rg's own exit status rather than a piped total; run against copies of both action files at the
+base revision it printed five FAIL lines and exited 1, naming all four manual-fallback sites.
+
+Merge range `b2ba3ea2..a0be855c`, five files, 92 insertions, 56 deletions — identical to the builder
+branch's own diff against its base. Builder branch head `d2609378`.
+
+## Decisions — implementation
+
+- **D-03 — the Step 4 semantic clustering algorithm stays duplicated. DECIDE & STATE.** It is caller
+  policy, not a shell primitive, and `prescribed-shell-primitives.md:3` states a charter that excludes
+  it. This is the deliberate reason the ceiling is 30 rather than 22: moving those eight lines would
+  have bought a smaller metric by weakening the guide's own definition of what it holds. Recorded as a
+  discovered task instead — it needs a home, and that home is not this guide.
+- **D-04 — the wordings that differ between the writing action and the read-only one are preserved.
+  DECIDE & STATE.** The guide's legend states classification only.
+- **D-05 — a dangling back-reference is fixed rather than worked around. DECIDE & STATE.** Moving the
+  prose left an "accepting every alias above" whose "above" no longer resolved; the terminal-success
+  alias bullet moved into the same section so it resolves again, tightened to name what it means.
+- **D-06 — one sentence in the guide is left untouched for REQ-555. DECIDE & STATE.** REQ-555 rewrites
+  the guide's executable-homes table and declares `depends_on: [REQ-554]`; only the half of that
+  paragraph this request owns was rewritten.
+
+## Discovered Tasks
+
+- **The Step 4 semantic clustering algorithm is still duplicated between the two actions** — eight
+  identical lines, the largest remaining shared block. It needs a home that is not the prescribed-shell
+  guide, whose charter excludes caller policy, so it is its own request.
+- **The two actions' run-level quarantine paragraphs are near-identical**, differing only in a trailing
+  example sentence — and the difflib metric scores them at 0 because that difference breaks the
+  matching run, so this duplication is invisible to the new lock-in.
+- **`_dev/tests/contract-regressions.sh` is exactly 77 lines against its own ceiling of 77.** Zero
+  headroom: the next person who adds a line to it breaks the fast gate.
+
+## Qualification
+
+**Passed, with one reporter-output finding judged rather than obeyed.** Read from the merge range
+`b2ba3ea2..a0be855c`; `scope-drift` satisfied, `qualify` satisfied after the judgment below.
+
+- **`QUALIFY-REPORTER-OUTPUT` on `_dev/tests/audit-lockins.sh`: accepted, not a defect.** The gate
+  flagged the new block's `print(...)` line. That line is the measurement itself — a `difflib`
+  shared-line count the assertion compares against its ceiling — running inside a maintainer test
+  script whose whole job is to print a number and a verdict. It is not left-over debug output, it is
+  not in shipped code, and the file it lives in is `_dev/`, which is export-ignored. Recorded here
+  rather than silenced, because the flag is doing its job and the answer is a judgment.
+- **The declared set and the touched set are identical.** Five files, 92 insertions, 56 deletions —
+  the same diff the builder branch carries against its base.
+- **The assertion was proven red first, and that mattered more than usual here.** The version this
+  request inherited was green on day one because its glob matched no files at all. The shipped one
+  printed five FAIL lines against copies of both action files at the base revision — the shared-line
+  count above the ceiling, plus all four manual-fallback sites by path and line.
+- **The ceiling is not a number someone liked; it is composed and written down.** Seventeen scaffold
+  lines the action-file prime requires, four structural rows in each action's own diagram and error
+  table, eight lines of caller policy the guide's charter refuses to own, one routing line. A reader
+  who wants to lower it now has the list of what they would have to change.
+- **The one thing the request feared was checked rather than assumed.** The canonicalization scan skips
+  the canonical guide itself, so prose moved into the guide is exempt from its stale-pattern list; none
+  of its nine patterns or seven old-implementation fragments matches any moved line, and the probe
+  passes with the new heading in its membership list.
+- **`near_identical_cross_file_pairs` is 0** in `contract-regressions.sh` after the move, which is the
+  independent check that the duplication the request targeted is actually gone rather than reworded.
+
+Requirements traced: the shared body lives once and both actions point at it; each action keeps its own
+wording; the lock-in fails when the prose returns and passes on the scaffold both actions must carry;
+the canonicalization probe accepts the new section; the gate is green.
 
 *Checked by work action*
