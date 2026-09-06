@@ -538,3 +538,232 @@ Canonical `qualify` and `scope-drift` both satisfied.
 - **Gate green on the merged tree.** `Maintainer verification passed.`, exit 0, wall 82s, CLI module at
   794 tests — ten more than the 784 at the branch point. The builder's own worktree run reported the
   same 794 with `EXECUTING (fingerprint_mismatch)`, so the stage really ran rather than reusing evidence.
+
+### Remediation qualification (after review)
+
+**Passed.** Remediation merge range `2acb34fb..234eda9`, two test files, 176 insertions and 1 deletion.
+The review scored 86% and called the engineering sound; both of its code findings are closed, six record
+claims are corrected in place, and one thing the review asked for turned out to be impossible and is
+recorded as such rather than faked.
+
+- **The restored guard is now pinned at its call site.**
+  `TestPrepareBoundJournalRefusesCommitPathsThatOmitThePlannedArchiveTarget` drives
+  `prepareBoundJournal` with a manifest whose `commit_paths` omits the planned archive target and
+  asserts the error names it, that no journal is returned, and that none is left on disk. Deleting the
+  `if len(missing) > 0` block reds it: `prepare accepted commit_paths that omit
+  do-work/archive/REQ-721.md ... the omitted-target guard no longer fires`.
+- **The other mutation the review asked for cannot be pinned, and the builder said so instead of
+  claiming otherwise.** Rewriting the call site as `missing, _ := missingCommitPaths(...)` leaves the
+  package green — and no behaviour test can change that, because no accepted manifest can reach the
+  helper with a path it would refuse: `state_plan.go:111-112` refuses a target the snapshot did not
+  resolve with `REQUEST-SNAPSHOT-STALE`, and every release target passes `publication`'s `containedPath`
+  check. The propagation is covered inside the helper by the first test; the call site is covered for
+  the guard it feeds. The test file's header now says exactly that, per test, replacing a comment that
+  claimed one test failed "the moment the error is discarded again, whatever the helper is called".
+- **The semver change is measured, not described.** The predicate was run beside a reconstruction of the
+  pre-change function over an ordered cross product of 21 versions: **441 pairs, 242 changed, every one
+  of them toward a refusal.** 159 skip-to-error and 83 stamp-to-error. Nothing that used to error now
+  succeeds. The exact rule predicts all 242: `semverMajor` accepts both sides, the majors are equal, and
+  at least one side fails the strict parser. `semverMajor` wants only three dot-separated parts with an
+  `Atoi`-able first part, so a leading zero, an empty part, a trailing dot, a negative or non-numeric
+  third part, a `-rc1` or `+1` suffix and a trailing space all get past it and used to be scored
+  numerically. Five of those pairs are now a table test, including `1.0.0` against `1.09.0`, which is a
+  stamp-to-error case.
+- **The count is a property of the grid; the rule is the durable fact**, and the record says so. A
+  reviewer reading "83 pairs" should not think 83 is a property of the code.
+- **Six claims in this record are corrected rather than defended**: D-05's unreachability sentence,
+  D-03's one-directional description, D-01's claim that every deleted copy returned non-nil, the
+  deletion count, acceptance criterion 1's stale six, and the Scope rule that did not describe three of
+  the paths it added. The picks themselves all stand.
+
+## Testing
+
+### Remediation testing (after review)
+
+**Both new tests were shown red by ablation and green after restore.**
+
+- `TestPrepareBoundJournalRefusesCommitPathsThatOmitThePlannedArchiveTarget` — green at HEAD; red with
+  the `if len(missing) > 0` refusal deleted, naming the omitted path and the effective set it accepted.
+  Green, and provably unable to be otherwise, with the call site's error discarded: see the
+  qualification above.
+- `TestMigrateInterviewSessionRefusesAVersionOnlyTheLenientComparatorCouldOrder` — five rows, three of
+  them refusals; green at HEAD, and the three refusing rows red when the `if !versionsParsed` guard is
+  removed.
+
+**The measured grid is the evidence for D-03, not a claim about it.** 441 ordered pairs run through both
+the shipped predicate and a verbatim reconstruction of its predecessor; 242 changed; predicted-by-rule
+242 equals actual-changed 242, which is what makes the rule a description rather than a summary.
+
+**Gate on the merged tree:** `Maintainer verification passed.`, exit 0, gate wall 79s, CLI module at
+**796** tests — up from 784 at the branch point, 794 after the first merge. Two `heavyverification` tests
+fail identically at the branch point for environmental reasons and are not this request's; the builder
+checked that rather than reporting them as its own.
+
+## Review
+
+**Overall: 86%** | 2026-09-06T07:10:00Z
+
+| Dimension | Score |
+|-----------|-------|
+| Requirements | 88% |
+| Code Quality | 95% |
+| Test Adequacy | 72% |
+| Scope | 90% |
+| Risk | Low-moderate |
+| Acceptance | Partial at review, Pass after remediation |
+
+**Verdict: Accept with record corrections** — the engineering is clean and the hard parts are right.
+Fifteen definitions became seven, the new package is a true leaf whose `go list -deps` returns only
+itself, every touched package's module-internal closure changed by exactly `+sharedprimitives`, the
+release-guard inversion risk the plan named as the biggest hazard is closed and pinned by five existing
+tests, and the lock-in is red in both directions. What did not hold up was the record: two of the seven
+decisions stated their own extent wrongly, one count was wrong, one acceptance criterion still named the
+number D-06 had corrected, and the one deliberate behaviour change was pinned inside its helper but not
+at its call site.
+
+Where the reviewers disagreed, and what was picked:
+
+- Whether a non-canonical frontmatter `id:` can reach the two sorts. One reviewer accepted D-05's
+  unreachability sentence; another disputed it. Settled by building the CLI from both revisions and
+  running `next` against a fixture carrying `id: REQ-12x`: the base binary selects `REQ-100`, the head
+  binary selects `REQ-12x`. Picked the disputing reviewer.
+- The hunk-level facts of D-03. One reviewer's table had two wrong rows and another described the
+  stamp cases as passing through silently, which they did not. Settled by running the real
+  `migrateInterviewSession` in both trees; the substance survived both readings.
+- Whether deleting the whole `if len(missing) > 0` block is a REQ-557 regression. Reproduced green — but
+  the identical deletion at the branch point is also green, so it is a coverage gap the change inherited
+  rather than caused.
+- Whether the record's "808 top-level tests green" holds. Two reported failures reproduce identically at
+  the branch point and are environmental.
+
+**Important findings:**
+
+- D-05's unreachability sentence is false, demonstrated end to end with two built binaries. The pick
+  stands; the claim did not. — impact-user-visible → corrected in the record
+- The one deliberate behaviour change (D-02) was pinned inside its helper but not at its call site, and
+  the test file's own comment overclaimed. — impact-user-visible → fixed in remediation
+
+**Minor findings:**
+
+- D-03 described the skip-to-error direction and omitted 83 stamp-to-error pairs; nothing tested the new
+  refusal. — impact-negligible → measured and tested in remediation
+- The Implementation Summary said nine deletions where there are twelve. — impact-negligible → corrected
+- Acceptance criterion 1 still pinned six, contradicting D-06 and the shipped lock-in; all five criteria
+  were unticked. — impact-negligible → corrected
+- D-02's precondition is filtered upstream, so the restored guard changes no observable behaviour today;
+  the record read as a fixed live bug. — impact-negligible → stated in the remediation qualification
+- D-01's producer enumeration missed one `repairvalidation` call site, and its "every deleted copy also
+  guaranteed non-nil" is false for the very copy D-02 fixes. — impact-negligible → corrected
+- The lock-in guards top-level `func` declarations in one `internal/` tree only. — impact-negligible →
+  report only, inherent to a name-list ratchet whose comment says the name list is the pinned set
+- Scope's stated rule for the widening did not describe three of the paths it added, and one request
+  constraint is superseded without being named. — impact-negligible → corrected
+
+**Requirements checklist:**
+
+- [x] One definition per canonical name — delivered; the request's reproduce regex prints 15 at the
+  branch point and 1 now, and the union regex prints exactly 7
+- [x] No import cycle, and the shared package imports nothing else in the module — delivered, measured
+  package by package
+- [x] Each reconciliation is a named decision — delivered, though two stated their extent wrongly and
+  are corrected
+- [x] The lock-in is one assertion in the existing file, registration untouched, red in both directions
+  — delivered
+- [ ] Every call site keeps its observable behaviour except D-02 — **not delivered**, and now named:
+  `nextselection`'s ordering under a non-canonical `id:`, and 83 version pairs in `knowledgecommands`
+- [x] → D-02 carries a test that fails when the guard is disabled again — partially delivered at review,
+  delivered in remediation for the reachable mutation, with the unreachable one explained rather than
+  faked
+- [x] Tests for the other two behaviour changes — delivered in remediation for the semver refusal; the
+  ordering change is recorded, not tested, because it needs a repository carrying a non-canonical `id:`
+- [x] D-01 is safe — delivered, confirmed dynamically by instrumenting the helper to panic on an empty
+  input and running the whole suite
+- [x] D-03's publication half is input-set-identical — delivered
+- [x] D-05's parser-equivalence claim — delivered, over 1,304 hostile inputs including unicode digits,
+  400-digit runs and int64 overflow
+- [x] D-04 is zero behaviour change — delivered, the renamed body is byte-identical
+- [x] Scope holds: 23 changed files are the 22 declared paths plus the record — delivered
+- [x] Module hygiene: build, vet, gofmt clean — delivered
+
+**Acceptance testing**
+
+**Result: Partial at review, Pass after remediation.** Three reviewers built the CLI from both
+revisions and ran it rather than reading it. The gate is green at 796 tests.
+
+**Follow-ups created:** None — every finding is either fixed, corrected in the record, or a
+report-only observation about a ratchet whose limits its own comment states.
+
+*Reviewed by review-work action*
+
+## Lessons Learned
+
+- **"A package the duplicator already imports" was the right rule and the wrong package.** The request
+  named `corehelpers`, and `go list -deps` puts it outside the closure of four of the five duplicating
+  packages. The rule exists to prevent a cycle; a new leaf package with zero module-internal imports
+  serves that purpose absolutely while failing the rule's letter. When a stated constraint and its
+  purpose come apart, say which one you followed and why — that is what makes it a decision instead of a
+  deviation.
+- **A duplicate can be a different function wearing the same name.** `finalization`'s `uniqueSorted`
+  was `result, _ := normalizeRepositoryPaths(paths); return result` — a validator with its refusal
+  thrown away, which returned `nil` for the whole slice and silently disabled the guard on the next
+  line. Counting definitions found it; reading them is what identified it. The audit that produced this
+  request counted.
+- **Two implementations that differ in strictness can also differ in sign.** The request described the
+  two `compareSemver` copies as differing on unparseable input. They also returned opposite signs for
+  every unequal pair, which it never mentioned. Merging by picking one body and leaving both predicates
+  alone would have reversed a release guard with every test green, because nothing pinned the
+  orientation. Read both bodies before you merge two functions, even when a request has already told you
+  how they differ.
+- **"Cannot reach" is a claim, and this one was false.** D-05 said an id with a trailing non-digit could
+  not reach the two sorts, reasoning from where ids are *generated*. The frontmatter `id:` is raw text
+  the selector *prefers*, and a mismatch only appends a warning nothing prints. A reviewer built both
+  binaries and watched them select different requests. Reachability arguments have to trace the value,
+  not the convention.
+- **A test that calls the helper directly does not pin the call site.** The guard test reddened on a
+  discard written inside `missingCommitPaths` and stayed green on the same discard written one line
+  above the call. The fix was a second test through `prepareBoundJournal` — and it turned out the
+  helper-level discard is unreachable from any accepted manifest, so the honest record says which
+  mutation each test kills and why one of them cannot be killed at all.
+- **A number in a record should say whether it is a property of the code or of the sample.** "83 pairs
+  turn a stamp into a refusal" is true of a 21-version grid. The durable fact is the rule that predicts
+  all 242 changed pairs. The record carries both, labelled.
+
+## Orientation
+
+`internal/sharedprimitives` is the canonical home for helpers more than one package needs. It imports
+nothing else inside the module — `go list -deps` returns only itself — so any package can call it
+without a cycle, which is the property that stops these helpers being copied again. It holds
+`UniqueSortedStrings`, `SubtractStringValues`, `FirstNonNilError`, `CompareSemanticVersions` and
+`ParseSemanticVersion`.
+
+Four things about those helpers are load-bearing:
+
+- `UniqueSortedStrings` keeps every value it is given, including the empty string, and always returns a
+  non-nil slice. Two of the four copies it replaced dropped blanks; no producer can emit one today, and
+  a blank that ever appears should be visible in an evidence list rather than vanish from it.
+- `CompareSemanticVersions` returns `(ordering, parsed)` and uses the standard Go orientation — negative
+  when the left argument is older. The two copies it replaced were **inverted**. The `parsed` flag exists
+  so no caller can read "unparseable" as "equal", which is what one of them did.
+- `repositorymodel.RequestIDLess` uses the permissive parser, the one that also assigns request identity
+  in the same file. That is deliberate: a comparator disagreeing with the identity parser would order ids
+  by one rule and name them by another. Its observable cost is recorded in D-05 — a repository carrying
+  a non-canonical frontmatter `id:` gets a different queue order, and `next` selects a different request.
+- `physicalPath` was **not** merged. `knowledgecommands` keeps it (walks missing ancestors, absence
+  succeeds); `suiteinstall` has `existingPhysicalPath` (EvalSymlinks + Abs, absence is an error). The
+  second one's error *is* the existence check before a containment test, so merging them would mean
+  re-adding that check by hand.
+
+`finalization` no longer has a dedupe helper of its own. Its old one discarded a validator's error;
+`missingCommitPaths` propagates it, and `finalization_req557_test.go` says per test what each one pins —
+one covers the propagation inside the helper, one covers the call site's guard, and its header records
+why no test can cover a discard written at the call site.
+
+The ratchet is Finding 4 in `_dev/tests/audit-lockins.sh`: the union of the old and new names must be
+exactly seven definitions, a floor as well as a ceiling. It guards top-level `func` declarations in
+`internal/` only, and its comment says the name list is the pinned set — a differently-named copy of the
+same body is outside it, which is inherent to any name-list ratchet.
+
+Recorded and unfixed: `knowledgecommands.semverMajor` is a third, looser version parser nine lines from
+the deleted one; `suiteinstall.compareSemanticVersions` is a fourth comparator with its own orientation;
+and `gittransaction.stringSet` and `corehelpers.stringSet` are two definitions of one helper with
+different value types. All three are the same class as this request and outside its six names.
