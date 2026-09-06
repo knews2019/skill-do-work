@@ -1,8 +1,9 @@
 ---
 id: REQ-605
-status: pending
+status: claimed
 domain: general
 created_at: 2026-09-06T08:19:05Z
+claimed_at: 2026-09-06T13:27:25Z
 user_request: UR-105
 review_generated: true
 impact: impact-negligible
