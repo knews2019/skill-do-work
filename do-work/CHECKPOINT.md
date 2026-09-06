@@ -30,7 +30,6 @@ session_depth: light
 - REQ-486: Addendum: make UR groups collapsible and show progress summaries — claimed 2026-09-06T00:26:09Z — writer: vm:/home/user/skill-do-work
 
 
-- REQ-554: [impact-negligible] Move the 46 lines commit.md and inspect.md share into the prescribed-shell guide — claimed 2026-09-06T00:38:56Z — writer: vm:/home/user/skill-do-work
 
 - REQ-593: [impact-critical] Make the heavy tier report a red lane as red, and fix two fixtures that cannot pass under the lane environment — claimed 2026-09-06T02:03:03Z — writer: vm:/home/user/skill-do-work
 

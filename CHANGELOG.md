@@ -2,6 +2,16 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.304.2 — The Commit and Inspect Actions Stop Repeating the Same Shell Rules (2026-09-06)
+
+Two shipped actions carried the same block of file-inventory rules word for word, so a correction to one left the other behind. That block now lives once, in the prescribed-shell guide, and both actions point at it.
+
+- The inventory tag legend, the secret-shaped matching sentence, the four file-reading bullets, the association semantics and both manual fallbacks are stated once in a new section of `prescribed-shell-primitives.md`. `commit.md` and `inspect.md` reference it instead of restating it.
+- What each action *does* with an excluded row stays where it was — a writing action lets only the deletion proceed, a read-only one inspects the path and the deletion state. That is caller policy the guide's own charter excludes, so collapsing it would have been a behaviour change dressed as deduplication.
+- The by-hand association fallback now names the two directories it tells you to glob, checked against the roots the code really walks, and the quarantine sentence names the `git rev-parse --git-path` call that produces the failure, confirmed by running both modes outside a repository.
+- A maintainer lock-in now asserts each moved passage is absent from each action on its own, so a return to either file is caught by itself. It was proven in both directions: the legend pasted back into one action gives four failures naming that file, the whole pre-move file restored gives eight. The earlier line-count version could not see a one-sided return at all, and a single deleted line could push its similarity score past the ceiling — 660 fuzz runs now trip nothing.
+- The lock-in reads its scanner's exit status instead of a piped total, so a scanner that cannot run fails instead of reading clean.
+
 ## 0.304.1 — The Archive Audit and Report Publishing Stop Launching Coreutils (2026-09-06)
 
 Two places in the tool started a `find` or a `cp` process to do work it already does in Go. Both now do it directly, so they behave the same on a machine where those programs are missing, older, or a different implementation.
