@@ -28,7 +28,6 @@ session_depth: light
 
 
 
-- REQ-557: [impact-negligible] Deduplicate six Go helper names defined fourteen times across do-work-cli — claimed 2026-09-06T03:16:29Z — writer: vm:/home/user/skill-do-work
 
 - REQ-594: Generalize the SIGPIPE fix: about 130 quiet-grep pipelines remain across the maintainer test tree — claimed 2026-09-06T03:36:45Z — writer: vm:/home/user/skill-do-work
 

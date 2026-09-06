@@ -2,6 +2,17 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.305.4 — Six Helper Names Defined Fifteen Times Now Have One Home Each (2026-09-06)
+
+Six small helpers were copied across the tool's internal packages, and three of the copies disagreed with each other. That is how a version comparison ended up returning opposite answers in two places and a safety check ended up switched off without anyone noticing.
+
+- One shared package now holds the four helpers more than one package needs. It imports nothing else inside the tool, so any package can use it and no copy has a reason to come back.
+- The two copies of the version comparison returned **opposite** results for the same pair. One place asked "is the new version greater" and the other asked "is the old one older", and each had written its check to match its own copy. There is one comparison now, and it reports separately whether the version could be read at all, so nothing can mistake "not a version number" for "the same version".
+- One copy was not a helper at all. It ran a path validator and threw the error away, returning nothing for the whole list whenever any single path was rejected — which quietly switched off the check that a finalization lists every file it plans to commit. That check is back on and has a test that fails if it is switched off again.
+- Two path resolvers shared a name and disagreed about whether a missing file is an error. They keep their behaviour and now have two names, because the one that treats absence as an error uses that error as its existence check.
+- A version string a project writes by hand — `1.09.0`, `1.0.` or `1.0.x` — is now refused with a clear message where the looser comparison used to guess at an order. Measured across 441 version pairs: 242 change, and every one of them changes to a refusal rather than to a different silent answer.
+- A maintainer check pins the count of these definitions in both directions, so a seventh copy fails the build and so does losing one.
+
 ## 0.305.3 — The Shell Guide Says What Each Command Actually Does (2026-09-06)
 
 The guide's table of shipped executable homes described work that moved into Go years ago, or credited a command with a step something else performs. All fourteen rows were checked against the code that implements them; three were wrong.

@@ -1,7 +1,7 @@
 ---
 id: REQ-557
 title: '[impact-negligible] Deduplicate six Go helper names defined fourteen times across do-work-cli'
-status: claimed
+status: completed
 priority: later
 created_at: 2026-09-03T19:45:35Z
 user_request: UR-105
@@ -28,6 +28,9 @@ route: C
 planning_at: 2026-09-06T04:01:02Z
 write_set: [skills/do-work/tools/do-work-cli/internal/sharedprimitives/shared_primitives.go, skills/do-work/tools/do-work-cli/internal/sharedprimitives/shared_primitives_test.go, skills/do-work/tools/do-work-cli/internal/corehelpers/checks.go, skills/do-work/tools/do-work-cli/internal/corehelpers/inventory.go, skills/do-work/tools/do-work-cli/internal/repositorymodel/repository_model.go, skills/do-work/tools/do-work-cli/internal/dependencygraph/dependency_graph.go, skills/do-work/tools/do-work-cli/internal/nextselection/next_types.go, skills/do-work/tools/do-work-cli/internal/nextselection/next_targets.go, skills/do-work/tools/do-work-cli/internal/finalization/finalization_prepare.go, skills/do-work/tools/do-work-cli/internal/finalization/finalization_discovery.go, skills/do-work/tools/do-work-cli/internal/finalization/finalization_apply.go, skills/do-work/tools/do-work-cli/internal/finalization/finalization_recovery_test.go, skills/do-work/tools/do-work-cli/internal/finalization/finalization_req557_test.go, skills/do-work/tools/do-work-cli/internal/knowledgecommands/interview_commands.go, skills/do-work/tools/do-work-cli/internal/knowledgecommands/memory_commands.go, skills/do-work/tools/do-work-cli/internal/repairvalidation/already_green.go, skills/do-work/tools/do-work-cli/internal/publication/capture_files.go, skills/do-work/tools/do-work-cli/internal/publication/release.go, skills/do-work/tools/do-work-cli/internal/publication/release_mirrors.go, skills/do-work/tools/do-work-cli/internal/publication/answer.go, skills/do-work/tools/do-work-cli/internal/suiteinstall/update_transaction.go, _dev/tests/audit-lockins.sh]
 claimed_at: 2026-09-06T03:16:29Z
+completed_at: 2026-09-06T05:41:47Z
+commit: 234eda9c441a131f4c704528c7c1841e61f8c518
+release_at: 2026-09-06T05:41:47Z
 ---
 
 # Deduplicate six Go helper names defined fourteen times across do-work-cli
