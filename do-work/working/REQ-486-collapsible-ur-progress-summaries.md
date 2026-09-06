@@ -44,6 +44,8 @@ write_set:
   - skills/do-work-board/tools/queue-kanban/model_test.go
   - skills/do-work-board/tools/queue-kanban/generate_test.go
   - skills/do-work-board/tools/queue-kanban/javascript_behavior_a_test.go
+  - skills/do-work-board/tools/queue-kanban/javascript_behavior_b_test.go
+  - skills/do-work-board/tools/queue-kanban/javascript_behavior_c_test.go
   - skills/do-work-board/tools/queue-kanban/javascript_behavior_d_test.go
   - skills/do-work-board/tools/queue-kanban/user_request_clipboard_browser_probe_test.go
   - skills/do-work-board/tools/queue-kanban/user_request_progress_browser_probe_test.go
@@ -51,9 +53,14 @@ write_set:
   - skills/do-work-board/actions/board.md
   - skills/do-work/actions/work-reference.md
   - skills/do-work/actions/version.md
+  - VERSION
+  - skills/do-work-board/tools/queue-kanban/user_request_clipboard_browser_probe_test.go
+  - skills/do-work/VERSION
   - CHANGELOG.md
   - skills/do-work/CHANGELOG.md
 route: C
+dispatch_at: 2026-09-06T02:22:21Z
+builder_handback_at: 2026-09-06T02:22:21Z
 planning_at: 2026-09-06T00:35:06Z
 ---
 
@@ -68,9 +75,19 @@ Hand triage, maintainer approved: deferred behind REQ-510, the end of the UR-098
 Extend the board's existing UR presentation so the By UR card grid and the UR detail drawer's REQ-id list are independently collapsible. Show the same whole-UR request count, active-time rollup, remaining-time forecast, successful progress, and resolved progress on the By UR header and in the drawer.
 
 ## AI Execution State (P-A-U Loop)
-- [ ] **[PLAN]:** (Agent: Read listed `prime_files` and agent rules. Write brief technical approach here. Do not write code yet.)
-- [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
-- [ ] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
+- [x] **[PLAN]:** `_dev/primes/prime-kanban-board.md` and the board's lesson satellite read before either
+  increment, plus `_dev/primes/prime-releases.md` for the release in T5. The judge-panel plan in the run
+  directory is the approach; its fifteen decisions were carried out or diverged from in writing.
+- [x] **[APPLY]:** Two increments, merged separately. Twenty-five files across both, of which four were
+  not in the original declaration and are recorded as D-16 rather than absorbed silently.
+- [x] **[UNIFY]:** `git diff --stat` reports 25 files, 2177 insertions, 50 deletions for increment 2 on
+  top of increment 1's 8 files. Linters and lanes, each with its own exit line rather than the gate's
+  summary: fast stage `ok … 65.004s`; strict JavaScript `ok … 6.179s`, 70 pass, 0 skip; strict browser
+  `ok … 100.538s`, 35 pass, 0 skip on Chromium 141; `contract-regressions.sh` green with the
+  write-surface count unchanged; `shipped-package-reference-contract.sh` green, so the changelog mirror
+  is byte-identical. No debug artifacts: the diff adds no `console.log`, no `debugger`, no commented-out
+  block. Two greps stand as structural assertions rather than eyeballing — `completedAt` appears nowhere
+  in the summary fragment, and neither does `try`.
 
 ## Context
 
@@ -303,24 +320,28 @@ be recorded rather than the gate's.
 **Files I will touch:**
 - `skills/do-work-board/tools/queue-kanban/web/board-cards.js` (modify) — merge the group head's two branches, parameterize the initial fold state
 - `skills/do-work-board/tools/queue-kanban/web/board-detail.js` (modify) — the drawer's REQ-id list becomes a foldable, height-capped row
-- `skills/do-work-board/tools/queue-kanban/web/board-core.js` (modify) — `isCompletedStatus`, the recomposed resolved predicate, the clock fan-out
+- `skills/do-work-board/tools/queue-kanban/web/board-core.js` (modify) — the completed-status predicate, the recomposed resolved predicate, the clock fan-out
 - `skills/do-work-board/tools/queue-kanban/web/board-user-request-summary.js` (new) — the shared rollup, at fragment manifest position 7
 - `skills/do-work-board/tools/queue-kanban/web/board.js` (modify) — the single ticker points at the fan-out
 - `skills/do-work-board/tools/queue-kanban/web/board.css` (modify) — the summary strip as a sibling row, the drawer fold, the height cap
-- `skills/do-work-board/tools/queue-kanban/model.go` (modify) — the nested-scalar coercer and the two `RequestTicket` fields
+- `skills/do-work-board/tools/queue-kanban/model.go` (modify) — the nested-scalar coercer and the two RequestTicket fields
 - `skills/do-work-board/tools/queue-kanban/generate.go` (modify) — the payload pair and the fragment manifest entry
 - `skills/do-work-board/tools/queue-kanban/timeline.go` (modify, comment only) — the reason that stops being true
 - `skills/do-work-board/tools/queue-kanban/frontmatter_test.go` (modify) — strict versus salvage, asserting absence not zero
 - `skills/do-work-board/tools/queue-kanban/model_test.go` (modify) — the parse-level read
 - `skills/do-work-board/tools/queue-kanban/generate_test.go` (modify) — the projection-level read, both pinned copies of the fragment manifest, one browser-probe selector repair
-- `skills/do-work-board/tools/queue-kanban/javascript_behavior_a_test.go` (modify) — invert the REQ-236 assertion in place, in the same commit that sets `aria-expanded`
+- `skills/do-work-board/tools/queue-kanban/javascript_behavior_a_test.go` (modify) — invert the REQ-236 assertion in place, in the same commit that sets the expanded attribute
 - `skills/do-work-board/tools/queue-kanban/javascript_behavior_d_test.go` (new) — every semantic claim about the rollup
+- `skills/do-work-board/tools/queue-kanban/javascript_behavior_b_test.go` (modify) — forced repair; declared late, see D-16
+- `skills/do-work-board/tools/queue-kanban/javascript_behavior_c_test.go` (modify) — forced repair; declared late, see D-16
 - `skills/do-work-board/tools/queue-kanban/user_request_clipboard_browser_probe_test.go` (modify) — selector repair forced by the markup change
 - `skills/do-work-board/tools/queue-kanban/user_request_progress_browser_probe_test.go` (new) — wrap, collision, containment, contrast, real-button tab order
 - `skills/do-work-board/docs/board-guide.md` (modify) — name the third lens, both fold defaults, what the summary refuses to report
 - `skills/do-work-board/actions/board.md` (modify) — the new field in the field-by-field list
-- `skills/do-work/actions/work-reference.md` (modify) — the `estimate:` block earns the lock-step clause its display-only siblings carry
+- `skills/do-work/actions/work-reference.md` (modify) — the estimate block earns the lock-step clause its display-only siblings carry
 - `skills/do-work/actions/version.md` (modify) — release
+- `VERSION` (modify) — release; declared late, see D-16
+- `skills/do-work/VERSION` (modify) — release mirror; declared late, see D-16
 - `CHANGELOG.md` (modify) — release
 - `skills/do-work/CHANGELOG.md` (modify) — byte-identical mirror
 
@@ -334,7 +355,7 @@ surface, so the pinned count stays at three.
 **Acceptance criteria (restated from REQ):**
 - [ ] By UR groups fold independently, start expanded, several can be open at once, and the fold
       control is a real button that announces `aria-expanded`
-- [ ] `Details` stays a separate control from the fold
+- [ ] Details stays a separate control from the fold
 - [ ] The drawer's REQ-id list folds, starts expanded, and hides only the ids
 - [ ] The URs-only reading keeps its collapsed default, its filters and its DOM-only fold state
 - [ ] Both surfaces show request count, active time, remaining forecast, successful progress and
@@ -370,5 +391,152 @@ build; the build cache is warm.
 
 **Machine condition:** 4 CPUs, load average under 1 at the gate's start. The plan caps this request at
 two full canonical gate runs for that reason; the per-lane commands are what the builder iterates on.
+
+*Checked by work action*
+
+## Implementation Summary
+
+**Files changed:**
+- `skills/do-work-board/tools/queue-kanban/web/board-cards.js`
+- `skills/do-work-board/tools/queue-kanban/web/board-detail.js`
+- `skills/do-work-board/tools/queue-kanban/web/board-core.js`
+- `skills/do-work-board/tools/queue-kanban/web/board-user-request-summary.js`
+- `skills/do-work-board/tools/queue-kanban/web/board.js`
+- `skills/do-work-board/tools/queue-kanban/web/board.css`
+- `skills/do-work-board/tools/queue-kanban/model.go`
+- `skills/do-work-board/tools/queue-kanban/generate.go`
+- `skills/do-work-board/tools/queue-kanban/timeline.go`
+- `skills/do-work-board/tools/queue-kanban/frontmatter_test.go`
+- `skills/do-work-board/tools/queue-kanban/model_test.go`
+- `skills/do-work-board/tools/queue-kanban/generate_test.go`
+- `skills/do-work-board/tools/queue-kanban/javascript_behavior_a_test.go`
+- `skills/do-work-board/tools/queue-kanban/javascript_behavior_b_test.go`
+- `skills/do-work-board/tools/queue-kanban/javascript_behavior_c_test.go`
+- `skills/do-work-board/tools/queue-kanban/javascript_behavior_d_test.go`
+- `skills/do-work-board/tools/queue-kanban/user_request_clipboard_browser_probe_test.go`
+- `skills/do-work-board/tools/queue-kanban/user_request_progress_browser_probe_test.go`
+- `skills/do-work-board/docs/board-guide.md`
+- `skills/do-work-board/actions/board.md`
+- `skills/do-work/actions/work-reference.md`
+- `skills/do-work/actions/version.md`
+- `VERSION`
+- `skills/do-work/VERSION`
+- `CHANGELOG.md`
+- `skills/do-work/CHANGELOG.md`
+
+**What was done:** The group head used to be built two ways — an always-open shape where the head is
+itself the drawer trigger, and a folded shape where the head is a toggle and `Details` sits on a
+sibling button. The branch is gone: both readings build the same head and the folded flag decides only
+the initial state, which gives the By UR reading a real `<button>` with `aria-expanded` and keeps
+`Details` separate, while removing code. The drawer's REQ-id list folds and is height-capped, so a
+43-member group no longer pushes the rows below it out of the panel.
+
+On top of that, the board learned to read `estimate.p50_active_minutes` and to report five figures per
+user request. The payload carries presence beside value, because the salvage path drops nested blocks
+by design and a missing estimate has to read as absent rather than as zero. One rollup computes the
+figures; the header and the drawer both render from it, and a probe asserts the two surfaces agree
+byte for byte in the same run under one stubbed clock.
+
+**The riskiest line in the change is the one nobody would have noticed.** `web/board.js:68` is the
+board's only ticker. Pointing it at a second pass means an unguarded throw there stops every stopwatch,
+every relative time and the clock-skew tooltip — and the board would still render perfectly on load, so
+it would look like a board full of very young claims. Three things contain it: the existing refresh runs
+first with the captured instant, the rollup is total by narrowing with no `try`/`catch` anywhere in the
+fragment, and a probe drives the tick against a board with no user requests and no timeline and asserts
+an existing stopwatch still advanced from 1m 30s to 2m 30s.
+
+Merge ranges: increment 1 `fb823842..200ea475`, 8 files; increment 2 `87f644a2..916ee694`, 25 files,
+2177 insertions, 50 deletions. Builder branch head `96bec51`.
+
+## Decisions — implementation
+
+The plan's fifteen decisions were carried out. Four divergences and one late declaration are recorded
+here rather than left for a reviewer to find.
+
+- **D-16 — four files changed outside the original declaration. DECIDE & STATE, declared late.**
+  `javascript_behavior_b_test.go` and `javascript_behavior_c_test.go` are forced repairs: the production
+  change breaks them loudly and the JavaScript lane stays red otherwise. `VERSION` and
+  `skills/do-work/VERSION` carry the version the release bumps, and leaving them strands a release
+  mirror. All four are now in `## Scope` and mirrored into `write_set`; the declaration moved, the work
+  did not expand.
+- **D-17 — the shared thing is the five label/value pairs, not a strip factory. DECIDE & STATE.** The
+  plan named one `makeUserRequestSummaryStrip(summary, options)` for both surfaces. The drawer's host is
+  a `<dl>` and the header's is a flex row, so neither can compose the other's markup; what they share is
+  `userRequestSummaryMetrics(summary)`. The unused `options` parameter was dropped rather than left in.
+- **D-18 — `.ur-count` becomes filter-only where the strip renders, and stays a total where it does
+  not. DECIDE & STATE.** Applying the plan's D11 unconditionally would delete the group's REQ count from
+  the URs-only reading, which has no strip, and put nothing in its place.
+- **D-19 — "unmeasured" counts only members whose work has ended. DECIDE & STATE.** The literal reading
+  of the plan would report every pending REQ as unmeasured, so a fresh user request would announce
+  "12 unmeasured" for work nobody has started.
+- **D-20 — the browser probe was rewritten for cost after the gate exposed it. DECIDE & STATE.** One
+  engine per theme now measures all three widths through `Emulation.setDeviceMetricsOverride`, and the
+  page returns its result as one awaited promise: six engine launches and hundreds of protocol round
+  trips became two launches and eight. No assertion was weakened, removed or retried.
+- **The release is 0.304.0, not a patch.** A new user-visible feature, nothing removed or renamed. All
+  five release-owned paths moved together from `0.303.10`.
+
+## Discovered Tasks
+
+- **`board-guide.md` still documents the `took …` badge as a wall-clock span from `claimed_at` to
+  `completed_at`**, while `measureImplementationSpan` measures from the earliest origin-eligible stamp.
+  That line was already wrong before this request; the new lens section states the real rule, so the
+  guide now says two different things two screens apart. One line of repair, out of scope here.
+- **`--window-size` cannot express a viewport narrower than 500 CSS px** — Chromium clamps the window
+  and lays out at 500. Existing probes in `durations_browser_probe_test.go` pass `--window-size=320,…`
+  and assert narrow-layout behaviour, so those cases are measuring 500 and reporting green either way.
+  The new probe here uses `Emulation.setDeviceMetricsOverride` and asserts the measured viewport, so it
+  is clean; the older ones are not.
+- **The heavy gate stops at the first failing script**, so a run that fails early produces no evidence
+  at all for the lanes that never ran — which reads as "the gate failed" when it means "the gate did not
+  finish".
+- **A second script flaked under the full parallel heavy gate on this 4-CPU machine**
+  (`update-script-behavior.sh`, passing run alone at the same head). REQ-593 has since found the
+  mechanism: its two matchers report the writer's SIGPIPE as a failed match.
+
+## Qualification
+
+**Passed.** Read from increment 2's merge range `87f644a2..916ee694`; canonical `qualify` and
+`scope-drift` both satisfied. Increment 1's range is `fb823842..200ea475`.
+
+- **One warning is judged rather than obeyed.** `QUALIFY-PATH-NOT-IN-DIFF` names
+  `user_request_clipboard_browser_probe_test.go`, which the Implementation Summary claims and increment
+  2's range does not contain. It belongs to increment 1, where the markup change forced its selector
+  repair. The summary lists the union of both increments deliberately, because that is what this request
+  built; the alternative — qualifying against a range spanning both — would sweep in three other
+  requests' commits and report them all as undrifted scope. Recorded here rather than silenced.
+- **Four files entered late, and the declaration moved to meet them rather than the other way round.**
+  Two are forced test repairs the production change breaks loudly; two are the `VERSION` files the
+  release bumps, whose absence would strand a mirror. All four are in `## Scope`, mirrored into
+  `write_set`, and recorded as D-16.
+- **Both increments were red first, and the reds are anchor failures rather than assertion failures**,
+  which is the honest shape when a probe names a function that does not exist yet: five JavaScript-lane
+  cases failed with `anchor "function isCompletedStatus(" not found in the generated page` and the like
+  before any production line was written. The fast stage's red was a build failure for the same reason.
+- **The design's own forced failure fired as intended.** Adding the summary to the drawer broke five
+  existing probes with `ReferenceError: appendUserRequestSummaryMetaRows is not defined` — the loud
+  failure the fragment-manifest design exists to cause, rather than a silent divergence between the two
+  surfaces.
+- **The contrast assertion was proven to have teeth without waiting for a regression.** Flipping the
+  summary label to the fainter ink tone the board prime records as failing produced
+  `measures 4.08:1 in dark against rgb(12, 14, 18), below the 4.5:1 floor`; the colour was reverted and
+  the committed tree uses the passing tone. That matters because a contrast probe that never fails is
+  indistinguishable from one that never runs.
+- **The riskiest change is guarded by structure, not by hope.** Two greps stand as assertions:
+  `completedAt` appears nowhere in the summary fragment, so no browser-side second opinion on how long
+  work took can exist; and `try` appears nowhere in it either, so a defect surfaces as a visible
+  failure rather than as a silently frozen board. The freeze-guard probe drives the tick against a board
+  with no user requests and no timeline and asserts an existing stopwatch advanced from 1m 30s to
+  2m 30s.
+- **Every lane reported its own exit line, not the gate's.** A skipped lane reports success, so
+  `fast stage ok … 65.004s`, `strict JavaScript ok … 6.179s` with 70 pass and 0 skip, and
+  `strict browser ok … 100.538s` with 35 pass and 0 skip on Chromium 141 are recorded individually
+  against increment 1's baselines of 65 and 34 passes.
+
+Requirements traced: both folds independent, expanded by default, keyboard-operable and announcing
+their state, with `Details` still separate; the URs-only reading unchanged; both surfaces reporting five
+figures from one function and asserted to agree; membership complete and filter-independent; missing and
+excluded evidence disclosed rather than counted as zero; live contributions refreshed from one captured
+instant with no existing surface losing its tick.
 
 *Checked by work action*

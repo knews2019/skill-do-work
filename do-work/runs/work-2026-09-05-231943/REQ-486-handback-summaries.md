@@ -1,7 +1,7 @@
 # Hand-back — REQ-486 (collapsible UR progress summaries), increment 2 of 2: the summaries
 
 **Branch:** `worktree-agent-REQ-486-collapsible-ur-progress-summaries`
-**Head:** `PLACEHOLDER_HEAD`
+**Head:** `96bec51`
 **Base:** `200ea47` (increment 1 merged)
 **Worktree:** `/home/user/skill-do-work-worktrees/worktree-agent-REQ-486-collapsible-ur-progress-summaries`
 **Scope done:** T3, T4 and T5 — the payload reader, the shared rollup with both call sites and the
@@ -14,8 +14,9 @@ single clock instant, the browser lane, the docs and the release. Nothing from T
 | C3 | `1ee7a6b` | T3 — the nested `estimate.p50_active_minutes` reader, its payload pair, the corrected `timeline.go` comment, two doc edits |
 | C4 | `41cc81c` | T4 — the shared rollup, its two call sites, the one clock instant, `.ur-count`, the CSS |
 | C5 | `40006cf` | T5 — the browser probe, `board-guide.md`, the release |
+| C6 | `96bec51` | T5 — the browser probe made cheap enough to survive the full gate (no assertion changed) |
 
-All three end with the required `Co-Authored-By` line. Nothing is pushed. No worktree was removed.
+All four end with the required `Co-Authored-By` line. Nothing is pushed. No worktree was removed.
 The only file written in the main checkout is this hand-back, unstaged and uncommitted.
 
 ## The release — what I bumped, from what, to what
@@ -178,12 +179,12 @@ user_request_progress_browser_probe_test.go:479: ur-summary-label "Grouped REQs"
 
 The colour was reverted immediately; the committed tree uses `--ink-soft`.
 
-**GREEN**, each lane's own exit line, at head `PLACEHOLDER_HEAD`:
+**GREEN**, each lane's own exit line, at head `96bec51`:
 
 ```
-fast stage:       ok  github.com/knews2019/skill-do-work/queue-kanban  71.252s
-JavaScript lane:  ok  github.com/knews2019/skill-do-work/queue-kanban  6.310s    70 PASS, 0 SKIP
-browser lane:     ok  github.com/knews2019/skill-do-work/queue-kanban  115.074s  35 PASS, 0 SKIP
+fast stage:       ok  github.com/knews2019/skill-do-work/queue-kanban  65.004s
+JavaScript lane:  ok  github.com/knews2019/skill-do-work/queue-kanban  6.179s    70 PASS, 0 SKIP
+browser lane:     ok  github.com/knews2019/skill-do-work/queue-kanban  100.538s  35 PASS, 0 SKIP
 ```
 
 The browser lane ran with `QUEUE_KANBAN_BROWSER=/opt/pw-browsers/chromium` on **Chromium
@@ -196,7 +197,37 @@ Also green: `bash _dev/tests/contract-regressions.sh` (write-surface count uncha
 
 ## Canonical gate
 
-PLACEHOLDER_GATE
+Run three times. The last one is the verdict.
+
+- **Run 1 exited 1.** One failure, in `_dev/tests/update-script-behavior.sh`: `FAIL: upstream fetcher:
+  unparseable URL archive omitted the default marker`. Investigated rather than assumed — that script
+  run alone at this head with `DO_WORK_MAINTAINER_TIER=heavy` passes (`update-script behavior probes
+  passed.`, exit 0). Nothing in this increment touches the update script or the CLI. The gate stopped
+  before the two queue-kanban heavy lanes, so run 1 carries no lane evidence at all. Read it the way
+  increment 1 read its `qualify.sh` failure: a flake under the full parallel gate on this 4-CPU
+  machine, worth somebody looking at, not caused by REQ-486.
+- **Run 2 exited 1, and that one WAS mine.** `TestBrowserBehaviorUserRequestProgressStripSurvivesEveryWidth/light-768`
+  failed with `no reply to Runtime.evaluate within 30s (read |0: i/o timeout) — the protocol channel
+  is the transport, so this is a transport failure and not a measurement`. The probe passed alone and
+  failed under the gate because it was the most expensive probe in the lane: six engine launches, each
+  followed by a Go-side poll asking the page every 25ms whether it had finished. Fixed in C6 by
+  reusing one engine per theme across all three widths (the viewport override makes that possible) and
+  having the page hand its result back as a promise the transport awaits in one call. Six launches and
+  hundreds of round trips became two launches and eight; the probe went from 2.83s to 1.25s standing
+  alone. **No assertion was weakened, removed or retried** — the only change is how the measurement is
+  driven.
+- **Run 3 exited 0**: `Maintainer verification passed.`, gate wall 298s, with both heavy lanes present
+  rather than skipped:
+
+```
+maintainer-verify: queue-kanban uncached tests with strict JavaScript behavior probes
+go-test budget: module=…/queue-kanban wall=65s tests=479 slowest-file=generate_test.go:12.55s limit=none (heavy)
+maintainer-verify: queue-kanban strict browser behavior lane
+go-test budget: module=…/queue-kanban wall=99s tests=35 slowest-file=timeline_browser_probe_test.go:65.58s limit=none (heavy)
+```
+
+Three gate runs is one more than the brief budgeted. Run 2 earned its re-run by finding a real defect
+in my own probe; run 1 was the flake the brief predicted, in a different script than the one it named.
 
 ## The two named failure modes, and what holds them
 
@@ -242,6 +273,9 @@ rollup. The `try/catch` in that probe exists to REPORT a throw, not to tolerate 
   `--window-size=320,…` and assert narrow-layout behaviour — those cases are measuring 500, not 320,
   and report green either way. My new probe uses `Emulation.setDeviceMetricsOverride` and asserts the
   measured viewport, so it does not have the problem; the older ones still do.
+- **D3 (discovered).** The heavy gate stops at the first failing script, so a run that fails early
+  produces no evidence for the lanes that never ran — run 1 above exited 1 having never touched either
+  queue-kanban heavy lane, which reads as "the gate failed" when it means "the gate did not finish".
 
 ## Notes for whoever integrates this
 
