@@ -93,6 +93,10 @@ func buildFastStageTemplateRepository(t *testing.T) string {
 	writeHeavyTestFile(t, templateRoot, "do-work/queue/REQ-001-fixture.md", "queue state 1\n")
 	writeHeavyTestFile(t, templateRoot, "do-work/runs/alpha-toolchain.txt", "alpha toolchain 1\n")
 	writeHeavyTestFile(t, templateRoot, "do-work/runs/beta-toolchain.txt", "beta toolchain 1\n")
+	// Committed, so mutating it exercises the TRACKED half of the seal loop.
+	// It is no stage's probe input, so the only thing that can move a
+	// fingerprint when it changes is the seal itself.
+	writeHeavyTestFile(t, templateRoot, "do-work/runs/work-fixture/prior-notes.md", "prior run notes 1\n")
 	commitHeavyTestChanges(t, templateRoot, "fast-stage fixture")
 	return templateRoot
 }
@@ -233,6 +237,19 @@ func TestFastStageReuseDecisionTable(t *testing.T) {
 			name: "a run-log write still reuses", stageID: "beta-stage",
 			mutate: func(t *testing.T, root string) {
 				writeHeavyTestFile(t, root, "do-work/runs/work-x/notes.md", "run notes\n")
+			},
+			expectDisposition: LaneDispositionReused, expectReason: laneReasonFingerprintMatch,
+		},
+		{
+			// The failure this catches: the exclusion test in the TRACKED half of
+			// the seal loop could be deleted and every other case stayed green,
+			// because every excluded path the other cases touch is untracked. The
+			// tracked half is the one carrying production weight — 231 tracked
+			// files under do-work/runs and 162 under do-work/.req-reservations go
+			// through it on every real gate run.
+			name: "a tracked run-log file changed still reuses", stageID: "beta-stage",
+			mutate: func(t *testing.T, root string) {
+				writeHeavyTestFile(t, root, "do-work/runs/work-fixture/prior-notes.md", "prior run notes 2\n")
 			},
 			expectDisposition: LaneDispositionReused, expectReason: laneReasonFingerprintMatch,
 		},
@@ -595,5 +612,71 @@ func TestFastStageCoversNothingIsUncertain(t *testing.T) {
 	runHeavyTestGit(t, repositoryRoot, "add", "-A")
 	if _, reason, _, _ := decideFastStageFields(t, repositoryRoot, "alpha-stage", time.Now()); reason != laneReasonFingerprintUncertain {
 		t.Fatalf("a stage covering nothing reported %s, want fingerprint_uncertain", reason)
+	}
+}
+
+// TestShippedFastStageManifestSealsTheQueuePathsItsStagesRead pins the half of
+// the fix that lives in data rather than in code. Every case above runs a
+// fixture manifest, so the shipped _dev/tests/fast-stages.json could be reverted
+// to its pre-fix content — declaring do-work/ as a tree no stage reads — and the
+// whole suite stayed green while the gate went back to reporting a false pass
+// for a do-work/-only change.
+//
+// The maintainer tree is export-ignored, so an installed copy of this module has
+// no _dev/ to read and this test is skipped there. The skip is keyed on the
+// DIRECTORY, not on the manifest: inside the maintainer checkout _dev/tests
+// exists, so a manifest that was renamed, deleted or made undecodable fails here
+// instead of turning the whole assertion into a silent pass.
+func TestShippedFastStageManifestSealsTheQueuePathsItsStagesRead(t *testing.T) {
+	repositoryRoot, err := filepath.Abs("../../../../../..")
+	if err != nil {
+		t.Fatal(err)
+	}
+	maintainerTestsDirectory := filepath.Join(repositoryRoot, "_dev", "tests")
+	if _, statError := os.Stat(maintainerTestsDirectory); statError != nil {
+		t.Skipf("installed module: %s does not ship", maintainerTestsDirectory)
+	}
+	manifestContents, err := os.ReadFile(filepath.Join(maintainerTestsDirectory, "fast-stages.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	manifest, err := decodeFastStageManifest(manifestContents)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// The incident this pins by name: the do-work-cli stage's
+	// TestDiscoverRepositoryAcceptsProductionLegacyArchiveInputClass reads and
+	// byte-checks this one archived file, and appending a single newline to it
+	// made that test fail while the gate reported the stage REUSED and exited 0.
+	const archivedInputTheDoWorkCLIStageReads = "do-work/archive/UR-003/input.md"
+	if _, err := os.Stat(filepath.Join(repositoryRoot, filepath.FromSlash(archivedInputTheDoWorkCLIStageReads))); err != nil {
+		t.Fatalf("the archived input the do-work-cli stage byte-checks is no longer there: %v", err)
+	}
+	for _, coverageExpectation := range []struct{ stageID, path string }{
+		{"do-work-cli-fast-tests", archivedInputTheDoWorkCLIStageReads},
+		// The queue-kanban stage builds its board from the whole real tree, so
+		// its coverage has to reach the same path for the same reason.
+		{"queue-kanban-fast-tests", archivedInputTheDoWorkCLIStageReads},
+	} {
+		stage, err := selectFastStage(manifest, coverageExpectation.stageID)
+		if err != nil {
+			t.Errorf("%v", err)
+			continue
+		}
+		if !laneCoversPath(stage.Coverage, coverageExpectation.path) {
+			t.Errorf("stage %s does not cover %s, so a change there cannot force it to execute",
+				coverageExpectation.stageID, coverageExpectation.path)
+		}
+	}
+	// An exclusion beats coverage, so one that reaches this path would undo both
+	// coverage rules above without touching either of them.
+	if fastStageSealExcludesPath(manifest, archivedInputTheDoWorkCLIStageReads) {
+		t.Errorf("a seal exclusion matches %s, so no stage seals it however wide its coverage is",
+			archivedInputTheDoWorkCLIStageReads)
+	}
+	if laneCoversPath(manifest.NonStageCoverage, archivedInputTheDoWorkCLIStageReads) {
+		t.Errorf("non_stage_coverage claims no stage reads %s, and the do-work-cli stage byte-checks it",
+			archivedInputTheDoWorkCLIStageReads)
 	}
 }

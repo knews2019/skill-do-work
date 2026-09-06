@@ -43,13 +43,30 @@ const (
 // SealExclusions is the only rule that beats a stage's own coverage: a path it
 // names is sealed nowhere, even into a stage whose coverage matches it. Admit a
 // path only when BOTH halves hold — the gate or the orchestrator writes it WHILE
-// a gate runs, and no stage reads its bytes. That condition is the contract, not
-// the entries: the list in _dev/tests/fast-stages.json is only today's set of
-// paths satisfying it, and a new churn directory earns a place by passing the
-// same test rather than by resembling one already listed. The first half is what
-// makes the concept necessary at all: the fingerprint the gate records is the
-// PRE-run one, so a seal over a file the run itself writes can never match the
-// evidence it authorized, and that stage would execute forever.
+// a gate runs, and no stage reads its BYTES, NOT ITS EXISTENCE. That condition
+// is the contract, not the entries: the list in _dev/tests/fast-stages.json is
+// only today's set of paths satisfying it, and a new churn directory earns a
+// place by passing the same test rather than by resembling one already listed.
+// The first half is what makes the concept necessary at all: the fingerprint the
+// gate records is the PRE-run one, so a seal over a file the run itself writes
+// can never match the evidence it authorized, and that stage would execute
+// forever.
+//
+// "Bytes, not existence" is a real limit of the seal, not careful wording. The
+// board stats every repo-relative path mentioned in any REQ or UR body
+// (skills/do-work-board/tools/queue-kanban/filementions.go), and those mentions
+// reach do-work/runs and do-work/deliverables, so creating or deleting a
+// mentioned file inside an excluded subtree changes the board JSON without
+// moving any seal. No fast-stage assertion reads that map today, which is the
+// only reason today's entries are safe; a path whose existence a stage asserts
+// on cannot be excluded until that read is gone.
+//
+// Three of today's entries pass the second half only because
+// skills/do-work-board/tools/queue-kanban/walk.go's isSkippedSection prunes
+// runs, deliverables and dotted directories from the board walk — which is what
+// keeps do-work/runs, do-work/deliverables and do-work/.req-reservations unread.
+// That is one set enumerated in two modules, so read isSkippedSection before
+// adding an entry here, and re-check these three whenever it changes.
 type fastStageManifest struct {
 	SchemaVersion    int                 `json:"schema_version"`
 	Stages           []manifestFastStage `json:"stages"`
@@ -179,9 +196,11 @@ func fastStageManifestClassifiesPath(manifest fastStageManifest, path string) bo
 
 // workingTreeSeals hashes the bytes a stage would actually read right now, for
 // every tracked and untracked path the stage covers, plus every path the
-// manifest classifies nowhere. An input that cannot be determined — a tracked
-// path missing from the worktree, a symlink or other non-regular file where a
-// file is expected, an unreadable file — is an error, never a weaker seal.
+// manifest classifies nowhere, MINUS every path SealExclusions names — an
+// excluded path is skipped even when the stage's own coverage matches it. An
+// input that cannot be determined — a tracked path missing from the worktree, a
+// symlink or other non-regular file where a file is expected, an unreadable
+// file — is an error, never a weaker seal.
 func workingTreeSeals(repositoryRoot string, stage manifestFastStage, manifest fastStageManifest) ([]string, bool, error) {
 	seals := []string{}
 	sealedPaths := map[string]bool{}
