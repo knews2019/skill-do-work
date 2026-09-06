@@ -7,8 +7,17 @@ user_request: UR-105
 review_generated: true
 impact: impact-negligible
 effort_estimate: effort-mechanical
+route: B
 prime_files: [_dev/primes/prime-shell-commands.md]
 tdd: false
+estimate:
+  p50_active_minutes: 15
+  confidence: medium
+  calculated_at: 2026-09-06T04:39:27Z
+  basis:
+    - Route B
+    - 1-file write set
+    - 3 acceptance criteria
 maintenance: true
 depends_on: [REQ-555]
 related: [REQ-555]
@@ -65,3 +74,20 @@ Depends on REQ-555, which rewrote the route column of the same table.
 ## Open Questions
 
 None.
+
+## Triage
+
+**Route: B** — Explore then build.
+
+**Reasoning:** The edit itself is prose in one table, Route A shaped. What makes exploration real is the
+request's second requirement: check the other thirteen Mechanics cells in the same pass, because the row
+that was checked says nothing about the rows that were not. Each cell is a claim about what a Go
+subcommand owns, and settling it means finding that subcommand's implementation and reading it. Fourteen
+of those is discovery, not typing.
+
+**Planning:** Skipped. There is nothing to sequence — the write set is one file and the work is
+whatever the audit finds.
+
+**This request exists because REQ-555 declined to widen.** The stale cell was found during REQ-555's
+review and was equally stale before that change, so folding it in would have broken that request's
+"scope is exactly this finding class" constraint. Same finding class, its own request.
