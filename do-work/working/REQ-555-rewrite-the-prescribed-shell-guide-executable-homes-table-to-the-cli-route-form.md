@@ -168,9 +168,23 @@ a file and then not needing it is recorded rather than papered over.
   shim in the route column and the claim that a six-line launcher orchestrates two scripts are both
   "the prose describes a shell ownership that no longer exists". The request asks for one assertion,
   and splitting them would have produced two.
+  **Corrected after review.** The first version of this decision claimed both halves were keyed on the
+  claim rather than the wording. Neither was. The route half tested for a backticked `.sh` in one cell
+  and the orchestration half was a 19-character fixed string; the review put the same defect back seven
+  ways past the first and three ways past the second. Both are now keyed on the condition — see the
+  remediation qualification.
 - **D-05 — a missing guide or a renamed heading fails rather than reads clean. DECIDE & STATE.** The
   awk pass exits 3 when it never sees the heading, and that status is checked. A ratchet that goes
   quiet when its target is renamed is the failure mode REQ-552 and REQ-554 both hit in this same file.
+
+## Discovered Tasks
+
+- **Row 13's Mechanics cell describes shell the Go command does not run.** It credits `run-blocked-check`
+  with "GNU timeout selection and isolated stock-Bash process-group timeout/cleanup"; the Go
+  implementation does neither. Equally stale before this change, and the request's constraint is "scope
+  is exactly this finding class", so it is captured as **REQ-595** rather than folded in. That request
+  also asks for the other thirteen Mechanics cells to be checked in the same pass, because the one row
+  that was checked says nothing about the rows that were not.
 
 ## Qualification
 
@@ -193,8 +207,53 @@ Canonical `qualify` is satisfied.
   other. It is stated in the Implementation Summary as an addition and is the reason the net line delta
   is +2 rather than the expected -5.
 - **The declared write set is a ceiling that was not filled.**
-  `_dev/tests/prescribed-shell-canonicalization.sh` was declared and not changed, because it only
-  asserts the nine shims exist and are executable, which this request does not touch. It still exits 0.
+  `_dev/tests/prescribed-shell-canonicalization.sh` was declared and not changed. It still exits 0.
+  **Corrected after review**: the first version of this bullet said it "only asserts the nine shims
+  exist and are executable". It is 169 lines and also pins twelve required headings in this same guide,
+  sixteen pointer sites across shipped files, a no-direct-curl rule over `tools/`, and stale-prose
+  scans. None of those is touched by a route-column rewrite, which is why it needed no change — but the
+  reason is "nothing this request edits is in its coverage", not "it covers almost nothing".
+
+### Remediation qualification (after review)
+
+**Passed.** Remediation merge range `5b0f7b8f..12324355`, two files, both already in the declared write
+set. The review scored 62% and asked for changes; all four of its confirmed non-cosmetic findings are
+closed in code, and three claims in this record are corrected rather than defended.
+
+- **The sentence this request added was false, and it was false in the exact way the request exists to
+  remove.** It said the retained launchers "do nothing but `exec` the subcommand" and that behaviour
+  changes are "never in the launcher". Seven of the nine translate a legacy positional call into the
+  flags the subcommand requires — `scripts/show-commit-diff.sh <commit>` becomes `--commit <commit>` —
+  so the same arguments passed straight to the command are rejected with `unknown option`. And
+  `scripts/protected-inventory.sh` sets `DO_WORK_COMPATIBILITY_SHIM=1`, which eighteen non-test sites
+  under `internal/` read, and which selects the `<tag>\t<path>` output that `actions/commit.md` and
+  `../../do-work-toolbox/actions/inspect.md` parse one row per file from. Adding false prose to a
+  request whose purpose is deleting false prose is the worst available outcome, and the reviewer was
+  right to score it high. The sentence now states what is true and says which of the two is invoked and
+  which owns the mechanics, which also closes the reviewer's separate finding that the guide had begun
+  giving two canonical answers.
+- **The route check is now positive and reads the file it names.** It was a negative test — "no
+  backticked `.sh` in cell two of a row under this heading" — which the review evaded seven ways: an
+  argument inside the backtick span, the table's own `…` house style, no backticks at all, the shim
+  moved into the Mechanics cell, one leading space, an inserted sub-heading, and an emptied table. It
+  now finds each table by its own header row, scans every cell, and flags a named `.sh` path when that
+  file is itself a do-work-cli launcher — read from the file, so a genuinely shell-owned route would
+  pass and a renamed shim would not. A row naming a file that does not exist fails, and a table with no
+  rows fails.
+- **The orchestration check is keyed on the co-occurrence, not on a verb.** It matched the literal
+  `which orchestrates`; "that orchestrates", "which coordinates" and "a wrapper that drives" each
+  restored the identical false claim green. It now fails any line naming `scripts/protected-inventory.sh`
+  beside either check launcher it was said to drive. That is deliberately broad: the two names appearing
+  in one sentence is the defect shape, and a future sentence that legitimately needs both would be a
+  conscious edit to this check.
+- **Three record claims are corrected in place** rather than left standing: D-04's claim that both
+  halves were keyed on the claim, the Testing bullet's claim that the check matched the claim rather
+  than the wording, and the Qualification's understatement of what
+  `_dev/tests/prescribed-shell-canonicalization.sh` covers.
+- **One finding is recorded and not fixed.** Row 13's Mechanics cell attributes GNU-timeout selection
+  and stock-Bash process groups to a Go command that does neither. It was equally stale before this
+  change, and the request's constraint is "scope is exactly this finding class", so it is a discovered
+  task rather than a widening.
 
 ## Testing
 
@@ -205,7 +264,11 @@ green state after each.
   (\`scripts/show-commit-diff.sh\`)`, exit 1.
 - All nine returned: nine `FAIL:` lines, one per row, exit 1. The count is what the request pins at 0.
 - The orchestration clause returned, reworded to a shorter sentence than the deleted one: caught, exit
-  1. The check matches the claim, not the original wording.
+  1. ~~The check matches the claim, not the original wording.~~ **False, and corrected after review:**
+  the shorter sentence still contained the literal `which orchestrates`, which is all the check
+  matched. Three rewordings that keep the same false claim — "that orchestrates", "which coordinates",
+  "a wrapper that drives" — each passed. The ablation could not have found this because it kept the
+  string the check was looking for.
 - The table heading renamed from `## Shipped executable homes` to `## Executable homes`: `the "##
   Shipped executable homes" heading is gone ... (awk exit 3); the route ratchet cannot run`, exit 1.
   This is the case that matters most — a rename is how a ratchet goes quiet instead of red.
@@ -213,3 +276,178 @@ green state after each.
 Green at HEAD: `bash _dev/tests/audit-lockins.sh` prints `Audit lock-in regressions passed.` and exits
 0; `bash _dev/tests/prescribed-shell-canonicalization.sh` prints its passed line and exits 0. The full
 fast gate is run once for the batch rather than per request.
+
+### Remediation testing (after review)
+
+**Thirteen ablations, each run against the real file with it restored from a green copy between runs,
+and the last line of the sequence is the restored green.**
+
+Seven route-row evasions the review demonstrated, all of which used to pass, all now `EXIT=1` with the
+same message naming the path and its line: a bare backticked shim path (the control), an argument
+inside the backtick span, the `…` house style, no backticks, the shim moved into the Mechanics cell,
+one leading space, and a sub-heading inserted between the heading and the table.
+
+Three structural cases: the table emptied of rows gives `the executable-homes table ending at line 8
+has no rows; an empty table names no home`; the table's header row renamed gives `no "| Canonical
+executable route |" table header remains ... (awk exit 3); the route ratchet cannot run`; a route
+naming a script that does not exist gives `names scripts/does-not-exist.sh as a canonical route and no
+such file exists`.
+
+Three orchestration rewordings that each used to pass — "that orchestrates", "which coordinates", "a
+wrapper that drives" — now fail with the same message, as does the original wording.
+
+Green after restore: `bash _dev/tests/audit-lockins.sh` prints `Audit lock-in regressions passed.` and
+exits 0. `bash _dev/tests/prescribed-shell-canonicalization.sh` exits 0. `bash -n` and
+`shellcheck --severity=warning` on the lock-in both exit 0.
+
+**Fast gate at the remediation revision:** `Maintainer verification passed.`, exit 0, wall 85s, with
+`do-work-cli` at 784 tests. One `SKIP` line, the heavy-only one every fast run prints.
+
+## Review
+
+**Overall: 62%** | 2026-09-06T04:15:00Z
+
+| Dimension | Score |
+|-----------|-------|
+| Requirements | 65% |
+| Code Quality | 60% |
+| Test Adequacy | 35% |
+| Scope | 58% |
+| Risk | Medium |
+| Acceptance | Request changes |
+
+**Verdict: Request changes** — the table rewrite itself is correct and the nine subcommands each match
+their launcher's own `exec` line, but the change added one sentence of shipped prose that is false for
+seven of the nine launchers it describes, and neither half of the lock-in held the property it claimed.
+Three reviewers worked independently; the synthesis reproduced every finding before accepting it.
+
+Where the reviewers disagreed, and what was picked:
+
+- The added sentence. Reviewer 1 scored it a positive for stating a condition instead of listing nine
+  rows. Reviewers 2 and 3 called it a high-severity false claim. Settled by reading all nine launcher
+  bodies and running `protected-inventory` through both routes against the same dirty tree: seven of
+  nine do more than `exec`, and the two routes share no output line. Picked reviewers 2 and 3 —
+  compliance with one rule does not make a sentence true.
+- How many ways the route ratchet could be evaded. Reviewer 2 named one, reviewer 3 named three,
+  reviewer 1 named eleven across both halves. Settled by running each candidate in a sandbox copy with
+  the guide restored from git between runs: seven route-row evasions reproduce.
+- Whether "the route the table now names is not runnable" is a finding. Rejected as framed: the `…` in
+  a route cell stands for global options and is the same shape the five pre-existing toolbox rows
+  already used, so a route cell was never a paste-ready command in this table.
+
+**Important findings (each with its recorded impact token):**
+
+- The added sentence is false for seven of the nine launchers, and materially wrong for one. Six
+  launchers rewrite positional argv into the flags the subcommand requires; `protected-inventory.sh`
+  sets `DO_WORK_COMPATIBILITY_SHIM=1`, which eighteen non-test sites under `internal/` read and which
+  selects the `<tag>\t<path>` output `commit.md:59` and `inspect.md:67` parse one row per file from.
+  Reproduction: `bash scripts/show-commit-diff.sh ad8a8050` exits 0 while
+  `bash tools/do-work-cli.sh --format text show-commit-diff ad8a8050` exits 2 with
+  `unknown option ad8a8050`. — impact-user-visible → fixed in remediation
+- The shim-row half of the lock-in is evadable seven verified ways, including the table's own `…` house
+  style. It required a backtick immediately after `.sh`, looked only at cell two, only at lines starting
+  with `|`, and only inside one heading's window. — impact-user-visible → fixed in remediation
+- The orchestration half pins a 19-character literal, so one changed word restores the identical false
+  claim green: "that orchestrates", "which coordinates", "a wrapper that orchestrates" all passed. The
+  builder's own ablation kept the literal, so it could not have found this. — impact-user-visible →
+  fixed in remediation
+- The guide gave two different canonical answers for the same three mechanics: the table named the
+  command while the prose sections at lines 43, 47, 80, 99 and 115 still prescribed the launcher with
+  positional arguments. — impact-negligible → fixed in remediation
+
+**Minor findings:**
+
+- The negative check would have failed spuriously on a legitimate shell-owned route row and on a true
+  sentence containing "which orchestrates". Neither exists in the guide today, so it was scored low. —
+  impact-negligible → fixed in remediation, which reads the named file rather than matching its name
+- Row 13's Mechanics cell attributes GNU-timeout selection and stock-Bash process groups to a Go
+  command that does neither. Equally stale before this change. — impact-negligible → discovered task
+- This record understated what `_dev/tests/prescribed-shell-canonicalization.sh` covers. —
+  impact-negligible → corrected in place
+- Two consecutive blank lines at the end of the new block where the file uses one. — impact-negligible
+  → fixed in remediation
+
+**Requirements checklist:**
+
+- [x] The nine `.sh` rows read `tools/do-work-cli.sh … <subcommand>`, each subcommand matching its
+  launcher's own `exec` line — delivered
+- [x] The false orchestration clause is gone and line 43 still parses — delivered
+- [x] The shims themselves are untouched; the diff is exactly two files — delivered
+- [x] No test file changed beyond the one lock-in — delivered
+- [x] The lock-in is green today, and the loud structural guards fire — delivered
+- [ ] → [x] "Red the moment the number regrows" — **not delivered at review, delivered in remediation.**
+  It was red only for a byte-exact repeat of the deleted shapes; thirteen ablations now cover the seven
+  route evasions, three structural cases and three orchestration rewordings.
+- [ ] → [x] "Scope is exactly this finding class" — **not delivered at review, delivered in
+  remediation.** The added sentence was prose the request did not ask for and was false; it now states
+  what is true and resolves the contradiction the review found.
+
+**Acceptance testing**
+
+**Result: Partial at review, Pass after remediation.** Three reviewers each ran the lock-in against
+sandbox copies with the guide restored between runs. Every evasion they demonstrated was re-run against
+the remediated check and now fails; the restored tree is green, and the fast gate exits 0.
+
+**Follow-ups created:** 1 — the stale `run-blocked-check` Mechanics cell, recorded as a discovered task
+in the same finding class rather than widening this request.
+
+*Reviewed by review-work action*
+
+## Lessons Learned
+
+- **Reading a script's `exec` line is not reading the script.** Nine launchers were checked and all
+  nine execed the subcommand the table now names, which is what the route column needed. But six of
+  them rewrite positional arguments into flags first and one sets an environment variable that changes
+  the command's output shape, and a sentence was written claiming they "do nothing but exec". The
+  question answered was "which subcommand does it call"; the sentence made a claim about "what else
+  does it do", and that was never checked. When a sentence generalizes over a set, check the sentence
+  against the whole set, not against the fact that put the set on screen.
+- **An addition made to prevent one misreading can create a worse one.** The sentence existed because
+  the rewritten table would otherwise contradict the paragraph below it. That reasoning was sound and
+  the sentence still shipped a false claim into the file this request exists to make true. An earned
+  addition still has to be verified like any other claim.
+- **A negative ratchet forbids the spelling you deleted.** "No backticked `.sh` in cell two under this
+  heading" was red for exactly the shape that was removed and green for seven others, including the
+  table's own `…` house style. The positive form — every route row must name the command, and a named
+  `.sh` file that is itself a launcher is an offender — cannot be evaded by punctuation, indentation,
+  a moved cell, or a second table, because it asks what the row means rather than how it is spelled.
+- **A check that reads the file it names beats one that matches the name.** Deciding "is this route a
+  shim?" by opening the script and looking for `do-work-cli` removed the whole false-positive class in
+  the same change: a genuinely shell-owned route passes, and a shim renamed to something innocuous
+  still fails.
+- **An ablation that keeps the string the check looks for proves nothing.** The orchestration clause
+  was reworded for the ablation but the reworded version still contained `which orchestrates`, so the
+  test passed for the wrong reason and the record claimed it "matches the claim, not the original
+  wording". Ablate the property, not the sentence: change the words the check is not allowed to depend
+  on.
+- **Three independent reviewers disagreed, and the disagreement was the signal.** One scored the added
+  sentence as a positive. The two who called it false had read the launcher bodies. The one who had
+  read more of the code was right, which is the argument for running three lenses rather than one.
+
+## Orientation
+
+`skills/do-work/docs/prescribed-shell-primitives.md` has one "Shipped executable homes" table and every
+row now names `tools/do-work-cli.sh … <subcommand>`. The table says where a mechanic is **owned**.
+Where a row also has a retained `scripts/*.sh` launcher of the same name, that launcher is what the
+guide's own prose and the shipped actions **invoke**, and the two are not interchangeable: six
+launchers translate a legacy positional call into the subcommand's flags, and
+`scripts/protected-inventory.sh` sets `DO_WORK_COMPATIBILITY_SHIM=1` to select the `<tag>\t<path>`
+output that `actions/commit.md` and `../../do-work-toolbox/actions/inspect.md` parse. Changing the
+command's flags or output shape changes the launcher's contract; fix both together.
+
+The guard is Finding 7 in `_dev/tests/audit-lockins.sh`, beside REQ-552's, REQ-554's and REQ-556's. Two
+conditions, neither keyed on a spelling:
+
+- **Route rows.** Each table is found by its own `| Canonical executable route |` header row, so a
+  sub-heading or a second table cannot hide one. Every cell of every row is scanned for a `.sh` path;
+  each is resolved the way the guide writes them (`../../<pkg>/…` is a sibling package under `skills/`,
+  anything else is relative to the do-work package) and the file is read. A path whose file contains
+  `do-work-cli` is a shim row and fails. A path with no file fails. A table with no rows fails.
+- **The orchestration claim.** Any line naming `scripts/protected-inventory.sh` beside
+  `tools/checks/uncommitted-inventory.sh` or `tools/checks/associate-files.sh` fails. That is
+  deliberately broad — the two names in one sentence is the defect shape — so a future sentence that
+  legitimately needs both is a conscious edit to this check.
+
+Recorded and unfixed: row 13's Mechanics cell attributes GNU-timeout selection and stock-Bash process
+groups to a Go command that does neither. It was stale before this request and is captured as a
+discovered task in the same finding class.
