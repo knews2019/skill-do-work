@@ -23,7 +23,8 @@ and no backticked token in Scope that is not a path.
 ## Reference
 
 Written 2026-09-06 after the previous session hit its usage limit mid-run. Head of the integration
-branch when this was written: see the commit that adds this file. VERSION is 0.305.8. Nothing is
+branch when this was written: see the commit that adds this file. VERSION is 0.305.9 (0.305.9 was a
+direct fix of two Codex findings on pull request 182, released after the first version of this file). Nothing is
 dirty in any checkout. Four background workflows died to the session limit (REQ-598 build, REQ-602
 verify, REQ-597 review) and one landed (REQ-600 review); nothing else went wrong.
 
@@ -37,8 +38,8 @@ in order: remediate the six findings the Review lists (the important one is the 
 sentence at `_dev/primes/prime-shell-commands.md:53`; the review gives the replacement; also the
 scanner's stale comment at `_dev/tests/quiet-grep-pipeline-scanner.sh:18` and `:11`, the block prose
 "first hit wins", the prime's line 51 list split, and this record's two mis-stated sentences), run the
-four guards, commit; write Lessons Learned and Orientation; finalize as a **release** at 0.305.9 with
-`handoff-tools/changelog-req600.md` (already headed 0.305.9; re-check the heading is unused). Carry the
+four guards, commit; write Lessons Learned and Orientation; finalize as a **release** at 0.305.10 with
+`handoff-tools/changelog-req600.md` (already headed 0.305.10; re-check the heading is unused). Carry the
 lesson satellite lines inside the finalization commit via `EXTRA_COMMIT_PATHS` (see below). Worktree:
 `worktree-agent-REQ-600-sigpipe-prime`, clean, merged. No uncommitted files.
 
@@ -138,6 +139,11 @@ with `EXTRA_COMMIT_PATHS="skills/do-work/tools/do-work-cli/lessons-do-work-cli.m
 ### Heads-up
 
 - The four workflows that died at 08:5x UTC left nothing dirty; do not look for half-applied work.
+- 0.305.9 fixed two Codex findings directly (a maintainer-only test moved into the export-ignored file;
+  skewed claims subscribed to the board's summary ticker). Both threads on pull request 182 are resolved.
+  `handoff-tools/release-direct.sh <version> <entry-file>` is the release bookkeeping for a fix with no REQ.
+- Board JavaScript behaviour probes SKIP unless `QUEUE_KANBAN_JAVASCRIPT_PROBES=on`; a green `go test`
+  without it proves nothing about a probe. The gate sets it.
 - `git merge -F -` does not read stdin here; write the message to a file. `pkill -f <pattern>` kills
   your own shell when the pattern is in its command line. `set -o pipefail` plus `grep -q` after a pipe
   is the defect REQ-593/594/600 exist for; the guard will fail your shell if you write it.

@@ -277,13 +277,15 @@
     return valuesByKey;
   }
 
-  // Marks a rendered value node as ticking. Only a UR with a live claimed
-  // contribution carries the attribute, copying makeImplementationSpanNode's
-  // deliberate opt-out: a finished sum does not change between ticks, so
-  // selecting it every second would be work with no result.
+  // Marks a rendered value node as ticking. Only a UR with a claim in flight
+  // carries the attribute, copying makeImplementationSpanNode's deliberate
+  // opt-out: a finished sum does not change between ticks, so selecting it
+  // every second would be work with no result. A skewed claim counts as in
+  // flight: its stamp is ahead of this clock and becomes live as the clock
+  // catches up, and only a subscribed node can show that happening.
   function markUserRequestSummaryValueNode(valueNode, summary, metricKey) {
     valueNode.dataset.urSummaryMetric = metricKey;
-    if (summary.liveClaimCount > 0) {
+    if (summary.liveClaimCount > 0 || summary.skewedClaimCount > 0) {
       valueNode.dataset.urSummaryId = summary.userRequestId;
     }
   }

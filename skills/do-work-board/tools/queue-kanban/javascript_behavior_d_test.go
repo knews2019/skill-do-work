@@ -1222,6 +1222,69 @@ process.stdout.write(JSON.stringify({
 	}
 }
 
+// A claim stamped ahead of this clock is disclosed as clock skew rather than
+// counted, and the summary ticker only refreshes nodes that carry
+// [data-ur-summary-id]. Subscribing only URs with a LIVE claim left a UR whose
+// one claim was skewed with no subscription at all: as the wall clock caught up
+// the card stopwatch started moving while the header and drawer figures stayed
+// on "clock skew" until something else forced a rerender. The strip below is
+// rendered while the claim is three minutes ahead, then the clock is moved four
+// minutes on and one tick runs: the value node must be subscribed at render
+// time, and the tick must turn the skew qualifier into elapsed minutes.
+func TestJavaScriptBehaviorSkewedClaimSummaryJoinsTheTickerAndRecovers(t *testing.T) {
+	indexHtml := generateLiveSite(t)
+	javascriptProbe := `
+` + foldProbeDomStub + tickProbeDocumentStub + `
+var boardData = {
+  requests: {
+    "REQ-901": { status: "claimed", claimedAt: new Date(stubbedNowMs + 3 * 60000).toISOString() }
+  },
+  userRequests: { "UR-901": { requestIds: ["REQ-901"] } },
+  timeline: { projection: { confident: false, declinedReason: "not enough completed work to forecast from" } }
+};
+var requestsById = boardData.requests;
+var userRequestsById = boardData.userRequests;
+` + strings.Join(userRequestSummaryRenderBlocks(t, indexHtml), "\n") + `
+var strip = makeUserRequestSummaryStrip(summarizeUserRequestProgress("UR-901", stubbedNowMs));
+documentRoot.appendChild(strip);
+var activeNode = collectByClassName(strip, "ur-summary-value").filter(function (node) {
+  return node.dataset.urSummaryMetric === "active";
+})[0];
+var subscribedAtRender = activeNode.dataset.urSummaryId || "";
+var textAtRender = activeNode.textContent;
+stubbedNowMs += 4 * 60000;
+refreshTickingSurfaces();
+process.stdout.write(JSON.stringify({
+  subscribedAtRender: subscribedAtRender,
+  textAtRender: textAtRender,
+  textAfterTick: activeNode.textContent
+}));
+`
+	probeOutput := runJavaScriptBehaviorProbe(t, "skewed claim summary ticker", javascriptProbe)
+
+	var result struct {
+		SubscribedAtRender string `json:"subscribedAtRender"`
+		TextAtRender       string `json:"textAtRender"`
+		TextAfterTick      string `json:"textAfterTick"`
+	}
+	if decodeError := json.Unmarshal(probeOutput, &result); decodeError != nil {
+		t.Fatalf("decode skewed-claim ticker output: %v (output %q)", decodeError, probeOutput)
+	}
+	if !strings.Contains(result.TextAtRender, "clock skew") {
+		t.Fatalf("active metric at render = %q, want the clock-skew qualifier for a claim three minutes ahead", result.TextAtRender)
+	}
+	// The subscription is decided at render time, when the only claim is skewed.
+	// Without it the tick below has nothing to select and the figure is stuck.
+	if result.SubscribedAtRender != "UR-901" {
+		t.Fatalf("active value node carries data-ur-summary-id=%q at render; want UR-901 so the ticker can revisit a skewed claim",
+			result.SubscribedAtRender)
+	}
+	if strings.Contains(result.TextAfterTick, "clock skew") || result.TextAfterTick == result.TextAtRender {
+		t.Fatalf("active metric after the clock caught up = %q (was %q); want elapsed time with no clock-skew qualifier",
+			result.TextAfterTick, result.TextAtRender)
+	}
+}
+
 // REQ-486 remediation: the ORDER inside the tick, made observable.
 //
 // refreshTickingSurfaces runs refreshRelativeTimeNodes first and the UR summary

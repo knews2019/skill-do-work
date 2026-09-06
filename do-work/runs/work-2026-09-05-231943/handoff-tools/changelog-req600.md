@@ -1,4 +1,4 @@
-## 0.305.9 — Every Shipped Shell Block Is Now Checked for the Pipe Shape That Hides a Failed Command (2026-09-06)
+## 0.305.10 — Every Shipped Shell Block Is Now Checked for the Pipe Shape That Hides a Failed Command (2026-09-06)
 
 0.305.5 removed `producer | grep -q PATTERN` from the repository's own scripts because, under the shell setting they all run with, the producer's death reads as the pattern's absence. One shipped block still carried it: the probe in the memory guidance that asks a local model server whether an embedding model is pulled. It could not misfire in practice, because that listing is far smaller than the size where the shape starts to fail, but it is the block agents copy, and copied guidance is where the shape spreads from.
 
