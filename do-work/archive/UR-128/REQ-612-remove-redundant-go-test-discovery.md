@@ -166,6 +166,8 @@ None. Implementation choices and conditional feasibility are delegated within th
 
 ## Decisions
 
+- **Audit note (0.305.30):** two behaviour changes this record did not state. A caller-supplied `-run` used to silently override the heavy-prefix exclusion (the discovery script rebuilt `-run` from the filtered list); with native `-skip` both apply, so a `-run` that names a heavy test no longer runs it. And `DO_WORK_TEST_REPO_ROOT` became optional in `run-go-tests-with-budget.sh`, which is fail-open scope creep unrelated to the discovery change: a caller that forgot to set it now runs against whatever tree the module directory resolves to.
+
 - **Native `-skip` vs Pre-Discovery**: Go 1.20+ supports `-skip <regexp>`. In Go 1.26.1, `go test -skip` eliminates the need to query test lists upfront, avoiding process execution overhead and complex regular expression compilation.
 - **Pure Bash Regex Escaping**: Character-by-character string inspection in bash requires zero subprocesses and handles all standard regex metacharacters cleanly.
 - **Post-Run Empty Selection Refusal**: Rather than checking the list of tests beforehand, the post-run JSON output parser examines `durations`. If `DO_WORK_GO_TEST_EXCLUDE_PREFIXES` was provided and 0 tests executed under exit status 0, it outputs `no fast Go tests remain after applying the heavy prefixes` and exits 1, maintaining exact backward compatibility with zero discovery overhead.
