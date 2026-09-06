@@ -983,8 +983,10 @@
       // it cannot also be the drawer trigger — one element must not mean two
       // things. The drawer lives on its own button beside it inside
       // .ur-group-row (both are real buttons, both keyboard-operable), and the
-      // fold state is announced on the element that owns it. The reading
-      // decides exactly one thing: where the fold starts.
+      // fold state is announced on the element that owns it. The reading decides
+      // where the fold starts, and — because the two readings answer different
+      // questions — whether this group carries the progress strip and what its
+      // count chip says.
       var head = createElement("button", "ur-group-head");
       head.type = "button";
       head.setAttribute("aria-expanded", userRequestCardsFolded ? "false" : "true");
@@ -1000,15 +1002,23 @@
       if (!userRequest.inputFilePresent) {
         head.appendChild(createElement("span", "ur-synthetic", "no input.md"));
       }
-      head.appendChild(
-        createElement(
-          "span",
-          "ur-count",
-          shownRequestIds.length < requestIds.length
-            ? shownRequestIds.length + " / " + requestIds.length + " REQ"
-            : requestIds.length + " REQ"
-        )
-      );
+      // Where the summary strip renders it owns the whole-UR total, so this chip
+      // drops to a filter-only "n of m shown" and is omitted entirely when
+      // nothing is hidden: a filter-dependent "12 / 43 REQ" sitting beside a
+      // filter-independent "30/43 successful" reads as a contradiction. The URs
+      // only reading has no strip — it exists to see many user requests at once,
+      // and five metrics per row would undo that — so there the chip keeps
+      // carrying the group's total, exactly as it always has.
+      var groupCountText = userRequestCardsFolded
+        ? (shownRequestIds.length < requestIds.length
+          ? shownRequestIds.length + " / " + requestIds.length + " REQ"
+          : requestIds.length + " REQ")
+        : (shownRequestIds.length < requestIds.length
+          ? shownRequestIds.length + " of " + requestIds.length + " shown"
+          : "");
+      if (groupCountText !== "") {
+        head.appendChild(createElement("span", "ur-count", groupCountText));
+      }
       var headRow = createElement("div", "ur-group-row");
       headRow.appendChild(head);
       var detailButton = createElement("button", "ur-group-detail", "Details");
@@ -1018,6 +1028,17 @@
       detailButton.setAttribute("aria-label", "Open details for " + userRequestId);
       headRow.appendChild(detailButton);
       group.appendChild(headRow);
+
+      // A sibling of the head row, never a child of the head: .ur-group-head is
+      // a <button>, so metrics placed inside it would join the fold control's
+      // accessible name. Its own wrapping row also keeps it off .ur-title, which
+      // is a flex: 1 ellipsised line that flex-wrap on the head would compress
+      // rather than break. It stays visible while the group is collapsed —
+      // folding removes the card grid and nothing else, so a collapsed group
+      // still reports its progress.
+      if (!userRequestCardsFolded) {
+        group.appendChild(makeUserRequestSummaryStrip(summarizeUserRequestProgress(userRequestId, Date.now())));
+      }
 
       // By UR arrives with its grid already built; URs only builds it on first
       // open. From the first click on they are the same machine.

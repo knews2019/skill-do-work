@@ -1466,6 +1466,10 @@ func TestJavaScriptBehaviorUserRequestsOnlyLensFoldsCardsUntilARowIsOpened(t *te
 		sliceBalancedBlockAfter(t, indexHtml, "function recentlyDoneIds("),
 		sliceBalancedBlockAfter(t, indexHtml, "function renderUserRequestLens("),
 	}
+	// REQ-486: the By UR header now builds a progress strip, so the renderer
+	// reaches into the summary fragment. Without these blocks the probe dies with
+	// a ReferenceError rather than measuring anything.
+	functionBlocks = append(userRequestSummaryCallSiteBlocks(t, indexHtml), functionBlocks...)
 	javascriptProbe := `
 Date.now = function () { return Date.parse("2026-08-15T12:00:00Z"); };
 var boardData = {

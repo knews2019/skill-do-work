@@ -356,6 +356,18 @@
     drawerMeta.appendChild(dd);
   }
 
+  // The UR drawer's half of REQ-486's summary. The header renders the same five
+  // figures as a strip; here they are meta rows, because the drawer's host is a
+  // <dl> of label/value pairs. What the two surfaces share is the TEXT —
+  // userRequestSummaryMetrics — so neither one can compose a figure of its own.
+  function appendUserRequestSummaryMetaRows(summary) {
+    userRequestSummaryMetrics(summary).forEach(function (metric) {
+      var valueNode = createElement("span", "detail-summary-value", metric.value);
+      markUserRequestSummaryValueNode(valueNode, summary, metric.key);
+      appendMetaRow(metric.label, valueNode);
+    });
+  }
+
   // Emptied on every open beside drawerMeta, because nothing else clears the
   // section: without this a UR opened after a REQ would wear the REQ's glossary.
   function clearDetailGlossary() {
@@ -649,7 +661,10 @@
     drawerMeta.textContent = "";
     clearDetailGlossary();
     var requestIds = userRequest.requestIds || [];
-    appendMetaRow("Grouped REQs", String(requestIds.length));
+    // The grouped-REQ count arrives as the summary's first metric, so the
+    // drawer states the total exactly once and states it the way the By UR
+    // header does.
+    appendUserRequestSummaryMetaRows(summarizeUserRequestProgress(userRequestId, Date.now()));
     if (requestIds.length > 0) {
       // A UR with dozens of members turned this row into a wall that pushed
       // input.md and the body out of the panel. The list is capped in CSS so it

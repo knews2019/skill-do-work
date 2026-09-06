@@ -2,6 +2,17 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.304.0 — User Request Groups Fold, and Report Their Own Progress (2026-09-06)
+
+A user request with dozens of requests under it filled the board with cards and still told you nothing about how far along it was. Its groups now fold, and its header answers the question the card wall never did.
+
+- Every **By UR** group header folds its own card grid, and starts open. More than one can be folded at a time, the control is a real button that announces whether it is open, and **Details** beside it still opens the drawer. The **URs only** reading is unchanged, including its collapsed default.
+- The By UR header and the user request's drawer both show the same five figures for the whole request: how many requests it groups, active time already spent, an approximate remaining time, and the successful and resolved percentages with their counts. Both read the request's complete membership, so filters change which cards you see and never move the numbers.
+- Active time ticks with the rest of the board while the page is open, so the header can never drift from the stopwatch on a claimed card below it.
+- Missing evidence is stated, never counted as zero. A refused span, a member whose work ended with nothing measurable, an unfinished member nobody has estimated, and a claim stamped ahead of your clock each get their own qualifier, and a request with no members reads `unavailable` instead of dividing by zero.
+- The drawer's grouped REQ id list starts open, is height-capped so it can no longer push `input.md` and the body out of the panel, and folds away entirely with one click.
+- The board now reads each request's saved `estimate.p50_active_minutes` for the remaining-time figure, falling back to the Timeline's median only while the Timeline has enough history to call it confident. The Timeline's own forecasting is unchanged.
+
 ## 0.303.10 — The Top Bar's Controls Stay On Screen at Narrower Widths (2026-09-05)
 
 Making the identity one unwrapping line (0.299.0) also gave it a minimum width, and on a window between roughly 760px and 1000px wide that pushed the filters and view buttons past the right edge. The page hides horizontal overflow, so there was no scrollbar to reach them — measured at 800px, the bar's contents wanted 905px and the last 105px were simply gone.

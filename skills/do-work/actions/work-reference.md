@@ -129,6 +129,14 @@ effort_estimate: effort-substantive   # OPTIONAL triage bit: effort-mechanical |
 # Written by the work action's ensure-estimate step or by verify-requests after a
 # material repair, produced deterministically by tools/estimate-p50.sh. Extraction
 # guide, confidence rubric, and presentation formats: actions/estimate-reference.md.
+# p50_active_minutes is DISPLAY ONLY on the board: parsed by
+# ../../do-work-board/tools/queue-kanban/model.go into the UR progress summary's
+# remaining-active-time figure, with no column logic, no ordering, and no
+# scheduling — the Timeline keeps forecasting from its own completed-work median.
+# Keep that parser in lock-step with this block, both changing in the same commit.
+# It is the only nested block the board reads, and only through the STRICT parse:
+# the salvage path for a malformed sibling line is flat and drops it, which the
+# board reports as an unknown forecast rather than as zero minutes.
 estimate:
   p50_active_minutes: 75
   confidence: medium            # low | medium | high

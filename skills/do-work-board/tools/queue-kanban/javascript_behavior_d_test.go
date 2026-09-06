@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"reflect"
 	"strings"
 	"testing"
 )
@@ -80,6 +81,7 @@ func TestJavaScriptBehaviorByUserRequestLensFoldsAndRestoresItsCards(t *testing.
 		sliceBalancedBlockAfter(t, indexHtml, "function recentlyDoneIds("),
 		sliceBalancedBlockAfter(t, indexHtml, "function renderUserRequestLens("),
 	}
+	functionBlocks = append(userRequestSummaryCallSiteBlocks(t, indexHtml), functionBlocks...)
 	javascriptProbe := `
 Date.now = function () { return Date.parse("2026-08-15T12:00:00Z"); };
 var boardData = {
@@ -217,6 +219,7 @@ func TestJavaScriptBehaviorUserRequestDrawerFoldsItsRequestIdList(t *testing.T) 
 		sliceBalancedBlockAfter(t, indexHtml, "function setDetailTarget("),
 		sliceBalancedBlockAfter(t, indexHtml, "function openUserRequestDetail("),
 	}
+	functionBlocks = append(userRequestSummaryCallSiteBlocks(t, indexHtml), functionBlocks...)
 	javascriptProbe := `
 var boardData = {
   requests: {
@@ -274,6 +277,13 @@ function renderDetailGlossary() {}
 var openDrawerCount = 0;
 function showDrawer() { openDrawerCount += 1; }
 ` + strings.Join(functionBlocks, "\n") + `
+// The stub's textContent is a node's OWN text, so a row whose value is an
+// element (since REQ-486 the summary rows are spans) needs its subtree read.
+function subtreeText(node) {
+  var text = node.textContent || "";
+  (node.childNodes || []).forEach(function (child) { text += subtreeText(child); });
+  return text;
+}
 function describeMetaRows() {
   var rows = [];
   for (var childIndex = 0; childIndex + 1 < drawerMeta.childNodes.length; childIndex += 2) {
@@ -294,7 +304,7 @@ function describeMetaRows() {
       controls: foldButton ? foldButton.getAttribute("aria-controls") || "" : "",
       valueId: value.id || "",
       valueHidden: Boolean(value.hidden),
-      valueText: value.textContent || "",
+      valueText: subtreeText(value),
       ticketIds: ticketIds
     });
   }
@@ -418,5 +428,737 @@ process.stdout.write(JSON.stringify({
 	idRowOnReopen := findRow(result.OnReopen, "REQ ids")
 	if idRowOnReopen.Expanded != "true" || idRowOnReopen.ValueHidden {
 		t.Fatalf("reopened drawer's REQ ids row = %#v; the meta list is rebuilt per open, so it must start expanded", idRowOnReopen)
+	}
+}
+
+// The rollup and its formatter, sliced out of the shipped page. Everything here
+// is pure: no DOM, no wall clock. The probes below install a Date.now that
+// THROWS before calling in, because "nowMs is a parameter and never a Date.now()
+// call inside" is the property that lets one tick state one instant across the
+// header, the drawer and the cards below them.
+func userRequestSummaryRollupBlocks(t *testing.T, indexHtml string) []string {
+	t.Helper()
+	return []string{
+		sliceDeclarationAfter(t, indexHtml, "var futureInstantSkewAllowanceMs"),
+		sliceDeclarationAfter(t, indexHtml, "var clockSkewMarkerText"),
+		sliceBalancedBlockAfter(t, indexHtml, "function isCompletedStatus("),
+		sliceBalancedBlockAfter(t, indexHtml, "function isTerminalResolvedStatus("),
+		sliceBalancedBlockAfter(t, indexHtml, "function timelineFormatSpanMinutes("),
+		sliceBalancedBlockAfter(t, indexHtml, "function liveClaimElapsedMinutes("),
+		sliceBalancedBlockAfter(t, indexHtml, "function summarizeUserRequestProgress("),
+		sliceBalancedBlockAfter(t, indexHtml, "function userRequestSummaryDurationText("),
+		sliceBalancedBlockAfter(t, indexHtml, "function userRequestSummaryPercentageText("),
+		sliceBalancedBlockAfter(t, indexHtml, "function userRequestSummaryActiveText("),
+		sliceBalancedBlockAfter(t, indexHtml, "function userRequestSummaryRemainingText("),
+		sliceBalancedBlockAfter(t, indexHtml, "function userRequestSummaryMetrics("),
+	}
+}
+
+// The summary functions the two SHIPPED call sites reach into, in dependency
+// order. Any probe that drives renderUserRequestLens or openUserRequestDetail
+// needs them: since REQ-486 the By UR header builds a progress strip and the UR
+// drawer builds progress meta rows, so a probe slicing only the renderer dies
+// with a ReferenceError instead of quietly measuring the markup that used to be
+// there. Re-declaring a function block a probe already sliced is harmless.
+func userRequestSummaryCallSiteBlocks(t *testing.T, indexHtml string) []string {
+	t.Helper()
+	return append(userRequestSummaryRollupBlocks(t, indexHtml),
+		sliceBalancedBlockAfter(t, indexHtml, "function markUserRequestSummaryValueNode("),
+		sliceBalancedBlockAfter(t, indexHtml, "function makeUserRequestSummaryStrip("),
+		sliceBalancedBlockAfter(t, indexHtml, "function appendUserRequestSummaryMetaRows("),
+	)
+}
+
+type userRequestSummaryMetric struct {
+	Key   string `json:"key"`
+	Label string `json:"label"`
+	Value string `json:"value"`
+}
+
+func metricValue(t *testing.T, metrics []userRequestSummaryMetric, key string) string {
+	t.Helper()
+	for _, metric := range metrics {
+		if metric.Key == key {
+			return metric.Value
+		}
+	}
+	t.Fatalf("no %q metric in %#v", key, metrics)
+	return ""
+}
+
+// REQ-486: the summary answers for the UR's WHOLE membership. Filters change
+// which cards are on screen; they must never move the numerator or the
+// denominator, so the rollup reads userRequestsById[id].requestIds and never the
+// filtered list. Successful is completed plus completed-with-issues, resolved
+// adds cancelled, and failed counts toward neither — the split a reader uses to
+// tell "shipped" from "finished with".
+func TestJavaScriptBehaviorUserRequestProgressCountsWholeMembership(t *testing.T) {
+	indexHtml := generateLiveSite(t)
+	javascriptProbe := `
+var boardData = {
+  requests: {
+    "REQ-601": { status: "completed" },
+    "REQ-602": { status: "completed-with-issues" },
+    "REQ-603": { status: "cancelled" },
+    "REQ-604": { status: "failed" },
+    "REQ-605": { status: "pending" }
+  },
+  userRequests: {
+    "UR-601": { requestIds: ["REQ-601", "REQ-602", "REQ-603", "REQ-604", "REQ-605"] },
+    "UR-602": { requestIds: [] }
+  },
+  timeline: { projection: { confident: false, declinedReason: "not enough completed work to forecast from" } }
+};
+var requestsById = boardData.requests;
+var userRequestsById = boardData.userRequests;
+var nowMs = Date.parse("2026-08-15T12:00:00Z");
+` + strings.Join(userRequestSummaryRollupBlocks(t, indexHtml), "\n") + `
+// The rollup takes its instant as an argument. A wall-clock read inside it
+// would give each of a tick's several surfaces a different "now".
+Date.now = function () { throw new Error("summarizeUserRequestProgress read the wall clock"); };
+
+var populated = summarizeUserRequestProgress("UR-601", nowMs);
+var empty = summarizeUserRequestProgress("UR-602", nowMs);
+var missing = summarizeUserRequestProgress("UR-999", nowMs);
+
+process.stdout.write(JSON.stringify({
+  populated: populated,
+  empty: empty,
+  missing: missing,
+  populatedMetrics: userRequestSummaryMetrics(populated),
+  emptyMetrics: userRequestSummaryMetrics(empty)
+}));
+`
+	probeOutput := runJavaScriptBehaviorProbe(t, "UR progress membership", javascriptProbe)
+
+	type rollup struct {
+		TotalCount      int `json:"totalCount"`
+		SuccessfulCount int `json:"successfulCount"`
+		ResolvedCount   int `json:"resolvedCount"`
+	}
+	var result struct {
+		Populated        rollup                     `json:"populated"`
+		Empty            rollup                     `json:"empty"`
+		Missing          rollup                     `json:"missing"`
+		PopulatedMetrics []userRequestSummaryMetric `json:"populatedMetrics"`
+		EmptyMetrics     []userRequestSummaryMetric `json:"emptyMetrics"`
+	}
+	if decodeError := json.Unmarshal(probeOutput, &result); decodeError != nil {
+		t.Fatalf("decode UR progress membership output: %v (output %q)", decodeError, probeOutput)
+	}
+
+	if result.Populated.TotalCount != 5 || result.Populated.SuccessfulCount != 2 || result.Populated.ResolvedCount != 3 {
+		t.Fatalf("status split = %+v; want 5 members, 2 successful (completed + completed-with-issues), 3 resolved (adds cancelled), failed in neither",
+			result.Populated)
+	}
+	if got := metricValue(t, result.PopulatedMetrics, "successful"); got != "2/5 (40%)" {
+		t.Fatalf("successful metric = %q, want %q — the count and the total have to be visible beside the percentage", got, "2/5 (40%)")
+	}
+	if got := metricValue(t, result.PopulatedMetrics, "resolved"); got != "3/5 (60%)" {
+		t.Fatalf("resolved metric = %q, want %q", got, "3/5 (60%)")
+	}
+
+	// Zero members: an explicit token, and no division at all.
+	if result.Empty.TotalCount != 0 {
+		t.Fatalf("empty UR reported %d members", result.Empty.TotalCount)
+	}
+	for _, percentageKey := range []string{"successful", "resolved"} {
+		if got := metricValue(t, result.EmptyMetrics, percentageKey); got != "unavailable" {
+			t.Fatalf("empty UR's %s metric = %q, want the literal unavailable token rather than a division by zero", percentageKey, got)
+		}
+	}
+
+	// An id the payload does not carry must produce a well-formed result. This
+	// is the totality the ticker depends on: the rollup runs inside the board's
+	// only interval callback, and a reach into undefined there freezes every
+	// stopwatch on the page.
+	if result.Missing.TotalCount != 0 || result.Missing.SuccessfulCount != 0 || result.Missing.ResolvedCount != 0 {
+		t.Fatalf("unknown UR id produced %+v, want a well-formed empty rollup", result.Missing)
+	}
+}
+
+// REQ-486: active time is the sum of the spans the Go side already accepted,
+// plus live elapsed for currently claimed members — never a span the browser
+// measured for itself. Rejected and unmeasured members are disclosed, never
+// counted as zero, and a claim stamped ahead of the viewer's clock is disclosed
+// rather than clamped.
+func TestJavaScriptBehaviorUserRequestProgressSumsAcceptedSpansAndLiveClaims(t *testing.T) {
+	indexHtml := generateLiveSite(t)
+	javascriptProbe := `
+var nowMs = Date.parse("2026-08-15T12:00:00Z");
+function minutesAgo(minuteCount) { return new Date(nowMs - minuteCount * 60000).toISOString(); }
+var boardData = {
+  requests: {
+    // Accepted, rejected, and unmeasured — the three verdicts the Go side ships.
+    "REQ-701": { status: "completed", hasImplementationSpan: true, implementationSpanMinutes: 45, implementationSpanReason: "" },
+    "REQ-702": { status: "completed", hasImplementationSpan: true, implementationSpanMinutes: 300, implementationSpanReason: "paused" },
+    "REQ-703": { status: "cancelled", implementationSpanMinutes: 0 },
+    // Two live claims, 30 and 90 minutes old.
+    "REQ-711": { status: "claimed", claimedAt: minutesAgo(30) },
+    "REQ-712": { status: "claimed", claimedAt: minutesAgo(90) },
+    // A claim stamped ten minutes into the future.
+    "REQ-721": { status: "claimed", claimedAt: new Date(nowMs + 10 * 60000).toISOString() }
+  },
+  userRequests: {
+    "UR-701": { requestIds: ["REQ-701", "REQ-702", "REQ-703"] },
+    "UR-702": { requestIds: ["REQ-711", "REQ-712"] },
+    "UR-703": { requestIds: ["REQ-721"] }
+  },
+  timeline: { projection: { confident: false, declinedReason: "not enough completed work to forecast from" } }
+};
+var requestsById = boardData.requests;
+var userRequestsById = boardData.userRequests;
+` + strings.Join(userRequestSummaryRollupBlocks(t, indexHtml), "\n") + `
+Date.now = function () { throw new Error("summarizeUserRequestProgress read the wall clock"); };
+
+var spans = summarizeUserRequestProgress("UR-701", nowMs);
+var live = summarizeUserRequestProgress("UR-702", nowMs);
+var liveOneMinuteLater = summarizeUserRequestProgress("UR-702", nowMs + 60000);
+var skewed = summarizeUserRequestProgress("UR-703", nowMs);
+
+process.stdout.write(JSON.stringify({
+  spans: spans,
+  spansMetrics: userRequestSummaryMetrics(spans),
+  live: live,
+  liveOneMinuteLater: liveOneMinuteLater,
+  skewed: skewed,
+  skewedMetrics: userRequestSummaryMetrics(skewed)
+}));
+`
+	probeOutput := runJavaScriptBehaviorProbe(t, "UR progress active time", javascriptProbe)
+
+	type activeRollup struct {
+		ActiveMinutes     float64 `json:"activeMinutes"`
+		ExcludedSpanCount int     `json:"excludedSpanCount"`
+		UnmeasuredCount   int     `json:"unmeasuredCount"`
+		SkewedClaimCount  int     `json:"skewedClaimCount"`
+		LiveClaimCount    int     `json:"liveClaimCount"`
+	}
+	var result struct {
+		Spans              activeRollup               `json:"spans"`
+		SpansMetrics       []userRequestSummaryMetric `json:"spansMetrics"`
+		Live               activeRollup               `json:"live"`
+		LiveOneMinuteLater activeRollup               `json:"liveOneMinuteLater"`
+		Skewed             activeRollup               `json:"skewed"`
+		SkewedMetrics      []userRequestSummaryMetric `json:"skewedMetrics"`
+	}
+	if decodeError := json.Unmarshal(probeOutput, &result); decodeError != nil {
+		t.Fatalf("decode UR progress active-time output: %v (output %q)", decodeError, probeOutput)
+	}
+
+	// Only the accepted span is summed. The 300-minute paused span is disclosed
+	// as excluded, never added; the cancelled member with no span is unmeasured.
+	if result.Spans.ActiveMinutes != 45 || result.Spans.ExcludedSpanCount != 1 || result.Spans.UnmeasuredCount != 1 {
+		t.Fatalf("span rollup = %+v; want 45 accepted minutes with 1 excluded and 1 unmeasured", result.Spans)
+	}
+	activeText := metricValue(t, result.SpansMetrics, "active")
+	for _, requiredFragment := range []string{"at least", "45 min", "1 excluded", "1 unmeasured"} {
+		if !strings.Contains(activeText, requiredFragment) {
+			t.Fatalf("active metric = %q, want it to carry %q — a known-partial sum stated as complete is the failure this REQ names",
+				activeText, requiredFragment)
+		}
+	}
+
+	// Live claims: exactly the elapsed minutes, and exactly the clock delta one
+	// minute later. A drifting or re-derived figure fails on the second number.
+	if result.Live.ActiveMinutes != 120 || result.Live.LiveClaimCount != 2 {
+		t.Fatalf("live rollup = %+v; want 120 minutes from two claims 30 and 90 minutes old", result.Live)
+	}
+	if result.LiveOneMinuteLater.ActiveMinutes != 122 {
+		t.Fatalf("live rollup one minute later = %v minutes, want exactly 122 — the tick advances the sum by the clock delta and nothing else",
+			result.LiveOneMinuteLater.ActiveMinutes)
+	}
+
+	// A future claim stamp is disclosed, not clamped to a silent zero.
+	if result.Skewed.SkewedClaimCount != 1 || result.Skewed.LiveClaimCount != 0 || result.Skewed.ActiveMinutes != 0 {
+		t.Fatalf("skewed rollup = %+v; want the claim disclosed as skewed and contributing nothing", result.Skewed)
+	}
+	if skewText := metricValue(t, result.SkewedMetrics, "active"); !strings.Contains(skewText, "clock skew") {
+		t.Fatalf("active metric for a future-stamped claim = %q, want the clock-skew qualifier present", skewText)
+	}
+}
+
+// REQ-486: remaining active time has three arms and each has to be able to fail
+// in both directions — a saved p50_active_minutes, else the Timeline's median
+// for that member's effort class but only while the Timeline calls itself
+// confident, else unknown. A claimed member spends its estimate down and floors
+// at zero rather than going negative, and a failed member is unknown even when
+// it carries a saved figure.
+func TestJavaScriptBehaviorUserRequestProgressForecastsRemainingTime(t *testing.T) {
+	indexHtml := generateLiveSite(t)
+	javascriptProbe := `
+var nowMs = Date.parse("2026-08-15T12:00:00Z");
+function minutesAgo(minuteCount) { return new Date(nowMs - minuteCount * 60000).toISOString(); }
+var boardData = {
+  requests: {
+    "REQ-801": { status: "pending", hasEstimateP50ActiveMinutes: true, estimateP50ActiveMinutes: 75 },
+    "REQ-802": { status: "pending", estimateP50ActiveMinutes: 0, effortEstimate: "effort-substantive" },
+    "REQ-803": { status: "blocked", estimateP50ActiveMinutes: 0, effortEstimate: "effort-mechanical" },
+    "REQ-804": { status: "failed", hasEstimateP50ActiveMinutes: true, estimateP50ActiveMinutes: 200 },
+    "REQ-805": { status: "claimed", claimedAt: minutesAgo(100), hasEstimateP50ActiveMinutes: true, estimateP50ActiveMinutes: 90 },
+    "REQ-806": { status: "pending-answers", estimateP50ActiveMinutes: 0, effortEstimate: "effort-substantive" }
+  },
+  userRequests: {
+    "UR-801": { requestIds: ["REQ-801", "REQ-802", "REQ-803", "REQ-804", "REQ-805"] },
+    "UR-802": { requestIds: ["REQ-806"] }
+  },
+  timeline: { projection: { confident: true, normalMinutes: 60, trivialMinutes: 15 } }
+};
+var requestsById = boardData.requests;
+var userRequestsById = boardData.userRequests;
+` + strings.Join(userRequestSummaryRollupBlocks(t, indexHtml), "\n") + `
+Date.now = function () { throw new Error("summarizeUserRequestProgress read the wall clock"); };
+
+var confident = summarizeUserRequestProgress("UR-801", nowMs);
+var confidentSingle = summarizeUserRequestProgress("UR-802", nowMs);
+// The same member, with the Timeline no longer able to call its own median.
+boardData.timeline.projection = { confident: false, declinedReason: "not enough completed work to forecast from" };
+var declined = summarizeUserRequestProgress("UR-802", nowMs);
+
+process.stdout.write(JSON.stringify({
+  confident: confident,
+  confidentMetrics: userRequestSummaryMetrics(confident),
+  confidentSingle: confidentSingle,
+  declined: declined,
+  declinedMetrics: userRequestSummaryMetrics(declined)
+}));
+`
+	probeOutput := runJavaScriptBehaviorProbe(t, "UR progress remaining time", javascriptProbe)
+
+	type forecastRollup struct {
+		RemainingMinutes     float64 `json:"remainingMinutes"`
+		UnknownForecastCount int     `json:"unknownForecastCount"`
+		RemainingIsPartial   bool    `json:"remainingIsPartial"`
+	}
+	var result struct {
+		Confident        forecastRollup             `json:"confident"`
+		ConfidentMetrics []userRequestSummaryMetric `json:"confidentMetrics"`
+		ConfidentSingle  forecastRollup             `json:"confidentSingle"`
+		Declined         forecastRollup             `json:"declined"`
+		DeclinedMetrics  []userRequestSummaryMetric `json:"declinedMetrics"`
+	}
+	if decodeError := json.Unmarshal(probeOutput, &result); decodeError != nil {
+		t.Fatalf("decode UR progress forecast output: %v (output %q)", decodeError, probeOutput)
+	}
+
+	// 75 saved + 60 confident-normal + 15 confident-mechanical + 0 from the
+	// over-running claim (90 estimated against 100 elapsed, floored) = 150. The
+	// failed member is unknown despite carrying a saved 200.
+	if result.Confident.RemainingMinutes != 150 {
+		t.Fatalf("remaining minutes = %v, want 150 (75 saved + 60 normal median + 15 mechanical median + a floored-at-zero over-running claim)",
+			result.Confident.RemainingMinutes)
+	}
+	if result.Confident.UnknownForecastCount != 1 || !result.Confident.RemainingIsPartial {
+		t.Fatalf("forecast rollup = %+v; the failed member must be unknown and the known sum must say it is partial", result.Confident)
+	}
+	remainingText := metricValue(t, result.ConfidentMetrics, "remaining")
+	for _, requiredFragment := range []string{"~", "at least", "1 unknown"} {
+		if !strings.Contains(remainingText, requiredFragment) {
+			t.Fatalf("remaining metric = %q, want it to carry %q — a forecast has to read as approximate and a partial one has to say so",
+				remainingText, requiredFragment)
+		}
+	}
+
+	// The fallback arm alone: one pending member, no saved figure, a confident
+	// Timeline. It reads the median; with the Timeline declined it reads unknown.
+	if result.ConfidentSingle.RemainingMinutes != 60 || result.ConfidentSingle.UnknownForecastCount != 0 {
+		t.Fatalf("confident fallback = %+v, want the Timeline's 60-minute normal median and nothing unknown", result.ConfidentSingle)
+	}
+	if result.Declined.RemainingMinutes != 0 || result.Declined.UnknownForecastCount != 1 || !result.Declined.RemainingIsPartial {
+		t.Fatalf("declined fallback = %+v; a Timeline that will not call itself confident must produce unknown, never a borrowed median",
+			result.Declined)
+	}
+	if declinedText := metricValue(t, result.DeclinedMetrics, "remaining"); !strings.Contains(declinedText, "unknown") {
+		t.Fatalf("remaining metric with no usable forecast = %q, want the unknown token rather than a zero", declinedText)
+	}
+}
+
+// The DOM stub the two ticking probes share, on top of foldProbeDomStub. The
+// board's tick is an attribute pass — refreshRelativeTimeNodes walks
+// [data-instant-ms] and the UR summary pass walks [data-ur-summary-id] — so the
+// stub needs a real document tree and a querySelectorAll that only finds what is
+// still in it. That is the whole reason the design has no subscriber registry:
+// a node the renderer dropped is simply not selected.
+const tickProbeDocumentStub = `
+var documentRoot = makeNode();
+var nodesById = {};
+function registerNodeById(nodeId) {
+  var node = makeNode();
+  node.id = nodeId;
+  nodesById[nodeId] = node;
+  documentRoot.appendChild(node);
+  return node;
+}
+function datasetKeyFromAttributeSelector(selector) {
+  return selector.replace("[", "").replace("]", "").replace(/^data-/, "")
+    .replace(/-([a-z])/g, function (wholeMatch, letter) { return letter.toUpperCase(); });
+}
+function collectByDatasetKey(node, datasetKey, found) {
+  found = found || [];
+  if (node.dataset && node.dataset[datasetKey] !== undefined) { found.push(node); }
+  (node.childNodes || []).forEach(function (child) { collectByDatasetKey(child, datasetKey, found); });
+  return found;
+}
+var wallClockReadCount = 0;
+var stubbedNowMs = Date.parse("2026-08-15T12:00:00Z");
+Date.now = function () { wallClockReadCount += 1; return stubbedNowMs; };
+var document = {
+  getElementById: function (nodeId) { return nodesById[nodeId] || null; },
+  createElement: function (tagName) { var node = makeNode(); node.tagName = String(tagName).toUpperCase(); return node; },
+  createTextNode: function (text) { var node = makeNode(); node.textContent = text; return node; },
+  querySelectorAll: function (selector) {
+    return collectByDatasetKey(documentRoot, datasetKeyFromAttributeSelector(selector));
+  },
+  addEventListener: function () {},
+  activeElement: null
+};
+`
+
+// The clock fragment plus the whole summary fragment, sliced out of the shipped
+// page in dependency order.
+func userRequestSummaryRenderBlocks(t *testing.T, indexHtml string) []string {
+	t.Helper()
+	return []string{
+		sliceBalancedBlockAfter(t, indexHtml, "function createElement("),
+		sliceDeclarationAfter(t, indexHtml, "var futureInstantSkewAllowanceMs"),
+		sliceDeclarationAfter(t, indexHtml, "var clockSkewMarkerText"),
+		sliceDeclarationAfter(t, indexHtml, "var futureStampCauseText"),
+		sliceDeclarationAfter(t, indexHtml, "var clockSkewExplanationText"),
+		sliceBalancedBlockAfter(t, indexHtml, "function formatRelativeTime("),
+		sliceBalancedBlockAfter(t, indexHtml, "function formatElapsedDuration("),
+		sliceBalancedBlockAfter(t, indexHtml, "function makeElapsedDurationNode("),
+		sliceBalancedBlockAfter(t, indexHtml, "function syncClockSkewTitle("),
+		sliceBalancedBlockAfter(t, indexHtml, "function refreshRelativeTimeNodes("),
+		sliceBalancedBlockAfter(t, indexHtml, "function refreshTickingSurfaces("),
+		sliceBalancedBlockAfter(t, indexHtml, "function isCompletedStatus("),
+		sliceBalancedBlockAfter(t, indexHtml, "function isTerminalResolvedStatus("),
+		sliceBalancedBlockAfter(t, indexHtml, "function timelineFormatSpanMinutes("),
+		sliceBalancedBlockAfter(t, indexHtml, "function liveClaimElapsedMinutes("),
+		sliceBalancedBlockAfter(t, indexHtml, "function summarizeUserRequestProgress("),
+		sliceBalancedBlockAfter(t, indexHtml, "function userRequestSummaryDurationText("),
+		sliceBalancedBlockAfter(t, indexHtml, "function userRequestSummaryPercentageText("),
+		sliceBalancedBlockAfter(t, indexHtml, "function userRequestSummaryActiveText("),
+		sliceBalancedBlockAfter(t, indexHtml, "function userRequestSummaryRemainingText("),
+		sliceBalancedBlockAfter(t, indexHtml, "function userRequestSummaryMetrics("),
+		sliceBalancedBlockAfter(t, indexHtml, "function userRequestSummaryMetricsByKey("),
+		sliceBalancedBlockAfter(t, indexHtml, "function markUserRequestSummaryValueNode("),
+		sliceBalancedBlockAfter(t, indexHtml, "function makeUserRequestSummaryStrip("),
+		sliceBalancedBlockAfter(t, indexHtml, "function appendUserRequestSummaryMetaRows("),
+		sliceBalancedBlockAfter(t, indexHtml, "function refreshUserRequestSummaryNodes("),
+	}
+}
+
+// REQ-486's central claim, and the one a probe calling summarizeUserRequestProgress
+// twice could never hold: the By UR header and the UR drawer must state the SAME
+// five figures, because they are two renderings of one rollup. This drives both
+// SHIPPED call sites in one run under one stubbed clock and compares what each
+// one actually put on screen. It then applies a status filter that hides members
+// and re-reads: filters move cards, never the summary or its denominator. Last it
+// advances the clock one minute through refreshTickingSurfaces and checks the
+// header figure, the drawer figure and a claimed card's stopwatch all moved.
+func TestJavaScriptBehaviorUserRequestSummaryAgreesOnBothSurfaces(t *testing.T) {
+	indexHtml := generateLiveSite(t)
+	lensBlocks := []string{
+		sliceBalancedBlockAfter(t, indexHtml, "function hasActiveFilters("),
+		sliceBalancedBlockAfter(t, indexHtml, "function citationMatchedTicketId("),
+		sliceBalancedBlockAfter(t, indexHtml, "function searchMatchesRequest("),
+		sliceBalancedBlockAfter(t, indexHtml, "function searchMatchesUserRequest("),
+		sliceBalancedBlockAfter(t, indexHtml, "function requestMatchesFilters("),
+		sliceBalancedBlockAfter(t, indexHtml, "function userRequestHasOpenOrRecentWork("),
+		sliceBalancedBlockAfter(t, indexHtml, "function recentWindowPhrase("),
+		sliceBalancedBlockAfter(t, indexHtml, "function userRequestLensEmptyText("),
+		sliceBalancedBlockAfter(t, indexHtml, "function recentlyDoneIds("),
+		sliceBalancedBlockAfter(t, indexHtml, "function renderUserRequestLens("),
+		sliceBalancedBlockAfter(t, indexHtml, "function ticketTitleFor("),
+		sliceBalancedBlockAfter(t, indexHtml, "function describeTicketTitle("),
+		sliceBalancedBlockAfter(t, indexHtml, "function shortTicketTitle("),
+		sliceBalancedBlockAfter(t, indexHtml, "function makeTicketLink("),
+		sliceBalancedBlockAfter(t, indexHtml, "function makeTicketLinkList("),
+		sliceBalancedBlockAfter(t, indexHtml, "function appendMetaRow("),
+		sliceBalancedBlockAfter(t, indexHtml, "function appendFoldableMetaRow("),
+		sliceBalancedBlockAfter(t, indexHtml, "function clearDetailGlossary("),
+		sliceBalancedBlockAfter(t, indexHtml, "function setDetailTarget("),
+		sliceBalancedBlockAfter(t, indexHtml, "function openUserRequestDetail("),
+	}
+	javascriptProbe := `
+var claimInstantMs = Date.parse("2026-08-15T11:30:00Z");
+var boardData = {
+  requests: {
+    "REQ-901": { status: "completed", title: "shipped", domain: "general",
+      hasImplementationSpan: true, implementationSpanMinutes: 45, implementationSpanReason: "" },
+    "REQ-902": { status: "claimed", title: "running", domain: "general",
+      claimedAt: new Date(claimInstantMs).toISOString() },
+    "REQ-903": { status: "pending", title: "queued", domain: "general",
+      hasEstimateP50ActiveMinutes: true, estimateP50ActiveMinutes: 75 }
+  },
+  userRequests: {
+    "UR-901": { requestIds: ["REQ-901", "REQ-902", "REQ-903"], title: "alpha request", inputFilePresent: true,
+      bodyHtml: "<p>the input.md body</p>" }
+  },
+  userRequestOrder: ["UR-901"],
+  calendar: [],
+  timeline: { projection: { confident: true, normalMinutes: 60, trivialMinutes: 15 } }
+};
+var requestsById = boardData.requests;
+var userRequestsById = boardData.userRequests;
+var viewState = { view: "board", lens: "user-request", windowHours: 24 };
+var filterState = { searchText: "", domain: "", status: "", userRequestActivity: "all" };
+var userRequestCardsFolded = false;
+var inlineTicketTitleMaxLength = 60;
+` + foldProbeDomStub + tickProbeDocumentStub + `
+var userRequestLensNode = registerNodeById("user-request-lens");
+["detail-resizer", "detail-drawer", "detail-kind", "detail-id", "detail-drawer-title",
+ "detail-meta", "detail-body", "detail-glossary", "detail-copy", "detail-copy-all"
+].forEach(registerNodeById);
+var detailResizer = document.getElementById("detail-resizer");
+var drawer = document.getElementById("detail-drawer");
+var drawerKind = document.getElementById("detail-kind");
+var drawerId = document.getElementById("detail-id");
+var drawerTitle = document.getElementById("detail-drawer-title");
+var drawerMeta = document.getElementById("detail-meta");
+var drawerBody = document.getElementById("detail-body");
+var drawerGlossary = document.getElementById("detail-glossary");
+var currentDetailKind = "";
+var currentDetailId = "";
+function syncActivitySelectionToDrawer() {}
+function linkifyDetailBody() { return []; }
+function renderDetailGlossary() {}
+function showDrawer() {}
+// The card is stubbed, but its stopwatch is the SHIPPED one: this probe's last
+// claim is that the header, the drawer and a claim stopwatch move together, and
+// a hand-rolled stopwatch node would make that claim about the probe.
+function makeRequestCard(requestId) {
+  var card = makeNode();
+  card.className = "req-card";
+  card.requestId = requestId;
+  var request = requestsById[requestId];
+  if (request && request.status === "claimed") {
+    var stopwatch = makeElapsedDurationNode(request.claimedAt);
+    if (stopwatch) { card.appendChild(stopwatch); }
+  }
+  return card;
+}
+` + strings.Join(append(userRequestSummaryRenderBlocks(t, indexHtml), lensBlocks...), "\n") + `
+function readSummaryMetrics(node) {
+  return collectByDatasetKey(node, "urSummaryMetric").map(function (metricNode) {
+    return metricNode.dataset.urSummaryMetric + "=" + metricNode.textContent;
+  });
+}
+function headerMetrics() { return readSummaryMetrics(userRequestLensNode); }
+function drawerMetrics() { return readSummaryMetrics(drawerMeta); }
+function cardStopwatchLabel() {
+  var found = collectByDatasetKey(userRequestLensNode, "instantMs");
+  return found.length > 0 ? found[0].textContent : "";
+}
+function groupCountText() {
+  var counts = collectByClassName(userRequestLensNode, "ur-count");
+  return counts.length > 0 ? counts[0].textContent : "";
+}
+
+renderUserRequestLens();
+openUserRequestDetail("UR-901");
+var headerOnLoad = headerMetrics();
+var drawerOnLoad = drawerMetrics();
+var stopwatchOnLoad = cardStopwatchLabel();
+var unfilteredCountText = groupCountText();
+
+// The tick: one wall-clock read for the whole pass, every surface from it.
+wallClockReadCount = 0;
+refreshTickingSurfaces();
+var wallClockReadsPerTick = wallClockReadCount;
+
+stubbedNowMs += 60000;
+refreshTickingSurfaces();
+var headerAfterTick = headerMetrics();
+var drawerAfterTick = drawerMetrics();
+var stopwatchAfterTick = cardStopwatchLabel();
+
+// A filter that hides two of the three members. Cards move; the summary must not.
+filterState.status = "pending";
+renderUserRequestLens();
+openUserRequestDetail("UR-901");
+var headerFiltered = headerMetrics();
+var drawerFiltered = drawerMetrics();
+var filteredCountText = groupCountText();
+var filteredCardCount = collectByClassName(userRequestLensNode, "req-card").length;
+
+process.stdout.write(JSON.stringify({
+  headerOnLoad: headerOnLoad,
+  drawerOnLoad: drawerOnLoad,
+  stopwatchOnLoad: stopwatchOnLoad,
+  wallClockReadsPerTick: wallClockReadsPerTick,
+  headerAfterTick: headerAfterTick,
+  drawerAfterTick: drawerAfterTick,
+  stopwatchAfterTick: stopwatchAfterTick,
+  headerFiltered: headerFiltered,
+  drawerFiltered: drawerFiltered,
+  unfilteredCountText: unfilteredCountText,
+  filteredCountText: filteredCountText,
+  filteredCardCount: filteredCardCount
+}));
+`
+	probeOutput := runJavaScriptBehaviorProbe(t, "UR summary on both surfaces", javascriptProbe)
+
+	var result struct {
+		HeaderOnLoad          []string `json:"headerOnLoad"`
+		DrawerOnLoad          []string `json:"drawerOnLoad"`
+		StopwatchOnLoad       string   `json:"stopwatchOnLoad"`
+		WallClockReadsPerTick int      `json:"wallClockReadsPerTick"`
+		HeaderAfterTick       []string `json:"headerAfterTick"`
+		DrawerAfterTick       []string `json:"drawerAfterTick"`
+		StopwatchAfterTick    string   `json:"stopwatchAfterTick"`
+		HeaderFiltered        []string `json:"headerFiltered"`
+		DrawerFiltered        []string `json:"drawerFiltered"`
+		UnfilteredCountText   string   `json:"unfilteredCountText"`
+		FilteredCountText     string   `json:"filteredCountText"`
+		FilteredCardCount     int      `json:"filteredCardCount"`
+	}
+	if decodeError := json.Unmarshal(probeOutput, &result); decodeError != nil {
+		t.Fatalf("decode UR summary agreement output: %v (output %q)", decodeError, probeOutput)
+	}
+
+	if len(result.HeaderOnLoad) != 5 {
+		t.Fatalf("the By UR header rendered %d metrics %#v, want the five the request names", len(result.HeaderOnLoad), result.HeaderOnLoad)
+	}
+	if !reflect.DeepEqual(result.HeaderOnLoad, result.DrawerOnLoad) {
+		t.Fatalf("the two surfaces disagree:\n header %#v\n drawer %#v", result.HeaderOnLoad, result.DrawerOnLoad)
+	}
+	// 45 accepted minutes plus a claim 30 minutes old, and 75 saved plus the
+	// Timeline's 60-minute median spent 30 minutes down.
+	wantOnLoad := []string{
+		"total=3",
+		"active=1h 15m",
+		"remaining=~1h 45m",
+		"successful=1/3 (33%)",
+		"resolved=1/3 (33%)",
+	}
+	if !reflect.DeepEqual(result.HeaderOnLoad, wantOnLoad) {
+		t.Fatalf("rendered metrics = %#v, want %#v", result.HeaderOnLoad, wantOnLoad)
+	}
+	if result.StopwatchOnLoad != "30m 00s" {
+		t.Fatalf("claimed card stopwatch = %q, want 30m 00s", result.StopwatchOnLoad)
+	}
+
+	// One instant per tick. Two reads would let the header and the card below it
+	// straddle a second boundary and disagree by a minute at every rollover.
+	if result.WallClockReadsPerTick != 1 {
+		t.Fatalf("one tick read the wall clock %d times, want exactly 1", result.WallClockReadsPerTick)
+	}
+
+	// A minute later every live surface moved, and by the same minute.
+	wantAfterTick := []string{
+		"total=3",
+		"active=1h 16m",
+		"remaining=~1h 44m",
+		"successful=1/3 (33%)",
+		"resolved=1/3 (33%)",
+	}
+	if !reflect.DeepEqual(result.HeaderAfterTick, wantAfterTick) {
+		t.Fatalf("header after one minute = %#v, want %#v", result.HeaderAfterTick, wantAfterTick)
+	}
+	if !reflect.DeepEqual(result.DrawerAfterTick, wantAfterTick) {
+		t.Fatalf("drawer after one minute = %#v, want %#v — the drawer rides the same tick as the header", result.DrawerAfterTick, wantAfterTick)
+	}
+	if result.StopwatchAfterTick != "31m 00s" {
+		t.Fatalf("claimed card stopwatch after one minute = %q, want 31m 00s", result.StopwatchAfterTick)
+	}
+
+	// Filters move cards and nothing else. The metrics compare against the
+	// post-tick values because the clock advanced between the two renders.
+	if result.FilteredCardCount != 1 {
+		t.Fatalf("the status filter left %d cards on screen, want 1 — the fixture has to actually be filtered for the next claim to mean anything",
+			result.FilteredCardCount)
+	}
+	if !reflect.DeepEqual(result.HeaderFiltered, wantAfterTick) || !reflect.DeepEqual(result.DrawerFiltered, wantAfterTick) {
+		t.Fatalf("a status filter moved the summary:\n header %#v\n drawer %#v\n want   %#v",
+			result.HeaderFiltered, result.DrawerFiltered, wantAfterTick)
+	}
+	// The strip owns the total, so the group count becomes filter-only: silent
+	// when everything is shown, "1 of 3 shown" when a filter hides members.
+	if result.UnfilteredCountText != "" {
+		t.Fatalf("unfiltered group count = %q, want nothing — the summary strip states the total", result.UnfilteredCountText)
+	}
+	if result.FilteredCountText != "1 of 3 shown" {
+		t.Fatalf("filtered group count = %q, want %q", result.FilteredCountText, "1 of 3 shown")
+	}
+}
+
+// The single biggest risk in REQ-486, asserted positively. web/board.js's
+// interval is the board's ONLY ticker: every claim stopwatch, every relative
+// time, every state timer and the clock-skew tooltip hang off it. Pointing it at
+// a function that runs a second pass means an unguarded throw in that pass kills
+// the callback — the board paints correctly once and then never updates again,
+// which reads as a queue full of very young claims and passes every other test
+// in the suite.
+//
+// Two things contain it and both are asserted here: the existing refresh runs
+// FIRST with the captured instant, and the rollup is total by narrowing rather
+// than by a try/catch that would hide the bug instead of the freeze. The payload
+// below is missing everything the summary pass wants — no userRequests entry, no
+// timeline block at all — and a stale summary node still names a UR that is gone.
+func TestJavaScriptBehaviorTickSurvivesAnIncompleteUserRequestPayload(t *testing.T) {
+	indexHtml := generateLiveSite(t)
+	javascriptProbe := `
+var boardData = { requests: {} };
+var requestsById = boardData.requests;
+var userRequestsById = {};
+` + foldProbeDomStub + tickProbeDocumentStub + `
+` + strings.Join(userRequestSummaryRenderBlocks(t, indexHtml), "\n") + `
+// An existing ticking surface: a claim stopwatch stamped 90 seconds ago.
+var stopwatch = makeElapsedDurationNode(new Date(stubbedNowMs - 90000).toISOString());
+documentRoot.appendChild(stopwatch);
+// A summary node left over from a render whose UR the payload no longer carries.
+var strandedSummary = makeNode();
+strandedSummary.dataset.urSummaryId = "UR-404";
+strandedSummary.dataset.urSummaryMetric = "active";
+strandedSummary.textContent = "stale";
+documentRoot.appendChild(strandedSummary);
+
+var labelBeforeTick = stopwatch.textContent;
+stubbedNowMs += 60000;
+var tickThrew = "";
+try {
+  refreshTickingSurfaces();
+} catch (tickError) {
+  tickThrew = String((tickError && tickError.message) || tickError);
+}
+
+process.stdout.write(JSON.stringify({
+  labelBeforeTick: labelBeforeTick,
+  labelAfterTick: stopwatch.textContent,
+  strandedSummaryText: strandedSummary.textContent,
+  tickThrew: tickThrew
+}));
+`
+	probeOutput := runJavaScriptBehaviorProbe(t, "tick freeze guard", javascriptProbe)
+
+	var result struct {
+		LabelBeforeTick     string `json:"labelBeforeTick"`
+		LabelAfterTick      string `json:"labelAfterTick"`
+		StrandedSummaryText string `json:"strandedSummaryText"`
+		TickThrew           string `json:"tickThrew"`
+	}
+	if decodeError := json.Unmarshal(probeOutput, &result); decodeError != nil {
+		t.Fatalf("decode freeze-guard output: %v (output %q)", decodeError, probeOutput)
+	}
+
+	// The positive assertion: the existing surface shows its NEW label. A frozen
+	// board is one where this still reads 1m 30s.
+	if result.LabelBeforeTick != "1m 30s" || result.LabelAfterTick != "2m 30s" {
+		t.Fatalf("claim stopwatch went %q -> %q across one tick against an incomplete payload; want 1m 30s -> 2m 30s. "+
+			"A stopwatch that did not move is the board's only ticker having died inside the UR summary pass.",
+			result.LabelBeforeTick, result.LabelAfterTick)
+	}
+	// And the pass itself finished. The catch above exists to REPORT a throw, not
+	// to tolerate one: production has no try/catch here, so a throw would take
+	// the interval callback with it.
+	if result.TickThrew != "" {
+		t.Fatalf("refreshTickingSurfaces threw %q against an incomplete UR payload; the rollup has to be total by narrowing", result.TickThrew)
+	}
+	// The stranded node names a UR the payload no longer has. It must render the
+	// well-formed empty rollup rather than reaching into undefined.
+	if result.StrandedSummaryText == "stale" || result.StrandedSummaryText == "" {
+		t.Fatalf("a summary node for an unknown UR read %q after the tick; want the rollup's own empty-membership text",
+			result.StrandedSummaryText)
 	}
 }

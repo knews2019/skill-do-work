@@ -47,6 +47,9 @@ var boardJavaScriptFragmentPaths = [...]string{
 	"web/board-calendar.js",
 	"web/board-durations.js",
 	"web/board-timeline.js",
+	// Position 7 on purpose: the UR rollup reads timelineFormatSpanMinutes from
+	// board-timeline.js above it, so nothing here calls forward.
+	"web/board-user-request-summary.js",
 	"web/board-activity.js",
 	"web/board-testing.js",
 	"web/board-detail.js",
@@ -185,6 +188,17 @@ type generatedRequest struct {
 	EffortEstimate             string `json:"effortEstimate,omitempty"`
 	OriginalEffortEstimate     string `json:"originalEffortEstimate,omitempty"`
 	EffortEstimateUnrecognized bool   `json:"effortEstimateUnrecognized,omitempty"`
+
+	// The saved informational forecast from the nested `estimate:` block (see
+	// RequestTicket.EstimateP50ActiveMinutes). Its one client consumer is the UR
+	// progress summary's remaining-time arm; nothing on the board schedules or
+	// orders on it. The flag/value split copies implementationSpanMinutes above
+	// for the same reason: the block survives only the strict frontmatter parse,
+	// so a false flag is a real "could not read it" and the value must still
+	// serialise (NOT omitempty) so no client is ever handed undefined to
+	// multiply.
+	HasEstimateP50ActiveMinutes bool    `json:"hasEstimateP50ActiveMinutes,omitempty"`
+	EstimateP50ActiveMinutes    float64 `json:"estimateP50ActiveMinutes"`
 	// Sweep marker + instance counts (see RequestTicket.Sweep).
 	// Display only — a card chip and a drawer row; no column or scheduling
 	// meaning.
@@ -785,26 +799,29 @@ func buildGeneratedBoardDataWithMentions(board *Board, mentionAnalysis boardTick
 			EffortEstimate:             ticket.EffortEstimate,
 			OriginalEffortEstimate:     ticket.OriginalEffortEstimate,
 			EffortEstimateUnrecognized: ticket.EffortEstimateUnrecognized,
-			Sweep:                      ticket.Sweep,
-			SweepInstancesOpen:         ticket.SweepInstancesOpen,
-			SweepInstancesDone:         ticket.SweepInstancesDone,
-			Batch:                      ticket.Batch,
-			TreeSection:                ticket.TreeSection,
-			CreatedAt:                  ticket.CreatedAt,
-			ClaimedAt:                  ticket.ClaimedAt,
-			CompletedAt:                ticket.CompletedAt,
-			PlanningAt:                 ticket.PlanningAt,
-			DispatchAt:                 ticket.DispatchAt,
-			BuilderHandbackAt:          ticket.BuilderHandbackAt,
-			IntegrationAt:              ticket.IntegrationAt,
-			ReviewAt:                   ticket.ReviewAt,
-			RemediationAt:              ticket.RemediationAt,
-			ReReviewAt:                 ticket.ReReviewAt,
-			ReleaseAt:                  ticket.ReleaseAt,
-			StatusChangedAt:            ticket.StatusChangedAt,
-			FileModifiedAt:             formatTimestamp(ticket.FileModifiedAt),
-			CompletionTime:             formatTimestamp(ticket.CompletionTime),
-			CompletionTimeSource:       string(ticket.CompletionTimeSource),
+
+			HasEstimateP50ActiveMinutes: ticket.HasEstimateP50ActiveMinutes,
+			EstimateP50ActiveMinutes:    ticket.EstimateP50ActiveMinutes,
+			Sweep:                       ticket.Sweep,
+			SweepInstancesOpen:          ticket.SweepInstancesOpen,
+			SweepInstancesDone:          ticket.SweepInstancesDone,
+			Batch:                       ticket.Batch,
+			TreeSection:                 ticket.TreeSection,
+			CreatedAt:                   ticket.CreatedAt,
+			ClaimedAt:                   ticket.ClaimedAt,
+			CompletedAt:                 ticket.CompletedAt,
+			PlanningAt:                  ticket.PlanningAt,
+			DispatchAt:                  ticket.DispatchAt,
+			BuilderHandbackAt:           ticket.BuilderHandbackAt,
+			IntegrationAt:               ticket.IntegrationAt,
+			ReviewAt:                    ticket.ReviewAt,
+			RemediationAt:               ticket.RemediationAt,
+			ReReviewAt:                  ticket.ReReviewAt,
+			ReleaseAt:                   ticket.ReleaseAt,
+			StatusChangedAt:             ticket.StatusChangedAt,
+			FileModifiedAt:              formatTimestamp(ticket.FileModifiedAt),
+			CompletionTime:              formatTimestamp(ticket.CompletionTime),
+			CompletionTimeSource:        string(ticket.CompletionTimeSource),
 
 			HasImplementationSpan:     implementationSpan.StampsParsed,
 			ImplementationSpanMinutes: implementationSpan.WallMinutes,

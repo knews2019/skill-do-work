@@ -546,3 +546,32 @@ func TestFrontmatterQuotingRejectsNonTextControlsBeforeComposition(t *testing.T)
 		})
 	}
 }
+
+// REQ-486's reader is a map lookup, not a parser change — but only because the
+// strict path hands the whole `estimate:` block back as a map[string]any whose
+// numeric value yaml.v3 decodes to a Go int. That shape is the premise. If a
+// parser change ever returned map[any]any, or handed the value back as a
+// string, the reader would go silently absent on every REQ that carries a
+// forecast and the UR summary would report every member as unknown.
+func TestStrictFrontmatterReturnsTheNestedEstimateBlockAsAMap(t *testing.T) {
+	yamlText := strings.Join([]string{
+		`id: REQ-486`,
+		`status: pending`,
+		`estimate:`,
+		`  p50_active_minutes: 75`,
+		`  confidence: medium`,
+	}, "\n")
+
+	fields, parseError := parseFrontmatterFields(yamlText)
+	if parseError != nil {
+		t.Fatalf("parse: %v", parseError)
+	}
+	estimateBlock, isMap := fields["estimate"].(map[string]any)
+	if !isMap {
+		t.Fatalf("estimate block type = %T, want map[string]any — REQ-486's reader looks the value up by key", fields["estimate"])
+	}
+	if _, isInteger := estimateBlock["p50_active_minutes"].(int); !isInteger {
+		t.Fatalf("p50_active_minutes type = %T, want int — a whole-minute scalar decodes to Go's int",
+			estimateBlock["p50_active_minutes"])
+	}
+}

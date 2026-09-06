@@ -1598,6 +1598,48 @@ body.is-resizing-detail {
   outline-offset: -2px;
 }
 
+/* REQ-486: the whole-UR progress strip. Its OWN row inside .ur-group, between
+   the head row and the card grid, never inside .ur-group-head — the head is a
+   <button>, so anything in it joins the fold control's accessible name, and
+   .ur-title is a `flex: 1` ellipsised line that flex-wrap on the head would
+   compress instead of breaking. A dedicated wrapping row behaves the same at
+   320px as at 1280px. The strip stays visible while the group is collapsed:
+   folding removes the card grid and nothing else.
+
+   Disclosure ("at least", "~", "unavailable", "N excluded") is carried by words
+   and symbols only. A fainter ink tone is not a second channel on this board —
+   --ink-faint against --ink-soft measures 1.29:1 in light and 1.82:1 in dark —
+   so both tones used here clear 4.5:1 against the page ground in both themes. */
+.ur-summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px 18px;
+  padding: 9px 18px;
+  border-bottom: 1px solid var(--line-soft);
+  font-size: 12px;
+}
+.ur-summary-metric {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  min-width: 0;
+}
+.ur-summary-label {
+  color: var(--ink-soft);
+}
+.ur-summary-value {
+  font-family: var(--font-mono);
+  color: var(--ink-strong);
+}
+
+/* The same five figures as drawer meta rows. Only the container differs — the
+   text comes from the one shared metric list. */
+.detail-summary-value {
+  font-family: var(--font-mono);
+  color: var(--ink-strong);
+}
+
 /* Empty state and the "n resolved URs hidden" footer for the by-UR lens. */
 .ur-lens-empty {
   color: var(--ink-faint);
