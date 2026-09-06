@@ -56,12 +56,12 @@ Per-REQ helper files that duplicate an existing helper are the agent-creep class
 Source: `do-work/audits/audit-2026-09-03.md` (Finding 4, sweep_key `per-req-duplicate-go-helpers`, audited commit dc8a64e3, report committed at 83594c5e). Plan tag JUDGMENT; expected net line delta -70. Captured from the audit's §Plan paste-ready line after the maintainer said "capture the requests"; the validator step was skipped on the maintainer's instruction, so the builder treats the finding's Reproduce output as the claim to re-verify at claim time.
 
 ## Detailed Requirements
-- `internal/finalization/finalization_prepare.go` — `subtractPaths` and `uniqueSorted` duplicate `internal/corehelpers/checks.go` (introduced 761d8e6a, REQ-498; `finalization` already imports `corehelpers`).
-- `internal/knowledgecommands/interview_commands.go` — third `uniqueSorted`, silently drops empty strings (01d920dd).
-- `internal/dependencygraph/dependency_graph.go` and `internal/repositorymodel/repository_model.go` — two `requestIDLess` bodies in one commit (ac2e3acd, REQ-408) with two different number parsers; `internal/nextselection/next_types.go` — third `requestIDLess` (625d49aa, REQ-411; `nextselection` already imports `repositorymodel`).
-- `internal/publication/capture_files.go` — `firstError` byte-identical to `corehelpers/checks.go` (cf111a50, REQ-413).
-- `internal/knowledgecommands/interview_commands.go` — `compareSemver` returns 0 for unparseable input while `internal/publication/release.go` rejects it.
-- `internal/suiteinstall/update_transaction.go` — `physicalPath` is `EvalSymlinks`+`Abs`; `internal/knowledgecommands/commands.go` walks missing ancestors; same name, different contract.
+- `skills/do-work/tools/do-work-cli/internal/finalization/finalization_prepare.go` — `subtractPaths` and `uniqueSorted` duplicate `internal/corehelpers/checks.go` (introduced 761d8e6a, REQ-498; `finalization` already imports `corehelpers`).
+- `skills/do-work/tools/do-work-cli/internal/knowledgecommands/interview_commands.go` — third `uniqueSorted`, silently drops empty strings (01d920dd).
+- `skills/do-work/tools/do-work-cli/internal/dependencygraph/dependency_graph.go` and `internal/repositorymodel/repository_model.go` — two `requestIDLess` bodies in one commit (ac2e3acd, REQ-408) with two different number parsers; `internal/nextselection/next_types.go` — third `requestIDLess` (625d49aa, REQ-411; `nextselection` already imports `repositorymodel`).
+- `skills/do-work/tools/do-work-cli/internal/publication/capture_files.go` — `firstError` byte-identical to `corehelpers/checks.go` (cf111a50, REQ-413).
+- `skills/do-work/tools/do-work-cli/internal/knowledgecommands/interview_commands.go` — `compareSemver` returns 0 for unparseable input while `internal/publication/release.go` rejects it.
+- `skills/do-work/tools/do-work-cli/internal/suiteinstall/update_transaction.go` — `physicalPath` is `EvalSymlinks`+`Abs`; `internal/knowledgecommands/commands.go` walks missing ancestors; same name, different contract.
 - Each reconciliation (empty-string handling, unparseable semver, missing-ancestor paths) is written into this REQ's Implementation Summary as a decision with the behaviour each caller keeps; a silent pick is a review refusal.
 - Reproduce at dc8a64e3 (prints 14 lines): `rg -n --glob '*.go' --glob '!*_test.go' '^func (uniqueSorted|subtractPaths|requestIDLess|firstError|compareSemver|physicalPath)\(' skills/do-work/tools/do-work-cli/internal/ | sort`
 
@@ -282,30 +282,31 @@ orderings across 160,000 ordered pairs, which is what makes deleting the former 
 
 ## Scope
 
-All Go paths below are under `skills/do-work/tools/do-work-cli/`.
+Every path below is repository-relative, matching the `## Implementation Summary` list, because the
+scope-drift comparator reads the backticked paths in both sections and compares them directly.
 
 **Files I will touch:**
-- `internal/sharedprimitives/shared_primitives.go` (new) — the four exported helpers plus the exported semantic-version parser
-- `internal/sharedprimitives/shared_primitives_test.go` (new) — unit tests for each, including the parsed-flag contract
-- `internal/corehelpers/checks.go` (modify) — delete three private helpers, point their call sites at the shared package, keep the local string-set helper which has two other callers
-- `internal/corehelpers/inventory.go` (modify) — two dedupe call sites
-- `internal/repositorymodel/repository_model.go` (modify) — export the request-id comparator in place, keep its parser private
-- `internal/dependencygraph/dependency_graph.go` (modify) — delete the duplicate comparator and its now-callerless number parser, use the exported one
-- `internal/nextselection/next_types.go` (modify) — delete the third comparator; the strict validator beside it stays, it has nine other callers
-- `internal/nextselection/next_targets.go` (modify) — call site
-- `internal/finalization/finalization_prepare.go` (modify) — delete the wrapper whose validator error is discarded; the one site whose result feeds a guard calls the validator directly and propagates its error
-- `internal/finalization/finalization_discovery.go` (modify) — eighteen call sites
-- `internal/finalization/finalization_apply.go` (modify) — three call sites
-- `internal/finalization/finalization_recovery_test.go` (modify) — one reference to a deleted private helper
-- `internal/finalization/finalization_req557_test.go` (new, added by the builder) — the D-02 guard test, in the per-REQ test-file form this package already uses
-- `internal/knowledgecommands/interview_commands.go` (modify) — delete two private helpers, rewrite the version predicate
-- `internal/knowledgecommands/memory_commands.go` (modify) — two call sites
-- `internal/repairvalidation/already_green.go` (modify) — delete the fourth dedupe helper the request does not name
-- `internal/publication/capture_files.go` (modify) — delete the byte-identical error helper
-- `internal/publication/release.go` (modify) — delete the inverted comparator and the private strict parser, rewrite the release guard
-- `internal/publication/release_mirrors.go` (modify) — use the exported parser
-- `internal/publication/answer.go` (modify) — one call site
-- `internal/suiteinstall/update_transaction.go` (modify) — rename the path resolver, no behaviour change
+- `skills/do-work/tools/do-work-cli/internal/sharedprimitives/shared_primitives.go` (new) — the four exported helpers plus the exported semantic-version parser
+- `skills/do-work/tools/do-work-cli/internal/sharedprimitives/shared_primitives_test.go` (new) — unit tests for each, including the parsed-flag contract
+- `skills/do-work/tools/do-work-cli/internal/corehelpers/checks.go` (modify) — delete three private helpers, point their call sites at the shared package, keep the local string-set helper which has two other callers
+- `skills/do-work/tools/do-work-cli/internal/corehelpers/inventory.go` (modify) — two dedupe call sites
+- `skills/do-work/tools/do-work-cli/internal/repositorymodel/repository_model.go` (modify) — export the request-id comparator in place, keep its parser private
+- `skills/do-work/tools/do-work-cli/internal/dependencygraph/dependency_graph.go` (modify) — delete the duplicate comparator and its now-callerless number parser, use the exported one
+- `skills/do-work/tools/do-work-cli/internal/nextselection/next_types.go` (modify) — delete the third comparator; the strict validator beside it stays, it has nine other callers
+- `skills/do-work/tools/do-work-cli/internal/nextselection/next_targets.go` (modify) — call site
+- `skills/do-work/tools/do-work-cli/internal/finalization/finalization_prepare.go` (modify) — delete the wrapper whose validator error is discarded; the one site whose result feeds a guard calls the validator directly and propagates its error
+- `skills/do-work/tools/do-work-cli/internal/finalization/finalization_discovery.go` (modify) — eighteen call sites
+- `skills/do-work/tools/do-work-cli/internal/finalization/finalization_apply.go` (modify) — three call sites
+- `skills/do-work/tools/do-work-cli/internal/finalization/finalization_recovery_test.go` (modify) — one reference to a deleted private helper
+- `skills/do-work/tools/do-work-cli/internal/finalization/finalization_req557_test.go` (new, added by the builder) — the D-02 guard test, in the per-REQ test-file form this package already uses
+- `skills/do-work/tools/do-work-cli/internal/knowledgecommands/interview_commands.go` (modify) — delete two private helpers, rewrite the version predicate
+- `skills/do-work/tools/do-work-cli/internal/knowledgecommands/memory_commands.go` (modify) — two call sites
+- `skills/do-work/tools/do-work-cli/internal/repairvalidation/already_green.go` (modify) — delete the fourth dedupe helper the request does not name
+- `skills/do-work/tools/do-work-cli/internal/publication/capture_files.go` (modify) — delete the byte-identical error helper
+- `skills/do-work/tools/do-work-cli/internal/publication/release.go` (modify) — delete the inverted comparator and the private strict parser, rewrite the release guard
+- `skills/do-work/tools/do-work-cli/internal/publication/release_mirrors.go` (modify) — use the exported parser
+- `skills/do-work/tools/do-work-cli/internal/publication/answer.go` (modify) — one call site
+- `skills/do-work/tools/do-work-cli/internal/suiteinstall/update_transaction.go` (modify) — rename the path resolver, no behaviour change
 - `_dev/tests/audit-lockins.sh` (modify) — one assertion block
 
 **The declared set is larger than the write_set the request carried, and the widening is stated here
@@ -353,31 +354,32 @@ and an unusable global signing key makes a fixture's own commit fail inside a la
 
 ## Implementation Summary
 
-All Go paths below are under `skills/do-work/tools/do-work-cli/`, the same form the `## Scope`
-declaration uses.
+Every path below is repository-relative, because the qualification gate resolves the backticked paths
+in this section against the repository root; the `## Scope` declaration writes the same set in its own
+module-relative shorthand.
 
 **Files changed:**
-- `internal/sharedprimitives/shared_primitives.go`
-- `internal/sharedprimitives/shared_primitives_test.go`
-- `internal/corehelpers/checks.go`
-- `internal/corehelpers/inventory.go`
-- `internal/repositorymodel/repository_model.go`
-- `internal/dependencygraph/dependency_graph.go`
-- `internal/nextselection/next_types.go`
-- `internal/nextselection/next_targets.go`
-- `internal/finalization/finalization_prepare.go`
-- `internal/finalization/finalization_discovery.go`
-- `internal/finalization/finalization_apply.go`
-- `internal/finalization/finalization_recovery_test.go`
-- `internal/finalization/finalization_req557_test.go`
-- `internal/knowledgecommands/interview_commands.go`
-- `internal/knowledgecommands/memory_commands.go`
-- `internal/repairvalidation/already_green.go`
-- `internal/publication/capture_files.go`
-- `internal/publication/release.go`
-- `internal/publication/release_mirrors.go`
-- `internal/publication/answer.go`
-- `internal/suiteinstall/update_transaction.go`
+- `skills/do-work/tools/do-work-cli/internal/sharedprimitives/shared_primitives.go`
+- `skills/do-work/tools/do-work-cli/internal/sharedprimitives/shared_primitives_test.go`
+- `skills/do-work/tools/do-work-cli/internal/corehelpers/checks.go`
+- `skills/do-work/tools/do-work-cli/internal/corehelpers/inventory.go`
+- `skills/do-work/tools/do-work-cli/internal/repositorymodel/repository_model.go`
+- `skills/do-work/tools/do-work-cli/internal/dependencygraph/dependency_graph.go`
+- `skills/do-work/tools/do-work-cli/internal/nextselection/next_types.go`
+- `skills/do-work/tools/do-work-cli/internal/nextselection/next_targets.go`
+- `skills/do-work/tools/do-work-cli/internal/finalization/finalization_prepare.go`
+- `skills/do-work/tools/do-work-cli/internal/finalization/finalization_discovery.go`
+- `skills/do-work/tools/do-work-cli/internal/finalization/finalization_apply.go`
+- `skills/do-work/tools/do-work-cli/internal/finalization/finalization_recovery_test.go`
+- `skills/do-work/tools/do-work-cli/internal/finalization/finalization_req557_test.go`
+- `skills/do-work/tools/do-work-cli/internal/knowledgecommands/interview_commands.go`
+- `skills/do-work/tools/do-work-cli/internal/knowledgecommands/memory_commands.go`
+- `skills/do-work/tools/do-work-cli/internal/repairvalidation/already_green.go`
+- `skills/do-work/tools/do-work-cli/internal/publication/capture_files.go`
+- `skills/do-work/tools/do-work-cli/internal/publication/release.go`
+- `skills/do-work/tools/do-work-cli/internal/publication/release_mirrors.go`
+- `skills/do-work/tools/do-work-cli/internal/publication/answer.go`
+- `skills/do-work/tools/do-work-cli/internal/suiteinstall/update_transaction.go`
 - `_dev/tests/audit-lockins.sh`
 
 **What was done:** Fifteen definitions of six helper names became seven. Nine private copies were
@@ -452,3 +454,47 @@ seven, not six, for the reason in D-06.
   counts seven: five canonical helpers, plus the two deliberately separate path resolvers. Keeping the
   six would have shipped a ratchet that names an identifier which can never exist and leaves the one new
   name unguarded. The block says in place why the total is seven.
+
+## Qualification
+
+**Passed.** Read from the merge range `adfbaeeb..1b119056`, 23 files, 530 insertions and 231 deletions.
+Canonical `qualify` and `scope-drift` both satisfied.
+
+- **The builder corrected the plan three times rather than following it, and each correction is right.**
+  The lock-in pins the union at **7**, not the 6 the plan wrote: the plan's regex named
+  `ResolvePhysicalPath`, which is the merged resolver D-04 decided not to create, and omitted
+  `existingPhysicalPath`, the name D-04 actually creates. Pinning 6 would have counted a phantom, left
+  the new name unguarded, and shipped a stale enumeration into the edit that creates it — the exact trap
+  `_dev/primes/prime-shell-commands.md` § Closed Enumerations Go Stale names. The request's own baseline
+  is off by one for the same reason the survey found: the reproduce command prints **15** at the branch
+  point, not 14, because the audit missed the fourth `uniqueSorted`. And the finalization wrapper's call
+  sites are 21 pure-dedupe plus 1 guard plus 1 test, not 22 plus 1. All three are corrected in the plan
+  above rather than left standing.
+- **The one deliberate behaviour change is D-02 and it carries its own test.** The deleted wrapper's
+  body discarded a validator's error, so a required commit path that was empty, absolute or escaping
+  made it return `nil` for the whole slice, `subtractPaths(nil, …)` came back empty, and the
+  `commit_paths omits planned lifecycle or release targets` error never fired. Disabling the restored
+  propagation reds
+  `TestMissingCommitPathsRefusesAnUnusableRequiredPathInsteadOfEmptyingTheSet` with
+  `missingCommitPaths accepted the unusable required path "" and returned missing=[]string{}; the
+  commit_paths guard is disabled again`.
+- **The inversion the request never mentions was the real risk, and it is closed.** The two
+  `compareSemver` copies returned opposite signs for every unequal pair. A merge that picked one body
+  and left both predicates alone would have reversed `publication`'s release guard with every test
+  staying green, because nothing pinned the orientation. Both call sites were rewritten and both
+  orientations are now pinned by name.
+- **The new package is a leaf, measured.** `go list -deps ./internal/sharedprimitives` reports exactly
+  one package inside the module — itself. No import cycle is possible, which is the purpose the
+  request's "a package the duplicator already imports" rule exists to serve.
+- **One declared widening.** `skills/do-work/tools/do-work-cli/internal/finalization/finalization_req557_test.go`
+  is new. D-02 requires a test that fails when the restored guard is disabled again, and the plan's
+  Scope named only the recovery-fixture file, which this is not. The package already carries a per-REQ
+  test-file convention (`finalization_req499_test.go`, `_req512_`, `_req547_`, `_req560_`, `_req565_`).
+  Declared in the frontmatter, the Scope list, the commit message and the hand-back.
+- **A path-form defect in this record was corrected, not worked around.** `qualify` resolves the
+  backticked paths in `## Implementation Summary` against the repository root, and `scope-drift`
+  compares them against `## Scope`; the builder wrote both in module-relative shorthand, which made
+  `qualify` report seven missing paths. Both sections now carry the repository-relative form and say why.
+- **Gate green on the merged tree.** `Maintainer verification passed.`, exit 0, wall 82s, CLI module at
+  794 tests — ten more than the 784 at the branch point. The builder's own worktree run reported the
+  same 794 with `EXECUTING (fingerprint_mismatch)`, so the stage really ran rather than reusing evidence.
