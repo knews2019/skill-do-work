@@ -229,3 +229,40 @@ from the lint makes it exit 1 naming the missing wiring; the original block rest
 - **The scanner's reader set is grep/egrep/fgrep.** A fence feeding `rg -q`, `head`, `sed -n '1p;q'`,
   `awk '/x/{exit}'` or `read` from a pipe passes both scripts. The sweep found zero today and the prime
   says so. Worth a request only when a second reader shape ships.
+
+## Qualification
+
+**Passed.** Read from the range `9e00a092..a25c7522`, five files, 155 insertions and 77 deletions.
+Canonical `qualify` and `scope-drift` both satisfied after the write set was widened to the three
+`_dev/tests/` files the build touched (D4).
+
+- **The sweep is re-derived, not transcribed.** On main after the merge: 166 Markdown files under
+  `skills/`, 32 with a bash fence, 74 fences; the lint reports the same 74. One hit, and it is fixed.
+- **The scan is real, proven by three mutations on main, each restored and the tree confirmed clean
+  afterwards.** M1, the scanner call in `lint_shell_source` short-circuited to `$(true)`: the lint exits 1
+  with `FAIL: the fence walk no longer flags a quiet grep fed from a pipeline at its Markdown line; the
+  shared scanner is not wired in.` M2, the pre-change block restored from `9e00a092`: exit 1 with
+  `FAIL: skills/do-work-knowledge/actions/memory-reference.md:88: quiet grep fed from a pipeline (...)`.
+  M3, `|--quiet` deleted from the shared option class: the audit exits 1 with `FAIL: the quiet-grep
+  scanner no longer catches 1 of 19 ordinary spellings of the pipeline it exists to forbid`.
+- **The lift did not weaken the audit.** It still passes over 95 tracked shell files with 19 must-flag
+  and 7 must-not-flag shapes, and M3 shows the fixture still reads the lifted body.
+- **The prime section is placed where the request put it**, between "Unchecked Exit Status Reads as
+  Content" and "Closed Enumerations Go Stale", and every number in it is REQ-593's measurement.
+- **The block fix is stated at its real size.** Not a live failure; shipped guidance that taught the shape.
+
+## Testing
+
+**Guards on main at the merge, all exit 0:**
+
+- `bash _dev/tests/action-shell-blocks.sh` — `Shell-block lint passed: 74 fenced blocks and 33 shipped
+  shell files; ShellCheck enabled.`
+- `bash _dev/tests/action-shell-blocks.sh --self-test` — `Shell-block lint self-test passed.`
+- `bash _dev/tests/quiet-grep-pipeline-audit.sh` — `quiet-grep pipeline audit passed (95 tracked shell
+  files, 19 must-flag and 7 must-not-flag shapes).`
+- `bash _dev/tests/audit-lockins.sh` — `Audit lock-in regressions passed.`
+
+**Mutations M1, M2 and M3** as recorded under Qualification: each exit 1 with the expected FAIL line,
+each file restored with `git checkout --`, `git status --short` empty after.
+
+**Fast gate on main after the merge:** `Maintainer verification passed.`, exit 0, wall 78s.
