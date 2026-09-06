@@ -156,3 +156,34 @@ yields the evidence string `<nil>`: real, out of scope, recorded as a discovered
 - [ ] A lock-in assertion fails if a coreutils exec site returns to shipped code in either module
 - [ ] The heavy tier is green, not just the fast gate — both rewritten fixture cases still detect the
       failure they name
+
+## Pre-Flight
+
+**Git:** ✓ Clean. Canonical `recover` reports `FINALIZATION-NONE`. Five claims sit in
+`do-work/working/`: REQ-583, REQ-587, REQ-591 and REQ-592 held at Step 7.7 for the heavy drain, and
+REQ-486 in flight on the board module. None touches this request's files.
+
+**Repository gate:** ✓ `bash _dev/tests/maintainer-verify.sh` exited 0 at this REQ's claim revision
+`d24c270` — **57s wall**, exit status read directly from `$?`. Faster than the 77s cold run because
+REQ-592's fix now lets the do-work-cli stage reuse across a `do-work/`-only commit while forcing the
+queue-kanban stage, which is exactly the per-stage separation that request was built for.
+
+**Tests baseline:** ✓ `go -C skills/do-work/tools/do-work-cli test -count=1 ./internal/corehelpers/
+./internal/toolboxcommands/` exited 0, launched true. Those are the two packages this request changes.
+
+**A shared-state note about running two requests at once.** `do-work/working/baseline.json` is one
+file for the whole working set, so the second request to record a focused baseline overwrites the
+first. REQ-486's baseline was recorded before this one and has been displaced; it is re-recorded
+before its own test gate rather than trusted. Recorded here because a stale baseline is compared
+silently, and this is the failure mode fan-out invites.
+
+**A gap the fast gate cannot close.** Two of this request's five files are heavy-tier fixture cases:
+`_dev/tests/prescribed-shell-harness.sh:11-14` refuses to run them unless
+`DO_WORK_MAINTAINER_TIER=heavy`. A green fast gate is not evidence for this change, so the
+prescribed-shell lane is run directly at heavy tier and its own exit line is recorded.
+
+**Dependencies:** ✓ REQ-550, this request's `depends_on`, is archived and completed; its `corehelpers`
+edit touched `inventory.go` only, so `commands.go` is unclaimed by it. Go 1.26.1, ShellCheck 0.11.0,
+`just` 1.43.0 all present at or above the gate's floors.
+
+*Checked by work action*
