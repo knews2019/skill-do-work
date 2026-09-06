@@ -18,4 +18,3 @@ session_depth: light
 
 ## In Progress (interrupted)
 
-- REQ-602: Repoint the lesson-satellite links whose archived targets moved, and check satellite links — claimed 2026-09-06T12:48:50Z — writer: t2s-Virtual-Machine.local:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2
