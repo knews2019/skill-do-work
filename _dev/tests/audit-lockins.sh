@@ -152,13 +152,30 @@ fi
 # A coreutils subprocess spawned for work the same Go module already does in the standard
 # library. Test files are excluded on purpose: fixture setup may shell out, shipped code may
 # not — suiteinstall/update_transaction_test.go:25 spawns `cp -R` and is not this finding.
-# The command list is the audit's own Reproduce pattern, kept byte-identical so this fails
-# on exactly what the REQ's RED proof prints; widening it would drag in open/xdg-open/
-# rundll32/ps/tar/sh/python3/curl, which this finding does not address.
+# The command list is the audit's own Reproduce pattern; widening it would drag in
+# open/xdg-open/rundll32/ps/tar/sh/python3/curl, which this finding does not address.
+# The pattern accepts any context expression, not the literal variable name `ctx`: the same
+# module already spells one `invocationContext`, and Naming for Reach pushes new code toward
+# the longer form, so an `exec.CommandContext(runContext, "cp", …)` was the regression this
+# lock-in could not see. It still requires the coreutils name to be the command argument
+# itself — first for exec.Command, straight after the context for exec.CommandContext — so a
+# legitimate `exec.Command("git", "rm", …)` is not a false positive.
+coreutils_module_directories=(
+  "$repo_root/skills/do-work/tools/do-work-cli"
+  "$repo_root/skills/do-work-board/tools/queue-kanban"
+)
+# rg prints nothing and exits 2 on a missing directory, which is indistinguishable from a
+# clean scan once only emptiness is read. Ask the question that has a real answer first, so a
+# renamed module directory fails here instead of passing forever.
+for coreutils_module_directory in "${coreutils_module_directories[@]}"; do
+  [ -d "$coreutils_module_directory" ] && continue
+  printf 'FAIL: coreutils lock-in cannot scan a missing module directory: %s\n' \
+    "${coreutils_module_directory#"$repo_root/"}" >&2
+  failure_count=$((failure_count + 1))
+done
 coreutils_exec_sites="$(
-  rg -n 'exec\.Command(Context)?\((ctx, )?"(find|cp|mkdir|grep|sed|ls|rm|mv|cat|touch|head|tail|wc)"' \
-    "$repo_root/skills/do-work/tools/do-work-cli" \
-    "$repo_root/skills/do-work-board/tools/queue-kanban" \
+  rg -n 'exec\.Command(Context\([^,]+,|\()\s*"(find|cp|mkdir|grep|sed|ls|rm|mv|cat|touch|head|tail|wc)"' \
+    "${coreutils_module_directories[@]}" \
     --glob '!*_test.go' 2>/dev/null
 )"
 if [ -n "$coreutils_exec_sites" ]; then
