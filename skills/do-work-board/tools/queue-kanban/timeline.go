@@ -391,9 +391,12 @@ func timelineProjectedSpan(ticket *RequestTicket, projection TimelineProjection)
 
 // timelineChainStart is when the first unstarted REQ can begin: after whatever is
 // already running. The in-flight REQ's own `estimate:` block would be the better
-// offset for exactly this bar, but the board parses no nested frontmatter blocks,
-// and adding that surface for one bar is the sophistication this REQ trades for a
-// stated assumption.
+// offset for exactly this bar. Since REQ-486 the board DOES read that block —
+// RequestTicket.EstimateP50ActiveMinutes carries the saved p50_active_minutes —
+// and this bar still deliberately does not use it: the request that added the
+// reader forbade changing the Timeline's forecast behaviour merely because the
+// value became available. The stated assumption below is a choice now, not a
+// missing parser, and moving the bar onto the saved figure is its own request.
 func timelineChainStart(tickets []*RequestTicket, projection TimelineProjection, now time.Time) time.Time {
 	chainStart := now.UTC()
 	for _, ticket := range tickets {

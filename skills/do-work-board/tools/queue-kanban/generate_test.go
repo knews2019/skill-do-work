@@ -3715,3 +3715,133 @@ func clipboardProbeDocument(t *testing.T, documentText string, resolver *ticketM
 	}
 	return "{ text: " + mustMarshalJSONString(t, documentText) + ", ticketMentions: " + string(ticketMentions) + " }"
 }
+
+// REQ-486, projection altitude. A parse-level assertion alone cannot prove the
+// read reaches the client: the field has to be wired through
+// buildGeneratedBoardData and survive JSON marshalling with the right key
+// shape. The pair here is the point. `hasEstimateP50ActiveMinutes` is omitempty
+// so its ABSENCE is what the client tests, and `estimateP50ActiveMinutes` is
+// deliberately not omitempty so a genuine zero could never vanish and leave the
+// flag pointing at undefined — the precedent implementationSpanMinutes states
+// verbatim a few fields above it.
+func TestGeneratedRequestCarriesTheNestedEstimateP50(t *testing.T) {
+	repoRoot := writeVerifyFixture(t, []verifyFixtureFile{
+		{"actions/version.md", cleanVersionFile},
+		{"CHANGELOG.md", cleanChangelog},
+		{"do-work/queue/REQ-860-with-estimate.md",
+			"---\nid: REQ-860\ntitle: Carries a forecast\nstatus: pending\n" +
+				"estimate:\n  p50_active_minutes: 75\n  confidence: medium\n---\n\nBody.\n"},
+		{"do-work/queue/REQ-861-salvaged.md",
+			"---\nid: REQ-861\ntitle: \"Clean up broken\" button — retitle\nstatus: pending\n" +
+				"estimate:\n  p50_active_minutes: 75\n---\n\nBody.\n"},
+	})
+	moment := time.Date(2026, 8, 19, 13, 0, 0, 0, time.UTC)
+
+	board, buildError := buildBoard(repoRoot, moment, defaultRecentWindow, lookupGitCommitDate)
+	if buildError != nil {
+		t.Fatalf("buildBoard: %v", buildError)
+	}
+	boardData, projectError := buildGeneratedBoardData(board)
+	if projectError != nil {
+		t.Fatalf("buildGeneratedBoardData: %v", projectError)
+	}
+
+	requestKeys := func(requestId string) map[string]json.RawMessage {
+		t.Helper()
+		generated, found := boardData.Requests[requestId]
+		if !found {
+			t.Fatalf("%s is not in the generated payload: %v", requestId, boardData.RequestOrder)
+		}
+		encoded, marshalError := json.Marshal(generated)
+		if marshalError != nil {
+			t.Fatalf("marshal %s: %v", requestId, marshalError)
+		}
+		var keyed map[string]json.RawMessage
+		if decodeError := json.Unmarshal(encoded, &keyed); decodeError != nil {
+			t.Fatalf("decode %s: %v", requestId, decodeError)
+		}
+		return keyed
+	}
+
+	withEstimate := requestKeys("REQ-860")
+	if string(withEstimate["hasEstimateP50ActiveMinutes"]) != "true" ||
+		string(withEstimate["estimateP50ActiveMinutes"]) != "75" {
+		t.Fatalf("REQ-860 shipped has=%s value=%s, want true and 75",
+			withEstimate["hasEstimateP50ActiveMinutes"], withEstimate["estimateP50ActiveMinutes"])
+	}
+
+	// The salvaged REQ: the flag key is gone, so the client sees undefined and
+	// falls through to its Timeline arm. The VALUE key still serialises, because
+	// a client that read it without checking the flag must never be handed
+	// undefined to multiply.
+	salvaged := requestKeys("REQ-861")
+	if _, flagPresent := salvaged["hasEstimateP50ActiveMinutes"]; flagPresent {
+		t.Fatalf("REQ-861 shipped hasEstimateP50ActiveMinutes=%s; the salvage path drops nested maps, so the flag key must be absent",
+			salvaged["hasEstimateP50ActiveMinutes"])
+	}
+	if _, valuePresent := salvaged["estimateP50ActiveMinutes"]; !valuePresent {
+		t.Fatal("REQ-861 dropped estimateP50ActiveMinutes entirely; the value key is deliberately not omitempty so no client can multiply undefined")
+	}
+}
+
+// REQ-486 exposes the saved P50 to the board. The request forbids the Timeline
+// changing its scheduling or forecast behaviour merely because that value became
+// available — timelineChainStart still uses the projection median for an
+// in-flight REQ, and the comment beside it now says so on purpose rather than
+// because the board could not read the block.
+func TestTimelineProjectionIgnoresTheSavedP50Estimate(t *testing.T) {
+	moment := time.Date(2026, 8, 19, 13, 0, 0, 0, time.UTC)
+	buildTickets := func(withSavedEstimate bool) []*RequestTicket {
+		var tickets []*RequestTicket
+		for sampleIndex := 0; sampleIndex < 8; sampleIndex++ {
+			requestId := fmt.Sprintf("REQ-%03d", 900+sampleIndex)
+			completed := timelineTicket(requestId, "completed",
+				moment.Add(-time.Duration(48-sampleIndex)*time.Hour).Format(time.RFC3339),
+				moment.Add(-time.Duration(47-sampleIndex)*time.Hour).Format(time.RFC3339),
+				moment.Add(-time.Duration(46-sampleIndex)*time.Hour).Format(time.RFC3339))
+			tickets = append(tickets, completed)
+		}
+		inFlight := timelineTicket("REQ-950", "claimed",
+			moment.Add(-6*time.Hour).Format(time.RFC3339),
+			moment.Add(-2*time.Hour).Format(time.RFC3339), "")
+		unstarted := timelineTicket("REQ-951", "pending",
+			moment.Add(-1*time.Hour).Format(time.RFC3339), "", "")
+		tickets = append(tickets, inFlight, unstarted)
+		if withSavedEstimate {
+			for _, ticket := range tickets {
+				ticket.HasEstimateP50ActiveMinutes = true
+				// Far away from any median this fixture can produce, so a
+				// Timeline that started reading the field moves visibly.
+				ticket.EstimateP50ActiveMinutes = 600
+			}
+		}
+		return tickets
+	}
+
+	withoutEstimates := buildTickets(false)
+	withEstimates := buildTickets(true)
+	baseline := buildTimelineProjection(withoutEstimates, buildDurationAggregate(withoutEstimates), moment)
+	exposed := buildTimelineProjection(withEstimates, buildDurationAggregate(withEstimates), moment)
+
+	if baseline.Confident != exposed.Confident ||
+		baseline.TrivialSampleCount != exposed.TrivialSampleCount ||
+		baseline.NormalSampleCount != exposed.NormalSampleCount ||
+		baseline.WindowSampleCount != exposed.WindowSampleCount ||
+		baseline.TrivialMedianMinutes != exposed.TrivialMedianMinutes ||
+		baseline.NormalMedianMinutes != exposed.NormalMedianMinutes {
+		t.Fatalf("saved P50 estimates changed the projection's own numbers:\n baseline %+v\n exposed  %+v", baseline, exposed)
+	}
+	if !baseline.ChainStart.Equal(exposed.ChainStart) || !baseline.QueueEnd.Equal(exposed.QueueEnd) {
+		t.Fatalf("saved P50 estimates moved the chain: start %v vs %v, end %v vs %v",
+			baseline.ChainStart, exposed.ChainStart, baseline.QueueEnd, exposed.QueueEnd)
+	}
+	if len(baseline.Rows) != len(exposed.Rows) {
+		t.Fatalf("saved P50 estimates changed the projected row count: %d vs %d", len(baseline.Rows), len(exposed.Rows))
+	}
+	for rowIndex := range baseline.Rows {
+		if !reflect.DeepEqual(baseline.Rows[rowIndex], exposed.Rows[rowIndex]) {
+			t.Fatalf("saved P50 estimates moved projected row %d:\n baseline %+v\n exposed  %+v",
+				rowIndex, baseline.Rows[rowIndex], exposed.Rows[rowIndex])
+		}
+	}
+}

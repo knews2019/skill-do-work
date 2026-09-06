@@ -1863,3 +1863,101 @@ func TestUnrecognizedErrorTypeFlagsAndWarns(t *testing.T) {
 		t.Fatalf("no error_type warning naming the written value; warnings=%v", board.Warnings)
 	}
 }
+
+// REQ-486: the board reads the nested `estimate.p50_active_minutes` forecast so
+// the UR progress summary can state remaining work. Two altitudes matter and
+// this is the lower one: a strict frontmatter block must land on the ticket as a
+// number, and the SALVAGE path — which is flat by design and drops every nested
+// map — must land as ABSENT, never as a zero. A reader that cannot tell those
+// two apart renders "0 min remaining" for a REQ whose estimate it simply failed
+// to read, which is the understated-number failure the request forbids.
+func TestRequestTicketReadsNestedEstimateP50ActiveMinutes(t *testing.T) {
+	temporaryDirectory := t.TempDir()
+
+	strictPath := filepath.Join(temporaryDirectory, "REQ-486-strict.md")
+	strictText := "---\n" +
+		"id: REQ-486\n" +
+		"title: Strict estimate block\n" +
+		"status: pending\n" +
+		"estimate:\n" +
+		"  p50_active_minutes: 75\n" +
+		"  confidence: medium\n" +
+		"---\n\nBody.\n"
+	if writeError := os.WriteFile(strictPath, []byte(strictText), 0o644); writeError != nil {
+		t.Fatalf("write strict fixture: %v", writeError)
+	}
+
+	// The malformed title line is the shape frontmatter.go's salvage comment
+	// names: strict YAML rejects the whole block, lenientFrontmatterFields
+	// answers, and it recovers only flat top-level fields. The estimate block
+	// below it is real and well-formed — it is dropped because of the line above
+	// it, which is exactly the case a presence flag exists to report.
+	salvagePath := filepath.Join(temporaryDirectory, "REQ-487-salvage.md")
+	salvageText := "---\n" +
+		"id: REQ-487\n" +
+		"title: \"Clean up broken\" button — retitle\n" +
+		"status: pending\n" +
+		"estimate:\n" +
+		"  p50_active_minutes: 75\n" +
+		"---\n\nBody.\n"
+	if writeError := os.WriteFile(salvagePath, []byte(salvageText), 0o644); writeError != nil {
+		t.Fatalf("write salvage fixture: %v", writeError)
+	}
+
+	strictTicket, parseError := parseRequestTicket(strictPath, "queue")
+	if parseError != nil {
+		t.Fatalf("parseRequestTicket(strict): %v", parseError)
+	}
+	if !strictTicket.HasEstimateP50ActiveMinutes || strictTicket.EstimateP50ActiveMinutes != 75 {
+		t.Fatalf("strict estimate block read as has=%v value=%v, want has=true value=75",
+			strictTicket.HasEstimateP50ActiveMinutes, strictTicket.EstimateP50ActiveMinutes)
+	}
+
+	salvageTicket, parseError := parseRequestTicket(salvagePath, "queue")
+	if parseError != nil {
+		t.Fatalf("parseRequestTicket(salvage): %v", parseError)
+	}
+	// Absence, not zero. Asserting EstimateP50ActiveMinutes == 0 here would pass
+	// for a reader that shipped a bogus zero with the flag set, which is the
+	// failure this pair exists to catch.
+	if salvageTicket.HasEstimateP50ActiveMinutes {
+		t.Fatalf("salvaged frontmatter reported an estimate (value %v); the lenient path is flat and drops nested maps, so presence must be false",
+			salvageTicket.EstimateP50ActiveMinutes)
+	}
+	// The salvage path still recovered the flat fields around the bad line, so
+	// this fixture really did travel the path the assertion above describes.
+	if salvageTicket.Status != "pending" {
+		t.Fatalf("salvaged ticket Status = %q, want %q — the fixture did not reach the salvage path at all",
+			salvageTicket.Status, "pending")
+	}
+}
+
+// REQ-486: every way the nested read can come back unusable, each one able to
+// fail on its own. The reader ships a presence flag, so "unusable" has to mean
+// ok=false rather than a zero the client would render as a real forecast.
+func TestCoerceNestedScalarToFloatRejectsUnusableValues(t *testing.T) {
+	testCases := []struct {
+		name      string
+		value     any
+		wantValue float64
+		wantOk    bool
+	}{
+		{name: "integer, the shape yaml.v3 decodes 75 into", value: map[string]any{"p50_active_minutes": 75}, wantValue: 75, wantOk: true},
+		{name: "float", value: map[string]any{"p50_active_minutes": 22.5}, wantValue: 22.5, wantOk: true},
+		{name: "nil block", value: nil, wantOk: false},
+		{name: "scalar where a map belongs", value: "75", wantOk: false},
+		{name: "map without the key", value: map[string]any{"confidence": "medium"}, wantOk: false},
+		{name: "non-numeric value", value: map[string]any{"p50_active_minutes": "seventy-five"}, wantOk: false},
+		{name: "negative minutes", value: map[string]any{"p50_active_minutes": -30}, wantOk: false},
+		{name: "zero minutes, below the schema floor of 5", value: map[string]any{"p50_active_minutes": 0}, wantOk: false},
+	}
+	for _, testCase := range testCases {
+		t.Run(testCase.name, func(t *testing.T) {
+			gotValue, gotOk := coerceNestedScalarToFloat(testCase.value, "p50_active_minutes")
+			if gotOk != testCase.wantOk || (testCase.wantOk && gotValue != testCase.wantValue) {
+				t.Fatalf("coerceNestedScalarToFloat = (%v, %v), want (%v, %v)",
+					gotValue, gotOk, testCase.wantValue, testCase.wantOk)
+			}
+		})
+	}
+}
