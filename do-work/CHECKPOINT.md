@@ -32,4 +32,3 @@ session_depth: light
 
 - REQ-594: Generalize the SIGPIPE fix: about 130 quiet-grep pipelines remain across the maintainer test tree — claimed 2026-09-06T03:36:45Z — writer: vm:/home/user/skill-do-work
 
-- REQ-595: Correct the run-blocked-check mechanics cell, which describes shell the Go command does not run — claimed 2026-09-06T04:38:49Z — writer: vm:/home/user/skill-do-work

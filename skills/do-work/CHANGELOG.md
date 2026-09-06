@@ -2,6 +2,16 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.305.3 — The Shell Guide Says What Each Command Actually Does (2026-09-06)
+
+The guide's table of shipped executable homes described work that moved into Go years ago, or credited a command with a step something else performs. All fourteen rows were checked against the code that implements them; three were wrong.
+
+- `run-blocked-check` was described as selecting a GNU `timeout` binary and building a Bash process group. It does neither: there is no `timeout` lookup anywhere in the tool, and the process group comes from the Go runtime. Its entry now names what it owns — the probe's process-group timeout and kill escalation, first-hand launch and timeout evidence rather than facts guessed from an exit code, a bounded diagnostic identity, and the baseline comparison a focused test run needs.
+- `install-memory-hooks` was credited with verification and rollback. Both are still steps a person follows in the memory actions; the command stops at a backup and a rename. Its entry now names the per-event gating and the settings merge that keeps your own keys in order.
+- `record-timing-event` was credited with the folded per-request summary, which a different command produces — and the prose lower on the same page already said so, so the table had been contradicting its own document.
+- Two descriptions of how a report's images are published were also wrong. Publication is not a single rename: the command claims the output directory outright, writes each finished image into it, and deletes the whole directory if any write fails, so a half-published directory never survives. And the staging directory is a temporary one, not a directory beside the output.
+- A maintainer check now fails when an entry in that table credits a command with shell machinery, since every entry in it is a Go command. Its own comment states the case it cannot catch: an entry that claims another command's work reads exactly like a true one.
+
 ## 0.305.2 — The Shell Guide's Table Points at the Command, Not at Its Launchers (2026-09-06)
 
 The "Shipped executable homes" table sent readers to nine shell scripts for mechanics that live in Go. Each of those scripts is a few lines that hand the work straight to a `do-work-cli` subcommand, so the table was routing people to the wrong file.
