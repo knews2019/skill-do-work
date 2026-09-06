@@ -2,6 +2,16 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.304.3 — The Debug-Artifact Rule Is Stated Once, Where It Is Enforced (2026-09-06)
+
+Three shipped action files repeated the same debug-artifact and P-A-U honesty rule seven times between them. The rule is enforced in code, so every prose copy was a restatement that could drift away from what actually runs.
+
+- Seven mentions become two. `work.md`, `review-work.md` and `work-reference.md` now point at the finding codes `QUALIFY-DEBUG-ARTIFACT`, `QUALIFY-PAU-UNCHECKED` and `QUALIFY-UNIFY-DISARMED`, which is where the rule is decided.
+- Two mentions are kept on purpose: `review-work.md`'s standalone-review hygiene bullet is a read the canonical `qualify` never makes, and the P-A-U template payload is byte-identical across four shipped files.
+- The request claimed nine sites and the tree has seven. The commit its reproduction line names is not in this clone, so the captured failure could not be replayed and no lines were invented to reach nine. One anchor had moved eight lines earlier in the same run, so every edit was located by text rather than by line number.
+- A maintainer lock-in pins the count of remaining mentions with a floor as well as a ceiling, so losing one of the two protected mentions is no longer silently green. It counts matches rather than lines — the earlier version failed on a pure reflow — reads its scanner's exit status without a pipeline, and reports path, line and matched text for each site.
+- A companion assertion checks every `QUALIFY-*` code named in the action files against the code that defines it, so the enumeration goes stale loudly instead of quietly.
+
 ## 0.304.2 — The Commit and Inspect Actions Stop Repeating the Same Shell Rules (2026-09-06)
 
 Two shipped actions carried the same block of file-inventory rules word for word, so a correction to one left the other behind. That block now lives once, in the prescribed-shell guide, and both actions point at it.

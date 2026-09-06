@@ -33,4 +33,3 @@ session_depth: light
 
 - REQ-593: [impact-critical] Make the heavy tier report a red lane as red, and fix two fixtures that cannot pass under the lane environment — claimed 2026-09-06T02:03:03Z — writer: vm:/home/user/skill-do-work
 
-- REQ-556: [impact-negligible] Cut the debug-artifact rule prose that do-work-cli qualify already enforces — claimed 2026-09-06T02:27:19Z — writer: vm:/home/user/skill-do-work

@@ -1,7 +1,7 @@
 ---
 id: REQ-556
 title: '[impact-negligible] Cut the debug-artifact rule prose that do-work-cli qualify already enforces'
-status: claimed
+status: completed
 priority: later
 created_at: 2026-09-03T19:45:35Z
 user_request: UR-105
@@ -27,6 +27,9 @@ estimate:
 route: B
 write_set: [skills/do-work/actions/work.md, skills/do-work/actions/review-work.md, skills/do-work/actions/work-reference.md, _dev/tests/audit-lockins.sh]
 claimed_at: 2026-09-06T02:27:19Z
+completed_at: 2026-09-06T03:15:36Z
+commit: 2acc465a5fbb7e371a45b63caaa95198c6ecb3f0
+release_at: 2026-09-06T03:15:36Z
 ---
 
 # Cut the debug-artifact rule prose that do-work-cli qualify already enforces
