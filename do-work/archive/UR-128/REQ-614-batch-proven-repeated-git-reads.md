@@ -1,7 +1,7 @@
 ---
 id: REQ-614
 title: 'A9: Batch repeated Git reads in the exercised code'
-status: claimed
+status: completed
 created_at: 2026-09-06T13:16:35Z
 user_request: UR-128
 domain: testing
@@ -24,6 +24,9 @@ batch: test-efficiency
 depends_on: [REQ-606]
 related: [REQ-606, REQ-607, REQ-608, REQ-609, REQ-610, REQ-611, REQ-612, REQ-613]
 claimed_at: 2026-09-06T15:36:25Z
+completed_at: 2026-09-06T15:52:52Z
+commit: a62abcd26852b888f1a1ce09f844da3df74f4bc8
+release_at: 2026-09-06T15:52:52Z
 ---
 # A9: Batch repeated Git reads in the exercised code
 
