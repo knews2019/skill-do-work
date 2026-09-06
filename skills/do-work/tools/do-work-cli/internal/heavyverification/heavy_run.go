@@ -63,7 +63,9 @@ type LaneRunRequest struct {
 	ManifestPath   string
 	// LaneIDs are the manifest lanes to verify, in any order; they are run in
 	// manifest order.
-	LaneIDs     []string
+	LaneIDs []string
+	// LaneTimeout bounds one lane's wall time. Zero (or negative) selects
+	// defaultLaneTimeoutSeconds rather than an instant termination.
 	LaneTimeout time.Duration
 	// LaneOutputWriter receives a tee of each executed lane's output.
 	LaneOutputWriter io.Writer
@@ -111,6 +113,16 @@ func RunLanes(request LaneRunRequest) (resultmodel.HeavyVerificationRun, []resul
 	if !request.EvaluatedAt.IsZero() {
 		clockNow = func() time.Time { return request.EvaluatedAt }
 	}
+	// An unset LaneTimeout means "use the default bound", not "terminate now".
+	// LaneRunRequest is a struct, so an in-process caller with no opinion about
+	// the bound leaves the field zero; without this, runOneLane arms
+	// time.NewTimer(0) and the lane is killed while it is still starting, which
+	// turns a green lane red under load. The CLI path fills the field in from
+	// --lane-timeout, so this only ever applies to a caller that omitted it.
+	laneTimeout := request.LaneTimeout
+	if laneTimeout <= 0 {
+		laneTimeout = defaultLaneTimeoutSeconds * time.Second
+	}
 	// The tree is read once, after the dirty-tree refusal, so every lane's
 	// fingerprint describes the same pre-run repository state.
 	committedTree, treeError := readCommittedTree(repositoryRoot, executionRevision)
@@ -150,7 +162,7 @@ func RunLanes(request LaneRunRequest) (resultmodel.HeavyVerificationRun, []resul
 			return resultmodel.HeavyVerificationRun{}, nil, refuseLaneRun("HEAVY-RUN-EVIDENCE-INVALIDATION", "invalidate prior evidence for %s before execution: %v", lane.ID, err)
 		}
 		executedAt := clockNow()
-		execution, skipLine, interrupted, err := runOneLane(repositoryRoot, lane, request.LaneTimeout, request.LaneOutputWriter, interruptions)
+		execution, skipLine, interrupted, err := runOneLane(repositoryRoot, lane, laneTimeout, request.LaneOutputWriter, interruptions)
 		if err != nil {
 			return resultmodel.HeavyVerificationRun{}, nil, err
 		}
