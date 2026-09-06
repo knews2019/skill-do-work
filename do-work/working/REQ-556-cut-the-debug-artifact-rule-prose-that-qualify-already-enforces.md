@@ -147,3 +147,21 @@ template payload. Any action file outside the three named.
 - [ ] A lock-in assertion fails if a restatement returns, counted rather than name-listed
 - [ ] A renamed or missing target file fails the assertion loudly instead of counting zero
 - [ ] The gate is green
+
+## Pre-Flight
+
+**Git:** ✓ Clean. Canonical `recover` reports `FINALIZATION-NONE`.
+
+**Repository gate:** ✓ `bash _dev/tests/maintainer-verify.sh` exited 0 at this REQ's claim revision
+`d3ceca3` — **88s wall**, exit status read directly from `$?`.
+
+**Tests baseline:** ✓ `bash _dev/tests/audit-lockins.sh` exited 0, launched true. That file already
+carries this run's blocks from REQ-552 and REQ-554, so a later red in it is attributable.
+
+**A stale-anchor hazard specific to this request.** Its exploration was taken before REQ-486 landed,
+and REQ-486 edited one of the three files this request cuts from. Every edit is located by text rather
+than by line number, and the builder reports which anchors had moved.
+
+**Dependencies:** ✓ `depends_on` empty. Toolchain at or above every floor the gate requires.
+
+*Checked by work action*

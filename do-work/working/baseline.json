@@ -1,5 +1,5 @@
 {
-  "test_command": "go -C skills/do-work/tools/do-work-cli test -count=1 ./internal/heavyverification/ ./internal/requeststate/",
+  "test_command": "bash _dev/tests/audit-lockins.sh",
   "exit_status": 0,
   "launched": true
 }
