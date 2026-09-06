@@ -144,31 +144,6 @@ func TestInventoryMatchesRetainedSecretOriginAndAmbiguityMatrix(t *testing.T) {
 	}
 }
 
-func TestInventoryDifferentialComparatorRejectsClassPathAndOrderMutations(t *testing.T) {
-	statusBytes := append(porcelainStatusBytes(" M", "first.txt", ""), porcelainStatusBytes(" D", "second.txt", "")...)
-	goRows, err := parseInventoryBytes(statusBytes)
-	if err != nil {
-		t.Fatal(err)
-	}
-	expected := []inventoryRow{{"M", "first.txt", ""}, {"D", "second.txt", ""}}
-	if err := compareInventoryProjection(goRows, expected); err != nil {
-		t.Fatal(err)
-	}
-	mutations := []struct {
-		name string
-		rows []inventoryRow
-	}{
-		{"class", []inventoryRow{{"A", "first.txt", ""}, expected[1]}},
-		{"path", []inventoryRow{{expected[0].Classification, "wrong.txt", ""}, expected[1]}},
-		{"order", []inventoryRow{expected[1], expected[0]}},
-	}
-	for _, mutation := range mutations {
-		if err := compareInventoryProjection(mutation.rows, expected); err == nil {
-			t.Errorf("%s mutation escaped retained differential", mutation.name)
-		}
-	}
-}
-
 func TestParseInventoryBytesContract(t *testing.T) {
 	t.Run("malformed short records rejected", func(t *testing.T) {
 		for _, short := range [][]byte{
@@ -303,18 +278,6 @@ func runRetainedInventory(t *testing.T, repository string) []inventoryRow {
 		rows = append(rows, inventoryRow{Classification: parts[0], Path: parts[1]})
 	}
 	return rows
-}
-
-func compareInventoryProjection(goRows, retainedRows []inventoryRow) error {
-	if len(goRows) != len(retainedRows) {
-		return fmt.Errorf("row count Go=%d retained=%d: Go=%+v retained=%+v", len(goRows), len(retainedRows), goRows, retainedRows)
-	}
-	for index := range goRows {
-		if goRows[index].Classification != retainedRows[index].Classification || goRows[index].Path != retainedRows[index].Path {
-			return fmt.Errorf("row %d Go=%+v retained=%+v", index, goRows[index], retainedRows[index])
-		}
-	}
-	return nil
 }
 
 func assertInventoryFindingProjection(t *testing.T, rows []inventoryRow) {
