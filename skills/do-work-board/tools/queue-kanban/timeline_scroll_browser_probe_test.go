@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strconv"
 	"testing"
 	"time"
@@ -207,6 +208,22 @@ func TestBrowserBehaviorTimelineViewHasOneScrollSurface(t *testing.T) {
 	if generateError := generateStaticSite(siteDirectory, board); generateError != nil {
 		t.Fatal(generateError)
 	}
+	// Feed real finding disclosures through the shipped renderer. Their height
+	// changes after Timeline has measured its initial position.
+	dataPath := filepath.Join(siteDirectory, "board-data.js")
+	dataBytes, err := os.ReadFile(dataPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	dataBytes = append(dataBytes, []byte(`
+window.queueKanbanBoardData.verifyFindings = Array.from({length: 20}, function (_, index) {
+  return {category: "stale-claim", detail: "Finding " + index,
+    remedy: "Review this request and resolve the stale claim. ".repeat(300)};
+});
+`)...)
+	if err := os.WriteFile(dataPath, dataBytes, 0o644); err != nil {
+		t.Fatal(err)
+	}
 	indexBytes, readError := os.ReadFile(filepath.Join(siteDirectory, "index.html"))
 	if readError != nil {
 		t.Fatal(readError)
@@ -332,6 +349,7 @@ func TestBrowserBehaviorTimelineViewHasOneScrollSurface(t *testing.T) {
 		measured.TimelineHeadingTopOffset)
 
 	assertTimelineAnchorSurvivesAWindowChange(t, session)
+	assertTimelineRowsSurviveFindingDisclosures(t, session)
 
 	// The padding move is scoped to this one view, so switching away must restore
 	// the board's own top padding. Read rather than restated: the assertion is
@@ -348,6 +366,83 @@ func TestBrowserBehaviorTimelineViewHasOneScrollSurface(t *testing.T) {
 			boardViewPaddingTop)
 	}
 	t.Logf("board view boardMainPaddingTop=%s", boardViewPaddingTop)
+}
+
+func assertTimelineRowsSurviveFindingDisclosures(t *testing.T, session *trustedInputBrowserSession) {
+	t.Helper()
+	var baselineIDs []string
+	var baselineWidth float64
+	var previousOffset float64
+	for _, step := range []struct {
+		name   string
+		script string
+	}{
+		{"baseline", `document.getElementById('board-findings-strip').open = false;
+document.querySelector('[data-timeline-period="all"]').click();`},
+		{"strip expanded", `document.getElementById('board-findings-strip').open = true;`},
+		{"finding expanded", `document.querySelector('#board-findings-cards details').open = true;`},
+		{"finding collapsed", `document.querySelector('#board-findings-cards details').open = false;`},
+		{"strip collapsed", `document.getElementById('board-findings-strip').open = false;`},
+	} {
+		var measured struct {
+			URL       string   `json:"url"`
+			Browser   string   `json:"browser"`
+			RowIDs    []string `json:"rowIDs"`
+			Offset    float64  `json:"offset"`
+			Width     float64  `json:"width"`
+			ScrollTop float64  `json:"scrollTop"`
+			ToggleIDs []string `json:"toggleIDs"`
+			ScrollIDs []string `json:"scrollIDs"`
+		}
+		session.decodeResult(t, step.name, session.evaluateInPage(t, `(async function () {
+  var board = document.getElementById('board-main');
+  var chart = document.getElementById('timeline-scroll');
+  board.style.overflowAnchor = 'none';
+  function rowIDs() { return Array.from(chart.querySelectorAll('[data-detail-id]')).map(function (row) {
+    return row.getAttribute('data-detail-id');
+  }); }
+  function settle() { return new Promise(function (resolve) {
+    requestAnimationFrame(function () { requestAnimationFrame(resolve); });
+  }); }
+  `+step.script+`
+  await settle();
+  var toggleIDs = rowIDs();
+  board.dispatchEvent(new Event('scroll'));
+  await settle();
+  var scrollIDs = rowIDs();
+  var offset = chart.getBoundingClientRect().top - board.getBoundingClientRect().top + board.scrollTop;
+  board.scrollTop = offset + 1500;
+  // Exercise a scroll even when browser anchoring preserved this position.
+  board.dispatchEvent(new Event('scroll'));
+  await settle();
+  return {url: location.href, browser: navigator.userAgent, offset: offset,
+    width: chart.clientWidth, scrollTop: board.scrollTop - offset,
+    rowIDs: rowIDs(), toggleIDs: toggleIDs, scrollIDs: scrollIDs};
+})()`), &measured)
+		if measured.URL == "" || measured.Width <= 0 || measured.ScrollTop < 1499 || len(measured.RowIDs) == 0 {
+			t.Fatalf("%s did not measure a scrolled chart: %+v", step.name, measured)
+		}
+		if baselineIDs == nil {
+			baselineIDs = measured.RowIDs
+			baselineWidth = measured.Width
+		} else {
+			if measured.Width != baselineWidth {
+				t.Fatalf("%s changed width, which can mask the offset regression: %+v", step.name, measured)
+			}
+			if !reflect.DeepEqual(measured.ToggleIDs, measured.ScrollIDs) {
+				t.Errorf("%s left stale rows until scrolling: toggle=%v, scroll=%v", step.name, measured.ToggleIDs, measured.ScrollIDs)
+			}
+			if measured.Offset-previousOffset < 100 && previousOffset-measured.Offset < 100 {
+				t.Fatalf("%s did not move the chart enough to expose stale geometry: %+v", step.name, measured)
+			}
+			if !reflect.DeepEqual(measured.RowIDs, baselineIDs) {
+				t.Errorf("%s virtualized different rows at the same chart scroll position: got %v, want %v", step.name, measured.RowIDs, baselineIDs)
+			}
+		}
+		previousOffset = measured.Offset
+		t.Logf("%s: page=%s browser=%s offset=%.1f width=%.1f scroll=%.1f rows=%d",
+			step.name, measured.URL, measured.Browser, measured.Offset, measured.Width, measured.ScrollTop, len(measured.RowIDs))
+	}
 }
 
 // assertTimelineAnchorSurvivesAWindowChange scrolls into a NARROW window, notes

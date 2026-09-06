@@ -892,7 +892,7 @@ func configuredReleaseMetadataPaths(session *discoverySession, oldVersion string
 			}
 			continue
 		}
-		if filepath.Base(path) == "VERSION" || path == "skills/do-work/actions/version.md" {
+		if filepath.Base(path) == "VERSION" || filepath.Base(path) == "version.md" {
 			if version, ok := releaseVersion(path, before.Bytes); ok && version == oldVersion {
 				paths = append(paths, path)
 			}

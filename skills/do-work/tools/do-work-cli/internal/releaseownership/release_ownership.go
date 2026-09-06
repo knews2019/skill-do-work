@@ -43,7 +43,7 @@ type Ownership struct {
 // It is a shape question, asked before ownership.
 func IsReleaseMetadataPath(path string) bool {
 	base := filepath.Base(path)
-	return strings.HasPrefix(base, "CHANGELOG") || base == "VERSION" || base == "package.json" || base == "package-lock.json" || base == "Cargo.toml" || base == "Cargo.lock" || base == "pyproject.toml" || base == "uv.lock" || path == "skills/do-work/actions/version.md"
+	return strings.HasPrefix(base, "CHANGELOG") || base == "VERSION" || base == "version.md" || base == "package.json" || base == "package-lock.json" || base == "Cargo.toml" || base == "Cargo.lock" || base == "pyproject.toml" || base == "uv.lock"
 }
 
 // NormalizedDirectory returns a path's containing directory, with the

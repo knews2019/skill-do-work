@@ -117,6 +117,44 @@ func TestBuildReleasePlanRefusesUndeclaredWorkspaceMemberMirror(t *testing.T) {
 	}
 }
 
+// Plain Markdown mirrors use the same ownership boundary as VERSION files.
+func TestBuildReleasePlanRefusesOwnedMarkdownVersionMirrors(t *testing.T) {
+	root := initializedGitRepository(t)
+	writeFixture(t, root, "VERSION", []byte("1.0.0\n"), 0o644)
+	writeFixture(t, root, "CHANGELOG.md", []byte("History\n* old\n"), 0o644)
+	writeFixture(t, root, "package.json", []byte(`{"workspaces":["packages/*"]}`), 0o644)
+	writeFixture(t, root, "packages/widget/package.json", []byte(`{"name":"widget"}`), 0o644)
+	oldMarkdown := []byte("# Version\n\n**Current version**: 1.0.0\n")
+	newMarkdown := []byte("# Version\n\n**Current version**: 1.0.1\n")
+	ownedMirrors := []string{"packages/widget/version.md", "version.md"}
+	for _, path := range append(append([]string{}, ownedMirrors...), "tools/independent/version.md") {
+		writeFixture(t, root, path, oldMarkdown, 0o644)
+	}
+	writeFixture(t, root, "payload/version-old", []byte("1.0.0\n"), 0o644)
+	writeFixture(t, root, "payload/version-new", []byte("1.0.1\n"), 0o644)
+	writeFixture(t, root, "payload/markdown-old", oldMarkdown, 0o644)
+	writeFixture(t, root, "payload/markdown-new", newMarkdown, 0o644)
+	writeFixture(t, root, "payload/log-old", []byte("History\n* old\n"), 0o644)
+	writeFixture(t, root, "payload/log-new", []byte("History\nrelease-1.0.1 Markdown Mirrors\n* old\n"), 0o644)
+	runGitFixture(t, root, "add", "-A")
+	manifest := Manifest{Operation: OperationRelease, Release: &ReleaseManifest{
+		OldVersion: "1.0.0", NewVersion: "1.0.1", ProjectOwnedTargets: []string{"VERSION", "CHANGELOG.md"},
+		Targets:    []ReleaseTarget{{Path: "VERSION", ExpectedPayload: PayloadFile{SourcePath: "payload/version-old"}, NewPayload: PayloadFile{SourcePath: "payload/version-new"}, OldVersion: "1.0.0", NewVersion: "1.0.1"}},
+		Changelogs: []ChangelogTarget{{Path: "CHANGELOG.md", ExpectedPayload: PayloadFile{SourcePath: "payload/log-old"}, NewPayload: PayloadFile{SourcePath: "payload/log-new"}, InsertionAnchor: "History\n", EntryKey: "release-1.0.1", EntryTitle: "Markdown Mirrors"}},
+	}}
+	plan := BuildReleasePlan(root, manifest)
+	if plan.Refusal == nil || plan.Refusal.Code != "RELEASE-MIRROR-UNDECLARED" || !reflect.DeepEqual(plan.Refusal.Paths, ownedMirrors) {
+		t.Fatalf("omitted Markdown mirrors = %#v, want refusal naming %v", plan.Refusal, ownedMirrors)
+	}
+	for _, path := range ownedMirrors {
+		manifest.Release.ProjectOwnedTargets = append(manifest.Release.ProjectOwnedTargets, path)
+		manifest.Release.Targets = append(manifest.Release.Targets, ReleaseTarget{Path: path, ExpectedPayload: PayloadFile{SourcePath: "payload/markdown-old"}, NewPayload: PayloadFile{SourcePath: "payload/markdown-new"}, OldVersion: "1.0.0", NewVersion: "1.0.1"})
+	}
+	if plan := BuildReleasePlan(root, manifest); plan.Refusal != nil || len(plan.Mutations) != 4 {
+		t.Fatalf("complete owned mirrors refused or independent component included: %#v", plan)
+	}
+}
+
 // A tracked VERSION on some other version is an independently versioned tool,
 // not a mirror; an untracked file is scratch. Neither is required.
 func TestBuildReleasePlanIgnoresVersionFilesThatAreNotMirrors(t *testing.T) {

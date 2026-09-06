@@ -319,6 +319,22 @@ func TestRecoverFinalizationRefusesReleaseMetadataWithoutProjectOwnership(t *tes
 	}
 }
 
+func TestConfiguredReleaseMetadataIncludesOwnedMarkdownVersionMirrors(t *testing.T) {
+	repositoryRoot := newFinalizationRepository(t)
+	writeFinalizationFile(t, repositoryRoot, "package.json", `{"workspaces":["packages/*"]}`)
+	writeFinalizationFile(t, repositoryRoot, "packages/widget/package.json", `{"name":"widget"}`)
+	for _, path := range []string{"version.md", "packages/widget/version.md", "tools/independent/version.md"} {
+		writeFinalizationFile(t, repositoryRoot, path, "**Current version**: 1.0.0\n")
+	}
+	runFinalizationGit(t, repositoryRoot, "add", ".")
+	runFinalizationGit(t, repositoryRoot, "commit", "-qm", "seed Markdown mirrors")
+	set, err := configuredReleaseMetadataPaths(newDiscoverySession(repositoryRoot), "1.0.0", nil, nil)
+	wantPaths := []string{"packages/widget/version.md", "version.md"}
+	if err != nil || !reflect.DeepEqual(set.paths, wantPaths) {
+		t.Fatalf("configured Markdown mirrors = %v, %v; want %v", set.paths, err, wantPaths)
+	}
+}
+
 func TestRecoverFinalizationRefusesCompleteInstalledSuiteWithoutMaintainerTopology(t *testing.T) {
 	repositoryRoot := newFinalizationRepository(t)
 	seedSemanticLegacyTail(t, repositoryRoot)

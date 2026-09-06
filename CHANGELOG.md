@@ -2,6 +2,14 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.305.27 — Timeline Disclosure Geometry and Markdown Version Mirrors (2026-09-06)
+
+Keep Timeline rows visible when findings disclosures change height, and prevent releases from leaving owned Markdown version mirrors stale.
+
+- Measure the chart's current vertical offset and repaint on disclosure toggles, including nested findings.
+- Recognize `version.md` in owned release roots during planning and recovery while keeping independent components excluded.
+- Add browser coverage for disclosure expansion and collapse, plus release-planning and recovery regressions for root and workspace mirrors.
+
 ## 0.305.26 — Restore Single-Image Staging Claim to Adjacent to Target (2026-09-06)
 
 Corrected the single-image generation command description in `skills/do-work-toolbox/actions/ai-report-reference.md` to reflect that `generateImage` stages its invocation-private file adjacent to the target output path (`filepath.Dir(outputPath)`), rather than in the system temporary directory.

@@ -2024,14 +2024,9 @@
       measuredPlotWidthPx = null;
     }
 
-    // The board's geometry, memoized on exactly the same terms as plotWidth above
-    // and for the same reason: renderVisibleRows IS the scroll listener and the
-    // pan handler calls renderAll once per frame, so two getBoundingClientRect
-    // calls inside it would add two forced layouts to every frame of a drag.
-    // Neither number can change without a re-render — both move only when the
-    // content ABOVE the chart changes height (a strip appearing, the toolbar
-    // wrapping, the summary line rewrapping), and every one of those is a render.
-    var measuredRowsOffsetPx = null;
+    // The axis height is stable within a render. The rows offset is not:
+    // findings disclosures can change the height above the chart without a
+    // Timeline render or a width change, so each coordinate read measures it.
     var measuredStickyAxisHeightPx = null;
 
     // Where the rows sit inside the BOARD's scroll extent: the distance from the
@@ -2040,13 +2035,9 @@
     // that origin — which is what makes this hold whatever the board's own top
     // padding is.
     function rowsOffsetPx() {
-      if (measuredRowsOffsetPx === null) {
-        measuredRowsOffsetPx =
-          scrollHost.getBoundingClientRect().top -
-          boardScrollHost.getBoundingClientRect().top +
-          boardScrollHost.scrollTop;
-      }
-      return measuredRowsOffsetPx;
+      return scrollHost.getBoundingClientRect().top -
+        boardScrollHost.getBoundingClientRect().top +
+        boardScrollHost.scrollTop;
     }
 
     // Read, never restated (REQ-322): the axis is its SVG plus its own bottom
@@ -2059,8 +2050,7 @@
       return measuredStickyAxisHeightPx;
     }
 
-    function invalidateBoardScrollGeometry() {
-      measuredRowsOffsetPx = null;
+    function invalidateStickyAxisHeight() {
       measuredStickyAxisHeightPx = null;
     }
 
@@ -2146,6 +2136,8 @@
     var labelCharacterBudget = 0;
 
     function renderVisibleRows() {
+      // Measure before rebuilding SVG nodes, while the current layout is clean.
+      var visibleRowsScrollTop = rowsScrollTop();
       // WHICH ROW HELD FOCUS, captured before the rebuild destroys it.
       //
       // A scroll event is ASYNCHRONOUS. refreshWindowRows writes the board's
@@ -2203,7 +2195,7 @@
       // before the board became its scroll surface, so the chart is already
       // populated when it scrolls into view instead of one scroll event later.
       var visible = timelineVisibleDisplayRange(
-        timelineDisplay.items, Math.max(0, rowsScrollTop()), boardScrollHost.clientHeight
+        timelineDisplay.items, Math.max(0, visibleRowsScrollTop), boardScrollHost.clientHeight
       );
       var tabbableRowIndex = timelineTabbableRequestIndex(
         timelineViewState.rovingRowIndex,
@@ -2768,11 +2760,9 @@
     // below reads them.
     function renderAll() {
       // Before anything reads it: the container may have been resized, and every
-      // x in this render has to come from one measurement of one width. The board
-      // geometry drops on the same terms — a strip appearing above the chart moves
-      // the rows down without the chart itself changing at all.
+      // x in this render has to come from one measurement of one width.
       invalidatePlotWidth();
-      invalidateBoardScrollGeometry();
+      invalidateStickyAxisHeight();
       // Nothing is visible and nothing is measurable, so a render here would only
       // record wrong numbers — a 120px plot and an eight-row viewport — and leave
       // them on screen when the view comes back. The observer below re-enters as
@@ -2878,6 +2868,9 @@
     // renderTimelineView releases its listeners before re-registering them and
     // #board-main outlives every render, so binding here leaks nothing.
     addTimelineListener(boardScrollHost, "scroll", renderVisibleRows);
+    // Native details toggles do not bubble. Capture also covers nested finding
+    // disclosures and repaints when their height changes without any scrolling.
+    addTimelineListener(boardScrollHost, "toggle", renderVisibleRows, true);
 
     // One keydown listener for the whole chart, registered through the teardown
     // registry like every other listener this view binds to a node that outlives
