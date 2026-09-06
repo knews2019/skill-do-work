@@ -513,13 +513,23 @@ var requestsById = boardData.requests;
 var userRequestsById = boardData.userRequests;
 var viewState = { windowHours: 24 };
 var filterState = { searchText: "", domain: "", status: "", userRequestActivity: "active" };
-// The always-open reading of this lens; the folded one has its own probe.
+// The always-open reading of this lens; each fold default has its own probe.
+// Both readings fold since REQ-486, so in this reading too the head announces
+// aria-expanded and carries a click listener. The stub answers both and this
+// probe asserts on neither — what it asserts on is which URs render at all.
 var userRequestCardsFolded = false;
 function makeNode() {
   return {
     childNodes: [],
     dataset: {},
-    appendChild: function (childNode) { this.childNodes.push(childNode); return childNode; }
+    appendChild: function (childNode) { this.childNodes.push(childNode); return childNode; },
+    removeChild: function (childNode) {
+      var childIndex = this.childNodes.indexOf(childNode);
+      if (childIndex !== -1) { this.childNodes.splice(childIndex, 1); }
+      return childNode;
+    },
+    setAttribute: function () {},
+    addEventListener: function () {}
   };
 }
 var userRequestLensNode = makeNode();
@@ -532,7 +542,13 @@ function makeRequestCard(requestId) { return { requestId: requestId }; }
 renderUserRequestLens();
 var renderedUserRequestIds = userRequestLensNode.childNodes
   .filter(function (node) { return node.className === "ur-group"; })
-  .map(function (groupNode) { return groupNode.childNodes[0].dataset.detailId; });
+  // The head is the fold control in both readings; the UR the drawer opens is
+  // named by the sibling Details button inside the same head row.
+  .map(function (groupNode) {
+    return groupNode.childNodes[0].childNodes
+      .filter(function (rowChild) { return rowChild.className === "ur-group-detail"; })[0]
+      .dataset.detailId;
+  });
 var scopeNotes = userRequestLensNode.childNodes
   .filter(function (node) { return node.className === "ur-lens-hidden-note"; })
   .map(function (node) { return node.textContent; });

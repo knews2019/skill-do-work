@@ -979,19 +979,16 @@
         return cardsNode;
       }
 
+      // One shape of head for both readings. The head is the fold control, so
+      // it cannot also be the drawer trigger — one element must not mean two
+      // things. The drawer lives on its own button beside it inside
+      // .ur-group-row (both are real buttons, both keyboard-operable), and the
+      // fold state is announced on the element that owns it. The reading
+      // decides exactly one thing: where the fold starts.
       var head = createElement("button", "ur-group-head");
       head.type = "button";
-      if (userRequestCardsFolded) {
-        // The row is the fold control here, so it cannot also be the drawer
-        // trigger — one element must not mean two things. The drawer moves to
-        // its own button beside it (both are real buttons, both keyboard-
-        // operable), and the fold state is announced on the row that owns it.
-        head.setAttribute("aria-expanded", "false");
-        head.appendChild(createElement("span", "ur-fold-marker", "▸"));
-      } else {
-        head.dataset.detailKind = "ur";
-        head.dataset.detailId = userRequestId;
-      }
+      head.setAttribute("aria-expanded", userRequestCardsFolded ? "false" : "true");
+      head.appendChild(createElement("span", "ur-fold-marker", "▸"));
       head.appendChild(createElement("span", "ur-id", userRequestId));
       head.appendChild(createElement("span", "ur-title", userRequest.title || "(no input.md title)"));
       if (groupMatchesSearch && !searchMatchesUserRequest(userRequest, userRequestId, filterState.searchText, true)) {
@@ -1012,33 +1009,33 @@
             : requestIds.length + " REQ"
         )
       );
-      if (userRequestCardsFolded) {
-        var headRow = createElement("div", "ur-group-row");
-        headRow.appendChild(head);
-        var detailButton = createElement("button", "ur-group-detail", "Details");
-        detailButton.type = "button";
-        detailButton.dataset.detailKind = "ur";
-        detailButton.dataset.detailId = userRequestId;
-        detailButton.setAttribute("aria-label", "Open details for " + userRequestId);
-        headRow.appendChild(detailButton);
-        group.appendChild(headRow);
+      var headRow = createElement("div", "ur-group-row");
+      headRow.appendChild(head);
+      var detailButton = createElement("button", "ur-group-detail", "Details");
+      detailButton.type = "button";
+      detailButton.dataset.detailKind = "ur";
+      detailButton.dataset.detailId = userRequestId;
+      detailButton.setAttribute("aria-label", "Open details for " + userRequestId);
+      headRow.appendChild(detailButton);
+      group.appendChild(headRow);
 
-        var openCards = null;
-        head.addEventListener("click", function () {
-          if (openCards) {
-            group.removeChild(openCards);
-            openCards = null;
-            head.setAttribute("aria-expanded", "false");
-            return;
-          }
-          openCards = makeUserRequestCards();
-          group.appendChild(openCards);
-          head.setAttribute("aria-expanded", "true");
-        });
-      } else {
-        group.appendChild(head);
-        group.appendChild(makeUserRequestCards());
+      // By UR arrives with its grid already built; URs only builds it on first
+      // open. From the first click on they are the same machine.
+      var openCards = userRequestCardsFolded ? null : makeUserRequestCards();
+      if (openCards) {
+        group.appendChild(openCards);
       }
+      head.addEventListener("click", function () {
+        if (openCards) {
+          group.removeChild(openCards);
+          openCards = null;
+          head.setAttribute("aria-expanded", "false");
+          return;
+        }
+        openCards = makeUserRequestCards();
+        group.appendChild(openCards);
+        head.setAttribute("aria-expanded", "true");
+      });
 
       host.appendChild(group);
     });
