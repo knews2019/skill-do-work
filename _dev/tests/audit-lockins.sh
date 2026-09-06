@@ -188,33 +188,73 @@ fi
 
 # Finding 6: commit-inspect-shared-body (REQ-554)
 # The inventory tag legend, the secret-shaped basename patterns, the four file-reading
-# bullets, the association semantics and both manual "do it by hand" fallbacks live once,
-# in skills/do-work/docs/prescribed-shell-primitives.md.
-# The ceiling is 30, not 0, and cannot be 0. Measured after the move, the 30 identical lines
-# are: 17 template scaffold that _dev/primes/prime-action-files.md requires both actions to
-# carry (## When to Use, ## When This Runs, ## Steps, ### Step 1/4/6, three code fences,
-# ## Error Handling plus its two table header rows, ## What This Action Does NOT Do,
-# ## Rules, ## Red Flags, ## Verification Checklist, **Use when:**); 4 structural rows inside
-# each action's own ASCII flow diagram and Error Handling table; 8 lines of the Step 4
-# semantic clustering algorithm, which is caller policy the guide's charter refuses to own;
-# and 1 line routing unassociated files to each action's own Step 4. Returning shared prose
-# trips this; the scaffold never does.
-shared_action_prose_ceiling=30
-shared_action_prose_lines="$(cd "$repo_root" && python3 -c "
-import difflib
-a=[l.rstrip() for l in open('skills/do-work/actions/commit.md')]
-b=[l.rstrip() for l in open('skills/do-work-toolbox/actions/inspect.md')]
-print(sum(1 for i,j,s in difflib.SequenceMatcher(None,a,b).get_matching_blocks()
-          if s>=3 for k in range(s) if a[i+k].strip()))
-")"
-if [ "${shared_action_prose_lines:-999}" -gt "$shared_action_prose_ceiling" ]; then
-  printf 'FAIL: commit.md and inspect.md share %s identical lines; ceiling is %s. Move the shared body into skills/do-work/docs/prescribed-shell-primitives.md.\n' \
-    "$shared_action_prose_lines" "$shared_action_prose_ceiling" >&2
+# bullets, the association semantics and both manual "do it by hand" fallbacks live once, in
+# skills/do-work/docs/prescribed-shell-primitives.md. The assertion below scans each action
+# file on its own for a load-bearing sentence out of each moved passage, so a paste back into
+# either action alone fails.
+#
+# It replaced a difflib count of lines identical in both actions, held under a ceiling of 30,
+# which was wrong in both directions. It could not see the return it was named for: the
+# metric counts only lines present in BOTH files, so pasting the tag legend and all four
+# reading bullets back into commit.md alone left the count at 30 and exited 0, and restoring
+# the whole pre-move commit.md lowered it to 29. And it fired where nothing was duplicated:
+# a sequence alignment rematches when a line is removed, so deleting one row of inspect.md's
+# own flow diagram scored 33, deleting any single fenced-block opening line scored 32, and
+# adding one identical heading plus one body line to both actions scored 32. Headroom would
+# only have hidden those trips inside the slack while catching nothing the phrase list below
+# misses, so the count is gone rather than re-baselined. Finding new cross-file duplication
+# is the maintainability audit's job; this file pins what the audit already found.
+#
+# What this does not catch: a paraphrase. A moved passage reworded in both actions passes
+# every check here, and the audit is what finds that too.
+shared_body_action_files=(
+  "$repo_root/skills/do-work/actions/commit.md"
+  "$repo_root/skills/do-work-toolbox/actions/inspect.md"
+)
+# A renamed action must fail here rather than scan clean. rg exits 2 on a missing path and
+# the status read below reports that, but naming the path first says which one moved.
+for shared_body_action_file in "${shared_body_action_files[@]}"; do
+  [ -f "$shared_body_action_file" ] && continue
+  printf 'FAIL: shared-body lock-in cannot scan a missing action file: %s\n' \
+    "${shared_body_action_file#"$repo_root/"}" >&2
   failure_count=$((failure_count + 1))
-fi
+done
+# One sentence per moved passage: two legend rows, the case-insensitivity rule, the first and
+# last reading bullets, and two association rules. Illustrative of the moved body, not an
+# inventory of it — the guide's own section is the inventory.
+moved_shared_body_phrases=(
+  '- **M** — modified (a renamed path is tagged M too'
+  '- **XD** — deleted secret-shaped path'
+  'Secret-shaped matching is case-insensitive'
+  '- **Modified files**: Read the `git diff` for each file.'
+  '- **Deleted secret-shaped files (`XD`)**: Note only the path'
+  '- **Conflict resolution:** a path claimed by two REQs'
+  '- **Partial matches count.**'
+)
+for shared_body_action_file in "${shared_body_action_files[@]}"; do
+  [ -f "$shared_body_action_file" ] || continue
+  for moved_shared_body_phrase in "${moved_shared_body_phrases[@]}"; do
+    moved_phrase_matches="$(rg -n --fixed-strings -- "$moved_shared_body_phrase" \
+      "$shared_body_action_file" 2>/dev/null)"
+    moved_phrase_scan_status=$?
+    if [ "$moved_phrase_scan_status" -gt 1 ]; then
+      printf 'FAIL: could not scan %s for moved shared prose (rg exit %s).\n' \
+        "${shared_body_action_file#"$repo_root/"}" "$moved_phrase_scan_status" >&2
+      failure_count=$((failure_count + 1))
+      continue
+    fi
+    [ -n "$moved_phrase_matches" ] || continue
+    while IFS= read -r moved_phrase_site; do
+      [ -z "$moved_phrase_site" ] && continue
+      printf 'FAIL: %s:%s restates prose that is canonical in skills/do-work/docs/prescribed-shell-primitives.md#protected-inventory-fallbacks; cite that section instead.\n' \
+        "${shared_body_action_file#"$repo_root/"}" "${moved_phrase_site%%:*}" >&2
+      failure_count=$((failure_count + 1))
+    done <<< "$moved_phrase_matches"
+  done
+done
 
-# The two 207-word inventory fallbacks differed by two relative-path fixups, so the difflib
-# count above scored them at 0. This is the assertion that actually pins them at zero.
+# The two 207-word inventory fallbacks differed by two relative-path fixups, so no whole-line
+# comparison of the two actions ever scored them. This is what pins them at zero.
 # rg's own exit status is read rather than a piped count: an awk total prints 0 both when
 # nothing matched and when the scan never ran, which prime-shell-commands.md
 # § Unchecked Exit Status Reads as Content bans. rg exit 1 is no matches; 2 or more is a
@@ -230,7 +270,7 @@ if [ "$manual_fallback_scan_status" -gt 1 ]; then
 elif [ -n "$manual_fallback_matches" ]; then
   while IFS= read -r fallback_site; do
     [ -z "$fallback_site" ] && continue
-    printf 'FAIL: manual "do it by hand" fallback remains in a shipped action: %s\n' \
+    printf 'FAIL: manual "do it by hand" fallback remains in a shipped action: %s — the protected-inventory by-hand procedures live in skills/do-work/docs/prescribed-shell-primitives.md#protected-inventory-fallbacks.\n' \
       "${fallback_site#"$repo_root/"}" >&2
     failure_count=$((failure_count + 1))
   done <<< "$manual_fallback_matches"

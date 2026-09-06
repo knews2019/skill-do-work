@@ -42,7 +42,7 @@ The complete secret-aware inventory and REQ association ship behind `scripts/pro
 
 ## Protected inventory fallbacks
 
-`scripts/protected-inventory.sh start` prints one `<tag>\t<path>` row per uncommitted file; its `associate` mode prints one `<owner>\t<path>` row per candidate. Both modes gate on `git rev-parse --git-dir`. This section owns what a tag means, how each tag class is read, what association settles, and the by-hand procedure for each mode. It does not own what a caller then does with an `X` or `XD` row: a writing action may stage an `XD` deletion where a read-only action may not, so each caller states its own handling and its own exit-status responses.
+`scripts/protected-inventory.sh start` prints one `<tag>\t<path>` row per uncommitted file; its `associate` mode prints one `<owner>\t<path>` row per candidate. Both modes resolve the run-level quarantine file with `git rev-parse --git-path <quarantine name>` and exit 2 when that resolution fails, which is what happens outside a Git repository. This section owns what a tag means, how each tag class is read, what association settles, and the by-hand procedure for each mode. It does not own what a caller then does with an `X` or `XD` row: a writing action may stage an `XD` deletion where a read-only action may not, so each caller states its own handling and its own exit-status responses.
 
 Tag legend:
 
@@ -71,7 +71,7 @@ What `associate` settles, so no caller's prose has to:
 - **`do-work/` metadata paths are excluded** from association, matching `tools/checks/scope-drift.sh`.
 - **Partial matches count.** If 3 out of 5 files in a REQ's Implementation Summary are among the uncommitted files, group all 3 under that REQ.
 
-If the script is missing or will not run, associate by hand: glob both directories, read each REQ's `status` (accepting every terminal-success alias listed above) and `## Implementation Summary` list, path-match, and tie-break on the latest `completed_at`.
+If the script is missing or will not run, associate by hand: glob `do-work/archive/**/REQ-*.md` and `do-work/working/REQ-*.md`, read each REQ's `status` (accepting every terminal-success alias listed above) and `## Implementation Summary` list, path-match, and tie-break on the latest `completed_at`.
 
 ## Merge-aware commit diff
 
