@@ -1,6 +1,6 @@
 ---
 id: REQ-597
-status: pending
+status: claimed
 domain: general
 created_at: 2026-09-06T05:49:08Z
 user_request: UR-105
@@ -22,7 +22,7 @@ depends_on: [REQ-596]
 related: [REQ-555, REQ-595, REQ-596]
 title: 'Correct ten stale claims across the rest of the prescribed-shell guide'
 claimed_at: 2026-09-06T06:59:15Z
-status_changed_at: 2026-09-06T12:37:56Z
+status_changed_at: 2026-09-06T12:38:06Z
 ---
 
 # Correct Ten Stale Claims Across the Rest of the Prescribed-Shell Guide
