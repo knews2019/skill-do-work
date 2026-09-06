@@ -18,4 +18,3 @@ session_depth: light
 
 ## In Progress (interrupted)
 
-- REQ-603: Let the protected-inventory launcher pass global flags, and stop its shim discarding the text it prepared — claimed 2026-09-06T13:04:17Z — writer: t2s-Virtual-Machine.local:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2
