@@ -2,6 +2,13 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.305.18 — Build Integration Test CLI Once per Test Binary in Suiteinstall (2026-09-06)
+
+Integration tests in `suiteinstall` now compile the `do-work-cli` executable once per test binary using `sync.Once` and clean up the temporary directory in `TestMain`, eliminating redundant `go build` invocations across heavy signal handling tests.
+
+- `internal/suiteinstall/suite_commands_test.go` builds the test CLI binary on demand in an isolated temporary directory via `sync.Once` and deletes it upon process completion in `TestMain`.
+- Retains signal interruption, recovery, and post-verification exit status assertions while reducing wall time by ~1.15s and total CPU by ~1.00s.
+
 ## 0.305.17 — Establish Test Efficiency Baseline with Descendant CPU and Work Counts (2026-09-06)
 
 Introduced opt-in test efficiency instrumentation and reproducible baseline measurement tooling to record process descendant CPU times, toolchain subprocess counts, and per-file Go test duration attribution across representative verification selections.
