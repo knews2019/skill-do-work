@@ -39,9 +39,9 @@ started_at="$(date +%s)"
 test_status=0
 if [ -n "$excluded_test_prefixes" ]; then
   skip_pattern=""
-  old_ifs="$IFS"
-  IFS=','
-  for prefix in $excluded_test_prefixes; do
+  # Read the whole literal list; EOF is expected because it has no NUL delimiter.
+  IFS=',' read -r -d '' -a excluded_prefix_list <<< "$excluded_test_prefixes" || true
+  for prefix in ${excluded_prefix_list[@]+"${excluded_prefix_list[@]}"}; do
     prefix="${prefix#"${prefix%%[![:space:]]*}"}"
     prefix="${prefix%"${prefix##*[![:space:]]}"}"
     [ -z "$prefix" ] && continue
@@ -52,7 +52,6 @@ if [ -n "$excluded_test_prefixes" ]; then
       skip_pattern="$skip_pattern|$escaped"
     fi
   done
-  IFS="$old_ifs"
   if [ -n "$skip_pattern" ]; then
     set -- -skip "^($skip_pattern)" "$@"
   fi
@@ -99,6 +98,7 @@ test_status = int(sys.argv[5])
 excluded_test_prefixes = sys.argv[6] if len(sys.argv) > 6 else ""
 enforce_budget = os.environ.get("DO_WORK_TEST_ENFORCE_BUDGET", "yes") == "yes" and test_status == 0
 durations = []
+selected_test_ran = False
 test_file_by_name = {}
 for test_file in pathlib.Path(module_directory).rglob("*_test.go"):
     source_text = test_file.read_text(encoding="utf-8")
@@ -111,10 +111,12 @@ for line in result_path.read_text(encoding="utf-8").splitlines():
     except json.JSONDecodeError:
         continue
     test_name = event.get("Test")
+    if event.get("Action") == "run" and test_name and "/" not in test_name:
+        selected_test_ran = True
     if event.get("Action") in {"pass", "fail"} and test_name and "/" not in test_name:
         durations.append((float(event.get("Elapsed", 0)), event.get("Package", ""), test_name))
 
-if excluded_test_prefixes and not durations and test_status == 0:
+if excluded_test_prefixes and not selected_test_ran and test_status == 0:
     print("no fast Go tests remain after applying the heavy prefixes", file=sys.stderr)
     sys.exit(1)
 
