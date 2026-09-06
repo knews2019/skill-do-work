@@ -52,31 +52,6 @@ init_test_efficiency_log() {
   fi
 }
 
-record_test_efficiency() {
-  local log_path="${DO_WORK_TEST_EFFICIENCY_LOG:-}"
-  if [ -z "$log_path" ]; then
-    return 0
-  fi
-  init_test_efficiency_log "$log_path"
-  local case_name="$1"
-  local cache_condition="$2"
-  local revision="$3"
-  local toolchain="$4"
-  local concurrency="$5"
-  local wall_sec="$6"
-  local user_cpu="$7"
-  local sys_cpu="$8"
-  local total_cpu="$9"
-  local go_accum="${10}"
-  local subproc_counts="${11}"
-  local exit_status="${12}"
-
-  printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \
-    "$duration_run_id" "$case_name" "$cache_condition" "$revision" "$toolchain" "$concurrency" \
-    "$wall_sec" "$user_cpu" "$sys_cpu" "$total_cpu" "$go_accum" "$subproc_counts" "$exit_status" \
-    >> "$log_path"
-}
-
 measure_command_efficiency() {
   if [ "$#" -lt 2 ]; then
     printf 'usage: measure_command_efficiency <case-name> <cache-condition> <command ...>\n' >&2

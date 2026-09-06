@@ -20,24 +20,29 @@ trap cleanup_fixture EXIT
 # shellcheck source=_dev/tests/test-duration-log.sh disable=SC1091
 source "$repo_root/_dev/tests/test-duration-log.sh"
 
+# Probes 1 and 2 drive measure_command_efficiency, the writer the baseline tool actually
+# calls. They used to drive record_test_efficiency, a bash twin of the writer's own
+# append that nothing called, so a regression in the real writer's opt-in or header
+# would have passed them.
+
 # 1. Opt-in isolation: without DO_WORK_TEST_EFFICIENCY_LOG, efficiency logging remains dormant.
+default_log="$repo_root/do-work/test-efficiency.tsv"
+default_log_before="$( [ -e "$default_log" ] && cksum "$default_log" || printf 'absent')"
 (
   unset DO_WORK_TEST_EFFICIENCY_LOG
-  record_test_efficiency "dormant-case" "cold" "rev1" "tool1" "4" "1.00" "0.50" "0.50" "1.00" "0.80" "git:1" "0"
+  measure_command_efficiency "dormant-case" "warm" true >/dev/null
 )
-if [ -e "$repo_root/do-work/test-efficiency.tsv" ]; then
-  # Ensure the dormant case did not write without opt-in
-  if grep -q "dormant-case" "$repo_root/do-work/test-efficiency.tsv" 2>/dev/null; then
-    printf 'FAIL: record_test_efficiency wrote to default log without opt-in variable set.\n' >&2
-    exit 1
-  fi
+default_log_after="$( [ -e "$default_log" ] && cksum "$default_log" || printf 'absent')"
+if [ "$default_log_before" != "$default_log_after" ]; then
+  printf 'FAIL: measure_command_efficiency wrote to the default log without the opt-in variable set.\n' >&2
+  exit 1
 fi
 
 # 2. Opt-in recording: when DO_WORK_TEST_EFFICIENCY_LOG is set, writes valid TSV.
 eff_tsv="$fixture_root/efficiency.tsv"
 export DO_WORK_TEST_EFFICIENCY_LOG="$eff_tsv"
 (
-  record_test_efficiency "optin-case" "cold" "rev1" "tool1" "4" "2.50" "1.20" "0.80" "2.00" "1.90" "git:3,go:1" "0"
+  measure_command_efficiency "optin-case" "warm" true >/dev/null
 )
 
 if [ ! -s "$eff_tsv" ]; then

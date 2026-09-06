@@ -67,12 +67,21 @@ run_case_samples() {
   local cond="$2"
   shift 2
 
+  local sample_json
+  local cold_cache=''
   for ((i = 1; i <= runs; i++)); do
     if [ "$cond" = "cold" ]; then
-      go clean -testcache 2>/dev/null || true
+      # A cold sample builds from nothing: a fresh, empty GOCACHE for this one sample.
+      # Every measured command already passes -count=1, so the test result cache never
+      # separated the two conditions; the build cache does, and `go clean -testcache`
+      # (what ran here before) never touched it, which is why both columns used to agree
+      # to the hundredth of a second.
+      cold_cache="$(mktemp -d "${TMPDIR:-/tmp}/eff-gocache.XXXXXX")"
+      sample_json="$(GOCACHE="$cold_cache" measure_command_efficiency "$case_id" "$cond" "$@")"
+      rm -rf -- "$cold_cache"
+    else
+      sample_json="$(measure_command_efficiency "$case_id" "$cond" "$@")"
     fi
-    local sample_json
-    sample_json="$(measure_command_efficiency "$case_id" "$cond" "$@")"
     record_metric_json "$sample_json"
   done
 }
