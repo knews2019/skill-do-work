@@ -38,3 +38,5 @@ session_depth: light
 - REQ-600: Put the SIGPIPE trap in the prime shell authors read, and fix the one shipped block that carries it — claimed 2026-09-06T07:26:22Z — writer: vm:/home/user/skill-do-work
 
 - REQ-598: Close the live nil-handle panic in transaction rollback, and decide the handle once instead of eleven times — claimed 2026-09-06T07:40:57Z — writer: vm:/home/user/skill-do-work
+
+- REQ-602: Repoint the lesson-satellite links whose archived targets moved, and check satellite links — claimed 2026-09-06T08:12:01Z — writer: vm:/home/user/skill-do-work

@@ -1,6 +1,6 @@
 ---
 id: REQ-602
-status: pending
+status: claimed
 domain: general
 created_at: 2026-09-06T08:10:39Z
 user_request: UR-105
@@ -8,11 +8,13 @@ review_generated: true
 impact: impact-negligible
 effort_estimate: effort-mechanical
 prime_files: [_dev/primes/prime-action-files.md]
+route: A
 tdd: false
 maintenance: true
 related: [REQ-243, REQ-238]
 write_set: [_dev/primes/lessons-shell-commands.md, _dev/primes/lessons-action-files.md, _dev/primes/lessons-kanban-board.md, _dev/tests/audit-lockins.sh]
 title: 'Repoint the lesson-satellite links whose archived targets moved, and check satellite links'
+claimed_at: 2026-09-06T08:12:01Z
 ---
 
 # Repoint the Lesson-Satellite Links Whose Archived Targets Moved, and Check Satellite Links
@@ -76,3 +78,23 @@ for shipped Markdown; `_dev/primes/` is not shipped and nothing reads these link
 ## Open Questions
 
 None.
+
+## Triage
+
+**Route: A** — Direct build.
+
+**Reasoning:** Fifteen link targets are known and listed with where each file now lives; the check is
+one condition over three files whose shape `audit-lockins.sh` already has a dozen examples of. Nothing to
+explore: the dead links were found by resolving every relative link in the three satellites against the
+tree, and the list is that resolution's output.
+
+**Planning:** Skipped.
+
+**The check goes in before the repointing so the red is real.** Fifteen dead links are the fixture; a
+check written after they are fixed has never failed.
+
+## Plan
+
+**Planning not required** — Route A: one check, fifteen link edits, three index rows.
+
+*Skipped by work action*
