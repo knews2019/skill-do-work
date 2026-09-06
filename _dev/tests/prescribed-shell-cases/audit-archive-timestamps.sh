@@ -226,14 +226,25 @@ mkdir -p "$audit_walk_project/do-work/archive"
 printf -- '---\nid: REQ-917\nstatus: completed\ncreated_at: 2026-08-10T12:00:00Z\n---\nbody\n' \
   > "$audit_walk_project/do-work/archive/REQ-917-clean.md"
 fixture_repo_commit_all "$audit_walk_project" fixture
-audit_walk_bin="$fixture_root/audit-walk-bin"
-mkdir -p "$audit_walk_bin"
-printf '%s\n' '#!/usr/bin/env bash' 'exit 3' > "$audit_walk_bin/find"
-chmod +x "$audit_walk_bin/find"
-audit_walk_output="$(PATH="$audit_walk_bin:$PATH" "$core_scripts/audit-archive-timestamps.sh" "$audit_walk_project" 2>&1)" \
+# The walk runs inside the command, so the untraversable subtree has to be real: one archive
+# branch is nested past PATH_MAX, which makes the walk's own open() fail with ENAMETOOLONG.
+# A permission bit cannot do this — chmod 000 is a no-op for root, and this suite runs as
+# root in containers, so that spelling would pass without a walk ever failing.
+audit_walk_segment="$(printf 'untraversable-depth%0181d' 0)"
+(
+  cd "$audit_walk_project/do-work/archive" || exit 1
+  for _ in {1..30}; do
+    mkdir "$audit_walk_segment" && cd "$audit_walk_segment" || exit 1
+  done
+) || fail_case 'audit-archive-timestamps failed-walk case could not build an untraversable archive subtree'
+audit_walk_output="$("$core_scripts/audit-archive-timestamps.sh" "$audit_walk_project" 2>&1)" \
   && fail_case 'audit-archive-timestamps failed-walk case exited zero after the walk failed'
 printf '%s' "$audit_walk_output" | grep -q 'audit clean' \
   && fail_case 'audit-archive-timestamps failed-walk case reported clean for an archive it never scanned'
+# Without this the case would pass on any nonzero exit the deep subtree happens to provoke.
+# That is how its fake-`find` predecessor went inert the moment the walk stopped shelling out.
+printf '%s' "$audit_walk_output" | grep -q 'walk failed' \
+  || fail_case 'audit-archive-timestamps failed-walk case did not name the walk as what failed'
 
 # audit-archive-timestamps: without its shared library the auditor inspects nothing, so
 # it must say so rather than counting files it never read. A lone copy of the script is
