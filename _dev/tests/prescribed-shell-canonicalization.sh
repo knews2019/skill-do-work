@@ -143,24 +143,54 @@ printf '%s\n' \
   'exclude_file="$(git rev-parse --git-path info/exclude' \
   > "$old_implementations_file"
 
+shipped_markdown_files=()
 while IFS= read -r shipped_markdown; do
   [[ "$shipped_markdown" == "$canonical_guide" ]] && continue
   [[ "$(basename "$shipped_markdown")" == CHANGELOG.md ]] && continue
-  while IFS= read -r stale_pattern; do
-    if grep -Fq "$stale_pattern" "$shipped_markdown"; then
-      printf 'FAIL: %s restates canonical prescribed-shell rationale <%s>; keep local intent and point at the guide.\n' \
-        "${shipped_markdown#"$repo_root/"}" "$stale_pattern" >&2
-      failure_count=$((failure_count + 1))
-    fi
-  done < "$stale_patterns_file"
-  while IFS= read -r old_implementation; do
-    if grep -Fq "$old_implementation" "$shipped_markdown"; then
-      printf 'FAIL: %s retains promoted shell implementation <%s>; keep intent plus the shipped script invocation.\n' \
-        "${shipped_markdown#"$repo_root/"}" "$old_implementation" >&2
-      failure_count=$((failure_count + 1))
-    fi
-  done < "$old_implementations_file"
+  shipped_markdown_files+=("$shipped_markdown")
 done < <(find "$repo_root/skills" -type f -name '*.md' -print | LC_ALL=C sort)
+
+if [ "${#shipped_markdown_files[@]}" -gt 0 ]; then
+  stale_matches="$(grep -F -H -n -f "$stale_patterns_file" "${shipped_markdown_files[@]}" 2>/dev/null || true)"
+  if [ -n "$stale_matches" ]; then
+    while IFS= read -r match_line; do
+      [ -n "$match_line" ] || continue
+      match_file="${match_line%%:*}"
+      match_rest="${match_line#*:}"
+      match_content="${match_rest#*:}"
+      while IFS= read -r stale_pattern; do
+        [ -n "$stale_pattern" ] || continue
+        case "$match_content" in
+          *"$stale_pattern"*)
+            printf 'FAIL: %s restates canonical prescribed-shell rationale <%s>; keep local intent and point at the guide.\n' \
+              "${match_file#"$repo_root/"}" "$stale_pattern" >&2
+            failure_count=$((failure_count + 1))
+            ;;
+        esac
+      done < "$stale_patterns_file"
+    done <<< "$stale_matches"
+  fi
+
+  old_matches="$(grep -F -H -n -f "$old_implementations_file" "${shipped_markdown_files[@]}" 2>/dev/null || true)"
+  if [ -n "$old_matches" ]; then
+    while IFS= read -r match_line; do
+      [ -n "$match_line" ] || continue
+      match_file="${match_line%%:*}"
+      match_rest="${match_line#*:}"
+      match_content="${match_rest#*:}"
+      while IFS= read -r old_implementation; do
+        [ -n "$old_implementation" ] || continue
+        case "$match_content" in
+          *"$old_implementation"*)
+            printf 'FAIL: %s retains promoted shell implementation <%s>; keep intent plus the shipped script invocation.\n' \
+              "${match_file#"$repo_root/"}" "$old_implementation" >&2
+            failure_count=$((failure_count + 1))
+            ;;
+        esac
+      done < "$old_implementations_file"
+    done <<< "$old_matches"
+  fi
+fi
 
 if [[ "$failure_count" -gt 0 ]]; then
   exit 1

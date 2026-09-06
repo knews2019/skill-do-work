@@ -22,6 +22,9 @@ shellcheck_available=false
 if command -v shellcheck >/dev/null 2>&1; then
   shellcheck_available=true
 fi
+batch_shellcheck=true
+fence_lint_paths=()
+source_lint_paths=()
 
 source_display_path() {
   local source_path="$1"
@@ -88,6 +91,16 @@ lint_shell_source() {
     return
   fi
 
+  if [[ "$batch_shellcheck" == true ]]; then
+    if [[ "$source_kind" == fence ]]; then
+      fence_lint_paths+=("$lint_path")
+      printf '%s\n%s\n' "$source_path" "$source_start_line" > "${lint_path}.meta"
+    else
+      source_lint_paths+=("$lint_path")
+    fi
+    return
+  fi
+
   if [[ "$source_kind" == fence ]]; then
     shellcheck_arguments+=("--exclude=SC2034,SC2154")
   fi
@@ -111,6 +124,78 @@ lint_shell_source() {
     fi
     failure_count=$((failure_count + 1))
   done <<< "$shellcheck_diagnostics"
+}
+
+run_batched_shellcheck() {
+  if [[ "$shellcheck_available" != true ]]; then
+    return
+  fi
+
+  local shellcheck_diagnostics=''
+  local shellcheck_status=0
+  local diagnostic_text=''
+  local diagnostic_source_line=''
+  local diagnostic_column=''
+  local diagnostic_message=''
+  local lint_target_file=''
+  local meta_path=''
+  local meta_source_path=''
+  local meta_start_line=1
+
+  # 1. Batch lint all extracted Markdown fences (with SC2034,SC2154 excluded)
+  if [ "${#fence_lint_paths[@]}" -gt 0 ]; then
+    shellcheck_diagnostics="$(shellcheck --format=gcc --shell=bash --severity=warning --exclude=SC2034,SC2154 "${fence_lint_paths[@]}" 2>&1)" \
+      || shellcheck_status=$?
+    if [[ "$shellcheck_status" -ne 0 ]]; then
+      while IFS= read -r diagnostic_text; do
+        [[ -n "$diagnostic_text" ]] || continue
+        if [[ "$diagnostic_text" =~ ^([^:]+):([0-9]+):([0-9]+):[[:space:]](.*)$ ]]; then
+          lint_target_file="${BASH_REMATCH[1]}"
+          diagnostic_source_line="${BASH_REMATCH[2]}"
+          diagnostic_column="${BASH_REMATCH[3]}"
+          diagnostic_message="${BASH_REMATCH[4]}"
+          meta_path="${lint_target_file}.meta"
+          if [[ -f "$meta_path" ]]; then
+            meta_source_path="$(sed -n '1p' "$meta_path")"
+            meta_start_line="$(sed -n '2p' "$meta_path")"
+            diagnostic_source_line=$((meta_start_line + diagnostic_source_line - 1))
+            printf 'FAIL: %s:%s:%s: shellcheck: %s\n' \
+              "$meta_source_path" "$diagnostic_source_line" "$diagnostic_column" "$diagnostic_message" >&2
+          else
+            printf 'FAIL: %s:%s:%s: shellcheck: %s\n' \
+              "$lint_target_file" "$diagnostic_source_line" "$diagnostic_column" "$diagnostic_message" >&2
+          fi
+        else
+          printf 'FAIL: shellcheck: %s\n' "$diagnostic_text" >&2
+        fi
+        failure_count=$((failure_count + 1))
+      done <<< "$shellcheck_diagnostics"
+    fi
+  fi
+
+  # 2. Batch lint all shipped shell scripts (standard warning-level lint)
+  if [ "${#source_lint_paths[@]}" -gt 0 ]; then
+    shellcheck_status=0
+    shellcheck_diagnostics="$(shellcheck --format=gcc --shell=bash --severity=warning "${source_lint_paths[@]}" 2>&1)" \
+      || shellcheck_status=$?
+    if [[ "$shellcheck_status" -ne 0 ]]; then
+      while IFS= read -r diagnostic_text; do
+        [[ -n "$diagnostic_text" ]] || continue
+        if [[ "$diagnostic_text" =~ ^([^:]+):([0-9]+):([0-9]+):[[:space:]](.*)$ ]]; then
+          lint_target_file="${BASH_REMATCH[1]}"
+          diagnostic_source_line="${BASH_REMATCH[2]}"
+          diagnostic_column="${BASH_REMATCH[3]}"
+          diagnostic_message="${BASH_REMATCH[4]}"
+          meta_source_path="$(source_display_path "$lint_target_file")"
+          printf 'FAIL: %s:%s:%s: shellcheck: %s\n' \
+            "$meta_source_path" "$diagnostic_source_line" "$diagnostic_column" "$diagnostic_message" >&2
+        else
+          printf 'FAIL: shellcheck: %s\n' "$diagnostic_text" >&2
+        fi
+        failure_count=$((failure_count + 1))
+      done <<< "$shellcheck_diagnostics"
+    fi
+  fi
 }
 
 scan_markdown_file() {
@@ -145,7 +230,10 @@ scan_markdown_file() {
       sed -E 's|<[[:alnum:]_][[:alnum:]_.: /-]*>|placeholder|g' \
         "$raw_block_path" > "$lint_block_path"
       lint_shell_source "$source_path" "$block_start_line" "$lint_block_path" fence
-      rm -f "$raw_block_path" "$lint_block_path"
+      rm -f "$raw_block_path"
+      if [[ "$batch_shellcheck" != true ]]; then
+        rm -f "$lint_block_path"
+      fi
       in_shell_block=false
       continue
     fi
@@ -183,6 +271,7 @@ run_quiet_grep_wiring_fixture() {
   scan_markdown_file "$fixture_path" 2> "$fixture_diagnostics"
   failure_count=0
   shell_block_count=0
+  fence_lint_paths=()
   if ! grep -Eq 'quiet-grep-wiring\.md:4: quiet grep fed from a pipeline.*wiring-fixture-marker' \
     "$fixture_diagnostics"; then
     printf 'FAIL: the fence walk no longer flags a quiet grep fed from a pipeline at its Markdown line; the shared scanner is not wired in.\n' >&2
@@ -205,6 +294,7 @@ run_self_test() {
 
   failure_count=0
   shell_block_count=0
+  fence_lint_paths=()
   scan_markdown_file "$fixture_path" 2> "$fixture_diagnostics"
   if [[ "$failure_count" -eq 0 ]]; then
     printf 'FAIL: shell-block lint self-test accepted a malformed fenced block.\n' >&2
@@ -216,6 +306,32 @@ run_self_test() {
     return 1
   fi
 
+  # Also test that batched ShellCheck catches warnings with exact line attribution
+  if [[ "$shellcheck_available" == true ]]; then
+    local sc_fixture_path="$temporary_root/sc-warning-block.md"
+    local sc_fixture_diagnostics="$temporary_root/sc-self-test-diagnostics.txt"
+    {
+      printf '# Shellcheck warning fixture\n\n'
+      printf '```bash\n'
+      printf 'export masked_status=$(false)\n'
+      printf '```\n'
+    } > "$sc_fixture_path"
+
+    failure_count=0
+    shell_block_count=0
+    fence_lint_paths=()
+    scan_markdown_file "$sc_fixture_path" 2> "$sc_fixture_diagnostics"
+    run_batched_shellcheck 2>> "$sc_fixture_diagnostics"
+    if [[ "$failure_count" -eq 0 ]] || ! grep -Eq 'sc-warning-block\.md:4:[0-9]+: shellcheck:.*SC2155' "$sc_fixture_diagnostics"; then
+      printf 'FAIL: shell-block lint self-test did not catch and attribute batched ShellCheck warning.\n' >&2
+      sed -n '1,20p' "$sc_fixture_diagnostics" >&2
+      return 1
+    fi
+  fi
+
+  failure_count=0
+  shell_block_count=0
+  fence_lint_paths=()
   printf 'Shell-block lint self-test passed.\n'
 }
 
@@ -246,6 +362,8 @@ while IFS= read -r shell_path; do
   shell_source_count=$((shell_source_count + 1))
   lint_shell_source "$(source_display_path "$shell_path")" 1 "$shell_path" source
 done < <(find "$skills_root" -type f -name '*.sh' -print | LC_ALL=C sort)
+
+run_batched_shellcheck
 
 if [[ "$shell_block_count" -eq 0 ]]; then
   printf 'FAIL: no fenced bash/sh blocks found under %s; extractor or scan root is broken.\n' \
