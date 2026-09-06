@@ -6,20 +6,22 @@ This is the canonical shipped rationale and executable-home contract for determi
 
 | Canonical executable route | Mechanics owned |
 |---|---|
-| `scripts/show-commit-diff.sh` | Ordinary versus first-parent merge display |
-| `scripts/add-local-git-exclude.sh` | Worktree-safe local exclude resolution and idempotent append |
-| `scripts/atomic-download.sh` | Private adjacent download and rename-on-success publication |
-| `scripts/capture-screenshot.sh` | Unique verified copy, no-clobber link, dispatch-owned cleanup |
-| `scripts/run-blocked-check.sh` | GNU timeout selection and isolated stock-Bash process-group timeout/cleanup |
-| `scripts/protected-inventory.sh` | Run-level secret quarantine around the existing inventory/association checks |
-| `scripts/stage-exact-deletion.sh` | Cached-metadata-only exact deletion staging |
-| `../../do-work-knowledge/scripts/lexical-memory-recall.sh` | Query sanitization, lexical ranking, and attribution |
-| `../../do-work-knowledge/scripts/install-memory-hooks.sh` | Independent hook merge, verification, and rollback |
+| `tools/do-work-cli.sh … show-commit-diff` | Ordinary versus first-parent merge display |
+| `tools/do-work-cli.sh … add-local-git-exclude` | Worktree-safe local exclude resolution and idempotent append |
+| `tools/do-work-cli.sh … atomic-download` | Private adjacent download and rename-on-success publication |
+| `tools/do-work-cli.sh … capture-screenshot` | Unique verified copy, no-clobber link, dispatch-owned cleanup |
+| `tools/do-work-cli.sh … run-blocked-check` | GNU timeout selection and isolated stock-Bash process-group timeout/cleanup |
+| `tools/do-work-cli.sh … protected-inventory` | Run-level secret quarantine around the existing inventory/association checks |
+| `tools/do-work-cli.sh … stage-exact-deletion` | Cached-metadata-only exact deletion staging |
+| `tools/do-work-cli.sh … lexical-memory-recall` | Query sanitization, lexical ranking, and attribution |
+| `tools/do-work-cli.sh … install-memory-hooks` | Independent hook merge, verification, and rollback |
 | `tools/do-work-cli.sh … record-timing-event` | Lifecycle timing: UTC stamping, elapsed derivation, command redaction, and the folded per-request summary |
 | `tools/do-work-cli.sh … generate-report-image` | Backend selection, launched-process-tree ownership, verified exact invocation-private publication, and exact opt-in agentic scratch |
 | `tools/do-work-cli.sh … generate-report-image-batch` | Parallel batch launch, retained per-image statuses, launched-process-tree ownership, and verified all-or-nothing directory publication |
 | `tools/do-work-cli.sh … publish-portfolio-summary` | Verified single-source canonical refresh and snapshot-first exclusive publication |
 | `tools/do-work-cli.sh … install-last30days` | Complete-payload validation and verified exact transactional project-local publication/repair |
+
+Where a route above also ships a retained `scripts/*.sh` launcher of the same name, that launcher is a few lines that do nothing but `exec` the subcommand. Shipped actions still invoke those paths and may keep doing so; the mechanics belong to the command, so a change to behaviour is made there and never in the launcher.
 
 `tools/install-do-work-suite.sh` is a compatibility launcher over the `do-work-cli` `install-suite` command, which owns the install transaction. It stays self-contained in one respect only: `--print-bootstrap-command` prints a literal heredoc and needs no Go toolchain, because that snippet has to run before anything is installed. Everything else the installer does requires Go 1.25.0 or newer. Atomic REQ reservation remains owned only by the board package's Go tool; it has no shell twin.
 
@@ -38,7 +40,7 @@ Any step that inspects untracked paths individually must receive individual file
 - When filenames may contain spaces, quotes, newlines, or rename/copy provenance, consume `git ... -z`; never store NUL-delimited output in command substitution, and consume the second path carried by rename/copy records.
 - A check for tracked files that should be ignored is separate: feed tracked paths to `git check-ignore --no-index`. Do not apply an untracked skip list before a tracked-artifact check.
 
-The complete secret-aware inventory and REQ association ship behind `scripts/protected-inventory.sh`, which orchestrates `tools/checks/uncommitted-inventory.sh` and `tools/checks/associate-files.sh` without duplicating their low-level logic. `actions/commit.md` and `../../do-work-toolbox/actions/inspect.md` invoke the wrapper; [Protected inventory fallbacks](#protected-inventory-fallbacks) below is the single home for its tag legend, its per-tag reading rules, its association semantics, and the by-hand procedure each mode falls back to.
+The complete secret-aware inventory and REQ association ship behind `scripts/protected-inventory.sh`. `actions/commit.md` and `../../do-work-toolbox/actions/inspect.md` invoke the wrapper; [Protected inventory fallbacks](#protected-inventory-fallbacks) below is the single home for its tag legend, its per-tag reading rules, its association semantics, and the by-hand procedure each mode falls back to.
 
 ## Protected inventory fallbacks
 

@@ -396,6 +396,59 @@ else
   done
 fi
 
+# Finding 7: stale-shell-ownership-prose (REQ-555)
+# The executable-homes table exists to route a reader to the home that OWNS a mechanic.
+# Every retained scripts/*.sh launcher is a few lines that exec a do-work-cli subcommand,
+# so a .sh path in the route column sends the reader to a shim and away from the code that
+# decides anything. Two shapes are pinned together because they are the same defect: a shim
+# in the route column, and the claim that a six-line launcher orchestrates two other
+# scripts. The table is located by its heading rather than by line number, and a missing
+# guide or missing heading is a failure rather than a clean read, so a rename cannot retire
+# this check silently.
+shell_ownership_guide="$repo_root/skills/do-work/docs/prescribed-shell-primitives.md"
+if [ ! -f "$shell_ownership_guide" ]; then
+  printf 'FAIL: cannot read %s; the executable-homes table cannot be checked\n' \
+    "${shell_ownership_guide#"$repo_root/"}" >&2
+  failure_count=$((failure_count + 1))
+else
+  shim_route_rows="$(awk '
+    /^## Shipped executable homes$/ { inside_table_section = 1; saw_table_section = 1; next }
+    inside_table_section && /^## / { inside_table_section = 0 }
+    inside_table_section && /^\|/ {
+      split($0, table_cells, "|")
+      if (table_cells[2] ~ /\.sh`/) printf "%s\t%s\n", FNR, table_cells[2]
+    }
+    END { if (!saw_table_section) exit 3 }
+  ' "$shell_ownership_guide")"
+  shim_route_scan_status=$?
+  if [ "$shim_route_scan_status" -ne 0 ]; then
+    printf 'FAIL: the "## Shipped executable homes" heading is gone from %s (awk exit %s); the route ratchet cannot run.\n' \
+      "${shell_ownership_guide#"$repo_root/"}" "$shim_route_scan_status" >&2
+    failure_count=$((failure_count + 1))
+  elif [ -n "$shim_route_rows" ]; then
+    while IFS=$'\t' read -r shim_route_line shim_route_cell; do
+      [ -z "$shim_route_line" ] && continue
+      printf 'FAIL: %s:%s routes owned mechanics to a shim (%s); the route column names the do-work-cli subcommand that owns them.\n' \
+        "${shell_ownership_guide#"$repo_root/"}" "$shim_route_line" \
+        "$(printf '%s' "$shim_route_cell" | tr -d ' ')" >&2
+      failure_count=$((failure_count + 1))
+    done <<< "$shim_route_rows"
+  fi
+
+  rg -q --fixed-strings -- 'which orchestrates' "$shell_ownership_guide" 2>/dev/null
+  orchestration_claim_status=$?
+  if [ "$orchestration_claim_status" -eq 0 ]; then
+    printf 'FAIL: %s claims a launcher orchestrates other scripts; the do-work-cli subcommand owns the whole check and launches nothing.\n' \
+      "${shell_ownership_guide#"$repo_root/"}" >&2
+    failure_count=$((failure_count + 1))
+  elif [ "$orchestration_claim_status" -gt 1 ]; then
+    printf 'FAIL: could not scan %s for the orchestration claim (rg exit %s).\n' \
+      "${shell_ownership_guide#"$repo_root/"}" "$orchestration_claim_status" >&2
+    failure_count=$((failure_count + 1))
+  fi
+fi
+
+
 if [ "$failure_count" -gt 0 ]; then
   exit 1
 fi
