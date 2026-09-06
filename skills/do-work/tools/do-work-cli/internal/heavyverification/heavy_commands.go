@@ -2,6 +2,7 @@ package heavyverification
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"strconv"
 	"strings"
@@ -204,14 +205,24 @@ func handlePlanHeavyVerification(executionContext commandruntime.ExecutionContex
 }
 
 func handleRunHeavyVerification(executionContext commandruntime.ExecutionContext, arguments []string) resultmodel.CommandResult {
+	// Lane output is teed to stderr because stdout carries the command result.
+	return runHeavyVerificationLanes(executionContext, arguments, os.Stderr)
+}
+
+// runHeavyVerificationLanes takes the lane output writer as a parameter because
+// this package's own tests must not send it to this process's stderr. Their
+// fixture lanes print a skip announcement on purpose, and on stderr that line
+// is indistinguishable from an announcement by the real heavy lane that runs
+// these tests, so whatever watches that lane reads it as "this lane did not
+// run".
+func runHeavyVerificationLanes(executionContext commandruntime.ExecutionContext, arguments []string, laneOutputWriter io.Writer) resultmodel.CommandResult {
 	manifestPath, laneIDs, laneTimeout, evidenceReuse, err := parseRunArguments(arguments)
 	if err != nil {
 		return runFailure("HEAVY-RUN-USAGE", err)
 	}
-	// Lane output is teed to stderr because stdout carries the command result.
 	run, findings, err := RunLanes(LaneRunRequest{
 		RepositoryRoot: executionContext.RepositoryRoot, ManifestPath: manifestPath,
-		LaneIDs: laneIDs, LaneTimeout: laneTimeout, LaneOutputWriter: os.Stderr,
+		LaneIDs: laneIDs, LaneTimeout: laneTimeout, LaneOutputWriter: laneOutputWriter,
 		EvidenceReuse: evidenceReuse,
 	})
 	if err != nil {
