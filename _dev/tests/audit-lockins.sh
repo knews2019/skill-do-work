@@ -596,6 +596,51 @@ elif [ -n "$shell_machinery_rows" ]; then
   done <<< "$shell_machinery_rows"
 fi
 
+# Finding 3: nil-root-guards-git-transaction (REQ-558)
+# git_transaction.go opens eight rooted filesystem handles and seven of them return the moment
+# os.OpenRoot fails. The eighth, in rollbackFailure, records the failure and keeps going on
+# purpose, so a failed transaction still unstages its paths and still returns a typed
+# incomplete-rollback result when the worktree root cannot be opened. That one nil handle then
+# fans out across four independent loops, which is why the tests for it are not copies of a
+# single check: each consumer decides for itself what an unusable handle means for the target in
+# hand. Eight of the nine sites are reached with a nil handle by the real os.OpenRoot failing,
+# and deleting any one of seven of them replaces a reported incomplete rollback with a
+# nil-pointer panic mid-rollback. Only rootedOpenSnapshot re-tested a handle its callers had
+# already settled; that one site was deleted and its precondition now lives in the call shape.
+#
+# The count is compared for equality, floor as well as ceiling. A ceiling alone catches a tenth
+# guard accreting; a floor alone catches a load-bearing guard removed as "redundant" — which is
+# the move this REQ set out to make nine times over and found it could make exactly once. The
+# package suite cannot stand in for the floor: no test in it reaches any no-handle branch, so
+# every one of those deletions compiles and passes.
+#
+# The pattern is the audit finding's own reproduce expression, so the finding, the request and
+# this ratchet all count the same sites.
+nil_root_guard_file="$repo_root/skills/do-work/tools/do-work-cli/internal/gittransaction/git_transaction.go"
+nil_root_guard_expected_sites=8
+nil_root_guard_sites="$(rg -n 'root [=!]= nil' "$nil_root_guard_file")"
+nil_root_guard_scan_status=$?
+# rg's status is read, not its output: exit 1 (no match) and exit 2 (could not search) both
+# print nothing, and a ratchet that judged the text alone would read a scan that never ran as a
+# file whose guards had all been deleted, or worse, take the same branch for both.
+if [ "$nil_root_guard_scan_status" -gt 1 ]; then
+  printf 'FAIL: could not scan %s for nil-root guards (rg exit %s); the nil-root ratchet did not run.\n' \
+    "${nil_root_guard_file#"$repo_root/"}" "$nil_root_guard_scan_status" >&2
+  failure_count=$((failure_count + 1))
+elif [ "$nil_root_guard_scan_status" -eq 1 ]; then
+  printf 'FAIL: no nil-root guard is left in %s; REQ-558 pinned exactly %s, each one standing between an unopened rooted handle and a dereference during rollback.\n' \
+    "${nil_root_guard_file#"$repo_root/"}" "$nil_root_guard_expected_sites" >&2
+  failure_count=$((failure_count + 1))
+else
+  nil_root_guard_site_count="$(printf '%s\n' "$nil_root_guard_sites" | wc -l | tr -d ' ')"
+  if [ "$nil_root_guard_site_count" -ne "$nil_root_guard_expected_sites" ]; then
+    printf 'FAIL: %s nil-root guards in %s; REQ-558 pinned exactly %s — one per consumer of the rollback handle, and no more:\n' \
+      "$nil_root_guard_site_count" "${nil_root_guard_file#"$repo_root/"}" \
+      "$nil_root_guard_expected_sites" >&2
+    printf '%s\n' "$nil_root_guard_sites" | sed 's|^|  |' >&2
+    failure_count=$((failure_count + 1))
+  fi
+fi
 
 if [ "$failure_count" -gt 0 ]; then
   exit 1
