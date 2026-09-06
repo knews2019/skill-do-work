@@ -1,0 +1,149 @@
+diff --git a/_dev/tests/audit-lockins.sh b/_dev/tests/audit-lockins.sh
+index d55a60a..7f0fc79 100755
+--- a/_dev/tests/audit-lockins.sh
++++ b/_dev/tests/audit-lockins.sh
+@@ -623,10 +623,17 @@ fi
+ # (`if hasRoot(root)`), which is a change to the pinned shape and is expected to move this pin
+ # consciously.
+ #
+-# The pin is expected to move once more: REQ-598 owns the one consumer of the handle that has no
+-# guard at all, quarantineAndRollbackPrivate, and either adds a ninth guard or makes all eight dead.
++# REQ-598 moved the pin from 8 to 9. It added the ninth guard at the entry of
++# quarantineAndRollbackPrivate, the one consumer of the handle that had none: a private target
++# published before the rollback open fails is now reported as left in place instead of panicking
++# at root.Mkdir. Every consumer the REQ-558 trace enumerated now guards the handle, and the
++# package's first no-handle rollback test drives that path through ExecuteTransaction.
++#
++# What a count of guards still cannot see: a new consumer of the handle written without one. The
++# ceiling here fires on a tenth guard, never on a missing guard, so a new dereference of the
++# rollback handle needs its own guard AND a case in the no-handle rollback test.
+ nil_root_guard_file="$repo_root/skills/do-work/tools/do-work-cli/internal/gittransaction/git_transaction.go"
+-nil_root_guard_expected_sites=8
++nil_root_guard_expected_sites=9
+ nil_root_guard_sites="$(rg -n '^[[:space:]]*(\}[[:space:]]*else[[:space:]]+)?if\b[^/]*\b(root [=!]= nil|nil [=!]= root)\b' "$nil_root_guard_file")"
+ nil_root_guard_scan_status=$?
+ # rg's status is read, not its output: exit 1 (no match) and exit 2 (could not search) both
+@@ -637,13 +644,13 @@ if [ "$nil_root_guard_scan_status" -gt 1 ]; then
+     "${nil_root_guard_file#"$repo_root/"}" "$nil_root_guard_scan_status" >&2
+   failure_count=$((failure_count + 1))
+ elif [ "$nil_root_guard_scan_status" -eq 1 ]; then
+-  printf 'FAIL: no nil-root guard is left in %s; REQ-558 pinned exactly %s, each one standing between an unopened rooted handle and a dereference during rollback.\n' \
++  printf 'FAIL: no nil-root guard is left in %s; REQ-598 pinned exactly %s, each one standing between an unopened rooted handle and a dereference during rollback.\n' \
+     "${nil_root_guard_file#"$repo_root/"}" "$nil_root_guard_expected_sites" >&2
+   failure_count=$((failure_count + 1))
+ else
+   nil_root_guard_site_count="$(printf '%s\n' "$nil_root_guard_sites" | wc -l | tr -d ' ')"
+   if [ "$nil_root_guard_site_count" -ne "$nil_root_guard_expected_sites" ]; then
+-    printf 'FAIL: %s nil-root guards in %s; REQ-558 pinned exactly %s after tracing every consumer of the rollback handle — one consumer, quarantineAndRollbackPrivate, is still unguarded and REQ-598 owns it:\n' \
++    printf 'FAIL: %s nil-root guards in %s; REQ-558 traced every consumer of the rollback handle and REQ-598 pinned exactly %s, one per consumer, after adding the last missing one at quarantineAndRollbackPrivate:\n' \
+       "$nil_root_guard_site_count" "${nil_root_guard_file#"$repo_root/"}" \
+       "$nil_root_guard_expected_sites" >&2
+     printf '%s\n' "$nil_root_guard_sites" | sed 's|^|  |' >&2
+diff --git a/skills/do-work/tools/do-work-cli/internal/gittransaction/git_transaction.go b/skills/do-work/tools/do-work-cli/internal/gittransaction/git_transaction.go
+index 81fcc4f..5fd4862 100644
+--- a/skills/do-work/tools/do-work-cli/internal/gittransaction/git_transaction.go
++++ b/skills/do-work/tools/do-work-cli/internal/gittransaction/git_transaction.go
+@@ -1202,6 +1202,13 @@ func trackedPublicationStillOwned(root *os.Root, path string, published publishe
+ }
+ 
+ func quarantineAndRollbackPrivate(root *os.Root, state targetState, published publishedPrivateState) (string, error) {
++	if root == nil {
++		// The rollback open failed and rollbackFailure kept going so every other target is
++		// still unstaged and reported. Nothing rooted can run here: the published bytes stay
++		// where they were published, and the report names the target and the missing handle,
++		// the same answer rollbackDirtyTracked gives for the same condition.
++		return "", fmt.Errorf("rollback root is unavailable; private target left as published: %s", state.path)
++	}
+ 	if privateTransactionTestHook != nil {
+ 		privateTransactionTestHook("before-private-rollback-quarantine", state.path)
+ 	}
+@@ -1277,10 +1284,8 @@ func rootedRegularPreimage(root *os.Root, path string) (os.FileInfo, [sha256.Siz
+ // Which branch is right depends on the target in hand, so it is decided at the call site and
+ // not here — today inspectCreatedObject reports the created object as replaced,
+ // trackedPublicationStillOwned reports the publication as unowned, rollbackDirtyTracked
+-// reports the rollback root as unavailable, and rollbackFailure skips privateStateStillOriginal
+-// outright. One caller does neither: rollbackFailure hands its unchecked handle to
+-// quarantineAndRollbackPrivate, which dereferences it long before reaching this function, so a
+-// test here never covered that path either.
++// reports the rollback root as unavailable, quarantineAndRollbackPrivate reports the private
++// target as left in place, and rollbackFailure skips privateStateStillOriginal outright.
+ func rootedOpenSnapshot(root *os.Root, path, targetDescription, hookStage string) (os.FileInfo, [sha256.Size]byte, []byte, error) {
+ 	var empty [sha256.Size]byte
+ 	rootPath := filepath.FromSlash(path)
+diff --git a/skills/do-work/tools/do-work-cli/internal/gittransaction/git_transaction_test.go b/skills/do-work/tools/do-work-cli/internal/gittransaction/git_transaction_test.go
+index cea1e8c..4127926 100644
+--- a/skills/do-work/tools/do-work-cli/internal/gittransaction/git_transaction_test.go
++++ b/skills/do-work/tools/do-work-cli/internal/gittransaction/git_transaction_test.go
+@@ -395,6 +395,72 @@ func TestPrivateRollbackPreservesReplacementParentDirectory(t *testing.T) {
+ 	}
+ }
+ 
++// REQ-598: rollbackFailure records a failed os.OpenRoot and keeps going, so a failed
++// transaction still unstages its paths and still reports. quarantineAndRollbackPrivate took
++// that nil handle without a check and dereferenced it at root.Mkdir, so a transaction with an
++// identity-recorded private target panicked mid-rollback and lost its own report. This is the
++// package's first test through a no-handle rollback. The worktree root is renamed away after
++// the last successful open, so the rollback open is the only one that fails. ENOENT needs no
++// privileges; an execute-only root would need a non-root test process, since uid 0 opens it
++// regardless.
++func TestRollbackWithoutRootHandleReportsPrivateTargetLeftAsPublished(t *testing.T) {
++	repositoryRoot := newRepository(t)
++	privatePath := "memory/logs/created.md"
++	if err := os.MkdirAll(filepath.Join(repositoryRoot, "memory", "logs"), 0o755); err != nil {
++		t.Fatal(err)
++	}
++	renamedRoot := repositoryRoot + "-renamed-away"
++	result := ExecuteTransaction(context.Background(), TransactionOptions{
++		RepositoryRoot:              repositoryRoot,
++		TargetPaths:                 []string{privatePath},
++		PrivateUntrackedTargetPaths: []string{privatePath},
++	}, func(recorder *MutationRecorder) error {
++		if err := recorder.RecordCreated(privatePath); err != nil {
++			return err
++		}
++		if err := os.WriteFile(filepath.Join(repositoryRoot, filepath.FromSlash(privatePath)), []byte("ours\n"), 0o600); err != nil {
++			return err
++		}
++		if err := recorder.RecordPublished(privatePath); err != nil {
++			return err
++		}
++		if err := os.Rename(repositoryRoot, renamedRoot); err != nil {
++			return err
++		}
++		return errors.New("force rollback")
++	})
++	if err := os.Rename(renamedRoot, repositoryRoot); err != nil {
++		t.Fatal(err)
++	}
++	if result.Outcome != resultmodel.OutcomeRisk || result.Rollback.Status != resultmodel.RollbackIncomplete || result.Failure == nil || result.Failure.Kind != FailureRollback {
++		t.Fatalf("no-handle rollback = %#v", result)
++	}
++	openFailureReported, unusableHandleReported := false, false
++	for _, line := range result.Rollback.Errors {
++		if strings.HasPrefix(line, "open rollback root: ") {
++			openFailureReported = true
++		}
++		if strings.Contains(line, "rollback root is unavailable") && strings.Contains(line, privatePath) {
++			unusableHandleReported = true
++		}
++	}
++	if !openFailureReported || !unusableHandleReported {
++		t.Fatalf("no-handle rollback errors = %q", result.Rollback.Errors)
++	}
++	if got := readFile(t, repositoryRoot, privatePath); got != "ours\n" {
++		t.Fatalf("private bytes after no-handle rollback = %q", got)
++	}
++	entries, err := os.ReadDir(repositoryRoot)
++	if err != nil {
++		t.Fatal(err)
++	}
++	for _, entry := range entries {
++		if strings.HasPrefix(entry.Name(), ".do-work-private-rollback-") {
++			t.Fatalf("quarantine directory created without a rollback root: %s", entry.Name())
++		}
++	}
++}
++
+ func TestPrivatePreimageSnapshotRejectsReplacementDuringOpen(t *testing.T) {
+ 	repositoryRoot := newRepository(t)
+ 	privatePath := "memory/logs/existing.md"

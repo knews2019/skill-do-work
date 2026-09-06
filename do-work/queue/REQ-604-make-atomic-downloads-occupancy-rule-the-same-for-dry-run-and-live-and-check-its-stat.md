@@ -9,6 +9,7 @@ impact: impact-user-visible
 effort_estimate: effort-mechanical
 prime_files: [skills/do-work/tools/do-work-cli/prime-do-work-cli.md]
 tdd: true
+depends_on: [REQ-601]
 related: [REQ-597]
 write_set: [skills/do-work/tools/do-work-cli/internal/corehelpers/commands.go, skills/do-work/tools/do-work-cli/internal/corehelpers/commands_test.go, skills/do-work/docs/prescribed-shell-primitives.md]
 title: 'Make atomic-download refuse an occupied target the same way in dry-run and live, and check its stat'

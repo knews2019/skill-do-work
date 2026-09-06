@@ -1,0 +1,7 @@
+[user]
+	name = Claude
+	email = noreply@anthropic.com
+[commit]
+	gpgsign = false
+[init]
+	defaultBranch = main

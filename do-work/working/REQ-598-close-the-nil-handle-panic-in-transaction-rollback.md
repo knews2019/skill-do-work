@@ -21,7 +21,7 @@ estimate:
     - 4 acceptance criteria
     - no no-handle test exists in the package
 maintenance: false
-depends_on: [REQ-558]
+depends_on: [REQ-558, REQ-602]
 related: [REQ-558]
 write_set: [skills/do-work/tools/do-work-cli/internal/gittransaction/git_transaction.go, skills/do-work/tools/do-work-cli/internal/gittransaction/git_transaction_test.go, _dev/tests/audit-lockins.sh]
 title: 'Close the live nil-handle panic in transaction rollback, and decide the handle once instead of eleven times'

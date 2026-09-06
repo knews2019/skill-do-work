@@ -9,7 +9,7 @@ impact: impact-user-visible
 effort_estimate: effort-moderate
 prime_files: [skills/do-work/tools/do-work-cli/prime-do-work-cli.md, _dev/primes/prime-shell-commands.md]
 tdd: true
-depends_on: [REQ-597]
+depends_on: [REQ-597, REQ-601]
 related: [REQ-597, REQ-601]
 write_set: [skills/do-work/scripts/protected-inventory.sh, skills/do-work/tools/do-work-cli/internal/corehelpers/inventory.go, skills/do-work/tools/do-work-cli/internal/corehelpers/inventory_test.go, skills/do-work/actions/commit.md, skills/do-work-toolbox/actions/inspect.md, skills/do-work/docs/prescribed-shell-primitives.md]
 title: 'Let the protected-inventory launcher pass global flags, and stop its shim discarding the text it prepared'

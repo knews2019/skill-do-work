@@ -28,9 +28,9 @@ claimed_at: 2026-09-06T08:12:01Z
 # Repoint the Lesson-Satellite Links Whose Archived Targets Moved, and Check Satellite Links
 
 ## AI Execution State (P-A-U Loop)
-- [ ] **[PLAN]:** (Agent: Read listed `prime_files` and agent rules. Write brief technical approach here. Do not write code yet.)
-- [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
-- [ ] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
+- [x] **[PLAN]:** Route A. The check first, red on the fifteen; then the repointing; then the index rows.
+- [x] **[APPLY]:** Two commits `a70a04f` (the check) and `543564c` (the repointing and index rows), merged as `ef8274b`. Five files: three satellites, `audit-lockins.sh`, `lessons-index.md`.
+- [x] **[UNIFY]:** Orchestrator re-ran: at `a70a04f` the lock-ins exit 1 with exactly 15 FAIL lines naming the fifteen; at head and on the merged tree `Audit lock-in regressions passed.`, exit 0. The independent verifier did not run (session limit); qualify and review are owed.
 
 ## What
 
@@ -106,3 +106,38 @@ check written after they are fixed has never failed.
 **Planning not required** — Route A: one check, fifteen link edits, three index rows.
 
 *Skipped by work action*
+
+## Implementation Summary
+
+**Files changed:**
+- `_dev/tests/audit-lockins.sh` (modified)
+- `_dev/primes/lessons-action-files.md` (modified)
+- `_dev/primes/lessons-kanban-board.md` (modified)
+- `_dev/primes/lessons-shell-commands.md` (modified)
+- `do-work/lessons-index.md` (modified)
+
+**The check, in its own commit first.** A new block in `audit-lockins.sh` headed "Lesson-satellite links
+resolve (REQ-602)": a satellite is any `_dev/primes/lessons-*.md` (a glob, with a FAIL when it matches
+nothing); a relative link is any `](target)` whose target is non-empty, does not start with `#` and is
+not an absolute URL; the target, fragment stripped, must resolve from `_dev/primes/`. One FAIL line per
+broken link, naming the satellite, the line and the target as written. At `a70a04f`, with the links
+still broken, the lock-ins exit 1 with exactly the fifteen FAIL lines the request lists and no other
+(re-run by the orchestrator after the builder).
+
+**The repointing.** Fifteen links in three satellites now name the `UR-0xx/` directory each target moved
+under; bullet text and family markers unchanged. Three `lessons-index.md` rows recomputed by program
+(tokens and families). Lock-ins green at head and on the merged tree.
+
+**The shipped satellite's canonical URLs** were reported, not edited: see the hand-back's URL report
+(`do-work/runs/work-2026-09-05-231943/REQ-602-handback.md`).
+
+**Owed to the next session:** the independent verifier and the review did not run (session limit);
+canonical `qualify` over the merge range, the three-lens review, and finalization (not a release: no
+shipped file changed).
+
+## Decisions
+
+- **D1 The check lives in `audit-lockins.sh`**, beside the other lock-ins the gate already runs, rather
+  than in a fifth script.
+- **D2 The satellite bullets' text is untouched**, only the link targets: the lesson wording is the
+  archive's, not this request's.

@@ -266,3 +266,63 @@ Canonical `qualify` and `scope-drift` both satisfied after the write set was wid
 each file restored with `git checkout --`, `git status --short` empty after.
 
 **Fast gate on main after the merge:** `Maintainer verification passed.`, exit 0, wall 78s.
+
+## Review
+
+**Overall: 83%** | 2026-09-06T09:40:00Z | full synthesis: `do-work/runs/work-2026-09-05-231943/REQ-600-review.json`
+
+| Dimension | Score |
+|-----------|-------|
+| Requirements | 80% |
+| Code Quality | 88% |
+| Test Adequacy | 92% |
+| Scope | 90% |
+| Risk | Low |
+| Acceptance | Remediate two sentences before archive |
+
+**Verdict: Accept with small remediation.** Three independent reviewers and a synthesizer who reproduced
+every finding. The scan, the lift and the block fix are correct and pinned: all four guards exit 0 in the
+reviewers' clone, mutations M1/M2/M3 fail with the exact FAIL lines this record quotes, and the lifted
+function body is byte-identical (39 lines). The one important finding is in the deliverable the request
+was mostly about, and it is a sentence this run wrote.
+
+**Findings that survived verification (remediation pending, none applied yet):**
+
+- **F1 (important, prime line 53) teaches a false safe zone below the pipe buffer.** "Below the pipe
+  buffer the writer finishes before the reader leaves, so the check passes for years" is in neither
+  archived record and is false for any writer that flushes in chunks: the synthesizer measured `tar tzf
+  | grep -q` misfiring 20 of 50 at a 4.8 KB listing and 50 of 50 at 14 KB, both far under the 64 KiB pipe
+  buffer, and replayed REQ-593's own pinned-CPU case (1 of 500 at 36 KB). The 0-of-50 and 50-of-50
+  figures are real but belong to one writer, bash's builtin `printf` emitting a single string. The
+  request's wording ("silent below roughly 36 KB") carried the same generalization, so the builder
+  followed it and added an unmeasured mechanism. Fix: attribute the numbers to their writer, add the
+  2-3-of-500 pinned-CPU result, delete the mechanism sentence, state that the flip size depends on how
+  the writer flushes, and keep "there is no safe size". Also soften this record's "far below the window"
+  for the ollama block to "small, and not a live failure today".
+- **F2 (low) scanner contract comment line 18** still says "fourteen different ways in the must-flag
+  fixture below"; the fixture is in another file and has 19 shapes. The hand-back's "comment moved
+  byte-for-byte" held for the body, not the comment. Fix: drop the number, point at the audit file. Line
+  11 carries the same "silent below roughly 36 KB" generalization as F1.
+- **F3 (low) the hand-back and the satellite header cite "work.md Step 8 substep 7"**, which does not
+  exist; the lessons write is Step 8 substep 4, and it did not run for REQ-593 or REQ-594. (The
+  maintainer satellites were backfilled after this review in commit `a38a8c4`; the shipped satellite's
+  lines and this REQ's own line are still owed.)
+- **F4 (low) this record's Exploration** places `memory-reference.md:142` "in a fence"; it is a prose
+  list item between fences. The judgment stands; the location claim came from a whole-file grep.
+- **F5 (low) the block's prose says "first hit wins"** and the new first line is setup that always exits
+  0. Either collapse to the one-line form or change the prose to "the first probe that succeeds wins".
+- **F6 (low) prime line 51** lumps `grep -m 1`/`--quiet`/`--silent` (the same reader, flagged by the
+  scanner) with `rg -q`/`head`/`sed`/`awk`/`read` (different readers, not flagged). Split the list.
+- **Pre-existing, outside the diff's purpose:** `quiet-grep-pipeline-audit.sh:14` has no failure branch
+  on `mktemp`, so as root it writes its fixtures at `/` and passes (the file is in this write set; fix
+  during remediation or capture); a bash fence indented four spaces is never opened by the lint (zero such
+  fences today; the fence regex is the one place to touch if widened).
+
+**Findings that did not survive:** "the record does not state this is a release" (finalization's
+judgment); the wiring fixture's own call being unpinned (true of every pin); the ollama block's
+"far too small" reasoning being wrong in general (not measured; the never-a-live-failure judgment stands).
+
+**Disagreements and how settled:** the window sentence (one reviewer marked it held from the archive
+lines alone, two measured it false; the synthesizer measured and took the two); severity of the
+byte-for-byte comment claim (substance agreed); whether the pre-existing audit and fence items count
+against this REQ (confirmed identical at the parent; discovered tasks).
