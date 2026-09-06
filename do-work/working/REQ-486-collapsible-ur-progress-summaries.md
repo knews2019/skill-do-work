@@ -540,3 +540,36 @@ excluded evidence disclosed rather than counted as zero; live contributions refr
 instant with no existing surface losing its tick.
 
 *Checked by work action*
+
+## Testing
+
+**Tests run:** all three lanes separately, each recording its own exit line — because a lane that
+skips reports success and the gate's summary cannot tell the difference. Plus
+`contract-regressions.sh`, `shipped-package-reference-contract.sh`, and the canonical gate.
+
+**Result:** ✓ Green.
+
+- fast stage — `ok github.com/knews2019/skill-do-work/queue-kanban 65.004s`, exit 0
+- strict JavaScript lane — `ok … 6.179s`, **70 pass, 0 skip** (increment 1's baseline: 65 pass, 0 skip)
+- strict browser lane — `ok … 100.538s`, **35 pass, 0 skip**, Chromium 141.0.7390.37 via
+  `QUEUE_KANBAN_BROWSER`, no SKIP line printed (increment 1's baseline: 34 pass, 0 skip)
+- full heavy gate at the builder's head — `Maintainer verification passed.`, exit 0, gate wall 298s,
+  with both heavy-lane lines present: `queue-kanban uncached tests with strict JavaScript behavior
+  probes — wall=65s tests=479` and `queue-kanban strict browser behavior lane — wall=99s tests=35`
+- canonical gate at the merge revision `b8398be` — `Maintainer verification passed.`, exit 0,
+  **73s wall**, exit status read directly from `$?`
+- `contract-regressions.sh` green with the write-surface count unchanged at three, which is the
+  independent check that this request added no write surface; `shipped-package-reference-contract.sh`
+  green, so the changelog mirror is byte-identical
+
+**Chromium 141 is deprecated per the board prime**, so the browser lane's green is evidence about this
+run rather than a compatibility claim.
+
+**Two flakes were seen and neither is this request's.** Increment 1 saw one case in
+`prescribed-shell-cases/qualify.sh` fail once under the full parallel heavy gate and pass alone at both
+revisions; increment 2 saw `update-script-behavior.sh` do the same. REQ-593, built later in this run,
+found the mechanism behind the second: both of that script's assertion helpers piped a writer into
+`grep -q` under `pipefail`, so the writer's SIGPIPE was read as a failed match. That is fixed and its
+nine siblings are queued behind it.
+
+*Verified by work action*
