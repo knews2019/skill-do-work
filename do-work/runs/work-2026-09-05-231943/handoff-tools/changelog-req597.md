@@ -1,0 +1,9 @@
+## 0.305.11 — The Rest of the Shell Guide Accurately Describes Shipped Primitives, and Inspect Associates Files (2026-09-06)
+
+Sixteen stale claims across five sections of the prescribed shell primitives guide, plus the association prose in commit and inspect, now truthfully describe what the Go implementations and syscalls do. The two prescribed blocks in inspect that called the protected inventory wrapper with positional arguments now pass --quarantine-name, so inspect associates files with requests rather than failing with an unknown option error.
+
+- inspect.md now passes `--quarantine-name do-work-inspect-secret-quarantine` to `protected-inventory.sh` rather than positional arguments, enabling the action to associate modified files with requests.
+- Both `commit` and `inspect` now accurately document that the protected inventory wrapper takes no `--repo-root` argument, uses the current directory as the repository root, drops untracked hidden files under `do-work/` as metadata, and prints no placeholder rows for unassociated candidates.
+- The prescribed shell guide's Verified Exact Publication section accurately distinguishes syscall semantics (`rename(2)` silently replacing a regular file while refusing a directory, `link(2)` refusing all existing targets) from shell `mv` and `ln` nesting.
+- Lifecycle timing claims now truthfully state that elapsed seconds are derived by the command, that child processes inherit the CLI's stderr handle directly, and that redaction applies to the executable name rather than caller parameters.
+- Commit file listing guidance clarifies quoting rules and the necessity of `--root` for the initial commit, and documents that `publish-portfolio-summary` and report image batch generation run through Go commands rather than non-existent retained shell scripts.

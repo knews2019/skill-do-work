@@ -15,7 +15,7 @@ cli() { bash "$repo/skills/do-work/tools/do-work-cli.sh" --repo-root "$repo" "$@
 
 request_id="$1"; request_path="$2"; merge_hash="$3"; commit_message="$4"
 new_version="${5:-}"; changelog_entry_file="${6:-}"
-writer_label="vm:$repo"
+writer_label="${DO_WORK_WRITER_LABEL:-$(hostname):$repo}"
 work_dir="${TMPDIR:-/tmp}/finalize-$request_id"
 rm -rf "$work_dir"; mkdir -p "$work_dir"
 cd "$repo" || exit 1
@@ -60,7 +60,7 @@ if [ -n "$new_version" ]; then
     { echo "FATAL: the new entry heading does not appear exactly once" >&2; exit 1; }
 
   release_manifest="$work_dir/release-manifest.json"
-  python3 - "$work_dir" "$old_version" "$new_version" "$anchor" "$entry_title" "$release_manifest" <<'PY'
+  uv run python3 - "$work_dir" "$old_version" "$new_version" "$anchor" "$entry_title" "$release_manifest" <<'PY'
 import json, sys
 work, old, new, anchor, title, out = sys.argv[1:7]
 def target(path, oldf, newf):
@@ -85,18 +85,19 @@ PY
   release_paths=(VERSION CHANGELOG.md skills/do-work/VERSION skills/do-work/CHANGELOG.md skills/do-work/actions/version.md)
 fi
 # Lesson satellites and other already-edited files the transaction must carry (work.md Step 8
-# substep 4: "include their exact paths in the manifest"). Space-separated, repo-relative.
 read -r -a extra_paths <<<"${EXTRA_COMMIT_PATHS:-}"
-release_paths+=("${extra_paths[@]}")
+if [ -n "${EXTRA_COMMIT_PATHS:-}" ]; then
+  release_paths+=("${extra_paths[@]}")
+fi
 
 # 2. Digests LAST, after every edit to the request file.
 request_digest="$(sha256sum "$request_path" | cut -d' ' -f1)"
 checkpoint_digest="$(sha256sum do-work/CHECKPOINT.md | cut -d' ' -f1)"
 
 # 3. Author the one manifest. commit_paths is both a minimum (the plan) and a ceiling.
-python3 - "$work_dir" "$request_id" "$request_path" "$writer_label" "$now" \
+uv run python3 - "$work_dir" "$request_id" "$request_path" "$writer_label" "$now" \
          "$request_digest" "$checkpoint_digest" "$commit_message" "$merge_hash" \
-         "$release_manifest" "${release_paths[@]}" <<'PY'
+         "$release_manifest" ${release_paths[@]+"${release_paths[@]}"} <<'PY'
 import json, sys
 (work, rid, rpath, writer, now, rsha, csha, msg, merge, relman, *relpaths) = sys.argv[1:]
 plan = json.load(open(f"{work}/plan.json"))
