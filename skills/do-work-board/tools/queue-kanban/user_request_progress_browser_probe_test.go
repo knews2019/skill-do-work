@@ -35,34 +35,34 @@ type userRequestProgressTextBox struct {
 }
 
 type userRequestProgressProbeResult struct {
-	LocationHref      string                       `json:"locationHref"`
-	UserAgent         string                       `json:"userAgent"`
-	ResolvedScheme    string                       `json:"resolvedScheme"`
-	BodyBackground    string                       `json:"bodyBackground"`
-	ViewportWidth     float64                      `json:"viewportWidth"`
-	HeadRowRect       userRequestProgressRect      `json:"headRowRect"`
-	StripRect         userRequestProgressRect      `json:"stripRect"`
-	GroupRect         userRequestProgressRect      `json:"groupRect"`
-	MetricRects       []userRequestProgressRect    `json:"metricRects"`
-	TitleRect         userRequestProgressRect      `json:"titleRect"`
-	DetailRect        userRequestProgressRect      `json:"detailRect"`
-	OverlappingPairs  []string                     `json:"overlappingPairs"`
-	EscapedMetrics    []string                     `json:"escapedMetrics"`
-	TextBoxes         []userRequestProgressTextBox `json:"textBoxes"`
-	HeaderMetricTexts []string                     `json:"headerMetricTexts"`
-	DrawerMetricTexts []string                     `json:"drawerMetricTexts"`
-	HeadTagName       string                       `json:"headTagName"`
-	HeadTabIndex      int                          `json:"headTabIndex"`
-	DetailTagName     string                       `json:"detailTagName"`
-	DetailTabIndex    int                          `json:"detailTabIndex"`
-	HeadPrecedesDetil bool                         `json:"headPrecedesDetail"`
-	HeadFocusable     bool                         `json:"headFocusable"`
-	DetailFocusable   bool                         `json:"detailFocusable"`
-	LargeMemberCount  int                          `json:"largeMemberCount"`
-	IdListExpanded    bool                         `json:"idListExpanded"`
-	InputRowRect      userRequestProgressRect      `json:"inputRowRect"`
-	DrawerRect        userRequestProgressRect      `json:"drawerRect"`
-	ConsoleErrors     []string                     `json:"consoleErrors"`
+	LocationHref       string                       `json:"locationHref"`
+	UserAgent          string                       `json:"userAgent"`
+	ResolvedScheme     string                       `json:"resolvedScheme"`
+	BodyBackground     string                       `json:"bodyBackground"`
+	ViewportWidth      float64                      `json:"viewportWidth"`
+	HeadRowRect        userRequestProgressRect      `json:"headRowRect"`
+	StripRect          userRequestProgressRect      `json:"stripRect"`
+	GroupRect          userRequestProgressRect      `json:"groupRect"`
+	MetricRects        []userRequestProgressRect    `json:"metricRects"`
+	TitleRect          userRequestProgressRect      `json:"titleRect"`
+	DetailRect         userRequestProgressRect      `json:"detailRect"`
+	OverlappingPairs   []string                     `json:"overlappingPairs"`
+	EscapedMetrics     []string                     `json:"escapedMetrics"`
+	TextBoxes          []userRequestProgressTextBox `json:"textBoxes"`
+	HeaderMetricTexts  []string                     `json:"headerMetricTexts"`
+	DrawerMetricTexts  []string                     `json:"drawerMetricTexts"`
+	HeadTagName        string                       `json:"headTagName"`
+	HeadTabIndex       int                          `json:"headTabIndex"`
+	DetailTagName      string                       `json:"detailTagName"`
+	DetailTabIndex     int                          `json:"detailTabIndex"`
+	HeadPrecedesDetail bool                         `json:"headPrecedesDetail"`
+	HeadFocusable      bool                         `json:"headFocusable"`
+	DetailFocusable    bool                         `json:"detailFocusable"`
+	LargeMemberCount   int                          `json:"largeMemberCount"`
+	IdListExpanded     bool                         `json:"idListExpanded"`
+	InputRowRect       userRequestProgressRect      `json:"inputRowRect"`
+	DrawerRect         userRequestProgressRect      `json:"drawerRect"`
+	ConsoleErrors      []string                     `json:"consoleErrors"`
 }
 
 // userRequestProgressFixtureBoard composes the two user requests this lane needs
@@ -156,6 +156,14 @@ func userRequestProgressFixtureBoard(t *testing.T) *Board {
 // plus a poll loop. Under the full heavy gate that poll loop was enough traffic
 // to time a Runtime.evaluate out at 30s — which fails as a transport error and
 // says nothing at all about the layout.
+//
+// The price of reusing an engine is that each width inherits the page state the
+// previous one left. Both leaks found so far squeezed the board column without
+// failing anything: a drawer left docked open, and the probe's own result node
+// sitting in the body grid holding a 32,000px line of JSON. measureProbePage
+// resets both, and checkUserRequestProgressStrip asserts the .ur-group box is
+// still the width the case is named after — that assertion is what makes this
+// transport safe to keep.
 func measureUserRequestProgressAtWidth(
 	t *testing.T, session *trustedInputBrowserSession, viewportWidth int,
 ) []byte {
@@ -204,8 +212,20 @@ func TestBrowserBehaviorUserRequestProgressStripSurvivesEveryWidth(t *testing.T)
 `
 	probeScript := `
       (function () {
+        // The result node is TAKEN OUT OF THE LAYOUT before it is attached.
+        // <body> is the board's grid — board | resizer | detail panel — and a
+        // plain child lands in the auto-sized second column. Once this node
+        // holds a measurement, that is one 32,000px-wide line of JSON, the auto
+        // column takes the whole viewport and the board column collapses to
+        // nothing. One engine measuring three widths would then measure the
+        // first width honestly and the next two against a board squeezed to
+        // zero, and still report a pass.
         var resultNode = document.createElement("pre");
         resultNode.id = "` + browserProbeResultElementId + `";
+        resultNode.style.position = "fixed";
+        resultNode.style.top = "0";
+        resultNode.style.left = "-99999px";
+        resultNode.style.width = "1px";
         document.body.appendChild(resultNode);
 
         function waitFor(predicate, failureLabel) {
@@ -270,6 +290,20 @@ func TestBrowserBehaviorUserRequestProgressStripSurvivesEveryWidth(t *testing.T)
         // idempotent: the lens click lands on the lens already showing, and
         // reopening a drawer rebuilds the same rows.
         async function measureProbePage() {
+          // FIRST, close any drawer this engine still has open. The detail panel
+          // is a docked GRID COLUMN above the 760px breakpoint, not an overlay:
+          // a drawer left open by the previous width squeezes the board column
+          // beside it, and every box measured afterwards describes a layout
+          // narrower than the one this case's label names. One engine measuring
+          // three widths is only sound if each width starts from the same page
+          // state.
+          var dockedDrawer = document.getElementById("detail-drawer");
+          if (!dockedDrawer.hidden) {
+            document.getElementById("detail-close").click();
+            await waitFor(function () {
+              return dockedDrawer.hidden;
+            }, "the drawer to close before the next width is measured");
+          }
           await nextFrame();
           await nextFrame();
           document.querySelector('#lens-group [data-lens-target="user-request"]:not([data-ur-cards])').click();
@@ -467,8 +501,9 @@ func checkUserRequestProgressStrip(
 	}
 	// The build these numbers came from, recorded beside them: a green here
 	// is evidence about this engine, not a compatibility claim.
-	t.Logf("%s: %s, resolved scheme %s, body ground %s, viewport %.0f CSS px",
-		wantScheme, result.UserAgent, result.ResolvedScheme, result.BodyBackground, result.ViewportWidth)
+	t.Logf("%s: %s, resolved scheme %s, body ground %s, viewport %.0f CSS px, .ur-group box %.1f-%.1f (%.1f wide)",
+		wantScheme, result.UserAgent, result.ResolvedScheme, result.BodyBackground, result.ViewportWidth,
+		result.GroupRect.Left, result.GroupRect.Right, result.GroupRect.Right-result.GroupRect.Left)
 
 	// Without the colour-scheme flag Chromium resolves prefers-color-scheme
 	// to light and the dark palette is never measured by anything.
@@ -481,6 +516,31 @@ func checkUserRequestProgressStrip(
 	if result.ResolvedScheme != wantScheme {
 		t.Fatalf("engine resolved the %s case as %q; the dark palette would never be measured",
 			wantScheme, result.ResolvedScheme)
+	}
+
+	// THE LOCK-IN: the layout these numbers describe is the one the case is
+	// named after. One engine measures all three widths, so anything the
+	// previous width left on the page narrows the board column and every
+	// measurement below then reports a pass for a layout that never existed —
+	// which is exactly what happened once, at two of the three widths, with
+	// every other assertion here still green. Two page-state resets keep it
+	// honest (the docked drawer is closed, and the probe's own result node is
+	// out of the body grid) and this is the assertion that notices when one of
+	// them stops working.
+	//
+	// Measured clean, the .ur-group box is the viewport minus the board's own
+	// horizontal chrome: 273px at 320, 697px at 768, 1209px at 1280, so 47 CSS
+	// px of chrome at the narrow width and 71 at the other two. The 96px
+	// allowance leaves room for padding work and is still nowhere near what
+	// either leak cost — an open drawer took 438px at 768 and 630px at 1280,
+	// and a laid-out result node left the group 2px wide at both.
+	groupWidth := result.GroupRect.Right - result.GroupRect.Left
+	if groupWidth < float64(viewportWidth)-96 || groupWidth > float64(viewportWidth) {
+		t.Fatalf("the .ur-group box measured %.1f CSS px wide (%.1f-%.1f) at the case labelled %d px; "+
+			"want a group filling the viewport less the board's own chrome (47-71 px). "+
+			"A much narrower box means the page was not laid out at this width at all: check that the "+
+			"previous width's drawer was closed and that the probe's result node is still out of the body grid",
+			groupWidth, result.GroupRect.Left, result.GroupRect.Right, viewportWidth)
 	}
 
 	// The strip is its own row under the head, at every width.
@@ -537,9 +597,9 @@ func checkUserRequestProgressStrip(
 		t.Fatalf("tabIndex fold=%d details=%d; a negative index takes the control out of the tab ring",
 			result.HeadTabIndex, result.DetailTabIndex)
 	}
-	if !result.HeadPrecedesDetil || !result.HeadFocusable || !result.DetailFocusable {
+	if !result.HeadPrecedesDetail || !result.HeadFocusable || !result.DetailFocusable {
 		t.Fatalf("fold precedes Details=%v, fold focusable=%v, Details focusable=%v",
-			result.HeadPrecedesDetil, result.HeadFocusable, result.DetailFocusable)
+			result.HeadPrecedesDetail, result.HeadFocusable, result.DetailFocusable)
 	}
 
 	// The drawer with a 43-member UR: the reason the id list was capped.

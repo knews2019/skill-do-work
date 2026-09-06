@@ -265,7 +265,10 @@
   // queue full of very young claims. Running the older pass first means such a
   // throw could not also cost those surfaces their current tick. The real
   // containment is that the rollup is total by narrowing (see
-  // board-user-request-summary.js); this order is the belt beside it.
+  // board-user-request-summary.js); this order is the belt beside it. Both are
+  // asserted: a probe drives a tick whose summary pass throws on purpose and
+  // checks the claim stopwatch still advanced, so swapping these two lines
+  // fails the suite.
   function refreshTickingSurfaces() {
     var nowMs = Date.now();
     refreshRelativeTimeNodes(nowMs);
