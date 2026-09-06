@@ -18,4 +18,3 @@ session_depth: light
 
 ## In Progress (interrupted)
 
-- REQ-608: A3: Run the inventory data matrix without subprocesses — claimed 2026-09-06T14:14:41Z — writer: t2s-Virtual-Machine.local:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2
