@@ -1046,6 +1046,10 @@ func TestCheckpointRemovalPreservesRangeAndWriterAuthority(t *testing.T) {
 
 func TestRecoveryRefusesFalseLegacyCheckpointAbsence(t *testing.T) {
 	root := newStateRepository(t)
+	// This fixture commits below, and every heavy lane runs with
+	// GIT_CONFIG_NOSYSTEM=1 and GIT_CONFIG_GLOBAL=/dev/null, so there is no
+	// identity to inherit: the fixture has to carry its own.
+	configureStateGit(t, root)
 	writeStateRequest(t, root, "do-work/working/REQ-713.md", "REQ-713", "claimed", "claimed_at: 2026-09-04T12:00:00Z\n")
 	checkpoint := "# Session Checkpoint\n\n- REQ-000713: legacy — writer: other:/repo\n  retained detail\n"
 	if err := os.WriteFile(filepath.Join(root, "do-work/CHECKPOINT.md"), []byte(checkpoint), 0o644); err != nil {

@@ -301,14 +301,24 @@ func runOneLane(repositoryRoot string, lane manifestLane, laneTimeout time.Durat
 		interrupted = true
 	}
 	skipWatcher.FlushPendingLine()
+	// A lane that genuinely skips returns immediately and exits zero, so a
+	// non-zero status outranks whatever the lane printed: the status is a
+	// result and the line is only an announcement. A lane's output is not a
+	// trustworthy channel on its own either — the do-work-cli lane runs this
+	// package's own tests, and their fixture lanes print `SKIP:` lines.
+	// Reporting "did not run" for a lane that ran and failed hides the failure.
+	announcedSkipLine := skipWatcher.SkipLine()
+	if exitStatus != 0 {
+		announcedSkipLine = ""
+	}
 	execution := resultmodel.HeavyLaneExecution{
 		LaneID:      lane.ID,
 		CommandArgv: append([]string(nil), lane.Argv...),
 		ExitStatus:  exitStatus,
-		Skipped:     skipWatcher.SkipLine() != "",
+		Skipped:     announcedSkipLine != "",
 		WallSeconds: int(time.Since(startedAt).Seconds()),
 	}
-	return execution, skipWatcher.SkipLine(), interrupted, nil
+	return execution, announcedSkipLine, interrupted, nil
 }
 
 func laneExitStatus(waitError error) int {

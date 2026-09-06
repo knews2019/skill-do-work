@@ -7,6 +7,7 @@
 package heavyverification
 
 import (
+	"io"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -39,6 +40,11 @@ const heavyRunTestManifest = `{
       "coverage": [{"kind": "exact", "path": "lanes/skip.sh"}]
     },
     {
+      "id": "skip-then-fail-lane",
+      "argv": ["sh", "lanes/skip-then-fail.sh"],
+      "coverage": [{"kind": "exact", "path": "lanes/skip-then-fail.sh"}]
+    },
+    {
       "id": "slow-lane",
       "argv": ["sh", "lanes/slow.sh"],
       "coverage": [{"kind": "exact", "path": "lanes/slow.sh"}]
@@ -57,24 +63,31 @@ const slowLaneChildFile = "slow-lane-child.pid"
 
 // newHeavyRunRepository commits a manifest whose lanes are real scripts: one
 // green lane that takes a measurable second, one red lane, one lane that
-// announces a skip, and one lane that backgrounds a TERM-deaf descendant.
+// announces a skip, one lane that announces a skip and then fails anyway, and
+// one lane that backgrounds a TERM-deaf descendant.
 func newHeavyRunRepository(t *testing.T) string {
 	t.Helper()
 	repositoryRoot, _ := newHeavyTestRepository(t, heavyRunTestManifest)
 	writeHeavyTestFile(t, repositoryRoot, "lanes/green.sh", "echo ran > "+greenLaneMarkerFile+"\nsleep 1\nexit 0\n")
 	writeHeavyTestFile(t, repositoryRoot, "lanes/red.sh", "exit 3\n")
 	writeHeavyTestFile(t, repositoryRoot, "lanes/skip.sh", "printf 'SKIP: no browser is available\\n'\nexit 0\n")
+	writeHeavyTestFile(t, repositoryRoot, "lanes/skip-then-fail.sh", "printf 'SKIP: no browser is available\\n'\nexit 4\n")
 	writeHeavyTestFile(t, repositoryRoot, "lanes/slow.sh", "(trap '' TERM; sleep 30) &\necho $! > "+slowLaneChildFile+"\nwait\n")
 	writeHeavyTestFile(t, repositoryRoot, "do-work/queue/REQ-900-orchestrator-bookkeeping.md", "queue state\n")
 	commitHeavyTestChanges(t, repositoryRoot, "lane scripts")
 	return repositoryRoot
 }
 
+// runHeavyLanes discards the lane output tee rather than letting it reach this
+// process's stderr. The fixture lanes below print `SKIP:` announcements on
+// purpose, and the heavy lane that runs this package's tests is watched for
+// exactly that prefix on its own output.
 func runHeavyLanes(t *testing.T, repositoryRoot string, arguments ...string) resultmodel.CommandResult {
 	t.Helper()
-	return handleRunHeavyVerification(
+	return runHeavyVerificationLanes(
 		commandruntime.ExecutionContext{RepositoryRoot: repositoryRoot},
 		append([]string{"--manifest", "heavy-lanes.json"}, arguments...),
+		io.Discard,
 	)
 }
 
@@ -133,6 +146,28 @@ func TestRunLanesMarksSkipFromExplicitSkipLine(t *testing.T) {
 	}
 	if !strings.Contains(strings.Join(result.Findings[0].Evidence, " "), "SKIP: no browser is available") {
 		t.Fatalf("skip finding lost the announcing line: %#v", result.Findings[0])
+	}
+}
+
+// TestRunLanesReportsARedLaneThatAlsoPrintedASkipLine pins the misreport a
+// heavy run hit at revision 6646ba51: the do-work-cli lane exited non-zero with
+// a failing test, printed a fixture's `SKIP:` line along the way, and was
+// recorded as a lane that did not run. A skip line is an announcement; a
+// non-zero exit status is a result, and the result decides.
+func TestRunLanesReportsARedLaneThatAlsoPrintedASkipLine(t *testing.T) {
+	repositoryRoot := newHeavyRunRepository(t)
+
+	result := runHeavyLanes(t, repositoryRoot, "--lane", "skip-then-fail-lane")
+
+	if result.Outcome != resultmodel.OutcomeSuccess || result.HeavyVerificationRun == nil {
+		t.Fatalf("run result = %#v", result)
+	}
+	lanes := result.HeavyVerificationRun.Lanes
+	if len(lanes) != 1 || lanes[0].Skipped || lanes[0].ExitStatus != 4 {
+		t.Fatalf("a lane that ran and failed was recorded as skipped: %#v", lanes)
+	}
+	if len(result.Findings) != 1 || result.Findings[0].Code != "HEAVY-RUN-LANE-RED" {
+		t.Fatalf("failed lane finding = %#v", result.Findings)
 	}
 }
 

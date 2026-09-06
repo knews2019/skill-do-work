@@ -81,16 +81,21 @@ assert_status_nonzero() {
   fi
 }
 
+# Both matchers feed grep a herestring rather than `printf ... | grep`. `grep -q` exits at the
+# first match, so on a probe output larger than the pipe capacity the writer is still writing
+# when the reader leaves and dies on SIGPIPE — and under `set -o pipefail` that death became
+# the pipeline's status. A herestring is a temp-file redirect, so there is no writer process
+# and the status is grep's verdict alone.
 assert_output_matches() {
   local pattern_text="$1" probe_name="$2"
-  if ! printf '%s' "$probe_output" | grep -Eq -- "$pattern_text"; then
+  if ! grep -Eq -- "$pattern_text" <<<"$probe_output"; then
     record_failure "$probe_name — output did not match /$pattern_text/. Output: $probe_output"
   fi
 }
 
 assert_output_lacks() {
   local pattern_text="$1" probe_name="$2"
-  if printf '%s' "$probe_output" | grep -Eq -- "$pattern_text"; then
+  if grep -Eq -- "$pattern_text" <<<"$probe_output"; then
     record_failure "$probe_name — output unexpectedly matched /$pattern_text/. Output: $probe_output"
   fi
 }
@@ -108,6 +113,33 @@ assert_path_absent() {
     record_failure "$probe_name — expected $candidate_path to be absent."
   fi
 }
+
+# The updater probes print the whole reviewed install diff, so probe_output routinely runs to
+# tens of kilobytes and the pattern usually sits on an early line — the exact shape that lost
+# the race above, silently reporting a match as a miss and swallowing a pattern
+# assert_output_lacks should have flagged. This self-check drives the two shipped matchers over
+# a quarter-megabyte output with the pattern on line 1, which puts the writer far enough behind
+# the reader that a pipeline form fails every time rather than occasionally.
+verify_output_matchers_read_greps_verdict() {
+  local marker_pattern='matcher-self-check-marker' filler_text
+  # Bash dynamic scope: the matchers below read these two names, so the self-check exercises
+  # the shipped functions rather than a copy of them, and restores both on return.
+  local probe_output fail_count=0
+  printf -v filler_text '%*s' 262144 ''
+  probe_output="$marker_pattern"$'\n'"$filler_text"
+  # record_failure's own FAIL line is suppressed: one of the two calls below is supposed to
+  # record a failure, and only the resulting count is this check's verdict.
+  assert_output_matches "$marker_pattern" 'matcher self-check' 2>/dev/null
+  local misses_a_present_pattern="$fail_count"
+  fail_count=0
+  assert_output_lacks "$marker_pattern" 'matcher self-check' 2>/dev/null
+  local flags_a_present_pattern="$fail_count"
+  [ "$misses_a_present_pattern" -eq 0 ] && [ "$flags_a_present_pattern" -eq 1 ]
+}
+
+if ! verify_output_matchers_read_greps_verdict; then
+  record_failure "output matchers: on a 256 KiB probe output a matcher reported the writer's exit status instead of grep's verdict"
+fi
 
 init_project() {
   local project_path="$1"
