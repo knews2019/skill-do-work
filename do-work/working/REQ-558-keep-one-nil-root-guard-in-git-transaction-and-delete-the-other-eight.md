@@ -8,6 +8,15 @@ user_request: UR-105
 domain: backend
 prime_files: []
 tdd: true
+estimate:
+  p50_active_minutes: 30
+  confidence: low
+  calculated_at: 2026-09-06T05:51:12Z
+  basis:
+    - Route B
+    - 2-file write set
+    - 4 acceptance criteria
+    - transaction boundary with no nil-branch coverage
 suggested_spec:
 depends_on: [REQ-557]
 related: [REQ-549, REQ-550, REQ-551, REQ-552, REQ-553, REQ-554, REQ-555, REQ-556, REQ-557]
@@ -15,6 +24,7 @@ batch: maintainability-audit-2026-09-03
 maintenance: false
 impact: impact-negligible
 effort_estimate: effort-substantive
+route: B
 write_set: [skills/do-work/tools/do-work-cli/internal/gittransaction/git_transaction.go, _dev/tests/audit-lockins.sh]
 claimed_at: 2026-09-06T05:50:44Z
 ---
@@ -71,3 +81,29 @@ See `do-work/user-requests/UR-105/input.md` for complete verbatim input.
 
 ---
 *Source: `do-work/audits/audit-2026-09-03.md` §Plan, capture-request line for nil-root-guards-git-transaction.*
+
+## Triage
+
+**Route: B** — Explore then build.
+
+**Reasoning:** The request's baseline holds exactly at HEAD, which is unusual in this batch: the
+reproduce command prints nine `root [=!]= nil` sites and `NO TEST covers any nil-root branch`. But the
+change is inside a transaction boundary, and the claim that matters is not "there are nine guards" — it
+is "nil is producible at exactly one of them". Proving that means tracing every path that can reach each
+of the nine with a nil value, and no test exercises any of those branches, so the compiler and the
+existing suite cannot settle it. That is discovery.
+
+**Planning:** Skipped. One file plus one lock-in assertion; the work is whatever the trace establishes.
+
+**Deleting a guard is not the same shape as deleting a duplicate.** REQ-557 removed copies that were
+provably interchangeable. Here each guard is the only thing standing between a nil dereference and a
+rollback path. A guard that is genuinely unreachable costs nothing to delete and a guard that is not
+costs a panic during rollback, which is the worst moment available. The exploration's job is to tell
+those two apart per site, and to say plainly where it cannot.
+
+## Plan
+
+**Planning not required** — Route B: one source file plus one lock-in assertion, and the edit set is
+whatever the reachability trace establishes.
+
+*Skipped by work action*
