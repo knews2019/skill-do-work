@@ -274,3 +274,30 @@ still detected with non-empty evidence; the draft copy still landing with the sa
 lock-in that fails when a site returns; and the heavy tier green, not just the fast gate.
 
 *Checked by work action*
+
+## Testing
+
+**Tests run:** the whole canonical gate, `bash _dev/tests/maintainer-verify.sh`; the focused lane
+`go -C skills/do-work/tools/do-work-cli test -count=1 ./internal/corehelpers/ ./internal/toolboxcommands/`;
+the heavy-tier prescribed-shell lane, which is the only place two of this request's five files run;
+`bash _dev/tests/audit-lockins.sh`; `bash _dev/tests/contract-regressions.sh`; `gofmt -l`, `go vet`,
+`shellcheck --severity=warning -x` on all three shell files, and a `GOOS=windows GOARCH=amd64 go test -c`
+cross-compile of both packages, which matters because both replacements are filesystem code.
+
+**Result:** ✓ Green. The canonical gate exited 0 at the merge revision `dd51478` — **89s wall**, both
+fast stages reporting `EXECUTING (fingerprint_mismatch)`, so the whole suite really ran against the
+changed code. Exit status read directly from `$?`, never through a pipe. The focused lane compared
+green against its recorded baseline.
+
+**The lane that matters most here reported separately, because the fast gate cannot reach it:**
+`env DO_WORK_MAINTAINER_TIER=heavy bash _dev/tests/prescribed-shell-scripts-behavior.sh` printed
+`Prescribed shell script behavior probes passed (110 named script cases across 18 per-script files).`
+and exited 0, with the two rewritten files' own counts unchanged at 11 and 9 cases.
+
+**Both directions were recorded, not just the green one.** At the base revision both fixture files were
+green; with the Go edits applied and the `PATH` shims still in place, five assertions across the two
+files flipped red — which is the measurement that justified widening the write set. After the rewrite
+both are green, and against a scratch build with the two guards removed both fail again, so neither
+case is passing vacuously.
+
+*Verified by work action*
