@@ -9,6 +9,7 @@ import (
 	"reflect"
 	"sort"
 	"strings"
+	"syscall"
 	"testing"
 
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/resultmodel"
@@ -392,6 +393,118 @@ func TestPrivateRollbackPreservesReplacementParentDirectory(t *testing.T) {
 	}
 	if got := readFile(t, repositoryRoot, "memory/logs/replacement.md"); got != "theirs\n" {
 		t.Fatalf("replacement parent was removed: %q", got)
+	}
+}
+
+// No test reached a no-handle rollback before this one, which is how a nil handle could reach
+// quarantineAndRollbackPrivate unguarded and panic at root.Mkdir (REQ-598). The real failure
+// is a worktree root the process can traverse but not read: os.OpenRoot fails while `git -C`
+// still works. uid 0 opens such a root regardless, so the open is forced through
+// openRollbackRoot with the error shape the real failure produces. What this pins, one
+// target of every kind at once: the identity-recorded private target no longer panics the
+// rollback; the Git-side half still runs, so the tracked target is back at HEAD, the existing
+// untracked target is restored by pathname, and nothing is left staged; and the result is a
+// typed incomplete rollback naming the unusable handle and every target left in place.
+func TestRollbackWithoutRootHandleUnstagesRestoresFromHeadAndReportsTheRest(t *testing.T) {
+	openRollbackRoot = func(name string) (*os.Root, error) {
+		return nil, &os.PathError{Op: "open", Path: name, Err: syscall.EACCES}
+	}
+	t.Cleanup(func() { openRollbackRoot = os.OpenRoot })
+	repositoryRoot := newRepository(t)
+	repositoryRoot = strings.TrimSpace(runFixtureGit(t, repositoryRoot, "rev-parse", "--show-toplevel"))
+	writeFile(t, repositoryRoot, "tracked.txt", "committed\n")
+	writeFile(t, repositoryRoot, "dirty.txt", "committed dirty\n")
+	commitAll(t, repositoryRoot, "initial")
+	writeFile(t, repositoryRoot, "dirty.txt", "dirty input\n")
+	writeFile(t, repositoryRoot, "untracked.txt", "untracked old\n")
+	if err := os.WriteFile(filepath.Join(repositoryRoot, ".git", "info", "exclude"), []byte("/memory/logs/\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	privatePath := "memory/logs/note.md"
+	writeFile(t, repositoryRoot, privatePath, "old note\n")
+	result := ExecuteTransaction(context.Background(), TransactionOptions{
+		RepositoryRoot:               repositoryRoot,
+		TargetPaths:                  []string{"tracked.txt", "dirty.txt", "untracked.txt", privatePath, "created.txt", "newdir/inner.txt"},
+		ExistingDirtyTargetPaths:     []string{"dirty.txt"},
+		ExistingUntrackedTargetPaths: []string{"untracked.txt"},
+		PrivateUntrackedTargetPaths:  []string{privatePath},
+		CreatedDirectoryPaths:        []string{"newdir"},
+	}, func(recorder *MutationRecorder) error {
+		for _, step := range []struct{ path, content string }{
+			{"tracked.txt", "mutated\n"}, {"dirty.txt", "dirty mutated\n"}, {"untracked.txt", "untracked new\n"}, {privatePath, "new note\n"},
+		} {
+			if err := recorder.RecordTouched(step.path); err != nil {
+				return err
+			}
+			writeFile(t, repositoryRoot, step.path, step.content)
+		}
+		// Identity-recorded: the case that panicked, because rollback wants to quarantine it.
+		if err := recorder.RecordPublished(privatePath); err != nil {
+			return err
+		}
+		if err := recorder.RecordCreated("created.txt"); err != nil {
+			return err
+		}
+		writeFile(t, repositoryRoot, "created.txt", "created\n")
+		if err := recorder.RecordTouched("created.txt"); err != nil {
+			return err
+		}
+		// Staged on purpose, so the unstage the Git-side half owes is observable.
+		runFixtureGit(t, repositoryRoot, "add", "--", "created.txt")
+		if err := os.Mkdir(filepath.Join(repositoryRoot, "newdir"), 0o755); err != nil {
+			return err
+		}
+		if err := recorder.RecordCreatedDirectory("newdir"); err != nil {
+			return err
+		}
+		if err := recorder.RecordCreated("newdir/inner.txt"); err != nil {
+			return err
+		}
+		writeFile(t, repositoryRoot, "newdir/inner.txt", "inner\n")
+		if err := recorder.RecordTouched("newdir/inner.txt"); err != nil {
+			return err
+		}
+		return errors.New("force rollback")
+	})
+	if result.Outcome != resultmodel.OutcomeRisk || result.Failure == nil || result.Failure.Kind != FailureRollback || result.Rollback.Status != resultmodel.RollbackIncomplete {
+		t.Fatalf("no-handle rollback = %#v", result)
+	}
+	// Exact, so a "still staged after rollback" line — the unstage not happening — fails here.
+	wantErrors := []string{
+		"open rollback root: open " + repositoryRoot + ": permission denied",
+		"dirty tracked target left in place; rollback root is unavailable: dirty.txt",
+		"private target left in place; rollback root is unavailable: " + privatePath,
+		"created target left in place; rollback root is unavailable: newdir/inner.txt",
+		"created target left in place; rollback root is unavailable: created.txt",
+		"created directory left in place; rollback root is unavailable: newdir",
+	}
+	if !reflect.DeepEqual(result.Rollback.Errors, wantErrors) {
+		t.Fatalf("no-handle rollback errors = %q, want %q", result.Rollback.Errors, wantErrors)
+	}
+	wantActions := []string{"restored tracked.txt from HEAD", "restored existing untracked target untracked.txt"}
+	if !reflect.DeepEqual(result.Rollback.Actions, wantActions) {
+		t.Fatalf("no-handle rollback actions = %q, want %q", result.Rollback.Actions, wantActions)
+	}
+	if got := runFixtureGit(t, repositoryRoot, "diff", "--cached", "--name-only"); got != "" {
+		t.Fatalf("paths still staged after no-handle rollback: %q", got)
+	}
+	// The Git-side half restored what it could; everything rooted is left exactly as published.
+	for path, want := range map[string]string{
+		"tracked.txt": "committed\n", "untracked.txt": "untracked old\n",
+		"dirty.txt": "dirty mutated\n", privatePath: "new note\n", "created.txt": "created\n", "newdir/inner.txt": "inner\n",
+	} {
+		if got := readFile(t, repositoryRoot, path); got != want {
+			t.Fatalf("%s after no-handle rollback = %q, want %q", path, got, want)
+		}
+	}
+	entries, err := os.ReadDir(repositoryRoot)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, entry := range entries {
+		if strings.HasPrefix(entry.Name(), ".do-work-private-rollback-") {
+			t.Fatalf("quarantine directory created without a rollback root: %s", entry.Name())
+		}
 	}
 }
 

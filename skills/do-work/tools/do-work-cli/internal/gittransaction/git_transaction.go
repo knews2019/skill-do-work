@@ -294,9 +294,6 @@ const (
 )
 
 func inspectCreatedObject(root *os.Root, path string, identity createdObjectIdentity) createdObjectOwnership {
-	if root == nil {
-		return createdObjectReplaced
-	}
 	info, digest, err := rootedCreatedTargetSnapshot(root, path)
 	switch {
 	case isMissingPathError(err):
@@ -986,18 +983,51 @@ func changedTargets(ctx context.Context, repositoryRoot string, states []targetS
 	return changed, nil
 }
 
+// openRollbackRoot is os.OpenRoot outside tests. The no-handle rollback test replaces it:
+// the real failure is a worktree root the process can traverse but not read, which makes
+// os.OpenRoot fail while `git -C` still works, and uid 0 — where this suite usually runs —
+// bypasses that permission. No other ordinary condition separates the two.
+var openRollbackRoot = os.OpenRoot
+
 func rollbackFailure(ctx context.Context, result TransactionResult, repositoryRoot string, states []targetState, recorder *MutationRecorder, failureKind FailureKind, operationError error) TransactionResult {
 	// Cancellation stops the requested operation, never the cleanup needed to
 	// restore or safely preserve exact targets.
 	ctx = context.WithoutCancel(ctx)
 	rollback := resultmodel.RollbackResult{Status: resultmodel.RollbackSucceeded, Actions: []string{}, Errors: []string{}}
-	root, rootError := os.OpenRoot(repositoryRoot)
+	// The rooted handle is decided once, here. A failed open does not end rollback: the
+	// Git-side half still runs so the failed transaction leaves nothing staged, and the
+	// result still names every target it could not touch. Nothing below tests the handle
+	// for nil — the rooted half only ever receives one that opened.
+	root, rootError := openRollbackRoot(repositoryRoot)
 	if rootError != nil {
 		rollback.Errors = append(rollback.Errors, "open rollback root: "+rootError.Error())
-	}
-	if root != nil {
+		rollbackWithoutRoot(ctx, repositoryRoot, states, recorder, &rollback)
+	} else {
 		defer root.Close()
+		rollbackWithRoot(ctx, root, repositoryRoot, states, recorder, &rollback)
 	}
+	rolledBackPaths := make([]string, 0, len(states))
+	for _, state := range states {
+		rolledBackPaths = append(rolledBackPaths, state.path)
+	}
+	if empty, err := indexIsEmpty(ctx, repositoryRoot, rolledBackPaths...); err != nil {
+		rollback.Errors = append(rollback.Errors, err.Error())
+	} else if !empty {
+		rollback.Errors = append(rollback.Errors, "the declared target paths are still staged after rollback")
+	}
+	result.Rollback = rollback
+	if len(rollback.Errors) > 0 {
+		result.Rollback.Status = resultmodel.RollbackIncomplete
+		return failTransaction(result, resultmodel.OutcomeRisk, FailureRollback, operationError.Error(), rolledBackPaths...)
+	}
+	return failTransaction(result, resultmodel.OutcomeRolledBack, failureKind, operationError.Error(), rolledBackPaths...)
+}
+
+// rollbackWithRoot restores and removes under a handle whose open succeeded. rollbackFailure
+// hands it nothing else, so neither this function nor any helper it calls tests the handle.
+// The same targets without a handle are rollbackWithoutRoot's job; the two walk the target
+// kinds in the same order.
+func rollbackWithRoot(ctx context.Context, root *os.Root, repositoryRoot string, states []targetState, recorder *MutationRecorder, rollback *resultmodel.RollbackResult) {
 	for _, state := range states {
 		if state.existingDirtyAllowed {
 			if _, unstageError := runGit(ctx, repositoryRoot, "restore", "--staged", "--", state.path); unstageError != nil {
@@ -1006,7 +1036,7 @@ func rollbackFailure(ctx context.Context, result TransactionResult, repositoryRo
 			}
 			published, recorded := recorder.publishedTracked[state.path]
 			if !recorded {
-				if root != nil && privateStateStillOriginal(root, state) {
+				if privateStateStillOriginal(root, state) {
 					continue
 				}
 				rollback.Errors = append(rollback.Errors, "dirty tracked target was not identity-recorded: "+state.path)
@@ -1023,7 +1053,7 @@ func rollbackFailure(ctx context.Context, result TransactionResult, repositoryRo
 		if state.privateUntracked {
 			published, recorded := recorder.publishedPrivate[state.path]
 			if !recorded {
-				if root != nil && privateStateStillOriginal(root, state) {
+				if privateStateStillOriginal(root, state) {
 					continue
 				}
 				rollback.Errors = append(rollback.Errors, "private target was not identity-recorded: "+state.path)
@@ -1038,25 +1068,7 @@ func rollbackFailure(ctx context.Context, result TransactionResult, repositoryRo
 			continue
 		}
 		if state.existingUntrackedAllowed {
-			if _, err := runGit(ctx, repositoryRoot, "rm", "--cached", "--ignore-unmatch", "--", state.path); err != nil {
-				rollback.Errors = append(rollback.Errors, fmt.Sprintf("unstage existing untracked target %s: %v", state.path, err))
-			}
-			absolutePath := filepath.Join(repositoryRoot, filepath.FromSlash(state.path))
-			if removeError := os.Remove(absolutePath); removeError != nil && !os.IsNotExist(removeError) {
-				rollback.Errors = append(rollback.Errors, fmt.Sprintf("remove changed existing untracked target %s: %v", state.path, removeError))
-				continue
-			}
-			if makeError := os.MkdirAll(filepath.Dir(absolutePath), 0o755); makeError != nil {
-				rollback.Errors = append(rollback.Errors, fmt.Sprintf("recreate parent for existing untracked target %s: %v", state.path, makeError))
-				continue
-			}
-			if writeError := os.WriteFile(absolutePath, state.originalBytes, state.originalMode.Perm()); writeError != nil {
-				rollback.Errors = append(rollback.Errors, fmt.Sprintf("restore existing untracked target %s: %v", state.path, writeError))
-			} else if chmodError := os.Chmod(absolutePath, state.originalMode); chmodError != nil {
-				rollback.Errors = append(rollback.Errors, fmt.Sprintf("restore mode for existing untracked target %s: %v", state.path, chmodError))
-			} else {
-				rollback.Actions = append(rollback.Actions, "restored existing untracked target "+state.path)
-			}
+			restoreExistingUntracked(ctx, repositoryRoot, state, rollback)
 			continue
 		}
 		if !state.tracked {
@@ -1078,25 +1090,10 @@ func rollbackFailure(ctx context.Context, result TransactionResult, repositoryRo
 			rollback.Errors = append(rollback.Errors, "tracked target changed after publication; preserved replacement: "+state.path)
 			continue
 		}
-		if _, err := runGit(ctx, repositoryRoot, "restore", "--source=HEAD", "--staged", "--worktree", "--", state.path); err != nil {
-			rollback.Errors = append(rollback.Errors, err.Error())
-		} else {
-			rollback.Actions = append(rollback.Actions, "restored "+state.path+" from HEAD")
-		}
+		restoreTrackedFromHead(ctx, repositoryRoot, state.path, rollback)
 	}
-	createdPaths := mapKeys(recorder.createdPaths)
-	sort.Slice(createdPaths, func(first, second int) bool {
-		return strings.Count(createdPaths[first], "/") > strings.Count(createdPaths[second], "/")
-	})
-	for _, path := range createdPaths {
-		alreadyRestored := false
-		for _, state := range states {
-			if state.path == path && (state.privateUntracked || state.existingDirtyAllowed || state.existingUntrackedAllowed) {
-				alreadyRestored = true
-				break
-			}
-		}
-		if alreadyRestored {
+	for _, path := range deepestFirst(mapKeys(recorder.createdPaths)) {
+		if restoredByTargetLoop(states, path) {
 			continue
 		}
 		if _, err := runGit(ctx, repositoryRoot, "rm", "--cached", "--ignore-unmatch", "--", path); err != nil {
@@ -1111,10 +1108,8 @@ func rollbackFailure(ctx context.Context, result TransactionResult, repositoryRo
 		if !identityRecorded {
 			// An absent path holds nothing this invocation could wrongly remove; an object
 			// standing there is not provably ours, so it is preserved and reported.
-			if root != nil {
-				if _, statError := root.Lstat(filepath.FromSlash(path)); os.IsNotExist(statError) {
-					continue
-				}
+			if _, statError := root.Lstat(filepath.FromSlash(path)); os.IsNotExist(statError) {
+				continue
 			}
 			rollback.Errors = append(rollback.Errors, "created target was not identity-recorded; preserved object: "+path)
 			continue
@@ -1134,13 +1129,9 @@ func rollbackFailure(ctx context.Context, result TransactionResult, repositoryRo
 			rollback.Actions = append(rollback.Actions, "removed created target "+path)
 		}
 	}
-	createdDirectories := mapKeys(recorder.createdDirectories)
-	sort.Slice(createdDirectories, func(first, second int) bool {
-		return strings.Count(createdDirectories[first], "/") > strings.Count(createdDirectories[second], "/")
-	})
-	for _, path := range createdDirectories {
+	for _, path := range deepestFirst(mapKeys(recorder.createdDirectories)) {
 		ownedInfo, recorded := recorder.publishedDirectories[path]
-		if !recorded || root == nil {
+		if !recorded {
 			rollback.Errors = append(rollback.Errors, "created directory was not identity-recorded: "+path)
 			continue
 		}
@@ -1155,27 +1146,119 @@ func rollbackFailure(ctx context.Context, result TransactionResult, repositoryRo
 			rollback.Actions = append(rollback.Actions, "removed owned created directory "+path)
 		}
 	}
-	rolledBackPaths := make([]string, 0, len(states))
+}
+
+// rollbackWithoutRoot is the half of rollback that needs no rooted handle: every Git-side
+// unstage and restore, and the plain-path restore of existing untracked targets. What the
+// handle would have done — identity checks, quarantine, removing created objects — is not
+// attempted, and each target it would have touched is reported as left in place, so the
+// caller sees exactly which paths may still carry the transaction's bytes. It walks the
+// target kinds in the same order as rollbackWithRoot.
+func rollbackWithoutRoot(ctx context.Context, repositoryRoot string, states []targetState, recorder *MutationRecorder, rollback *resultmodel.RollbackResult) {
+	leftInPlace := func(kind, path string) {
+		rollback.Errors = append(rollback.Errors, kind+" left in place; rollback root is unavailable: "+path)
+	}
 	for _, state := range states {
-		rolledBackPaths = append(rolledBackPaths, state.path)
+		switch {
+		case state.existingDirtyAllowed:
+			if _, unstageError := runGit(ctx, repositoryRoot, "restore", "--staged", "--", state.path); unstageError != nil {
+				rollback.Errors = append(rollback.Errors, fmt.Sprintf("unstage dirty tracked target %s: %v", state.path, unstageError))
+				continue
+			}
+			leftInPlace("dirty tracked target", state.path)
+		case state.privateUntracked:
+			leftInPlace("private target", state.path)
+		case state.existingUntrackedAllowed:
+			restoreExistingUntracked(ctx, repositoryRoot, state, rollback)
+		case state.tracked:
+			dirty, err := targetIsDirty(ctx, repositoryRoot, state.path)
+			if err != nil {
+				rollback.Errors = append(rollback.Errors, err.Error())
+				continue
+			}
+			if !dirty {
+				continue
+			}
+			// A recorded publication is overwritten only after its identity is proved still
+			// ours, and that proof needs the handle. Unstaging it needs only Git.
+			if _, recorded := recorder.publishedTracked[state.path]; recorded {
+				if _, unstageError := runGit(ctx, repositoryRoot, "restore", "--staged", "--", state.path); unstageError != nil {
+					rollback.Errors = append(rollback.Errors, unstageError.Error())
+				}
+				leftInPlace("tracked target", state.path)
+				continue
+			}
+			restoreTrackedFromHead(ctx, repositoryRoot, state.path, rollback)
+		}
 	}
-	if empty, err := indexIsEmpty(ctx, repositoryRoot, rolledBackPaths...); err != nil {
+	for _, path := range deepestFirst(mapKeys(recorder.createdPaths)) {
+		if restoredByTargetLoop(states, path) {
+			continue
+		}
+		if _, err := runGit(ctx, repositoryRoot, "rm", "--cached", "--ignore-unmatch", "--", path); err != nil {
+			rollback.Errors = append(rollback.Errors, fmt.Sprintf("unstage created target %s: %v", path, err))
+		}
+		leftInPlace("created target", path)
+	}
+	for _, path := range deepestFirst(mapKeys(recorder.createdDirectories)) {
+		leftInPlace("created directory", path)
+	}
+}
+
+// restoreExistingUntracked puts an opted-in existing untracked target back by pathname. It
+// needs no rooted handle: the bytes and mode were snapshotted before the mutation, and Git
+// only ever held the path in the index.
+func restoreExistingUntracked(ctx context.Context, repositoryRoot string, state targetState, rollback *resultmodel.RollbackResult) {
+	if _, err := runGit(ctx, repositoryRoot, "rm", "--cached", "--ignore-unmatch", "--", state.path); err != nil {
+		rollback.Errors = append(rollback.Errors, fmt.Sprintf("unstage existing untracked target %s: %v", state.path, err))
+	}
+	absolutePath := filepath.Join(repositoryRoot, filepath.FromSlash(state.path))
+	if removeError := os.Remove(absolutePath); removeError != nil && !os.IsNotExist(removeError) {
+		rollback.Errors = append(rollback.Errors, fmt.Sprintf("remove changed existing untracked target %s: %v", state.path, removeError))
+		return
+	}
+	if makeError := os.MkdirAll(filepath.Dir(absolutePath), 0o755); makeError != nil {
+		rollback.Errors = append(rollback.Errors, fmt.Sprintf("recreate parent for existing untracked target %s: %v", state.path, makeError))
+		return
+	}
+	if writeError := os.WriteFile(absolutePath, state.originalBytes, state.originalMode.Perm()); writeError != nil {
+		rollback.Errors = append(rollback.Errors, fmt.Sprintf("restore existing untracked target %s: %v", state.path, writeError))
+	} else if chmodError := os.Chmod(absolutePath, state.originalMode); chmodError != nil {
+		rollback.Errors = append(rollback.Errors, fmt.Sprintf("restore mode for existing untracked target %s: %v", state.path, chmodError))
+	} else {
+		rollback.Actions = append(rollback.Actions, "restored existing untracked target "+state.path)
+	}
+}
+
+func restoreTrackedFromHead(ctx context.Context, repositoryRoot, path string, rollback *resultmodel.RollbackResult) {
+	if _, err := runGit(ctx, repositoryRoot, "restore", "--source=HEAD", "--staged", "--worktree", "--", path); err != nil {
 		rollback.Errors = append(rollback.Errors, err.Error())
-	} else if !empty {
-		rollback.Errors = append(rollback.Errors, "the declared target paths are still staged after rollback")
+	} else {
+		rollback.Actions = append(rollback.Actions, "restored "+path+" from HEAD")
 	}
-	result.Rollback = rollback
-	if len(rollback.Errors) > 0 {
-		result.Rollback.Status = resultmodel.RollbackIncomplete
-		return failTransaction(result, resultmodel.OutcomeRisk, FailureRollback, operationError.Error(), rolledBackPaths...)
+}
+
+// restoredByTargetLoop says whether the per-target loop already owns a created path's
+// rollback: a private, dirty-tracked or existing-untracked target is restored there, not
+// removed as a creation.
+func restoredByTargetLoop(states []targetState, path string) bool {
+	for _, state := range states {
+		if state.path == path && (state.privateUntracked || state.existingDirtyAllowed || state.existingUntrackedAllowed) {
+			return true
+		}
 	}
-	return failTransaction(result, resultmodel.OutcomeRolledBack, failureKind, operationError.Error(), rolledBackPaths...)
+	return false
+}
+
+// deepestFirst orders paths so a child is handled before its parent directory.
+func deepestFirst(paths []string) []string {
+	sort.Slice(paths, func(first, second int) bool {
+		return strings.Count(paths[first], "/") > strings.Count(paths[second], "/")
+	})
+	return paths
 }
 
 func rollbackDirtyTracked(root *os.Root, state targetState, published publishedTrackedState) (string, error) {
-	if root == nil {
-		return "", errors.New("rollback root is unavailable")
-	}
 	if !published.existed {
 		if _, statError := root.Lstat(filepath.FromSlash(state.path)); !os.IsNotExist(statError) {
 			return "", fmt.Errorf("dirty tracked target changed after publication; preserved replacement: %s", state.path)
@@ -1190,9 +1273,6 @@ func rollbackDirtyTracked(root *os.Root, state targetState, published publishedT
 }
 
 func trackedPublicationStillOwned(root *os.Root, path string, published publishedTrackedState) bool {
-	if root == nil {
-		return false
-	}
 	if !published.existed {
 		_, err := root.Lstat(filepath.FromSlash(path))
 		return os.IsNotExist(err)
@@ -1271,16 +1351,10 @@ func rootedRegularPreimage(root *os.Root, path string) (os.FileInfo, [sha256.Siz
 	return rootedOpenSnapshot(root, path, "private target", "after-private-preimage-lstat")
 }
 
-// rootedOpenSnapshot requires a usable rooted filesystem handle and does not re-check one.
-// Callers satisfy that in one of two ways: they hold a handle from an os.OpenRoot whose
-// failure already returned, or they take their own explicit no-root branch before calling.
-// Which branch is right depends on the target in hand, so it is decided at the call site and
-// not here — today inspectCreatedObject reports the created object as replaced,
-// trackedPublicationStillOwned reports the publication as unowned, rollbackDirtyTracked
-// reports the rollback root as unavailable, and rollbackFailure skips privateStateStillOriginal
-// outright. One caller does neither: rollbackFailure hands its unchecked handle to
-// quarantineAndRollbackPrivate, which dereferences it long before reaching this function, so a
-// test here never covered that path either.
+// rootedOpenSnapshot requires a handle whose open succeeded and does not re-check one.
+// Every os.OpenRoot in this file either returns on failure or, in rollbackFailure, decides
+// once and keeps the rooted half of rollback off a handle that never opened, so no caller
+// reaches here without one.
 func rootedOpenSnapshot(root *os.Root, path, targetDescription, hookStage string) (os.FileInfo, [sha256.Size]byte, []byte, error) {
 	var empty [sha256.Size]byte
 	rootPath := filepath.FromSlash(path)

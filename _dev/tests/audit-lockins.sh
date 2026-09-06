@@ -596,59 +596,45 @@ elif [ -n "$shell_machinery_rows" ]; then
   done <<< "$shell_machinery_rows"
 fi
 
-# Finding 3: nil-root-guards-git-transaction (REQ-558)
-# git_transaction.go opens eight rooted filesystem handles and seven of them return the moment
+# Finding 3: nil-root-guards-git-transaction (REQ-558; pin moved to zero by REQ-598)
+# git_transaction.go opens eight rooted filesystem handles. Seven return the moment
 # os.OpenRoot fails. The eighth, in rollbackFailure, records the failure and keeps going on
 # purpose, so a failed transaction still unstages its paths and still returns a typed
-# incomplete-rollback result when the worktree root cannot be opened. That one nil handle then
-# fans out across four independent loops, which is why the tests for it are not copies of a
-# single check: each consumer decides for itself what an unusable handle means for the target in
-# hand. Eight of the nine sites are reached with a nil handle by the real os.OpenRoot failing,
-# and deleting any one of seven of them replaces a reported incomplete rollback with a
-# nil-pointer panic mid-rollback. Only rootedOpenSnapshot re-tested a handle its callers had
-# already settled; that one site was deleted and its precondition now lives in the call shape.
+# incomplete-rollback result when the worktree root cannot be opened.
 #
-# The count is compared for equality, floor as well as ceiling. A ceiling alone catches a tenth
-# guard accreting; a floor alone catches a load-bearing guard removed as "redundant" — which is
-# the move this REQ set out to make nine times over and found it could make exactly once. The
-# package suite cannot stand in for the floor: no test in it reaches any no-handle branch, so
-# every one of those deletions compiles and passes.
+# REQ-558 traced that one possibly-nil handle to eleven consumers across four loops, found
+# eight per-consumer nil guards load-bearing and a ninth consumer, quarantineAndRollbackPrivate,
+# unguarded and panicking, and pinned the count at exactly 8 while REQ-598 owned the fix.
+# REQ-598 moved the decision to the open instead of adding the ninth guard: rollbackFailure
+# hands a handle that opened to rollbackWithRoot, and when the open fails runs
+# rollbackWithoutRoot, the Git-side half, which never holds a handle at all. Nothing downstream
+# of the open tests the handle any more, so the eight guards were dead and were deleted, and
+# the pin moved from 8 to 0. The package's first no-handle rollback test
+# (TestRollbackWithoutRootHandle…, driven through ExecuteTransaction with the open forced to
+# fail) now stands where the guards stood.
 #
-# The pattern is anchored to a guard SHAPE — an `if` on a non-comment line testing root against
-# nil in either operand order — rather than to the audit's bare `root [=!]= nil` text. The review
-# of REQ-558 showed the bare text lets one comment line pay for one deleted guard: delete a guard
-# whose absence panics a rollback, write `// assumes root != nil` above the function, and the count
-# is still eight. It also showed `if nil == root` dropping the count for a no-op rewrite. Both are
-# closed here. What the pattern still cannot see: a guard rewritten as a helper call
-# (`if hasRoot(root)`), which is a change to the pinned shape and is expected to move this pin
-# consciously.
-#
-# The pin is expected to move once more: REQ-598 owns the one consumer of the handle that has no
-# guard at all, quarantineAndRollbackPrivate, and either adds a ninth guard or makes all eight dead.
+# Zero is a ceiling and needs no floor. A nil test on `root` anywhere in this file means a
+# consumer has gone back to answering the handle question for itself, downstream of the one
+# place that already answered it. The pattern is anchored to a guard SHAPE — an `if` on a
+# non-comment line testing root against nil in either operand order — so a comment mentioning
+# `root != nil` does not count. What it still cannot see: a guard rewritten as a helper call
+# (`if hasRoot(root)`), or a rooted call added to rollbackWithoutRoot; the no-handle test is
+# the check for the second.
 nil_root_guard_file="$repo_root/skills/do-work/tools/do-work-cli/internal/gittransaction/git_transaction.go"
-nil_root_guard_expected_sites=8
 nil_root_guard_sites="$(rg -n '^[[:space:]]*(\}[[:space:]]*else[[:space:]]+)?if\b[^/]*\b(root [=!]= nil|nil [=!]= root)\b' "$nil_root_guard_file")"
 nil_root_guard_scan_status=$?
-# rg's status is read, not its output: exit 1 (no match) and exit 2 (could not search) both
-# print nothing, and a ratchet that judged the text alone would read a scan that never ran as a
-# file whose guards had all been deleted, or worse, take the same branch for both.
+# rg's status is read, not its output: exit 1 (no match) is the green answer here, and exit 2
+# (could not search, a renamed file included) prints nothing too — judged on text alone, a
+# scan that never ran would pass forever.
 if [ "$nil_root_guard_scan_status" -gt 1 ]; then
   printf 'FAIL: could not scan %s for nil-root guards (rg exit %s); the nil-root ratchet did not run.\n' \
     "${nil_root_guard_file#"$repo_root/"}" "$nil_root_guard_scan_status" >&2
   failure_count=$((failure_count + 1))
-elif [ "$nil_root_guard_scan_status" -eq 1 ]; then
-  printf 'FAIL: no nil-root guard is left in %s; REQ-558 pinned exactly %s, each one standing between an unopened rooted handle and a dereference during rollback.\n' \
-    "${nil_root_guard_file#"$repo_root/"}" "$nil_root_guard_expected_sites" >&2
+elif [ "$nil_root_guard_scan_status" -eq 0 ]; then
+  printf 'FAIL: nil-root guard(s) in %s; REQ-598 decided the rollback handle once at its open and pinned this at zero — a consumer testing the handle again has moved that decision back downstream:\n' \
+    "${nil_root_guard_file#"$repo_root/"}" >&2
+  printf '%s\n' "$nil_root_guard_sites" | sed 's|^|  |' >&2
   failure_count=$((failure_count + 1))
-else
-  nil_root_guard_site_count="$(printf '%s\n' "$nil_root_guard_sites" | wc -l | tr -d ' ')"
-  if [ "$nil_root_guard_site_count" -ne "$nil_root_guard_expected_sites" ]; then
-    printf 'FAIL: %s nil-root guards in %s; REQ-558 pinned exactly %s after tracing every consumer of the rollback handle — one consumer, quarantineAndRollbackPrivate, is still unguarded and REQ-598 owns it:\n' \
-      "$nil_root_guard_site_count" "${nil_root_guard_file#"$repo_root/"}" \
-      "$nil_root_guard_expected_sites" >&2
-    printf '%s\n' "$nil_root_guard_sites" | sed 's|^|  |' >&2
-    failure_count=$((failure_count + 1))
-  fi
 fi
 # Finding 3: guide pattern drift against the code that classifies (REQ-596)
 # The guide's "Secret-shaped matching" sentence is what a person applies BY HAND when the tool will
