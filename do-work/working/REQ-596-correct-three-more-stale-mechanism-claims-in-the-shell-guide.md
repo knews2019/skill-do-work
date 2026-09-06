@@ -237,3 +237,55 @@ tool does not apply leaves every in-flight REQ's files unassociated. Both were w
 timing, the merge-aware commit diff, the commit file listing, the verified-exact-publication rule and
 the portfolio summary. The request's own line is "the sections these three sit in", and widening past it
 a third time in one file is how a review finds prose nobody asked for.
+
+## Discovered Tasks
+
+- **Ten more stale claims in the guide's other sections**, at lines 30, 32, 80, 92 (two), 106 (two) and
+  128 (two) — lifecycle timing, the merge-aware commit diff, the commit file listing, the
+  verified-exact-publication rule and the portfolio summary. Two are outright false rather than
+  incomplete. Captured as **REQ-597**, with the sweep's report as its input.
+
+## Qualification
+
+**Passed.** Read from the range `06be3df6..7c296fc0`, one file, 8 insertions and 7 deletions. Canonical
+`qualify` and `scope-drift` both satisfied.
+
+- **Each of the eleven replacements was written from a fixture result, not from a reading.** The sweep
+  produced its findings by running the real command against a purpose-built repository: `credential.txt`
+  and `MyCredential.YAML` came back as excluded rows and neither matches the old glob; an ordinary
+  `brandnew.txt` came back `X` because a secret was present in the same inventory; `git mv
+  api-secret.pem plain-name.txt` followed by a delete produced `XD` rows for both paths; a candidate no
+  REQ claimed produced no row at all. The three the request names were re-verified by the orchestrator
+  against `internal/corehelpers/inventory.go` and `internal/corehelpers/commands.go` before the edits.
+- **The two claims with a real cost are the by-hand fallbacks.** They are what a person runs when the
+  tool will not. The secret pattern being narrower than the code's means a by-hand inventory leaves a
+  file unquarantined that the tool would have caught, and the status test the guide prescribed but the
+  tool does not apply means every `claimed` or `blocked` REQ is filtered out and its files come back
+  unassociated — which is the exact failure the bullet two lines above it exists to prevent.
+- **The publication sentence no longer generalizes across a difference.** That shape — one sentence true
+  of some of the things it covers — has now shipped twice in this file, in REQ-555 and again here, and
+  both times a review caught it rather than the author. The replacement states each command separately
+  and keeps only the two clauses that are true of both.
+- **All three guards over this file exit 0**: `audit-lockins.sh` (route column, orchestration claim,
+  Mechanics-column shell vocabulary), `prescribed-shell-canonicalization.sh` (twelve headings, sixteen
+  pointer sites), and the new `quiet-grep-pipeline-audit.sh`.
+- **The ten findings outside these two sections are captured, not fixed.** Widening a third time in one
+  file is how a review ends up finding prose nobody asked for; the request drew its own line at "the
+  sections these three sit in", and REQ-597 carries the rest with the sweep's report as its input.
+
+## Testing
+
+**No test reads the sentences that changed, and the correctness evidence is the sweep's fixtures.**
+Each of the 21 findings came from running the real command against a purpose-built repository under
+`scratchpad/audit596/`, not from reading the code; the three the request names were re-verified
+independently before the edits.
+
+- `bash _dev/tests/audit-lockins.sh` — `Audit lock-in regressions passed.`, exit 0.
+- `bash _dev/tests/prescribed-shell-canonicalization.sh` — passed, exit 0.
+- `bash _dev/tests/quiet-grep-pipeline-audit.sh` — `quiet-grep pipeline audit passed (94 tracked shell
+  files, 14 must-flag and 7 must-not-flag shapes).`, exit 0.
+- `bash _dev/tests/maintainer-verify.sh` at the pre-change revision `06be3df` —
+  `Maintainer verification passed.`, exit 0, gate wall 88s.
+
+Unlike REQ-595, nothing here is guardable by a text scan: these are by-hand procedures whose correctness
+is a comparison between prose and behaviour, and the only instrument for that is a fixture plus a reader.
