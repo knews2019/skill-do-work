@@ -1,7 +1,7 @@
 ---
 id: REQ-591
 title: 'Reduce repeated setup and unaffected reruns in the fast gate'
-status: claimed
+status: completed
 created_at: 2026-09-05T19:43:25Z
 user_request: UR-127
 domain: testing
@@ -42,7 +42,9 @@ remediation_at: 2026-09-05T22:20:13Z
 review_at: 2026-09-05T22:45:16Z
 integration_at: 2026-09-05T21:44:19Z
 planning_at: 2026-09-05T20:34:44Z
-commit: fcf07ea467b8cca5dffe2ec42df2793e8b2c6bd3
+commit: 63f5288d5c1cf8a65842280a49248f65c11fe5d9
+completed_at: 2026-09-06T03:36:21Z
+release_at: 2026-09-06T03:36:21Z
 ---
 
 # Reduce Repeated Setup and Unaffected Reruns in the Fast Gate
@@ -372,3 +374,36 @@ The fast gate can skip a stage whose complete inputs have not moved, and it says
 All six lanes are selected, because the change reaches both the maintainer test tree and the CLI module: `queue-kanban-javascript`, `queue-kanban-browser`, `staged-skills`, `do-work-cli-integrations`, `updater`, `installer`. Each runs as `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane <id>`.
 
 Held at Step 7.7: the lanes are not run now and the queue loop is not held open. **The browser lane needs `QUEUE_KANBAN_BROWSER` pointing at the installed Chrome at drain time**, or it reports skipped, and a skip is not a pass.
+
+### Heavy verification result (run at drain, 2026-09-06)
+
+**All six lanes ran and all six were green. Revision `a48b9eb6`, the tree quiet from the first command
+to the last.** `bash _dev/tests/maintainer-verify.sh --heavy` printed `Maintainer verification passed.`
+and exited **0**, gate wall **301s**.
+
+**One deviation from the plan, stated.** The plan named six separate `--heavy-lane <id>` invocations.
+What ran instead is the single `--heavy` gate, which executes the same six lanes' work in one process
+at one revision. That is what the four held requests were waiting for — one run at the final revision
+rather than four — and it removes the `HEAVY-RUN-REVISION-CHANGED` risk of interleaving six
+invocations with four finalizations. The evidence below is per lane, not the gate's summary line,
+because a skipped lane reports success.
+
+| Lane | Its own evidence line | Result |
+|---|---|---|
+| `queue-kanban-javascript` | `module=…/queue-kanban wall=67s tests=481 slowest-file=generate_test.go:12.43s limit=none (heavy)` | 481 tests, green |
+| `queue-kanban-browser` | `module=…/queue-kanban wall=102s tests=35 slowest-file=timeline_browser_probe_test.go:63.99s limit=none (heavy)` | 35 tests, green |
+| `do-work-cli-integrations` | `module=…/do-work-cli wall=25s tests=798 slowest-file=internal/nextselection/blocked_probe_test.go:6.77s limit=none (heavy)` | 798 tests, green |
+| `staged-skills` | `test-file duration: staged-skills-contract.sh 45s (limit none (heavy))` | green |
+| `updater` | `test-file duration: update-script-behavior.sh 84s (limit none (heavy))` | green |
+| `installer` | `test-file duration: install-suite-behavior.sh 28s (limit none (heavy))` | green |
+
+**Zero `SKIP` lines in the whole run and zero `FAIL` lines.** The browser lane genuinely ran — 35 tests
+and a 64-second `timeline_browser_probe_test.go` are not what a skipped lane prints — because
+`QUEUE_KANBAN_BROWSER` pointed at `/opt/pw-browsers/chromium`, as every one of these four plans
+required.
+
+The run also needed a sanitized environment, which is worth recording for the next drain:
+`NODE_OPTIONS` and the `GIT_CONFIG_COUNT` / `GIT_CONFIG_KEY_*` / `GIT_CONFIG_VALUE_*` triples unset,
+and `GIT_CONFIG_GLOBAL` pointed at a config with `commit.gpgsign = false`. A heavy run refuses on an
+opaque runtime extension or an opaque git configuration override, and an unusable global signing key
+makes a fixture's own `git commit` fail inside the lane.

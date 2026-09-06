@@ -2,6 +2,15 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.305.0 — The Fast Gate Skips a Stage Whose Inputs Have Not Moved (2026-09-06)
+
+Running the fast gate twice in a row used to re-run everything, even when nothing a stage reads had changed since the last green result. It now records what each stage read and skips a stage whose complete inputs are unchanged, printing one line per stage saying what it did and why.
+
+- The seal is over the working tree, not over committed content. The fast gate exists to run on a tree with uncommitted work, so sealing commits would report a false pass the moment anything was uncommitted.
+- Records are kept in their own key space, keyed by stage and by working-tree root, so two sibling worktrees cannot invalidate each other's evidence.
+- Three commands expose the decision, the recording and the invalidation, and the gate wraps its two Go test stages in them. Anything the engine cannot determine forces the stage to run — an unreadable or missing decision never reads as a skip.
+- Separately, the SessionStart hook probe stopped copying the tool's module once per scenario and now builds one shared tree. The cost was never the copying: each copy created a new absolute path, which the Go toolchain treats as a different build and re-links from scratch. Each scenario still keeps its own writable state, the banner input is now a required argument so forgetting it is an error rather than a silent pass, and a new check proves the shared tree is unchanged after every case.
+
 ## 0.304.7 — The Timeline Scrolls With the Board Instead of Inside Its Own Box (2026-09-06)
 
 The Timeline's rows used to scroll inside a box about half the window tall, so the page had two scrollbars and the reader had to find the right one. The rows now scroll with the board, and the time axis stays pinned to the top edge the way the Activity view's column header does.
