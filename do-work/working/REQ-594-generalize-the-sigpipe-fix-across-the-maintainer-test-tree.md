@@ -292,7 +292,7 @@ are prose and outside the walk by file type rather than by exemption.
 `bash _dev/tests/maintainer-verify.sh` printed `Maintainer verification passed.` and exited 0, gate
 wall 61s. One `SKIP` line, the heavy-only one every fast run prints.
 
-**A fast gate is not sufficient evidence for this request, and the builder is told so.** 90 of the 128
+**A fast gate is not sufficient evidence for this request, and the builder is told so.** 96 of the 128
 `_dev/tests` sites live under `prescribed-shell-cases/`, reached only through
 `staged-skills-contract.sh:189`, which `probe-lanes.sh` registers inside the heavy block. Two thirds of
 the conversions are invisible to a fast run, so the `staged-skills`, `updater` and `installer` heavy
@@ -342,10 +342,14 @@ hands back one file to the main checkout without staging or committing anything 
 - `skills/do-work/tools/select-simple-reqs.sh` — one line, and the reason this is a release
 
 **What was done: 129 offending logical lines became 0**, measured with REQ-593's own scanner over
-`git ls-files -z -- '*.sh'` at both ends. 122 sites were mechanical — the producer replays a variable
-whose status is asserted on its capture line. Seven needed a decision, and each got an explicit status
-assertion rather than a bare herestring, because capturing a producer's output discards the status the
-pipeline used to carry.
+`git ls-files -z -- '*.sh'` at both ends. ~~122 sites were mechanical … Seven needed a decision.~~
+**Corrected after review, and the correction is on the axis that matters most here.** The measured split
+is **99** variable-replay producers and **30** real-command producers: 21 `find … -print -quit` leak
+checks, 2 `find` guards, 2 `sed -n` routing extractions, 2 `git check-attr`, 1 `git diff --cached`, 1
+`git add -u` and 1 `associate-files.sh`. Every one of those 30 carries a live producer status, which is
+exactly what the request says must be judged rather than swept — and each of them did get an explicit
+status assertion. The delivered work was right; the summary described seven decisions where there were
+thirty, and its own D-05 already contradicted it by saying find's status had to be asserted at 21 sites.
 
 **Two of the 129 were not latent.** `staged-skills-contract.sh:82` and `install-suite-behavior.sh:142`
 are `find … -print -quit | grep -q .` guards. Reproduced broken with a stub that prints a leftover file
@@ -382,9 +386,16 @@ five output shapes.
 - **D-03 — the shipped line is converted and the release is paid. DECIDE & STATE.** See above.
 - **D-04 — the fixture asserts by name, not by count. DECIDE & STATE.** 16 mutations, each naming the
   shape it lost. A count would have said only that something broke.
-- **D-05 — `find`'s exit status is asserted at all 21 leak checks. DECIDE & STATE**, with its own
-  caveat: it is right at all 21 because every search root is created by the fixture before the check. A
+- **D-05 — `find`'s exit status is asserted at 20 of the 21 leak checks. DECIDE & STATE**, with its own
+  caveat: it is right at those 20 because every search root is created by the fixture before the check. A
   future case searching a root that may legitimately be absent must not copy the form blindly.
+  **Corrected after review:** the first version said all 21, while the Qualification below said twenty
+  and was right. The 21st, `generate-report-image.sh:414`, is a readiness poll inside a bounded wait
+  loop rather than an assertion; it reads only the captured path's emptiness, deliberately and with a
+  comment saying why it differs from its twenty neighbours. **Also corrected:** "every search root is
+  created by the fixture" is proven for 18. Three of the 21 sit inside `if false; then` blocks that
+  predate this change and never execute, so their only evidence is `bash -n`, ShellCheck and the
+  scanner. That was in the builders' hand-back and should have been in this record.
 - **D-06 — one site was reverted rather than converted.** `repair-req-timestamps.sh:262` pipes into
   `grep -c`, which reads to EOF, so there is no early-leaving reader and no defect. The conversion tool
   was tightened to require an early-leaving option, matching the scanner's own definition, so the diff
@@ -438,9 +449,12 @@ Canonical `qualify` and `scope-drift` both satisfied.
 ## Testing
 
 **Three heavy lanes and the fast gate, each with its own exit line, because a lane that skips reports
-success.** Two thirds of this change (90 of the 128 `_dev/tests` sites) lives under
-`prescribed-shell-cases/` and is reached only through `staged-skills-contract.sh:189`, inside the heavy
-block — a fast run alone would have been no evidence at all.
+success.** Two thirds of this change (96 of the 128 `_dev/tests` sites, **corrected after review from
+90**) is heavy-only: 90 under `prescribed-shell-cases/`, reached only through
+`staged-skills-contract.sh:189`, plus `staged-skills-contract.sh`'s own 4 and
+`install-suite-behavior.sh`'s 2, both of which refuse to run outside the heavy tier. A fast run alone
+would have been no evidence at all. The three lanes below were required and run, so no evidence was
+missing — only the number was wrong.
 
 - Fast gate — `Maintainer verification passed.`, exit 0, gate wall 99s at the builder's final head and
   79s on the merged tree, CLI module at 796 tests. The audit's own line:
