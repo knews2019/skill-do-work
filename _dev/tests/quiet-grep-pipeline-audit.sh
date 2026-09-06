@@ -31,15 +31,24 @@ trap cleanup_fixture_directory EXIT
 # alone, and a regex naming only today's shape goes stale the first time someone writes another
 # (prime-shell-commands.md, "Closed Enumerations Go Stale").
 #   * logical lines, not physical: a pipeline continued after a trailing `|` or `\` is one
-#     command, and a comment line between the pipe and the reader is skipped exactly as bash
-#     skips it — after a pipe bash keeps looking for the next command past blank and comment
-#     lines, so `producer |` / `# note` / `grep -q x` is one running pipeline;
+#     command, and blank lines, comment lines and a trailing note after the pipe are all skipped
+#     the way bash skips them — after a pipe bash keeps looking for the next command past blank
+#     and comment lines, so `producer |` / `# note` / `grep -q x` and `producer | # note` /
+#     `grep -q x` are each one running pipeline;
 #   * any pipe stage after the first, so `command grep`, `LC_ALL=C grep` and `/usr/bin/grep`
 #     count;
 #   * any early-leaving option: -q, bundled -Eq, --quiet, --silent, -m/--max-count.
-# A `#` suppresses exactly what bash suppresses, which is why moving an offender into a comment
-# deletes the check rather than hiding it: there is no state where the offender is both hidden
-# and live.
+# A `#` at the start of a logical line suppresses exactly what bash suppresses, which is why moving
+# an offender there deletes the check rather than hiding it. A `#` AFTER an open pipe does not: bash
+# keeps reading, so that note is stripped above rather than treated as an end.
+#
+# WHAT THIS DOES NOT CATCH, stated so its silence is not read as coverage. The reader set is
+# grep/egrep/fgrep: `rg -q`, `head -1`, `sed -n '1p;q'`, `awk '/x/{exit}'` and `read` are the same
+# defect with a different early-leaving reader and are invisible here. A pipeline assembled at
+# runtime — a variable command, `eval`, a deferred here-doc body — is invisible to any source scan.
+# The parser is textual: it splits on a bare `|`, so a `|` inside a quoted pattern makes a phantom
+# stage, and it has no here-doc awareness, so a here-doc body spelling the shape reads as an
+# offender. Neither has an instance in the tree today; both are pinned as fixture shapes below.
 quiet_grep_pipeline_offenders() {
   # awk rather than a grep pipeline so the scan reports its own failure instead of an
   # unreadable file reading as a clean file.
@@ -49,16 +58,19 @@ quiet_grep_pipeline_offenders() {
       stage_count = split(command_text, pipe_stages, "|")
       for (stage_index = 2; stage_index <= stage_count; stage_index++) {
         if (pipe_stages[stage_index] ~ /(^|[^-[:alnum:]_])(e|f)?grep([[:space:]]|$)/ \
-          && pipe_stages[stage_index] ~ /(^|[[:space:]])(-[A-Za-z]*[qm][A-Za-z]*|--quiet|--silent|--max-count)([[:space:]=]|$)/) {
+          && pipe_stages[stage_index] ~ /(^|[[:space:]])(-[A-Za-z]*[qm][A-Za-z0-9]*|--quiet|--silent|--max-count)([[:space:]=]|$)/) {
           return 1
         }
       }
       return 0
     }
     /^[[:space:]]*#/ { next }
+    joined_command != "" && /^[[:space:]]*$/ { next }
     {
       physical_line = $0
       sub(/[[:space:]]+$/, "", physical_line)
+      # A trailing note after the pipe is a bash comment, so the pipeline stays open across it.
+      sub(/\|[[:space:]]*#.*$/, "|", physical_line)
       if (joined_command == "") { first_line_number = NR }
       if (physical_line ~ /\|$/ || physical_line ~ /\\$/) {
         sub(/\\$/, "", physical_line)
@@ -111,6 +123,16 @@ tar tzf archive.tgz $pipe_character \\
 $hash_character a note between the continuation and the reader
   grep -q flag-comment-line-after-continuation
 tar tzf archive.tgz $pipe_character grep -q flag-trailing-note-on-the-line $hash_character an ordinary note
+tar tzf archive.tgz $pipe_character
+
+  grep -q flag-blank-line-after-pipe
+tar tzf archive.tgz $pipe_character \\
+
+  grep -q flag-blank-line-after-continuation
+tar tzf archive.tgz $pipe_character $hash_character a note after the pipe on this line
+  grep -q flag-note-after-pipe-same-line
+tar tzf archive.tgz $pipe_character grep -m1 flag-short-max-count-no-space
+tar tzf archive.tgz $pipe_character grep -qm1 flag-bundled-quiet-max-count
 FIXTURE
 }
 
@@ -143,6 +165,11 @@ must_flag_shapes=(
   'flag-comment-line-after-pipe	a comment line between the pipe and the reader'
   'flag-comment-line-after-continuation	a comment line between the backslash continuation and the reader'
   'flag-trailing-note-on-the-line	a trailing # note on the offending line itself'
+  'flag-blank-line-after-pipe	a blank line between the pipe and the reader'
+  'flag-blank-line-after-continuation	a blank line between the backslash continuation and the reader'
+  'flag-note-after-pipe-same-line	a note after the pipe on the same line, with the reader on the next'
+  'flag-short-max-count-no-space	grep -m1, with no space before the count'
+  'flag-bundled-quiet-max-count	grep -qm1, quiet bundled with a count'
 )
 
 must_not_flag_shapes=(
