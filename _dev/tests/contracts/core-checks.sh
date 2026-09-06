@@ -46,24 +46,24 @@ else
     "$core_root/tools/checks/uncommitted-inventory.sh" "$inventory_probe_dir" 2>/dev/null || true)"
   for must_be_excluded in .env .envrc .environment production.env credentials.json server.pem \
                           .ENV.PRODUCTION AuthCredentials.json private.PEM UPPER-SECRET.txt; do
-    if ! printf '%s\n' "$inventory_probe_output" | grep -qxF "$(printf 'X\tnested/%s' "$must_be_excluded")"; then
+    if ! grep -qxF "$(printf 'X\tnested/%s' "$must_be_excluded")" <<<"$inventory_probe_output"; then
       printf 'FAIL: tools/checks/uncommitted-inventory.sh must tag nested/%s as X (secret-shaped) — it is reachable by the advertised exclusion globs.\n' "$must_be_excluded" >&2
       fail_count=$((fail_count + 1))
     fi
   done
-  if ! printf '%s\n' "$inventory_probe_output" | grep -qxF "$(printf 'X\tuppercase/.ENV')"; then
+  if ! grep -qxF "$(printf 'X\tuppercase/.ENV')" <<<"$inventory_probe_output"; then
     printf 'FAIL: tools/checks/uncommitted-inventory.sh must tag uppercase/.ENV as X (case-insensitive secret-shaped basename).\n' >&2
     fail_count=$((fail_count + 1))
   fi
-  if ! printf '%s\n' "$inventory_probe_output" | grep -qxF "$(printf 'XD\tnested/.env.local')"; then
+  if ! grep -qxF "$(printf 'XD\tnested/.env.local')" <<<"$inventory_probe_output"; then
     printf 'FAIL: tools/checks/uncommitted-inventory.sh must tag a deleted secret-shaped path as XD so its deletion can be associated and committed without reading its former contents.\n' >&2
     fail_count=$((fail_count + 1))
   fi
-  if ! printf '%s\n' "$inventory_probe_output" | grep -qxF "$(printf 'XD\t.env')" || ! printf '%s\n' "$inventory_probe_output" | grep -qxF "$(printf 'X\tvisible-config.txt')"; then
+  if ! grep -qxF "$(printf 'XD\t.env')" <<<"$inventory_probe_output" || ! grep -qxF "$(printf 'X\tvisible-config.txt')" <<<"$inventory_probe_output"; then
     printf 'FAIL: tools/checks/uncommitted-inventory.sh must fail closed when a secret-shaped rename origin moves to an ordinary-looking destination: XD for the source and X for the destination.\n' >&2
     fail_count=$((fail_count + 1))
   fi
-  if ! printf '%s\n' "$inventory_probe_output" | grep -qxF "$(printf 'X\tnested/ordinary.js')"; then
+  if ! grep -qxF "$(printf 'X\tnested/ordinary.js')" <<<"$inventory_probe_output"; then
     printf 'FAIL: tools/checks/uncommitted-inventory.sh must quarantine every A as X when an excluded path makes addition provenance ambiguous.\n' >&2
     fail_count=$((fail_count + 1))
   fi
@@ -75,8 +75,8 @@ else
   git -C "$inventory_probe_dir" config status.renames false
   inventory_renames_disabled_output="$(GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_SYSTEM=/dev/null \
     "$core_root/tools/checks/uncommitted-inventory.sh" "$inventory_probe_dir" 2>/dev/null || true)"
-  if ! printf '%s\n' "$inventory_renames_disabled_output" | grep -qxF "$(printf 'XD\t.env')" || \
-      ! printf '%s\n' "$inventory_renames_disabled_output" | grep -qxF "$(printf 'X\tvisible-config.txt')"; then
+  if ! grep -qxF "$(printf 'XD\t.env')" <<<"$inventory_renames_disabled_output" || \
+      ! grep -qxF "$(printf 'X\tvisible-config.txt')" <<<"$inventory_renames_disabled_output"; then
     printf 'FAIL: tools/checks/uncommitted-inventory.sh must force rename detection even when status.renames=false: XD for .env and X for visible-config.txt.\n' >&2
     fail_count=$((fail_count + 1))
   fi
@@ -90,8 +90,8 @@ else
   else
     inventory_after_reset_output="$(GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_SYSTEM=/dev/null \
       "$core_root/tools/checks/uncommitted-inventory.sh" "$inventory_probe_dir" 2>/dev/null || true)"
-    if ! printf '%s\n' "$inventory_after_reset_output" | grep -qxF "$(printf 'XD\t.env')" || \
-        ! printf '%s\n' "$inventory_after_reset_output" | grep -qxF "$(printf 'X\tvisible-config.txt')"; then
+    if ! grep -qxF "$(printf 'XD\t.env')" <<<"$inventory_after_reset_output" || \
+        ! grep -qxF "$(printf 'X\tvisible-config.txt')" <<<"$inventory_after_reset_output"; then
       printf 'FAIL: reset-and-reinventory must fail closed: XD for .env and X, never A, for visible-config.txt.\n' >&2
       fail_count=$((fail_count + 1))
     fi
@@ -136,7 +136,7 @@ if ! (
 else
   ordinary_addition_output="$(GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_SYSTEM=/dev/null \
     "$core_root/tools/checks/uncommitted-inventory.sh" "$ordinary_addition_probe_dir" 2>/dev/null || true)"
-  if ! printf '%s\n' "$ordinary_addition_output" | grep -qxF "$(printf 'A\tordinary.js')"; then
+  if ! grep -qxF "$(printf 'A\tordinary.js')" <<<"$ordinary_addition_output"; then
     printf 'FAIL: tools/checks/uncommitted-inventory.sh must leave an ordinary addition as A when no XD exists.\n' >&2
     fail_count=$((fail_count + 1))
   fi
@@ -216,8 +216,8 @@ if ! (
 else
   untracked_secret_copy_output="$(GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_SYSTEM=/dev/null \
     "$core_root/tools/checks/uncommitted-inventory.sh" "$untracked_secret_copy_probe_dir" 2>/dev/null || true)"
-  if ! printf '%s\n' "$untracked_secret_copy_output" | grep -qxF "$(printf 'X\t.env')" || \
-      ! printf '%s\n' "$untracked_secret_copy_output" | grep -qxF "$(printf 'X\tapplication-config.txt')"; then
+  if ! grep -qxF "$(printf 'X\t.env')" <<<"$untracked_secret_copy_output" || \
+      ! grep -qxF "$(printf 'X\tapplication-config.txt')" <<<"$untracked_secret_copy_output"; then
     printf 'FAIL: tools/checks/uncommitted-inventory.sh must quarantine an ordinary-looking untracked copy beside an untracked secret-shaped source.\n' >&2
     fail_count=$((fail_count + 1))
   fi
@@ -256,11 +256,11 @@ if ! (
 else
   copy_inventory_output="$(GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_SYSTEM=/dev/null \
     "$core_root/tools/checks/uncommitted-inventory.sh" "$copy_inventory_probe_dir" 2>/dev/null || true)"
-  if ! printf '%s\n' "$copy_inventory_output" | grep -qxF "$(printf 'X\tcopied-config.txt')"; then
+  if ! grep -qxF "$(printf 'X\tcopied-config.txt')" <<<"$copy_inventory_output"; then
     printf 'FAIL: tools/checks/uncommitted-inventory.sh must tag a secret-derived copy destination as X, never A, even when status.renames=false.\n' >&2
     fail_count=$((fail_count + 1))
   fi
-  if ! printf '%s\n' "$copy_inventory_output" | grep -qxF "$(printf 'M\tordinary-destination.txt')"; then
+  if ! grep -qxF "$(printf 'M\tordinary-destination.txt')" <<<"$copy_inventory_output"; then
     printf 'FAIL: tools/checks/uncommitted-inventory.sh must retain M for an ordinary rename while copy-aware detection is active.\n' >&2
     fail_count=$((fail_count + 1))
   fi
@@ -288,9 +288,13 @@ else
   if [ -n "$(git -C "$unstaged_deletion_probe_dir" diff --cached --name-status --no-renames -- .env)" ]; then
     printf 'FAIL: unstaged secret-deletion probe unexpectedly began with cached metadata.\n' >&2
     fail_count=$((fail_count + 1))
-  elif ! git -C "$unstaged_deletion_probe_dir" add -u -- .env || \
-       ! git -C "$unstaged_deletion_probe_dir" diff --cached --name-status --no-renames -- .env \
-         | grep -qxF "$(printf 'D\t.env')"; then
+  elif ! git -C "$unstaged_deletion_probe_dir" add -u -- .env; then
+    printf 'FAIL: git add -u could not stage the unstaged tracked secret deletion.\n' >&2
+    fail_count=$((fail_count + 1))
+  elif ! unstaged_deletion_cached_metadata="$(git -C "$unstaged_deletion_probe_dir" diff --cached --name-status --no-renames -- .env)"; then
+    printf 'FAIL: git diff --cached could not read the staged secret-deletion metadata.\n' >&2
+    fail_count=$((fail_count + 1))
+  elif ! grep -qxF "$(printf 'D\t.env')" <<<"$unstaged_deletion_cached_metadata"; then
     printf 'FAIL: an unstaged tracked secret deletion must still stage as one exact cached D entry.\n' >&2
     fail_count=$((fail_count + 1))
   fi
@@ -346,10 +350,12 @@ completed_at: 2026-08-07T12:00:00Z
 - `legacy-file.txt`, `second-file.txt` (modified)
 - Notes mention `phantom-file.txt`, but this prose bullet claims no file.
 EOF
-if ! associate_complete_output="$(printf 'legacy-file.txt\nsecond-file.txt\nphantom-file.txt\n' | "$core_root/tools/checks/associate-files.sh" --repo-root "$associate_complete_probe_dir")" \
-    || ! printf '%s\n' "$associate_complete_output" | grep -qxF "$(printf 'REQ-501\tlegacy-file.txt')" \
-    || ! printf '%s\n' "$associate_complete_output" | grep -qxF "$(printf 'REQ-501\tsecond-file.txt')" \
-    || ! printf '%s\n' "$associate_complete_output" | grep -qxF -- "$(printf -- '-\tphantom-file.txt')"; then
+if ! associate_complete_output="$(printf 'legacy-file.txt\nsecond-file.txt\nphantom-file.txt\n' | "$core_root/tools/checks/associate-files.sh" --repo-root "$associate_complete_probe_dir")"; then
+  printf 'FAIL: tools/checks/associate-files.sh must exit 0 on a multi-path Implementation Summary bullet.\n' >&2
+  fail_count=$((fail_count + 1))
+elif ! grep -qxF "$(printf 'REQ-501\tlegacy-file.txt')" <<<"$associate_complete_output" \
+    || ! grep -qxF "$(printf 'REQ-501\tsecond-file.txt')" <<<"$associate_complete_output" \
+    || ! grep -qxF -- "$(printf -- '-\tphantom-file.txt')" <<<"$associate_complete_output"; then
   printf 'FAIL: tools/checks/associate-files.sh must associate every path on a multi-path bullet, preserve root-level filenames, ignore prose-only backticks, and normalize the documented terminal-success alias.\n' >&2
   fail_count=$((fail_count + 1))
 fi
