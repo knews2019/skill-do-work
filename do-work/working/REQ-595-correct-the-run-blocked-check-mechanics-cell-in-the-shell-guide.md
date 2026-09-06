@@ -1,6 +1,6 @@
 ---
 id: REQ-595
-status: pending
+status: claimed
 domain: general
 created_at: 2026-09-06T03:56:38Z
 user_request: UR-105
@@ -14,6 +14,7 @@ depends_on: [REQ-555]
 related: [REQ-555]
 write_set: [skills/do-work/docs/prescribed-shell-primitives.md]
 title: 'Correct the run-blocked-check mechanics cell, which describes shell the Go command does not run'
+claimed_at: 2026-09-06T04:38:49Z
 ---
 
 # Correct the run-blocked-check Mechanics Cell in the Shell Guide
