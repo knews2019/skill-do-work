@@ -29,9 +29,14 @@ claimed_at: 2026-09-06T07:26:22Z
 # Decide In-Flight-ness From the Walked Root, Not a Path Substring
 
 ## AI Execution State (P-A-U Loop)
-- [ ] **[PLAN]:** (Agent: Read listed `prime_files` and agent rules. Write brief technical approach here. Do not write code yet.)
-- [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
-- [ ] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
+- [x] **[PLAN]:** Read `skills/do-work/tools/do-work-cli/prime-do-work-cli.md`. Approach: write the
+  failing test first against a checkout whose absolute path contains a `working` component, then carry
+  an active flag per walked root into the callback and delete the substring test.
+- [x] **[APPLY]:** Two files, both in the one package: `inventory.go` (+15/-6) and `inventory_test.go`
+  (+28). Nothing else.
+- [x] **[UNIFY]:** `git diff --stat` over the merge — 2 files, 43 insertions, 6 deletions. `go build`,
+  `go vet` and `gofmt -l` clean. The package suite green and unchanged; the new test red on the old code
+  and green on the new. No debug artifacts.
 
 ## What
 
@@ -97,3 +102,46 @@ there.
 **Planning not required** — Route A: one expression, one test that fails on the current code.
 
 *Skipped by work action*
+
+## Implementation Summary
+
+**Files changed:**
+- `skills/do-work/tools/do-work-cli/internal/corehelpers/inventory.go`
+- `skills/do-work/tools/do-work-cli/internal/corehelpers/inventory_test.go`
+
+**What was done:** `AssociateProjectPaths` no longer decides whether a REQ is in flight by searching its
+absolute path for `/working/`. The two roots it walks are now a slice of directory-plus-active pairs —
+`do-work/working` active, `do-work/archive` not — and the walk callback reads the pair it is walking.
+A slice rather than a map keeps the original walk order, so the tie-break between roots is unchanged.
+The substring line is deleted and a four-line comment states the rule.
+
+**The test came first and failed on the old code.**
+`TestAssociationUnderWorkingDirectoryCheckoutSkipsBlockedArchivedRequest` builds a repository at
+`<tmp>/working/project`, an archived REQ with `status: blocked` whose Implementation Summary names an
+uncommitted file, and asserts the file is not associated. On the old code:
+`blocked archived request claimed project.txt through the checkout path: owner="REQ-905"`. It also
+guards that the fixture path really contains `/working/`, and pins the other half of the rule in the
+same checkout — a blocked `working/` REQ still claims its path.
+
+Merge range `dc5d8180..890ed0c8`, two files, 43 insertions and 6 deletions.
+
+## Decisions — implementation
+
+- **D-01 — the roots carry the flag; the path does not. DECIDE & STATE.** The loop already iterated two
+  known directories. Reading the flag off the pair is the only design in which a path's spelling cannot
+  change the answer.
+- **D-02 — a slice, not a map, so walk order is preserved.** The tie-break between two REQs claiming one
+  path is `completed.After(current.completed)`, and which claim is seen first decides equal cases. A map
+  would have made that order unspecified.
+- **D-03 — the test pins both halves in one checkout.** Asserting only that the archived blocked REQ
+  loses would pass under a fix that made *everything* inactive. The same test asserts a blocked
+  `working/` REQ in the same nested checkout still claims its path.
+
+## Discovered Tasks
+
+- **The guide's tie-break sentence is wrong for a missing timestamp, and it is a sentence this run
+  wrote in REQ-596.** It says "when the timestamps are equal or missing the first claim found stands".
+  `ParseTimestamp` yields the zero time for a missing `completed_at` and the comparison is
+  `completed.After(current.completed)`, so a `working/` REQ with no timestamp — every in-flight REQ —
+  loses the path to any `archive/` REQ that has one, whatever the walk order. Only when **both** are
+  missing does the first found stand. Folded into REQ-601, whose write set now includes the guide.

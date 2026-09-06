@@ -12,7 +12,7 @@ tdd: false
 maintenance: true
 depends_on: [REQ-597]
 related: [REQ-595, REQ-596, REQ-597]
-write_set: [skills/do-work-toolbox/actions/ai-report-reference.md, skills/do-work/actions/install.md, skills/do-work-toolbox/actions/present-work.md, skills/do-work-board/actions/board.md]
+write_set: [skills/do-work-toolbox/actions/ai-report-reference.md, skills/do-work/actions/install.md, skills/do-work-toolbox/actions/present-work.md, skills/do-work-board/actions/board.md, skills/do-work/docs/prescribed-shell-primitives.md]
 title: 'Correct stale mechanism claims in four shipped callers of the shell guide'
 ---
 
@@ -46,6 +46,13 @@ running it.
   with a `GIT-EXCLUDE-NOT-A-REPOSITORY` warning finding, which the launcher prints.
 - `skills/do-work/actions/install.md:246` says the installer uses "the canonical Local Git ignore
   helper". It never calls that command; it implements the same contract inline. Say that.
+- **One sentence in the guide itself, written by REQ-596 and found wrong by REQ-599's builder.** The
+  conflict-resolution bullet in "Protected inventory fallbacks" says "when the timestamps are equal or
+  missing the first claim found stands". `requestmodel.ParseTimestamp` returns the zero time for a
+  missing `completed_at` and the comparison is `completed.After(current.completed)`, so a `working/`
+  REQ with no timestamp — which is every in-flight REQ — loses the path to any `archive/` REQ that has
+  one, regardless of walk order. Only when both are missing does the first found stand. Say exactly
+  that, and confirm it with a fixture holding one in-flight and one archived REQ claiming the same path.
 - Derive every replacement from the code. The sweep's drafts are input, not answers — four of the prior
   sweep's drafts for the guide were false.
 
