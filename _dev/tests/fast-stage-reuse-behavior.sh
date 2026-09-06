@@ -65,6 +65,7 @@ MANIFEST
 printf 'alpha source 1\n' > "$project_root/module-alpha/source.txt"
 printf 'toolchain 1\n' > "$project_root/do-work/runs/toolchain.txt"
 printf -- '---\nid: REQ-001\n---\n' > "$project_root/do-work/queue/REQ-001-fixture.md"
+printf '*.ignored\n' > "$project_root/.gitignore"
 # The wrapper reaches the CLI through the skill's canonical launcher path. The
 # shim forwards to the real launcher in this repository so the command under
 # test is the real one, and so the fixture does not pay a fresh Go link for a
@@ -164,6 +165,17 @@ expect_case 'a queue-tree change executes the stage that reads it' yes 0 'EXECUT
 printf 'probe\tprobe\t0.00\t0\n' >> "$project_root/do-work/test-durations.tsv"
 run_stage
 expect_case "the gate's own duration log alone still reuses" no 0 'REUSED (fingerprint_match, recorded '
+
+# An ignored file added outside stage coverage leaves the stage reusable.
+mkdir -p "$project_root/outside-tree"
+printf 'ignored outside\n' > "$project_root/outside-tree/artifact.ignored"
+run_stage
+expect_case 'an ignored file outside coverage leaves stage reusable' no 0 'REUSED (fingerprint_match, recorded '
+
+# An ignored file added under stage coverage forces execution.
+printf 'ignored covered\n' > "$project_root/module-alpha/artifact.ignored"
+run_stage
+expect_case 'an ignored file under coverage executes' yes 0 'EXECUTING (fingerprint_mismatch)'
 
 change_covered_input 3
 stage_exit_status=9

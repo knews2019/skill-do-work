@@ -315,6 +315,20 @@ func TestFastStageReuseDecisionTable(t *testing.T) {
 			expectDisposition: LaneDispositionExecuted, expectReason: laneReasonFingerprintMismatch,
 		},
 		{
+			name: "ignored file added under coverage forces the stage", stageID: "alpha-stage",
+			mutate: func(t *testing.T, root string) {
+				writeHeavyTestFile(t, root, "module-alpha/output.generated", "ignored output\n")
+			},
+			expectDisposition: LaneDispositionExecuted, expectReason: laneReasonFingerprintMismatch,
+		},
+		{
+			name: "ignored file added outside coverage leaves stage reusable", stageID: "alpha-stage",
+			mutate: func(t *testing.T, root string) {
+				writeHeavyTestFile(t, root, "module-beta/output.generated", "ignored output\n")
+			},
+			expectDisposition: LaneDispositionReused, expectReason: laneReasonFingerprintMatch,
+		},
+		{
 			name: "environment variable added", stageID: "alpha-stage",
 			mutate: func(t *testing.T, _ string) {
 				t.Setenv("FAST_STAGE_TEST_ADDED", "1")
@@ -612,5 +626,38 @@ func TestFastStageCoversNothingIsUncertain(t *testing.T) {
 	runHeavyTestGit(t, repositoryRoot, "add", "-A")
 	if _, reason, _, _ := decideFastStageFields(t, repositoryRoot, "alpha-stage", time.Now()); reason != laneReasonFingerprintUncertain {
 		t.Fatalf("a stage covering nothing reported %s, want fingerprint_uncertain", reason)
+	}
+}
+
+func TestFastStageCoverageRoots(t *testing.T) {
+	rules := []coverageRule{
+		{Kind: "subtree", Path: "skills/do-work/tools/do-work-cli"},
+		{Kind: "exact", Path: "do-work/archive/UR-003/input.md"},
+		{Kind: "suffix-under", Root: "module-alpha", Suffix: ".go"},
+	}
+	roots := fastStageCoverageRoots(rules)
+	if len(roots) != 3 {
+		t.Fatalf("want 3 roots, got %d: %v", len(roots), roots)
+	}
+	expected := []string{"do-work/archive/UR-003/input.md", "module-alpha", "skills/do-work/tools/do-work-cli"}
+	for i, r := range roots {
+		if r != expected[i] {
+			t.Errorf("root %d = %q, want %q", i, r, expected[i])
+		}
+	}
+
+	// Root "." or empty falls back to nil (unscoped scan)
+	dotRules := []coverageRule{
+		{Kind: "suffix-under", Root: ".", Suffix: ".go"},
+	}
+	if dotRoots := fastStageCoverageRoots(dotRules); dotRoots != nil {
+		t.Fatalf("want nil for root '.', got %v", dotRoots)
+	}
+
+	emptyRules := []coverageRule{
+		{Kind: "exact", Path: ""},
+	}
+	if emptyRoots := fastStageCoverageRoots(emptyRules); emptyRoots != nil {
+		t.Fatalf("want nil for empty path, got %v", emptyRoots)
 	}
 }

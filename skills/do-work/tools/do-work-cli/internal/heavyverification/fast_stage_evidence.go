@@ -201,9 +201,45 @@ func fastStageManifestClassifiesPath(manifest fastStageManifest, path string) bo
 // input that cannot be determined — a tracked path missing from the worktree, a
 // symlink or other non-regular file where a file is expected, an unreadable
 // file — is an error, never a weaker seal.
+func fastStageCoverageRoots(rules []coverageRule) []string {
+	var roots []string
+	seen := map[string]bool{}
+	for _, rule := range rules {
+		var path string
+		switch rule.Kind {
+		case "exact", "subtree":
+			path = rule.Path
+		case "suffix-under":
+			path = rule.Root
+		default:
+			return nil
+		}
+		if path == "" || path == "." {
+			return nil
+		}
+		cleanPath := filepath.Clean(filepath.FromSlash(path))
+		if cleanPath == "." || strings.HasPrefix(cleanPath, "..") {
+			return nil
+		}
+		if !seen[path] {
+			seen[path] = true
+			roots = append(roots, path)
+		}
+	}
+	sort.Strings(roots)
+	return roots
+}
+
+// workingTreeSeals hashes the bytes a stage would actually read right now, for
+// every tracked and untracked path the stage covers, plus every path the
+// manifest classifies nowhere, MINUS every path SealExclusions names — an
+// excluded path is skipped even when the stage's own coverage matches it. An
+// input that cannot be determined — a tracked path missing from the worktree, a
+// symlink or other non-regular file where a file is expected, an unreadable
+// file — is an error, never a weaker seal.
 func workingTreeSeals(repositoryRoot string, stage manifestFastStage, manifest fastStageManifest) ([]string, bool, error) {
-	seals := []string{}
-	sealedPaths := map[string]bool{}
+	seals := make([]string, 0, 2048)
+	sealedPaths := make(map[string]bool, 2048)
 	hasCoveredInput := false
 	sealPath := func(path string) error {
 		if sealedPaths[path] {
@@ -227,11 +263,11 @@ func workingTreeSeals(repositoryRoot string, stage manifestFastStage, manifest f
 		return nil
 	}
 
-	trackedOutput, err := runGit(repositoryRoot, "ls-files", "-z", "--cached")
+	worktreeOutput, err := runGit(repositoryRoot, "ls-files", "-z", "--cached", "--others", "--exclude-standard")
 	if err != nil {
-		return nil, false, fmt.Errorf("inspect tracked stage inputs: %w", err)
+		return nil, false, fmt.Errorf("inspect worktree stage inputs: %w", err)
 	}
-	for _, path := range strings.Split(string(trackedOutput), "\x00") {
+	for _, path := range strings.Split(string(worktreeOutput), "\x00") {
 		// A seal-excluded path is nobody's input: the gate or the orchestrator
 		// writes it while a gate runs, so sealing it would compare a stage
 		// against bytes its own run produced. This test comes BEFORE the
@@ -256,27 +292,26 @@ func workingTreeSeals(repositoryRoot string, stage manifestFastStage, manifest f
 	// any normal checkout, which carries ignored generated artifacts. Being
 	// ignored is no protection once a stage covers the path, so an ignored file
 	// the gate writes itself needs a seal exclusion, same as a tracked one.
-	for _, ignored := range []bool{false, true} {
-		argv := []string{"ls-files", "-z", "--others", "--exclude-standard"}
-		if ignored {
-			argv = append(argv, "--ignored")
+	ignoredArgv := []string{"ls-files", "-z", "--others", "--exclude-standard", "--ignored"}
+	if coverageRoots := fastStageCoverageRoots(stage.Coverage); len(coverageRoots) > 0 {
+		ignoredArgv = append(ignoredArgv, "--")
+		ignoredArgv = append(ignoredArgv, coverageRoots...)
+	}
+	ignoredOutput, err := runGit(repositoryRoot, ignoredArgv...)
+	if err != nil {
+		return nil, false, fmt.Errorf("inspect ignored stage inputs: %w", err)
+	}
+	for _, path := range strings.Split(string(ignoredOutput), "\x00") {
+		if path == "" || fastStageSealExcludesPath(manifest, path) {
+			continue
 		}
-		untrackedOutput, err := runGit(repositoryRoot, argv...)
-		if err != nil {
-			return nil, false, fmt.Errorf("inspect untracked stage inputs: %w", err)
+		stageCovered := laneCoversPath(stage.Coverage, path)
+		if !stageCovered {
+			continue
 		}
-		for _, path := range strings.Split(string(untrackedOutput), "\x00") {
-			if path == "" || fastStageSealExcludesPath(manifest, path) {
-				continue
-			}
-			stageCovered := laneCoversPath(stage.Coverage, path)
-			if !stageCovered && (ignored || fastStageManifestClassifiesPath(manifest, path)) {
-				continue
-			}
-			hasCoveredInput = hasCoveredInput || stageCovered
-			if err := sealPath(path); err != nil {
-				return nil, false, err
-			}
+		hasCoveredInput = true
+		if err := sealPath(path); err != nil {
+			return nil, false, err
 		}
 	}
 	sort.Strings(seals)

@@ -15,15 +15,23 @@ import subprocess
 import sys
 
 
+_binary_seal_cache = {}
+
+
 def binary_seal(binary_path):
     resolved_path = Path(binary_path).resolve(strict=True)
+    cached = _binary_seal_cache.get(resolved_path)
+    if cached is not None:
+        return cached
     contents = resolved_path.read_bytes()
     # A wrapper can delegate to mutable files outside this repository. Its own
     # bytes alone cannot attest to the executable that actually runs.
     native_headers = (b"\x7fELF", b"\xcf\xfa\xed\xfe", b"\xfe\xed\xfa\xcf", b"\xce\xfa\xed\xfe", b"\xfe\xed\xfa\xce", b"\xca\xfe\xba\xbe", b"\xbe\xba\xfe\xca", b"MZ")
     if not contents.startswith(native_headers):
         raise ValueError("opaque executable wrapper")
-    return {"path": str(resolved_path), "sha256": hashlib.sha256(contents).hexdigest()}
+    seal = {"path": str(resolved_path), "sha256": hashlib.sha256(contents).hexdigest()}
+    _binary_seal_cache[resolved_path] = seal
+    return seal
 
 
 def runtime_seal(module_directory, tool_names):
