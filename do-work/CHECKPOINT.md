@@ -18,3 +18,4 @@ session_depth: light
 
 ## In Progress (interrupted)
 
+- REQ-607: A2: Build the integration CLI once per tested source — claimed 2026-09-06T14:02:19Z — writer: t2s-Virtual-Machine.local:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2

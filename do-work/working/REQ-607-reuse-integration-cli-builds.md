@@ -1,7 +1,7 @@
 ---
 id: REQ-607
 title: 'A2: Build the integration CLI once per tested source'
-status: pending
+status: claimed
 created_at: 2026-09-06T13:16:35Z
 user_request: UR-128
 domain: testing
@@ -13,6 +13,7 @@ maintenance: false
 batch: test-efficiency
 depends_on: [REQ-606]
 related: [REQ-606, REQ-608, REQ-609, REQ-610, REQ-611, REQ-612, REQ-613, REQ-614]
+claimed_at: 2026-09-06T14:02:19Z
 ---
 # A2: Build the integration CLI once per tested source
 
