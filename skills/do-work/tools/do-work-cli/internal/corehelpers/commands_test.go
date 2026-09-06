@@ -2,6 +2,8 @@ package corehelpers
 
 import (
 	"encoding/json"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -356,4 +358,85 @@ func commandExitStatus(err error) int {
 		return exitError.ExitCode()
 	}
 	return 127
+}
+
+func TestAtomicDownloadOccupancyRule(t *testing.T) {
+	repository := t.TempDir()
+	targetFile := filepath.Join(repository, "occupied.txt")
+	if err := os.WriteFile(targetFile, []byte("existing content"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	dryRunResult := handleAtomicDownload(testContext(repository), []string{
+		"--source-url", "https://example.invalid/file.txt",
+		"--target-path", targetFile,
+		"--dry-run",
+	})
+	liveResult := handleAtomicDownload(testContext(repository), []string{
+		"--source-url", "https://example.invalid/file.txt",
+		"--target-path", targetFile,
+	})
+
+	// Both dry-run and live against occupying regular file give the same exit status (2) and same finding
+	if resultmodel.ExitCode(dryRunResult.Outcome) != 2 {
+		t.Fatalf("dry-run exit=%d want 2", resultmodel.ExitCode(dryRunResult.Outcome))
+	}
+	if resultmodel.ExitCode(liveResult.Outcome) != 2 {
+		t.Fatalf("live exit=%d want 2", resultmodel.ExitCode(liveResult.Outcome))
+	}
+	if len(dryRunResult.Findings) == 0 || dryRunResult.Findings[0].Code != "DOWNLOAD-TARGET-OCCUPIED" {
+		t.Fatalf("dry-run findings = %#v", dryRunResult.Findings)
+	}
+	if len(liveResult.Findings) == 0 || liveResult.Findings[0].Code != "DOWNLOAD-TARGET-OCCUPIED" {
+		t.Fatalf("live findings = %#v", liveResult.Findings)
+	}
+	if dryRunResult.Findings[0].Evidence[0] != liveResult.Findings[0].Evidence[0] {
+		t.Fatalf("dry-run evidence %q != live evidence %q", dryRunResult.Findings[0].Evidence[0], liveResult.Findings[0].Evidence[0])
+	}
+	if dryRunResult.Findings[0].AutomationStopReason != liveResult.Findings[0].AutomationStopReason {
+		t.Fatalf("dry-run stop reason %q != live stop reason %q", dryRunResult.Findings[0].AutomationStopReason, liveResult.Findings[0].AutomationStopReason)
+	}
+
+	// Live against a directory is unchanged: exit 1, OutcomeFindings, "target is a directory"
+	targetDir := filepath.Join(repository, "occupied-dir")
+	if err := os.MkdirAll(targetDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	dirResult := handleAtomicDownload(testContext(repository), []string{
+		"--source-url", "https://example.invalid/file.txt",
+		"--target-path", targetDir,
+	})
+	if resultmodel.ExitCode(dirResult.Outcome) != 1 {
+		t.Fatalf("directory exit=%d want 1", resultmodel.ExitCode(dirResult.Outcome))
+	}
+	if len(dirResult.Findings) == 0 || dirResult.Findings[0].Evidence[0] != "target is a directory" {
+		t.Fatalf("directory evidence = %#v", dirResult.Findings)
+	}
+}
+
+func TestAtomicDownloadStatFailureDoesNotPanic(t *testing.T) {
+	repository := t.TempDir()
+	targetFile := filepath.Join(repository, "dest.txt")
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte("downloaded payload"))
+	}))
+	defer server.Close()
+
+	atomicDownloadStat = func(path string) (os.FileInfo, error) {
+		return nil, os.ErrNotExist
+	}
+	defer func() { atomicDownloadStat = os.Stat }()
+
+	res := handleAtomicDownload(testContext(repository), []string{
+		"--source-url", server.URL + "/file.txt",
+		"--target-path", targetFile,
+	})
+	if resultmodel.ExitCode(res.Outcome) != 2 {
+		t.Fatalf("exit code = %d, want 2", resultmodel.ExitCode(res.Outcome))
+	}
+	if len(res.Findings) == 0 || res.Findings[0].Code != "DOWNLOAD-FAILED" {
+		t.Fatalf("findings = %#v", res.Findings)
+	}
 }
