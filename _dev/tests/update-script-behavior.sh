@@ -141,6 +141,30 @@ if ! verify_output_matchers_read_greps_verdict; then
   record_failure "output matchers: on a 256 KiB probe output a matcher reported the writer's exit status instead of grep's verdict"
 fi
 
+# The self-check above proves the mechanism on the two shipped matchers. This one pins every
+# other site in the file, because the defect is the shape and not the length of any one
+# writer's output: `writer | grep -q PATTERN` under `set -o pipefail` reports the writer's
+# SIGPIPE death as "no match" whenever the writer is still writing when grep leaves at its
+# first match. Reverting any converted site reintroduces that shape and is caught here rather
+# than trusted to a race that may not reproduce. `||` is not a pipe, and a grep reading a file
+# or a herestring has no writer to kill, so neither is flagged.
+verify_no_check_reads_a_quiet_grep_pipeline() {
+  local offending_lines
+  # awk rather than a grep pipeline so the scan reports its own failure instead of an
+  # unreadable file reading as a clean file.
+  offending_lines="$(awk '
+    /^[[:space:]]*#/ { next }
+    /[^|]\|[[:space:]]*grep[[:space:]]+-[A-Za-z]*q/ { printf "%d: %s\n", NR, $0 }
+  ' "${BASH_SOURCE[0]}")" || return 1
+  [ -z "$offending_lines" ] && return 0
+  printf 'quiet grep fed from a pipeline:\n%s\n' "$offending_lines" >&2
+  return 1
+}
+
+if ! verify_no_check_reads_a_quiet_grep_pipeline; then
+  record_failure "this script feeds grep -q from a pipeline: under pipefail the writer's SIGPIPE death is reported as grep's verdict"
+fi
+
 init_project() {
   local project_path="$1"
   git -c init.defaultBranch=main init -q "$project_path"
@@ -604,15 +628,21 @@ else
 
   # Case 2: the git route must honor export-ignore. A cp -R / rsync / tar-the-clone
   # implementation passes cases 1 and 3 and fails only here.
-  if tar tzf "$fallback_archive" 2>/dev/null | grep -q 'private-path'; then
+  # The listing is captured once and every check reads it as a herestring. `tar tzf | grep -q`
+  # is the same SIGPIPE race the matchers above lost: grep leaves at the first match, tar dies
+  # mid-write, and `set -o pipefail` reports that death as "no match". An archive listing is
+  # long enough to lose it. tar's own readability is asserted directly above, so an empty
+  # listing here cannot be mistaken for a clean archive.
+  fallback_archive_listing="$(tar tzf "$fallback_archive" 2>/dev/null)"
+  if grep -q 'private-path' <<<"$fallback_archive_listing"; then
     record_failure 'upstream fetcher: the git route shipped an export-ignore path into the archive'
   fi
-  if ! tar tzf "$fallback_archive" 2>/dev/null | grep -q 'VERSION'; then
+  if ! grep -q 'VERSION' <<<"$fallback_archive_listing"; then
     record_failure 'upstream fetcher: the git route omitted tracked, shipped content'
   fi
-  fallback_top_level="$(tar tzf "$fallback_archive" 2>/dev/null | sed -n '1s|/.*||p')"
+  fallback_top_level="$(sed -n '1s|/.*||p' <<<"$fallback_archive_listing")"
   if [ -z "$fallback_top_level" ] \
-    || tar tzf "$fallback_archive" 2>/dev/null | grep -qv "^$fallback_top_level/"; then
+    || grep -qv "^$fallback_top_level/" <<<"$fallback_archive_listing"; then
     record_failure 'upstream fetcher: the git route did not produce a single top-level directory'
   fi
 
@@ -624,10 +654,11 @@ else
     "$upstream_fixture_repo" 2>&1)"
   probe_status=$?
   assert_status 0 'upstream fetcher: requested branch exits 0'
-  if ! tar tzf "$requested_branch_archive" 2>/dev/null | grep -q 'requested-branch-marker\.txt'; then
+  requested_branch_listing="$(tar tzf "$requested_branch_archive" 2>/dev/null)"
+  if ! grep -q 'requested-branch-marker\.txt' <<<"$requested_branch_listing"; then
     record_failure 'upstream fetcher: requested branch archive omitted its marker'
   fi
-  if tar tzf "$requested_branch_archive" 2>/dev/null | grep -q 'default-branch-marker\.txt'; then
+  if grep -q 'default-branch-marker\.txt' <<<"$requested_branch_listing"; then
     record_failure 'upstream fetcher: requested branch archive substituted default HEAD'
   fi
   requested_branch_extract="$fetch_root/requested-branch-extract"
@@ -672,10 +703,11 @@ else
     "$rate_limited_url/unparseable.tar.gz" "$upstream_fixture_repo" 2>&1)"
   probe_status=$?
   assert_status 0 'upstream fetcher: unparseable URL uses default HEAD'
-  if ! tar tzf "$default_branch_archive" 2>/dev/null | grep -q 'default-branch-marker\.txt'; then
+  default_branch_listing="$(tar tzf "$default_branch_archive" 2>/dev/null)"
+  if ! grep -q 'default-branch-marker\.txt' <<<"$default_branch_listing"; then
     record_failure 'upstream fetcher: unparseable URL archive omitted the default marker'
   fi
-  if tar tzf "$default_branch_archive" 2>/dev/null | grep -q 'requested-branch-marker\.txt'; then
+  if grep -q 'requested-branch-marker\.txt' <<<"$default_branch_listing"; then
     record_failure 'upstream fetcher: unparseable URL selected a non-default branch'
   fi
 
@@ -719,10 +751,17 @@ os.execvp(sys.argv[1], sys.argv[1:])' \
   if [ "$(cat "$preserved_target")" != 'previously downloaded archive' ]; then
     record_failure 'upstream fetcher: total failure changed the pre-existing target'
   fi
-  if find "$fetch_root" -name 'preserved.tar.gz.download.*' -print -quit | grep -q .; then
+  # Captured rather than piped into `grep -q`, for the same reason as the tar listings above.
+  # The scan's own exit status is read here too: piped into grep, a find that could not read
+  # the tree produced no output and was indistinguishable from a tree with no leaked scratch.
+  leaked_download_scratch="$(find "$fetch_root" -name 'preserved.tar.gz.download.*' -print -quit)" \
+    || record_failure 'upstream fetcher: could not scan for leaked atomic-download scratch'
+  if [ -n "$leaked_download_scratch" ]; then
     record_failure 'upstream fetcher: total failure leaked atomic-download scratch'
   fi
-  if find "$fetch_root" -name 'preserved.tar.gz.fetching.*' -print -quit | grep -q .; then
+  leaked_fetching_scratch="$(find "$fetch_root" -name 'preserved.tar.gz.fetching.*' -print -quit)" \
+    || record_failure 'upstream fetcher: could not scan for leaked git-route scratch'
+  if [ -n "$leaked_fetching_scratch" ]; then
     record_failure 'upstream fetcher: total failure leaked git-route scratch'
   fi
   total_failure_report="$(bash "$archive_fetcher" "$preserved_target" \

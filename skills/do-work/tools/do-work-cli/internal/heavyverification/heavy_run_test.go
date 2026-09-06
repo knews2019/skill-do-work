@@ -256,3 +256,29 @@ func readSlowLaneChildPID(t *testing.T, repositoryRoot string) int {
 	}
 	return descendantPID
 }
+
+// TestRunLanesWithoutLaneTimeoutUsesTheDefaultBound pins the zero-value rule in
+// RunLanes. The 1800-second default is chosen by the CLI argument parser, so an
+// in-process caller that leaves LaneTimeout unset once armed time.NewTimer(0)
+// and had its lane terminated while it was still starting — a green lane
+// reported red, and only under load. green-lane sleeps a full second, far past
+// an instant bound and far below the default.
+func TestRunLanesWithoutLaneTimeoutUsesTheDefaultBound(t *testing.T) {
+	repositoryRoot := newHeavyRunRepository(t)
+
+	run, _, err := RunLanes(LaneRunRequest{
+		RepositoryRoot: repositoryRoot, ManifestPath: "heavy-lanes.json",
+		LaneIDs: []string{"green-lane"}, LaneOutputWriter: io.Discard,
+	})
+	if err != nil {
+		t.Fatalf("run with no LaneTimeout: %v", err)
+	}
+	if len(run.Lanes) != 1 {
+		t.Fatalf("lanes = %#v", run.Lanes)
+	}
+	lane := run.Lanes[0]
+	if lane.ExitStatus != 0 {
+		t.Fatalf("lane with no LaneTimeout = %#v, want exit 0; exit %d is the lane-timeout status, meaning the unset field armed an instant bound",
+			lane, HeavyLaneTimeoutStatus)
+	}
+}
