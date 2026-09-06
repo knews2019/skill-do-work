@@ -1,6 +1,6 @@
 ---
 id: REQ-594
-status: claimed
+status: completed
 domain: testing
 created_at: 2026-09-06T03:08:29Z
 user_request: UR-105
@@ -26,6 +26,9 @@ estimate:
 write_set: [_dev/tests/quiet-grep-pipeline-audit.sh, _dev/tests/contracts/probe-lanes.sh, _dev/tests/update-script-behavior.sh, _dev/tests/contracts/core-checks.sh, _dev/tests/contracts/queue-kanban.sh, _dev/tests/select-simple-reqs-behavior.sh, _dev/tests/p50-estimator-determinism.sh, _dev/tests/audit-lockins.sh, _dev/tests/staged-skills-contract.sh, _dev/tests/install-suite-behavior.sh, _dev/tests/prescribed-shell-cases/qualify.sh, _dev/tests/prescribed-shell-cases/audit-archive-timestamps.sh, _dev/tests/prescribed-shell-cases/repair-req-timestamps.sh, _dev/tests/prescribed-shell-cases/generate-report-image.sh, _dev/tests/prescribed-shell-cases/generate-report-image-batch.sh, _dev/tests/prescribed-shell-cases/publish-portfolio-summary.sh, _dev/tests/prescribed-shell-cases/atomic-download.sh, _dev/tests/prescribed-shell-cases/cleanup-req-reservations.sh, _dev/tests/prescribed-shell-cases/protected-inventory.sh, _dev/tests/prescribed-shell-cases/capture-screenshot.sh, _dev/tests/prescribed-shell-cases/show-commit-diff.sh, _dev/tests/prescribed-shell-cases/lexical-memory-recall.sh, _dev/tests/prescribed-shell-cases/install-memory-hooks.sh, _dev/tests/prescribed-shell-cases/architecture-report-preflight.sh, skills/do-work/tools/select-simple-reqs.sh]
 title: 'Generalize the SIGPIPE fix: about 130 quiet-grep pipelines remain across the maintainer test tree'
 claimed_at: 2026-09-06T03:36:45Z
+completed_at: 2026-09-06T06:55:35Z
+commit: 4edde877662c29b0fdf978c5b7d1e733709b59d2
+release_at: 2026-09-06T06:55:35Z
 ---
 
 # Generalize the SIGPIPE Fix Across the Maintainer Test Tree

@@ -2,6 +2,16 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.305.5 — Maintainer Checks Stop Reporting a Passed Check When Their Input Died (2026-09-06)
+
+A shell check written as `producer | grep -q PATTERN` reports the producer's death as the pattern's absence. Under the shell setting these checks all run with, that makes the check report the wrong answer — and it is wrong in both directions, so a check written to fail when it finds something can quietly pass instead. It is invisible below roughly 36 KB of output from the producer and certain above about 200 KB.
+
+- 129 such checks across 22 files are now 0. Ninety-nine were replaying text already captured; the other thirty ran a real command, and each of those now checks whether that command succeeded rather than trusting what it printed.
+- **Two of the 129 were not waiting to break — they were broken.** A check that the old runtime is gone reported it gone whenever its file search failed for any reason, which is what happens when one directory in the tree cannot be read. Both now report the failure.
+- The guard that forbids the shape moved out of the one probe file it lived in and now covers every shell file the repository tracks, running on an ordinary commit rather than only in the heavy tier. It costs a fifth of a second.
+- The guard's own test carries nineteen ways of writing the forbidden shape and seven safe shapes it must leave alone, each named, so removing part of the guard reports which spelling it stopped catching rather than that a number moved. An earlier version of the guard could be walked past five different ways, including by a blank line.
+- The guard's header states what it cannot see — a reader that is not `grep`, a pipeline assembled while the script runs, and three shapes it can flag by mistake, all of which fail loudly rather than passing quietly.
+
 ## 0.305.4 — Six Helper Names Defined Fifteen Times Now Have One Home Each (2026-09-06)
 
 Six small helpers were copied across the tool's internal packages, and three of the copies disagreed with each other. That is how a version comparison ended up returning opposite answers in two places and a safety check ended up switched off without anyone noticing.
