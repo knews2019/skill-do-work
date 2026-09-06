@@ -696,7 +696,7 @@ soft_wrap_gap = r"(?:[ \t]|\n(?![ \t]*\n))*"
 arrow_section_shape = re.compile(
     rf"""[`)\]"']*{soft_wrap_gap}→{soft_wrap_gap}\*\*((?:[^*\n]|\n(?![ \t]*\n))+?)\*\*"""
 )
-bold_run_pattern = re.compile(r"\*\*([^*\n]+?)\*\*")
+bold_run_pattern = re.compile(r"\*\*((?:[^*\n]|\n(?![ \t]*\n))+?)\*\*")
 section_name_cache = {}
 
 
@@ -730,7 +730,8 @@ def section_names_from_text(markdown_text):
     # heading_anchor_slugs_from_text does and for the same reason: masking blanks inline
     # code that the rendered heading keeps. A fully masked line is a fenced or indented
     # code payload, which declares no section.
-    masked_lines = strip_markdown_code(markdown_text).split("\n")
+    masked_markdown_text = strip_markdown_code(markdown_text)
+    masked_lines = masked_markdown_text.split("\n")
     collected_names = set()
     for line_index, raw_line in enumerate(markdown_text.split("\n")):
         if line_index >= len(masked_lines):
@@ -743,17 +744,15 @@ def section_names_from_text(markdown_text):
             if heading_match is not None:
                 heading_text = re.sub(r"[ \t]+#+$", "", heading_match.group(2) or "")
                 collected_names.add(normalize_section_name(heading_text))
-        # Bold runs are located on the masked line and read from the raw one. A real
-        # declaration's ** markers sit outside any code span and survive masking, so a
-        # bold run that exists only inside inline code — "Example: `**Removed Section**`
-        # is old syntax" — declares nothing and is no longer collected. The name still
-        # comes from the raw line, because masking blanks inline code that a declared
-        # label keeps ("**Populating `write_set`.**"), and masking preserves length, so a
-        # masked span indexes the raw line directly.
-        for bold_match in bold_run_pattern.finditer(masked_line):
-            collected_names.add(
-                normalize_section_name(raw_line[bold_match.start(1) : bold_match.end(1)])
+    # Locate bold markers across soft line breaks in masked text, so quoted examples
+    # still declare nothing. Read names from the raw span to retain inline code such
+    # as `write_set`; masking preserves offsets. Blank lines bound unclosed labels.
+    for bold_match in bold_run_pattern.finditer(masked_markdown_text):
+        collected_names.add(
+            normalize_section_name(
+                markdown_text[bold_match.start(1) : bold_match.end(1)]
             )
+        )
     collected_names.discard("")
     return collected_names
 
@@ -1076,13 +1075,22 @@ def run_section_citation_fixtures():
         "\n"
         "**Populating `write_set`.** Seed it only when the request names the files.\n"
         "\n"
+        "**Named contract - Wrapped\nSection.** Governs the behavior.\n"
+        "\n"
+        "**Wrapped\n`write_set`.** Keeps inline code in the label.\n"
+        "\n"
         "Example: `**Removed Section**` is the old syntax, quoted rather than declared.\n"
+        "\n"
+        "Example: `**Quoted\nLabel**` is also code, not a declaration.\n"
         "\n"
         "## Hook Install Internals (used by actions/setup-memory.md → memory-module)\n"
         "\n"
         "```text\n"
         "## Fenced Heading\n"
+        "**Fenced\nLabel**\n"
         "```\n"
+        "\n"
+        "**Separate\n \t\nParagraphs**\n"
     )
     fixture_section_names = section_names_from_text(fixture_document)
     resolution_cases = [
@@ -1111,6 +1119,11 @@ def run_section_citation_fixtures():
         ),
         ("a name the target never says is reported", "Recovery Refusals (Step 1)", False),
         ("a heading inside a code fence is not a section", "Fenced Heading", False),
+        ("a wrapped bold label resolves", "Wrapped Section", True),
+        ("a wrapped label keeps inline code", "Wrapped `write_set`", True),
+        ("a quoted wrapped label is not a section", "Quoted Label", False),
+        ("a fenced wrapped label is not a section", "Fenced Label", False),
+        ("a bold label cannot cross a blank line", "Separate Paragraphs", False),
         (
             # Quoting a bold run is not declaring one. Collected from the raw line, this
             # satisfied any citation naming it.
