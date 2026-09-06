@@ -38,7 +38,6 @@ type discoverySession struct {
 	repositoryRoot string
 	headCommit     string
 	headImages     map[string]FileImage
-	trackedPaths   []string
 }
 
 func newDiscoverySession(repositoryRoot string) *discoverySession {
@@ -79,18 +78,6 @@ func (s *discoverySession) headReleaseImage() releaseownership.ReadImage {
 		}
 		return image.Bytes, true
 	}
-}
-
-func (s *discoverySession) trackedReleasePaths() ([]string, error) {
-	if s.trackedPaths != nil {
-		return s.trackedPaths, nil
-	}
-	paths, err := enumerateTrackedReleasePaths(s.repositoryRoot)
-	if err != nil {
-		return nil, err
-	}
-	s.trackedPaths = paths
-	return paths, nil
 }
 
 // discoverFinalizationJournals freezes one protected inventory before reading
@@ -863,7 +850,7 @@ func tomlSectionVersion(contents []byte, acceptedSections []string) (string, boo
 }
 
 func configuredReleaseMetadataPaths(session *discoverySession, oldVersion string, changelogBefore []byte, changedSources map[string]releaseVersionChange) (configuredReleaseSet, error) {
-	tracked, err := session.trackedReleasePaths()
+	tracked, err := enumerateTrackedReleasePaths(session.repositoryRoot)
 	if err != nil {
 		return configuredReleaseSet{}, err
 	}
@@ -1582,10 +1569,6 @@ func implementationSummaryPaths(contents string) ([]string, error) {
 		}
 	}
 	return sharedprimitives.UniqueSortedStrings(paths), nil
-}
-
-func headFileImage(repositoryRoot, path string) (FileImage, error) {
-	return newDiscoverySession(repositoryRoot).headFileImage(path)
 }
 
 // headReleaseImage adapts the committed image to the shared ownership

@@ -2,6 +2,14 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.305.28 — Correct Test Reuse and Integrity Checks; Remove Unused Paths (2026-09-06)
+
+Covered ignored files now invalidate test reuse even when their directory names have Git pathspec meaning, and fixture-integrity self-tests retain their failures.
+
+- Treat coverage roots as literal Git paths, with a regression for a colon-prefixed directory.
+- Preserve integrity assertion failures while clearing only expected mutation-probe increments.
+- Remove unreachable per-file ShellCheck code and unused finalization tracked-path caching and wrapper code while retaining batching and committed-image caching.
+
 ## 0.305.27 — Timeline Disclosure Geometry and Markdown Version Mirrors (2026-09-06)
 
 Keep Timeline rows visible when findings disclosures change height, and prevent releases from leaving owned Markdown version mirrors stale.

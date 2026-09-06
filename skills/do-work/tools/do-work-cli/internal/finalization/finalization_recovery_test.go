@@ -1036,16 +1036,6 @@ func TestDiscoverySessionMemoizationAndInvalidation(t *testing.T) {
 		t.Fatalf("session1 did not memoize missing.txt")
 	}
 
-	// Tracked paths memoization
-	tracked1, err := session1.trackedReleasePaths()
-	if err != nil || len(tracked1) == 0 {
-		t.Fatalf("trackedReleasePaths failed: %v", err)
-	}
-	tracked2, err := session1.trackedReleasePaths()
-	if err != nil || len(tracked2) != len(tracked1) {
-		t.Fatalf("repeated trackedReleasePaths failed: %v", err)
-	}
-
 	// Now commit an update: HEAD changes
 	writeFinalizationFile(t, repositoryRoot, "version.txt", "2.0.0\n")
 	runFinalizationGit(t, repositoryRoot, "add", ".")

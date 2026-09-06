@@ -292,7 +292,7 @@ func workingTreeSeals(repositoryRoot string, stage manifestFastStage, manifest f
 	// any normal checkout, which carries ignored generated artifacts. Being
 	// ignored is no protection once a stage covers the path, so an ignored file
 	// the gate writes itself needs a seal exclusion, same as a tracked one.
-	ignoredArgv := []string{"ls-files", "-z", "--others", "--exclude-standard", "--ignored"}
+	ignoredArgv := []string{"--literal-pathspecs", "ls-files", "-z", "--others", "--exclude-standard", "--ignored"}
 	if coverageRoots := fastStageCoverageRoots(stage.Coverage); len(coverageRoots) > 0 {
 		ignoredArgv = append(ignoredArgv, "--")
 		ignoredArgv = append(ignoredArgv, coverageRoots...)

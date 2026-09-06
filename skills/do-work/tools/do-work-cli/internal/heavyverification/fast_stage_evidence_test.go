@@ -661,3 +661,28 @@ func TestFastStageCoverageRoots(t *testing.T) {
 		t.Fatalf("want nil for empty path, got %v", emptyRoots)
 	}
 }
+
+// A literal colon-prefixed directory is valid coverage but has Git pathspec
+// meaning unless ignored-input discovery explicitly disables that interpretation.
+func TestFastStageIgnoredInputUnderLiteralCoverageRoot(t *testing.T) {
+	repositoryRoot := buildFastStageTemplateRepository(t)
+	writeHeavyTestFile(t, repositoryRoot, ":module/source.txt", "covered source\n")
+	commitHeavyTestChanges(t, repositoryRoot, "literal coverage root")
+	stage := manifestFastStage{Coverage: []coverageRule{{Kind: "subtree", Path: ":module"}}}
+	if err := stage.Coverage[0].validate(); err != nil {
+		t.Fatal(err)
+	}
+	manifest := fastStageManifest{}
+	before, covered, err := workingTreeSeals(repositoryRoot, stage, manifest)
+	if err != nil || !covered {
+		t.Fatalf("initial stage inputs: covered=%t, err=%v", covered, err)
+	}
+	writeHeavyTestFile(t, repositoryRoot, ":module/new.generated", "new ignored input\n")
+	after, covered, err := workingTreeSeals(repositoryRoot, stage, manifest)
+	if err != nil || !covered {
+		t.Fatalf("updated stage inputs: covered=%t, err=%v", covered, err)
+	}
+	if strings.Join(before, "\n") == strings.Join(after, "\n") {
+		t.Fatal("adding an ignored file under literal coverage did not change the stage seal")
+	}
+}

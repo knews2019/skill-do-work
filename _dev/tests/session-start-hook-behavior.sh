@@ -191,31 +191,37 @@ fi
 
 target_hook="$shared_skill_root/hooks/session-start.sh"
 printf '# mutation test\n' >> "$target_hook"
+saved_failure_count="$failure_count"
 assert_shared_skill_root_unchanged "byte-mutation" 2>"$mutation_err"
-if [ "$failure_count" -eq "$saved_failure_count" ] || ! grep -q 'byte-mutation modified the shared skill tree' "$mutation_err"; then
+observed_failure_count="$failure_count"
+failure_count="$saved_failure_count"
+if [ "$observed_failure_count" -eq "$saved_failure_count" ] || ! grep -q 'byte-mutation modified the shared skill tree' "$mutation_err"; then
   printf 'FAIL: byte mutation was not detected by assert_shared_skill_root_unchanged.\n' >&2
   failure_count=$((failure_count + 1))
 fi
-failure_count="$saved_failure_count"
 cp "$repo_root/skills/do-work/hooks/session-start.sh" "$target_hook"
 
 added_tool="$shared_skill_root/tools/rogue-tool.sh"
 printf 'echo rogue\n' > "$added_tool"
+saved_failure_count="$failure_count"
 assert_shared_skill_root_unchanged "added-path" 2>"$mutation_err"
-if [ "$failure_count" -eq "$saved_failure_count" ] || ! grep -q 'added-path modified the shared skill tree' "$mutation_err"; then
+observed_failure_count="$failure_count"
+failure_count="$saved_failure_count"
+if [ "$observed_failure_count" -eq "$saved_failure_count" ] || ! grep -q 'added-path modified the shared skill tree' "$mutation_err"; then
   printf 'FAIL: added path was not detected by assert_shared_skill_root_unchanged.\n' >&2
   failure_count=$((failure_count + 1))
 fi
-failure_count="$saved_failure_count"
 rm -f "$added_tool"
 
 rm -f "$target_hook"
+saved_failure_count="$failure_count"
 assert_shared_skill_root_unchanged "removed-path" 2>"$mutation_err"
-if [ "$failure_count" -eq "$saved_failure_count" ] || ! grep -q 'removed-path modified the shared skill tree' "$mutation_err"; then
+observed_failure_count="$failure_count"
+failure_count="$saved_failure_count"
+if [ "$observed_failure_count" -eq "$saved_failure_count" ] || ! grep -q 'removed-path modified the shared skill tree' "$mutation_err"; then
   printf 'FAIL: removed path was not detected by assert_shared_skill_root_unchanged.\n' >&2
   failure_count=$((failure_count + 1))
 fi
-failure_count="$saved_failure_count"
 cp "$repo_root/skills/do-work/hooks/session-start.sh" "$target_hook"
 
 [ "$failure_count" -eq 0 ] || exit 1

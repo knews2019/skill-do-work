@@ -22,7 +22,6 @@ shellcheck_available=false
 if command -v shellcheck >/dev/null 2>&1; then
   shellcheck_available=true
 fi
-batch_shellcheck=true
 fence_lint_paths=()
 source_lint_paths=()
 
@@ -44,16 +43,9 @@ lint_shell_source() {
   local bash_diagnostic=''
   local bash_diagnostic_line=''
   local bash_source_line=''
-  local shellcheck_diagnostics=''
-  local shellcheck_status=0
-  local diagnostic_text=''
-  local diagnostic_source_line=''
-  local diagnostic_column=''
-  local diagnostic_message=''
   local quiet_grep_offenders=''
   local quiet_grep_offender=''
   local quiet_grep_offender_line=''
-  local -a shellcheck_arguments=(--format=gcc --shell=bash --severity=warning)
 
   if ! bash_diagnostic="$(bash -n "$lint_path" 2>&1)"; then
     bash_diagnostic_line="$(printf '%s\n' "$bash_diagnostic" \
@@ -91,39 +83,12 @@ lint_shell_source() {
     return
   fi
 
-  if [[ "$batch_shellcheck" == true ]]; then
-    if [[ "$source_kind" == fence ]]; then
-      fence_lint_paths+=("$lint_path")
-      printf '%s\n%s\n' "$source_path" "$source_start_line" > "${lint_path}.meta"
-    else
-      source_lint_paths+=("$lint_path")
-    fi
-    return
-  fi
-
   if [[ "$source_kind" == fence ]]; then
-    shellcheck_arguments+=("--exclude=SC2034,SC2154")
+    fence_lint_paths+=("$lint_path")
+    printf '%s\n%s\n' "$source_path" "$source_start_line" > "${lint_path}.meta"
+  else
+    source_lint_paths+=("$lint_path")
   fi
-  shellcheck_diagnostics="$(shellcheck "${shellcheck_arguments[@]}" "$lint_path" 2>&1)" \
-    || shellcheck_status=$?
-  if [[ "$shellcheck_status" -eq 0 ]]; then
-    return
-  fi
-
-  while IFS= read -r diagnostic_text; do
-    [[ -n "$diagnostic_text" ]] || continue
-    if [[ "$diagnostic_text" =~ ^.*:([0-9]+):([0-9]+):[[:space:]](.*)$ ]]; then
-      diagnostic_source_line=$((source_start_line + BASH_REMATCH[1] - 1))
-      diagnostic_column="${BASH_REMATCH[2]}"
-      diagnostic_message="${BASH_REMATCH[3]}"
-      printf 'FAIL: %s:%s:%s: shellcheck: %s\n' \
-        "$source_path" "$diagnostic_source_line" "$diagnostic_column" "$diagnostic_message" >&2
-    else
-      printf 'FAIL: %s:%s: shellcheck: %s\n' \
-        "$source_path" "$source_start_line" "$diagnostic_text" >&2
-    fi
-    failure_count=$((failure_count + 1))
-  done <<< "$shellcheck_diagnostics"
 }
 
 run_batched_shellcheck() {
@@ -231,9 +196,6 @@ scan_markdown_file() {
         "$raw_block_path" > "$lint_block_path"
       lint_shell_source "$source_path" "$block_start_line" "$lint_block_path" fence
       rm -f "$raw_block_path"
-      if [[ "$batch_shellcheck" != true ]]; then
-        rm -f "$lint_block_path"
-      fi
       in_shell_block=false
       continue
     fi
