@@ -36,7 +36,7 @@ claimed_at: 2026-09-06T04:38:49Z
 - [x] **[APPLY]:** One file changed, `skills/do-work/docs/prescribed-shell-primitives.md`: three
   Mechanics cells and two prose claims. No Go source touched, no route column touched, no heading
   touched.
-- [x] **[UNIFY]:** `git diff --stat` — the guide at +5/-5, five hunks, no other file. Each of the five
+- [x] **[UNIFY]:** `git diff --stat` — the guide at +5/-5, two hunks, no other file. Each of the five
   claims was re-read against the code before it was written: `blocked_probe_unix.go:37-73` for the
   process group and the timer, `report_image.go:164` for the staging directory and `:193`, `:197-208`,
   `:212-224` for the claim-write-or-remove publication. No debug artifacts, no code change.
@@ -197,9 +197,12 @@ it scans every cell of the table for a `.sh` path whose file is a do-work-cli la
 cell that named a launcher would fail it. `_dev/tests/prescribed-shell-canonicalization.sh` pins twelve
 required headings in this document plus sixteen pointer sites. Neither heading nor route changes here.
 
-**This request writes prose only.** No Go source is touched, so no fast or heavy test lane can
-distinguish the before from the after; the evidence is the audit's file-and-line citations, re-read
-against the code by the orchestrator before each edit, and the two guards staying green.
+**This request writes prose only.** No Go source is touched, and no *existing* lane reads the sentences
+that change; the evidence is the audit's file-and-line citations, re-read against the code by the
+orchestrator before each edit, and the two guards staying green. **Corrected after review:** the first
+version of this paragraph said no lane *can* distinguish the change, which turns a coverage gap into a
+property of the world. `_dev/tests/audit-lockins.sh` Finding 7 already reads this exact table, so a
+guard over the Mechanics column needs no new harness — and the remediation adds one.
 
 ## Implementation Summary
 
@@ -245,8 +248,7 @@ alone, because incomplete is a different class from false and this request's con
 
 ## Qualification
 
-**Passed.** Read from the range `9a9c2a81..ddf3f80c`, one file, five hunks, 5 insertions and 5
-deletions. Canonical `qualify` and `scope-drift` both satisfied.
+**Passed.** Read from the range `9a9c2a81..ddf3f80c`, one file, two hunks carrying five changed lines. Canonical `qualify` and `scope-drift` both satisfied.
 
 - **Every replacement claim was re-read against the code before it was written**, not copied from the
   audit's summary. `internal/nextselection/blocked_probe_unix.go:37-41` is the `Setpgid` that builds the
@@ -268,9 +270,11 @@ deletions. Canonical `qualify` and `scope-drift` both satisfied.
 - **Eleven cells were checked and none was rewritten.** Two of them understate what they own. That is a
   different class from false, and rewriting them would have been the shape REQ-555's review penalised —
   prose added under cover of a request that did not ask for it. Both are recorded as discovered tasks.
-- **No lane can distinguish this change.** It is prose only, so `qualify` reporting green is a statement
-  about scope and paths, not about correctness. The evidence for correctness is the file-and-line
-  citations above, each verified twice: once by the audit agent, once by the orchestrator.
+- **No existing lane distinguishes this change.** It is prose only, so `qualify` reporting green is a
+  statement about scope and paths, not about correctness. The evidence for correctness is the
+  file-and-line citations above, each verified twice: once by the audit agent, once by the orchestrator.
+  ~~No lane *can* distinguish it.~~ **Corrected after review**, and closed in code: a guard over the
+  Mechanics column now exists — see the remediation qualification.
 
 ## Testing
 
@@ -287,5 +291,7 @@ What was run, and what each result actually proves:
 - `bash _dev/tests/maintainer-verify.sh` at the pre-change revision `9a9c2a8` —
   `Maintainer verification passed.`, exit 0, gate wall 67s. The baseline the change lands on.
 
-The correctness evidence is the citation trail in the Qualification, because that is the only evidence
-this class of change can have.
+~~The correctness evidence is the citation trail in the Qualification, because that is the only evidence
+this class of change can have.~~ **Corrected after review.** The citation trail is the correctness
+evidence for the eleven cells nothing guards, but it was never the only evidence available: the
+remediation adds a Mechanics-column guard, proven red four ways.
