@@ -715,6 +715,57 @@ else
 fi
 
 
+# Lesson-satellite links resolve (REQ-602)
+# A maintainer lesson satellite is any _dev/primes/lessons-*.md. Each bullet's link is the only
+# route to its evidence, an archived REQ's Lessons Learned section, and an archived REQ moves when
+# its UR closes: do-work/archive/REQ-NNN-….md becomes do-work/archive/UR-0xx/REQ-NNN-….md. The
+# shipped-Markdown pointer check (REQ-243) never reads _dev/primes/, and Finding 8 above reads
+# backticked path claims, not link targets, so fifteen links were dead when this was added.
+#
+# The condition, not the fifteen: every relative Markdown link target — a `](target)` whose target
+# is neither an absolute URL (it starts with a scheme) nor a bare `#fragment` — must exist, with
+# any `#fragment` stripped, relative to the satellite's own directory. One FAIL per broken link,
+# naming the satellite, its line and the target as written. An empty satellite set fails too: a
+# renamed directory would otherwise scan clean forever.
+lesson_satellite_files=("$repo_root"/_dev/primes/lessons-*.md)
+if [ ! -e "${lesson_satellite_files[0]}" ]; then
+  printf 'FAIL: no lesson satellite matches _dev/primes/lessons-*.md; the satellite link check has nothing to scan.\n' >&2
+  failure_count=$((failure_count + 1))
+fi
+for lesson_satellite_file in "${lesson_satellite_files[@]}"; do
+  [ -e "$lesson_satellite_file" ] || continue
+  lesson_satellite_directory="$(dirname "$lesson_satellite_file")"
+  # awk's status is read, not only its output: a satellite with no relative links and a scan that
+  # never ran both print nothing.
+  lesson_satellite_link_targets="$(awk '
+    {
+      remaining_line = $0
+      while (match(remaining_line, /\]\([^)]*\)/)) {
+        link_target = substr(remaining_line, RSTART + 2, RLENGTH - 3)
+        remaining_line = substr(remaining_line, RSTART + RLENGTH)
+        if (link_target == "" || link_target ~ /^#/ || link_target ~ /^[A-Za-z][A-Za-z0-9+.-]*:/) continue
+        printf "%d\t%s\n", FNR, link_target
+      }
+    }' "$lesson_satellite_file")"
+  lesson_satellite_scan_status=$?
+  if [ "$lesson_satellite_scan_status" -ne 0 ]; then
+    printf 'FAIL: could not scan %s for relative links (awk exit %s).\n' \
+      "${lesson_satellite_file#"$repo_root/"}" "$lesson_satellite_scan_status" >&2
+    failure_count=$((failure_count + 1))
+    continue
+  fi
+  [ -n "$lesson_satellite_link_targets" ] || continue
+  while IFS=$'\t' read -r lesson_link_line lesson_link_target; do
+    [ -z "$lesson_link_line" ] && continue
+    [ -e "$lesson_satellite_directory/${lesson_link_target%%#*}" ] && continue
+    printf 'FAIL: %s:%s links to %s, which does not resolve from %s/.\n' \
+      "${lesson_satellite_file#"$repo_root/"}" "$lesson_link_line" "$lesson_link_target" \
+      "${lesson_satellite_directory#"$repo_root/"}" >&2
+    failure_count=$((failure_count + 1))
+  done <<< "$lesson_satellite_link_targets"
+done
+
+
 if [ "$failure_count" -gt 0 ]; then
   exit 1
 fi
