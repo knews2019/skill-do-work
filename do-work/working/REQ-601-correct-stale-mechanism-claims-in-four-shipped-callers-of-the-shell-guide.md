@@ -1,6 +1,6 @@
 ---
 id: REQ-601
-status: pending
+status: claimed
 domain: general
 created_at: 2026-09-06T07:22:52Z
 user_request: UR-105
@@ -14,6 +14,7 @@ depends_on: [REQ-597]
 related: [REQ-595, REQ-596, REQ-597]
 write_set: [skills/do-work-toolbox/actions/ai-report-reference.md, skills/do-work/actions/install.md, skills/do-work-toolbox/actions/present-work.md, skills/do-work-board/actions/board.md, skills/do-work/docs/prescribed-shell-primitives.md, skills/do-work-toolbox/actions/architecture-report.md, skills/do-work/actions/work-reference.md]
 title: 'Correct stale mechanism claims in four shipped callers of the shell guide'
+claimed_at: 2026-09-06T12:58:52Z
 ---
 
 # Correct Stale Mechanism Claims in Four Shipped Callers of the Shell Guide
