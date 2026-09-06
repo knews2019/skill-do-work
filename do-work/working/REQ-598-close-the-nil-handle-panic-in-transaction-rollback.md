@@ -1,6 +1,6 @@
 ---
 id: REQ-598
-status: pending
+status: claimed
 domain: backend
 created_at: 2026-09-06T06:25:19Z
 user_request: UR-105
@@ -24,7 +24,7 @@ depends_on: [REQ-558, REQ-602]
 related: [REQ-558]
 title: 'Close the live nil-handle panic in transaction rollback, and decide the handle once instead of eleven times'
 claimed_at: 2026-09-06T07:40:57Z
-status_changed_at: 2026-09-06T12:38:00Z
+status_changed_at: 2026-09-06T12:50:43Z
 ---
 
 # Close the Live Nil-Handle Panic in Transaction Rollback

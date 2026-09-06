@@ -18,3 +18,4 @@ session_depth: light
 
 ## In Progress (interrupted)
 
+- REQ-598: Close the live nil-handle panic in transaction rollback, and decide the handle once instead of eleven times — claimed 2026-09-06T12:50:43Z — writer: t2s-Virtual-Machine.local:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2
