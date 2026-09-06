@@ -54,7 +54,6 @@ write_set:
   - skills/do-work/actions/work-reference.md
   - skills/do-work/actions/version.md
   - VERSION
-  - skills/do-work-board/tools/queue-kanban/user_request_clipboard_browser_probe_test.go
   - skills/do-work/VERSION
   - CHANGELOG.md
   - skills/do-work/CHANGELOG.md
@@ -573,3 +572,96 @@ found the mechanism behind the second: both of that script's assertion helpers p
 nine siblings are queued behind it.
 
 *Verified by work action*
+
+## Review
+
+**Overall: 79%** | 2026-09-06T02:46:32Z
+
+| Dimension | Score |
+|-----------|-------|
+| Requirements | 85% |
+| Code Quality | 88% |
+| Test Adequacy | 62% |
+| Scope | 100% |
+| Risk | Low |
+| Acceptance | Partial |
+
+**Verdict: Approve with follow-ups** — the collapsible UR groups and the per-UR progress strip work, the five figures are arithmetically honest, and no reviewer could freeze the board with any payload. Two defects stop it from being clean: the Remaining figure reads "~0 min" for four of the five user requests that have a live claim on the real board right now, and the browser probe that is supposed to prove the strip lays out at 1280px never lays it out wider than 579px.
+
+Where the three reviewers disagreed, and what was picked:
+
+- Freeze safety. Reviewer 2 marked "the ticker cannot be frozen" fully met because inserting a `throw` reds a test. Reviewer 1 showed that ablation reds regardless of which pass runs first, so it does not test the ordering. Picked reviewer 1: the shipped behaviour is safe (27 hostile payloads, no throw, stopwatch always advanced), but only one of the two stated containments is actually guarded.
+- The two "structural assertions" (no `try`, no `completedAt` in the summary fragment). Reviewer 2 read them as satisfied; reviewer 1 ran them and found no test enforces either, and that run literally against the shipped file both greps return 1 because each word appears in the comment stating the rule. Picked reviewer 1: correct in the code, unenforced by the suite.
+- The browser probe rewrite. Reviewer 2 did not run the browser lane and read its assertions instead, concluding it independently confirms header/drawer agreement. Reviewer 3 ran it at HEAD and at the pre-rewrite parent and measured the difference. Picked reviewer 3: a measurement beats a reading.
+
+**Important findings (each with its recorded impact token — this is the durable audit record the judgment mandates):**
+
+- A claimed REQ that has run past its saved estimate makes the whole user request report `Remaining ~0 min` with no qualifier — `web/board-user-request-summary.js:150` floors each member's remaining contribution at zero (as asked), but `userRequestSummaryRemainingText` then takes the clean path because `knownForecastCount > 0` and `unknownForecastCount === 0`, so a reader cannot tell "nearly done" from "every member has blown its estimate". On the real board (570 REQs, 126 URs) this is 4 of the 5 user requests with a live claim: UR-119, UR-093, UR-123, UR-127, one of them 9.4 hours against a saved 20-minute estimate. The existing forecast test (`javascript_behavior_d_test.go:696`) has an over-running member contributing 0 into a 150-minute sum, so the all-floored rendering is never asserted. Suggested fix: carry an `overrunForecastCount` and render `~0 min (2 over estimate)`. — impact-user-visible → report only
+- The browser probe measures a layout two of its three widths never actually had. Commit 96bec51 moved the probe to one engine per theme, calling the measure hook three times against the same page; `measureProbePage` clicks Details for UR-951 and never closes the docked drawer (`user_request_progress_browser_probe_test.go:341-345`, `:436-446`), and `.detail-drawer` is a grid column, not an overlay, above the 760px breakpoint. Measured `.ur-group` widths: 273/697/1209px before the rewrite, 273/259/579px after. Consequences: the strip-on-its-own-row, no-rect-intersection and no-clipped-text claims are unproven above 579px; the case labelled 768px measures a narrower column than the one labelled 320px; and running `-run '.../light/1280px$'` alone reports 1209px while the same subtest inside the full run reports 579px, so a builder debugging in isolation and the gate see different layouts. The commit message's "no assertion was weakened, removed or retried" is true of the assertions and false of what they measure. — impact-user-visible → report only
+- The ordering containment is documented as asserted and no test fails when the order is swapped. `board-core.js:257-268` calls the ordering load-bearing and `javascript_behavior_d_test.go:1093-1094` states both containments are asserted here. Swapping `refreshRelativeTimeNodes` and `refreshUserRequestSummaryNodes` leaves the strict JavaScript lane green (ok 6.272s vs baseline 6.387s); only the combined ablation (swap plus removing the userRequest narrowing) reds it. The order at HEAD is correct, so nothing misbehaves today. The defect is the comment: a maintainer will believe the lane protects the order. — impact-negligible → report only
+
+**Minor findings:**
+
+- A claim stamp the board rejects is disclosed on Active and silently counted as zero elapsed inside Remaining. `liveClaimElapsedMinutes` returns null for an unparseable or future-skewed stamp, Active gets the clock-skew qualifier, but the forecast arm does `Math.max(0, estimateMinutes - (liveMinutes || 0))` and charges the member its full estimate as a *known* forecast, so Remaining renders with no qualifier. Probe result: `Active=at least 30 min (⚠ clock skew) | Remaining=~2h 10m`, skewedClaimCount 2, unknownForecastCount 0. Latent today — skewedClaimCount is 0 across all 126 real user requests. — impact-user-visible → report only
+- Contrast is measured against `<body>` while the strip is painted on `.ur-group`'s `--surface-1`. `contrastAgainstBody` (`user_request_progress_browser_probe_test.go:249-255`) reads the body ground, and the new comment at `board.css:1601-1610` restates the prime's rule with the word SVG dropped, generalizing a lesson that was scoped to the board's transparent SVG surfaces. Both shipped tones clear 4.5:1 on either ground (ink-soft 5.69 vs body / 6.11 vs surface-1 light, 7.41 / 6.88 dark), so nothing fails now. A future dark tone chosen at 4.6:1 against `--bg-base` measures about 4.27:1 against the ground it is really on, fails WCAG AA, and the probe reports green. — impact-rule-change → report only
+- Percentage rounding can print 100% for an unfinished user request and 0% for one that has shipped work. `Math.round` gives 199/200 → 100% and 1/1000 → 0%. `Math.floor` at the top and `Math.ceil` at the bottom removes both. No real user request is large enough today (biggest is UR-081 at 47 members). — impact-user-visible → report only
+- The missing-request narrowing, which is the exact dangling-membership shape the plan names, is untested. Replacing `if (!request) {` with `if (false) {` in `board-user-request-summary.js` leaves the whole strict lane green (ok 6.307s), while the sibling narrowings red 2 and 5 tests. With the guard gone the tick throws on `request.status`. Unreachable from today's generator (`model.go:1005` and `generate.go:741-764` both build from `board.AllRequests` with no filter), so it is a coverage gap in a stated containment, not a live freeze. — impact-negligible → report only
+- The two structural assertions in the REQ record are one-time manual greps, and run literally they return 1, not 0. No Go test enforces "no `try`" or "no `completedAt`" in the summary fragment; the only matches are inside doc comments at `javascript_behavior_d_test.go:1096` and `:1153`. A later edit wrapping the rollup in try/catch would swallow the exact defect the design exists to surface and the suite would stay green. Cheap to close: the suite already reads the assembled page via `generateLiveSite`, so one `strings.Contains` over the sliced fragment would do it. — impact-negligible → report only
+- `HeadPrecedesDetil` is a misspelled struct field (`user_request_progress_browser_probe_test.go:58`, read at `:540` and `:542`) carrying the correctly spelled JSON tag `headPrecedesDetail`. Naming for Reach (`coding-guardrails.md` § 5) requires a plain-text search to find every usage; searching the correct spelling finds the tag and the JS key but neither the field nor its reads. — impact-negligible → report only
+
+**Nit findings:**
+
+- Header and drawer each call `Date.now()` at render (`board-cards.js:1040`, `board-detail.js:667`), so a drawer opened after the lens rendered shows a fresher Active figure until the next tick, within one second. The agreement probe stubs the clock and cannot see it. — impact-negligible → report only
+- An unknown user-request id renders `Active 0 min / Remaining none` instead of an unavailable marker, while the two percentages do say `unavailable`. Only reachable through a stale ticking node, which the freeze-guard probe covers. — impact-negligible → report only
+- Active time changes its origin rule when a member completes: origin-to-completion for finished members, `now − claimed_at` for live ones, so the figure jumps when a member lands. Measured on real data as 3 of 570 completed REQs with any gap, largest 42 minutes (REQ-566). D1 states the tradeoff and nothing on screen contradicts anything else. — impact-negligible → report only
+- An absurd saved `p50_active_minutes` renders as a raw float: 1e308 prints `~6.944444444444444e+304d 8h` through the shared `timelineFormatSpanMinutes` (`board-timeline.js:207-218`). Human-authored frontmatter, pre-existing formatter, no throw. — impact-negligible → report only
+- Dead ternary at `user_request_progress_browser_probe_test.go:335-337`: both branches return `node.textContent`. Reads as an abandoned refactor. — impact-negligible → report only
+- The browser probe's header-versus-drawer check uses `strings.HasSuffix` (`:519-527`), which is true against an empty drawer value, and the length check counts nodes rather than content. Five empty metric values would pass. The byte-identical comparison lives in the JavaScript lane (`reflect.DeepEqual`), so the real claim is held elsewhere. — impact-negligible → report only
+- A folded By UR group leaves `.ur-summary`'s `border-bottom` as a stray hairline above `.ur-group`'s own rounded bottom edge, because the fold removes the card grid and D7 keeps the strip visible. Nothing measures it — the browser probe never folds a group. — impact-negligible → report only
+- The probe logs `navigator.userAgent`, which Chromium reduces to `HeadlessChrome/141.0.0.0`, so the exact build (141.0.7390.37, recorded separately in the hand-back) is not beside the measured numbers. This is the REQ-241/REQ-242 shape the prime warns about. — impact-negligible → report only
+- `user_request_clipboard_browser_probe_test.go` is listed twice in the write_set amended by b8398be (entries 17 and 24). The declared surface no longer reads as a set. — impact-negligible → report only
+
+**Requirements checklist:**
+
+- [x] Active time sums the Go authority's origin-to-completion spans, with the live claim as the only browser-side clock read — delivered
+- [x] The denominator is filter-independent on both surfaces — delivered (ablation: filtering the header total reds the agreement probe)
+- [x] successful, resolved and cancelled compose the way `model.go` composes them — delivered (ablation: dropping cancelled from resolved reds the membership probe)
+- [x] Missing or excluded evidence is disclosed rather than zeroed — delivered for spans and unmeasured members; not for skewed claims inside Remaining (Minor)
+- [x] Header and drawer report identical values — delivered (two independent ablations red the agreement probe; sub-second render divergence is a Nit)
+- [ ] The Remaining forecast reads honestly when every known contribution floors at zero — not delivered (Important, live on 4 of 5 claimed user requests)
+- [x] The rollup is total by narrowing, with no try/catch — delivered (27 hostile payloads, all returned without throwing, stopwatch advanced every time)
+- [x] The relative-time refresh runs first inside the tick with the captured instant — delivered in the code
+- [ ] The freeze-guard probe fails if the ordering is swapped — not delivered (Important, lane stays green)
+- [x] The freeze-guard probe fails if the narrowing is removed — partially delivered: 2 of 4 narrowings enforced
+- [x] The board's only interval is pinned to `refreshTickingSurfaces` — delivered (`generate_test.go:3861-3865`)
+- [x] A stale summary node whose UR id is gone renders the empty rollup — delivered
+- [x] Parser/model lock-step: presence-plus-value pair shipped, salvage tests assert absence rather than zero — delivered
+- [ ] The browser probe rewrite changed nothing but the transport — not delivered (Important, measured layout shrank)
+- [ ] Contrast is measured against the surface the strip is painted on — not delivered (Minor, wrong ground, passes anyway today)
+- [x] The dark palette is driven through the colour-scheme flag — delivered (two distinct grounds confirmed, hard fail if the engine resolves the wrong scheme)
+- [x] Naming for Reach on every new identifier — delivered except one misspelled field (Minor)
+- [x] Release 0.304.0: right bump, house-form entry, byte-identical mirror, nothing left at 0.303.10 — delivered
+- [x] Nothing written outside the declared write set — delivered (`comm` both directions empty over both increments)
+
+**Acceptance testing**
+
+**Result: Partial**
+
+- Three reviewers independently exercised the shipped code. The strict JavaScript lane is green (ok 6.272-6.401s), the contract-regression and shipped-package-reference scripts exit 0, and the browser probe passes.
+- Freeze resistance holds. 27 hostile board payloads through the shipped `refreshTickingSurfaces` — unknown UR id, dangling membership, null and garbage request ids, null timeline projection, unparseable and future claim stamps, NaN/Infinity/1e308 numbers — all returned without throwing, and the existing claim stopwatch advanced 1m 30s to 2m 30s in every case.
+- The arithmetic is honest and the two surfaces genuinely agree. Four separate ablations (drawer reformats a metric, header total filtered, `throw` in the summary pass, cancelled dropped from resolved) each red a specific probe.
+- Two real defects surfaced under hands-on testing: `Remaining ~0 min` on the real board's live-claim user requests, and the browser probe measuring a 259px and 579px column at the cases labelled 768px and 1280px.
+- No test anywhere observes the real `setInterval` firing. The browser probe collects window errors but resolves as soon as its predicates pass, so it may never cross a one-second boundary.
+
+**Suggested testing:** 6 items
+
+- Assert the all-floored Remaining case: a user request whose every known member has exceeded its saved estimate, checking the rendered text carries an overrun qualifier rather than a bare `~0 min`.
+- Close the browser probe's drawer between widths (or go back to one engine per width), then re-log the `.ur-group` box to confirm 768px and 1280px measure roughly 697px and 1209px again.
+- Add the two structural greps as real assertions over the sliced fragment from `generateLiveSite`, so `try` and `completedAt` outside a comment fail the build.
+- Assert the tick ordering directly, or make it observable: a payload that throws in the summary pass plus a check that the stopwatch still advanced.
+- Cover the dangling-membership narrowing with a payload whose `requestIds` names an id absent from `boardData.requests`.
+- Measure contrast against the element's own computed background rather than `<body>`, and include `.detail-summary-value` in the measured set.
+
+**Follow-ups created:** None (18 findings report only)
+
+*Reviewed by review-work action*
