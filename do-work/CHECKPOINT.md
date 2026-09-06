@@ -29,7 +29,6 @@ session_depth: light
 
 - REQ-486: Addendum: make UR groups collapsible and show progress summaries — claimed 2026-09-06T00:26:09Z — writer: vm:/home/user/skill-do-work
 
-- REQ-552: [impact-negligible] Replace two coreutils exec sites with the pure Go the package already has — claimed 2026-09-06T00:38:56Z — writer: vm:/home/user/skill-do-work
 
 - REQ-554: [impact-negligible] Move the 46 lines commit.md and inspect.md share into the prescribed-shell guide — claimed 2026-09-06T00:38:56Z — writer: vm:/home/user/skill-do-work
 

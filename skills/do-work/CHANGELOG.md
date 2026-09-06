@@ -2,6 +2,14 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.304.1 — The Archive Audit and Report Publishing Stop Launching Coreutils (2026-09-06)
+
+Two places in the tool started a `find` or a `cp` process to do work it already does in Go. Both now do it directly, so they behave the same on a machine where those programs are missing, older, or a different implementation.
+
+- The archive timestamp audit checks that it can read the archive with its own walk instead of launching `find`, and still stops with a clear message naming the path it could not read.
+- Publishing an architecture report stages the draft in memory instead of launching `cp`; the published report carries the same bytes as before.
+- Two maintainer test cases used to drive those failures by putting a fake program on the path, which stopped working the moment the code stopped launching one. Both now provoke the same failure inside the process, and each names the failure it expects, so neither can quietly pass on something else going wrong.
+
 ## 0.304.0 — User Request Groups Fold, and Report Their Own Progress (2026-09-06)
 
 A user request with dozens of requests under it filled the board with cards and still told you nothing about how far along it was. Its groups now fold, and its header answers the question the card wall never did.
