@@ -1,7 +1,7 @@
 ---
 id: REQ-557
 title: '[impact-negligible] Deduplicate six Go helper names defined fourteen times across do-work-cli'
-status: pending
+status: claimed
 priority: later
 created_at: 2026-09-03T19:45:35Z
 user_request: UR-105
@@ -16,6 +16,7 @@ maintenance: false
 impact: impact-negligible
 effort_estimate: effort-substantive
 write_set: [skills/do-work/tools/do-work-cli/internal/corehelpers/checks.go, skills/do-work/tools/do-work-cli/internal/repositorymodel/repository_model.go, skills/do-work/tools/do-work-cli/internal/finalization/finalization_prepare.go, skills/do-work/tools/do-work-cli/internal/knowledgecommands/interview_commands.go, skills/do-work/tools/do-work-cli/internal/knowledgecommands/commands.go, skills/do-work/tools/do-work-cli/internal/dependencygraph/dependency_graph.go, skills/do-work/tools/do-work-cli/internal/nextselection/next_types.go, skills/do-work/tools/do-work-cli/internal/publication/capture_files.go, skills/do-work/tools/do-work-cli/internal/suiteinstall/update_transaction.go, _dev/tests/audit-lockins.sh]
+claimed_at: 2026-09-06T03:16:29Z
 ---
 
 # Deduplicate six Go helper names defined fourteen times across do-work-cli
