@@ -148,6 +148,27 @@ if [ -n "$hand_rolled_preambles" ]; then
   done <<< "$hand_rolled_preambles"
 fi
 
+# Finding 9: exec-where-pure-go-exists (REQ-552)
+# A coreutils subprocess spawned for work the same Go module already does in the standard
+# library. Test files are excluded on purpose: fixture setup may shell out, shipped code may
+# not — suiteinstall/update_transaction_test.go:25 spawns `cp -R` and is not this finding.
+# The command list is the audit's own Reproduce pattern, kept byte-identical so this fails
+# on exactly what the REQ's RED proof prints; widening it would drag in open/xdg-open/
+# rundll32/ps/tar/sh/python3/curl, which this finding does not address.
+coreutils_exec_sites="$(
+  rg -n 'exec\.Command(Context)?\((ctx, )?"(find|cp|mkdir|grep|sed|ls|rm|mv|cat|touch|head|tail|wc)"' \
+    "$repo_root/skills/do-work/tools/do-work-cli" \
+    "$repo_root/skills/do-work-board/tools/queue-kanban" \
+    --glob '!*_test.go' 2>/dev/null
+)"
+if [ -n "$coreutils_exec_sites" ]; then
+  while IFS= read -r coreutils_site; do
+    [ -z "$coreutils_site" ] && continue
+    printf 'FAIL: coreutils spawned where the module already has pure Go: %s\n' "${coreutils_site#"$repo_root/"}" >&2
+    failure_count=$((failure_count + 1))
+  done <<< "$coreutils_exec_sites"
+fi
+
 if [ "$failure_count" -gt 0 ]; then
   exit 1
 fi
