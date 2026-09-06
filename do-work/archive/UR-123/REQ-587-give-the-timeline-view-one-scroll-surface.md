@@ -1,7 +1,7 @@
 ---
 id: REQ-587
 title: 'Give the Timeline view one scroll surface, in the same style as the Activity view'
-status: claimed
+status: completed
 created_at: 2026-09-05T12:50:59Z
 user_request: UR-123
 domain: frontend
@@ -44,6 +44,8 @@ review_at: 2026-09-05T19:43:13Z
 integration_at: 2026-09-05T19:05:52Z
 planning_at: 2026-09-05T18:09:17Z
 commit: 8fad73b20055bbe66df91d423027867d780f3175
+completed_at: 2026-09-06T03:36:10Z
+release_at: 2026-09-06T03:36:10Z
 ---
 
 # Give the Timeline View One Scroll Surface, in the Same Style as the Activity View
@@ -338,3 +340,36 @@ The Timeline reads like every other view now: the board scrolls, the chart is or
 | `staged-skills` | `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane staged-skills` | every changed path matched subtree `skills` |
 
 Held at Step 7.7: the lanes are not run now and the queue loop is not held open. **The browser lane needs `QUEUE_KANBAN_BROWSER` pointing at the installed Chrome at drain time** — this machine has Chrome but not under any name the probe looks for, so without it the lane reports skipped, and a skip is not a pass. The recorded `commit:` above is what makes this REQ's source ready for anything that depends on it while it waits.
+
+### Heavy verification result (run at drain, 2026-09-06)
+
+**All six lanes ran and all six were green. Revision `a48b9eb6`, the tree quiet from the first command
+to the last.** `bash _dev/tests/maintainer-verify.sh --heavy` printed `Maintainer verification passed.`
+and exited **0**, gate wall **301s**.
+
+**One deviation from the plan, stated.** The plan named six separate `--heavy-lane <id>` invocations.
+What ran instead is the single `--heavy` gate, which executes the same six lanes' work in one process
+at one revision. That is what the four held requests were waiting for — one run at the final revision
+rather than four — and it removes the `HEAVY-RUN-REVISION-CHANGED` risk of interleaving six
+invocations with four finalizations. The evidence below is per lane, not the gate's summary line,
+because a skipped lane reports success.
+
+| Lane | Its own evidence line | Result |
+|---|---|---|
+| `queue-kanban-javascript` | `module=…/queue-kanban wall=67s tests=481 slowest-file=generate_test.go:12.43s limit=none (heavy)` | 481 tests, green |
+| `queue-kanban-browser` | `module=…/queue-kanban wall=102s tests=35 slowest-file=timeline_browser_probe_test.go:63.99s limit=none (heavy)` | 35 tests, green |
+| `do-work-cli-integrations` | `module=…/do-work-cli wall=25s tests=798 slowest-file=internal/nextselection/blocked_probe_test.go:6.77s limit=none (heavy)` | 798 tests, green |
+| `staged-skills` | `test-file duration: staged-skills-contract.sh 45s (limit none (heavy))` | green |
+| `updater` | `test-file duration: update-script-behavior.sh 84s (limit none (heavy))` | green |
+| `installer` | `test-file duration: install-suite-behavior.sh 28s (limit none (heavy))` | green |
+
+**Zero `SKIP` lines in the whole run and zero `FAIL` lines.** The browser lane genuinely ran — 35 tests
+and a 64-second `timeline_browser_probe_test.go` are not what a skipped lane prints — because
+`QUEUE_KANBAN_BROWSER` pointed at `/opt/pw-browsers/chromium`, as every one of these four plans
+required.
+
+The run also needed a sanitized environment, which is worth recording for the next drain:
+`NODE_OPTIONS` and the `GIT_CONFIG_COUNT` / `GIT_CONFIG_KEY_*` / `GIT_CONFIG_VALUE_*` triples unset,
+and `GIT_CONFIG_GLOBAL` pointed at a config with `commit.gpgsign = false`. A heavy run refuses on an
+opaque runtime extension or an opaque git configuration override, and an unusable global signing key
+makes a fixture's own `git commit` fail inside the lane.

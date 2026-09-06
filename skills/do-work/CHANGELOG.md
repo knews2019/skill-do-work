@@ -2,6 +2,18 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.304.7 — The Timeline Scrolls With the Board Instead of Inside Its Own Box (2026-09-06)
+
+The Timeline's rows used to scroll inside a box about half the window tall, so the page had two scrollbars and the reader had to find the right one. The rows now scroll with the board, and the time axis stays pinned to the top edge the way the Activity view's column header does.
+
+- The chart no longer has a height cap or its own scroll area. Keeping either would have left it a scroll container while measuring as though it were not.
+- The time axis has a sticky rule of its own, painted on the base background, and carries the one-pixel separator the rows box used to own, so the line stays on screen instead of scrolling away with the content.
+- The board's top padding now sits on whichever child the reader sees first, decided by that condition rather than by a list of the optional strips that can come before the view.
+- Everything that reads or writes a scroll position moved into the board's coordinate space: the top-visible-row anchor and its restore, the virtualized visible range, scrolling a focused row into view, and jump-to-open-work. The two geometry numbers those need are measured once per render and refreshed beside the existing width cache, because the visible-row render is the scroll listener and extra layout reads would land on every frame of a drag.
+- Only the scroll listener moved. Wheel zoom, drag-pan, pointer capture, keyboard, focus, hover and the width observer all stay on the chart.
+- Entering the Timeline now resets the board's scroll position, which nothing did before.
+- Two defects found by measuring rather than reasoning are fixed: removing the chart's focus ring handed the browser's own default ring the full-height box, caught by a screenshot; and clamping the board-relative scroll at zero made the anchor's write disagree with its read, so pressing a window chip while the board sat above the chart jumped it down by the whole offset.
+
 ## 0.304.6 — Three Lifecycle Behaviours Are Now Held By Tests That Name What They Catch (2026-09-06)
 
 Three things the lifecycle gate does could be deleted from the code and every test would still pass. Each one now has a test that fails when it is deleted, and each test says in its own comment which deletion it catches.
