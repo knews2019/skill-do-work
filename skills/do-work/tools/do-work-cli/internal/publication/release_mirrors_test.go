@@ -1,7 +1,10 @@
 package publication
 
 import (
+	"os"
+	"path/filepath"
 	"reflect"
+	"strings"
 	"testing"
 )
 
@@ -86,6 +89,53 @@ func TestBuildReleasePlanIgnoresIndependentComponentSharingTheOldVersion(t *test
 	}}
 	if plan := BuildReleasePlan(root, manifest); plan.Refusal != nil || len(plan.Mutations) != 2 {
 		t.Fatalf("independent component on the same version blocked the release: %#v", plan)
+	}
+}
+
+// An unstaged deletion in an independent component must not block a root-only
+// release. Missing owned declarations must still refuse, including a promoted
+// workspace owner whose contents are needed to discover nested members.
+func TestBuildReleasePlanRequiresOnlyOwnedProjectManifests(t *testing.T) {
+	for _, testCase := range []struct {
+		missingPath string
+		wantRefusal bool
+	}{
+		{missingPath: "tools/independent/package.json"},
+		{missingPath: "tools/independent/Cargo.toml"},
+		{missingPath: "tools/independent/pyproject.toml"},
+		{missingPath: "package.json", wantRefusal: true},
+		{missingPath: "packages/owner/package.json", wantRefusal: true},
+	} {
+		t.Run(testCase.missingPath, func(t *testing.T) {
+			root := initializedGitRepository(t)
+			writeFixture(t, root, "VERSION", []byte("1.0.0\n"), 0o644)
+			writeFixture(t, root, "CHANGELOG.md", []byte("History\n* old\n"), 0o644)
+			writeFixture(t, root, testCase.missingPath, []byte("independent manifest\n"), 0o644)
+			writeFixture(t, root, "package.json", []byte(`{"workspaces":["packages/*"]}`), 0o644)
+			writeFixture(t, root, "packages/owner/package.json", []byte(`{"workspaces":["members/*"]}`), 0o644)
+			writeFixture(t, root, "packages/owner/members/leaf/package.json", []byte(`{"name":"leaf"}`), 0o644)
+			writeFixture(t, root, "payload/version-old", []byte("1.0.0\n"), 0o644)
+			writeFixture(t, root, "payload/version-new", []byte("1.0.1\n"), 0o644)
+			writeFixture(t, root, "payload/log-old", []byte("History\n* old\n"), 0o644)
+			writeFixture(t, root, "payload/log-new", []byte("History\nrelease-1.0.1 Title\n* old\n"), 0o644)
+			runGitFixture(t, root, "add", "-A")
+			if err := os.Remove(filepath.Join(root, filepath.FromSlash(testCase.missingPath))); err != nil {
+				t.Fatal(err)
+			}
+			manifest := Manifest{Operation: OperationRelease, Release: &ReleaseManifest{
+				OldVersion: "1.0.0", NewVersion: "1.0.1", ProjectOwnedTargets: []string{"VERSION", "CHANGELOG.md"},
+				Targets:    []ReleaseTarget{{Path: "VERSION", ExpectedPayload: PayloadFile{SourcePath: "payload/version-old"}, NewPayload: PayloadFile{SourcePath: "payload/version-new"}, OldVersion: "1.0.0", NewVersion: "1.0.1"}},
+				Changelogs: []ChangelogTarget{{Path: "CHANGELOG.md", ExpectedPayload: PayloadFile{SourcePath: "payload/log-old"}, NewPayload: PayloadFile{SourcePath: "payload/log-new"}, InsertionAnchor: "History\n", EntryKey: "release-1.0.1", EntryTitle: "Title"}},
+			}}
+			plan := BuildReleasePlan(root, manifest)
+			if testCase.wantRefusal {
+				if plan.Refusal == nil || plan.Refusal.Code != "RELEASE-MIRROR-ENUMERATION" || !strings.Contains(plan.Refusal.Reason, testCase.missingPath) {
+					t.Fatalf("missing owned declaration refusal = %#v", plan.Refusal)
+				}
+			} else if plan.Refusal != nil || len(plan.Mutations) != 2 {
+				t.Fatalf("root release: refusal = %#v, mutations = %d; want two mutations without refusal", plan.Refusal, len(plan.Mutations))
+			}
+		})
 	}
 }
 
