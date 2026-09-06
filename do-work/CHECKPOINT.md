@@ -26,3 +26,5 @@ session_depth: light
 - REQ-591: Reduce repeated setup and unaffected reruns in the fast gate — claimed 2026-09-05T20:04:13Z — writer: t2s-Virtual-Machine.local:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2
 
 - REQ-592: [impact-critical] Review fix: seal the do-work tree into both fast gate stages — claimed 2026-09-05T22:59:38Z — writer: vm:/home/user/skill-do-work
+
+- REQ-486: Addendum: make UR groups collapsible and show progress summaries — claimed 2026-09-06T00:26:09Z — writer: vm:/home/user/skill-do-work
