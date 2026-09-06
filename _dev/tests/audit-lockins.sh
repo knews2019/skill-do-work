@@ -554,6 +554,48 @@ else
     failure_count=$((failure_count + 1))
   fi
 fi
+# Finding 7 (second half): shell machinery credited to a Go-owned route (REQ-595)
+# Every route in the executable-homes table is a do-work-cli subcommand, so a Mechanics cell that
+# names shell machinery is describing an implementation that no longer runs. That is how the
+# run-blocked-check cell came to claim "GNU timeout selection and isolated stock-Bash process-group"
+# for a command that looks up no timeout binary and builds its group with Go's Setpgid.
+#
+# WHAT THIS DOES NOT CATCH, stated so its silence is not read as coverage. Two of the three false
+# cells REQ-595 fixed named no shell at all: install-memory-hooks credited itself with verification
+# and rollback that the knowledge actions still perform by hand, and record-timing-event credited
+# itself with a fold that fold-timing-summary owns. A cell that claims another owner's work is
+# indistinguishable from a true one by any text scan. Only the shell-machinery shape is guarded here.
+#
+# The term list is illustrative of the condition, not a closed set: a word that can only describe a
+# shell implementation. Measured against the table as it stands: zero matches. Against the table
+# before REQ-595: one, naming the cell and its line.
+shell_machinery_rows="$(awk '
+  /^[[:space:]]*\|[[:space:]]*Canonical executable route[[:space:]]*\|/ { inside_route_table = 1; next }
+  inside_route_table && /^[[:space:]]*\|[[:space:]]*:?-/ { next }
+  inside_route_table && !/^[[:space:]]*\|/ { inside_route_table = 0 }
+  inside_route_table {
+    split($0, table_cells, "|")
+    mechanics_cell = tolower(table_cells[3])
+    if (mechanics_cell ~ /bash|subshell|job control|set -m|gnu |[^a-z]shell[^a-z]/) {
+      printf "%s\t%s\n", FNR, table_cells[3]
+    }
+  }
+' "$shell_ownership_guide")"
+shell_machinery_scan_status=$?
+if [ "$shell_machinery_scan_status" -ne 0 ]; then
+  printf 'FAIL: could not scan %s for shell machinery in the Mechanics column (awk exit %s).\n' \
+    "${shell_ownership_guide#"$repo_root/"}" "$shell_machinery_scan_status" >&2
+  failure_count=$((failure_count + 1))
+elif [ -n "$shell_machinery_rows" ]; then
+  while IFS=$'\t' read -r shell_machinery_line shell_machinery_cell; do
+    [ -z "$shell_machinery_line" ] && continue
+    printf 'FAIL: %s:%s credits a do-work-cli subcommand with shell machinery (%s); the route is Go and owns no shell.\n' \
+      "${shell_ownership_guide#"$repo_root/"}" "$shell_machinery_line" \
+      "$(printf '%s' "$shell_machinery_cell" | sed 's/^ *//;s/ *$//')" >&2
+    failure_count=$((failure_count + 1))
+  done <<< "$shell_machinery_rows"
+fi
+
 
 if [ "$failure_count" -gt 0 ]; then
   exit 1
