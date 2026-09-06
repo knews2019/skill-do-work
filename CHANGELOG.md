@@ -2,6 +2,17 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.304.5 — The Heavy Test Tier Stops Reporting a Failed Run as a Passed One (2026-09-06)
+
+The heavy verification tier could tell you a lane passed when it had failed, and could tell you a run succeeded when it had verified nothing. Three separate routes to a false green are closed, each with a test that fails when the fix is taken back out.
+
+- A lane that ran and exited with an error is now reported red, whatever it printed while running. It used to be enough for the lane to print a line starting with `SKIP:` — including a line printed by a test's own fixture — for the whole lane to be recorded as skipped, which reads as success. The lane's own announcement is kept and shown as extra evidence on the failure.
+- A run that names no lane at all is refused instead of returning success. Before, a caller inside the tool that forgot to list lanes got a clean verdict for verifying nothing.
+- A lane timeout of zero now means "use the default" rather than "expire immediately". The thirty-minute default only existed on the command-line path, so a caller inside the tool that left the field empty had its lanes killed mid-run — which then surfaced as a failing test that looked like bad luck.
+- A test fixture's output can no longer reach the process running it. The check for that swaps the real output stream rather than the file descriptor, so it fails if the fix is reverted; the earlier evidence for the same fix could not tell the difference.
+- The maintainer check that forbids a particular fragile shell pipeline was rewritten. The old pattern missed five ordinary ways of writing the same thing; the new one matches what makes the pipeline fragile instead of one spelling of it, and states in its own source the two shapes no source scan can catch.
+- Two archive checks were reading a file listing while throwing away the error that said the archive could not be read. Both now check readability first, so a truncated archive fails instead of passing.
+
 ## 0.304.4 — The User Request Progress Figures Say When They Are Guessing (2026-09-06)
 
 An independent review of 0.304.0 found the new per-user-request progress strip printing a confident number in two cases where it did not have one, and found the browser probe that was supposed to prove the layout measuring a page two of its three widths never had.

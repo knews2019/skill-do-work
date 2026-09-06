@@ -1,6 +1,6 @@
 ---
 id: REQ-593
-status: claimed
+status: completed
 domain: testing
 created_at: 2026-09-06T02:02:41Z
 user_request: UR-105
@@ -29,6 +29,9 @@ builder_handback_at: 2026-09-06T02:26:22Z
 write_set: [skills/do-work/tools/do-work-cli/internal/heavyverification/heavy_run.go, skills/do-work/tools/do-work-cli/internal/heavyverification/heavy_commands.go, skills/do-work/tools/do-work-cli/internal/heavyverification/heavy_run_test.go, skills/do-work/tools/do-work-cli/internal/requeststate/state_apply_test.go, _dev/tests/update-script-behavior.sh, skills/do-work/tools/do-work-cli/prime-do-work-cli.md]
 title: '[impact-critical] Make the heavy tier report a red lane as red, and fix two fixtures that cannot pass under the lane environment'
 claimed_at: 2026-09-06T02:03:03Z
+completed_at: 2026-09-06T03:28:29Z
+commit: a49a542fbf67d06a58896c1e22f2d0143f9efd52
+release_at: 2026-09-06T03:28:29Z
 ---
 
 # Make the Heavy Tier's Verdict Honest
@@ -177,6 +180,11 @@ exact 36 KB output from the failing run through the original matcher on a single
 - `skills/do-work/tools/do-work-cli/internal/heavyverification/heavy_run_test.go` (modify) — fixture lane output no longer reaches the enclosing lane's stderr, plus a lock-in for a lane that prints a skip line and then fails
 - `skills/do-work/tools/do-work-cli/internal/requeststate/state_apply_test.go` (modify) — the one test that commits without an identity gets the same helper its eleven siblings call
 - `_dev/tests/update-script-behavior.sh` (modify) — both matchers read grep's verdict instead of the writer's exit status
+
+- `skills/do-work/tools/do-work-cli/prime-do-work-cli.md` (modify) — **added during the second
+  remediation round, declared widening.** It was in `prime_files` but not the write set. Its line 61
+  stated the replaced contract, contradicting the shipped `heavy_run.go`; a prime that states the
+  opposite of the code it documents is this request's own defect class.
 
 **Files I will NOT touch:** `_dev/tests/heavy-lanes.json` — the lane argv is not what is wrong.
 `_dev/tests/select-simple-reqs-behavior.sh` and `_dev/tests/p50-estimator-determinism.sh` carry the
@@ -358,6 +366,90 @@ fix carries an assertion that fails when the fix is reverted.
 
 *Checked by work action*
 
+### Second remediation qualification (after the second review round)
+
+**Passed.** Remediation merge range `3fc69bc8..a49a542f`, five files, 193 insertions and 15 deletions.
+Four of the five are inside the declared write set; the fifth is the widening declared below.
+
+- **The review's headline is closed: `RunLanes` no longer returns success for a run that names no
+  lane.** The guard is the first statement of the function, before the manifest, HEAD and dirty-tree
+  work, so an invalid request cannot come back wearing another refusal's code. Deleting it gives
+  `a run naming no lane succeeded: lanes=0 findings=0`. There is exactly one production caller and it
+  always supplies lane ids, so the refusal cannot fire on an existing path.
+- **The writer-seam fix now has an assertion that fails when it is reverted.** The new test swaps this
+  process's `os.Stderr` — the actual seam, not file descriptor 2 — and fails if any captured line starts
+  with `SKIP:`. Reverting the seam gives `a fixture lane's announcement reached this process's stderr:
+  "SKIP: no browser is available"`. The earlier "0 SKIP lines" evidence could not discriminate, because
+  it depended on the lane runner re-printing output.
+- **The source scanner was evadable by ordinary shell, and the baseline was confirmed before the
+  widening.** The old regex caught 0 of 5 rewrites. It is replaced by a named function matching the
+  defect's three ingredients rather than one spelling: logical lines joined across a trailing pipe or
+  backslash, every pipe stage after the first (so `command grep`, `LC_ALL=C grep` and `/usr/bin/grep`
+  need no prefix list, with `||` neutralised first because a logical OR is not a pipe), and any
+  early-leaving option. A five-shape fixture requires all five caught. **The two shapes a source scan
+  genuinely cannot catch are named rather than papered over**: an early-leaving reader with no quiet
+  flag, and a pipeline assembled at runtime.
+- **Discarding `tar`'s exit status had silently narrowed two assertions.** A truncated-archive probe
+  reproduces the false pass: without the readability assertion the check reports 0 failures on an
+  archive `tar` exits 2 on. With it, exactly one failure naming the unreadable archive.
+- **A red lane keeps its own announcement.** `Skipped` is now `exit status 0 AND an announced skip
+  line`, so a lane that ran and failed after printing `SKIP:` is red and the announcement survives as
+  second evidence in the finding.
+- **One widening, declared. DECIDE & STATE.** `skills/do-work/tools/do-work-cli/prime-do-work-cli.md`
+  was in the request's `prime_files` but not its `write_set`. Its line 61 still stated the replaced
+  contract — "the runner keys `skipped` on that prefix, never on a lane-name list" — which contradicts
+  the shipped `heavy_run.go`. Leaving a prime stating the opposite of the code it documents is the
+  drift this request exists to remove, so it was corrected and the file added to the `write_set`. The
+  Scope section records the widening.
+- **One correction is not made, and is stated instead.** `_dev/tests/maintainer-verify.sh:41` carries a
+  comment incomplete in the same way the prime was. It is a maintainer script comment rather than a
+  contract statement, and the file is outside the write set even after the widening, so it is left
+  alone and recorded here.
+
+Requirements traced: a lane that ran and exited non-zero reports red whatever it printed; a run that
+names no lane is refused rather than reported green; a fixture lane's output cannot reach the enclosing
+process's stderr; the scanner catches ordinary rewrites of the shape it forbids and names what it
+cannot catch; and every fix carries an assertion that fails when the fix is reverted.
+
+*Checked by work action*
+
+## Testing
+
+**Every assertion in all three rounds was shown red by an individual ablation and green again after
+restore.** Six ablations in the final round, one per finding, each quoted in the hand-back.
+
+Round 1 (`b8398be7..30bb273a`): H1's revert produces `LaneID:"skip-then-fail-lane", ExitStatus:4,
+Skipped:true` — byte-for-byte the misreport the heavy run at `6646ba51` produced. H2's revert produces
+`Author identity unknown` under the lane's own stripped git configuration. H3's revert fails the new
+self-check by name. The shell fix was sized before it was chosen: 0 false failures in 50 runs at 36 KB,
+50 in 50 at 200 KB, 50 in 50 at 1 MB.
+
+Round 2 (`32ecdba..407432c`): each of the nine converted pipelines was reverted alone and the class
+scanner named that exact line. Reverting the zero-lane-timeout default makes the new lock-in report
+exit 124, the lane-timeout status.
+
+Round 3 (`3fc69bc8..a49a542f`): the zero-lane guard deleted →
+`a run naming no lane succeeded: lanes=0 findings=0`. The writer seam reverted to `os.Stderr` →
+`a fixture lane's announcement reached this process's stderr`. The scanner narrowed to the pre-widening
+regex → `the quiet-grep scanner caught 0 of 5 evasions`; widened, the real file has 0 offenders and the
+fixture flags 5 of 5, and reverting the one real site at line 735 yields exactly one offender naming
+that line. The `tar` readability assertion removed → the truncated-archive probe reports 0 failures,
+the exact false pass; restored → 1 failure naming the unreadable archive. The announcement dropped from
+the red finding → `the red finding dropped the lane's own announcement`.
+
+**Lane and package evidence, each status read from `$?` rather than from a summary line.** Heavy lane
+`updater`: exit 0 in 70s, 0 `FAIL` lines. Heavy lane `do-work-cli-integrations`: exit 0, 798 tests, 27s
+wall. `go test ./internal/heavyverification/`: `ok 14.181s`. `gofmt -l` on the package: empty. `go vet`
+on the package: exit 0. `bash -n` and `shellcheck --severity=warning` on
+`_dev/tests/update-script-behavior.sh`: both exit 0.
+
+All of it ran under the prescribed environment — `NODE_OPTIONS` and the `GIT_CONFIG_*` pairs unset,
+`GIT_CONFIG_GLOBAL` pointed at a sanitized config, `QUEUE_KANBAN_BROWSER` set — because a heavy run
+refuses on an opaque runtime extension or an opaque git configuration override, and because an unusable
+global signing key makes a fixture's own `git commit` fail. The full canonical gate is run once for the
+batch rather than per round.
+
+
 ## Review
 
 **Overall: 71%** | 2026-09-06T03:05:35Z
@@ -420,3 +512,65 @@ REQ-593 (making the heavy verification tier's verdict honest) removes the case w
 **Follow-ups created:** None (15 findings report only)
 
 *Reviewed by review-work action*
+
+## Lessons Learned
+
+- **A guard that lives on one entry path is not a guard.** The 1800-second lane-timeout default lived
+  on the CLI path only, so an in-process caller that omitted the field armed a zero timer and lanes were
+  killed before they finished. The zero-lane check had the exact same shape and was found by a reviewer
+  probing the same place a second time. When a value is only defaulted where the flags are parsed, ask
+  what happens to every other caller — and then write the caller that omits it.
+- **Three fixes in one change is where one fix quietly covers for another's missing test.** The
+  discipline that caught it was reverting each fix alone with the other two in place. Two of the three
+  had assertions that stayed green under their own revert until this was done, and the writer-seam one
+  needed a test written against the actual seam — this process's `os.Stderr` variable, not file
+  descriptor 2 — before it could fail at all.
+- **A scanner that matches one spelling of a defect forbids one spelling of a defect.** The original
+  regex caught 0 of 5 ordinary rewrites: a line continuation, `--quiet`, `--silent`, `LC_ALL=C grep -q`
+  and `command grep -q`. Matching on the defect's ingredients instead — a pipe stage after the first,
+  plus an early-leaving option — caught all five and needed no prefix list to maintain. Confirm the
+  baseline first: knowing the old one caught 0 of 5 is what made the widening a fix rather than a
+  preference.
+- **Name what a check cannot catch, in the check.** Two shapes remain out of reach of any source scan:
+  an early-leaving reader with no quiet flag, and a pipeline assembled at runtime. Writing them down
+  beside the scanner is what stops the next maintainer from reading its silence as coverage.
+- **Capturing a command's output discards its exit status, and under `pipefail` that looks like it did
+  not.** Two `tar` assertions were silently narrowed this way: a truncated archive `tar` exits 2 on
+  produced a listing whose first line was still the marker, and the check passed. Ask the question that
+  has a real answer first — here, `tar tzf … >/dev/null` — before judging content.
+- **A claim in a commit message is part of the record, and this run made one that was too big.** "The
+  SIGPIPE class is closed" was true of one file out of twenty-three. It was corrected in the request and
+  captured as its own follow-up rather than left standing.
+
+## Orientation
+
+The heavy tier's verdict is decided in
+`skills/do-work/tools/do-work-cli/internal/heavyverification/heavy_run.go`. Three rules hold it
+together and each has an assertion that fails when it is reverted:
+
+- **Exit status outranks an announcement.** `Skipped` is `exit status 0 AND an announced skip line`.
+  A lane that ran and exited non-zero is red whatever it printed, and its announcement survives as the
+  second evidence entry on the finding.
+- **A run must name at least one lane.** `RunLanes` refuses `HEAVY-RUN-NO-LANE-REQUESTED` as its first
+  statement, before the manifest, HEAD and dirty-tree work, so an invalid request cannot come back
+  wearing another refusal's code. There is one production caller and it always supplies lane ids.
+- **A zero or negative `LaneTimeout` means the default**, not an immediately expired timer. The default
+  used to live on the CLI path alone.
+
+A nested lane's output must never reach the enclosing process. The package's test helper writes fixture
+lane output to `io.Discard`, and
+`TestNestedLaneOutputNeverReachesThisProcessStderr` swaps this process's `os.Stderr` for a temp file and
+fails on any captured `SKIP:` line. Assert against the seam, not against file descriptor 2.
+
+`_dev/tests/update-script-behavior.sh` carries `quiet_grep_pipeline_offenders`, which forbids an
+early-leaving reader downstream of a pipe. It matches on ingredients — logical lines joined across a
+trailing pipe or backslash, every pipe stage after the first with `||` neutralised first, and any
+early-leaving option — so it needs no list of grep spellings. Its own fixture requires all five known
+evasions caught. Two shapes it cannot catch are named in the source: an early-leaving reader with no
+quiet flag (`head -1`, `sed -n '1p;q'`, `read`, `awk NR==1{exit}`), and a pipeline assembled at runtime.
+
+Recorded and unfixed: roughly 130 sibling SIGPIPE-prone pipelines remain across 23 files under
+`_dev/tests/`, including nineteen in the gate's own `contracts/core-checks.sh`, which disagrees with
+itself. That is REQ-594. `_dev/tests/maintainer-verify.sh:41` carries a comment incomplete in the same
+way `prime-do-work-cli.md:61` was; it is a maintainer script comment rather than a contract statement
+and is outside the write set.

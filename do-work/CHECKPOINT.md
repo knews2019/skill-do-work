@@ -30,7 +30,6 @@ session_depth: light
 
 
 
-- REQ-593: [impact-critical] Make the heavy tier report a red lane as red, and fix two fixtures that cannot pass under the lane environment — claimed 2026-09-06T02:03:03Z — writer: vm:/home/user/skill-do-work
 
 - REQ-555: [impact-negligible] Rewrite the prescribed-shell guide executable-homes table to the do-work-cli route form — claimed 2026-09-06T03:16:18Z — writer: vm:/home/user/skill-do-work
 
