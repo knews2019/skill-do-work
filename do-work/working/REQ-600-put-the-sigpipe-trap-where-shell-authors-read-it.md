@@ -21,7 +21,7 @@ estimate:
 maintenance: true
 depends_on: [REQ-594]
 related: [REQ-593, REQ-594]
-write_set: [_dev/primes/prime-shell-commands.md, skills/do-work-knowledge/actions/memory-reference.md]
+write_set: [_dev/primes/prime-shell-commands.md, skills/do-work-knowledge/actions/memory-reference.md, _dev/tests/action-shell-blocks.sh, _dev/tests/quiet-grep-pipeline-audit.sh, _dev/tests/quiet-grep-pipeline-scanner.sh]
 title: 'Put the SIGPIPE trap in the prime shell authors read, and fix the one shipped block that carries it'
 claimed_at: 2026-09-06T07:26:22Z
 ---
