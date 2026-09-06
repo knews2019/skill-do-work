@@ -169,6 +169,56 @@ if [ -n "$coreutils_exec_sites" ]; then
   done <<< "$coreutils_exec_sites"
 fi
 
+# Finding 6: commit-inspect-shared-body (REQ-554)
+# The inventory tag legend, the secret-shaped basename patterns, the four file-reading
+# bullets, the association semantics and both manual "do it by hand" fallbacks live once,
+# in skills/do-work/docs/prescribed-shell-primitives.md.
+# The ceiling is 30, not 0, and cannot be 0. Measured after the move, the 30 identical lines
+# are: 17 template scaffold that _dev/primes/prime-action-files.md requires both actions to
+# carry (## When to Use, ## When This Runs, ## Steps, ### Step 1/4/6, three code fences,
+# ## Error Handling plus its two table header rows, ## What This Action Does NOT Do,
+# ## Rules, ## Red Flags, ## Verification Checklist, **Use when:**); 4 structural rows inside
+# each action's own ASCII flow diagram and Error Handling table; 8 lines of the Step 4
+# semantic clustering algorithm, which is caller policy the guide's charter refuses to own;
+# and 1 line routing unassociated files to each action's own Step 4. Returning shared prose
+# trips this; the scaffold never does.
+shared_action_prose_ceiling=30
+shared_action_prose_lines="$(cd "$repo_root" && python3 -c "
+import difflib
+a=[l.rstrip() for l in open('skills/do-work/actions/commit.md')]
+b=[l.rstrip() for l in open('skills/do-work-toolbox/actions/inspect.md')]
+print(sum(1 for i,j,s in difflib.SequenceMatcher(None,a,b).get_matching_blocks()
+          if s>=3 for k in range(s) if a[i+k].strip()))
+")"
+if [ "${shared_action_prose_lines:-999}" -gt "$shared_action_prose_ceiling" ]; then
+  printf 'FAIL: commit.md and inspect.md share %s identical lines; ceiling is %s. Move the shared body into skills/do-work/docs/prescribed-shell-primitives.md.\n' \
+    "$shared_action_prose_lines" "$shared_action_prose_ceiling" >&2
+  failure_count=$((failure_count + 1))
+fi
+
+# The two 207-word inventory fallbacks differed by two relative-path fixups, so the difflib
+# count above scored them at 0. This is the assertion that actually pins them at zero.
+# rg's own exit status is read rather than a piped count: an awk total prints 0 both when
+# nothing matched and when the scan never ran, which prime-shell-commands.md
+# § Unchecked Exit Status Reads as Content bans. rg exit 1 is no matches; 2 or more is a
+# scan failure and is reported as one. The glob must be '**/actions/*.md' — a single '*'
+# does not cross a directory separator, so '*/actions/*.md' matches nothing under skills/.
+manual_fallback_matches="$(rg -n --fixed-strings 'If the script is missing or will not run' \
+  "$repo_root/skills" --glob '**/actions/*.md' 2>/dev/null)"
+manual_fallback_scan_status=$?
+if [ "$manual_fallback_scan_status" -gt 1 ]; then
+  printf 'FAIL: could not scan shipped actions for manual fallback sentences (rg exit %s).\n' \
+    "$manual_fallback_scan_status" >&2
+  failure_count=$((failure_count + 1))
+elif [ -n "$manual_fallback_matches" ]; then
+  while IFS= read -r fallback_site; do
+    [ -z "$fallback_site" ] && continue
+    printf 'FAIL: manual "do it by hand" fallback remains in a shipped action: %s\n' \
+      "${fallback_site#"$repo_root/"}" >&2
+    failure_count=$((failure_count + 1))
+  done <<< "$manual_fallback_matches"
+fi
+
 if [ "$failure_count" -gt 0 ]; then
   exit 1
 fi
