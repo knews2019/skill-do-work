@@ -1,6 +1,6 @@
 ---
 id: REQ-603
-status: pending
+status: claimed
 domain: general
 created_at: 2026-09-06T08:19:05Z
 user_request: UR-105
@@ -13,6 +13,7 @@ depends_on: [REQ-597, REQ-601]
 related: [REQ-597, REQ-601]
 write_set: [skills/do-work/scripts/protected-inventory.sh, skills/do-work/tools/do-work-cli/internal/corehelpers/inventory.go, skills/do-work/tools/do-work-cli/internal/corehelpers/inventory_test.go, skills/do-work/actions/commit.md, skills/do-work-toolbox/actions/inspect.md, skills/do-work/docs/prescribed-shell-primitives.md]
 title: 'Let the protected-inventory launcher pass global flags, and stop its shim discarding the text it prepared'
+claimed_at: 2026-09-06T13:04:17Z
 ---
 
 # Let the Protected-Inventory Launcher Pass Global Flags, and Stop Its Shim Discarding the Text It Prepared
