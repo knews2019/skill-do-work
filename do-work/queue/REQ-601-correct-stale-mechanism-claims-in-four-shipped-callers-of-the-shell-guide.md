@@ -12,7 +12,7 @@ tdd: false
 maintenance: true
 depends_on: [REQ-597]
 related: [REQ-595, REQ-596, REQ-597]
-write_set: [skills/do-work-toolbox/actions/ai-report-reference.md, skills/do-work/actions/install.md, skills/do-work-toolbox/actions/present-work.md, skills/do-work-board/actions/board.md, skills/do-work/docs/prescribed-shell-primitives.md]
+write_set: [skills/do-work-toolbox/actions/ai-report-reference.md, skills/do-work/actions/install.md, skills/do-work-toolbox/actions/present-work.md, skills/do-work-board/actions/board.md, skills/do-work/docs/prescribed-shell-primitives.md, skills/do-work-toolbox/actions/architecture-report.md, skills/do-work/actions/work-reference.md]
 title: 'Correct stale mechanism claims in four shipped callers of the shell guide'
 ---
 
@@ -55,6 +55,20 @@ running it.
   that, and confirm it with a fixture holding one in-flight and one archived REQ claiming the same path.
 - Derive every replacement from the code. The sweep's drafts are input, not answers — four of the prior
   sweep's drafts for the guide were false.
+- **More instances of the same phantom-script class, found by REQ-597's caller builder after this
+  request was captured** (evidence in `do-work/runs/work-2026-09-05-231943/REQ-597-handback.md`):
+  `present-work.md:136` ("the helper verifies each output against the source separately", the twin of
+  the corrected portfolio sentence) and `:140` ("the compatibility script"); `ai-report-reference.md:31`,
+  `:37`, `:47` ("a retained script" for report images — none exists); `architecture-report.md:46`;
+  `install.md:50`, `:246`, `:261`, `:335`; `board.md:87`; and `work-reference.md:322` ("hands the child
+  the console's own handles" — both child streams get the CLI's stderr). Two files join the write set for
+  them. Line numbers are as of commit `d5cf28b`.
+- **The tie-break sentence above, corrected again by REQ-599's review:** the first claim found stands
+  whenever the two timestamps compare equal, present or missing (the comparison is a strict `After`),
+  and `ParseTimestamp`'s error is discarded, so an unparseable `completed_at` counts as missing. Write:
+  a REQ with a parseable `completed_at` beats one without, whichever root is read first; when both parse
+  equal, or neither parses, the first claim found stands (`working/` before `archive/`, name order within
+  a root). The fixture must cover equal-present, both-missing and unparseable.
 
 ## Constraints
 

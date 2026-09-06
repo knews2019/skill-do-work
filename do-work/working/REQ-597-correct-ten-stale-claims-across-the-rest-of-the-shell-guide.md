@@ -170,8 +170,8 @@ Fourteen other caller sites were checked and hold.
 ## Scope
 
 **Files I will touch:**
-- `skills/do-work/docs/prescribed-shell-primitives.md` (modify) — sixteen corrections across five sections, plus the line-24 sentence that implies `protected-inventory.sh` translates positionals
-- `skills/do-work/actions/commit.md` (modify) — the replaced glob, the `-` row that is never printed, and the metadata exception
+- `skills/do-work/docs/prescribed-shell-primitives.md` (modify) — sixteen corrections across five sections, plus the line-24 sentence that implies the protected-inventory launcher translates positionals
+- `skills/do-work/actions/commit.md` (modify) — the replaced glob, the dash row that is never printed, and the metadata exception
 - `skills/do-work-toolbox/actions/inspect.md` (modify) — the same three, plus the two prescribed blocks whose arguments the command rejects
 
 **The two `inspect.md` blocks are the priority and the only behaviour change.** Every other edit here
