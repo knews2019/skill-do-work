@@ -1,6 +1,6 @@
 ---
 id: REQ-602
-status: pending
+status: claimed
 domain: general
 created_at: 2026-09-06T08:10:39Z
 user_request: UR-105
@@ -22,7 +22,7 @@ related: [REQ-243, REQ-238]
 write_set: [_dev/primes/lessons-shell-commands.md, _dev/primes/lessons-action-files.md, _dev/primes/lessons-kanban-board.md, _dev/tests/audit-lockins.sh]
 title: 'Repoint the lesson-satellite links whose archived targets moved, and check satellite links'
 claimed_at: 2026-09-06T08:12:01Z
-status_changed_at: 2026-09-06T12:38:00Z
+status_changed_at: 2026-09-06T12:48:50Z
 ---
 
 # Repoint the Lesson-Satellite Links Whose Archived Targets Moved, and Check Satellite Links
