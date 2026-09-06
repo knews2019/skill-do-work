@@ -35,9 +35,17 @@ claimed_at: 2026-09-06T05:50:44Z
 `internal/gittransaction/git_transaction.go` tests one `*os.Root` value for nil nine times; no test exercises any nil branch, no introducing commit or REQ names a nil-root failure, three caller⇒callee pairs test the same value twice on one path, and two functions taking the same value never test it. Keep one nil test at the single point where nil is producible (`rollbackTransaction`'s `os.OpenRoot`), pass a non-nil root or an explicit no-root branch downward, and delete the other eight guards.
 
 ## AI Execution State (P-A-U Loop)
-- [ ] **[PLAN]:** (Agent: Read listed `prime_files` and agent rules. Write brief technical approach here. Do not write code yet.)
-- [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
-- [ ] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
+- [x] **[PLAN]:** Three independent reachability traces before any edit — two by call graph, one
+  adversarial. Approach: delete only what the trace proves unreachable, keep everything else with a
+  named reason, keep anything the trace could not settle, and pin the real surviving count rather than
+  the requested one.
+- [x] **[APPLY]:** Two files, both declared: one guard deleted from `git_transaction.go` with its
+  precondition stated as a doc comment, and one assertion block added to `audit-lockins.sh`. No test
+  file beyond the lock-in.
+- [x] **[UNIFY]:** `git diff --stat` — `git_transaction.go` +13/-3, `audit-lockins.sh` +45. Both read in
+  full. The deletion's thirteen call sites were each traced to an open that returns on failure or to a
+  surviving guard. `go build`, `go vet` and `gofmt -l` all clean; `go test ./internal/gittransaction/`
+  green and unchanged at 2.353s against 2.205s before. No debug artifacts.
 
 ## Why
 Defensive checks with no incident behind them are the agent-creep class; here they accreted per REQ on the top do-work-cli hotspot (17 commits, file CCN 392, `ExecuteTransaction` CCN 87) and none is covered by a test.
@@ -181,3 +189,71 @@ the trace shows are safe only because of guards it wanted deleted.
   cannot run
 - [ ] The deviation from the requested count is stated as a decision with its evidence
 - [ ] The live defect found on the way is captured, not fixed here
+
+## Pre-Flight
+
+**Green gate at `46da9507`**, the revision the builder branched from.
+`bash _dev/tests/maintainer-verify.sh` printed `Maintainer verification passed.` and exited 0.
+
+**The safety net is the package's existing suite, and its limits are stated rather than assumed.**
+`go test ./internal/gittransaction/` is green before and after — but it exercises **no** no-handle
+branch. Verified: `rg -l 'OpenRoot|rollback root is unavailable|rooted filesystem handle is unavailable'`
+over the package's `*_test.go` files returns nothing. So a green suite is not evidence that a deleted
+guard was dead, which is precisely why this request needed a trace and not a count.
+
+**The baseline holds exactly at HEAD**, which was not true of several siblings in this batch: the
+reproduce command prints nine `root [=!]= nil` sites and `NO TEST covers any nil-root branch`.
+
+**`(*os.Root)` panics on a nil receiver**, confirmed empirically for `Lstat`, `Open`, `Remove`, `Mkdir`,
+`Rename`, `MkdirAll`, `OpenFile` and `Close` rather than assumed from the type. That is the fact every
+keep verdict rests on.
+
+## Implementation Summary
+
+**Files changed:**
+- `skills/do-work/tools/do-work-cli/internal/gittransaction/git_transaction.go`
+- `_dev/tests/audit-lockins.sh`
+
+**What was done: one guard deleted, eight kept, and the count pinned at 8.** The request asked for eight
+deletions and a pin of 1. Seven of those eight deletions would each replace a reported incomplete
+rollback with a nil-pointer panic.
+
+**The one deletion.** `rootedOpenSnapshot`'s guard is entered through three wrappers from thirteen call
+sites, all in this file and none in a test. Nine carry a handle from an `os.OpenRoot` that returns
+immediately when the open fails; the other four sit behind guards that are kept and that return before
+the call. It re-tested a question its callers had already settled. Go cannot express a non-nil pointer in
+the type, so the deleted test is replaced by a doc comment stating the precondition and naming today's
+no-handle branches as the current set rather than a closed list — and naming the one caller the deleted
+test never covered anyway.
+
+**The eight kept, each with its own reason**, none on a maybe: `inspectCreatedObject` (the only thing
+keeping control off an unguarded `root.Remove`); the `Close` at line 998, which would panic while
+returning and destroy the rollback report; the two `root != nil &&` short circuits, which stand in front
+of a direct `root.Lstat`; the created-paths `Lstat` at 1114, which has no downstream guard;
+`rollbackFailure`'s `!recorded || root == nil`, the only thing between a nil handle and both a `Lstat`
+and a `Remove`; `rollbackDirtyTracked`, whose one caller passes the handle unchecked and whose both
+branches dereference; and `trackedPublicationStillOwned`, whose deletion is half-silent and half-fatal.
+
+**The lock-in pins 8 as a floor and a ceiling**, scanning only `git_transaction.go` with the audit's own
+pattern and reading `rg`'s exit status rather than judging a piped total: a status above 1 means the scan
+could not run and fails loudly, and a status of 1 means every guard is gone and fails too.
+
+## Decisions — implementation
+
+- **D-01 — the delivered count is 8, not the 1 the request names. DECIDE & STATE.** The request reasoned
+  from one producer of nil to one guard. The producer records its error and keeps going by design, so
+  the nil handle reaches eleven consumers in four loops and each answers for its own target. There is no
+  chokepoint. Pinning 1 would have required seven deletions that each introduce a panic in rollback.
+- **D-02 — a guard the trace cannot settle is kept.** No trace returned `cannot-establish`, so this rule
+  bound nothing here, but it was the rule going in: a guard on a rollback path is not deleted on a maybe.
+- **D-03 — the deleted guard's precondition is a doc comment naming an open set, not a closed list.**
+  `_dev/primes/prime-shell-commands.md` § Closed Enumerations Go Stale applies to prose that enumerates
+  callers as much as to shell. The comment says what must hold and names today's branches as the current
+  set.
+- **D-04 — the live defect found on the way is captured, not fixed.** `quarantineAndRollbackPrivate` is
+  called with the possibly-nil handle and dereferences it. Fixing it means adding a guard, which is the
+  opposite of this request's class, and proving the fix means writing the package's first no-handle test,
+  which this request's constraints forbid. It is **REQ-598**.
+- **This request is a release.** `git_transaction.go` ships under `skills/`, so per
+  `_dev/primes/prime-releases.md` the change carries a version bump and a changelog entry. The builder
+  correctly did not write one; the finalization manifest owns it.
