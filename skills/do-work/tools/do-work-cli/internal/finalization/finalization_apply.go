@@ -542,7 +542,7 @@ func matchingHeadCommit(repositoryRoot string, journal *Journal) (string, bool) 
 		if diffError != nil || digestBytes(diff) != journal.PreparedDiffSHA256 {
 			continue
 		}
-		changed, changedError := exec.Command("git", "-C", repositoryRoot, "diff-tree", "--no-commit-id", "--name-only", "-r", candidate).Output()
+		changed, changedError := exec.Command("git", "-C", repositoryRoot, "diff-tree", "--no-commit-id", "--name-only", "-r", "-m", candidate).Output()
 		if changedError != nil {
 			continue
 		}
