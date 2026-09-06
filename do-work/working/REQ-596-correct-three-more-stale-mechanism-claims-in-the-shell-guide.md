@@ -262,9 +262,12 @@ a third time in one file is how a review finds prose nobody asked for.
   file unquarantined that the tool would have caught, and the status test the guide prescribed but the
   tool does not apply means every `claimed` or `blocked` REQ is filtered out and its files come back
   unassociated — which is the exact failure the bullet two lines above it exists to prevent.
-- **The publication sentence no longer generalizes across a difference.** That shape — one sentence true
-  of some of the things it covers — has now shipped twice in this file, in REQ-555 and again here, and
-  both times a review caught it rather than the author. The replacement states each command separately
+- **The publication sentence no longer generalizes across a difference.** ~~That shape has now shipped
+  twice in this file, in REQ-555 and again here.~~ **Corrected after review:** the sentence replaced here
+  predates the visible per-REQ history — `git log -S` puts it in the squashed import — and the visible
+  history holds three instances, not two: REQ-555, REQ-595 one commit earlier, and this one. Naming two
+  and skipping the one directly above understates the pattern the paragraph exists to argue. Every time,
+  a review caught it rather than the author. The replacement states each command separately
   and keeps only the two clauses that are true of both.
 - **All three guards over this file exit 0**: `audit-lockins.sh` (route column, orchestration claim,
   Mechanics-column shell vocabulary), `prescribed-shell-canonicalization.sh` (twelve headings, sixteen
@@ -272,6 +275,48 @@ a third time in one file is how a review finds prose nobody asked for.
 - **The ten findings outside these two sections are captured, not fixed.** Widening a third time in one
   file is how a review ends up finding prose nobody asked for; the request drew its own line at "the
   sections these three sit in", and REQ-597 carries the rest with the sweep's report as its input.
+
+### Remediation qualification (after review)
+
+**Passed.** Remediation range `41313790..0bbd10d`, two files. The review scored 72% and asked for
+remediation, and it earned that by **executing both by-hand fallbacks** rather than reading them: a
+reviewer transcribed each procedure literally into a script and diffed its output against the tool.
+Neither reproduced it. That is this request's own headline acceptance criterion.
+
+- **The classification clause was mine and it was wrong.** "A rename or copy destination is M" was
+  written with no condition; `classifyInventory` tests `strings.Contains(status, "D")` **first**, so
+  porcelain `RD` and `CD` classify the destination as D, and as XD when the origin is secret-shaped. Two
+  divergences followed: an ordinary deleted rename destination came out M by hand and D from the tool,
+  sending the reader to the M rule — `git diff` on a file that is gone — and a secret-derived one came
+  out X by hand and XD from the tool, so the by-hand run quarantined a path the tool permits staging.
+  Worse, the same commit widened the XD legend four lines above to describe exactly that path, so the
+  shipped file gave two different tags for one file. The clause now states the code's own precedence.
+- **The globstar parenthetical was false in its own right.** "A `**` glob needs `shopt -s globstar` and
+  **still** misses the files sitting directly in `do-work/archive/`" — with globstar on, `**/` matches
+  zero or more directories, so those files are matched. Only the first half was true. The record's
+  Exploration had it right and the shipped sentence compressed it into a falsehood, which means that
+  replacement was never re-checked against the evidence cited for it.
+- **The prescribed command is hardened three ways**, each closing a divergence a reviewer measured:
+  `-type f` skips the symlinks the walk skips (a symlinked REQ took a path by hand that the tool gave to
+  another); `2>/dev/null` survives a project that has never archived, where `find` writes to stderr and
+  exits 1 and `set -euo pipefail` aborts the fallback — in exactly the situation a fallback is most
+  needed; and `LC_ALL=C sort` makes the tie-break reproducible, because `find` returns raw directory
+  order where the walk reads each directory name-sorted, so a tie answered the same way on two machines
+  by the tool was answered differently by hand.
+- **One sentence taught a two-way state as one-way.** "A candidate missing from that output is
+  unassociated" is also true when the quarantine still holds the path from an earlier inventory, and
+  `actions/commit.md` states that as the design. The unsafe direction is the one the sentence taught.
+- **"The download inspects nothing afterwards" was checkable and false**: it stats the published target
+  to report a byte count and discards the error. The point stands and the wording did not.
+- **A guard now exists for the class this request was created for.** It derives the expected patterns
+  from `secretPath` itself — each `HasPrefix` must appear as `X*`, each `HasSuffix` as `*X`, each
+  `Contains` as `*X*` — and requires the guide to name every one. It fails on exactly the `*credentials*`
+  drift, on a new code pattern the guide lacks, on the guide dropping one, and on `secretPath` being
+  renamed away. The record's "nothing here is guardable by a text scan" was wrong, and a reviewer built
+  the prototype that proved it.
+- **Two findings outside this request are captured**: the caller drift in `actions/commit.md`, added to
+  REQ-597's write set, and a tool bug where in-flight-ness is decided by a substring of the absolute
+  path, so a checkout beneath any directory named `working` makes every archived REQ active — REQ-599.
 
 ## Testing
 
@@ -289,3 +334,190 @@ independently before the edits.
 
 Unlike REQ-595, nothing here is guardable by a text scan: these are by-hand procedures whose correctness
 is a comparison between prose and behaviour, and the only instrument for that is a fixture plus a reader.
+
+### Remediation testing (after review)
+
+**The new guard was proven red four ways**, each against the real files with them restored from a green
+copy between runs:
+
+- The pre-REQ-596 plural restored: `secretPath tests `*credential*` and prescribed-shell-primitives.md
+  does not name it; a by-hand inventory built from the guide would miss what the tool excludes.` — exit 1.
+  This is the drift the request was created for, now caught.
+- A new pattern added to `secretPath` that the guide does not name (`.jks`): caught, exit 1.
+- The guide dropping a pattern the code tests (`*.pem`): caught, exit 1.
+- `secretPath` renamed away: `secretPath is gone from inventory.go (awk exit 3); the secret-pattern
+  drift check cannot run.` — exit 1, rather than a clean read.
+
+Restored: `Audit lock-in regressions passed.`, exit 0.
+
+**The expected patterns are derived, not listed.** Adding a pattern to the code without adding it to the
+guide fails; so does narrowing one in either place. The block's comment states what it does not catch —
+that the guide may name extras, and that the surrounding prose can still describe the classification
+wrongly, which is exactly what this remediation had to fix by hand.
+
+**Guards and gate.** `bash -n` and `shellcheck --severity=warning` on the lock-in exit 0. All three
+guards over the guide exit 0: `audit-lockins.sh`, `prescribed-shell-canonicalization.sh` and
+`quiet-grep-pipeline-audit.sh`. The fast gate at the remediation revision:
+`Maintainer verification passed.`, exit 0, gate wall 83s.
+
+## Review
+
+**Overall: 72%** | 2026-09-06T08:15:00Z
+
+| Dimension | Score |
+|-----------|-------|
+| Requirements | 62% |
+| Code Quality | 68% |
+| Test Adequacy | 55% |
+| Scope | 88% |
+| Risk | Moderate |
+| Acceptance | Remediate before archive |
+
+**Verdict: Remediate.** Eight of the eleven replacements are true and verified against the code or a
+fixture, including all three the request names; the `*credential*` correction and the conflict-resolution
+rewrite are real safety and correctness fixes. But the change's own headline acceptance criterion failed:
+**a person following either by-hand fallback still got a different answer from the tool**, and one newly
+written sentence was false in its own right.
+
+The reviewers did not read the fallbacks. They transcribed each one literally into a script and diffed
+it against `protected-inventory.sh`. On a broad fixture — staged rename with a secret origin, a copy from
+a secret origin, an ordinary copy, a deletion, a modification, an untracked addition, hidden `do-work/`
+metadata — the two outputs were byte-identical. They diverged on porcelain `RD`, and on three separate
+things in the association fallback.
+
+Where the reviewers disagreed, and what was picked:
+
+- All three found the `RD` divergence and the false globstar parenthetical independently; no dispute.
+- Only one reviewer found the tie-break ordering divergence. Reproduced by the synthesizer with eight
+  archived REQs where two claim one path at the same `completed_at`: the tool answers one, `find`
+  presents the other first.
+- One reviewer scored three pre-existing defects in unopened sections into this change at 78. The
+  synthesizer verified all three as genuinely false but kept them out of this request's score.
+
+**Important findings:**
+
+- The by-hand inventory tags a deleted rename destination `X` where the tool tags `XD`, and `M` where the
+  tool tags `D` — and the `XD` legend widened in the same commit says `XD`. The clause "a rename or copy
+  destination is M" was written with no condition; the code tests for `D` first. No secret is exposed in
+  either direction, but the by-hand run quarantines a path the tool permits staging, and the ordinary case
+  sends a reader to `git diff` on a file that is gone. — impact-user-visible → fixed in remediation
+
+**Minor findings:**
+
+- "A `**` glob needs `shopt -s globstar` and **still** misses the files sitting directly in
+  `do-work/archive/`" is false: with globstar on, `**/` matches zero directories and those files are
+  matched. — impact-user-visible → fixed in remediation
+- The by-hand association names a different owner than the tool on a `completed_at` tie, because `find`
+  returns raw directory order and the walk reads name-sorted. Not exotic: two in-flight REQs both lack
+  `completed_at`. Also not reproducible across machines, since the directory hash seed is per-filesystem.
+  — impact-user-visible → fixed in remediation
+- "A candidate missing from that output is unassociated" is false whenever the quarantine retains the
+  path from an earlier inventory, which `actions/commit.md` states as the design. —
+  impact-user-visible → fixed in remediation
+- One sentence gave contradictory instructions on whether a rename origin gets a row of its own. —
+  impact-negligible → fixed in remediation
+- The prescribed `find` fails on a project that has never archived, where the tool tolerates a missing
+  root, and lists symlinked REQ files the walk skips. — impact-negligible → fixed in remediation
+- "The download inspects nothing afterwards" is contradicted by the `os.Stat` it runs. The discarded
+  error is also a latent nil-FileInfo dereference. — impact-negligible → fixed in remediation
+- The `XD` reading bullet still said "Deleted secret-shaped files" after the same commit widened the
+  legend. — impact-negligible → fixed in remediation
+- The record's "nothing here is guardable by a text scan" is false; a reviewer built the fifteen-line
+  prototype and ran it at both ends of the range. — impact-rule-change → the guard is now shipped
+- `actions/commit.md` now contradicts the guide on both the glob and the associate output. —
+  impact-rule-change → added to REQ-597's write set
+- The tool decides in-flight-ness with a substring of the absolute path, so a checkout beneath any
+  directory named `working` makes every archived REQ active. The prose is right and the code is wrong. —
+  impact-user-visible → REQ-599
+- The guide now contradicts itself about whether a rename over an occupying directory nests: line 107
+  describes shell `mv`, the new line 125 describes `rename(2)`. The `ln`/`mv` half is already in
+  REQ-597. — impact-negligible → report only
+- The record's "shipped twice in this file" history is wrong: the sentence replaced here predates the
+  visible history, and the visible history holds a third instance — REQ-595, one commit earlier. —
+  impact-negligible → corrected below
+
+**Requirements checklist:**
+
+- [x] The three claims the request names are corrected — delivered, each against the code
+- [x] The eight more in the same two sections are corrected — delivered
+- [ ] → [x] The by-hand fallbacks match what the tool does — **not delivered at review**, five
+  divergences measured by execution; **delivered in remediation**
+- [ ] → [x] No sentence generalizes over two commands that behave differently — **not delivered at
+  review**: the shape moved from the two-command axis to the `R`/`RD` axis; **delivered in remediation**
+- [x] Both guards over the file still exit 0 — delivered, and a third now guards the pattern set
+- [x] The ten findings outside these two sections are captured rather than fixed — delivered as REQ-597
+
+**Acceptance testing**
+
+**Result: Remediate at review, Pass after remediation.** Three reviewers built fixture repositories and
+ran both procedures against the tool. Every divergence they measured is closed, and the pattern half of
+the class is now pinned by a guard rather than by a reader.
+
+**Follow-ups created:** 2 — REQ-599 for the tool's path-substring bug, and the caller drift added to
+REQ-597.
+
+*Reviewed by review-work action*
+
+## Lessons Learned
+
+- **A procedure is not checked until it is executed.** Eleven sentences were corrected against the code
+  and eight of them were right. The three that were wrong only showed up when a reviewer transcribed the
+  whole paragraph into a script and diffed it against the tool. Reading a fallback tells you whether each
+  sentence is true; running it tells you whether the sequence produces the tool's answer, which is the
+  only thing a fallback is for.
+- **The generalizing sentence moved axis rather than going away.** This request existed partly to fix a
+  sentence that generalized across two commands, and it shipped one that generalized across `R` and `RD`
+  — "a rename or copy destination is M", with no condition, where the code tests for `D` first. Fixing an
+  instance of a shape is not the same as learning the shape.
+- **A correction can contradict another correction in the same commit.** The `XD` legend was widened four
+  lines above the clause that then tagged the same file `X`. Two edits, each defensible alone, disagreeing
+  in the shipped file. When one pass changes several statements about one mechanism, re-read them
+  together at the end, not one at a time as they are written.
+- **Compressing a verified sentence is a rewrite.** The Exploration had the globstar behaviour right; the
+  shipped one-line version added the word "still" and became false. A shorter version of a checked claim
+  is an unchecked claim.
+- **"Nothing here is guardable" was wrong twice in two requests.** REQ-595's record said no lane could
+  distinguish a prose change, and a reviewer showed a guard was feasible. This record said the same and a
+  reviewer built the prototype. Both times the guard turned out to be fifteen lines. The reflex to reach
+  for is "what is the smallest thing that would have caught this", not "this class is unguardable".
+- **Order can be part of a procedure's answer.** The tie-break sentence said "the first claim found
+  stands" and the prescribed command was `find`, which returns raw directory order where the tool reads
+  name-sorted. The sentence and the command were each defensible; together they made the answer depend on
+  a filesystem hash seed.
+
+## Orientation
+
+`skills/do-work/docs/prescribed-shell-primitives.md` § **Protected inventory fallbacks** owns what an
+inventory tag means, how each tag class is read, what association settles, and the by-hand procedure for
+each mode. Two of those are **procedures a person executes when the tool will not run**, and they are
+held to a stronger standard than the rest of the guide: the output must match
+`scripts/protected-inventory.sh`.
+
+Three things about them are easy to get wrong and were:
+
+- **Classification order.** Any status containing `D` is D; otherwise `??` or an index-column `A` is A;
+  otherwise M. So a rename or copy destination is M only when its record reports no deletion — porcelain
+  `RD` is a deletion.
+- **The rename origin** gets a row of its own only when the record is a rename *and* the origin is
+  secret-shaped, in which case the row is `XD`. A copy origin never gets one.
+- **The association `find`** needs `-type f` (the walk skips symlinks), `2>/dev/null` (the walk tolerates
+  a missing `do-work/archive/`, which a project that has never archived does not have), and
+  `LC_ALL=C sort` (the walk reads each directory name-sorted; `find` does not, and the tie-break depends
+  on order).
+
+`X` is not only "a secret". An ordinary addition is promoted to `X` whenever any `X` or `XD` is present in
+the same inventory, because Git cannot identify a copy when both source and destination are untracked.
+That is why `X` has its own reading rule and why the rule says not to relax it because the name looks
+ordinary.
+
+**The pattern set is guarded.** Finding 3 in `_dev/tests/audit-lockins.sh` derives the expected globs
+from `secretPath` itself and requires the guide to name each one. It catches a pattern added to the code
+and not the guide, a pattern dropped from either, and `secretPath` being renamed away. It does **not**
+catch the guide naming extras, and it cannot check that the surrounding procedure is right — that is what
+the fixtures are for.
+
+Recorded and unfixed: the guide's line 107 describes shell `mv` nesting into a directory while line 125
+describes `rename(2)` refusing, and the two read as one contradiction — REQ-597 owns line 107.
+`actions/commit.md` still names the glob this request replaced and a `-` row the command never prints,
+added to REQ-597. And the tool decides in-flight-ness from a substring of the absolute path, so a
+checkout beneath a directory named `working` makes every archived REQ active — REQ-599.
