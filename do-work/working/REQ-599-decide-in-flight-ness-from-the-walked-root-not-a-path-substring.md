@@ -145,3 +145,41 @@ Merge range `dc5d8180..890ed0c8`, two files, 43 insertions and 6 deletions.
   `completed.After(current.completed)`, so a `working/` REQ with no timestamp — every in-flight REQ —
   loses the path to any `archive/` REQ that has one, whatever the walk order. Only when **both** are
   missing does the first found stand. Folded into REQ-601, whose write set now includes the guide.
+
+## Qualification
+
+**Passed.** Read from the merge range `dc5d8180..890ed0c8`, two files, 43 insertions and 6 deletions.
+Canonical `qualify` satisfied.
+
+- **The test was red before the fix existed, and the failure names the defect.** On the unchanged code:
+  `blocked archived request claimed project.txt through the checkout path: owner="REQ-905"`. That is the
+  exact behaviour REQ-596's review reproduced by hand.
+- **The fix is the smallest one that makes the path's spelling irrelevant.** The roots were already two
+  known directories iterated in order; carrying an active flag on each and reading it in the callback
+  removes the only place the path was consulted. Nothing else in the walk changed.
+- **Walk order is preserved deliberately**, because the tie-break between two claims on one path
+  depends on which is seen first. A slice keeps it; a map would not.
+- **The normal-checkout rule is unchanged, and three existing tests already pin it**: an archived
+  `completed` REQ claims (`commands_test.go`), a `claimed` `working/` REQ claims
+  (`inventory_test.go` via `writeInventoryOwner`), and the alias list rejects `cancelled`
+  (`TestTerminalSuccessAliases`). The new test adds the case none of them reached: a `blocked` `working/`
+  REQ inside a nested checkout still claims.
+- **One thing found on the way is not fixed here, and it is prose this run wrote.** The builder noticed,
+  while choosing a slice over a map, that a `working/` REQ with no `completed_at` loses a contested path
+  to any archived REQ with one, whatever the order — because a missing timestamp parses to zero. REQ-596
+  wrote the opposite into the guide. It is folded into REQ-601 rather than fixed here, because this
+  request's write set is one Go file and its test.
+
+## Testing
+
+**Red, then green, on the same test.**
+
+- Red, `inventory.go` untouched:
+  `--- FAIL: TestAssociationUnderWorkingDirectoryCheckoutSkipsBlockedArchivedRequest` —
+  `blocked archived request claimed project.txt through the checkout path: owner="REQ-905"`, exit 1.
+- Green after the fix: `--- PASS`, `ok .../internal/corehelpers 0.007s`.
+- Whole package: `ok .../internal/corehelpers 4.169s`, exit 0, against a 6.482s baseline before any
+  change. `go build ./...` and `go vet ./...` exit 0; `gofmt -l` on both files prints nothing.
+
+**Gate at the builder's head:** `Maintainer verification passed.`, exit 0, wall 86s, CLI module at
+**797** tests — one more than the 796 at the branch point, which is this test.
