@@ -1,6 +1,6 @@
 ---
 id: REQ-594
-status: pending
+status: claimed
 domain: testing
 created_at: 2026-09-06T03:08:29Z
 user_request: UR-105
@@ -14,6 +14,7 @@ depends_on: [REQ-593]
 related: [REQ-593]
 write_set: []
 title: 'Generalize the SIGPIPE fix: about 130 quiet-grep pipelines remain across the maintainer test tree'
+claimed_at: 2026-09-06T03:36:45Z
 ---
 
 # Generalize the SIGPIPE Fix Across the Maintainer Test Tree
