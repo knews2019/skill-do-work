@@ -312,7 +312,11 @@ scope-drift comparator reads the backticked paths in both sections and compares 
 **The declared set is larger than the write_set the request carried, and the widening is stated here
 rather than discovered by a reviewer.** The request listed ten paths; it named the files holding the
 definitions and not the files holding the call sites, and it missed the fourth dedupe helper entirely.
-Every added path is either a call site of a deleted definition or a file the survey showed holds one.
+Most added paths are a call site of a deleted definition or a file the survey showed holds one.
+**Corrected after review:** three are neither — the new canonical home
+`internal/sharedprimitives/shared_primitives.go`, its tests, and the guard test D-02 requires. Those
+exist because the plan chose a new leaf package and because one decision changed behaviour, not because
+a definition was found there.
 
 **Files I will NOT touch:** the string-set helper in corehelpers, which has two callers unrelated to
 this class; the strict numeric validator in nextselection, which has nine other callers and is the
@@ -320,13 +324,29 @@ right validator for target tokens; any action file, prime or document. No shippe
 CLI module changes.
 
 **Acceptance criteria:**
-- [ ] Exactly six definitions across the union of the old and the new names, and the lock-in fails in
-  both directions
-- [ ] Each of the reconciliations is a named decision stating the behaviour each caller keeps
-- [ ] No import cycle, and the shared package imports nothing else inside the module
-- [ ] Every current call site keeps its observable behaviour, except the one guard whose restoration is
-  D-02 and which carries its own test
-- [ ] Tests unchanged except where a test named a deleted private helper
+- [x] Exactly ~~six~~ **seven** definitions across the union of the old and the new names, and the
+  lock-in fails in both directions. **Corrected after review**, to the number D-06 established and the
+  shipped lock-in pins; the six was written before D-04 settled that the two path resolvers stay
+  separate
+- [x] Each of the reconciliations is a named decision stating the behaviour each caller keeps —
+  delivered, though two of them stated their own extent wrongly and are corrected after review
+- [x] No import cycle, and the shared package imports nothing else inside the module — delivered,
+  `go list -deps` returns only itself and every package's module-internal closure changed by exactly
+  `+sharedprimitives`
+- [ ] **Not met.** Every current call site keeps its observable behaviour, except the one guard whose
+  restoration is D-02 and which carries its own test. Two further call sites change observable
+  behaviour: `nextselection`'s ordering when a request carries a non-canonical frontmatter `id:` (D-05),
+  and seven version pairs in `knowledgecommands` that turn a stamp into a refusal (D-03). Both are
+  accepted on their merits and both are now named where they belong; neither was named here when the
+  criterion was written, which is why it stays unticked rather than being reworded to fit
+- [x] Tests unchanged except where a test named a deleted private helper — delivered for the existing
+  suite; `finalization_recovery_test.go` changes exactly one call and one import line
+
+**One request constraint is superseded, and naming it is part of not quietly outgrowing it.** The
+request says "no test files beyond the lock-in". The validated plan's step 1 requires unit tests for the
+new shared package, D-02 requires a test for the restored guard, and the review requires two more. The
+constraint was written for a pure move; this is a move plus three behaviour decisions, and each one that
+carries a behaviour change carries a test.
 
 ## Pre-Flight
 
@@ -382,8 +402,8 @@ module-relative shorthand.
 - `skills/do-work/tools/do-work-cli/internal/suiteinstall/update_transaction.go`
 - `_dev/tests/audit-lockins.sh`
 
-**What was done:** Fifteen definitions of six helper names became seven. Nine private copies were
-deleted outright; one comparator was exported in place; one path resolver was renamed so that one name
+**What was done:** Fifteen definitions of six helper names became seven. ~~Nine~~ **Twelve** private copies were
+deleted outright (corrected after review — the first count omitted three); one comparator was exported in place; one path resolver was renamed so that one name
 no longer carries two contracts. The new `internal/sharedprimitives` imports nothing else in the module
 (`go list -deps` shows only itself), so it can be called from any package without a cycle — which is
 the reason the copies existed in the first place.
@@ -406,8 +426,11 @@ seven, not six, for the reason in D-06.
   `record[3:]` of a `len >= 4` record, and every `knowledgecommands` site passes map keys of a write set
   or `filepath.Join`/`filepath.Dir` output. The filter therefore cannot fire today, and dropping it is
   the safe direction: a blank that ever does appear becomes visible in an evidence list instead of
-  vanishing from it. The result is always a non-nil empty slice, which every deleted copy also
-  guaranteed, so JSON evidence still marshals `[]` and never `null`.
+  vanishing from it. The result is always a non-nil empty slice, so JSON evidence still marshals `[]`
+  and never `null`. ~~which every deleted copy also guaranteed~~ **False, corrected after review:**
+  `finalization`'s copy returned `nil` whenever `normalizeRepositoryPaths` refused, and that `nil` is
+  the exact defect D-02 fixes. A third `repairvalidation` producer shape the first version of this
+  bullet missed: `requeststate` plan change paths, appended only under a non-empty guard.
 - **D-02 — `finalization`'s wrapper is deleted and the guard it disabled is restored. This is a
   deliberate behaviour change.** The wrapper's whole body was `result, _ := normalizeRepositoryPaths(paths);
   return result`. Twenty-one production call sites and one test site wanted plain dedupe and now call
@@ -429,6 +452,14 @@ seven, not six, for the reason in D-06.
   before. `knowledgecommands` keeps its `< 0` predicate and now returns the section's own
   "template and session versions must be bare semver" error for a version its lenient parser used to
   score as zero — previously that version silently skipped the template-version stamp.
+  **Corrected after review: that is one direction of two.** Seven version pairs also turn
+  *stamp* into *error* — a pair the lenient comparator scored -1, meaning migrate and stamp, now aborts
+  the interview command. `semverMajor` is unchanged and gates the branch on three dot-separated parts
+  with an `Atoi`-able first part, so a leading zero, an empty middle part, a trailing dot or a
+  non-numeric third part gets past it and used to be scored numerically. Session `1.0.0` against
+  template `1.09.0` is one such pair. `template.Version` is read verbatim from a project-authored
+  template's frontmatter, so this is project data rather than tool-written data. The remediation adds
+  the test that pins it.
   `ParseSemanticVersion` is exported so `publication/release_mirrors.go` keeps its admission check when
   the private `parseSemver` goes.
 - **D-04 — `physicalPath` is not merged; two contracts keep two names.** `suiteinstall`'s copy becomes
@@ -445,8 +476,17 @@ seven, not six, for the reason in D-06.
   behaviour. `nextselection`'s strict `numericID` stays — nine other callers, and it is the right
   validator for CLI target tokens — but its `requestIDLess` goes, so an id with trailing non-digits
   (`REQ-12x`) now sorts by 12 in `nextselection` where it previously fell to the string comparison.
-  Such an id cannot reach these two sorts: both sort ids drawn from a repository snapshot, whose
-  filenames and `id:` fields are produced by `formatRequestID`.
+  ~~Such an id cannot reach these two sorts: both sort ids drawn from a repository snapshot, whose
+  filenames and `id:` fields are produced by `formatRequestID`.~~ **False, and the reviewer reached it
+  end to end.** Only `FilenameID` goes through `requestIDFromText`. The frontmatter `id:` is raw
+  `document.scalarValue("id")`, never normalized, and `nextselection.requestID()` *prefers* it over
+  `FilenameID`. A filename/frontmatter mismatch only appends to `snapshot.WarningMessages`, which
+  `nextselection` never reads and `next` never prints. Built from both revisions against a fixture
+  carrying `id: REQ-12x`, the base binary selects `REQ-100` and the head binary selects `REQ-12x`. So
+  in a repository holding a non-canonical `id:`, the queue order and the request `next` selects both
+  change. **The change is accepted anyway**, because the permissive parser is the one that assigns
+  identity elsewhere in the same file, and a comparator that disagreed with it would order ids by one
+  rule and name them by another. What was wrong was the claim of unreachability, not the pick.
 - **D-06 — the lock-in pins the union at seven, not the six the plan states. This is a deviation and it
   is arithmetic, not judgment.** The plan's own regex reaches six only by naming `ResolvePhysicalPath`,
   a merged resolver that D-04 decided NOT to create, and by omitting `existingPhysicalPath`, the name
