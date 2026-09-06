@@ -1,0 +1,555 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="icon" href="data:,"><title>Test efficiency · improvement proposal</title><style>*{box-sizing:border-box} :root{--bg:#f8f6f0;--surface:#fffefa;--text:#222b30;--muted:#586268;--accent:#245d87;--line:#d8ddd9;--code:#ecf0ed} @media(prefers-color-scheme:dark){:root{--bg:#141c22;--surface:#1d2831;--text:#edf0ea;--muted:#b5c1c8;--accent:#91c8f1;--line:#40505b;--code:#14212b}} html{scroll-behavior:smooth} body{margin:0;background:var(--bg);color:var(--text);font:17px/1.6 system-ui,sans-serif}.page{width:100%;padding:0 clamp(20px,2.6vw,60px) 80px}header,section{padding:44px 0;border-bottom:1px solid var(--line)}h1,h2,h3{font-family:Georgia,serif;line-height:1.13;font-weight:500;letter-spacing:-.025em}h1{font-size:clamp(38px,4vw,66px);max-width:23ch;margin:18px 0}h2{font-size:34px;margin:0 0 24px}h3{font-size:28px;margin:0}h4{font-size:17px;margin:0}p{margin:0 0 16px}.eyebrow,.code{font:13px/1.5 ui-monospace,monospace;text-transform:uppercase;letter-spacing:.1em;color:var(--muted)}.measure{max-width:74ch}.lede{font-size:21px;max-width:65ch}.row{display:flex;flex-wrap:wrap;gap:28px}.row>*{flex:1 1 440px;min-width:0}.stat{font-size:36px;font-weight:600;line-height:1.2;display:block;margin:8px 0}.panel,.prompt{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:24px}.intro{align-items:end}.small,figcaption{font-size:14px;color:var(--muted)}a{color:var(--accent);text-underline-offset:3px}nav{display:flex;gap:10px 24px;flex-wrap:wrap;margin-top:24px}nav a{font-size:14px}table{width:100%;border-collapse:collapse;font-size:15px}td,th{text-align:left;padding:14px 12px;border-bottom:1px solid var(--line);vertical-align:top}th{color:var(--muted);font-size:13px;text-transform:uppercase;letter-spacing:.05em}td:last-child{font-variant-numeric:tabular-nums}code{font:13px/1.5 ui-monospace,monospace;overflow-wrap:anywhere}pre{white-space:pre-wrap;overflow-wrap:anywhere;word-break:normal;background:var(--code);padding:20px;border-radius:6px;font:14px/1.6 ui-monospace,monospace;max-height:520px;overflow:auto;margin:14px 0 0}details{margin:12px 0}summary{cursor:pointer;overflow-wrap:anywhere;color:var(--accent);font-size:15px}.area{padding:32px 0;border-top:1px solid var(--line);scroll-margin-top:20px}.area-title{display:flex;gap:20px;align-items:center;margin-bottom:24px}.area-title .code{padding:10px 12px;border:1px solid var(--line);border-radius:6px}.area-title .eyebrow{margin:0 0 8px}.tag{font-size:13px;color:var(--muted);font-weight:650}.prompt{flex-basis:500px;align-self:flex-start}.prompt pre{max-height:none}.facts{flex-basis:460px}.prompt-head{display:flex;align-items:center;justify-content:space-between;gap:12px}button{font:14px system-ui;color:var(--text);background:var(--code);border:1px solid var(--line);border-radius:5px;padding:10px 14px;cursor:pointer}button:hover{outline:2px solid var(--accent)}:focus-visible{outline:3px solid var(--accent);outline-offset:3px}figure{margin:0}img{display:block;width:100%;height:auto;border-radius:6px}figcaption{margin-top:12px}.shot-history{max-width:1384px}.shot-summary{max-width:1212px}.flow{display:flex;gap:12px;flex-wrap:wrap;align-items:stretch}.flow div{flex:1 1 180px;background:var(--surface);border-left:3px solid var(--accent);padding:16px}.flow strong{display:block}ul{padding-left:22px}li{margin-bottom:10px}footer{padding-top:28px}.table-wrap{overflow-x:auto}.status-note{padding-left:20px;border-left:3px solid var(--accent)}@media(max-width:600px){td,th{padding:10px 6px;font-size:13px}.prompt,.panel{padding:18px}section,header{padding:40px 0}.area-title{align-items:flex-start}h3{font-size:25px}}</style></head><body><main class="page">
+<header><p class="eyebrow">Engineering report / do-work ai-report / 06 September 2026</p><div class="row intro"><div><h1>Make each test do less work.</h1><p class="lede">Reduce repeated builds, fixture construction, process launches, and scans while preserving what the tests prove.</p></div><aside class="panel"><p class="eyebrow">Verdict</p><p><strong>Nine scoped work areas. No measured speedup yet.</strong></p><p>Begin with comparable measurements, then CLI build reuse and the inventory matrix. Follow with prepared recovery fixtures. Gate-sealing and production Git changes need stronger profiling evidence.</p><p class="small">This is a proposal requested by the user, not a shipped-change report. The ai-report layout and evidence workflow are adapted accordingly. No optimization or queue capture was performed.</p></aside></div><nav><a href="#evidence">Observed costs</a><a href="#areas">Work areas &amp; prompts</a><a href="#verification">Acceptance standard</a><a href="#sources">Source receipts</a></nav></header>
+<section><h2>What this report delivers</h2><div class="row"><p class="measure">A review of the current test implementation and recorded timings, nine capture-ready work definitions, and a common standard for proving an efficiency improvement. Each proposal names what is observed, what remains uncertain, and the coverage it must preserve.</p><div class="measure status-note"><p><strong>Success means lower total CPU and lower elapsed time for comparable work.</strong> Lowering concurrency, extending timeouts, splitting files only to evade budgets, or moving existing checks into a slower tier does not meet this request.</p></div></div><p class="small">Scope: areas surfaced by this investigation of the slow files and gate machinery. This is not an exhaustive profile of every test. No savings estimates or ranking by measured return are implied.</p></section>
+<section id="evidence"><h2>What the evidence actually says</h2><div class="row"><div><div class="panel"><p class="eyebrow">User-supplied CPU snapshot</p><span class="stat">11.39% busy</span><p>3.87% system + 7.52% user; 88.61% idle. The history shows bursts on eight cores. Neither image identifies the responsible process or establishes correlation with a test run.</p></div><details><summary>View the two original CPU captures</summary><figure class="shot-history"><a href="screenshots/cpu-history.png" target="_blank" rel="noopener"><img src="screenshots/cpu-history.png" alt="User supplied macOS CPU history showing bursts on eight cores" width="1384" height="810"></a><figcaption>Authentic user-supplied observation. Not a test before/after comparison.</figcaption></figure><figure class="shot-summary"><a href="screenshots/cpu-summary.png" target="_blank" rel="noopener"><img src="screenshots/cpu-summary.png" alt="User supplied CPU summary reporting 88.61 percent idle" width="1212" height="214"></a><figcaption>Authentic user-supplied observation; captured time and process attribution are unavailable.</figcaption></figure></details></div><div><p class="eyebrow">Recorded test durations</p><p>Snapshot run <code>20260906T125422Z-68054</code>, from <code>do-work/test-durations.tsv</code>. The table sums top-level test elapsed values by source file. It is neither CPU time nor whole-gate wall time; do not add rows to estimate gate duration.</p><div class="table-wrap"><table><thead><tr><th>Test file</th><th>Recorded time</th></tr></thead><tbody><tr><td><code>skills/do-work/tools/do-work-cli/internal/finalization/finalization_recovery_test.go</code></td><td>20.19 s</td></tr><tr><td><code>skills/do-work/tools/do-work-cli/internal/finalization/finalization_req499_test.go</code></td><td>18.75 s</td></tr><tr><td><code>skills/do-work/tools/do-work-cli/internal/publication/defer_gate_test.go</code></td><td>17.04 s</td></tr><tr><td><code>skills/do-work/tools/do-work-cli/internal/corehelpers/inventory_test.go</code></td><td>13.41 s</td></tr><tr><td><code>skills/do-work/tools/do-work-cli/internal/heavyverification/heavy_reuse_regression_test.go</code></td><td>8.42 s</td></tr><tr><td><code>skills/do-work/tools/do-work-cli/internal/lifecycleadvance/finalization_gate_test.go</code></td><td>8.18 s</td></tr></tbody></table></div><p class="small">This historical run has 153 rows and reports other_gate_processes=1. Host/toolchain, cache state, and test tier are not encoded in the TSV. The process field is a point sample and does not prove sustained overlap. No new performance tests were run for this report.</p></div></div></section>
+<section><h2>Where the work is spent</h2><div class="flow"><div><strong>Discover &amp; build</strong>List tests, resolve launchers, compile/link integration binaries.</div><div><strong>Prepare fixtures</strong>Copy modules, construct Git history, create interrupted states.</div><div><strong>Exercise behavior</strong>Run data cases, real Git transactions, CLI and signal boundaries.</div><div><strong>Check &amp; record</strong>Lint files and fences, hash fixtures and runtime inputs, record evidence.</div></div><p class="small" style="margin-top:16px">Conceptual flow derived from the cited runner and test code; not a measured timeline. UI captures were not expected for this work. The attached CPU captures are diagnostic context, not product UI evidence.</p><div class="row"><div><h3 style="margin:24px 0 16px">Already optimized</h3><p class="measure">Finalization copies an initialized Git template. Publication copies prepared baseline repositories. Session-start shares one physical module root. Inventory resolves its compatibility executable once. Fast-stage reuse and a shared heavy shell-probe binary also exist. These are starting points to preserve, not new recommendations.</p></div><div><h3 style="margin:24px 0 16px">Correction to the earlier discussion</h3><p class="measure">Concurrency limits address scheduling rather than this efficiency goal. Fresh Git initialization was also an incomplete diagnosis: it is already amortized in finalization. The remaining candidate is repeated committed-state setup. Duplicate CLI builds mainly affect heavy tests.</p></div></div></section>
+<section id="areas"><h2>Nine improvement areas</h2><p class="measure">The ordering reflects confidence and implementation scope, not measured savings. A1 provides measurement evidence for the other areas. Each prompt stands alone; paste it into a do-work-enabled session. Capture creates work definitions and stops. It does not implement them.</p><div class="table-wrap"><table><thead><tr><th>Area</th><th>Work</th><th>Sequence</th><th>Evidence status</th></tr></thead><tbody><tr><td><a href="#A1">A1</a></td><td>Establish an honest performance baseline</td><td>First · measurement</td><td>Observed measurement gap</td></tr><tr><td><a href="#A2">A2</a></td><td>Build the integration CLI once per tested source</td><td>Early · concrete</td><td>Repeated build invocations confirmed</td></tr><tr><td><a href="#A3">A3</a></td><td>Run the inventory data matrix without subprocesses</td><td>Early · concrete</td><td>45-status matrix confirmed</td></tr><tr><td><a href="#A4">A4</a></td><td>Copy prepared recovery states, not just empty repositories</td><td>Next · concrete</td><td>Repeated seed work confirmed</td></tr><tr><td><a href="#A5">A5</a></td><td>Make fixture integrity checks cheaper</td><td>Next · profile first</td><td>Repeated full-tree hashing confirmed</td></tr><tr><td><a href="#A6">A6</a></td><td>Batch shell audits while preserving diagnostics</td><td>Next · profile first</td><td>Per-file lint launches confirmed</td></tr><tr><td><a href="#A7">A7</a></td><td>Remove redundant Go test discovery</td><td>Small · verify semantics</td><td>Extra go test invocation confirmed</td></tr><tr><td><a href="#A8">A8</a></td><td>Reduce the cost of proving tests can be reused</td><td>Later · conditional</td><td>Repeated sealing work confirmed; cost unknown</td></tr><tr><td><a href="#A9">A9</a></td><td>Batch repeated Git reads in the exercised code</td><td>Later · conditional product change</td><td>Separate Git reads confirmed; redundancy unproven</td></tr></tbody></table></div><div style="margin:24px 0"><button id="copy-all">Copy all nine capture prompts</button><span id="copy-status" role="status" class="small" style="margin-left:14px"></span></div><article class="area" id="A1"><div class="area-title"><span class="code">A1</span><div><p class="eyebrow">First · measurement</p><h3>Establish an honest performance baseline</h3></div></div><div class="row"><div class="measure facts"><p class="tag">Observed measurement gap</p><p><strong>Evidence.</strong> Existing logs contain shell elapsed seconds and sums of top-level Go test elapsed times by source file. They do not contain total CPU, subprocess counts, or bytes hashed. The concurrent-gate field is a one-time process sample, not continuous attribution. <a href="#S1">S1</a> <a href="#S15">S15</a></p><p><strong>Proposed change.</strong> Add a small opt-in measurement path around representative test selections. Separate build, fixture setup, assertions, and cleanup where useful. Collect child-process CPU and work counts; keep profiling overhead out of normal gate verdicts.</p><p><strong>Value and limits.</strong> A measurement foundation, not a speedup by itself. It prevents optimizing the wrong stage or confusing a cache hit with faster execution.</p></div><div class="prompt"><div class="prompt-head"><h4>Capture this work</h4><button data-copy="prompt-A1" aria-label="Copy capture prompt A1">Copy prompt</button></div><details><summary>Show ready-to-paste prompt</summary><pre id="prompt-A1">do-work capture-request: Establish a reproducible test-efficiency baseline for this repository. Extend or reuse the existing duration tooling under _dev/tests instead of building a new benchmark framework. Record source revision and working-tree changes, toolchain, test selection, cache condition, fixed concurrency, whole-selection wall time, total CPU including descendants, and subprocess counts by executable where supported. Distinguish per-file accumulated Go durations from package and gate wall time. Measure the inventory, finalization, session-start, shell-audit, and heavy CLI-build cases. Use at least three comparable runs and report medians and spread; separate cold and warm builds and reused-stage results. Instrumentation must be opt-in and preserve exit status, cancellation, and cleanup. Produce an evidence table that prioritizes removable work; state unsupported counters explicitly. Capture only; do not execute the queue.</pre></details></div></div></article><article class="area" id="A2"><div class="area-title"><span class="code">A2</span><div><p class="eyebrow">Early · concrete</p><h3>Build the integration CLI once per tested source</h3></div></div><div class="row"><div class="measure facts"><p class="tag">Repeated build invocations confirmed</p><p><strong>Evidence.</strong> The installer helper issues go build for each caller; three test functions call it. Finalization, lifecycle advance, next selection, and other integration packages have additional builders. Go caching already helps compilation, so redundant build invocations are confirmed; the remaining linking cost is unmeasured. <a href="#S2">S2</a></p><p><strong>Proposed change.</strong> Start with one immutable binary per installer test package, then share a verified executable across compatible heavy tests only if measurement supports it. Preserve a standalone fallback and distinguish binaries by source and build flags.</p><p><strong>Value and limits.</strong> Fewer build-driver and linker invocations. This primarily targets heavy integration runs, not all of the latest fast-test timings.</p></div><div class="prompt"><div class="prompt-head"><h4>Capture this work</h4><button data-copy="prompt-A2" aria-label="Copy capture prompt A2">Copy prompt</button></div><details><summary>Show ready-to-paste prompt</summary><pre id="prompt-A2">do-work capture-request: Eliminate redundant builds of the same CLI executable in integration tests. Start at skills/do-work/tools/do-work-cli/internal/suiteinstall/suite_commands_test.go, where three test functions call buildTestCLIBinary. Build once per test binary with correct lifetime and cleanup. Audit other package-local CLI builders and the existing DO_WORK_TEST_DO_WORK_CLI_BINARY facility; extend sharing only where measured savings justify it. A supplied executable must match the tested source tree and build configuration, and direct standalone package runs must still work. Never share across different worktree contents or race/build flags. Keep actual subprocess signal, exit-status, JSON, and launcher assertions. Acceptance: fewer go build invocations and improved measured CPU and elapsed time for the same heavy selection; stale or wrong binaries cannot produce a green result. Preserve the current test scenarios and meaningful assertions. Keep real process, signal, Git transaction, and launcher tests wherever those boundaries are the behavior under test. Do not claim a win by reducing concurrency, increasing budgets, moving checks to a slower tier, or skipping coverage. Compare the same test selection before and after at fixed concurrency; report wall time, total CPU including children, and relevant work counts. Prove the optimized tests still reject representative deliberately introduced defects. Capture only; do not execute the queue.</pre></details></div></div></article><article class="area" id="A3"><div class="area-title"><span class="code">A3</span><div><p class="eyebrow">Early · concrete</p><h3>Run the inventory data matrix without subprocesses</h3></div></div><div class="row"><div class="measure facts"><p class="tag">45-status matrix confirmed</p><p><strong>Evidence.</strong> The 45-status matrix and additional synthetic cases create temporary files and fake Git scripts, invoke the CLI, then call the Go inventory reader. The compatibility executable delegates to current Go code; this comparison is not an independent historical implementation. Explicit expected results remain valuable. <a href="#S3">S3</a> <a href="#S4">S4</a> <a href="#S5">S5</a></p><p><strong>Proposed change.</strong> Separate porcelain parsing from the Git acquisition boundary. Run every synthetic classification, rename, exclusion, and malformed-input case directly against bytes. Keep representative real Git and CLI-format tests that exercise the entire path.</p><p><strong>Value and limits.</strong> Removes process startup and filesystem setup from exhaustive data tests while retaining all data cases. The prior launcher-resolution optimization is already present.</p></div><div class="prompt"><div class="prompt-head"><h4>Capture this work</h4><button data-copy="prompt-A3" aria-label="Copy capture prompt A3">Copy prompt</button></div><details><summary>Show ready-to-paste prompt</summary><pre id="prompt-A3">do-work capture-request: Make the inventory tests efficient by separating byte parsing from Git acquisition in skills/do-work/tools/do-work-cli/internal/corehelpers/inventory.go. Move the complete synthetic status matrix and secret/origin/ambiguity cases in inventory_test.go to direct in-process tests with explicit expected rows and findings. Cover malformed NUL records, missing rename origins, ordering, metadata exclusions, and cross-row secret promotion. Trace the current retained-command path and document which assertions are independent and which exercise the same implementation twice. Retain representative real-Git and end-to-end CLI/compatibility output checks, including staged-addition then deletion and secret rename behavior. Do not replace end-to-end coverage with a self-comparison. Acceptance: all original data cases remain traceable, synthetic matrix subprocess count falls substantially, and both CPU and elapsed time improve. Preserve the current test scenarios and meaningful assertions. Keep real process, signal, Git transaction, and launcher tests wherever those boundaries are the behavior under test. Do not claim a win by reducing concurrency, increasing budgets, moving checks to a slower tier, or skipping coverage. Compare the same test selection before and after at fixed concurrency; report wall time, total CPU including children, and relevant work counts. Prove the optimized tests still reject representative deliberately introduced defects. Capture only; do not execute the queue.</pre></details></div></div></article><article class="area" id="A4"><div class="area-title"><span class="code">A4</span><div><p class="eyebrow">Next · concrete</p><h3>Copy prepared recovery states, not just empty repositories</h3></div></div><div class="row"><div class="measure facts"><p class="tag">Repeated seed work confirmed</p><p><strong>Evidence.</strong> Finalization already reuses an initialized repository template. However, seedSemanticLegacyTail repeatedly writes the same fixture tree, stages and commits it, then constructs the same interrupted state. Several cases vary only one file after this setup. <a href="#S6">S6</a> <a href="#S7">S7</a> <a href="#S14">S14</a></p><p><strong>Proposed change.</strong> Prepare reusable baseline states once and give each case an independent copy. Apply the case-specific mutation afterward. Keep actual recovery, commit creation, hooks, rollback, and durable-phase transitions inside the test.</p><p><strong>Value and limits.</strong> Less repeated fixture construction. Copying larger .git trees has a cost, so benchmark templates against fresh setup before retaining them.</p></div><div class="prompt"><div class="prompt-head"><h4>Capture this work</h4><button data-copy="prompt-A4" aria-label="Copy capture prompt A4">Copy prompt</button></div><details><summary>Show ready-to-paste prompt</summary><pre id="prompt-A4">do-work capture-request: Reduce repeated fixture setup in finalization recovery tests. Inspect seedSemanticLegacyTail and related repeated seed helpers in skills/do-work/tools/do-work-cli/internal/finalization. The initialized Git template already exists; extend reuse only to identical committed or interrupted baseline states that recur across cases. Each case must receive an independent filesystem copy with correct paths, permissions, index, HEAD, and journal semantics. Do not share mutable repositories or precompute the recovery behavior being asserted. Keep real Git commits, hooks, failure injection, rollback, and every durable-phase recovery case. Benchmark construction and copying separately; retain only templates that reduce total CPU and elapsed time. Acceptance includes isolation proof and representative mutation tests for wrong provenance, missing recovery steps, and foreign-file damage. Preserve the current test scenarios and meaningful assertions. Keep real process, signal, Git transaction, and launcher tests wherever those boundaries are the behavior under test. Do not claim a win by reducing concurrency, increasing budgets, moving checks to a slower tier, or skipping coverage. Compare the same test selection before and after at fixed concurrency; report wall time, total CPU including children, and relevant work counts. Prove the optimized tests still reject representative deliberately introduced defects. Capture only; do not execute the queue.</pre></details></div></div></article><article class="area" id="A5"><div class="area-title"><span class="code">A5</span><div><p class="eyebrow">Next · profile first</p><h3>Make fixture integrity checks cheaper</h3></div></div><div class="row"><div class="measure facts"><p class="tag">Repeated full-tree hashing confirmed</p><p><strong>Evidence.</strong> Session-start cases share one copied module, an optimization already implemented. After each case, find, shasum, sort, and shasum walk and hash the shared hooks and tools tree again. The check protects later cases from hidden fixture mutation. <a href="#S8">S8</a></p><p><strong>Proposed change.</strong> Measure its contribution, then reduce hasher startup and redundant metadata work while checking identical content and path coverage. A single-process manifest comparison is one candidate. Preserve the after-each-case boundary.</p><p><strong>Value and limits.</strong> Potentially less hashing overhead and process churn. Moving the check only to the end or trusting modification times would change the guarantee.</p></div><div class="prompt"><div class="prompt-head"><h4>Capture this work</h4><button data-copy="prompt-A5" aria-label="Copy capture prompt A5">Copy prompt</button></div><details><summary>Show ready-to-paste prompt</summary><pre id="prompt-A5">do-work capture-request: Optimize shared fixture integrity verification in _dev/tests/session-start-hook-behavior.sh. Measure shared_skill_immutable_digest separately from hook execution. The shared module root already exists; do not recreate that optimization. Replace repeated process-heavy traversal/hash/sort plumbing with a simpler measured equivalent if worthwhile. Preserve after-each-case detection of changed bytes, added or removed paths, and the current version.md exclusion; explicitly test any additional file-type or permission guarantees claimed. Do not use mtime-only equality or move all checking to suite end. Acceptance: intentional shared-tree mutation still fails in the offending case, the same hooks/tools content is checked, and CPU and elapsed time improve. Preserve the current test scenarios and meaningful assertions. Keep real process, signal, Git transaction, and launcher tests wherever those boundaries are the behavior under test. Do not claim a win by reducing concurrency, increasing budgets, moving checks to a slower tier, or skipping coverage. Compare the same test selection before and after at fixed concurrency; report wall time, total CPU including children, and relevant work counts. Prove the optimized tests still reject representative deliberately introduced defects. Capture only; do not execute the queue.</pre></details></div></div></article><article class="area" id="A6"><div class="area-title"><span class="code">A6</span><div><p class="eyebrow">Next · profile first</p><h3>Batch shell audits while preserving diagnostics</h3></div></div><div class="row"><div class="measure facts"><p class="tag">Per-file lint launches confirmed</p><p><strong>Evidence.</strong> action-shell-blocks.sh launches bash syntax checks, the quiet-grep scanner, and ShellCheck per input. The maintainer gate also runs ShellCheck across tracked shell files, and a separate quiet-grep audit scans shell sources. These paths overlap but have different coverage and options. <a href="#S9">S9</a></p><p><strong>Proposed change.</strong> Map coverage and options first. Batch compatible ShellCheck inputs while preserving fence-specific exclusions and source-line mapping. Consolidate duplicate reads or scans only where their semantics actually match.</p><p><strong>Value and limits.</strong> Fewer tool startups and repeated scans. Do not concatenate independent shell fragments into a shared syntax scope.</p></div><div class="prompt"><div class="prompt-head"><h4>Capture this work</h4><button data-copy="prompt-A6" aria-label="Copy capture prompt A6">Copy prompt</button></div><details><summary>Show ready-to-paste prompt</summary><pre id="prompt-A6">do-work capture-request: Reduce redundant work in the shell audit suite. Profile _dev/tests/action-shell-blocks.sh, quiet-grep-pipeline-audit.sh, prescribed-shell-canonicalization.sh, and the maintainer ShellCheck stage. Build a coverage/options map before removing duplicate scans. Batch compatible ShellCheck files or reuse extraction within one invocation while retaining source-versus-fence options, exact original path/line attribution, all scanner fixtures, and standalone script operation. Keep bash syntax isolation per fragment. Preserve enumeration of every currently covered file and fence, including unsafe quiet-grep forms. Acceptance: fewer process starts and repeated reads, unchanged diagnostic correctness on invalid fixtures, and improved CPU and elapsed time. Avoid a broad parser framework. Preserve the current test scenarios and meaningful assertions. Keep real process, signal, Git transaction, and launcher tests wherever those boundaries are the behavior under test. Do not claim a win by reducing concurrency, increasing budgets, moving checks to a slower tier, or skipping coverage. Compare the same test selection before and after at fixed concurrency; report wall time, total CPU including children, and relevant work counts. Prove the optimized tests still reject representative deliberately introduced defects. Capture only; do not execute the queue.</pre></details></div></div></article><article class="area" id="A7"><div class="area-title"><span class="code">A7</span><div><p class="eyebrow">Small · verify semantics</p><h3>Remove redundant Go test discovery</h3></div></div><div class="row"><div class="measure facts"><p class="tag">Extra go test invocation confirmed</p><p><strong>Evidence.</strong> When excluding heavy test prefixes, the budget wrapper first runs go test -list and a Python filter, then runs go test again with a generated -run expression. That is an additional build/list/start path before execution. <a href="#S1">S1</a></p><p><strong>Proposed change.</strong> Evaluate one-pass selection using supported Go test flags, or another smaller equivalent. Preserve the current selected set and refusal when no fast tests remain; check interactions with caller -run and package patterns.</p><p><strong>Value and limits.</strong> A bounded runner simplification. No saving is claimed until discovery overhead is measured.</p></div><div class="prompt"><div class="prompt-head"><h4>Capture this work</h4><button data-copy="prompt-A7" aria-label="Copy capture prompt A7">Copy prompt</button></div><details><summary>Show ready-to-paste prompt</summary><pre id="prompt-A7">do-work capture-request: Remove avoidable pre-execution test discovery in _dev/tests/run-go-tests-with-budget.sh. Measure the current go test -list plus Python prefix filter followed by go test. Evaluate a single-invocation selection using flags supported by the repository toolchain, but preserve the exact intended test set, anchored prefix exclusions, explicit caller selections, package patterns, budget attribution, JSON handling, exit status, and the existing no-fast-tests refusal. Compare selected names before and after, including empty selection and special regex characters. Do not simply drop the empty-selection guard or silently skip tests. Acceptance: one fewer discovery invocation when possible and measured CPU/elapsed savings; if equivalence requires more machinery than it saves, document that outcome. Preserve the current test scenarios and meaningful assertions. Keep real process, signal, Git transaction, and launcher tests wherever those boundaries are the behavior under test. Do not claim a win by reducing concurrency, increasing budgets, moving checks to a slower tier, or skipping coverage. Compare the same test selection before and after at fixed concurrency; report wall time, total CPU including children, and relevant work counts. Prove the optimized tests still reject representative deliberately introduced defects. Capture only; do not execute the queue.</pre></details></div></div></article><article class="area" id="A8"><div class="area-title"><span class="code">A8</span><div><p class="eyebrow">Later · conditional</p><h3>Reduce the cost of proving tests can be reused</h3></div></div><div class="row"><div class="measure facts"><p class="tag">Repeated sealing work confirmed; cost unknown</p><p><strong>Evidence.</strong> Fast-stage decisions hash covered inputs and invoke runtime probes; recording recomputes the fingerprint. Runtime probes hash tool binaries and query Go and Git. A manifest covers broad inputs and seals all inherited environment variables for correctness. <a href="#S10">S10</a> <a href="#S11">S11</a> <a href="#S12">S12</a></p><p><strong>Proposed change.</strong> First attribute fingerprint time and reuse-miss reasons. Deduplicate identical resolved tool hashes inside a single snapshot where safe. Consider smaller test groups only after separating pure tests from live repository readers and proving the full dependency boundary.</p><p><strong>Value and limits.</strong> Can reduce verification overhead and unnecessary execution, but this is not permission to exclude inputs casually. Before/after revalidation and fail-closed behavior are essential.</p></div><div class="prompt"><div class="prompt-head"><h4>Capture this work</h4><button data-copy="prompt-A8" aria-label="Copy capture prompt A8">Copy prompt</button></div><details><summary>Show ready-to-paste prompt</summary><pre id="prompt-A8">do-work capture-request: Profile and simplify fast-stage evidence computation without weakening invalidation. Scope _dev/tests/heavy-runtime-fingerprint.py, fast-stages.json, maintainer-verify.sh, and internal/heavyverification. Measure file/tool bytes hashed, process launches, decision/record time, reuse hits, and miss reasons. Remove duplicate reads of identical resolved inputs within one coherent snapshot only when identity is proven; keep post-run revalidation to catch changes during tests. Evaluate smaller stage groups only if pure versus repository-reading test boundaries can be demonstrated. Retain all required source, untracked/ignored input, environment, toolchain, and external-input checks; opaque inputs must still force execution. Reject stale success after failed/interrupted runs or source/tool changes. Acceptance: equivalent invalidation mutation results and lower measured total cost, including misses. Do not build a new general cache framework. Preserve the current test scenarios and meaningful assertions. Keep real process, signal, Git transaction, and launcher tests wherever those boundaries are the behavior under test. Do not claim a win by reducing concurrency, increasing budgets, moving checks to a slower tier, or skipping coverage. Compare the same test selection before and after at fixed concurrency; report wall time, total CPU including children, and relevant work counts. Prove the optimized tests still reject representative deliberately introduced defects. Capture only; do not execute the queue.</pre></details></div></div></article><article class="area" id="A9"><div class="area-title"><span class="code">A9</span><div><p class="eyebrow">Later · conditional product change</p><h3>Batch repeated Git reads in the exercised code</h3></div></div><div class="row"><div class="measure facts"><p class="tag">Separate Git reads confirmed; redundancy unproven</p><p><strong>Evidence.</strong> Recovery discovery reads historical file contents and diffs with separate Git commands, including per-path operations. Tests spend time exercising these real operations. Tracing is needed to establish which calls repeat identical work. <a href="#S13">S13</a></p><p><strong>Proposed change.</strong> If profiling shows a material hotspot, batch immutable reads at a fixed commit or reuse results within a mutation-free operation. Keep working-tree and index reads fresh after every mutation.</p><p><strong>Value and limits.</strong> Potential benefit to both tests and actual recovery commands. This changes production behavior and deserves its own correctness review, unlike fixture-only improvements.</p></div><div class="prompt"><div class="prompt-head"><h4>Capture this work</h4><button data-copy="prompt-A9" aria-label="Copy capture prompt A9">Copy prompt</button></div><details><summary>Show ready-to-paste prompt</summary><pre id="prompt-A9">do-work capture-request: Investigate repeated Git subprocess work in finalization discovery and recovery. Trace a representative slow recovery selection before changing production code; group commands by repository, revision, path, and intervening mutation. If duplicate immutable reads or compatible per-path reads dominate, implement the smallest operation-scoped batching or reuse. Use a fixed commit identity for historical data; never reuse working-tree/index/HEAD results across writes without valid invalidation. Preserve merge-aware diffs, unusual filenames, linked worktrees, hooks, cancellation, partial failures, recovery ordering, and foreign-file safety. Acceptance: fewer Git processes, lower CPU and elapsed time, identical outcomes, and mutation tests that catch stale reads after commits/index changes. If tracing shows no worthwhile repetition, finish with evidence and no speculative cache. Preserve the current test scenarios and meaningful assertions. Keep real process, signal, Git transaction, and launcher tests wherever those boundaries are the behavior under test. Do not claim a win by reducing concurrency, increasing budgets, moving checks to a slower tier, or skipping coverage. Compare the same test selection before and after at fixed concurrency; report wall time, total CPU including children, and relevant work counts. Prove the optimized tests still reject representative deliberately introduced defects. Capture only; do not execute the queue.</pre></details></div></div></article></section>
+<section id="verification"><h2>How to accept an improvement</h2><div class="row"><div class="panel"><h3>Performance evidence</h3><p style="margin-top:16px">Run the same selected scenarios at fixed concurrency on comparable snapshots. Record source changes, cache state, toolchain, CPU including child processes, and elapsed time. Use at least three repeated samples with median and spread. Count the work being removed: build invocations, Git processes, tree walks, or bytes hashed.</p><p>Measure profiling overhead separately. Report noisy or inconclusive outcomes honestly; do not claim a percentage from a single run. Reused-stage skips must be separated from actual execution speed.</p></div><div class="panel"><h3>Coverage evidence</h3><p style="margin-top:16px">Map old cases and assertions to their new locations. Introduce representative defects that the old tests detected and demonstrate failure after refactoring too. Keep real process tests for process behavior and real transaction tests for transactional guarantees.</p><p>Freshness and isolation are acceptance conditions: wrong binaries, mutated shared fixtures, and stale Git data must not pass. Required fast/heavy gates still run according to the repository workflow.</p></div></div><details><summary>Verified tooling examples — instructions only, not run here</summary><pre>cd skills/do-work/tools/do-work-cli
+# Fixed selection for a before/after comparison; isolate the tree first.
+/usr/bin/time -l go test -count=1 -short -run &quot;^TestInventoryMatchesRetainedPorcelainXYMatrix$&quot; ./internal/corehelpers
+
+# Runner source and recorded duration inputs inspected for this report:
+# _dev/tests/run-go-tests-with-budget.sh
+# _dev/tests/maintainer-verify.sh
+# do-work/test-durations.tsv</pre><p class="small">The inventory test name is present in the inspected code. The macOS time example is a starting point for elapsed/user/system measurement; validate descendant accounting for the chosen harness rather than treating this alone as a complete A1 implementation. Runtime tool versions and performance results were not validated here.</p></details></section>
+<section><h2>Coordination and open questions</h2><div class="row"><div><p class="measure">Use A1 measurements to choose the first implementation. A2 and A3 concern different test areas; A4 changes shared recovery fixtures. A5 and A6 both affect shell verification. A7 and A8 share gate machinery. Recheck actual write scopes before overlapping work.</p><p class="measure">The repository was active during inspection. Current work on the inventory launcher and shell guide may change the relevant code. Each capture should use the normal duplicate/fold checks, and implementation must rebase its evidence on the live tree.</p></div><div><p class="measure"><strong>Unresolved:</strong> the proportion of CPU spent in compilation versus process startup; the cost of full-tree hashing versus hook execution; the frequency and cause of reuse misses; and whether immutable Git reads repeat enough to justify production changes.</p><p class="measure">A conditional proposal may correctly end with evidence that no change is worthwhile. Avoid adding caching machinery whose maintenance and validation exceed the work saved.</p></div></div></section>
+<section id="sources"><h2>Files, revision, and source receipts</h2><p class="measure">Evidence is current-code inspection plus one recorded timing run and the user’s CPU screenshots. No implementation commit, independent performance review, or before/after benchmark exists for these proposals. Source excerpts below preserve the inspected bytes so the report remains readable when repository paths drift.</p><p class="small">Base revision at bundle generation: <code>18d431593dc9559623592d2d7006d948b19224d7</code><br>Branch: <code>claude/do-work-queue-drain-4ee2xl</code><br>Working-tree excerpts may differ from that revision; per-source SHA-256 records their provenance. The report’s own commit is delivery evidence only.</p><details id="S1"><summary>S1 · _dev/tests/run-go-tests-with-budget.sh:29</summary><p class="small">Working-tree snapshot · SHA-256 <code>1433b37d348170be0c18be73b90e551efbfd1c565a8cf0528e70b39a4936ed7d</code></p><pre>29:
+30: prefixes = tuple(filter(None, sys.argv[1].split(&quot;,&quot;)))
+31: names = [line.strip() for line in sys.stdin if line.startswith(&quot;Test&quot;)]
+32: selected = [name for name in names if not name.startswith(prefixes)]
+33: if not selected:
+34:     raise SystemExit(&quot;no fast Go tests remain after applying the heavy prefixes&quot;)
+35: print(&quot;^(&quot; + &quot;|&quot;.join(re.escape(name) for name in selected) + &quot;)$&quot;)
+36: &#x27; &quot;$excluded_test_prefixes&quot;)&quot;
+37:   set -- -run &quot;$test_run_pattern&quot; &quot;$@&quot;
+38: fi
+39: (
+40:   cd &quot;$module_directory&quot;
+41:   go test -json -count=1 &quot;$@&quot;
+42: ) &gt; &quot;$result_file&quot; || test_status=$?
+43: elapsed_seconds=$(( $(date +%s) - started_at ))
+44:
+45: if [ &quot;$test_status&quot; -ne 0 ]; then
+46:   python3 - &quot;$result_file&quot; &lt;&lt;&#x27;PY&#x27;
+47: import json
+48: import pathlib
+49: import re
+50: import sys
+51:
+52: for line in pathlib.Path(sys.argv[1]).read_text(encoding=&quot;utf-8&quot;).splitlines():</pre></details><details id="S2"><summary>S2 · skills/do-work/tools/do-work-cli/internal/suiteinstall/suite_commands_test.go:431</summary><p class="small">Working-tree snapshot · SHA-256 <code>024a79671ecb3e798b8c59b4249c6c65d1967b3ca2ab4f356c6060051e23118b</code></p><pre>431: func buildTestCLIBinary(t *testing.T) string {
+432: 	t.Helper()
+433: 	moduleRoot, err := filepath.Abs(filepath.Join(&quot;..&quot;, &quot;..&quot;))
+434: 	if err != nil {
+435: 		t.Fatal(err)
+436: 	}
+437: 	binaryPath := filepath.Join(t.TempDir(), &quot;do-work-cli&quot;)
+438: 	command := exec.Command(&quot;go&quot;, &quot;build&quot;, &quot;-o&quot;, binaryPath, &quot;./cmd/do-work-cli&quot;)
+439: 	command.Dir = moduleRoot
+440: 	if output, err := command.CombinedOutput(); err != nil {
+441: 		t.Fatalf(&quot;build do-work-cli: %v: %s&quot;, err, output)
+442: 	}
+443: 	return binaryPath
+444: }</pre></details><details id="S3"><summary>S3 · skills/do-work/tools/do-work-cli/internal/corehelpers/inventory_test.go:76</summary><p class="small">Working-tree snapshot · SHA-256 <code>6efa37a98366a480cafcdd6d417cfb449221924e8f13602a865031d999f92cbd</code></p><pre>76: }
+77:
+78: func TestInventoryMatchesRetainedPorcelainXYMatrix(t *testing.T) {
+79: 	statuses := []string{&quot;??&quot;}
+80: 	for _, worktree := range []byte{&#x27;M&#x27;, &#x27;T&#x27;, &#x27;A&#x27;, &#x27;D&#x27;, &#x27;R&#x27;, &#x27;C&#x27;} {
+81: 		statuses = append(statuses, &quot; &quot;+string(worktree))
+82: 	}
+83: 	for _, index := range []byte{&#x27;M&#x27;, &#x27;T&#x27;, &#x27;A&#x27;, &#x27;D&#x27;, &#x27;R&#x27;, &#x27;C&#x27;} {
+84: 		statuses = append(statuses, string(index)+&quot; &quot;)
+85: 	}
+86: 	for _, index := range []byte{&#x27;M&#x27;, &#x27;T&#x27;, &#x27;A&#x27;, &#x27;R&#x27;, &#x27;C&#x27;} {
+87: 		for _, worktree := range []byte{&#x27;M&#x27;, &#x27;T&#x27;, &#x27;D&#x27;, &#x27;R&#x27;, &#x27;C&#x27;} {
+88: 			statuses = append(statuses, string([]byte{index, worktree}))
+89: 		}
+90: 	}
+91: 	statuses = append(statuses, &quot;DD&quot;, &quot;AU&quot;, &quot;UD&quot;, &quot;UA&quot;, &quot;DU&quot;, &quot;AA&quot;, &quot;UU&quot;)
+92: 	if len(statuses) != 45 {
+93: 		t.Fatalf(&quot;porcelain matrix has %d statuses, want 45&quot;, len(statuses))
+94: 	}
+95:
+96: 	for _, status := range statuses {
+97: 		status := status
+98: 		t.Run(strings.ReplaceAll(status, &quot; &quot;, &quot;underscore&quot;), func(t *testing.T) {
+99: 			origin := &quot;&quot;
+100: 			if strings.ContainsAny(status, &quot;RC&quot;) {
+101: 				origin = &quot;origin.txt&quot;
+102: 			}
+103: 			statusBytes := porcelainStatusBytes(status, &quot;ordinary.txt&quot;, origin)
+104: 			goRows, retainedRows := runSyntheticInventoryPair(t, statusBytes)
+105: 			want := expectedOrdinaryInventoryClass(status)
+106: 			if len(goRows) != 1 || goRows[0].Classification != want || goRows[0].Path != &quot;ordinary.txt&quot; || goRows[0].Origin != origin {
+107: 				t.Fatalf(&quot;status %q Go rows=%+v, want class=%s path=ordinary.txt origin=%q&quot;, status, goRows, want, origin)
+108: 			}
+109: 			if err := compareInventoryProjection(goRows, retainedRows); err != nil {
+110: 				t.Fatalf(&quot;status %q retained differential: %v&quot;, status, err)
+111: 			}
+112: 			assertInventoryFindingProjection(t, goRows)
+113: 		})
+114: 	}
+115: }
+116: </pre></details><details id="S4"><summary>S4 · skills/do-work/tools/do-work-cli/internal/corehelpers/inventory_test.go:247</summary><p class="small">Working-tree snapshot · SHA-256 <code>6efa37a98366a480cafcdd6d417cfb449221924e8f13602a865031d999f92cbd</code></p><pre>247: 	}
+248: 	if syntheticStatus != nil {
+249: 		fakeRoot := t.TempDir()
+250: 		statusPath := filepath.Join(fakeRoot, &quot;status.bin&quot;)
+251: 		if err := os.WriteFile(statusPath, syntheticStatus, 0o600); err != nil {
+252: 			t.Fatal(err)
+253: 		}
+254: 		fakeGit := filepath.Join(fakeRoot, &quot;git&quot;)
+255: 		fakeGitBytes := []byte(&quot;#!/bin/sh\ncase \&quot; $* \&quot; in\n  *\&quot; rev-parse --git-dir \&quot;*) printf &#x27;.git\\n&#x27;; exit 0 ;;\n  *\&quot; status \&quot;*) command cat \&quot;$DO_WORK_INVENTORY_STATUS_FIXTURE\&quot;; exit $? ;;\nesac\nprintf &#x27;unexpected fake git arguments: %s\\n&#x27; \&quot;$*\&quot; &gt;&amp;2\nexit 97\n&quot;)
+256: 		if err := os.WriteFile(fakeGit, fakeGitBytes, 0o700); err != nil {
+257: 			t.Fatal(err)
+258: 		}
+259: 		t.Setenv(&quot;DO_WORK_INVENTORY_STATUS_FIXTURE&quot;, statusPath)
+260: 		t.Setenv(&quot;PATH&quot;, fakeRoot+string(os.PathListSeparator)+os.Getenv(&quot;PATH&quot;))
+261: 	}
+262: 	command := exec.Command(script, repository)
+263: 	if syntheticStatus != nil {
+264: 		// The exact argv and environment uncommitted-inventory.sh would exec, minus
+265: 		// the two shells and the toolchain probe. See retainedInventoryExecutable.
+266: 		moduleDirectory := filepath.Clean(filepath.Join(workingDirectory, &quot;..&quot;, &quot;..&quot;))
+267: 		command = exec.Command(resolveRetainedInventoryExecutable(t, moduleDirectory),
+268: 			&quot;--repo-root&quot;, repository, &quot;--format&quot;, &quot;text&quot;, &quot;uncommitted-inventory&quot;)
+269: 		command.Env = append(os.Environ(), &quot;DO_WORK_COMPATIBILITY_SHIM=1&quot;)
+270: 	}
+271: 	output, runError := command.CombinedOutput()
+272: 	if runError != nil {
+273: 		t.Fatalf(&quot;retained inventory: %v: %s&quot;, runError, output)
+274: 	}
+275: 	rows := []inventoryRow{}
+276: 	for _, line := range strings.Split(strings.TrimSuffix(string(output), &quot;\n&quot;), &quot;\n&quot;) {
+277: 		parts := strings.SplitN(line, &quot;\t&quot;, 2)
+278: 		if len(parts) != 2 {
+279: 			t.Fatalf(&quot;malformed retained row %q&quot;, line)
+280: 		}
+281: 		rows = append(rows, inventoryRow{Classification: parts[0], Path: parts[1]})
+282: 	}
+283: 	return rows
+284: }
+285:
+286: func compareInventoryProjection(goRows, retainedRows []inventoryRow) error {
+287: 	if len(goRows) != len(retainedRows) {
+288: 		return fmt.Errorf(&quot;row count Go=%d retained=%d: Go=%+v retained=%+v&quot;, len(goRows), len(retainedRows), goRows, retainedRows)</pre></details><details id="S5"><summary>S5 · skills/do-work/tools/do-work-cli/internal/corehelpers/inventory.go:85</summary><p class="small">Working-tree snapshot · SHA-256 <code>58d69ebe0cd539199bd7895b53e16dd8a514d3832779a03d0d32dec311a9045c</code></p><pre>85: func readInventory(repositoryRoot string) ([]inventoryRow, error) {
+86: 	output, err := gitOutput(repositoryRoot, &quot;-c&quot;, &quot;status.renames=copies&quot;, &quot;status&quot;, &quot;--porcelain=v1&quot;, &quot;--untracked-files=all&quot;, &quot;-z&quot;)
+87: 	if err != nil {
+88: 		return nil, err
+89: 	}
+90: 	records := bytes.Split(output, []byte{0})
+91: 	rows := []inventoryRow{}
+92: 	hasExcluded := false
+93: 	for index := 0; index &lt; len(records); index++ {
+94: 		record := records[index]
+95: 		if len(record) == 0 {
+96: 			continue
+97: 		}
+98: 		if len(record) &lt; 4 {
+99: 			return nil, fmt.Errorf(&quot;short porcelain record&quot;)
+100: 		}
+101: 		status, path := string(record[:2]), string(record[3:])
+102: 		if untrackedDoWorkMetadata(status, path) {
+103: 			continue
+104: 		}
+105: 		origin := &quot;&quot;
+106: 		if strings.ContainsAny(status, &quot;RC&quot;) {
+107: 			index++
+108: 			if index &gt;= len(records) || len(records[index]) == 0 {
+109: 				return nil, fmt.Errorf(&quot;rename origin missing&quot;)
+110: 			}
+111: 			origin = string(records[index])
+112: 		}
+113: 		if strings.Contains(status, &quot;R&quot;) &amp;&amp; secretPath(origin) {
+114: 			rows = append(rows, inventoryRow{&quot;XD&quot;, origin, &quot;&quot;})
+115: 			hasExcluded = true
+116: 		}
+117: 		classification := classifyInventory(status, path, origin)
+118: 		if classification == &quot;X&quot; || classification == &quot;XD&quot; {
+119: 			hasExcluded = true
+120: 		}
+121: 		rows = append(rows, inventoryRow{classification, path, origin})
+122: 	}
+123: 	if hasExcluded {
+124: 		for index := range rows {
+125: 			if rows[index].Classification == &quot;A&quot; {
+126: 				rows[index].Classification = &quot;X&quot;
+127: 			}
+128: 		}
+129: 	}
+130: 	return rows, nil
+131: }
+132:
+133: // untrackedDoWorkMetadata drops an untracked hidden file under do-work/ from
+134: // the inventory. do-work writes no hidden files there, so such a path is
+135: // operating-system or editor metadata (Finder&#x27;s .DS_Store, an editor swapfile),</pre></details><details id="S6"><summary>S6 · skills/do-work/tools/do-work-cli/internal/finalization/finalization_recovery_test.go:523</summary><p class="small">Working-tree snapshot · SHA-256 <code>53de1798ed6192a4b7de73f24c3beb90fe8687676e67e08086e2e6b849b2268d</code></p><pre>523: func seedSemanticLegacyTail(t *testing.T, repositoryRoot string) semanticLegacyFixture {
+524: 	t.Helper()
+525: 	workingPath := &quot;do-work/working/REQ-700-semantic.md&quot;
+526: 	archivePath := &quot;do-work/archive/UR-700/REQ-700-semantic.md&quot;
+527: 	requestBefore := &quot;---\nid: REQ-700\ntitle: Semantic fixture\nstatus: claimed\nuser_request: UR-700\nroute: C\nclaimed_at: 2026-09-02T08:00:00Z\ncommit:\nestimate:\n  p50_active_minutes: 60\n---\n\n## Implementation Summary\n- `implementation.txt` (modified)\n&quot;
+528: 	requestAfter := &quot;---\nid: REQ-700\ntitle: Semantic fixture\nstatus: completed\nuser_request: UR-700\nroute: C\nclaimed_at: 2026-09-02T08:00:00Z\ncompleted_at: 2026-09-02T09:00:00Z\ncommit:\nestimate:\n  p50_active_minutes: 60\nrelease_at: 2026-09-02T09:05:00Z\n---\n\n## Implementation Summary\n- `implementation.txt` (modified)\n&quot;
+529: 	checkpointBefore := &quot;# Session Checkpoint\n\n## In Progress (interrupted)\n\n- REQ-700: Semantic fixture — claimed now — writer: host:/repo\n  - branch: worktree-agent-REQ-700\n  - note: enriched continuation\n\n## Decisions\n\n- keep\n&quot;
+530: 	checkpointAfter := &quot;# Session Checkpoint\n\n## In Progress (interrupted)\n\n## Decisions\n\n- keep\n&quot;
+531: 	writeFinalizationFile(t, repositoryRoot, workingPath, requestBefore)
+532: 	writeFinalizationFile(t, repositoryRoot, &quot;do-work/CHECKPOINT.md&quot;, checkpointBefore)
+533: 	writeFinalizationFile(t, repositoryRoot, &quot;do-work/calibration-log.tsv&quot;, &quot;req_id\troute\testimated_p50_minutes\twall_minutes\tcompleted_at\n&quot;)
+534: 	writeFinalizationFile(t, repositoryRoot, &quot;do-work/user-requests/UR-700/input.md&quot;, &quot;---\nid: UR-700\nrequests: [REQ-700, REQ-699]\n---\nInput\n&quot;)
+535: 	writeFinalizationFile(t, repositoryRoot, &quot;do-work/archive/REQ-699-prior.md&quot;, &quot;---\nid: REQ-699\ntitle: Prior\nstatus: completed\nuser_request: UR-700\ncommit: abcdef0\n---\n&quot;)
+536: 	writeFinalizationFile(t, repositoryRoot, &quot;implementation.txt&quot;, &quot;before\n&quot;)
+537: 	writeFinalizationFile(t, repositoryRoot, &quot;VERSION&quot;, &quot;1.0.0\n&quot;)
+538: 	writeFinalizationFile(t, repositoryRoot, &quot;skills/do-work/VERSION&quot;, &quot;1.0.0\n&quot;)
+539: 	writeFinalizationFile(t, repositoryRoot, &quot;skills/do-work/actions/version.md&quot;, &quot;**Current version**: 1.0.0\n&quot;)
+540: 	writeFinalizationFile(t, repositoryRoot, &quot;suite/modules.tsv&quot;, &quot;source\tdestination\nskills/do-work\t.claude/skills/do-work\n&quot;)
+541: 	writeFinalizationFile(t, repositoryRoot, &quot;package.json&quot;, &quot;{\&quot;name\&quot;:\&quot;fixture\&quot;,\&quot;version\&quot;:\&quot;1.0.0\&quot;}\n&quot;)
+542: 	writeFinalizationFile(t, repositoryRoot, &quot;package-lock.json&quot;, &quot;{\&quot;name\&quot;:\&quot;fixture\&quot;,\&quot;version\&quot;:\&quot;1.0.0\&quot;,\&quot;lockfileVersion\&quot;:3,\&quot;packages\&quot;:{\&quot;\&quot;:{\&quot;name\&quot;:\&quot;fixture\&quot;,\&quot;version\&quot;:\&quot;1.0.0\&quot;}}}\n&quot;)
+543: 	writeFinalizationFile(t, repositoryRoot, &quot;CHANGELOG.md&quot;, &quot;# Changelog\n\n## 1.0.0 — Seed\n&quot;)
+544: 	writeFinalizationFile(t, repositoryRoot, &quot;skills/do-work/CHANGELOG.md&quot;, &quot;# Changelog\n\n## 1.0.0 — Seed\n&quot;)
+545: 	writeFinalizationFile(t, repositoryRoot, &quot;notes.txt&quot;, &quot;before\n&quot;)
+546: 	runFinalizationGit(t, repositoryRoot, &quot;add&quot;, &quot;.&quot;)
+547: 	runFinalizationGit(t, repositoryRoot, &quot;commit&quot;, &quot;-qm&quot;, &quot;seed&quot;)
+548:
+549: 	if err := os.MkdirAll(filepath.Join(repositoryRoot, &quot;do-work&quot;, &quot;archive&quot;, &quot;UR-700&quot;), 0o755); err != nil {
+550: 		t.Fatal(err)
+551: 	}</pre></details><details id="S7"><summary>S7 · skills/do-work/tools/do-work-cli/internal/finalization/finalization_commands_test.go:125</summary><p class="small">Working-tree snapshot · SHA-256 <code>0a9f7e5ddbc75fe183fc63b59ae948037af166f6a86d7376e6484c9a94925df9</code></p><pre>125: // once for the whole test binary and copied per fixture.
+126: //
+127: // This package calls newFinalizationRepository 55 times. Building each fixture with
+128: // `git init` and two `git config` runs cost three subprocess spawns every time, and
+129: // subprocess spawning — not the assertions — is what put this package&#x27;s largest test
+130: // files near the gate&#x27;s 30s per-file duration budget. One directory copy over the ten
+131: // small files a template-free `git init` produces replaces all three (REQ-574).
+132: var finalizationRepositoryTemplate string
+133:
+134: func TestMain(m *testing.M) {
+135: 	templateRoot, err := os.MkdirTemp(&quot;&quot;, &quot;finalization-git-template-&quot;)
+136: 	if err != nil {
+137: 		fmt.Fprintf(os.Stderr, &quot;finalization fixture template: %v\n&quot;, err)
+138: 		os.Exit(1)
+139: 	}
+140: 	finalizationRepositoryTemplate = templateRoot
+141: 	// `--template=` empty skips the sample hooks git would otherwise copy in, which is
+142: 	// most of the files a fresh .git holds and none of what these tests read.
+143: 	for _, arguments := range [][]string{
+144: 		{&quot;init&quot;, &quot;-q&quot;, &quot;--template=&quot;},
+145: 		{&quot;config&quot;, &quot;user.name&quot;, &quot;Finalization Fixture&quot;},
+146: 		{&quot;config&quot;, &quot;user.email&quot;, &quot;finalization@example.invalid&quot;},
+147: 	} {
+148: 		command := exec.Command(&quot;git&quot;, append([]string{&quot;-C&quot;, templateRoot}, arguments...)...)
+149: 		if output, err := command.CombinedOutput(); err != nil {
+150: 			fmt.Fprintf(os.Stderr, &quot;finalization fixture template: git %v: %v: %s\n&quot;, arguments, err, output)
+151: 			os.RemoveAll(templateRoot)
+152: 			os.Exit(1)
+153: 		}
+154: 	}
+155: 	// `--template=` also skips .git/hooks, which an ordinary `git init` always creates
+156: 	// and which TestRecoverFinalizationResumesAfterRealPreCommitHookFailure writes a
+157: 	// real hook into. Recreate the empty directory so a copied fixture is shaped like
+158: 	// a repository git made.
+159: 	if err := os.MkdirAll(filepath.Join(templateRoot, &quot;.git&quot;, &quot;hooks&quot;), 0o755); err != nil {
+160: 		fmt.Fprintf(os.Stderr, &quot;finalization fixture template hooks: %v\n&quot;, err)
+161: 		os.RemoveAll(templateRoot)
+162: 		os.Exit(1)
+163: 	}
+164: 	code := m.Run()
+165: 	os.RemoveAll(templateRoot)
+166: 	os.Exit(code)
+167: }
+168:
+169: func newFinalizationRepository(t *testing.T) string {
+170: 	t.Helper()
+171: 	root := t.TempDir()
+172: 	if err := os.CopyFS(root, os.DirFS(finalizationRepositoryTemplate)); err != nil {
+173: 		t.Fatalf(&quot;copy finalization fixture template: %v&quot;, err)
+174: 	}
+175: 	return root</pre></details><details id="S8"><summary>S8 · _dev/tests/session-start-hook-behavior.sh:10</summary><p class="small">Working-tree snapshot · SHA-256 <code>762d2581e2b7f69d06f8216c25f45aec65dba6087d60bf1b9d4e75204b99644e</code></p><pre>10: # One physical skill root serves every scenario that needs the module. The launcher
+11: # resolves its module directory physically and then asks the Go toolchain for the tool
+12: # binary, so a per-case copy of the module is a per-case absolute path, a distinct Go
+13: # build-cache action id, and a fresh link of a byte-identical binary. Sharing the root
+14: # reaches one physical module by construction. It is safe because the hook, the launcher
+15: # and the module are immutable in every scenario below: that the launcher writes nothing
+16: # into the module tree is pinned separately by do-work-cli-launcher-behavior.sh, and
+17: # assert_shared_skill_root_unchanged re-checks it here after every case.
+18: shared_skill_root=&quot;$fixture_root/shared-skill&quot;
+19: shared_skill_digest=&#x27;&#x27;
+20:
+21: install_shared_skill_root() {
+22:   mkdir -p &quot;$shared_skill_root/hooks&quot; &quot;$shared_skill_root/actions&quot; &quot;$shared_skill_root/tools&quot;
+23:   cp &quot;$repo_root/skills/do-work/hooks/session-start.sh&quot; &quot;$shared_skill_root/hooks/&quot;
+24:   cp &quot;$repo_root/skills/do-work/tools/do-work-cli.sh&quot; &quot;$shared_skill_root/tools/&quot;
+25:   cp -R &quot;$repo_root/skills/do-work/tools/do-work-cli&quot; &quot;$shared_skill_root/tools/&quot;
+26:   rm -f &quot;$shared_skill_root/tools/do-work-cli/do-work-cli&quot;
+27: }
+28:
+29: # The shared hook and module trees, content-addressed. actions/ is excluded because
+30: # version.md is the per-case banner input every case rewrites.
+31: shared_skill_immutable_digest() {
+32:   find &quot;$shared_skill_root/hooks&quot; &quot;$shared_skill_root/tools&quot; -type f -exec shasum -a 256 {} + |
+33:     LC_ALL=C sort | shasum -a 256
+34: }
+35:
+36: # The invariant that makes sharing safe. A case that writes into the shared tree fails
+37: # here, naming itself, instead of silently corrupting whichever case runs next.
+38: assert_shared_skill_root_unchanged() {
+39:   local case_name=&quot;$1&quot; current_digest
+40:   current_digest=&quot;$(shared_skill_immutable_digest)&quot;
+41:   if [ &quot;$current_digest&quot; != &quot;$shared_skill_digest&quot; ]; then
+42:     printf &#x27;FAIL: %s modified the shared skill tree; the scenarios can no longer share it.\n&#x27; &quot;$case_name&quot; &gt;&amp;2
+43:     failure_count=$((failure_count + 1))
+44:   fi</pre></details><details id="S9"><summary>S9 · _dev/tests/action-shell-blocks.sh:36</summary><p class="small">Working-tree snapshot · SHA-256 <code>9e87980a1c7c824cf338ce614e796d368d320de4125a04c16f1bca0a5e2bba1e</code></p><pre>36: lint_shell_source() {
+37:   local source_path=&quot;$1&quot;
+38:   local source_start_line=&quot;$2&quot;
+39:   local lint_path=&quot;$3&quot;
+40:   local source_kind=&quot;$4&quot;
+41:   local bash_diagnostic=&#x27;&#x27;
+42:   local bash_diagnostic_line=&#x27;&#x27;
+43:   local bash_source_line=&#x27;&#x27;
+44:   local shellcheck_diagnostics=&#x27;&#x27;
+45:   local shellcheck_status=0
+46:   local diagnostic_text=&#x27;&#x27;
+47:   local diagnostic_source_line=&#x27;&#x27;
+48:   local diagnostic_column=&#x27;&#x27;
+49:   local diagnostic_message=&#x27;&#x27;
+50:   local quiet_grep_offenders=&#x27;&#x27;
+51:   local quiet_grep_offender=&#x27;&#x27;
+52:   local quiet_grep_offender_line=&#x27;&#x27;
+53:   local -a shellcheck_arguments=(--format=gcc --shell=bash --severity=warning)
+54:
+55:   if ! bash_diagnostic=&quot;$(bash -n &quot;$lint_path&quot; 2&gt;&amp;1)&quot;; then
+56:     bash_diagnostic_line=&quot;$(printf &#x27;%s\n&#x27; &quot;$bash_diagnostic&quot; \
+57:       | sed -nE &#x27;s/.*: line ([0-9]+):.*/\1/p&#x27; \
+58:       | sed -n &#x27;1p&#x27;)&quot;
+59:     if [[ -z &quot;$bash_diagnostic_line&quot; ]]; then
+60:       bash_diagnostic_line=1
+61:     fi
+62:     bash_source_line=$((source_start_line + bash_diagnostic_line - 1))
+63:     bash_diagnostic=&quot;$(printf &#x27;%s&#x27; &quot;$bash_diagnostic&quot; \
+64:       | tr &#x27;\n&#x27; &#x27; &#x27; \
+65:       | sed &#x27;s/[[:space:]][[:space:]]*/ /g&#x27;)&quot;
+66:     printf &#x27;FAIL: %s:%s: bash -n: %s\n&#x27; \
+67:       &quot;$source_path&quot; &quot;$bash_source_line&quot; &quot;$bash_diagnostic&quot; &gt;&amp;2
+68:     failure_count=$((failure_count + 1))
+69:     return
+70:   fi
+71:
+72:   # Before the shellcheck gate, so it runs even where shellcheck is unavailable.
+73:   if ! quiet_grep_offenders=&quot;$(quiet_grep_pipeline_offenders &quot;$lint_path&quot;)&quot;; then
+74:     printf &#x27;FAIL: %s:%s: could not scan for a quiet grep fed from a pipeline.\n&#x27; \
+75:       &quot;$source_path&quot; &quot;$source_start_line&quot; &gt;&amp;2
+76:     failure_count=$((failure_count + 1))
+77:   else
+78:     while IFS= read -r quiet_grep_offender; do
+79:       [[ -n &quot;$quiet_grep_offender&quot; ]] || continue
+80:       quiet_grep_offender_line=$((source_start_line + ${quiet_grep_offender%%:*} - 1))
+81:       printf &#x27;FAIL: %s:%s: quiet grep fed from a pipeline (under pipefail the writer&#x27;&quot;&#x27;&quot;&#x27;s SIGPIPE death is its verdict):%s\n&#x27; \
+82:         &quot;$source_path&quot; &quot;$quiet_grep_offender_line&quot; &quot;${quiet_grep_offender#*:}&quot; &gt;&amp;2
+83:       failure_count=$((failure_count + 1))
+84:     done &lt;&lt;&lt; &quot;$quiet_grep_offenders&quot;
+85:   fi
+86:
+87:   if [[ &quot;$shellcheck_available&quot; != true ]]; then
+88:     return
+89:   fi
+90:
+91:   if [[ &quot;$source_kind&quot; == fence ]]; then
+92:     shellcheck_arguments+=(&quot;--exclude=SC2034,SC2154&quot;)
+93:   fi
+94:   shellcheck_diagnostics=&quot;$(shellcheck &quot;${shellcheck_arguments[@]}&quot; &quot;$lint_path&quot; 2&gt;&amp;1)&quot; \
+95:     || shellcheck_status=$?
+96:   if [[ &quot;$shellcheck_status&quot; -eq 0 ]]; then
+97:     return
+98:   fi
+99:
+100:   while IFS= read -r diagnostic_text; do
+101:     [[ -n &quot;$diagnostic_text&quot; ]] || continue
+102:     if [[ &quot;$diagnostic_text&quot; =~ ^.*:([0-9]+):([0-9]+):[[:space:]](.*)$ ]]; then</pre></details><details id="S10"><summary>S10 · _dev/tests/heavy-runtime-fingerprint.py:12</summary><p class="small">Working-tree snapshot · SHA-256 <code>b60b0f2e89eef7875dc3fe1c9ce0ac388e4b23dd9fd451a4a97a42e99c008b77</code></p><pre>12: import shutil
+13: import shlex
+14: import subprocess
+15: import sys
+16:
+17:
+18: def binary_seal(binary_path):
+19:     resolved_path = Path(binary_path).resolve(strict=True)
+20:     contents = resolved_path.read_bytes()
+21:     # A wrapper can delegate to mutable files outside this repository. Its own
+22:     # bytes alone cannot attest to the executable that actually runs.
+23:     native_headers = (b&quot;\x7fELF&quot;, b&quot;\xcf\xfa\xed\xfe&quot;, b&quot;\xfe\xed\xfa\xcf&quot;, b&quot;\xce\xfa\xed\xfe&quot;, b&quot;\xfe\xed\xfa\xce&quot;, b&quot;\xca\xfe\xba\xbe&quot;, b&quot;\xbe\xba\xfe\xca&quot;, b&quot;MZ&quot;)
+24:     if not contents.startswith(native_headers):
+25:         raise ValueError(&quot;opaque executable wrapper&quot;)
+26:     return {&quot;path&quot;: str(resolved_path), &quot;sha256&quot;: hashlib.sha256(contents).hexdigest()}
+27:
+28: </pre></details><details id="S11"><summary>S11 · skills/do-work/tools/do-work-cli/internal/heavyverification/fast_stage_evidence.go:299</summary><p class="small">Working-tree snapshot · SHA-256 <code>4fac55cde7fe7ec2ae5d8201f6712d40b7c2888aa8a798bf80625a4632b17882</code></p><pre>299: // the whole inherited environment. Any input that cannot be determined is an
+300: // error, which the decision below turns into execution.
+301: func fastStageFingerprint(repositoryRoot string, stage manifestFastStage, manifest fastStageManifest) (string, error) {
+302: 	if stage.Fingerprint == nil {
+303: 		return &quot;&quot;, fmt.Errorf(&quot;stage %s declares no fingerprint inputs&quot;, stage.ID)
+304: 	}
+305: 	sealedFiles, hasCoveredInput, err := workingTreeSeals(repositoryRoot, stage, manifest)
+306: 	if err != nil {
+307: 		return &quot;&quot;, err
+308: 	}
+309: 	if !hasCoveredInput {
+310: 		// A stage whose declared coverage matches nothing on disk has no inputs
+311: 		// to compare, so no record can be trusted against it.
+312: 		return &quot;&quot;, fmt.Errorf(&quot;stage %s covers no path in this working tree&quot;, stage.ID)
+313: 	}
+314: 	document := fastStageFingerprintDocument{
+315: 		SchemaVersion: fastStageEvidenceSchemaVersion, StageID: stage.ID,
+316: 		CommandArgv: append([]string(nil), stage.Argv...), SealedFiles: sealedFiles,
+317: 		Toolchain: []toolchainProbeSeal{}, Environment: []environmentSeal{},
+318: 	}
+319: 	for _, probe := range stage.Fingerprint.ToolchainProbes {
+320: 		output, err := runFingerprintProbe(repositoryRoot, probe, 5*time.Second)
+321: 		if err != nil {
+322: 			return &quot;&quot;, fmt.Errorf(&quot;stage %s toolchain probe %s: %v&quot;, stage.ID, strings.Join(probe, &quot; &quot;), err)
+323: 		}
+324: 		outputDigest := sha256.Sum256(output)
+325: 		document.Toolchain = append(document.Toolchain, toolchainProbeSeal{
+326: 			ProbeArgv: append([]string(nil), probe...), OutputSHA256: hex.EncodeToString(outputDigest[:]),
+327: 		})
+328: 	}
+329: 	document.Environment = sealedEnvironmentVariables(stage.Fingerprint.EnvironmentVariables)
+330: 	encoded, err := json.Marshal(document)
+331: 	if err != nil {
+332: 		return &quot;&quot;, fmt.Errorf(&quot;encode stage %s fingerprint: %w&quot;, stage.ID, err)
+333: 	}
+334: 	digest := sha256.Sum256(encoded)
+335: 	return hex.EncodeToString(digest[:]), nil
+336: }</pre></details><details id="S12"><summary>S12 · _dev/tests/fast-stages.json:1</summary><p class="small">Working-tree snapshot · SHA-256 <code>39ae2acd09e0935d125e3f266a615929ea60ba05a791626c830c0d93257d6652</code></p><pre>1: {
+2:   &quot;schema_version&quot;: 1,
+3:   &quot;stages&quot;: [
+4:     {
+5:       &quot;id&quot;: &quot;do-work-cli-fast-tests&quot;,
+6:       &quot;argv&quot;: [&quot;run-go-tests-with-budget.sh&quot;, &quot;skills/do-work/tools/do-work-cli&quot;, &quot;-short&quot;, &quot;./...&quot;],
+7:       &quot;coverage&quot;: [
+8:         {&quot;kind&quot;: &quot;subtree&quot;, &quot;path&quot;: &quot;skills/do-work/tools/do-work-cli&quot;},
+9:         {&quot;kind&quot;: &quot;subtree&quot;, &quot;path&quot;: &quot;skills/do-work-board/tools/queue-kanban&quot;},
+10:         {&quot;kind&quot;: &quot;exact&quot;, &quot;path&quot;: &quot;do-work/archive/UR-003/input.md&quot;}
+11:       ],
+12:       &quot;fingerprint&quot;: {
+13:         &quot;toolchain_probes&quot;: [[&quot;env&quot;, &quot;GIT_CONFIG_NOSYSTEM=1&quot;, &quot;GIT_CONFIG_GLOBAL=/dev/null&quot;, &quot;python3&quot;, &quot;_dev/tests/heavy-runtime-fingerprint.py&quot;, &quot;skills/do-work/tools/do-work-cli&quot;, &quot;bash&quot;, &quot;git&quot;, &quot;python3&quot;]]
+14:       }
+15:     },
+16:     {
+17:       &quot;id&quot;: &quot;queue-kanban-fast-tests&quot;,
+18:       &quot;argv&quot;: [&quot;run-go-tests-with-budget.sh&quot;, &quot;skills/do-work-board/tools/queue-kanban&quot;, &quot;./...&quot;],
+19:       &quot;coverage&quot;: [
+20:         {&quot;kind&quot;: &quot;subtree&quot;, &quot;path&quot;: &quot;skills/do-work-board/tools/queue-kanban&quot;},
+21:         {&quot;kind&quot;: &quot;subtree&quot;, &quot;path&quot;: &quot;do-work&quot;}
+22:       ],
+23:       &quot;fingerprint&quot;: {
+24:         &quot;toolchain_probes&quot;: [[&quot;env&quot;, &quot;GIT_CONFIG_NOSYSTEM=1&quot;, &quot;GIT_CONFIG_GLOBAL=/dev/null&quot;, &quot;python3&quot;, &quot;_dev/tests/heavy-runtime-fingerprint.py&quot;, &quot;skills/do-work-board/tools/queue-kanban&quot;, &quot;bash&quot;, &quot;git&quot;, &quot;python3&quot;]]
+25:       }
+26:     }
+27:   ],
+28:   &quot;non_stage_coverage&quot;: [],
+29:   &quot;seal_exclusions&quot;: [
+30:     {&quot;kind&quot;: &quot;subtree&quot;, &quot;path&quot;: &quot;do-work/runs&quot;},
+31:     {&quot;kind&quot;: &quot;subtree&quot;, &quot;path&quot;: &quot;do-work/deliverables&quot;},
+32:     {&quot;kind&quot;: &quot;subtree&quot;, &quot;path&quot;: &quot;do-work/.req-reservations&quot;},
+33:     {&quot;kind&quot;: &quot;exact&quot;, &quot;path&quot;: &quot;do-work/test-durations.tsv&quot;}
+34:   ]
+35: }</pre></details><details id="S13"><summary>S13 · skills/do-work/tools/do-work-cli/internal/finalization/finalization_discovery.go:1515</summary><p class="small">Working-tree snapshot · SHA-256 <code>b6e7c848bdb007378ee285cb18908df5acd9b98396cf9f6bcecb035a6c12e2d3</code></p><pre>1515: 				paths = append(paths, path)
+1516: 			}
+1517: 		}
+1518: 	}
+1519: 	return sharedprimitives.UniqueSortedStrings(paths), nil
+1520: }
+1521:
+1522: func headFileImage(repositoryRoot, path string) (FileImage, error) {
+1523: 	contents, err := exec.Command(&quot;git&quot;, &quot;-C&quot;, repositoryRoot, &quot;show&quot;, &quot;HEAD:&quot;+path).Output()
+1524: 	if err != nil {
+1525: 		return FileImage{Path: path}, nil
+1526: 	}
+1527: 	return FileImage{Path: path, Exists: true, Bytes: contents, Mode: uint32(0o644)}, nil
+1528: }
+1529:
+1530: // headReleaseImage adapts the committed image to the shared ownership
+1531: // reader. Recovery classifies work that is already committed, so HEAD is
+1532: // the image its ownership judgment must be made against.
+1533: func headReleaseImage(repositoryRoot string) releaseownership.ReadImage {
+1534: 	return func(path string) ([]byte, bool) {
+1535: 		image, err := headFileImage(repositoryRoot, path)
+1536: 		if err != nil || !image.Exists {
+1537: 			return nil, false
+1538: 		}
+1539: 		return image.Bytes, true
+1540: 	}
+1541: }
+1542:
+1543: func preparedCommitIdentity(repositoryRoot string, paths []string) (string, string, error) {
+1544: 	head := currentHead(repositoryRoot)
+1545: 	arguments := append([]string{&quot;-C&quot;, repositoryRoot, &quot;diff&quot;, &quot;--binary&quot;, head, &quot;--&quot;}, paths...)
+1546: 	diff, err := exec.Command(&quot;git&quot;, arguments...).Output()
+1547: 	if err != nil {
+1548: 		return &quot;&quot;, &quot;&quot;, err
+1549: 	}
+1550: 	if len(diff) == 0 {
+1551: 		return &quot;&quot;, &quot;&quot;, fmt.Errorf(&quot;discovered finalization has no exact diff&quot;)
+1552: 	}
+1553: 	return head, digestBytes(diff), nil
+1554: }
+1555:
+1556: func gitLines(repositoryRoot string, arguments ...string) ([]string, error) {
+1557: 	output, err := exec.Command(&quot;git&quot;, append([]string{&quot;-C&quot;, repositoryRoot}, arguments...)...).Output()
+1558: 	if err != nil {
+1559: 		return nil, err
+1560: 	}
+1561: 	lines := []string{}
+1562: 	for _, line := range strings.Split(strings.TrimSpace(string(output)), &quot;\n&quot;) {
+1563: 		if line != &quot;&quot; {
+1564: 			lines = append(lines, line)
+1565: 		}
+1566: 	}</pre></details><details id="S14"><summary>S14 · skills/do-work/tools/do-work-cli/internal/publication/publication_commands_test.go:344</summary><p class="small">Working-tree snapshot · SHA-256 <code>077c74b278462abb03fc111a86b9bf06b631e7ec3efcc2047921f66e4d68fce2</code></p><pre>344: // deferGateRepositoryTemplates holds the two baseline repositories the defer-gate tests
+345: // start from, keyed by whether the fixture carries a second parent request. Both are
+346: // built once for the whole test binary and copied per fixture.
+347: //
+348: // defer_gate_test.go builds thirty of these. Each one cost seven git subprocesses —
+349: // init, two configs, add, commit, add, commit — before its test asserted anything, and
+350: // that spawning, not the assertions, is what left the file within three seconds of the
+351: // gate&#x27;s 30s per-file duration budget. Copying a finished repository replaces all
+352: // seven (REQ-574).
+353: var deferGateRepositoryTemplates = map[bool]string{}
+354:
+355: func TestMain(m *testing.M) {
+356: 	templateParent, err := os.MkdirTemp(&quot;&quot;, &quot;publication-git-templates-&quot;)
+357: 	if err != nil {
+358: 		fmt.Fprintf(os.Stderr, &quot;publication fixture templates: %v\n&quot;, err)
+359: 		os.Exit(1)
+360: 	}
+361: 	for _, secondParent := range []bool{false, true} {
+362: 		templateRoot := filepath.Join(templateParent, fmt.Sprintf(&quot;second-parent-%t&quot;, secondParent))
+363: 		if err := buildDeferGateRepositoryTemplate(templateRoot, secondParent); err != nil {
+364: 			fmt.Fprintf(os.Stderr, &quot;publication fixture templates: %v\n&quot;, err)
+365: 			os.RemoveAll(templateParent)
+366: 			os.Exit(1)
+367: 		}
+368: 		deferGateRepositoryTemplates[secondParent] = templateRoot
+369: 	}
+370: 	code := m.Run()
+371: 	os.RemoveAll(templateParent)
+372: 	os.Exit(code)
+373: }
+374:
+375: // buildDeferGateRepositoryTemplate writes the exact repository newDeferGateRepository
+376: // used to build inline, up to but not including the parent claim. The claim stays
+377: // per-fixture because it is plain file I/O and costs no subprocess.</pre></details><details id="S15"><summary>S15 · _dev/tests/maintainer-verify.sh:19</summary><p class="small">Working-tree snapshot · SHA-256 <code>65ee1480cb8c9badb4880839bfd91fbf089aab06b22778a01441729f814b6f86</code></p><pre>19: test_duration_log_path=&quot;$repo_root/do-work/test-durations.tsv&quot;
+20: test_run_id=&quot;$(/bin/date -u +%Y%m%dT%H%M%SZ)-$$&quot;
+21: other_gate_processes=&quot;$(
+22:   /bin/ps -Ao pid=,comm=,args= | /usr/bin/awk -v own_pid=&quot;$$&quot; &#x27;
+23:     $1 != own_pid &amp;&amp; $2 ~ /(^|\/)(ba)?sh$/ &amp;&amp; $0 ~ /\/maintainer-verify\.sh( |$)/ { count++ }
+24:     END { print count + 0 }
+25:   &#x27;
+26: )&quot;
+27: export DO_WORK_TEST_DURATION_LOG=&quot;$test_duration_log_path&quot;
+28: export DO_WORK_TEST_RUN_ID=&quot;$test_run_id&quot;
+29: export DO_WORK_TEST_OTHER_GATE_PROCESSES=&quot;$other_gate_processes&quot;</pre></details><details id="S16"><summary>S16 · _dev/tests/maintainer-verify.sh:623</summary><p class="small">Working-tree snapshot · SHA-256 <code>65ee1480cb8c9badb4880839bfd91fbf089aab06b22778a01441729f814b6f86</code></p><pre>623:   local gofmt_command
+624:   local tracked_go_file
+625:   local tracked_go_files=()
+626:   local unformatted_go_files
+627:
+628:   for required_command in git go shellcheck bash; do
+629:     if ! command -v &quot;$required_command&quot; &gt;/dev/null 2&gt;&amp;1; then
+630:       printf &#x27;maintainer-verify: required command is unavailable: %s\n&#x27; &quot;$required_command&quot; &gt;&amp;2
+631:       return 1
+632:     fi
+633:   done
+634: </pre></details><details><summary>External reference used in the preceding investigation</summary><p><a href="https://go.dev/cmd/go/">Official Go command documentation</a> explains test selection, result caching, and build/test flags. The proposals must verify flags against the repository’s installed toolchain before relying on them. This report does not recommend replacing the gate’s freshness rules with Go’s result cache.</p></details></section>
+<footer><p class="small">Prepared with the do-work ai-report workflow, adapted by explicit user request for an improvement proposal. All proposed improvements are unimplemented and unbenchmarked. Prompts are text to copy; no requests were captured. No AI-generated images. <span id="qa-status">Layout inspected in full-page light and dark renders; mobile overflow and prompt controls checked. No performance benchmark was run.</span></p></footer></main>
+<script>async function copyText(text,button){try{await navigator.clipboard.writeText(text);document.getElementById('copy-status').textContent='Copied to clipboard.';if(button){const old=button.textContent;button.textContent='Copied';setTimeout(()=>button.textContent=old,1800)}}catch(e){document.getElementById('copy-status').textContent='Clipboard unavailable. Open the prompt and select its text.';if(button){const panel=button.closest('.prompt');if(panel)panel.querySelector('details').open=true}}}document.querySelectorAll('[data-copy]').forEach(b=>b.addEventListener('click',()=>copyText(document.getElementById(b.dataset.copy).textContent,b)));document.getElementById('copy-all').addEventListener('click',e=>copyText(Array.from(document.querySelectorAll('[id^="prompt-A"]')).map(p=>p.textContent).join('\n\n---\n\n'),e.target));</script></body></html>
