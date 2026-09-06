@@ -312,3 +312,26 @@ CLI module changes.
 - [ ] Every current call site keeps its observable behaviour, except the one guard whose restoration is
   D-02 and which carries its own test
 - [ ] Tests unchanged except where a test named a deleted private helper
+
+## Pre-Flight
+
+**Green gate at `03901f6d`**, the revision the builder branches from.
+`bash _dev/tests/maintainer-verify.sh` printed `Maintainer verification passed.` and exited 0, gate
+wall 76s, with the CLI module at 784 tests and the board module inside its 30s budget. One `SKIP` line,
+the heavy-only one every fast run prints.
+
+**The baseline this request's Red-Green Proof names is re-verified at HEAD, not replayed from the
+audited commit.** The reproduce command prints fourteen definitions of the six names, which is what the
+request claims — but the survey shows the fourteen are not the fourteen the request describes: one is a
+validator wearing a deduper's name, and a fourth `uniqueSorted` sits in a package the request never
+lists. The count is right by coincidence.
+
+**The environment the gate needs is recorded once for this run.** `NODE_OPTIONS` and the
+`GIT_CONFIG_COUNT` / `GIT_CONFIG_KEY_*` / `GIT_CONFIG_VALUE_*` triples unset, `GIT_CONFIG_GLOBAL`
+pointed at a config carrying `commit.gpgsign = false`, and `QUEUE_KANBAN_BROWSER` at the container's
+Chromium. A gate run refuses on an opaque runtime extension or an opaque Git configuration override,
+and an unusable global signing key makes a fixture's own commit fail inside a lane.
+
+**The builder works in an isolated worktree** at
+`../skill-do-work-worktrees/worktree-agent-REQ-557-deduplicate-go-helper-names`, branched from
+`03901f6d`, and hands back one file to the main checkout without staging or committing anything there.
