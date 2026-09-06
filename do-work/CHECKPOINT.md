@@ -22,7 +22,6 @@ session_depth: light
 
 
 
-- REQ-592: [impact-critical] Review fix: seal the do-work tree into both fast gate stages — claimed 2026-09-05T22:59:38Z — writer: vm:/home/user/skill-do-work
 
 
 

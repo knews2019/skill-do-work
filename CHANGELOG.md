@@ -2,6 +2,16 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.305.1 — The Fast Gate's Skip Decision Reads the Queue It Builds From (2026-09-06)
+
+The stage-reuse seal added in 0.305.0 inherited a rule that ignored the whole `do-work/` tree. One of the two stages builds the Kanban board from that tree, so editing a request could leave the gate reporting a pass from a run that never saw the change.
+
+- The board stage now declares `do-work` as an input it reads, and the tool stage declares the single archived file it reads there. Neither is assumed: the board's own prune rules and its file-mention list were walked to confirm nothing else is read.
+- A separate exclusion list keeps four churn paths from invalidating a stage that never reads their bytes. The load-bearing one is the gate's own test-duration log: the stage appends to it while running, so a seal covering it could never match again and the stage would never be skipped.
+- The two tests that pinned the old behaviour were rewritten rather than deleted, and each names the failure it now catches. The "queue changed" case became two — one proving the stage that reads the tree runs, one proving the stage that does not still skips — so the fix cannot become "make every change invalidate everything", which would have removed the saving entirely.
+- After a review found the shipped input list itself was read by no test, restoring it to its pre-fix content now fails with three named messages, deleting either stage's rule fails with the message naming that stage, and broadening an exclusion until it swallows a real input fails too. All four of those used to pass silently.
+- A typo in an exclusion's kind used to decode cleanly, match nothing, and turn skipping off for that stage forever. It is now rejected when the file is read.
+
 ## 0.305.0 — The Fast Gate Skips a Stage Whose Inputs Have Not Moved (2026-09-06)
 
 Running the fast gate twice in a row used to re-run everything, even when nothing a stage reads had changed since the last green result. It now records what each stage read and skips a stage whose complete inputs are unchanged, printing one line per stage saying what it did and why.
