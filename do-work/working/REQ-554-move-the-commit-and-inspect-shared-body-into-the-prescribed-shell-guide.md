@@ -1,7 +1,7 @@
 ---
 id: REQ-554
 title: '[impact-negligible] Move the 46 lines commit.md and inspect.md share into the prescribed-shell guide'
-status: pending
+status: claimed
 priority: later
 created_at: 2026-09-03T19:45:35Z
 user_request: UR-105
@@ -16,6 +16,7 @@ maintenance: true
 impact: impact-negligible
 effort_estimate: effort-mechanical
 write_set: [skills/do-work/actions/commit.md, skills/do-work-toolbox/actions/inspect.md, skills/do-work/docs/prescribed-shell-primitives.md, _dev/tests/prescribed-shell-canonicalization.sh, _dev/tests/audit-lockins.sh]
+claimed_at: 2026-09-06T00:38:56Z
 ---
 
 # Move the 46 lines commit.md and inspect.md share into the prescribed-shell guide
