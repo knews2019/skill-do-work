@@ -29,8 +29,8 @@ install_shared_skill_root() {
 # The shared hook and module trees, content-addressed. actions/ is excluded because
 # version.md is the per-case banner input every case rewrites.
 shared_skill_immutable_digest() {
-  find "$shared_skill_root/hooks" "$shared_skill_root/tools" -type f -exec shasum -a 256 {} + |
-    LC_ALL=C sort | shasum -a 256
+  find "$shared_skill_root/hooks" "$shared_skill_root/tools" -type f -exec cksum {} + |
+    LC_ALL=C sort | cksum
 }
 
 # The invariant that makes sharing safe. A case that writes into the shared tree fails
@@ -176,6 +176,47 @@ if grep -Eq 'cleanup-req-reservations\.sh|repair-req-timestamps\.sh|sed |awk |fi
   printf 'FAIL: retained SessionStart path contains domain logic instead of a thin launcher.\n' >&2
   failure_count=$((failure_count + 1))
 fi
+
+# Explicit integrity test: verify assert_shared_skill_root_unchanged rejects
+# byte modifications, added files, and deleted files, while allowing actions/version.md.
+mutation_err="$fixture_root/mutation-test.err"
+saved_failure_count="$failure_count"
+
+install_banner_input '**Current version**: 9.9.9\n'
+assert_shared_skill_root_unchanged "version-change" 2>"$mutation_err"
+if [ "$failure_count" -ne "$saved_failure_count" ]; then
+  printf 'FAIL: version.md rewrite unexpectedly flagged as shared-tree mutation.\n' >&2
+  failure_count=$((failure_count + 1))
+fi
+
+target_hook="$shared_skill_root/hooks/session-start.sh"
+printf '# mutation test\n' >> "$target_hook"
+assert_shared_skill_root_unchanged "byte-mutation" 2>"$mutation_err"
+if [ "$failure_count" -eq "$saved_failure_count" ] || ! grep -q 'byte-mutation modified the shared skill tree' "$mutation_err"; then
+  printf 'FAIL: byte mutation was not detected by assert_shared_skill_root_unchanged.\n' >&2
+  failure_count=$((failure_count + 1))
+fi
+failure_count="$saved_failure_count"
+cp "$repo_root/skills/do-work/hooks/session-start.sh" "$target_hook"
+
+added_tool="$shared_skill_root/tools/rogue-tool.sh"
+printf 'echo rogue\n' > "$added_tool"
+assert_shared_skill_root_unchanged "added-path" 2>"$mutation_err"
+if [ "$failure_count" -eq "$saved_failure_count" ] || ! grep -q 'added-path modified the shared skill tree' "$mutation_err"; then
+  printf 'FAIL: added path was not detected by assert_shared_skill_root_unchanged.\n' >&2
+  failure_count=$((failure_count + 1))
+fi
+failure_count="$saved_failure_count"
+rm -f "$added_tool"
+
+rm -f "$target_hook"
+assert_shared_skill_root_unchanged "removed-path" 2>"$mutation_err"
+if [ "$failure_count" -eq "$saved_failure_count" ] || ! grep -q 'removed-path modified the shared skill tree' "$mutation_err"; then
+  printf 'FAIL: removed path was not detected by assert_shared_skill_root_unchanged.\n' >&2
+  failure_count=$((failure_count + 1))
+fi
+failure_count="$saved_failure_count"
+cp "$repo_root/skills/do-work/hooks/session-start.sh" "$target_hook"
 
 [ "$failure_count" -eq 0 ] || exit 1
 printf 'SessionStart hook behavior probes passed.\n'
