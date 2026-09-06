@@ -47,6 +47,9 @@ var boardJavaScriptFragmentPaths = [...]string{
 	"web/board-calendar.js",
 	"web/board-durations.js",
 	"web/board-timeline.js",
+	// Position 7 on purpose: the UR rollup reads timelineFormatSpanMinutes from
+	// board-timeline.js above it, so nothing here calls forward.
+	"web/board-user-request-summary.js",
 	"web/board-activity.js",
 	"web/board-testing.js",
 	"web/board-detail.js",

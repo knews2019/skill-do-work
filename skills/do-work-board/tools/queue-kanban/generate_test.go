@@ -53,6 +53,7 @@ func TestEmbeddedAuthoredJavaScriptInventory(t *testing.T) {
 		"web/board-filters.js",
 		"web/board-testing.js",
 		"web/board-timeline.js",
+		"web/board-user-request-summary.js",
 		"web/board.js",
 	}
 	if strings.Join(authoredJavaScriptPaths, "\n") != strings.Join(wantAuthoredJavaScriptPaths, "\n") {
@@ -69,6 +70,7 @@ func TestBoardJavaScriptAssemblyStructure(t *testing.T) {
 		"web/board-calendar.js",
 		"web/board-durations.js",
 		"web/board-timeline.js",
+		"web/board-user-request-summary.js",
 		"web/board-activity.js",
 		"web/board-testing.js",
 		"web/board-detail.js",
@@ -3843,5 +3845,23 @@ func TestTimelineProjectionIgnoresTheSavedP50Estimate(t *testing.T) {
 			t.Fatalf("saved P50 estimates moved projected row %d:\n baseline %+v\n exposed  %+v",
 				rowIndex, baseline.Rows[rowIndex], exposed.Rows[rowIndex])
 		}
+	}
+}
+
+// REQ-486 repoints the board's ONLY ticker. web/board.js's interval drives every
+// claim stopwatch, every relative time, every state timer and the clock-skew
+// tooltip; the UR progress summary's live contribution has to ride the same
+// instant or the header drifts from the card below it. The fan-out is a named
+// function so the boot line stays one readable statement, and this pins that the
+// boot line is actually pointed at it — a fragment that defines
+// refreshTickingSurfaces and a boot block that never calls it would leave every
+// summary frozen at its first paint with no other test noticing.
+func TestGeneratedBoardTicksThroughTheSharedFanOut(t *testing.T) {
+	indexHTML := generateLiveSite(t)
+	if !strings.Contains(indexHTML, "setInterval(refreshTickingSurfaces, 1000);") {
+		t.Fatal("the generated board's boot block no longer ticks through refreshTickingSurfaces")
+	}
+	if strings.Contains(indexHTML, "setInterval(refreshRelativeTimeNodes, 1000);") {
+		t.Fatal("the boot block still ticks refreshRelativeTimeNodes directly; the UR summaries would never refresh")
 	}
 }

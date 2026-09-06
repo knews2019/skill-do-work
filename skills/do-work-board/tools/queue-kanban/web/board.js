@@ -65,7 +65,7 @@
       generatedHeaderNode.appendChild(generatedRelativeNode);
     }
   }
-  setInterval(refreshRelativeTimeNodes, 1000);
+  setInterval(refreshTickingSurfaces, 1000);
 
   wireControls();
   wireTestingControls();
