@@ -4,6 +4,11 @@ set -uo pipefail
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 skills_root="$repo_root/skills"
+# One scanner body, shared with quiet-grep-pipeline-audit.sh (whose fixture pins its shapes).
+# That audit walks tracked *.sh only; running the same scanner here is what covers the
+# shipped Markdown fences, which is where the shape gets copied from.
+# shellcheck source=_dev/tests/quiet-grep-pipeline-scanner.sh
+source "$repo_root/_dev/tests/quiet-grep-pipeline-scanner.sh"
 temporary_root="$(mktemp -d)" || {
   printf 'FAIL: could not allocate temporary directory for shell-block lint.\n' >&2
   exit 1
@@ -42,6 +47,9 @@ lint_shell_source() {
   local diagnostic_source_line=''
   local diagnostic_column=''
   local diagnostic_message=''
+  local quiet_grep_offenders=''
+  local quiet_grep_offender=''
+  local quiet_grep_offender_line=''
   local -a shellcheck_arguments=(--format=gcc --shell=bash --severity=warning)
 
   if ! bash_diagnostic="$(bash -n "$lint_path" 2>&1)"; then
@@ -59,6 +67,21 @@ lint_shell_source() {
       "$source_path" "$bash_source_line" "$bash_diagnostic" >&2
     failure_count=$((failure_count + 1))
     return
+  fi
+
+  # Before the shellcheck gate, so it runs even where shellcheck is unavailable.
+  if ! quiet_grep_offenders="$(quiet_grep_pipeline_offenders "$lint_path")"; then
+    printf 'FAIL: %s:%s: could not scan for a quiet grep fed from a pipeline.\n' \
+      "$source_path" "$source_start_line" >&2
+    failure_count=$((failure_count + 1))
+  else
+    while IFS= read -r quiet_grep_offender; do
+      [[ -n "$quiet_grep_offender" ]] || continue
+      quiet_grep_offender_line=$((source_start_line + ${quiet_grep_offender%%:*} - 1))
+      printf 'FAIL: %s:%s: quiet grep fed from a pipeline (under pipefail the writer'"'"'s SIGPIPE death is its verdict):%s\n' \
+        "$source_path" "$quiet_grep_offender_line" "${quiet_grep_offender#*:}" >&2
+      failure_count=$((failure_count + 1))
+    done <<< "$quiet_grep_offenders"
   fi
 
   if [[ "$shellcheck_available" != true ]]; then
@@ -138,6 +161,36 @@ scan_markdown_file() {
   fi
 }
 
+# Pins that the quiet-grep scan is wired into the fence walk and attributes its finding to
+# the Markdown line. One shape only: the scanner body's shapes are pinned by name in
+# quiet-grep-pipeline-audit.sh. Runs on every default invocation rather than under
+# --self-test, which the gate never passes; a pin the gate does not run cannot fail when
+# the scan is removed. Runs before the tree walk and resets the two counters it disturbs.
+run_quiet_grep_wiring_fixture() {
+  local fixture_path="$temporary_root/quiet-grep-wiring.md"
+  local fixture_diagnostics="$temporary_root/quiet-grep-wiring-diagnostics.txt"
+  local pipe_character='|'
+
+  # Line 4 of the fixture is the offender; the pipe is interpolated so this file's own
+  # bytes never carry the shape the scanner it wires in looks for.
+  {
+    printf '# Quiet-grep wiring fixture\n\n'
+    printf '```bash\n'
+    printf 'tar tzf archive.tgz %s grep -q wiring-fixture-marker\n' "$pipe_character"
+    printf '```\n'
+  } > "$fixture_path"
+
+  scan_markdown_file "$fixture_path" 2> "$fixture_diagnostics"
+  failure_count=0
+  shell_block_count=0
+  if ! grep -Eq 'quiet-grep-wiring\.md:4: quiet grep fed from a pipeline.*wiring-fixture-marker' \
+    "$fixture_diagnostics"; then
+    printf 'FAIL: the fence walk no longer flags a quiet grep fed from a pipeline at its Markdown line; the shared scanner is not wired in.\n' >&2
+    sed -n '1,20p' "$fixture_diagnostics" >&2
+    return 1
+  fi
+}
+
 run_self_test() {
   local fixture_path="$temporary_root/broken-shell-block.md"
   local fixture_diagnostics="$temporary_root/self-test-diagnostics.txt"
@@ -182,6 +235,8 @@ if [[ ! -d "$skills_root" ]]; then
   printf 'FAIL: shipped skills root is missing: %s\n' "$skills_root" >&2
   exit 1
 fi
+
+run_quiet_grep_wiring_fixture || exit 1
 
 while IFS= read -r markdown_path; do
   scan_markdown_file "$markdown_path"
