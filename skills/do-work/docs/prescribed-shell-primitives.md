@@ -10,12 +10,12 @@ This is the canonical shipped rationale and executable-home contract for determi
 | `tools/do-work-cli.sh … add-local-git-exclude` | Worktree-safe local exclude resolution and idempotent append |
 | `tools/do-work-cli.sh … atomic-download` | Private adjacent download and rename-on-success publication |
 | `tools/do-work-cli.sh … capture-screenshot` | Unique verified copy, no-clobber link, dispatch-owned cleanup |
-| `tools/do-work-cli.sh … run-blocked-check` | GNU timeout selection and isolated stock-Bash process-group timeout/cleanup |
+| `tools/do-work-cli.sh … run-blocked-check` | Owned probe process-group timeout and kill escalation, first-hand launch and timeout evidence, bounded diagnostic identity, and focused-test baseline comparison |
 | `tools/do-work-cli.sh … protected-inventory` | Run-level secret quarantine around the existing inventory/association checks |
 | `tools/do-work-cli.sh … stage-exact-deletion` | Cached-metadata-only exact deletion staging |
 | `tools/do-work-cli.sh … lexical-memory-recall` | Query sanitization, lexical ranking, and attribution |
-| `tools/do-work-cli.sh … install-memory-hooks` | Independent hook merge, verification, and rollback |
-| `tools/do-work-cli.sh … record-timing-event` | Lifecycle timing: UTC stamping, elapsed derivation, command redaction, and the folded per-request summary |
+| `tools/do-work-cli.sh … install-memory-hooks` | Per-event hook gating, order-preserving settings merge, pre-mutation backup, and rename publication |
+| `tools/do-work-cli.sh … record-timing-event` | Lifecycle timing: UTC stamping, elapsed derivation or chaining, command redaction, and the append-only per-request stream |
 | `tools/do-work-cli.sh … generate-report-image` | Backend selection, launched-process-tree ownership, verified exact invocation-private publication, and exact opt-in agentic scratch |
 | `tools/do-work-cli.sh … generate-report-image-batch` | Parallel batch launch, retained per-image statuses, launched-process-tree ownership, and verified all-or-nothing directory publication |
 | `tools/do-work-cli.sh … publish-portfolio-summary` | Verified single-source canonical refresh and snapshot-first exclusive publication |
@@ -133,9 +133,9 @@ An exclusive snapshot failure leaves the prior canonical unchanged. A later cano
 
 ## Report image batch publication
 
-Generate a report's images through `tools/do-work-cli.sh --repo-root <project-root> generate-report-image-batch <report-directory> <style-brief> <target-name>:<prompt> …` rather than orchestrating the retained scripts yourself. Each pair splits on its first colon, and a target name must be a bare filename because the canonical command joins it to its own invocation-private staging directory adjacent to `generated/`. Missing, failed, or malformed canonical tooling stops the caller; a retained script is not a fallback.
+Generate a report's images through `tools/do-work-cli.sh --repo-root <project-root> generate-report-image-batch <report-directory> <style-brief> <target-name>:<prompt> …` rather than orchestrating the retained scripts yourself. Each pair splits on its first colon, and a target name must be a bare filename because the canonical command joins it to its own invocation-private staging directory, which it creates under the system temporary directory rather than beside `generated/`. Missing, failed, or malformed canonical tooling stops the caller; a retained script is not a fallback.
 
-The batch launches one helper per image, retains every PID and status, and waits each one even after an earlier failure — a bare `wait` would discard the mixed statuses that decide which images are current. An image is current only when its own helper status is zero and its staged target is non-empty; failed targets are removed. Publication happens once, as a single same-filesystem rename of the complete verified batch, and only when at least one image is current. `generated/` must be absent both before staging and immediately before the rename, and the rename makes the [Verified exact publication](#verified-exact-publication) check: a nested stage means someone else owns `generated/`, so the batch discards only its own stage, leaves that directory untouched, and exits nonzero.
+The batch launches one helper per image, retains every PID and status, and waits each one even after an earlier failure — a bare `wait` would discard the mixed statuses that decide which images are current. An image is current only when its own helper status is zero and its staged target is non-empty; failed targets are removed. Publication is all-or-nothing but it is not a rename. The batch claims `generated/` with an exclusive `mkdir`, which is what makes the [Verified exact publication](#verified-exact-publication) check — the directory must be absent both before staging and at that moment, and a directory that already exists means someone else owns it, so the batch discards only its own stage, leaves `generated/` untouched, and exits nonzero. Having claimed it, the batch writes each verified image into it one at a time, and removes the whole claimed directory if any one of those writes fails, so a partly published `generated/` never survives. It publishes only when at least one image is current.
 
 An all-failed batch is not an error. It removes its exact private directory and returns a typed successful fallback outcome so the caller uses hand-authored diagrams. A publication success returns the verified directory in the canonical result; callers never infer freshness from stdout emptiness or target presence.
 
