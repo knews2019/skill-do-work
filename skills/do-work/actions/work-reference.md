@@ -609,7 +609,6 @@ Four rows carry a judgment no typed record makes for you. **Rows 6 and 7 are not
 |---|---|---|
 | "The summary says files changed" | Check the file system | The summary is a claim, not evidence |
 | "Tests pass so requirements are met" | Compare requirements to diff, word by word | Tests can be incomplete |
-| "The builder checked the UNIFY box" | Read the actual diff for debug artifacts | A checked box is a claim, not a fact |
 | "This works on my test case" | Test at least 2 additional cases including an edge case | One test case proves nothing about generality |
 | "The existing code was already like this" | Flag it in Discovered Tasks | Pre-existing problems are still problems |
 | "It's just a small deviation from the plan" | Log it as a Decision (D-XX) | Unlogged deviations break traceability |

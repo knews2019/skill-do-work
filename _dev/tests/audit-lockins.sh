@@ -276,6 +276,40 @@ elif [ -n "$manual_fallback_matches" ]; then
   done <<< "$manual_fallback_matches"
 fi
 
+# Finding 1: qualify-debug-artifact-prose-restated (REQ-556)
+# do-work-cli qualify owns the debug-artifact and P-A-U-honesty rule
+# (QUALIFY-DEBUG-ARTIFACT, QUALIFY-PAU-UNCHECKED, QUALIFY-UNIFY-DISARMED in
+# skills/do-work/tools/do-work-cli/internal/corehelpers/checks.go), so the action files
+# carry one pointer instead of a second copy of the rule. Counted, not name-listed: a new
+# restatement is the regression whatever words it uses. The two mentions the ceiling allows
+# are review-work.md's standalone-review hygiene bullet (a read qualify never makes) and the
+# emitted P-A-U template payload, which is byte-identical in four shipped files -- neither is
+# a restatement, so do not chase the count below the ceiling by cutting them.
+# A missing target file FAILs instead of counting zero: a rename must not retire this lock-in
+# silently (_dev/primes/prime-shell-commands.md -> Unchecked Exit Status Reads as Content).
+debug_rule_mention_ceiling=2
+debug_rule_scanned_files=(
+  "$repo_root/skills/do-work/actions/work.md"
+  "$repo_root/skills/do-work/actions/review-work.md"
+  "$repo_root/skills/do-work/actions/work-reference.md"
+)
+debug_rule_mention_count=0
+for debug_rule_file in "${debug_rule_scanned_files[@]}"; do
+  if [ ! -f "$debug_rule_file" ]; then
+    printf 'FAIL: debug-artifact prose lock-in cannot read %s; the file moved and the lock-in is dead\n' \
+      "${debug_rule_file#"$repo_root/"}" >&2
+    failure_count=$((failure_count + 1))
+    continue
+  fi
+  debug_rule_file_hits=$(grep -c -e 'console\.log' -e 'debug artifacts' "$debug_rule_file")
+  debug_rule_mention_count=$((debug_rule_mention_count + debug_rule_file_hits))
+done
+if [ "$debug_rule_mention_count" -gt "$debug_rule_mention_ceiling" ]; then
+  printf 'FAIL: %s debug-artifact rule mentions across work.md, review-work.md and work-reference.md; ceiling is %s (do-work-cli qualify owns the rule)\n' \
+    "$debug_rule_mention_count" "$debug_rule_mention_ceiling" >&2
+  failure_count=$((failure_count + 1))
+fi
+
 if [ "$failure_count" -gt 0 ]; then
   exit 1
 fi
