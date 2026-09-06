@@ -696,11 +696,16 @@ var boardData = {
     "REQ-803": { status: "blocked", estimateP50ActiveMinutes: 0, effortEstimate: "effort-mechanical" },
     "REQ-804": { status: "failed", hasEstimateP50ActiveMinutes: true, estimateP50ActiveMinutes: 200 },
     "REQ-805": { status: "claimed", claimedAt: minutesAgo(100), hasEstimateP50ActiveMinutes: true, estimateP50ActiveMinutes: 90 },
-    "REQ-806": { status: "pending-answers", estimateP50ActiveMinutes: 0, effortEstimate: "effort-substantive" }
+    "REQ-806": { status: "pending-answers", estimateP50ActiveMinutes: 0, effortEstimate: "effort-substantive" },
+    "REQ-807": { status: "claimed", claimedAt: minutesAgo(600), hasEstimateP50ActiveMinutes: true, estimateP50ActiveMinutes: 20 },
+    "REQ-808": { status: "claimed", claimedAt: minutesAgo(240), hasEstimateP50ActiveMinutes: true, estimateP50ActiveMinutes: 45 },
+    "REQ-809": { status: "claimed", claimedAt: "2099-01-01T00:00:00Z", hasEstimateP50ActiveMinutes: true, estimateP50ActiveMinutes: 130 }
   },
   userRequests: {
     "UR-801": { requestIds: ["REQ-801", "REQ-802", "REQ-803", "REQ-804", "REQ-805"] },
-    "UR-802": { requestIds: ["REQ-806"] }
+    "UR-802": { requestIds: ["REQ-806"] },
+    "UR-803": { requestIds: ["REQ-807", "REQ-808"] },
+    "UR-804": { requestIds: ["REQ-809"] }
   },
   timeline: { projection: { confident: true, normalMinutes: 60, trivialMinutes: 15 } }
 };
@@ -714,28 +719,43 @@ var confidentSingle = summarizeUserRequestProgress("UR-802", nowMs);
 // The same member, with the Timeline no longer able to call its own median.
 boardData.timeline.projection = { confident: false, declinedReason: "not enough completed work to forecast from" };
 var declined = summarizeUserRequestProgress("UR-802", nowMs);
+// Every known member has already outrun its estimate, so every contribution
+// floors at zero and the sum is a clean 0.
+var allFloored = summarizeUserRequestProgress("UR-803", nowMs);
+// One claimed member whose stamp the board refuses.
+var skewed = summarizeUserRequestProgress("UR-804", nowMs);
 
 process.stdout.write(JSON.stringify({
   confident: confident,
   confidentMetrics: userRequestSummaryMetrics(confident),
   confidentSingle: confidentSingle,
   declined: declined,
-  declinedMetrics: userRequestSummaryMetrics(declined)
+  declinedMetrics: userRequestSummaryMetrics(declined),
+  allFloored: allFloored,
+  allFlooredMetrics: userRequestSummaryMetrics(allFloored),
+  skewed: skewed,
+  skewedMetrics: userRequestSummaryMetrics(skewed)
 }));
 `
 	probeOutput := runJavaScriptBehaviorProbe(t, "UR progress remaining time", javascriptProbe)
 
 	type forecastRollup struct {
 		RemainingMinutes     float64 `json:"remainingMinutes"`
+		KnownForecastCount   int     `json:"knownForecastCount"`
 		UnknownForecastCount int     `json:"unknownForecastCount"`
+		OverrunForecastCount int     `json:"overrunForecastCount"`
 		RemainingIsPartial   bool    `json:"remainingIsPartial"`
 	}
 	var result struct {
-		Confident        forecastRollup             `json:"confident"`
-		ConfidentMetrics []userRequestSummaryMetric `json:"confidentMetrics"`
-		ConfidentSingle  forecastRollup             `json:"confidentSingle"`
-		Declined         forecastRollup             `json:"declined"`
-		DeclinedMetrics  []userRequestSummaryMetric `json:"declinedMetrics"`
+		Confident         forecastRollup             `json:"confident"`
+		ConfidentMetrics  []userRequestSummaryMetric `json:"confidentMetrics"`
+		ConfidentSingle   forecastRollup             `json:"confidentSingle"`
+		Declined          forecastRollup             `json:"declined"`
+		DeclinedMetrics   []userRequestSummaryMetric `json:"declinedMetrics"`
+		AllFloored        forecastRollup             `json:"allFloored"`
+		AllFlooredMetrics []userRequestSummaryMetric `json:"allFlooredMetrics"`
+		Skewed            forecastRollup             `json:"skewed"`
+		SkewedMetrics     []userRequestSummaryMetric `json:"skewedMetrics"`
 	}
 	if decodeError := json.Unmarshal(probeOutput, &result); decodeError != nil {
 		t.Fatalf("decode UR progress forecast output: %v (output %q)", decodeError, probeOutput)
@@ -748,11 +768,13 @@ process.stdout.write(JSON.stringify({
 		t.Fatalf("remaining minutes = %v, want 150 (75 saved + 60 normal median + 15 mechanical median + a floored-at-zero over-running claim)",
 			result.Confident.RemainingMinutes)
 	}
-	if result.Confident.UnknownForecastCount != 1 || !result.Confident.RemainingIsPartial {
-		t.Fatalf("forecast rollup = %+v; the failed member must be unknown and the known sum must say it is partial", result.Confident)
+	if result.Confident.UnknownForecastCount != 1 || !result.Confident.RemainingIsPartial ||
+		result.Confident.OverrunForecastCount != 1 {
+		t.Fatalf("forecast rollup = %+v; the failed member must be unknown, the over-running claim must be counted, "+
+			"and the known sum must say it is partial", result.Confident)
 	}
 	remainingText := metricValue(t, result.ConfidentMetrics, "remaining")
-	for _, requiredFragment := range []string{"~", "at least", "1 unknown"} {
+	for _, requiredFragment := range []string{"~", "at least", "1 unknown", "1 over estimate"} {
 		if !strings.Contains(remainingText, requiredFragment) {
 			t.Fatalf("remaining metric = %q, want it to carry %q — a forecast has to read as approximate and a partial one has to say so",
 				remainingText, requiredFragment)
@@ -770,6 +792,39 @@ process.stdout.write(JSON.stringify({
 	}
 	if declinedText := metricValue(t, result.DeclinedMetrics, "remaining"); !strings.Contains(declinedText, "unknown") {
 		t.Fatalf("remaining metric with no usable forecast = %q, want the unknown token rather than a zero", declinedText)
+	}
+
+	// The floor is counted, not only applied. UR-803's two claimed members have
+	// each run past their saved estimate (600 minutes against 20, 240 against
+	// 45), so every known contribution is zero and the sum is a true zero. The
+	// defect this pins: without the count the strip reads a clean "~0 min",
+	// which a reader takes for nearly done and which means the exact opposite.
+	// This is the shape four of five live-claim user requests had on the real
+	// board.
+	if result.AllFloored.RemainingMinutes != 0 || result.AllFloored.KnownForecastCount != 2 ||
+		result.AllFloored.UnknownForecastCount != 0 || result.AllFloored.OverrunForecastCount != 2 {
+		t.Fatalf("all-floored rollup = %+v; want a zero sum from two known members, both counted as over estimate",
+			result.AllFloored)
+	}
+	allFlooredText := metricValue(t, result.AllFlooredMetrics, "remaining")
+	if !strings.Contains(allFlooredText, "2 over estimate") {
+		t.Fatalf("remaining metric with every known member past its estimate = %q; want it to carry \"2 over estimate\". "+
+			"A bare zero cannot be told apart from nearly finished work", allFlooredText)
+	}
+
+	// A claim stamped ahead of the viewer's clock: the Active figure already
+	// refuses that stamp, so how much of the estimate has been spent is
+	// unreadable and the member is unknown here too. Charging it the full 130
+	// minutes as a KNOWN forecast would build a clean-looking figure on a stamp
+	// the same rollup just rejected.
+	if result.Skewed.RemainingMinutes != 0 || result.Skewed.KnownForecastCount != 0 ||
+		result.Skewed.UnknownForecastCount != 1 || !result.Skewed.RemainingIsPartial {
+		t.Fatalf("skewed-claim rollup = %+v; want the member unknown rather than charged its full saved estimate",
+			result.Skewed)
+	}
+	if skewedText := metricValue(t, result.SkewedMetrics, "remaining"); skewedText != "unknown" {
+		t.Fatalf("remaining metric for a UR whose only member has an unreadable claim stamp = %q, want %q",
+			skewedText, "unknown")
 	}
 }
 
@@ -1091,11 +1146,15 @@ process.stdout.write(JSON.stringify({
 // which reads as a queue full of very young claims and passes every other test
 // in the suite.
 //
-// Two things contain it and both are asserted here: the existing refresh runs
-// FIRST with the captured instant, and the rollup is total by narrowing rather
-// than by a try/catch that would hide the bug instead of the freeze. The payload
-// below is missing everything the summary pass wants — no userRequests entry, no
-// timeline block at all — and a stale summary node still names a UR that is gone.
+// Two things contain it. THIS probe holds one of them: the rollup is total by
+// narrowing rather than by a try/catch that would hide the bug instead of the
+// freeze. The payload below is missing everything the summary pass wants — no
+// userRequests entry, no timeline block at all — and a stale summary node still
+// names a UR that is gone. The other containment, that the existing refresh runs
+// FIRST with the captured instant, is held by
+// TestJavaScriptBehaviorTickRefreshesExistingSurfacesBeforeTheSummaryPass below:
+// this payload never throws, so the stopwatch here advances whichever pass ran
+// first and says nothing about the order.
 func TestJavaScriptBehaviorTickSurvivesAnIncompleteUserRequestPayload(t *testing.T) {
 	indexHtml := generateLiveSite(t)
 	javascriptProbe := `
@@ -1160,5 +1219,127 @@ process.stdout.write(JSON.stringify({
 	if result.StrandedSummaryText == "stale" || result.StrandedSummaryText == "" {
 		t.Fatalf("a summary node for an unknown UR read %q after the tick; want the rollup's own empty-membership text",
 			result.StrandedSummaryText)
+	}
+}
+
+// REQ-486 remediation: the ORDER inside the tick, made observable.
+//
+// refreshTickingSurfaces runs refreshRelativeTimeNodes first and the UR summary
+// pass second, and board-core.js calls that order load-bearing. The freeze-guard
+// probe above cannot see it: its payload never makes the summary pass throw, so
+// the stopwatch advances whichever pass ran first and the assertion holds either
+// way. That is a comment claiming a guarantee no test holds.
+//
+// This probe makes the summary pass throw on purpose — the shipped code walks
+// [data-ur-summary-id] through document.querySelectorAll, so a stub that refuses
+// exactly that selector fails the second pass and nothing else — and then checks
+// the existing claim stopwatch still shows its NEW label. It can only show the
+// new label if the older pass had already run. Swap the two calls in
+// board-core.js and this goes red on the stopwatch; nothing else in the suite
+// notices the swap.
+func TestJavaScriptBehaviorTickRefreshesExistingSurfacesBeforeTheSummaryPass(t *testing.T) {
+	indexHtml := generateLiveSite(t)
+	javascriptProbe := `
+var boardData = { requests: {} };
+var requestsById = boardData.requests;
+var userRequestsById = {};
+` + foldProbeDomStub + tickProbeDocumentStub + `
+` + strings.Join(userRequestSummaryRenderBlocks(t, indexHtml), "\n") + `
+var stopwatch = makeElapsedDurationNode(new Date(stubbedNowMs - 90000).toISOString());
+documentRoot.appendChild(stopwatch);
+
+// The injected failure. It is scoped to the summary pass's own selector so the
+// relative-time pass is untouched — this probe is about which one ran, not about
+// a document that is broken for everyone.
+var summarySelectorReads = 0;
+var querySelectorAllWithoutTheSummaryPass = document.querySelectorAll;
+document.querySelectorAll = function (selector) {
+  if (selector === "[data-ur-summary-id]") {
+    summarySelectorReads += 1;
+    throw new Error("injected: the UR summary pass failed");
+  }
+  return querySelectorAllWithoutTheSummaryPass.call(document, selector);
+};
+
+var labelBeforeTick = stopwatch.textContent;
+stubbedNowMs += 60000;
+var tickThrew = "";
+try {
+  refreshTickingSurfaces();
+} catch (tickError) {
+  tickThrew = String((tickError && tickError.message) || tickError);
+}
+
+process.stdout.write(JSON.stringify({
+  labelBeforeTick: labelBeforeTick,
+  labelAfterTick: stopwatch.textContent,
+  summarySelectorReads: summarySelectorReads,
+  tickThrew: tickThrew
+}));
+`
+	probeOutput := runJavaScriptBehaviorProbe(t, "tick ordering", javascriptProbe)
+
+	var result struct {
+		LabelBeforeTick      string `json:"labelBeforeTick"`
+		LabelAfterTick       string `json:"labelAfterTick"`
+		SummarySelectorReads int    `json:"summarySelectorReads"`
+		TickThrew            string `json:"tickThrew"`
+	}
+	if decodeError := json.Unmarshal(probeOutput, &result); decodeError != nil {
+		t.Fatalf("decode tick ordering output: %v (output %q)", decodeError, probeOutput)
+	}
+
+	// The failure has to have actually reached the summary pass. Without this the
+	// probe would pass on a tick that never ran that pass at all, which proves
+	// nothing about the order.
+	if result.SummarySelectorReads != 1 || result.TickThrew != "injected: the UR summary pass failed" {
+		t.Fatalf("the injected summary-pass failure fired %d time(s) and the tick reported %q; "+
+			"want exactly one read of [data-ur-summary-id] and that failure escaping the tick",
+			result.SummarySelectorReads, result.TickThrew)
+	}
+	// The point of the ordering: the older surfaces already have their new
+	// labels when the newer pass dies. If the summary pass ran first, the
+	// stopwatch never gets refreshed and still reads its OLD label.
+	if result.LabelBeforeTick != "1m 30s" || result.LabelAfterTick != "2m 30s" {
+		t.Fatalf("claim stopwatch went %q -> %q across a tick whose UR summary pass threw; want 1m 30s -> 2m 30s. "+
+			"A stopwatch left at its old label means refreshUserRequestSummaryNodes runs BEFORE "+
+			"refreshRelativeTimeNodes, and the order board-core.js calls load-bearing is gone.",
+			result.LabelBeforeTick, result.LabelAfterTick)
+	}
+}
+
+// REQ-486 remediation: the two structural claims, as assertions instead of a
+// one-time grep in the REQ record.
+//
+// Both are design rules with a real failure behind them. A try/catch anywhere in
+// the summary path would swallow the exception that a broken rollup throws,
+// which hides the bug and leaves the board silently wrong instead of loudly
+// frozen — the freeze-guard probe would still pass. Reading `completedAt` here
+// would let the browser measure a finished span for itself, with no outlier rule
+// and no origin correction, and contradict the `took …` badge on the card below.
+//
+// Scoped to the summary path sliced out of the SHIPPED page, and matched on
+// syntax rather than on the bare words: the module's own comments state both
+// rules in prose, and "registry" contains "try".
+func TestJavaScriptBehaviorUserRequestSummaryPathCarriesNoCatchAndNoCompletedAt(t *testing.T) {
+	indexHtml := generateLiveSite(t)
+	summaryPathSource := strings.Join(
+		append(userRequestSummaryCallSiteBlocks(t, indexHtml),
+			sliceBalancedBlockAfter(t, indexHtml, "function refreshUserRequestSummaryNodes(")),
+		"\n")
+
+	for _, forbidden := range []struct {
+		token  string
+		reason string
+	}{
+		{token: "try {", reason: "the rollup is total by NARROWING; a catch here hides the bug instead of the freeze it causes"},
+		{token: "try{", reason: "the rollup is total by NARROWING; a catch here hides the bug instead of the freeze it causes"},
+		{token: "catch (", reason: "the rollup is total by NARROWING; a catch here hides the bug instead of the freeze it causes"},
+		{token: "catch(", reason: "the rollup is total by NARROWING; a catch here hides the bug instead of the freeze it causes"},
+		{token: "completedAt", reason: "the Go side owns the span verdict and its origin rule; measuring one here would contradict the card's own `took …` badge"},
+	} {
+		if strings.Contains(summaryPathSource, forbidden.token) {
+			t.Errorf("the shipped UR summary path contains %q — %s", forbidden.token, forbidden.reason)
+		}
 	}
 }

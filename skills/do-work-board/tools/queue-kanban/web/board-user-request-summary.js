@@ -59,6 +59,7 @@
       forecastMemberCount: 0,
       knownForecastCount: 0,
       unknownForecastCount: 0,
+      overrunForecastCount: 0,
       remainingIsPartial: false
     };
     var userRequest = userRequestsById[userRequestId];
@@ -148,10 +149,26 @@
         summary.unknownForecastCount += 1;
         continue;
       }
+      if (status === "claimed" && liveMinutes === null) {
+        // The claim stamp the Active figure already disclosed as skewed. How
+        // much of this estimate has been spent is exactly what the board cannot
+        // read, so the member's remainder is UNKNOWN. Charging it the full
+        // estimate would state a forecast built on a stamp the same rollup just
+        // refused, and it would do it silently.
+        summary.unknownForecastCount += 1;
+        continue;
+      }
       summary.knownForecastCount += 1;
       // A running claim has already spent part of its forecast. Floored at zero:
-      // a claim that has outrun its estimate owes no negative time.
-      summary.remainingMinutes += Math.max(0, estimateMinutes - (liveMinutes || 0));
+      // a claim that has outrun its estimate owes no negative time. The floor is
+      // COUNTED, not just applied — without it a user request whose every member
+      // has blown its estimate renders a clean "~0 min", which reads as nearly
+      // done and means the opposite.
+      var memberRemainingMinutes = estimateMinutes - (liveMinutes || 0);
+      if (liveMinutes !== null && liveMinutes > estimateMinutes) {
+        summary.overrunForecastCount += 1;
+      }
+      summary.remainingMinutes += Math.max(0, memberRemainingMinutes);
     }
 
     summary.remainingIsPartial = summary.unknownForecastCount > 0;
@@ -166,9 +183,9 @@
   // rarely changes. Disclosure is carried by WORDS and SYMBOLS only — "~" for a
   // forecast, "at least" for a known-partial sum, the literal word "unavailable"
   // for a percentage with no denominator, and explicit N-excluded / N-unmeasured
-  // / N-unknown / clock-skew qualifiers. A fainter ink tone is not a second
-  // channel on this board: --ink-faint against --ink-soft measures 1.29:1 in
-  // light and 1.82:1 in dark.
+  // / N-unknown / N-over-estimate / clock-skew qualifiers. A fainter ink tone is
+  // not a second channel on this board: --ink-faint against --ink-soft measures
+  // 1.29:1 in light and 1.82:1 in dark.
 
   function userRequestSummaryDurationText(minutes) {
     if (minutes > 0 && Math.round(minutes) < 1) {
@@ -211,6 +228,10 @@
     return measuredText + " (" + qualifiers.join(", ") + ")";
   }
 
+  // "~0 min" with no qualifier is the one reading this figure must never give
+  // when it is really "every member has already outrun its estimate". Both
+  // qualifiers use the same N-word grammar as the Active figure's excluded /
+  // unmeasured counts, so a reader learns one shape and applies it to both.
   function userRequestSummaryRemainingText(summary) {
     if (summary.forecastMemberCount === 0) {
       return "none";
@@ -218,11 +239,21 @@
     if (summary.knownForecastCount === 0) {
       return "unknown";
     }
+    var qualifiers = [];
+    if (summary.unknownForecastCount > 0) {
+      qualifiers.push(summary.unknownForecastCount + " unknown");
+    }
+    if (summary.overrunForecastCount > 0) {
+      qualifiers.push(summary.overrunForecastCount + " over estimate");
+    }
     var forecastText = "~" + userRequestSummaryDurationText(summary.remainingMinutes);
-    if (summary.unknownForecastCount === 0) {
+    if (summary.unknownForecastCount > 0) {
+      forecastText = "at least " + forecastText;
+    }
+    if (qualifiers.length === 0) {
       return forecastText;
     }
-    return "at least " + forecastText + " (" + summary.unknownForecastCount + " unknown)";
+    return forecastText + " (" + qualifiers.join(", ") + ")";
   }
 
   // The five figures, as text, in one place. This array IS the agreement between
