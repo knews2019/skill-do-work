@@ -301,6 +301,37 @@ branch's own diff against its base. Builder branch head `d2609378`.
 - **`near_identical_cross_file_pairs` is 0** in `contract-regressions.sh` after the move, which is the
   independent check that the duplication the request targeted is actually gone rather than reworded.
 
+
+### Remediation qualification (after review)
+
+**Passed.** Remediation merge range `c9799b55..ce4f9a6c`, two files — the lock-in and the guide, both
+already in the declared write set.
+
+- **The review's headline is closed by deleting the mechanism, not by tuning it.** The two-file
+  similarity count only ever saw lines identical in BOTH actions, so a one-sided return — the case the
+  assertion is named for — left it unmoved, and restoring the whole pre-move file actually lowered it.
+  It is replaced by per-file exact-phrase assertions over the moved passages, so a return to either
+  action is caught on its own. Proven in both directions: the legend pasted into `commit.md` alone gives
+  four FAIL lines naming that file; pasted into `inspect.md` alone, four naming that one; the whole
+  pre-move `commit.md` restored gives eight.
+- **Deleting the count also removed the false trips, and the fuzz is the evidence.** Because a sequence
+  alignment can rematch, deleting one line from one action could raise the score past the ceiling — four
+  such deletions were red, and REQ-555 through REQ-558 edit these same two files next. Every single-line
+  deletion across both files, 660 runs, now trips nothing, and two identical structural additions stay
+  green.
+- **The choice between headroom, a scaffold-exclusion list and deletion was made on the merits.**
+  Headroom that absorbs a 2-3 point false trip absorbs the same amount of real duplication. A
+  non-scaffold measure needs a hand-maintained list of template lines, which is the shape
+  `_dev/primes/prime-shell-commands.md` § Closed Enumerations Go Stale bans. And the count caught
+  nothing the phrase guard misses — it never saw a one-sided return and the review proved it never saw
+  a paraphrase either.
+- **Two claims the move had promoted into the canonical home are corrected.** The by-hand association
+  fallback now names the two directories it says to glob, verified against the roots the code actually
+  walks; and the quarantine sentence names `git rev-parse --git-path`, confirmed by running both modes
+  outside a repository and watching each exit 2 with that command in the finding.
+- **rg's exit status is now read**, so a scanner that cannot run fails instead of reading clean — the
+  same trap the sibling REQ-552 block had, closed here in the same file.
+
 Requirements traced: the shared body lives once and both actions point at it; each action keeps its own
 wording; the lock-in fails when the prose returns and passes on the scaffold both actions must carry;
 the canonicalization probe accepts the new section; the gate is green.
@@ -330,6 +361,11 @@ against `git show`-restored copies of both action files at the base revision, it
 `FAIL: manual "do it by hand" fallback remains in a shipped action:` lines naming each site by path
 and line. Those four sites are what proves the glob is live — the version this request inherited used
 `*/actions/*.md`, which matches nothing because a single `*` does not cross a directory separator.
+
+**Remediation testing.** `bash _dev/tests/audit-lockins.sh` prints `Audit lock-in regressions passed.`
+and exits 0 at the remediation merge revision; `prescribed-shell-canonicalization.sh`,
+`shipped-package-reference-contract.sh` and `action-shell-blocks.sh` all green. The 660-run
+single-line-deletion fuzz over both action files reports zero false trips.
 
 *Verified by work action*
 
@@ -392,3 +428,44 @@ and line. Those four sites are what proves the glob is live — the version this
 **Follow-ups created:** None (14 findings report only)
 
 *Reviewed by review-work action*
+
+## Lessons Learned
+
+- **A cross-file similarity count cannot catch a one-sided return, which is usually the return you
+  get.** The assertion was named "the shared body does not come back" and measured "lines identical in
+  both files". Those are different properties, and the gap is invisible until someone pastes prose into
+  one file only — at which point the count does not move, or moves *down*. When the thing you want to
+  forbid is a specific passage, assert on the passage, per file. A similarity metric answers a question
+  nobody asked.
+- **A ceiling set to today's measurement has no headroom by construction, and a fuzzy metric can move
+  the wrong way.** Deleting a line from one file raised this count, because a sequence alignment
+  rematches. Any ratchet built on a fuzzy measure needs the deletion fuzz run before it ships, not
+  after a sibling request trips it.
+- **A request's own numeric target is a claim about the world, and this one was unreachable.** Ten
+  shared lines was below a seventeen-line floor the action-file prime *requires* both files to carry. A
+  builder following it literally writes an assertion that is red forever. Checking a target against its
+  own constraints costs one simulation.
+- **Moving prose moves its context with it, and "above" stops meaning what it meant.** Two of the four
+  review findings here are sentences that were true where they lived and became wrong or unresolvable
+  in the shared home: a fallback that says "both directories" without naming them, and a claim about a
+  command that was wrong before and got promoted into the canonical place. A move is the moment to
+  re-read every deictic word and every factual claim, not just to check the bytes arrived.
+
+## Orientation
+
+The shared body now lives in one section of `skills/do-work/docs/prescribed-shell-primitives.md`, and
+both `skills/do-work/actions/commit.md` and `skills/do-work-toolbox/actions/inspect.md` point at it by
+its anchor. What each action *does* with an excluded row stayed local, because a writing action and a
+read-only one genuinely differ there; the guide says in one sentence that this part is caller policy it
+does not own.
+
+The guard is Finding 6 in `_dev/tests/audit-lockins.sh`, beside REQ-552's Finding 9. It asserts that
+seven load-bearing sentences from the moved passages appear in neither action file, per file, and that
+neither action carries the manual by-hand fallback. It reads rg's exit status, so a scanner that cannot
+run fails rather than reading clean.
+
+Two things are deliberately unfinished. The eight-line Step 4 semantic clustering algorithm is still
+duplicated between the two actions — it is caller policy, which the guide's charter excludes, so it
+needs a home that is not this guide. And the two actions' run-level quarantine paragraphs are
+near-identical but differ in a trailing sentence, which the new phrase guard does not cover and the old
+metric scored at zero.
