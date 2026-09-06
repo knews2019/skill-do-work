@@ -35,9 +35,19 @@ claimed_at: 2026-09-06T02:27:19Z
 The debug-artifact and P-A-U-honesty rule that `do-work-cli qualify` enforces at Step 6.3 (finding codes `QUALIFY-DEBUG-ARTIFACT`, `QUALIFY-PAU-UNCHECKED`, `QUALIFY-UNIFY-DISARMED` in `internal/corehelpers/checks.go`) is written a second time as an agent instruction at five prose sites across `work.md`, `review-work.md` and `work-reference.md`. Keep one sentence in `work.md` Step 6.3 naming the three finding codes; cut the other four sites to a pointer. Keep the judgment prose the Go check explicitly defers ("judge entry-point or dynamic-wiring exceptions"), which has no duplicate.
 
 ## AI Execution State (P-A-U Loop)
-- [ ] **[PLAN]:** (Agent: Read listed `prime_files` and agent rules. Write brief technical approach here. Do not write code yet.)
-- [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
-- [ ] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
+- [x] **[PLAN]:** Both `prime_files` read before either shell or action-file edit, plus the crew rules
+  and the exploration. Approach: follow the exploration's site-by-site list rather than the request's
+  stale count, locate every edit by text because REQ-486 had moved one anchor, and keep the two
+  mentions that are not restatements.
+- [x] **[APPLY]:** Four files, exactly the declared `write_set`, across the original change and its
+  remediation.
+- [x] **[UNIFY]:** `git diff --stat` reports four files for the original and two for the remediation,
+  all declared. Linters: `bash _dev/tests/action-shell-blocks.sh` — `Shell-block lint passed`, exit 0;
+  `shellcheck --severity=warning` on the modified script — exit 0; `bash -n` — exit 0;
+  `contract-regressions.sh`, `prescribed-shell-canonicalization.sh` and the heavy-tier
+  `staged-skills-contract.sh` all exit 0. No debug artifacts: no added line carries `TODO`, `FIXME` or
+  `debugger` as a whole word, which matters unusually much here because this request's own subject is
+  that check.
 
 ## Why
 Prose that restates a rule code already enforces is read on every REQ by the three highest-churn action files (272, 93 and 162 commits in twelve months) and can drift from the code. The audit labelled this class INFERRED: the code enforces the rule, and whether reviewer prose is meant as a second independent read is the builder's judgment to confirm before cutting.
@@ -166,6 +176,118 @@ than by line number, and the builder reports which anchors had moved.
 
 *Checked by work action*
 
+## Implementation Summary
+
+**Files changed:**
+- `skills/do-work/actions/work.md`
+- `skills/do-work/actions/review-work.md`
+- `skills/do-work/actions/work-reference.md`
+- `_dev/tests/audit-lockins.sh`
+
+**What was done:** Seven mentions of the debug-artifact and P-A-U-honesty rule across three shipped
+action files become two. The rule itself lives in `internal/corehelpers/checks.go` as
+`QUALIFY-DEBUG-ARTIFACT`, `QUALIFY-PAU-UNCHECKED` and `QUALIFY-UNIFY-DISARMED`, so the prose copies
+were restatements; one added sentence points at the owner instead. The two surviving mentions are kept
+deliberately — `review-work.md`'s standalone-review hygiene bullet is a read the canonical `qualify`
+never makes, and the emitted P-A-U template payload is byte-identical across four shipped files.
+
+**The request claimed nine sites; HEAD has seven**, and the audited commit its Reproduce line names is
+not an object in this clone, so its captured red could not be replayed and no lines were manufactured
+to reach nine. One anchor had moved: REQ-486 pushed the anti-rationalization row eight lines down
+earlier in this run. Every edit was located by text.
+
+**After the review, the guard was rebuilt.** It counted lines rather than matches against a ceiling
+with no headroom, so a pure reflow failed the gate; and its comment claimed a reworded restatement
+would be caught while it matched two case-sensitive literals. It now counts matches, reads its
+scanner's exit status without a pipeline, matches the marker vocabulary the code itself uses, carries a
+floor as well as a ceiling, and names path, line and matched text per site. A companion assertion pins
+every `QUALIFY-*` code named in the action files against `checks.go` — which closes the drift class
+this request exists to remove, rather than moving it one file over.
+
+Merge ranges `c40c6d1b..32ecdba0` (36 insertions, 6 deletions) and `e05c2371..2acc4657` (101
+insertions, 15 deletions).
+
+## Decisions — implementation
+
+- **D-01 — the ceiling is 2, not the exploration's fallback 3. DECIDE & STATE.** Reaching 3 meant
+  keeping a four-word phrase in `work.md` whose own preamble calls that block pointers, while the real
+  instruction ships in the template payload inside every REQ file. After the review the pin became
+  exact — a floor as well as a ceiling — because losing one of the two protected mentions was silently
+  green.
+- **D-02 — the added sentence names the finding codes rather than a count. DECIDE & STATE.** The
+  exploration's draft said "a separate pair"; there are three, plus a fourth beside the main code.
+  Shipping a count would have put a fresh wrong number into the prose this request exists to
+  de-duplicate. After the review the enumeration is pinned against `checks.go` and introduced as
+  illustrative, so it can go stale loudly rather than quietly.
+- **D-03 — the sentence is an addition, not a retention, and it is earned. DECIDE & STATE.** The
+  request says to keep a sentence naming the codes; no such sentence existed. `work.md` invokes the CLI
+  with `--format json`, and before this change no shipped file routed a `QUALIFY-*` token to its owner.
+  `maintenance.md` asks for a concrete case that fails without an addition, and that is it.
+- **D-04 — widen the pattern set rather than narrow the claim. DECIDE & STATE, measured.** Faced with a
+  comment that overclaimed, the choice was to make the code match the comment or the comment match the
+  code. Widening to the marker vocabulary `checks.go` uses measured **zero** false positives against
+  the three files as they stand, so the honest option was also the stronger one. What remains uncaught
+  is named in the comment instead of being papered over.
+
+## Qualification
+
+**Passed.** Read from the remediation range `e05c2371..2acc465a`; canonical `qualify` and `scope-drift`
+both satisfied. The original range is `c40c6d1b..32ecdba0`.
+
+- **One warning is judged rather than obeyed.** `QUALIFY-PATH-NOT-IN-DIFF` names
+  `work-reference.md` and `review-work.md`, which the Implementation Summary claims and the remediation
+  range does not contain. They belong to the original range. The summary lists the union deliberately,
+  because that is what this request built.
+- **The request's own baseline was corrected rather than followed.** It claimed nine sites; seven is
+  what HEAD has, and the audited commit its Reproduce line names is not an object in this clone, so no
+  lines were manufactured to reach nine. One anchor had moved eight lines under REQ-486 earlier in this
+  run, and every edit was located by text rather than by line number.
+- **Nothing load-bearing was cut, and three reviewers each traced it independently.** Every deleted
+  sentence has a live successor: the builder-side instruction ships verbatim in the P-A-U template
+  payload inside every REQ file, and the orchestrator-side reads are the `QUALIFY-*` findings in
+  `checks.go`. The two mentions that are not restatements survive.
+- **The guard was wrong in both directions and both were shown, not argued.** It counted lines against
+  a zero-headroom ceiling, so splitting one bullet across two lines without changing a word failed the
+  gate with a message claiming a restatement had returned — reproduced by three reviewers with three
+  different reflows. And its comment claimed a reworded restatement would be caught while it matched
+  two case-sensitive literals; three rewordings each left it green.
+- **The fix widened the code to match the claim rather than shrinking the claim, and that was a
+  measurement, not a preference.** The marker vocabulary `checks.go` actually uses matches **zero**
+  times across the three files as they stand, so widening added no false positives. What is still
+  uncaught is now named in the comment instead of being papered over.
+- **The remediation also closed the drift class this request is about, rather than moving it.** A
+  companion assertion pins every `QUALIFY-*` code named in the three action files against `checks.go`,
+  and it was proven from both sides: renaming the code in the prose fails, and renaming it in
+  `checks.go` fails.
+
+Requirements traced: the rule is stated once, in code, with the action files pointing at it; the two
+non-restatements survive; the assertion fails when a restatement returns, in any of the three files and
+in either vocabulary; a renamed or unreadable target file fails loudly instead of counting zero; and
+the gate is green.
+
+*Checked by work action*
+
+## Testing
+
+**Tests run:** `audit-lockins.sh`, `action-shell-blocks.sh`, `contract-regressions.sh`,
+`prescribed-shell-canonicalization.sh`, the heavy-tier `staged-skills-contract.sh`, plus `shellcheck
+--severity=warning` and `bash -n` on the modified script.
+
+**Result:** ✓ Green, each with its own line: `Audit lock-in regressions passed.`;
+`Shell-block lint passed: 74 fenced blocks and 33 shipped shell files; ShellCheck enabled.`;
+`Contract regression checks passed.`; `Prescribed shell primitive canonicalization checks passed.`;
+`Prescribed shell script behavior probes passed (110 named script cases across 18 per-script files).`
+and `staged skills contract: PASS`. The canonical gate exited 0 at this REQ's claim revision
+`d3ceca3` — 88s wall.
+
+**Eleven ablations, each reverted alone and restored with its sha256 compared.** Three restatements
+pasted back, one per file. Three rewordings, one per vocabulary. One reflow. One deletion of a
+protected mention. One reworded protected mention. One broken scanner regex. One moved target file.
+Two code-name renames, one in the prose and one in `checks.go`. Every one red; every one green after
+restore.
+
+*Verified by work action*
+
 ## Review
 
 **Overall: 63%** | 2026-09-06 02:56 UTC
@@ -222,3 +344,47 @@ than by line number, and the builder reports which anchors had moved.
 **Follow-ups created:** None (13 findings report only)
 
 *Reviewed by review-work action*
+
+## Lessons Learned
+
+- **A ratchet with no headroom fails on formatting, and `grep -c` counts lines.** Two independently
+  reasonable choices — pin the ceiling at the current measurement, count with `grep -c` — combine into
+  a gate that fails when someone reflows a paragraph. The lesson is not "leave headroom": headroom
+  absorbs real regressions too. It is that the unit you count must be the unit the thing you are
+  guarding is made of. Restatements are matches, not lines.
+- **A comment that claims more than the code does is worse than no comment.** This one said "a new
+  restatement is the regression whatever words it uses" over a grep for two case-sensitive literals.
+  The next maintainer reads the claim, believes the class is guarded, and stops looking. When the code
+  and the comment disagree, either widen the code or narrow the claim — and prefer widening only when
+  you have measured the false-positive rate, which here was zero.
+- **A one-sided ratchet guards half the property.** The count could only go up; deleting one of the two
+  mentions the block's own comment says must survive was silently green. If a number is protected in
+  one direction, ask out loud why the other direction is not a regression.
+- **Deleting prose is only safe once each sentence's successor is named.** Three reviewers each traced
+  every deleted sentence to a live successor before accepting the cut. The one that could have gone
+  wrong is the builder-side instruction: it survives because it ships verbatim in the template payload
+  inside every REQ file, not because the finding codes cover it — those are an orchestrator-side read.
+- **A request's stated baseline is a claim about the world, and this one had three wrong parts.** Nine
+  sites where there were seven; an audited commit not present in the clone; and a sentence it said to
+  keep that did not exist, making the "retention" an addition that had to earn itself separately.
+
+## Orientation
+
+The rule lives in `skills/do-work/tools/do-work-cli/internal/corehelpers/checks.go` as
+`QUALIFY-DEBUG-ARTIFACT`, `QUALIFY-PAU-UNCHECKED` and `QUALIFY-UNIFY-DISARMED`. Three shipped action
+files now point at it rather than restating it, and one sentence in `work.md` Step 6.3 names the codes.
+
+The guard is in `_dev/tests/audit-lockins.sh`, beside REQ-552's Finding 9 and REQ-554's Finding 6. It
+is an exact pin, not a ceiling: a restatement returning fails it, and losing one of the two protected
+mentions fails it too. The two protected mentions are `review-work.md`'s standalone-review hygiene
+bullet — a read the canonical `qualify` never makes, because a standalone review sees a diff `qualify`
+does not — and the emitted P-A-U template payload, which must stay byte-identical across four shipped
+files. A companion assertion in the same block pins every `QUALIFY-*` code named in the action files
+against `checks.go`, from both directions.
+
+Two things are recorded and unfixed. `review-work.md`'s surviving bullet names `console.log` and print
+statements but not `debugger`, `TODO` or `FIXME`, so standalone review covers less than orchestrated
+review does — changing it would move the pin, so it is a follow-up. And the sentence saying the
+qualification gate owns the P-A-U-honesty mechanics slightly overstates `checks.go`, where the three
+codes fire independently and nothing correlates a checked box with a dirty diff; the dirty diff is
+still caught regardless of box state, so what is lost is the inference, not the check.
