@@ -20,4 +20,3 @@ session_depth: light
 
 - REQ-597: Correct ten stale claims across the rest of the prescribed-shell guide — claimed 2026-09-06T12:38:06Z — writer: t2s-Virtual-Machine.local:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2
 
-- REQ-600: Put the SIGPIPE trap in the prime shell authors read, and fix the one shipped block that carries it — claimed 2026-09-06T12:38:32Z — writer: t2s-Virtual-Machine.local:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2

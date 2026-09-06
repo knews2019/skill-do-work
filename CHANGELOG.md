@@ -2,6 +2,15 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.305.10 — Every Shipped Shell Block Is Now Checked for the Pipe Shape That Hides a Failed Command (2026-09-06)
+
+0.305.5 removed `producer | grep -q PATTERN` from the repository's own scripts because, under the shell setting they all run with, the producer's death reads as the pattern's absence. One shipped block still carried it: the probe in the memory guidance that asks a local model server whether an embedding model is pulled. It could not misfire in practice, because that listing is far smaller than the size where the shape starts to fail, but it is the block agents copy, and copied guidance is where the shape spreads from.
+
+- The probe now captures the listing first and searches the captured text. A missing or stopped server is the "no local model" answer the surrounding guidance already gives, and the block says so where the reader sees it.
+- The maintainer check that already syntax-checks every shell block inside the shipped guidance (74 blocks across 32 files) now scans each one for the shape and fails at the block's own line in the Markdown file. Until now that guard read only shell scripts, so a block in guidance could ship carrying what a script could not.
+- The scanner has one home, shared by both checks, so the two cannot drift apart. The check's own fixture still carries the nineteen forbidden spellings and seven safe ones, and a one-shape wiring test runs on every ordinary invocation, so removing the scan from the guidance check fails loudly rather than passing quietly.
+- The maintainer's shell guide now describes the trap in the place an author reads before writing shell: the condition, why it is wrong in both directions, the measured window, the fix, and the reader shapes the guard cannot see.
+
 ## 0.305.9 — A Maintainer-Only Test No Longer Ships, and a Skewed Claim Keeps Its Progress Figures Ticking (2026-09-06)
 
 Two fixes from an external review of the open pull request, applied directly.

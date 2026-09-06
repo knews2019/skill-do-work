@@ -2,7 +2,7 @@
 
 Accumulated lessons for [`prime-do-kanban.md`](prime-do-kanban.md). Read this before changing what that prime's **Read first** or **Traps** sections name.
 
-The work pipeline appends here on archive (`../../../do-work/actions/work.md` Step 8 substep 7); the prime itself never accumulates.
+The work pipeline appends here on archive (`../../../do-work/actions/work.md` Step 8 substep 4); the prime itself never accumulates.
 <!-- Entries below are self-contained rather than linked: this file ships inside the
      do-work-board package, whose consumers never receive this repo's do-work/ archive
      (machine-local and export-ignored), so a relative archive link would be dead in
