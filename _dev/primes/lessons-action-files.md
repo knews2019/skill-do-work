@@ -2,7 +2,7 @@
 
 Accumulated lessons for [`prime-action-files.md`](prime-action-files.md). Read this before changing what that prime's **Read first** or **Traps** sections name.
 
-The work pipeline appends here on archive (`../../skills/do-work/actions/work.md` Step 8 substep 7); the prime itself never accumulates.
+The work pipeline appends here on archive (`../../skills/do-work/actions/work.md` Step 8 substep 4); the prime itself never accumulates.
 <!-- A version-keyed entry shipped as a direct review fix with no REQ to link; the
      REQ-linked entries are the norm. -->
 

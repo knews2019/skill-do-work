@@ -11,7 +11,10 @@ set -uo pipefail
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 failure_count=0
 
-fixture_directory="$(mktemp -d "${TMPDIR:-/tmp}/quiet-grep-pipeline-audit.XXXXXX")"
+fixture_directory="$(mktemp -d "${TMPDIR:-/tmp}/quiet-grep-pipeline-audit.XXXXXX")" || {
+  printf 'FAIL: could not allocate a fixture directory for the quiet-grep audit.\n' >&2
+  exit 1
+}
 cleanup_fixture_directory() {
   rm -rf -- "$fixture_directory"
 }

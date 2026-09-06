@@ -7,16 +7,17 @@
 #
 # `writer | grep -q PATTERN` under `set -o pipefail` reports the writer's SIGPIPE death as
 # grep's verdict: the assertion is then wrong in both directions — a positive matcher misses a
-# pattern that is present, and a negative matcher fails to flag one it should. It is silent
-# below roughly 36 KB of producer output and certain above about 200 KB, so a check written this
+# pattern that is present, and a negative matcher fails to flag one it should. Timing decides,
+# not content, with the flip size depending on how the writer flushes, so a check written this
 # way passes for years and then fails, or passes forever while asserting nothing (REQ-593).
 #
 # quiet_grep_pipeline_offenders prints every logical line in the named file that feeds an
 # early-leaving grep from a pipeline. The defect is a condition, not a spelling: a reader that
 # can exit before its writer is done, downstream of a pipe, under pipefail. So the scan works on
 # the condition's three ingredients instead of on the one spelling that was converted —
-# ordinary shell writes the same defect fourteen different ways in the must-flag fixture below
-# alone, and a regex naming only today's shape goes stale the first time someone writes another
+# ordinary shell writes the same defect many different ways in the must-flag fixture in
+# quiet-grep-pipeline-audit.sh alone, and a regex naming only today's shape goes stale the first
+# time someone writes another
 # (prime-shell-commands.md, "Closed Enumerations Go Stale").
 #   * logical lines, not physical: a pipeline continued after a trailing `|` or `\` is one
 #     command, and blank lines, comment lines and a trailing note after the pipe are all skipped

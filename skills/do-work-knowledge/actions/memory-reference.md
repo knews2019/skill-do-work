@@ -82,7 +82,7 @@ The script owns tokenization, scoring, recency weighting, attribution, sorting, 
 
 ## Semantic Recall (Layer 2 — optional, detected)
 
-Probe for an embedding backend; first hit wins. The list is illustrative — any backend that can embed text qualifies:
+Probe for an embedding backend; the first probe that succeeds wins. The list is illustrative — any backend that can embed text qualifies:
 
 ```bash
 ollama_models="$(ollama list 2>/dev/null || true)"  # no ollama, or a stopped daemon, means no model: the empty listing is the answer
