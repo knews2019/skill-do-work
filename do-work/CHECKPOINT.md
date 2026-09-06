@@ -18,4 +18,3 @@ session_depth: light
 
 ## In Progress (interrupted)
 
-- REQ-611: A6: Batch shell audits while preserving diagnostics — claimed 2026-09-06T14:56:21Z — writer: t2s-Virtual-Machine.local:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2
