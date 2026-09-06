@@ -224,12 +224,16 @@ even though it does not satisfy its letter. That deviation is the reason this is
 ### The lock-in
 
 One block in `_dev/tests/audit-lockins.sh`, in the file's existing per-Finding shape. It counts
-definitions of the union of the old and the new names and pins the total at **exactly 6** — a floor as
-well as a ceiling, because a one-sided ratchet guards half the property (REQ-556's lesson):
+definitions of the union of the old and the new names and pins the total at ~~**exactly 6**~~
+**exactly 7** — a floor as well as a ceiling, because a one-sided ratchet guards half the property
+(REQ-556's lesson). **Corrected by the builder (D-06):** the 6 below counts `ResolvePhysicalPath`,
+which is the merged resolver D-04 decided *not* to create, and omits `existingPhysicalPath`, the name
+D-04 actually creates. Pinning 6 would have left the new name unguarded and shipped a stale enumeration
+into the very edit that creates it. The shipped regex names `existingPhysicalPath` and pins 7:
 
 ```
 rg -n --glob '*.go' --glob '!*_test.go' \
-  '^func (uniqueSorted|UniqueSortedStrings|subtractPaths|SubtractStringValues|requestIDLess|RequestIDLess|firstError|FirstNonNilError|compareSemver|CompareSemanticVersions|physicalPath|ResolvePhysicalPath)\(' \
+  '^func (uniqueSorted|UniqueSortedStrings|subtractPaths|SubtractStringValues|requestIDLess|RequestIDLess|firstError|FirstNonNilError|compareSemver|CompareSemanticVersions|physicalPath|existingPhysicalPath)\(' \
   skills/do-work/tools/do-work-cli/internal/
 ```
 
@@ -331,10 +335,11 @@ wall 76s, with the CLI module at 784 tests and the board module inside its 30s b
 the heavy-only one every fast run prints.
 
 **The baseline this request's Red-Green Proof names is re-verified at HEAD, not replayed from the
-audited commit.** The reproduce command prints fourteen definitions of the six names, which is what the
-request claims — but the survey shows the fourteen are not the fourteen the request describes: one is a
-validator wearing a deduper's name, and a fourth `uniqueSorted` sits in a package the request never
-lists. The count is right by coincidence.
+audited commit.** ~~The reproduce command prints fourteen definitions of the six names, which is what
+the request claims.~~ **Corrected by the builder:** it prints **fifteen** at the branch point. The
+request's count of fourteen predates the fourth `uniqueSorted` the survey found in
+`internal/repairvalidation/already_green.go`, which the audit missed. The shape is wrong as well as the
+count: one of the fifteen is a validator wearing a deduper's name.
 
 **The environment the gate needs is recorded once for this run.** `NODE_OPTIONS` and the
 `GIT_CONFIG_COUNT` / `GIT_CONFIG_KEY_*` / `GIT_CONFIG_VALUE_*` triples unset, `GIT_CONFIG_GLOBAL`
