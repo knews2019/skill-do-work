@@ -376,14 +376,12 @@ func TestAssociationUnderWorkingDirectoryCheckoutSkipsBlockedArchivedRequest(t *
 	// A checkout beneath a directory named "working" must not turn every archived
 	// REQ into an in-flight one. In-flight-ness comes from the root being walked
 	// (do-work/working versus do-work/archive), never from the checkout's path.
-	repository := filepath.Join(t.TempDir(), "working", "project")
+	// The fixture sits under a do-work/working/ directory so that no substring of
+	// the absolute path, however specific, can stand in for the walked root.
+	repository := filepath.Join(t.TempDir(), "do-work", "working", "project")
 	if err := os.MkdirAll(repository, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(filepath.ToSlash(repository), "/working/") {
-		t.Fatalf("fixture path %q lacks the working component this test depends on", repository)
-	}
-	runFixtureGitCommand(t, repository, "init", "-q")
 	writeMatrixFile(t, repository, "do-work/archive/REQ-905-blocked.md", "---\nid: REQ-905\nstatus: blocked\n---\n\n## Implementation Summary\n- `project.txt` (modified)\n")
 	writeMatrixFile(t, repository, "do-work/working/REQ-906-blocked-in-flight.md", "---\nid: REQ-906\nstatus: blocked\n---\n\n## Implementation Summary\n- `in-flight.txt` (modified)\n")
 	writeMatrixFile(t, repository, "project.txt", "uncommitted\n")
