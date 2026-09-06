@@ -1,19 +1,29 @@
 ---
 id: REQ-600
-status: pending
+status: claimed
 domain: general
 created_at: 2026-09-06T06:53:35Z
 user_request: UR-105
 review_generated: true
 impact: impact-rule-change
 effort_estimate: effort-mechanical
+route: B
 prime_files: [_dev/primes/prime-shell-commands.md]
 tdd: false
+estimate:
+  p50_active_minutes: 25
+  confidence: medium
+  calculated_at: 2026-09-06T07:26:22Z
+  basis:
+    - Route B
+    - 2-file write set
+    - 4 acceptance criteria
 maintenance: true
 depends_on: [REQ-594]
 related: [REQ-593, REQ-594]
 write_set: [_dev/primes/prime-shell-commands.md, skills/do-work-knowledge/actions/memory-reference.md]
 title: 'Put the SIGPIPE trap in the prime shell authors read, and fix the one shipped block that carries it'
+claimed_at: 2026-09-06T07:26:22Z
 ---
 
 # Put the SIGPIPE Trap Where Shell Authors Read It
@@ -70,3 +80,25 @@ reader-set limitation IS disclosed — in a run record and a request file, not i
 ## Open Questions
 
 None.
+
+## Triage
+
+**Route: B** — Explore then build.
+
+**Reasoning:** The prime section is prose whose facts are already established by REQ-593 and REQ-594
+and measured in their records. What is not established is the fourth requirement: whether other shipped
+action files carry prescribed blocks with the same shape. REQ-594's guard walks tracked `*.sh` files and
+never reads a markdown block, and one instance was found by hand, which says nothing about the rest.
+That sweep is discovery.
+
+**Planning:** Skipped.
+
+**The prime is the fix that stops the class being written; the guard only catches it after.** Both are
+needed and only one existed.
+
+## Plan
+
+**Planning not required** — Route B: one prime section, one shipped block, and whatever the sweep of
+the other shipped blocks finds.
+
+*Skipped by work action*
