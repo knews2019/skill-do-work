@@ -165,3 +165,60 @@ than by line number, and the builder reports which anchors had moved.
 **Dependencies:** ✓ `depends_on` empty. Toolchain at or above every floor the gate requires.
 
 *Checked by work action*
+
+## Review
+
+**Overall: 63%** | 2026-09-06 02:56 UTC
+
+| Dimension | Score |
+|-----------|-------|
+| Requirements | 70% |
+| Code Quality | 65% |
+| Test Adequacy | 55% |
+| Scope | 100% |
+| Risk | Medium |
+| Acceptance | Partial |
+
+**Approve with follow-ups** — the prose cuts are correct and nothing load-bearing lost a home, but the new lock-in that is supposed to protect them fires on a formatting change and stays silent on a reworded restatement.
+
+**Important findings (each with its recorded impact token — this is the durable audit record the judgment mandates):**
+- Zero headroom plus line-counting makes the lock-in fail on a pure reflow: `review-work.md:106` carries both matched strings on one physical line, `grep -c` counts lines, so splitting that bullet after "no debug artifacts —" with no word changed takes the count 2 → 3 and prints "FAIL: 3 debug-artifact rule mentions ... ceiling is 2". I reproduced this in a scratch copy (baseline had no such FAIL, reflow produced it); reviewers 2 and 3 reproduced it independently by different reflows. The message claims a restatement returned, which is false, and the fix it implies (delete a mention) is the wrong action. `audit-lockins.sh` runs in the fast probe lane (`_dev/tests/contracts/probe-lanes.sh:29`) over the three highest-churn action files, so every future editor of those files can trip it. Fix: count matches, not lines (`grep -o ... | wc -l`, ceiling 3) — `_dev/tests/audit-lockins.sh:290,304` — impact-rule-change → report only
+- The lock-in's comment claims "a new restatement is the regression whatever words it uses"; it greps two case-sensitive literals, so most rewordings pass green. I appended `- Builder checked all P-A-U boxes but the diff still adds \`debugger\`, \`TODO\` or \`FIXME\` markers.` to `work.md` in a scratch copy and the suite reported zero debug-artifact failures. Reviewers 2 and 3 each showed further green cases: the deleted review bullet with "console.log," dropped, capitalised "Debug artifacts", singular "debug artifact", and a leftover-print-statements rationalization row. The vocabulary that passes is exactly the vocabulary `checks.go:24` matches (`\b(debugger|TODO|FIXME)\b`). Acceptance criterion 3 ("counted rather than name-listed") is met in form, not substance — counting fixes the list of sites, not the list of spellings. Fix the comment and the criterion claim to say it pins two literal spellings, or widen the pattern set to the marker vocabulary `checks.go` uses — `_dev/tests/audit-lockins.sh:279-311` — impact-rule-change → report only
+
+**Minor findings:**
+- The added sentence names 7 of the 15 `QUALIFY-*` codes `checks.go` emits, with nothing pinning the list to the code, which is the drift class this REQ removed — the unnamed eight are `QUALIFY-SUMMARY-MISSING`, `-DIFF-RANGE-INVALID`, `-SUMMARY-MALFORMED`, `-DELETED-PATH-PRESENT`, `-PATH-NOT-IN-DIFF`, `-CLAIMED-PATH-MISSING`, `-NEW-FILE-UNWIRED`, `-NO-PROJECT-FILES` (`work.md:335`) — impact-rule-change → report only
+- `work.md:335` says `--format json` hands you "raw codes"; it does not — `resultmodel.CommandFinding` ships `automation_stop_reason` (`result_model.go:54`) with a plain-English meaning per code, and `renderText` prints the same string. Reviewer 1 says this also weakens the hand-back's replay case; reviewer 3 says the case still holds. I side with reviewer 3 on keeping the sentence (the stop reason names the meaning, not the owner, and no shipped prose routed the token to `advance`) and with reviewer 1 on the wording: cut or reword "as raw codes" to "as finding codes with a stop reason" — impact-negligible → report only
+- The ratchet is one-sided — only `-gt ceiling` is checked, so rewording or deleting `review-work.md:106` drops the count to 1 and stays green, losing a read `qualify` never makes; the block's comment warns against exactly this and enforces nothing (`_dev/tests/audit-lockins.sh:307`) — impact-negligible → report only
+- The failure message reports one aggregate count and a hardcoded three-name string, naming no file or line, unlike the sibling REQ-552 and REQ-554 blocks in the same script which print `path:line` per offending site (`audit-lockins.sh:308` vs `:249-251`, `:271-274`) — impact-negligible → report only
+- The hand-back's deferred-release note says VERSION is "at 0.303.10 on this branch"; it is 0.304.0 at the base, the branch head, and HEAD, so the follow-on release is 0.304.1 in `skills/do-work/VERSION`, root `VERSION`, `skills/do-work/actions/version.md:5`, plus a new top entry in root `CHANGELOG.md` copied byte-identically to `skills/do-work/CHANGELOG.md` — impact-negligible → report only
+- The missing-file guard covers absence but not unreadability: `debug_rule_file_hits=$(grep -c ...)` discards grep's status, so exit 2 yields an empty string that the arithmetic folds to 0 and the ceiling stays green. Reviewers 1 and 3 disagree on weight — reviewer 3 calls the `[ ! -f ]` guard sufficient for the case that matters. I keep it as Minor: reachability is low, but both sibling blocks capture `$?` and fail on exit > 1, so this is an unexplained departure in the same file (`audit-lockins.sh:304` vs `:263-268`) — impact-negligible → report only
+- `debugger`, `TODO` and `FIXME` now appear in none of the three action files. Orchestrated mode is covered (`QUALIFY-DEBUG-ARTIFACT` is an Error), standalone review is not — `review-work.md:106` names only console.log/print and temporary files. Reviewer 1 rated this a Nit because the surviving bullet states the condition and the house rule treats trailing examples as illustrative; I keep it Minor because standalone review is the mode used to justify keeping that bullet — impact-negligible → report only
+- "`advance`'s qualification gate owns the ... P-A-U-honesty mechanics" overstates `checks.go`: the three P-A-U codes fire independently and nothing correlates a checked box with a dirty diff, which is what all four deleted sentences asserted. The dirty diff is still caught (Error, regardless of box state), so the damage is bounded to the lost inference — impact-negligible → report only
+
+**Nit findings:**
+- "An unfinished-work marker the diff added" mislabels `debugger`, which is a debug statement, not an unfinished-work marker; one word fixes it (`work.md:335`) — impact-negligible → report only
+- The four-word trim leaves `work.md:292` paraphrasing three of the template's four UNIFY clauses; if the bullet is a pointer, point at the template instead of paraphrasing most of it — impact-negligible → report only
+- `QUALIFY-NEW-FILE-UNWIRED` is the fourth code that belongs by the sentence's own logic — its judgment prose sits one sentence earlier at `work.md:335` without the token attached — impact-negligible → report only
+
+**Requirements checklist:**
+- [x] The debug-artifact and P-A-U-honesty rule is stated once in code, with the action files pointing at it — delivered; four restatements removed, `work.md:335` names the codes and ends "do not restate the rule they enforce"
+- [x] Nothing load-bearing was cut — delivered; all three reviewers traced every deleted sentence to a live successor (the builder-side instruction ships verbatim in the P-A-U template payload inside every REQ file, `work.md:292` routes the builder there; the orchestrator-side reads are the `QUALIFY-*` findings in `checks.go`)
+- [x] The two mentions that are not restatements survive — delivered; `review-work.md:106` (standalone review reads a diff `qualify` never sees) and `:374` (emitted template payload)
+- [ ] A lock-in assertion fails if a restatement returns, counted rather than name-listed — not delivered in substance; it catches a pasted-back copy but not a reworded one, and it false-fires on a reflow (Important findings above). Reviewer 1 marked this met with caveats, reviewers 2 and 3 marked it not met; I follow the two who showed the failing runs
+- [x] A renamed or missing target file fails loudly instead of counting zero — delivered; reviewer 2 renamed each file singly and all three together and got a per-file FAIL naming the correct path
+- [x] Nothing changed outside the four declared files — delivered; `git diff --stat c40c6d1..32ecdba` is 4 files, 36 insertions, 6 deletions, all in the REQ's `write_set`
+- [x] All three edited action files still satisfy `prime-action-files.md` — delivered; both Red Flags sections keep earned content, the Common Rationalizations table keeps do-work-specific nouns, and the contract-pinned heading at `work-reference.md:606` is untouched
+- [ ] The release is correctly identified with the right number — partially; deferring to finalization is right, the named base version is stale (Minor above)
+
+**Acceptance:** Partial — `bash _dev/tests/audit-lockins.sh` at HEAD prints "Audit lock-in regressions passed." exit 0 and the working tree is clean, but the new assertion fails its two advertised properties on demonstration: green on a reworded restatement, red on a whitespace-only reflow.
+
+**Suggested testing:** 5 items
+- Re-run `bash _dev/tests/audit-lockins.sh` after switching `grep -c` to match-counting with ceiling 3, and confirm the reflow of `review-work.md:106` no longer trips it
+- Paste the deleted Red Flags bullet back into each of the three files in turn and confirm each goes red independently, then repeat with the three reworded variants (dropped "console.log,", capitalised "Debug artifacts", singular "debug artifact")
+- Delete `review-work.md:106` outright and confirm whether the intended behavior is silence or a failure; the block's comment says the mention is protected but nothing enforces a floor
+- Run `shellcheck --severity=warning` and `bash -n` on `_dev/tests/audit-lockins.sh` after any change to the block (currently exit 0; `-S style` reports only 5 pre-existing findings at lines 28/48/118/229/230)
+- At finalization, confirm all four version mirrors move together to 0.304.1 — omitting one refuses with RELEASE-MIRROR-UNDECLARED, and `skills/do-work-board/tools/queue-kanban/VERSION` is independently versioned and must not be dragged in
+
+**Follow-ups created:** None (13 findings report only)
+
+*Reviewed by review-work action*
