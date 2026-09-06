@@ -19,6 +19,7 @@ import (
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/commandruntime"
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/gittransaction"
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/resultmodel"
+	"github.com/knews2019/skill-do-work/do-work-cli/internal/sharedprimitives"
 )
 
 type interviewOptions struct {
@@ -492,7 +493,7 @@ func handleInterviewIngest(executionContext commandruntime.ExecutionContext, arg
 			writes[changelogPath] = changelog
 		}
 	}
-	targets := uniqueSorted(mapKeysBytes(writes))
+	targets := sharedprimitives.UniqueSortedStrings(mapKeysBytes(writes))
 	createdDirs := absentDirectories(executionContext.RepositoryRoot, []string{filepath.ToSlash(filepath.Join(kbRelative, "raw/inbox"))})
 	transaction := gittransaction.ExecuteTransaction(context.Background(), gittransaction.TransactionOptions{RepositoryRoot: executionContext.RepositoryRoot, TargetPaths: targets, CreatedDirectoryPaths: createdDirs, DryRun: options.dryRun, Commit: options.commit, CommitMessage: "Ingest " + options.template + " interview"}, func(recorder *gittransaction.MutationRecorder) error {
 		if err := createTransactionDirectories(executionContext.RepositoryRoot, recorder, createdDirs); err != nil {
@@ -581,7 +582,7 @@ func handleInterviewReset(executionContext commandruntime.ExecutionContext, argu
 	for path := range writes {
 		targets = append(targets, path)
 	}
-	targets = uniqueSorted(targets)
+	targets = sharedprimitives.UniqueSortedStrings(targets)
 	dirs := []string{filepath.ToSlash(filepath.Dir(archiveRelative)), archiveRelative}
 	for path := range writes {
 		if strings.HasPrefix(path, archiveRelative+"/") {
@@ -593,12 +594,12 @@ func handleInterviewReset(executionContext commandruntime.ExecutionContext, argu
 			}
 		}
 	}
-	createdDirs := absentDirectories(executionContext.RepositoryRoot, uniqueSorted(dirs))
+	createdDirs := absentDirectories(executionContext.RepositoryRoot, sharedprimitives.UniqueSortedStrings(dirs))
 	transaction := gittransaction.ExecuteTransaction(context.Background(), gittransaction.TransactionOptions{RepositoryRoot: executionContext.RepositoryRoot, TargetPaths: targets, CreatedDirectoryPaths: createdDirs, DryRun: options.dryRun, Commit: options.commit, CommitMessage: "Reset " + options.template + " interview"}, func(recorder *gittransaction.MutationRecorder) error {
 		if err := createTransactionDirectories(executionContext.RepositoryRoot, recorder, createdDirs); err != nil {
 			return err
 		}
-		for _, path := range uniqueSorted(mapKeysBytes(writes)) {
+		for _, path := range sharedprimitives.UniqueSortedStrings(mapKeysBytes(writes)) {
 			data := writes[path]
 			if err := publishTransactionFile(executionContext.RepositoryRoot, recorder, path, data, 0o644, false); err != nil {
 				return err
@@ -817,7 +818,14 @@ func migrateInterviewSession(template interviewTemplate, session map[string]any)
 		return false, nil
 	}
 	if oldMajor == newMajor {
-		if compareSemver(old, template.Version) < 0 {
+		// The strict comparator reports parsing separately, so a version the old
+		// lenient parser scored as "equal" is now an explicit refusal rather than a
+		// silently skipped version stamp.
+		versionOrdering, versionsParsed := sharedprimitives.CompareSemanticVersions(old, template.Version)
+		if !versionsParsed {
+			return false, errors.New("template and session versions must be bare semver")
+		}
+		if versionOrdering < 0 {
 			session["template_version"] = template.Version
 		}
 		return false, nil
@@ -1320,7 +1328,7 @@ func createTransactionDirectories(repositoryRoot string, recorder *gittransactio
 }
 func absentDirectories(root string, directories []string) []string {
 	result := []string{}
-	for _, directory := range uniqueSorted(directories) {
+	for _, directory := range sharedprimitives.UniqueSortedStrings(directories) {
 		if _, err := os.Lstat(filepath.Join(root, filepath.FromSlash(directory))); os.IsNotExist(err) {
 			result = append(result, directory)
 		}
@@ -1329,22 +1337,10 @@ func absentDirectories(root string, directories []string) []string {
 }
 func plannedChanges(paths []string) []resultmodel.RecordedChange {
 	changes := make([]resultmodel.RecordedChange, 0, len(paths))
-	for _, path := range uniqueSorted(paths) {
+	for _, path := range sharedprimitives.UniqueSortedStrings(paths) {
 		changes = append(changes, resultmodel.RecordedChange{Path: path, Kind: "planned", Detail: "would publish deterministic interview bytes"})
 	}
 	return changes
-}
-func uniqueSorted(values []string) []string {
-	seen := map[string]bool{}
-	result := []string{}
-	for _, value := range values {
-		if value != "" && !seen[value] {
-			seen[value] = true
-			result = append(result, value)
-		}
-	}
-	sort.Strings(result)
-	return result
 }
 
 func interviewFinding(command, code string, severity resultmodel.FindingSeverity, path, evidence string, fixability resultmodel.FindingFixability, stop string) resultmodel.CommandFinding {
@@ -1531,20 +1527,6 @@ func semverMajor(value string) (int, error) {
 	}
 	major, err := strconv.Atoi(parts[0])
 	return major, err
-}
-func compareSemver(first, second string) int {
-	a, b := strings.Split(first, "."), strings.Split(second, ".")
-	for index := 0; index < 3 && index < len(a) && index < len(b); index++ {
-		ai, _ := strconv.Atoi(a[index])
-		bi, _ := strconv.Atoi(b[index])
-		if ai < bi {
-			return -1
-		}
-		if ai > bi {
-			return 1
-		}
-	}
-	return 0
 }
 func firstLayer(template interviewTemplate) any {
 	if len(template.Layers) == 0 {

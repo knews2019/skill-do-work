@@ -4,8 +4,9 @@ import (
 	"bytes"
 	"os"
 	"path/filepath"
-	"strconv"
 	"strings"
+
+	"github.com/knews2019/skill-do-work/do-work-cli/internal/sharedprimitives"
 )
 
 func BuildReleasePlan(repositoryRoot string, manifest Manifest) PublicationPlan {
@@ -23,7 +24,8 @@ func BuildReleasePlan(repositoryRoot string, manifest Manifest) PublicationPlan 
 			newVersion = release.Targets[0].NewVersion
 		}
 	}
-	if compareSemver(oldVersion, newVersion) != 1 {
+	versionOrdering, versionsParsed := sharedprimitives.CompareSemanticVersions(oldVersion, newVersion)
+	if !versionsParsed || versionOrdering >= 0 {
 		return refusedPlan(plan, "RELEASE-VERSION-NOT-INCREASING", "new version must be valid semver and strictly greater", nil)
 	}
 	if refusal := validateReleaseOwnership(release); refusal != nil {
@@ -41,7 +43,7 @@ func BuildReleasePlan(repositoryRoot string, manifest Manifest) PublicationPlan 
 		expectedBytes, _, expectedError := readPayload(repositoryRoot, target.ExpectedPayload)
 		newBytes, _, newError := readPayload(repositoryRoot, target.NewPayload)
 		if expectedError != nil || newError != nil {
-			return refusedPlan(plan, "RELEASE-PAYLOAD-INVALID", firstError(expectedError, newError).Error(), nil, path)
+			return refusedPlan(plan, "RELEASE-PAYLOAD-INVALID", sharedprimitives.FirstNonNilError(expectedError, newError).Error(), nil, path)
 		}
 		currentBytes, readError := os.ReadFile(filepath.Join(repositoryRoot, filepath.FromSlash(path)))
 		if readError != nil || !bytes.Equal(currentBytes, expectedBytes) {
@@ -205,40 +207,4 @@ func validateReleaseOwnership(release *ReleaseManifest) *Refusal {
 		}
 	}
 	return nil
-}
-
-func compareSemver(oldVersion, newVersion string) int {
-	oldParts, oldOK := parseSemver(oldVersion)
-	newParts, newOK := parseSemver(newVersion)
-	if !oldOK || !newOK {
-		return 0
-	}
-	for index := range oldParts {
-		if newParts[index] > oldParts[index] {
-			return 1
-		}
-		if newParts[index] < oldParts[index] {
-			return -1
-		}
-	}
-	return 0
-}
-
-func parseSemver(value string) ([3]int, bool) {
-	var result [3]int
-	parts := strings.Split(value, ".")
-	if len(parts) != 3 {
-		return result, false
-	}
-	for index, part := range parts {
-		if part == "" || len(part) > 1 && part[0] == '0' {
-			return result, false
-		}
-		parsed, err := strconv.Atoi(part)
-		if err != nil || parsed < 0 {
-			return result, false
-		}
-		result[index] = parsed
-	}
-	return result, true
 }

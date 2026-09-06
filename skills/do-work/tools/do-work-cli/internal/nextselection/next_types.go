@@ -79,12 +79,3 @@ func canonicalToken(identifier, prefix string) (string, error) {
 	}
 	return fmt.Sprintf("%s%03d", prefix, number), nil
 }
-
-func requestIDLess(leftID, rightID string) bool {
-	leftNumber, leftOK := numericID(leftID, "REQ-")
-	rightNumber, rightOK := numericID(rightID, "REQ-")
-	if leftOK && rightOK && leftNumber != rightNumber {
-		return leftNumber < rightNumber
-	}
-	return leftID < rightID
-}

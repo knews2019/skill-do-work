@@ -10,7 +10,6 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
-	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -21,6 +20,7 @@ import (
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/repositorymodel"
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/requeststate"
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/resultmodel"
+	"github.com/knews2019/skill-do-work/do-work-cli/internal/sharedprimitives"
 )
 
 const CommandValidateAlreadyGreenRepair = "validate-already-green-repair"
@@ -263,7 +263,7 @@ func Validate(repositoryRoot string, options Options) (resultmodel.AlreadyGreenR
 		for _, change := range dryRun.Changes {
 			validation.CanonicalCompletionPaths = append(validation.CanonicalCompletionPaths, change.Path)
 		}
-		validation.CanonicalCompletionPaths = uniqueSorted(validation.CanonicalCompletionPaths)
+		validation.CanonicalCompletionPaths = sharedprimitives.UniqueSortedStrings(validation.CanonicalCompletionPaths)
 	}
 
 	validation.StagedPaths, err = gitPaths(repositoryRoot, "diff", "--cached", "--name-only", "-z", "--no-renames")
@@ -280,8 +280,8 @@ func Validate(repositoryRoot string, options Options) (resultmodel.AlreadyGreenR
 			validation.ReasonCodes = append(validation.ReasonCodes, "REPAIR-STAGED-PATH-NOT-CANONICAL")
 		}
 	}
-	validation.ReasonCodes = uniqueSorted(validation.ReasonCodes)
-	validation.OffendingPaths = uniqueSorted(validation.OffendingPaths)
+	validation.ReasonCodes = sharedprimitives.UniqueSortedStrings(validation.ReasonCodes)
+	validation.OffendingPaths = sharedprimitives.UniqueSortedStrings(validation.OffendingPaths)
 	validation.ReviewAllowed = validation.TDDAllowed && !containsString(validation.ReasonCodes, "REPAIR-CANONICAL-COMPLETION-REFUSED") && !containsString(validation.ReasonCodes, "REPAIR-STAGED-PATH-NOT-CANONICAL")
 	return validation, gateResult, nil
 }
@@ -405,7 +405,7 @@ func gitStatusPaths(repositoryRoot string) ([]string, error) {
 			paths = append(paths, record[3:])
 		}
 	}
-	return uniqueSorted(paths), nil
+	return sharedprimitives.UniqueSortedStrings(paths), nil
 }
 
 func gitPaths(repositoryRoot string, arguments ...string) ([]string, error) {
@@ -413,7 +413,7 @@ func gitPaths(repositoryRoot string, arguments ...string) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	return uniqueSorted(strings.FieldsFunc(string(output), func(r rune) bool { return r == 0 })), nil
+	return sharedprimitives.UniqueSortedStrings(strings.FieldsFunc(string(output), func(r rune) bool { return r == 0 })), nil
 }
 
 func gitFileAtRevision(repositoryRoot, revision, path string) ([]byte, error) {
@@ -437,21 +437,6 @@ func equalStrings(left, right []string) bool {
 		}
 	}
 	return true
-}
-
-func uniqueSorted(values []string) []string {
-	set := map[string]bool{}
-	for _, value := range values {
-		if value != "" {
-			set[value] = true
-		}
-	}
-	result := make([]string, 0, len(set))
-	for value := range set {
-		result = append(result, value)
-	}
-	sort.Strings(result)
-	return result
 }
 
 func containsString(values []string, target string) bool {

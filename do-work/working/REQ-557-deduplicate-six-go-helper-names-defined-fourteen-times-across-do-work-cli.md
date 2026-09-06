@@ -26,7 +26,7 @@ impact: impact-negligible
 effort_estimate: effort-substantive
 route: C
 planning_at: 2026-09-06T04:01:02Z
-write_set: [skills/do-work/tools/do-work-cli/internal/sharedprimitives/shared_primitives.go, skills/do-work/tools/do-work-cli/internal/sharedprimitives/shared_primitives_test.go, skills/do-work/tools/do-work-cli/internal/corehelpers/checks.go, skills/do-work/tools/do-work-cli/internal/corehelpers/inventory.go, skills/do-work/tools/do-work-cli/internal/repositorymodel/repository_model.go, skills/do-work/tools/do-work-cli/internal/dependencygraph/dependency_graph.go, skills/do-work/tools/do-work-cli/internal/nextselection/next_types.go, skills/do-work/tools/do-work-cli/internal/nextselection/next_targets.go, skills/do-work/tools/do-work-cli/internal/finalization/finalization_prepare.go, skills/do-work/tools/do-work-cli/internal/finalization/finalization_discovery.go, skills/do-work/tools/do-work-cli/internal/finalization/finalization_apply.go, skills/do-work/tools/do-work-cli/internal/finalization/finalization_recovery_test.go, skills/do-work/tools/do-work-cli/internal/knowledgecommands/interview_commands.go, skills/do-work/tools/do-work-cli/internal/knowledgecommands/memory_commands.go, skills/do-work/tools/do-work-cli/internal/repairvalidation/already_green.go, skills/do-work/tools/do-work-cli/internal/publication/capture_files.go, skills/do-work/tools/do-work-cli/internal/publication/release.go, skills/do-work/tools/do-work-cli/internal/publication/release_mirrors.go, skills/do-work/tools/do-work-cli/internal/publication/answer.go, skills/do-work/tools/do-work-cli/internal/suiteinstall/update_transaction.go, _dev/tests/audit-lockins.sh]
+write_set: [skills/do-work/tools/do-work-cli/internal/sharedprimitives/shared_primitives.go, skills/do-work/tools/do-work-cli/internal/sharedprimitives/shared_primitives_test.go, skills/do-work/tools/do-work-cli/internal/corehelpers/checks.go, skills/do-work/tools/do-work-cli/internal/corehelpers/inventory.go, skills/do-work/tools/do-work-cli/internal/repositorymodel/repository_model.go, skills/do-work/tools/do-work-cli/internal/dependencygraph/dependency_graph.go, skills/do-work/tools/do-work-cli/internal/nextselection/next_types.go, skills/do-work/tools/do-work-cli/internal/nextselection/next_targets.go, skills/do-work/tools/do-work-cli/internal/finalization/finalization_prepare.go, skills/do-work/tools/do-work-cli/internal/finalization/finalization_discovery.go, skills/do-work/tools/do-work-cli/internal/finalization/finalization_apply.go, skills/do-work/tools/do-work-cli/internal/finalization/finalization_recovery_test.go, skills/do-work/tools/do-work-cli/internal/finalization/finalization_req557_test.go, skills/do-work/tools/do-work-cli/internal/knowledgecommands/interview_commands.go, skills/do-work/tools/do-work-cli/internal/knowledgecommands/memory_commands.go, skills/do-work/tools/do-work-cli/internal/repairvalidation/already_green.go, skills/do-work/tools/do-work-cli/internal/publication/capture_files.go, skills/do-work/tools/do-work-cli/internal/publication/release.go, skills/do-work/tools/do-work-cli/internal/publication/release_mirrors.go, skills/do-work/tools/do-work-cli/internal/publication/answer.go, skills/do-work/tools/do-work-cli/internal/suiteinstall/update_transaction.go, _dev/tests/audit-lockins.sh]
 claimed_at: 2026-09-06T03:16:29Z
 ---
 
@@ -36,9 +36,18 @@ claimed_at: 2026-09-06T03:16:29Z
 `uniqueSorted`, `subtractPaths`, `requestIDLess`, `firstError`, `compareSemver` and `physicalPath` are defined fourteen times across `internal/`; in every case the duplicating package already imports the package holding an earlier copy, and three names have copies that disagree. Export one canonical definition per name in the lowest already-imported package (`corehelpers` for the path and error helpers, `repositorymodel` for `requestIDLess`), delete the other eight, and record the three semantic reconciliations as named decisions in this REQ.
 
 ## AI Execution State (P-A-U Loop)
-- [ ] **[PLAN]:** (Agent: Read listed `prime_files` and agent rules. Write brief technical approach here. Do not write code yet.)
-- [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
-- [ ] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
+- [x] **[PLAN]:** The validated plan is in `## Plan` below: one new leaf package `internal/sharedprimitives`
+  holding four exported helpers plus an exported strict semver parser, `RequestIDLess` exported in place
+  in `repositorymodel`, and two path resolvers deliberately kept apart under two names. Ten ordered
+  steps, the tree compiling after each.
+- [x] **[APPLY]:** All ten steps applied. One path was added to the write set — the D-02 guard test —
+  and it is declared in the frontmatter and in `## Scope` above. One number in the plan was wrong and
+  the deviation is D-06 below.
+- [x] **[UNIFY]:** `git diff --stat` reviewed file by file: 19 modified, 3 added. `go build ./...`,
+  `go vet ./...` clean; `gofmt -l` over the module empty; `go test ./...` green at 808 top-level tests
+  (794 pass, 14 skip, 0 fail) against 784 before. `shellcheck -S warning` clean on the lock-in file, and
+  the lock-in was proved red in three directions before being accepted. No debug artifacts, no
+  commented-out code, no leftover probes in the diff.
 
 ## Why
 Per-REQ helper files that duplicate an existing helper are the agent-creep class; the three semantic splits (`uniqueSorted` drops empty strings in one copy, `compareSemver` accepts unparseable input in one copy, `physicalPath` has two contracts) are latent correctness drift.
@@ -284,6 +293,7 @@ All Go paths below are under `skills/do-work/tools/do-work-cli/`.
 - `internal/finalization/finalization_discovery.go` (modify) — eighteen call sites
 - `internal/finalization/finalization_apply.go` (modify) — three call sites
 - `internal/finalization/finalization_recovery_test.go` (modify) — one reference to a deleted private helper
+- `internal/finalization/finalization_req557_test.go` (new, added by the builder) — the D-02 guard test, in the per-REQ test-file form this package already uses
 - `internal/knowledgecommands/interview_commands.go` (modify) — delete two private helpers, rewrite the version predicate
 - `internal/knowledgecommands/memory_commands.go` (modify) — two call sites
 - `internal/repairvalidation/already_green.go` (modify) — delete the fourth dedupe helper the request does not name
@@ -335,3 +345,105 @@ and an unusable global signing key makes a fixture's own commit fail inside a la
 **The builder works in an isolated worktree** at
 `../skill-do-work-worktrees/worktree-agent-REQ-557-deduplicate-go-helper-names`, branched from
 `03901f6d`, and hands back one file to the main checkout without staging or committing anything there.
+
+## Implementation Summary
+
+All Go paths below are under `skills/do-work/tools/do-work-cli/`, the same form the `## Scope`
+declaration uses.
+
+**Files changed:**
+- `internal/sharedprimitives/shared_primitives.go`
+- `internal/sharedprimitives/shared_primitives_test.go`
+- `internal/corehelpers/checks.go`
+- `internal/corehelpers/inventory.go`
+- `internal/repositorymodel/repository_model.go`
+- `internal/dependencygraph/dependency_graph.go`
+- `internal/nextselection/next_types.go`
+- `internal/nextselection/next_targets.go`
+- `internal/finalization/finalization_prepare.go`
+- `internal/finalization/finalization_discovery.go`
+- `internal/finalization/finalization_apply.go`
+- `internal/finalization/finalization_recovery_test.go`
+- `internal/finalization/finalization_req557_test.go`
+- `internal/knowledgecommands/interview_commands.go`
+- `internal/knowledgecommands/memory_commands.go`
+- `internal/repairvalidation/already_green.go`
+- `internal/publication/capture_files.go`
+- `internal/publication/release.go`
+- `internal/publication/release_mirrors.go`
+- `internal/publication/answer.go`
+- `internal/suiteinstall/update_transaction.go`
+- `_dev/tests/audit-lockins.sh`
+
+**What was done:** Fifteen definitions of six helper names became seven. Nine private copies were
+deleted outright; one comparator was exported in place; one path resolver was renamed so that one name
+no longer carries two contracts. The new `internal/sharedprimitives` imports nothing else in the module
+(`go list -deps` shows only itself), so it can be called from any package without a cycle — which is
+the reason the copies existed in the first place.
+
+**The request's home was wrong and the plan measured why**, so the canonical helpers went to a new leaf
+package rather than to `corehelpers`, which is outside the import closure of four of the five
+duplicating packages. That deviation is D-A in `## Plan`.
+
+**Two of the request's own numbers were off by one and both were re-measured.** The reproduce command
+prints fifteen at the revision this was built on, not fourteen: the audit missed
+`internal/repairvalidation/already_green.go`'s fourth `uniqueSorted`. The lock-in's pinned total is
+seven, not six, for the reason in D-06.
+
+## Decisions — implementation
+
+- **D-01 — `UniqueSortedStrings` keeps the empty string.** Two of the four deleted copies filtered
+  blanks (`knowledgecommands`, `repairvalidation`), two did not (`corehelpers`, `finalization`). No
+  producer at any call site can emit one: the `corehelpers` sites pre-filter empty backtick spans, the
+  `repairvalidation` sites pass `strings.FieldsFunc` output (which never yields an empty field) and
+  `record[3:]` of a `len >= 4` record, and every `knowledgecommands` site passes map keys of a write set
+  or `filepath.Join`/`filepath.Dir` output. The filter therefore cannot fire today, and dropping it is
+  the safe direction: a blank that ever does appear becomes visible in an evidence list instead of
+  vanishing from it. The result is always a non-nil empty slice, which every deleted copy also
+  guaranteed, so JSON evidence still marshals `[]` and never `null`.
+- **D-02 — `finalization`'s wrapper is deleted and the guard it disabled is restored. This is a
+  deliberate behaviour change.** The wrapper's whole body was `result, _ := normalizeRepositoryPaths(paths);
+  return result`. Twenty-one production call sites and one test site wanted plain dedupe and now call
+  `sharedprimitives.UniqueSortedStrings`; every one of them passes repository-relative slash paths that
+  come from git output, journal images, request relative paths or manifest lock paths, so the discarded
+  normalization was a no-op there. The twenty-second site is
+  `finalization_prepare.go` — a required commit path that was empty, absolute or escaping turned the
+  whole required set into `nil`, the subtraction then found nothing, and the "commit_paths omits planned
+  lifecycle or release targets" error on the next line could never fire. That computation now lives in
+  `missingCommitPaths`, which propagates the refusal exactly as the `normalizeRepositoryPaths` call nine
+  lines above it already does. `internal/finalization/finalization_req557_test.go` fails if the error is
+  discarded again.
+- **D-03 — one orientation, one strict parser, an explicit `parsed` flag.** The two `compareSemver`
+  bodies were inverted, not merely differently strict: `knowledgecommands` returned -1 when the first
+  argument was older, `publication` returned +1 when the second was newer. `CompareSemanticVersions`
+  uses the standard Go orientation (negative when the first argument is older) and `publication`'s
+  strict rules verbatim. It returns `(ordering, parsed)` so no caller can read "unparseable" as "equal".
+  `publication/release.go` refuses on `!parsed || ordering >= 0`, which is the same input set it refused
+  before. `knowledgecommands` keeps its `< 0` predicate and now returns the section's own
+  "template and session versions must be bare semver" error for a version its lenient parser used to
+  score as zero — previously that version silently skipped the template-version stamp.
+  `ParseSemanticVersion` is exported so `publication/release_mirrors.go` keeps its admission check when
+  the private `parseSemver` goes.
+- **D-04 — `physicalPath` is not merged; two contracts keep two names.** `suiteinstall`'s copy becomes
+  `existingPhysicalPath` (EvalSymlinks + Abs, absence is an error, result always absolute);
+  `knowledgecommands` keeps `physicalPath` (walks missing ancestors, absence succeeds). Merging would
+  cost an explicit existence check re-added in `resolveUpdateRoots`, where the missing-path error IS the
+  existence check for the installed skill root and feeds the `strings.HasPrefix` containment test. Two
+  names resolve the defect the request names — one name carrying two contracts — at zero behaviour
+  change.
+- **D-05 — `RequestIDLess` uses the permissive parser.** `repositorymodel`'s `requestNumberFromText`
+  is the parser that assigns request identity elsewhere in the same file, so a comparator that
+  disagreed with it would order ids by one rule and name them by another. `dependencygraph`'s
+  hand-rolled byte-scan parser agrees with it on every input the survey tried, so deleting it preserves
+  behaviour. `nextselection`'s strict `numericID` stays — nine other callers, and it is the right
+  validator for CLI target tokens — but its `requestIDLess` goes, so an id with trailing non-digits
+  (`REQ-12x`) now sorts by 12 in `nextselection` where it previously fell to the string comparison.
+  Such an id cannot reach these two sorts: both sort ids drawn from a repository snapshot, whose
+  filenames and `id:` fields are produced by `formatRequestID`.
+- **D-06 — the lock-in pins the union at seven, not the six the plan states. This is a deviation and it
+  is arithmetic, not judgment.** The plan's own regex reaches six only by naming `ResolvePhysicalPath`,
+  a merged resolver that D-04 decided NOT to create, and by omitting `existingPhysicalPath`, the name
+  D-04 actually creates. A union of the old and new names that covers what the change really produced
+  counts seven: five canonical helpers, plus the two deliberately separate path resolvers. Keeping the
+  six would have shipped a ratchet that names an identifier which can never exist and leaves the one new
+  name unguarded. The block says in place why the total is seven.

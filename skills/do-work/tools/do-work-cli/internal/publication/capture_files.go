@@ -13,6 +13,7 @@ import (
 
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/requestmodel"
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/schemanormalization"
+	"github.com/knews2019/skill-do-work/do-work-cli/internal/sharedprimitives"
 )
 
 var (
@@ -148,7 +149,7 @@ func BuildCapturePlan(repositoryRoot string, manifest Manifest) PublicationPlan 
 		expectedBytes, _, expectedError := readPayload(repositoryRoot, fold.ExpectedPayload)
 		newBytes, _, newError := readPayload(repositoryRoot, fold.NewPayload)
 		if expectedError != nil || newError != nil {
-			return refusedPlan(plan, "CAPTURE-FOLD-PAYLOAD-INVALID", firstError(expectedError, newError).Error(), nil, foldPath)
+			return refusedPlan(plan, "CAPTURE-FOLD-PAYLOAD-INVALID", sharedprimitives.FirstNonNilError(expectedError, newError).Error(), nil, foldPath)
 		}
 		currentBytes, readError := os.ReadFile(filepath.Join(repositoryRoot, filepath.FromSlash(foldPath)))
 		if readError != nil || !bytes.Equal(currentBytes, expectedBytes) {
@@ -356,13 +357,6 @@ func selectedMode(manifestMode uint32, sourceMode os.FileMode) os.FileMode {
 		return os.FileMode(manifestMode)
 	}
 	return sourceMode
-}
-
-func firstError(first, second error) error {
-	if first != nil {
-		return first
-	}
-	return second
 }
 
 func planCreatedDirectories(repositoryRoot string, targetPaths []string) ([]string, error) {
