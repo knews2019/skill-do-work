@@ -46,9 +46,12 @@ trap cleanup_fixture_directory EXIT
 # grep/egrep/fgrep: `rg -q`, `head -1`, `sed -n '1p;q'`, `awk '/x/{exit}'` and `read` are the same
 # defect with a different early-leaving reader and are invisible here. A pipeline assembled at
 # runtime — a variable command, `eval`, a deferred here-doc body — is invisible to any source scan.
-# The parser is textual: it splits on a bare `|`, so a `|` inside a quoted pattern makes a phantom
-# stage, and it has no here-doc awareness, so a here-doc body spelling the shape reads as an
-# offender. Neither has an instance in the tree today; both are pinned as fixture shapes below.
+# The parser is textual, and its three known false-positive shapes are all LOUD — a gate failure, never
+# a silent pass. It splits on a bare `|`, so a `|` inside a quoted pattern makes a phantom stage; it has
+# no here-doc awareness, so a here-doc body spelling the shape reads as an offender; and the comment
+# skip is unconditional, so a comment that TERMINATES a backslash-continued command joins that command
+# to the next one into a phantom pipeline. None has an instance in the tree today, and the first is
+# pinned as a must-not-flag shape below.
 quiet_grep_pipeline_offenders() {
   # awk rather than a grep pipeline so the scan reports its own failure instead of an
   # unreadable file reading as a clean file.
