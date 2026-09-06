@@ -2,6 +2,15 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.305.2 — The Shell Guide's Table Points at the Command, Not at Its Launchers (2026-09-06)
+
+The "Shipped executable homes" table sent readers to nine shell scripts for mechanics that live in Go. Each of those scripts is a few lines that hand the work straight to a `do-work-cli` subcommand, so the table was routing people to the wrong file.
+
+- All nine rows now name the `do-work-cli` subcommand that owns the mechanic. Each subcommand was read from its launcher's own `exec` line, not guessed from the file name.
+- The sentence claiming that a six-line launcher orchestrates two other check scripts is gone. It was false twice over: that launcher hands everything to the Go command, and the two scripts it was said to drive are themselves launchers over the same command that nothing in the Go tree ever starts.
+- The guide now explains the difference between the two, because it matters. The table says where a mechanic is owned; the launcher is what the guide's own instructions and the shipped actions invoke. They are not interchangeable — six launchers translate a legacy positional call into the flags the subcommand needs, and the protected-inventory launcher additionally selects the tag-and-path output that two actions parse one row per file from. Change the command's flags or its output and you have changed the launcher's contract.
+- A maintainer check keeps both shapes from returning, and it asks what a row means rather than how it is spelled: it finds the table by its own header row, and it opens each script a row names to decide whether that script is a launcher. A row naming a file that does not exist fails, and a table with no rows fails. The first version of this check could be walked past seven different ways, including by the table's own formatting.
+
 ## 0.305.1 — The Fast Gate's Skip Decision Reads the Queue It Builds From (2026-09-06)
 
 The stage-reuse seal added in 0.305.0 inherited a rule that ignored the whole `do-work/` tree. One of the two stages builds the Kanban board from that tree, so editing a request could leave the gate reporting a pass from a run that never saw the change.

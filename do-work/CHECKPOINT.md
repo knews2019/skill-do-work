@@ -27,7 +27,6 @@ session_depth: light
 
 
 
-- REQ-555: [impact-negligible] Rewrite the prescribed-shell guide executable-homes table to the do-work-cli route form — claimed 2026-09-06T03:16:18Z — writer: vm:/home/user/skill-do-work
 
 - REQ-557: [impact-negligible] Deduplicate six Go helper names defined fourteen times across do-work-cli — claimed 2026-09-06T03:16:29Z — writer: vm:/home/user/skill-do-work
 

@@ -1,7 +1,7 @@
 ---
 id: REQ-555
 title: '[impact-negligible] Rewrite the prescribed-shell guide executable-homes table to the do-work-cli route form'
-status: claimed
+status: completed
 priority: later
 created_at: 2026-09-03T19:45:35Z
 user_request: UR-105
@@ -26,6 +26,9 @@ effort_estimate: effort-mechanical
 route: A
 write_set: [skills/do-work/docs/prescribed-shell-primitives.md, _dev/tests/prescribed-shell-canonicalization.sh, _dev/tests/audit-lockins.sh]
 claimed_at: 2026-09-06T03:16:18Z
+completed_at: 2026-09-06T03:57:19Z
+commit: 123243554b9a1c220c27604748b8bccc0cfc08a4
+release_at: 2026-09-06T03:57:19Z
 ---
 
 # Rewrite the prescribed-shell guide executable-homes table to the do-work-cli route form
