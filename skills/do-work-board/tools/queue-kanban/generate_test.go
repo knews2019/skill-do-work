@@ -1034,7 +1034,11 @@ var view = ` + mustMarshalJSONString(t, view) + `;
 document.querySelector('[data-view-target="' + (view === "testing" ? "testing" : "board") + '"]').click();
 if (view !== "testing") document.querySelector('[data-lens-target="' + (view === "columns" ? "flat" : "user-request") + '"]:not([data-ur-cards])').click();
 var root = document.querySelector(view === "columns" ? '[data-cards="pending"]' : view === "testing" ? '#view-testing' : '#user-request-lens');
-var button = root.querySelector(view === "user-request" ? '.ur-group-head[data-detail-id="UR-075"]' : '.req-card[data-detail-id="' + (view === "testing" ? 'REQ-379' : 'REQ-378') + '"]');
+// The by-UR head folds the group since REQ-486 and no longer carries
+// data-detail-*; the sibling Details button does. This probe still wants the
+// head, because the "cites" marker is inside it, so it names the head by the
+// button beside it rather than by an attribute the head gave up.
+var button = root.querySelector(view === "user-request" ? '.ur-group-row:has(.ur-group-detail[data-detail-id="UR-075"]) .ur-group-head' : '.req-card[data-detail-id="' + (view === "testing" ? 'REQ-379' : 'REQ-378') + '"]');
 var marker = button && button.querySelector('.citation-match');
 var bounds = marker && marker.getBoundingClientRect(), container = button && button.getBoundingClientRect();
 if (button) button.focus();
@@ -2787,12 +2791,16 @@ func TestGenerateOffersThreeLensButtons(t *testing.T) {
 
 // One UR group as the probe reports it back: which UR it names, whether its
 // header announces an expanded fold, which REQ cards are actually in the DOM,
-// and which nodes inside it still open the UR detail drawer.
+// which nodes inside it still open the UR detail drawer, and which UR the
+// sibling Details button names. DetailButtonId beside DrawerTriggers is what
+// separates "the head no longer carries data-detail-*" from "nothing does":
+// a head that still carried the pair would add a second entry to DrawerTriggers.
 type renderedUserRequestRow struct {
 	UserRequestId  string   `json:"userRequestId"`
 	Expanded       string   `json:"expanded"`
 	CardIds        []string `json:"cardIds"`
 	DrawerTriggers []string `json:"drawerTriggers"`
+	DetailButtonId string   `json:"detailButtonId"`
 }
 
 // URs only is the by-UR lens with its REQ cards folded away, rendered by the
