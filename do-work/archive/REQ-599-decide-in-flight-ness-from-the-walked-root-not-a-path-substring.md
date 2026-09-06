@@ -1,6 +1,6 @@
 ---
 id: REQ-599
-status: claimed
+status: completed
 domain: backend
 created_at: 2026-09-06T06:31:11Z
 user_request: UR-105
@@ -24,6 +24,9 @@ related: [REQ-596]
 write_set: [skills/do-work/tools/do-work-cli/internal/corehelpers/inventory.go]
 title: 'Decide a REQ in-flight from the root being walked, not from a substring of its absolute path'
 claimed_at: 2026-09-06T07:26:22Z
+completed_at: 2026-09-06T08:06:01Z
+commit: 75da24a1fdafca824a4a8dba51aebcc0ed08db46
+release_at: 2026-09-06T08:06:01Z
 ---
 
 # Decide In-Flight-ness From the Walked Root, Not a Path Substring

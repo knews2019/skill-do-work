@@ -2,6 +2,15 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.305.8 — Archived Requests Stay Archived When the Project Sits Under a Directory Named working (2026-09-06)
+
+The commit action asks which in-flight request owns each changed file. That answer came from the wrong place: the tool decided whether a request was in flight by looking for `/working/` anywhere in the request file's absolute path, so a project checked out beneath any directory called `working` made every archived request look active. Archived requests that had been cancelled or blocked could then claim files they never owned.
+
+- In-flight-ness now comes from which directory is being walked, `do-work/working` or `do-work/archive`, and never from the path's spelling. The rule for an ordinary checkout is unchanged: a working request counts whatever its status says, an archived one only when it finished successfully.
+- A request file stored under `do-work/archive/working/` was caught by the same mistake and is now treated as what it is, an archived request.
+- A test builds its checkout under a `do-work/working/` directory, so any future fix that reads the path instead of the walked root fails it.
+- When two requests claim one file, the later completion time wins; on an equal or missing time the request found first stands, working before archive. That order is now stated in the code where it is decided.
+
 ## 0.305.7 — One Redundant Rollback Check Removed, Eight Load-Bearing Ones Kept and Pinned (2026-09-06)
 
 A maintenance audit counted nine places where the transaction rollback tests a filesystem handle for nil and asked for eight of them to go. Tracing every path that can reach them showed the opposite: eight are the only thing between a failed handle and a crash in the middle of restoring the tree.
