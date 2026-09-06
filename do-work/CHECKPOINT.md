@@ -37,3 +37,5 @@ session_depth: light
 - REQ-599: Decide a REQ in-flight from the root being walked, not from a substring of its absolute path — claimed 2026-09-06T07:26:22Z — writer: vm:/home/user/skill-do-work
 
 - REQ-600: Put the SIGPIPE trap in the prime shell authors read, and fix the one shipped block that carries it — claimed 2026-09-06T07:26:22Z — writer: vm:/home/user/skill-do-work
+
+- REQ-598: Close the live nil-handle panic in transaction rollback, and decide the handle once instead of eleven times — claimed 2026-09-06T07:40:57Z — writer: vm:/home/user/skill-do-work

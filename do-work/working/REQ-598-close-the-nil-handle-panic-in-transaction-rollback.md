@@ -1,19 +1,31 @@
 ---
 id: REQ-598
-status: pending
+status: claimed
 domain: backend
 created_at: 2026-09-06T06:25:19Z
 user_request: UR-105
 review_generated: true
 impact: impact-user-visible
 effort_estimate: effort-substantive
+route: C
 prime_files: [skills/do-work/tools/do-work-cli/prime-do-work-cli.md]
 tdd: true
+estimate:
+  p50_active_minutes: 60
+  confidence: low
+  calculated_at: 2026-09-06T07:40:57Z
+  basis:
+    - Route C
+    - 3-file write set
+    - 1 subsystem, a transaction boundary
+    - 4 acceptance criteria
+    - no no-handle test exists in the package
 maintenance: false
 depends_on: [REQ-558]
 related: [REQ-558]
 write_set: [skills/do-work/tools/do-work-cli/internal/gittransaction/git_transaction.go, skills/do-work/tools/do-work-cli/internal/gittransaction/git_transaction_test.go, _dev/tests/audit-lockins.sh]
 title: 'Close the live nil-handle panic in transaction rollback, and decide the handle once instead of eleven times'
+claimed_at: 2026-09-06T07:40:57Z
 ---
 
 # Close the Live Nil-Handle Panic in Transaction Rollback
@@ -88,3 +100,24 @@ package's transaction and rollback tests are green unchanged, and a new test dri
 ## Open Questions
 
 None.
+
+## Triage
+
+**Route: C** — Explore, plan, then build.
+
+**Reasoning:** The defect is settled — two of REQ-558's three trace agents reproduced it end to end
+through the public `ExecuteTransaction` API, and REQ-558's review reproduced it again. What is not
+settled is the shape of the fix, and the two shapes the request names are not equivalent. A ninth guard
+at the one unguarded call site is a four-line change that keeps the per-consumer pattern and its eight
+siblings. Deciding the handle once at the open — abandoning the rooted half of rollback with a typed
+finding, or running it under a proven handle — makes all eight guards dead and is a change to
+`rollbackFailure`'s error handling inside a transaction boundary, where the keep-going behaviour that
+lets a failed transaction still unstage its paths must survive. That choice deserves competing plans and
+a judge, not a builder's preference.
+
+**Planning:** Required. Two independent plans, one per shape, judged on what each preserves and what
+each costs, with the package's first no-handle test as a fixed requirement of both.
+
+**REQ-558's traces are this request's exploration.** They enumerated every consumer of the handle,
+every path into every guard, and the exact condition that reaches the dirty-tracked branch. They live in
+the run directory beside REQ-558's hand-back and are cited rather than re-derived.
