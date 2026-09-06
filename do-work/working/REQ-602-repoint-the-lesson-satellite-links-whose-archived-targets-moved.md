@@ -9,6 +9,14 @@ impact: impact-negligible
 effort_estimate: effort-mechanical
 prime_files: [_dev/primes/prime-action-files.md]
 route: A
+estimate:
+  p50_active_minutes: 15
+  confidence: medium
+  calculated_at: 2026-09-06T08:13:55Z
+  basis:
+    - Route A
+    - 4-file write set
+    - 4 acceptance criteria
 tdd: false
 maintenance: true
 related: [REQ-243, REQ-238]
