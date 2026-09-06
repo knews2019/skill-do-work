@@ -9,12 +9,22 @@ domain: backend
 prime_files: []
 tdd: true
 suggested_spec:
+estimate:
+  p50_active_minutes: 55
+  confidence: low
+  calculated_at: 2026-09-06T03:18:43Z
+  basis:
+    - Route C
+    - 10-file write set
+    - 8 subsystems involved
+    - 4 acceptance criteria
 depends_on: [REQ-550, REQ-552]
 related: [REQ-549, REQ-550, REQ-551, REQ-552, REQ-553, REQ-554, REQ-555, REQ-556, REQ-558]
 batch: maintainability-audit-2026-09-03
 maintenance: false
 impact: impact-negligible
 effort_estimate: effort-substantive
+route: C
 write_set: [skills/do-work/tools/do-work-cli/internal/corehelpers/checks.go, skills/do-work/tools/do-work-cli/internal/repositorymodel/repository_model.go, skills/do-work/tools/do-work-cli/internal/finalization/finalization_prepare.go, skills/do-work/tools/do-work-cli/internal/knowledgecommands/interview_commands.go, skills/do-work/tools/do-work-cli/internal/knowledgecommands/commands.go, skills/do-work/tools/do-work-cli/internal/dependencygraph/dependency_graph.go, skills/do-work/tools/do-work-cli/internal/nextselection/next_types.go, skills/do-work/tools/do-work-cli/internal/publication/capture_files.go, skills/do-work/tools/do-work-cli/internal/suiteinstall/update_transaction.go, _dev/tests/audit-lockins.sh]
 claimed_at: 2026-09-06T03:16:29Z
 ---
@@ -75,3 +85,20 @@ See `do-work/user-requests/UR-105/input.md` for complete verbatim input.
 
 ---
 *Source: `do-work/audits/audit-2026-09-03.md` §Plan, capture-request line for per-req-duplicate-go-helpers.*
+
+## Triage
+
+**Route: C** — Explore, plan, then build.
+
+**Reasoning:** Three of the six names have copies that disagree with each other, and the request says a
+silent pick is a review refusal. Deciding what each caller keeps for empty-string handling in
+`uniqueSorted`, for unparseable input in `compareSemver`, and for the two different `physicalPath`
+contracts is a behaviour decision per call site, not a rename. That needs every caller read before any
+definition is deleted, so exploration is real work and the plan it produces is what the builder
+executes. The write set is nine Go files plus one lock-in, and `corehelpers` has been edited twice
+already in this run, so the copies the request names must be re-checked against HEAD rather than
+against the audited commit it cites.
+
+**Planning:** Required. The exploration produces the per-name canonical home and the per-caller
+behaviour decision; the plan turns that into an ordered edit sequence that never leaves the tree
+uncompilable between steps.

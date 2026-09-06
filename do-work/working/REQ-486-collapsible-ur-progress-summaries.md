@@ -540,6 +540,37 @@ instant with no existing surface losing its tick.
 
 *Checked by work action*
 
+### Remediation qualification (after review)
+
+**Passed.** Remediation merge range `3ab2a636..cbfcec76`, five files, all inside the declared write
+set. Every finding the review demonstrated is closed in code, and each closure was shown red by
+ablation before it was accepted.
+
+- **The Remaining figure no longer reads a bare `~0 min`.** A member whose live claim has already run
+  past its saved estimate is counted, and the figure renders `~0 min (2 over estimate)`. The wording
+  follows the Active figure's existing `N excluded` / `N unmeasured` / `N unknown` grammar, so a reader
+  learns one shape rather than four.
+- **A claim stamp the board rejects is now an unknown forecast, not a zero one.** How much of the
+  estimate is already spent is exactly what a bad stamp hides, so the remainder is unknown. This reuses
+  the disclosure the rollup already had rather than inventing a second one.
+- **The browser probe had two page-state leaks, not the one the review named.** The docked drawer
+  staying open between widths is real and was fixed; closing it alone made the group 2px wide. The
+  second leak is the probe's own result `<pre>`, a plain body child that lands in the auto-sized grid
+  column, and once it holds a ~32,000px line of JSON the board column collapses. With the drawer open
+  the two partly cancelled, which is how the corrupted run produced plausible-looking 259px and 579px
+  numbers. Both are reset per measurement, and the probe now asserts the measured `.ur-group` box is the
+  width its own case label claims.
+- **The tick ordering is asserted rather than described.** A probe makes only the summary pass's own
+  selector throw, then checks the claim stopwatch still advanced — which can only happen if the
+  relative-time refresh already ran. Swapping the two calls reds exactly that one test. The two comments
+  that claimed the order was already asserted are corrected.
+- **The two structural claims became assertions.** The summary path is sliced out of the assembled page
+  and checked for `try {`, `try{`, `catch (`, `catch(` and `completedAt`. Matching on syntax rather than
+  the bare words is deliberate: the word "registry" contains "try", which is why the original manual
+  greps returned 1 instead of 0.
+- **`HeadPrecedesDetil` is spelled `HeadPrecedesDetail`**, so a plain-text search for the correct
+  spelling now finds the field and its reads, as Naming for Reach requires.
+
 ## Testing
 
 **Tests run:** all three lanes separately, each recording its own exit line — because a lane that
@@ -572,6 +603,36 @@ found the mechanism behind the second: both of that script's assertion helpers p
 nine siblings are queued behind it.
 
 *Verified by work action*
+
+### Remediation testing (after review)
+
+Every new assertion was shown RED by ablation first, and each ablation was reverted immediately after.
+
+- **The overrun qualifier**, two ablations: dropping the counter gives `OverrunForecastCount:0 ... the
+  over-running claim must be counted`; dropping the rendered qualifier gives `remaining metric = "at
+  least ~2h 30m (1 unknown)", want it to carry "1 over estimate"`.
+- **The skewed-claim branch** disabled reproduces the pre-fix rollup exactly:
+  `RemainingMinutes:130 KnownForecastCount:1 UnknownForecastCount:0`.
+- **The browser probe**, two ablations: removing the drawer close reproduces the review's own numbers
+  (259.0 CSS px at the case labelled 768px, 579.0 at 1280px); removing the result-node layout removal
+  gives 2.0 px at both. With both fixes the measured `.ur-group` box is 273 / 697 / 1209 px in both
+  themes, and the isolated `1280px` subtest reports the same 1209 as the full run.
+- **The ordering probe:** swapping the two calls in `board-core.js` reds exactly one test in the whole
+  strict JavaScript lane, with `claim stopwatch went "1m 30s" -> "1m 30s"`.
+- **The structural assertions:** injecting a try/catch and a `completedAt` read fails all three
+  forbidden tokens.
+
+Three lanes, each run on its own, each reporting its own exit line:
+
+- Fast gate — `Maintainer verification passed.`, gate wall 78s; budget lines
+  `queue-kanban wall=26s tests=402 limit=<30s` and `do-work-cli wall=23s tests=782 limit=<30s`. One SKIP
+  line, heavy-only and unrelated.
+- `--heavy-lane queue-kanban-javascript` — EXIT=0, `ok .../queue-kanban 6.248s`, 72 top-level PASS,
+  0 SKIP, 0 FAIL.
+- `--heavy-lane queue-kanban-browser` — EXIT=0, `ok .../queue-kanban 96.083s`, 35 top-level PASS,
+  0 SKIP, 0 FAIL, on HeadlessChrome/141.0.0.0.
+
+`gofmt` clean. The full canonical gate is run once for the whole batch rather than per remediation.
 
 ## Review
 
@@ -665,3 +726,68 @@ Where the three reviewers disagreed, and what was picked:
 **Follow-ups created:** None (18 findings report only)
 
 *Reviewed by review-work action*
+
+## Lessons Learned
+
+- **A probe that measures one page three times inherits everything the previous measurement left
+  behind.** Moving to one browser engine per theme was a real speed win and it silently changed what
+  was measured: the docked drawer opened for one case was still a grid column for the next two. Worse,
+  the leak was not alone — the probe's own result `<pre>` sat in the same body grid, and once it held a
+  ~32,000px line of JSON the board column collapsed to nothing. The two leaks partly cancelled, which
+  is the dangerous part: the run produced 259px and 579px, numbers plausible enough that nobody
+  questioned them. When a probe reuses a page, reset the page state it depends on at the start of every
+  measurement, and assert the measured geometry against what the case label claims.
+- **"No assertion was weakened, removed or retried" can be true of the assertions and false of what
+  they measure.** The claim was checked against the diff, and the diff did not touch an assertion. What
+  changed was the layout the assertions ran against. A claim about a test's strength is a claim about
+  its inputs too.
+- **A figure that floors at zero has to say it floored.** Clamping each member's remaining time at zero
+  is right; rendering the sum as a bare `~0 min` is not, because "almost done" and "every member has
+  blown its estimate" print identically. On the real board this was 4 of the 5 user requests with a
+  live claim. Where a value can be produced by clamping, the display needs a word for it — and reusing
+  the qualifier grammar the neighbouring figure already uses costs nothing and teaches one shape.
+- **A rejected input disclosed on one figure and silently zeroed on another is worse than either.** A
+  claim stamp the board refuses got a clock-skew warning on Active and was quietly charged as zero
+  elapsed inside Remaining. The fix was not a new mechanism: the rollup already had an "unknown"
+  channel, and a rejected stamp is exactly unknown.
+- **Two comments asserted an ordering no test held.** The order was correct in the code, so nothing
+  misbehaved — the defect was that a maintainer reading the comment would believe the lane protected it
+  and stop looking. Making an ordering observable takes one payload that fails in the second step and
+  one check that the first step's effect survived.
+- **A grep run once by hand and pasted into a record is evidence, not an assertion.** Both structural
+  claims here were greps, and run literally against the shipped file both returned 1 rather than 0,
+  because the rule was stated in a comment containing the word it forbade. Match on syntax, and put it
+  in the suite.
+
+## Orientation
+
+The per-user-request rollup lives in
+`skills/do-work-board/tools/queue-kanban/web/board-user-request-summary.js`. It reads a request's
+complete membership, never the filtered view, so filters change which cards you see and never move the
+five figures. Both surfaces — the **By UR** group header and the user request's detail drawer — render
+from that one rollup at one clock instant, which is what makes them agree by construction rather than
+by convention.
+
+Missing evidence is disclosed, never counted as zero. Four channels carry that: a refused span, a
+member with nothing measurable, an unfinished member nobody estimated, and now a claim stamp the board
+rejects. Remaining additionally counts members that have already outrun their estimate, so a floored
+sum prints `~0 min (N over estimate)`.
+
+`board-core.js` refreshes relative-time nodes before the summary pass inside every tick, and that order
+is asserted by `TestJavaScriptBehaviorTickRefreshesExistingSurfacesBeforeTheSummaryPass`, which makes
+only the summary pass throw and then checks the stopwatch still advanced. The rollup is total by
+narrowing with no try/catch, and
+`TestJavaScriptBehaviorUserRequestSummaryPathCarriesNoCatchAndNoCompletedAt` slices the summary path
+out of the assembled page and forbids the tokens.
+
+`user_request_progress_browser_probe_test.go` measures one page per theme across three widths. Two
+things must stay true or the measurements go quietly wrong: any open drawer is closed at the start of
+every measurement, and the probe's own result node is taken out of the body grid before it is attached.
+The probe asserts the measured `.ur-group` box matches its case label (273 / 697 / 1209 CSS px), which
+is the guard that would have caught the corrupted run.
+
+Recorded and unfixed, all reported in the review: contrast is measured against `<body>` rather than the
+`.ur-group` surface the strip is painted on (both shipped tones clear 4.5:1 on either ground today);
+percentage rounding uses `Math.round`, so a 200-member user request could print 100% unfinished (the
+largest today is 47); the dangling-membership narrowing has no payload covering it; and a folded group
+leaves the strip's `border-bottom` as a stray hairline.

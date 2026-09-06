@@ -9,12 +9,21 @@ domain: general
 prime_files: [_dev/primes/prime-shell-commands.md]
 tdd: true
 suggested_spec:
+estimate:
+  p50_active_minutes: 5
+  confidence: high
+  calculated_at: 2026-09-06T03:17:52Z
+  basis:
+    - trivial short-circuit
+    - Route A
+    - 3-file write set
 depends_on: [REQ-554]
 related: [REQ-549, REQ-550, REQ-551, REQ-552, REQ-553, REQ-554, REQ-556, REQ-557, REQ-558]
 batch: maintainability-audit-2026-09-03
 maintenance: true
 impact: impact-negligible
 effort_estimate: effort-mechanical
+route: A
 write_set: [skills/do-work/docs/prescribed-shell-primitives.md, _dev/tests/prescribed-shell-canonicalization.sh, _dev/tests/audit-lockins.sh]
 claimed_at: 2026-09-06T03:16:18Z
 ---
@@ -71,3 +80,30 @@ See `do-work/user-requests/UR-105/input.md` for complete verbatim input.
 
 ---
 *Source: `do-work/audits/audit-2026-09-03.md` §Plan, capture-request line for stale-shell-ownership-prose.*
+
+## Triage
+
+**Route: A** — Build directly.
+
+**Reasoning:** Every claim the request makes was re-checked against HEAD and all of them hold, so there
+is nothing left to discover. The nine paths in the "Shipped executable homes" table are 6-to-11-line
+`exec` shims over `tools/do-work-cli.sh`, each naming its own subcommand on that exec line, so the
+route column can be rewritten mechanically from the shims themselves. The orchestration sentence is
+still present, and it is still false: `scripts/protected-inventory.sh` is six lines, and the two files
+it is said to orchestrate — `tools/checks/uncommitted-inventory.sh` and
+`tools/checks/associate-files.sh` — are themselves 9-line and 19-line compatibility launchers over the
+same Go command, which no code in `internal/` ever launches. The work is one table rewrite, one
+sentence deletion and one counting assertion.
+
+**Planning:** Skipped.
+
+**REQ-554 landed first, as this request requires.** It rewrote the paragraph the orchestration sentence
+sits in and left that sentence untouched by an explicit decision, so this request edits settled text
+rather than racing it.
+
+## Plan
+
+**Planning not required** — Route A: the write set, the target table and the sentence to delete are all
+named by the request, and every claim was re-checked against HEAD before the route was chosen.
+
+*Skipped by work action*
