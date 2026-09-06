@@ -332,3 +332,63 @@ and line. Those four sites are what proves the glob is live — the version this
 `*/actions/*.md`, which matches nothing because a single `*` does not cross a directory separator.
 
 *Verified by work action*
+
+## Review
+
+**Overall: 73%** | 2026-09-06T01:35:53Z
+
+| Dimension | Score |
+|-----------|-------|
+| Requirements | 70% |
+| Code Quality | 88% |
+| Test Adequacy | 55% |
+| Scope | 100% |
+| Risk | Low |
+| Acceptance | Partial |
+
+**Approve with follow-ups** — the prose move is clean and all three reviewers accept it, but the lock-in that is supposed to keep the prose from coming back does not catch a one-sided return and goes red on ordinary one-line edits that create no duplication at all.
+
+**Important findings (each with its recorded impact token — this is the durable audit record the judgment mandates):**
+- The shared-line ceiling in `_dev/tests/audit-lockins.sh:184` is 30 and the measured value today is exactly 30, so there is no headroom, and because the metric is a sequence alignment, deleting one line from one action can raise the count. Fuzzing every single-line deletion in both files turned four of them red: deleting `inspect.md:46` (a row of that action's own flow diagram) scores 33, and deleting any one of the ` ```bash ` fence lines at `inspect.md:113`, `commit.md:47` or `commit.md:55` scores 32. A second reviewer hit the same wall from the other side by appending an identical `### Step 7: Cleanup` heading plus one body line to both actions and getting 32. Two reviewers rated this Minor or Nit, one rated it Important. Taking Important, because it is the only rating backed by an executed failing case rather than a worry, and REQ-555 through REQ-558 (the rest of the same audit batch) will edit these two files next — impact-rule-change → report only
+- The comment at `_dev/tests/audit-lockins.sh:181-182` says "Returning shared prose trips this", but the metric counts only lines identical in both files, so prose returning to one action is invisible. Pasting the M/A/D/X/XD tag legend and all four file-reading bullets back into `commit.md` alone left the count at 30 and the check exited 0. Restoring the whole pre-move `commit.md` actually lowered the count to 29, and only the separate exact-sentence grep caught it. The one thing the assertion is named for is the case it does not check, and the comment tells the next maintainer the opposite — impact-rule-change → report only
+
+**Minor findings:**
+- The moved by-hand association fallback at `skills/do-work/docs/prescribed-shell-primitives.md:74` says "glob both directories", but the sentence that named those directories stayed behind in the actions (`commit.md:85`, `inspect.md:117`). No path appears anywhere between guide lines 43 and 74, and line 45 promises the section is a standalone by-hand procedure. Fix is one edit: write `do-work/archive/**/REQ-*.md` and `do-work/working/REQ-*.md` in place of "both directories" — impact-rule-change → report only
+- The four file-reading bullets were introduced in both actions by the neutral "Build a semantic understanding of each uncommitted file". The guide at line 55 introduces them with "Read each tag class this way, and no other way". That absolute is new text written during a move, and `maintenance.md` § 3 asks for a concrete case that fails without it, which the hand-back does not name. It also conflicts with `inspect.md:88-94`, which reads committed content with `git show <commit>:<path>`, a route the four bullets do not list — impact-rule-change → report only
+- The FAIL message at `_dev/tests/audit-lockins.sh:191-197` offers one remedy: move the shared body into the guide. For the likeliest trigger — a template heading or an Error Handling row legitimately added to both actions — that is the wrong advice, and for the eight Step 4 clustering lines it is the remedy decision D-03 (leaving the clustering algorithm duplicated because the guide's charter excludes caller policy) explicitly rules out. The composition comment above the ceiling explains this, but the comment is not what a red run prints — impact-rule-change → report only
+- The guide's new line 45 says "Both modes gate on `git rev-parse --git-dir`". Two reviewers checked this against `skills/do-work/tools/do-work-cli/internal/corehelpers/inventory.go` and both found the command is `git rev-parse --git-path <quarantineName>` at line 356, with no `--git-dir` anywhere on that path. The move widened a wrong claim from one mode to two and put it in the canonical home. One reviewer rated it Nit, one Minor. Taking Minor, because a canonical home is where a wrong detail gets copied outward. Suggested wording: "Both modes exit 2 outside a Git repository" — impact-negligible → report only
+- Both new assertions are exact-match, so a paraphrase passes. A one-line inventory fallback reading "When the script is missing or cannot run", added to both actions where its neighbours differ, scored 30 with no grep match and exited 0. This does not make the assertion worthless, but the comment should say what it does not cover — impact-negligible → report only
+- The hand-back's Qualification section cites `near_identical_cross_file_pairs` being 0 in `contract-regressions.sh` as the independent proof the duplication is gone. The metric is not in that file, it is at `_dev/tests/contracts/core-checks.sh:814`, and it only compares rows scraped from `## Common Rationalizations` tables. The diff touches no such row, so the value was 0 before the move too. Everything else checked in that section held up, including the five-FAIL red proof — impact-negligible → report only
+- `commit.md`'s terminal-success bullet lost the clause "is the bug in the Red Flags below". The guide adopted `inspect.md`'s shorter wording, which is correct for a shared home since `inspect.md` has no such Red Flag, but the clause now exists nowhere. This is the only deleted fragment with no home. The Red Flag at `commit.md:228` is self-contained, so only the forward link is gone. If restored, it belongs in `commit.md`'s local prose — impact-negligible → report only
+- D-03 justifies leaving the eight Step 4 clustering lines duplicated by citing the guide's charter exclusion of "the action's policy", but the same new section absorbed the per-tag reading rules and "Partial matches count", which are also caller-side behaviour. The line that actually separates the moved text from the clustering algorithm is "tied to the wrapper's output contract" versus "not tied to it". As written, the next reader can argue the clustering lines back in with the same charter sentence — impact-negligible → report only
+
+**Nit findings:**
+- When the tooling is gone the check fails loudly, which is correct and better than the sibling block in REQ-552 (the earlier audit lock-in that passed on stale paths), but the FAIL line misdiagnoses the cause as prose duplication. The two reviewers who looked disagree on the printed text: one ran the probe with python3 off PATH and quoted a blank count, one read the source and reported 999. Taking the executed result — the printf interpolates the raw variable, not the `${...:-999}` default — impact-negligible → report only
+- The literal sentence "If the script is missing or will not run" is now banned in every file matching `skills/**/actions/*.md`, forever. The REQ asked for this, but a future unrelated action needing its own by-hand fallback will get a FAIL telling it to move prose into the protected-inventory guide, where it does not belong. `cleanup.md:161` survives only by wording accident — impact-negligible → report only
+- `inspect.md:94` now resolves its binary-file rule in two hops: it points at line 82, which points at the guide at line 60. The chain resolves and the rewording is honest about the indirection. Naming the three categories inline would cost four words — impact-negligible → report only
+- The old guide requirement to preserve "the scripts' documented exit meanings" was dropped rather than restated. Four of its five named items are now spelled out concretely, which is better than a checklist, and a by-hand procedure produces no exit codes, so nothing operational is lost. Recorded for completeness only — impact-negligible → report only
+
+**Requirements checklist:**
+- [x] Legend, secret-shaped matching, four reading bullets and both by-hand fallbacks live in one section — delivered at `prescribed-shell-primitives.md:43-74` under `## Protected inventory fallbacks`
+- [x] Both actions cite the section instead of restating it — delivered, `commit.md:59,73,87` and `inspect.md:67,82,119`, both relative paths and the `#protected-inventory-fallbacks` anchor resolve in both directory layouts
+- [x] Read-only versus staging differences stay local to each action — delivered, neither action inherited the other's wording, and no security instruction was lost
+- [x] The manual fallback sentence appears zero times in shipped actions — delivered, the only match across `skills/` is the guide
+- [x] `_dev/tests/prescribed-shell-canonicalization.sh` re-baselined in the same commit — delivered, one heading added to the membership list, exit 0. D-02 is right that nothing in that script counts numerically, so the REQ's "re-baseline those counts" instruction was unimplementable as written
+- [x] One lock-in assertion added, no other test file changed, red before and green after — delivered, five FAIL lines at the base revision, exit 0 now, and shellcheck at the gate's own severity is clean
+- [x] Nothing outside the five declared files — delivered, the diff is exactly the declared write set, 92 insertions and 56 deletions
+- [ ] Shared identical lines between the two actions reduced to 10 or fewer — not delivered, measured 30 and the ceiling was set to 30. The deviation is recorded with a reason and one reviewer checked all 30 lines individually and agreed none is shared prose (17 template scaffold, 4 per-action diagram and table rows, 8 Step 4 clustering, 1 routing). The target was unreachable, but the constraint as written is not met
+- [ ] The lock-in fails when the shared prose comes back — half delivered, it catches a verbatim two-sided return and passes on today's scaffold, but it misses a one-sided return and a paraphrase, and it fires on edits that add no duplication
+- [ ] Version bump and changelog entry — not owed in this merge range, owed before REQ-554 is archived. This repository never bumps on a builder-merge commit (four such merges since release 0.303.10 carried no bump), the bump lands in the `[REQ-NNN] complete` finalization commit. Patch bump 0.303.10 to 0.303.11 across five paths: `VERSION`, `skills/do-work/VERSION`, `skills/do-work/actions/version.md` line 5, `CHANGELOG.md` and the byte-identical `skills/do-work/CHANGELOG.md`. If REQ-486, REQ-552, REQ-591 or REQ-592 finalizes first, take the higher of the root VERSION and the newest changelog heading at that moment and bump the patch from there
+
+**Acceptance:** Partial — the prose move works end to end (all 43 removed lines have a home, both pointers and all cross-references resolve, `audit-lockins.sh`, `prescribed-shell-canonicalization.sh` and `shipped-package-reference-contract.sh` all exit 0, red-before and green-after both proven in a scratch worktree), but the regression guard the REQ asked for is proven to miss the case it is named after and to fire on cases it should not.
+
+**Suggested testing:** 5 items
+- Re-run the one-sided single-line deletion fuzz over both actions after any ceiling change, and confirm zero deletions trip the gate before merging
+- Paste the tag legend into `inspect.md` alone and confirm whatever replaces the current assertion goes red
+- Add one identical Error Handling row to both actions and confirm the gate stays green or names the re-baseline remedy rather than the move remedy
+- Run the check with python3 off PATH and with one action file renamed, and confirm the FAIL line names the tooling failure instead of reporting a share count
+- After correcting the `git rev-parse` sentence, re-read `handleProtectedInventory` and `readInventory` in `inventory.go` to confirm the guide states the observable contract the code actually has
+
+**Follow-ups created:** None (14 findings report only)
+
+*Reviewed by review-work action*
