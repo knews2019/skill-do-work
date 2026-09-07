@@ -2,6 +2,13 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.305.34 — Restore Unmerged Badge and Prime Discovery Fixes (2026-09-07)
+
+Long blocked conditions now fit their cards, and lesson capture finds relevant primes even when a request's prime list is empty or stale.
+
+- Adapt the historical badge fix to the split board client, retaining full conditions in tooltips.
+- Share prime discovery across work and standalone review while preserving deferred archival writes and lesson satellites.
+
 ## 0.305.33 — Compact Prime Routing and Recurring-Lesson Traps (2026-09-06)
 
 Prime readers load less repeated detail while keeping access to the original guidance and incident history.

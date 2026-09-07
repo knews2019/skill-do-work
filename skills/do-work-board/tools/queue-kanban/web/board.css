@@ -1364,13 +1364,20 @@ body.is-resizing-detail {
 }
 /* "blocked by <condition>" — waiting on an external condition (status: blocked).
    Shares the Needs-input/Blocked column and its accent; the label names the
-   condition (JS truncates the text and keeps the full string in the tooltip). */
+   condition (CSS fits the text to the card; the tooltip keeps the full string). */
 .badge-blocked {
   color: var(--accent-blocked);
   background-color: var(--tint-blocked);
   border-color: var(--accent-blocked);
   font-weight: 600;
   max-width: 100%;
+  min-width: 0;
+}
+.badge-blocked-value {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
 }
 
 .req-card-deps {

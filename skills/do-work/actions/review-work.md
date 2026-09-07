@@ -318,7 +318,7 @@ After presenting the review report, perform a self-validation pass — no human 
 
    In **orchestrated mode**, skip lesson capture — actions/work.md's Lessons-Capture Phase handles it after the review returns.
 
-4. **Update prime lesson satellites (Standalone mode only).** Check the REQ's `prime_files` frontmatter. For each listed prime file where the lesson is relevant, write to the prime's satellite `lessons-<name>.md` (beside `prime-<name>.md`; create it with an `# Lessons: <name>` heading and a one-line pointer back to the prime if absent). **Never append to the prime itself** — a prime is read in full every time its area is touched (`crew-members/general.md` → PRIME Files Philosophy).
+4. **Update prime lesson satellites (Standalone mode only).** Follow **Prime Discovery** in `crew-members/general.md` → PRIME Files Philosophy. For each discovered prime file where the lesson is relevant, write to the prime's satellite `lessons-<name>.md` (beside `prime-<name>.md`; create it with an `# Lessons: <name>` heading and a one-line pointer back to the prime if absent). **Never append to the prime itself** — a prime is read in full every time its area is touched (`crew-members/general.md` → PRIME Files Philosophy).
 
    - Choose one short kebab-case failure-family slug, scan the satellite for its literal marker and any clearly same-family pre-slug bullets, then append one bullet:
 

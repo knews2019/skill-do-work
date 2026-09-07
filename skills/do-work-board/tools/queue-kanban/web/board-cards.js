@@ -190,7 +190,9 @@
       // — distinct from pending-answers (user questions) and depends_on (another
       // REQ). The badge follows blocked status across either active-work column.
       var blockedCondition = request.blockedBy.join(", ");
-      var blockedBadge = makeBadge("badge-blocked", "blocked by", truncateBadgeText(blockedCondition));
+      var blockedBadge = createElement("span", "badge badge-blocked");
+      blockedBadge.appendChild(createElement("span", "badge-label", "blocked by"));
+      blockedBadge.appendChild(createElement("span", "badge-blocked-value", blockedCondition));
       var blockedTitle = blockedCondition;
       if (request.blockedAt) {
         blockedTitle += " — since " + formatShortInstantWithRelative(request.blockedAt);

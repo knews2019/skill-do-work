@@ -4,6 +4,8 @@
 
 ## PRIME Files Philosophy
 
+**Prime Discovery:** Discover relevant existing `prime-*.md` files from the consuming project's root instructions, the implementation's touched directories and their parents, and the REQ's `prime_files` frontmatter. Deduplicate the paths and skip missing primes; an empty or stale frontmatter list does not disable discovery.
+
 When asked to read or create a Prime file (`prime-*.md`), adhere strictly to these rules:
 
 - **Purpose:** Prime files are semantic indexes for a specific utility or folder. They prevent the AI from having to reinvestigate the entire architecture from scratch.
