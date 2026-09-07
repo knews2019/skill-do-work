@@ -2,6 +2,13 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.305.35 — Bundled AGY Usage Prime (2026-09-07)
+
+Agents can reference portable Antigravity CLI guidance directly from the installed toolbox.
+
+- Ship the AGY usage prime with model selection, headless execution, background monitoring, continuation and Boost guidance.
+- Link it from core and toolbox skill entrypoints, keeping project-specific pipeline details out of the shared reference.
+
 ## 0.305.34 — Restore Unmerged Badge and Prime Discovery Fixes (2026-09-07)
 
 Long blocked conditions now fit their cards, and lesson capture finds relevant primes even when a request's prime list is empty or stale.

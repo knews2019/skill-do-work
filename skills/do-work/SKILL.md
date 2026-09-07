@@ -15,6 +15,8 @@ The core package owns the durable request lifecycle: capture intent, verify it, 
 
 When a core file names a sibling path, it is literal: resolve it from the directory of the file you are reading, at the depth the path itself spells. Do not search the core package for an extension action.
 
+Before invoking AGY / Antigravity CLI, read [the toolbox AGY usage prime](../do-work-toolbox/docs/prime-agy-usage.md).
+
 > **Capture does not execute.** A capture always creates a UR preserving the input and one or more linked REQs. Stop after capture unless the same user invocation explicitly requested execution too.
 
 > **Trail of intent.** The UR stores the request, the REQ stores validated requirements, and the appended plan, implementation, review, lessons, and orientation blocks explain how the intent became code.

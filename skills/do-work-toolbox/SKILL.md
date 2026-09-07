@@ -8,6 +8,8 @@ argument-hint: "validate-feedback | code-review | maintainability-audit | archit
 
 This package holds useful but optional repository-facing capabilities outside the core request lifecycle. It is installed beside core, board, and knowledge and reads their artifacts through explicit sibling paths.
 
+Before invoking AGY / Antigravity CLI, read [the AGY usage prime](./docs/prime-agy-usage.md). It ships with the suite and can also be referenced directly without running a toolbox action.
+
 ## Routing
 
 | Trigger | Route |
