@@ -1,158 +1,115 @@
 ```
-do-work run --fan-out 3
+do-work run REQ-624
 This command is sufficient; everything below it is context.
 
-You are the agent working on do-work itself, on branch claude/do-work-queue-drain-4ee2xl (the
-integration branch; never main). Push often with git push -u origin claude/do-work-queue-drain-4ee2xl
-and open no pull request. End every commit message with the attribution trailers your session
-prescribes. Four REQs are in do-work/working/ with claims from the previous session; take each over
-with the canonical command the oracle prints (do-work-cli recover --take-over REQ-NNN) and then let
-advance drive the phase. The maintainer gate in this container needs an environment scrub: run
-do-work/runs/work-2026-09-05-231943/handoff-tools/gate.sh (add --heavy for the heavy tier), never
-bare _dev/tests/maintainer-verify.sh. Finalize one REQ with handoff-tools/finalize-req.sh; its
-neighbour FINALIZATION-RECIPE.md says why each step is in its order. Every run artifact you need
-(review syntheses, the judged plan and its verified patch, the workflow scripts, a changelog draft)
-is under do-work/runs/work-2026-09-05-231943/. Reviews are three independent lenses plus a
-synthesizer that reproduces every finding; remediate rather than defend, and correct record claims
-in place with strikethrough. Sections in a REQ record must carry repo-relative paths, one per line,
-and no backticked token in Scope that is not a path.
+Continue the already-claimed request from its recorded review phase. The user requested this
+handoff and authorizes the next session to continue it. Its implementation is already merged
+and verified green. Finish independent review, the selected heavy verification, and canonical
+finalization. The other two requests in UR-130 are complete; finish this request and stop.
 ```
 
 ---
 
 ## Reference
 
-Written 2026-09-06 after the previous session hit its usage limit mid-run. Head of the integration
-branch when this was written: see the commit that adds this file. VERSION is 0.305.9 (0.305.9 was a
-direct fix of two Codex findings on pull request 182, released after the first version of this file). Nothing is
-dirty in any checkout. Four background workflows died to the session limit (REQ-598 build, REQ-602
-verify, REQ-597 review) and one landed (REQ-600 review); nothing else went wrong.
+Written 2026-09-09 for the user's “phandoff and commit everything” request. Integration branch:
+`main`. Current version: `0.305.37`. All remaining implementation and evidence are committed;
+this handoff commit also includes the canonical checkpoint refresh. No push was requested.
+The old restart prompt described a different, completed run and has been replaced.
 
-### In-flight REQs, in the order to work them
+### Current state and remaining order
 
-**REQ-600 — put the SIGPIPE trap in the shell prime, fix the one shipped block.**
-Merged as `a25c7522`, full range `9e00a092cf29842506bea920137b52c952a62638..a25c7522566bea9d9d29c382e159b6a10157a9f1`.
-Qualify and scope-drift satisfied; Qualification and Testing written; review recorded at 83 percent
-(`do-work/runs/work-2026-09-05-231943/REQ-600-review.json`, and the record's Review section). Remaining,
-in order: remediate the six findings the Review lists (the important one is the false safe-zone
-sentence at `_dev/primes/prime-shell-commands.md:53`; the review gives the replacement; also the
-scanner's stale comment at `_dev/tests/quiet-grep-pipeline-scanner.sh:18` and `:11`, the block prose
-"first hit wins", the prime's line 51 list split, and this record's two mis-stated sentences), run the
-four guards, commit; write Lessons Learned and Orientation; finalize as a **release** at 0.305.10 with
-`handoff-tools/changelog-req600.md` (already headed 0.305.10; re-check the heading is unused). Carry the
-lesson satellite lines inside the finalization commit via `EXTRA_COMMIT_PATHS` (see below). Worktree:
-`worktree-agent-REQ-600-sigpipe-prime`, clean, merged. No uncommitted files.
+**REQ-624 — Trim the shipped changelog to 50 entries.** ACTIVE, claimed, merged and verified;
+independent review has not started. Canonical `advance REQ-624` returns `outcome: success`,
+`phase: agent judgment: review`, `status: claimed`. This is an in-place continuation of the
+existing claim. Its preserved workflow sections are the resume state, not a plan held only here.
 
-**REQ-597 — correct the stale claims across the rest of the shell guide and its two callers.**
-Merged as `d5cf28b`, full range `804a8ba32129a3cd12a4aaa7e89346db1b95115c..d5cf28b996a6deb0a0df908cbe4aa722cf2a6ad8`
-(three builder commits `a1e652f`, `6913dc4`, `7df6488`; three shipped prose files, +23/-23). Qualify and
-scope-drift satisfied; Implementation Summary, Decisions, Discovered Tasks, Qualification and Testing
-written; the oracle's next phase is **review** and the review never ran (session limit). Remaining: run
-`handoff-tools/req597-three-lens-review.workflow.js` (edit nothing but the paths if your scratchpad
-differs; it clones the repo and executes the prescribed blocks against fixtures), remediate, write
-Lessons and Orientation, finalize as a **release** (next patch version after REQ-600's). The builders'
-per-sentence evidence is in `REQ-597-handback.md` and `REQ-597-builders.json`; their fixtures lived in
-the old session's scratchpad and are gone, but `REQ-597-verification.json` and the hand-back say how to
-rebuild them. Worktree: `worktree-agent-REQ-597-guide-and-callers`, clean, merged. No uncommitted files.
+- Request: `do-work/working/REQ-624-trim-shipped-changelog-to-50-entries.md`.
+- Source merge: `959cb107d4b95395dcd54d5c44f7509197b97114`.
+- **Full merge range:** `49c61ba76932abd5d6a40f7509ac3f56193dfea8..959cb107d4b95395dcd54d5c44f7509197b97114`.
+- Builder commit: `f6048c580bd1330f89ffbe9a04b5f2890d81ab4a`.
+- Evidence commit: `edd5df24c88865cc02bafc928a7bf4828776bda3`.
+- Uncommitted files at handover: none. Before the handoff commit, the only existing dirty path
+  was `do-work/CHECKPOINT.md`, changed by canonical `advance --checkpoint`; it is included here.
 
-**REQ-602 — repoint fifteen lesson-satellite links, add a satellite link check.**
-Merged as `ef8274b`, full range `66e9992f559627a280b113eda4fd1ad476016f07..ef8274bef8ea83c6961b6ad3d1d12848c011c5e8`
-(five files, +69/-18: three maintainer satellites, `_dev/tests/audit-lockins.sh`, `do-work/lessons-index.md`).
-The orchestrator re-ran the red (15 FAIL lines at `a70a04f`) and the green (lock-ins pass at head and
-on the merged tree); the independent verifier never ran. Remaining: canonical `advance REQ-602
---diff-range <range above>` for qualify and scope-drift, Qualification and Testing, a three-lens review
-(model it on the REQ-600 script; a fixture-driven verifier is in `req602-build-and-verify.workflow.js`),
-Lessons and Orientation, finalize (**not a release**: nothing under `skills/` changed). Its hand-back
-also reports the shipped satellite's canonical URLs; act on that report if any did not resolve.
-Worktree: `worktree-agent-REQ-602-satellite-links`, clean, merged. No uncommitted files.
+Remaining, in order:
 
-**REQ-598 — close the nil-handle panic in transaction rollback.**
-Not built. Route C; the judged plan (Plan B, decide the handle once at its open) is in the record's Plan,
-Exploration, Scope and Pre-Flight, and in `REQ-598-judged-plan.json`. The verified tree is
-`req598-final.patch` (557 lines; `git apply --check` passed on `521e4a7`, and the three files it touches
-have not changed since), the exact test is `req598-final-test-func.go.txt`, and the rejected minimum
-shape is `req598-minimum-shape.patch`. `depends_on` now includes REQ-602 because both edit
-`_dev/tests/audit-lockins.sh` (REQ-602 is merged, so the gate clears when it archives). The builder
-must take its own RED evidence (seam and test first, panic at `root.Mkdir`), then the restructure, then
-the lock-in rewrite (pin at zero), then canary, `-U0` diff, differential, `-race`, `GOOS=windows go vet`,
-gate; `req598-build-and-verify.workflow.js` is that brief. Worktree `worktree-agent-REQ-598-rollback-handle`
-is stale at `9e00a09` and clean; reset its branch to the integration head before building
-(`git -C <path> checkout -B worktree-agent-REQ-598-rollback-handle claude/do-work-queue-drain-4ee2xl`)
-or remove it and let the builder create `worktree-agent-REQ-598-decide-once`. Release when finalized.
+1. Run `actions/review-work.md` in orchestrated mode against the fixed merge range. Read the
+   current REQ and UR-130 input. Resolve actual findings; record Review, Lessons Learned and
+   Orientation. Do not treat the moved release-note examples as executable code.
+2. Reproduce `do-work/runs/work-2026-09-09-014954/req624-heavy-plan.json`, then run its sole
+   selected lane with `skills/do-work/tools/do-work-cli.sh --repo-root "$PWD" --format json
+   run-heavy-verification --manifest _dev/tests/heavy-lanes.json --lane staged-skills`.
+   Record the real execution revision and lane result; it has not run for REQ-624 yet.
+3. Finalize via canonical `advance` with an exact action-authored manifest, `supplied_commit`
+   provenance and the merge hash above. **Omit release_manifest_path:** this history-only trim
+   is release metadata under the existing guard and keeps 0.305.37. Do not create a synthetic
+   release entry or alter release policy. Use a fresh completion timestamp and byte hashes.
+4. Let canonical finalization close UR-130 and consolidate REQ-622, REQ-623 and REQ-624 with
+   its input/assets. Then clean up the builder normally, consume run scratch after promoting
+   the remaining evidence, refresh the checkpoint and run canonical cleanup. Stop at UR-130.
 
-### Queue
+### Verified evidence
 
-- **REQ-605** (finalization `diff-tree` without `-m`): free; `do-work run` selects it first.
-- **REQ-601** (phantom-script claims in seven shipped callers, plus the guide's tie-break sentence):
-  waits on REQ-597.
-- **REQ-603** (protected-inventory launcher and shim): waits on REQ-597 and REQ-601.
-- **REQ-604** (atomic-download occupancy rule and unchecked stat): waits on REQ-601.
+All artifacts below are committed under `do-work/runs/work-2026-09-09-014954/`:
 
-### Parallelism (mirrored into the gates above)
+- `REQ-624-handback.md`: full builder report, required lesson reads, file manifest and decisions.
+- `req624-history-proof.json` and `verify-req624-history.py`: reproduce all 1,012 release blocks
+  byte-for-byte from the fixed git baseline; 50 live, 962 archived, identical live copies,
+  23 valid header links, five unchanged recent releases, archive export exclusion.
+- `req624-merged-gate.json`: direct unpiped maintainer gate exited 0 in 108 seconds; 402 board
+  and 815 CLI tests, every per-file budget below 30 seconds.
+- `req624-test-gate.json`: focused shipped-reference and canonical green-gate records satisfied.
+- `req624-qualification.json`: six relocated-marker warnings and four library-output findings
+  in historical release prose. Every observed line was checked against pre-change bytes;
+  the REQ records the qualification judgment. No source-code output was introduced.
+- `req624-heavy-plan.json`: only staged-skills selected; still pending after review.
+- `handoff-phase.json` and `handoff-recover.json`: exact lifecycle and ownership observations.
 
-Safe together: REQ-600, REQ-597, REQ-602 and REQ-605 touch disjoint files (prime and scanner comment;
-three prose files under review; `_dev` satellites and the lock-in; `internal/finalization`). Must not run
-together, and gated: REQ-598 with REQ-602 (`audit-lockins.sh`); REQ-601, REQ-603 and REQ-604 with each
-other (all edit `skills/do-work/docs/prescribed-shell-primitives.md`; REQ-603 also edits `commit.md`
-and `inspect.md`, which REQ-597 just rewrote, hence its REQ-597 gate). Critical path: REQ-597 review
-and finalize, then REQ-601, then REQ-603. `--fan-out 3` covers the three in-flight REQs at review or
-finalize while REQ-605 builds.
+The two blank-at-EOF diff warnings preserve the original release separator bytes in the live
+files. This is intentional, recorded as D-03; all other whitespace checks pass. New archive URLs
+name committed local paths. They become available on remote main when these commits are pushed.
 
-### Canonical recover results (writer evidence)
+### Recovery and worktrees
 
-`do-work-cli --format text recover` reports all four working claims as
-`RECOVERY-TAKEOVER-AVAILABLE`, writer `vm:/home/user/skill-do-work` at `do-work/CHECKPOINT.md` lines
-35 (REQ-597), 38 (REQ-600), 40 (REQ-598), 42 (REQ-602), each `takeover available; claim preserved`.
-Takeover command per claim: `do-work-cli recover --take-over REQ-NNN`. `recover-claim` requires
-`--assume-sole-writer`; there is no other session.
+Canonical `recover` succeeded: no unfinished finalizations. It reported
+`RECOVERY-TAKEOVER-AVAILABLE` for REQ-624 and preserved the claim, with structural evidence:
+`do-work/CHECKPOINT.md` line 21, writer
+`t2s-Virtual-Machine.local:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2`,
+claimed at `2026-09-08T22:45:30Z`.
 
-### Worktrees (none removed; re-check all three conditions before removing)
+The exact offered reset command is:
+`skills/do-work/tools/do-work-cli.sh --repo-root "$PWD" --format json recover --take-over REQ-624`.
+It was **not run**: ordinary recover-claim returns a request to the queue and strips generated
+workflow sections. This handoff retains the merged, green, review-ready state instead. The next
+session has the user's authority to continue the existing claim and can inspect its phase with
+`skills/do-work/tools/do-work-cli.sh --repo-root "$PWD" --format json advance REQ-624`.
 
-- `/home/user/skill-do-work-worktrees/worktree-agent-REQ-597-guide-and-callers` — **ACTIVE**: merged
-  (`d5cf28b`), clean, claim still in `working/`. After REQ-597 archives:
-  `git worktree remove /home/user/skill-do-work-worktrees/worktree-agent-REQ-597-guide-and-callers && git branch -D worktree-agent-REQ-597-guide-and-callers`
-- `/home/user/skill-do-work-worktrees/worktree-agent-REQ-600-sigpipe-prime` — **ACTIVE**: merged
-  (`a25c752`), clean, claim in `working/`. After REQ-600 archives:
-  `git worktree remove /home/user/skill-do-work-worktrees/worktree-agent-REQ-600-sigpipe-prime && git branch -D worktree-agent-REQ-600-sigpipe-prime`
-- `/home/user/skill-do-work-worktrees/worktree-agent-REQ-602-satellite-links` — **ACTIVE**: merged
-  (`ef8274b`), clean, claim in `working/`. After REQ-602 archives:
-  `git worktree remove /home/user/skill-do-work-worktrees/worktree-agent-REQ-602-satellite-links && git branch -D worktree-agent-REQ-602-satellite-links`
-- `/home/user/skill-do-work-worktrees/worktree-agent-REQ-598-rollback-handle` — **ACTIVE**: no
-  commits beyond the old base `9e00a09`, clean, claim in `working/`; reset or replace before building.
+Survey worktree verdicts:
 
-### Lesson satellites owed (work.md Step 8 substep 4)
+- **ACTIVE integration checkout:** `/Users/t2/Desktop/e1-experimental-repos/skill-do-work2`,
+  branch `main`; no uncommitted files after this commit.
+- **ACTIVE retained builder:** `/private/var/folders/2w/kw8sv6rd1z15yjykl787ryph0000gn/T/do-work-ur130-3hy_uf65/worktree-agent-REQ-624-history-trim`,
+  branch `worktree-agent-REQ-624-history-trim`, clean and merged. Its claim is still working,
+  so it is not removable yet. No worktree was removed for this handoff.
+- No foreign claims or unmerged builder branches were found. No subagent is still running.
 
-The previous session skipped the satellite append for every REQ it archived, then backfilled the three
-maintainer satellites in `a38a8c4`. Still owed, and to be carried inside REQ-600's finalization commit
-with `EXTRA_COMMIT_PATHS="skills/do-work/tools/do-work-cli/lessons-do-work-cli.md _dev/primes/lessons-shell-commands.md do-work/lessons-index.md"`
-(a change under `skills/` is a release, which is why they ride that commit):
-- `skills/do-work/tools/do-work-cli/lessons-do-work-cli.md` (canonical-URL form, family marker first):
-  REQ-583 (keep each mutation applied while writing the test that catches it; two behaviours were inert,
-  not dead), REQ-592 (a request's own statement of why something is safe is a claim to verify), REQ-593
-  (three fixes in one change is where one covers for another's missing test), REQ-599 (a test that
-  defeats the bug does not pin the rule; put the forbidden token where the most specific wrong fix would
-  still see it). Each REQ's Lessons Learned section carries the wording.
-- `_dev/primes/lessons-shell-commands.md`: REQ-600's own line, once its Lessons are written.
-- Recompute the two index rows (tokens = (bytes + 3) / 4; families = sorted marker set).
-- Fix the satellite headers that cite "Step 8 substep 7" (there is no such substep).
+### Completed work and parallelism
 
-### Heads-up
-
-- The four workflows that died at 08:5x UTC left nothing dirty; do not look for half-applied work.
-- 0.305.9 fixed two Codex findings directly (a maintainer-only test moved into the export-ignored file;
-  skewed claims subscribed to the board's summary ticker). Both threads on pull request 182 are resolved.
-  `handoff-tools/release-direct.sh <version> <entry-file>` is the release bookkeeping for a fix with no REQ.
-- Board JavaScript behaviour probes SKIP unless `QUEUE_KANBAN_JAVASCRIPT_PROBES=on`; a green `go test`
-  without it proves nothing about a probe. The gate sets it.
-- `git merge -F -` does not read stdin here; write the message to a file. `pkill -f <pattern>` kills
-  your own shell when the pattern is in its command line. `set -o pipefail` plus `grep -q` after a pipe
-  is the defect REQ-593/594/600 exist for; the guard will fail your shell if you write it.
-- `finalize-req.sh` needs the full 40-character merge hash and an empty index; the changelog entry file's
-  first line must be `## <version> — <Title> (<date>)`; the finalizer refuses a title already used.
-- The `heavyverification` package shows two failures in reviewers' clones under a bare `go test`; under
-  `gate.sh` on the main checkout the heavy tier passed (wall 356s). Record the pair, do not chase it.
-- Backticked tokens in a record's Scope or Implementation Summary are read as paths: `-` and `.sh`
-  both tripped scope-drift this run. One repo-relative path per line; no comma-grouped bullets.
-- The maintainer prime lessons index (`do-work/lessons-index.md`) has no test; recompute rows by program.
-- Two structural suggestions were offered to the user and not started (by-hand fallbacks as tested
-  scripts; one whole-file fixture-driven audit REQ for the shell guide). Wait for the user's word.
+- REQ-622: completed and archived at `do-work/archive/REQ-622-correct-verified-prose-drift.md`,
+  finalization commit `6a81154d007e4833c55474bb940ac5528a156b98`, release 0.305.36. Reconciled
+  all 19 captured backlog entries: 16 corrected, 3 obsolete; runtime behavior unchanged.
+- REQ-623: completed and archived at
+  `do-work/archive/REQ-623-reduce-orchestration-instruction-duplication.md`, finalization
+  commit `0ca8d37070bb9c2dbbfc881fda953e0cc6c95b7e`, release 0.305.37. Seven proven duplicate
+  instruction cuts removed 8,369 source bytes / 1,272 words with unchanged owners and behavior.
+- Those flat archive paths remain until REQ-624 closes UR-130; no shipped lesson links point
+  to them, so the closure sweep found no link repair to add.
+- Serial continuation: one unfinished request, no remaining builder dispatch. The original
+  REQ-622 → REQ-623 → REQ-624 ordering is already encoded in depends_on. There is no reason
+  to add fan-out to the review/finalization tail.
+- The seven queued requests REQ-615–REQ-621 are unrelated and excluded by the explicit resume
+  target. R4 stays held for the gate-policy decision; R5/R6 remain withdrawn. No new request,
+  release-policy change, recipe-card expansion or KB promotion was authorized by this run.
+- The approved report remains
+  `ai-reports/2026-09-09_0013_do-work-improvement-review-rev-v2/index.html`.
