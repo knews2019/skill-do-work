@@ -20,8 +20,7 @@ import (
 // why the recent-window is inert here. (The calendar is a different surface: it
 // carries every REQ, open ones included, and is not a model for this digest.)
 //
-// Read-only, like every subcommand but the two named write surfaces (the board's
-// testing view and `next-version`).
+// This digest is read-only.
 
 // openWorkCounts is the headline breakdown: the open total plus the per-bucket
 // split behind it. Open means "not terminally resolved" — bucketColumns puts

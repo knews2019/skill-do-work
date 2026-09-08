@@ -102,8 +102,8 @@ Collect the user's semantic choices first, then build one strict `answer` manife
 >
 > Then judge every line against one condition: **could this line be read as one of this file's own delimiters?** The shapes already proved are illustrative, not a checklist — a line-leading `- [ ]` or `- [x]` becomes a real open question that Step 5 then pins the REQ on, a bare `---` line reads as a frontmatter fence, a `## ` line invents a section every prose grep obeys, an unbalanced code fence swallows every section below it on the board while those same greps still see them. The destination decides which containment branch applies:
 >
-> - **The answer is one line** and it cannot be a delimiter where it lands → write it inline after the `→`. Position neutralizes it: a delimiter has to start a line, and this text never does.
-> - **Anything written as its own body passage, or any answer with a line break or delimiter-shaped line** → put the outside text inside a blockquote whose lines open a code fence longer than the longest backtick run anywhere in the text. For an answered question, keep the one-line answer summary after the `→` and put this contained text in the dated note. The `> ` prefix takes every line start away from a line-based scan; the longer fence keeps those same lines literal for a Markdown reader and cannot be closed from inside. Prefix every physical line, including blank lines and the two fence lines. Only the prefix and fence are added — nothing is edited or dropped.
+> - **A one-line answer summary accepted inline by the canonical `answer` command** → write it after the `→`. The command classifies the summary independently of its eventual write position.
+> - **Anything written as its own body passage, or any answer with a line break or a summary requiring containment** → put the outside text inside a blockquote whose lines open a code fence longer than the longest backtick run anywhere in the text. For an answered question, keep a safe inline summary after the `→`, or use `See contained answer note` when the summary itself requires containment, and put the contained text in the dated note. The `> ` prefix takes every line start away from a line-based scan; the longer fence keeps those same lines literal for a Markdown reader and cannot be closed from inside. Prefix every physical line, including blank lines and the two fence lines. Only the prefix and fence are added — nothing is edited or dropped.
 >
 > Placement answers the same condition: contained outside text lands inside the body section that owns it; an answer touches its own question line and the note beneath it. It is never the file's first line — the frontmatter's opening fence is a delimiter too, and one byte written above it empties `status`, `title` and `user_request` together.
 
@@ -121,7 +121,7 @@ For each question, the user can:
 - **Confirm builder's choice** → update to `- [x] [question] → Confirmed: [builder's choice]`, plus the dated note
 - **Pick a different option** → update to `- [x] [question] → [user's chosen option]`, plus the dated note; when this is a `builder_decided: true` follow-up, add its REQ id to `overturned_decision_sources`
 - **Skip for now** → leave as `- [ ]`
-- **Discard it** → update to `- [x] [question] → Discarded`, plus the dated note saying why
+- **Discard it** → update to `- [x] [question] → Discarded: [summary]`, plus the dated note saying why
 
 ### Step 5: Resolve each REQ's status from its whole question set
 

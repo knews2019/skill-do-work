@@ -2015,9 +2015,8 @@ window.addEventListener("load", function () {
 // the mirror problem: it assigned the payload's whole range, so filtered to one
 // domain it left most of the plot blank.
 //
-// Driven in a real engine because three of the four properties are about the
-// toolbar's own rendered state, and the fourth (Fit all under a filter) needs the
-// shared filter machinery this view reads but does not own.
+// Driven in a real engine to check the toolbar's rendered state and Fit all
+// under the shared filter machinery this view reads but does not own.
 func TestBrowserBehaviorTimelineNowAndFitAllLandSomewhereReadable(t *testing.T) {
 	siteDirectory := generateLiveSiteInDir(t)
 	indexBytes, readError := os.ReadFile(filepath.Join(siteDirectory, "index.html"))

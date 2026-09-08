@@ -112,7 +112,7 @@ Cancelled REQ-042 — [title]
   archived: do-work/archive/UR-012/REQ-042-slug.md
   dependents: REQ-047 re-pointed (depends_on: REQ-042 removed)
 
-UR-012: all 3 REQs terminally resolved — `do-work cleanup` will close it.
+UR-012: closed by the cancellation transaction; all 3 REQs terminally resolved.
 ```
 
 For an already-archived `failed` target, the report shows the in-place path and confirms the failure record survived — no move happened:
