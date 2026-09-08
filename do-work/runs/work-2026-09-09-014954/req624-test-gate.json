@@ -1,0 +1,238 @@
+{
+  "schema_version": 1,
+  "command": "advance",
+  "outcome": "success",
+  "repository_root": "/Users/t2/Desktop/e1-experimental-repos/skill-do-work2",
+  "findings": [
+    {
+      "code": "BLOCKED-PROBE-SUCCEEDED",
+      "severity": "info",
+      "affected_ids": [
+        "REQ-624"
+      ],
+      "affected_paths": [
+        "do-work/working/REQ-624-trim-shipped-changelog-to-50-entries.md",
+        "/var/folders/2w/kw8sv6rd1z15yjykl787ryph0000gn/T/do-work-ur130-3hy_uf65/focused-req624.sh"
+      ],
+      "observed_evidence": [
+        "raw probe status 0; diagnostic sha256 2cdbd8964662f16eab8969a04699e67c2b465d6f544f873d0c5ce2629adb5cff"
+      ],
+      "fixability": "manual",
+      "automation_stop_reason": "",
+      "next_argv": [
+        "do-work-cli",
+        "--format",
+        "json",
+        "advance",
+        "REQ-624",
+        "--request-path",
+        "do-work/working/REQ-624-trim-shipped-changelog-to-50-entries.md",
+        "--gate-exit-status",
+        "0",
+        "--gate-arg",
+        "bash",
+        "--gate-arg",
+        "_dev/tests/maintainer-verify.sh",
+        "--",
+        "--probe-file",
+        "/var/folders/2w/kw8sv6rd1z15yjykl787ryph0000gn/T/do-work-ur130-3hy_uf65/focused-req624.sh"
+      ],
+      "next_just_recipe": "",
+      "verification_argv": [
+        "do-work-cli",
+        "--format",
+        "json",
+        "advance",
+        "REQ-624",
+        "--request-path",
+        "do-work/working/REQ-624-trim-shipped-changelog-to-50-entries.md",
+        "--gate-exit-status",
+        "0",
+        "--gate-arg",
+        "bash",
+        "--gate-arg",
+        "_dev/tests/maintainer-verify.sh",
+        "--",
+        "--probe-file",
+        "/var/folders/2w/kw8sv6rd1z15yjykl787ryph0000gn/T/do-work-ur130-3hy_uf65/focused-req624.sh"
+      ]
+    }
+  ],
+  "changes": [
+    {
+      "path": "/Users/t2/Desktop/e1-experimental-repos/skill-do-work2/.git/do-work-green-gates/25aef6a61b17974fce3a08a63953c3eb1719dde37ce3ab556f066e3619e6bbb5.json",
+      "kind": "git-private",
+      "detail": "recorded the current revision for the exact green gate argv"
+    }
+  ],
+  "skipped_work": [],
+  "selected": [],
+  "excluded": [],
+  "selection_summary": {
+    "pending": 0,
+    "finished_awaiting_archive": 0,
+    "pending_answers": 0,
+    "blocked": 0,
+    "blocked_archive_collision": 0,
+    "blocked_dependency_cycle": 0,
+    "probed": 0,
+    "probe_succeeded": 0,
+    "skipped_impact_negligible": 0,
+    "total_estimated_minutes": 0,
+    "unknown_estimate_count": 0
+  },
+  "rollback": {
+    "status": "",
+    "actions": [],
+    "errors": []
+  },
+  "finalizations": [],
+  "advance": {
+    "request_id": "REQ-624",
+    "request_path": "do-work/working/REQ-624-trim-shipped-changelog-to-50-entries.md",
+    "tree_section": "working",
+    "status": "claimed",
+    "route": "A",
+    "phase": "test-gate",
+    "phase_kind": "mechanical",
+    "missing_evidence": [],
+    "next_argv": [],
+    "verification_argv": [
+      "do-work-cli",
+      "--format",
+      "json",
+      "advance",
+      "REQ-624"
+    ],
+    "gate_records": [
+      {
+        "request_id": "REQ-624",
+        "request_path": "do-work/working/REQ-624-trim-shipped-changelog-to-50-entries.md",
+        "gate_id": "run-blocked-check",
+        "provenance": "baseline_record",
+        "state": "satisfied",
+        "outcome": "success",
+        "findings": [
+          {
+            "code": "BLOCKED-PROBE-SUCCEEDED",
+            "severity": "info",
+            "affected_ids": [
+              "REQ-624"
+            ],
+            "affected_paths": [
+              "do-work/working/REQ-624-trim-shipped-changelog-to-50-entries.md",
+              "/var/folders/2w/kw8sv6rd1z15yjykl787ryph0000gn/T/do-work-ur130-3hy_uf65/focused-req624.sh"
+            ],
+            "observed_evidence": [
+              "raw probe status 0; diagnostic sha256 2cdbd8964662f16eab8969a04699e67c2b465d6f544f873d0c5ce2629adb5cff"
+            ],
+            "fixability": "manual",
+            "automation_stop_reason": "",
+            "next_argv": [
+              "do-work-cli",
+              "--format",
+              "json",
+              "advance",
+              "REQ-624",
+              "--request-path",
+              "do-work/working/REQ-624-trim-shipped-changelog-to-50-entries.md",
+              "--gate-exit-status",
+              "0",
+              "--gate-arg",
+              "bash",
+              "--gate-arg",
+              "_dev/tests/maintainer-verify.sh",
+              "--",
+              "--probe-file",
+              "/var/folders/2w/kw8sv6rd1z15yjykl787ryph0000gn/T/do-work-ur130-3hy_uf65/focused-req624.sh"
+            ],
+            "next_just_recipe": "",
+            "verification_argv": [
+              "do-work-cli",
+              "--format",
+              "json",
+              "advance",
+              "REQ-624",
+              "--request-path",
+              "do-work/working/REQ-624-trim-shipped-changelog-to-50-entries.md",
+              "--gate-exit-status",
+              "0",
+              "--gate-arg",
+              "bash",
+              "--gate-arg",
+              "_dev/tests/maintainer-verify.sh",
+              "--",
+              "--probe-file",
+              "/var/folders/2w/kw8sv6rd1z15yjykl787ryph0000gn/T/do-work-ur130-3hy_uf65/focused-req624.sh"
+            ]
+          }
+        ],
+        "changes": [],
+        "output_lines": [],
+        "next_argv": [],
+        "verification_argv": [
+          "do-work-cli",
+          "--format",
+          "json",
+          "advance",
+          "REQ-624"
+        ],
+        "focused_test": {
+          "probe_file": "/var/folders/2w/kw8sv6rd1z15yjykl787ryph0000gn/T/do-work-ur130-3hy_uf65/focused-req624.sh",
+          "exit_status": 0,
+          "launched": true,
+          "timed_out": false,
+          "diagnostic": "shipped package reference contract: PASS",
+          "diagnostic_sha256": "2cdbd8964662f16eab8969a04699e67c2b465d6f544f873d0c5ce2629adb5cff",
+          "baseline_state": "green",
+          "baseline_exit_status": 0,
+          "baseline_launched": true,
+          "command_text": "bash _dev/tests/shipped-package-reference-contract.sh"
+        }
+      },
+      {
+        "request_id": "REQ-624",
+        "request_path": "do-work/working/REQ-624-trim-shipped-changelog-to-50-entries.md",
+        "gate_id": "green-gate",
+        "provenance": "advance_executed",
+        "state": "satisfied",
+        "outcome": "success",
+        "findings": [],
+        "changes": [
+          {
+            "path": "/Users/t2/Desktop/e1-experimental-repos/skill-do-work2/.git/do-work-green-gates/25aef6a61b17974fce3a08a63953c3eb1719dde37ce3ab556f066e3619e6bbb5.json",
+            "kind": "git-private",
+            "detail": "recorded the current revision for the exact green gate argv"
+          }
+        ],
+        "output_lines": [],
+        "next_argv": [],
+        "verification_argv": [
+          "do-work-cli",
+          "--format",
+          "json",
+          "advance",
+          "REQ-624"
+        ],
+        "green_gate": {
+          "repository_identity": "/Users/t2/Desktop/e1-experimental-repos/skill-do-work2/.git",
+          "gate_command": [
+            "bash",
+            "_dev/tests/maintainer-verify.sh"
+          ],
+          "gate_command_sha256": "25aef6a61b17974fce3a08a63953c3eb1719dde37ce3ab556f066e3619e6bbb5",
+          "record_path": "/Users/t2/Desktop/e1-experimental-repos/skill-do-work2/.git/do-work-green-gates/25aef6a61b17974fce3a08a63953c3eb1719dde37ce3ab556f066e3619e6bbb5.json",
+          "record_provenance": "reported_direct_zero_exit",
+          "gate_exit_status": 0,
+          "recorded_revision": "959cb107d4b95395dcd54d5c44f7509197b97114",
+          "head_revision": "959cb107d4b95395dcd54d5c44f7509197b97114",
+          "target_revision": "959cb107d4b95395dcd54d5c44f7509197b97114",
+          "state": "recorded",
+          "matches": false,
+          "match_basis": "none",
+          "baseline_revision": "959cb107d4b95395dcd54d5c44f7509197b97114"
+        }
+      }
+    ]
+  }
+}
