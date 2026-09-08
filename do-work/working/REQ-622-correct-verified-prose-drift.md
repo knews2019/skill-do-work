@@ -1,7 +1,7 @@
 ---
 id: REQ-622
 title: 'Correct verified prose drift'
-status: pending
+status: claimed
 created_at: 2026-09-08T21:49:05Z
 user_request: UR-130
 domain: general
@@ -14,6 +14,7 @@ depends_on: []
 related: ["REQ-623", "REQ-624"]
 batch: instruction-history-cleanup
 write_set: ["do-work/prose-backlog.md", "skills/do-work/scripts/repair-req-timestamps.sh", "skills/do-work/actions/work-reference.md", "skills/do-work-board/tools/queue-kanban/open_work.go", "skills/do-work-board/tools/queue-kanban/testing.go", "skills/do-work-board/actions/board.md", "_dev/primes/prime-action-files.md", "skills/do-work-board/tools/queue-kanban/timeline_browser_probe_test.go", "skills/do-work/actions/forensics.md", "skills/do-work-board/tools/queue-kanban/web/board-core.js", "skills/do-work-board/tools/queue-kanban/prime-do-kanban.md", "skills/do-work-board/docs/board-guide.md", "skills/do-work-board/tools/queue-kanban/citations.go", "skills/do-work/actions/abandon.md", "skills/do-work-board/tools/queue-kanban/generate.go", "README.md", "skills/do-work/actions/clarify.md", "_dev/tests/contract-regressions.sh", "skills/do-work/tools/do-work-cli/internal/publication/answer.go", "skills/do-work/actions/verify-requests.md", "_dev/lessons/validated-runtime-boundaries.md"]
+claimed_at: 2026-09-08T21:53:21Z
 ---
 
 # Correct Verified Prose Drift

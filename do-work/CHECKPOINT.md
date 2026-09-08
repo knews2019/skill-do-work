@@ -18,3 +18,4 @@ session_depth: light
 
 ## In Progress (interrupted)
 
+- REQ-622: Correct verified prose drift — claimed 2026-09-08T21:53:21Z — writer: t2s-Virtual-Machine.local:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2
