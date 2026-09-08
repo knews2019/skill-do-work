@@ -2,6 +2,13 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.305.37 — Shorter Workflow Instructions (2026-09-09)
+
+Work and review instructions now point to existing procedure owners instead of repeating them.
+
+- Consolidate duplicate merge, resume, review and scope guidance while retaining command contracts, decision points and recovery evidence.
+- Preserve core routing and verify simple, complex and interrupted workflow paths.
+
 ## 0.305.36 — Verified Prose Reconciliation (2026-09-09)
 
 Workflow instructions and board guidance now match their current behavior.
