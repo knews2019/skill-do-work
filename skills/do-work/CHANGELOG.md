@@ -2,6 +2,13 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.305.36 — Verified Prose Reconciliation (2026-09-09)
+
+Workflow instructions and board guidance now match their current behavior.
+
+- Correct verified drift in cancellation, clarification, containment, board search and copy guidance, and process-ownership documentation.
+- Remove stale counts and redundant claims while preserving runtime behavior and existing contracts.
+
 ## 0.305.35 — Bundled AGY Usage Prime (2026-09-07)
 
 Agents can reference portable Antigravity CLI guidance directly from the installed toolbox.
