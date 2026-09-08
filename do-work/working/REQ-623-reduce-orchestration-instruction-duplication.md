@@ -1,7 +1,7 @@
 ---
 id: REQ-623
 title: 'Reduce orchestration instruction duplication'
-status: pending
+status: claimed
 created_at: 2026-09-08T21:49:05Z
 user_request: UR-130
 domain: general
@@ -14,6 +14,7 @@ depends_on: ["REQ-622"]
 related: ["REQ-622", "REQ-624"]
 batch: instruction-history-cleanup
 write_set: ["skills/do-work/SKILL.md", "skills/do-work/actions/work.md", "skills/do-work/actions/work-reference.md", "skills/do-work/actions/review-work.md"]
+claimed_at: 2026-09-08T22:23:11Z
 ---
 
 # Reduce Orchestration Instruction Duplication
