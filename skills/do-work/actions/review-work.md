@@ -45,7 +45,7 @@ Both modes follow the same workflow. Step 4 owns their diff-acquisition procedur
 
 Before the ordinary no implementation changes exit, check the already-green repository-gate repair exception. In orchestrated mode, reuse the `<now>` captured under the Timestamp rule for finalization and invoke `<skill-root>/tools/do-work-cli.sh --repo-root <project-root> --format json validate-already-green-repair --request-path <exact working REQ path> --writer <exact finalization writer> --at <now>`. The validator is the sole decision authority; do not separately parse the marker, intake, no-op sections, recorded gate evidence, project diff, release state, or staged paths. Proceed with the no-diff review only on typed success with `already_green_repair.review_allowed: true`, and record its fingerprint, gate-evidence match, canonical completion paths, staged paths, and decision in `## Review`. A missing, failed, malformed, or false result refuses the exception and reports its typed reason codes and offending paths. An ordinary or non-empty implementation follows the existing rule: if the target REQ has no `commit` field (standalone mode) or no implementation changes (orchestrated mode), report that there's nothing to review and exit.
 
-For the ordinary no-change check, obtain the mode-specific diff through Step 4. A clean post-merge working tree is normal and does not mean the REQ has no changes.
+For the ordinary no-change check, obtain the mode-specific diff through Step 4, using the REQ's `commit` frontmatter field in standalone mode. A clean post-merge working tree is normal and does not mean the REQ has no changes.
 
 ### Step 2: Read the REQ
 
