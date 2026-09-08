@@ -1,0 +1,282 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="color-scheme" content="light dark">
+<title>Do-work cleanup in pictures</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Sans+Condensed:wght@600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+:root{color-scheme:light;--bg:#edf0f3;--surface:#fbfcfd;--text:#1b232d;--muted:#5b6774;--line:#c9d0d8;--soft:#dfe6ec;
+--accent:#0f6e9c;--accent-ink:#0c587d;--accent-soft:#d7e8f2;--hold:#a86300;--hold-soft:#f5e6cf;--drop:#7a8593;--drop-soft:#e6eaee;--bar:#2a7fa8}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){color-scheme:dark;--bg:#151a20;--surface:#1d242c;--text:#e6ebf0;--muted:#a3aeba;--line:#3a444f;--soft:#27303a;
+--accent:#63b6d9;--accent-ink:#8fcbe4;--accent-soft:#1f3a4a;--hold:#e0a24a;--hold-soft:#3d3020;--drop:#9aa4b0;--drop-soft:#2b323a;--bar:#4fa5cc}}
+:root[data-theme="dark"]{color-scheme:dark;--bg:#151a20;--surface:#1d242c;--text:#e6ebf0;--muted:#a3aeba;--line:#3a444f;--soft:#27303a;
+--accent:#63b6d9;--accent-ink:#8fcbe4;--accent-soft:#1f3a4a;--hold:#e0a24a;--hold-soft:#3d3020;--drop:#9aa4b0;--drop-soft:#2b323a;--bar:#4fa5cc}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:17px/1.6 "IBM Plex Sans",-apple-system,"Segoe UI",sans-serif}
+a{color:var(--accent-ink);text-underline-offset:4px}
+a:focus-visible,button:focus-visible{outline:3px solid var(--accent);outline-offset:3px}
+.page{max-width:820px;margin:0 auto;padding:36px 20px 80px}
+h1,h2,h3{font-family:"IBM Plex Sans Condensed","IBM Plex Sans",sans-serif;font-weight:700;line-height:1.1;text-wrap:balance;margin:0}
+h1{font-size:clamp(34px,6vw,50px);letter-spacing:-.01em}
+h2{font-size:28px;margin-bottom:8px}
+h3{font-size:19px;font-weight:600;margin-bottom:4px}
+p{margin:0}
+.eyebrow,.mono{font-family:"IBM Plex Mono",ui-monospace,Menlo,monospace;font-size:13px;letter-spacing:.04em}
+.eyebrow{text-transform:uppercase;color:var(--muted)}
+header{display:grid;gap:16px;padding-bottom:28px;border-bottom:1px solid var(--line)}
+.lede{font-size:21px;line-height:1.45;max-width:34em}
+.status{display:flex;flex-wrap:wrap;gap:10px}
+.pill{display:inline-flex;align-items:center;gap:8px;padding:6px 12px;border-radius:999px;font-size:14px;font-weight:500;border:1.5px solid transparent}
+.pill::before{content:"";width:10px;height:10px;border-radius:50%;display:inline-block}
+.pill.now{background:var(--accent-soft);color:var(--text)}.pill.now::before{background:var(--accent)}
+.pill.hold{background:var(--hold-soft);color:var(--text)}.pill.hold::before{border:2px dashed var(--hold)}
+.pill.drop{background:var(--drop-soft);color:var(--text)}.pill.drop::before{border:2px solid var(--drop)}
+section{display:grid;gap:14px;padding:36px 0;border-bottom:1px solid var(--line)}
+section:last-of-type{border-bottom:0}
+.text{max-width:64ch;display:grid;gap:10px}
+figure{margin:0;background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:18px 18px 12px;overflow-x:auto}
+figure svg{display:block;max-width:100%;height:auto;min-width:520px;font-family:"IBM Plex Sans",sans-serif}
+figcaption{margin-top:10px;font-size:15px;color:var(--muted);max-width:66ch}
+.svg-text{fill:var(--text)}.svg-muted{fill:var(--muted)}.svg-mono{font-family:"IBM Plex Mono",ui-monospace,monospace}
+.svg-line{stroke:var(--text)}.svg-grid{stroke:var(--line)}
+.box-now{fill:var(--accent-soft);stroke:var(--accent)}.box-hold{fill:var(--hold-soft);stroke:var(--hold);stroke-dasharray:6 4}.box-drop{fill:var(--drop-soft);stroke:var(--drop)}
+.bar{fill:var(--bar)}.bar-ghost{fill:var(--soft)}
+.big{font-family:"IBM Plex Sans Condensed",sans-serif;font-weight:700;font-size:44px;line-height:1;font-variant-numeric:tabular-nums}
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px}
+.tile{background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:16px 18px;display:grid;gap:6px}
+.tile p{font-size:15px;color:var(--muted)}
+dl{display:grid;grid-template-columns:max-content 1fr;gap:6px 18px;margin:0;font-size:15px}
+dt{color:var(--muted)}dd{margin:0}
+.note{border-left:4px solid var(--hold);padding:10px 16px;background:var(--surface);border-radius:0 6px 6px 0;max-width:64ch}
+.steps{display:grid;gap:12px;counter-reset:s}
+.step{display:grid;grid-template-columns:44px 1fr;gap:12px;align-items:start}
+.step .n{font-family:"IBM Plex Sans Condensed",sans-serif;font-weight:700;font-size:28px;line-height:1;color:var(--accent);padding-top:2px}
+.step dl{margin-top:6px}
+footer{padding-top:28px;border-top:1px solid var(--line);font-size:14px;color:var(--muted);display:grid;gap:8px}
+footer a{color:var(--accent-ink)}
+code{font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:.92em;background:var(--soft);padding:1px 5px;border-radius:3px}
+@media(prefers-reduced-motion:reduce){*{transition:none!important}}
+@media(max-width:560px){figure svg{min-width:480px}.step{grid-template-columns:36px 1fr}}
+</style></head><body>
+<main class="page">
+<header>
+  <p class="eyebrow">Do-work · queue cleanup · 9 September 2026</p>
+  <h1>Three cleanups for the do-work instructions</h1>
+  <p class="lede">The instructions that drive do-work have grown. Some sentences are wrong, some rules are written twice, and the release history ships whole. Three work requests fix this, in a fixed order. Nothing else is planned yet.</p>
+  <div class="status" aria-label="Summary of decisions">
+    <span class="pill now">3 changes queued as work requests</span>
+    <span class="pill hold">1 idea on hold</span>
+    <span class="pill drop">2 ideas dropped</span>
+  </div>
+  <p class="mono" style="color:var(--muted)">A "REQ" is one work request in the do-work queue. REQ-622, 623 and 624 were created on 9 September under user request UR-130. When this page was written, REQ-622 had just started and the other two were waiting.</p>
+</header>
+
+<section id="plan">
+  <h2>The plan, in order</h2>
+  <figure>
+    <svg viewBox="0 0 760 330" role="img" aria-label="Three queued requests in a row: REQ-622 fix wrong sentences, then REQ-623 remove repeated rules, then REQ-624 archive old release notes. Below them, one idea on hold and two dropped ideas, not connected to the row.">
+      <defs><marker id="arw" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="currentColor"/></marker></defs>
+      <text x="0" y="16" class="svg-muted svg-mono" font-size="12">QUEUED · runs in this order</text>
+      <!-- three boxes -->
+      <rect x="0" y="34" width="220" height="104" rx="6" class="box-now" stroke-width="1.5"/>
+      <text x="14" y="58" class="svg-muted svg-mono" font-size="12">REQ-622 · first</text>
+      <text x="14" y="82" class="svg-text" font-size="16" font-weight="600">Fix wrong sentences</text>
+      <text x="14" y="104" class="svg-muted" font-size="13">19 known mismatches between</text>
+      <text x="14" y="122" class="svg-muted" font-size="13">instructions and the real code</text>
+
+      <rect x="270" y="34" width="220" height="104" rx="6" class="box-now" stroke-width="1.5"/>
+      <text x="284" y="58" class="svg-muted svg-mono" font-size="12">REQ-623 · second</text>
+      <text x="284" y="82" class="svg-text" font-size="16" font-weight="600">Remove repeated rules</text>
+      <text x="284" y="104" class="svg-muted" font-size="13">4 core files, 42,737 words,</text>
+      <text x="284" y="122" class="svg-muted" font-size="13">say each rule only once</text>
+
+      <rect x="540" y="34" width="220" height="104" rx="6" class="box-now" stroke-width="1.5"/>
+      <text x="554" y="58" class="svg-muted svg-mono" font-size="12">REQ-624 · third</text>
+      <text x="554" y="82" class="svg-text" font-size="16" font-weight="600">Archive old release notes</text>
+      <text x="554" y="104" class="svg-muted" font-size="13">keep the newest 50 entries,</text>
+      <text x="554" y="122" class="svg-muted" font-size="13">move 608 older ones to archives</text>
+
+      <!-- arrows -->
+      <g color="currentColor" class="svg-text" style="color:var(--text)">
+        <line x1="222" y1="86" x2="266" y2="86" stroke="currentColor" stroke-width="1.5" marker-end="url(#arw)"/>
+        <line x1="492" y1="86" x2="536" y2="86" stroke="currentColor" stroke-width="1.5" marker-end="url(#arw)"/>
+      </g>
+      <text x="244" y="160" text-anchor="middle" class="svg-muted" font-size="12">must finish first:</text>
+      <text x="244" y="176" text-anchor="middle" class="svg-muted" font-size="12">623 edits the text 622 corrects</text>
+      <text x="514" y="160" text-anchor="middle" class="svg-muted" font-size="12">chosen order only:</text>
+      <text x="514" y="176" text-anchor="middle" class="svg-muted" font-size="12">624 could run alone</text>
+
+      <!-- held and dropped -->
+      <line x1="0" y1="200" x2="760" y2="200" class="svg-grid" stroke-width="1" stroke-dasharray="3 5"/>
+      <text x="0" y="222" class="svg-muted svg-mono" font-size="12">NOT IN THIS BATCH · nothing depends on these</text>
+
+      <rect x="0" y="238" width="236" height="78" rx="6" class="box-hold" stroke-width="1.5"/>
+      <text x="14" y="262" class="svg-muted svg-mono" font-size="12">ON HOLD · R4</text>
+      <text x="14" y="284" class="svg-text" font-size="15" font-weight="600">Change test time budgets</text>
+      <text x="14" y="304" class="svg-muted" font-size="13">the test runner may be deleted first</text>
+
+      <rect x="262" y="238" width="236" height="78" rx="6" class="box-drop" stroke-width="1.5"/>
+      <text x="276" y="262" class="svg-muted svg-mono" font-size="12">DROPPED · R5</text>
+      <text x="276" y="284" class="svg-text" font-size="15" font-weight="600">Extra permission rule</text>
+      <text x="276" y="304" class="svg-muted" font-size="13">existing rules already cover it</text>
+
+      <rect x="524" y="238" width="236" height="78" rx="6" class="box-drop" stroke-width="1.5"/>
+      <text x="538" y="262" class="svg-muted svg-mono" font-size="12">DROPPED · R6</text>
+      <text x="538" y="284" class="svg-text" font-size="15" font-weight="600">Extra end-of-batch review</text>
+      <text x="538" y="304" class="svg-muted" font-size="13">no missing check was shown</text>
+    </svg>
+    <figcaption>Top row: the three queued requests and why they run in this order. Bottom row: one idea waiting for a decision and two ideas that were dropped. R4, R5 and R6 are labels from the earlier report, not queue IDs.</figcaption>
+  </figure>
+  <div class="text">
+    <p>Fix first, then shorten. If you shorten text that is still wrong, you keep the mistake and lose the context around it. Archiving the release notes is independent, but it was placed last so the whole batch reads as one job.</p>
+  </div>
+</section>
+
+<section id="size">
+  <h2>How big are the files?</h2>
+  <figure>
+    <svg viewBox="0 0 760 250" role="img" aria-label="Horizontal bar chart of word counts. Changelog 89,526 words, work-reference 22,176, work 13,484, review-work 6,379, SKILL 698. One scale from zero to 90,000 words.">
+      <!-- scale: 0..90000 maps to x 250..740 (490px) -->
+      <g class="svg-grid" stroke-width="1">
+        <line x1="250" y1="20" x2="250" y2="212"/>
+        <line x1="413.3" y1="20" x2="413.3" y2="212" stroke-dasharray="2 4"/>
+        <line x1="576.7" y1="20" x2="576.7" y2="212" stroke-dasharray="2 4"/>
+        <line x1="740" y1="20" x2="740" y2="212" stroke-dasharray="2 4"/>
+      </g>
+      <g class="svg-muted svg-mono" font-size="11" text-anchor="middle">
+        <text x="250" y="232">0</text><text x="413.3" y="232">30k</text><text x="576.7" y="232">60k</text><text x="740" y="232">90k</text>
+      </g>
+      <!-- bars: height 24, gap 12; x width = words/90000*490 -->
+      <g font-size="14">
+        <text x="240" y="47" text-anchor="end" class="svg-text">CHANGELOG.md</text>
+        <rect x="250" y="30" width="487.4" height="24" rx="0" class="bar"/>
+        <text x="732" y="47" text-anchor="end" fill="#ffffff" font-size="13" class="svg-mono">89,526 words · shipped twice</text>
+
+        <text x="240" y="85" text-anchor="end" class="svg-text">work-reference.md</text>
+        <rect x="250" y="68" width="120.7" height="24" class="bar"/>
+        <text x="378" y="85" class="svg-text svg-mono" font-size="13">22,176</text>
+
+        <text x="240" y="123" text-anchor="end" class="svg-text">work.md</text>
+        <rect x="250" y="106" width="73.4" height="24" class="bar"/>
+        <text x="331" y="123" class="svg-text svg-mono" font-size="13">13,484</text>
+
+        <text x="240" y="161" text-anchor="end" class="svg-text">review-work.md</text>
+        <rect x="250" y="144" width="34.7" height="24" class="bar"/>
+        <text x="292" y="161" class="svg-text svg-mono" font-size="13">6,379</text>
+
+        <text x="240" y="199" text-anchor="end" class="svg-text">SKILL.md</text>
+        <rect x="250" y="182" width="3.8" height="24" class="bar"/>
+        <text x="262" y="199" class="svg-text svg-mono" font-size="13">698</text>
+      </g>
+      <!-- bracket for the four core files -->
+      <path d="M 24 68 L 16 68 L 16 206 L 24 206" fill="none" class="svg-line" stroke-width="1" opacity=".6"/>
+      <text x="0" y="140" class="svg-muted svg-mono" font-size="11" transform="rotate(-90 12 140)" text-anchor="middle">4 core files</text>
+    </svg>
+    <figcaption>Word counts of the four instruction files that REQ-623 will shorten, and the release history that REQ-624 will trim. Counted at commit ff82f62d, version 0.305.35. The changelog exists as two identical copies, one at the repository root and one inside the installed skill.</figcaption>
+  </figure>
+  <div class="text">
+    <p>The four core files together hold 42,737 words. The changelog alone is more than twice that. These are file sizes, not proof of what an agent reads on a normal task. Agents are told to read selectively, so nobody has measured how much of this text is actually loaded per run.</p>
+  </div>
+</section>
+
+<section id="changelog">
+  <h2>What happens to the release history</h2>
+  <figure>
+    <svg viewBox="0 0 760 300" role="img" aria-label="Before: one changelog with 658 entries, all installed with the skill. After: the newest 50 entries stay in the changelog and are installed; 608 older entries move to dated archive files that stay in the repository and are not installed.">
+      <defs><marker id="arw2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="currentColor"/></marker>
+      <pattern id="hatch" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="6" stroke="currentColor" stroke-width="1.2" opacity=".45"/></pattern></defs>
+      <text x="0" y="16" class="svg-muted svg-mono" font-size="12">BEFORE</text>
+      <text x="430" y="16" class="svg-muted svg-mono" font-size="12">AFTER REQ-624</text>
+      <!-- before stack: 658 entries -> height 200 -->
+      <rect x="0" y="34" width="150" height="200" class="bar"/>
+      <text x="75" y="120" text-anchor="middle" fill="#ffffff" font-size="15" font-weight="600">658 entries</text>
+      <text x="75" y="142" text-anchor="middle" fill="#ffffff" font-size="13">one file</text>
+      <!-- install boundary -->
+      <line x1="0" y1="252" x2="150" y2="252" class="svg-line" stroke-width="1.5"/>
+      <text x="0" y="272" class="svg-text" font-size="13" font-weight="600">Installed with the skill: all 658</text>
+      <text x="0" y="290" class="svg-muted" font-size="12">every consumer downloads the full history</text>
+
+      <!-- arrow between -->
+      <g style="color:var(--text)"><line x1="215" y1="134" x2="365" y2="134" stroke="currentColor" stroke-width="1.5" marker-end="url(#arw2)"/></g>
+      <text x="290" y="120" text-anchor="middle" class="svg-muted" font-size="12">split by age</text>
+
+      <!-- after: live 50 -> 200*50/658 = 15.2 px; archives 608 -> 184.8 -->
+      <rect x="430" y="34" width="150" height="15.2" class="bar"/>
+      <text x="592" y="47" class="svg-text" font-size="14" font-weight="600">50 newest entries</text>
+      <text x="592" y="64" class="svg-muted" font-size="12">stay in CHANGELOG.md and its mirror</text>
+      <!-- 2px gap then archives -->
+      <g style="color:var(--text)"><rect x="430" y="51.2" width="150" height="182.8" fill="url(#hatch)" stroke="currentColor" stroke-width="1" opacity=".9"/></g>
+      <text x="505" y="140" text-anchor="middle" class="svg-text" font-size="15" font-weight="600">608 older entries</text>
+      <text x="505" y="160" text-anchor="middle" class="svg-text" font-size="13">dated archive files</text>
+      <text x="592" y="140" class="svg-muted" font-size="12">CHANGELOG-20xx.md files,</text>
+      <text x="592" y="156" class="svg-muted" font-size="12">linked, not installed</text>
+
+      <line x1="430" y1="252" x2="760" y2="252" class="svg-line" stroke-width="1.5"/>
+      <text x="430" y="272" class="svg-text" font-size="13" font-weight="600">Installed with the skill: 50 · Repository only: 608</text>
+      <text x="430" y="290" class="svg-muted" font-size="12">nothing is deleted, older history needs the repository</text>
+    </svg>
+    <figcaption>Left: today, all 658 release entries ship with every install. Right: after REQ-624, the 50 newest stay in the shipped file and the rest move to archive files that live only in the repository. Bar heights are proportional to entry counts.</figcaption>
+  </figure>
+  <div class="text">
+    <p>Every entry must still exist exactly once, and the root changelog and the installed copy must stay identical. Fifty is a starting number, not a measured best value. Before trimming, check that no version or update tool needs older entries.</p>
+  </div>
+</section>
+
+<section id="evidence">
+  <h2>Why one idea is on hold</h2>
+  <figure>
+    <svg viewBox="0 0 760 120" role="img" aria-label="Of 21,755 recorded test timing samples, 21,752 ran while another test process was active. Only 3 ran alone.">
+      <text x="0" y="16" class="svg-muted svg-mono" font-size="12">21,755 TEST TIMING SAMPLES</text>
+      <rect x="0" y="30" width="759.9" height="34" class="bar"/>
+      <rect x="0" y="30" width="0.1" height="34" fill="var(--hold)"/>
+      <text x="14" y="53" fill="#ffffff" font-size="15" font-weight="600">21,752 ran while another test process was also running</text>
+      <g style="color:var(--hold)"><line x1="4" y1="66" x2="4" y2="86" stroke="currentColor" stroke-width="1.5"/></g>
+      <text x="12" y="92" class="svg-text" font-size="13">3 samples ran alone. Too few to compare.</text>
+      <text x="0" y="114" class="svg-muted" font-size="12">Samples also span many code versions, so a slow file at one version says little about the current one.</text>
+    </svg>
+    <figcaption>Almost every recorded slow test overlapped another test run on the same machine. The data cannot separate "the test is slow" from "the machine was busy".</figcaption>
+  </figure>
+  <div class="text">
+    <p>The held idea, R4, would turn test time-budget failures into warnings. Two things stop it. The timing data above cannot show that budgets are the real problem. And the maintainer test runner that enforces those budgets is marked for deletion in an earlier request, REQ-566, even though later work still optimized it. Decide the runner's future first, then decide its budgets.</p>
+  </div>
+</section>
+
+<section id="each">
+  <h2>What "done" means for each request</h2>
+  <div class="steps">
+    <div class="step"><div class="n">1</div><div>
+      <h3>REQ-622 · Fix wrong sentences</h3>
+      <dl><dt>Do</dt><dd>Take each of the 19 recorded mismatches. Check it against the current code and the intended behavior. Fix the text, or record why it is already obsolete.</dd>
+      <dt>Do not</dt><dd>Assume the code is always right. If code and intent disagree, write down the conflict instead of picking one silently.</dd>
+      <dt>Done when</dt><dd>All 19 entries have a written outcome.</dd></dl></div></div>
+    <div class="step"><div class="n">2</div><div>
+      <h3>REQ-623 · Remove repeated rules</h3>
+      <dl><dt>Do</dt><dd>Where two files explain the same thing, keep the one that owns it and point to it from the other. Keep everything an agent needs to act, judge, and recover from errors.</dd>
+      <dt>Do not</dt><dd>Chase a percentage target or rewrite the whole thing. Do not claim faster runs or fewer tokens without measuring.</dd>
+      <dt>Done when</dt><dd>The four files are shorter and a simple task, a complex task, and an interrupted task can still be completed from the text alone.</dd></dl></div></div>
+    <div class="step"><div class="n">3</div><div>
+      <h3>REQ-624 · Archive old release notes</h3>
+      <dl><dt>Do</dt><dd>Keep the newest 50 entries in both changelog copies. Move older entries into dated archive files with working links.</dd>
+      <dt>Do not</dt><dd>Change how often releases happen or how versions are numbered.</dd>
+      <dt>Done when</dt><dd>Every entry exists once, both copies match, and version and update commands still work.</dd></dl></div></div>
+  </div>
+</section>
+
+<section id="claims">
+  <h2>What this report does not claim</h2>
+  <div class="note">
+    <p>It does not claim the changes will make do-work faster or cheaper in tokens. The files are large, and that is measured. How much of them an agent reads per task is not measured. The reason to do this work is easier maintenance: fewer wrong sentences and fewer places for the next change to drift.</p>
+  </div>
+  <div class="tiles">
+    <div class="tile"><span class="big">0</span><p>changes finished so far. REQ-622 was running when this page was written, the other two were waiting.</p></div>
+    <div class="tile"><span class="big">2</span><p>open policy questions left for you: keep or retire the test runner, and whether to batch releases.</p></div>
+    <div class="tile"><span class="big">0</span><p>new measurements taken for this report. Counts come from the 8 and 9 September audits.</p></div>
+  </div>
+</section>
+
+<footer>
+  <p>Plain-language edition with diagrams of the "Do-work improvement review" of 8 and 9 September 2026. Word counts and backlog counts are from commit ff82f62d (do-work 0.305.35). Queue state is from commit ecd27516, which captured UR-130.</p>
+  <p>Longer versions: <a href="../2026-09-09_0013_do-work-improvement-review-rev-v2/index.html">full decision report (rev-v2)</a> · <a href="../2026-09-09_0044_do-work-improvement-review-simple/index.html">plain-language edition without diagrams</a> · <a href="../2026-09-08_2327_do-work-improvement-review/index.html">original v1 review</a>.</p>
+  <p>Diagrams are hand-drawn inline SVG. No generated images were used.</p>
+</footer>
+</main>
+</body></html>
