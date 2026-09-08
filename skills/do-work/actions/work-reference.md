@@ -8,8 +8,6 @@
 
 The per-REQ pipeline is `actions/work.md`'s numbered steps; this section is the ownership map beside them, not a second drawing of the sequence.
 
-- **The loop.** `recover` → select and claim → triage → open questions → mechanical evidence gate → route → build → Implementation Summary → qualification → focused/gate evidence → review (one remediation pass) → prepare finalization → finalize → checkpoint → cleanup. The orchestrator stays in the loop and stays light.
-- **The three routes converge.** Route A goes straight to the build; Route B explores and declares scope first; Route C plans before both. All three meet again at the pre-build evidence record and run every evidence step from there identically.
 - **Who owns what.** The orchestrator owns judgment and every authored `##` section. Canonical commands own the deterministic mutations: `advance` (selection, claim, mechanical evidence gates, checkpoint, finalization hand-off), `defer-gate` (repository-gate deferral), and the finalization engine (archive, release, commit, provenance, verification, cleanup).
 
 ## Execution Model — Claim Anywhere, One Releaser
@@ -576,7 +574,7 @@ Four rows carry a judgment no typed record makes for you. **Rows 6 and 7 are not
 - [ ] OS preference respected on first visit
 ```
 
-**"Files I will touch" is the source of the `write_set` frontmatter field.** After writing this section, the orchestrator mirrors the list into `write_set:` — one direction only, so the prose and the field cannot drift. Never edit `write_set` and expect the Scope list to follow. The mirror feeds the board's overlaps badge only (`write_set` is display, not scheduling, at any builder count — **Worktree Dispatch Mode (Step 1)** → Fan-Out Dispatch, below).
+After writing this template, apply the Scope-to-`write_set` mirror in `actions/work.md` → **Step 5.5: Scope Declaration (Routes B and C)**.
 
 ## Pre-Build Evidence Record Template
 
