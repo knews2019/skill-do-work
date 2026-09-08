@@ -25,12 +25,12 @@ A post-work quality gate with three jobs: (1) confirm the implementation matches
 
 ## Two Modes
 
-| Mode | Trigger | REQ location | How to get the diff |
-|------|---------|-------------|---------------------|
-| **Orchestrated** | Auto-triggered by actions/work.md after testing passes | `do-work/working/` | `git diff` (uncommitted changes) or read the files listed in the Implementation Summary — in worktree dispatch mode the tree is clean post-merge, so read the merge range `<pre>..<merge_hash>` the orchestrator passes (`actions/work-reference.md` → **Worktree Dispatch Mode (Step 1)**) |
-| **Standalone** | User invokes manually: `do-work review`, `do-work review-work`, `do-work review REQ-005` | `do-work/archive/` or `do-work/archive/UR-NNN/` | `git show <commit>` using the `commit` frontmatter field — for a worktree-merged REQ the `commit:` hash is a merge commit, so use the first-parent form (Step 4) |
+| Mode | Trigger | REQ location |
+|------|---------|-------------|
+| **Orchestrated** | Auto-triggered by actions/work.md after testing passes | `do-work/working/` |
+| **Standalone** | User invokes manually: `do-work review`, `do-work review-work`, `do-work review REQ-005` | `do-work/archive/` or `do-work/archive/UR-NNN/` |
 
-Both modes follow the same workflow. The only difference is where the REQ lives and how you obtain the diff.
+Both modes follow the same workflow. Step 4 owns their diff-acquisition procedure.
 
 ## Steps
 
@@ -45,7 +45,7 @@ Both modes follow the same workflow. The only difference is where the REQ lives 
 
 Before the ordinary no implementation changes exit, check the already-green repository-gate repair exception. In orchestrated mode, reuse the `<now>` captured under the Timestamp rule for finalization and invoke `<skill-root>/tools/do-work-cli.sh --repo-root <project-root> --format json validate-already-green-repair --request-path <exact working REQ path> --writer <exact finalization writer> --at <now>`. The validator is the sole decision authority; do not separately parse the marker, intake, no-op sections, recorded gate evidence, project diff, release state, or staged paths. Proceed with the no-diff review only on typed success with `already_green_repair.review_allowed: true`, and record its fingerprint, gate-evidence match, canonical completion paths, staged paths, and decision in `## Review`. A missing, failed, malformed, or false result refuses the exception and reports its typed reason codes and offending paths. An ordinary or non-empty implementation follows the existing rule: if the target REQ has no `commit` field (standalone mode) or no implementation changes (orchestrated mode), report that there's nothing to review and exit.
 
-In worktree dispatch mode the working tree is clean after the merge, so judge "no changes" from the merge range `<pre>..<merge_hash>` (`git diff --stat <pre>..<merge_hash>`), not the working diff — an empty working diff there is the normal post-merge state, not an empty REQ.
+For the ordinary no-change check, obtain the mode-specific diff through Step 4. A clean post-merge working tree is normal and does not mean the REQ has no changes.
 
 ### Step 2: Read the REQ
 
@@ -150,23 +150,7 @@ The directive check is informational — it does not affect the overall score. I
 
 **Coding-Guardrails Principle Check (informational)**
 
-`crew-members/coding-guardrails.md` was always-loaded during implementation. Spot-check the diff against its five principles — these overlap with existing dimensions but frame them as observable behaviors:
-
-1. **Think Before Coding** — did Open Questions / Decisions get surfaced (`- [~]` marks, `## Decisions`), or were ambiguities silently resolved?
-2. **Simplicity First (YAGNI)** — does the code match the senior-engineer test? Flag speculative abstractions and unrequested configurability; apply the earned-defense rubric in `crew-members/coding-guardrails.md` § 2 when the diff adds defensive surface. (Remember: simplify ≠ strip — if removing it would need restoring next week, it's foundation.)
-3. **Surgical Changes** — every changed line should trace to the REQ. Adjacent-code "improvements", style-only edits, and unrelated refactors are drift.
-4. **Goal-Driven Execution** — does the Testing section show verification (red-green, targeted regression, or equivalent proof), or just "it compiles"?
-5. **Naming for Reach** — do names the diff *introduces* with reach (exported identifiers, struct fields, files, DB columns, CLI flags, env vars) read as two words and survive a plain-text grep? Idiomatic short locals are fine and are not a finding; neither are pre-existing short names the diff didn't touch. See `crew-members/coding-guardrails.md` § Naming for Reach for the canonical statement.
-
-Most guardrail issues are already caught by Scope Discipline, Code Quality, and Test Adequacy. This check is a mnemonic pass — note anything the rubric missed under a **Minor** finding. Do not double-penalize the same issue across dimensions.
-
-| Principle | Caught by | Tell |
-|---|---|---|
-| Think Before Coding | Scope / Decisions | Clarifying questions logged before code |
-| Simplicity First | Code Quality | Fewest lines; no speculative abstractions |
-| Surgical Changes | Scope Discipline | Only declared files touched |
-| Goal-Driven Execution | Test Adequacy | RED→GREEN proof honored |
-| Naming for Reach | Code Quality | New names with reach are two words and greppable |
+Read `crew-members/coding-guardrails.md` and spot-check the diff against its current principles. Most issues are already caught by Scope Discipline, Code Quality, and Test Adequacy. Note anything those dimensions missed as a **Minor** finding; this check is informational, and the same issue must not be penalized twice across dimensions.
 
 **Domain-Specific Review (if domain rules provided)**
 
