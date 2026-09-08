@@ -139,6 +139,6 @@ The main Board view shows a `testing` badge on any card carrying a record, so te
 - [ ] `go version` checked before any build; missing Go reported, not worked around.
 - [ ] Built fresh via `go build -o queue-kanban .` inside `tools/queue-kanban/`.
 - [ ] `--repo-root` resolved from `git rev-parse --show-toplevel 2>/dev/null || pwd` and passed explicitly.
-- [ ] Correct mode dispatched (serve / static / summary / open-work) with the user told the URL, artifact path, counts, or digest.
+- [ ] The mode selected by the Input table dispatched and its result reported to the user.
 - [ ] Static mode with the default `--out`: `build/queue-kanban-board/` no longer appears untracked in `git status` (the info/exclude entry landed, or was already covered).
 - [ ] No binary or generated artifact staged or committed.

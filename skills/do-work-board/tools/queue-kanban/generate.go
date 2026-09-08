@@ -509,6 +509,7 @@ func generateStaticSiteWithPublisher(outputDirectory string, board *Board, publi
 }
 
 // publishStaticSiteOutputs publishes exactly the static board's three files.
+// It refuses existing non-regular targets before staging any output.
 // The renames are not cross-file atomic, but a handled failure restores every
 // target to its pre-invocation bytes before returning.
 func publishStaticSiteOutputs(outputDirectory string, staticOutputs [3]staticSiteOutput, publishFile func(string, string) error) (returnError error) {

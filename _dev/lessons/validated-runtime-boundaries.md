@@ -4,7 +4,7 @@ Three runtime replays exposed one shared mistake: the code verified a convenient
 
 ## A timeout owns the process tree it starts
 
-Killing a launcher is not a timeout when its descendants can keep touching services. A portable fallback must establish and verify an isolated process group before running probe code, signal that group on timeout, escalate when needed, and reap its leader. If isolation cannot be proved, fail closed without ever signaling the caller's group.
+Killing a launcher is not a timeout when its descendants can keep touching services. The shared seam is `skills/do-work/tools/do-work-cli/internal/ownedprocess/`: establish process ownership, then terminate descendants before their parents so each parent can reap its children. The implementation verifies isolation before group signalling, uses a proved-group fallback when the process table is unavailable, and falls back to the bare PID if group identity is not proved. Never signal the caller's group. Callers that require descendant containment fail closed when ownership cannot be established; `runGit` deliberately retains default single-process cancellation on unsupported platforms (REQ-543, decision D-02).
 
 The lock-in fixture forces the stock-Bash path, records wrapper and descendant PIDs, and keeps an unrelated process alive as evidence that cleanup is complete and scoped.
 

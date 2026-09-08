@@ -193,7 +193,7 @@ If your agent has limited context, prioritize: **owning sibling SKILL.md → act
 
 The suite installer enables one core Claude Code hook:
 
-- **`skills/do-work/hooks/session-start.sh`** — thin SessionStart launcher for the registered Go hook. The Go owner injects the installed version and pending REQ count, reaps stale REQ-number reservations, and mechanically repairs detectably wrong active `*_at` stamps. The retained scripts are compatibility launchers for the same registered commands.
+- **`skills/do-work/hooks/session-start.sh`** — thin SessionStart launcher for the registered Go hook. The Go owner injects the installed version and pending REQ count, reaps stale REQ-number reservations, warns about unfinished finalization, and mechanically repairs detectably wrong active `*_at` stamps. The retained scripts are compatibility launchers for the same registered commands.
 
 Fresh installs do not enable memory capture. To opt in later, run `do-work-knowledge setup-memory`; it composes the knowledge hook fragment without clobbering existing settings.
 

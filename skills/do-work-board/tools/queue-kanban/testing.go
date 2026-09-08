@@ -39,7 +39,7 @@ const (
 // do-work/ tree root — a sibling of notes.md, discovered by the same walk.
 const testersFileRelativePath = "testers.md"
 
-// testingWriteMutex serializes the board's two write surfaces (REQ frontmatter
+// testingWriteMutex serializes the Testing view's writes (REQ testing-field
 // upserts and testers.md appends). The HTTP server runs each request in its own
 // goroutine, so without this a double-submitted UI action could interleave two
 // read-modify-write cycles on the same file.

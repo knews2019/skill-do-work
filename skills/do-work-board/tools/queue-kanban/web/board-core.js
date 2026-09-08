@@ -121,10 +121,9 @@
     "the current UTC instant — YYYY-MM-DDTHH:MM:SSZ, per the Timestamp rule in " +
     "actions/work-reference.md. Until then the stopwatch cannot measure real elapsed time.";
 
-  // Stopwatch-style elapsed duration ("47s", "4m 07s", "1h 23m", "3d 04h") for
-  // a ticket sitting in a state — second-resolution below an hour because
-  // claim spans are short, coarser above so it never reads as a wall of digits,
-  // and a day tier so week-old queue waits don't render as "170h".
+  // Elapsed duration between two supplied instants ("47s", "4m 07s", "1h 23m",
+  // "3d 04h"). Second-resolution below an hour preserves short-interval detail;
+  // coarser hour and day tiers keep longer intervals readable.
   function formatElapsedDuration(instantMs, nowMs) {
     if (instantMs - nowMs > futureInstantSkewAllowanceMs) {
       return clockSkewMarkerText;

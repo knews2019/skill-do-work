@@ -104,16 +104,11 @@ var requestIdSegmentPattern = regexp.MustCompile(`(?i)REQ-\d+[a-z]?`)
 //	surfaceLinkLabel — a link's own text or an image's alt text. Nothing at all:
 //	                   no title, no dead-id report, no appendix line.
 //
-// surfaceLinkLabel exists for two reasons that happen to have one answer. A
-// title spliced into a SHORTCUT reference use — `[REQ-001]` answered by a
-// `[REQ-001]: …` definition elsewhere — orphans it from its definition, so the
-// paste silently loses a link it had; protecting the definition (which
-// goldmark keeps no text for) and not the use fixes half the bug. And the
-// drawer already skips anchor text outright (`parentElement.closest("a")` in
-// linkifyDetailBody), so annotating it here would make the paste and the
-// drawer say different things about the same body. Ticket ids written as
-// Markdown links are REQ-382's subject; until it lands, both surfaces leave
-// them alone.
+// surfaceLinkLabel protects clipboard Markdown link syntax. A title spliced
+// into a SHORTCUT reference use — `[REQ-001]` answered by a `[REQ-001]: …`
+// definition elsewhere — orphans it from its definition. The drawer can
+// decorate authored anchors without changing that source syntax; clipboard
+// labels stay untouched.
 //
 // A mention covered by none of these (a link reference DEFINITION, a raw HTML
 // block, a fence's own backticks) is not annotatable either and is dropped:
@@ -279,13 +274,8 @@ func firstRenderedBodyHeading(bodyRoot ast.Node) *ast.Heading {
 // than checking the immediate parent, because an extension may wrap the
 // contents of either.
 //
-// A LINK ANYWHERE UP THE CHAIN WINS, even over a code span nested inside it.
-// The drawer's rule is `parentElement.closest("a")`, which returns early for
-// every text node under an anchor without looking at what else encloses it; a
-// code span inside a link label earns no drawer glossary line, so it must not
-// earn a clipboard one either. Taking the innermost construct instead read as
-// the narrower, more careful claim and was simply a different answer from the
-// drawer's — which is the one thing this pair may never be.
+// A LINK ANYWHERE UP THE CHAIN WINS, even over a code span nested inside it,
+// because every part of a clipboard link label must retain its source syntax.
 func textNodeSurface(textNode ast.Node) mentionSurface {
 	enclosingSurface := surfaceProse
 	for ancestor := textNode.Parent(); ancestor != nil; ancestor = ancestor.Parent() {
