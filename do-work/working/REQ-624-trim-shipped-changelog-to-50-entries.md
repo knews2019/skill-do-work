@@ -1,7 +1,7 @@
 ---
 id: REQ-624
 title: 'Addendum: Trim the shipped changelog to 50 entries'
-status: pending
+status: claimed
 created_at: 2026-09-08T21:49:05Z
 user_request: UR-130
 domain: general
@@ -16,6 +16,7 @@ batch: instruction-history-cleanup
 write_set: ["CHANGELOG.md", "skills/do-work/CHANGELOG.md", "CHANGELOG-20*.md"]
 required_lessons: ["_dev/primes/lessons-releases.md#canonical-link-outlives-its-target", "skills/do-work/tools/lessons-do-work-update.md"]
 addendum_to: REQ-022
+claimed_at: 2026-09-08T22:45:30Z
 ---
 
 # Trim the Shipped Changelog to 50 Entries

@@ -18,3 +18,4 @@ session_depth: light
 
 ## In Progress (interrupted)
 
+- REQ-624: Addendum: Trim the shipped changelog to 50 entries — claimed 2026-09-08T22:45:30Z — writer: t2s-Virtual-Machine.local:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2
