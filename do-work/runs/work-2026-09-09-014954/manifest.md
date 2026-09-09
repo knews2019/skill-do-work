@@ -1,9 +1,11 @@
 # REQ-624 changelog history trim
 
-Status: active — merged and verified; review pending
+Status: completed — merged, reviewed, heavy-verified, and canonically finalized; UR-130 closed
 
 | Agent | Slice | Output | Status |
 | --- | --- | --- | --- |
 | build_req624 | History split and navigation | REQ-624-handback.md | done |
+| review_req624 | Independent review & heavy verification | req624-heavy-run.json | done |
+| finalize_req624 | Canonical advance & UR-130 closure | primary commit 62c1b188 | done |
 
-Verification and the builder handback are committed for the user-requested handoff. Source merge: `959cb107d4b95395dcd54d5c44f7509197b97114`. Next: independent review, planned heavy lane, then canonical finalization.
+Verification, builder handback, independent review, heavy verification, and canonical finalization are complete. Primary finalization commit: `62c1b188debb89ff4ec98222f73ab149692aec3d`. UR-130 is closed and consolidated.
