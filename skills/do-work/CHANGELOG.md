@@ -1,6 +1,6 @@
 # Changelog
 
-What's new, what's better, what's different. The newest 50 release entries are here, most recent first.
+What's new, what's better, what's different. Recent release entries are here, most recent first.
 
 For the complete release history, read this file and the archives below from newest to oldest. Archives are tracked in git and excluded from the distribution tarball; these GitHub links also work from an installed copy.
 
@@ -9,6 +9,13 @@ For the complete release history, read this file and the archives below from new
 - [0.65.0 through 0.109.0](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-07-07-up-to-v0.109.0.md)
 - [0.50.0 through 0.64.1](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-13-up-to-v0.64.1.md)
 - [0.1.0 through 0.49.0](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-07-up-to-v0.49.0.md)
+
+## 0.305.38 — AGY Handoff and Completion Checks (2026-09-09)
+
+AGY guidance now covers the handoff and verification failures observed during REQ-624.
+
+- Bound the remaining assignment and check fresh progress before interrupting or resuming.
+- Review command findings independently of AGY success, with linked execution and verification evidence.
 
 ## 0.305.37 — Shorter Workflow Instructions (2026-09-09)
 
