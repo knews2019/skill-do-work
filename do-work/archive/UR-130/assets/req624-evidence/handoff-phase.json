@@ -1,0 +1,56 @@
+{
+  "schema_version": 1,
+  "command": "advance",
+  "outcome": "success",
+  "repository_root": "/Users/t2/Desktop/e1-experimental-repos/skill-do-work2",
+  "findings": [],
+  "changes": [],
+  "skipped_work": [],
+  "selected": [],
+  "excluded": [],
+  "selection_summary": {
+    "pending": 0,
+    "finished_awaiting_archive": 0,
+    "pending_answers": 0,
+    "blocked": 0,
+    "blocked_archive_collision": 0,
+    "blocked_dependency_cycle": 0,
+    "probed": 0,
+    "probe_succeeded": 0,
+    "skipped_impact_negligible": 0,
+    "total_estimated_minutes": 0,
+    "unknown_estimate_count": 0
+  },
+  "rollback": {
+    "status": "",
+    "actions": [],
+    "errors": []
+  },
+  "finalizations": [],
+  "advance": {
+    "request_id": "REQ-624",
+    "request_path": "do-work/working/REQ-624-trim-shipped-changelog-to-50-entries.md",
+    "tree_section": "working",
+    "status": "claimed",
+    "route": "A",
+    "phase": "agent judgment: review",
+    "phase_kind": "agent_judgment",
+    "missing_evidence": [
+      {
+        "kind": "section",
+        "path": "do-work/working/REQ-624-trim-shipped-changelog-to-50-entries.md",
+        "section": "Review",
+        "expected": "independent review verdict"
+      }
+    ],
+    "next_argv": [],
+    "verification_argv": [
+      "do-work-cli",
+      "--format",
+      "json",
+      "advance",
+      "REQ-624"
+    ],
+    "gate_records": []
+  }
+}

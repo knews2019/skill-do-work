@@ -1,0 +1,53 @@
+{
+  "schema_version": 1,
+  "command": "run-heavy-verification",
+  "outcome": "success",
+  "repository_root": "/Users/t2/Desktop/e1-experimental-repos/skill-do-work2",
+  "findings": [],
+  "changes": [],
+  "skipped_work": [],
+  "selected": [],
+  "excluded": [],
+  "selection_summary": {
+    "pending": 0,
+    "finished_awaiting_archive": 0,
+    "pending_answers": 0,
+    "blocked": 0,
+    "blocked_archive_collision": 0,
+    "blocked_dependency_cycle": 0,
+    "probed": 0,
+    "probe_succeeded": 0,
+    "skipped_impact_negligible": 0,
+    "total_estimated_minutes": 0,
+    "unknown_estimate_count": 0
+  },
+  "rollback": {
+    "status": "",
+    "actions": [],
+    "errors": []
+  },
+  "heavy_verification_run": {
+    "manifest_path": "_dev/tests/heavy-lanes.json",
+    "execution_revision": "707c3368aab57a7a496f05d40b763fb24cf1029a",
+    "lanes": [
+      {
+        "lane_id": "staged-skills",
+        "command_argv": [
+          "env",
+          "GIT_CONFIG_NOSYSTEM=1",
+          "GIT_CONFIG_GLOBAL=/dev/null",
+          "bash",
+          "_dev/tests/maintainer-verify.sh",
+          "--heavy-lane",
+          "staged-skills"
+        ],
+        "exit_status": 0,
+        "wall_seconds": 29,
+        "disposition": "executed",
+        "disposition_reason": "fingerprint_mismatch",
+        "fingerprint_sha256": "0990abdbeceb168e7274c6cdfa17b39e6d9ce1dc890bf960d6ed467c8fb81685"
+      }
+    ]
+  },
+  "finalizations": []
+}

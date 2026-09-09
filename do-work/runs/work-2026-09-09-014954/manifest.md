@@ -1,6 +1,6 @@
 # REQ-624 changelog history trim
 
-Status: completed — merged, reviewed, heavy-verified, and canonically finalized; UR-130 closed
+Status: consumed
 
 | Agent | Slice | Output | Status |
 | --- | --- | --- | --- |

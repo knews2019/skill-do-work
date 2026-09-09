@@ -22,6 +22,7 @@ Written 2026-09-09. All UR-130 requests (REQ-622, REQ-623, REQ-624) are complete
   - Canonical finalization completed via `advance REQ-624` with `supplied_commit` provenance (`959cb107d4b95395dcd54d5c44f7509197b97114`).
   - Primary finalization commit: `62c1b188debb89ff4ec98222f73ab149692aec3d`.
   - Consolidated UR-130 directory created at `do-work/archive/UR-130/` containing all 3 REQs and UR assets (`input.md`, `prose-backlog-at-capture.md`, `rev-v2-approved-scope.md`).
+  - Durable evidence promoted to `do-work/archive/UR-130/assets/req624-evidence/` (proof script, verification gate records, heavy plan/run, brief, handback).
 - Builder worktree `/private/var/folders/2w/kw8sv6rd1z15yjykl787ryph0000gn/T/do-work-ur130-3hy_uf65/worktree-agent-REQ-624-history-trim` pruned and merged branch `worktree-agent-REQ-624-history-trim` safely deleted.
 - Checkpoint refreshed via `advance --checkpoint`: 0 in-progress requests.
 - Canonical cleanup completed via `cleanup` with 0 findings.

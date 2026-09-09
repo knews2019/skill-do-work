@@ -149,7 +149,7 @@ Passed by orchestrator judgment at `49c61ba76932abd5d6a40f7509ac3f56193dfea8..95
 
 **Result:** All passed. The merged maintainer gate exited 0 in 108 seconds: 402 board tests and 815 CLI tests, every per-file budget below 30 seconds. Canonical advance returned `run-blocked-check: satisfied` and `green-gate: satisfied`. The focused probe passed using the existing recorded green baseline for that same command; Route A required no separate preflight. No new tests were added. The plain diff-check EOF warnings and qualification findings are preserved and judged above.
 
-**Heavy verification plan:** Stored at `do-work/runs/work-2026-09-09-014954/req624-heavy-plan.json`. Range `49c61ba76932abd5d6a40f7509ac3f56193dfea8..959cb107d4b95395dcd54d5c44f7509197b97114`; selects only `staged-skills` because `skills/do-work/CHANGELOG.md` matches subtree `skills`. Exact argv: `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane staged-skills`. This heavy lane has not run for REQ-624; run it after review, then record its actual result.
+**Heavy verification plan:** Stored at `do-work/archive/UR-130/assets/req624-evidence/req624-heavy-plan.json`. Range `49c61ba76932abd5d6a40f7509ac3f56193dfea8..959cb107d4b95395dcd54d5c44f7509197b97114`; selects only `staged-skills` because `skills/do-work/CHANGELOG.md` matches subtree `skills`. Exact argv: `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane staged-skills`. This heavy lane executed with exit 0 in 29 seconds on revision `707c3368aab57a7a496f05d40b763fb24cf1029a` (fingerprint `0990abdbeceb168e7274c6cdfa17b39e6d9ce1dc890bf960d6ed467c8fb81685`), with results recorded below under Heavy Verification Result.
 
 ## Review
 
@@ -171,6 +171,7 @@ None
 **Acceptance:** Pass — Exact history preservation of all 1,012 releases across 50 live entries (0.305.37 through 0.303.7) and 5 dated archives, mirror byte equality, tarball exclusion, and 23 valid header links verified on the merged tree.
 **Suggested testing:** 0 items
 **Follow-ups created:** None (0 findings report only)
+**Restatement-sweep / self-validation disposition:** Verified that no new contracts or behaviors were defined; only release notes were relocated into dated archive files. All history-navigation consumers and links (23 header links, gitattributes export exclusions, tarball pointers) verified intact against pre-change baselines with zero regressions.
 
 *Reviewed by review-work action*
 
@@ -200,7 +201,7 @@ Target revision: `959cb107d4b95395dcd54d5c44f7509197b97114`. Execution revision:
 
 ## Resume State
 
-Independent review completed with 100% acceptance. Recomputed heavy verification plan reproduced the stored plan, and the staged-skills heavy lane passed (exit 0, 29s) at execution revision `707c3368aab57a7a496f05d40b763fb24cf1029a`. Proceeding to canonical finalization with supplied commit `959cb107d4b95395dcd54d5c44f7509197b97114` (no release manifest per D-01) to close UR-130, consolidate REQ-622, REQ-623, and REQ-624, remove retained worktree, refresh checkpoint, and run canonical cleanup.
+Independent review completed with 100% acceptance. Heavy verification lane `staged-skills` passed (exit 0, 29s). Canonical finalization completed via `advance REQ-624` with supplied commit `959cb107d4b95395dcd54d5c44f7509197b97114` (primary commit `62c1b188debb89ff4ec98222f73ab149692aec3d`). UR-130 closed and consolidated (REQ-622, REQ-623, REQ-624, and assets under `do-work/archive/UR-130/`), retained builder worktree pruned and branch deleted, checkpoint refreshed, and canonical cleanup complete.
 
 ## Timing
 
