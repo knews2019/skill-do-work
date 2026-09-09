@@ -1,0 +1,178 @@
+{
+  "source": "Local AGY telemetry, selected fields only. First run intentionally interrupted by Codex.",
+  "turns": [
+    {
+      "status": "ERROR",
+      "error": "interrupted",
+      "duration_seconds": 680.910131,
+      "process_exit": 1,
+      "repeated_file_reads": [
+        {
+          "path": "skills/do-work/tools/do-work-cli/internal/requeststate/state_plan.go",
+          "count": 10
+        },
+        {
+          "path": "skills/do-work/tools/do-work-cli/internal/finalization/finalization_prepare.go",
+          "count": 8
+        },
+        {
+          "path": "skills/do-work/tools/do-work-cli/internal/finalization/finalization_journal.go",
+          "count": 7
+        },
+        {
+          "path": "skills/do-work/tools/do-work-cli/internal/finalization/finalization_apply.go",
+          "count": 6
+        },
+        {
+          "path": "do-work/working/REQ-624-trim-shipped-changelog-to-50-entries.md",
+          "count": 4
+        },
+        {
+          "path": "skills/do-work/tools/do-work-cli/internal/lifecycleadvance/advance_commands.go",
+          "count": 4
+        },
+        {
+          "path": "do-work/archive/REQ-623-reduce-orchestration-instruction-duplication.md",
+          "count": 4
+        },
+        {
+          "path": "skills/do-work/tools/do-work-cli/internal/lifecycleadvance/finalization_gate_test.go",
+          "count": 4
+        },
+        {
+          "path": "do-work/RESTART-PROMPT.md",
+          "count": 3
+        },
+        {
+          "path": "skills/do-work/tools/do-work-cli/internal/requeststate/state_apply.go",
+          "count": 3
+        },
+        {
+          "path": "do-work/runs/work-2026-09-09-014954/manifest.md",
+          "count": 3
+        },
+        {
+          "path": "do-work/CHECKPOINT.md",
+          "count": 3
+        },
+        {
+          "path": "skills/do-work/actions/work.md",
+          "count": 2
+        },
+        {
+          "path": "skills/do-work/tools/do-work-cli/internal/heavyverification/heavy_commands.go",
+          "count": 2
+        },
+        {
+          "path": "skills/do-work/tools/do-work-cli/internal/finalization/finalization_commands.go",
+          "count": 2
+        },
+        {
+          "path": "skills/do-work/tools/do-work-cli/internal/finalization/finalization_types.go",
+          "count": 2
+        },
+        {
+          "path": "skills/do-work/tools/do-work-cli/internal/lifecycleadvance/finalization_gate.go",
+          "count": 2
+        },
+        {
+          "path": "skills/do-work/tools/do-work-cli/internal/gittransaction/git_transaction.go",
+          "count": 2
+        },
+        {
+          "path": "skills/do-work/tools/do-work-cli/internal/gittransaction/exact_commit.go",
+          "count": 2
+        }
+      ]
+    },
+    {
+      "status": "SUCCESS",
+      "error": null,
+      "duration_seconds": 963.16593,
+      "process_exit": 0,
+      "repeated_file_reads": [
+        {
+          "path": "skills/do-work/tools/do-work-cli/internal/cleanup/cleanup_apply.go",
+          "count": 5
+        },
+        {
+          "path": "do-work/archive/UR-130/REQ-624-trim-shipped-changelog-to-50-entries.md",
+          "count": 4
+        },
+        {
+          "path": "do-work/runs/work-2026-09-09-014954/manifest.md",
+          "count": 2
+        },
+        {
+          "path": "skills/do-work/tools/do-work-cli/internal/cleanup/cleanup_git.go",
+          "count": 2
+        },
+        {
+          "path": "skills/do-work/tools/do-work-cli/internal/cleanup/cleanup_commands.go",
+          "count": 2
+        }
+      ]
+    }
+  ],
+  "cleanup_events": [
+    {
+      "command": "skills/do-work/tools/do-work-cli.sh --repo-root \"$PWD\" --format json cleanup --commit",
+      "outcome": "findings",
+      "findings": [
+        {
+          "code": "BLANKED-RECORD-UNRECOVERABLE",
+          "severity": "warning",
+          "affected_ids": [],
+          "affected_paths": [
+            "do-work/archive/UR-130/assets/req624-evidence/REQ-624-brief.md"
+          ],
+          "observed_evidence": [
+            "Git history has no recoverable nonblank content"
+          ],
+          "fixability": "manual",
+          "automation_stop_reason": "cleanup cannot prove this repair is safe",
+          "next_argv": [
+            "do-work-cli",
+            "cleanup",
+            "--dry-run"
+          ],
+          "next_just_recipe": "",
+          "verification_argv": [
+            "do-work-cli",
+            "--format",
+            "json",
+            "cleanup",
+            "--dry-run"
+          ]
+        },
+        {
+          "code": "BLANKED-RECORD-UNRECOVERABLE",
+          "severity": "warning",
+          "affected_ids": [],
+          "affected_paths": [
+            "do-work/archive/UR-130/assets/req624-evidence/REQ-624-handback.md"
+          ],
+          "observed_evidence": [
+            "Git history has no recoverable nonblank content"
+          ],
+          "fixability": "manual",
+          "automation_stop_reason": "cleanup cannot prove this repair is safe",
+          "next_argv": [
+            "do-work-cli",
+            "cleanup",
+            "--dry-run"
+          ],
+          "next_just_recipe": "",
+          "verification_argv": [
+            "do-work-cli",
+            "--format",
+            "json",
+            "cleanup",
+            "--dry-run"
+          ]
+        }
+      ],
+      "changes_count": 12
+    }
+  ]
+}

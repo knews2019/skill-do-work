@@ -1,0 +1,174 @@
+{
+  "schema_version": 1,
+  "command": "advance",
+  "outcome": "success",
+  "repository_root": "/Users/t2/Desktop/e1-experimental-repos/skill-do-work2",
+  "findings": [
+    {
+      "code": "FINALIZATION-COMPLETE",
+      "severity": "info",
+      "affected_ids": [
+        "REQ-624"
+      ],
+      "affected_paths": [
+        "do-work/archive/UR-130/REQ-624-trim-shipped-changelog-to-50-entries.md"
+      ],
+      "observed_evidence": [
+        "resumable finalization reached verified cleanup-complete state"
+      ],
+      "fixability": "automatic",
+      "automation_stop_reason": "",
+      "next_argv": [],
+      "next_just_recipe": "",
+      "verification_argv": [
+        "do-work-cli",
+        "--format",
+        "json",
+        "recover-finalization"
+      ]
+    }
+  ],
+  "changes": [],
+  "skipped_work": [],
+  "selected": [],
+  "excluded": [],
+  "selection_summary": {
+    "pending": 0,
+    "finished_awaiting_archive": 0,
+    "pending_answers": 0,
+    "blocked": 0,
+    "blocked_archive_collision": 0,
+    "blocked_dependency_cycle": 0,
+    "probed": 0,
+    "probe_succeeded": 0,
+    "skipped_impact_negligible": 0,
+    "total_estimated_minutes": 0,
+    "unknown_estimate_count": 0
+  },
+  "rollback": {
+    "status": "",
+    "actions": [],
+    "errors": []
+  },
+  "finalization": {
+    "request_id": "REQ-624",
+    "request_path": "do-work/working/REQ-624-trim-shipped-changelog-to-50-entries.md",
+    "archive_path": "do-work/archive/UR-130/REQ-624-trim-shipped-changelog-to-50-entries.md",
+    "journal_path": "/Users/t2/Desktop/e1-experimental-repos/skill-do-work2/.git/do-work-finalization/REQ-624.json",
+    "phase": "cleanup_complete",
+    "terminal_status": "completed",
+    "resumed": false,
+    "discovered": false,
+    "commit_paths": [
+      "do-work/CHECKPOINT.md",
+      "do-work/archive/REQ-622-correct-verified-prose-drift.md",
+      "do-work/archive/REQ-623-reduce-orchestration-instruction-duplication.md",
+      "do-work/archive/UR-130/REQ-622-correct-verified-prose-drift.md",
+      "do-work/archive/UR-130/REQ-623-reduce-orchestration-instruction-duplication.md",
+      "do-work/archive/UR-130/REQ-624-trim-shipped-changelog-to-50-entries.md",
+      "do-work/archive/UR-130/assets/prose-backlog-at-capture.md",
+      "do-work/archive/UR-130/assets/rev-v2-approved-scope.md",
+      "do-work/archive/UR-130/input.md",
+      "do-work/calibration-log.tsv",
+      "do-work/user-requests/UR-130/assets/prose-backlog-at-capture.md",
+      "do-work/user-requests/UR-130/assets/rev-v2-approved-scope.md",
+      "do-work/user-requests/UR-130/input.md",
+      "do-work/working/REQ-624-trim-shipped-changelog-to-50-entries.md"
+    ],
+    "primary_commit": "62c1b188debb89ff4ec98222f73ab149692aec3d",
+    "metadata_commit": "",
+    "created_primary_commit": "62c1b188debb89ff4ec98222f73ab149692aec3d",
+    "created_metadata_commit": "",
+    "blocked_paths": [],
+    "reason_codes": [],
+    "next_argv": [
+      "do-work-cli",
+      "--format",
+      "json",
+      "recover-finalization"
+    ],
+    "verification_argv": [
+      "do-work-cli",
+      "--format",
+      "json",
+      "recover-finalization"
+    ],
+    "collection_argv": [
+      "do-work-cli",
+      "--format",
+      "json",
+      "uncommitted-inventory"
+    ]
+  },
+  "finalizations": [
+    {
+      "request_id": "REQ-624",
+      "request_path": "do-work/working/REQ-624-trim-shipped-changelog-to-50-entries.md",
+      "archive_path": "do-work/archive/UR-130/REQ-624-trim-shipped-changelog-to-50-entries.md",
+      "journal_path": "/Users/t2/Desktop/e1-experimental-repos/skill-do-work2/.git/do-work-finalization/REQ-624.json",
+      "phase": "cleanup_complete",
+      "terminal_status": "completed",
+      "resumed": false,
+      "discovered": false,
+      "commit_paths": [
+        "do-work/CHECKPOINT.md",
+        "do-work/archive/REQ-622-correct-verified-prose-drift.md",
+        "do-work/archive/REQ-623-reduce-orchestration-instruction-duplication.md",
+        "do-work/archive/UR-130/REQ-622-correct-verified-prose-drift.md",
+        "do-work/archive/UR-130/REQ-623-reduce-orchestration-instruction-duplication.md",
+        "do-work/archive/UR-130/REQ-624-trim-shipped-changelog-to-50-entries.md",
+        "do-work/archive/UR-130/assets/prose-backlog-at-capture.md",
+        "do-work/archive/UR-130/assets/rev-v2-approved-scope.md",
+        "do-work/archive/UR-130/input.md",
+        "do-work/calibration-log.tsv",
+        "do-work/user-requests/UR-130/assets/prose-backlog-at-capture.md",
+        "do-work/user-requests/UR-130/assets/rev-v2-approved-scope.md",
+        "do-work/user-requests/UR-130/input.md",
+        "do-work/working/REQ-624-trim-shipped-changelog-to-50-entries.md"
+      ],
+      "primary_commit": "62c1b188debb89ff4ec98222f73ab149692aec3d",
+      "metadata_commit": "",
+      "created_primary_commit": "62c1b188debb89ff4ec98222f73ab149692aec3d",
+      "created_metadata_commit": "",
+      "blocked_paths": [],
+      "reason_codes": [],
+      "next_argv": [
+        "do-work-cli",
+        "--format",
+        "json",
+        "recover-finalization"
+      ],
+      "verification_argv": [
+        "do-work-cli",
+        "--format",
+        "json",
+        "recover-finalization"
+      ],
+      "collection_argv": [
+        "do-work-cli",
+        "--format",
+        "json",
+        "uncommitted-inventory"
+      ]
+    }
+  ],
+  "advance": {
+    "request_id": "REQ-624",
+    "request_path": "do-work/working/REQ-624-trim-shipped-changelog-to-50-entries.md",
+    "tree_section": "working",
+    "status": "claimed",
+    "route": "A",
+    "phase": "finalize",
+    "phase_kind": "mechanical",
+    "missing_evidence": [],
+    "next_argv": [],
+    "verification_argv": [
+      "do-work-cli",
+      "--format",
+      "json",
+      "advance",
+      "REQ-624"
+    ],
+    "gate_records": []
+  }
+}

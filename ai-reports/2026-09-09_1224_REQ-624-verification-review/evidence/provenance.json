@@ -1,0 +1,54 @@
+{
+  "target": "REQ-624 (changelog history trim) and its AGY verification/finalization tail",
+  "repository_revision": "75ecfde4505feea97aeb196de98e44f8eab1bff3",
+  "created_at": "2026-09-09T12:24:03.309684+03:00",
+  "evidence_mode": "non-visual",
+  "sources": {
+    "parent-verification.json": "do-work/archive/UR-130/assets/req624-evidence/parent-verification.json",
+    "req624-heavy-run.json": "do-work/archive/UR-130/assets/req624-evidence/req624-heavy-run.json",
+    "req624-history-proof.json": "do-work/archive/UR-130/assets/req624-evidence/req624-history-proof.json",
+    "req624-merged-gate.json": "do-work/archive/UR-130/assets/req624-evidence/req624-merged-gate.json",
+    "finalization-result.json": "do-work/archive/UR-130/assets/req624-evidence/finalization-result.json",
+    "verify-req624-history.py": "do-work/archive/UR-130/assets/req624-evidence/verify-req624-history.py",
+    "request.md": "do-work/archive/UR-130/REQ-624-trim-shipped-changelog-to-50-entries.md",
+    "user-input.md": "do-work/archive/UR-130/input.md",
+    "checkpoint.md": "do-work/CHECKPOINT.md",
+    "restart-prompt.md": "do-work/RESTART-PROMPT.md",
+    "checkpoint-writer.go": "skills/do-work/tools/do-work-cli/internal/lifecycleadvance/checkpoint_commands.go"
+  },
+  "source_sha256": {
+    "parent-verification.json": "3b2b50190c464bb083697f912ea3a416a70b09a440ad5fab9ae4aeda70449590",
+    "req624-heavy-run.json": "c65f94e29dca1b6294ce3c028683a3fc1a24f79d2780e1db4bb8911352504690",
+    "req624-history-proof.json": "6c14dbfe8adcbb06141bfc7d626de98a6030a3385deee45673f15e745af17ace",
+    "req624-merged-gate.json": "ee3001a9afbad54a95ee911aa3b09afbbd6f4bee11a28d0ca83a744d11375e55",
+    "finalization-result.json": "cb2b86573516b2925b1d0caa2e8b23d441a1b99effd4fcfb35db9e9912e51ddf",
+    "verify-req624-history.py": "80675b1229c7e54fb9fdaae548c84a77b64136b8bab9535270024ac79e4cab75",
+    "request.md": "ba96f6c750acab837a0a26048110e37d99407158b5d8d11ae85574bf14a6d5e4",
+    "user-input.md": "cd2749607c1464b38d672fce25a857a8db9617f2b6bb36eec34b5ac845c0e0e8",
+    "checkpoint.md": "208e24aa762a117cf2769983790f9bbb46afbed6d20cdd6cd5f9d78a9e439a29",
+    "restart-prompt.md": "63fbafd4b2958f08fa0866d0bfd5b29acdd4251365139a5517ae1176d6e0a06d",
+    "checkpoint-writer.go": "d4f1e9d539bbbb22b370c88ebfa300a45463f82bbed00a6f48fecd7540d4454c"
+  },
+  "history_mode": "prior-run measured evidence; no full maintainer/heavy rerun for presentation",
+  "fresh_checks": [
+    "cleanup --dry-run",
+    "current source and checkpoint inspection",
+    "merge-aware implementation diff"
+  ],
+  "scope": "Report only; no queue creation or implementation fixes.",
+  "render_verification": {
+    "browser": "Chromium through Playwright CLI",
+    "desktop_width": 1440,
+    "mobile_width": 390,
+    "themes": [
+      "light",
+      "dark"
+    ],
+    "full_page_images_visually_inspected": true,
+    "horizontal_overflow": false,
+    "local_links_verified": 21,
+    "judge_captures": "temporary; removed after inspection",
+    "passes": 2
+  },
+  "diff_hygiene": "Raw implementation.patch retains Git context-line spaces, and checkpoint.md retains the source blank-at-EOF. These two exact evidence copies are intentionally byte-preserved; all other staged report files pass git diff --check."
+}
