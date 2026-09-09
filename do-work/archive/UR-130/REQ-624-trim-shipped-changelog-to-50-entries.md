@@ -62,7 +62,7 @@ Follow the existing archive conventions. No pending or pending-answers candidate
 Reconcile every release entry exactly once across the logical live history and archives, preserving order and existing archives; the installed mirror is a required duplicate of the live file. Check byte equality of the two live files, archive exclusion, tarball-safe history links, and existing recent version/history output. Preserve or adapt a demonstrated history consumer before trimming if it requires older entries.
 
 ## Full Context
-See `do-work/user-requests/UR-130/input.md` for the user instruction, adopted report, and batch decisions. The approved prompt excerpts are in `do-work/user-requests/UR-130/assets/rev-v2-approved-scope.md`.
+See `do-work/archive/UR-130/input.md` for the user instruction, adopted report, and batch decisions. The approved prompt excerpts are in `do-work/archive/UR-130/assets/rev-v2-approved-scope.md`.
 
 ## AI Execution State (P-A-U Loop)
 - [x] **[PLAN]:** Split the oldest live entries into a dated archive, update navigation, and prove exact history preservation and mirror equality.
@@ -214,3 +214,9 @@ Observed 2026-09-08T22:50:19Z to 2026-09-08T22:59:57Z: 9m 38s total, 7m 40s attr
 
 Slowest stage: builder-work / implementation, 5m 51s, outcome success.
 Slowest command: verification-gate / merged-tree, 1m 49s, exit 0, bash (2 argv tokens).
+
+## Post-completion Verification
+
+Codex independently checked the committed output after the AGY review/finalization run. All 1,012 release blocks match the pre-trim baseline byte-for-byte; both live copies contain the newest 50 entries. The original UR input/assets and REQ-622/REQ-623 records survived consolidation byte-for-byte. No shipped source or unrelated queue request changed during this continuation.
+
+The first evidence promotion retained REQ-shaped filenames for the builder brief and handback, causing two false blanked-record findings. Renamed those supporting documents to `assets/req624-evidence/builder-brief.md` and `builder-handback.md` without changing bytes, then verified canonical cleanup again. The proof script, raw gate records, and actual canonical finalization output are preserved under `assets/req624-evidence/`; `parent-verification.json` records the final independent checks.
