@@ -1,7 +1,7 @@
 ---
 id: REQ-624
 title: 'Addendum: Trim the shipped changelog to 50 entries'
-status: claimed
+status: completed
 route: A
 integration_at: 2026-09-08T22:57:17Z
 builder_handback_at: 2026-09-08T22:56:10Z
@@ -29,6 +29,12 @@ write_set: ["CHANGELOG.md", "skills/do-work/CHANGELOG.md", "CHANGELOG-20*.md"]
 required_lessons: ["_dev/primes/lessons-releases.md#canonical-link-outlives-its-target", "skills/do-work/tools/lessons-do-work-update.md"]
 addendum_to: REQ-022
 claimed_at: 2026-09-08T22:45:30Z
+review_at: 2026-09-09T09:00:39Z
+commit: 959cb107d4b95395dcd54d5c44f7509197b97114
+heavy_verified_at: 2026-09-09T09:00:39Z
+heavy_verified_revision: 707c3368aab57a7a496f05d40b763fb24cf1029a
+kb_status: pending
+completed_at: 2026-09-09T09:00:39Z
 ---
 
 # Trim the Shipped Changelog to 50 Entries
@@ -145,11 +151,56 @@ Passed by orchestrator judgment at `49c61ba76932abd5d6a40f7509ac3f56193dfea8..95
 
 **Heavy verification plan:** Stored at `do-work/runs/work-2026-09-09-014954/req624-heavy-plan.json`. Range `49c61ba76932abd5d6a40f7509ac3f56193dfea8..959cb107d4b95395dcd54d5c44f7509197b97114`; selects only `staged-skills` because `skills/do-work/CHANGELOG.md` matches subtree `skills`. Exact argv: `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane staged-skills`. This heavy lane has not run for REQ-624; run it after review, then record its actual result.
 
+## Review
+
+**Overall: 100%** | 2026-09-09T09:00:39Z
+
+| Dimension | Score |
+|-----------|-------|
+| Requirements | 100% |
+| Code Quality | 100% |
+| Test Adequacy | 100% |
+| Scope | 100% |
+| Risk | None |
+| Acceptance | Pass |
+
+**Important findings (each with its recorded impact token — this is the durable audit record the judgment mandates):**
+None
+
+**Minor findings:** None
+**Acceptance:** Pass — Exact history preservation of all 1,012 releases across 50 live entries (0.305.37 through 0.303.7) and 5 dated archives, mirror byte equality, tarball exclusion, and 23 valid header links verified on the merged tree.
+**Suggested testing:** 0 items
+**Follow-ups created:** None (0 findings report only)
+
+*Reviewed by review-work action*
+
+## Lessons Learned
+
+**What worked:** Automated whole-history block reconciliation (`verify-req624-history.py`) against git baseline proved exact byte preservation of all 1,012 releases, order, mirror equality, and tarball exclusion deterministically.
+
+**What didn't:** Raw diff-hygiene tools flag historical release prose quoting output primitives or debug keywords. Verifying line-for-line identity against pre-change bytes provides the durable qualification proof without modifying historical notes or disarming checks.
+
+**Worth knowing:** CHANGELOG-only modifications are classified as release metadata under current finalization release guards and do not bump the version or create synthetic release entries (D-01). Preserving trailing separator bytes at live EOF maintains exact release block hashes while causing only benign blank-at-EOF git diff check notices (D-03).
+
+## Orientation
+
+The shipped changelog now retains the newest 50 releases while older history is preserved across dated export-ignored archives with full GitHub navigation. Shipped release and documentation prime files remain valid; no subsystem map changed.
+
+## Heavy Verification Plan
+
+Base revision: `49c61ba76932abd5d6a40f7509ac3f56193dfea8`
+Target revision: `959cb107d4b95395dcd54d5c44f7509197b97114`
+
+- staged-skills: `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane staged-skills` — skills/do-work/CHANGELOG.md matched subtree skills
+
+## Heavy Verification Result
+
+Target revision: `959cb107d4b95395dcd54d5c44f7509197b97114`. Execution revision: `707c3368aab57a7a496f05d40b763fb24cf1029a`. Stored plan reproduced exactly.
+- staged-skills: exit 0, 29 seconds; executed (fingerprint_mismatch), no skip.
+
 ## Resume State
 
-The user requested `phandoff and commit everything` after the source was merged. This REQ remains claimed, merged and verified green; independent review has not started. Next: run orchestrated review against the retained range, resolve any actual findings, record Review/Lessons/Orientation, execute the planned heavy lane, and finalize with supplied commit `959cb107d4b95395dcd54d5c44f7509197b97114` and no release manifest (D-01). Finalization should close UR-130 and consolidate the already-completed REQ-622/REQ-623 with this record. Keep the clean, merged builder worktree until typed finalization success. The seven unrelated queued REQs are outside this run's UR-130 target.
-
-The user explicitly requested all remaining work committed for handoff. The durable builder handback and verification artifacts are included in that handoff commit. They are owner evidence outside the frozen source merge range; no queue metadata was committed on the builder branch.
+Independent review completed with 100% acceptance. Recomputed heavy verification plan reproduced the stored plan, and the staged-skills heavy lane passed (exit 0, 29s) at execution revision `707c3368aab57a7a496f05d40b763fb24cf1029a`. Proceeding to canonical finalization with supplied commit `959cb107d4b95395dcd54d5c44f7509197b97114` (no release manifest per D-01) to close UR-130, consolidate REQ-622, REQ-623, and REQ-624, remove retained worktree, refresh checkpoint, and run canonical cleanup.
 
 ## Timing
 
