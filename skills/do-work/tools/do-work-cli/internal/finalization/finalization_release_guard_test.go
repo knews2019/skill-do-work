@@ -156,3 +156,42 @@ func TestReleaseGuardDistinguishesFunctionalManifestEdits(t *testing.T) {
 		}
 	}
 }
+
+// Trailing comments do not stop a TOML table from ending the previous section.
+// Otherwise a dependency's version can be erased as the project's release version.
+func TestReleaseGuardKeepsCommentedTOMLSectionsDistinct(t *testing.T) {
+	for _, mode := range []string{ProvenanceSuppliedCommit, ProvenancePrimaryCommit} {
+		for _, dependencyChange := range []bool{true, false} {
+			name := "commented-project-version-only"
+			before := "[package] # project metadata\nname = \"demo\"\nversion = \"1.0.0\"\n[dependencies.dep]\nversion = \"2.0.0\"\n"
+			after := strings.Replace(before, "1.0.0", "1.0.1", 1)
+			if dependencyChange {
+				name = "commented-dependency-version"
+				before = "[package]\nname = \"demo\"\nversion = \"1.0.0\"\n[dependencies.dep] # runtime dependency\nversion = \"2.0.0\"\n"
+				after = strings.Replace(before, "2.0.0", "2.1.0", 1)
+			}
+			t.Run(mode+"/"+name, func(t *testing.T) {
+				repositoryRoot := newFinalizationRepository(t)
+				seedMaintainerSuite(t, repositoryRoot)
+				path := "skills/do-work/Cargo.toml"
+				writeFinalizationFile(t, repositoryRoot, path, before)
+				runFinalizationGit(t, repositoryRoot, "add", path)
+				runFinalizationGit(t, repositoryRoot, "commit", "-qm", "seed commented manifest")
+				writeFinalizationFile(t, repositoryRoot, path, after)
+				manifest := Manifest{ProvenanceMode: mode, CommitPaths: []string{path}}
+				if mode == ProvenanceSuppliedCommit {
+					runFinalizationGit(t, repositoryRoot, "add", path)
+					runFinalizationGit(t, repositoryRoot, "commit", "-qm", "edit commented manifest")
+					manifest.ImplementationHash = strings.TrimSpace(runFinalizationGit(t, repositoryRoot, "rev-parse", "HEAD"))
+				}
+				err := releaseShippedChangeError(repositoryRoot, manifest)
+				if dependencyChange && err != nil {
+					t.Fatalf("dependency version edit refused: %v", err)
+				}
+				if !dependencyChange && (err == nil || !strings.Contains(err.Error(), "RELEASE-WITHOUT-SHIPPED-CHANGE")) {
+					t.Fatalf("project version-only edit: expected release refusal, got %v", err)
+				}
+			})
+		}
+	}
+}
