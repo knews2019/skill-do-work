@@ -3,6 +3,9 @@ id: REQ-615
 title: 'Distinguish functional manifest edits from release metadata'
 status: claimed
 route: A
+re_review_at: 2026-09-13T13:06:29Z
+kb_status: pending
+remediation_at: 2026-09-13T13:02:42Z
 review_at: 2026-09-13T13:02:03Z
 builder_handback_at: 2026-09-13T12:57:49Z
 integration_at: 2026-09-13T12:57:49Z
@@ -29,6 +32,7 @@ depends_on: []
 write_set: ["skills/do-work/tools/do-work-cli/internal/finalization/finalization_release_guard.go", "skills/do-work/tools/do-work-cli/internal/releaseownership/release_ownership.go", "skills/do-work/tools/do-work-cli/internal/finalization/finalization_release_guard_test.go"]
 required_lessons: [_dev/primes/lessons-releases.md]
 claimed_at: 2026-09-13T12:49:50Z
+commit: 4cded81079d242a511cbc22a4c091f9252473744
 ---
 # Distinguish functional manifest edits from release metadata
 
@@ -119,7 +123,7 @@ Planning not required — focused correction using existing manifest content com
 - `skills/do-work/tools/do-work-cli/internal/finalization/finalization_release_guard.go` (modified) — compare functional manifest content at the supplied or pending provenance boundary.
 - `skills/do-work/tools/do-work-cli/internal/finalization/finalization_release_guard_test.go` (modified) — real Git cases for dependency, configuration and version-only edits.
 
-**What was done:** Manifest dependency and executable configuration changes qualify as shipped implementation; release-only edits remain excluded. Ownership API unchanged. Implemented by e74113f32c56d19bcb0025762f5c35e5086e0d6a, integrated in 680425d935a4a35d68c0a47d90cf2198584e4bc5; range b490d5ff5704ba925e70c2e29704d10b3cddaf40..680425d935a4a35d68c0a47d90cf2198584e4bc5.
+**What was done:** Manifest dependency and executable configuration changes qualify as shipped implementation; release-only edits remain excluded. Ownership API unchanged. Implemented by e74113f32c56d19bcb0025762f5c35e5086e0d6a, integrated in 4cded81079d242a511cbc22a4c091f9252473744; range b490d5ff5704ba925e70c2e29704d10b3cddaf40..4cded81079d242a511cbc22a4c091f9252473744.
 
 ## Decisions
 
@@ -129,20 +133,122 @@ D-01 (DECIDE & STATE): Keep edit classification in finalization and preserve own
 
 Builder read both listed primes, required release lessons and the touch-required CLI satellite; none missing. PLAN/APPLY/UNIFY completed. RED before code: TestReleaseGuardDistinguishesFunctionalManifestEdits failed in 4.254s; GREEN passed in 3.304s. Full finalization package passed in 48.361s, go vet and diff check passed. The repository gate below measures each test file separately against the 30s budget.
 
-## Qualification
-
-Canonical request-bound merged-range qualify gate satisfied with no findings. Reviewed substantive two-file change; both provenance readers reach manifest comparison, and releaseownership callers retain the existing predicate. P-A-U evidence complete.
-
-## Testing
-
-Merged focused probe passed (6.046s); canonical `_dev/tests/maintainer-verify.sh` passed directly via timed runner (137s). CLI slowest file 20.17s; all test-file budgets passed. Request-bound focused and green-gate records satisfied. Initial RED/GREEN is recorded in Implementation Evidence. Heavy plan selects CLI integrations, staged skills, updater and installer.
-
-## Review
-
-Overall: 76.25%
-Acceptance: Partial
-Independent reviewer confirmed core cases, but a real Git TOML dependency section with a trailing comment remained classified as the package section. Important / impact-user-visible: functional dependency update was refused in both provenance modes. Root chose immediate in-scope remediation rather than report-only closure.
-
 ## Remediation
 
 Strengthen real-Git regression for commented dependency/project headers and correct section recognition. Existing tests did not cover valid trailing section comments.
+
+## Review History
+
+First review Partial (76.25%): valid TOML dependency header comments confused section tracking. Remediation 922e59448b7a6b60b5eab1129f8a110aa34dd65d added four real Git RED cases and corrected section recognition; release guard tests GREEN in 6.915s, focused vet and diff checks pass. First merged gate passed in 137s. Cumulative range retains initial b490d5ff base; metadata-only cf4bd1bc inside it is explicitly orchestration evidence, not implementation.
+
+## Qualification
+
+Canonical cumulative merged-range qualifier satisfied without findings. Two source/test files remain the implementation scope; root bookkeeping inside cumulative range is excluded by contract. Header comments now transition TOML sections correctly.
+
+## Testing
+
+Canonical focused and green-gate records both satisfied at final merged revision. `_dev/tests/maintainer-verify.sh` executed directly via timed runner: PASS, 147s; every test file under30s, slowest CLI file24.14s. Focused release regressions and independent reviewer check passed (5.166s reviewer). RED/GREEN: original six functional cases failed before code; 18 expanded controls pass. Four commented-header cases failed before remediation and pass now. Heavy lanes selected below.
+
+## Review
+
+Overall: 97.5%
+Acceptance: Pass
+Independent re-review approves all four detailed requirements, verifies original TOML comment finding closed, and finds no open issues. Requirements100%, Code95%, Tests95%, Scope100%; Risk Low. Ownership restatement sweep clean. No follow-ups.
+
+## Lessons Learned
+
+**What worked:** Real Git cases bind manifest bytes to each provenance mode.
+**What did not:** Bare TOML header recognition lost section boundaries when headers had trailing comments; the paired dependency/project controls now pin it.
+**Worth knowing:** Ownership of a metadata-bearing file does not imply every edit in it is release-only. Dedicated metadata paths remain excluded; manifest changes require content comparison.
+
+## Orientation
+
+The release guard now accepts shipped dependency and executable-configuration changes in package manifests while continuing to refuse version-only or maintainer-only releases.
+
+## Discovered Tasks
+
+None outside the request. The review finding was fixed in scope.
+
+## Heavy Verification Plan
+
+```json
+{
+  "manifest_path": "_dev/tests/heavy-lanes.json",
+  "base_revision": "b490d5ff5704ba925e70c2e29704d10b3cddaf40",
+  "target_revision": "4cded81079d242a511cbc22a4c091f9252473744",
+  "forced_all": false,
+  "uncertain": false,
+  "changed_paths": [
+    "do-work/working/REQ-615-distinguish-functional-manifest-edits-from-release-metadata.md",
+    "skills/do-work/tools/do-work-cli/internal/finalization/finalization_release_guard.go",
+    "skills/do-work/tools/do-work-cli/internal/finalization/finalization_release_guard_test.go"
+  ],
+  "uncovered_paths": [],
+  "selected_lanes": [
+    {
+      "lane_id": "do-work-cli-integrations",
+      "command_argv": [
+        "env",
+        "GIT_CONFIG_NOSYSTEM=1",
+        "GIT_CONFIG_GLOBAL=/dev/null",
+        "bash",
+        "_dev/tests/maintainer-verify.sh",
+        "--heavy-lane",
+        "do-work-cli-integrations"
+      ],
+      "reasons": [
+        "skills/do-work/tools/do-work-cli/internal/finalization/finalization_release_guard.go matched subtree skills/do-work/tools/do-work-cli",
+        "skills/do-work/tools/do-work-cli/internal/finalization/finalization_release_guard_test.go matched subtree skills/do-work/tools/do-work-cli"
+      ]
+    },
+    {
+      "lane_id": "staged-skills",
+      "command_argv": [
+        "env",
+        "GIT_CONFIG_NOSYSTEM=1",
+        "GIT_CONFIG_GLOBAL=/dev/null",
+        "bash",
+        "_dev/tests/maintainer-verify.sh",
+        "--heavy-lane",
+        "staged-skills"
+      ],
+      "reasons": [
+        "skills/do-work/tools/do-work-cli/internal/finalization/finalization_release_guard.go matched subtree skills",
+        "skills/do-work/tools/do-work-cli/internal/finalization/finalization_release_guard_test.go matched subtree skills"
+      ]
+    },
+    {
+      "lane_id": "updater",
+      "command_argv": [
+        "env",
+        "GIT_CONFIG_NOSYSTEM=1",
+        "GIT_CONFIG_GLOBAL=/dev/null",
+        "bash",
+        "_dev/tests/maintainer-verify.sh",
+        "--heavy-lane",
+        "updater"
+      ],
+      "reasons": [
+        "skills/do-work/tools/do-work-cli/internal/finalization/finalization_release_guard.go matched subtree skills/do-work/tools/do-work-cli",
+        "skills/do-work/tools/do-work-cli/internal/finalization/finalization_release_guard_test.go matched subtree skills/do-work/tools/do-work-cli"
+      ]
+    },
+    {
+      "lane_id": "installer",
+      "command_argv": [
+        "env",
+        "GIT_CONFIG_NOSYSTEM=1",
+        "GIT_CONFIG_GLOBAL=/dev/null",
+        "bash",
+        "_dev/tests/maintainer-verify.sh",
+        "--heavy-lane",
+        "installer"
+      ],
+      "reasons": [
+        "skills/do-work/tools/do-work-cli/internal/finalization/finalization_release_guard.go matched subtree skills/do-work/tools/do-work-cli",
+        "skills/do-work/tools/do-work-cli/internal/finalization/finalization_release_guard_test.go matched subtree skills/do-work/tools/do-work-cli"
+      ]
+    }
+  ]
+}
+```
