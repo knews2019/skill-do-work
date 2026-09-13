@@ -172,11 +172,12 @@ func manifestWithoutReleaseVersion(path string, contents []byte) []byte {
 	// dependency versions that happen to equal the package's own version.
 	lines := strings.Split(string(contents), "\n")
 	section := ""
+	sectionHeader := regexp.MustCompile(`^\[(.*?)\][ \t]*(?:#.*)?$`)
 	versionAssignment := regexp.MustCompile(`^(version[ \t]*=[ \t]*)["'][^"']*["']([ \t]*(?:#.*)?)$`)
 	for index, line := range lines {
 		trimmed := strings.TrimSpace(line)
-		if strings.HasPrefix(trimmed, "[") && strings.HasSuffix(trimmed, "]") {
-			section = strings.TrimSpace(strings.TrimSuffix(strings.TrimPrefix(trimmed, "["), "]"))
+		if header := sectionHeader.FindStringSubmatch(trimmed); header != nil {
+			section = strings.TrimSpace(header[1])
 			continue
 		}
 		if filepath.Base(path) == "Cargo.toml" && section == "package" || filepath.Base(path) == "pyproject.toml" && (section == "project" || section == "tool.poetry") {
