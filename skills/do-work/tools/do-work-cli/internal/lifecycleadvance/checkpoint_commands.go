@@ -113,14 +113,19 @@ func checkpointSessionBytes(existing []byte, writtenAt, queueState string) []byt
 
 func stripCheckpointSummaries(body []byte) []byte {
 	lines := strings.Split(string(body), "\n")
-	headingLine, _, canonical := repositorymodel.CheckpointClaimBounds(lines)
+	headingLine, sectionEnd, canonical := repositorymodel.CheckpointClaimBounds(lines)
 	if !canonical {
 		// Legacy claims can occupy the whole body; do not discard their evidence.
 		return body
 	}
 	retainedLines := []string{}
 	dropSummary := false
-	for _, line := range lines[:headingLine] {
+	for lineIndex, line := range lines {
+		if lineIndex >= headingLine && lineIndex < sectionEnd {
+			retainedLines = append(retainedLines, line)
+			dropSummary = false
+			continue
+		}
 		heading := strings.TrimSuffix(line, "\r")
 		if strings.HasPrefix(heading, "## ") {
 			// These retired generated sections duplicated state without refreshing it.
@@ -130,7 +135,7 @@ func stripCheckpointSummaries(body []byte) []byte {
 			retainedLines = append(retainedLines, line)
 		}
 	}
-	return []byte(strings.Join(append(retainedLines, lines[headingLine:]...), "\n"))
+	return []byte(strings.Join(retainedLines, "\n"))
 }
 
 func setCheckpointScalar(frontmatter, name, value string) string {

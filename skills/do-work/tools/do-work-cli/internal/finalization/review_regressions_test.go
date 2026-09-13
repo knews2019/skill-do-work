@@ -208,3 +208,41 @@ func TestReviewRecoveryRecognizesTrackedAndNewFilesBeforePrimaryPhasePersisted(t
 		t.Fatalf("new implementation missing from recovered primary: %q", got)
 	}
 }
+
+// A display preference or pathspec-shaped filename must not invalidate an identical commit.
+func TestPreparedCommitFingerprintUsesStablePrefixesAndLiteralPaths(t *testing.T) {
+	for _, scenario := range []string{"ordinary", "mnemonic prefixes", "literal path"} {
+		t.Run(scenario, func(t *testing.T) {
+			if scenario == "literal path" && runtime.GOOS == "windows" {
+				t.Skip("colon-prefixed filenames are unavailable on Windows")
+			}
+			root, manifestPath := seedPlannedFinalization(t, ProvenancePrimaryCommit)
+			if scenario == "mnemonic prefixes" {
+				runFinalizationGit(t, root, "config", "diff.mnemonicPrefix", "true")
+			}
+			if scenario == "literal path" {
+				contents, err := os.ReadFile(manifestPath)
+				if err != nil {
+					t.Fatal(err)
+				}
+				var manifest Manifest
+				if err := json.Unmarshal(contents, &manifest); err != nil {
+					t.Fatal(err)
+				}
+				manifest.CommitPaths = append(manifest.CommitPaths, ":(glob)file.txt")
+				contents, err = json.Marshal(manifest)
+				if err != nil {
+					t.Fatal(err)
+				}
+				if err := os.WriteFile(manifestPath, contents, 0o600); err != nil {
+					t.Fatal(err)
+				}
+				writeFinalizationFile(t, root, ":(glob)file.txt", "new implementation\n")
+			}
+			result := handleFinalize(commandruntime.ExecutionContext{RepositoryRoot: root}, []string{"--manifest", manifestPath})
+			if result.Outcome != resultmodel.OutcomeSuccess {
+				t.Fatalf("valid commit refused: outcome=%s findings=%+v", result.Outcome, result.Findings)
+			}
+		})
+	}
+}

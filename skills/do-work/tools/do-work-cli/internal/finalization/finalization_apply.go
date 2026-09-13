@@ -538,7 +538,7 @@ func commitSafety(repositoryRoot string, journal *Journal) (string, string, []st
 }
 
 func verifyPreparedCommit(ctx context.Context, repositoryRoot string, journal *Journal, commitSHA string) error {
-	arguments := append([]string{"-C", repositoryRoot, "diff", "--binary", journal.PreparedHead, commitSHA, "--"}, journal.EffectiveCommitPaths...)
+	arguments := append([]string{"-C", repositoryRoot, "--literal-pathspecs", "diff", "--src-prefix=a/", "--dst-prefix=b/", "--binary", journal.PreparedHead, commitSHA, "--"}, journal.EffectiveCommitPaths...)
 	diff, err := exec.CommandContext(ctx, "git", arguments...).Output()
 	if err != nil {
 		return fmt.Errorf("read primary commit content: %w", err)

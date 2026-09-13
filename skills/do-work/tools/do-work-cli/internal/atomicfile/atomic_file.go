@@ -93,20 +93,22 @@ func CreateExclusive(filePath string, fileContents []byte, fileMode fs.FileMode)
 		return fmt.Errorf("opening exclusive-file directory %s: %w", parentDirectory, rootError)
 	}
 	defer directoryRoot.Close()
-	return CreateExclusiveAt(directoryRoot, filepath.Base(filePath), fileContents, fileMode)
+	_, err := CreateExclusiveAt(directoryRoot, filepath.Base(filePath), fileContents, fileMode)
+	return err
 }
 
-// CreateExclusiveAt creates a file relative to an already-open rooted directory.
-func CreateExclusiveAt(directoryRoot *os.Root, fileName string, fileContents []byte, fileMode fs.FileMode) error {
+// CreateExclusiveAt returns the identity from the exclusively created file handle.
+// Callers can bind rollback to that object without reopening its pathname.
+func CreateExclusiveAt(directoryRoot *os.Root, fileName string, fileContents []byte, fileMode fs.FileMode) (fs.FileInfo, error) {
 	if directoryRoot == nil {
-		return fmt.Errorf("rooted directory is required")
+		return nil, fmt.Errorf("rooted directory is required")
 	}
 	publicationMode := completeFileMode(fileMode)
 	// OpenFile accepts creation permissions only. Apply the complete mode after
 	// writing so the content change cannot clear setuid or setgid.
 	createdFile, createError := directoryRoot.OpenFile(fileName, os.O_WRONLY|os.O_CREATE|os.O_EXCL, publicationMode.Perm())
 	if createError != nil {
-		return fmt.Errorf("creating exclusive file %s: %w", fileName, createError)
+		return nil, fmt.Errorf("creating exclusive file %s: %w", fileName, createError)
 	}
 	keepFile := false
 	defer func() {
@@ -116,21 +118,26 @@ func CreateExclusiveAt(directoryRoot *os.Root, fileName string, fileContents []b
 	}()
 	if _, writeError := createdFile.Write(fileContents); writeError != nil {
 		createdFile.Close()
-		return fmt.Errorf("writing exclusive file %s: %w", fileName, writeError)
+		return nil, fmt.Errorf("writing exclusive file %s: %w", fileName, writeError)
 	}
 	if chmodError := createdFile.Chmod(publicationMode); chmodError != nil {
 		createdFile.Close()
-		return fmt.Errorf("preserving permissions for exclusive file %s: %w", fileName, chmodError)
+		return nil, fmt.Errorf("preserving permissions for exclusive file %s: %w", fileName, chmodError)
 	}
 	if syncError := createdFile.Sync(); syncError != nil {
 		createdFile.Close()
-		return fmt.Errorf("syncing exclusive file %s: %w", fileName, syncError)
+		return nil, fmt.Errorf("syncing exclusive file %s: %w", fileName, syncError)
+	}
+	createdInfo, statError := createdFile.Stat()
+	if statError != nil {
+		createdFile.Close()
+		return nil, fmt.Errorf("reading exclusive file identity %s: %w", fileName, statError)
 	}
 	if closeError := createdFile.Close(); closeError != nil {
-		return fmt.Errorf("closing exclusive file %s: %w", fileName, closeError)
+		return nil, fmt.Errorf("closing exclusive file %s: %w", fileName, closeError)
 	}
 	keepFile = true
-	return nil
+	return createdInfo, nil
 }
 
 func completeFileMode(fileMode fs.FileMode) fs.FileMode {

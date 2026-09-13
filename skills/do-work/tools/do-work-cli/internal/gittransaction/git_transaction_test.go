@@ -449,7 +449,8 @@ func TestRollbackWithoutRootHandleUnstagesRestoresFromHeadAndReportsTheRest(t *t
 		if err := recorder.RecordTouched("created.txt"); err != nil {
 			return err
 		}
-		// Staged on purpose, so the unstage the Git-side half owes is observable.
+		// Simulate the transaction staging its owned creation before rollback loses its root.
+		recorder.stagingPaths = stringSet([]string{"created.txt"})
 		runFixtureGit(t, repositoryRoot, "add", "--", "created.txt")
 		if err := os.Mkdir(filepath.Join(repositoryRoot, "newdir"), 0o755); err != nil {
 			return err
@@ -1425,5 +1426,41 @@ func TestCreatedTargetRemovedByTheTransactionRollsBackCleanly(t *testing.T) {
 	}
 	if status := runFixtureGit(t, repositoryRoot, "status", "--porcelain"); status != "" {
 		t.Fatalf("rollback left repository state behind: %q", status)
+	}
+}
+
+func TestCreationIntentPreservesForeignIndexBeforeTransactionStaging(t *testing.T) {
+	for _, rootAvailable := range []bool{true, false} {
+		name := "root available"
+		if !rootAvailable {
+			name = "root unavailable"
+		}
+		t.Run(name, func(t *testing.T) {
+			repositoryRoot := newRepository(t)
+			writeFile(t, repositoryRoot, "seed.txt", "seed\n")
+			commitAll(t, repositoryRoot, "seed")
+			if !rootAvailable {
+				previous := openRollbackRoot
+				openRollbackRoot = func(string) (*os.Root, error) { return nil, os.ErrPermission }
+				t.Cleanup(func() { openRollbackRoot = previous })
+			}
+			result := ExecuteTransaction(t.Context(), TransactionOptions{RepositoryRoot: repositoryRoot, TargetPaths: []string{"destination.txt"}}, func(recorder *MutationRecorder) error {
+				if err := recorder.RecordCreationIntent("destination.txt"); err != nil {
+					return err
+				}
+				writeFile(t, repositoryRoot, "destination.txt", "foreign\n")
+				runFixtureGit(t, repositoryRoot, "add", "--", "destination.txt")
+				return os.ErrExist
+			})
+			if staged := runFixtureGit(t, repositoryRoot, "diff", "--cached", "--name-only"); staged != "destination.txt" {
+				t.Errorf("foreign staging removed: %q", staged)
+			}
+			if contents, err := os.ReadFile(filepath.Join(repositoryRoot, "destination.txt")); err != nil || string(contents) != "foreign\n" {
+				t.Errorf("foreign contents changed: %q %v", contents, err)
+			}
+			if result.Rollback.Status != resultmodel.RollbackIncomplete {
+				t.Errorf("foreign state must remain unresolved: %+v", result.Rollback)
+			}
+		})
 	}
 }

@@ -98,6 +98,7 @@ type MutationRecorder struct {
 	publishedDirectories      map[string]os.FileInfo
 	createdObjects            map[string]createdObjectIdentity
 	dirtyTrackedPaths         map[string]struct{}
+	stagingPaths              map[string]struct{}
 }
 
 // createdObjectIdentity binds a created path to the exact filesystem object this
@@ -310,8 +311,8 @@ func createdObjectStillOwned(root *os.Root, path string, identity createdObjectI
 }
 
 // RecordCreationIntent makes an intended publication visible to rollback without
-// claiming any object already at that path. RecordTouched binds the identity only
-// after exclusive publication succeeds.
+// claiming any object already at that path. RecordPublishedCreation supplies the
+// identity obtained from the successful exclusive creation.
 func (recorder *MutationRecorder) RecordCreationIntent(path string) error {
 	normalized, err := normalizeTargetPath(path)
 	if err != nil {
@@ -326,6 +327,25 @@ func (recorder *MutationRecorder) RecordCreationIntent(path string) error {
 	recorder.touchedPaths[normalized] = struct{}{}
 	recorder.createdPaths[normalized] = struct{}{}
 	return nil
+}
+
+// RecordPublishedCreation binds rollback to the handle identity returned by exclusive
+// creation, even if a foreign object has replaced its pathname before recording.
+func (recorder *MutationRecorder) RecordPublishedCreation(path string, createdInfo os.FileInfo, contents []byte) error {
+	if err := recorder.RecordCreationIntent(path); err != nil {
+		return err
+	}
+	if createdInfo == nil || !createdInfo.Mode().IsRegular() {
+		return fmt.Errorf("created target %q has no regular-file identity", path)
+	}
+	normalized, _ := normalizeTargetPath(path)
+	recorder.createdObjects[normalized] = createdObjectIdentity{info: createdInfo, digest: sha256.Sum256(contents)}
+	root, err := os.OpenRoot(recorder.repositoryRoot)
+	if err != nil {
+		return err
+	}
+	defer root.Close()
+	return recorder.revalidateCreatedObjects(root, "")
 }
 
 func (recorder *MutationRecorder) RecordCreated(path string) error {
@@ -642,6 +662,8 @@ func ExecuteTransaction(ctx context.Context, options TransactionOptions, mutate 
 	if len(commitPaths) == 0 {
 		return rollbackFailure(ctx, result, repositoryRoot, states, recorder, FailureCommit, errors.New("the transaction changed no paths Git can commit"))
 	}
+	// Git add can partially stage before failing; remember its exact scope first.
+	recorder.stagingPaths = stringSet(commitPaths)
 	if _, err := runGit(ctx, repositoryRoot, append([]string{"add", "-A", "--"}, commitPaths...)...); err != nil {
 		return rollbackFailure(ctx, result, repositoryRoot, states, recorder, FailureCommit, err)
 	}
@@ -1115,8 +1137,10 @@ func rollbackWithRoot(ctx context.Context, root *os.Root, repositoryRoot string,
 		if restoredByTargetLoop(states, path) {
 			continue
 		}
-		if _, err := runGit(ctx, repositoryRoot, "rm", "--cached", "--ignore-unmatch", "--", path); err != nil {
-			rollback.Errors = append(rollback.Errors, fmt.Sprintf("unstage created target %s: %v", path, err))
+		if _, staged := recorder.stagingPaths[path]; staged {
+			if _, err := runGit(ctx, repositoryRoot, "rm", "--cached", "--ignore-unmatch", "--", path); err != nil {
+				rollback.Errors = append(rollback.Errors, fmt.Sprintf("unstage created target %s: %v", path, err))
+			}
 		}
 		published, recorded := recorder.publishedTracked[path]
 		if recorded && !trackedPublicationStillOwned(root, path, published) {
@@ -1214,8 +1238,10 @@ func rollbackWithoutRoot(ctx context.Context, repositoryRoot string, states []ta
 		if restoredByTargetLoop(states, path) {
 			continue
 		}
-		if _, err := runGit(ctx, repositoryRoot, "rm", "--cached", "--ignore-unmatch", "--", path); err != nil {
-			rollback.Errors = append(rollback.Errors, fmt.Sprintf("unstage created target %s: %v", path, err))
+		if _, staged := recorder.stagingPaths[path]; staged {
+			if _, err := runGit(ctx, repositoryRoot, "rm", "--cached", "--ignore-unmatch", "--", path); err != nil {
+				rollback.Errors = append(rollback.Errors, fmt.Sprintf("unstage created target %s: %v", path, err))
+			}
 		}
 		leftInPlace("created target", path)
 	}

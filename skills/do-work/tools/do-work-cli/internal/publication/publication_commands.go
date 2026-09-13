@@ -169,11 +169,12 @@ func ApplyPlan(ctx context.Context, plan PublicationPlan, dryRun, commit bool) r
 				if recordError := recorder.RecordCreationIntent(mutation.Path); recordError != nil {
 					return recordError
 				}
-				if createError := createRootedFile(plan.RepositoryRoot, mutation.Path, mutation.Contents, mutation.Mode); createError != nil {
+				createdInfo, createError := createRootedFile(plan.RepositoryRoot, mutation.Path, mutation.Contents, mutation.Mode)
+				if createError != nil {
 					return createError
 				}
 				beforePublicationRecording(mutationIndex, mutation)
-				if recordError := recorder.RecordTouched(mutation.Path); recordError != nil {
+				if recordError := recorder.RecordPublishedCreation(mutation.Path, createdInfo, mutation.Contents); recordError != nil {
 					return recordError
 				}
 			case MutationReplace:
@@ -199,11 +200,12 @@ func ApplyPlan(ctx context.Context, plan PublicationPlan, dryRun, commit bool) r
 				if len(mutation.Contents) > 0 {
 					expectedMoveBytes = mutation.Contents
 				}
-				if moveError := moveRootedFile(plan.RepositoryRoot, mutation.Path, mutation.DestinationPath, expectedMoveBytes); moveError != nil {
+				createdInfo, moveError := moveRootedFile(plan.RepositoryRoot, mutation.Path, mutation.DestinationPath, expectedMoveBytes)
+				if moveError != nil {
 					return moveError
 				}
 				beforePublicationRecording(mutationIndex, mutation)
-				if recordError := recorder.RecordTouched(mutation.DestinationPath); recordError != nil {
+				if recordError := recorder.RecordPublishedCreation(mutation.DestinationPath, createdInfo, expectedMoveBytes); recordError != nil {
 					return recordError
 				}
 				if recordError := recorder.RecordTouched(mutation.Path); recordError != nil {
@@ -247,67 +249,69 @@ func ApplyPlan(ctx context.Context, plan PublicationPlan, dryRun, commit bool) r
 	return result
 }
 
-func createRootedFile(repositoryRoot, relativePath string, contents []byte, mode os.FileMode) error {
+func createRootedFile(repositoryRoot, relativePath string, contents []byte, mode os.FileMode) (os.FileInfo, error) {
 	repositoryHandle, rootError := os.OpenRoot(repositoryRoot)
 	if rootError != nil {
-		return rootError
+		return nil, rootError
 	}
 	defer repositoryHandle.Close()
 	parentPath := filepath.Dir(filepath.FromSlash(relativePath))
 	parentRoot, beforeInfo, openError := openRootedParent(repositoryHandle, parentPath)
 	if openError != nil {
-		return openError
+		return nil, openError
 	}
 	defer parentRoot.Close()
-	if createError := atomicfile.CreateExclusiveAt(parentRoot, filepath.Base(relativePath), contents, mode); createError != nil {
-		return createError
+	createdInfo, createError := atomicfile.CreateExclusiveAt(parentRoot, filepath.Base(relativePath), contents, mode)
+	if createError != nil {
+		return nil, createError
 	}
 	afterInfo, afterError := repositoryHandle.Lstat(parentPath)
 	if afterError != nil || !afterInfo.IsDir() || !os.SameFile(beforeInfo, afterInfo) {
 		_ = parentRoot.Remove(filepath.Base(relativePath))
-		return fmt.Errorf("destination parent identity changed: %s", parentPath)
+		return nil, fmt.Errorf("destination parent identity changed: %s", parentPath)
 	}
-	return nil
+	return createdInfo, nil
 }
 
-func moveRootedFile(repositoryRoot, sourcePath, destinationPath string, expectedBytes []byte) error {
+func moveRootedFile(repositoryRoot, sourcePath, destinationPath string, expectedBytes []byte) (os.FileInfo, error) {
 	repositoryHandle, rootError := os.OpenRoot(repositoryRoot)
 	if rootError != nil {
-		return rootError
+		return nil, rootError
 	}
 	defer repositoryHandle.Close()
 	sourceParentPath := filepath.Dir(filepath.FromSlash(sourcePath))
 	sourceParent, sourceParentInfo, sourceParentError := openRootedParent(repositoryHandle, sourceParentPath)
 	if sourceParentError != nil {
-		return sourceParentError
+		return nil, sourceParentError
 	}
 	defer sourceParent.Close()
 	destinationParentPath := filepath.Dir(filepath.FromSlash(destinationPath))
 	destinationParent, destinationParentInfo, destinationParentError := openRootedParent(repositoryHandle, destinationParentPath)
 	if destinationParentError != nil {
-		return destinationParentError
+		return nil, destinationParentError
 	}
 	defer destinationParent.Close()
 	sourceName := filepath.Base(sourcePath)
 	destinationName := filepath.Base(destinationPath)
 	sourceFile, openError := sourceParent.Open(sourceName)
 	if openError != nil {
-		return openError
+		return nil, openError
 	}
 	defer sourceFile.Close()
 	sourceInfo, statError := sourceFile.Stat()
 	if statError != nil || !sourceInfo.Mode().IsRegular() {
-		return fmt.Errorf("move source is not a regular file: %s", sourcePath)
+		return nil, fmt.Errorf("move source is not a regular file: %s", sourcePath)
 	}
 	contents, readError := sourceParent.ReadFile(sourceName)
 	if readError != nil || !bytes.Equal(contents, expectedBytes) {
-		return fmt.Errorf("move source changed: %s", sourcePath)
+		return nil, fmt.Errorf("move source changed: %s", sourcePath)
 	}
 	if !rootedParentIdentity(repositoryHandle, sourceParentPath, sourceParentInfo) || !rootedParentIdentity(repositoryHandle, destinationParentPath, destinationParentInfo) {
-		return fmt.Errorf("move parent identity changed")
+		return nil, fmt.Errorf("move parent identity changed")
 	}
-	if createError := atomicfile.CreateExclusiveAt(destinationParent, destinationName, contents, sourceInfo.Mode()); createError != nil {
-		return createError
+	createdInfo, createError := atomicfile.CreateExclusiveAt(destinationParent, destinationName, contents, sourceInfo.Mode())
+	if createError != nil {
+		return nil, createError
 	}
 	keepDestination := false
 	defer func() {
@@ -316,20 +320,20 @@ func moveRootedFile(repositoryRoot, sourcePath, destinationPath string, expected
 		}
 	}()
 	if !rootedParentIdentity(repositoryHandle, destinationParentPath, destinationParentInfo) {
-		return fmt.Errorf("destination parent identity changed: %s", destinationParentPath)
+		return nil, fmt.Errorf("destination parent identity changed: %s", destinationParentPath)
 	}
 	currentInfo, currentError := sourceParent.Lstat(sourceName)
 	if currentError != nil || !os.SameFile(sourceInfo, currentInfo) {
-		return fmt.Errorf("move source identity changed: %s", sourcePath)
+		return nil, fmt.Errorf("move source identity changed: %s", sourcePath)
 	}
 	if !rootedParentIdentity(repositoryHandle, sourceParentPath, sourceParentInfo) {
-		return fmt.Errorf("source parent identity changed: %s", sourceParentPath)
+		return nil, fmt.Errorf("source parent identity changed: %s", sourceParentPath)
 	}
 	if removeError := sourceParent.Remove(sourceName); removeError != nil {
-		return removeError
+		return nil, removeError
 	}
 	keepDestination = true
-	return nil
+	return createdInfo, nil
 }
 
 func replaceRootedFile(repositoryRoot, path string, expected, contents []byte) error {
@@ -362,7 +366,7 @@ func replaceRootedFile(repositoryRoot, path string, expected, contents []byte) e
 	if nameError != nil {
 		return nameError
 	}
-	if createError := atomicfile.CreateExclusiveAt(parentRoot, temporaryName, contents, targetInfo.Mode()); createError != nil {
+	if _, createError := atomicfile.CreateExclusiveAt(parentRoot, temporaryName, contents, targetInfo.Mode()); createError != nil {
 		return createError
 	}
 	defer parentRoot.Remove(temporaryName)

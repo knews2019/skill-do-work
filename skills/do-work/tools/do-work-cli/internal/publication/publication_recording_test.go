@@ -1,7 +1,9 @@
 package publication
 
 import (
+	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -27,10 +29,15 @@ func TestPublicationCreationIntentPreservesForeignDestinationAfterPreflight(t *t
 			previous := beforePublicationMutation
 			beforePublicationMutation = func(_ int, _ PlannedMutation) error {
 				writeFixture(t, repositoryRoot, destinationPath, []byte("foreign destination\n"), 0o644)
+				runGitFixture(t, repositoryRoot, "add", "--", destinationPath)
 				return nil
 			}
 			t.Cleanup(func() { beforePublicationMutation = previous })
 			result := ApplyPlan(t.Context(), plan, false, false)
+			staged, err := exec.Command("git", "-C", repositoryRoot, "diff", "--cached", "--name-only").Output()
+			if err != nil || string(staged) != destinationPath+"\n" {
+				t.Errorf("foreign staged entry changed: staged=%q err=%v", staged, err)
+			}
 			if contents, err := os.ReadFile(filepath.Join(repositoryRoot, destinationPath)); err != nil || string(contents) != "foreign destination\n" {
 				t.Errorf("creation intent claimed and removed a foreign destination: contents=%q, err=%v", contents, err)
 			}
@@ -51,7 +58,7 @@ func TestPublicationCreationIntentPreservesForeignDestinationAfterPreflight(t *t
 
 func TestPublicationRecordingFailureKeepsCreatedTargetsVisibleToRollback(t *testing.T) {
 	for _, mutationKind := range []MutationKind{MutationCreate, MutationMove} {
-		for _, failureStage := range []string{"earlier object replaced", "published identity unavailable"} {
+		for _, failureStage := range []string{"earlier object replaced", "published destination replaced"} {
 			t.Run(string(mutationKind)+"/"+failureStage, func(t *testing.T) {
 				repositoryRoot := initializedGitRepository(t)
 				const firstPath = "a-first.txt"
@@ -94,7 +101,7 @@ func TestPublicationRecordingFailureKeepsCreatedTargetsVisibleToRollback(t *test
 						writeFixture(t, repositoryRoot, firstPath, []byte("foreign replacement\n"), 0o644)
 						return
 					}
-					// A directory cannot be identity-recorded as the file just published.
+					// The recorded file identity must not adopt a replacement directory.
 					if err := os.Remove(publishedPath); err != nil {
 						t.Fatal(err)
 					}
@@ -123,13 +130,58 @@ func TestPublicationRecordingFailureKeepsCreatedTargetsVisibleToRollback(t *test
 					if contents, err := os.ReadFile(filepath.Join(repositoryRoot, destinationPath, "foreign.txt")); err != nil || string(contents) != "foreign directory\n" {
 						t.Fatalf("unknown-ownership replacement was not preserved: contents=%q, err=%v", contents, err)
 					}
-					if !strings.Contains(rollbackErrors, "created target was not identity-recorded; preserved object: "+destinationPath) {
-						t.Errorf("rollback did not identify unknown destination ownership: %s", rollbackErrors)
+					if !strings.Contains(rollbackErrors, "created target changed after created-object capture; preserved replacement: "+destinationPath) {
+						t.Errorf("rollback did not identify the destination replacement: %s", rollbackErrors)
 					}
 				}
 				if mutationKind == MutationMove {
 					if contents, err := os.ReadFile(filepath.Join(repositoryRoot, sourcePath)); err != nil || string(contents) != string(publishedBytes) {
 						t.Errorf("move source was not restored: contents=%q, err=%v", contents, err)
+					}
+				}
+			})
+		}
+	}
+}
+
+func TestPublicationRecordingPreservesForeignRegularReplacements(t *testing.T) {
+	for _, kind := range []MutationKind{MutationCreate, MutationMove} {
+		for _, foreignContents := range []string{"our publication\n", "foreign replacement\n"} {
+			t.Run(string(kind)+"/"+strings.TrimSpace(foreignContents), func(t *testing.T) {
+				root := initializedGitRepository(t)
+				published := []byte("our publication\n")
+				mutation := PlannedMutation{Kind: kind, Path: "destination.txt", Contents: published, Mode: 0o644}
+				if kind == MutationMove {
+					writeFixture(t, root, "source.txt", published, 0o644)
+					runGitFixture(t, root, "add", "source.txt")
+					runGitFixture(t, root, "commit", "-qm", "source")
+					mutation = PlannedMutation{Kind: kind, Path: "source.txt", DestinationPath: "destination.txt", ExpectedBytes: published}
+				}
+				plan := finalizePlan(PublicationPlan{Operation: OperationRelease, RepositoryRoot: root, Mutations: []PlannedMutation{mutation}})
+				before, after := beforePublicationRecording, afterPublicationMutation
+				t.Cleanup(func() { beforePublicationRecording, afterPublicationMutation = before, after })
+				beforePublicationRecording = func(_ int, _ PlannedMutation) {
+					// Keep the original inode alive so even equal bytes are a different object.
+					if err := os.Rename(filepath.Join(root, "destination.txt"), filepath.Join(root, "held-original.txt")); err != nil {
+						t.Fatal(err)
+					}
+					writeFixture(t, root, "destination.txt", []byte(foreignContents), 0o644)
+				}
+				if foreignContents == string(published) {
+					afterPublicationMutation = func(_ int, _ PlannedMutation) error { return fmt.Errorf("later mutation failed") }
+				}
+				result := ApplyPlan(t.Context(), plan, false, false)
+				contents, err := os.ReadFile(filepath.Join(root, "destination.txt"))
+				if err != nil || string(contents) != foreignContents {
+					t.Errorf("foreign replacement lost: contents=%q err=%v", contents, err)
+				}
+				if result.Outcome != resultmodel.OutcomeRisk || result.Rollback.Status != resultmodel.RollbackIncomplete {
+					t.Errorf("foreign replacement reported restored: outcome=%s rollback=%+v", result.Outcome, result.Rollback)
+				}
+				if kind == MutationMove {
+					contents, err := os.ReadFile(filepath.Join(root, "source.txt"))
+					if err != nil || string(contents) != string(published) {
+						t.Errorf("move source not restored: contents=%q err=%v", contents, err)
 					}
 				}
 			})

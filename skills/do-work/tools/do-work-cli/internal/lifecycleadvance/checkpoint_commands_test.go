@@ -109,3 +109,26 @@ func TestAdvanceCheckpointPreservesLegacyClaimDiscovery(t *testing.T) {
 		t.Fatalf("refresh changed legacy body:\n%s", contents)
 	}
 }
+
+func TestCheckpointSummaryRemovalDoesNotDependOnSectionOrder(t *testing.T) {
+	claims := "## In Progress (interrupted)\n\n- REQ-800: foreign — writer: other:/checkout\n  keep foreign detail\n\n"
+	notes := "## Session Notes\n\nKeep this authored note.\n"
+	summaries := "## Completed This Session\n\n- REQ-483: old completion\n\n## Still Queued\n\n- 28 pending requests remain; REQ-485 next.\n\n"
+	for _, order := range []string{"before claims", "after claims"} {
+		t.Run(order, func(t *testing.T) {
+			body := summaries + claims + notes
+			if order == "after claims" {
+				body = claims + summaries + notes
+			}
+			refreshed := string(checkpointSessionBytes([]byte("# Session Checkpoint\n\n"+body), "2026-09-13T12:00:00Z", "[1 pending]"))
+			if !strings.Contains(refreshed, claims) || !strings.Contains(refreshed, notes) || !strings.Contains(refreshed, "queue_state: [1 pending]") {
+				t.Fatalf("refresh lost claims or notes:\n%s", refreshed)
+			}
+			for _, stale := range []string{"## Completed This Session", "## Still Queued", "REQ-483", "28 pending"} {
+				if strings.Contains(refreshed, stale) {
+					t.Errorf("refresh retained %q:\n%s", stale, refreshed)
+				}
+			}
+		})
+	}
+}

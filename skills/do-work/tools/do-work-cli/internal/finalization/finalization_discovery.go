@@ -1610,7 +1610,7 @@ func preparedCommitIdentity(repositoryRoot string, paths []string) (string, stri
 	if _, err := indexGit(append([]string{"add", "-A", "--"}, stagePaths...)...); err != nil {
 		return "", "", err
 	}
-	diff, err := indexGit(append([]string{"diff", "--cached", "--binary", head, "--"}, paths...)...)
+	diff, err := indexGit(append([]string{"diff", "--src-prefix=a/", "--dst-prefix=b/", "--cached", "--binary", head, "--"}, paths...)...)
 	if err != nil {
 		return "", "", err
 	}

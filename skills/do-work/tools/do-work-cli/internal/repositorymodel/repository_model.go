@@ -421,7 +421,7 @@ func ReserveNextRequestID(snapshot *RepositorySnapshot) (ReservationFile, error)
 		markerName := formatRequestID(candidateNumber)
 		markerPath := filepath.Join(reservationDirectory, markerName)
 		beforeReservationMarkerCreate(reservationDirectory)
-		createError := atomicfile.CreateExclusiveAt(reservationStore.directoryRoot, markerName, nil, 0o644)
+		_, createError := atomicfile.CreateExclusiveAt(reservationStore.directoryRoot, markerName, nil, 0o644)
 		if createError == nil {
 			if !reservationStore.isCurrent() {
 				reservationStore.directoryRoot.Remove(markerName)
