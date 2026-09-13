@@ -63,6 +63,68 @@ func TestReleaseRefusedWhenTheImplementationShipsNothing(t *testing.T) {
 	}
 }
 
+// Display-quoted or whitespace-trimmed Git paths can refuse shipped files or
+// mistake an outside-root filename for a shipped one.
+func TestReleaseGuardPreservesExactSuppliedCommitPaths(t *testing.T) {
+	for _, testCase := range []struct {
+		name, path     string
+		initial, merge bool
+		refused        bool
+	}{
+		{name: "ordinary", path: "skills/do-work/docs/plain.md"},
+		{name: "unicode", path: "skills/do-work/docs/café.md"},
+		{name: "tab", path: "skills/do-work/docs/tab\tname.md"},
+		{name: "newline", path: "skills/do-work/docs/line\nbreak.md"},
+		{name: "quote", path: "skills/do-work/docs/quote\"name.md"},
+		{name: "leaf spaces", path: "skills/do-work/docs/ edge.md "},
+		{name: "leading path space", path: " skills/do-work/docs/not-shipped.md", refused: true},
+		{name: "initial commit", path: "skills/do-work/docs/root\nchange.md", initial: true},
+		{name: "merge commit", path: "skills/do-work/docs/merged\tchange.md", merge: true},
+	} {
+		t.Run(testCase.name, func(t *testing.T) {
+			repositoryRoot := newFinalizationRepository(t)
+			runFinalizationGit(t, repositoryRoot, "config", "core.quotePath", "true")
+			if !testCase.initial {
+				seedMaintainerSuite(t, repositoryRoot)
+			}
+			if testCase.merge {
+				runFinalizationGit(t, repositoryRoot, "checkout", "-q", "-b", "shipped-change")
+			}
+			writeFinalizationFile(t, repositoryRoot, testCase.path, "shipped content\n")
+			runFinalizationGit(t, repositoryRoot, "add", "--", testCase.path)
+			runFinalizationGit(t, repositoryRoot, "commit", "-qm", "special filename")
+			hash := strings.TrimSpace(runFinalizationGit(t, repositoryRoot, "rev-parse", "HEAD"))
+			if testCase.initial {
+				// Topology belongs to HEAD, while this initial implementation must
+				// contain only the special path so metadata cannot make it pass.
+				seedMaintainerSuite(t, repositoryRoot)
+			}
+			if testCase.merge {
+				runFinalizationGit(t, repositoryRoot, "checkout", "-q", "-")
+				commitTouching(t, repositoryRoot, "_dev/tests/main-only.md")
+				runFinalizationGit(t, repositoryRoot, "merge", "-q", "--no-ff", "-m", "merge shipped change", "shipped-change")
+				hash = strings.TrimSpace(runFinalizationGit(t, repositoryRoot, "rev-parse", "HEAD"))
+			}
+			manifest := Manifest{ProvenanceMode: ProvenanceSuppliedCommit, ImplementationHash: hash}
+			paths, err := implementationPathsForRelease(repositoryRoot, manifest)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if len(paths) != 1 || paths[0] != testCase.path {
+				t.Errorf("implementation paths = %q, want [%q]", paths, testCase.path)
+			}
+			err = releaseShippedChangeError(repositoryRoot, manifest)
+			if testCase.refused {
+				if err == nil || !strings.Contains(err.Error(), "RELEASE-WITHOUT-SHIPPED-CHANGE") {
+					t.Fatalf("outside-root path: expected release refusal, got %v", err)
+				}
+			} else if err != nil {
+				t.Fatalf("shipped path %q refused: %v", testCase.path, err)
+			}
+		})
+	}
+}
+
 // A merge is judged by what it brought in (its first-parent diff), not by the union
 // across both parents, which would credit the merge with main's own shipped changes.
 func TestReleaseGuardReadsAMergeByItsFirstParent(t *testing.T) {
