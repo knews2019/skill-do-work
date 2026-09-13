@@ -3,6 +3,9 @@ id: REQ-615
 title: 'Distinguish functional manifest edits from release metadata'
 status: claimed
 route: A
+review_at: 2026-09-13T13:02:03Z
+builder_handback_at: 2026-09-13T12:57:49Z
+integration_at: 2026-09-13T12:57:49Z
 dispatch_at: 2026-09-13T12:52:56Z
 estimate:
   p50_active_minutes: 10
@@ -95,9 +98,9 @@ Use the existing Go test harness for a genuine test-first regression. The accept
 - `skills/do-work/tools/do-work-cli/lessons-do-work-cli.md` — 15905 indexed tokens; owning prime and relevant release/recovery/evidence failure families match, but the index marks the satellite `slugged: partial`, so targeted loading is ineligible and the whole file exceeds the 2000-token budget.
 
 ## AI Execution State (P-A-U Loop)
-- [ ] **[PLAN]:** Read listed prime files and agent rules. Write a brief technical approach before coding.
-- [ ] **[APPLY]:** Implement the agreed scope and test-first regression.
-- [ ] **[UNIFY]:** Review every changed file and run the appropriate native checks; record what was verified.
+- [x] **[PLAN]:** Read listed prime files and agent rules. Write a brief technical approach before coding.
+- [x] **[APPLY]:** Implement the agreed scope and test-first regression.
+- [x] **[UNIFY]:** Review every changed file and run the appropriate native checks; record what was verified.
 
 ## Full Context
 See `do-work/user-requests/UR-129/input.md` for the full input and batch mapping.
@@ -109,3 +112,37 @@ See `do-work/user-requests/UR-129/input.md` for the full input and batch mapping
 ## Plan
 
 Planning not required — focused correction using existing manifest content comparison and genuine test-first regressions.
+
+## Implementation Summary
+
+**Files changed:**
+- `skills/do-work/tools/do-work-cli/internal/finalization/finalization_release_guard.go` (modified) — compare functional manifest content at the supplied or pending provenance boundary.
+- `skills/do-work/tools/do-work-cli/internal/finalization/finalization_release_guard_test.go` (modified) — real Git cases for dependency, configuration and version-only edits.
+
+**What was done:** Manifest dependency and executable configuration changes qualify as shipped implementation; release-only edits remain excluded. Ownership API unchanged. Implemented by e74113f32c56d19bcb0025762f5c35e5086e0d6a, integrated in 680425d935a4a35d68c0a47d90cf2198584e4bc5; range b490d5ff5704ba925e70c2e29704d10b3cddaf40..680425d935a4a35d68c0a47d90cf2198584e4bc5.
+
+## Decisions
+
+D-01 (DECIDE & STATE): Keep edit classification in finalization and preserve ownership semantics. Normalize only the project version, retaining dependency versions even when equal.
+
+## Implementation Evidence
+
+Builder read both listed primes, required release lessons and the touch-required CLI satellite; none missing. PLAN/APPLY/UNIFY completed. RED before code: TestReleaseGuardDistinguishesFunctionalManifestEdits failed in 4.254s; GREEN passed in 3.304s. Full finalization package passed in 48.361s, go vet and diff check passed. The repository gate below measures each test file separately against the 30s budget.
+
+## Qualification
+
+Canonical request-bound merged-range qualify gate satisfied with no findings. Reviewed substantive two-file change; both provenance readers reach manifest comparison, and releaseownership callers retain the existing predicate. P-A-U evidence complete.
+
+## Testing
+
+Merged focused probe passed (6.046s); canonical `_dev/tests/maintainer-verify.sh` passed directly via timed runner (137s). CLI slowest file 20.17s; all test-file budgets passed. Request-bound focused and green-gate records satisfied. Initial RED/GREEN is recorded in Implementation Evidence. Heavy plan selects CLI integrations, staged skills, updater and installer.
+
+## Review
+
+Overall: 76.25%
+Acceptance: Partial
+Independent reviewer confirmed core cases, but a real Git TOML dependency section with a trailing comment remained classified as the package section. Important / impact-user-visible: functional dependency update was refused in both provenance modes. Root chose immediate in-scope remediation rather than report-only closure.
+
+## Remediation
+
+Strengthen real-Git regression for commented dependency/project headers and correct section recognition. Existing tests did not cover valid trailing section comments.
