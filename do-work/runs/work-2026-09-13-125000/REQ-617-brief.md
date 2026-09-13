@@ -3,7 +3,6 @@ id: REQ-617
 title: 'Preserve exact Git paths in release guard'
 status: claimed
 route: A
-dispatch_at: 2026-09-13T13:11:36Z
 estimate:
   p50_active_minutes: 5
   confidence: high
@@ -107,3 +106,7 @@ See `do-work/user-requests/UR-129/input.md` for the full input and batch mapping
 ## Plan
 
 Planning not required. Consume NUL-delimited raw Git paths and retain root/merge provenance behavior; test exact bytes and guard outcomes. Required lesson index consulted; captured release lessons retained and partial large satellites remain dropped from the budget. Builder still loads touch-required satellites.
+
+## Dispatch
+
+Work only in /tmp/do-work-20260913/worktree-agent-REQ-617-exact-git-paths on branch worktree-agent-REQ-617-exact-git-paths. Never read/write stale worktree do-work state. Only allowed main-tree write is /Users/t2/Desktop/e1-experimental-repos/skill-do-work2/do-work/runs/work-2026-09-13-125000/REQ-617-handback.md. Scope is two captured write_set files; no release or queue changes. Read /Users/t2/Desktop/e1-experimental-repos/skill-do-work2/.git/do-work-prep/REQ-617-exploration.md as prep, not mandatory implementation inventory. Genuine RED/GREEN, exact-file commit on own branch, durable full manifest/P-A-U/decisions/discoveries/test durations/lessons evidence before handback.
