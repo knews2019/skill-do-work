@@ -1,7 +1,7 @@
 ---
 id: REQ-616
 title: 'Require pending shipped changes for primary release'
-status: pending
+status: claimed
 created_at: 2026-09-07T15:44:32Z
 user_request: UR-129
 domain: backend
@@ -15,6 +15,7 @@ batch: validated-finalization-feedback
 depends_on: []
 write_set: ["skills/do-work/tools/do-work-cli/internal/finalization/finalization_release_guard.go", "skills/do-work/tools/do-work-cli/internal/finalization/finalization_release_guard_test.go"]
 required_lessons: [_dev/primes/lessons-releases.md]
+claimed_at: 2026-09-13T13:06:29Z
 ---
 # Require pending shipped changes for primary release
 

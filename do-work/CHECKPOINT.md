@@ -8,3 +8,5 @@ queue_state: [7 pending, 0 pending-answers, 0 blocked, 0 blocked-archive-collisi
 ## In Progress (interrupted)
 
 - REQ-615: Distinguish functional manifest edits from release metadata — claimed 2026-09-13T12:49:50Z — writer: t2s-Virtual-Machine.local:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2
+
+- REQ-616: Require pending shipped changes for primary release — claimed 2026-09-13T13:06:29Z — writer: t2s-Virtual-Machine.local:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2
