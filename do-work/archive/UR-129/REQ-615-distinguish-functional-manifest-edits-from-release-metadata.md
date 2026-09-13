@@ -1,8 +1,10 @@
 ---
 id: REQ-615
 title: 'Distinguish functional manifest edits from release metadata'
-status: claimed
+status: completed
 route: A
+heavy_verified_at: 2026-09-13T13:53:07Z
+heavy_verified_revision: 5d1300d5d4aa8a8286232f987585e9242b52f8f0
 re_review_at: 2026-09-13T13:06:29Z
 kb_status: pending
 remediation_at: 2026-09-13T13:02:42Z
@@ -33,6 +35,8 @@ write_set: ["skills/do-work/tools/do-work-cli/internal/finalization/finalization
 required_lessons: [_dev/primes/lessons-releases.md]
 claimed_at: 2026-09-13T12:49:50Z
 commit: 4cded81079d242a511cbc22a4c091f9252473744
+completed_at: 2026-09-13T13:53:07Z
+release_at: 2026-09-13T13:53:07Z
 ---
 # Distinguish functional manifest edits from release metadata
 
@@ -252,3 +256,28 @@ None outside the request. The review finding was fixed in scope.
   ]
 }
 ```
+
+## Heavy Verification Result
+
+Stored plan recomputed at its exact base and target with no drift. Target 4cded81079d242a511cbc22a4c091f9252473744; shared execution 5d1300d5d4aa8a8286232f987585e9242b52f8f0. Every selected lane exited0 and none was skipped.
+
+- do-work-cli-integrations: executed, exit0, 66s (fingerprint_mismatch).
+- staged-skills: executed, exit0, 32s (fingerprint_mismatch).
+- updater: executed, exit0, 64s (fingerprint_mismatch).
+- installer: executed, exit0, 29s (fingerprint_mismatch).
+
+All heavy runner processes finished. No additional lane drain is needed for this implementation commit.
+
+## Deferred Lesson Publication
+
+Added the manifest-ownership-vs-edit-content family to _dev/primes/lessons-releases.md and refreshed its exact family set/size in do-work/lessons-index.md. The lesson links the stable UR-129 archive destination chosen by finalization. First occurrence specific to manifest release classification, so no broad prime promotion.
+
+## Timing
+
+Observed 2026-09-13T12:58:21Z to 2026-09-13T13:05:32Z: 7m 11s total, 4m 44s attributed across 2 events, 2m 27s unattributed.
+
+| Category | Elapsed | Events |
+| --- | --- | --- |
+| verification-gate | 4m 44s | 2 |
+
+Slowest command: verification-gate / maintainer-verify.sh (1 argv tokens), 2m 27s, exit 0, maintainer-verify.sh (1 argv tokens).
