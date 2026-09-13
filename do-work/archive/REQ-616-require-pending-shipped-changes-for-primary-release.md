@@ -1,8 +1,10 @@
 ---
 id: REQ-616
 title: 'Require pending shipped changes for primary release'
-status: claimed
+status: completed
 route: A
+review_at: 2026-09-13T13:09:25Z
+kb_status: pending
 estimate:
   p50_active_minutes: 5
   confidence: high
@@ -23,6 +25,8 @@ depends_on: []
 write_set: ["skills/do-work/tools/do-work-cli/internal/finalization/finalization_release_guard.go", "skills/do-work/tools/do-work-cli/internal/finalization/finalization_release_guard_test.go"]
 required_lessons: [_dev/primes/lessons-releases.md]
 claimed_at: 2026-09-13T13:06:29Z
+completed_at: 2026-09-13T13:09:25Z
+commit: 04d550423ab7ec89b1270869b09386c43a11ec41
 ---
 # Require pending shipped changes for primary release
 
@@ -133,3 +137,43 @@ D-01 (DECIDE & STATE): Preserve the existing implementation and reuse its suppli
 ## Implementation Evidence
 
 Required lessons consulted from current lessons index. Release lesson entries retained/read where captured; large partial CLI satellite remains budget-dropped but was read by independent verifier under touch-conditional discipline. Original builder handback unavailable, so no authorship/timing reconstructed. Current P-A-U means plan existing-fix reconciliation, apply no source edits, unify by reviewing actual diff and executing focused/historical evidence.
+
+## Qualification
+
+Canonical historical-range qualifier satisfied without findings. The original multi-fix commit carries other independently owned fixes; only pending-shipped-path evidence and its regression are attributed here. Current code was independently reviewed; no source edits are needed.
+
+## Testing
+
+Request-bound focused test and green-gate records satisfied. Canonical `_dev/tests/maintainer-verify.sh` was executed directly for this revision; its successful status was supplied to advance. All per-test-file budgets passed.
+
+**Red-green validation (historical differential, not current test authorship):** TestPrimaryReleaseRequiresAnActualShippedAllowlistChange. Existing tests copied unchanged to04d55042 parent (0c0d9933) fail on behavior (0.60s); current passes (0.92s). Historical clean-listed-path and outside-allowlist bypasses fail on04d55042 parent; both refuse current. Add/edit/delete controls pass.
+
+No new implementation changes were made by reconciliation. The typed heavy plan for this reconciliation range contains no selected lanes. The active batch also verifies all new CLI implementation through its selected shared heavy lanes.
+
+## Review
+
+Overall: 97.5%
+Acceptance: Pass
+Independent review confirms detailed requirements and historical finding closure. Requirements100%, Code95%, Tests95%, Scope100%; Risk Low. Existing implementation and tests belong to04d550423ab7ec89b1270869b09386c43a11ec41, released0.305.39. No new source is attributed to this run. Original handback unavailable; current reconciliation P-A-U and historical evidence are explicitly distinguished from authorship. No unresolved acceptance findings or follow-up requests.
+
+## Lessons Learned
+
+**Worth knowing:** A queued finding can outlive an independently delivered fix. Compare the existing regression with its actual pre-fix revision before adding code; source history is stronger than stale queue wording. No new subsystem lesson beyond existing finalization/evidence contracts.
+
+## Orientation
+
+The release guard requires a real pending shipped change in the exact allowlist. This run verifies and closes the preexisting fix.
+
+## Discovered Tasks
+
+None.
+
+## Timing
+
+Observed 2026-09-13T13:07:55Z to 2026-09-13T13:09:04Z: 1m 09s total, 1m 09s attributed across 1 events, 0s unattributed.
+
+| Category | Elapsed | Events |
+| --- | --- | --- |
+| verification-gate | 1m 09s | 1 |
+
+Slowest command: verification-gate / maintainer-verify.sh (1 argv tokens), 1m 09s, exit 0, maintainer-verify.sh (1 argv tokens).
