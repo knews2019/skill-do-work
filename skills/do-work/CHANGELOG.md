@@ -10,6 +10,10 @@ For the complete release history, read this file and the archives below from new
 - [0.50.0 through 0.64.1](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-13-up-to-v0.64.1.md)
 - [0.1.0 through 0.49.0](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-07-up-to-v0.49.0.md)
 
+## 0.305.44 — Actionable Committed-Risk Diagnostics (2026-09-13)
+
+Failed post-commit verification now preserves actionable committed-risk diagnostics. Recovery retains the exact revert command while setting that request aside and continuing unrelated work.
+
 ## 0.305.43 — Exact Git Paths in Release Checks (2026-09-13)
 
 Release checks now accept valid shipped changes when filenames contain Unicode, quotes, whitespace or line breaks. Git paths retain their exact bytes across ordinary, root and merge commits.

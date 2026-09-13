@@ -1,8 +1,10 @@
 ---
 id: REQ-618
 title: '[impact-critical] Preserve committed-risk before finalization rollback'
-status: claimed
+status: completed
 route: A
+heavy_verified_at: 2026-09-13T13:52:17Z
+heavy_verified_revision: 5d1300d5d4aa8a8286232f987585e9242b52f8f0
 review_at: 2026-09-13T13:39:09Z
 builder_handback_at: 2026-09-13T13:29:13Z
 integration_at: 2026-09-13T13:29:13Z
@@ -30,6 +32,8 @@ write_set: ["skills/do-work/tools/do-work-cli/internal/finalization/finalization
 required_lessons: [_dev/primes/lessons-releases.md]
 claimed_at: 2026-09-13T13:22:40Z
 commit: 0df803498519648f8359b232b1d9921ca8c8610a
+completed_at: 2026-09-13T13:52:18Z
+release_at: 2026-09-13T13:52:18Z
 ---
 # Preserve committed-risk before finalization rollback
 
@@ -283,3 +287,24 @@ None outstanding. The review's prose finding was fixed in scope.
   ]
 }
 ```
+
+## Heavy Verification Result
+
+Stored plan recomputed at its exact base and target with no drift. Target 0df803498519648f8359b232b1d9921ca8c8610a; shared execution 5d1300d5d4aa8a8286232f987585e9242b52f8f0. Every selected lane exited0 and none was skipped.
+
+- do-work-cli-integrations: executed, exit0, 66s (fingerprint_mismatch).
+- staged-skills: executed, exit0, 32s (fingerprint_mismatch).
+- updater: executed, exit0, 64s (fingerprint_mismatch).
+- installer: executed, exit0, 29s (fingerprint_mismatch).
+
+All heavy runner processes finished. No additional lane drain is needed for this implementation commit.
+
+## Timing
+
+Observed 2026-09-13T13:29:41Z to 2026-09-13T13:37:37Z: 7m 56s total, 5m 51s attributed across 3 events, 2m 05s unattributed.
+
+| Category | Elapsed | Events |
+| --- | --- | --- |
+| verification-gate | 5m 51s | 3 |
+
+Slowest command: verification-gate / maintainer-verify.sh (1 argv tokens), 2m 23s, exit 0, maintainer-verify.sh (1 argv tokens).
