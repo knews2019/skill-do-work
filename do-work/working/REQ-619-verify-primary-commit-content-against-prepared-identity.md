@@ -1,7 +1,7 @@
 ---
 id: REQ-619
 title: '[impact-critical] Verify primary commit content against prepared identity'
-status: pending
+status: claimed
 created_at: 2026-09-07T15:44:32Z
 user_request: UR-129
 domain: backend
@@ -14,6 +14,7 @@ related: ["REQ-615", "REQ-616", "REQ-617", "REQ-618", "REQ-620", "REQ-621"]
 batch: validated-finalization-feedback
 depends_on: ["REQ-618", "REQ-620"]
 write_set: ["skills/do-work/tools/do-work-cli/internal/finalization/finalization_apply.go", "skills/do-work/tools/do-work-cli/internal/finalization/finalization_apply_test.go", "skills/do-work/tools/do-work-cli/internal/finalization/finalization_recovery_test.go"]
+claimed_at: 2026-09-13T13:41:44Z
 ---
 # Verify primary commit content against prepared identity
 
