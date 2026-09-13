@@ -665,10 +665,18 @@ func finalizationSuccess(journal *Journal, resumed bool) resultmodel.CommandResu
 func finalizationFailure(journal *Journal, resumed bool, code, reason string, paths []string) resultmodel.CommandResult {
 	verification := recoveryArgv(journal)
 	record := finalizationRecord(journal, resumed, paths, []string{code})
-	return resultmodel.CommandResult{Outcome: resultmodel.OutcomeRefused, Findings: []resultmodel.CommandFinding{{
+	outcome := resultmodel.OutcomeRefused
+	fixability := resultmodel.FixabilityRefused
+	if journal.Phase == PhaseReleaseApplied && journal.PrimaryCommit != "" {
+		outcome = resultmodel.OutcomeRisk
+		fixability = resultmodel.FixabilityManual
+		record.NextArgv = []string{"git", "revert", journal.PrimaryCommit}
+		reason += "; preserve unverified primary commit " + journal.PrimaryCommit
+	}
+	return resultmodel.CommandResult{Outcome: outcome, Findings: []resultmodel.CommandFinding{{
 		Code: code, Severity: resultmodel.SeverityError, AffectedIDs: []string{journal.Manifest.RequestID}, AffectedPaths: paths,
-		Evidence: []string{reason}, Fixability: resultmodel.FixabilityRefused, AutomationStopReason: "finalization evidence is incomplete or ambiguous",
-		NextArgv: verification, VerificationArgv: verification,
+		Evidence: []string{reason}, Fixability: fixability, AutomationStopReason: "finalization evidence is incomplete or ambiguous",
+		NextArgv: record.NextArgv, VerificationArgv: verification,
 	}}, Finalization: &record, Finalizations: []resultmodel.FinalizationResult{record}}
 }
 

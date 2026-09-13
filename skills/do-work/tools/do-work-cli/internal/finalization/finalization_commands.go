@@ -261,11 +261,14 @@ func requestScopedRefusal(requestID string, result resultmodel.CommandResult) bo
 // reads. The record keeps its own reason codes and gains the set-aside code; the
 // finding names no next verb, because the verb that resolves a refused
 // finalization tail is a judgment the exit summary makes, not one this command
-// can pick (REQ-514: a refusal never names itself as the fix).
+// can pick (REQ-514: a refusal never names itself as the fix). A committed-risk
+// result already identifies an exact revert action, which the projection retains.
 func setAsideProjection(requestID string, result resultmodel.CommandResult) (resultmodel.FinalizationResult, resultmodel.CommandFinding) {
 	record := *result.Finalization
 	record.ReasonCodes = append(append([]string(nil), record.ReasonCodes...), SetAsideReasonCode)
-	record.NextArgv = nil
+	if result.Outcome != resultmodel.OutcomeRisk {
+		record.NextArgv = nil
+	}
 	evidence := []string{}
 	for _, finding := range result.Findings {
 		evidence = append(evidence, finding.Evidence...)
@@ -276,6 +279,7 @@ func setAsideProjection(requestID string, result resultmodel.CommandResult) (res
 		AffectedIDs: []string{requestID}, AffectedPaths: append([]string(nil), record.BlockedPaths...),
 		Evidence: evidence, Fixability: resultmodel.FixabilityManual,
 		AutomationStopReason: requestID + " is set aside for this run; its finalization tail refused and the remaining REQs continue",
+		NextArgv:             append([]string(nil), record.NextArgv...),
 		VerificationArgv:     append([]string(nil), record.VerificationArgv...),
 	}
 }
