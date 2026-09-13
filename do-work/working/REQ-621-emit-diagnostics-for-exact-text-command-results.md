@@ -1,7 +1,7 @@
 ---
 id: REQ-621
 title: 'Emit diagnostics for exact-text command results'
-status: pending
+status: claimed
 created_at: 2026-09-07T15:44:32Z
 user_request: UR-129
 domain: backend
@@ -14,6 +14,7 @@ related: ["REQ-615", "REQ-616", "REQ-617", "REQ-618", "REQ-619", "REQ-620"]
 batch: validated-finalization-feedback
 depends_on: []
 write_set: ["skills/do-work/tools/do-work-cli/internal/commandruntime/command_runtime.go", "skills/do-work/tools/do-work-cli/internal/commandruntime/command_runtime_test.go", "skills/do-work/tools/do-work-cli/internal/toolboxcommands/report_image_test.go"]
+claimed_at: 2026-09-13T13:44:04Z
 ---
 # Emit diagnostics for exact-text command results
 
