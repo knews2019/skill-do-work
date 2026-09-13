@@ -2,6 +2,13 @@
 id: REQ-616
 title: 'Require pending shipped changes for primary release'
 status: claimed
+route: A
+estimate:
+  p50_active_minutes: 5
+  confidence: high
+  basis:
+  - trivial short-circuit
+  calculated_at: 2026-09-13T13:06:35Z
 created_at: 2026-09-07T15:44:32Z
 user_request: UR-129
 domain: backend
@@ -94,9 +101,35 @@ Use the existing Go test harness for a genuine test-first regression. The accept
 - `skills/do-work/tools/do-work-cli/lessons-do-work-cli.md` — 15905 indexed tokens; owning prime and relevant release/recovery/evidence failure families match, but the index marks the satellite `slugged: partial`, so targeted loading is ineligible and the whole file exceeds the 2000-token budget.
 
 ## AI Execution State (P-A-U Loop)
-- [ ] **[PLAN]:** Read listed prime files and agent rules. Write a brief technical approach before coding.
-- [ ] **[APPLY]:** Implement the agreed scope and test-first regression.
-- [ ] **[UNIFY]:** Review every changed file and run the appropriate native checks; record what was verified.
+- [x] **[PLAN]:** Read listed prime files and agent rules. Write a brief technical approach before coding.
+- [x] **[APPLY]:** Implement the agreed scope and test-first regression.
+- [x] **[UNIFY]:** Review every changed file and run the appropriate native checks; record what was verified.
 
 ## Full Context
 See `do-work/user-requests/UR-129/input.md` for the full input and batch mapping.
+
+## Triage
+
+**Route: A** — reconcile already-delivered focused fix against its historical implementation and existing regression tests.
+
+## Plan
+
+Planning not required. Verify existing implementation commit 04d550423ab7ec89b1270869b09386c43a11ec41 and close the stale request without duplicate production edits or a duplicate release.
+
+## Implementation Summary
+
+**Files changed by the existing implementation:**
+- `skills/do-work/tools/do-work-cli/internal/finalization/finalization_release_guard.go` (modified or added in 04d55042).
+- `skills/do-work/tools/do-work-cli/internal/finalization/finalization_review_release_test.go` (modified or added in 04d55042).
+
+**What was done:** Actual pending shipped changes are intersected with the exact commit allowlist. Clean listed paths cannot authorize a release.
+
+Implementation predates this run: 04d550423ab7ec89b1270869b09386c43a11ec41, already released as 0.305.39. Current run verifies and reconciles the durable request only. Its original multi-fix commit includes unrelated changes, which are not attributed to this request.
+
+## Decisions
+
+D-01 (DECIDE & STATE): Preserve the existing implementation and reuse its supplied commit provenance; no redundant fix or release. Historical RED/GREEN verifies the unchanged regression against the fix parent, and does not claim this run authored tests before code.
+
+## Implementation Evidence
+
+Required lessons consulted from current lessons index. Release lesson entries retained/read where captured; large partial CLI satellite remains budget-dropped but was read by independent verifier under touch-conditional discipline. Original builder handback unavailable, so no authorship/timing reconstructed. Current P-A-U means plan existing-fix reconciliation, apply no source edits, unify by reviewing actual diff and executing focused/historical evidence.
