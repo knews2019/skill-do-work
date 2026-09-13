@@ -45,7 +45,6 @@ func releaseShippedChangeError(repositoryRoot string, manifest Manifest) error {
 		return fmt.Errorf("RELEASE-SHIPPED-CHANGE-UNVERIFIABLE: %w", err)
 	}
 	for _, path := range implementationPaths {
-		path = filepath.ToSlash(filepath.Clean(path))
 		if releaseownership.IsReleaseMetadataPath(path) {
 			metadataOnly, err := implementationIsReleaseMetadataOnly(repositoryRoot, manifest, path)
 			if err != nil {
@@ -93,7 +92,7 @@ func implementationPathsForRelease(repositoryRoot string, manifest Manifest) ([]
 		return paths, nil
 	}
 	hash := manifest.ImplementationHash
-	arguments := []string{"-C", repositoryRoot, "diff-tree", "--no-commit-id", "--name-only", "-r", "--root"}
+	arguments := []string{"-C", repositoryRoot, "diff-tree", "--no-commit-id", "--name-only", "-z", "-r", "--root"}
 	if err := exec.Command("git", "-C", repositoryRoot, "rev-parse", "--verify", "--quiet", hash+"^1").Run(); err == nil {
 		arguments = append(arguments, hash+"^1", hash)
 	} else {
@@ -104,9 +103,9 @@ func implementationPathsForRelease(repositoryRoot string, manifest Manifest) ([]
 		return nil, fmt.Errorf("list implementation paths of %s: %w", hash, err)
 	}
 	paths := []string{}
-	for _, line := range strings.Split(strings.TrimSpace(string(output)), "\n") {
-		if line != "" {
-			paths = append(paths, line)
+	for _, path := range strings.Split(string(output), "\x00") {
+		if path != "" {
+			paths = append(paths, path)
 		}
 	}
 	return paths, nil
