@@ -3,6 +3,7 @@ package main
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 )
 
@@ -11,11 +12,15 @@ func TestWriteFileAtomicallyPreservesCompleteMode(t *testing.T) {
 		name string
 		mode os.FileMode
 	}{
+		{name: "ordinary", mode: 0o640},
 		{name: "setuid", mode: 0o4640},
 		{name: "setgid", mode: 0o2640},
 		{name: "sticky", mode: 0o1640},
 	} {
 		t.Run(test.name, func(t *testing.T) {
+			if runtime.GOOS == "windows" && test.mode&0o7000 != 0 {
+				t.Skip("Unix special mode bits are unavailable on Windows")
+			}
 			targetPath := filepath.Join(t.TempDir(), "request.md")
 			if err := os.WriteFile(targetPath, []byte("old contents"), test.mode.Perm()); err != nil {
 				t.Fatal(err)
@@ -34,7 +39,7 @@ func TestWriteFileAtomicallyPreservesCompleteMode(t *testing.T) {
 			if string(contents) != "complete replacement" {
 				t.Fatalf("contents = %q, want complete replacement", contents)
 			}
-			if mode := queueKanbanUnixModeOf(t, targetPath); mode != test.mode {
+			if mode := queueKanbanUnixModeOf(t, targetPath); runtime.GOOS != "windows" && mode != test.mode {
 				t.Fatalf("mode = %04o, want %04o", mode, test.mode)
 			}
 		})

@@ -155,13 +155,7 @@ func claimedRequestNumbers(repositoryRoot string) (map[int]bool, bool) {
 		}
 		return numbers, true
 	}
-	if _, gitRepositoryError := gitOutput(repositoryRoot, "rev-parse", "--is-inside-work-tree"); gitRepositoryError == nil {
-		// An unborn repository has no landed authority. Do not reinterpret the
-		// working tree as committed merely because HEAD does not exist yet.
-		return numbers, true
-	}
-	// A failed repository probe is ambiguous: the directory may be outside Git, or
-	// Git itself may be unavailable. Neither case supplies committed authority for
-	// unattended deletion, so preserve every marker.
+	// An unreadable committed tree supplies no deletion authority, including in
+	// an initialized repository whose HEAD does not exist yet.
 	return numbers, false
 }

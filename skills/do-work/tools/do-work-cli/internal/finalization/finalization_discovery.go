@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"regexp"
@@ -1580,8 +1581,36 @@ func headReleaseImage(repositoryRoot string) releaseownership.ReadImage {
 
 func preparedCommitIdentity(repositoryRoot string, paths []string) (string, string, error) {
 	head := currentHead(repositoryRoot)
-	arguments := append([]string{"-C", repositoryRoot, "diff", "--binary", head, "--"}, paths...)
-	diff, err := exec.Command("git", arguments...).Output()
+	indexDirectory, err := os.MkdirTemp("", "do-work-prepared-index-")
+	if err != nil {
+		return "", "", err
+	}
+	defer os.RemoveAll(indexDirectory)
+	// Stage the complete intended tree in a private index. A worktree diff alone
+	// omits untracked additions, and the caller's real index must remain untouched.
+	indexGit := func(arguments ...string) ([]byte, error) {
+		command := exec.Command("git", append([]string{"-C", repositoryRoot}, arguments...)...)
+		command.Env = append(os.Environ(), "GIT_INDEX_FILE="+filepath.Join(indexDirectory, "index"), "GIT_LITERAL_PATHSPECS=1")
+		return command.Output()
+	}
+	if _, err := indexGit("read-tree", head); err != nil {
+		return "", "", err
+	}
+	// Optional lifecycle targets may be absent from both HEAD and the worktree.
+	// Keep tracked deletions and new files, but do not pass nonexistent pathspecs
+	// to git add (the exact commit authority also skips targets with no change).
+	entries, err := indexGit(append([]string{"ls-files", "--cached", "--others", "--exclude-standard", "-z", "--"}, paths...)...)
+	if err != nil {
+		return "", "", err
+	}
+	stagePaths := strings.Split(strings.TrimSuffix(string(entries), "\x00"), "\x00")
+	if len(entries) == 0 {
+		return "", "", fmt.Errorf("discovered finalization has no exact diff")
+	}
+	if _, err := indexGit(append([]string{"add", "-A", "--"}, stagePaths...)...); err != nil {
+		return "", "", err
+	}
+	diff, err := indexGit(append([]string{"diff", "--cached", "--binary", head, "--"}, paths...)...)
 	if err != nil {
 		return "", "", err
 	}

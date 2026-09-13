@@ -27,7 +27,7 @@ var afterFinalizationPhase = func(Phase) error { return nil }
 
 func advanceJournal(ctx context.Context, repositoryRoot string, journal *Journal, resumed bool) (result resultmodel.CommandResult) {
 	defer func() {
-		if journal.Discovered || result.Outcome == resultmodel.OutcomeSuccess || journal.Phase == PhasePrimaryCommitted || journal.Phase == PhaseMetadataCommitted || journal.Phase == PhaseVerified || journal.Phase == PhaseCleanupComplete {
+		if journal.Discovered || journal.PrimaryCommit != "" || result.Outcome == resultmodel.OutcomeSuccess || journal.Phase == PhasePrimaryCommitted || journal.Phase == PhaseMetadataCommitted || journal.Phase == PhaseVerified || journal.Phase == PhaseCleanupComplete {
 			return
 		}
 		actions, rollbackErrors := rollbackBeforePrimary(repositoryRoot, journal)
@@ -111,6 +111,9 @@ func advanceJournal(ctx context.Context, repositoryRoot string, journal *Journal
 	}
 
 	if journal.Phase == PhaseReleaseApplied {
+		if journal.PrimaryCommit != "" {
+			return finalizationFailure(journal, resumed, "FINALIZATION-PRIMARY-COMMIT", "the recorded primary commit failed verification; preserve the journal and resolve the committed state before continuing", journal.EffectiveCommitPaths)
+		}
 		if journal.PreparedHead == "" || journal.PreparedDiffSHA256 == "" {
 			preparedHead, preparedDiff, err := preparedCommitIdentity(repositoryRoot, journal.EffectiveCommitPaths)
 			if err != nil {
@@ -130,12 +133,19 @@ func advanceJournal(ctx context.Context, repositoryRoot string, journal *Journal
 				}
 				return sharedStateRefusal(journal, resumed, blockedCode, blockedReason, blockedPaths)
 			}
-			transaction := gittransaction.CommitExactPaths(ctx, repositoryRoot, journal.EffectiveCommitPaths, journal.Manifest.CommitMessage, nil)
-			if transaction.Failure != nil {
-				return finalizationFailure(journal, resumed, "FINALIZATION-PRIMARY-COMMIT", transaction.Failure.Reason, transaction.Failure.Paths)
-			}
+			transaction := gittransaction.CommitExactPaths(ctx, repositoryRoot, journal.EffectiveCommitPaths, journal.Manifest.CommitMessage, func(ctx context.Context, commitSHA string) error {
+				return verifyPreparedCommit(ctx, repositoryRoot, journal, commitSHA)
+			})
 			journal.PrimaryCommit = transaction.CommitSHA
 			journal.CreatedPrimaryCommit = transaction.CommitSHA
+			if transaction.Failure != nil {
+				if transaction.CommitSHA != "" {
+					if err := writeJournal(journal); err != nil {
+						return finalizationFailure(journal, resumed, "FINALIZATION-JOURNAL-WRITE", transaction.Failure.Reason+"; preserve primary commit "+transaction.CommitSHA+": "+err.Error(), transaction.Failure.Paths)
+					}
+				}
+				return finalizationFailure(journal, resumed, "FINALIZATION-PRIMARY-COMMIT", transaction.Failure.Reason, transaction.Failure.Paths)
+			}
 		}
 		journal.Phase = PhasePrimaryCommitted
 		if err := persistPhase(journal); err != nil {
@@ -527,6 +537,18 @@ func commitSafety(repositoryRoot string, journal *Journal) (string, string, []st
 	return "", "", nil, false
 }
 
+func verifyPreparedCommit(ctx context.Context, repositoryRoot string, journal *Journal, commitSHA string) error {
+	arguments := append([]string{"-C", repositoryRoot, "diff", "--binary", journal.PreparedHead, commitSHA, "--"}, journal.EffectiveCommitPaths...)
+	diff, err := exec.CommandContext(ctx, "git", arguments...).Output()
+	if err != nil {
+		return fmt.Errorf("read primary commit content: %w", err)
+	}
+	if digestBytes(diff) != journal.PreparedDiffSHA256 {
+		return fmt.Errorf("primary commit content differs from the prepared implementation")
+	}
+	return nil
+}
+
 func matchingHeadCommit(repositoryRoot string, journal *Journal) (string, bool) {
 	commits, err := exec.Command("git", "-C", repositoryRoot, "rev-list", "--reverse", "--ancestry-path", journal.PreparedHead+"..HEAD").Output()
 	if err != nil || len(strings.Fields(string(commits))) == 0 {
@@ -537,9 +559,7 @@ func matchingHeadCommit(repositoryRoot string, journal *Journal) (string, bool) 
 		allowed[path] = true
 	}
 	for _, candidate := range strings.Fields(string(commits)) {
-		arguments := append([]string{"-C", repositoryRoot, "diff", "--binary", journal.PreparedHead, candidate, "--"}, journal.EffectiveCommitPaths...)
-		diff, diffError := exec.Command("git", arguments...).Output()
-		if diffError != nil || digestBytes(diff) != journal.PreparedDiffSHA256 {
+		if verifyPreparedCommit(context.Background(), repositoryRoot, journal, candidate) != nil {
 			continue
 		}
 		changed, changedError := exec.Command("git", "-C", repositoryRoot, "diff-tree", "--no-commit-id", "--name-only", "-r", "-m", candidate).Output()

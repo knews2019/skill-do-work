@@ -89,6 +89,7 @@ func TestReleaseGuardUsesCommitPathsUnderPrimaryCommitProvenance(t *testing.T) {
 	if refused == nil || !strings.Contains(refused.Error(), "RELEASE-WITHOUT-SHIPPED-CHANGE") {
 		t.Fatalf("record plus metadata accepted as a release: %v", refused)
 	}
+	writeFinalizationFile(t, repositoryRoot, "skills/do-work/actions/work.md", "shipped implementation\n")
 	if err := releaseShippedChangeError(repositoryRoot, Manifest{ProvenanceMode: ProvenancePrimaryCommit, CommitPaths: []string{"do-work/archive/REQ-1.md", "skills/do-work/actions/work.md"}}); err != nil {
 		t.Fatalf("shipped change refused: %v", err)
 	}

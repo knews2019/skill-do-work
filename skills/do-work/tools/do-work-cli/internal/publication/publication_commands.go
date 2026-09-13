@@ -27,6 +27,7 @@ type commandOptions struct {
 
 var beforePublicationMutation = func(int, PlannedMutation) error { return nil }
 var afterPublicationMutation = func(int, PlannedMutation) error { return nil }
+var beforePublicationRecording = func(int, PlannedMutation) {}
 var afterPublicationCommit = func(PublicationPlan) error { return nil }
 
 func Handlers() map[string]commandruntime.CommandHandler {
@@ -165,10 +166,14 @@ func ApplyPlan(ctx context.Context, plan PublicationPlan, dryRun, commit bool) r
 			}
 			switch mutation.Kind {
 			case MutationCreate:
+				if recordError := recorder.RecordCreationIntent(mutation.Path); recordError != nil {
+					return recordError
+				}
 				if createError := createRootedFile(plan.RepositoryRoot, mutation.Path, mutation.Contents, mutation.Mode); createError != nil {
 					return createError
 				}
-				if recordError := recorder.RecordCreated(mutation.Path); recordError != nil {
+				beforePublicationRecording(mutationIndex, mutation)
+				if recordError := recorder.RecordTouched(mutation.Path); recordError != nil {
 					return recordError
 				}
 			case MutationReplace:
@@ -179,6 +184,9 @@ func ApplyPlan(ctx context.Context, plan PublicationPlan, dryRun, commit bool) r
 					return recordError
 				}
 			case MutationMove:
+				if recordError := recorder.RecordCreationIntent(mutation.DestinationPath); recordError != nil {
+					return recordError
+				}
 				if len(mutation.Contents) > 0 && !bytes.Equal(mutation.Contents, mutation.ExpectedBytes) {
 					if replaceError := replaceRootedFile(plan.RepositoryRoot, mutation.Path, mutation.ExpectedBytes, mutation.Contents); replaceError != nil {
 						return replaceError
@@ -194,10 +202,11 @@ func ApplyPlan(ctx context.Context, plan PublicationPlan, dryRun, commit bool) r
 				if moveError := moveRootedFile(plan.RepositoryRoot, mutation.Path, mutation.DestinationPath, expectedMoveBytes); moveError != nil {
 					return moveError
 				}
-				if recordError := recorder.RecordTouched(mutation.Path); recordError != nil {
+				beforePublicationRecording(mutationIndex, mutation)
+				if recordError := recorder.RecordTouched(mutation.DestinationPath); recordError != nil {
 					return recordError
 				}
-				if recordError := recorder.RecordCreated(mutation.DestinationPath); recordError != nil {
+				if recordError := recorder.RecordTouched(mutation.Path); recordError != nil {
 					return recordError
 				}
 				movedSourceDirectories[filepath.ToSlash(filepath.Dir(filepath.FromSlash(mutation.Path)))] = true

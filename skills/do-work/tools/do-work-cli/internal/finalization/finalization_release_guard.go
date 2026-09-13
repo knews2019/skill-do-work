@@ -59,10 +59,29 @@ func releaseShippedChangeError(repositoryRoot string, manifest Manifest) error {
 // supplied_commit provenance that is the named commit's first-parent diff: for a
 // merge, what the merge brought in; for a plain commit, its own change. Under
 // primary_commit provenance the finalization commit is the implementation, and its
-// allowlist is the manifest's commit_paths.
+// pending changes must also belong to the manifest's commit_paths allowlist.
 func implementationPathsForRelease(repositoryRoot string, manifest Manifest) ([]string, error) {
 	if manifest.ProvenanceMode != ProvenanceSuppliedCommit {
-		return manifest.CommitPaths, nil
+		allowed := map[string]bool{}
+		for _, path := range manifest.CommitPaths {
+			allowed[filepath.ToSlash(filepath.Clean(path))] = true
+		}
+		paths := []string{}
+		for _, arguments := range [][]string{
+			{"diff", "--name-only", "--no-renames", "-z", "HEAD", "--"},
+			{"ls-files", "--others", "--exclude-standard", "-z", "--"},
+		} {
+			output, err := exec.Command("git", append([]string{"-C", repositoryRoot}, arguments...)...).Output()
+			if err != nil {
+				return nil, fmt.Errorf("list pending implementation changes: %w", err)
+			}
+			for _, path := range strings.Split(string(output), "\x00") {
+				if allowed[path] {
+					paths = append(paths, path)
+				}
+			}
+		}
+		return paths, nil
 	}
 	hash := manifest.ImplementationHash
 	arguments := []string{"-C", repositoryRoot, "diff-tree", "--no-commit-id", "--name-only", "-r", "--root"}

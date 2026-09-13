@@ -309,6 +309,25 @@ func createdObjectStillOwned(root *os.Root, path string, identity createdObjectI
 	return inspectCreatedObject(root, path, identity) == createdObjectOwned
 }
 
+// RecordCreationIntent makes an intended publication visible to rollback without
+// claiming any object already at that path. RecordTouched binds the identity only
+// after exclusive publication succeeds.
+func (recorder *MutationRecorder) RecordCreationIntent(path string) error {
+	normalized, err := normalizeTargetPath(path)
+	if err != nil {
+		return err
+	}
+	if _, allowed := recorder.allowedPaths[normalized]; !allowed {
+		return fmt.Errorf("path %q is outside the declared transaction targets", path)
+	}
+	if _, creatable := recorder.creatablePaths[normalized]; !creatable {
+		return fmt.Errorf("path %q existed before the transaction and cannot be recorded as created", path)
+	}
+	recorder.touchedPaths[normalized] = struct{}{}
+	recorder.createdPaths[normalized] = struct{}{}
+	return nil
+}
+
 func (recorder *MutationRecorder) RecordCreated(path string) error {
 	if err := recorder.RecordTouched(path); err != nil {
 		return err

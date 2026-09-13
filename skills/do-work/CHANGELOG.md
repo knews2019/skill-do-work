@@ -10,6 +10,14 @@ For the complete release history, read this file and the archives below from new
 - [0.50.0 through 0.64.1](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-13-up-to-v0.64.1.md)
 - [0.1.0 through 0.49.0](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-07-up-to-v0.49.0.md)
 
+## 0.305.39 — Commit Evidence and Publication Recovery (2026-09-13)
+
+Finalization preserves failed commit evidence and checks committed content against the complete prepared change, including new files. Publication failures keep every intended destination visible to rollback while preserving foreign files.
+
+- Preserve stale reservations when committed Git authority is unavailable, including unborn repositories.
+- Require actual shipped changes for releases and show image-batch failure diagnostics without changing compatibility stdout.
+- Keep portable atomic publication tests active on Windows while skipping Unix special-mode assertions.
+
 ## 0.305.38 — AGY Handoff and Completion Checks (2026-09-09)
 
 AGY guidance now covers the handoff and verification failures observed during REQ-624.

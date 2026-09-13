@@ -254,3 +254,27 @@ func TestReservationCleanupPreservesStaleMarkerOutsideGit(t *testing.T) {
 		t.Fatalf("non-Git cleanup removed stale marker: %v", err)
 	}
 }
+
+func TestReservationCleanupPreservesStaleMarkerInUnbornRepository(t *testing.T) {
+	repository := t.TempDir()
+	runFixtureGitCommand(t, repository, "init", "-q")
+	root := filepath.Join(repository, "do-work", ".req-reservations")
+	if err := os.MkdirAll(root, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	marker := filepath.Join(root, "REQ-777")
+	if err := os.WriteFile(marker, []byte("reserved\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	past := time.Now().Add(-49 * time.Hour)
+	if err := os.Chtimes(marker, past, past); err != nil {
+		t.Fatal(err)
+	}
+	result := CleanupReservations(repository)
+	if contents, err := os.ReadFile(marker); err != nil || string(contents) != "reserved\n" {
+		t.Fatalf("unborn repository lost stale reservation: contents=%q error=%v", contents, err)
+	}
+	if len(result.Changes) != 0 || len(result.Findings) != 1 || result.Findings[0].Code != "RESERVATION-GIT-AUTHORITY-UNAVAILABLE" {
+		t.Fatalf("result=%+v", result)
+	}
+}

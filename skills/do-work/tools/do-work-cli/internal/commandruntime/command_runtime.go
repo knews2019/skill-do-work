@@ -92,6 +92,16 @@ func (runtime *CommandRuntime) writeResult(outputFormat resultmodel.OutputFormat
 		result = fallback
 	}
 	_, _ = runtime.output.Write(output)
+	if outputFormat == resultmodel.FormatText && result.ExactTextOutput != nil {
+		for _, finding := range result.Findings {
+			if finding.Severity == resultmodel.SeverityWarning || finding.Severity == resultmodel.SeverityError {
+				fmt.Fprintf(os.Stderr, "finding %s [%s]: %s\n", finding.Code, finding.Severity, strings.Join(finding.Evidence, "; "))
+				if len(finding.AffectedPaths) > 0 {
+					fmt.Fprintf(os.Stderr, "  paths: %s\n", strings.Join(finding.AffectedPaths, ", "))
+				}
+			}
+		}
+	}
 	return resultmodel.ExitCode(result.Outcome)
 }
 
