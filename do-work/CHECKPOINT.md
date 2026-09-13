@@ -12,3 +12,5 @@ queue_state: [7 pending, 0 pending-answers, 0 blocked, 0 blocked-archive-collisi
 - REQ-617: Preserve exact Git paths in release guard — claimed 2026-09-13T13:09:50Z — writer: t2s-Virtual-Machine.local:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2
 
 - REQ-618: [impact-critical] Preserve committed-risk before finalization rollback — claimed 2026-09-13T13:22:40Z — writer: t2s-Virtual-Machine.local:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2
+
+- REQ-620: [impact-critical] Include untracked files in prepared commit digest — claimed 2026-09-13T13:39:22Z — writer: t2s-Virtual-Machine.local:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2
