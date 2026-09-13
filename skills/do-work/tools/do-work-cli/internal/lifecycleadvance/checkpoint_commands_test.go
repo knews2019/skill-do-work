@@ -10,10 +10,12 @@ import (
 	"testing"
 )
 
-func TestAdvanceCheckpointChangesOnlyCheckpointAndPreservesLiveEntries(t *testing.T) {
+func TestAdvanceCheckpointRemovesStaleSummariesAndPreservesLiveEntries(t *testing.T) {
 	repositoryRoot := t.TempDir()
 	writeAdvanceRequest(t, repositoryRoot, "queue", "REQ-714", "pending", "", "")
-	writeAdvanceFile(t, repositoryRoot, "do-work/CHECKPOINT.md", "# Session Checkpoint\n\n## In Progress (interrupted)\n\n- REQ-800: foreign — writer: other:/checkout\n  keep foreign detail\n- REQ-801: unknown owner\n  keep unknown detail\n\n## Session Notes\n\nOld note.\n")
+	// Completion refreshed the count to seven but left a 28-request summary and
+	// an obsolete next request. Keep live claims and authored notes, not that cache.
+	writeAdvanceFile(t, repositoryRoot, "do-work/CHECKPOINT.md", "---\nlast_completed: REQ-483\nreqs_processed_this_session: 1\nsession_depth: light\nqueue_state: [28 pending]\ncustom_note: keep me\n---\n\n# Session Checkpoint\n\n## Completed This Session\n\n- REQ-483: old completion\n\n## Still Queued\n\n- 28 pending requests remain; REQ-485 next.\n\n## Operator Notes\n\nKeep this context.\n\n## In Progress (interrupted)\n\n- REQ-800: foreign — writer: other:/checkout\n  keep foreign detail\n- REQ-801: unknown owner\n  keep unknown detail\n\n## Session Notes\n\nOld note.\n")
 	writeAdvanceFile(t, repositoryRoot, "project.txt", "base\n")
 	runAdvanceGit(t, repositoryRoot, "init", "-q")
 	runAdvanceGit(t, repositoryRoot, "config", "user.name", "Checkpoint Test")
@@ -45,9 +47,14 @@ func TestAdvanceCheckpointChangesOnlyCheckpointAndPreservesLiveEntries(t *testin
 		t.Fatalf("checkpoint result did not expose the exact mutation: %#v", result)
 	}
 	checkpoint, _ := os.ReadFile(filepath.Join(repositoryRoot, "do-work", "CHECKPOINT.md"))
-	for _, exact := range []string{"- REQ-800: foreign — writer: other:/checkout\n  keep foreign detail", "- REQ-801: unknown owner\n  keep unknown detail"} {
+	for _, exact := range []string{"- REQ-800: foreign — writer: other:/checkout\n  keep foreign detail", "- REQ-801: unknown owner\n  keep unknown detail", "custom_note: keep me", "## Operator Notes\n\nKeep this context.", "## Session Notes\n\nOld note.", "queue_state: [1 pending,"} {
 		if !strings.Contains(string(checkpoint), exact) {
 			t.Fatalf("checkpoint lost live record %q:\n%s", exact, checkpoint)
+		}
+	}
+	for _, stale := range []string{"last_completed:", "reqs_processed_this_session:", "session_depth:", "## Completed This Session", "## Still Queued", "28 pending", "REQ-483", "REQ-485 next"} {
+		if strings.Contains(string(checkpoint), stale) {
+			t.Fatalf("refresh retained stale summary %q:\n%s", stale, checkpoint)
 		}
 	}
 	project, _ := os.ReadFile(filepath.Join(repositoryRoot, "project.txt"))

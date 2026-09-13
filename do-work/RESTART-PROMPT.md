@@ -1,9 +1,6 @@
-```
-do-work run
-This command is sufficient; everything below it is context.
+# Completed handoff
 
-All requests for UR-130 (REQ-622, REQ-623, REQ-624) are fully completed and canonically archived under do-work/archive/UR-130/. The builder worktree has been pruned and merged branch deleted. Checkpoint is clean with 0 in-progress requests.
-```
+UR-130 (prose reconciliation, instruction cleanup, and changelog history trim) is complete and archived under `do-work/archive/UR-130/`. There is no remaining work to resume for this batch. Processing unrelated queued requests requires a new user instruction.
 
 ---
 

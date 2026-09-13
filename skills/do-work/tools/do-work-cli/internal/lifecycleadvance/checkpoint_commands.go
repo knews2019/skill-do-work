@@ -92,12 +92,45 @@ func checkpointSessionBytes(existing []byte, writtenAt, queueState string) []byt
 			body = body[end+5:]
 		}
 	}
+	retainedFields := []string{}
+	for _, line := range strings.Split(frontmatter, "\n") {
+		fieldName, _, _ := strings.Cut(line, ":")
+		switch fieldName {
+		case "last_completed", "reqs_processed_this_session", "session_depth":
+			continue
+		}
+		retainedFields = append(retainedFields, line)
+	}
+	frontmatter = strings.Join(retainedFields, "\n")
 	frontmatter = setCheckpointScalar(frontmatter, "session_ended", writtenAt)
 	frontmatter = setCheckpointScalar(frontmatter, "queue_state", queueState)
+	body = stripCheckpointSummaries(body)
 	if len(bytes.TrimSpace(body)) == 0 {
 		body = []byte("# Session Checkpoint\n\n## In Progress (interrupted)\n")
 	}
 	return []byte("---\n" + strings.TrimSpace(frontmatter) + "\n---\n\n" + strings.TrimLeft(string(body), "\n"))
+}
+
+func stripCheckpointSummaries(body []byte) []byte {
+	lines := strings.Split(string(body), "\n")
+	headingLine, _, canonical := repositorymodel.CheckpointClaimBounds(lines)
+	if !canonical {
+		// Legacy claims can occupy the whole body; do not discard their evidence.
+		return body
+	}
+	retainedLines := []string{}
+	dropSummary := false
+	for _, line := range lines[:headingLine] {
+		heading := strings.TrimSuffix(line, "\r")
+		if strings.HasPrefix(heading, "## ") {
+			// These retired generated sections duplicated state without refreshing it.
+			dropSummary = heading == "## Completed This Session" || heading == "## Still Queued"
+		}
+		if !dropSummary {
+			retainedLines = append(retainedLines, line)
+		}
+	}
+	return []byte(strings.Join(append(retainedLines, lines[headingLine:]...), "\n"))
 }
 
 func setCheckpointScalar(frontmatter, name, value string) string {

@@ -10,6 +10,10 @@ For the complete release history, read this file and the archives below from new
 - [0.50.0 through 0.64.1](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-13-up-to-v0.64.1.md)
 - [0.1.0 through 0.49.0](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-07-up-to-v0.49.0.md)
 
+## 0.305.40 — Checkpoint Summary Cleanup (2026-09-13)
+
+Checkpoint refresh removes obsolete generated session summaries while preserving live claims, legacy recovery evidence, and authored notes.
+
 ## 0.305.39 — Commit Evidence and Publication Recovery (2026-09-13)
 
 Finalization preserves failed commit evidence and checks committed content against the complete prepared change, including new files. Publication failures keep every intended destination visible to rollback while preserving foreign files.
