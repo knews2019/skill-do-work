@@ -104,3 +104,55 @@ func TestReleaseGuardIgnoresARepositoryWithoutAModuleDeclaration(t *testing.T) {
 		t.Fatalf("consumer release refused: %v", err)
 	}
 }
+
+// Manifests carry runtime configuration as well as a release version. The guard
+// must judge the actual edit for both committed and pending implementations.
+func TestReleaseGuardDistinguishesFunctionalManifestEdits(t *testing.T) {
+	for _, mode := range []string{ProvenanceSuppliedCommit, ProvenancePrimaryCommit} {
+		for _, fixture := range []struct{ name, before, functional, metadata string }{
+			{"package.json", `{"name":"demo","version":"1.0.0","dependencies":{"dep":"1.0.0"},"main":"old.js"}`, `{"name":"demo","version":"1.0.1","dependencies":{"dep":"2.0.0"},"main":"old.js"}`, `{"name":"demo","version":"1.0.1","dependencies":{"dep":"1.0.0"},"main":"old.js"}`},
+			{"Cargo.toml", "[package]\nname = \"demo\"\nversion = \"1.0.0\"\n[dependencies]\ndep = \"1.0.0\"\n", "[package]\nname = \"demo\"\nversion = \"1.0.1\"\n[dependencies]\ndep = \"2.0.0\"\n", "[package]\nname = \"demo\"\nversion = \"1.0.1\"\n[dependencies]\ndep = \"1.0.0\"\n"},
+			{"pyproject.toml", "[project]\nname = \"demo\"\nversion = \"1.0.0\"\ndependencies = [\"dep==1.0.0\"]\n", "[project]\nname = \"demo\"\nversion = \"1.0.1\"\ndependencies = [\"dep==2.0.0\"]\n", "[project]\nname = \"demo\"\nversion = \"1.0.1\"\ndependencies = [\"dep==1.0.0\"]\n"},
+		} {
+			configuration := strings.Replace(fixture.before, `"main":"old.js"`, `"main":"new.js"`, 1)
+			if fixture.name == "Cargo.toml" {
+				configuration = strings.Replace(fixture.before, "[package]", "[package]\nbuild = \"build.rs\"", 1)
+			} else if fixture.name == "pyproject.toml" {
+				configuration = fixture.before + "[build-system]\nrequires = [\"setuptools\"]\nbuild-backend = \"setuptools.build_meta\"\n"
+			}
+			for _, edit := range []struct {
+				name, after string
+				functional  bool
+			}{
+				{"dependencies", strings.Replace(fixture.functional, "1.0.1", "1.0.0", 1), true},
+				{"configuration", configuration, true},
+				{"version-only", fixture.metadata, false},
+			} {
+				t.Run(mode+"/"+fixture.name+"/"+edit.name, func(t *testing.T) {
+					repositoryRoot := newFinalizationRepository(t)
+					seedMaintainerSuite(t, repositoryRoot)
+					path := "skills/do-work/" + fixture.name
+					writeFinalizationFile(t, repositoryRoot, path, fixture.before)
+					runFinalizationGit(t, repositoryRoot, "add", path)
+					runFinalizationGit(t, repositoryRoot, "commit", "-qm", "seed manifest")
+					writeFinalizationFile(t, repositoryRoot, path, edit.after)
+					manifest := Manifest{ProvenanceMode: mode, CommitPaths: []string{path}}
+					if mode == ProvenanceSuppliedCommit {
+						runFinalizationGit(t, repositoryRoot, "add", path)
+						runFinalizationGit(t, repositoryRoot, "commit", "-qm", "edit manifest")
+						manifest.ImplementationHash = strings.TrimSpace(runFinalizationGit(t, repositoryRoot, "rev-parse", "HEAD"))
+						// Later worktree content must not change the named commit's verdict.
+						writeFinalizationFile(t, repositoryRoot, path, fixture.before)
+					}
+					err := releaseShippedChangeError(repositoryRoot, manifest)
+					if edit.functional && err != nil {
+						t.Fatalf("functional manifest edit refused: %v", err)
+					}
+					if !edit.functional && (err == nil || !strings.Contains(err.Error(), "RELEASE-WITHOUT-SHIPPED-CHANGE")) {
+						t.Fatalf("version-only edit: expected release refusal, got %v", err)
+					}
+				})
+			}
+		}
+	}
+}

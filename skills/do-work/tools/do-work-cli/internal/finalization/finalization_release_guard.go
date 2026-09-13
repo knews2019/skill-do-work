@@ -1,9 +1,12 @@
 package finalization
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"strings"
 
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/releaseownership"
@@ -44,7 +47,13 @@ func releaseShippedChangeError(repositoryRoot string, manifest Manifest) error {
 	for _, path := range implementationPaths {
 		path = filepath.ToSlash(filepath.Clean(path))
 		if releaseownership.IsReleaseMetadataPath(path) {
-			continue
+			metadataOnly, err := implementationIsReleaseMetadataOnly(repositoryRoot, manifest, path)
+			if err != nil {
+				return fmt.Errorf("RELEASE-SHIPPED-CHANGE-UNVERIFIABLE: %w", err)
+			}
+			if metadataOnly {
+				continue
+			}
 		}
 		for _, root := range roots {
 			if path == root || strings.HasPrefix(path, root+"/") {
@@ -101,4 +110,80 @@ func implementationPathsForRelease(repositoryRoot string, manifest Manifest) ([]
 		}
 	}
 	return paths, nil
+}
+
+// Ownership asks whether a file carries metadata; this guard instead asks
+// whether the implementation changed anything besides its release version.
+func implementationIsReleaseMetadataOnly(repositoryRoot string, manifest Manifest, path string) (bool, error) {
+	switch filepath.Base(path) {
+	case "package.json", "Cargo.toml", "pyproject.toml":
+	default:
+		return true, nil
+	}
+	beforeRevision := "HEAD"
+	var after FileImage
+	var err error
+	if manifest.ProvenanceMode == ProvenanceSuppliedCommit {
+		beforeRevision = manifest.ImplementationHash + "^1"
+		after, err = committedManifestImage(repositoryRoot, manifest.ImplementationHash, path)
+		if err == nil && exec.Command("git", "-C", repositoryRoot, "rev-parse", "--verify", "--quiet", beforeRevision).Run() != nil {
+			// An initial commit adds its manifests without a preimage.
+			return false, nil
+		}
+	} else {
+		after, err = currentImage(repositoryRoot, path)
+	}
+	if err != nil {
+		return false, err
+	}
+	before, err := committedManifestImage(repositoryRoot, beforeRevision, path)
+	if err != nil || !before.Exists || !after.Exists {
+		return false, err
+	}
+	return bytes.Equal(manifestWithoutReleaseVersion(path, before.Bytes), manifestWithoutReleaseVersion(path, after.Bytes)), nil
+}
+
+func committedManifestImage(repositoryRoot, revision, path string) (FileImage, error) {
+	listing, err := exec.Command("git", "-C", repositoryRoot, "--literal-pathspecs", "ls-tree", "-z", revision, "--", path).Output()
+	if err != nil {
+		return FileImage{}, fmt.Errorf("inspect manifest %s at %s: %w", path, revision, err)
+	}
+	if len(listing) == 0 {
+		return FileImage{Path: path}, nil
+	}
+	contents, err := exec.Command("git", "-C", repositoryRoot, "show", revision+":"+path).Output()
+	if err != nil {
+		return FileImage{}, fmt.Errorf("read manifest %s at %s: %w", path, revision, err)
+	}
+	return FileImage{Path: path, Exists: true, Bytes: contents}, nil
+}
+
+func manifestWithoutReleaseVersion(path string, contents []byte) []byte {
+	if filepath.Base(path) == "package.json" {
+		var document map[string]json.RawMessage
+		if json.Unmarshal(contents, &document) != nil || document == nil {
+			return contents
+		}
+		delete(document, "version")
+		encoded, _ := json.Marshal(document)
+		return encoded
+	}
+	// Keep TOML bytes outside the project's version assignment intact, including
+	// dependency versions that happen to equal the package's own version.
+	lines := strings.Split(string(contents), "\n")
+	section := ""
+	versionAssignment := regexp.MustCompile(`^(version[ \t]*=[ \t]*)["'][^"']*["']([ \t]*(?:#.*)?)$`)
+	for index, line := range lines {
+		trimmed := strings.TrimSpace(line)
+		if strings.HasPrefix(trimmed, "[") && strings.HasSuffix(trimmed, "]") {
+			section = strings.TrimSpace(strings.TrimSuffix(strings.TrimPrefix(trimmed, "["), "]"))
+			continue
+		}
+		if filepath.Base(path) == "Cargo.toml" && section == "package" || filepath.Base(path) == "pyproject.toml" && (section == "project" || section == "tool.poetry") {
+			if versionAssignment.MatchString(trimmed) {
+				lines[index] = versionAssignment.ReplaceAllString(trimmed, `${1}""${2}`)
+			}
+		}
+	}
+	return []byte(strings.Join(lines, "\n"))
 }
