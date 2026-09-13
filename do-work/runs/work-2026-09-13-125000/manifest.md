@@ -13,3 +13,5 @@ REQ-617: builder active, branch worktree-agent-REQ-617-exact-git-paths; output R
 REQ-617: implementation reviewed and held for heavy lanes; handback evidence promoted into working REQ, consumed scratch moved to .git/do-work-prep/REQ-617-handback.md.
 
 REQ-618: builder dispatch; branch worktree-agent-REQ-618-committed-risk; output REQ-618-handback.md.
+
+REQ-618: reviewed merged implementation held for heavy lanes; all handback evidence promoted into workingREQ, scratch moved to .git/do-work-prep/REQ-618-handback.md. External70c16925 retained and compatibility verified.
