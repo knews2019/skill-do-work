@@ -3,7 +3,6 @@ id: REQ-615
 title: 'Distinguish functional manifest edits from release metadata'
 status: claimed
 route: A
-dispatch_at: 2026-09-13T12:52:56Z
 estimate:
   p50_active_minutes: 10
   confidence: medium
@@ -109,3 +108,9 @@ See `do-work/user-requests/UR-129/input.md` for the full input and batch mapping
 ## Plan
 
 Planning not required — focused correction using existing manifest content comparison and genuine test-first regressions.
+
+## Dispatch contract
+
+Worktree: /tmp/do-work-20260913/worktree-agent-REQ-615-functional-manifests
+Branch: worktree-agent-REQ-615-functional-manifests
+Only write implementation in this worktree. Never read or write its stale do-work directory. Never change queue, release version, or changelog. Your only permitted main-tree write is /Users/t2/Desktop/e1-experimental-repos/skill-do-work2/do-work/runs/work-2026-09-13-125000/REQ-615-handback.md. Commit the verified implementation on your branch; return exact commit hash, changed files, tests and durations, RED-before-GREEN proof, Decisions, Discovered Tasks, P-A-U evidence and lesson reads in that handback.
