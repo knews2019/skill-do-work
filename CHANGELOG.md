@@ -10,6 +10,13 @@ For the complete release history, read this file and the archives below from new
 - [0.50.0 through 0.64.1](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-13-up-to-v0.64.1.md)
 - [0.1.0 through 0.49.0](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-07-up-to-v0.49.0.md)
 
+## 0.305.41 — Restore Strict Consumer Test Entry Points (2026-09-13)
+
+Existing consumer gates can again select the strict JavaScript and browser wrapper tests. Each wrapper enables its probes in a separate process and rejects a run that executes none, including when Node or a browser is unavailable.
+
+- Preserve ordinary test runs without automatically launching heavy probes.
+- Cover both legacy entry points with subprocess execution and missing-runtime regressions.
+
 ## 0.305.40 — Checkpoint Summary Cleanup (2026-09-13)
 
 Checkpoint refresh removes obsolete generated session summaries while preserving live claims, legacy recovery evidence, and authored notes.
