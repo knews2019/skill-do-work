@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"reflect"
 	"runtime"
 	"testing"
 
@@ -19,6 +20,9 @@ func TestReviewPrimaryCommitFailurePreservesCommittedRisk(t *testing.T) {
 		t.Skip("requires a Unix executable Git hook")
 	}
 	repositoryRoot, manifestPath := seedPlannedFinalization(t, ProvenancePrimaryCommit)
+	writeFinalizationFile(t, repositoryRoot, "foreign.txt", "original tracked content\n")
+	runFinalizationGit(t, repositoryRoot, "add", "--", "foreign.txt")
+	runFinalizationGit(t, repositoryRoot, "commit", "-qm", "seed tracked foreign path")
 	writeFinalizationFile(t, repositoryRoot, "foreign.txt", "foreign hook addition\n")
 	installReviewPrimaryHook(t, repositoryRoot, "git add -- foreign.txt\n")
 	before := currentHead(repositoryRoot)
@@ -70,11 +74,18 @@ func installReviewPrimaryHook(t *testing.T, repositoryRoot, script string) {
 
 func assertReviewCommittedRisk(t *testing.T, repositoryRoot, committed string, result resultmodel.CommandResult) {
 	t.Helper()
-	if result.Outcome == resultmodel.OutcomeSuccess || result.Outcome == resultmodel.OutcomeRolledBack || result.Rollback.Status == resultmodel.RollbackSucceeded {
-		t.Fatalf("committed verification failure must remain a failure without pre-primary rollback: outcome=%s rollback=%s", result.Outcome, result.Rollback.Status)
+	if result.Outcome != resultmodel.OutcomeRisk || result.Rollback.Status == resultmodel.RollbackSucceeded {
+		t.Errorf("committed verification failure must remain a failure without pre-primary rollback: outcome=%s rollback=%s", result.Outcome, result.Rollback.Status)
 	}
 	if result.Finalization == nil || result.Finalization.PrimaryCommit != committed || result.Finalization.CreatedPrimaryCommit != committed || result.Finalization.Phase != string(PhaseReleaseApplied) {
 		t.Fatalf("failed primary commit evidence = %#v, want SHA %s in release_applied", result.Finalization, committed)
+	}
+	wantRevert := []string{"git", "revert", committed}
+	if !reflect.DeepEqual(result.Finalization.NextArgv, wantRevert) || len(result.Finalizations) != 1 || !reflect.DeepEqual(result.Finalizations[0], *result.Finalization) {
+		t.Errorf("direct committed-risk action/projections = %#v, want revert %s", result.Finalizations, committed)
+	}
+	if len(result.Findings) != 1 || !reflect.DeepEqual(result.Findings[0].NextArgv, wantRevert) {
+		t.Errorf("direct committed-risk finding lost revert action: %#v", result.Findings)
 	}
 	journalPath, _, err := journalLocations(repositoryRoot, "REQ-720")
 	if err != nil {
@@ -90,6 +101,15 @@ func assertReviewCommittedRisk(t *testing.T, repositoryRoot, committed string, r
 	recovered := handleRecoverFinalization(commandruntime.ExecutionContext{RepositoryRoot: repositoryRoot}, nil)
 	if len(recovered.Finalizations) != 1 || recovered.Finalizations[0].Phase != string(PhaseReleaseApplied) || recovered.Finalizations[0].PrimaryCommit != committed || len(recovered.Finalizations[0].ReasonCodes) == 0 || currentHead(repositoryRoot) != committed {
 		t.Fatalf("recovery silently accepted or recommitted the failed primary: outcome=%s HEAD=%s", recovered.Outcome, currentHead(repositoryRoot))
+	}
+	if recovered.Outcome != resultmodel.OutcomeSuccess || !containsArgument(recovered.Finalizations[0].ReasonCodes, SetAsideReasonCode) {
+		t.Errorf("recovery must set aside only the risky request and continue: %#v", recovered)
+	}
+	if recovered.Finalization == nil || !reflect.DeepEqual(recovered.Finalization.NextArgv, wantRevert) || !reflect.DeepEqual(recovered.Finalizations[0], *recovered.Finalization) {
+		t.Errorf("recovered committed-risk action/projections = %#v, want revert %s", recovered.Finalizations, committed)
+	}
+	if len(recovered.Findings) != 1 || !reflect.DeepEqual(recovered.Findings[0].NextArgv, wantRevert) {
+		t.Errorf("recovery set-aside finding lost revert action: %#v", recovered.Findings)
 	}
 	if status := runFinalizationGit(t, repositoryRoot, "status", "--porcelain=v1"); status != "" {
 		t.Fatalf("recovery rolled back committed lifecycle bytes: %q", status)
