@@ -1,8 +1,11 @@
 ---
 id: REQ-617
 title: 'Preserve exact Git paths in release guard'
-status: claimed
+status: completed
 route: A
+kb_status: pending
+heavy_verified_at: 2026-09-13T13:50:31Z
+heavy_verified_revision: 5d1300d5d4aa8a8286232f987585e9242b52f8f0
 review_at: 2026-09-13T13:22:16Z
 builder_handback_at: 2026-09-13T13:15:24Z
 integration_at: 2026-09-13T13:15:24Z
@@ -28,6 +31,8 @@ write_set: ["skills/do-work/tools/do-work-cli/internal/finalization/finalization
 required_lessons: [_dev/primes/lessons-releases.md]
 claimed_at: 2026-09-13T13:09:50Z
 commit: 24b52cacdad9eb6bf0c863e1c65c6739ea54e8b0
+completed_at: 2026-09-13T13:51:43Z
+release_at: 2026-09-13T13:51:43Z
 ---
 # Preserve exact Git paths in release guard
 
@@ -127,7 +132,7 @@ The commit contains exactly these two files, with 66 insertions and 5 deletions.
 - D2: Initial-commit fixture commits only the special shipped path, then adds maintainer declarations later. This prevents an ordinary `suite/modules.tsv` path from making release acceptance pass accidentally.
 - D3: Merge fixture includes unrelated main-branch work and asserts the sole returned path is the special feature-branch file. Retain the existing maintainer-only merge refusal to prove first-parent semantics in both directions.
 
-## Discovered Tasks
+### Builder Discovered Tasks
 
 None. The leading-space false acceptance is another manifestation of this request's exact-path parsing defect and remains inside its stated no-normalization acceptance criterion.
 
@@ -243,3 +248,24 @@ None outside this request.
   ]
 }
 ```
+
+## Heavy Verification Result
+
+Stored plan recomputed at its exact base and target with no drift. Target 24b52cacdad9eb6bf0c863e1c65c6739ea54e8b0; shared execution 5d1300d5d4aa8a8286232f987585e9242b52f8f0. Every selected lane exited0 and none was skipped.
+
+- do-work-cli-integrations: executed, exit0, 66s (fingerprint_mismatch).
+- staged-skills: executed, exit0, 32s (fingerprint_mismatch).
+- updater: executed, exit0, 64s (fingerprint_mismatch).
+- installer: executed, exit0, 29s (fingerprint_mismatch).
+
+All heavy runner processes finished. No additional lane drain is needed for this implementation commit.
+
+## Timing
+
+Observed 2026-09-13T13:16:12Z to 2026-09-13T13:18:20Z: 2m 08s total, 2m 08s attributed across 1 events, 0s unattributed.
+
+| Category | Elapsed | Events |
+| --- | --- | --- |
+| verification-gate | 2m 08s | 1 |
+
+Slowest command: verification-gate / maintainer-verify.sh (1 argv tokens), 2m 08s, exit 0, maintainer-verify.sh (1 argv tokens).
