@@ -152,15 +152,15 @@ run_launcher_failure_case() {
   install_banner_input "$version_text"
   printf '%b' "$go_body" > "$fake_bin/go"
   chmod +x "$fake_bin/go"
-  PATH="$fake_bin:/usr/bin:/bin" CLAUDE_PROJECT_DIR="$case_root/project" bash "$shared_skill_root/hooks/session-start.sh" >"$case_root/stdout" 2>"$case_root/stderr" || status=$?
+  PATH="$fake_bin:/usr/bin:/bin" DO_WORK_CLI_RELEASE_BASE="file://$case_root/no-releases" XDG_CACHE_HOME="$case_root/cache" CLAUDE_PROJECT_DIR="$case_root/project" bash "$shared_skill_root/hooks/session-start.sh" >"$case_root/stdout" 2>"$case_root/stderr" || status=$?
   if [ "$status" -ne 2 ] || [ -s "$case_root/stdout" ] || ! grep -q "$expected" "$case_root/stderr"; then
     printf 'FAIL: %s launcher boundary status=%s stderr=<%s>.\n' "$case_name" "$status" "$(tr '\n' ' ' < "$case_root/stderr")" >&2
     failure_count=$((failure_count + 1))
   fi
   assert_shared_skill_root_unchanged "$case_name"
 }
-run_launcher_failure_case go-too-old '**Current version**: 9.8.7\n' '#!/usr/bin/env bash\nprintf "go version go1.24.0 fixture\\n"\n' 'Go 1.25.0 or newer is required'
-run_launcher_failure_case go-build-failure '**Current version**: 9.8.7\n' '#!/usr/bin/env bash\nif [ "${1:-}" = version ]; then printf "go version go1.25.0 fixture\\n"; exit 0; fi\nexit 1\n' 'could not build the command; nothing was run'
+run_launcher_failure_case go-too-old '**Current version**: 9.8.7\n' '#!/usr/bin/env bash\nprintf "go version go1.23.0 fixture\\n"\n' 'Go 1.24.0 or newer is required'
+run_launcher_failure_case go-build-failure '**Current version**: 9.8.7\n' '#!/usr/bin/env bash\nif [ "${1:-}" = version ]; then printf "go version go1.24.0 fixture\\n"; exit 0; fi\nexit 1\n' 'could not build the command; nothing was run'
 
 missing_root="$fixture_root/missing-launcher"
 mkdir -p "$missing_root/skill/hooks" "$missing_root/project"

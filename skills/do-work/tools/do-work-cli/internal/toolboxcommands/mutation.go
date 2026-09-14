@@ -14,6 +14,7 @@ import (
 
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/gittransaction"
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/resultmodel"
+	"github.com/knews2019/skill-do-work/do-work-cli/internal/rootedfs"
 )
 
 func absentTransactionDirectories(repositoryRoot string, candidates ...string) []string {
@@ -107,7 +108,7 @@ func rootedMkdirAll(repositoryRoot, relative string, mode os.FileMode) error {
 		return err
 	}
 	defer root.Close()
-	return root.MkdirAll(filepath.FromSlash(relative), mode)
+	return rootedfs.MkdirAll(root, filepath.FromSlash(relative), mode)
 }
 
 func rootedMkdirExclusive(repositoryRoot, relative string, mode os.FileMode) (os.FileInfo, error) {
@@ -138,7 +139,7 @@ func rootedPublishFile(repositoryRoot, relative string, data []byte, mode os.Fil
 	}
 	defer root.Close()
 	parentName, leaf := filepath.Dir(filepath.FromSlash(relative)), filepath.Base(filepath.FromSlash(relative))
-	parent, err := root.OpenRoot(parentName)
+	parent, err := rootedfs.OpenRoot(root, parentName)
 	if err != nil {
 		return fmt.Errorf("open confined parent for %s: %w", relative, err)
 	}
@@ -150,7 +151,7 @@ func rootedPublishFile(repositoryRoot, relative string, data []byte, mode os.Fil
 		if err != nil || !originalInfo.Mode().IsRegular() {
 			return fmt.Errorf("replacement target is not a regular file: %s", relative)
 		}
-		originalBytes, err = parent.ReadFile(leaf)
+		originalBytes, err = rootedfs.ReadFile(parent, leaf)
 		if err != nil {
 			return err
 		}
@@ -183,17 +184,17 @@ func rootedPublishFile(repositoryRoot, relative string, data []byte, mode os.Fil
 	}
 	if replace {
 		currentInfo, statErr := parent.Lstat(leaf)
-		currentBytes, readErr := parent.ReadFile(leaf)
+		currentBytes, readErr := rootedfs.ReadFile(parent, leaf)
 		if statErr != nil || readErr != nil || !os.SameFile(originalInfo, currentInfo) || !bytes.Equal(originalBytes, currentBytes) {
 			return fmt.Errorf("target changed before confined replacement: %s", relative)
 		}
-		if err := parent.Rename(temporary, leaf); err != nil {
+		if err := rootedfs.Rename(parent, temporary, leaf); err != nil {
 			return err
 		}
 		keep = true
 		return nil
 	}
-	if err := parent.Link(temporary, leaf); err != nil {
+	if err := rootedfs.Link(parent, temporary, leaf); err != nil {
 		return err
 	}
 	if err := parent.Remove(temporary); err != nil {
@@ -235,7 +236,7 @@ func rootedPublishInOwnedDirectory(repositoryRoot, directoryRelative string, own
 	if err != nil || !os.SameFile(ownedDirectory, current) {
 		return fmt.Errorf("owned publication directory changed: %s", directoryRelative)
 	}
-	directory, err := root.OpenRoot(filepath.FromSlash(directoryRelative))
+	directory, err := rootedfs.OpenRoot(root, filepath.FromSlash(directoryRelative))
 	if err != nil {
 		return err
 	}
@@ -267,7 +268,7 @@ func rootedPublishInOwnedDirectory(repositoryRoot, directoryRelative string, own
 		_ = directory.Remove(temporary)
 		return err
 	}
-	if err := directory.Link(temporary, leaf); err != nil {
+	if err := rootedfs.Link(directory, temporary, leaf); err != nil {
 		_ = directory.Remove(temporary)
 		return err
 	}

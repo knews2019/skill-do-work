@@ -62,14 +62,21 @@ func TestPrivateCopyParentSwapCannotRedirectPublicationOrCleanup(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	if err := publishPrivateCopy(source, filepath.Join(parent, "capture")); err != nil {
-		t.Fatal(err)
+	// The Go 1.24 backport of the rooted link (internal/rootedfs) refuses a parent swapped
+	// under the publish instead of following it into the held directory: nothing lands
+	// outside, nothing lands in the held directory, and the staged copy is cleaned up.
+	if err := publishPrivateCopy(source, filepath.Join(parent, "capture")); err == nil {
+		t.Fatal("publish through a swapped parent succeeded")
 	}
 	if contents, _ := os.ReadFile(protected); string(contents) != "protected" {
 		t.Fatalf("outside file changed: %q", contents)
 	}
-	if contents, _ := os.ReadFile(filepath.Join(held, "capture")); string(contents) != "new" {
-		t.Fatalf("rooted publication missing: %q", contents)
+	entries, err := os.ReadDir(held)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(entries) != 0 {
+		t.Fatalf("refused publish left files in the held directory: %v", entries)
 	}
 }
 

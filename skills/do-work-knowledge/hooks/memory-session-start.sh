@@ -7,7 +7,7 @@ HOOK_DIR="$(cd "$(dirname "$0")" && pwd)"
 CLI_LAUNCHER="$HOOK_DIR/../../do-work/tools/do-work-cli.sh"
 
 if [ ! -f "$CLI_LAUNCHER" ]; then
-  printf 'memory SessionStart failed: canonical do-work launcher is missing at %s; reinstall the suite with Go 1.25.0 or newer.\n' "$CLI_LAUNCHER" >&2
+  printf 'memory SessionStart failed: canonical do-work launcher is missing at %s; reinstall the suite with Go 1.24.0 or newer.\n' "$CLI_LAUNCHER" >&2
   exit 2
 fi
 

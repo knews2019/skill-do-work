@@ -27,6 +27,8 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/knews2019/skill-do-work/do-work-cli/internal/rootedfs"
 )
 
 // DefaultUpstreamURL is the branch tarball the suite ships against. DO_WORK_UPSTREAM_URL
@@ -174,7 +176,7 @@ func DownloadAtomic(ctx context.Context, sourceURL, targetPath string) DownloadR
 	}
 	defer func() { _ = parentRoot.Remove(stageName) }()
 	beforeAtomicDownloadPublish()
-	if err = parentRoot.Link(stageName, targetName); err != nil {
+	if err = rootedfs.Link(parentRoot, stageName, targetName); err != nil {
 		result.Err = err
 		return result
 	}
@@ -367,7 +369,7 @@ func publishArchiveCandidate(parentRoot *os.Root, targetSnapshot archiveTargetSn
 		} else if !os.IsNotExist(err) {
 			return err
 		}
-		return parentRoot.Link(stageName, targetSnapshot.targetName)
+		return rootedfs.Link(parentRoot, stageName, targetSnapshot.targetName)
 	}
 	currentIdentity, currentDigest, err := readRegularTarget(parentRoot, targetSnapshot.targetName)
 	if err != nil {
@@ -376,7 +378,7 @@ func publishArchiveCandidate(parentRoot *os.Root, targetSnapshot archiveTargetSn
 	if !os.SameFile(targetSnapshot.fileIdentity, currentIdentity) || currentDigest != targetSnapshot.contentDigest {
 		return fmt.Errorf("archive target changed before publication")
 	}
-	return parentRoot.Rename(stageName, targetSnapshot.targetName)
+	return rootedfs.Rename(parentRoot, stageName, targetSnapshot.targetName)
 }
 
 func archiveBytesReadable(contents []byte) error {

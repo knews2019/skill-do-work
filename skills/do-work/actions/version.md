@@ -2,9 +2,9 @@
 
 > **Part of the do-work skill.** Handles version reporting, update checks, and work recaps. User-facing walkthrough: [`docs/version-guide.md`](../docs/version-guide.md).
 
-**Current version**: 0.305.45
+**Current version**: 0.305.46
 
-**Prerequisite:** Go 1.25.0 or newer. The update engine is the `do-work-cli` command; `tools/do-work-cli.sh` runs it through `go tool`, which compiles it on first use and reuses the cached executable while its sources are unchanged, and refuses with an actionable message when the toolchain is missing or too old.
+**Prerequisite:** Go 1.24.0 or newer, or a host the prebuilt binary covers. The update engine is the `do-work-cli` command; `tools/do-work-cli.sh` runs it through `go tool`, which compiles it on first use and reuses the cached executable while its sources are unchanged. When the toolchain is missing or too old, the launcher instead fetches and checksum-verifies the prebuilt binary for the installed version from the GitHub release (`DO_WORK_CLI_RELEASE_BASE` points it at a mirror), and refuses with an actionable message only when neither route works.
 
 **Upstream**: https://raw.githubusercontent.com/knews2019/skill-do-work/main/skills/do-work/actions/version.md
 

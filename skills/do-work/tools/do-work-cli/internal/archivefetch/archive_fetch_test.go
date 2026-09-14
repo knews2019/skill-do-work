@@ -195,16 +195,21 @@ func TestDownloadAtomicParentSwapCannotOverwriteOutsideTarget(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
+	// The Go 1.24 backport of the rooted link (internal/rootedfs) cannot follow the held
+	// directory the way Root.Link did, so a parent swapped under the publish is refused
+	// outright: nothing lands outside, nothing lands in the held directory either, and
+	// the staged candidate is cleaned up through the root that still holds it open.
 	result := DownloadAtomic(context.Background(), server.URL, filepath.Join(parent, "target"))
-	if result.Err != nil {
-		t.Fatal(result.Err)
+	if result.Err == nil {
+		t.Fatal("publish through a swapped parent succeeded")
 	}
 	if contents, _ := os.ReadFile(protected); string(contents) != "protected" {
 		t.Fatalf("outside target changed: %q", contents)
 	}
-	if contents, _ := os.ReadFile(filepath.Join(held, "target")); string(contents) != "download" {
-		t.Fatalf("rooted download missing: %q", contents)
+	if _, err := os.Lstat(filepath.Join(held, "target")); !os.IsNotExist(err) {
+		t.Fatalf("refused publish still created the held target: %v", err)
 	}
+	assertNoArchiveScratch(t, held)
 }
 
 func TestHttpRouteWinsWhenTheAtomicPrimitiveProducesAReadableArchive(t *testing.T) {
@@ -675,20 +680,20 @@ func TestArchiveFetchParentSwapCannotRedirectRegularReplacement(t *testing.T) {
 		}
 	})
 
-	result, err := FetchArchive(context.Background(), Request{ArchiveTargetPath: targetPath, UpstreamTarballURL: server.URL})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if result.RouteDescription != "upstream archive fetched over HTTP" {
-		t.Fatalf("route=%q", result.RouteDescription)
+	// See TestDownloadAtomicParentSwapCannotOverwriteOutsideTarget: the Go 1.24 rooted
+	// rename refuses a swapped parent, so the fetch fails, the outside file and the old
+	// held archive both keep their bytes, and no scratch survives in the held directory.
+	_, err := FetchArchive(context.Background(), Request{ArchiveTargetPath: targetPath, UpstreamTarballURL: server.URL})
+	if err == nil {
+		t.Fatal("replacement through a swapped parent succeeded")
 	}
 	protectedContents := readFixtureBytes(t, protectedPath)
 	if string(protectedContents) != "protected\n" {
 		t.Fatalf("outside target changed: %q", protectedContents)
 	}
-	publishedContents := readFixtureBytes(t, filepath.Join(held, "upstream.tar.gz"))
-	if !bytes.Equal(publishedContents, archiveBytes) {
-		t.Fatal("replacement was not confined to the opened parent")
+	heldContents := readFixtureBytes(t, filepath.Join(held, "upstream.tar.gz"))
+	if string(heldContents) != "old archive\n" {
+		t.Fatalf("held archive changed under a refused replacement: %q", heldContents)
 	}
 	assertNoArchiveScratch(t, held)
 }

@@ -4,7 +4,7 @@
 #
 # The implementation lives in the do-work-cli `fetch-archive` command; this file is the
 # compatibility launcher that maps the three positional arguments onto its flags and keeps
-# this script's conventional signal statuses. Requires Go 1.25.0 or newer, which the
+# this script's conventional signal statuses. Requires Go 1.24.0 or newer, which the
 # do-work-cli launcher enforces.
 set -u
 

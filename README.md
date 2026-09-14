@@ -4,7 +4,7 @@ A four-skill task queue suite for agentic coding tools. Capture requests fast, p
 
 ## Installation
 
-**Prerequisite: Go 1.25.0 or newer.** Installing, updating and running the suite all go through the `do-work-cli` command, which `go tool` compiles on first use and reuses from the Go build cache while its sources are unchanged. `git`, `tar`, `diff` and `curl` are also needed; `just` is optional and only used to validate the managed recipe section when it is present.
+**Prerequisite: Go 1.24.0 or newer, or a host the prebuilt binary covers.** Installing, updating and running the suite all go through the `do-work-cli` command, which `go tool` compiles on first use and reuses from the Go build cache while its sources are unchanged. Without a usable Go, the launcher fetches the prebuilt `do-work-cli` for the installed version from this repository's GitHub release (Linux and macOS, amd64 and arm64), verifies it against the release's `SHA256SUMS`, and caches it under `$XDG_CACHE_HOME/do-work-cli` (default `~/.cache/do-work-cli`); set `DO_WORK_CLI_RELEASE_BASE` to a mirror URL on hosts that cannot reach GitHub. `git`, `tar`, `diff` and `curl` are also needed; `just` is optional and only used to validate the managed recipe section when it is present.
 
 Run this exact command from the root of the Git repository where you want the suite installed:
 
@@ -34,7 +34,7 @@ The installer validates all four modules before the first managed write, asks on
 
 Claude Code can invoke the four skill names directly. In Codex or Gemini, point the agent at the appropriate sibling `SKILL.md` once per session, or add those pointers to the project's agent instructions. Commit all four `.claude/skills/do-work*` directories so each repository carries its suite.
 
-**Updating:** `do-work update`, canonical `just do-work-update`, and compatibility `just run-do-work-update` call the same installed `update-suite` command, which needs the same Go 1.25.0 or newer prerequisite as the install. They review one archive, reconcile all four module trees plus the managed Just/settings surfaces behind one confirmation, and either verify the complete resulting suite or recover every managed path. Never delete the repository-root `do-work/` queue or `kb/`; no update entry point manages them.
+**Updating:** `do-work update`, canonical `just do-work-update`, and compatibility `just run-do-work-update` call the same installed `update-suite` command, which needs the same Go 1.24.0 or newer (or prebuilt binary) prerequisite as the install. They review one archive, reconcile all four module trees plus the managed Just/settings surfaces behind one confirmation, and either verify the complete resulting suite or recover every managed path. Never delete the repository-root `do-work/` queue or `kb/`; no update entry point manages them.
 
 ### Upgrade an existing installation with an AI agent
 
