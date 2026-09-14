@@ -10,6 +10,14 @@ For the complete release history, read this file and the archives below from new
 - [0.50.0 through 0.64.1](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-13-up-to-v0.64.1.md)
 - [0.1.0 through 0.49.0](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-07-up-to-v0.49.0.md)
 
+## 0.305.46 — Go 1.24 Floor and Prebuilt Binary Fallback (2026-09-14)
+
+Hosts pinned to Go 1.24, and hosts with no usable Go at all, can now install, update and run the suite.
+
+- The `do-work-cli` module floor drops from Go 1.25.0 to 1.24.0. The five `os.Root` methods that only exist in 1.25 (`Rename`, `Link`, `MkdirAll`, `ReadFile`, `RemoveAll`) are backported in `internal/rootedfs`; a parent directory swapped under a publish is now refused instead of followed, and the rest of the rooted guarantees are unchanged.
+- When Go is missing or too old, `tools/do-work-cli.sh` fetches the prebuilt binary for the installed version from the GitHub release, verifies it against `SHA256SUMS`, caches it under `$XDG_CACHE_HOME/do-work-cli`, and runs it. `DO_WORK_CLI_RELEASE_BASE` points the fetch at a mirror; the `release-binaries` workflow publishes Linux and macOS binaries for amd64 and arm64 on every version bump.
+- The launcher tolerates Go 1.24's first uncached `go tool -n`, which prints a temporary build path instead of the cached one.
+
 ## 0.305.45 — Functional Manifest Release Changes (2026-09-13)
 
 Dependency and configuration edits in package manifests can now authorize a release. Version-only manifest edits remain excluded, including TOML tables with trailing comments.

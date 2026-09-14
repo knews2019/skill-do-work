@@ -2,7 +2,7 @@
 
 `tools/do-work-cli.sh … update-suite` is the singular update implementation behind canonical `just do-work-update`, compatibility `just run-do-work-update`, and the natural-language version action. It updates only a four-skill do-work suite installed inside the invoking project; the install transaction owns module/configuration reconciliation, and `actions/version.md` owns the agent's judgment and rendering contract.
 
-The five public shell entry points are compatibility launchers over the `do-work-cli` command, which owns the logic. **Updating requires Go 1.25.0 or newer**, which the `do-work-cli.sh` launcher enforces before it builds or runs anything.
+The five public shell entry points are compatibility launchers over the `do-work-cli` command, which owns the logic. **Updating requires Go 1.24.0 or newer, or a host the prebuilt binary covers**; the `do-work-cli.sh` launcher builds with the toolchain when one is usable and otherwise fetches the checksum-verified prebuilt binary for the installed version before it runs anything.
 
 ## Read first
 

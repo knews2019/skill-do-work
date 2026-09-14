@@ -1,0 +1,47 @@
+# Publishes one static do-work-cli binary per supported platform, plus SHA256SUMS, as
+# the GitHub release for the version in VERSION. skills/do-work/tools/do-work-cli.sh
+# fetches these when no usable Go toolchain is on PATH, so the asset names and the
+# SHA256SUMS format here are what that launcher expects.
+name: release-binaries
+
+on:
+  push:
+    branches: [main]
+    paths: [VERSION]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: skills/do-work/tools/do-work-cli/go.mod
+      - name: Build every platform
+        working-directory: skills/do-work/tools/do-work-cli
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          for platform in linux/amd64 linux/arm64 darwin/amd64 darwin/arm64; do
+            CGO_ENABLED=0 GOOS="${platform%/*}" GOARCH="${platform#*/}" \
+              go build -trimpath -ldflags='-s -w' -o "dist/do-work-cli_${platform%/*}_${platform#*/}" ./cmd/do-work-cli
+          done
+          (cd dist && sha256sum do-work-cli_* > SHA256SUMS)
+          cat dist/SHA256SUMS
+      - name: Publish the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          version="v$(tr -d '[:space:]' < VERSION)"
+          if gh release view "$version" >/dev/null 2>&1; then
+            gh release upload "$version" --clobber skills/do-work/tools/do-work-cli/dist/*
+          else
+            gh release create "$version" --title "$version" \
+              --notes "Prebuilt do-work-cli binaries for $version; see CHANGELOG.md." \
+              skills/do-work/tools/do-work-cli/dist/*
+          fi

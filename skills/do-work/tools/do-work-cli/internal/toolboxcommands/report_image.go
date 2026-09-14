@@ -16,6 +16,7 @@ import (
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/commandruntime"
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/gittransaction"
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/resultmodel"
+	"github.com/knews2019/skill-do-work/do-work-cli/internal/rootedfs"
 )
 
 type imageRequest struct {
@@ -200,7 +201,7 @@ func handleReportImageBatch(executionContext commandruntime.ExecutionContext, ar
 				root, openErr := os.OpenRoot(executionContext.RepositoryRoot)
 				if openErr == nil {
 					if current, statErr := root.Lstat(filepath.FromSlash(generatedRel)); statErr == nil && os.SameFile(ownedDirectory, current) {
-						_ = root.RemoveAll(filepath.FromSlash(generatedRel))
+						_ = rootedfs.RemoveAll(root, filepath.FromSlash(generatedRel))
 					}
 					root.Close()
 				}

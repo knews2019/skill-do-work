@@ -7,7 +7,7 @@ SKILL_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 CLI_LAUNCHER="$SKILL_ROOT/tools/do-work-cli.sh"
 
 if [ ! -f "$CLI_LAUNCHER" ]; then
-  printf 'do-work SessionStart failed: canonical launcher is missing at %s; reinstall the suite with Go 1.25.0 or newer.\n' "$CLI_LAUNCHER" >&2
+  printf 'do-work SessionStart failed: canonical launcher is missing at %s; reinstall the suite with Go 1.24.0 or newer.\n' "$CLI_LAUNCHER" >&2
   exit 2
 fi
 

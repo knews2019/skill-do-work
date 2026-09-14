@@ -15,6 +15,7 @@ import (
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/commandruntime"
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/gittransaction"
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/resultmodel"
+	"github.com/knews2019/skill-do-work/do-work-cli/internal/rootedfs"
 )
 
 type scaffoldFile struct{ path, content string }
@@ -492,7 +493,7 @@ func (writer *rootedScaffoldWriter) rollback() resultmodel.RollbackResult {
 			continue
 		}
 		if created.recursive {
-			err = writer.root.RemoveAll(created.path)
+			err = rootedfs.RemoveAll(writer.root, created.path)
 		} else {
 			err = writer.root.Remove(created.path)
 		}

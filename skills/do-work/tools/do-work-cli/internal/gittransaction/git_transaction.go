@@ -19,6 +19,7 @@ import (
 
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/ownedprocess"
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/resultmodel"
+	"github.com/knews2019/skill-do-work/do-work-cli/internal/rootedfs"
 )
 
 type FailureKind string
@@ -1340,14 +1341,14 @@ func quarantineAndRollbackPrivate(root *os.Root, state targetState, published pu
 	}
 	quarantined := filepath.Join(directory, "object")
 	cleanupDirectory := func() { _ = root.Remove(directory) }
-	if err := root.Rename(filepath.FromSlash(state.path), quarantined); err != nil {
+	if err := rootedfs.Rename(root, filepath.FromSlash(state.path), quarantined); err != nil {
 		cleanupDirectory()
 		return "", fmt.Errorf("quarantine private target %s: %w", state.path, err)
 	}
 	currentInfo, currentDigest, snapshotError := rootedRegularSnapshot(root, quarantined)
 	if snapshotError != nil || !os.SameFile(published.info, currentInfo) || published.digest != currentDigest {
 		if _, targetError := root.Lstat(filepath.FromSlash(state.path)); os.IsNotExist(targetError) {
-			if restoreError := root.Rename(quarantined, filepath.FromSlash(state.path)); restoreError != nil {
+			if restoreError := rootedfs.Rename(root, quarantined, filepath.FromSlash(state.path)); restoreError != nil {
 				return "", fmt.Errorf("private target changed after publication; replacement retained at %s: %v", quarantined, restoreError)
 			}
 			cleanupDirectory()
@@ -1437,7 +1438,7 @@ func rootedCreateRegular(root *os.Root, path string, contents []byte, mode os.Fi
 	rootPath := filepath.FromSlash(path)
 	parent := filepath.Dir(rootPath)
 	if parent != "." {
-		if err := root.MkdirAll(parent, 0o755); err != nil {
+		if err := rootedfs.MkdirAll(root, parent, 0o755); err != nil {
 			return err
 		}
 	}

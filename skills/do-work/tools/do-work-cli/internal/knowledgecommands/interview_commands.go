@@ -19,6 +19,7 @@ import (
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/commandruntime"
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/gittransaction"
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/resultmodel"
+	"github.com/knews2019/skill-do-work/do-work-cli/internal/rootedfs"
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/sharedprimitives"
 )
 
@@ -1254,7 +1255,7 @@ func replaceRootedFile(repositoryRoot, relative string, contents []byte, mode os
 	if err != nil || !before.Mode().IsRegular() {
 		return fmt.Errorf("unsafe replacement target %s", relative)
 	}
-	old, err := root.ReadFile(rel)
+	old, err := rootedfs.ReadFile(root, rel)
 	if err != nil {
 		return err
 	}
@@ -1272,11 +1273,11 @@ func replaceRootedFile(repositoryRoot, relative string, contents []byte, mode os
 	if err != nil || !os.SameFile(before, current) {
 		return fmt.Errorf("target %s changed before publication", relative)
 	}
-	currentBytes, err := root.ReadFile(rel)
+	currentBytes, err := rootedfs.ReadFile(root, rel)
 	if err != nil || sha256.Sum256(currentBytes) != digest {
 		return fmt.Errorf("target %s contents changed before publication", relative)
 	}
-	return root.Rename(temp, rel)
+	return rootedfs.Rename(root, temp, rel)
 }
 
 func createRootedFileWithRoot(root *os.Root, relative string, contents []byte, mode os.FileMode) error {

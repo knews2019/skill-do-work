@@ -16,6 +16,7 @@ import (
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/commandruntime"
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/gittransaction"
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/resultmodel"
+	"github.com/knews2019/skill-do-work/do-work-cli/internal/rootedfs"
 )
 
 type commandOptions struct {
@@ -302,7 +303,7 @@ func moveRootedFile(repositoryRoot, sourcePath, destinationPath string, expected
 	if statError != nil || !sourceInfo.Mode().IsRegular() {
 		return nil, fmt.Errorf("move source is not a regular file: %s", sourcePath)
 	}
-	contents, readError := sourceParent.ReadFile(sourceName)
+	contents, readError := rootedfs.ReadFile(sourceParent, sourceName)
 	if readError != nil || !bytes.Equal(contents, expectedBytes) {
 		return nil, fmt.Errorf("move source changed: %s", sourcePath)
 	}
@@ -358,7 +359,7 @@ func replaceRootedFile(repositoryRoot, path string, expected, contents []byte) e
 	if statError != nil || !targetInfo.Mode().IsRegular() {
 		return fmt.Errorf("target is not a regular non-symlink file: %s", path)
 	}
-	current, readError := parentRoot.ReadFile(name)
+	current, readError := rootedfs.ReadFile(parentRoot, name)
 	if readError != nil || !bytes.Equal(current, expected) {
 		return fmt.Errorf("target preimage changed: %s", path)
 	}
@@ -374,11 +375,11 @@ func replaceRootedFile(repositoryRoot, path string, expected, contents []byte) e
 		return fmt.Errorf("target parent identity changed: %s", parentPath)
 	}
 	currentInfo, currentInfoError := parentRoot.Lstat(name)
-	current, readError = parentRoot.ReadFile(name)
+	current, readError = rootedfs.ReadFile(parentRoot, name)
 	if currentInfoError != nil || !os.SameFile(targetInfo, currentInfo) || readError != nil || !bytes.Equal(current, expected) {
 		return fmt.Errorf("target changed before publication: %s", path)
 	}
-	if renameError := parentRoot.Rename(temporaryName, name); renameError != nil {
+	if renameError := rootedfs.Rename(parentRoot, temporaryName, name); renameError != nil {
 		return renameError
 	}
 	if !rootedParentIdentity(repositoryHandle, parentPath, parentInfo) {
@@ -392,7 +393,7 @@ func openRootedParent(repositoryHandle *os.Root, parentPath string) (*os.Root, o
 	if statError != nil || !info.IsDir() || info.Mode()&os.ModeSymlink != 0 {
 		return nil, nil, fmt.Errorf("destination parent is not a real repository directory: %s", parentPath)
 	}
-	parentRoot, openError := repositoryHandle.OpenRoot(parentPath)
+	parentRoot, openError := rootedfs.OpenRoot(repositoryHandle, parentPath)
 	if openError != nil {
 		return nil, nil, fmt.Errorf("opening rooted destination parent %s: %w", parentPath, openError)
 	}

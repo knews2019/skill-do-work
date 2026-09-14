@@ -13,6 +13,7 @@ import (
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/atomicfile"
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/gittransaction"
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/resultmodel"
+	"github.com/knews2019/skill-do-work/do-work-cli/internal/rootedfs"
 )
 
 type ApplyOptions struct {
@@ -530,7 +531,7 @@ func applyConsumedScratch(repositoryRoot string, groups []OperationGroup) error 
 		}
 		runDirectory := filepath.Dir(group.Operations[0].SourcePath)
 		manifestRelativePath := filepath.Join(runDirectory, "manifest.md")
-		manifestBytes, readError := repositoryHandle.ReadFile(filepath.FromSlash(manifestRelativePath))
+		manifestBytes, readError := rootedfs.ReadFile(repositoryHandle, filepath.FromSlash(manifestRelativePath))
 		if readError != nil || !manifestIsConsumed(manifestBytes) {
 			return fmt.Errorf("%s no longer has an exact consumed manifest", runDirectory)
 		}

@@ -12,6 +12,7 @@ import (
 
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/commandruntime"
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/resultmodel"
+	"github.com/knews2019/skill-do-work/do-work-cli/internal/rootedfs"
 )
 
 var beforePrivateCopyPublish = func() {}
@@ -167,7 +168,7 @@ func publishPrivateCopy(sourcePath, destinationPath string) error {
 	if err != nil {
 		return err
 	}
-	stagedBytes, err := parentRoot.ReadFile(temporaryName)
+	stagedBytes, err := rootedfs.ReadFile(parentRoot, temporaryName)
 	if err != nil {
 		return err
 	}
@@ -175,7 +176,7 @@ func publishPrivateCopy(sourcePath, destinationPath string) error {
 		return fmt.Errorf("staged bytes differ from source")
 	}
 	beforePrivateCopyPublish()
-	if err := parentRoot.Link(temporaryName, destinationName); err != nil {
+	if err := rootedfs.Link(parentRoot, temporaryName, destinationName); err != nil {
 		return fmt.Errorf("publish without overwrite: %w", err)
 	}
 	destinationInfo, err := parentRoot.Stat(destinationName)

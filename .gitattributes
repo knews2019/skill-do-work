@@ -45,6 +45,7 @@
 /CHANGELOG-20*.md export-ignore
 /ai-reports      export-ignore
 /.vscode         export-ignore
+/.github         export-ignore
 /_dev            export-ignore
 /decisions       export-ignore
 /.gitignore      export-ignore

@@ -5,7 +5,7 @@
 # The transaction lives in the do-work-cli `update-suite` command; this file is the
 # compatibility launcher that keeps the public argv working. The command fetches, validates
 # and installs in one process, so the installer is no longer run as a subprocess and there is
-# no cancellation status to thread through. Requires Go 1.25.0 or newer, which the
+# no cancellation status to thread through. Requires Go 1.24.0 or newer, which the
 # do-work-cli launcher enforces.
 set -euo pipefail
 
