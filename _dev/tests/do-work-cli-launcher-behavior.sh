@@ -200,6 +200,17 @@ if [ "$old_fallback_status" -ne 0 ] || [ "$old_fallback_output" != 'prebuilt <in
   exit 1
 fi
 
+# Without a per-user cache directory the prebuilt route refuses rather than using a shared
+# path another account could seed; nothing is fetched and nothing lands under /tmp.
+set +e
+shared_output="$(env -u XDG_CACHE_HOME -u HOME PATH="$fixture_root/no-go-bin" "$fixture_root/tools/do-work-cli.sh" inspect 2>&1)"
+shared_status=$?
+set -e
+if [ "$shared_status" -ne 2 ] || [[ "$shared_output" != *'no per-user cache directory'* ]] || [[ "$shared_output" == *"prebuilt <"* ]] || [ -e /tmp/.cache/do-work-cli/9.8.7 ]; then
+  echo "FAIL: launcher without HOME did not refuse the shared cache path (status $shared_status): $shared_output" >&2
+  exit 1
+fi
+
 # A binary whose bytes do not match SHA256SUMS is refused, never cached, never run.
 rm -rf "$XDG_CACHE_HOME/do-work-cli"
 mkdir -p "$release_directory"

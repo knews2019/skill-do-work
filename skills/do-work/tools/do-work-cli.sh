@@ -109,7 +109,15 @@ case "$host_arch" in
   *) refuse_prebuilt "no prebuilt binary is published for $host_os/$host_arch" ;;
 esac
 asset_name="do-work-cli_${host_os}_${host_arch}"
-cache_directory="${XDG_CACHE_HOME:-${HOME:-/tmp}/.cache}/do-work-cli/$suite_version"
+# The cache must be per-user: a cached binary is exec'd without re-verification, so it
+# may only ever live somewhere another account cannot pre-create it. No shared fallback.
+if [ -n "${XDG_CACHE_HOME:-}" ]; then
+  cache_directory="$XDG_CACHE_HOME/do-work-cli/$suite_version"
+elif [ -n "${HOME:-}" ]; then
+  cache_directory="$HOME/.cache/do-work-cli/$suite_version"
+else
+  refuse_prebuilt "no per-user cache directory: set XDG_CACHE_HOME or HOME"
+fi
 cached_binary="$cache_directory/$asset_name"
 
 if [ -x "$cached_binary" ]; then
@@ -121,8 +129,9 @@ release_url="$release_base_url/v$suite_version"
 mkdir -p "$cache_directory" || refuse_prebuilt "could not create $cache_directory"
 staging_directory="$(mktemp -d "$cache_directory/.fetch.XXXXXX")" || refuse_prebuilt "could not create a staging directory under $cache_directory"
 trap 'rm -rf "$staging_directory"' EXIT
-if ! curl -fsSL --retry 3 --retry-delay 2 -o "$staging_directory/$asset_name" "$release_url/$asset_name" \
-  || ! curl -fsSL --retry 3 --retry-delay 2 -o "$staging_directory/SHA256SUMS" "$release_url/SHA256SUMS"; then
+# Bounded on both ends so a stalled endpoint cannot hang SessionStart or an install.
+if ! curl -fsSL --connect-timeout 15 --max-time 120 --retry 3 --retry-delay 2 -o "$staging_directory/$asset_name" "$release_url/$asset_name" \
+  || ! curl -fsSL --connect-timeout 15 --max-time 60 --retry 3 --retry-delay 2 -o "$staging_directory/SHA256SUMS" "$release_url/SHA256SUMS"; then
   refuse_prebuilt "could not fetch $asset_name $suite_version from $release_url"
 fi
 

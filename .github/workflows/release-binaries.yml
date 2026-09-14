@@ -41,7 +41,9 @@ jobs:
           if gh release view "$version" >/dev/null 2>&1; then
             gh release upload "$version" --clobber skills/do-work/tools/do-work-cli/dist/*
           else
-            gh release create "$version" --title "$version" \
+            # --target pins the new tag to the commit these binaries were built from; without
+            # it gh tags whatever main is at by the time the build finishes.
+            gh release create "$version" --title "$version" --target "$GITHUB_SHA" \
               --notes "Prebuilt do-work-cli binaries for $version; see CHANGELOG.md." \
               skills/do-work/tools/do-work-cli/dist/*
           fi
