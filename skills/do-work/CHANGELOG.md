@@ -10,6 +10,16 @@ For the complete release history, read this file and the archives below from new
 - [0.50.0 through 0.64.1](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-13-up-to-v0.64.1.md)
 - [0.1.0 through 0.49.0](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-07-up-to-v0.49.0.md)
 
+## 0.305.49 — Preserve Interview Exports and Correct Publication Handoffs (2026-09-15)
+
+Interview exports retain approved entries and scalar source names, and derive scheduling and stakeholder guidance from the supplied data.
+
+- Historical JSON preserves stale entries and empty arrays. Active scheduling, trust, and scan derivations exclude stale inputs as declared by the template.
+- Stakeholder tones, avoidance windows, and recurring dependency slots now populate when the supplied entries qualify; missing or ambiguous window times are omitted.
+- Architecture report commits check staged changes before creating report directories.
+- Queue selection retains the work-action handoff without advertising an uninstalled Just recipe.
+- The CLI prime and lesson index record the failure cases and regression coverage.
+
 ## 0.305.48 — Document Rollback Identity and Toolchain Lessons (2026-09-15)
 
 The CLI prime and lesson records now capture the dirty-move recording order, directory-bound recursive deletion, and portable nested-root refusal tests from 0.305.47. The earlier lesson no longer assumes every Go version gives nested roots an unresolvable name.

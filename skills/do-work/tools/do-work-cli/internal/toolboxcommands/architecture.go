@@ -1,6 +1,7 @@
 package toolboxcommands
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io/fs"
@@ -172,6 +173,16 @@ func architecturePublish(ctx commandruntime.ExecutionContext, draft, candidate s
 			preflight.ExactTextOutput = &output
 		}
 		return preflight
+	}
+	if commit {
+		checked := gittransaction.PreflightTargets(context.Background(), ctx.RepositoryRoot, []string{indexRel}, true)
+		if checked.Failure != nil {
+			outcome := resultmodel.OutcomeFailure
+			if checked.Failure.Kind == gittransaction.FailureDirtyIndex || checked.Failure.Kind == gittransaction.FailureDirtyTarget {
+				outcome = resultmodel.OutcomeRefused
+			}
+			return transactionResult(CommandArchitecture, gittransaction.TransactionResult{Outcome: outcome, RepositoryRoot: checked.RepositoryRoot, Failure: checked.Failure, Rollback: resultmodel.RollbackResult{Status: resultmodel.RollbackNotNeeded}}, "")
+		}
 	}
 	if parentErr := rootedMkdirAll(ctx.RepositoryRoot, filepath.ToSlash(filepath.Dir(relative)), 0o755); parentErr != nil {
 		return architectureFailure(parentErr.Error())

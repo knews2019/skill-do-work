@@ -130,3 +130,31 @@ func TestArchitecturePublishCommitCommitsPublishedBundle(t *testing.T) {
 		t.Fatalf("committed paths = %q", got)
 	}
 }
+
+func TestArchitectureCommitRefusesDirtyIndexBeforeCreatingReportDirectories(t *testing.T) {
+	repository := toolboxTestRepository(t)
+	draft := filepath.Join(repository, "draft.html")
+	if err := os.WriteFile(draft, []byte("report"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(repository, "unrelated"), []byte("staged"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	toolboxTestGit(t, repository, "add", "unrelated")
+	result := handleArchitecture(commandruntime.ExecutionContext{RepositoryRoot: repository}, []string{"--commit", "--publish", draft, "reports/demo"})
+	found := false
+	for _, finding := range result.Findings {
+		if finding.Code == "GIT-DIRTY-INDEX" {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatalf("missing dirty-index refusal: %+v", result)
+	}
+	if _, err := os.Lstat(filepath.Join(repository, "reports")); !os.IsNotExist(err) {
+		t.Errorf("commit refusal left report directories: %v", err)
+	}
+	if staged := strings.TrimSpace(toolboxTestGit(t, repository, "diff", "--cached", "--name-only")); staged != "unrelated" {
+		t.Errorf("staged paths changed: %q", staged)
+	}
+}

@@ -893,7 +893,7 @@ func renderInterviewExports(template interviewTemplate, root map[string]any) (ma
 	return renders, nil
 }
 
-func renderTemplateBlock(template string, root, current map[string]any, itemIndex, itemCount int, jsonOutput bool) (string, error) {
+func renderTemplateBlock(template string, root map[string]any, current any, itemIndex, itemCount int, jsonOutput bool) (string, error) {
 	for {
 		start := strings.Index(template, "{{#each ")
 		if start < 0 {
@@ -913,8 +913,7 @@ func renderTemplateBlock(template string, root, current map[string]any, itemInde
 		items := evaluateEach(expr, root, current)
 		var replacement strings.Builder
 		for index, raw := range items {
-			item := mapValue(raw)
-			rendered, err := renderTemplateBlock(body, root, item, index, len(items), jsonOutput)
+			rendered, err := renderTemplateBlock(body, root, raw, index, len(items), jsonOutput)
 			if err != nil {
 				return "", err
 			}
@@ -966,7 +965,7 @@ func renderTemplateBlock(template string, root, current map[string]any, itemInde
 		switch {
 		case strings.HasPrefix(expr, "json_entries "):
 			layer := strings.TrimSpace(strings.TrimPrefix(expr, "json_entries "))
-			value = mapValue(resolveValue(root, "layers."+layer))["entries"]
+			value = interviewLayerEntries(mapValue(root["session"]), layer)
 			bytes, _ := json.Marshal(value)
 			return string(bytes)
 		case strings.HasPrefix(expr, "json "):
@@ -1018,7 +1017,7 @@ func matchingTemplateClose(template string, from int, kind string) int {
 	return -1
 }
 
-func evaluateEach(expr string, root, current map[string]any) []any {
+func evaluateEach(expr string, root map[string]any, current any) []any {
 	sortPart := ""
 	if index := strings.Index(expr, " sorted by "); index >= 0 {
 		sortPart = expr[index+11:]
@@ -1107,7 +1106,7 @@ func evaluatePredicate(predicate string, item map[string]any) bool {
 
 func deriveInterviewValues(session map[string]any) map[string]any {
 	derived := map[string]any{}
-	rhythms := interviewLayerEntries(session, "operating_rhythms")
+	rhythms := activeInterviewEntries(session, "operating_rhythms")
 	parts, overnight := []string{}, []any{}
 	for _, raw := range rhythms {
 		item := mapValue(raw)
@@ -1123,9 +1122,9 @@ func deriveInterviewValues(session map[string]any) map[string]any {
 	}
 	derived["rhythm_synthesis"] = strings.Join(parts, " ")
 	inputCounts := map[string]int{}
-	for _, raw := range interviewLayerEntries(session, "recurring_decisions") {
+	for _, raw := range activeInterviewEntries(session, "recurring_decisions") {
 		details := mapValue(mapValue(raw)["details"])
-		for _, input := range sliceValue(details["decision_inputs"]) {
+		for _, input := range uniqueAnyStrings(sliceValue(details["decision_inputs"])) {
 			inputCounts[stringValue(input)]++
 		}
 	}
@@ -1142,7 +1141,7 @@ func deriveInterviewValues(session map[string]any) map[string]any {
 	sort.Slice(advisory, func(i, j int) bool { return stringValue(advisory[i]) < stringValue(advisory[j]) })
 	derived["authoritative_inputs"], derived["advisory_inputs"], derived["overnight_scan_sources"] = authoritative, advisory, uniqueAnyStrings(overnight)
 	tacit := []any{}
-	for _, raw := range interviewLayerEntries(session, "institutional_knowledge") {
+	for _, raw := range activeInterviewEntries(session, "institutional_knowledge") {
 		item := mapValue(raw)
 		location := strings.ToLower(stringValue(mapValue(item["details"])["where_it_lives"]))
 		if strings.Contains(location, "head") || strings.Contains(location, "undocumented") {
@@ -1150,7 +1149,7 @@ func deriveInterviewValues(session map[string]any) map[string]any {
 		}
 	}
 	derived["tacit_knowledge"] = tacit
-	derived["stakeholder_tones"] = []any{}
+	derived["stakeholder_tones"] = deriveStakeholderTones(session)
 	timeBlocks := []any{}
 	for _, raw := range rhythms {
 		item := mapValue(raw)
@@ -1169,7 +1168,8 @@ func deriveInterviewValues(session map[string]any) map[string]any {
 		}
 	}
 	derived["time_blocks"] = timeBlocks
-	derived["avoid_windows"], derived["standing_slots"] = []any{}, []any{}
+	derived["avoid_windows"] = deriveAvoidWindows(session)
+	derived["standing_slots"] = deriveStandingSlots(session)
 	return derived
 }
 
@@ -1421,7 +1421,10 @@ func allInterviewEntries(session map[string]any) []any {
 	result := []any{}
 	for layer, raw := range mapValue(session["layers"]) {
 		for _, entryRaw := range sliceValue(mapValue(raw)["entries"]) {
-			entry := mapValue(entryRaw)
+			entry := map[string]any{}
+			for key, value := range mapValue(entryRaw) {
+				entry[key] = value
+			}
 			entry["layer_id"] = layer
 			result = append(result, entry)
 		}
@@ -1466,13 +1469,13 @@ func intValue(value any) int {
 		return n
 	}
 }
-func resolveScoped(root, current map[string]any, path string) any {
+func resolveScoped(root map[string]any, current any, path string) any {
 	if value, found := resolveValueFound(current, path); found {
 		return value
 	}
 	return resolveValue(root, path)
 }
-func resolveScopedFound(root, current map[string]any, path string) (any, bool) {
+func resolveScopedFound(root map[string]any, current any, path string) (any, bool) {
 	if value, found := resolveValueFound(current, path); found {
 		return value, true
 	}

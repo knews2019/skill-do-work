@@ -310,7 +310,7 @@ func evaluateCandidate(snapshot *repositorymodel.RepositorySnapshot, candidate s
 		ProbeAttempted: evidence.ProbeAttempted, ProbeExitCode: evidence.ProbeExitCode, UnblockRequired: evidence.UnblockRequired,
 		DependencyDepth: depth, Dependencies: append([]string(nil), record.DependsOn...),
 		EstimateMinutes: estimateMinutes, EstimateKnown: estimateKnown,
-		NextArgv: []string{"do-work", "run", identifier}, NextJustRecipe: "do-work-run " + identifier,
+		NextArgv:         []string{"do-work", "run", identifier},
 		VerificationArgv: []string{"do-work-cli", "--format", "json", "next", identifier},
 	}
 	return &selected, nil, probed, probeSucceeded, 0
@@ -456,14 +456,8 @@ func requestPriorityRank(requestPriority string) int {
 	}
 }
 
+// Natural-language actions have no executable recipe; map only the installed CLI route.
 func justRecipeFor(nextArgv []string) string {
-	if len(nextArgv) >= 2 && nextArgv[0] == "do-work" {
-		recipe := "do-work-" + nextArgv[1]
-		if len(nextArgv) > 2 {
-			recipe += " " + strings.Join(nextArgv[2:], " ")
-		}
-		return recipe
-	}
 	if len(nextArgv) >= 2 && nextArgv[0] == "do-work-cli" && nextArgv[1] == "next" {
 		recipe := "do-work-next"
 		if len(nextArgv) > 2 {

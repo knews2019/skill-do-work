@@ -145,7 +145,7 @@ func TestTargetResolutionPreservesMixedTokenOrderAndExplicitProvenance(t *testin
 		t.Fatalf("missing targets were not actionable exclusions: %#v", missing)
 	}
 	for _, exclusion := range missing {
-		if len(exclusion.NextArgv) == 0 || len(exclusion.VerificationArgv) == 0 || exclusion.NextJustRecipe == "" {
+		if len(exclusion.NextArgv) == 0 || len(exclusion.VerificationArgv) == 0 || exclusion.NextJustRecipe != "" {
 			t.Fatalf("missing target has incomplete commands: %#v", exclusion)
 		}
 	}

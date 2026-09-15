@@ -776,3 +776,26 @@ func writeRepositorySelectionFixture(t *testing.T, repositoryRoot, relativePath,
 		t.Fatal(err)
 	}
 }
+
+func TestSelectedWorkActionDoesNotAdvertiseUninstalledJustRecipe(t *testing.T) {
+	repositoryRoot := t.TempDir()
+	writeCommandRequest(t, repositoryRoot, "do-work/queue/REQ-701-ready.md", "REQ-701", "pending", "")
+	snapshot, err := repositorymodel.DiscoverRepository(repositoryRoot)
+	if err != nil {
+		t.Fatal(err)
+	}
+	result := Select(snapshot, dependencygraph.BuildGraph(snapshot), SelectionOptions{}, nil)
+	if len(result.Selected) != 1 {
+		t.Fatalf("selection: %+v", result)
+	}
+	selected := result.Selected[0]
+	if selected.NextJustRecipe != "" || strings.Join(selected.NextArgv, " ") != "do-work run REQ-701" {
+		t.Errorf("work handoff: %+v", selected)
+	}
+	if got := justRecipeFor([]string{"do-work", "run", "REQ-701"}); got != "" {
+		t.Errorf("natural-language action mapped to nonexistent recipe: %q", got)
+	}
+	if got := justRecipeFor([]string{"do-work-cli", "next", "REQ-701"}); got != "do-work-next REQ-701" {
+		t.Errorf("installed next recipe lost: %q", got)
+	}
+}
