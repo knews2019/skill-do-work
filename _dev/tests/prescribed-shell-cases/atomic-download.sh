@@ -20,7 +20,7 @@ leaked_private_paths="$(find "$fixture_root" -name 'atomic-target.download.*' -p
 # atomic-download: a rate-limited host answers 429 once and then succeeds. The fake curl
 # below models curl's own internal retry loop, so it survives that 429 only if the caller
 # allowed a retry — which is the whole point of the flag set. It also records the
-# Authorization header it was handed, so the opt-in credential path is observable.
+# Authorization header it was handed, so credential isolation is observable.
 atomic_retry_bin="$fixture_root/atomic-retry-bin"
 mkdir -p "$atomic_retry_bin"
 printf '%s\n' \
@@ -68,21 +68,22 @@ leaked_private_paths="$(find "$fixture_root" -name 'atomic-retry-target.download
 [ -n "$leaked_private_paths" ] \
   && fail_case 'atomic-download retry case leaked private scratch'
 
-# atomic-download: an opt-in token becomes a bearer credential; GH_TOKEN wins over GITHUB_TOKEN.
+# atomic-download: neither GitHub token variable authorizes an unrelated destination.
+# Trusted-host authentication and token precedence are covered by the Go downloader tests.
 GH_TOKEN=primary-token GITHUB_TOKEN=fallback-token PATH="$atomic_retry_bin:$PATH" \
   ATOMIC_ATTEMPT_LOG="$fixture_root/atomic-credential-attempts" \
   ATOMIC_HEADER_LOG="$fixture_root/atomic-credential-header" \
   "$core_scripts/atomic-download.sh" https://example.invalid/private "$fixture_root/atomic-credential-target" >/dev/null 2>&1 \
   || fail_case 'atomic-download credential case returned nonzero'
-[ "$(cat "$fixture_root/atomic-credential-header")" = 'Authorization: Bearer primary-token' ] \
-  || fail_case 'atomic-download credential case did not send GH_TOKEN as a bearer credential'
+[ -z "$(cat "$fixture_root/atomic-credential-header")" ] \
+  || fail_case 'atomic-download credential case leaked GH_TOKEN to an unrelated host'
 GH_TOKEN='' GITHUB_TOKEN=fallback-token PATH="$atomic_retry_bin:$PATH" \
   ATOMIC_ATTEMPT_LOG="$fixture_root/atomic-fallback-attempts" \
   ATOMIC_HEADER_LOG="$fixture_root/atomic-fallback-header" \
   "$core_scripts/atomic-download.sh" https://example.invalid/private "$fixture_root/atomic-fallback-target" >/dev/null 2>&1 \
   || fail_case 'atomic-download fallback-credential case returned nonzero'
-[ "$(cat "$fixture_root/atomic-fallback-header")" = 'Authorization: Bearer fallback-token' ] \
-  || fail_case 'atomic-download fallback-credential case did not fall back to GITHUB_TOKEN'
+[ -z "$(cat "$fixture_root/atomic-fallback-header")" ] \
+  || fail_case 'atomic-download fallback-credential case leaked GITHUB_TOKEN to an unrelated host'
 
 # atomic-download: a target occupied by a DIRECTORY must fail closed. `mv` treats a
 # directory operand as a container rather than a collision, so the download nests

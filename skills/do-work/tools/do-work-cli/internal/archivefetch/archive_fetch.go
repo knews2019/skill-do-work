@@ -147,7 +147,15 @@ const (
 )
 
 var (
-	atomicHTTPClient  = &http.Client{}
+	atomicHTTPClient = &http.Client{CheckRedirect: func(request *http.Request, via []*http.Request) error {
+		if len(via) >= 10 {
+			return fmt.Errorf("stopped after 10 redirects")
+		}
+		if !TrustedGitHubURL(request.URL) {
+			request.Header.Del("Authorization")
+		}
+		return nil
+	}}
 	atomicRetryDelay  = defaultAtomicRetryDelay
 	atomicRetryBudget = defaultAtomicRetryBudget
 )
@@ -216,7 +224,7 @@ func prepareDownloadCandidate(ctx context.Context, sourceURL string, parentRoot 
 			_ = stage.Close()
 			return "", DownloadResult{Attempts: attempts, Err: redactedTransferError(fmt.Errorf("build HTTP request: %w", err), token)}
 		}
-		if token != "" {
+		if token != "" && TrustedGitHubURL(request.URL) {
 			request.Header.Set("Authorization", "Bearer "+token)
 		}
 		response, err := atomicHTTPClient.Do(request)

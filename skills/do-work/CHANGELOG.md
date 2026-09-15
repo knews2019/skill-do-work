@@ -10,6 +10,14 @@ For the complete release history, read this file and the archives below from new
 - [0.50.0 through 0.64.1](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-13-up-to-v0.64.1.md)
 - [0.1.0 through 0.49.0](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-07-up-to-v0.49.0.md)
 
+## 0.305.51 — Keep GitHub Tokens on Trusted HTTPS Destinations (2026-09-15)
+
+Downloads no longer send environment GitHub tokens to arbitrary URLs or upstream mirrors.
+
+- Authenticate only exact trusted GitHub HTTPS endpoints and strip authorization on redirects outside that boundary.
+- Use the shared Go downloader for authenticated atomic downloads, keeping tokens out of curl arguments and preserving token precedence and private publication.
+- Cover localhost leaks, HTTPS mirrors, lookalike hosts, ports, redirects, and interrupted-target repair with regression tests.
+
 ## 0.305.50 — Default AGY to Latest Gemini Flash with Explicit Escalation (2026-09-15)
 
 AGY now defaults to the latest available Gemini Flash at Low or Medium effort, with explicit model verification on launches and continuations. The guide adds High, Boost, focused subagents and Teamwork escalation, worker-routing boundaries, and checks for partial or denied headless work.

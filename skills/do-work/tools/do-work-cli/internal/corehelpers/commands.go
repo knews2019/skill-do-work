@@ -14,6 +14,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/knews2019/skill-do-work/do-work-cli/internal/archivefetch"
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/commandruntime"
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/doctor"
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/nextselection"
@@ -882,12 +883,19 @@ func handleAtomicDownload(_ commandruntime.ExecutionContext, arguments []string)
 	_ = temporary.Close()
 	defer os.Remove(temporaryPath)
 	curlArguments := []string{"-fsSL", "--retry", "3", "--retry-delay", "2", "--retry-max-time", "60"}
-	if token := firstNonempty(os.Getenv("GH_TOKEN"), os.Getenv("GITHUB_TOKEN")); token != "" {
-		curlArguments = append(curlArguments, "-H", "Authorization: Bearer "+token)
-	}
 	curlArguments = append(curlArguments, "-o", temporaryPath, sourceURL)
-	command := exec.Command("curl", curlArguments...)
-	if output, runError := command.CombinedOutput(); runError != nil {
+	var output []byte
+	var runError error
+	if token := firstNonempty(os.Getenv("GH_TOKEN"), os.Getenv("GITHUB_TOKEN")); token != "" && archivefetch.TrustedGitHubURL(parsedURL) {
+		// Keep credentials out of curl argv and use the downloader's redirect trust
+		// checks even on systems with an older curl. DownloadAtomic needs a free name.
+		if runError = os.Remove(temporaryPath); runError == nil {
+			runError = archivefetch.DownloadAtomic(context.Background(), sourceURL, temporaryPath).Err
+		}
+	} else {
+		output, runError = exec.Command("curl", curlArguments...).CombinedOutput()
+	}
+	if runError != nil {
 		return resultmodel.CommandResult{Outcome: resultmodel.OutcomeFailure, Findings: []resultmodel.CommandFinding{helperFinding("DOWNLOAD-FAILED", resultmodel.SeverityError, []string{targetPath}, strings.TrimSpace(string(output))+": "+runError.Error(), resultmodel.FixabilityManual, "no target was published", []string{"do-work-cli", CommandAtomicDownload, "--source-url", sourceURL, "--target-path", targetPath}, []string{"test", "!", "-s", targetPath})}}
 	}
 	// The byte count is read from the private file BEFORE the rename: after it, the

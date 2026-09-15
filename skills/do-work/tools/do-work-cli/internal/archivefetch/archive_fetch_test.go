@@ -72,12 +72,12 @@ func TestGitRouteDerivationOnlyReadsBranchTarballUrls(t *testing.T) {
 	}
 }
 
-func TestDownloadAtomicRetriesThreeTimesAfterInitial429AndUsesTokenPrecedence(t *testing.T) {
+func TestDownloadAtomicRetriesThreeTimesWithoutLeakingTokenToLocalhost(t *testing.T) {
 	setAtomicRetryTiming(t, time.Millisecond, time.Second)
 	directory := t.TempDir()
 	var attempts atomic.Int32
 	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
-		if request.Header.Get("Authorization") != "Bearer preferred" {
+		if request.Header.Get("Authorization") != "" {
 			t.Errorf("authorization=%q", request.Header.Get("Authorization"))
 		}
 		if attempts.Add(1) < 4 {

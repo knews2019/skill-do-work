@@ -110,7 +110,7 @@ The trigger is that condition and not the identity of any one helper: it holds f
 
 ## Atomic download publication
 
-Never download incrementally into the final path when presence or size is later treated as success. The shipped helper downloads to a private adjacent temporary file, publishes by rename only after curl succeeds, and preserves failures:
+Never download incrementally into the final path when presence or size is later treated as success. The shipped helper downloads to a private adjacent temporary file, publishes by rename only after the transfer succeeds, and preserves failures:
 
 ```bash
 scripts/atomic-download.sh "$source_url" "$target_path"
@@ -118,7 +118,7 @@ scripts/atomic-download.sh "$source_url" "$target_path"
 
 The helper retries transient failures itself (`--retry 3 --retry-delay 2 --retry-max-time 60`), so a rate-limited host — a sustained codeload 429, for instance — does not fail a caller that would have succeeded a moment later. Plain `--retry` has treated 429 as transient since curl 7.51.0; `--retry-all-errors` is deliberately not used because it would raise the required curl version to 7.71 without adding anything here.
 
-Credentials are opt-in. When `GH_TOKEN` or `GITHUB_TOKEN` is non-empty the helper sends `Authorization: Bearer <token>`; absent or empty, the request goes out exactly as it would without them. Callers get both behaviors by using the helper rather than writing their own `curl`.
+When `GH_TOKEN` or `GITHUB_TOKEN` is non-empty, automatic bearer authentication is limited to HTTPS on `github.com`, `api.github.com`, `codeload.github.com`, and `raw.githubusercontent.com`, on the default port or port 443 and without URL user information. `GH_TOKEN` takes precedence. Other destinations, including configured upstream mirrors, receive no GitHub token. Authenticated downloads use the shared Go downloader, which removes authorization on redirects outside that trust boundary; anonymous downloads continue to use curl. Both paths retain transient retries and private staging. The upstream archive downloader applies the same credential and redirect policy.
 
 Cleanup never converts a failed download into success. When review occurs between download and publication, later command blocks must re-derive the deterministic reviewed path and verify it exists; they must not silently download again.
 
