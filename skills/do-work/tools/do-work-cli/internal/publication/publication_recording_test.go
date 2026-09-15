@@ -57,22 +57,36 @@ func TestPublicationCreationIntentPreservesForeignDestinationAfterPreflight(t *t
 }
 
 func TestPublicationRecordingFailureKeepsCreatedTargetsVisibleToRollback(t *testing.T) {
-	for _, mutationKind := range []MutationKind{MutationCreate, MutationMove} {
+	for _, sourceState := range []string{"create", "clean move", "dirty move", "dirty rewritten move"} {
+		mutationKind := MutationMove
+		if sourceState == "create" {
+			mutationKind = MutationCreate
+		}
 		for _, failureStage := range []string{"earlier object replaced", "published destination replaced"} {
-			t.Run(string(mutationKind)+"/"+failureStage, func(t *testing.T) {
+			t.Run(sourceState+"/"+failureStage, func(t *testing.T) {
 				repositoryRoot := initializedGitRepository(t)
 				const firstPath = "a-first.txt"
 				const destinationPath = "b-published.txt"
 				const sourcePath = "source.txt"
 				publishedBytes := []byte("published bytes\n")
+				sourceBytes := publishedBytes
+				var dirtyPaths []string
 				mutation := PlannedMutation{Kind: mutationKind, Path: destinationPath, Contents: publishedBytes, Mode: 0o644}
 				if mutationKind == MutationMove {
 					writeFixture(t, repositoryRoot, sourcePath, publishedBytes, 0o644)
 					runGitFixture(t, repositoryRoot, "add", sourcePath)
 					runGitFixture(t, repositoryRoot, "commit", "-qm", "move source")
-					mutation = PlannedMutation{Kind: MutationMove, Path: sourcePath, DestinationPath: destinationPath, ExpectedBytes: publishedBytes}
+					if strings.HasPrefix(sourceState, "dirty") {
+						sourceBytes = []byte("dirty preimage\n")
+						dirtyPaths = []string{sourcePath}
+						writeFixture(t, repositoryRoot, sourcePath, sourceBytes, 0o644)
+						if sourceState == "dirty move" {
+							publishedBytes = sourceBytes
+						}
+					}
+					mutation = PlannedMutation{Kind: MutationMove, Path: sourcePath, DestinationPath: destinationPath, ExpectedBytes: sourceBytes, Contents: publishedBytes}
 				}
-				plan := finalizePlan(PublicationPlan{Operation: OperationRelease, RepositoryRoot: repositoryRoot, Mutations: []PlannedMutation{
+				plan := finalizePlan(PublicationPlan{Operation: OperationRelease, RepositoryRoot: repositoryRoot, ExistingDirtyTargetPaths: dirtyPaths, Mutations: []PlannedMutation{
 					{Kind: MutationCreate, Path: firstPath, Contents: []byte("first publication\n"), Mode: 0o644},
 					mutation,
 				}})
@@ -135,7 +149,7 @@ func TestPublicationRecordingFailureKeepsCreatedTargetsVisibleToRollback(t *test
 					}
 				}
 				if mutationKind == MutationMove {
-					if contents, err := os.ReadFile(filepath.Join(repositoryRoot, sourcePath)); err != nil || string(contents) != string(publishedBytes) {
+					if contents, err := os.ReadFile(filepath.Join(repositoryRoot, sourcePath)); err != nil || string(contents) != string(sourceBytes) {
 						t.Errorf("move source was not restored: contents=%q, err=%v", contents, err)
 					}
 				}

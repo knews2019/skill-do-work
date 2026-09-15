@@ -10,6 +10,14 @@ For the complete release history, read this file and the archives below from new
 - [0.50.0 through 0.64.1](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-13-up-to-v0.64.1.md)
 - [0.1.0 through 0.49.0](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-07-up-to-v0.49.0.md)
 
+## 0.305.47 — Restore Dirty Moves and Confine Recursive Rollback (2026-09-15)
+
+Failed publication restores dirty source contents even when another writer replaces a created file. Recursive rollback stays bound to the directory it opened, preserving unrelated files behind a replacement symlink.
+
+- Move recording captures destination ownership and source removal before revalidation can fail.
+- Recursive removal enumerates and deletes through the same directory-bound root.
+- The nested-root refusal test uses an actually unresolvable directory name, including on Go 1.26.1.
+
 ## 0.305.46 — Go 1.24 Floor and Prebuilt Binary Fallback (2026-09-14)
 
 Hosts pinned to Go 1.24, and hosts with no usable Go at all, can now install, update and run the suite.

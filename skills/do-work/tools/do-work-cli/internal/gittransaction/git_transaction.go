@@ -333,6 +333,18 @@ func (recorder *MutationRecorder) RecordCreationIntent(path string) error {
 // RecordPublishedCreation binds rollback to the handle identity returned by exclusive
 // creation, even if a foreign object has replaced its pathname before recording.
 func (recorder *MutationRecorder) RecordPublishedCreation(path string, createdInfo os.FileInfo, contents []byte) error {
+	if err := recorder.bindPublishedCreation(path, createdInfo, contents); err != nil {
+		return err
+	}
+	root, err := os.OpenRoot(recorder.repositoryRoot)
+	if err != nil {
+		return err
+	}
+	defer root.Close()
+	return recorder.revalidateCreatedObjects(root, "")
+}
+
+func (recorder *MutationRecorder) bindPublishedCreation(path string, createdInfo os.FileInfo, contents []byte) error {
 	if err := recorder.RecordCreationIntent(path); err != nil {
 		return err
 	}
@@ -341,12 +353,16 @@ func (recorder *MutationRecorder) RecordPublishedCreation(path string, createdIn
 	}
 	normalized, _ := normalizeTargetPath(path)
 	recorder.createdObjects[normalized] = createdObjectIdentity{info: createdInfo, digest: sha256.Sum256(contents)}
-	root, err := os.OpenRoot(recorder.repositoryRoot)
-	if err != nil {
+	return nil
+}
+
+// RecordPublishedMove binds both completed mutations before cross-object validation
+// can fail, so rollback can restore a dirty source even when a created path was replaced.
+func (recorder *MutationRecorder) RecordPublishedMove(sourcePath, destinationPath string, createdInfo os.FileInfo, contents []byte) error {
+	if err := recorder.bindPublishedCreation(destinationPath, createdInfo, contents); err != nil {
 		return err
 	}
-	defer root.Close()
-	return recorder.revalidateCreatedObjects(root, "")
+	return recorder.RecordTouched(sourcePath)
 }
 
 func (recorder *MutationRecorder) RecordCreated(path string) error {

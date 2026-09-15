@@ -66,10 +66,9 @@ func TestRenameStaysInsideTheRoot(t *testing.T) {
 	}
 }
 
-// A nested root from Go's own (*Root).OpenRoot only knows its relative name. Rename must
-// refuse it instead of operating on a working-directory-relative path, and OpenRoot must
-// hand back a nested root that Rename accepts while still refusing a symlink escape.
-func TestNestedRootsResolveOnlyThroughOpenRoot(t *testing.T) {
+// A root whose name no longer identifies its directory must be refused, regardless
+// of how the Go version names nested roots. Our nested opener remains usable.
+func TestNestedRootsRefuseUnresolvableNames(t *testing.T) {
 	root, directory := openTestRoot(t)
 	writeTestFile(t, filepath.Join(directory, "nested", "object"), "payload")
 	goNested, err := root.OpenRoot("nested")
@@ -77,11 +76,17 @@ func TestNestedRootsResolveOnlyThroughOpenRoot(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer goNested.Close()
-	if err := Rename(goNested, "object", "moved"); !errors.Is(err, errRootUnresolvable) {
-		t.Fatalf("rename inside a Go-nested root error = %v, want unresolvable root", err)
+	if err := os.Rename(filepath.Join(directory, "nested"), filepath.Join(directory, "held")); err != nil {
+		t.Fatal(err)
 	}
-	if _, err := os.Stat(filepath.Join(directory, "nested", "object")); err != nil {
-		t.Fatalf("object was moved despite the refusal: %v", err)
+	writeTestFile(t, filepath.Join(directory, "nested", "object"), "replacement")
+	if err := Rename(goNested, "object", "moved"); !errors.Is(err, errRootUnresolvable) {
+		t.Fatalf("rename inside an unresolvable root error = %v, want unresolvable root", err)
+	}
+	for _, name := range []string{"nested", "held"} {
+		if _, err := root.Lstat(filepath.Join(name, "object")); err != nil {
+			t.Fatalf("object moved despite refusal: %v", err)
+		}
 	}
 	nested, err := OpenRoot(root, "nested")
 	if err != nil {
@@ -146,5 +151,35 @@ func TestMkdirAllCreatesThroughTheRoot(t *testing.T) {
 	}
 	if err := MkdirAll(root, filepath.Join("..", "escaped"), 0o755); err == nil {
 		t.Fatal("a path above the root was created")
+	}
+}
+
+// Replacing an enumerated directory must not redirect deletion into a sibling.
+func TestRemoveAllKeepsEnumeratedDirectoryBound(t *testing.T) {
+	root, directory := openTestRoot(t)
+	writeTestFile(t, filepath.Join(directory, "owned", "matching"), "owned")
+	writeTestFile(t, filepath.Join(directory, "unrelated", "matching"), "foreign")
+	previous := afterRemoveAllEnumeration
+	t.Cleanup(func() { afterRemoveAllEnumeration = previous })
+	afterRemoveAllEnumeration = func(path string) {
+		if path != "owned" {
+			return
+		}
+		if err := os.Rename(filepath.Join(directory, "owned"), filepath.Join(directory, "held")); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.Symlink("unrelated", filepath.Join(directory, "owned")); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := RemoveAll(root, "owned"); err != nil {
+		t.Fatal(err)
+	}
+	contents, err := ReadFile(root, "unrelated/matching")
+	if err != nil || string(contents) != "foreign" {
+		t.Fatalf("unrelated file changed: %q, %v", contents, err)
+	}
+	if _, err := root.Lstat("held/matching"); !os.IsNotExist(err) {
+		t.Fatalf("enumerated file was not removed: %v", err)
 	}
 }

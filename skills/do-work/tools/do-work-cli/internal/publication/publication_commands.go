@@ -206,10 +206,7 @@ func ApplyPlan(ctx context.Context, plan PublicationPlan, dryRun, commit bool) r
 					return moveError
 				}
 				beforePublicationRecording(mutationIndex, mutation)
-				if recordError := recorder.RecordPublishedCreation(mutation.DestinationPath, createdInfo, expectedMoveBytes); recordError != nil {
-					return recordError
-				}
-				if recordError := recorder.RecordTouched(mutation.Path); recordError != nil {
+				if recordError := recorder.RecordPublishedMove(mutation.Path, mutation.DestinationPath, createdInfo, expectedMoveBytes); recordError != nil {
 					return recordError
 				}
 				movedSourceDirectories[filepath.ToSlash(filepath.Dir(filepath.FromSlash(mutation.Path)))] = true

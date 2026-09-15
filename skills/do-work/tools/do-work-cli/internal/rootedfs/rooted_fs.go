@@ -61,9 +61,9 @@ func Link(root *os.Root, oldPath, newPath string) error {
 }
 
 // OpenRoot opens name as a nested root inside parent, for callers that will Rename or
-// Link inside it. Go's own (*Root).OpenRoot names the nested root by the relative name
-// it was given, which rootDirectory cannot resolve. This opens the nested root the
-// guarded way first, which proves name lies inside parent without a symlink escape, then
+// Link inside it. Older Go versions name a nested root only by the relative name
+// passed to (*Root).OpenRoot, which rootDirectory may not resolve. This opens the
+// nested root the guarded way first, proving name lies inside parent, then
 // reopens the same directory by absolute path and refuses unless both opens landed on one
 // directory.
 func OpenRoot(parent *os.Root, name string) (*os.Root, error) {
@@ -150,7 +150,19 @@ func RemoveAll(root *os.Root, path string) error {
 		return err
 	}
 	if info.IsDir() {
-		directory, openError := root.Open(path)
+		directoryRoot, openError := root.OpenRoot(path)
+		if openError != nil {
+			return openError
+		}
+		defer directoryRoot.Close()
+		openedInfo, statError := directoryRoot.Stat(".")
+		if statError != nil {
+			return statError
+		}
+		if !os.SameFile(info, openedInfo) {
+			return fmt.Errorf("directory changed before recursive removal: %s", path)
+		}
+		directory, openError := directoryRoot.Open(".")
 		if openError != nil {
 			return openError
 		}
@@ -159,14 +171,19 @@ func RemoveAll(root *os.Root, path string) error {
 		if readError != nil {
 			return readError
 		}
+		if afterRemoveAllEnumeration != nil {
+			afterRemoveAllEnumeration(path)
+		}
 		for _, entry := range entries {
-			if removeError := RemoveAll(root, filepath.Join(path, entry.Name())); removeError != nil {
+			if removeError := RemoveAll(directoryRoot, entry.Name()); removeError != nil {
 				return removeError
 			}
 		}
 	}
 	return root.Remove(path)
 }
+
+var afterRemoveAllEnumeration func(string)
 
 var (
 	errPathEscapesRoot  = errors.New("path escapes from parent")
@@ -177,8 +194,8 @@ var (
 // rootDirectory returns the absolute directory a root was opened on. root.Name is the
 // string given to os.OpenRoot, so a relative one is resolved against the working
 // directory, and the result is accepted only when it is the very directory the root
-// holds open: a nested root from (*Root).OpenRoot carries only its relative name and
-// would otherwise resolve to an unrelated path.
+// holds open: on older Go versions a nested root may carry only its relative name
+// and otherwise resolve to an unrelated path.
 func rootDirectory(root *os.Root) (string, error) {
 	directory := root.Name()
 	if !filepath.IsAbs(directory) {
