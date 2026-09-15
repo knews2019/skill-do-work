@@ -10,6 +10,10 @@ For the complete release history, read this file and the archives below from new
 - [0.50.0 through 0.64.1](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-13-up-to-v0.64.1.md)
 - [0.1.0 through 0.49.0](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-07-up-to-v0.49.0.md)
 
+## 0.305.48 — Document Rollback Identity and Toolchain Lessons (2026-09-15)
+
+The CLI prime and lesson records now capture the dirty-move recording order, directory-bound recursive deletion, and portable nested-root refusal tests from 0.305.47. The earlier lesson no longer assumes every Go version gives nested roots an unresolvable name.
+
 ## 0.305.47 — Restore Dirty Moves and Confine Recursive Rollback (2026-09-15)
 
 Failed publication restores dirty source contents even when another writer replaces a created file. Recursive rollback stays bound to the directory it opened, preserving unrelated files behind a replacement symlink.
