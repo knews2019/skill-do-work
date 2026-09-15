@@ -10,6 +10,10 @@ For the complete release history, read this file and the archives below from new
 - [0.50.0 through 0.64.1](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-13-up-to-v0.64.1.md)
 - [0.1.0 through 0.49.0](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-07-up-to-v0.49.0.md)
 
+## 0.305.50 — Default AGY to Latest Gemini Flash with Explicit Escalation (2026-09-15)
+
+AGY now defaults to the latest available Gemini Flash at Low or Medium effort, with explicit model verification on launches and continuations. The guide adds High, Boost, focused subagents and Teamwork escalation, worker-routing boundaries, and checks for partial or denied headless work.
+
 ## 0.305.49 — Preserve Interview Exports and Correct Publication Handoffs (2026-09-15)
 
 Interview exports retain approved entries and scalar source names, and derive scheduling and stakeholder guidance from the supplied data.
