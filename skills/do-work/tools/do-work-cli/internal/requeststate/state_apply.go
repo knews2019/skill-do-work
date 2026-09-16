@@ -982,7 +982,6 @@ func checkpointHasRequestEntry(existing []byte, requestID string) bool {
 }
 
 var generatedRecoveryHeading = regexp.MustCompile(`(?m)^## (Triage|Exploration|Plan|Scope|Pre-Flight|Implementation Summary|Qualification|Testing|Review|Lessons Learned|Orientation|Decisions|Discovered Tasks|Timing)[ \t]*\r?$`)
-var markdownHeading = regexp.MustCompile(`(?m)^## [^\r\n]+[ \t]*\r?$`)
 
 func stripGeneratedRecoverySections(contents []byte) ([]byte, error) {
 	document, parseError := requestmodel.ParseDocument(contents)
@@ -990,18 +989,15 @@ func stripGeneratedRecoverySections(contents []byte) ([]byte, error) {
 		return nil, parseError
 	}
 	body := document.BodyBytes()
-	matches := generatedRecoveryHeading.FindAllIndex(body, -1)
-	for matchIndex := len(matches) - 1; matchIndex >= 0; matchIndex-- {
-		start := matches[matchIndex][0]
-		end := len(body)
-		if next := markdownHeading.FindIndex(body[matches[matchIndex][1]:]); next != nil {
-			end = matches[matchIndex][1] + next[0]
+	sections := requestmodel.VisibleSections(body)
+	for index := len(sections) - 1; index >= 0; index-- {
+		section := sections[index]
+		if !generatedRecoveryHeading.MatchString("## " + section.Name) {
+			continue
 		}
-		if replaceError := document.ReplaceBodySpan(start, end, nil); replaceError != nil {
-			return nil, replaceError
+		if err := document.ReplaceBodySpan(section.Start, section.End, nil); err != nil {
+			return nil, err
 		}
-		body = document.BodyBytes()
-		matches = generatedRecoveryHeading.FindAllIndex(body, -1)
 	}
 	return document.DocumentBytes(), nil
 }
@@ -1016,16 +1012,12 @@ func markdownSectionContains(body []byte, section string, pattern *regexp.Regexp
 }
 
 func markdownSectionBytes(body []byte, section string) []byte {
-	heading := regexp.MustCompile(`(?m)^## ` + regexp.QuoteMeta(section) + `[ \t]*\r?$`)
-	match := heading.FindIndex(body)
-	if match == nil {
-		return nil
+	for _, visible := range requestmodel.VisibleSections(body) {
+		if visible.Name == section {
+			return body[visible.Start:visible.End]
+		}
 	}
-	end := len(body)
-	if next := markdownHeading.FindIndex(body[match[1]:]); next != nil {
-		end = match[1] + next[0]
-	}
-	return body[match[0]:end]
+	return nil
 }
 
 func appendSectionEntry(contents []byte, section, entry string) []byte {

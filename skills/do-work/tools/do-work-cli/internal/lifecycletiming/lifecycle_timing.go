@@ -31,6 +31,7 @@ import (
 	"unicode"
 
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/atomicfile"
+	"github.com/knews2019/skill-do-work/do-work-cli/internal/requestmodel"
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/resultmodel"
 )
 
@@ -43,9 +44,6 @@ const timingStreamSchemaVersion = 1
 const timingDirectoryName = "do-work-timing"
 
 const timingSectionHeading = "## Timing"
-
-// fenceRunMinimumLength is CommonMark's own floor for a fence or thematic break.
-const fenceRunMinimumLength = 3
 
 // Shell-compatible statuses for a wrapped command that did not exit normally.
 const (
@@ -514,122 +512,17 @@ func RenderTimingSection(summary resultmodel.LifecycleTimingResult) string {
 // with exactly one newline because the pipeline appends lesson content after
 // this writer runs.
 func replaceTimingSection(documentBytes []byte, section string) []byte {
-	lines := strings.Split(string(documentBytes), "\n")
-	fencedLine, unclosedFenceStart := markFencedLines(lines)
-
-	sectionStart := -1
-	for index, line := range lines {
-		if fencedLine[index] {
+	for _, visible := range requestmodel.VisibleSections(documentBytes) {
+		if visible.Name != "Timing" {
 			continue
 		}
-		if strings.TrimRight(line, " \t\r") == timingSectionHeading {
-			sectionStart = index
-			break
+		rebuilt := string(documentBytes[:visible.Start]) + strings.TrimSuffix(section, "\n")
+		if visible.End < len(documentBytes) {
+			rebuilt += "\n\n" + string(documentBytes[visible.End:])
 		}
+		return []byte(strings.TrimRight(rebuilt, "\n") + "\n")
 	}
-	if sectionStart < 0 {
-		document := string(documentBytes)
-		document = strings.TrimRight(document, "\n") + "\n\n"
-		return []byte(document + section)
-	}
-
-	sectionEnd := len(lines)
-	for index := sectionStart + 1; index < len(lines); index++ {
-		if fencedLine[index] {
-			continue
-		}
-		if strings.HasPrefix(strings.TrimLeft(lines[index], " \t"), "## ") {
-			sectionEnd = index
-			break
-		}
-	}
-	// An unclosed fence below the heading has no closing line to stop at, so the
-	// span would otherwise run to the end of the file and take that fence and
-	// everything under it with it. Stop at the opener instead: leaving a stray
-	// paragraph behind is recoverable, deleting a caller's content is not.
-	if unclosedFenceStart > sectionStart && unclosedFenceStart < sectionEnd {
-		sectionEnd = unclosedFenceStart
-	}
-
-	rebuilt := append([]string{}, lines[:sectionStart]...)
-	rebuilt = append(rebuilt, strings.Split(strings.TrimSuffix(section, "\n"), "\n")...)
-	if sectionEnd < len(lines) {
-		rebuilt = append(rebuilt, "")
-		rebuilt = append(rebuilt, lines[sectionEnd:]...)
-	}
-	return []byte(strings.TrimRight(strings.Join(rebuilt, "\n"), "\n") + "\n")
-}
-
-// markFencedLines reports, for each line, whether it belongs to a fenced region
-// a caller wrote, and where a fence that never closes begins (-1 when none does).
-// A heading inside such a region is an example, never this writer's own section.
-//
-// The rule is a condition, not a list of fence spellings. A fence is a run of
-// three or more of one ASCII punctuation mark, closed by a run of the same mark
-// at least as long, so a dialect fence this package has never heard of still
-// hides what it wraps. Only the marks CommonMark itself defines as line
-// constructs that enclose nothing are excluded, and an unclosed opener fences
-// everything after it, which fails toward appending a duplicate section rather
-// than toward deleting a caller's bytes.
-func markFencedLines(lines []string) ([]bool, int) {
-	fencedLine := make([]bool, len(lines))
-	openCharacter, openLength, openIndex := byte(0), 0, -1
-	for index, line := range lines {
-		runCharacter, runLength := leadingPunctuationRun(line)
-		if openLength > 0 {
-			fencedLine[index] = true
-			if runCharacter == openCharacter && runLength >= openLength {
-				openCharacter, openLength, openIndex = 0, 0, -1
-			}
-			continue
-		}
-		if runLength >= fenceRunMinimumLength && isEnclosingFenceCharacter(runCharacter) {
-			openCharacter, openLength, openIndex = runCharacter, runLength, index
-			fencedLine[index] = true
-		}
-	}
-	return fencedLine, openIndex
-}
-
-// leadingPunctuationRun returns the ASCII punctuation mark a line opens with and
-// how many times it repeats. Leading whitespace is skipped rather than measured,
-// so an indented fence still counts as one.
-func leadingPunctuationRun(line string) (byte, int) {
-	content := strings.TrimLeft(strings.TrimRight(line, " \t\r"), " \t")
-	if content == "" || !isMarkdownBlockPunctuation(content[0]) {
-		return 0, 0
-	}
-	runLength := 0
-	for runLength < len(content) && content[runLength] == content[0] {
-		runLength++
-	}
-	return content[0], runLength
-}
-
-// isMarkdownBlockPunctuation is CommonMark's own ASCII punctuation class, taken
-// wholesale rather than narrowed to the marks today's fence syntax happens to
-// use. The narrower set would be an enumeration to revisit whenever a dialect
-// adds a construct, which is exactly how a fence-blind classifier reopens.
-func isMarkdownBlockPunctuation(value byte) bool {
-	return value >= '!' && value <= '/' ||
-		value >= ':' && value <= '@' ||
-		value >= '[' && value <= '`' ||
-		value >= '{' && value <= '~'
-}
-
-// isEnclosingFenceCharacter excludes the marks CommonMark defines as line
-// constructs that never enclose anything: thematic breaks use "-", "_" and "*",
-// setext underlines use "-" and "=", and "#" opens an ATX heading. Treating
-// those as fences would let the unpaired "---" a request carries above its
-// source line swallow the rest of the document, or an ordinary "### " heading
-// swallow the request's own Timing section, so that section could never be
-// found again. The exclusion is by construct, not by run length: no run of "#"
-// encloses anything, since seven or more open nothing at all.
-func isEnclosingFenceCharacter(value byte) bool {
-	if value == 0 || !isMarkdownBlockPunctuation(value) {
-		return false
-	}
-	return value != '-' && value != '_' && value != '*' && value != '=' && value != '#'
+	return []byte(strings.TrimRight(string(documentBytes), "\n") + "\n\n" + section)
 }
 
 // streamPathFor resolves the Git common directory so every linked worktree of one

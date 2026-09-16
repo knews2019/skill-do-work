@@ -21,7 +21,6 @@ const CommandAdvance = "advance"
 var (
 	discoverAdvanceRepository = repositorymodel.DiscoverRepository
 	advanceRequestIDPattern   = regexp.MustCompile(`^REQ-[0-9]+$`)
-	advanceHeadingPattern     = regexp.MustCompile(`(?m)^## ([^\r\n]+?)[ \t]*\r?$`)
 	unresolvedQuestionPattern = regexp.MustCompile(`(?m)^- \[ \]`)
 )
 
@@ -343,20 +342,14 @@ func validEstimate(value string) bool {
 }
 
 func advanceSections(body []byte) (map[string]sectionEvidence, string) {
-	matches := advanceHeadingPattern.FindAllSubmatchIndex(body, -1)
 	sections := map[string]sectionEvidence{}
-	for matchIndex, match := range matches {
-		name := string(body[match[2]:match[3]])
-		section := sections[name]
+	for _, visible := range requestmodel.VisibleSections(body) {
+		section := sections[visible.Name]
 		section.count++
 		if section.count == 1 {
-			section.start = match[0]
-			section.end = len(body)
-			if matchIndex+1 < len(matches) {
-				section.end = matches[matchIndex+1][0]
-			}
+			section.start, section.end = visible.Start, visible.End
 		}
-		sections[name] = section
+		sections[visible.Name] = section
 	}
 	for name, section := range sections {
 		if section.count > 1 {
