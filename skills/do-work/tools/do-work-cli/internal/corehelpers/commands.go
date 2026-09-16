@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io/fs"
 	"net/url"
 	"os"
 	"os/exec"
@@ -148,20 +149,29 @@ func handleArchiveCollision(executionContext commandruntime.ExecutionContext, ar
 		return usageResult(CommandArchiveCollision, "usage: archive-collision REQ-NNN")
 	}
 	archiveRoot := filepath.Join(executionContext.RepositoryRoot, "do-work", "archive")
-	entries, err := os.ReadDir(archiveRoot)
-	if os.IsNotExist(err) {
-		output := ""
-		return resultmodel.CommandResult{Outcome: resultmodel.OutcomeSuccess, ExactTextOutput: &output}
-	}
-	if err != nil {
-		return usageResult(CommandArchiveCollision, err.Error())
-	}
 	paths := []string{}
-	for _, entry := range entries {
+	err := filepath.WalkDir(archiveRoot, func(path string, entry fs.DirEntry, walkError error) error {
+		if walkError != nil {
+			if path == archiveRoot && os.IsNotExist(walkError) {
+				return nil
+			}
+			return walkError
+		}
+		if path == archiveRoot && !entry.IsDir() {
+			return fmt.Errorf("archive root is not a directory: %s", archiveRoot)
+		}
 		name := entry.Name()
 		if !entry.IsDir() && (name == arguments[0]+".md" || strings.HasPrefix(name, arguments[0]+"-")) && strings.HasSuffix(name, ".md") {
-			paths = append(paths, filepath.ToSlash(filepath.Join("do-work/archive", name)))
+			relative, err := filepath.Rel(executionContext.RepositoryRoot, path)
+			if err != nil {
+				return err
+			}
+			paths = append(paths, filepath.ToSlash(relative))
 		}
+		return nil
+	})
+	if err != nil {
+		return usageResult(CommandArchiveCollision, err.Error())
 	}
 	sort.Strings(paths)
 	output := ""
