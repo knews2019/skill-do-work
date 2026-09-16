@@ -20,8 +20,10 @@ import (
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/doctor"
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/nextselection"
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/repositorymodel"
+	"github.com/knews2019/skill-do-work/do-work-cli/internal/requestmodel"
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/requeststate"
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/resultmodel"
+	"github.com/knews2019/skill-do-work/do-work-cli/internal/schemanormalization"
 )
 
 const (
@@ -74,10 +76,10 @@ func handleNow(_ commandruntime.ExecutionContext, arguments []string) resultmode
 
 func handleFrontmatter(executionContext commandruntime.ExecutionContext, arguments []string) resultmodel.CommandResult {
 	if len(arguments) < 3 || arguments[0] != "get" {
-		return usageResult(CommandFrontmatter, "usage: frontmatter get <file> <field> [--normalize] [--in-set SET]")
+		return frontmatterUsageResult("usage: frontmatter get <file> <field> [--normalize] [--in-set SET]")
 	}
 	filePath, field := arguments[1], arguments[2]
-	normalize, setName := false, ""
+	normalize, setGiven, setName := false, false, ""
 	for index := 3; index < len(arguments); index++ {
 		switch arguments[index] {
 		case "--normalize":
@@ -85,63 +87,68 @@ func handleFrontmatter(executionContext commandruntime.ExecutionContext, argumen
 		case "--in-set":
 			index++
 			if index >= len(arguments) {
-				return usageResult(CommandFrontmatter, "--in-set requires a value")
+				return frontmatterUsageResult("--in-set requires a value")
 			}
-			setName = arguments[index]
+			setGiven, setName = true, arguments[index]
 		default:
-			return usageResult(CommandFrontmatter, "unknown option "+arguments[index])
+			return frontmatterUsageResult("unknown option " + arguments[index])
+		}
+	}
+	if setGiven {
+		if field != "status" {
+			return frontmatterUsageResult("--in-set applies only to the status field")
+		}
+		if setName != "terminal-success" && setName != "terminal-resolved" {
+			return frontmatterUsageResult("unknown set " + setName)
 		}
 	}
 	contents, err := os.ReadFile(absoluteFromRoot(executionContext.RepositoryRoot, filePath))
 	if err != nil {
-		return usageResult(CommandFrontmatter, err.Error())
+		return frontmatterUsageResult(err.Error())
 	}
-	value, found, err := flatFrontmatterValue(string(contents), field)
+	document, err := requestmodel.ParseDocument(contents)
 	if err != nil {
-		return usageResult(CommandFrontmatter, err.Error())
+		return frontmatterUsageResult(err.Error())
 	}
-	if !found {
-		return resultmodel.CommandResult{Outcome: resultmodel.OutcomeFindings, Findings: []resultmodel.CommandFinding{helperFinding("FRONTMATTER-FIELD-MISSING", resultmodel.SeverityWarning, []string{filePath}, "field is absent: "+field, resultmodel.FixabilityManual, "the requested frontmatter fact is unavailable", nil, nil)}}
+	evidence, found := document.FieldValue(field)
+	value := strings.TrimSpace(evidence.ScalarValue)
+	if evidence.ListValues != nil {
+		value = strings.Join(evidence.ListValues, "\n")
 	}
-	if normalize {
-		value = strings.ToLower(strings.TrimSpace(value))
+	output := ""
+	result := resultmodel.CommandResult{Outcome: resultmodel.OutcomeSuccess, ExactTextOutput: &output}
+	if !found || (evidence.ListValues == nil && value == "") {
+		result.Outcome = resultmodel.OutcomeFindings
+		result.Findings = []resultmodel.CommandFinding{helperFinding("FRONTMATTER-FIELD-MISSING", resultmodel.SeverityWarning, []string{filePath}, "field is absent: "+field, resultmodel.FixabilityManual, "the requested frontmatter fact is unavailable", nil, nil)}
+		return result
 	}
-	if setName != "" {
-		inSet := false
-		switch setName {
-		case "terminal-success":
-			inSet = value == "completed" || value == "completed-with-issues"
-		case "terminal-resolved":
-			inSet = value == "completed" || value == "completed-with-issues" || value == "cancelled" || value == "failed"
-		default:
-			return usageResult(CommandFrontmatter, "unknown set "+setName)
-		}
-		if inSet {
-			value = "true"
-		} else {
-			value = "false"
+	if normalize || setGiven {
+		normalized := schemanormalization.NormalizeField(field, value)
+		value = normalized.ResolvedValue
+		if normalized.WarningMessage != "" {
+			result.Findings = []resultmodel.CommandFinding{{Code: "FRONTMATTER-SCHEMA-WARNING", Severity: resultmodel.SeverityWarning, AffectedPaths: []string{filePath}, Evidence: []string{normalized.WarningMessage}}}
 		}
 	}
-	output := value + "\n"
-	return resultmodel.CommandResult{Outcome: resultmodel.OutcomeSuccess, ExactTextOutput: &output}
+	if setGiven {
+		member := schemanormalization.IsTerminalSuccess(value)
+		if setName == "terminal-resolved" {
+			member = schemanormalization.IsTerminalResolved(value)
+		}
+		if !member {
+			result.Outcome = resultmodel.OutcomeFindings
+		}
+		return result
+	}
+	if value != "" {
+		output = value + "\n"
+	}
+	return result
 }
 
-func flatFrontmatterValue(contents, field string) (string, bool, error) {
-	lines := strings.Split(strings.ReplaceAll(contents, "\r\n", "\n"), "\n")
-	if len(lines) == 0 || strings.TrimPrefix(lines[0], "\ufeff") != "---" {
-		return "", false, fmt.Errorf("file has no frontmatter block")
-	}
-	for _, line := range lines[1:] {
-		if line == "---" {
-			return "", false, nil
-		}
-		if strings.HasPrefix(line, field+":") {
-			value := strings.TrimSpace(strings.TrimPrefix(line, field+":"))
-			value = strings.Trim(value, "'\"")
-			return value, value != "", nil
-		}
-	}
-	return "", false, fmt.Errorf("unterminated frontmatter block")
+func frontmatterUsageResult(message string) resultmodel.CommandResult {
+	result := usageResult(CommandFrontmatter, message)
+	result.ExactTextOutput = new(string)
+	return result
 }
 
 func handleArchiveCollision(executionContext commandruntime.ExecutionContext, arguments []string) resultmodel.CommandResult {
