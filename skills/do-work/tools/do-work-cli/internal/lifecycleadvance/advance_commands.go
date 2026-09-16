@@ -249,7 +249,7 @@ func classifyWorkingAdvance(target *repositorymodel.RequestFile, advance *result
 		return advancePhase(advance, "agent judgment: review", resultmodel.AdvancePhaseAgentJudgment,
 			advanceEvidence("section", requestPath, "", "Review", "independent review verdict"), nil)
 	}
-	if !hasSection(sections, "Lessons Learned") {
+	if record.RouteValue != "A" && !hasSection(sections, "Lessons Learned") {
 		if hasSection(sections, "Orientation") {
 			return missingBeforeLaterRefusal(advance, "Lessons Learned")
 		}

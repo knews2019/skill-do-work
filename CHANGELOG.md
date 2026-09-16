@@ -10,6 +10,10 @@ For the complete release history, read this file and the archives below from new
 - [0.50.0 through 0.64.1](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-13-up-to-v0.64.1.md)
 - [0.1.0 through 0.49.0](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-07-up-to-v0.49.0.md)
 
+## 0.305.54 — Allow Straightforward Route A Work to Finish Without Lessons (2026-09-16)
+
+Lifecycle advancement now honors the documented Route A exception for optional Lessons Learned. Orientation remains required, and Routes B and C still require lessons before finalization.
+
 ## 0.305.53 — Find Archive Collisions in Nested Directories (2026-09-16)
 
 The archive-collision compatibility command now finds requests inside grouped archives. It preserves sorted paths and collision exit status, reports traversal failures, and does not follow directory symlinks.
