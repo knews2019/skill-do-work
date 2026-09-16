@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/resultmodel"
 )
@@ -16,6 +17,35 @@ type downloadTransport func(*http.Request) (*http.Response, error)
 
 func (transport downloadTransport) RoundTrip(request *http.Request) (*http.Response, error) {
 	return transport(request)
+}
+
+func TestAuthenticatedAtomicDownloadHonorsRetryAfter(t *testing.T) {
+	t.Setenv("GH_TOKEN", "dummy-review-token")
+	installFakeCurl(t, "exit 99")
+	previous := http.DefaultTransport
+	t.Cleanup(func() { http.DefaultTransport = previous })
+	var firstAttempt time.Time
+	calls := 0
+	http.DefaultTransport = downloadTransport(func(request *http.Request) (*http.Response, error) {
+		calls++
+		if request.Header.Get("Authorization") != "Bearer dummy-review-token" {
+			t.Errorf("trusted retry lost authentication")
+		}
+		response := &http.Response{StatusCode: 200, Header: make(http.Header), Body: io.NopCloser(strings.NewReader("payload")), Request: request}
+		if calls == 1 {
+			firstAttempt = time.Now()
+			response.StatusCode = http.StatusTooManyRequests
+			response.Header.Set("Retry-After", "3")
+		} else if time.Since(firstAttempt) < 3*time.Second {
+			t.Errorf("authenticated retry ignored Retry-After: %s", time.Since(firstAttempt))
+		}
+		return response, nil
+	})
+	target := filepath.Join(t.TempDir(), "download")
+	result := handleAtomicDownload(testContext(t.TempDir()), []string{"--source-url", "https://github.com/file", "--target-path", target})
+	if result.Outcome != resultmodel.OutcomeSuccess || calls != 2 {
+		t.Fatalf("authenticated retry failed: %+v calls=%d", result, calls)
+	}
 }
 
 func TestAtomicDownloadDoesNotSendGitHubTokenToLocalhost(t *testing.T) {

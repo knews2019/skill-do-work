@@ -10,6 +10,10 @@ For the complete release history, read this file and the archives below from new
 - [0.50.0 through 0.64.1](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-13-up-to-v0.64.1.md)
 - [0.1.0 through 0.49.0](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-07-up-to-v0.49.0.md)
 
+## 0.305.56 — Respect Server Retry Delays for Authenticated Downloads (2026-09-16)
+
+Authenticated downloads now honor Retry-After seconds and HTTP dates within the existing retry budget. Cancellation, attempt limits, credential scoping, and private atomic publication remain intact; an excessive delay stops retries instead of retrying early.
+
 ## 0.305.55 — Restore Frontmatter Accessor Compatibility (2026-09-16)
 
 Frontmatter reads now use the shared document parser and schema normalization. Lists, quoting, comments, aliases, and case-sensitive values retain their established meaning; membership checks return empty stdout and the correct predicate exit status.

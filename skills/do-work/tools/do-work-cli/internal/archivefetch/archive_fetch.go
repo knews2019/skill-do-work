@@ -19,12 +19,14 @@ import (
 	"context"
 	"crypto/rand"
 	"crypto/sha256"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -228,8 +230,10 @@ func prepareDownloadCandidate(ctx context.Context, sourceURL string, parentRoot 
 			request.Header.Set("Authorization", "Bearer "+token)
 		}
 		response, err := atomicHTTPClient.Do(request)
+		retryAfter := ""
 		if err == nil {
 			statusCode = response.StatusCode
+			retryAfter = response.Header.Get("Retry-After")
 			if statusCode >= 200 && statusCode < 300 {
 				written, err = io.Copy(stage, response.Body)
 				if closeError := response.Body.Close(); err == nil {
@@ -257,14 +261,15 @@ func prepareDownloadCandidate(ctx context.Context, sourceURL string, parentRoot 
 		if attempt == 3 || !retryEligible(statusCode, err) {
 			break
 		}
-		if time.Since(startedAt)+atomicRetryDelay > atomicRetryBudget {
+		retryDelay := retryAfterDelay(retryAfter, time.Now())
+		if retryDelay > atomicRetryBudget-time.Since(startedAt) {
 			lastError = fmt.Errorf("retry budget exhausted after %d attempt(s): %w", attempts, lastError)
 			break
 		}
 		select {
 		case <-ctx.Done():
 			return "", DownloadResult{StatusCode: statusCode, Attempts: attempts, Err: ctx.Err()}
-		case <-time.After(atomicRetryDelay):
+		case <-time.After(retryDelay):
 		}
 	}
 	if lastError != nil {
@@ -286,6 +291,28 @@ func prepareDownloadCandidate(ctx context.Context, sourceURL string, parentRoot 
 	}
 	keepCandidate = true
 	return stageName, DownloadResult{StatusCode: statusCode, BytesWritten: written, Attempts: attempts}
+}
+
+// retryAfterDelay retains the configured minimum while respecting a server's
+// seconds or HTTP-date delay. Saturating huge valid values makes the existing
+// budget check refuse them instead of overflowing into an early retry.
+func retryAfterDelay(header string, now time.Time) time.Duration {
+	const maximumDelay = time.Duration(1<<63 - 1)
+	header = strings.TrimSpace(header)
+	seconds, parseError := strconv.ParseUint(header, 10, 64)
+	if parseError == nil {
+		if seconds > uint64(maximumDelay/time.Second) {
+			return maximumDelay
+		}
+		return max(atomicRetryDelay, time.Duration(seconds)*time.Second)
+	}
+	if errors.Is(parseError, strconv.ErrRange) {
+		return maximumDelay
+	}
+	if deadline, err := http.ParseTime(header); err == nil {
+		return max(atomicRetryDelay, deadline.Sub(now))
+	}
+	return atomicRetryDelay
 }
 
 type archiveTargetSnapshot struct {
