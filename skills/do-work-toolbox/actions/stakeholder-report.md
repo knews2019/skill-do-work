@@ -24,17 +24,17 @@ Read the REQ's `## Questions` section. For each open (`- [ ]`) entry, pull one l
 
 ### Step 4: Write `index.html`
 
-Follow **Report Design Rules** in `ai-report-reference.md` (single file, inline CSS, light and dark, one coherent aesthetic direction; no images and no CDN are expected here at all) and keep `../../do-work/crew-members/anti-slop.md` active. Sections, in order:
+Follow **Report Design Rules** in `ai-report-reference.md` (single file, inline CSS, light and dark, one coherent aesthetic direction; no images and no CDN are expected here at all) and keep `../../do-work/crew-members/anti-slop.md` active. Read and apply [Outgoing drafts](../../do-work/crew-members/communication-style.md#outgoing-drafts) to the outgoing questions and surrounding requests. Sections, in order:
 
-1. **Header** — addressed to the person by name, with the project, the date, and the one-line ask: *reply with the question number, e.g. "Q3: use the amber palette".*
-2. **Irreversible items** — when any open entry carries `Irreversible:`, a prominently flagged block ("these assumptions are expensive to undo — please confirm these first"), each such question rendered in full here. Omit the block when none.
-3. **Open questions** — one card per open entry: the Q-ID printed large, the question, then the confirm-or-override framing: *"We assumed: [Assumed]. The work is built this way — confirm, or give a different answer."* Follow with why it matters (the `Value:`/`Risk:` lines translated into the stakeholder's terms) and the one-line source context from Step 2.
+1. **Header** — addressed to the person by name, with the project, the date, and the one-line ask: *Could you reply with the question number, e.g. "Q3: use the amber palette"?*
+2. **Irreversible items** — when any open entry carries `Irreversible:`, a prominently flagged block ("These assumptions are expensive to undo. Could you confirm these first?"), each such question rendered in full here. Omit the block when none.
+3. **Open questions** — one card per open entry: the Q-ID printed large, the question, then the confirm-or-override framing: *"We assumed: [Assumed]. The work is built this way. Could you confirm this choice or suggest a different answer?"* Follow with why it matters (the `Value:`/`Risk:` lines translated into the stakeholder's terms) and the one-line source context from Step 2.
 4. **Already answered** — a compact history of `[x]` entries from earlier rounds, so a regenerated report shows resolution and never re-asks.
-5. **Footer** — "This page collects nothing — reply by message." plus the generation date, the REQ id, and the stakeholder name: the anchors `stakeholder-answers` routes the reply by.
+5. **Footer** — "This page collects nothing. Could you send your answers by message?" plus the generation date, the REQ id, and the stakeholder name: the anchors `stakeholder-answers` routes the reply by.
 
 **Strictly one-way.** Static HTML: no scripts, no forms, no request to any endpoint. The page states its own read-only nature in the footer; answers travel back only as a message the user pastes into `do-work stakeholder-answers`.
 
-The question wording itself is the caller's job — core writes each entry for a cold outside reader. This step renders what the REQ holds and translates Value/Risk out of pipeline vocabulary: a stakeholder never needs to know what a REQ or a D-XX is in order to answer.
+Core authors each question for a cold outside reader. When rendering an existing open question, adjust its wording to the outgoing-draft guidance without changing its meaning, Q-ID, assumptions, technical evidence, consequences, or warnings. Translate Value/Risk out of pipeline vocabulary: a stakeholder never needs to know what a REQ or a D-XX is in order to answer. Keep stored records, answered history, and existing report bundles unchanged. Any alternative drafts are presented separately from this canonical question digest and never create duplicate questions or extra IDs.
 
 ### Step 5: Render-Check (optional)
 

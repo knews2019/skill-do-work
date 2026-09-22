@@ -696,6 +696,8 @@ Before creating one, run the fold-first scan (`actions/capture-reference.md` →
 
 The *stakeholder* branch of Step 8's audience fork mints one of these — but only when no open REQ for the person exists: the Fold-First Rule's **Stakeholder-audience questions** clause (`actions/capture-reference.md`) appends to an existing one first. One open REQ per stakeholder, by construction; when it archives (`actions/stakeholder-answers.md` → **Stakeholder REQ terminal semantics**), the next question for that person starts a fresh one at Q-01.
 
+When authoring a new outgoing question, read and apply [Outgoing drafts](../crew-members/communication-style.md#outgoing-drafts). Phrase the request politely for a cold outside reader while preserving the source decision, assumptions, technical evidence, consequences, and irreversible warnings. Keep one canonical question per entry; any alternative drafts stay outside the record. This wording rule does not change the session-user branch above or require rewriting existing records.
+
 Q-NN ids are unique within one REQ and never reused — an answered or reclaimed question keeps its line and id forever, because the id is the routing key a reply names (`actions/stakeholder-answers.md` Step 2). The counter comment mirrors the D-XX counter pattern (`actions/work.md` Step 3.5). Both `<timestamp>` stamps below are the current UTC instant (Timestamp rule, above).
 
    ```markdown

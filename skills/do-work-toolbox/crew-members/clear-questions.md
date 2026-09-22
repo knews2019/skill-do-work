@@ -40,12 +40,6 @@ If a question was escalated, name the rule or authority that forced the escalati
 
 An answer obtained interactively exists only in the asking session's context — dispatched agents start fresh, and the archive is the permanent intent trail. So before acting on an answer that changes what gets built, write it into the durable record the work will be read from. For a question stored in a REQ that means the **Canonical answered-question format** (`../../do-work/actions/clarify.md`): flip `- [ ]` to `- [x] [question] → [the answer]`, plus a dated note carrying the reasoning, including anything the answer put out of scope. Any *new* work the answer implies gets captured as its own REQ instead of living as a sentence in a reply. A plain consent gate — proceed/abort, a condition confirmed — is already recorded by whatever it gates and needs nothing extra; this principle is about decisions the work is later read from. Same stance `crew-members/background-agents.md` takes for fan-out findings: the transcript is the worst available place to keep a result.
 
-### 9. Make follow-ups polite and collaborative
-
-When generating or rewriting a follow-up question, keep the technical details, constraints, and consequences, but phrase the next step as a polite request rather than an instruction. Use a softer, collaborative tone while keeping the decision clear and the options concrete.
-
-For example: “Could you confirm whether we should keep the API timeout at 30 seconds or increase it to 60 seconds? Increasing it would give slow requests more time to finish, but users could wait longer before seeing an error.”
-
 ## Example
 
 ```
