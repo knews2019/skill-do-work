@@ -30,7 +30,7 @@ func VisibleSections(body []byte) []VisibleSection {
 			}
 			continue
 		}
-		hadComment := inComment
+		startedInComment := inComment
 		remainder := line
 		for {
 			if inComment {
@@ -45,17 +45,19 @@ func VisibleSections(body []byte) []VisibleSection {
 			if begin < 0 {
 				break
 			}
-			inComment, hadComment, hiddenStart = true, true, start
+			inComment, hiddenStart = true, start
 			remainder = remainder[begin+4:]
 		}
-		if hadComment {
+		if startedInComment {
 			continue
 		}
 		if length >= 3 && isEnclosingFenceCharacter(character) {
 			openCharacter, openLength, hiddenStart = character, length, start
 			continue
 		}
-		if name, found := strings.CutPrefix(line, "## "); found {
+		// Inline comments do not hide a heading's visible prefix. Keep its raw
+		// name so boundary recognition does not broaden generated-section ownership.
+		if name, found := strings.CutPrefix(strings.TrimLeft(line, " \t"), "## "); found {
 			name = strings.TrimRight(name, " \t\r")
 			if name == "" {
 				continue

@@ -10,6 +10,13 @@ For the complete release history, read this file and the archives below from new
 - [0.50.0 through 0.64.1](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-13-up-to-v0.64.1.md)
 - [0.1.0 through 0.49.0](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-07-up-to-v0.49.0.md)
 
+## 0.305.59 — Preserve Indented and Commented Section Boundaries (2026-09-24)
+
+Timing replacement and claim recovery now preserve requirements under indented headings and headings containing inline HTML comments.
+
+- Restore section boundaries without changing the original heading or body bytes.
+- Cover both writers with regression tests for indentation, inline comments, and LF/CRLF line endings.
+
 ## 0.305.58 — Limit Collaborative Tone to Outgoing Drafts (2026-09-23)
 
 Polite, collaborative wording now applies only to messages and stakeholder questions drafted for other people. Replies to the session user and all handoff documents retain their previous style.

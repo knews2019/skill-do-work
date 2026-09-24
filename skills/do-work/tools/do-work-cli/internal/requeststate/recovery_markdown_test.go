@@ -9,6 +9,26 @@ import (
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/commandruntime"
 )
 
+func TestRecoveryPreservesIndentedAndCommentedRequirements(t *testing.T) {
+	for _, heading := range []string{
+		" ## Requirements", "  ## Requirements", "   ## Requirements",
+		"## Requirements <!-- retained -->", "  ## Requirements <!-- retained -->",
+	} {
+		t.Run(heading, func(t *testing.T) {
+			for _, newline := range []string{"\n", "\r\n"} {
+				prefix := strings.ReplaceAll("---\nid: REQ-501\n---\n# Request\n\n", "\n", newline)
+				requirements := heading + newline + "MUST preserve these bytes." + newline
+				original := prefix + "## Plan" + newline + "generated plan" + newline + requirements + "## Timing" + newline + "generated summary" + newline
+				got, err := stripGeneratedRecoverySections([]byte(original))
+				want := prefix + requirements
+				if err != nil || string(got) != want {
+					t.Fatalf("recovery changed requirements: error=%v, got %q, want %q", err, got, want)
+				}
+			}
+		})
+	}
+}
+
 func TestRecoveryPreservesHiddenHeadingsAndFollowingRequirements(t *testing.T) {
 	for _, example := range []string{
 		"```markdown\n## Plan\nexample\n```\nMUST keep this requirement.\n",

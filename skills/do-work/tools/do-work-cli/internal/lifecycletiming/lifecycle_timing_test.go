@@ -13,6 +13,26 @@ import (
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/resultmodel"
 )
 
+func TestTimingReplacementPreservesIndentedAndCommentedRequirements(t *testing.T) {
+	for _, heading := range []string{
+		" ## Requirements", "  ## Requirements", "   ## Requirements",
+		"## Requirements <!-- retained -->", "  ## Requirements <!-- retained -->",
+	} {
+		t.Run(heading, func(t *testing.T) {
+			for _, newline := range []string{"\n", "\r\n"} {
+				prefix := "# Request" + newline + newline
+				requirements := heading + newline + "MUST preserve these bytes." + newline
+				original := prefix + "## Timing" + newline + "old summary" + newline + requirements
+				got := replaceTimingSection([]byte(original), "## Timing\nnew summary\n")
+				want := prefix + "## Timing\nnew summary\n\n" + requirements
+				if string(got) != want {
+					t.Fatalf("timing replacement changed requirements: got %q, want %q", got, want)
+				}
+			}
+		})
+	}
+}
+
 // The stream must be flat, append-safe, Git-private, and shared by a repository's
 // worktrees: two boundary events land as two independent JSON lines under the Git
 // common directory, and the second event's default start is the first event's end
