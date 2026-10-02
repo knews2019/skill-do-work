@@ -1,7 +1,7 @@
 ---
 id: REQ-625
 title: 'Add a low-disk-space probe to the board VERIFY band'
-status: pending
+status: claimed
 created_at: 2026-10-02T13:58:27Z
 user_request: UR-131
 domain: backend
@@ -11,6 +11,7 @@ maintenance: false
 impact: impact-user-visible
 effort_estimate: effort-substantive
 write_set: ["skills/do-work-board/tools/queue-kanban/verify.go", "skills/do-work-board/tools/queue-kanban/verify_test.go", "skills/do-work-board/tools/queue-kanban/disk_space_*.go", "skills/do-work-board/tools/queue-kanban/generate_test.go", "skills/do-work-board/tools/queue-kanban/prime-do-kanban.md", "skills/do-work-board/tools/queue-kanban/lessons-do-kanban.md", "CHANGELOG.md", "skills/do-work/CHANGELOG.md", "VERSION", "skills/do-work/VERSION", "skills/do-work/actions/version.md"]
+claimed_at: 2026-10-02T14:03:40Z
 ---
 
 # Add a Low-Disk-Space Probe to the Board VERIFY Band
