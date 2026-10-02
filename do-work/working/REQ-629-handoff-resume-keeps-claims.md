@@ -1,7 +1,7 @@
 ---
 id: REQ-629
 title: '[impact-rule-change] Resuming a handoff must not reset its own claimed REQs'
-status: pending
+status: claimed
 created_at: 2026-10-02T19:49:03Z
 user_request: UR-133
 domain: general
@@ -12,6 +12,7 @@ impact: impact-rule-change
 effort_estimate: effort-substantive
 related: ["REQ-628"]
 batch: ur-132-follow-ups
+claimed_at: 2026-10-02T20:53:37Z
 ---
 # Resuming a Handoff Must Not Reset Its Own Claimed REQs
 
