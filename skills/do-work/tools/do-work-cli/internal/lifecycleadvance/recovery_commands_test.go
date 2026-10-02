@@ -138,6 +138,12 @@ func TestRecoverWithoutAuthorityOffersTypedTakeoverAndDoesNotMutateClaim(t *test
 		!strings.Contains(takeoverFinding.AutomationStopReason, "resets") {
 		t.Fatalf("stop reason does not name the reset: %q", takeoverFinding.AutomationStopReason)
 	}
+	// The reset can leave the claim pending, pending-answers or still blocked
+	// (requeststate recoveredStatus), so the reason names no single status.
+	if !strings.Contains(takeoverFinding.AutomationStopReason, "returns it to the queue") ||
+		strings.Contains(takeoverFinding.AutomationStopReason, "as pending") {
+		t.Fatalf("stop reason misstates where the reset sends the claim: %q", takeoverFinding.AutomationStopReason)
+	}
 	if after := advanceTreeDigest(t, repositoryRoot); before != after {
 		t.Fatalf("authority-free recovery changed bytes")
 	}
