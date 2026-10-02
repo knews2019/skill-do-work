@@ -1,7 +1,7 @@
 ---
 id: REQ-626
 title: 'Give every board page and lens its own URL'
-status: pending
+status: claimed
 estimate:
   p50_active_minutes: 20
   confidence: medium
@@ -24,7 +24,7 @@ integration_at: 2026-10-02T18:18:36Z
 builder_handback_at: 2026-10-02T18:18:20Z
 dispatch_at: 2026-10-02T18:09:36Z
 claimed_at: 2026-10-02T18:03:38Z
-status_changed_at: 2026-10-02T18:35:56Z
+status_changed_at: 2026-10-02T18:36:12Z
 ---
 
 # Give Every Board Page and Lens Its Own URL
