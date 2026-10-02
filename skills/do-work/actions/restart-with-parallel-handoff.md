@@ -46,7 +46,7 @@ For each in-flight REQ, state:
 - Merged or not merged, with the merge commit and the **full merge range**.
 - What remains, in order.
 - Uncommitted files **by name**. "0 commits" reads as "nothing there" and is often wrong.
-- The canonical `recover` result for each working claim, including its structural writer evidence and exact takeover command. Do not classify ownership again from checkpoint prose.
+- The canonical `recover` result for each working claim, including its structural writer evidence, and the claim's continue command: bare `advance REQ-NNN`, which changes nothing and names its next phase. Do not classify ownership again from checkpoint prose.
 
 For each worktree, give one verdict:
 
@@ -63,7 +63,9 @@ Exactly two sections, in this order.
 - to build — `do-work run --fan-out N` (pick N per Step 5)
 - to answer questions — `do-work clarify`, included only if some REQ is at `pending-answers`
 
-Immediately after the command, write: `This command is sufficient; everything below it is context.` **If you cannot honestly write that sentence, return to Step 1 until you can.**
+When this session leaves a REQ claimed in `do-work/working/`, add one line per claim: `advance REQ-NNN`, then do the phase it names. Selection reads only the queue, so the resume command never continues a claim. Never write `recover --take-over` for these claims: it resets a claim (requeues it as `pending` and strips its orchestrator sections, merged evidence included).
+
+Immediately after the commands, write: `These commands are sufficient; everything below them is context.` **If you cannot honestly write that sentence, return to Step 1 until you can.**
 
 **Reference** — after a `---`. Paths, merge ranges, evidence, worktree verdicts, the parallelism analysis from Step 5, and a heads-up list: anything that will bite the next session in its first ten minutes (uncommitted edits from another session in a shared checkout, a half-applied migration, a test that only passes on retry). One line each, naming who should act. This section is for humans and debugging; the next session must not need it to start.
 
@@ -120,7 +122,7 @@ One committed `do-work/RESTART-PROMPT.md`, any queue-state edits Step 1 made, an
 ## Verification Checklist
 
 - [ ] `do-work run` with no other reading would do the right thing — every hold is a queue field
-- [ ] Paste block is the first thing in the file, one fence, carrying the resume command and the sufficiency sentence
+- [ ] Paste block is the first thing in the file, one fence, carrying the resume command, one `advance REQ-NNN` line per working claim, and the sufficiency sentence
 - [ ] Every in-flight REQ states merged/not-merged with its merge range, and uncommitted files by name
 - [ ] Every worktree in the survey has exactly one verdict; no worktree was removed
 - [ ] Every foreign claim is byte-identical to before this action ran

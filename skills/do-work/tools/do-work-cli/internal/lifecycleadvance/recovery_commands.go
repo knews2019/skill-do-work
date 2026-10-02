@@ -95,9 +95,14 @@ func handleRecover(executionContext commandruntime.ExecutionContext, arguments [
 				Code: "RECOVERY-TAKEOVER-AVAILABLE", Severity: resultmodel.SeverityWarning,
 				AffectedIDs: []string{requestID}, AffectedPaths: []string{requestPath},
 				Evidence: recoveryEvidenceLabels(evidence), Fixability: resultmodel.FixabilityManual,
-				AutomationStopReason: "working claim requires explicit authority",
-				NextArgv:             []string{"do-work-cli", CommandRecover, "--take-over", requestID},
-				VerificationArgv:     []string{"do-work-cli", "--format", "json", CommandRecover},
+				// The next step continues the claim read-only. The reset stays one
+				// explicit command away and is named, never offered as next_argv:
+				// a resuming session follows next_argv (UR-132).
+				AutomationStopReason: "working claim preserved; continue it with advance " + requestID +
+					", or, only for a claim no live session owns, recover --take-over " + requestID +
+					" resets it (requeues it as pending and strips its orchestrator sections)",
+				NextArgv:         []string{"do-work-cli", "--format", "json", CommandAdvance, requestID},
+				VerificationArgv: []string{"do-work-cli", "--format", "json", CommandRecover},
 			})
 			continue
 		}
