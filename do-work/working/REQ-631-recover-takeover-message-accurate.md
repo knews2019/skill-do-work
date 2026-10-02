@@ -1,7 +1,7 @@
 ---
 id: REQ-631
 title: 'Recover''s takeover message says where a reset claim goes'
-status: pending
+status: claimed
 created_at: 2026-10-02T21:51:57Z
 user_request: UR-134
 domain: general
@@ -13,6 +13,7 @@ effort_estimate: effort-mechanical
 related: ["REQ-630"]
 batch: ur-133-leftovers
 write_set: ["skills/do-work/tools/do-work-cli/internal/lifecycleadvance/recovery_commands.go", "skills/do-work/tools/do-work-cli/internal/lifecycleadvance/recovery_commands_test.go"]
+claimed_at: 2026-10-02T21:57:11Z
 ---
 # Recover's Takeover Message Says Where a Reset Claim Goes
 

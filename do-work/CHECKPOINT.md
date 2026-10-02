@@ -8,3 +8,5 @@ queue_state: [0 pending, 0 pending-answers, 0 blocked, 0 blocked-archive-collisi
 ## In Progress (interrupted)
 
 - REQ-630: Board intros describe the board by what its switcher covers — claimed 2026-10-02T21:52:48Z — writer: t2s-Virtual-Machine.local:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2
+
+- REQ-631: Recover's takeover message says where a reset claim goes — claimed 2026-10-02T21:57:11Z — writer: t2s-Virtual-Machine.local:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2
