@@ -24,6 +24,8 @@ dispatch_at: 2026-10-02T21:53:17Z
 builder_handback_at: 2026-10-02T21:53:17Z
 integration_at: 2026-10-02T21:53:17Z
 review_at: 2026-10-02T21:56:43Z
+heavy_verified_at: 2026-10-02T22:06:47Z
+heavy_verified_revision: 9eed9df5b377811c8b6a008173e1f2e2c3209a93
 claimed_at: 2026-10-02T21:52:48Z
 commit: bdb5c43c9ea1cccf1115c3ea26103448333f23ee
 ---
@@ -161,3 +163,13 @@ Now both board intros describe the board by its page switcher, so adding a page 
 - queue-kanban-javascript — `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane queue-kanban-javascript` — files changed under skills/do-work-board/tools/queue-kanban
 - queue-kanban-browser — `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane queue-kanban-browser` — same subtree
 - staged-skills — `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane staged-skills` — shipped files under skills/ changed
+
+## Heavy Verification Result
+
+- Target revision: bdb5c43c9ea1cccf1115c3ea26103448333f23ee
+- Execution revision: 9eed9df5b377811c8b6a008173e1f2e2c3209a93 (detached drain checkout `.git/work-run-2026-10-02-215500/drain-head`, one run for REQ-630 and REQ-631, QUEUE_KANBAN_BROWSER set to Google Chrome)
+- queue-kanban-javascript: exit 0, executed, 9s
+- queue-kanban-browser: exit 0, executed, 90s
+- staged-skills: exit 0, executed, 43s
+
+Green: every selected lane present, exit 0, none skipped, none reused.

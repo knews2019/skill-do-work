@@ -25,6 +25,8 @@ dispatch_at: 2026-10-02T21:58:14Z
 builder_handback_at: 2026-10-02T21:58:14Z
 integration_at: 2026-10-02T21:58:14Z
 review_at: 2026-10-02T22:01:33Z
+heavy_verified_at: 2026-10-02T22:06:47Z
+heavy_verified_revision: 9eed9df5b377811c8b6a008173e1f2e2c3209a93
 claimed_at: 2026-10-02T21:57:11Z
 commit: 25803a160d4590615fa3f0343ddb20f8809b8005
 ---
@@ -166,3 +168,14 @@ Now `recover`'s takeover warning says the reset returns a claim to the queue and
 - staged-skills — `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane staged-skills` — shipped files under skills/ changed
 - updater — `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane updater` — do-work-cli source changed
 - installer — `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane installer` — do-work-cli source changed
+
+## Heavy Verification Result
+
+- Target revision: 25803a160d4590615fa3f0343ddb20f8809b8005
+- Execution revision: 9eed9df5b377811c8b6a008173e1f2e2c3209a93 (detached drain checkout `.git/work-run-2026-10-02-215500/drain-head`, one run for REQ-630 and REQ-631, QUEUE_KANBAN_BROWSER set to Google Chrome)
+- staged-skills: exit 0, executed, 43s
+- do-work-cli-integrations: exit 0, executed, 73s
+- updater: exit 0, executed, 66s
+- installer: exit 0, executed, 29s
+
+Green: every selected lane present, exit 0, none skipped, none reused.
