@@ -10,6 +10,15 @@ For the complete release history, read this file and the archives below from new
 - [0.50.0 through 0.64.1](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-13-up-to-v0.64.1.md)
 - [0.1.0 through 0.49.0](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-07-up-to-v0.49.0.md)
 
+## 0.305.60 — Low Disk Space Shows in the Board's VERIFY Band (2026-10-02)
+
+A long fan-out run with browser QA can fill a disk in a few hours while nothing in the suite notices, and builders, gates and git then fail in confusing ways. The board now measures free space where the run operator already looks.
+
+- `queue-kanban verify` gains a read-only `low-disk-space` probe: it measures the filesystem holding the repo root and each builder worktree, one finding per device, warning below 10 GiB free and critical below 3 GiB.
+- The finding reaches the CLI report and the board's VERIFY band through the existing path, with the repo root reduced to `.` and a worktree named by its branch so static snapshots stay shareable.
+- The probe never deletes anything, uses only the standard library (`syscall.Statfs` on unix, `GetDiskFreeSpaceExW` on Windows), and reports itself as skipped on platforms it cannot measure.
+- The finalizer's release guard now counts every module declared in `suite/modules.tsv` as shipped, so a change to the board, knowledge or toolbox package alone is a release; only version ownership keeps the VERSION-carrying rule.
+
 ## 0.305.59 — Preserve Indented and Commented Section Boundaries (2026-09-24)
 
 Timing replacement and claim recovery now preserve requirements under indented headings and headings containing inline HTML comments.
