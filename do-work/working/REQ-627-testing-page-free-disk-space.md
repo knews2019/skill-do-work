@@ -1,7 +1,7 @@
 ---
 id: REQ-627
 title: 'Show free disk space on the Testing page'
-status: pending
+status: claimed
 estimate:
   p50_active_minutes: 25
   confidence: medium
@@ -22,7 +22,7 @@ related: ["REQ-626"]
 batch: board-links-and-disk-space
 required_lessons: ["skills/do-work-board/tools/queue-kanban/lessons-do-kanban.md#disk-space-blind-spot"]
 claimed_at: 2026-10-02T18:03:42Z
-status_changed_at: 2026-10-02T18:35:57Z
+status_changed_at: 2026-10-02T18:36:46Z
 ---
 
 # Show Free Disk Space on the Testing Page
