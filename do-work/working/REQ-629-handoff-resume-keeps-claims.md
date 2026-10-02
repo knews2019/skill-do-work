@@ -24,6 +24,7 @@ related: ["REQ-628"]
 batch: ur-132-follow-ups
 required_lessons: ["skills/do-work/tools/do-work-cli/lessons-do-work-cli.md#rule-direction-checked-against-callers"]
 write_set: ["skills/do-work/tools/do-work-cli/internal/lifecycleadvance/recovery_commands.go", "skills/do-work/tools/do-work-cli/internal/lifecycleadvance/recovery_commands_test.go", "skills/do-work/actions/restart-with-parallel-handoff.md", "skills/do-work/actions/work-reference.md"]
+dispatch_at: 2026-10-02T20:57:11Z
 claimed_at: 2026-10-02T20:53:37Z
 ---
 # Resuming a Handoff Must Not Reset Its Own Claimed REQs
@@ -118,3 +119,12 @@ Full findings with file:line anchors and a scratch-repo reproduction: `do-work/r
 - [ ] Following the handoff paste block plus the commands' suggested next steps never resets a claim the handoff described as in flight
 - [ ] The handoff states what to run for each claimed REQ and that `recover --take-over` resets a claim
 - [ ] A merged REQ (`commit:` or `integration_at`) keeps its evidence sections through the documented resume path
+
+## Pre-Flight
+
+**Git:** ✓ Integration tip 5f3038aa on `main`; the only dirt is this run's untracked `do-work/runs/` trail — no third-party paths
+**Repository gate:** ✓ `bash _dev/tests/maintainer-verify.sh` exit 0 at 5f3038aa, gate wall 66s (do-work-cli fast stage reused by fingerprint)
+**Baseline:** ✓ `bash do-work/runs/work-2026-10-02-204757/helpers/probe-629.sh` (`go test -count=1 -run Recover ./internal/lifecycleadvance/`) green. A first attempt passed the probe path as the test argv and could not launch (status 127, rerun 127); re-run with `bash <probe>` and satisfied.
+**Dependencies:** ✓ Go toolchain present; no new dependency planned
+
+*Checked by work action*
