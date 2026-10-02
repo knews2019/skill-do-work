@@ -1679,3 +1679,46 @@ results.knownLens = tabSnapshot(editedTab);`)
 		}
 	}
 }
+
+// Pins REQ-627's red case on the page side: the Testing page showed no free
+// space at all. The line is never empty: a reading shows free of total with
+// Go's level, a static snapshot says the figure is from generation time, and a
+// skipped or missing reading says it was not measured instead of vanishing.
+func TestJavaScriptBehaviorTestingDiskSpaceLineReadsEveryCase(t *testing.T) {
+	indexHtml := generateLiveSite(t)
+	javascriptProbe := sliceBalancedBlockAfter(t, indexHtml, "function diskSpaceLineFor(") + `
+function reading(freeText, level) {
+  return { freeBytes: 1, totalBytes: 2, freeText: freeText, totalText: "500.0 GiB", level: level, directory: "." };
+}
+var results = {
+  healthyLive: diskSpaceLineFor(reading("50.0 GiB", "neutral"), true),
+  healthyStatic: diskSpaceLineFor(reading("50.0 GiB", "neutral"), false),
+  warningLive: diskSpaceLineFor(reading("9.0 GiB", "warning"), true),
+  criticalLive: diskSpaceLineFor(reading("2.0 GiB", "critical"), true),
+  skippedStatic: diskSpaceLineFor({ level: "neutral", directory: ".", skipReason: "not measured on plan9" }, false),
+  absentLive: diskSpaceLineFor(undefined, true)
+};
+process.stdout.write(JSON.stringify(results));`
+	probeOutput := runJavaScriptBehaviorProbe(t, "testing disk-space line", javascriptProbe)
+	type diskSpaceLine struct {
+		Text  string `json:"text"`
+		Level string `json:"level"`
+	}
+	var results map[string]diskSpaceLine
+	if decodeError := json.Unmarshal(probeOutput, &results); decodeError != nil {
+		t.Fatalf("decode disk-space line results: %v (output %q)", decodeError, probeOutput)
+	}
+	expectations := map[string]diskSpaceLine{
+		"healthyLive":   {Text: "disk: 50.0 GiB free of 500.0 GiB", Level: "neutral"},
+		"healthyStatic": {Text: "disk: 50.0 GiB free of 500.0 GiB (at generation)", Level: "neutral"},
+		"warningLive":   {Text: "disk: 9.0 GiB free of 500.0 GiB", Level: "warning"},
+		"criticalLive":  {Text: "disk: 2.0 GiB free of 500.0 GiB", Level: "critical"},
+		"skippedStatic": {Text: "disk: not measured on plan9", Level: "neutral"},
+		"absentLive":    {Text: "disk: not measured", Level: "neutral"},
+	}
+	for scenarioName, want := range expectations {
+		if got := results[scenarioName]; got != want {
+			t.Errorf("%s: got %+v, want %+v", scenarioName, got, want)
+		}
+	}
+}

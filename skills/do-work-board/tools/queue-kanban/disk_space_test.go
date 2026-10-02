@@ -221,3 +221,78 @@ func TestDiskSpaceProbeReachesTheVerifyReport(t *testing.T) {
 		t.Errorf("expected one unsupported disk-space skip, got %q", report.SkippedProbes)
 	}
 }
+
+// Pins REQ-627's red case: a healthy repo root was measured and then thrown
+// away, so the board had no free-space figure until the disk was already low.
+// The reading must be kept without adding a finding.
+func TestDiskSpaceProbeKeepsTheHealthyRepoRootReading(t *testing.T) {
+	repoRoot := "/fixture/repo"
+	report := VerifyReport{}
+	appendDiskSpaceFindings(&report, repoRoot, nil,
+		fakeDiskSpaceMeasurer(t, map[string]fakeDiskMeasurement{repoRoot: freeOnDevice(400<<30, 1)}))
+
+	if len(report.Findings) != 0 || len(report.SkippedProbes) != 0 {
+		t.Errorf("a healthy disk produced findings %+v or skips %q", report.Findings, report.SkippedProbes)
+	}
+	want := diskSpaceReading{directory: repoRoot, freeBytes: 400 << 30, totalBytes: fixtureDiskTotalBytes}
+	if report.RepoRootDiskSpace == nil || *report.RepoRootDiskSpace != want {
+		t.Errorf("RepoRootDiskSpace = %+v, want %+v", report.RepoRootDiskSpace, want)
+	}
+}
+
+// Pins the readout disappearing, or reading as healthy, when the repo root
+// cannot be measured: the reading carries the reason instead, and the probe's
+// skips, findings and worktree measurements stay exactly as REQ-625 made them.
+func TestDiskSpaceProbeKeepsTheRepoRootSkipReason(t *testing.T) {
+	repoRoot := "/fixture/repo"
+	worktreePath := "/fixture/worktrees/worktree-agent-REQ-901"
+
+	unsupported := VerifyReport{}
+	appendDiskSpaceFindings(&unsupported, repoRoot, map[string]string{"worktree-agent-REQ-901": worktreePath},
+		func(string) (diskSpaceMeasurement, error) {
+			return diskSpaceMeasurement{}, fmt.Errorf("measuring: %w", errDiskSpaceUnsupported)
+		})
+	wantUnsupported := diskSpaceReading{directory: repoRoot, skipReason: "not measured on " + runtime.GOOS}
+	if unsupported.RepoRootDiskSpace == nil || *unsupported.RepoRootDiskSpace != wantUnsupported {
+		t.Errorf("unsupported RepoRootDiskSpace = %+v, want %+v", unsupported.RepoRootDiskSpace, wantUnsupported)
+	}
+	if len(unsupported.Findings) != 0 || len(unsupported.SkippedProbes) != 1 {
+		t.Errorf("unsupported platform changed the probe's output: findings %+v, skips %q", unsupported.Findings, unsupported.SkippedProbes)
+	}
+
+	failed := VerifyReport{}
+	appendDiskSpaceFindings(&failed, repoRoot, map[string]string{"worktree-agent-REQ-901": worktreePath},
+		fakeDiskSpaceMeasurer(t, map[string]fakeDiskMeasurement{
+			repoRoot:     {measurementError: errors.New("permission denied")},
+			worktreePath: freeOnDevice(2<<30, 2),
+		}))
+	wantFailed := diskSpaceReading{directory: repoRoot, skipReason: "not measured: permission denied"}
+	if failed.RepoRootDiskSpace == nil || *failed.RepoRootDiskSpace != wantFailed {
+		t.Errorf("failed RepoRootDiskSpace = %+v, want %+v", failed.RepoRootDiskSpace, wantFailed)
+	}
+	findings := findingsMentioning(failed, verifyCategoryLowDiskSpace)
+	if len(findings) != 1 || findings[0].Subject != "worktree-agent-REQ-901" {
+		t.Errorf("the worktree should still be measured and reported, got %+v", failed.Findings)
+	}
+	wantSkip := "disk-space probe for " + repoRoot + ": permission denied"
+	if len(failed.SkippedProbes) != 1 || failed.SkippedProbes[0] != wantSkip {
+		t.Errorf("SkippedProbes = %q, want exactly [%q]", failed.SkippedProbes, wantSkip)
+	}
+}
+
+// Pins a second threshold creeping in beside the finding's: the readout level
+// and the finding level come from one switch over the same two constants.
+func TestDiskSpaceLevelMatchesTheFindingThresholds(t *testing.T) {
+	cases := map[uint64]string{
+		2 << 30:                   "critical",
+		lowDiskSpaceCriticalBytes: "warning",
+		9 << 30:                   "warning",
+		lowDiskSpaceWarningBytes:  "neutral",
+		400 << 30:                 "neutral",
+	}
+	for freeBytes, wantLevel := range cases {
+		if gotLevel := diskSpaceLevelFor(freeBytes); gotLevel != wantLevel {
+			t.Errorf("diskSpaceLevelFor(%d) = %q, want %q", freeBytes, gotLevel, wantLevel)
+		}
+	}
+}

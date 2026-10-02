@@ -107,8 +107,30 @@
     return buckets;
   }
 
+  // The repo root's free space, from the payload's disk reading (REQ-627). Go
+  // owns the thresholds and sends the level; a static snapshot's figure is from
+  // generation time and says so. Never empty: a missing reading reads as
+  // unmeasured, not as nothing to report.
+  function diskSpaceLineFor(diskSpace, liveApiAvailable) {
+    if (!diskSpace) {
+      return { text: "disk: not measured", level: "neutral" };
+    }
+    if (diskSpace.skipReason) {
+      return { text: "disk: " + diskSpace.skipReason, level: diskSpace.level || "neutral" };
+    }
+    var lineText = "disk: " + diskSpace.freeText + " free of " + diskSpace.totalText;
+    if (!liveApiAvailable) {
+      lineText += " (at generation)";
+    }
+    return { text: lineText, level: diskSpace.level || "neutral" };
+  }
+
   function renderTestingView() {
     document.getElementById("testing-readonly-note").hidden = testingLiveApiAvailable;
+    var diskSpaceLine = diskSpaceLineFor(boardData.diskSpace, testingLiveApiAvailable);
+    var diskSpaceNode = document.getElementById("testing-disk-space");
+    diskSpaceNode.textContent = diskSpaceLine.text;
+    diskSpaceNode.className = "testing-disk-space testing-disk-space-" + diskSpaceLine.level;
     var buckets = computeTestingBuckets();
     Object.keys(buckets).forEach(function (bucketKey) {
       var shownIds = filterRequestIds(buckets[bucketKey]).filter(matchesDoneWindow);

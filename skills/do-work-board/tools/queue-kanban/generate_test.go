@@ -3202,6 +3202,42 @@ func TestGeneratedVerifyPayloadCarriesNoAbsolutePaths(t *testing.T) {
 	if diskSpaceSubjects["."] != 2 || diskSpaceSubjects["worktree-agent-REQ-999"] != 1 {
 		t.Errorf("low-disk-space findings missing from the payload, so it proves nothing; subjects: %v", diskSpaceSubjects)
 	}
+
+	// REQ-627: the repo root's reading rides the payload too, reduced the same way.
+	wantDiskSpace := generatedDiskSpace{
+		FreeBytes: 2 << 30, TotalBytes: 500 << 30, FreeText: "2.0 GiB", TotalText: "500.0 GiB",
+		Level: "critical", Directory: ".",
+	}
+	if boardData.DiskSpace == nil || *boardData.DiskSpace != wantDiskSpace {
+		t.Errorf("payload DiskSpace = %+v, want %+v", boardData.DiskSpace, wantDiskSpace)
+	}
+}
+
+// Pins a measurement error naming the absolute repo root reaching a shareable
+// static snapshot through the disk readout's skip reason.
+func TestGeneratedVerifyPayloadReducesTheDiskSpaceSkipReason(t *testing.T) {
+	repoRoot := writeVerifyFixture(t, []verifyFixtureFile{
+		{"actions/version.md", cleanVersionFile},
+		{"CHANGELOG.md", cleanChangelog},
+	})
+	moment := time.Date(2026, 8, 19, 13, 0, 0, 0, time.UTC)
+	previousMeasurer := diskSpaceMeasurer
+	t.Cleanup(func() { diskSpaceMeasurer = previousMeasurer })
+	diskSpaceMeasurer = func(directory string) (diskSpaceMeasurement, error) {
+		return diskSpaceMeasurement{}, fmt.Errorf("statfs %s: permission denied", directory)
+	}
+
+	board, buildError := buildBoard(repoRoot, moment, defaultRecentWindow, lookupGitCommitDate)
+	if buildError != nil {
+		t.Fatalf("buildBoard: %v", buildError)
+	}
+	boardData := generatedBoardData{}
+	attachVerifyFindings(&boardData, board, moment)
+
+	wantDiskSpace := generatedDiskSpace{Level: "neutral", Directory: ".", SkipReason: "not measured: statfs .: permission denied"}
+	if boardData.DiskSpace == nil || *boardData.DiskSpace != wantDiskSpace {
+		t.Errorf("payload DiskSpace = %+v, want %+v", boardData.DiskSpace, wantDiskSpace)
+	}
 }
 
 // The reduction must strip absolute paths WITHOUT touching relative ones. RE2 has

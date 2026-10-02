@@ -96,6 +96,9 @@ type generatedBoardData struct {
 	// dropped: a skipped probe rendering as nothing reads as "checked and clean".
 	VerifyFindings []generatedVerifyFinding `json:"verifyFindings,omitempty"`
 	VerifySkipped  []string                 `json:"verifySkipped,omitempty"`
+	// The repo root's free space from the same disk-space probe measurement,
+	// shown on the Testing page whether or not it is low (REQ-627).
+	DiskSpace *generatedDiskSpace `json:"diskSpace,omitempty"`
 
 	Warnings []string `json:"warnings,omitempty"` // data-shape warnings (e.g. duplicate ids, unrecognized statuses, future-dated stamps) — rendered as a banner
 
@@ -113,6 +116,19 @@ type generatedBoardData struct {
 	// the repo (checked at build time by collectRepoFileMentions). The drawer
 	// links only paths mapped true and flags paths mapped false as missing.
 	RepoFileMentions map[string]bool `json:"repoFileMentions,omitempty"`
+}
+
+// generatedDiskSpace is the repo root's disk reading as the Testing page renders
+// it. Level is computed here so the thresholds keep one home (verify.go): neutral,
+// warning or critical. Directory and SkipReason are path-reduced like findings.
+type generatedDiskSpace struct {
+	FreeBytes  uint64 `json:"freeBytes,omitempty"`
+	TotalBytes uint64 `json:"totalBytes,omitempty"`
+	FreeText   string `json:"freeText,omitempty"`
+	TotalText  string `json:"totalText,omitempty"`
+	Level      string `json:"level"`
+	Directory  string `json:"directory"`
+	SkipReason string `json:"skipReason,omitempty"`
 }
 
 // generatedColumns lists the active-board buckets as REQ id slices. RecentlyDone
@@ -673,6 +689,19 @@ func attachVerifyFindings(data *generatedBoardData, board *Board, now time.Time)
 	}
 	for _, skipped := range report.SkippedProbes {
 		data.VerifySkipped = append(data.VerifySkipped, reduceAbsolutePaths(skipped, board.RepoRoot))
+	}
+	if reading := report.RepoRootDiskSpace; reading != nil {
+		diskSpace := generatedDiskSpace{
+			Level:      "neutral",
+			Directory:  reduceAbsolutePaths(reading.directory, board.RepoRoot),
+			SkipReason: reduceAbsolutePaths(reading.skipReason, board.RepoRoot),
+		}
+		if reading.skipReason == "" {
+			diskSpace.FreeBytes, diskSpace.TotalBytes = reading.freeBytes, reading.totalBytes
+			diskSpace.FreeText, diskSpace.TotalText = formatGibibytes(reading.freeBytes), formatGibibytes(reading.totalBytes)
+			diskSpace.Level = diskSpaceLevelFor(reading.freeBytes)
+		}
+		data.DiskSpace = &diskSpace
 	}
 }
 

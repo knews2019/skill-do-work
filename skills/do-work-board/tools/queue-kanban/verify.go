@@ -126,6 +126,10 @@ type VerifyReport struct {
 	Findings            []VerifyFinding
 	SkippedProbes       []string
 	NotApplicableProbes []string
+	// RepoRootDiskSpace is the disk-space probe's reading of the repo root,
+	// kept healthy or not so the board can show free space before it becomes a
+	// finding. Nil only when the probe never ran.
+	RepoRootDiskSpace *diskSpaceReading
 }
 
 // FixableCount is how many findings `do-work cleanup` can resolve mechanically.
@@ -234,6 +238,15 @@ type diskSpaceMeasurement struct {
 	deviceIdentity uint64
 }
 
+// diskSpaceReading is one directory's measurement as the board shows it: free
+// and total bytes, or — when the directory could not be measured — why not.
+type diskSpaceReading struct {
+	directory  string
+	freeBytes  uint64
+	totalBytes uint64
+	skipReason string
+}
+
 // errDiskSpaceUnsupported is what measureDiskSpace wraps on a platform without
 // a free-space call; the probe reports it as skipped, never as clean.
 var errDiskSpaceUnsupported = errors.New("disk-space measurement is unsupported on this platform")
@@ -267,8 +280,20 @@ func appendDiskSpaceFindings(report *VerifyReport, repoRoot string, worktreePath
 	}
 
 	measuredDevices := map[uint64]bool{}
-	for _, target := range measuredDirectories {
+	for targetIndex, target := range measuredDirectories {
 		measurement, measureError := measure(target.directory)
+		// The repo root is always first; its reading is kept healthy or not, so
+		// the board's readout costs no second measurement.
+		if targetIndex == 0 {
+			repoRootReading := diskSpaceReading{directory: target.directory, freeBytes: measurement.freeBytes, totalBytes: measurement.totalBytes}
+			switch {
+			case errors.Is(measureError, errDiskSpaceUnsupported):
+				repoRootReading = diskSpaceReading{directory: target.directory, skipReason: "not measured on " + runtime.GOOS}
+			case measureError != nil:
+				repoRootReading = diskSpaceReading{directory: target.directory, skipReason: fmt.Sprintf("not measured: %v", measureError)}
+			}
+			report.RepoRootDiskSpace = &repoRootReading
+		}
 		if errors.Is(measureError, errDiskSpaceUnsupported) {
 			report.SkippedProbes = append(report.SkippedProbes, "disk-space probe: unsupported on "+runtime.GOOS)
 			return
@@ -283,13 +308,13 @@ func appendDiskSpaceFindings(report *VerifyReport, repoRoot string, worktreePath
 		}
 		measuredDevices[measurement.deviceIdentity] = true
 
-		var thresholdName string
 		var thresholdBytes uint64
-		switch {
-		case measurement.freeBytes < lowDiskSpaceCriticalBytes:
-			thresholdName, thresholdBytes = "critical", lowDiskSpaceCriticalBytes
-		case measurement.freeBytes < lowDiskSpaceWarningBytes:
-			thresholdName, thresholdBytes = "warning", lowDiskSpaceWarningBytes
+		thresholdName := diskSpaceLevelFor(measurement.freeBytes)
+		switch thresholdName {
+		case "critical":
+			thresholdBytes = lowDiskSpaceCriticalBytes
+		case "warning":
+			thresholdBytes = lowDiskSpaceWarningBytes
 		default:
 			continue
 		}
@@ -306,6 +331,19 @@ func appendDiskSpaceFindings(report *VerifyReport, repoRoot string, worktreePath
 			Remedy: "free space: clear regenerable QA output, finished builder worktrees (do-work cleanup), browser caches; " +
 				"`du -sh * | sort -h` at the repo root shows the largest directories",
 		})
+	}
+}
+
+// diskSpaceLevelFor is the one place the thresholds become a level: the
+// finding's threshold name and the Testing page's colour both read it.
+func diskSpaceLevelFor(freeBytes uint64) string {
+	switch {
+	case freeBytes < lowDiskSpaceCriticalBytes:
+		return "critical"
+	case freeBytes < lowDiskSpaceWarningBytes:
+		return "warning"
+	default:
+		return "neutral"
 	}
 }
 
