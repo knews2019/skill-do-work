@@ -1406,3 +1406,276 @@ func TestJavaScriptBehaviorUserRequestSummaryPathCarriesNoCatchAndNoCompletedAt(
 		}
 	}
 }
+
+// REQ-626: every board page and Board lens has a URL fragment. These probes
+// drive the real wireControls and the real fragment functions sliced from the
+// generated page, with hand-written window, location and history fakes, so a
+// run of the scenario script below sees exactly what a browser tab would.
+const boardFragmentProbePrelude = `
+var viewState = { view: "board", lens: "flat" };
+var renderedOnce = { userRequestLens: true };
+var userRequestCardsFolded = false;
+var appliedViews = [];
+// applyView is the next thing board.js calls after wiring, and a hashchange
+// calls it directly; the stub records each call as view/lens/fold.
+function applyView() { appliedViews.push(viewState.view + "/" + viewState.lens + "/" + userRequestCardsFolded); }
+function applyLens() {}
+function renderTopBarIdentity() {}
+function makeControlNode(attributes) {
+  var node = {
+    attributes: attributes,
+    listeners: {},
+    classList: { toggle: function () {} },
+    setAttribute: function (attributeName, attributeValue) { this.attributes[attributeName] = attributeValue; },
+    getAttribute: function (attributeName) {
+      return Object.prototype.hasOwnProperty.call(this.attributes, attributeName)
+        ? this.attributes[attributeName]
+        : null;
+    },
+    addEventListener: function (eventName, handler) {
+      this.listeners[eventName] = (this.listeners[eventName] || []).concat([handler]);
+    },
+    click: function () { (this.listeners.click || []).forEach(function (handler) { handler(); }); }
+  };
+  return node;
+}
+var viewButtons = [];
+var lensButtons = [];
+var nodesById = {};
+var document = {
+  querySelectorAll: function (selector) {
+    if (selector.indexOf("data-view-target") !== -1) { return viewButtons; }
+    if (selector.indexOf("data-lens-target") !== -1) { return lensButtons; }
+    return [];
+  },
+  getElementById: function (nodeId) {
+    if (!nodesById[nodeId]) { nodesById[nodeId] = makeControlNode({}); }
+    return nodesById[nodeId];
+  }
+};
+var window;
+// One fresh tab: the template's hard-coded Board/Columns buttons, default
+// state, and a window whose address bar reads startingHash.
+function openTab(startingHash, replaceStateThrows) {
+  viewState = { view: "board", lens: "flat" };
+  renderedOnce = { userRequestLens: true };
+  userRequestCardsFolded = false;
+  appliedViews = [];
+  nodesById = {};
+  viewButtons = ["board", "activity", "calendar", "timeline", "durations", "testing"].map(function (viewName) {
+    return makeControlNode({ "data-view-target": viewName, "aria-pressed": viewName === "board" ? "true" : "false" });
+  });
+  lensButtons = [
+    makeControlNode({ "data-lens-target": "flat", "aria-pressed": "true" }),
+    makeControlNode({ "data-lens-target": "user-request", "aria-pressed": "false" }),
+    makeControlNode({ "data-lens-target": "user-request", "data-ur-cards": "folded", "aria-pressed": "false" })
+  ];
+  var fakeWindow = {
+    addressWrites: [],
+    listeners: {},
+    location: {
+      hash: startingHash,
+      replace: function (addressText) {
+        fakeWindow.addressWrites.push("location.replace " + addressText);
+        fakeWindow.location.hash = addressText;
+      }
+    },
+    history: {
+      replaceState: function (stateObject, titleText, addressText) {
+        if (replaceStateThrows) { throw new Error("replaceState refused"); }
+        fakeWindow.addressWrites.push("history.replaceState " + addressText);
+        fakeWindow.location.hash = addressText;
+      }
+    },
+    addEventListener: function (eventName, handler) {
+      fakeWindow.listeners[eventName] = (fakeWindow.listeners[eventName] || []).concat([handler]);
+    }
+  };
+  window = fakeWindow;
+  wireControls();
+  return fakeWindow;
+}
+function pressedValue(buttons, attributeName) {
+  var pressed = buttons.filter(function (button) { return button.getAttribute("aria-pressed") === "true"; });
+  return pressed.map(function (button) {
+    return button.getAttribute(attributeName) + (button.getAttribute("data-ur-cards") === "folded" ? "+folded" : "");
+  }).join(",");
+}
+function tabSnapshot(fakeWindow) {
+  return {
+    view: viewState.view,
+    lens: viewState.lens,
+    folded: userRequestCardsFolded,
+    pressedView: pressedValue(viewButtons, "data-view-target"),
+    pressedLens: pressedValue(lensButtons, "data-lens-target"),
+    addressWrites: fakeWindow.addressWrites.slice(),
+    appliedViews: appliedViews.slice()
+  };
+}
+`
+
+type boardFragmentTabSnapshot struct {
+	View          string   `json:"view"`
+	Lens          string   `json:"lens"`
+	Folded        bool     `json:"folded"`
+	PressedView   string   `json:"pressedView"`
+	PressedLens   string   `json:"pressedLens"`
+	AddressWrites []string `json:"addressWrites"`
+	AppliedViews  []string `json:"appliedViews"`
+}
+
+// runBoardFragmentProbe runs scenarioScript after the prelude and the real
+// functions, and decodes the JSON map of snapshots it prints.
+func runBoardFragmentProbe(t *testing.T, probeName string, scenarioScript string) map[string]boardFragmentTabSnapshot {
+	t.Helper()
+	indexHtml := generateLiveSite(t)
+	functionBlocks := []string{
+		sliceBalancedBlockAfter(t, indexHtml, "function setActiveButton("),
+		sliceBalancedBlockAfter(t, indexHtml, "function setActiveLensButton("),
+		sliceBalancedBlockAfter(t, indexHtml, "function applyLensSelection("),
+		sliceBalancedBlockAfter(t, indexHtml, "function boardStateFromFragment("),
+		sliceBalancedBlockAfter(t, indexHtml, "function boardFragmentFromState("),
+		sliceBalancedBlockAfter(t, indexHtml, "function currentAddressHash("),
+		sliceBalancedBlockAfter(t, indexHtml, "function applyBoardStateSelection("),
+		sliceBalancedBlockAfter(t, indexHtml, "function writeBoardFragment("),
+		sliceBalancedBlockAfter(t, indexHtml, "function wireControls("),
+	}
+	javascriptProbe := boardFragmentProbePrelude + strings.Join(functionBlocks, "\n") + `
+var results = {};
+` + scenarioScript + `
+process.stdout.write(JSON.stringify(results));`
+	probeOutput := runJavaScriptBehaviorProbe(t, probeName, javascriptProbe)
+	snapshots := map[string]boardFragmentTabSnapshot{}
+	if decodeError := json.Unmarshal(probeOutput, &snapshots); decodeError != nil {
+		t.Fatalf("decode %s results: %v (output %q)", probeName, decodeError, probeOutput)
+	}
+	return snapshots
+}
+
+// Pins: a shared link such as #timeline opened the Board page, because nothing
+// read the address bar. Each fragment must select its page and lens, re-sync
+// both button groups the template hard-codes, and write nothing on load.
+func TestJavaScriptBehaviorBoardFragmentOpensItsPageAtBoot(t *testing.T) {
+	snapshots := runBoardFragmentProbe(t, "board fragment read at boot", `
+["#board", "#board/by-ur", "#board/urs-only", "#activity", "#calendar", "#timeline", "#durations", "#testing"].forEach(function (startingHash) {
+  results[startingHash] = tabSnapshot(openTab(startingHash, false));
+});`)
+	expectations := map[string]boardFragmentTabSnapshot{
+		"#board":          {View: "board", Lens: "flat", PressedView: "board", PressedLens: "flat"},
+		"#board/by-ur":    {View: "board", Lens: "user-request", PressedView: "board", PressedLens: "user-request"},
+		"#board/urs-only": {View: "board", Lens: "user-request", Folded: true, PressedView: "board", PressedLens: "user-request+folded"},
+		"#activity":       {View: "activity", Lens: "flat", PressedView: "activity", PressedLens: "flat"},
+		"#calendar":       {View: "calendar", Lens: "flat", PressedView: "calendar", PressedLens: "flat"},
+		"#timeline":       {View: "timeline", Lens: "flat", PressedView: "timeline", PressedLens: "flat"},
+		"#durations":      {View: "durations", Lens: "flat", PressedView: "durations", PressedLens: "flat"},
+		"#testing":        {View: "testing", Lens: "flat", PressedView: "testing", PressedLens: "flat"},
+	}
+	for startingHash, want := range expectations {
+		got := snapshots[startingHash]
+		if got.View != want.View || got.Lens != want.Lens || got.Folded != want.Folded ||
+			got.PressedView != want.PressedView || got.PressedLens != want.PressedLens {
+			t.Errorf("opening %s: got view=%q lens=%q folded=%v pressed view=%q lens=%q; want %+v",
+				startingHash, got.View, got.Lens, got.Folded, got.PressedView, got.PressedLens, want)
+		}
+		if len(got.AddressWrites) != 0 || len(got.AppliedViews) != 0 {
+			t.Errorf("opening %s wrote %v and rendered %v during wiring; the boot read selects only",
+				startingHash, got.AddressWrites, got.AppliedViews)
+		}
+	}
+}
+
+// Pins: the skip link (#board-main) and drawer heading ids also live after
+// "#", so a reader that treated any hash as a page would throw or blank the
+// board. Unknown and empty fragments keep Board/flat and write nothing.
+func TestJavaScriptBehaviorUnknownBoardFragmentKeepsTheBoard(t *testing.T) {
+	snapshots := runBoardFragmentProbe(t, "unknown board fragment", `
+["", "#", "#board-main", "#lessons-learned", "#nope", "#constructor", "#BOARD"].forEach(function (startingHash) {
+  results["hash:" + startingHash] = tabSnapshot(openTab(startingHash, false));
+});`)
+	for scenarioName, got := range snapshots {
+		if got.View != "board" || got.Lens != "flat" || got.Folded ||
+			got.PressedView != "board" || got.PressedLens != "flat" {
+			t.Errorf("%s left the default: %+v", scenarioName, got)
+		}
+		if len(got.AddressWrites) != 0 {
+			t.Errorf("%s wrote %v on load; only a click may write the address", scenarioName, got.AddressWrites)
+		}
+	}
+	if len(snapshots) != 7 {
+		t.Fatalf("expected 7 scenarios, got %d", len(snapshots))
+	}
+}
+
+// Pins: clicking a page or lens left the address bar on the bare URL, so the
+// page in front of the reader could not be copied as a link. The write goes
+// through replaceState (no history entry, so Back still leaves the board), and
+// a file:// page whose replaceState throws falls back to location.replace.
+func TestJavaScriptBehaviorBoardClickWritesItsFragment(t *testing.T) {
+	snapshots := runBoardFragmentProbe(t, "board click writes fragment", `
+var clickTab = openTab("", false);
+viewButtons[3].click();
+results.timelineClick = tabSnapshot(clickTab);
+viewButtons[3].click();
+results.repeatClick = tabSnapshot(clickTab);
+viewButtons[0].click();
+lensButtons[2].click();
+results.ursOnlyClick = tabSnapshot(clickTab);
+lensButtons[1].click();
+results.byUserRequestClick = tabSnapshot(clickTab);
+viewButtons[1].click();
+results.activityAfterLens = tabSnapshot(clickTab);
+var refusingTab = openTab("", true);
+viewButtons[2].click();
+results.refusedReplaceState = tabSnapshot(refusingTab);`)
+	wantWrites := map[string][]string{
+		"timelineClick":       {"history.replaceState #timeline"},
+		"repeatClick":         {"history.replaceState #timeline"},
+		"ursOnlyClick":        {"history.replaceState #timeline", "history.replaceState #board", "history.replaceState #board/urs-only"},
+		"byUserRequestClick":  {"history.replaceState #timeline", "history.replaceState #board", "history.replaceState #board/urs-only", "history.replaceState #board/by-ur"},
+		"activityAfterLens":   {"history.replaceState #timeline", "history.replaceState #board", "history.replaceState #board/urs-only", "history.replaceState #board/by-ur", "history.replaceState #activity"},
+		"refusedReplaceState": {"location.replace #calendar"},
+	}
+	for scenarioName, want := range wantWrites {
+		got := snapshots[scenarioName].AddressWrites
+		if !reflect.DeepEqual(got, want) {
+			t.Errorf("%s wrote %q, want %q", scenarioName, got, want)
+		}
+	}
+}
+
+// Pins: a hand-edited address bar fires hashchange and nothing listened, so
+// typing #durations changed nothing. A known fragment switches the page and
+// renders it; the skip link or a heading anchor must not move the board.
+func TestJavaScriptBehaviorBoardHashChangeSwitchesKnownPagesOnly(t *testing.T) {
+	snapshots := runBoardFragmentProbe(t, "board hashchange", `
+var editedTab = openTab("", false);
+function fireHashChange(newHash) {
+  editedTab.location.hash = newHash;
+  (editedTab.listeners.hashchange || []).forEach(function (handler) { handler(); });
+}
+fireHashChange("#durations");
+results.knownPage = tabSnapshot(editedTab);
+fireHashChange("#board-main");
+results.skipLink = tabSnapshot(editedTab);
+fireHashChange("#board/urs-only");
+results.knownLens = tabSnapshot(editedTab);`)
+	knownPage := snapshots["knownPage"]
+	if knownPage.View != "durations" || knownPage.PressedView != "durations" ||
+		!reflect.DeepEqual(knownPage.AppliedViews, []string{"durations/flat/false"}) {
+		t.Errorf("hashchange to #durations did not switch and render the page: %+v", knownPage)
+	}
+	skipLink := snapshots["skipLink"]
+	if skipLink.View != "durations" || len(skipLink.AppliedViews) != 1 {
+		t.Errorf("hashchange to #board-main moved the board: %+v", skipLink)
+	}
+	knownLens := snapshots["knownLens"]
+	if knownLens.View != "board" || knownLens.Lens != "user-request" || !knownLens.Folded ||
+		knownLens.PressedLens != "user-request+folded" || len(knownLens.AppliedViews) != 2 {
+		t.Errorf("hashchange to #board/urs-only did not select the folded UR lens: %+v", knownLens)
+	}
+	for scenarioName, snapshot := range snapshots {
+		if len(snapshot.AddressWrites) != 0 {
+			t.Errorf("%s wrote %v; a hashchange must not write the address back", scenarioName, snapshot.AddressWrites)
+		}
+	}
+}

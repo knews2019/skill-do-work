@@ -145,6 +145,78 @@
       viewState.view !== "board" || viewState.lens !== "user-request";
   }
 
+  // ---- page URLs ----------------------------------------------------------
+  // Each page and each Board lens has its own fragment, so a link can open it
+  // directly (REQ-626). Filters stay out of the URL on purpose. Other names
+  // after "#" are not ours (the skip link's #board-main, heading ids inside a
+  // drawer body), so anything not in the table reads as null and is ignored.
+  // A page other than Board carries no lens: lens null leaves it as it is.
+  function boardStateFromFragment(fragmentText) {
+    var knownFragments = {
+      "board": { view: "board", lens: "flat", fold: false },
+      "board/by-ur": { view: "board", lens: "user-request", fold: false },
+      "board/urs-only": { view: "board", lens: "user-request", fold: true },
+      "activity": { view: "activity", lens: null, fold: false },
+      "calendar": { view: "calendar", lens: null, fold: false },
+      "timeline": { view: "timeline", lens: null, fold: false },
+      "durations": { view: "durations", lens: null, fold: false },
+      "testing": { view: "testing", lens: null, fold: false }
+    };
+    var fragmentName = String(fragmentText || "").replace(/^#/, "");
+    return Object.prototype.hasOwnProperty.call(knownFragments, fragmentName)
+      ? knownFragments[fragmentName]
+      : null;
+  }
+
+  function boardFragmentFromState() {
+    if (viewState.view !== "board") {
+      return viewState.view;
+    }
+    if (viewState.lens === "user-request") {
+      return userRequestCardsFolded ? "board/urs-only" : "board/by-ur";
+    }
+    return "board";
+  }
+
+  // Guarded so the Node behaviour probes, which have no window, still run.
+  function currentAddressHash() {
+    if (typeof window === "undefined" || !window.location) {
+      return "";
+    }
+    return window.location.hash || "";
+  }
+
+  // Selects a page and lens and re-syncs both button groups, without
+  // rendering: the boot read relies on board.js calling applyView() next.
+  function applyBoardStateSelection(boardState) {
+    viewState.view = boardState.view;
+    if (boardState.lens) {
+      viewState.lens = boardState.lens;
+      userRequestCardsFolded = boardState.fold;
+      renderedOnce.userRequestLens = false;
+    }
+    setActiveButton("[aria-label='Board views and lenses']", "data-view-target", viewState.view);
+    setActiveLensButton();
+  }
+
+  // Runs after a click, never on load. replaceState adds no history entry, so
+  // Back still leaves the board instead of stepping through its pages. Some
+  // file:// pages refuse replaceState; location.replace is the fallback.
+  function writeBoardFragment() {
+    if (typeof window === "undefined" || !window.location) {
+      return;
+    }
+    var fragmentHash = "#" + boardFragmentFromState();
+    if (window.location.hash === fragmentHash) {
+      return;
+    }
+    try {
+      window.history.replaceState(null, "", fragmentHash);
+    } catch (replaceStateError) {
+      window.location.replace(fragmentHash);
+    }
+  }
+
   // ---- top bar identity ---------------------------------------------------
   // The identity is one line — wordmark, project, clock — so the bar keeps its
   // height when the control pills beside it wrap. The visible clock is the
@@ -198,14 +270,33 @@
         viewState.view = button.getAttribute("data-view-target");
         setActiveButton("[aria-label='Board views and lenses']", "data-view-target", viewState.view);
         applyView();
+        writeBoardFragment();
       });
     });
 
     document.querySelectorAll("[data-lens-target]").forEach(function (button) {
       button.addEventListener("click", function () {
         applyLensSelection(button.getAttribute("data-lens-target"), button.getAttribute("data-ur-cards"));
+        writeBoardFragment();
       });
     });
+
+    // A linked page opens directly. Only the selection changes here; the first
+    // applyView() that board.js runs after wiring does the lazy first render.
+    var linkedBoardState = boardStateFromFragment(currentAddressHash());
+    if (linkedBoardState) {
+      applyBoardStateSelection(linkedBoardState);
+    }
+    // A hand-edited address bar. Names that are not pages are ignored.
+    if (typeof window !== "undefined" && window.addEventListener) {
+      window.addEventListener("hashchange", function () {
+        var editedBoardState = boardStateFromFragment(currentAddressHash());
+        if (editedBoardState) {
+          applyBoardStateSelection(editedBoardState);
+          applyView();
+        }
+      });
+    }
 
     document.querySelectorAll("[data-durations-colour]").forEach(function (button) {
       button.addEventListener("click", function () {

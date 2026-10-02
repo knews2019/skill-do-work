@@ -496,7 +496,7 @@ func checkUserRequestProgressStrip(
 	if len(result.ConsoleErrors) != 0 {
 		t.Fatalf("UR progress probe browser errors: %q", result.ConsoleErrors)
 	}
-	if !strings.HasSuffix(result.LocationHref, "/"+browserProbePageFileName) {
+	if !strings.HasSuffix(probePageAddressWithoutFragment(result.LocationHref), "/"+browserProbePageFileName) {
 		t.Fatalf("probe measured %q, not its own page", result.LocationHref)
 	}
 	// The build these numbers came from, recorded beside them: a green here

@@ -272,7 +272,7 @@ func TestBrowserBehaviorBoardColumnCopyAll(t *testing.T) {
 	if decodeError := json.Unmarshal(resultJSON, &result); decodeError != nil {
 		t.Fatalf("decode Board column copy probe: %v\n%s", decodeError, resultJSON)
 	}
-	if !strings.HasSuffix(result.LocationHref, "/"+browserProbePageFileName) {
+	if !strings.HasSuffix(probePageAddressWithoutFragment(result.LocationHref), "/"+browserProbePageFileName) {
 		t.Fatalf("Board column copy measured %q, not its probe page", result.LocationHref)
 	}
 	if len(result.ConsoleErrors) != 0 {
