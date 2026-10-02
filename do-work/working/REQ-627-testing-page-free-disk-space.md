@@ -27,6 +27,8 @@ review_at: 2026-10-02T18:47:04Z
 integration_at: 2026-10-02T18:44:09Z
 builder_handback_at: 2026-10-02T18:43:58Z
 dispatch_at: 2026-10-02T18:39:40Z
+heavy_verified_at: 2026-10-02T18:50:16Z
+heavy_verified_revision: 172d0e5caaf54729ae1efa0fbbb09f574c2b2086
 claimed_at: 2026-10-02T18:03:42Z
 status_changed_at: 2026-10-02T18:36:46Z
 commit: 172d0e5caaf54729ae1efa0fbbb09f574c2b2086
@@ -285,3 +287,13 @@ Now the board's Testing page always shows the repo root's free and total disk sp
 - queue-kanban-javascript — `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane queue-kanban-javascript` — files changed under skills/do-work-board/tools/queue-kanban
 - queue-kanban-browser — `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane queue-kanban-browser` — same subtree
 - staged-skills — `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane staged-skills` — shipped files under skills/ changed
+
+## Heavy Verification Result
+
+- Target revision: 172d0e5caaf54729ae1efa0fbbb09f574c2b2086
+- Execution revision: 172d0e5caaf54729ae1efa0fbbb09f574c2b2086 (detached drain checkout `.git/work-run-2026-10-02-180407/drain-head`, one run for REQ-626 and REQ-627, QUEUE_KANBAN_BROWSER set to Google Chrome)
+- queue-kanban-javascript: exit 0, executed, 7s
+- queue-kanban-browser: exit 0, executed (not skipped), 78s
+- staged-skills: exit 0, executed, 40s
+
+Green: every selected lane present, exit 0, none skipped, none reused.
