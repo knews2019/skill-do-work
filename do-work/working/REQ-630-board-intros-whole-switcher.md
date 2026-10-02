@@ -94,3 +94,18 @@ See `do-work/user-requests/UR-134/input.md` for complete verbatim input.
 **Warnings judged:** none.
 **Orchestrator read of the diff:** both lines now name the board plus "the other pages in its page switcher", which follows the REQ-232 lesson and stays true when a page is added; the rest of each paragraph is byte-identical.
 **P-A-U honesty:** the orchestrator played the builder role on branch `worktree-agent-REQ-630-board-intros`; APPLY cross-checked against `git diff --stat 875d49b4..bdb5c43c` (two files, nothing under do-work/).
+
+## Testing
+
+**Tests run:** `bash _dev/tests/maintainer-verify.sh` on the merged tree at 00ad771a (merge bdb5c43c plus REQ trail)
+**Result:** ✓ All passing — exit 0, gate wall 149s. Green-gate record satisfied by advance.
+
+**Focused tests:** `do-work/runs/work-2026-10-02-215500/helpers/probe-630.sh` (the Red-Green Proof as a check: neither old partial list remains, both intros carry the switcher wording) → exit 0 (advance probe record satisfied). Docs-only, so no harness test; the probe fails on the pre-change tree at 875d49b4.
+
+**Red-green validation:** traced to `## Red-Green Proof`: RED both intros named a calendar and a testing track at 875d49b4 → GREEN neither names a partial set at bdb5c43c.
+
+**Heavy verification plan:** *(lanes selected by plan-heavy-verification)*
+- Range: 875d49b4..bdb5c43c
+- staged-skills: `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane staged-skills` — shipped files under skills/ changed
+
+*Verified by work action*
