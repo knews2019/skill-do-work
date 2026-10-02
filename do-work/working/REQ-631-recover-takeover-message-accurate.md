@@ -96,3 +96,25 @@ See `do-work/user-requests/UR-134/input.md` for complete verbatim input.
 **Warnings judged:** none.
 **Orchestrator read of the diff:** one string and one assertion. The new wording matches the recover transition in `requeststate/state_apply.go` (status pending, pending-answers or kept blocked; `route` deleted, `write_set` deleted when Scope exists, generated sections stripped). `next_argv` and the finding code are unchanged, so there is no behaviour change.
 **P-A-U honesty:** the orchestrator played the builder role on branch `worktree-agent-REQ-631-recover-message`; APPLY cross-checked against `git diff --stat 6e3d4b81..25803a16` (two files).
+
+## Testing
+
+**Tests run:** `bash _dev/tests/maintainer-verify.sh` on the merged tree at d9cf0ff3 (merge 25803a16 plus REQ trail)
+**Result:** ✓ All passing — exit 0, gate wall 136s; do-work-cli fast tests 867, slowest file 21.64s < 30s; queue-kanban fast tests 413, slowest file 20.60s < 30s. Green-gate record satisfied by advance.
+
+**Focused tests:** `do-work/runs/work-2026-10-02-215500/helpers/probe-631.sh` (`go test -count=1 -run TestRecover ./internal/lifecycleadvance/`) → exit 0 (advance probe record satisfied). Whole package ok in 26.6s on the builder branch.
+
+**Red-green validation:** traced to `## Red-Green Proof`:
+- TestRecoverWithoutAuthorityOffersTypedTakeoverAndDoesNotMutateClaim (tightened): ✗ `stop reason misstates where the reset sends the claim: "... resets it (requeues it as pending and strips its orchestrator sections)"` → ✓
+
+**Existing tests updated (cross-REQ impact):**
+- `recovery_commands_test.go` TestRecoverWithoutAuthorityOffersTypedTakeoverAndDoesNotMutateClaim (from REQ-629): now also requires "returns it to the queue" and rejects "as pending" — intentional
+
+**Heavy verification plan:** *(lanes selected by plan-heavy-verification)*
+- Range: 6e3d4b81..25803a16
+- do-work-cli-integrations: `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane do-work-cli-integrations` — do-work-cli source changed
+- staged-skills: `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane staged-skills` — shipped files under skills/ changed
+- updater: `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane updater` — do-work-cli source changed
+- installer: `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane installer` — do-work-cli source changed
+
+*Verified by work action*
