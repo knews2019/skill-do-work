@@ -23,7 +23,9 @@ write_set: ["skills/do-work-board/docs/board-guide.md", "skills/do-work-board/to
 dispatch_at: 2026-10-02T21:53:17Z
 builder_handback_at: 2026-10-02T21:53:17Z
 integration_at: 2026-10-02T21:53:17Z
+review_at: 2026-10-02T21:56:43Z
 claimed_at: 2026-10-02T21:52:48Z
+commit: bdb5c43c9ea1cccf1115c3ea26103448333f23ee
 ---
 # Board Intros Describe the Board by What Its Switcher Covers
 
@@ -111,3 +113,51 @@ See `do-work/user-requests/UR-134/input.md` for complete verbatim input.
 - staged-skills: `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane staged-skills` — shipped files under skills/ changed
 
 *Verified by work action*
+
+## Review
+
+**Overall: 93%** | 2026-10-02T21:56:43Z
+
+| Dimension | Score |
+|-----------|-------|
+| Requirements | 85% |
+| Code Quality | 95% |
+| Test Adequacy | N/A (docs-only; probe-630.sh pins the Red-Green Proof) |
+| Scope | 100% |
+| Risk | None |
+| Acceptance | Pass |
+
+**Important findings (each with its recorded impact token — this is the durable audit record the judgment mandates):**
+None
+
+**Minor findings:**
+- Requirement 3 (report other partial page lists in Discovered Tasks) is only half delivered: UNIFY says the grep "found two, reported in Discovered Tasks", but the REQ has no `## Discovered Tasks` section and does not name the two hits. This review records them below. — impact-negligible → report only
+- Restatement Sweep: `skills/do-work-board/actions/board.md:121` says the Notes strip is "visible in both the board and calendar views". The strip sits outside the view panels (`web/template.html:149-158`), so it shows on all six pages. Same stale gloss in the template comment at `web/template.html:151` ("visible on the calendar too"). A switcher-wide phrasing ("visible on every page") would follow the REQ-232 lesson. — impact-negligible → report only
+- Restatement Sweep: `skills/do-work-board/SKILL.md:3` description names "Queue-kanban board, Testing workflow, queue activity calendar", three of six pages (Activity, Timeline, Durations missing). It is the skill's trigger text, so a page-free phrasing is the lasting fix. — impact-negligible → report only
+- Nit: `docs/board-guide.md:3` still says "(see Testing view)" while the new sentence calls them pages. Pre-existing, outside this REQ's line edit. — impact-negligible → report only
+
+**Acceptance:** Pass — both line-3 intros now read "a Kanban board plus the other pages in its page switcher"; the switcher in `web/template.html:82-99` has six `data-view-target` buttons (board, activity, calendar, timeline, durations, testing), so the wording is true and needs no edit when a page is added; rest of each paragraph byte-identical in `git diff 875d49b4..bdb5c43c`; `probe-630.sh` exit 0; `docs/board-guide.md:25` already names all six pages, so no conflict.
+**Suggested testing:** 0 items
+**Follow-ups created:** None (4 findings report only)
+
+*Reviewed by review-work action*
+
+## Discovered Tasks
+
+From the builder's grep and the review, impact-stamped per review-work Step 10; none is impact-critical, so nothing was queued.
+
+- `skills/do-work-board/actions/board.md` line 121 says the Notes strip is "visible in both the board and calendar views"; it shows on every page (the `template.html` comment near line 151 says the same). — impact-negligible → report only
+- `skills/do-work-board/SKILL.md` line 3 description names three of the six pages. — impact-negligible → report only
+- `board-guide.md` line 3 still says "(see Testing view)" beside the new "pages" wording. — impact-negligible → report only
+
+## Orientation
+
+Now both board intros describe the board by its page switcher, so adding a page no longer makes them stale; lives in the board package's user guide and its prime (`skills/do-work-board/docs/board-guide.md`, `skills/do-work-board/tools/queue-kanban/prime-do-kanban.md`). Not a map change. Prime spot-check: `prime-do-kanban.md`'s referenced paths still exist.
+
+## Heavy Verification Plan
+
+- Base revision: 875d49b4f8f63a07c16c7e0ba243306538f86f6d
+- Target revision: bdb5c43c9ea1cccf1115c3ea26103448333f23ee (landed in `commit:`)
+- queue-kanban-javascript — `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane queue-kanban-javascript` — files changed under skills/do-work-board/tools/queue-kanban
+- queue-kanban-browser — `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane queue-kanban-browser` — same subtree
+- staged-skills — `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane staged-skills` — shipped files under skills/ changed
