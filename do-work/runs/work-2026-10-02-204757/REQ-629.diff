@@ -1,0 +1,197 @@
+diff --git a/skills/do-work/actions/restart-with-parallel-handoff.md b/skills/do-work/actions/restart-with-parallel-handoff.md
+index 3c477725..6dabc400 100644
+--- a/skills/do-work/actions/restart-with-parallel-handoff.md
++++ b/skills/do-work/actions/restart-with-parallel-handoff.md
+@@ -46,7 +46,7 @@ For each in-flight REQ, state:
+ - Merged or not merged, with the merge commit and the **full merge range**.
+ - What remains, in order.
+ - Uncommitted files **by name**. "0 commits" reads as "nothing there" and is often wrong.
+-- The canonical `recover` result for each working claim, including its structural writer evidence and exact takeover command. Do not classify ownership again from checkpoint prose.
++- The canonical `recover` result for each working claim, including its structural writer evidence, and the claim's continue command: bare `advance REQ-NNN`, which changes nothing and names its next phase. Do not classify ownership again from checkpoint prose.
+ 
+ For each worktree, give one verdict:
+ 
+@@ -63,7 +63,9 @@ Exactly two sections, in this order.
+ - to build — `do-work run --fan-out N` (pick N per Step 5)
+ - to answer questions — `do-work clarify`, included only if some REQ is at `pending-answers`
+ 
+-Immediately after the command, write: `This command is sufficient; everything below it is context.` **If you cannot honestly write that sentence, return to Step 1 until you can.**
++When this session leaves a REQ claimed in `do-work/working/`, add one line per claim: `advance REQ-NNN`, then do the phase it names. Selection reads only the queue, so the resume command never continues a claim. Never write `recover --take-over` for these claims: it resets a claim (requeues it as `pending` and strips its orchestrator sections, merged evidence included).
++
++Immediately after the commands, write: `These commands are sufficient; everything below them is context.` **If you cannot honestly write that sentence, return to Step 1 until you can.**
+ 
+ **Reference** — after a `---`. Paths, merge ranges, evidence, worktree verdicts, the parallelism analysis from Step 5, and a heads-up list: anything that will bite the next session in its first ten minutes (uncommitted edits from another session in a shared checkout, a half-applied migration, a test that only passes on retry). One line each, naming who should act. This section is for humans and debugging; the next session must not need it to start.
+ 
+@@ -120,7 +122,7 @@ One committed `do-work/RESTART-PROMPT.md`, any queue-state edits Step 1 made, an
+ ## Verification Checklist
+ 
+ - [ ] `do-work run` with no other reading would do the right thing — every hold is a queue field
+-- [ ] Paste block is the first thing in the file, one fence, carrying the resume command and the sufficiency sentence
++- [ ] Paste block is the first thing in the file, one fence, carrying the resume command, one `advance REQ-NNN` line per working claim, and the sufficiency sentence
+ - [ ] Every in-flight REQ states merged/not-merged with its merge range, and uncommitted files by name
+ - [ ] Every worktree in the survey has exactly one verdict; no worktree was removed
+ - [ ] Every foreign claim is byte-identical to before this action ran
+diff --git a/skills/do-work/actions/work-reference.md b/skills/do-work/actions/work-reference.md
+index 8b980526..2663a128 100644
+--- a/skills/do-work/actions/work-reference.md
++++ b/skills/do-work/actions/work-reference.md
+@@ -307,7 +307,7 @@ The same judgment applies to any later typed refusal whose evidence is dirt or a
+ 
+ ## Crash Recovery (Step 1)
+ 
+-Run the canonical `recover` command before selection. Its ordered typed result settles finalization first, then classifies every working claim from structural checkpoint evidence; plain recovery preserves claims and returns exact takeover argv, while explicit `--take-over REQ-NNN` or `--assume-sole-authority` authorizes the canonical reset for every claim except one this run set aside, whose claim recovery preserves so the exclusion holds. Follow the result, never infer ownership from prose or interpolate a writer label into shell source.
++Run the canonical `recover` command before selection. Its ordered typed result settles finalization first, then classifies every working claim from structural checkpoint evidence; plain recovery preserves claims and its takeover finding's next step is the read-only `advance REQ-NNN`, which continues the claim. Explicit `--take-over REQ-NNN` or `--assume-sole-authority` authorizes the canonical reset for every claim except one this run set aside, whose claim recovery preserves so the exclusion holds. The reset requeues the claim and strips its orchestrator sections, so use it only for a claim no live session owns, never to resume a handoff. Follow the result, never infer ownership from prose or interpolate a writer label into shell source.
+ 
+ Keep the exact `## In Progress (interrupted)` heading as the claim-evidence boundary. Explicit authority removes every same-request entry atomically, including multiple writer labels and unlabelled legacy records, while unrelated entries and project dirt remain byte-identical.
+ 
+diff --git a/skills/do-work/docs/work-guide.md b/skills/do-work/docs/work-guide.md
+index 3321a557..642f400c 100644
+--- a/skills/do-work/docs/work-guide.md
++++ b/skills/do-work/docs/work-guide.md
+@@ -127,7 +127,7 @@ If both checkouts made byte-identical claims (same second, nothing written yet),
+ 
+ **Captures collide the same way, and the same fix applies.** Two checkouts capturing at once can both mint `REQ-042`. Merge them, renumber one, and run `do-work verify` — its duplicate-id probe is there for exactly this. `do-work verify` also flags two related drifts: a REQ you're building here that's still earmarked for somewhere else, and a UR archived while one of its members is still live.
+ 
+-**Recovery is one public command.** Plain `recover` preserves working claims and returns typed takeover options after finalization is clean. `recover --take-over REQ-NNN` authorizes one claim; `run-with-recovery` uses `recover --assume-sole-authority` to reset working claims and every same-request checkpoint entry without interpreting writer text as code — except a REQ whose finalization tail recovery set aside, which keeps its claim so the run does not select it again.
++**Recovery is one public command.** Plain `recover` preserves working claims and, after finalization is clean, names each claim's read-only next step, `advance REQ-NNN`. `recover --take-over REQ-NNN` resets one claim (back to the queue, orchestrator sections stripped), so use it only for a claim no live session owns; `run-with-recovery` uses `recover --assume-sole-authority` to reset working claims and every same-request checkpoint entry without interpreting writer text as code — except a REQ whose finalization tail recovery set aside, which keeps its claim so the run does not select it again.
+ 
+ **Building several REQs at once.** Within one checkout, `do-work run --fan-out [N]` computes the ready set itself — pending, dependencies met, unclaimed, not earmarked elsewhere, and not dropped by a filter you passed — and dispatches that many builders concurrently, each in its own git worktree, with no confirmation prompt. `--fan-out 3` sets the count; bare `--fan-out` uses your harness's limit, or two. It composes with `--wave N` (`--wave` picks *which* REQs, `--fan-out` picks *how many at once*), and on a harness without worktree support it quietly does nothing and you get the ordinary serial loop.
+ 
+@@ -162,7 +162,7 @@ Use whichever feels natural. `continue` and `resume` read well after a break; `r
+ 
+ - **`continue` vs fresh `run`** — No functional difference. Both scan the queue and pick the next pending REQ. Use `continue` when you're resuming a session; use `run` when you're starting fresh. The checkpoint system handles the actual resume logic.
+ - **Failed items** — If a REQ fails review, the system tries one remediation pass. If it still fails, it archives with issues noted and auto-queues only critical findings. Noncritical findings stay in that report; promote one by running `do-work capture` with its complete finding line quoted as the source.
+-- **Context limits** — Claims are recorded immediately and `advance --checkpoint` refreshes the exit state. Start a new session with `do-work run`; its first canonical recovery result says whether anything needs takeover authority.
++- **Context limits** — Claims are recorded immediately and `advance --checkpoint` refreshes the exit state. Start a new session with `do-work run` for queued work, and continue each REQ still in `do-work/working/` with `advance REQ-NNN`; `do-work run` does not pick up working claims, and `recover --take-over` would reset them.
+ - **One at a time** — The work action processes one REQ per loop iteration. This keeps commits atomic and reviews focused. Don't try to batch multiple REQs into one pass.
+ 
+ ## Clarify mode
+diff --git a/skills/do-work/tools/do-work-cli/internal/lifecycleadvance/recovery_commands.go b/skills/do-work/tools/do-work-cli/internal/lifecycleadvance/recovery_commands.go
+index 1ec04486..7bb8011e 100644
+--- a/skills/do-work/tools/do-work-cli/internal/lifecycleadvance/recovery_commands.go
++++ b/skills/do-work/tools/do-work-cli/internal/lifecycleadvance/recovery_commands.go
+@@ -95,9 +95,14 @@ func handleRecover(executionContext commandruntime.ExecutionContext, arguments [
+ 				Code: "RECOVERY-TAKEOVER-AVAILABLE", Severity: resultmodel.SeverityWarning,
+ 				AffectedIDs: []string{requestID}, AffectedPaths: []string{requestPath},
+ 				Evidence: recoveryEvidenceLabels(evidence), Fixability: resultmodel.FixabilityManual,
+-				AutomationStopReason: "working claim requires explicit authority",
+-				NextArgv:             []string{"do-work-cli", CommandRecover, "--take-over", requestID},
+-				VerificationArgv:     []string{"do-work-cli", "--format", "json", CommandRecover},
++				// The next step continues the claim read-only. The reset stays one
++				// explicit command away and is named, never offered as next_argv:
++				// a resuming session follows next_argv (UR-132).
++				AutomationStopReason: "working claim preserved; continue it with advance " + requestID +
++					", or, only for a claim no live session owns, recover --take-over " + requestID +
++					" resets it (requeues it as pending and strips its orchestrator sections)",
++				NextArgv:         []string{"do-work-cli", "--format", "json", CommandAdvance, requestID},
++				VerificationArgv: []string{"do-work-cli", "--format", "json", CommandRecover},
+ 			})
+ 			continue
+ 		}
+diff --git a/skills/do-work/tools/do-work-cli/internal/lifecycleadvance/recovery_commands_test.go b/skills/do-work/tools/do-work-cli/internal/lifecycleadvance/recovery_commands_test.go
+index 0fca2662..299c561f 100644
+--- a/skills/do-work/tools/do-work-cli/internal/lifecycleadvance/recovery_commands_test.go
++++ b/skills/do-work/tools/do-work-cli/internal/lifecycleadvance/recovery_commands_test.go
+@@ -5,6 +5,7 @@ import (
+ 	"os"
+ 	"os/exec"
+ 	"path/filepath"
++	"reflect"
+ 	"strings"
+ 	"testing"
+ 
+@@ -127,9 +128,15 @@ func TestRecoverWithoutAuthorityOffersTypedTakeoverAndDoesNotMutateClaim(t *test
+ 	if err != nil {
+ 		t.Fatalf("recover observation: %v\n%s", err, output)
+ 	}
+-	if !strings.Contains(string(output), `"code": "RECOVERY-TAKEOVER-AVAILABLE"`) ||
+-		!strings.Contains(string(output), `"--take-over"`) || !strings.Contains(string(output), `"REQ-713"`) {
+-		t.Fatalf("typed takeover missing:\n%s", output)
++	// The finding's next step must be the read-only classifier, not the reset:
++	// a resuming session follows next_argv, and --take-over strips the claim.
++	takeoverFinding := recoveryTakeoverFinding(t, output, "REQ-713")
++	if !reflect.DeepEqual(takeoverFinding.NextArgv, []string{"do-work-cli", "--format", "json", "advance", "REQ-713"}) {
++		t.Fatalf("takeover finding next argv = %#v, want read-only advance", takeoverFinding.NextArgv)
++	}
++	if !strings.Contains(takeoverFinding.AutomationStopReason, "recover --take-over REQ-713") ||
++		!strings.Contains(takeoverFinding.AutomationStopReason, "resets") {
++		t.Fatalf("stop reason does not name the reset: %q", takeoverFinding.AutomationStopReason)
+ 	}
+ 	if after := advanceTreeDigest(t, repositoryRoot); before != after {
+ 		t.Fatalf("authority-free recovery changed bytes")
+@@ -148,6 +155,75 @@ func TestRecoverWithoutAuthorityOffersTypedTakeoverAndDoesNotMutateClaim(t *test
+ 	}
+ }
+ 
++// recoveryTakeoverFinding decodes a recover result and returns the takeover
++// finding for one request.
++func recoveryTakeoverFinding(t *testing.T, output []byte, requestID string) resultmodel.CommandFinding {
++	t.Helper()
++	var result resultmodel.CommandResult
++	if err := json.Unmarshal(output, &result); err != nil {
++		t.Fatalf("decode recover result: %v\n%s", err, output)
++	}
++	for _, finding := range result.Findings {
++		if finding.Code == "RECOVERY-TAKEOVER-AVAILABLE" && len(finding.AffectedIDs) == 1 && finding.AffectedIDs[0] == requestID {
++			return finding
++		}
++	}
++	t.Fatalf("no RECOVERY-TAKEOVER-AVAILABLE finding for %s:\n%s", requestID, output)
++	return resultmodel.CommandFinding{}
++}
++
++// UR-132: a session resuming a handoff ran recover's offered next step for its
++// own merged claim, which was --take-over, and the reset requeued the REQ and
++// stripped its Triage, Scope and evidence sections. Following plain recover and
++// then the finding's next argv must leave the claim byte-identical in working/
++// and name its next phase.
++func TestRecoverNextStepContinuesAClaimWithoutResettingIt(t *testing.T) {
++	repositoryRoot := t.TempDir()
++	hostname, _ := os.Hostname()
++	requestPath := writeAdvanceRequest(t, repositoryRoot, "working", "REQ-714", "claimed",
++		"route: B\nwrite_set: [owned.go]\nclaimed_at: 2026-09-04T12:00:00Z\ncommit: abc1234\nestimate:\n  p50_active_minutes: 20\n",
++		"## Triage\n\nRoute B.\n\n## Plan\n\nPlanning not required.\n\n## Exploration\n\nFound patterns.\n\n## Scope\n\n- owned.go\n")
++	writeAdvanceFile(t, repositoryRoot, "do-work/CHECKPOINT.md", "# Session Checkpoint\n\n## In Progress (interrupted)\n\n- REQ-714: Claimed — claimed now — writer: "+hostname+":"+repositoryRoot+"\n")
++	runAdvanceGit(t, repositoryRoot, "init", "-q")
++	runAdvanceGit(t, repositoryRoot, "config", "user.name", "Recovery Test")
++	runAdvanceGit(t, repositoryRoot, "config", "user.email", "recovery@example.invalid")
++	runAdvanceGit(t, repositoryRoot, "add", ".")
++	runAdvanceGit(t, repositoryRoot, "commit", "-qm", "fixture")
++	requestBefore, err := os.ReadFile(filepath.Join(repositoryRoot, requestPath))
++	if err != nil {
++		t.Fatal(err)
++	}
++	treeBefore := advanceTreeDigest(t, repositoryRoot)
++
++	recoverOutput, err := exec.Command(advanceCLIBinary(t), "--repo-root", repositoryRoot, "--format", "json", "recover").CombinedOutput()
++	if err != nil {
++		t.Fatalf("plain recover: %v\n%s", err, recoverOutput)
++	}
++	nextArgv := recoveryTakeoverFinding(t, recoverOutput, "REQ-714").NextArgv
++	if len(nextArgv) == 0 || nextArgv[0] != "do-work-cli" {
++		t.Fatalf("next argv is not a do-work-cli command: %#v", nextArgv)
++	}
++	followArgv := append([]string{"--repo-root", repositoryRoot}, nextArgv[1:]...)
++	followOutput, err := exec.Command(advanceCLIBinary(t), followArgv...).CombinedOutput()
++	if err != nil {
++		t.Fatalf("following next argv %v: %v\n%s", nextArgv, err, followOutput)
++	}
++	var followed advanceCommandResult
++	if err := json.Unmarshal(followOutput, &followed); err != nil {
++		t.Fatalf("decode followed step: %v\n%s", err, followOutput)
++	}
++	if followed.Advance == nil || followed.Advance.TreeSection != "working" || followed.Advance.Phase != "preflight" {
++		t.Fatalf("followed step did not classify the claim's next phase:\n%s", followOutput)
++	}
++	requestAfter, err := os.ReadFile(filepath.Join(repositoryRoot, requestPath))
++	if err != nil {
++		t.Fatalf("claim left working/: %v", err)
++	}
++	if string(requestAfter) != string(requestBefore) || advanceTreeDigest(t, repositoryRoot) != treeBefore {
++		t.Fatal("recover plus its next step changed the claim's bytes")
++	}
++}
++
+ func legacyCheckpointRepository(t *testing.T) (string, string, string) {
+ 	t.Helper()
+ 	root := t.TempDir()

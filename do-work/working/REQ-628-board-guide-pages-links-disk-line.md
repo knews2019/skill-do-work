@@ -24,6 +24,8 @@ dispatch_at: 2026-10-02T20:48:05Z
 builder_handback_at: 2026-10-02T20:48:45Z
 integration_at: 2026-10-02T20:48:50Z
 review_at: 2026-10-02T20:52:52Z
+heavy_verified_at: 2026-10-02T21:14:49Z
+heavy_verified_revision: 069f922e64c1ed14ca31211642e395a784561f57
 claimed_at: 2026-10-02T20:47:38Z
 commit: 4c8e249acfa058bd75e6ed8a80175172ff31fbd5
 ---
@@ -167,3 +169,11 @@ Now the board guide describes all six pages, their links, and the Testing page's
 - Base revision: dda564c357ebb69a2261661b8b10fdb43946998d
 - Target revision: 4c8e249acfa058bd75e6ed8a80175172ff31fbd5 (landed in `commit:`)
 - staged-skills — `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane staged-skills` — shipped files under skills/ changed
+
+## Heavy Verification Result
+
+- Target revision: 4c8e249acfa058bd75e6ed8a80175172ff31fbd5
+- Execution revision: 069f922e64c1ed14ca31211642e395a784561f57 (detached drain checkout `.git/work-run-2026-10-02-204757/drain-head`, one run for REQ-628 and REQ-629 at the integration tip containing both merges)
+- staged-skills: exit 0, executed, 33s
+
+Green: every selected lane present, exit 0, none skipped, none reused. An earlier run at 8f9f3099 (before REQ-629's D-05 prose fixes) was also green on all four lanes.

@@ -28,6 +28,8 @@ dispatch_at: 2026-10-02T20:57:11Z
 builder_handback_at: 2026-10-02T21:00:30Z
 integration_at: 2026-10-02T21:01:19Z
 review_at: 2026-10-02T21:06:50Z
+heavy_verified_at: 2026-10-02T21:14:49Z
+heavy_verified_revision: 069f922e64c1ed14ca31211642e395a784561f57
 claimed_at: 2026-10-02T20:53:37Z
 commit: 2cbd685813412cab0b51a783a0fbd6b25a4859a8
 ---
@@ -271,3 +273,14 @@ Now a session resuming a handoff continues its claimed REQs with `advance REQ-NN
 - staged-skills — `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane staged-skills` — shipped files under skills/ changed
 - updater — `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane updater` — do-work-cli source changed
 - installer — `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane installer` — do-work-cli source changed
+
+## Heavy Verification Result
+
+- Target revision: 2cbd685813412cab0b51a783a0fbd6b25a4859a8
+- Execution revision: 069f922e64c1ed14ca31211642e395a784561f57 (detached drain checkout `.git/work-run-2026-10-02-204757/drain-head`, one run for REQ-628 and REQ-629 at the integration tip containing both merges)
+- staged-skills: exit 0, executed, 33s
+- do-work-cli-integrations: exit 0, executed, 67s
+- updater: exit 0, executed, 67s
+- installer: exit 0, executed, 29s
+
+Green: every selected lane present, exit 0, none skipped, none reused. An earlier run at 8f9f3099 (before REQ-629's D-05 prose fixes) was also green on all four lanes.

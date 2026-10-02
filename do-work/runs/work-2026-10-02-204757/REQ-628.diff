@@ -1,0 +1,37 @@
+diff --git a/skills/do-work-board/actions/board.md b/skills/do-work-board/actions/board.md
+index 5b3c55db..003ea620 100644
+--- a/skills/do-work-board/actions/board.md
++++ b/skills/do-work-board/actions/board.md
+@@ -95,7 +95,7 @@ A pending or claimed card carries an `overlaps` badge naming the other pending/c
+ 
+ ### Step 6: Testing view (serve mode, in-browser — nothing more for the agent to run)
+ 
+-The served board's **Testing** view — the only one that writes anything, and the only one with a server API behind it — tracks who tested which finished REQ. It shows every terminal-success REQ (`completed` / `completed-with-issues` — plus any REQ that already carries a testing record, so records never vanish) in four columns: **Ready to test → In testing → Returned with feedback → Tested**. The user picks (or adds) a tester profile in the view's toolbar, then drives per-card actions; the browser POSTs to the live server's `/api/testing/*` endpoints, which write the record into the Markdown itself:
++The served board's **Testing** view — the only one that writes anything, and the only one with a server API behind it — tracks who tested which finished REQ. It shows every terminal-success REQ (`completed` / `completed-with-issues` — plus any REQ that already carries a testing record, so records never vanish) in four columns: **Ready to test → In testing → Returned with feedback → Tested**. The view's toolbar also shows the repo root's free disk space (amber below 10 GiB, red below 3 GiB). The user picks (or adds) a tester profile in that toolbar, then drives per-card actions; the browser POSTs to the live server's `/api/testing/*` endpoints, which write the record into the Markdown itself:
+ 
+ - REQ frontmatter placeholders: `testing_status: in-testing | tested | returned`, `tested_by`, `testing_updated_at`, and (while returned) `testing_feedback` — see `../../do-work/actions/work-reference.md`'s Request File Schema.
+ - Tester profiles: one `- Name` bullet per profile in `do-work/testers.md` (created on first use; hand-editable).
+diff --git a/skills/do-work-board/docs/board-guide.md b/skills/do-work-board/docs/board-guide.md
+index b0d735f8..87d6168c 100644
+--- a/skills/do-work-board/docs/board-guide.md
++++ b/skills/do-work-board/docs/board-guide.md
+@@ -22,7 +22,9 @@ Two strips sit above the columns and stay visible in every view:
+ - **Notes** — your `do-work-toolbox note` lines, verbatim and collapsible. Hidden when there are none.
+ - **Completion anomalies** — finished REQs whose completion bookkeeping is broken: an unresolvable completion instant, or an impossible one (`completed_at` earlier than `claimed_at`). Bookkeeping to fix, not recent work, so the strip ignores the filters and the window.
+ 
+-The toolbar carries a text filter (partial id or title, or a whole resolved cited ticket id; citation-only matches show a “cites” badge), domain and status selects, a **Recently done** window (24h / 48h / 7d), a **Lens** toggle (three readings: flat **Columns**, grouped **By UR**, and **URs only**), and the **Board / Calendar / Testing** switch. In the By UR lens, **Active** shows URs with open work or a REQ inside the selected Recently done window; **All** also browses older resolved URs. Calendar carries every REQ, colour-keyed by status: work that has not started sits in a band at the top, claimed REQs sit on the day they were claimed, and completed, cancelled, and failed REQs sit on the day they resolved. Each day label counts what happened on it, and the summary line above doubles as the colour key.
++The toolbar carries a text filter (partial id or title, or a whole resolved cited ticket id; citation-only matches show a “cites” badge), domain and status selects, a **Recently done** window (24h / 48h / 7d), a **Lens** toggle (three readings: flat **Columns**, grouped **By UR**, and **URs only**), and the page switcher, which covers all six pages: **Board**, **Activity**, **Calendar**, **Timeline**, **Durations** and **Testing**. In the By UR lens, **Active** shows URs with open work or a REQ inside the selected Recently done window; **All** also browses older resolved URs. Calendar carries every REQ, colour-keyed by status: work that has not started sits in a band at the top, claimed REQs sit on the day they were claimed, and completed, cancelled, and failed REQs sit on the day they resolved. Each day label counts what happened on it, and the summary line above doubles as the colour key.
++
++Each page and each Board lens has its own link: `#board`, `#board/by-ur`, `#board/urs-only`, `#activity`, `#calendar`, `#timeline`, `#durations` and `#testing`. Add one to the board's address to open that page directly. Clicking a page or lens updates the address bar without adding Back steps, so Back still leaves the board. Filters are not part of the link. Links also work on a static snapshot opened from disk.
+ 
+ ### The By UR and URs only lenses
+ 
+@@ -71,7 +73,7 @@ Opening a **UR** shows the same five progress figures as the By UR header, as la
+ 
+ ## Testing view
+ 
+-Tracks who tested which finished REQ, in four columns: **Ready to test → In testing → Returned with feedback → Tested**. Pick your name in the toolbar or add it — profiles are one bullet each in `do-work/testers.md`, hand-editable. Then use the card buttons: *Start testing*, *Mark tested*, *Return with feedback* (prompts for the note), *Clear*. All but Clear need a tester selected.
++Tracks who tested which finished REQ, in four columns: **Ready to test → In testing → Returned with feedback → Tested**. The toolbar also shows the repo root's free disk space, for example `disk: 61.3 GiB free of 177.5 GiB`: amber below 10 GiB, red below 3 GiB, `(at generation)` on a static snapshot, and `not measured` when the platform cannot measure it. The live board measures it on page load and shows that value until you reload. Pick your name in the toolbar or add it — profiles are one bullet each in `do-work/testers.md`, hand-editable. Then use the card buttons: *Start testing*, *Mark tested*, *Return with feedback* (prompts for the note), *Clear*. All but Clear need a tester selected.
+ 
+ Each action writes the record into the REQ's own frontmatter, so `git log` on the REQ file answers "who tested this, and when" — and the main board shows a `testing` badge without you switching views. There's no locking: changes land in your working tree for you to review and commit. A static snapshot renders this view read-only.
+ 
