@@ -1,5 +1,5 @@
 {
-  "test_command": "bash _dev/tests/shipped-package-reference-contract.sh",
+  "test_command": "env QUEUE_KANBAN_JAVASCRIPT_PROBES=off QUEUE_KANBAN_BROWSER_PROBES=off go test -C skills/do-work-board/tools/queue-kanban -count=1 ./...",
   "exit_status": 0,
   "launched": true
 }
