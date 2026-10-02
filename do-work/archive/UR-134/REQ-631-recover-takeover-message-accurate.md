@@ -1,7 +1,7 @@
 ---
 id: REQ-631
 title: 'Recover''s takeover message says where a reset claim goes'
-status: claimed
+status: completed
 route: A
 estimate:
   p50_active_minutes: 5
@@ -29,6 +29,8 @@ heavy_verified_at: 2026-10-02T22:06:47Z
 heavy_verified_revision: 9eed9df5b377811c8b6a008173e1f2e2c3209a93
 claimed_at: 2026-10-02T21:57:11Z
 commit: 25803a160d4590615fa3f0343ddb20f8809b8005
+completed_at: 2026-10-02T22:06:55Z
+release_at: 2026-10-02T22:06:55Z
 ---
 # Recover's Takeover Message Says Where a Reset Claim Goes
 

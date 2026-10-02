@@ -10,6 +10,12 @@ For the complete release history, read this file and the archives below from new
 - [0.50.0 through 0.64.1](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-13-up-to-v0.64.1.md)
 - [0.1.0 through 0.49.0](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-07-up-to-v0.49.0.md)
 
+## 0.305.66 — Recover's Takeover Message Says Where a Reset Claim Goes (2026-10-02)
+
+Since 0.305.64, `recover` warns that `recover --take-over` resets a claimed request. The warning said the request goes back "as pending", but a request with an unanswered question goes back as `pending-answers`, and a blocked one stays `blocked`.
+
+- The warning now says the takeover returns the request to the queue and strips its routing and orchestrator sections, without naming a single status. Nothing else changes.
+
 ## 0.305.65 — Board Intros Describe the Board by Its Page Switcher (2026-10-02)
 
 The opening lines of the board guide and of the board tool's prime still described the board as a Kanban board plus a calendar and a testing track, three of its six pages.
