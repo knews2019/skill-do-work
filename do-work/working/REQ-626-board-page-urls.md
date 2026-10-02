@@ -1,7 +1,7 @@
 ---
 id: REQ-626
 title: 'Give every board page and lens its own URL'
-status: pending
+status: claimed
 created_at: 2026-10-02T18:02:37Z
 user_request: UR-132
 domain: frontend
@@ -13,6 +13,7 @@ effort_estimate: effort-substantive
 related: ["REQ-627"]
 batch: board-links-and-disk-space
 write_set: ["skills/do-work-board/tools/queue-kanban/web/board-controls.js", "skills/do-work-board/tools/queue-kanban/web/template.html", "skills/do-work-board/tools/queue-kanban/javascript_behavior_*_test.go"]
+claimed_at: 2026-10-02T18:03:38Z
 ---
 
 # Give Every Board Page and Lens Its Own URL
