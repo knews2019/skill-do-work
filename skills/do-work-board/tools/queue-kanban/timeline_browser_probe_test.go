@@ -1504,7 +1504,7 @@ window.addEventListener("load", function () {
 	// Every measurement names the page it measured. A confident number about
 	// somebody else's board has shipped here before.
 	for _, snapshot := range []plotSnapshot{drawerResult.Before, drawerResult.After, drawerResult.Closed} {
-		if !strings.HasSuffix(snapshot.Href, "/probe.html") {
+		if !strings.HasSuffix(probePageAddressWithoutFragment(snapshot.Href), "/probe.html") {
 			t.Fatalf("the %s snapshot was taken on %q, not the probe page", snapshot.Label, snapshot.Href)
 		}
 		if snapshot.AxisScale == "" || snapshot.RowsScale == "" {
@@ -1718,7 +1718,7 @@ window.addEventListener("load", function () {
 		"after out of range": fieldResult.AfterOutOfRange, "after reapply": fieldResult.AfterReapply,
 		"after abandon": fieldResult.AfterAbandon,
 	} {
-		if !strings.HasSuffix(state.Href, "/probe.html") {
+		if !strings.HasSuffix(probePageAddressWithoutFragment(state.Href), "/probe.html") {
 			t.Fatalf("the %s snapshot was taken on %q, not the probe page", label, state.Href)
 		}
 	}
@@ -1916,7 +1916,7 @@ window.addEventListener("load", function () {
 	}
 
 	for _, state := range []windowState{trailingResult.Opened, trailingResult.AfterThirty} {
-		if !strings.HasSuffix(state.Href, "/probe.html") {
+		if !strings.HasSuffix(probePageAddressWithoutFragment(state.Href), "/probe.html") {
 			t.Fatalf("the %s state was measured on %q, not the probe page", state.Label, state.Href)
 		}
 		if state.StartMs == nil || state.EndMs == nil {
@@ -2192,7 +2192,7 @@ window.addEventListener("load", function () {
 		landingResult.NarrowedAtTheDrawnEdge, landingResult.NarrowedThenStep,
 	}
 	for _, state := range states {
-		if !strings.HasSuffix(state.Href, "/probe.html") {
+		if !strings.HasSuffix(probePageAddressWithoutFragment(state.Href), "/probe.html") {
 			t.Fatalf("the %s state was measured on %q, not the probe page", state.Label, state.Href)
 		}
 		if state.SpanMs == nil || state.StartMs == nil || state.EndMs == nil {
@@ -2461,7 +2461,7 @@ window.addEventListener("load", function () {
 	}
 
 	for _, state := range []proseState{proseResult.WithNow, proseResult.WithoutNow, proseResult.Filtered} {
-		if !strings.HasSuffix(state.Href, "/probe.html") {
+		if !strings.HasSuffix(probePageAddressWithoutFragment(state.Href), "/probe.html") {
 			t.Fatalf("the %s state was measured on %q, not the probe page", state.Label, state.Href)
 		}
 	}
@@ -2686,7 +2686,7 @@ window.addEventListener("load", function () {
 	}
 
 	// SETUP, ASSERTED.
-	if !strings.HasSuffix(pathResult.DuringDrag.Href, "/probe.html") {
+	if !strings.HasSuffix(probePageAddressWithoutFragment(pathResult.DuringDrag.Href), "/probe.html") {
 		t.Fatalf("measured on %q, not the probe page", pathResult.DuringDrag.Href)
 	}
 	if !pathResult.DuringDrag.Grabbing {
@@ -3479,7 +3479,7 @@ window.addEventListener("load", function () {
 	if decodeError := json.Unmarshal(probeOutput, &rovingResult); decodeError != nil {
 		t.Fatalf("decode timeline row tab-stop behavior: %v (output %q)", decodeError, probeOutput)
 	}
-	if rovingResult.Initial.Href == "" || !strings.HasSuffix(rovingResult.Initial.Href, "probe.html") {
+	if rovingResult.Initial.Href == "" || !strings.HasSuffix(probePageAddressWithoutFragment(rovingResult.Initial.Href), "probe.html") {
 		t.Fatalf("measured on %q, not the probe page", rovingResult.Initial.Href)
 	}
 	// Vacuity guard: one row cannot show a roving index, and zero rows cannot show
@@ -3731,7 +3731,7 @@ window.addEventListener("load", function () {
 	if decodeError := json.Unmarshal(probeOutput, &groupingResult); decodeError != nil {
 		t.Fatalf("decode timeline user-request grouping: %v (output %q)", decodeError, probeOutput)
 	}
-	if groupingResult.FitAll.Href == "" || !strings.HasSuffix(groupingResult.FitAll.Href, "probe.html") {
+	if groupingResult.FitAll.Href == "" || !strings.HasSuffix(probePageAddressWithoutFragment(groupingResult.FitAll.Href), "probe.html") {
 		t.Fatalf("measured on %q, not the probe page", groupingResult.FitAll.Href)
 	}
 	if !groupingResult.FitAllRebuild.HadPreviousRow || !groupingResult.LastDayRebuild.HadPreviousRow {
@@ -3898,7 +3898,7 @@ window.addEventListener("load", function () {
 			if decodeError := json.Unmarshal(probeOutput, &measurement); decodeError != nil {
 				t.Fatalf("decode %s group header: %v (output %q)", scheme.name, decodeError, probeOutput)
 			}
-			if measurement.Href == "" || !strings.HasSuffix(measurement.Href, "probe.html") {
+			if measurement.Href == "" || !strings.HasSuffix(probePageAddressWithoutFragment(measurement.Href), "probe.html") {
 				t.Fatalf("measured on %q, not the probe page", measurement.Href)
 			}
 			if measurement.Scheme != scheme.name {

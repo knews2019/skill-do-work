@@ -202,6 +202,16 @@ const (
 	browserProbePageFileName = "probe.html"
 )
 
+// probePageAddressWithoutFragment drops the "#..." a board view click writes into
+// the address bar (REQ-626), so a check that the engine is still on the probe
+// page compares the document, not which board page it shows.
+func probePageAddressWithoutFragment(pageHref string) string {
+	if fragmentIndex := strings.IndexByte(pageHref, '#'); fragmentIndex >= 0 {
+		return pageHref[:fragmentIndex]
+	}
+	return pageHref
+}
+
 // trustedInputBrowserSession is one live engine with one attached page.
 type trustedInputBrowserSession struct {
 	probeName            string
@@ -223,6 +233,15 @@ type trustedInputBrowserSession struct {
 // beside itself, and a page copied somewhere empty renders an empty board.
 func startTrustedInputBrowserSession(
 	t *testing.T, probeName string, siteDirectory string, pageHTML string, extraFlags ...string,
+) *trustedInputBrowserSession {
+	t.Helper()
+	return startTrustedInputBrowserSessionAtFragment(t, probeName, siteDirectory, pageHTML, "", extraFlags...)
+}
+
+// startTrustedInputBrowserSessionAtFragment opens the probe page with pageFragment
+// ("#timeline", or "" for none) on its URL, the way a shared board link opens it.
+func startTrustedInputBrowserSessionAtFragment(
+	t *testing.T, probeName string, siteDirectory string, pageHTML string, pageFragment string, extraFlags ...string,
 ) *trustedInputBrowserSession {
 	t.Helper()
 	browserPath := lookupBrowserForBehaviorProbe(t)
@@ -264,7 +283,7 @@ func startTrustedInputBrowserSession(
 		"--remote-debugging-pipe",
 	}
 	probeArguments = append(probeArguments, extraFlags...)
-	probeArguments = append(probeArguments, "file://"+pagePath)
+	probeArguments = append(probeArguments, "file://"+pagePath+pageFragment)
 	browserCommand := exec.Command(browserPath, probeArguments...)
 	browserCommand.ExtraFiles = []*os.File{commandPipeReader, eventPipeWriter}
 	browserCommand.Stderr = standardErrorFile
@@ -321,7 +340,7 @@ func (session *trustedInputBrowserSession) attachToProbePage(t *testing.T) {
 				continue
 			}
 			lastSeenTargetURL = targetInfo.Url
-			if strings.HasSuffix(targetInfo.Url, "/"+browserProbePageFileName) {
+			if strings.HasSuffix(probePageAddressWithoutFragment(targetInfo.Url), "/"+browserProbePageFileName) {
 				pageTargetId = targetInfo.TargetId
 			}
 		}
@@ -363,7 +382,7 @@ func (session *trustedInputBrowserSession) attachToProbePage(t *testing.T) {
 			ReadyState string `json:"readyState"`
 		}
 		session.decodeResult(t, "document settle", json.RawMessage(documentStateText), &documentState)
-		if strings.HasSuffix(documentState.Href, "/"+browserProbePageFileName) &&
+		if strings.HasSuffix(probePageAddressWithoutFragment(documentState.Href), "/"+browserProbePageFileName) &&
 			documentState.ReadyState == "complete" {
 			return
 		}
@@ -478,7 +497,7 @@ func (session *trustedInputBrowserSession) evaluateInPage(
 	}
 	// Render evidence, on every measurement rather than once: a page that navigated
 	// out from under the probe answers confidently about somebody else's document.
-	if !strings.HasSuffix(envelope.Href, "/"+browserProbePageFileName) {
+	if !strings.HasSuffix(probePageAddressWithoutFragment(envelope.Href), "/"+browserProbePageFileName) {
 		t.Fatalf("%s probe: measured on %q, not the probe page — every number from this call "+
 			"describes a document this test did not render", session.probeName, envelope.Href)
 	}
@@ -1024,7 +1043,7 @@ func assertDrawerTicketTitlesAndGlossary(
 	if decodeError := json.Unmarshal(resultJSON, &result); decodeError != nil {
 		t.Fatalf("decode ticket mention probe: %v\n%s", decodeError, resultJSON)
 	}
-	if !strings.HasSuffix(result.LocationHref, "/"+browserProbePageFileName) {
+	if !strings.HasSuffix(probePageAddressWithoutFragment(result.LocationHref), "/"+browserProbePageFileName) {
 		t.Fatalf("ticket mention probe measured %q, not its probe page", result.LocationHref)
 	}
 	if result.ResolvedScheme != schemeName {

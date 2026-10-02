@@ -274,7 +274,7 @@ func TestBrowserBehaviorUserRequestCopyAllIncludesGroupedRequests(t *testing.T) 
 	if decodeError := json.Unmarshal(resultJSON, &result); decodeError != nil {
 		t.Fatalf("decode UR copy-all probe: %v\n%s", decodeError, resultJSON)
 	}
-	if !strings.HasSuffix(result.LocationHref, "/"+browserProbePageFileName) {
+	if !strings.HasSuffix(probePageAddressWithoutFragment(result.LocationHref), "/"+browserProbePageFileName) {
 		t.Fatalf("UR copy all measured %q, not its probe page", result.LocationHref)
 	}
 	if len(result.ConsoleErrors) != 0 {

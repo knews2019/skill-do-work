@@ -281,7 +281,7 @@ func TestBrowserBehaviorDurationsUserRequestLaneGeometry(t *testing.T) {
 		t.Fatalf("decode Durations UR lane geometry probe: %v\n%s", decodeError, resultJSON)
 	}
 
-	if !strings.HasSuffix(result.LocationHref, "/"+browserProbePageFileName) {
+	if !strings.HasSuffix(probePageAddressWithoutFragment(result.LocationHref), "/"+browserProbePageFileName) {
 		t.Fatalf("Durations UR lane geometry measured %q, not its probe page", result.LocationHref)
 	}
 	if len(result.ConsoleErrors) != 0 {
@@ -564,7 +564,7 @@ window.addEventListener("load", function () {
 	if decodeError := json.Unmarshal(resultJSON, &result); decodeError != nil {
 		t.Fatalf("decode Durations roving probe: %v\n%s", decodeError, resultJSON)
 	}
-	if !strings.HasSuffix(result.Href, "/"+browserProbePageFileName) {
+	if !strings.HasSuffix(probePageAddressWithoutFragment(result.Href), "/"+browserProbePageFileName) {
 		t.Fatalf("Durations roving probe measured %q, not its probe page", result.Href)
 	}
 	markCount := len(result.Initial.IDs)
