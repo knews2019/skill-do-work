@@ -1,7 +1,7 @@
 ---
 id: REQ-630
 title: 'Board intros describe the board by what its switcher covers'
-status: claimed
+status: completed
 route: A
 estimate:
   p50_active_minutes: 5
@@ -28,6 +28,8 @@ heavy_verified_at: 2026-10-02T22:06:47Z
 heavy_verified_revision: 9eed9df5b377811c8b6a008173e1f2e2c3209a93
 claimed_at: 2026-10-02T21:52:48Z
 commit: bdb5c43c9ea1cccf1115c3ea26103448333f23ee
+completed_at: 2026-10-02T22:06:47Z
+release_at: 2026-10-02T22:06:47Z
 ---
 # Board Intros Describe the Board by What Its Switcher Covers
 

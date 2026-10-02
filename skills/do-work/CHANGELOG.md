@@ -10,6 +10,12 @@ For the complete release history, read this file and the archives below from new
 - [0.50.0 through 0.64.1](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-13-up-to-v0.64.1.md)
 - [0.1.0 through 0.49.0](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-07-up-to-v0.49.0.md)
 
+## 0.305.65 — Board Intros Describe the Board by Its Page Switcher (2026-10-02)
+
+The opening lines of the board guide and of the board tool's prime still described the board as a Kanban board plus a calendar and a testing track, three of its six pages.
+
+- Both now describe it as a Kanban board plus the other pages in its page switcher, so they stay true when a page is added.
+
 ## 0.305.64 — Resuming a Handoff Keeps Its Claimed Requests (2026-10-02)
 
 A session that resumed a handoff ran `recover`, followed the next step it suggested, `recover --take-over`, and lost its claimed requests: the takeover put each one back in the queue as pending and removed its written sections, even for work that was already merged. The suggested step is now safe.
