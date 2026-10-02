@@ -160,7 +160,7 @@ Use whichever feels natural. `continue` and `resume` read well after a break; `r
 
 ## Tips
 
-- **`continue` vs fresh `run`** — No functional difference. Both scan the queue and pick the next pending REQ. Use `continue` when you're resuming a session; use `run` when you're starting fresh. The checkpoint system handles the actual resume logic.
+- **`continue` vs fresh `run`** — No functional difference. Both scan the queue and pick the next pending REQ. Use `continue` when you're resuming a session; use `run` when you're starting fresh. Neither continues a REQ still claimed in `do-work/working/`; see Context limits below.
 - **Failed items** — If a REQ fails review, the system tries one remediation pass. If it still fails, it archives with issues noted and auto-queues only critical findings. Noncritical findings stay in that report; promote one by running `do-work capture` with its complete finding line quoted as the source.
 - **Context limits** — Claims are recorded immediately and `advance --checkpoint` refreshes the exit state. Start a new session with `do-work run` for queued work, and continue each REQ still in `do-work/working/` with `advance REQ-NNN`; `do-work run` does not pick up working claims, and `recover --take-over` would reset them.
 - **One at a time** — The work action processes one REQ per loop iteration. This keeps commits atomic and reviews focused. Don't try to batch multiple REQs into one pass.

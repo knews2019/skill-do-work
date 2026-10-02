@@ -1,6 +1,6 @@
 # Restart With Parallel Handoff Action
 
-> **Part of the do-work skill.** Finishes the current REQ to a restartable point, encodes the remaining plan as queue state, and writes `do-work/RESTART-PROMPT.md` so a fresh session resumes from one pasted command. It lives in **core** because every input and output is core pipeline state: the queue, `do-work/CHECKPOINT.md`, `do-work/working/` claims, dependency gates, and `pending-answers`.
+> **Part of the do-work skill.** Finishes the current REQ to a restartable point, encodes the remaining plan as queue state, and writes `do-work/RESTART-PROMPT.md` so a fresh session resumes from one pasted block. It lives in **core** because every input and output is core pipeline state: the queue, `do-work/CHECKPOINT.md`, `do-work/working/` claims, dependency gates, and `pending-answers`.
 
 **State is binding; prose is advisory.** The queue is what the next session actually reads — `do-work run` never opens `RESTART-PROMPT.md`. So the handoff is not where the plan lives. The plan goes into the queue, and the prompt is the paste-ready entry point plus a reference trail for humans.
 
@@ -29,7 +29,7 @@ No arguments. Reads the queue, `do-work/CHECKPOINT.md`, `do-work/working/`, and 
 
 Holds, ordering, and collision constraints go into the queue itself: dependency gates, status fields, `pending-answers`. Apply the Schema Read Contract and the Timestamp rule in `actions/work-reference.md` to every field you touch.
 
-The test: **`do-work run` with no other reading must do the right thing**, because it reads state. If the right behavior depends on someone reading your prose first, the constraint is not encoded yet — go back and encode it.
+The test: **`do-work run` with no other reading must do the right thing for queued work**, because it reads state. Claims left in `do-work/working/` are the one exception, and Step 4 names them in the paste block. If the right behavior depends on someone reading your prose first, the constraint is not encoded yet — go back and encode it.
 
 ### Step 2: Survey from git, not memory
 
@@ -58,12 +58,12 @@ For each worktree, give one verdict:
 
 Exactly two sections, in this order.
 
-**The paste block** — first thing in the file, one fenced code block, nothing above it. It is the complete restart prompt and must work with zero other reading. Write it as instructions addressed to the next session, not as a status document for a human. Line one is the resume command:
+**The paste block** — first thing in the file, one fenced code block, nothing above it. It is the complete restart prompt and must work with zero other reading. Write it as instructions addressed to the next session, not as a status document for a human. The resume command is one of:
 
 - to build — `do-work run --fan-out N` (pick N per Step 5)
 - to answer questions — `do-work clarify`, included only if some REQ is at `pending-answers`
 
-When this session leaves a REQ claimed in `do-work/working/`, add one line per claim: `advance REQ-NNN`, then do the phase it names. Selection reads only the queue, so the resume command never continues a claim. Never write `recover --take-over` for these claims: it resets a claim (requeues it as `pending` and strips its orchestrator sections, merged evidence included).
+When this session leaves a REQ claimed in `do-work/working/`, put one line per claim above the resume command: `advance REQ-NNN`, then do the phase it names, so claimed work finishes before new work starts. The resume command's selection reads only the queue, so it does not continue a claim's remaining phases. Never write `recover --take-over` for these claims: it resets a claim (returns it to the queue and strips its orchestrator sections, merged evidence included).
 
 Immediately after the commands, write: `These commands are sufficient; everything below them is context.` **If you cannot honestly write that sentence, return to Step 1 until you can.**
 
@@ -79,7 +79,7 @@ You know which REQs collide from having built them. Write it down:
 - The critical path, so the new session starts there rather than on leaves.
 - Any REQ to hold back, and what unblocks it.
 
-Set `--fan-out N` in the paste block to match. **Every "must not" is mirrored into queue gates by Step 1** — otherwise the one-line resume violates your own plan. `write_set` is display-only and gates nothing on its own (`actions/work-reference.md` → **Worktree Dispatch Mode** → *Fan-Out Dispatch*).
+Set `--fan-out N` in the paste block to match. **Every "must not" is mirrored into queue gates by Step 1** — otherwise the resume command violates your own plan. `write_set` is display-only and gates nothing on its own (`actions/work-reference.md` → **Worktree Dispatch Mode** → *Fan-Out Dispatch*).
 
 ### Step 6: Announce it
 
@@ -121,8 +121,8 @@ One committed `do-work/RESTART-PROMPT.md`, any queue-state edits Step 1 made, an
 
 ## Verification Checklist
 
-- [ ] `do-work run` with no other reading would do the right thing — every hold is a queue field
-- [ ] Paste block is the first thing in the file, one fence, carrying the resume command, one `advance REQ-NNN` line per working claim, and the sufficiency sentence
+- [ ] `do-work run` with no other reading would do the right thing for queued work — every hold is a queue field
+- [ ] Paste block is the first thing in the file, one fence, carrying one `advance REQ-NNN` line per working claim, then the resume command, and the sufficiency sentence
 - [ ] Every in-flight REQ states merged/not-merged with its merge range, and uncommitted files by name
 - [ ] Every worktree in the survey has exactly one verdict; no worktree was removed
 - [ ] Every foreign claim is byte-identical to before this action ran
