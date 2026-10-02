@@ -1,7 +1,7 @@
 ---
 id: REQ-629
 title: '[impact-rule-change] Resuming a handoff must not reset its own claimed REQs'
-status: claimed
+status: completed
 route: B
 estimate:
   p50_active_minutes: 20
@@ -32,6 +32,8 @@ heavy_verified_at: 2026-10-02T21:14:49Z
 heavy_verified_revision: 069f922e64c1ed14ca31211642e395a784561f57
 claimed_at: 2026-10-02T20:53:37Z
 commit: 2cbd685813412cab0b51a783a0fbd6b25a4859a8
+completed_at: 2026-10-02T21:15:31Z
+release_at: 2026-10-02T21:15:31Z
 ---
 # Resuming a Handoff Must Not Reset Its Own Claimed REQs
 
