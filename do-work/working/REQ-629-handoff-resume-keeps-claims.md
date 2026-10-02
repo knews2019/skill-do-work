@@ -27,7 +27,9 @@ write_set: ["skills/do-work/tools/do-work-cli/internal/lifecycleadvance/recovery
 dispatch_at: 2026-10-02T20:57:11Z
 builder_handback_at: 2026-10-02T21:00:30Z
 integration_at: 2026-10-02T21:01:19Z
+review_at: 2026-10-02T21:06:50Z
 claimed_at: 2026-10-02T20:53:37Z
+commit: 2cbd685813412cab0b51a783a0fbd6b25a4859a8
 ---
 # Resuming a Handoff Must Not Reset Its Own Claimed REQs
 
@@ -173,7 +175,60 @@ Full findings with file:line anchors and a scratch-repo reproduction: `do-work/r
 - updater — do-work-cli source changed
 - installer — do-work-cli source changed
 
+**Repository gate after the D-05 review fixes:** `bash _dev/tests/maintainer-verify.sh` exit 0 at 64d4f665 (merge 2cbd6858 plus REQ trail), gate wall 123s, both Go stages EXECUTING; focused probe rerun exit 0.
+
 *Verified by work action*
+
+## Review
+
+**Overall: 95%** | 2026-10-02T21:06:50Z
+
+| Dimension | Score |
+|-----------|-------|
+| Requirements | 100% |
+| Code Quality | 92% |
+| Test Adequacy | 90% |
+| Scope | 100% |
+| Risk | Low |
+| Acceptance | Pass |
+
+**Verdict: Approve.** `recover`'s takeover finding now offers the read-only `advance REQ-NNN` as its next step and names `--take-over` as a reset. The handoff action writes one `advance REQ-NNN` line per working claim. Following the paste block and the commands' own next steps no longer resets a claim. The remaining findings are wording drift, all report only.
+
+**Requirements walk (merge range 89145e03..730c22cf, five files, matching Scope after D-04):**
+- R1 Real check: delivered. The exploration and the builder each ran a scratch repo. This review ran a third one with a bare claim (no sections) under a foreign writer label (`otherhost:/elsewhere/repo`). Plain `recover` gave next_argv `do-work-cli --format json advance REQ-001`, and following it named the triage phase in `working/`. The file checksum was unchanged and `git status` was clean. Bare `advance REQ-NNN` with one argument only classifies and never writes (`advance_commands.go:61-62`), so it is read-only for a same-host claim, a foreign claim, a claim with no sections, and an abandoned claim alike.
+- R2 Following the paste block plus the suggested next steps never resets a claim: delivered. `recovery_commands.go:98-105` changes only the not-authorized branch. `--take-over` and `--assume-sole-authority` are unchanged.
+- R3 Handoff states what to run per claim and that takeover resets: delivered by the action's rules (`restart-with-parallel-handoff.md:49,66,125`). The REQ allows "or the handoff action's rules".
+- R4 Merged REQ keeps its evidence sections: delivered. `TestRecoverNextStepContinuesAClaimWithoutResettingIt` uses a `commit:` fixture and checks byte identity plus the tree digest.
+- Constraint (no change to crash recovery for a crashed foreign claim): the reset command and its authority are unchanged. The offered next step for that case did change, and D-01 records that risk.
+- Consumers of next_argv: no Go code, `_dev/tests/` script, `run-with-recovery.md`, `forensics.md`, `work.md`, or the text renderer depends on the next_argv being `--take-over`. The renderer prints whatever argv it gets (checked: `next: do-work-cli --format json advance REQ-001`). The only pin was the updated test. `run-with-recovery.md` uses `--assume-sole-authority`, so the change does not affect it.
+- Stop reason against `requeststate/state_apply.go:579-606,986-1001`: mostly accurate. The reset requeues the claim, deletes `route` (and `write_set` when Scope exists), and strips the generated sections. "As pending" is imprecise (see M2).
+- `nextselection` claim: true for selection. `queueCandidates` and the explicit-target paths filter `TreeSection == "queue"` (`next_targets.go:26,69,122,146`). The exploration cited `next_selection.go:371`, which is `summarizeQueue`, not the filter. That is an anchor slip in a run artifact and nothing ships with it. The prose sentence still overreaches (see M1).
+- P-A-U: all three boxes ticked. Decisions D-02..D-04 are recorded and match the diff.
+
+**Restatement Sweep:** the diff redefines the takeover finding's next step and what resuming a claim means. I grepped `RECOVERY-TAKEOVER-AVAILABLE`, `take-over`, `takeover`, `resume` and `resume logic` across `skills/` and `_dev/tests/`. Agreeing: `work-reference.md:310`, `work-guide.md:76,130,165`, `forensics.md:54,100,168` (they delegate to Crash Recovery), `run-with-recovery.md:41` (sole-authority path), and the `queue-kanban/verify.go:75,818` comments (threshold, not next step). Stale: `work-guide.md:163` (M4), and the handoff action's own one-command framing at lines 3, 32, 82 and 124 (M3).
+
+**Important findings:** None
+
+**Minor findings:**
+- M1 `restart-with-parallel-handoff.md:66` says "Selection reads only the queue, so the resume command never continues a claim". `work.md:429`'s heavy-lane drain does continue held claimed REQs at queue exhaustion, so the sentence is too broad. The only effect is a redundant read-only `advance` line. — impact-negligible → report only
+- M2 The stop reason (`recovery_commands.go:101-103`) and `restart-with-parallel-handoff.md:66` say the reset "requeues it as pending". `state_apply.go:579-588,772-781` writes `pending-answers` when Open Questions has an unchecked `- [ ]` and keeps `blocked` for a blocked claim. It also deletes `route`/`write_set`, which the text does not mention. — impact-negligible → report only
+- M3 Stale one-command framing in the same action. Line 3 says the next session "resumes from one pasted command", line 82 says "one-line resume", and the Step 1 test at line 32 plus the checklist at line 124 say "`do-work run` with no other reading must do the right thing". None of these holds once a claim exists, because the claim needs its paste line. Lines 66 and 125 mitigate this, but a writer who trusts Step 1's test can still skip the claim lines. — impact-rule-change → report only
+- M4 `docs/work-guide.md:163` says "The checkpoint system handles the actual resume logic". Two lines below, the new line 165 says `do-work run` does not pick up working claims. A reader of `continue`/`resume` can still believe the run resumes a claim. — impact-user-visible → report only
+- M5 The paste-block rule (`restart-with-parallel-handoff.md:61-66`) puts `do-work run --fan-out N` first and the `advance REQ-NNN` lines after it, without saying which runs first. A merged, gate-green claim (the UR-132 REQ-626 case) can wait behind a whole queue run, or fan-out builders can start before a claim's phase is done. — impact-negligible → report only
+
+**Nit findings:**
+- N1 The finding code `RECOVERY-TAKEOVER-AVAILABLE` and the claim decision "takeover available; claim preserved" (`recovery_commands.go:92,95`) still lead with takeover, while the next step is now continue. Keeping the code for compatibility is reasonable. — impact-negligible → report only
+
+**Risk note:** a claim owned by a live session in another checkout now gets a continue next step. Before, it got a reset. A loop that follows next_argv automatically would work the same REQ as its live owner, which is less destructive than the old reset. The finding stays `fixability: manual`, and D-01 records this risk.
+
+**Acceptance:** Pass. `go test -count=1 -run Recover ./internal/lifecycleadvance/` returned ok in 4.9s. A scratch repo with a bare foreign-writer claim confirmed the advance next_argv, the text-renderer output, the triage phase after following it, and the unchanged file bytes.
+**Suggested testing:** 2 items. (1) Run a real `phandoff` with one merged claim and one queued REQ, then paste the block into a fresh session and check that the merged claim reaches finalization before the run fans out. (2) Run a claim with an unchecked Open Question through `--take-over` once to confirm the `pending-answers` wording gap in M2.
+**Follow-ups created:** None (6 findings report only)
+
+*Reviewed by review-work action*
+
+**Post-review fixes (orchestrator, D-05, merge 2cbd6858):** M3, M4 and M5 fixed in prose on the builder branch — the handoff no longer promises one pasted command or a one-line resume, its Step 1 test and checklist say "for queued work" and name the claim exception, claim lines go above the resume command, and the guide's continue-vs-run bullet points to Context limits. M2's prose wording now says "returns it to the queue"; the Go stop reason keeps "requeues it as pending" (report only). M1 is answered by the new wording ("does not continue a claim's remaining phases"). Verified by re-reading `git diff 730c22cf..2cbd6858` (two files, 8 lines each way) and a green repository gate at 64d4f665.
+
 
 ## Decisions
 
@@ -185,3 +240,34 @@ Builder decisions, from the hand-back (`do-work/runs/work-2026-10-02-204757/REQ-
 Orchestrator decision:
 - D-04: Scope extension. The builder reported that `skills/do-work/docs/work-guide.md` line 165 told a new session to start with `do-work run` and look for "takeover authority", and line 130 said plain `recover` "returns typed takeover options". Line 165 is the same trap this REQ removes, so leaving it would fail the REQ's second requirement for any reader of the guide. The orchestrator fixed both sentences on the builder branch (two lines) and added the file to Scope and `write_set` instead of queuing a follow-up. DECIDE & STATE.
 - D-05: Review fixes before release. The review passed (95%) but found that this change left contradictions in the same two files: the handoff action still promised "one pasted command" and a "one-line resume", its Step 1 test and checklist said `do-work run` alone must do the right thing, the paste block did not say whether the claim lines run before or after the resume command (M3, M5), and the guide's continue-vs-run bullet said the checkpoint handles resume (M4). The orchestrator fixed these on the builder branch (claim lines go above the resume command; the reset is described as "returns it to the queue", answering M2's wording in prose) instead of shipping a release that contradicts itself. M1, N1 and the Go stop-reason wording in M2 stay report only. DECIDE & STATE.
+
+## Discovered Tasks
+
+From the builder's hand-back and the review, impact-stamped per review-work Step 10; none is impact-critical, so nothing was queued.
+
+- Builder: `docs/work-guide.md` lines 130 and 165 steered a resuming session to takeover. — folded into this REQ by D-04
+- M1: "the resume command never continues a claim" was too broad given the heavy-lane drain. — reworded by D-05
+- M2: the Go stop reason says the reset "requeues it as pending", but the reset can also produce `pending-answers` or keep `blocked`, and it also drops `route` and `write_set`. — impact-negligible → report only
+- M3: one-command framing in the handoff action. — fixed by D-05
+- M4: the guide's continue-vs-run bullet said the checkpoint handles resume. — fixed by D-05
+- M5: claim lines vs resume command order unstated. — fixed by D-05
+- N1: the finding code `RECOVERY-TAKEOVER-AVAILABLE` and its decision text still lead with "takeover" while the next step is continue; kept for compatibility. — impact-negligible → report only
+
+## Lessons Learned
+
+**What worked:** Reproducing the failure in a scratch repo before choosing a fix showed that bare `advance REQ-NNN` already continues a claim, so the fix was one next_argv and its wording rather than a new resume mode.
+**What didn't:** The UR-132 handoff told the session to run `advance REQ --request-path P`, which is refused at judgment phases; only the bare form classifies. And the first fix left the handoff action's own "one pasted command" framing contradicting the new claim lines, which only the review caught.
+**Worth knowing:** A finding's `next_argv` is an instruction that sessions follow literally; never put a destructive command there, even behind a warning. Queue-mode `advance` ignores working claims, so a resumed session must name each claim. The Scope checker reads every backticked word in a Scope list item as a path; keep commands out of backticks there.
+
+## Orientation
+
+Now a session resuming a handoff continues its claimed REQs with `advance REQ-NNN`, and `recover` suggests that read-only step instead of the resetting takeover; lives in the do-work-cli recovery command and the handoff action (`_dev/primes/prime-action-files.md`). Not a map change: one finding's next step and the handoff's paste-block rules. Prime spot-check: `prime-action-files.md` paths still exist and it does not restate recover's next step.
+
+## Heavy Verification Plan
+
+- Base revision: 89145e03f06cb724cb2ec83b6f1357c0ca972997
+- Target revision: 2cbd685813412cab0b51a783a0fbd6b25a4859a8 (landed in `commit:`); planned per merge: 89145e03..730c22cf and 8f9f3099..2cbd6858, lanes unioned
+- do-work-cli-integrations — `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane do-work-cli-integrations` — do-work-cli source changed
+- staged-skills — `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane staged-skills` — shipped files under skills/ changed
+- updater — `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane updater` — do-work-cli source changed
+- installer — `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane installer` — do-work-cli source changed
