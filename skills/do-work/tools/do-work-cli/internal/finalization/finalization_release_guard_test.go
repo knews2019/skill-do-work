@@ -6,10 +6,13 @@ import (
 )
 
 // seedMaintainerSuite makes the fixture repository a maintainer checkout: a module
-// declaration and the module's own VERSION, which is what makes a root shipped.
+// declaration and the core module's own VERSION, which is what makes the checkout a
+// maintainer suite. The second module carries no VERSION of its own and rides the
+// core's, exactly like the board package.
 func seedMaintainerSuite(t *testing.T, repositoryRoot string) {
 	t.Helper()
-	writeFinalizationFile(t, repositoryRoot, "suite/modules.tsv", "source\tdestination\nskills/do-work\t.claude/skills/do-work\n")
+	writeFinalizationFile(t, repositoryRoot, "suite/modules.tsv", "source\tdestination\nskills/do-work\t.claude/skills/do-work\nskills/do-work-board\t.claude/skills/do-work-board\n")
+	writeFinalizationFile(t, repositoryRoot, "skills/do-work-board/SKILL.md", "# board\n")
 	writeFinalizationFile(t, repositoryRoot, "skills/do-work/VERSION", "1.0.0\n")
 	writeFinalizationFile(t, repositoryRoot, "skills/do-work/CHANGELOG.md", "# Changelog\n")
 	runFinalizationGit(t, repositoryRoot, "add", ".")
@@ -23,7 +26,7 @@ func commitTouching(t *testing.T, repositoryRoot string, paths ...string) string
 		if path == "suite/modules.tsv" {
 			// The declaration must stay readable: an unreadable one fails closed as
 			// RELEASE-SHIPPED-CHANGE-UNVERIFIABLE, which is not what this case tests.
-			content = "source\tdestination\nskills/do-work\t.claude/skills/do-work\nskills/do-work-extra\t.claude/skills/do-work-extra\n"
+			content = "source\tdestination\nskills/do-work\t.claude/skills/do-work\nskills/do-work-board\t.claude/skills/do-work-board\nskills/do-work-extra\t.claude/skills/do-work-extra\n"
 		}
 		writeFinalizationFile(t, repositoryRoot, path, content)
 	}
@@ -48,6 +51,9 @@ func TestReleaseRefusedWhenTheImplementationShipsNothing(t *testing.T) {
 		{"a shipped action file", []string{"_dev/tests/some-probe.sh", "skills/do-work/actions/work.md"}, false},
 		{"the suite declaration", []string{"suite/modules.tsv"}, false},
 		{"the installer tools", []string{"tools/install-do-work-suite.sh"}, false},
+		// The failure this pins: REQ-625 changed only the board package, which is
+		// declared but carries no VERSION, and the guard refused the release.
+		{"a declared module without its own VERSION", []string{"skills/do-work-board/tools/queue-kanban/verify.go"}, false},
 	}
 	for _, testCase := range cases {
 		t.Run(testCase.name, func(t *testing.T) {

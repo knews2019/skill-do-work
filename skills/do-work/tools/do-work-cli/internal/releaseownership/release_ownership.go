@@ -125,6 +125,25 @@ func pathWithinReleaseRoots(path string, roots []string) bool {
 // source declaration for its sibling packages. A module is a release root only
 // when it carries its own tracked VERSION file.
 func DeclaredMaintainerReleaseRoots(trackedSet map[string]bool, readImage ReadImage) ([]string, error) {
+	sources, err := DeclaredModuleSources(trackedSet, readImage)
+	if err != nil {
+		return nil, err
+	}
+	roots := []string{}
+	for _, source := range sources {
+		if trackedSet[source+"/VERSION"] {
+			roots = append(roots, source)
+		}
+	}
+	return sortedUniqueRoots(roots), nil
+}
+
+// DeclaredModuleSources reads every module source suite/modules.tsv declares,
+// VERSION or not. Every declared module installs to a consumer by the same
+// route, so a change under any of them is a shipped change; which of them own
+// a version file is DeclaredMaintainerReleaseRoots' narrower question. Nil
+// when the repository declares no modules.
+func DeclaredModuleSources(trackedSet map[string]bool, readImage ReadImage) ([]string, error) {
 	if !trackedSet["suite/modules.tsv"] {
 		return nil, nil
 	}
@@ -132,7 +151,7 @@ func DeclaredMaintainerReleaseRoots(trackedSet map[string]bool, readImage ReadIm
 	if !exists {
 		return nil, fmt.Errorf("read tracked suite/modules.tsv")
 	}
-	roots := []string{}
+	sources := []string{}
 	lines := strings.Split(strings.TrimSpace(string(contents)), "\n")
 	if len(lines) == 0 || strings.TrimSpace(lines[0]) != "source\tdestination" {
 		return nil, fmt.Errorf("suite/modules.tsv has no source/destination header")
@@ -143,12 +162,12 @@ func DeclaredMaintainerReleaseRoots(trackedSet map[string]bool, readImage ReadIm
 			return nil, fmt.Errorf("suite/modules.tsv has an invalid module row")
 		}
 		source := filepath.ToSlash(filepath.Clean(strings.TrimSpace(fields[0])))
-		if source == "." || source == ".." || strings.HasPrefix(source, "../") || !trackedSet[source+"/VERSION"] {
+		if source == "." || source == ".." || strings.HasPrefix(source, "../") {
 			continue
 		}
-		roots = append(roots, source)
+		sources = append(sources, source)
 	}
-	return sortedUniqueRoots(roots), nil
+	return sortedUniqueRoots(sources), nil
 }
 
 // FindOwnedWorkspaceOwner walks up from a project manifest to the nearest

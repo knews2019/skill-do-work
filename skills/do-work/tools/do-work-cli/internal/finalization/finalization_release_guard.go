@@ -7,6 +7,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"sort"
 	"strings"
 
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/releaseownership"
@@ -17,10 +18,11 @@ import (
 // Nothing refused them because the finalizer checked the release payload and never the
 // implementation. This is that check.
 //
-// What ships is keyed on the declaration, not on a list: the module sources
-// suite/modules.tsv names (a module row whose source carries its own VERSION), plus the
-// declaration's own directory and the installer tools that consume it, which reach a
-// consumer by the same route. A repository that declares no modules is a consumer
+// What ships is keyed on the declaration, not on a list: every module source
+// suite/modules.tsv names, whether or not that module carries its own VERSION (the
+// board, knowledge and toolbox packages install by the same route as the core and
+// ride its version), plus the declaration's own directory and the installer tools
+// that consume it. A repository that declares no versioned module is a consumer
 // project, whose releases are its own package's business, and is not guarded.
 func releaseShippedChangeError(repositoryRoot string, manifest Manifest) error {
 	tracked, err := enumerateTrackedReleasePaths(repositoryRoot)
@@ -38,7 +40,19 @@ func releaseShippedChangeError(repositoryRoot string, manifest Manifest) error {
 	if len(roots) == 0 {
 		return nil
 	}
-	roots = append(roots, "suite", "tools")
+	shippedSources, err := releaseownership.DeclaredModuleSources(trackedSet, headReleaseImage(repositoryRoot))
+	if err != nil {
+		return fmt.Errorf("RELEASE-SHIPPED-CHANGE-UNVERIFIABLE: %w", err)
+	}
+	seenRoots := map[string]bool{}
+	for _, root := range append(append(roots, shippedSources...), "suite", "tools") {
+		seenRoots[root] = true
+	}
+	roots = roots[:0]
+	for root := range seenRoots {
+		roots = append(roots, root)
+	}
+	sort.Strings(roots)
 
 	implementationPaths, err := implementationPathsForRelease(repositoryRoot, manifest)
 	if err != nil {
