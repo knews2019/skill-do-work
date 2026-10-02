@@ -2,6 +2,13 @@
 id: REQ-631
 title: 'Recover''s takeover message says where a reset claim goes'
 status: claimed
+route: A
+estimate:
+  p50_active_minutes: 5
+  confidence: high
+  basis:
+  - trivial short-circuit
+  calculated_at: 2026-10-02T21:57:20Z
 created_at: 2026-10-02T21:51:57Z
 user_request: UR-134
 domain: general
@@ -12,6 +19,7 @@ impact: impact-user-visible
 effort_estimate: effort-mechanical
 related: ["REQ-630"]
 batch: ur-133-leftovers
+required_lessons: ["skills/do-work/tools/do-work-cli/lessons-do-work-cli.md#destructive-next-argv"]
 write_set: ["skills/do-work/tools/do-work-cli/internal/lifecycleadvance/recovery_commands.go", "skills/do-work/tools/do-work-cli/internal/lifecycleadvance/recovery_commands_test.go"]
 claimed_at: 2026-10-02T21:57:11Z
 ---
@@ -41,6 +49,9 @@ None. Independent of REQ-630.
 **GREEN when:** The test that pins the stop reason asserts the new wording, which no longer says "as pending", and passes.
 **Validation:** Inferred during capture
 
+## Required Lessons — Dropped for Budget
+- `skills/do-work/tools/do-work-cli/lessons-do-work-cli.md` as a whole satellite (18027 tokens, over the 2000 budget; `slugged: partial`). Matched: the next step a finding suggests. Narrowed at claim time to its `destructive-next-argv` family, now in `required_lessons`.
+
 ## AI Execution State (P-A-U Loop)
 - [ ] **[PLAN]:** (Agent: Read listed `prime_files` and agent rules. Write brief technical approach here. Do not write code yet.)
 - [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
@@ -50,3 +61,19 @@ None. Independent of REQ-630.
 See `do-work/user-requests/UR-134/input.md` for complete verbatim input.
 
 *Source: ok, do board intros and the recover message*
+
+---
+
+## Triage
+
+**Route: A** - Simple
+
+**Reasoning:** One string in a named file and the test that pins it; the reset's real outcomes are already known from `recoveredStatus` and the recover transition.
+
+**Planning:** Not required
+
+## Plan
+
+**Planning not required** - Route A: Direct implementation
+
+*Skipped by work action*
