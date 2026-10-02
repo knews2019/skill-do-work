@@ -8,3 +8,5 @@ queue_state: [0 pending, 0 pending-answers, 0 blocked, 0 blocked-archive-collisi
 ## In Progress (interrupted)
 
 - REQ-626: Give every board page and lens its own URL — claimed 2026-10-02T18:03:38Z — writer: t2s-Virtual-Machine.local:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2
+
+- REQ-627: Show free disk space on the Testing page — claimed 2026-10-02T18:03:42Z — writer: t2s-Virtual-Machine.local:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2

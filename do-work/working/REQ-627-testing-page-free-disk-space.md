@@ -1,7 +1,7 @@
 ---
 id: REQ-627
 title: 'Show free disk space on the Testing page'
-status: pending
+status: claimed
 created_at: 2026-10-02T18:02:37Z
 user_request: UR-132
 domain: frontend
@@ -13,6 +13,7 @@ effort_estimate: effort-mechanical
 related: ["REQ-626"]
 batch: board-links-and-disk-space
 write_set: ["skills/do-work-board/tools/queue-kanban/verify.go", "skills/do-work-board/tools/queue-kanban/generate.go", "skills/do-work-board/tools/queue-kanban/serve.go", "skills/do-work-board/tools/queue-kanban/web/board-testing.js", "skills/do-work-board/tools/queue-kanban/web/template.html", "skills/do-work-board/tools/queue-kanban/disk_space_test.go", "skills/do-work-board/tools/queue-kanban/generate_test.go", "skills/do-work-board/tools/queue-kanban/javascript_behavior_*_test.go"]
+claimed_at: 2026-10-02T18:03:42Z
 ---
 
 # Show Free Disk Space on the Testing Page
