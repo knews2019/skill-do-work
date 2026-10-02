@@ -1,7 +1,7 @@
 ---
 id: REQ-628
 title: 'Board guide names all six pages, their links, and the disk line'
-status: claimed
+status: completed
 route: A
 estimate:
   p50_active_minutes: 5
@@ -28,6 +28,8 @@ heavy_verified_at: 2026-10-02T21:14:49Z
 heavy_verified_revision: 069f922e64c1ed14ca31211642e395a784561f57
 claimed_at: 2026-10-02T20:47:38Z
 commit: 4c8e249acfa058bd75e6ed8a80175172ff31fbd5
+completed_at: 2026-10-02T21:15:03Z
+release_at: 2026-10-02T21:15:03Z
 ---
 # Board Guide Names All Six Pages, Their Links, and the Disk Line
 
