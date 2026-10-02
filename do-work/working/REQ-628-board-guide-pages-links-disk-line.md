@@ -1,7 +1,7 @@
 ---
 id: REQ-628
 title: 'Board guide names all six pages, their links, and the disk line'
-status: pending
+status: claimed
 created_at: 2026-10-02T19:49:03Z
 user_request: UR-133
 domain: general
@@ -13,6 +13,7 @@ effort_estimate: effort-mechanical
 related: ["REQ-629"]
 batch: ur-132-follow-ups
 write_set: ["skills/do-work-board/docs/board-guide.md", "skills/do-work-board/actions/board.md"]
+claimed_at: 2026-10-02T20:47:38Z
 ---
 # Board Guide Names All Six Pages, Their Links, and the Disk Line
 
