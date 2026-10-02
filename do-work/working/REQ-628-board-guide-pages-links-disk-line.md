@@ -2,6 +2,13 @@
 id: REQ-628
 title: 'Board guide names all six pages, their links, and the disk line'
 status: claimed
+route: A
+estimate:
+  p50_active_minutes: 5
+  confidence: high
+  basis:
+  - trivial short-circuit
+  calculated_at: 2026-10-02T20:48:08Z
 created_at: 2026-10-02T19:49:03Z
 user_request: UR-133
 domain: general
@@ -45,6 +52,9 @@ High certainty; wording is the builder's. Keep each addition short; this guide i
 **GREEN when:** The guide names all six pages, documents the page and lens links with their fragments, and the Testing section describes the disk line; `grep -n "Board / Calendar / Testing" skills/do-work-board/docs/board-guide.md` returns nothing.
 **Validation:** Inferred during capture
 
+## Required Lessons — Dropped for Budget
+- `_dev/primes/lessons-kanban-board.md` as a whole satellite (5912 tokens, over the 2000 budget; `slugged: partial`). Matched: views and static output. The bullet this REQ cites (REQ-232, describe the board by what its switcher covers) carries no family marker, so no narrower entry exists; the REQ's Constraints name that bullet, and the builder reads it directly.
+
 ## AI Execution State (P-A-U Loop)
 - [ ] **[PLAN]:** (Agent: Read listed `prime_files` and agent rules. Write brief technical approach here. Do not write code yet.)
 - [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
@@ -54,3 +64,19 @@ High certainty; wording is the builder's. Keep each addition short; this guide i
 See `do-work/user-requests/UR-133/input.md` for complete verbatim input.
 
 *Source: capture both as REQs (finding F3 of the REQ-626 review and finding M1 of the REQ-627 review)*
+
+---
+
+## Triage
+
+**Route: A** - Simple
+
+**Reasoning:** Docs-only change that names its two files and lists every sentence to add; the only discovery is checking each sentence against `web/board-controls.js` and `web/board-testing.js`, which the builder does inline.
+
+**Planning:** Not required
+
+## Plan
+
+**Planning not required** - Route A: Direct implementation
+
+*Skipped by work action*
