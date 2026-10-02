@@ -100,7 +100,7 @@ func handleRecover(executionContext commandruntime.ExecutionContext, arguments [
 				// a resuming session follows next_argv (UR-132).
 				AutomationStopReason: "working claim preserved; continue it with advance " + requestID +
 					", or, only for a claim no live session owns, recover --take-over " + requestID +
-					" resets it (requeues it as pending and strips its orchestrator sections)",
+					" resets it (returns it to the queue and strips its routing and orchestrator sections)",
 				NextArgv:         []string{"do-work-cli", "--format", "json", CommandAdvance, requestID},
 				VerificationArgv: []string{"do-work-cli", "--format", "json", CommandRecover},
 			})
