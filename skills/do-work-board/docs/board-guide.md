@@ -1,6 +1,6 @@
 # Board
 
-Renders the `do-work/` queue as a Kanban board in your browser, plus a queue activity calendar and a testing track. Read-only toward the work pipeline — it never claims a REQ or edits a `status`. The one thing it writes is the testing record (see Testing view).
+Renders the `do-work/` queue in your browser: a Kanban board plus the other pages in its page switcher. Read-only toward the work pipeline — it never claims a REQ or edits a `status`. The one thing it writes is the testing record (see Testing view).
 
 > **Needs the Go toolchain.** The board and the core deterministic command platform are compiled Go programs. Without `go` on your `PATH`, the requested command reports the missing prerequisite and stops instead of falling back to prose mutation.
 
