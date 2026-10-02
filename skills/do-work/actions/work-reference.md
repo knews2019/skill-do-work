@@ -307,7 +307,7 @@ The same judgment applies to any later typed refusal whose evidence is dirt or a
 
 ## Crash Recovery (Step 1)
 
-Run the canonical `recover` command before selection. Its ordered typed result settles finalization first, then classifies every working claim from structural checkpoint evidence; plain recovery preserves claims and returns exact takeover argv, while explicit `--take-over REQ-NNN` or `--assume-sole-authority` authorizes the canonical reset for every claim except one this run set aside, whose claim recovery preserves so the exclusion holds. Follow the result, never infer ownership from prose or interpolate a writer label into shell source.
+Run the canonical `recover` command before selection. Its ordered typed result settles finalization first, then classifies every working claim from structural checkpoint evidence; plain recovery preserves claims and its takeover finding's next step is the read-only `advance REQ-NNN`, which continues the claim. Explicit `--take-over REQ-NNN` or `--assume-sole-authority` authorizes the canonical reset for every claim except one this run set aside, whose claim recovery preserves so the exclusion holds. The reset requeues the claim and strips its orchestrator sections, so use it only for a claim no live session owns, never to resume a handoff. Follow the result, never infer ownership from prose or interpolate a writer label into shell source.
 
 Keep the exact `## In Progress (interrupted)` heading as the claim-evidence boundary. Explicit authority removes every same-request entry atomically, including multiple writer labels and unlabelled legacy records, while unrelated entries and project dirt remain byte-identical.
 

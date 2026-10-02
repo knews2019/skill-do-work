@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -127,9 +128,15 @@ func TestRecoverWithoutAuthorityOffersTypedTakeoverAndDoesNotMutateClaim(t *test
 	if err != nil {
 		t.Fatalf("recover observation: %v\n%s", err, output)
 	}
-	if !strings.Contains(string(output), `"code": "RECOVERY-TAKEOVER-AVAILABLE"`) ||
-		!strings.Contains(string(output), `"--take-over"`) || !strings.Contains(string(output), `"REQ-713"`) {
-		t.Fatalf("typed takeover missing:\n%s", output)
+	// The finding's next step must be the read-only classifier, not the reset:
+	// a resuming session follows next_argv, and --take-over strips the claim.
+	takeoverFinding := recoveryTakeoverFinding(t, output, "REQ-713")
+	if !reflect.DeepEqual(takeoverFinding.NextArgv, []string{"do-work-cli", "--format", "json", "advance", "REQ-713"}) {
+		t.Fatalf("takeover finding next argv = %#v, want read-only advance", takeoverFinding.NextArgv)
+	}
+	if !strings.Contains(takeoverFinding.AutomationStopReason, "recover --take-over REQ-713") ||
+		!strings.Contains(takeoverFinding.AutomationStopReason, "resets") {
+		t.Fatalf("stop reason does not name the reset: %q", takeoverFinding.AutomationStopReason)
 	}
 	if after := advanceTreeDigest(t, repositoryRoot); before != after {
 		t.Fatalf("authority-free recovery changed bytes")
@@ -145,6 +152,75 @@ func TestRecoverWithoutAuthorityOffersTypedTakeoverAndDoesNotMutateClaim(t *test
 	}
 	if _, err := os.Stat(filepath.Join(repositoryRoot, "do-work", "queue", "REQ-713-fixture.md")); err != nil {
 		t.Fatalf("authorized take-over did not return request to queue: %v", err)
+	}
+}
+
+// recoveryTakeoverFinding decodes a recover result and returns the takeover
+// finding for one request.
+func recoveryTakeoverFinding(t *testing.T, output []byte, requestID string) resultmodel.CommandFinding {
+	t.Helper()
+	var result resultmodel.CommandResult
+	if err := json.Unmarshal(output, &result); err != nil {
+		t.Fatalf("decode recover result: %v\n%s", err, output)
+	}
+	for _, finding := range result.Findings {
+		if finding.Code == "RECOVERY-TAKEOVER-AVAILABLE" && len(finding.AffectedIDs) == 1 && finding.AffectedIDs[0] == requestID {
+			return finding
+		}
+	}
+	t.Fatalf("no RECOVERY-TAKEOVER-AVAILABLE finding for %s:\n%s", requestID, output)
+	return resultmodel.CommandFinding{}
+}
+
+// UR-132: a session resuming a handoff ran recover's offered next step for its
+// own merged claim, which was --take-over, and the reset requeued the REQ and
+// stripped its Triage, Scope and evidence sections. Following plain recover and
+// then the finding's next argv must leave the claim byte-identical in working/
+// and name its next phase.
+func TestRecoverNextStepContinuesAClaimWithoutResettingIt(t *testing.T) {
+	repositoryRoot := t.TempDir()
+	hostname, _ := os.Hostname()
+	requestPath := writeAdvanceRequest(t, repositoryRoot, "working", "REQ-714", "claimed",
+		"route: B\nwrite_set: [owned.go]\nclaimed_at: 2026-09-04T12:00:00Z\ncommit: abc1234\nestimate:\n  p50_active_minutes: 20\n",
+		"## Triage\n\nRoute B.\n\n## Plan\n\nPlanning not required.\n\n## Exploration\n\nFound patterns.\n\n## Scope\n\n- owned.go\n")
+	writeAdvanceFile(t, repositoryRoot, "do-work/CHECKPOINT.md", "# Session Checkpoint\n\n## In Progress (interrupted)\n\n- REQ-714: Claimed — claimed now — writer: "+hostname+":"+repositoryRoot+"\n")
+	runAdvanceGit(t, repositoryRoot, "init", "-q")
+	runAdvanceGit(t, repositoryRoot, "config", "user.name", "Recovery Test")
+	runAdvanceGit(t, repositoryRoot, "config", "user.email", "recovery@example.invalid")
+	runAdvanceGit(t, repositoryRoot, "add", ".")
+	runAdvanceGit(t, repositoryRoot, "commit", "-qm", "fixture")
+	requestBefore, err := os.ReadFile(filepath.Join(repositoryRoot, requestPath))
+	if err != nil {
+		t.Fatal(err)
+	}
+	treeBefore := advanceTreeDigest(t, repositoryRoot)
+
+	recoverOutput, err := exec.Command(advanceCLIBinary(t), "--repo-root", repositoryRoot, "--format", "json", "recover").CombinedOutput()
+	if err != nil {
+		t.Fatalf("plain recover: %v\n%s", err, recoverOutput)
+	}
+	nextArgv := recoveryTakeoverFinding(t, recoverOutput, "REQ-714").NextArgv
+	if len(nextArgv) == 0 || nextArgv[0] != "do-work-cli" {
+		t.Fatalf("next argv is not a do-work-cli command: %#v", nextArgv)
+	}
+	followArgv := append([]string{"--repo-root", repositoryRoot}, nextArgv[1:]...)
+	followOutput, err := exec.Command(advanceCLIBinary(t), followArgv...).CombinedOutput()
+	if err != nil {
+		t.Fatalf("following next argv %v: %v\n%s", nextArgv, err, followOutput)
+	}
+	var followed advanceCommandResult
+	if err := json.Unmarshal(followOutput, &followed); err != nil {
+		t.Fatalf("decode followed step: %v\n%s", err, followOutput)
+	}
+	if followed.Advance == nil || followed.Advance.TreeSection != "working" || followed.Advance.Phase != "preflight" {
+		t.Fatalf("followed step did not classify the claim's next phase:\n%s", followOutput)
+	}
+	requestAfter, err := os.ReadFile(filepath.Join(repositoryRoot, requestPath))
+	if err != nil {
+		t.Fatalf("claim left working/: %v", err)
+	}
+	if string(requestAfter) != string(requestBefore) || advanceTreeDigest(t, repositoryRoot) != treeBefore {
+		t.Fatal("recover plus its next step changed the claim's bytes")
 	}
 }
 
