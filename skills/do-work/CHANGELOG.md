@@ -10,6 +10,14 @@ For the complete release history, read this file and the archives below from new
 - [0.50.0 through 0.64.1](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-13-up-to-v0.64.1.md)
 - [0.1.0 through 0.49.0](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-07-up-to-v0.49.0.md)
 
+## 0.305.61 — Every Board Page Has Its Own Link (2026-10-02)
+
+The board has six pages and three Board lenses, but every link opened the Board page and the address bar never changed, so there was no way to point someone at the Timeline or the Testing page. Each page and lens now has its own address.
+
+- Links such as `#timeline`, `#testing`, `#board/by-ur` and `#board/urs-only` open that page or lens directly, on the live board and on a static snapshot opened from disk. An unknown or empty fragment opens the Board page as before.
+- Clicking a page or lens updates the address bar without adding history entries, so Back still leaves the board. Filters stay out of the link.
+- The browser test harness now compares the probe page's address without its fragment, through one shared helper, so page clicks no longer break its page check.
+
 ## 0.305.60 — Low Disk Space Shows in the Board's VERIFY Band (2026-10-02)
 
 A long fan-out run with browser QA can fill a disk in a few hours while nothing in the suite notices, and builders, gates and git then fail in confusing ways. The board now measures free space where the run operator already looks.

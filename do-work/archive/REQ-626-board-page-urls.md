@@ -1,7 +1,7 @@
 ---
 id: REQ-626
 title: 'Give every board page and lens its own URL'
-status: claimed
+status: completed
 route: B
 estimate:
   p50_active_minutes: 20
@@ -26,9 +26,13 @@ review_at: 2026-10-02T18:41:24Z
 integration_at: 2026-10-02T18:18:36Z
 builder_handback_at: 2026-10-02T18:18:20Z
 dispatch_at: 2026-10-02T18:09:36Z
+heavy_verified_at: 2026-10-02T18:50:16Z
+heavy_verified_revision: 172d0e5caaf54729ae1efa0fbbb09f574c2b2086
 claimed_at: 2026-10-02T18:03:38Z
 status_changed_at: 2026-10-02T18:36:12Z
 commit: 505ec74ac0d71f2554b52a8ef69259c12a7a6bcb
+completed_at: 2026-10-02T18:50:25Z
+release_at: 2026-10-02T18:50:25Z
 ---
 
 # Give Every Board Page and Lens Its Own URL
@@ -304,3 +308,26 @@ Now every board page and Board lens has a shareable link (`#timeline`, `#board/b
 - queue-kanban-javascript — `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane queue-kanban-javascript` — files changed under skills/do-work-board/tools/queue-kanban
 - queue-kanban-browser — `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane queue-kanban-browser` — same subtree
 - staged-skills — `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane staged-skills` — shipped files under skills/ changed
+
+## Heavy Verification Result
+
+- Target revision: 505ec74ac0d71f2554b52a8ef69259c12a7a6bcb
+- Execution revision: 172d0e5caaf54729ae1efa0fbbb09f574c2b2086 (detached drain checkout `.git/work-run-2026-10-02-180407/drain-head`, one run for REQ-626 and REQ-627, QUEUE_KANBAN_BROWSER set to Google Chrome)
+- queue-kanban-javascript: exit 0, executed, 7s
+- queue-kanban-browser: exit 0, executed (not skipped), 78s
+- staged-skills: exit 0, executed, 40s
+
+Green: every selected lane present, exit 0, none skipped, none reused.
+
+## Timing
+
+Observed 2026-10-02T18:04:07Z to 2026-10-02T18:50:16Z: 46m 09s total, 20m 05s attributed across 5 events, 26m 04s unattributed.
+
+| Category | Elapsed | Events |
+| --- | --- | --- |
+| builder-work | 8m 53s | 1 |
+| exploration-preflight | 5m 33s | 1 |
+| verification-gate | 5m 00s | 2 |
+| handback-merge | 39s | 1 |
+
+Slowest stage: builder-work / builder implementation in worktree, 8m 53s, outcome success.
