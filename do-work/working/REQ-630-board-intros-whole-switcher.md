@@ -20,6 +20,9 @@ effort_estimate: effort-mechanical
 related: ["REQ-631"]
 batch: ur-133-leftovers
 write_set: ["skills/do-work-board/docs/board-guide.md", "skills/do-work-board/tools/queue-kanban/prime-do-kanban.md"]
+dispatch_at: 2026-10-02T21:53:17Z
+builder_handback_at: 2026-10-02T21:53:17Z
+integration_at: 2026-10-02T21:53:17Z
 claimed_at: 2026-10-02T21:52:48Z
 ---
 # Board Intros Describe the Board by What Its Switcher Covers
@@ -51,9 +54,9 @@ None. Independent of REQ-631.
 - `_dev/primes/lessons-kanban-board.md` as a whole satellite (5912 tokens, over the 2000 budget; `slugged: partial`). Matched: views. The REQ-232 bullet this REQ cites carries no family marker, so no narrower entry exists; the REQ's Why names it and the builder reads it directly.
 
 ## AI Execution State (P-A-U Loop)
-- [ ] **[PLAN]:** (Agent: Read listed `prime_files` and agent rules. Write brief technical approach here. Do not write code yet.)
-- [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
-- [ ] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
+- [x] **[PLAN]:** (Agent: Read listed `prime_files` and agent rules. Write brief technical approach here. Do not write code yet.) Builder: replace each partial page list with "plus the other pages in its page switcher", which needs no edit when a page is added.
+- [x] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.) Builder: only the two declared files changed.
+- [x] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.) Builder: `git diff --stat` 2 files, 2 insertions, 2 deletions; no Markdown linter here; both lines re-read; grep for other partial page lists under skills/do-work-board found two, reported in Discovered Tasks.
 
 ## Full Context
 See `do-work/user-requests/UR-134/input.md` for complete verbatim input.
@@ -75,3 +78,19 @@ See `do-work/user-requests/UR-134/input.md` for complete verbatim input.
 **Planning not required** - Route A: Direct implementation
 
 *Skipped by work action*
+
+## Implementation Summary
+
+**Files changed:**
+- `skills/do-work-board/docs/board-guide.md` (modified)
+- `skills/do-work-board/tools/queue-kanban/prime-do-kanban.md` (modified)
+
+**What was done:** Both intros now describe the board as a Kanban board "plus the other pages in its page switcher" instead of naming a calendar and a testing track, so a new page needs no intro edit. The rest of each paragraph is unchanged. Merge range 875d49b4..bdb5c43c (builder commit 96c0465b, merge bdb5c43c).
+
+## Qualification
+
+**Diff range:** 875d49b4..bdb5c43c (builder commit 96c0465b, merge bdb5c43c)
+**Gate records:** qualify satisfied. Route A, so no Scope comparison.
+**Warnings judged:** none.
+**Orchestrator read of the diff:** both lines now name the board plus "the other pages in its page switcher", which follows the REQ-232 lesson and stays true when a page is added; the rest of each paragraph is byte-identical.
+**P-A-U honesty:** the orchestrator played the builder role on branch `worktree-agent-REQ-630-board-intros`; APPLY cross-checked against `git diff --stat 875d49b4..bdb5c43c` (two files, nothing under do-work/).
