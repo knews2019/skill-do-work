@@ -1,7 +1,7 @@
 ---
 id: REQ-630
 title: 'Board intros describe the board by what its switcher covers'
-status: pending
+status: claimed
 created_at: 2026-10-02T21:51:57Z
 user_request: UR-134
 domain: general
@@ -13,6 +13,7 @@ effort_estimate: effort-mechanical
 related: ["REQ-631"]
 batch: ur-133-leftovers
 write_set: ["skills/do-work-board/docs/board-guide.md", "skills/do-work-board/tools/queue-kanban/prime-do-kanban.md"]
+claimed_at: 2026-10-02T21:52:48Z
 ---
 # Board Intros Describe the Board by What Its Switcher Covers
 
