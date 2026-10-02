@@ -10,6 +10,14 @@ For the complete release history, read this file and the archives below from new
 - [0.50.0 through 0.64.1](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-13-up-to-v0.64.1.md)
 - [0.1.0 through 0.49.0](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-07-up-to-v0.49.0.md)
 
+## 0.305.62 — The Testing Page Shows Free Disk Space (2026-10-02)
+
+The low-disk-space check from 0.305.60 spoke up only below 10 GiB, so on a healthy machine the free space was shown nowhere. The Testing page now always shows it.
+
+- One line in the Testing toolbar reads, for example, `disk: 61.3 GiB free of 177.5 GiB`, in the normal colour at 10 GiB or more, amber below 10 GiB and red below 3 GiB. A static snapshot adds "(at generation)", and a platform that cannot measure says "not measured".
+- The figure comes from the same single measurement the VERIFY-band check already takes; the live board refreshes it on every load, and the warning findings themselves are unchanged.
+- The board data carries the reading with the repo root shortened to `.`, so a shared snapshot still reveals no local paths.
+
 ## 0.305.61 — Every Board Page Has Its Own Link (2026-10-02)
 
 The board has six pages and three Board lenses, but every link opened the Board page and the address bar never changed, so there was no way to point someone at the Timeline or the Testing page. Each page and lens now has its own address.

@@ -1,7 +1,7 @@
 ---
 id: REQ-627
 title: 'Show free disk space on the Testing page'
-status: claimed
+status: completed
 route: B
 estimate:
   p50_active_minutes: 25
@@ -32,6 +32,8 @@ heavy_verified_revision: 172d0e5caaf54729ae1efa0fbbb09f574c2b2086
 claimed_at: 2026-10-02T18:03:42Z
 status_changed_at: 2026-10-02T18:36:46Z
 commit: 172d0e5caaf54729ae1efa0fbbb09f574c2b2086
+completed_at: 2026-10-02T18:50:46Z
+release_at: 2026-10-02T18:50:46Z
 ---
 
 # Show Free Disk Space on the Testing Page
@@ -297,3 +299,16 @@ Now the board's Testing page always shows the repo root's free and total disk sp
 - staged-skills: exit 0, executed, 40s
 
 Green: every selected lane present, exit 0, none skipped, none reused.
+
+## Timing
+
+Observed 2026-10-02T18:36:46Z to 2026-10-02T18:50:16Z: 13m 30s total, 12m 38s attributed across 5 events, 52s unattributed.
+
+| Category | Elapsed | Events |
+| --- | --- | --- |
+| verification-gate | 4m 55s | 2 |
+| builder-work | 4m 24s | 1 |
+| exploration-preflight | 2m 52s | 1 |
+| handback-merge | 27s | 1 |
+
+Slowest stage: builder-work / builder implementation in worktree, 4m 24s, outcome success.
