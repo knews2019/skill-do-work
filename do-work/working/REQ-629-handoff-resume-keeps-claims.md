@@ -3,6 +3,15 @@ id: REQ-629
 title: '[impact-rule-change] Resuming a handoff must not reset its own claimed REQs'
 status: claimed
 route: B
+estimate:
+  p50_active_minutes: 20
+  confidence: medium
+  basis:
+  - Route B
+  - 4-file write set
+  - 2 subsystems involved
+  - 4 acceptance criteria
+  calculated_at: 2026-10-02T20:55:30Z
 created_at: 2026-10-02T19:49:03Z
 user_request: UR-133
 domain: general
@@ -13,6 +22,8 @@ impact: impact-rule-change
 effort_estimate: effort-substantive
 related: ["REQ-628"]
 batch: ur-132-follow-ups
+required_lessons: ["skills/do-work/tools/do-work-cli/lessons-do-work-cli.md#rule-direction-checked-against-callers"]
+write_set: ["skills/do-work/tools/do-work-cli/internal/lifecycleadvance/recovery_commands.go", "skills/do-work/tools/do-work-cli/internal/lifecycleadvance/recovery_commands_test.go", "skills/do-work/actions/restart-with-parallel-handoff.md", "skills/do-work/actions/work-reference.md"]
 claimed_at: 2026-10-02T20:53:37Z
 ---
 # Resuming a Handoff Must Not Reset Its Own Claimed REQs
@@ -50,6 +61,10 @@ Medium certainty on the fix direction; high certainty on the failure. Reproduce 
 **GREEN when:** Following the paste block and the commands' suggested next steps leaves the REQ claimed in `do-work/working/` with its sections intact, and the classifier names its next phase.
 **Validation:** Inferred during capture
 
+## Required Lessons — Dropped for Budget
+- `skills/do-work/tools/do-work-cli/lessons-do-work-cli.md` as a whole satellite (17879 tokens, over the 2000 budget; `slugged: partial`). Matched: semantic recovery completeness, structured evidence projection. Narrowed at claim time to its `rule-direction-checked-against-callers` family (changing a finding's next step must be checked against every shipped caller that relies on it), which is now in `required_lessons`.
+- `_dev/primes/lessons-action-files.md` (5879 tokens, over budget; `slugged: partial`). Matched: action routing, downstream readers. No family names the handoff-versus-command contract, so no narrower entry exists.
+
 ## AI Execution State (P-A-U Loop)
 - [ ] **[PLAN]:** (Agent: Read listed `prime_files` and agent rules. Write brief technical approach here. Do not write code yet.)
 - [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
@@ -69,3 +84,37 @@ See `do-work/user-requests/UR-133/input.md` for complete verbatim input.
 **Reasoning:** The failure and the desired outcome are clear and the Open Question has a recommended direction, but where `recover` decides a claim needs takeover, whether per-request advance can continue a claim without it, and what the handoff paste block says need discovery before dispatch. Two surfaces (one action file, one Go finding), not an architectural change.
 
 **Planning:** Not required
+
+## Plan
+
+**Planning not required** - Route B: Exploration-guided implementation
+
+*Skipped by work action*
+
+## Exploration
+
+Full findings with file:line anchors and a scratch-repo reproduction: `do-work/runs/work-2026-10-02-204757/REQ-629-exploration.md`. The findings that change what the builder writes (paths under `skills/do-work/tools/do-work-cli/internal/`):
+
+- **The authority check has no writer comparison.** `lifecycleadvance/recovery_commands.go:90` authorizes only `--assume-sole-authority` or `--take-over <this REQ>`; otherwise `:91-102` emits `RECOVERY-TAKEOVER-AVAILABLE` whose next argv is `recover --take-over REQ`. The writer label (`hostname:repoRoot`) is evidence text only, so after a restart on the same machine the takeover is still the only offered step. `recovery_commands_test.go:115` pins `"--take-over"` in the output with a foreign-writer fixture.
+- **Bare `advance REQ-NNN` continues a claim; `advance REQ --request-path P` is refused at judgment phases** (`ADVANCE-GATE-INPUT-IRRELEVANT`). Reproduced in a scratch repo: plain `recover` changed nothing, bare `advance REQ-001` named the next phase, and `recover --take-over REQ-001` requeued the REQ and stripped route, Triage, Plan, Exploration, Scope and its checkpoint entry. The UR-132 handoff prompt used the refused `--request-path` form.
+- **Queue-mode `advance` ignores working claims** (`nextselection/next_selection.go:371`), so a plain `do-work run` sees an empty queue and never resumes a claim; the resuming session must name each claim.
+- **Prose:** `skills/do-work/actions/restart-with-parallel-handoff.md:49` tells the handoff writer to record each claim's "exact takeover command"; its paste-block rules say nothing about claimed REQs. `skills/do-work/actions/work-reference.md:310` (Crash Recovery) says "Follow the result". Other mentions (`docs/work-guide.md`, `run-with-recovery.md`, `forensics.md`) describe genuine crash recovery.
+- **Smallest command fix:** in the not-authorized branch, make the next argv the read-only `advance REQ` (the heavy-lanes hold at `:115` already uses that shape) and make the stop reason say that `recover --take-over REQ` resets the claim and strips its sections. No writer comparison, so it cannot misfire on a foreign claim; `--take-over` stays available and documented for a genuinely crashed claim.
+
+*Generated by Explore agent*
+
+## Scope
+
+**Files I will touch:**
+- `skills/do-work/tools/do-work-cli/internal/lifecycleadvance/recovery_commands.go` (modify) — the takeover finding's next argv becomes read-only `advance REQ`; the stop reason names `--take-over` as a reset
+- `skills/do-work/tools/do-work-cli/internal/lifecycleadvance/recovery_commands_test.go` (modify) — update the pinned argv; add a test that a same-writer claim survives plain `recover` then `advance REQ` byte-identical in `working/`
+- `skills/do-work/actions/restart-with-parallel-handoff.md` (modify) — record each claim's continue command (bare `advance REQ-NNN`), not a takeover; the paste block says what to run per claim and that `--take-over` resets a claim
+- `skills/do-work/actions/work-reference.md` (modify) — Crash Recovery says the takeover finding's next step is read-only and that `--take-over` is a reset for a genuinely abandoned claim
+
+**Files I will NOT touch:** the reset itself (`requeststate/state_apply.go`), queue selection, `docs/work-guide.md`, `run-with-recovery.md`, `forensics.md` (they describe genuine crash recovery; the builder reports any sentence that tells a resuming session to take over), release paths, anything under `do-work/`.
+
+**Acceptance criteria (restated from REQ):**
+- [ ] A real check establishes whether per-request `advance` continues a handed-off claim without takeover, and what plain `recover` then does
+- [ ] Following the handoff paste block plus the commands' suggested next steps never resets a claim the handoff described as in flight
+- [ ] The handoff states what to run for each claimed REQ and that `recover --take-over` resets a claim
+- [ ] A merged REQ (`commit:` or `integration_at`) keeps its evidence sections through the documented resume path
