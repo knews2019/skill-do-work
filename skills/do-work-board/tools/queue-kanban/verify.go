@@ -1,11 +1,13 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"sort"
 	"strconv"
 	"strings"
@@ -42,6 +44,7 @@ const (
 	verifyCategoryTimestampOrdering              = "timestamp-ordering"
 	verifyCategoryCalibrationLogMismatch         = "calibration-log-mismatch"
 	verifyCategoryCalibrationRowUnreconcilable   = "calibration-row-unreconcilable"
+	verifyCategoryLowDiskSpace                   = "low-disk-space"
 )
 
 // maxNamedItemsInFindingDetail bounds how many entries a finding detail spells
@@ -194,7 +197,121 @@ func collectVerifyFindings(repoRoot string, board *Board, now time.Time) VerifyR
 	appendArchivedUserRequestLiveMemberFindings(&report, board)
 	appendWorktreeFindings(&report, repoRoot, board)
 
+	// Worktrees can sit on another disk than the repo root. Without git the
+	// worktree probes above already report themselves skipped; an enumeration
+	// failure skips only the worktree half here, and the root is still measured.
+	var worktreePathsByName map[string]string
+	if gitBinaryAvailable() {
+		listedWorktrees, listError := listWorktreeAgentWorktrees(repoRoot)
+		if listError != nil {
+			report.SkippedProbes = append(report.SkippedProbes,
+				fmt.Sprintf("disk-space probe for worktrees: %v", listError))
+		}
+		worktreePathsByName = listedWorktrees
+	}
+	appendDiskSpaceFindings(&report, repoRoot, worktreePathsByName, diskSpaceMeasurer)
+
 	return report
+}
+
+// Low-disk-space thresholds, in bytes of space this user can still write. Fixed
+// sizes, not percentages: on a 20 GB disk a 10 % warning would sit below the
+// critical line. "Below" is strict, so exactly 3 GiB free is a warning and
+// exactly 10 GiB free is clean. Builders, gates and git fail in confusing ways
+// at zero bytes free, which is what the critical line leaves room before.
+const (
+	lowDiskSpaceWarningBytes  uint64 = 10 << 30
+	lowDiskSpaceCriticalBytes uint64 = 3 << 30
+)
+
+// diskSpaceMeasurement is one filesystem's free and total space, plus an
+// identity for the device holding it so two directories on one disk are
+// reported once. Each platform file fills it; every per-OS field conversion
+// stays in that file.
+type diskSpaceMeasurement struct {
+	freeBytes      uint64
+	totalBytes     uint64
+	deviceIdentity uint64
+}
+
+// errDiskSpaceUnsupported is what measureDiskSpace wraps on a platform without
+// a free-space call; the probe reports it as skipped, never as clean.
+var errDiskSpaceUnsupported = errors.New("disk-space measurement is unsupported on this platform")
+
+// diskSpaceMeasurer is the measurement collectVerifyFindings uses. It is a
+// variable only so tests can install fakes: real free space changes under them.
+var diskSpaceMeasurer = measureDiskSpace
+
+// appendDiskSpaceFindings reports a filesystem running out of space under the
+// repo root or under a worktree-agent-* worktree — a long fan-out run with
+// browser QA can fill a disk in hours. One finding per device: the repo root is
+// measured first, then worktrees in name order, and a device already measured
+// is not reported again. It measures and reports; it deletes nothing.
+//
+// A worktree's Subject is its name, never its path: the path lies outside the
+// repo, and the board's path reduction would turn it into an anonymous
+// placeholder.
+func appendDiskSpaceFindings(report *VerifyReport, repoRoot string, worktreePathsByName map[string]string, measure func(directory string) (diskSpaceMeasurement, error)) {
+	type measuredDirectory struct {
+		subject   string
+		directory string
+	}
+	measuredDirectories := []measuredDirectory{{subject: repoRoot, directory: repoRoot}}
+	worktreeNames := make([]string, 0, len(worktreePathsByName))
+	for worktreeName := range worktreePathsByName {
+		worktreeNames = append(worktreeNames, worktreeName)
+	}
+	sort.Strings(worktreeNames)
+	for _, worktreeName := range worktreeNames {
+		measuredDirectories = append(measuredDirectories, measuredDirectory{subject: worktreeName, directory: worktreePathsByName[worktreeName]})
+	}
+
+	measuredDevices := map[uint64]bool{}
+	for _, target := range measuredDirectories {
+		measurement, measureError := measure(target.directory)
+		if errors.Is(measureError, errDiskSpaceUnsupported) {
+			report.SkippedProbes = append(report.SkippedProbes, "disk-space probe: unsupported on "+runtime.GOOS)
+			return
+		}
+		if measureError != nil {
+			report.SkippedProbes = append(report.SkippedProbes,
+				fmt.Sprintf("disk-space probe for %s: %v", target.directory, measureError))
+			continue
+		}
+		if measuredDevices[measurement.deviceIdentity] {
+			continue
+		}
+		measuredDevices[measurement.deviceIdentity] = true
+
+		var thresholdName string
+		var thresholdBytes uint64
+		switch {
+		case measurement.freeBytes < lowDiskSpaceCriticalBytes:
+			thresholdName, thresholdBytes = "critical", lowDiskSpaceCriticalBytes
+		case measurement.freeBytes < lowDiskSpaceWarningBytes:
+			thresholdName, thresholdBytes = "warning", lowDiskSpaceWarningBytes
+		default:
+			continue
+		}
+		freePercent := 0.0
+		if measurement.totalBytes > 0 {
+			freePercent = float64(measurement.freeBytes) / float64(measurement.totalBytes) * 100
+		}
+		report.Findings = append(report.Findings, VerifyFinding{
+			Category: verifyCategoryLowDiskSpace,
+			Subject:  target.subject,
+			Detail: fmt.Sprintf("%s free of %s (%.1f%%) — below the %s threshold (%s)",
+				formatGibibytes(measurement.freeBytes), formatGibibytes(measurement.totalBytes), freePercent,
+				thresholdName, formatGibibytes(thresholdBytes)),
+			Remedy: "free space: clear regenerable QA output, finished builder worktrees (do-work cleanup), browser caches; " +
+				"`du -sh * | sort -h` at the repo root shows the largest directories",
+		})
+	}
+}
+
+// formatGibibytes renders a byte count the way a disk-space finding reads it.
+func formatGibibytes(byteCount uint64) string {
+	return fmt.Sprintf("%.1f GiB", float64(byteCount)/(1<<30))
 }
 
 // appendStrayRequestFileFindings forwards the board walker's structured
