@@ -151,6 +151,30 @@ Full findings with file:line anchors and a scratch-repo reproduction: `do-work/r
 **Orchestrator read of the diff:** every Detailed Requirement traces. (1) The real check was run twice in scratch repos (exploration and builder): plain recover changes nothing, bare `advance REQ-NNN` names the next phase, `--take-over` resets. (2) recover's next argv is now that read-only advance, and the handoff paste block carries one `advance REQ-NNN` line per claim, so following the paste block plus each command's next step never resets a claim. (3) The handoff states what to run per claim and that takeover resets a claim. (4) The new test proves a merged claim (`commit:` set) stays byte-identical through recover then its next step. Crash recovery for another checkout is unchanged: `--take-over` and `--assume-sole-authority` behave as before.
 **P-A-U honesty:** the boxes were ticked by the orchestrator from the builder's hand-back; APPLY cross-checked against `git diff --stat 89145e03..730c22cf` (five files, nothing under do-work/).
 
+## Testing
+
+**Tests run:** `bash _dev/tests/maintainer-verify.sh` on the merged tree (merge 730c22cf, REQ trail commit on top)
+**Result:** ✓ All passing — exit 0, gate wall 129s; stage queue-kanban-fast-tests EXECUTING (413 tests, slowest file 19.63s < 30s); stage do-work-cli-fast-tests EXECUTING (867 tests, slowest file 20.86s < 30s). Green-gate record satisfied by advance.
+
+**Focused tests:** `do-work/runs/work-2026-10-02-204757/helpers/probe-629.sh` (`go test -count=1 -run Recover ./internal/lifecycleadvance/`) → exit 0 (advance probe record satisfied). Builder: whole `./internal/lifecycleadvance/` package ok in 24.2s (< 30s); gofmt and go vet clean; `_dev/tests/contracts/recovery-set-aside.sh` and `core-checks.sh` pass.
+
+**Red-green validation:** traced to `## Red-Green Proof`; tests written first on the builder branch, GREEN at 42c37e7e:
+- TestRecoverWithoutAuthorityOffersTypedTakeoverAndDoesNotMutateClaim (updated): ✗ `takeover finding next argv = [do-work-cli recover --take-over REQ-713], want read-only advance` → ✓
+- TestRecoverNextStepContinuesAClaimWithoutResettingIt (new): ✗ following the offered next argv ran `recover --take-over`, moved the merged claim `working/ -> queue/` and committed (the UR-132 failure) → ✓ claim byte-identical in `working/`, tree digest unchanged, classifier names `preflight`
+- Scratch repo `req629-green` (the REQ's GREEN prompt end to end): handoff paste block written to the new rules, plain `recover` → next argv `advance REQ-001`; following it → phase `preflight` in `working/`; queue-mode advance → no mutation; REQ checksum unchanged, `git status` clean.
+
+**Existing tests updated (cross-REQ impact):**
+- `recovery_commands_test.go` TestRecoverWithoutAuthorityOffersTypedTakeoverAndDoesNotMutateClaim: pinned `--take-over` as the next argv; now pins read-only advance and the reset wording — intentional
+
+**Heavy verification plan:** *(lanes selected by plan-heavy-verification)*
+- Range: 89145e03..730c22cf
+- do-work-cli-integrations — do-work-cli source changed
+- staged-skills — shipped files under skills/ changed
+- updater — do-work-cli source changed
+- installer — do-work-cli source changed
+
+*Verified by work action*
+
 ## Decisions
 
 Builder decisions, from the hand-back (`do-work/runs/work-2026-10-02-204757/REQ-629-handback.md`). All DECIDE & STATE.
