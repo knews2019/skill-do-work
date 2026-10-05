@@ -591,7 +591,7 @@ var boardData = {
   requests: {
     // Accepted, rejected, and unmeasured — the three verdicts the Go side ships.
     "REQ-701": { status: "completed", hasImplementationSpan: true, implementationSpanMinutes: 45, implementationSpanReason: "" },
-    "REQ-702": { status: "completed", hasImplementationSpan: true, implementationSpanMinutes: 300, implementationSpanReason: "paused" },
+    "REQ-702": { status: "completed", hasImplementationSpan: true, implementationSpanMinutes: 300, implementationSpanReason: "idle-gap" },
     "REQ-703": { status: "cancelled", implementationSpanMinutes: 0 },
     // Two live claims, 30 and 90 minutes old.
     "REQ-711": { status: "claimed", claimedAt: minutesAgo(30) },
@@ -646,7 +646,7 @@ process.stdout.write(JSON.stringify({
 		t.Fatalf("decode UR progress active-time output: %v (output %q)", decodeError, probeOutput)
 	}
 
-	// Only the accepted span is summed. The 300-minute paused span is disclosed
+	// Only the accepted span is summed. The 300-minute idle-gap span is disclosed
 	// as excluded, never added; the cancelled member with no span is unmeasured.
 	if result.Spans.ActiveMinutes != 45 || result.Spans.ExcludedSpanCount != 1 || result.Spans.UnmeasuredCount != 1 {
 		t.Fatalf("span rollup = %+v; want 45 accepted minutes with 1 excluded and 1 unmeasured", result.Spans)

@@ -1067,3 +1067,69 @@ func TestRecoveryRefusesFalseLegacyCheckpointAbsence(t *testing.T) {
 		t.Fatal("refused absence changed fixture")
 	}
 }
+
+// REQ-633: the log's header row is its version marker. A new log gets the
+// six-column header and rows carry max_stamp_gap_minutes; a log that still has
+// the five-column header keeps getting five-column rows, because rewriting a
+// header would break finalization's "old bytes plus one row" proof. Driven
+// through the command seam, so the verifier that re-reads the archived REQ
+// must rebuild the very same row or the transition fails.
+func TestCompleteCalibrationRowFollowsTheLogHeader(t *testing.T) {
+	const fiveColumnHeader = "req_id\troute\testimated_p50_minutes\twall_minutes\tcompleted_at\n"
+	const sixColumnHeader = "req_id\troute\testimated_p50_minutes\twall_minutes\tcompleted_at\tmax_stamp_gap_minutes\n"
+	// Sorted: planning 16:00, claim 17:00, dispatch 17:10, handback 19:11,
+	// integration 19:20, completion 21:00. The largest gap is the 121 minutes
+	// from dispatch to handback. release_at (02:59 next day) would make a
+	// 359-minute gap if it counted; it must not.
+	const phasedStamps = "route: B\nclaimed_at: 2026-08-31T17:00:00Z\nplanning_at: 2026-08-31T16:00:00Z\ndispatch_at: 2026-08-31T17:10:00Z\nbuilder_handback_at: 2026-08-31T19:11:00Z\nintegration_at: 2026-08-31T19:20:00Z\nrelease_at: 2026-09-01T02:59:00Z\nestimate:\n  p50_active_minutes: 60\n"
+	const phaselessStamps = "route: B\nclaimed_at: 2026-08-31T17:00:00Z\nestimate:\n  p50_active_minutes: 60\n"
+	for _, testCase := range []struct {
+		caseName    string
+		stamps      string
+		existingLog string // "" means no log file yet
+		wantLog     string
+	}{
+		{"a new log gets the six-column header and the gap", phasedStamps, "",
+			sixColumnHeader + "REQ-305\tB\t60\t240\t2026-08-31T21:00:00Z\t121\n"},
+		{"a six-column log gets a six-column row", phasedStamps, sixColumnHeader + "REQ-100\tA\t5\t6\t2026-08-30T10:00:00Z\t6\n",
+			sixColumnHeader + "REQ-100\tA\t5\t6\t2026-08-30T10:00:00Z\t6\n" + "REQ-305\tB\t60\t240\t2026-08-31T21:00:00Z\t121\n"},
+		{"a five-column log keeps its header and gets a five-column row", phasedStamps, fiveColumnHeader + "REQ-100\tA\t5\t6\t2026-08-30T10:00:00Z\n",
+			fiveColumnHeader + "REQ-100\tA\t5\t6\t2026-08-30T10:00:00Z\n" + "REQ-305\tB\t60\t240\t2026-08-31T21:00:00Z\n"},
+		{"no phase stamps: the gap is the whole claimed-to-completed span", phaselessStamps, "",
+			sixColumnHeader + "REQ-305\tB\t60\t240\t2026-08-31T21:00:00Z\t240\n"},
+	} {
+		t.Run(testCase.caseName, func(t *testing.T) {
+			root := newStateRepository(t)
+			writeStateRequest(t, root, "do-work/working/REQ-305.md", "REQ-305", "claimed", testCase.stamps)
+			writeStateCheckpoint(t, root, "- REQ-305: Fixture — claimed 2026-08-31T17:00:00Z — writer: host:/repo\n")
+			if testCase.existingLog != "" {
+				if err := os.WriteFile(filepath.Join(root, "do-work", "calibration-log.tsv"), []byte(testCase.existingLog), 0o644); err != nil {
+					t.Fatal(err)
+				}
+			}
+			result := handleStateCommand(commandruntime.ExecutionContext{RepositoryRoot: root}, TransitionComplete, []string{"REQ-305", "--terminal-status", "completed", "--implementation-hash", "abcdef0", "--writer", "host:/repo", "--at", "2026-08-31T21:00:00Z"})
+			assertStateSuccess(t, result)
+			if got := readStateFile(t, root, "do-work/calibration-log.tsv"); got != testCase.wantLog {
+				t.Fatalf("calibration log =\n%q\nwant\n%q", got, testCase.wantLog)
+			}
+		})
+	}
+}
+
+// The verifier decides the row shape from the same header read as the
+// appender: under a six-column header, a five-column row is not the row the
+// archived stamps prove.
+func TestArchivedCalibrationVerifierReadsTheHeaderShape(t *testing.T) {
+	root := newStateRepository(t)
+	writeStateRequest(t, root, "do-work/archive/REQ-306.md", "REQ-306", "completed", "route: C\nclaimed_at: 2026-08-31T17:00:00Z\ndispatch_at: 2026-08-31T17:30:00Z\ncompleted_at: 2026-08-31T18:00:00Z\nestimate:\n  p50_active_minutes: 20\n")
+	plan := StatePlan{RepositoryRoot: root, DestinationPath: "do-work/archive/REQ-306.md", CalibrationPath: "do-work/calibration-log.tsv"}
+	const sixColumnHeader = "req_id\troute\testimated_p50_minutes\twall_minutes\tcompleted_at\tmax_stamp_gap_minutes\n"
+	plan.CalibrationBytes = []byte(sixColumnHeader + "REQ-306\tC\t20\t60\t2026-08-31T18:00:00Z\t30\n")
+	if err := verifyArchivedCalibrationEvidence(plan); err != nil {
+		t.Fatalf("six-column row under a six-column header rejected: %v", err)
+	}
+	plan.CalibrationBytes = []byte(sixColumnHeader + "REQ-306\tC\t20\t60\t2026-08-31T18:00:00Z\n")
+	if err := verifyArchivedCalibrationEvidence(plan); err == nil {
+		t.Fatal("five-column row under a six-column header was accepted")
+	}
+}

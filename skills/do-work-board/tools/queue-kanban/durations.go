@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"sort"
 	"time"
 )
@@ -20,15 +21,27 @@ import (
 //
 // Panels A and B deliberately disagree about which samples count, and that split
 // is the point. Panel A plots every sample raw, so an outlier stays visible.
-// Panel B applies the calibration's documented read-time rule — a span over four
-// hours is an assumed paused session, a negative span is a broken stamp — so one
-// paused session cannot invent a five-hour day. The rule is stated once, in
-// skills/do-work/actions/estimate-reference.md → Calibration; this is its second
-// reader, not a second definition.
+// Panel B applies the calibration's documented read-time rule — a span whose
+// largest gap between consecutive lifecycle stamps exceeds 2h is excluded as
+// idle-gap, a negative span as reversed — so one idle stretch cannot invent a
+// five-hour day while a long continuous session still counts. The rule is stated
+// once, in skills/do-work/actions/estimate-reference.md → Calibration; this is
+// its second reader, not a second definition. The core CLI writes the same gap
+// into the calibration log's max_stamp_gap_minutes column, from the same stamp
+// set (claimed_at through completed_at, release_at excluded).
+//
+// Stamps only, on purpose: the calibration-log writer runs inside the lifecycle
+// transaction and cannot read git, and both readers must agree exactly. The
+// drawer's idle-gap row (activity_correlation.go) also uses commits, so it can
+// show a smaller gap for a REQ this rule excludes.
 
-// analysisOutlierCeiling is the read-time rule's upper bound: a wall span longer
-// than this is assumed to include a pause rather than four solid hours of work.
-const analysisOutlierCeiling = 4 * time.Hour
+// activityGapCeiling is the read-time rule's upper bound: a gap between two
+// consecutive lifecycle stamps longer than this is idle time, not work.
+const activityGapCeiling = 2 * time.Hour
+
+// dayMedianExclusionRule is Panel B's statement of the rule, shipped to the
+// client as text so the client never holds the ceiling as a number.
+var dayMedianExclusionRule = fmt.Sprintf("largest idle gap over %gh", activityGapCeiling.Hours())
 
 // DurationSample is one archived REQ's measured wall span.
 type DurationSample struct {
@@ -39,7 +52,8 @@ type DurationSample struct {
 	WallMinutes    float64   // completed_at − earliest origin-eligible lifecycle stamp, raw and signed
 
 	// Why the read-time rule excluded this sample from the day medians:
-	// "paused" (over the ceiling), "reversed" (negative), or "" when it counts.
+	// "idle-gap" (largest stamp gap over the ceiling), "reversed" (negative), or
+	// "" when it counts.
 	DayMedianExclusion string
 
 	// The REQ's effort_estimate bucket, normalized (effortMechanical or
@@ -125,7 +139,7 @@ type ImplementationSpan struct {
 	StampsParsed      bool
 	CompletionInstant time.Time // parsed completed_at, in UTC
 	WallMinutes       float64   // completed_at − earliest origin-eligible lifecycle stamp, raw and signed
-	ExclusionReason   string    // "paused" (over the ceiling), "reversed" (negative), "" when it reads plainly
+	ExclusionReason   string    // "idle-gap" (largest stamp gap over the ceiling), "reversed" (negative), "" when it reads plainly
 }
 
 // implementationSpanOriginExcludedFields names the lifecycle stamps that may NOT
@@ -213,7 +227,7 @@ func measureImplementationSpan(ticket *RequestTicket) ImplementationSpan {
 		StampsParsed:      true,
 		CompletionInstant: completedInstant.UTC(),
 		WallMinutes:       wallSpan.Minutes(),
-		ExclusionReason:   dayMedianExclusionReason(wallSpan),
+		ExclusionReason:   dayMedianExclusionReason(wallSpan, largestLifecycleStampGap(ticket)),
 	}
 }
 
@@ -309,13 +323,40 @@ func buildPhaseBreakdown(ticket *RequestTicket) []PhaseBreakdownEntry {
 	return entries
 }
 
+// largestLifecycleStampGap is the longest stretch between two consecutive
+// parsed lifecycle stamps, claimed_at through completed_at with release_at left
+// out (it records shipping, after the work). Stamps are sorted by instant, so a
+// rewritten claim stamp exposes the real hole instead of a negative interval. A
+// REQ with no phase stamps has one gap: its whole claimed → completed span.
+// The core CLI's calibration writer computes the same number
+// (requestmodel.CalibrationGapStampFields names the same stamps).
+func largestLifecycleStampGap(ticket *RequestTicket) time.Duration {
+	var instants []time.Time
+	for _, milestone := range phaseMilestonesOf(ticket) {
+		if milestone.fieldName == "release_at" {
+			continue
+		}
+		if instant, parsed := parseTimestamp(milestone.rawValue); parsed {
+			instants = append(instants, instant)
+		}
+	}
+	sort.Slice(instants, func(left, right int) bool { return instants[left].Before(instants[right]) })
+	var largestGap time.Duration
+	for index := 1; index < len(instants); index++ {
+		if gap := instants[index].Sub(instants[index-1]); gap > largestGap {
+			largestGap = gap
+		}
+	}
+	return largestGap
+}
+
 // dayMedianExclusionReason applies the calibration's read-time rule to one span.
-func dayMedianExclusionReason(wallSpan time.Duration) string {
+func dayMedianExclusionReason(wallSpan time.Duration, largestStampGap time.Duration) string {
 	switch {
 	case wallSpan < 0:
 		return "reversed"
-	case wallSpan > analysisOutlierCeiling:
-		return "paused"
+	case largestStampGap > activityGapCeiling:
+		return "idle-gap"
 	default:
 		return ""
 	}

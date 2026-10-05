@@ -103,8 +103,8 @@
 
       if (request.hasImplementationSpan === true) {
         if (request.implementationSpanReason) {
-          // The Go side measured a span and refused it (an assumed pause, or
-          // reversed stamps). Disclosed, never added.
+          // The Go side measured a span and refused it (an idle gap over the
+          // ceiling, or reversed stamps). Disclosed, never added.
           summary.excludedSpanCount += 1;
         } else if (typeof request.implementationSpanMinutes === "number" &&
           isFinite(request.implementationSpanMinutes)) {

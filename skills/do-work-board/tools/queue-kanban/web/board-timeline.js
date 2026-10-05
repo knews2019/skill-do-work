@@ -1523,7 +1523,7 @@
           projection.trivialSamples +
           " mechanical at " +
           timelineFormatSpanMinutes(projection.trivialMinutes) +
-          "), one REQ at a time, no parallel builders, and a queue that stops growing. Paused and reversed spans are excluded from both medians." +
+          "), one REQ at a time, no parallel builders, and a queue that stops growing. Idle-gap and reversed spans are excluded from both medians." +
           (projection.trivialSamples < projection.minimumSamples ||
           projection.normalSamples < projection.minimumSamples
             ? " A bucket with fewer than " +

@@ -251,9 +251,9 @@ type generatedRequest struct {
 	// stamps that cannot open a span). Present only for a REQ that reached
 	// terminal SUCCESS and carries a parseable completion stamp plus at least one
 	// parseable origin, so `hasImplementationSpan` false is a real "unmeasured"
-	// rather than a span of zero. `implementationSpanReason` is "paused" or
+	// rather than a span of zero. `implementationSpanReason` is "idle-gap" or
 	// "reversed", empty when the span reads plainly. The card acts only on
-	// "reversed"; "paused" feeds Panel B's exclusion. The client never receives a
+	// "reversed"; "idle-gap" feeds Panel B's exclusion. The client never receives a
 	// numeric ceiling it could use as a second rule.
 	HasImplementationSpan bool `json:"hasImplementationSpan,omitempty"`
 	// Deliberately NOT omitempty: a genuine zero-minute span is possible (identical
@@ -360,13 +360,15 @@ type generatedActivityEntry struct {
 // generatedDurations is the Durations view's data: one measured sample per
 // archived REQ that carries both stamps, and one entry per active day. Panels A
 // and B disagree about which samples count on purpose — see durations.go.
+// `exclusionRule` states Panel B's rule as text the client prints verbatim.
 type generatedDurations struct {
-	Samples []generatedDurationSample `json:"samples"`
-	Days    []generatedDurationDay    `json:"days"`
+	Samples       []generatedDurationSample `json:"samples"`
+	Days          []generatedDurationDay    `json:"days"`
+	ExclusionRule string                    `json:"exclusionRule"`
 }
 
 // generatedDurationSample is one REQ's raw, signed wall span. `excludedReason`
-// is "paused" or "reversed" when the calibration's read-time rule holds it out
+// is "idle-gap" or "reversed" when the calibration's read-time rule holds it out
 // of the day medians, and empty when it counts — panel A plots it either way.
 // Direct-label placement is NOT here: the renderer decides it, because sizing a
 // label needs the width the engine actually draws (REQ-292). Nothing in this
@@ -914,6 +916,9 @@ func buildGeneratedBoardDataWithMentions(board *Board, mentionAnalysis boardTick
 	}
 
 	durationAggregate := buildDurationAggregate(board.AllRequests)
+	// The rule ships as text: the client prints it and never holds the ceiling
+	// as a number it could re-apply (lesson REQ-219).
+	data.Durations.ExclusionRule = dayMedianExclusionRule
 	for _, sample := range durationAggregate.Samples {
 		data.Durations.Samples = append(data.Durations.Samples, generatedDurationSample{
 			RequestId:      sample.RequestId,

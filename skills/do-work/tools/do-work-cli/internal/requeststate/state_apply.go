@@ -489,17 +489,14 @@ func verifyArchivedCalibrationEvidence(plan StatePlan) error {
 		return parseError
 	}
 	record := document.TypedRecord()
-	claimedAt, claimedError := requestmodel.ParseTimestamp(record.ClaimedAt)
 	completedAt, completedError := requestmodel.ParseTimestamp(record.CompletedAt)
-	if claimedError != nil || completedError != nil {
+	if completedError != nil {
 		return fmt.Errorf("archived calibration timestamps are not parseable")
 	}
-	estimate := record.FieldEvidenceByName["estimate"].NestedValues["p50_active_minutes"]
-	route := record.RouteValue
-	if route == "" {
-		route = "-"
+	wantRow, rowError := requestmodel.FormatCalibrationRow(record, completedAt, plan.CalibrationBytes)
+	if rowError != nil {
+		return fmt.Errorf("archived calibration evidence: %w", rowError)
 	}
-	wantRow := fmt.Sprintf("%s\t%s\t%s\t%d\t%s\n", record.RequestID, route, estimate, int(completedAt.Sub(claimedAt).Minutes()), requestmodel.CanonicalTimestamp(completedAt))
 	if !bytes.HasSuffix(plan.CalibrationBytes, []byte(wantRow)) {
 		return fmt.Errorf("planned calibration row does not match archived lifecycle stamps")
 	}
