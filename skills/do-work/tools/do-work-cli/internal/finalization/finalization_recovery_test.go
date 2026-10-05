@@ -13,6 +13,7 @@ import (
 
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/commandruntime"
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/nextselection"
+	"github.com/knews2019/skill-do-work/do-work-cli/internal/requestmodel"
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/requeststate"
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/resultmodel"
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/sharedprimitives"
@@ -1052,5 +1053,40 @@ func TestDiscoverySessionMemoizationAndInvalidation(t *testing.T) {
 	img2, err := session2.headFileImage("version.txt")
 	if err != nil || !img2.Exists || string(img2.Bytes) != "2.0.0\n" {
 		t.Fatalf("session2 headFileImage version.txt = %#v, err = %v", img2, err)
+	}
+}
+
+// REQ-633: finalization's calibration proof is the third row builder. It must
+// accept the row the lifecycle appender writes under a six-column header (the
+// max_stamp_gap_minutes column) and keep accepting five-column rows under the
+// old header, deciding the shape from the same header read.
+func TestCalibrationAppendProofFollowsTheLogHeader(t *testing.T) {
+	const fiveColumnHeader = "req_id\troute\testimated_p50_minutes\twall_minutes\tcompleted_at\n"
+	const sixColumnHeader = "req_id\troute\testimated_p50_minutes\twall_minutes\tcompleted_at\tmax_stamp_gap_minutes\n"
+	document, parseError := requestmodel.ParseDocument([]byte("---\nid: REQ-741\ntitle: Fixture\nstatus: completed\nroute: C\nclaimed_at: 2026-09-02T08:00:00Z\ndispatch_at: 2026-09-02T08:10:00Z\nbuilder_handback_at: 2026-09-02T08:50:00Z\ncompleted_at: 2026-09-02T09:00:00Z\nrelease_at: 2026-09-02T12:00:00Z\nestimate:\n  p50_active_minutes: 60\n---\n"))
+	if parseError != nil {
+		t.Fatal(parseError)
+	}
+	record := document.TypedRecord()
+	for _, testCase := range []struct {
+		caseName   string
+		before     string
+		appended   string
+		wantProved bool
+	}{
+		{"six-column header, six-column row", sixColumnHeader, "REQ-741\tC\t60\t60\t2026-09-02T09:00:00Z\t40\n", true},
+		{"six-column header, five-column row", sixColumnHeader, "REQ-741\tC\t60\t60\t2026-09-02T09:00:00Z\n", false},
+		{"five-column header, five-column row", fiveColumnHeader, "REQ-741\tC\t60\t60\t2026-09-02T09:00:00Z\n", true},
+	} {
+		t.Run(testCase.caseName, func(t *testing.T) {
+			repositoryRoot := newFinalizationRepository(t)
+			writeFinalizationFile(t, repositoryRoot, "do-work/calibration-log.tsv", testCase.before)
+			runFinalizationGit(t, repositoryRoot, "add", ".")
+			runFinalizationGit(t, repositoryRoot, "commit", "-qm", "seed")
+			writeFinalizationFile(t, repositoryRoot, "do-work/calibration-log.tsv", testCase.before+testCase.appended)
+			if got := calibrationAppendProves(newDiscoverySession(repositoryRoot), "do-work/calibration-log.tsv", record); got != testCase.wantProved {
+				t.Fatalf("calibrationAppendProves = %t, want %t", got, testCase.wantProved)
+			}
+		})
 	}
 }

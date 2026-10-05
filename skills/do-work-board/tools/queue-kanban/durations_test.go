@@ -73,7 +73,7 @@ func TestDurationAggregateAdmitsOnlyMeasurableCompletedRequests(t *testing.T) {
 	}
 }
 
-// The read-time rule is what stops one paused session inventing a five-hour day.
+// The read-time rule is what stops one idle stretch inventing a five-hour day.
 // This pins the rule as APPLIED, not merely present: the same day's naive median
 // is asserted alongside the ruled one so a regression that drops the rule fails
 // on a value, not on a missing symbol.
@@ -81,7 +81,8 @@ func TestDurationDayMedianAppliesTheReadTimeOutlierRule(t *testing.T) {
 	tickets := []*RequestTicket{
 		// 2.5 minutes — an ordinary span.
 		durationTicket("REQ-101", "A", "2026-07-31T08:00:00Z", "2026-07-31T08:02:31Z"),
-		// 655.2 minutes — over the four-hour ceiling, so an assumed pause.
+		// 655.2 minutes with no phase stamps, so the whole span is the largest gap
+		// and it is far over the idle-gap ceiling.
 		durationTicket("REQ-064", "C", "2026-07-31T09:00:00Z", "2026-07-31T19:55:12Z"),
 	}
 
@@ -113,8 +114,8 @@ func TestDurationDayMedianAppliesTheReadTimeOutlierRule(t *testing.T) {
 	}
 
 	excluded := findDurationSample(t, aggregate, "REQ-064")
-	if excluded.DayMedianExclusion != "paused" {
-		t.Fatalf("an over-ceiling span must be excluded as a pause, got %q", excluded.DayMedianExclusion)
+	if excluded.DayMedianExclusion != "idle-gap" {
+		t.Fatalf("an over-ceiling gap must be excluded as idle-gap, got %q", excluded.DayMedianExclusion)
 	}
 	if math.Abs(excluded.WallMinutes-655.2) > 0.01 {
 		t.Fatalf("panel A must still carry the raw span, got %.4f", excluded.WallMinutes)
@@ -157,7 +158,7 @@ func TestDurationAggregateKeepsReversedSpansRawAndOutOfMedians(t *testing.T) {
 // state from a median of zero, and the panel must be able to tell them apart.
 func TestDurationDayWithOnlyExcludedSamplesHasNoMedian(t *testing.T) {
 	aggregate := buildDurationAggregate([]*RequestTicket{
-		durationTicket("REQ-201", "C", "2026-08-03T01:00:00Z", "2026-08-03T09:00:00Z"), // 8h — paused
+		durationTicket("REQ-201", "C", "2026-08-03T01:00:00Z", "2026-08-03T09:00:00Z"), // 8h, no phase stamps — idle-gap
 	})
 
 	day := findDurationDay(t, aggregate, "2026-08-03")
@@ -471,36 +472,82 @@ func durationLabelPlotX(completionTime time.Time, rangeStart time.Time, rangeEnd
 // ---- the done card's implementation span -----------------------------------
 
 // The Recently-Done card's duration reading and the Durations view are two
-// READERS of one read-time rule, never two definitions of it. The boundary is
-// pinned against analysisOutlierCeiling itself: a restated "4 hours" here would
-// keep passing with the ceiling moved and would prove nothing about the rule.
-func TestImplementationSpanVerdictBoundaryReadsTheOutlierCeiling(t *testing.T) {
+// READERS of one read-time rule, never two definitions of it. The rule reads the
+// LARGEST GAP between consecutive lifecycle stamps, not the raw span, and every
+// boundary below is derived from activityGapCeiling itself: a restated "2 hours"
+// would keep passing with the ceiling moved. Only a pair straddling the ceiling
+// by one minute catches a second ceiling (lesson REQ-374).
+func TestImplementationSpanVerdictReadsTheLargestStampGap(t *testing.T) {
 	claimInstant := time.Date(2026, 7, 4, 9, 0, 0, 0, time.UTC)
-	spanEndingAfter := func(offset time.Duration) ImplementationSpan {
-		return measureImplementationSpan(durationTicket("REQ-401", "B",
-			claimInstant.Format(time.RFC3339),
-			claimInstant.Add(offset).Format(time.RFC3339)))
+	stampAt := func(offset time.Duration) string { return claimInstant.Add(offset).Format(time.RFC3339) }
+	// dispatch → builder handback carries the gap under test; every other
+	// interval is short, so only that gap can decide the verdict.
+	gappedTicket := func(handbackGap time.Duration) *RequestTicket {
+		return &RequestTicket{
+			ClaimedAt:         stampAt(0),
+			DispatchAt:        stampAt(10 * time.Minute),
+			BuilderHandbackAt: stampAt(10*time.Minute + handbackGap),
+			IntegrationAt:     stampAt(15*time.Minute + handbackGap),
+			CompletedAt:       stampAt(60*time.Minute + handbackGap),
+		}
+	}
+	// No phase stamps: the whole claimed → completed span is the only gap.
+	phaselessTicket := func(span time.Duration) *RequestTicket {
+		return &RequestTicket{ClaimedAt: stampAt(0), CompletedAt: stampAt(span)}
 	}
 
-	atCeiling := spanEndingAfter(analysisOutlierCeiling)
-	if !atCeiling.StampsParsed {
-		t.Fatalf("both stamps parse, yet the span measured nothing: %#v", atCeiling)
-	}
-	if atCeiling.WallMinutes != analysisOutlierCeiling.Minutes() {
-		t.Errorf("at-ceiling span = %v min, want %v", atCeiling.WallMinutes, analysisOutlierCeiling.Minutes())
-	}
-	if atCeiling.ExclusionReason != "" {
-		t.Errorf("a span exactly at the ceiling read %q, want the plain verdict — the rule excludes spans OVER the ceiling, not at it", atCeiling.ExclusionReason)
-	}
-
-	overCeiling := spanEndingAfter(analysisOutlierCeiling + time.Minute)
-	if overCeiling.ExclusionReason != "paused" {
-		t.Errorf("a span one minute over the ceiling read %q, want \"paused\"", overCeiling.ExclusionReason)
-	}
-
-	underCeiling := spanEndingAfter(analysisOutlierCeiling - time.Minute)
-	if underCeiling.ExclusionReason != "" {
-		t.Errorf("a span one minute under the ceiling read %q, want the plain verdict", underCeiling.ExclusionReason)
+	for _, testCase := range []struct {
+		caseName   string
+		ticket     *RequestTicket
+		wantReason string
+	}{
+		{"a phase gap one minute under the ceiling is kept", gappedTicket(activityGapCeiling - time.Minute), ""},
+		{"a phase gap exactly at the ceiling is kept — the rule excludes gaps OVER it", gappedTicket(activityGapCeiling), ""},
+		{"a phase gap one minute over the ceiling is excluded, though the span is only 3h01m", gappedTicket(activityGapCeiling + time.Minute), "idle-gap"},
+		{"no phase stamps, span one minute under the ceiling: kept", phaselessTicket(activityGapCeiling - time.Minute), ""},
+		{"no phase stamps, span one minute over the ceiling: the whole span is the gap", phaselessTicket(activityGapCeiling + time.Minute), "idle-gap"},
+		{
+			// The REQ's Red-Green case: 4h21m worked continuously, largest gap 67 min
+			// (dispatch → builder handback). The retired 4h span rule excluded it.
+			"a 4h21m span whose largest stamp gap is 67 minutes is kept",
+			&RequestTicket{
+				ClaimedAt:         "2026-08-24T10:05:00Z",
+				PlanningAt:        "2026-08-24T10:35:00Z",
+				DispatchAt:        "2026-08-24T11:05:00Z",
+				BuilderHandbackAt: "2026-08-24T12:12:00Z",
+				IntegrationAt:     "2026-08-24T13:05:00Z",
+				ReviewAt:          "2026-08-24T13:55:00Z",
+				CompletedAt:       "2026-08-24T14:26:00Z",
+			},
+			"",
+		},
+		{
+			"release_at is outside the rule: shipping hours after completion is not idle work time",
+			&RequestTicket{ClaimedAt: stampAt(0), CompletedAt: stampAt(30 * time.Minute), ReleaseAt: stampAt(30*time.Minute + 3*activityGapCeiling)},
+			"",
+		},
+		{
+			// Stamps are sorted chronologically before the gaps are taken, so a claim
+			// rewritten after the phase work measures the real hole (integration →
+			// claim), not a negative interval that would hide it.
+			"a claim stamp rewritten after the phase work exposes the idle hole before it",
+			&RequestTicket{
+				ClaimedAt:     stampAt(4 * activityGapCeiling),
+				PlanningAt:    stampAt(0),
+				DispatchAt:    stampAt(10 * time.Minute),
+				IntegrationAt: stampAt(40 * time.Minute),
+				CompletedAt:   stampAt(4*activityGapCeiling + time.Minute),
+			},
+			"idle-gap",
+		},
+	} {
+		span := measureImplementationSpan(testCase.ticket)
+		if !span.StampsParsed {
+			t.Fatalf("%s: stamps parse, yet the span measured nothing: %#v", testCase.caseName, span)
+		}
+		if span.ExclusionReason != testCase.wantReason {
+			t.Errorf("%s: verdict %q, want %q (span %.0f min)", testCase.caseName, span.ExclusionReason, testCase.wantReason, span.WallMinutes)
+		}
 	}
 }
 
@@ -573,7 +620,7 @@ func TestImplementationSpanOpensAtTheEarliestLifecycleStamp(t *testing.T) {
 			},
 			wantMeasured: true,
 			wantSpan:     6*time.Hour + 11*time.Minute + 44*time.Second,
-			wantReason:   "paused",
+			wantReason:   "idle-gap",
 			requirement:  "the origin is planning_at 16:49:45, the earliest stamp, not the 23:00:06 claim",
 		},
 		{
@@ -741,7 +788,7 @@ func TestImplementationSpanOriginEligibilityCoversTheDeclaredSchema(t *testing.T
 // The ceiling half of that claim needs the fixture to STRADDLE the ceiling, not
 // merely to span it widely: three samples at 40 min, 18 h and −3 h agree under any
 // second ceiling anywhere in (40 min, 18 h), which is most of the plausible ones.
-// The straddling pair below is derived FROM analysisOutlierCeiling, so a second
+// The straddling pair below is derived FROM activityGapCeiling, so a second
 // definition disagrees with the real one at the only place a threshold can be
 // caught — its own boundary — and moving the real ceiling moves the pair with it.
 func TestImplementationSpanAgreesWithTheDurationsAggregate(t *testing.T) {
@@ -751,9 +798,9 @@ func TestImplementationSpanAgreesWithTheDurationsAggregate(t *testing.T) {
 		durationTicket("REQ-411", "B", "2026-07-05T09:00:00Z", "2026-07-06T03:00:00Z"),
 		durationTicket("REQ-412", "C", "2026-07-05T12:00:00Z", "2026-07-05T09:00:00Z"),
 		durationTicket("REQ-413", "B", ceilingClaim.Format(time.RFC3339),
-			ceilingClaim.Add(analysisOutlierCeiling).Format(time.RFC3339)),
+			ceilingClaim.Add(activityGapCeiling).Format(time.RFC3339)),
 		durationTicket("REQ-414", "B", ceilingClaim.Format(time.RFC3339),
-			ceilingClaim.Add(analysisOutlierCeiling+time.Minute).Format(time.RFC3339)),
+			ceilingClaim.Add(activityGapCeiling+time.Minute).Format(time.RFC3339)),
 	}
 	aggregate := buildDurationAggregate(tickets)
 	if len(aggregate.Samples) != len(tickets) {
@@ -773,7 +820,7 @@ func TestImplementationSpanAgreesWithTheDurationsAggregate(t *testing.T) {
 		verdictsWitnessed[span.ExclusionReason] = true
 	}
 	// Vacuity guard: agreement over one verdict is not agreement about the rule.
-	for _, requiredVerdict := range []string{"", "paused", "reversed"} {
+	for _, requiredVerdict := range []string{"", "idle-gap", "reversed"} {
 		if !verdictsWitnessed[requiredVerdict] {
 			t.Fatalf("the fixture never produced the %q verdict, so this test cannot witness a disagreement about it", requiredVerdict)
 		}
@@ -783,8 +830,8 @@ func TestImplementationSpanAgreesWithTheDurationsAggregate(t *testing.T) {
 	// could sit between them and agree with the first everywhere this test looks.
 	atCeiling := findDurationSample(t, aggregate, "REQ-413")
 	pastCeiling := findDurationSample(t, aggregate, "REQ-414")
-	if atCeiling.DayMedianExclusion != "" || pastCeiling.DayMedianExclusion != "paused" {
-		t.Fatalf("the straddling pair read %q / %q, want \"\" / \"paused\" — it no longer brackets the ceiling, so a second ceiling would pass unnoticed",
+	if atCeiling.DayMedianExclusion != "" || pastCeiling.DayMedianExclusion != "idle-gap" {
+		t.Fatalf("the straddling pair read %q / %q, want \"\" / \"idle-gap\" — it no longer brackets the ceiling, so a second ceiling would pass unnoticed",
 			atCeiling.DayMedianExclusion, pastCeiling.DayMedianExclusion)
 	}
 }

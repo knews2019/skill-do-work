@@ -516,9 +516,9 @@ func TestTimelineProjectionChainsTheQueueSerially(t *testing.T) {
 			fmt.Sprintf("REQ-2%02d", spanIndex), effortMechanical,
 			now.Add(-time.Duration(spanIndex+1)*time.Hour), spanMinutes))
 	}
-	// One paused (over the four-hour ceiling) and one reversed span. Both are
-	// normal-bucket and both are enormous, so if either reached the median the
-	// normal figure could not stay at 40.
+	// One idle-gap (a phaseless 900-minute span is one gap over the ceiling) and
+	// one reversed span. Both are normal-bucket and both are enormous, so if
+	// either reached the median the normal figure could not stay at 40.
 	tickets = append(tickets, completedSpanTicket("REQ-300", effortSubstantive, now.Add(-30*time.Minute), 900))
 	tickets = append(tickets, completedSpanTicket("REQ-301", effortSubstantive, now.Add(-20*time.Minute), -120))
 
@@ -538,7 +538,7 @@ func TestTimelineProjectionChainsTheQueueSerially(t *testing.T) {
 		t.Fatalf("twelve in-rule samples must clear the confidence floor; declined because %q", projection.DeclinedReason)
 	}
 	if projection.NormalMedianMinutes != 40 {
-		t.Fatalf("normal median = %.1f, want 40 — the paused and reversed spans must not reach it",
+		t.Fatalf("normal median = %.1f, want 40 — the idle-gap and reversed spans must not reach it",
 			projection.NormalMedianMinutes)
 	}
 	if projection.TrivialMedianMinutes != 10 {

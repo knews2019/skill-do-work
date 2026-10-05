@@ -616,7 +616,7 @@ process.stdout.write(JSON.stringify({
 			t.Errorf("%s-day headline stats = %#v, want %#v", windowCase.name, windowCase.got.Stats, windowCase.wantStats)
 		}
 	}
-	wantExclusionSentence := "Panel B excludes 3 spans from its medians (over four hours is an assumed pause, negative is a broken stamp); panel A still plots them."
+	wantExclusionSentence := "Panel B excludes 3 spans from its medians (largest idle gap over 2h, or a negative span from a broken stamp); panel A still plots them."
 	if !strings.Contains(result.Headline30.Summary, wantExclusionSentence) {
 		t.Errorf("summary exclusion rule changed: %q", result.Headline30.Summary)
 	}
@@ -947,7 +947,7 @@ var requestsById = {
 var samples = [
   { id: "REQ-505", wallMinutes: 120 },
   { id: "REQ-504", wallMinutes: 20 },
-  { id: "REQ-503", wallMinutes: 360, excludedReason: "paused" },
+  { id: "REQ-503", wallMinutes: 360, excludedReason: "idle-gap" },
   { id: "REQ-502", wallMinutes: -10, excludedReason: "reversed" }
 ];
 function summarize(groups) {
@@ -1391,7 +1391,7 @@ process.stdout.write(JSON.stringify({
 		{"the serial assumption", "one REQ at a time"},
 		{"the no-parallelism assumption", "no parallel builders"},
 		{"the static-queue assumption", "queue that stops growing"},
-		{"the read-time rule's exclusions", "Paused and reversed spans are excluded"},
+		{"the read-time rule's exclusions", "Idle-gap and reversed spans are excluded"},
 	} {
 		if !strings.Contains(forecastResult.ConfidentText, wantFragment.fragment) {
 			t.Fatalf("the forecast sentence does not state %s (wanted %q in %q)",

@@ -9,10 +9,11 @@
   // gaps are the cadence finding; compressing them would destroy the answer to
   // "how often are these executed".
   //
-  // Panel B applies the calibration's read-time rule (a span over four hours is
-  // an assumed pause, a negative span is a broken stamp) while panel A still
-  // plots both, raw and labelled. The Go side owns that rule — the payload
-  // arrives with `excludedReason` already set, so this file never re-derives it.
+  // Panel B applies the calibration's read-time rule (a largest idle gap between
+  // lifecycle stamps over the ceiling is "idle-gap", a negative span is a broken
+  // stamp) while panel A still plots both, raw and labelled. The Go side owns
+  // that rule — the payload arrives with `excludedReason` already set and the
+  // rule's wording in `exclusionRule`, so this file never re-derives either.
 
   var DURATIONS_SVG_NS = "http://www.w3.org/2000/svg";
   var DURATIONS_VIEW_WIDTH = 1200;
@@ -584,6 +585,7 @@
     var durations = boardData.durations || {};
     var allSamples = durations.samples || [];
     var allDays = durations.days || [];
+    var exclusionRule = durations.exclusionRule || "";
 
     chartHost.textContent = "";
     tableBody.textContent = "";
@@ -626,7 +628,7 @@
     renderDurationsLongestSpans(samples, longestSpansList, longestSpansCount);
 
     // Headline figures describe the SAME projected window Panel A draws. Raw
-    // signed spans are deliberate here: a paused or reversed sample remains a
+    // signed spans are deliberate here: an idle-gap or reversed sample remains a
     // plotted fact even though Panel B's read-time rule excludes it.
     var sortedRawMinutes = samples.map(function (sample) {
       return sample.wallMinutes;
@@ -667,7 +669,9 @@
       excludedSamples.length +
       " span" +
       (excludedSamples.length === 1 ? "" : "s") +
-      " from its medians (over four hours is an assumed pause, negative is a broken stamp); panel A still plots them.";
+      " from its medians (" +
+      exclusionRule +
+      ", or a negative span from a broken stamp); panel A still plots them.";
 
     var svg = document.createElementNS(DURATIONS_SVG_NS, "svg");
     svg.setAttribute("viewBox", "0 0 " + DURATIONS_VIEW_WIDTH + " " + DURATIONS_VIEW_HEIGHT);
@@ -1051,7 +1055,7 @@
       svg,
       "text",
       { x: DURATIONS_MARGIN_LEFT, y: DURATIONS_MEDIAN_TITLE_Y, class: "durations-axis-title" },
-      "B · Median minutes per active day · trailing 7-active-day median · paused and broken spans excluded"
+      "B · Median minutes per active day · trailing 7-active-day median · idle-gap and broken spans excluded"
     );
     [0, 15, 30, 45].forEach(function (minutes) {
       gridRow(
@@ -1264,7 +1268,7 @@
       var sample = mark.sample;
       var note = sample.excludedReason
         ? " · excluded from day medians (" +
-          (sample.excludedReason === "paused" ? "assumed paused session" : "reversed stamp") +
+          (sample.excludedReason === "idle-gap" ? exclusionRule : "reversed stamp") +
           ")"
         : "";
       return (
@@ -1431,8 +1435,8 @@
           sample.route || "—",
           formatDurationStamp(Date.parse(sample.completionTime)),
           formatDurationMinutes(sample.wallMinutes),
-          sample.excludedReason === "paused"
-            ? "excluded from day median — assumed paused session"
+          sample.excludedReason === "idle-gap"
+            ? "excluded from day median — " + exclusionRule
             : sample.excludedReason === "reversed"
             ? "excluded from day median — reversed stamp"
             : ""

@@ -342,7 +342,7 @@ func buildTimelineProjection(tickets []*RequestTicket, aggregate DurationAggrega
 
 // timelineProjectionWindow takes the most recent in-rule samples and splits them
 // by effort bucket. The samples arrive already classified by the read-time rule,
-// so nothing here decides what a paused or reversed span is.
+// so nothing here decides what an idle-gap or reversed span is.
 func timelineProjectionWindow(aggregate DurationAggregate) ([]float64, []float64, []float64) {
 	var trivialMinutes, normalMinutes, windowMinutes []float64
 	for sampleIndex := len(aggregate.Samples) - 1; sampleIndex >= 0; sampleIndex-- {

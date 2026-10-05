@@ -476,17 +476,14 @@ func calibrationAppendProves(session *discoverySession, path string, record requ
 	if err != nil || !after.Exists || !bytes.HasPrefix(after.Bytes, before) {
 		return false
 	}
-	estimate := record.FieldEvidenceByName["estimate"].NestedValues["p50_active_minutes"]
-	claimedAt, claimedError := requestmodel.ParseTimestamp(record.ClaimedAt)
 	completedAt, completedError := requestmodel.ParseTimestamp(record.CompletedAt)
-	if estimate == "" || claimedError != nil || completedError != nil {
+	if completedError != nil {
 		return false
 	}
-	route := record.RouteValue
-	if route == "" {
-		route = "-"
+	want, rowError := requestmodel.FormatCalibrationRow(record, completedAt, after.Bytes)
+	if rowError != nil {
+		return false
 	}
-	want := fmt.Sprintf("%s\t%s\t%s\t%d\t%s\n", record.RequestID, route, estimate, int(completedAt.Sub(claimedAt).Minutes()), requestmodel.CanonicalTimestamp(completedAt))
 	return string(after.Bytes[len(before):]) == want
 }
 

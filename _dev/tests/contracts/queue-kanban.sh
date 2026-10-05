@@ -86,5 +86,15 @@ if [ "$foreign_listener_status" -ne 1 ] || [ -s "$foreign_kill_marker" ]; then
   fail_count=$((fail_count + 1))
 fi
 rm -f "$foreign_kill_marker"
+# REQ-633: Panel B's idle-gap rule (board) and the calibration log's max_stamp_gap_minutes
+# (core CLI) must read one stamp set: the board's phase milestones minus completed_at and release_at.
+board_gap_stamps="$(grep -o 'fieldName: "[a-z_]*"' "$repo_root/skills/do-work-board/tools/queue-kanban/durations.go" \
+  | sed 's/^fieldName: "\(.*\)"$/\1/' | grep -v -x -e completed_at -e release_at | tr '\n' ' ')"
+cli_gap_stamps="$(sed -n 's/^var CalibrationGapStampFields = \[\]string{\(.*\)}$/\1/p' \
+  "$repo_root/skills/do-work/tools/do-work-cli/internal/requestmodel/calibration_row.go" | tr -d '",' | tr -s ' ')"
+if [ -z "$cli_gap_stamps" ] || [ "${board_gap_stamps% }" != "$cli_gap_stamps" ]; then
+  printf 'FAIL: calibration gap stamps (%s) differ from the board phase milestones (%s).\n' "$cli_gap_stamps" "$board_gap_stamps" >&2
+  fail_count=$((fail_count + 1))
+fi
 [ "$fail_count" -eq 0 ] || exit 1
 printf 'queue-kanban contract probes passed.\n'

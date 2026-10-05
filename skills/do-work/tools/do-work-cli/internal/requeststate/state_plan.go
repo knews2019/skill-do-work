@@ -9,7 +9,6 @@ import (
 	"os/exec"
 	"path/filepath"
 	"sort"
-	"strconv"
 	"strings"
 	"time"
 
@@ -406,14 +405,10 @@ func planCalibration(plan *StatePlan) {
 		plan.SkippedWork = append(plan.SkippedWork, resultmodel.SkippedWork{Code: "CALIBRATION-NOT-APPLICABLE", Reason: "request has no estimate block"})
 		return
 	}
-	estimateMinutes, estimateError := strconv.Atoi(estimateEvidence.NestedValues["p50_active_minutes"])
-	claimedAt, claimedError := requestmodel.ParseTimestamp(plan.Target.TypedRecord.ClaimedAt)
-	if estimateError != nil || claimedError != nil {
+	if _, rowError := requestmodel.FormatCalibrationRow(plan.Target.TypedRecord, plan.Options.Now, nil); rowError != nil {
 		plan.SkippedWork = append(plan.SkippedWork, resultmodel.SkippedWork{Code: "CALIBRATION-INVALID-EVIDENCE", Reason: "estimate or claimed_at is not parseable"})
 		return
 	}
-	completedAt := plan.Options.Now
-	wallMinutes := int(completedAt.Sub(claimedAt).Minutes())
 	plan.CalibrationPath = "do-work/calibration-log.tsv"
 	absolutePath := filepath.Join(plan.RepositoryRoot, filepath.FromSlash(plan.CalibrationPath))
 	existingBytes, readError := os.ReadFile(absolutePath)
@@ -424,13 +419,10 @@ func planCalibration(plan *StatePlan) {
 		return
 	}
 	if len(existingBytes) == 0 {
-		existingBytes = []byte("req_id\troute\testimated_p50_minutes\twall_minutes\tcompleted_at\n")
+		existingBytes = []byte(requestmodel.CalibrationLogHeader)
 	}
-	route := plan.Target.TypedRecord.RouteValue
-	if route == "" {
-		route = "-"
-	}
-	row := fmt.Sprintf("%s\t%s\t%d\t%d\t%s\n", plan.Target.TypedRecord.RequestID, route, estimateMinutes, wallMinutes, requestmodel.CanonicalTimestamp(completedAt))
+	// completed_at is not on the record yet: the transition writes Now.
+	row, _ := requestmodel.FormatCalibrationRow(plan.Target.TypedRecord, plan.Options.Now, existingBytes)
 	plan.CalibrationBytes = append(existingBytes, []byte(row)...)
 }
 

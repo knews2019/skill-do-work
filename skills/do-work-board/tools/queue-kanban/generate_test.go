@@ -2453,7 +2453,7 @@ func durationRollingFixtureData(t *testing.T, eligibleDayCount int) generatedDur
 			eligibleDay.completed.Format(time.RFC3339),
 		))
 	}
-	// Five paused spans make 7 July an excluded-only active day and Panel C's
+	// Five idle-gap spans make 7 July an excluded-only active day and Panel C's
 	// odd peak. It must not become a zero in the rolling median.
 	for pausedIndex := 0; pausedIndex < 5; pausedIndex++ {
 		completed := time.Date(2026, 7, 7, 10+pausedIndex, 0, 0, 0, time.UTC)
@@ -3569,8 +3569,9 @@ process.stdout.write(JSON.stringify({ rows: drawnRows }));
 // ---- the done card's implementation span -----------------------------------
 
 // implementationSpanOverCeilingFixtureSpan is the over-ceiling case from the REQ's
-// Red-Green Proof (an overnight pause). The helper below asserts it still
-// exceeds the read-time ceiling, so moving the ceiling cannot quietly turn this
+// Red-Green Proof (an overnight idle stretch with no phase stamps, so the whole
+// span is its largest gap). The helper below asserts it still exceeds the
+// idle-gap ceiling, so moving the ceiling cannot quietly turn this
 // fixture into an ordinary span that witnesses nothing.
 const implementationSpanOverCeilingFixtureSpan = 18 * time.Hour
 
@@ -3602,9 +3603,9 @@ func spanFixtureFrontmatter(requestId string, title string, status string, claim
 // this, so neither holds a hand-written copy of its field names or badge text.
 func buildImplementationSpanFixturePayload(t *testing.T) generatedBoardData {
 	t.Helper()
-	if implementationSpanOverCeilingFixtureSpan <= analysisOutlierCeiling {
-		t.Fatalf("the paused fixture spans %v, which the read-time ceiling (%v) no longer excludes — that case would witness nothing",
-			implementationSpanOverCeilingFixtureSpan, analysisOutlierCeiling)
+	if implementationSpanOverCeilingFixtureSpan <= activityGapCeiling {
+		t.Fatalf("the idle-gap fixture spans %v, which the idle-gap ceiling (%v) no longer excludes — that case would witness nothing",
+			implementationSpanOverCeilingFixtureSpan, activityGapCeiling)
 	}
 	claimInstant := time.Date(2026, 8, 24, 10, 5, 0, 0, time.UTC)
 	ordinaryCompletion := time.Date(2026, 8, 24, 12, 45, 0, 0, time.UTC)
@@ -3653,9 +3654,9 @@ func buildImplementationSpanFixturePayload(t *testing.T) generatedBoardData {
 			claimInstant.Format(time.RFC3339), claimInstant.Format(time.RFC3339))},
 		// REQ-632's Red-Green case: a 4h21m span worked continuously, whose largest
 		// gap between consecutive stamps is the 67 minutes from dispatch to builder
-		// handback. The span crosses the read-time ceiling, so the retired badge
-		// would have called it a pause; the card states its wall time alone and the
-		// drawer states the gap.
+		// handback. The span crosses the retired 4h span ceiling, so the retired
+		// badge would have called it a pause; the card states its wall time alone,
+		// the drawer states the gap, and since REQ-633 Panel B keeps it too.
 		{"do-work/archive/REQ-909-continuous-long-span.md", spanFixtureFrontmatter(
 			"REQ-909", "continuous long span", "completed",
 			claimInstant.Format(time.RFC3339), claimInstant.Add(4*time.Hour+21*time.Minute).Format(time.RFC3339),
@@ -3699,14 +3700,14 @@ func TestGeneratedRequestCarriesTheDoneCardImplementationSpan(t *testing.T) {
 		requirement string
 	}{
 		{"REQ-901", true, 160, "", "both stamps parse and the span is inside the ceiling"},
-		{"REQ-902", true, implementationSpanOverCeilingFixtureSpan.Minutes(), "paused", "an over-ceiling span ships the verdict, never the ceiling"},
+		{"REQ-902", true, implementationSpanOverCeilingFixtureSpan.Minutes(), "idle-gap", "an over-ceiling gap ships the verdict, never the ceiling"},
 		{"REQ-903", true, -160, "reversed", "a reversed span ships raw and signed with the reversed verdict"},
 		{"REQ-904", false, 0, "", "no claimed_at means no measurable span"},
 		{"REQ-905", false, 0, "", "cancelled is terminal but not completed — the request was scoped to completed work"},
 		{"REQ-906", false, 0, "", "a git-dated completion instant is not an implementation span (D-01)"},
 		{"REQ-907", true, 34, "", "completed-with-issues is terminal success and states its span"},
 		{"REQ-908", true, 0, "", "a zero-minute span is measured, not unmeasured — the flag says present, the value says zero"},
-		{"REQ-909", true, 261, "paused", "Panel B keeps its exclusion verdict until REQ-633; only the card badge is gone"},
+		{"REQ-909", true, 261, "", "a 4h21m span whose largest stamp gap is 67 minutes is kept (REQ-633)"},
 	}
 	if len(requestsById) != len(spanExpectations) {
 		t.Fatalf("payload holds %d requests, want %d — a fixture that never parsed asserts nothing", len(requestsById), len(spanExpectations))
@@ -3740,6 +3741,14 @@ func TestGeneratedRequestCarriesTheDoneCardImplementationSpan(t *testing.T) {
 	}
 	if gitDatedPayload.CompletionTimeSource != string(CompletionFromGitLog) {
 		t.Fatalf("REQ-906 completionTimeSource = %q, want %q", gitDatedPayload.CompletionTimeSource, CompletionFromGitLog)
+	}
+
+	// Panel B's rule reaches the client as text derived from the ceiling, never as
+	// a number the client could re-apply (lesson REQ-219). Moving the constant
+	// must move the words.
+	wantRuleText := fmt.Sprintf("largest idle gap over %gh", activityGapCeiling.Hours())
+	if boardData.Durations.ExclusionRule != wantRuleText {
+		t.Errorf("durations.exclusionRule = %q, want %q", boardData.Durations.ExclusionRule, wantRuleText)
 	}
 
 	// The zero span has to survive MARSHALLING, not just the struct: an omitempty
