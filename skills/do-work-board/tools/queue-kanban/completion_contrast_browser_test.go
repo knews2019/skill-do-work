@@ -62,6 +62,7 @@ func TestBrowserBehaviorCompletionCompanionsKeepReadableContrast(t *testing.T) {
 					Title                             completionTextStyle
 					Companions                        []completionTextStyle
 					Controls                          []completionTextStyle
+					ControlLines                      []string
 				}
 				session.decodeResult(t, "completion text styles", session.evaluateInPage(t, `(function () {
   var card = document.querySelector('.req-card[data-status="completed"]');
@@ -82,14 +83,30 @@ func TestBrowserBehaviorCompletionCompanionsKeepReadableContrast(t *testing.T) {
     card: getComputedStyle(card).backgroundColor,
     faintInk: getComputedStyle(card).getPropertyValue('--ink-faint'),
     controls: Array.from(document.querySelectorAll('.req-card:is([data-status="pending"], [data-status="claimed"]) .elapsed-duration'), textStyle),
+    controlLines: Array.from(document.querySelectorAll('.req-card:is([data-status="pending"], [data-status="claimed"]) .elapsed-duration'), function (node) {
+      var line = node.closest('.req-card-completed');
+      return node.closest('.req-card').dataset.status + ':' + (line && line.firstChild ? line.firstChild.textContent.trim() : '');
+    }),
     title: textStyle(card.querySelector('.req-card-title')),
     companions: Array.from(card.querySelectorAll('.req-card-completed .relative-time, .req-card-completed .elapsed-duration'), textStyle)};
 })()`), &measured)
 				if measured.Scheme != scheme || len(measured.Companions) != 2 {
 					t.Fatalf("scheme/readings = %q/%d, want %q/2", measured.Scheme, len(measured.Companions), scheme)
 				}
-				if len(measured.Controls) != 2 {
-					t.Fatalf("nonterminal control readings = %d, want pending and claimed", len(measured.Controls))
+				// Three nonterminal stopwatches: the pending and claimed state timers, and
+				// the claimed card's last-activity line (REQ-632), which must read like
+				// the other live timers rather than like a completion companion.
+				wantControlLines := map[string]bool{"pending:updated": true, "claimed:claimed": true, "claimed:last activity": true}
+				if len(measured.Controls) != len(wantControlLines) || len(measured.ControlLines) != len(wantControlLines) {
+					t.Fatalf("nonterminal control readings = %d %v, want pending timer, claimed timer and claimed last-activity stopwatch",
+						len(measured.Controls), measured.ControlLines)
+				}
+				for _, controlLine := range measured.ControlLines {
+					if !wantControlLines[controlLine] {
+						t.Fatalf("unexpected or repeated nonterminal control %q among %v, want pending timer, claimed timer and claimed last-activity stopwatch",
+							controlLine, measured.ControlLines)
+					}
+					delete(wantControlLines, controlLine)
 				}
 				for _, control := range measured.Controls {
 					if normalizeCSSColour(control.Color) != normalizeCSSColour(measured.FaintInk) || control.Opacity != 0.85 {
