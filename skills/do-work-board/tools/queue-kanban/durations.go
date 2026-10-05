@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"sort"
 	"time"
 )
@@ -30,25 +29,6 @@ import (
 // analysisOutlierCeiling is the read-time rule's upper bound: a wall span longer
 // than this is assumed to include a pause rather than four solid hours of work.
 const analysisOutlierCeiling = 4 * time.Hour
-
-// implementationSpanPausedBadgeText turns the read-time ceiling into the
-// human-facing marker carried by done cards. The client receives the completed
-// label rather than a numeric ceiling, so Go remains the only place that decides
-// which spans cross the rule.
-func implementationSpanPausedBadgeText(ceiling time.Duration) string {
-	wholeHours := int(ceiling / time.Hour)
-	remainingMinutes := int((ceiling % time.Hour) / time.Minute)
-	thresholdText := ""
-	switch {
-	case wholeHours > 0 && remainingMinutes > 0:
-		thresholdText = fmt.Sprintf("%dh%dm", wholeHours, remainingMinutes)
-	case wholeHours > 0:
-		thresholdText = fmt.Sprintf("%dh", wholeHours)
-	default:
-		thresholdText = fmt.Sprintf("%dm", remainingMinutes)
-	}
-	return "over " + thresholdText + " · assumed pause"
-}
 
 // DurationSample is one archived REQ's measured wall span.
 type DurationSample struct {
@@ -249,23 +229,20 @@ type PhaseBreakdownEntry struct {
 	HasElapsed     bool
 }
 
-// buildPhaseBreakdown derives display-only phase observations. The declared
-// pipeline order is authoritative; timestamps are not sorted by their values,
-// so reversed bookkeeping remains visible instead of being silently repaired.
-// claimed_at and completed_at are anchors, not phase stamps. Historical REQs
-// with no parseable optional phase stamp return no breakdown at all.
-func buildPhaseBreakdown(ticket *RequestTicket) []PhaseBreakdownEntry {
-	if ticket == nil {
-		return nil
-	}
+// phaseMilestone is one stamp that opens a pipeline phase, in declared order.
+type phaseMilestone struct {
+	fieldName string
+	label     string
+	rawValue  string
+	optional  bool
+}
 
-	type milestone struct {
-		fieldName string
-		label     string
-		rawValue  string
-		optional  bool
-	}
-	milestones := []milestone{
+// phaseMilestonesOf is the ONE list of phase-opening stamps and their labels.
+// The phase breakdown reads it, and so does the activity collector
+// (activity_correlation.go), which names the phase an activity event or idle
+// gap sits in by the same labels the drawer's phase rows use.
+func phaseMilestonesOf(ticket *RequestTicket) []phaseMilestone {
+	return []phaseMilestone{
 		{fieldName: "claimed_at", label: "Claimed", rawValue: ticket.ClaimedAt},
 		{fieldName: "planning_at", label: "Planning", rawValue: ticket.PlanningAt, optional: true},
 		{fieldName: "dispatch_at", label: "Dispatch", rawValue: ticket.DispatchAt, optional: true},
@@ -277,6 +254,19 @@ func buildPhaseBreakdown(ticket *RequestTicket) []PhaseBreakdownEntry {
 		{fieldName: "completed_at", label: "Completed", rawValue: ticket.CompletedAt},
 		{fieldName: "release_at", label: "Release", rawValue: ticket.ReleaseAt, optional: true},
 	}
+}
+
+// buildPhaseBreakdown derives display-only phase observations. The declared
+// pipeline order is authoritative; timestamps are not sorted by their values,
+// so reversed bookkeeping remains visible instead of being silently repaired.
+// claimed_at and completed_at are anchors, not phase stamps. Historical REQs
+// with no parseable optional phase stamp return no breakdown at all.
+func buildPhaseBreakdown(ticket *RequestTicket) []PhaseBreakdownEntry {
+	if ticket == nil {
+		return nil
+	}
+
+	milestones := phaseMilestonesOf(ticket)
 
 	parsedOptional := false
 	for _, candidate := range milestones {

@@ -72,16 +72,21 @@ const boardMarkdownJsFilename = "board-markdown.js"
 // the single source of truth the client-side script renders every view from, so
 // the board works with zero network once the file is open.
 type generatedBoardData struct {
-	GeneratedAt                       string                          `json:"generatedAt"`
-	ImplementationSpanPausedBadgeText string                          `json:"implementationSpanPausedBadgeText"`
-	Columns                           generatedColumns                `json:"columns"`
-	RequestOrder                      []string                        `json:"requestOrder"`
-	Requests                          map[string]generatedRequest     `json:"requests"`
-	UserRequestOrder                  []string                        `json:"userRequestOrder"`
-	UserRequests                      map[string]generatedUserRequest `json:"userRequests"`
-	Calendar                          []generatedCalendarEntry        `json:"calendar"`
-	Durations                         generatedDurations              `json:"durations"`
-	Timeline                          generatedTimeline               `json:"timeline"`
+	GeneratedAt      string                          `json:"generatedAt"`
+	Columns          generatedColumns                `json:"columns"`
+	RequestOrder     []string                        `json:"requestOrder"`
+	Requests         map[string]generatedRequest     `json:"requests"`
+	UserRequestOrder []string                        `json:"userRequestOrder"`
+	UserRequests     map[string]generatedUserRequest `json:"userRequests"`
+	Calendar         []generatedCalendarEntry        `json:"calendar"`
+	Durations        generatedDurations              `json:"durations"`
+	Timeline         generatedTimeline               `json:"timeline"`
+	// Per-request evidence of recent work, keyed by request id: lifecycle stamps
+	// united with the git commits correlated to each REQ (activity_correlation.go).
+	// A top-level map rather than a field on generatedRequest because it is
+	// attached per response, outside serve's mtime cache, and the cached Requests
+	// map must never be written from a request handler.
+	RequestActivity map[string]generatedRequestActivity `json:"requestActivity,omitempty"`
 	// Activity rows for the Activity view: one entry per parseable lifecycle
 	// stamp and the transition it records, newest first, regardless of status —
 	// so one REQ appears once per transition it went through. Ships unwindowed:
@@ -247,9 +252,9 @@ type generatedRequest struct {
 	// terminal SUCCESS and carries a parseable completion stamp plus at least one
 	// parseable origin, so `hasImplementationSpan` false is a real "unmeasured"
 	// rather than a span of zero. `implementationSpanReason` is "paused" or
-	// "reversed", empty when the span reads plainly. The client receives only the
-	// completed paused badge text above, never a numeric ceiling it could use as
-	// a second rule.
+	// "reversed", empty when the span reads plainly. The card acts only on
+	// "reversed"; "paused" feeds Panel B's exclusion. The client never receives a
+	// numeric ceiling it could use as a second rule.
 	HasImplementationSpan bool `json:"hasImplementationSpan,omitempty"`
 	// Deliberately NOT omitempty: a genuine zero-minute span is possible (identical
 	// stamps, or date-only stamps on both fields, which parseTimestamp accepts), and
@@ -494,7 +499,9 @@ func generateStaticSiteWithPublisher(outputDirectory string, board *Board, publi
 	// The snapshot carries what verify sees at generate time. buildGeneratedBoardData
 	// keeps its board-only signature — a dozen tests call it — so the findings are
 	// folded in here, at the two real callers, rather than threaded through it.
-	attachVerifyFindings(&boardData, board, time.Now())
+	snapshotInstant := time.Now()
+	attachVerifyFindings(&boardData, board, snapshotInstant)
+	attachRequestActivity(&boardData, board, snapshotInstant, runGitCommand)
 	boardMarkdownData := mentionAnalysis.MarkdownData
 
 	boardDataJs, encodeError := encodeBoardDataForJsAssignment(boardData)
@@ -750,13 +757,12 @@ func buildGeneratedBoardData(board *Board) (generatedBoardData, error) {
 
 func buildGeneratedBoardDataWithMentions(board *Board, mentionAnalysis boardTicketAnalysis) (generatedBoardData, error) {
 	data := generatedBoardData{
-		GeneratedAt:                       formatTimestamp(board.GeneratedAt),
-		ImplementationSpanPausedBadgeText: implementationSpanPausedBadgeText(analysisOutlierCeiling),
-		Warnings:                          board.Warnings,
-		TestingProfiles:                   board.TestingProfiles,
-		RepoFileMentions:                  collectRepoFileMentions(board),
-		Requests:                          map[string]generatedRequest{},
-		UserRequests:                      map[string]generatedUserRequest{},
+		GeneratedAt:      formatTimestamp(board.GeneratedAt),
+		Warnings:         board.Warnings,
+		TestingProfiles:  board.TestingProfiles,
+		RepoFileMentions: collectRepoFileMentions(board),
+		Requests:         map[string]generatedRequest{},
+		UserRequests:     map[string]generatedUserRequest{},
 		Columns: generatedColumns{
 			Pending:             requestIdsOf(board.Columns.Pending),
 			PendingReady:        requestIdsOf(board.Columns.PendingReady),

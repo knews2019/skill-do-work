@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math"
 	"regexp"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -1610,6 +1611,12 @@ func TestJavaScriptBehaviorDoneCardStatesItsImplementationSpan(t *testing.T) {
 	if encodeError != nil {
 		t.Fatalf("encode fixture payload: %v", encodeError)
 	}
+	// The real activity map rides along so a done card that HAS activity evidence
+	// is proven to add nothing to its done line (REQ-632: done cards show nothing new).
+	activityJson, activityEncodeError := json.Marshal(boardData.RequestActivity)
+	if activityEncodeError != nil {
+		t.Fatalf("encode fixture activity: %v", activityEncodeError)
+	}
 
 	indexHtml := generateLiveSite(t)
 	functionBlocks := []string{
@@ -1623,7 +1630,7 @@ func TestJavaScriptBehaviorDoneCardStatesItsImplementationSpan(t *testing.T) {
 	}
 	javascriptProbe := `
 var filterState = { searchText: "" };
-var boardData = { implementationSpanPausedBadgeText: ` + mustMarshalJSONString(t, boardData.ImplementationSpanPausedBadgeText) + ` };
+var boardData = { requestActivity: ` + string(activityJson) + ` };
 var requestsById = ` + string(payloadJson) + `;
 function makeNode(tagName) {
   var node = {
@@ -1717,13 +1724,14 @@ process.stdout.write(JSON.stringify(renderedCards));`
 		requirement    string
 	}{
 		{"REQ-901", "done", "2026-08-24T12:45:00Z", "wall time 2h 40m", "an ordinary calibration span is labeled as wall time"},
-		{"REQ-902", "done", "2026-08-25T04:05:00Z", "wall time 18h 00m over 4h · assumed pause", "an over-ceiling wall span is marked as a duration-quality assumption, not a workflow state"},
+		{"REQ-902", "done", "2026-08-25T04:05:00Z", "wall time 18h 00m", "an over-ceiling wall span states its wall time and no assumed-pause badge (REQ-632)"},
 		{"REQ-903", "done", "2026-08-24T10:05:00Z", "reversed stamps", "a reversed span refuses to state a number"},
 		{"REQ-904", "done", "2026-08-24T12:45:00Z", "", "no parseable claimed_at leaves the done line exactly as it was"},
 		{"REQ-905", "cancelled", "2026-08-24T12:45:00Z", "", "a cancelled card states no duration"},
 		{"REQ-906", "done", "2026-08-24T12:45:00Z", "", "a git-dated completion instant states no duration (D-01)"},
 		{"REQ-907", "done", "2026-08-24T10:39:00Z", "wall time 34m 00s", "a sub-hour wall span keeps seconds — the chart's \"34.0 min\" is a different vocabulary"},
 		{"REQ-908", "done", "2026-08-24T10:05:00Z", "wall time 0s", "a zero-minute wall span states zero, never NaN"},
+		{"REQ-909", "done", "2026-08-24T14:26:00Z", "wall time 4h 21m", "a continuously worked 4h21m span carries no badge — its gaps are evidence, the ceiling was a guess (REQ-632)"},
 	}
 	if len(renderedCards) != len(renderExpectations) {
 		t.Fatalf("probe rendered %d cards, want %d", len(renderedCards), len(renderExpectations))
@@ -1757,13 +1765,8 @@ process.stdout.write(JSON.stringify(renderedCards));`
 		if strings.Contains(rendered.SpanText, "SKEW-BRANCH-REACHED") {
 			t.Errorf("%s reached formatElapsedDuration's clock-skew branch; the Go verdict must be branched on first", expectation.requestId)
 		}
-		if expectation.requestId == "REQ-902" {
-			wantTitle := "Duration-quality marker only: this claim-to-completion wall span is longer than the board's " +
-				"single-session ceiling, so it is assumed to include a pause and excluded from duration medians. " +
-				"The REQ remains completed."
-			if rendered.MarkerTitle != wantTitle {
-				t.Errorf("%s marker title = %q, want %q", expectation.requestId, rendered.MarkerTitle, wantTitle)
-			}
+		if expectation.requestId != "REQ-903" && rendered.MarkerTitle != "" {
+			t.Errorf("%s span carries a marker titled %q; only reversed stamps may flag a done span", expectation.requestId, rendered.MarkerTitle)
 		}
 		if expectation.wantSpanText != "" {
 			sawSpanReading = true
@@ -1771,5 +1774,146 @@ process.stdout.write(JSON.stringify(renderedCards));`
 	}
 	if !sawSpanReading {
 		t.Fatalf("no fixture rendered any span reading, so this probe cannot fail on the span text")
+	}
+}
+
+// REQ-632 Red-Green case (a): a claimed card whose only recent evidence is a
+// commit touching its REQ file shows a "last activity" line, and that line's
+// duration node carries data-instant-ms so the 1s ticker (refreshRelativeTimeNodes)
+// keeps it growing — a frozen number would hide exactly the stall it exists to show.
+// The payload comes from the production collector with canned git output; the
+// formatter chain is the real one, with only the clock and the short-instant
+// formatter pinned.
+func TestJavaScriptBehaviorClaimedCardShowsItsLastCorrelatedActivity(t *testing.T) {
+	moment := time.Date(2026, 10, 5, 18, 0, 0, 0, time.UTC)
+	commitInstant := moment.Add(-10 * time.Minute)
+	repoRoot := writeVerifyFixture(t, []verifyFixtureFile{
+		{"do-work/working/REQ-711-live-card.md", spanFixtureFrontmatter(
+			"REQ-711", "live card", "claimed", moment.Add(-3*time.Hour).Format(time.RFC3339), "",
+			"dispatch_at: "+moment.Add(-2*time.Hour).Format(time.RFC3339))},
+		{"do-work/queue/REQ-712-blocked-card.md", spanFixtureFrontmatter(
+			"REQ-712", "blocked card", "blocked", moment.Add(-3*time.Hour).Format(time.RFC3339), "")},
+	})
+	board, buildError := buildBoard(repoRoot, moment, defaultRecentWindow, nil)
+	if buildError != nil {
+		t.Fatalf("buildBoard: %v", buildError)
+	}
+	boardData, projectError := buildGeneratedBoardData(board)
+	if projectError != nil {
+		t.Fatalf("buildGeneratedBoardData: %v", projectError)
+	}
+	runner := &cannedGitRunner{logOutput: func() string {
+		return cannedLogRecord("c1", commitInstant, "c0", "docs(do-work): tidy the queue notes",
+			"do-work/working/REQ-711-live-card.md", "do-work/queue/REQ-712-blocked-card.md")
+	}}
+	attachRequestActivity(&boardData, board, moment, runner.run)
+	requestsJson, encodeError := json.Marshal(boardData.Requests)
+	if encodeError != nil {
+		t.Fatalf("encode requests: %v", encodeError)
+	}
+	activityJson, activityEncodeError := json.Marshal(boardData.RequestActivity)
+	if activityEncodeError != nil {
+		t.Fatalf("encode activity: %v", activityEncodeError)
+	}
+
+	indexHtml := generateLiveSite(t)
+	functionBlocks := []string{
+		sliceBalancedBlockAfter(t, indexHtml, "function createElement("),
+		sliceBalancedBlockAfter(t, indexHtml, "function truncateBadgeText("),
+		sliceBalancedBlockAfter(t, indexHtml, "function makeBadge("),
+		sliceBalancedBlockAfter(t, indexHtml, "function futureStampTooltipText("),
+		sliceBalancedBlockAfter(t, indexHtml, "function makeImplementationSpanNode("),
+		sliceBalancedBlockAfter(t, indexHtml, "function makeRequestCard("),
+		sliceBalancedBlockAfter(t, indexHtml, "function formatElapsedDuration("),
+		sliceBalancedBlockAfter(t, indexHtml, "function makeElapsedDurationNode("),
+		sliceBalancedBlockAfter(t, indexHtml, "function makeInstantWithStopwatchNode("),
+		sliceBalancedBlockAfter(t, indexHtml, "function syncClockSkewTitle("),
+	}
+	javascriptProbe := `
+var filterState = { searchText: "" };
+var boardData = { requestActivity: ` + string(activityJson) + ` };
+var requestsById = ` + string(requestsJson) + `;
+Date.now = function () { return ` + strconv.FormatInt(moment.UnixMilli(), 10) + `; };
+function makeNode(tagName) {
+  var node = {
+    tagName: tagName,
+    className: "",
+    textContent: "",
+    title: "",
+    childNodes: [],
+    dataset: {},
+    setAttribute: function () {},
+    removeAttribute: function () {},
+    appendChild: function (childNode) { this.childNodes.push(childNode); return childNode; }
+  };
+  node.classList = { add: function (extraClass) { node.className += (node.className ? " " : "") + extraClass; } };
+  return node;
+}
+var document = {
+  createElement: function (tagName) { return makeNode(tagName); },
+  createTextNode: function (text) { return { nodeType: "text", text: text, className: "", childNodes: [] }; }
+};
+var futureStampCauseText = "";
+var futureInstantSkewAllowanceMs = 120000;
+var clockSkewMarkerText = "clock skew";
+var clockSkewExplanationText = "clock skew explanation";
+function formatShortInstant(isoText) { return isoText; }
+function formatShortInstantWithRelative(isoText) { return isoText; }
+function activeDependentIds() { return []; }
+function isTerminalResolvedStatus() { return false; }
+function describeRequestStatus(requestId) { return requestId; }
+function stateTimerSpecFor() { return null; }
+function makeInstantWithRelativeNode(isoText) { return document.createTextNode(isoText); }
+` + strings.Join(functionBlocks, "\n") + `
+function nodeText(node) {
+  if (node.nodeType === "text") { return node.text; }
+  return (node.textContent || "") + node.childNodes.map(nodeText).join("");
+}
+function findTickingNode(node) {
+  if (node.dataset && node.dataset.instantMs) { return node; }
+  for (var index = 0; index < (node.childNodes || []).length; index++) {
+    var found = findTickingNode(node.childNodes[index]);
+    if (found) { return found; }
+  }
+  return null;
+}
+var rendered = {};
+["REQ-711", "REQ-712"].forEach(function (requestId) {
+  var card = makeRequestCard(requestId, {});
+  var activityLines = card.childNodes.filter(function (childNode) {
+    return nodeText(childNode).indexOf("last activity") === 0;
+  });
+  var tickingNode = activityLines.length === 1 ? findTickingNode(activityLines[0]) : null;
+  rendered[requestId] = {
+    lineCount: activityLines.length,
+    lineText: activityLines.length === 1 ? nodeText(activityLines[0]) : "",
+    instantMs: tickingNode ? tickingNode.dataset.instantMs : "",
+    tickFormat: tickingNode ? tickingNode.dataset.tickFormat : ""
+  };
+});
+process.stdout.write(JSON.stringify(rendered));`
+
+	probeOutput := runJavaScriptBehaviorProbe(t, "claimed card last activity", javascriptProbe)
+	var rendered map[string]struct {
+		LineCount  int    `json:"lineCount"`
+		LineText   string `json:"lineText"`
+		InstantMs  string `json:"instantMs"`
+		TickFormat string `json:"tickFormat"`
+	}
+	if decodeError := json.Unmarshal(probeOutput, &rendered); decodeError != nil {
+		t.Fatalf("decode rendered cards: %v (output %q)", decodeError, probeOutput)
+	}
+	claimed := rendered["REQ-711"]
+	wantLine := "last activity " + commitInstant.Format(time.RFC3339) + " 10m 00s · dispatch"
+	if claimed.LineCount != 1 || claimed.LineText != wantLine {
+		t.Errorf("claimed card rendered %d activity lines, text %q; want one line %q",
+			claimed.LineCount, claimed.LineText, wantLine)
+	}
+	if claimed.InstantMs != strconv.FormatInt(commitInstant.UnixMilli(), 10) || claimed.TickFormat != "duration" {
+		t.Errorf("activity duration node carries data-instant-ms %q / tickFormat %q; want %d / duration so the ticker owns it",
+			claimed.InstantMs, claimed.TickFormat, commitInstant.UnixMilli())
+	}
+	if blocked := rendered["REQ-712"]; blocked.LineCount != 0 {
+		t.Errorf("blocked card rendered %q; blocked cards state no activity line", blocked.LineText)
 	}
 }

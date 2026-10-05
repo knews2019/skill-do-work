@@ -479,6 +479,21 @@
     });
   }
 
+  // The largest gap between consecutive activity events (stamps and correlated
+  // commits, measured in Go) — an observation, so plain text with no colour and
+  // no threshold. Absent when the REQ has fewer than two events.
+  function appendLargestActivityGapRow(largestActivityGap) {
+    if (!largestActivityGap) {
+      return;
+    }
+    var gapText = formatElapsedDuration(0, Math.round(Number(largestActivityGap.minutes) * 60000));
+    appendMetaRow(
+      "Largest idle gap",
+      gapText + " (" + (largestActivityGap.fromPhase || "before any phase") + " → " +
+        (largestActivityGap.toPhase || "before any phase") + ")"
+    );
+  }
+
   function openRequestDetail(requestId) {
     var request = requestsById[requestId];
     if (!request) {
@@ -613,6 +628,7 @@
       appendMetaRow("Completed", completedRowValue);
     }
     appendPhaseBreakdownRows(request.phaseBreakdown);
+    appendLargestActivityGapRow(((boardData.requestActivity || {})[requestId] || {}).largestActivityGap);
     if (request.completionAnomaly) {
       var anomalyValue = createElement("span", "detail-status-invalid");
       anomalyValue.appendChild(

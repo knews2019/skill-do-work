@@ -2323,3 +2323,69 @@ process.stdout.write(JSON.stringify(rows));`
 		t.Errorf("release tail was not separated from completion: %q", rows[len(rows)-1].Value)
 	}
 }
+
+// REQ-632 Red-Green case (b): the drawer of a 4h21m REQ states its largest idle
+// gap — 67 minutes between dispatch and builder handback — as plain text, so the
+// reader can see the span was worked continuously instead of being told it was
+// a pause. A REQ with no gap states nothing.
+func TestJavaScriptBehaviorDetailStatesTheLargestIdleGap(t *testing.T) {
+	boardData := buildImplementationSpanFixturePayload(t)
+	gapPayload, encodeError := json.Marshal(boardData.RequestActivity["REQ-909"].LargestActivityGap)
+	if encodeError != nil {
+		t.Fatalf("encode gap payload: %v", encodeError)
+	}
+	indexHtml := generateLiveSite(t)
+	// The row must be reached from the drawer itself; a helper nothing calls
+	// would pass the probe below and render nothing (REQ-305).
+	openDetailBlock := sliceBalancedBlockAfter(t, indexHtml, "function openRequestDetail(")
+	if !strings.Contains(openDetailBlock, "appendLargestActivityGapRow(") {
+		t.Fatalf("openRequestDetail never calls appendLargestActivityGapRow(")
+	}
+	functionBlocks := []string{
+		sliceBalancedBlockAfter(t, indexHtml, "function createElement("),
+		sliceBalancedBlockAfter(t, indexHtml, "function appendLargestActivityGapRow("),
+		sliceBalancedBlockAfter(t, indexHtml, "function formatElapsedDuration("),
+	}
+	javascriptProbe := `
+function makeNode(tagName) {
+  return {
+    tagName: tagName,
+    className: "",
+    textContent: "",
+    childNodes: [],
+    appendChild: function (childNode) { this.childNodes.push(childNode); return childNode; }
+  };
+}
+var document = {
+  createElement: function (tagName) { return makeNode(tagName); },
+  createTextNode: function (text) { return { nodeType: "text", text: text, childNodes: [] }; }
+};
+var futureInstantSkewAllowanceMs = 120000;
+var clockSkewMarkerText = "clock skew";
+function nodeText(node) {
+  if (node.nodeType === "text") { return node.text; }
+  return (node.textContent || "") + node.childNodes.map(nodeText).join("");
+}
+var rows = [];
+function appendMetaRow(label, value) { rows.push({ label: label, value: typeof value === "string" ? value : nodeText(value) }); }
+` + strings.Join(functionBlocks, "\n") + `
+appendLargestActivityGapRow(` + string(gapPayload) + `);
+appendLargestActivityGapRow(undefined);
+process.stdout.write(JSON.stringify(rows));`
+
+	probeOutput := runJavaScriptBehaviorProbe(t, "detail largest idle gap", javascriptProbe)
+	var rows []struct {
+		Label string `json:"label"`
+		Value string `json:"value"`
+	}
+	if decodeError := json.Unmarshal(probeOutput, &rows); decodeError != nil {
+		t.Fatalf("decode gap rows: %v (output %q)", decodeError, probeOutput)
+	}
+	if len(rows) != 1 {
+		t.Fatalf("rendered %d gap rows for one gap and one absent gap, want 1: %#v", len(rows), rows)
+	}
+	if rows[0].Label != "Largest idle gap" || rows[0].Value != "1h 07m (dispatch → builder handback)" {
+		t.Errorf("gap row = %q: %q, want %q: %q", rows[0].Label, rows[0].Value,
+			"Largest idle gap", "1h 07m (dispatch → builder handback)")
+	}
+}
