@@ -1,7 +1,7 @@
 ---
 id: REQ-633
 title: 'Panel B and the calibration log exclude by largest stamp gap, not raw span'
-status: pending
+status: claimed
 created_at: 2026-10-05T20:11:59Z
 user_request: UR-135
 domain: backend
@@ -14,6 +14,7 @@ related: ["REQ-632"]
 batch: board-activity-evidence
 depends_on: [REQ-632]
 write_set: ["skills/do-work-board/tools/queue-kanban/durations.go", "skills/do-work-board/tools/queue-kanban/durations_test.go", "skills/do-work-board/tools/queue-kanban/generate.go", "skills/do-work-board/tools/queue-kanban/generate_test.go", "skills/do-work-board/tools/queue-kanban/timeline.go", "skills/do-work-board/tools/queue-kanban/timeline_test.go", "skills/do-work-board/tools/queue-kanban/web/board-durations.js", "skills/do-work-board/tools/queue-kanban/web/board-timeline.js", "skills/do-work-board/tools/queue-kanban/web/board-user-request-summary.js", "skills/do-work-board/tools/queue-kanban/javascript_behavior_a_test.go", "skills/do-work-board/tools/queue-kanban/javascript_behavior_b_test.go", "skills/do-work-board/tools/queue-kanban/javascript_behavior_d_test.go", "skills/do-work-board/docs/board-guide.md", "skills/do-work/actions/estimate-reference.md", "skills/do-work/tools/do-work-cli/internal/requeststate/state_plan.go", "skills/do-work/tools/do-work-cli/internal/requeststate/state_apply.go", "skills/do-work/tools/do-work-cli/internal/requeststate/*_test.go", "do-work/calibration-log.tsv"]
+claimed_at: 2026-10-05T20:55:46Z
 ---
 # Panel B and the Calibration Log Exclude by Largest Stamp Gap, Not Raw Span
 
