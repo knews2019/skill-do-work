@@ -10,6 +10,14 @@ For the complete release history, read this file and the archives below from new
 - [0.50.0 through 0.64.1](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-13-up-to-v0.64.1.md)
 - [0.1.0 through 0.49.0](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-07-up-to-v0.49.0.md)
 
+## 0.305.68 — Panel B and the Calibration Log Exclude by Largest Idle Gap (2026-10-05)
+
+Panel B's day medians dropped every request whose claim-to-completion span passed four hours, as an assumed pause. A long run worked without a break was dropped too, while a short request that sat idle for hours was kept. The rule now looks at the largest gap between a request's lifecycle stamps.
+
+- A request is excluded from the day medians when the largest gap between consecutive lifecycle stamps is over 2 hours (the whole span when it has no phase stamps). The verdict is `idle-gap`, and Panel B, the timeline forecast and the request-group summary say so. `reversed` keeps its meaning.
+- `do-work/calibration-log.tsv` gains a `max_stamp_gap_minutes` column, so the next estimator re-fit can apply the same rule. The header decides the shape: a new log gets the six-column header, and an existing five-column log keeps writing five-column rows.
+- `estimate-reference.md` → Calibration states the new rule, and the board reads it as its second reader.
+
 ## 0.305.67 — Board Cards Show Last Activity Instead of an Assumed-Pause Badge (2026-10-05)
 
 Done cards on the board carried an `over 4h · assumed pause` badge whenever the claim-to-completion span passed four hours, even when the request was worked without a break. In-progress cards had no sign of a stalled request at all. The board now reads the evidence instead of guessing from one number.
