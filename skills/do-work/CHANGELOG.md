@@ -10,6 +10,14 @@ For the complete release history, read this file and the archives below from new
 - [0.50.0 through 0.64.1](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-13-up-to-v0.64.1.md)
 - [0.1.0 through 0.49.0](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-07-up-to-v0.49.0.md)
 
+## 0.305.67 — Board Cards Show Last Activity Instead of an Assumed-Pause Badge (2026-10-05)
+
+Done cards on the board carried an `over 4h · assumed pause` badge whenever the claim-to-completion span passed four hours, even when the request was worked without a break. In-progress cards had no sign of a stalled request at all. The board now reads the evidence instead of guessing from one number.
+
+- A claimed card shows `last activity`: the newest of the request's lifecycle stamps and the git commits linked to it, with a ticking stopwatch and the phase it fell in. A commit is linked when it touches the request's file or run artifacts, carries the `[REQ-NNN]` prefix, sits inside a merge of the request's builder branch, or is the tip of its live `worktree-agent-REQ-NNN-*` branch.
+- The detail drawer of a claimed or recently finished request shows `Largest idle gap`, the longest stretch between two activity events and the phases on each side. It is an observation with no threshold.
+- The assumed-pause badge is gone from done cards. Panel B's day-median exclusion is unchanged in this release.
+
 ## 0.305.66 — Recover's Takeover Message Says Where a Reset Claim Goes (2026-10-02)
 
 Since 0.305.64, `recover` warns that `recover --take-over` resets a claimed request. The warning said the request goes back "as pending", but a request with an unanswered question goes back as `pending-answers`, and a blocked one stays `blocked`.
