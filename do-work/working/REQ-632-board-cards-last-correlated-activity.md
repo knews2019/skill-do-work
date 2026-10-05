@@ -1,7 +1,7 @@
 ---
 id: REQ-632
 title: 'Board cards show last correlated activity and drop the assumed-pause badge'
-status: pending
+status: claimed
 created_at: 2026-10-05T20:11:59Z
 user_request: UR-135
 domain: backend
@@ -13,6 +13,7 @@ effort_estimate: effort-substantive
 related: ["REQ-633"]
 batch: board-activity-evidence
 write_set: ["skills/do-work-board/tools/queue-kanban/activity_correlation.go", "skills/do-work-board/tools/queue-kanban/activity_correlation_test.go", "skills/do-work-board/tools/queue-kanban/serve.go", "skills/do-work-board/tools/queue-kanban/generate.go", "skills/do-work-board/tools/queue-kanban/generate_test.go", "skills/do-work-board/tools/queue-kanban/durations.go", "skills/do-work-board/tools/queue-kanban/durations_test.go", "skills/do-work-board/tools/queue-kanban/web/board-cards.js", "skills/do-work-board/tools/queue-kanban/web/board-detail.js", "skills/do-work-board/tools/queue-kanban/web/board.css", "skills/do-work-board/tools/queue-kanban/javascript_behavior_b_test.go", "skills/do-work-board/docs/board-guide.md"]
+claimed_at: 2026-10-05T20:31:37Z
 ---
 # Board Cards Show Last Correlated Activity and Drop the Assumed-Pause Badge
 
