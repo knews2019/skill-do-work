@@ -38,6 +38,10 @@ type liveBoardServer struct {
 	recentWindow time.Duration
 	htmlPreviews *htmlFolderPreviewManager
 	currentTime  func() time.Time
+	// The git reads behind each response's per-request activity
+	// (activity_correlation.go). Injectable so tests feed canned output and
+	// never spawn git.
+	activityGitRunner gitCommandRunner
 
 	cacheMu             sync.Mutex
 	cachedFileMtimes    map[string]time.Time        // absPath → last-seen mtime
@@ -55,11 +59,12 @@ type liveBoardServer struct {
 // full tree walk and board build.
 func newLiveBoardServer(repoRoot string, recentWindow time.Duration) *liveBoardServer {
 	return &liveBoardServer{
-		repoRoot:         repoRoot,
-		recentWindow:     recentWindow,
-		htmlPreviews:     newHtmlFolderPreviewManager(),
-		currentTime:      time.Now,
-		cachedFileMtimes: map[string]time.Time{},
+		repoRoot:          repoRoot,
+		recentWindow:      recentWindow,
+		htmlPreviews:      newHtmlFolderPreviewManager(),
+		currentTime:       time.Now,
+		activityGitRunner: runGitCommand,
+		cachedFileMtimes:  map[string]time.Time{},
 	}
 }
 
@@ -152,15 +157,21 @@ func (liveServer *liveBoardServer) serveLiveBoardDataJs(responseWriter http.Resp
 	liveBoardData.LiveTestingApi = true
 	liveBoardData.LiveFileApi = true
 
-	// Findings are computed fresh on EVERY request, deliberately outside
+	// Findings and request activity are computed fresh on EVERY request, deliberately outside
 	// refreshBoardData's mtime cache and with no cache of their own. Two of the
 	// probe inputs are not files at all — wall-clock claim age, and `git worktree
 	// list` — so an mtime-keyed cache cannot see them change. A claim crossing the
 	// staleness threshold while no file changes is exactly the case the board was
 	// blind to, and caching these would restore it. Measured at ~40ms for the whole
 	// probe set on a 280-ticket tree, on a page that only reloads manually.
+	// Activity has the same shape: a commit lands without any do-work file's
+	// mtime moving. Both read one `now`, so the response states one instant. The
+	// activity goes into its own top-level map on the copy; the cached Requests
+	// map is shared with the cache and is never written here.
 	if currentBoard := liveServer.currentBoard(); currentBoard != nil {
-		attachVerifyFindings(&liveBoardData, currentBoard, liveServer.currentTime())
+		responseInstant := liveServer.currentTime()
+		attachVerifyFindings(&liveBoardData, currentBoard, responseInstant)
+		attachRequestActivity(&liveBoardData, currentBoard, responseInstant, liveServer.activityGitRunner)
 	}
 
 	jsText, encodeErr := encodeBoardDataForJsAssignment(liveBoardData)

@@ -46,10 +46,10 @@
   // at claimed_at, because that bar is a statement about the claim itself.
   //
   // Both the number and its verdict arrive decided from Go (durations.go's
-  // measureImplementationSpan). Go also supplies the completed pause-badge text,
-  // so the read-time ceiling separating "that much work" from "an overnight
-  // pause" keeps exactly one definition and this renderer never becomes a
-  // second one.
+  // measureImplementationSpan). Only the "reversed" verdict changes the card: a
+  // long span is stated as its wall time, and whether it held an idle stretch is
+  // the drawer's largest-idle-gap row, read from evidence rather than guessed
+  // from the span's length (REQ-632).
   //
   // The node is a PLAIN span.elapsed-duration: it reuses the state timer's
   // vocabulary and styling so the card's two time lines read alike, but it
@@ -91,19 +91,6 @@
         "wall time " + formatElapsedDuration(spanOriginMs, spanEndMs)
       )
     );
-    if (request.implementationSpanReason === "paused") {
-      spanNode.appendChild(document.createTextNode(" "));
-      var pausedFlag = createElement(
-        "span",
-        "status-invalid-flag",
-        boardData.implementationSpanPausedBadgeText || "long span · assumed pause"
-      );
-      pausedFlag.title =
-        "Duration-quality marker only: this claim-to-completion wall span is longer than the board's " +
-        "single-session ceiling, so it is assumed to include a pause and excluded from duration medians. " +
-        "The REQ remains completed.";
-      spanNode.appendChild(pausedFlag);
-    }
     return spanNode;
   }
 
@@ -391,6 +378,24 @@
         var stateTimerLine = createElement("div", "req-card-completed", stateTimerSpec.verbText + " ");
         stateTimerLine.appendChild(stateTimerNode);
         card.appendChild(stateTimerLine);
+      }
+    }
+
+    // In-progress cards state when the REQ was last touched — the newest of its
+    // lifecycle stamps and the git commits correlated to it, decided in Go
+    // (activity_correlation.go) — through the same ticking stopwatch as the
+    // state timer, so a stalled claim shows a number that keeps growing. Only
+    // claimed cards: blocked and pending-answers cards are waiting by design.
+    var activity = (boardData.requestActivity || {})[requestId];
+    if (request.status === "claimed" && activity && activity.lastActivityAt) {
+      var activityNode = makeInstantWithStopwatchNode(activity.lastActivityAt);
+      if (activityNode) {
+        var activityLine = createElement("div", "req-card-completed", "last activity ");
+        activityLine.appendChild(activityNode);
+        if (activity.lastActivityPhase) {
+          activityLine.appendChild(document.createTextNode(" · " + activity.lastActivityPhase));
+        }
+        card.appendChild(activityLine);
       }
     }
 

@@ -50,9 +50,11 @@ It says so when it does not know. `at least` means the figure is a floor because
 | `overlaps …` | declared write sets could collide — see below |
 | `anomaly`, `⚠ future stamp` | broken completion bookkeeping (unresolvable or reversed span), or a timestamp later than now |
 | `took …` | wall-clock span from `claimed_at` to `completed_at`; informational, not a workflow state |
-| `over 4h · assumed pause` | the span crossed the board's single-session ceiling, so it is assumed to include a pause and is excluded from duration medians; the REQ remains completed |
+| `last activity …` | claimed cards only: the newest of the REQ's lifecycle stamps and the git commits correlated to it (a commit touching its REQ file or run artifacts, a `[REQ-NNN]` subject prefix, a builder commit inside its merge, or its live `worktree-agent-REQ-NNN-*` branch tip), with a ticking stopwatch and the phase it fell in; a number that keeps growing means nobody has touched the REQ |
 | `reversed stamps` | `completed_at` is earlier than `claimed_at`, so the card refuses to state a duration; use the `anomaly` badge to find the stamp to repair |
 | `testing …` | the card carries a testing record |
+
+A long `took …` span is not marked as a pause. To see whether a claimed or recently finished REQ sat idle, open its drawer: the **Largest idle gap** row states the longest stretch between two consecutive activity events and the phases on each side, for example `1h 07m (dispatch → builder handback)`. It is an observation, with no threshold.
 
 ### Reading the `overlaps` badge
 
