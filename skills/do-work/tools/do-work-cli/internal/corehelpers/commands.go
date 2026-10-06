@@ -405,6 +405,8 @@ func findingSpecificCommands(code string, paths []string) ([]string, []string) {
 		return []string{"git", "diff", "--name-only", "--", ".", ":(exclude)do-work/"}, []string{"git", "status", "--short", "--", ".", ":(exclude)do-work/"}
 	case "ASSOCIATION-UNOWNED":
 		return withPaths("git", "diff"), withPaths("git", "status", "--short")
+	case "ASSOCIATION-SUMMARY-UNPARSED":
+		return withPaths("sed", "-n", "/^## Implementation Summary/,$p"), withPaths("grep", "-n", "`")
 	case "RESERVATION-MALFORMED", "RESERVATION-RACED", "RESERVATION-REMOVE-FAILED", "RESERVATION-ROOT-RACED", "RESERVATION-ROOT-UNSAFE", "RESERVATION-GIT-AUTHORITY-UNAVAILABLE":
 		return []string{"do-work-cli", CommandCleanupReservations, "--dry-run"}, []string{"do-work-cli", "--format", "json", CommandCleanupReservations, "--dry-run"}
 	case "HANDOFF-WORKTREE-MISSING":

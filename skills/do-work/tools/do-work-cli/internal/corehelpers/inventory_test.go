@@ -390,7 +390,7 @@ func TestAssociationUnderWorkingDirectoryCheckoutSkipsBlockedArchivedRequest(t *
 	writeMatrixFile(t, repository, "do-work/working/REQ-906-blocked-in-flight.md", "---\nid: REQ-906\nstatus: blocked\n---\n\n## Implementation Summary\n- `in-flight.txt` (modified)\n")
 	writeMatrixFile(t, repository, "project.txt", "uncommitted\n")
 	writeMatrixFile(t, repository, "in-flight.txt", "uncommitted\n")
-	associations, err := AssociateProjectPaths(repository, []string{"project.txt", "in-flight.txt"})
+	associations, _, err := AssociateProjectPaths(repository, []string{"project.txt", "in-flight.txt"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -399,6 +399,29 @@ func TestAssociationUnderWorkingDirectoryCheckoutSkipsBlockedArchivedRequest(t *
 	}
 	if owner := associations["in-flight.txt"]; owner != "REQ-906" {
 		t.Fatalf("working request must claim in-flight.txt whatever its status says: owner=%q", owner)
+	}
+}
+
+// A consumer's ~2,000-REQ archive held one record with an odd number of
+// backticks on a Summary line, and the parse error ended the whole walk, so
+// every do-work commit exited 2. Archive records are immutable: the one record
+// must claim nothing and be reported, while every other record still claims.
+func TestAssociationSkipsUnparseableSummaryAndKeepsWalking(t *testing.T) {
+	repository := t.TempDir()
+	writeMatrixFile(t, repository, "do-work/archive/UR-301/REQ-502-unmatched-summary.md", "---\nid: REQ-502\nstatus: completed\ncompleted_at: 2026-08-07T12:00:00Z\n---\n\n## Implementation Summary\n\n**Files changed:**\n- `legacy-file.txt`, `unclosed-file.txt\n")
+	writeMatrixFile(t, repository, "do-work/archive/UR-301/REQ-503-good-owner.md", "---\nid: REQ-503\nstatus: completed\ncompleted_at: 2026-08-06T12:00:00Z\n---\n\n## Implementation Summary\n\n**Files changed:**\n- `good-file.txt` (modified)\n")
+	associations, unparsed, err := AssociateProjectPaths(repository, []string{"good-file.txt", "legacy-file.txt"})
+	if err != nil {
+		t.Fatalf("one unparseable REQ file must not fail the walk: %v", err)
+	}
+	if owner := associations["good-file.txt"]; owner != "REQ-503" {
+		t.Fatalf("good-file.txt owner = %q, want REQ-503", owner)
+	}
+	if owner := associations["legacy-file.txt"]; owner != "" {
+		t.Fatalf("the unparseable REQ file must claim no paths, got owner %q for legacy-file.txt", owner)
+	}
+	if len(unparsed) != 1 || unparsed[0].RequestPath != "do-work/archive/UR-301/REQ-502-unmatched-summary.md" || unparsed[0].ParseMessage == "" {
+		t.Fatalf("unparseable REQ file must be reported exactly once with its repository-relative path and a message: %#v", unparsed)
 	}
 }
 
@@ -633,7 +656,7 @@ func TestProtectedInventoryCompatibilityShimPreservesErrors(t *testing.T) {
 		}
 	})
 
-	t.Run("preserves PARSE-FAILED", func(t *testing.T) {
+	t.Run("unparseable summary claims no paths and warns", func(t *testing.T) {
 		repository := newGitFixture(t)
 		if err := os.WriteFile(filepath.Join(repository, "file.txt"), []byte("changed\n"), 0o600); err != nil {
 			t.Fatal(err)
@@ -642,20 +665,36 @@ func TestProtectedInventoryCompatibilityShimPreservesErrors(t *testing.T) {
 		if start.Outcome != resultmodel.OutcomeSuccess {
 			t.Fatalf("start failed: %#v", start)
 		}
-		workingReq := filepath.Join(repository, "do-work", "working", "REQ-999.md")
-		if err := os.MkdirAll(filepath.Dir(workingReq), 0o755); err != nil {
-			t.Fatal(err)
-		}
-		if err := os.WriteFile(workingReq, []byte("---\nid: REQ-999\nstatus: claimed\n---\n\n## Implementation Summary\n- `unmatched\n"), 0o600); err != nil {
-			t.Fatal(err)
-		}
+		writeMatrixFile(t, repository, "do-work/working/REQ-999.md", "---\nid: REQ-999\nstatus: claimed\n---\n\n## Implementation Summary\n- `unmatched\n")
+		writeMatrixFile(t, repository, "do-work/archive/REQ-503-owner.md", "---\nid: REQ-503\nstatus: completed\ncompleted_at: 2026-08-06T12:00:00Z\n---\n\n## Implementation Summary\n- `file.txt` (modified)\n")
 		associate := handleProtectedInventory(testContext(repository), []string{"associate"})
+		if associate.Outcome != resultmodel.OutcomeSuccess {
+			t.Fatalf("associate must succeed past an unparseable REQ file: %#v", associate)
+		}
 		rendered, err := resultmodel.RenderResult(associate, resultmodel.FormatText)
 		if err != nil {
 			t.Fatal(err)
 		}
-		if !strings.Contains(string(rendered), "PARSE-FAILED") {
-			t.Fatalf("expected PARSE-FAILED in rendered output, got: %q", string(rendered))
+		if !strings.Contains(string(rendered), "REQ-503\tfile.txt\n") || strings.Contains(string(rendered), "PARSE-FAILED") {
+			t.Fatalf("expected the REQ-503 owner row and no PARSE-FAILED, got: %q", string(rendered))
+		}
+		unparsedFindings := []resultmodel.CommandFinding{}
+		for _, finding := range associate.Findings {
+			if finding.Code == "ASSOCIATION-SUMMARY-UNPARSED" {
+				unparsedFindings = append(unparsedFindings, finding)
+			}
+		}
+		if len(unparsedFindings) != 1 {
+			t.Fatalf("want one ASSOCIATION-SUMMARY-UNPARSED finding, got %#v", associate.Findings)
+		}
+		// The runtime prints warning findings to stderr after the exact text, so
+		// the severity is what makes the skipped file visible in shim mode.
+		finding := unparsedFindings[0]
+		if finding.Severity != resultmodel.SeverityWarning || len(finding.AffectedPaths) != 1 || finding.AffectedPaths[0] != "do-work/working/REQ-999.md" || len(finding.Evidence) != 1 || finding.Evidence[0] == "" {
+			t.Fatalf("finding must be a warning naming the REQ file with the parser message: %#v", finding)
+		}
+		if len(finding.NextArgv) == 0 || len(finding.VerificationArgv) == 0 {
+			t.Fatalf("warning finding must carry exact next and verification argv: %#v", finding)
 		}
 	})
 

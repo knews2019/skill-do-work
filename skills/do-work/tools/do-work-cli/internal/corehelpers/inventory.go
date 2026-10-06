@@ -210,12 +210,8 @@ func handleAssociate(executionContext commandruntime.ExecutionContext, arguments
 			return resultmodel.CommandResult{Outcome: resultmodel.OutcomeFailure, ExactTextOutput: &exact, ExitCodeOverride: 2}
 		}
 	}
-	associations, err := AssociateProjectPaths(executionContext.RepositoryRoot, candidates)
+	associations, unparsedSummaries, err := AssociateProjectPaths(executionContext.RepositoryRoot, candidates)
 	if err != nil {
-		if os.Getenv("DO_WORK_COMPATIBILITY_SHIM") == "1" && strings.Contains(err.Error(), "unmatched backtick") {
-			exact := "PARSE-FAILED: " + err.Error() + "\n"
-			return resultmodel.CommandResult{Outcome: resultmodel.OutcomeFailure, ExactTextOutput: &exact, ExitCodeOverride: 2}
-		}
 		return usageResult(CommandAssociate, err.Error())
 	}
 	findings := []resultmodel.CommandFinding{}
@@ -230,6 +226,11 @@ func handleAssociate(executionContext commandruntime.ExecutionContext, arguments
 			evidence = "owned by " + id
 		}
 		findings = append(findings, helperFinding(code, severity, []string{candidate}, evidence, resultmodel.FixabilityManual, map[bool]string{true: "assign or quarantine the path", false: ""}[id == ""], nil, nil))
+	}
+	// A skipped REQ file is a warning, never a failure: in shim text mode the
+	// runtime prints it to stderr after the owner rows, so the skip is announced.
+	for _, unparsed := range unparsedSummaries {
+		findings = append(findings, helperFinding("ASSOCIATION-SUMMARY-UNPARSED", resultmodel.SeverityWarning, []string{unparsed.RequestPath}, unparsed.ParseMessage+"; this REQ file claims no paths", resultmodel.FixabilityManual, "report the skipped REQ file", nil, nil))
 	}
 	result := resultmodel.CommandResult{Outcome: resultmodel.OutcomeSuccess, Findings: findings}
 	if os.Getenv("DO_WORK_COMPATIBILITY_SHIM") == "1" {
@@ -247,13 +248,23 @@ func handleAssociate(executionContext commandruntime.ExecutionContext, arguments
 	return result
 }
 
+// UnparsedSummaryRecord names one REQ file the association walk skipped
+// because its Implementation Summary did not parse. That file claims no paths.
+type UnparsedSummaryRecord struct {
+	RequestPath  string // repository-relative, slash-separated
+	ParseMessage string
+}
+
 // AssociateProjectPaths exposes Implementation Summary ownership for project
-// paths only. Shared do-work metadata is deliberately always unowned.
-func AssociateProjectPaths(repositoryRoot string, candidates []string) (map[string]string, error) {
+// paths only. Shared do-work metadata is deliberately always unowned. A REQ
+// file whose Implementation Summary does not parse claims no paths and is
+// returned in the skipped list; one record's formatting never fails the walk.
+func AssociateProjectPaths(repositoryRoot string, candidates []string) (map[string]string, []UnparsedSummaryRecord, error) {
 	claims := map[string]struct {
 		id        string
 		completed time.Time
 	}{}
+	unparsedSummaries := []UnparsedSummaryRecord{}
 	// A working/ REQ is in flight whatever its status says; an archive/ REQ
 	// counts only on a terminal-success alias. Which case applies comes from
 	// the root being walked, never from the absolute path: a checkout beneath a
@@ -300,7 +311,12 @@ func AssociateProjectPaths(repositoryRoot string, candidates []string) (map[stri
 			}
 			paths, found, parseErr := allBacktickedPaths(string(contents), "Implementation Summary")
 			if parseErr != nil {
-				return parseErr
+				relativePath, relError := filepath.Rel(repositoryRoot, path)
+				if relError != nil {
+					relativePath = path
+				}
+				unparsedSummaries = append(unparsedSummaries, UnparsedSummaryRecord{RequestPath: filepath.ToSlash(relativePath), ParseMessage: parseErr.Error()})
+				return nil
 			}
 			if !found {
 				return nil
@@ -324,14 +340,14 @@ func AssociateProjectPaths(repositoryRoot string, candidates []string) (map[stri
 			return nil
 		})
 		if walkError != nil {
-			return nil, walkError
+			return nil, nil, walkError
 		}
 	}
 	output := map[string]string{}
 	for _, candidate := range candidates {
 		output[candidate] = claims[candidate].id
 	}
-	return output, nil
+	return output, unparsedSummaries, nil
 }
 
 func terminalSuccessStatus(status string) bool {
