@@ -1,7 +1,7 @@
 ---
 id: REQ-634
 title: 'A REQ file the association walk cannot parse claims no paths, and do-work commit continues'
-status: pending
+status: claimed
 created_at: 2026-10-06T15:27:35Z
 user_request: UR-136
 domain: backend
@@ -11,6 +11,7 @@ maintenance: false
 impact: impact-user-visible
 effort_estimate: effort-substantive
 write_set: [skills/do-work/tools/do-work-cli/internal/corehelpers/inventory.go, skills/do-work/tools/do-work-cli/internal/corehelpers/inventory_test.go, _dev/tests/contracts/core-checks.sh, skills/do-work/actions/commit.md, skills/do-work-toolbox/actions/inspect.md, skills/do-work/docs/prescribed-shell-primitives.md, skills/do-work/CHANGELOG.md, skills/do-work/tools/do-work-cli/lessons-do-work-cli.md, do-work/lessons-index.md]
+claimed_at: 2026-10-06T15:47:41Z
 ---
 # A REQ File the Association Walk Cannot Parse Claims No Paths, and do-work Commit Continues
 
