@@ -361,6 +361,10 @@ elif ! grep -qxF "$(printf 'REQ-501\tlegacy-file.txt')" <<<"$associate_complete_
 fi
 rm -rf -- "$associate_complete_probe_dir"
 
+# One archived REQ with an unmatched backtick must not stop association for
+# every other REQ: archive records are immutable, so a walk-level failure here
+# made every do-work commit exit 2 forever. The unparseable file claims nothing
+# and is named on stderr; the good claim still prints on stdout.
 associate_unmatched_probe_dir="$(mktemp -d)"
 mkdir -p "$associate_unmatched_probe_dir/do-work/archive/UR-301"
 cat > "$associate_unmatched_probe_dir/do-work/archive/UR-301/REQ-502-unmatched-summary.md" <<'EOF'
@@ -375,16 +379,34 @@ completed_at: 2026-08-07T12:00:00Z
 **Files changed:**
 - `legacy-file.txt`, `unclosed-file.txt
 EOF
-if associate_unmatched_output="$(printf 'legacy-file.txt\n' | "$core_root/tools/checks/associate-files.sh" --repo-root "$associate_unmatched_probe_dir" 2>&1)"; then
+cat > "$associate_unmatched_probe_dir/do-work/archive/UR-301/REQ-503-legacy-owner.md" <<'EOF'
+---
+id: REQ-503
+status: completed
+completed_at: 2026-08-06T12:00:00Z
+---
+
+## Implementation Summary
+
+**Files changed:**
+- `legacy-file.txt` (modified)
+EOF
+associate_unmatched_stderr="$(mktemp)"
+if associate_unmatched_output="$(printf 'legacy-file.txt\n' | "$core_root/tools/checks/associate-files.sh" --repo-root "$associate_unmatched_probe_dir" 2>"$associate_unmatched_stderr")"; then
   associate_unmatched_exit=0
 else
   associate_unmatched_exit=$?
 fi
-if [ "$associate_unmatched_exit" -ne 2 ] || ! grep -qF 'PARSE-FAILED:' <<<"$associate_unmatched_output"; then
-  printf 'FAIL: tools/checks/associate-files.sh must fail loudly with exit 2 when a path-led Implementation Summary bullet has an unmatched backtick; got exit %s: %s\n' \
-    "$associate_unmatched_exit" "$associate_unmatched_output" >&2
+associate_unmatched_errors="$(cat "$associate_unmatched_stderr")"
+if [ "$associate_unmatched_exit" -ne 0 ] \
+    || ! grep -qxF "$(printf 'REQ-503\tlegacy-file.txt')" <<<"$associate_unmatched_output" \
+    || grep -qF 'PARSE-FAILED' <<<"$associate_unmatched_output$associate_unmatched_errors" \
+    || ! grep -qF 'do-work/archive/UR-301/REQ-502-unmatched-summary.md' <<<"$associate_unmatched_errors"; then
+  printf 'FAIL: tools/checks/associate-files.sh must skip a REQ file whose Implementation Summary has an unmatched backtick: exit 0, the other REQ claim on stdout, the skipped REQ file named on stderr, no PARSE-FAILED; got exit %s, stdout: %s, stderr: %s\n' \
+    "$associate_unmatched_exit" "$associate_unmatched_output" "$associate_unmatched_errors" >&2
   fail_count=$((fail_count + 1))
 fi
+rm -f -- "$associate_unmatched_stderr"
 rm -rf -- "$associate_unmatched_probe_dir"
 
 # A git-status failure is not a clean tree. Process substitution used to hide
