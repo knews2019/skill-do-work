@@ -10,6 +10,14 @@ For the complete release history, read this file and the archives below from new
 - [0.50.0 through 0.64.1](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-13-up-to-v0.64.1.md)
 - [0.1.0 through 0.49.0](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-07-up-to-v0.49.0.md)
 
+## 0.305.69 — Commit Association Survives a REQ File It Cannot Parse (2026-10-06)
+
+One archived request whose Implementation Summary bullet carried an odd number of backticks made `do-work commit` exit 2 with `PARSE-FAILED` at its association step, in every later commit, because archive records are immutable. One record's formatting no longer stops the commit.
+
+- `protected-inventory associate` treats a request file whose Implementation Summary cannot be parsed as claiming no paths, keeps walking, and exits 0 with its owner rows unchanged. The skipped file is named by an `ASSOCIATION-SUMMARY-UNPARSED` warning, printed on stderr in text mode and carried as a finding in JSON.
+- `PARSE-FAILED` is gone. The commit and inspect actions and the shell primitives guide say what a skipped record means instead of listing it as an exit-2 case.
+- How a path may be written is unchanged: qualification and scope-drift still refuse an unmatched backtick in the request being finalized, where the author can fix it.
+
 ## 0.305.68 — Panel B and the Calibration Log Exclude by Largest Idle Gap (2026-10-05)
 
 Panel B's day medians dropped every request whose claim-to-completion span passed four hours, as an assumed pause. A long run worked without a break was dropped too, while a short request that sat idle for hours was kept. The rule now looks at the largest gap between a request's lifecycle stamps.
