@@ -845,7 +845,7 @@ All 2 requests completed:
 
 ## Decision Brief (hand-back format)
 
-The canonical shape for handing work back to the user. Used by the end-of-run completion hand-back (work.md Step 10 / Progress Reporting), `actions/clarify.md`'s question presentation, and `actions/review-work.md`'s Step 9 report. Lead with what was built and what needs the user; **never lead with a self-grade**. Applies `crew-members/anti-slop.md` § 8 (lead with the decision) and the decide-vs-escalate gate in `crew-members/coding-guardrails.md` § Think Before Coding. Render only the sections that have content. When the run manifest carries a hand-back emphasis note (`actions/work.md` → **Mid-Run Messages (any step)**), read it first and order what each section shows by it; the sections and their rules stay the same.
+The canonical shape for handing work back to the user. Used by the end-of-run completion hand-back (work.md Step 10 / Progress Reporting), `actions/clarify.md`'s question presentation, and `actions/review-work.md`'s Step 9 report. Lead with what was built and what needs the user; **never lead with a self-grade**. Applies `crew-members/anti-slop.md` § 8 (lead with the decision) and the decide-vs-escalate gate in `crew-members/coding-guardrails.md` § Think Before Coding. Render only the sections that have content. When the run manifest carries a hand-back emphasis note (`actions/work.md` → **Mid-Run Messages (any step)**), read it first and order the sections, and what each shows, by it; each section keeps its own rules.
 
 ```
 WHAT'S BEING BUILT            (feature + subsystem altitude — the value)
