@@ -1,7 +1,7 @@
 ---
 id: REQ-641
 title: '[impact-rule-change] Wave-end consistency check: the last review in a fan-out wave also sweeps for elements earlier members redefined'
-status: pending
+status: claimed
 created_at: 2026-10-07T19:12:33Z
 user_request: UR-138
 domain: general
@@ -14,6 +14,7 @@ related: [REQ-639, REQ-640]
 batch: coordination-lessons
 depends_on: [REQ-640]
 write_set: [skills/do-work/actions/review-work.md, skills/do-work/actions/work-reference.md]
+claimed_at: 2026-10-07T20:07:41Z
 ---
 # Wave-End Consistency Check
 ## What
