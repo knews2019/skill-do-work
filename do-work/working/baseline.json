@@ -1,5 +1,5 @@
 {
-  "test_command": "bash do-work/runs/work-2026-10-07-191445/REQ-640-probe.sh",
+  "test_command": "bash do-work/runs/work-2026-10-07-191445/REQ-641-probe.sh",
   "exit_status": 0,
   "launched": true
 }
