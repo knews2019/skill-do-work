@@ -121,7 +121,7 @@ For each parsed request, check for similar existing ones across both tiers. A re
 | Existing request is in... | Action | New REQ lands in |
 |---------------------------|--------|-----------------|
 | `do-work/queue/` | If same: tell user, skip. If similar: ask. If enhancement: append an Addendum section to the pending file | N/A — amends the existing pending file |
-| `do-work/working/` | **NEVER modify.** Create a new addendum REQ with `addendum_to` field | `do-work/queue/` — work loop picks it up |
+| `do-work/working/` | **NEVER modify.** Create a new addendum REQ with `addendum_to` field. A message that arrives during a live run in this session is routed by `actions/work.md` → **Mid-Run Messages (any step)** first | `do-work/queue/` — work loop picks it up |
 | `do-work/archive/` | **NEVER modify.** Create a new addendum REQ with `addendum_to` field | `do-work/queue/` — work loop picks it up |
 
 **Addendum to a queued request** — don't rewrite, append:
