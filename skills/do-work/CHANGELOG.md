@@ -10,6 +10,12 @@ For the complete release history, read this file and the archives below from new
 - [0.50.0 through 0.64.1](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-13-up-to-v0.64.1.md)
 - [0.1.0 through 0.49.0](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-07-up-to-v0.49.0.md)
 
+## 0.305.73 — Release Guard Reads the Module Declaration Once (2026-10-07)
+
+Internal cleanup in the finalization release guard. Behaviour is unchanged.
+
+- The shipped-change release guard now reads `suite/modules.tsv` once instead of twice. Before, it read the versioned module roots, then read all declared module sources again and merged the two lists, although the first list is only a filtered part of the second. Now it reads the declared sources once, treats the repository as a consumer project when no declared source has its own tracked `VERSION` (the same rule as before), and adds `suite` and `tools`. The list of shipped roots and the refusal message are the same for every input.
+
 ## 0.305.72 — Board Panel B Agrees With the Calibration Log at the 2h Gap Boundary (2026-10-07)
 
 The Durations page's Panel B and the calibration log now make the same call on a REQ whose largest stamp gap is just over 2h, and the drawer row that shows the largest gap has a clearer name.
