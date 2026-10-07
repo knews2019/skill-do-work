@@ -1,7 +1,7 @@
 ---
 id: REQ-636
 title: 'Board activity counts only commits the builder branch owns, and each served board response lists worktrees and agent branches once'
-status: pending
+status: claimed
 created_at: 2026-10-06T22:45:18Z
 user_request: UR-137
 domain: backend
@@ -14,6 +14,7 @@ related: [REQ-635, REQ-637, REQ-638]
 batch: review-0305-69-findings
 required_lessons: [_dev/primes/lessons-releases.md]
 write_set: [skills/do-work-board/tools/queue-kanban/activity_correlation.go, skills/do-work-board/tools/queue-kanban/activity_correlation_test.go, skills/do-work-board/tools/queue-kanban/verify.go, skills/do-work-board/tools/queue-kanban/verify_test.go, skills/do-work-board/tools/queue-kanban/serve.go, skills/do-work-board/tools/queue-kanban/generate.go, skills/do-work/CHANGELOG.md, skills/do-work-board/tools/queue-kanban/lessons-do-kanban.md, do-work/lessons-index.md]
+claimed_at: 2026-10-07T13:36:25Z
 ---
 # Board Activity Counts Only Commits the Builder Branch Owns, and Each Served Board Response Lists Worktrees and Agent Branches Once
 
