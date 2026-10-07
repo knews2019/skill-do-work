@@ -1,7 +1,7 @@
 ---
 id: REQ-638
 title: '[impact-negligible] Release guard reads suite/modules.tsv once instead of merging two reads of the same declaration'
-status: pending
+status: claimed
 created_at: 2026-10-06T22:45:18Z
 user_request: UR-137
 domain: backend
@@ -14,6 +14,7 @@ related: [REQ-635, REQ-636, REQ-637]
 batch: review-0305-69-findings
 required_lessons: [_dev/primes/lessons-releases.md]
 write_set: [skills/do-work/tools/do-work-cli/internal/finalization/finalization_release_guard.go, skills/do-work/CHANGELOG.md]
+claimed_at: 2026-10-07T15:01:06Z
 ---
 # Release Guard Reads suite/modules.tsv Once Instead of Merging Two Reads of the Same Declaration
 
