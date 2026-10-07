@@ -179,10 +179,11 @@ func runVerifyProbes(repoRootOverride string, now time.Time) (VerifyReport, erro
 // board build is the expensive half, the probes are the cheap half.
 //
 // `now` is a parameter rather than read here for the same reason it always was:
-// claim-age findings must be deterministic in tests, and — since serve calls this
-// outside its mtime cache — a claim must be able to cross the staleness threshold
-// on a tree where no file has changed. Passing a stale `now` would silently restore
-// the blind spot the split was made to remove.
+// claim-age findings must be deterministic in tests, and — since serve runs the
+// probes outside its mtime cache (through collectVerifyFindingsFromGitState) — a
+// claim must be able to cross the staleness threshold on a tree where no file has
+// changed. Passing a stale `now` would silently restore the blind spot the split
+// was made to remove.
 func collectVerifyFindings(repoRoot string, board *Board, now time.Time) VerifyReport {
 	return collectVerifyFindingsFromGitState(repoRoot, board, now, readWorktreeAgentGitState(repoRoot, runGitCommand))
 }
