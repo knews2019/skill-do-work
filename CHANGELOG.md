@@ -10,6 +10,14 @@ For the complete release history, read this file and the archives below from new
 - [0.50.0 through 0.64.1](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-13-up-to-v0.64.1.md)
 - [0.1.0 through 0.49.0](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-07-up-to-v0.49.0.md)
 
+## 0.305.70 — Recover Take-Over Keeps User Text Under an Indented Heading (2026-10-07)
+
+Data-loss fix in `recover --take-over`: a request that showed an example `## Plan` heading indented by four spaces or a tab lost that example and the user text after it, because the section reader treated the indented line as a real heading and recovery deleted the "generated" section it seemed to start. The section reader now follows the CommonMark indent rule.
+
+- A `## ` heading, and a code fence opener or closer, counts only after zero to three spaces. A tab in the indentation or a fourth space makes the line indented code, so recovery leaves it and the text below it alone, `advance` stops reporting a false duplicate section, and the Timing writer no longer overwrites an indented `## Timing` sample.
+- A fence line whose info string holds `<!--` opens the fence and nothing else. Before, it also opened a comment that never closed, every later heading disappeared, and the Timing writer appended a second `## Timing` section.
+- A `<!--` inside an inline code span on the same line is quoted text, not a comment. A request that quoted `<!--` in backticks used to hide all of its own later sections from `advance`.
+
 ## 0.305.69 — Commit Association Survives a REQ File It Cannot Parse (2026-10-06)
 
 One archived request whose Implementation Summary bullet carried an odd number of backticks made `do-work commit` exit 2 with `PARSE-FAILED` at its association step, in every later commit, because archive records are immutable. One record's formatting no longer stops the commit.
