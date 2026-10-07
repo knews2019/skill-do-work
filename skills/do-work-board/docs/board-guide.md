@@ -50,7 +50,7 @@ It says so when it does not know. `at least` means the figure is a floor because
 | `overlaps …` | declared write sets could collide — see below |
 | `anomaly`, `⚠ future stamp` | broken completion bookkeeping (unresolvable or reversed span), or a timestamp later than now |
 | `took …` | wall-clock span from `claimed_at` to `completed_at`; informational, not a workflow state |
-| `last activity …` | claimed cards only: the newest of the REQ's lifecycle stamps and the git commits correlated to it (a commit touching its REQ file or run artifacts, a `[REQ-NNN]` subject prefix, a builder commit inside its merge, or its live `worktree-agent-REQ-NNN-*` branch tip), with a ticking stopwatch and the phase it fell in; a number that keeps growing means nobody has touched the REQ |
+| `last activity …` | claimed cards only: the newest of the REQ's lifecycle stamps and the git commits correlated to it (a commit touching its REQ file or run artifacts, a `[REQ-NNN]` subject prefix, a builder commit inside its merge, or the tip of its live `worktree-agent-REQ-NNN-*` branch once that branch has a commit of its own), with a ticking stopwatch and the phase it fell in; a number that keeps growing means nobody has touched the REQ |
 | `reversed stamps` | `completed_at` is earlier than `claimed_at`, so the card refuses to state a duration; use the `anomaly` badge to find the stamp to repair |
 | `testing …` | the card carries a testing record |
 
