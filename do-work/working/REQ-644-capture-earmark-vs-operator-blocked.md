@@ -1,7 +1,7 @@
 ---
 id: REQ-644
 title: '[impact-rule-change] Capture distinguishes a session earmark from work that needs the user as operator'
-status: pending
+status: claimed
 created_at: 2026-10-07T23:21:03Z
 user_request: UR-140
 domain: general
@@ -13,6 +13,7 @@ effort_estimate: effort-mechanical
 related: [REQ-643]
 batch: earmark-placement
 write_set: [skills/do-work/actions/capture.md, skills/do-work/docs/work-guide.md]
+claimed_at: 2026-10-07T23:26:38Z
 ---
 # Capture Distinguishes a Session Earmark From Work That Needs the User as Operator
 ## What
