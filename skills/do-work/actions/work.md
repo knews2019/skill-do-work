@@ -275,13 +275,15 @@ For `gate_deferred: true` with paired `deferred_implementation_base` / `deferred
 
 **Overlapping parallel writers:** If implementation is manually split among concurrent agents and their explicitly declared file lists or globs overlap, put each overlapping writer in its own worktree and branch before any write, then hand every completed branch back for serial reconciliation and merged-state verification. Follow `crew-members/background-agents.md` → **Worktree isolation is a separate axis** for the shared trigger and unsafe-branch policy, and `actions/work-reference.md` → **Worktree Dispatch Mode (Step 1)** for this action's canonical hand-back sequence. The shared rule leaves read-only and declared-disjoint parallel work unisolated; `do-work run` is stronger still: it uses one worktree per builder regardless of overlap.
 
+**Landed hand-back — consume it, never re-dispatch.** When this REQ's row in the run manifest records a landed hand-back and that hand-back file exists on disk, the build already happened: do not dispatch a builder. Record the builder-work timing event below with the dispatch instant from that manifest row, stamp `builder_handback_at` only if the field is absent, and go straight to the **Hand-back merge** below, which proves the branch state. The condition holds for any session that reaches this step, including an integrator the orchestrator handed this REQ to and a fresh session after a crash (`crew-members/background-agents.md`: an agent whose findings file exists is done).
+
 Spawn a **general-purpose agent** with the loaded rules, any files listed in the `prime_files` array, and context appropriate to the route:
 
 - **Route A**: Request content only — "triaged as simple, aim for a focused minimal change"
 - **Route B**: Request + exploration output — "follow existing patterns identified above"
 - **Route C**: Request + plan + exploration output — "implement according to the plan"
 
-Once the implementation builder has accepted that dispatch, take the current UTC instant (Timestamp rule) and hold it. Stamp `dispatch_at` with it only if the field is absent — after a recovery the field still names the first attempt's dispatch and that observation stays (**Stamps are append-only**, `actions/work-reference.md`). If dispatch fails before a builder accepts it, leave the field absent. When the builder returns its completed hand-back, stamp `builder_handback_at: <now>` on the same condition, before the hand-back merge begins. Then record that delegated wait once through `record-timing-event` (`--category builder-work --started-at <the instant you held>`), which owns every timestamp, duration and redaction mechanic so no step derives its own. **Pass the held instant, never `dispatch_at` read back out of the file:** on a retry that field belongs to the earlier attempt, and the recorder would charge this builder with every hour between the two.
+Once the implementation builder has accepted that dispatch, take the current UTC instant (Timestamp rule) and hold it. When the run has a manifest, write the held instant into this REQ's row there too, so a session that did not dispatch the builder, such as an integrator, records the timing event from that row and never from `dispatch_at`. Stamp `dispatch_at` with it only if the field is absent — after a recovery the field still names the first attempt's dispatch and that observation stays (**Stamps are append-only**, `actions/work-reference.md`). If dispatch fails before a builder accepts it, leave the field absent. When the builder returns its completed hand-back, stamp `builder_handback_at: <now>` on the same condition, before the hand-back merge begins. Then record that delegated wait once through `record-timing-event` (`--category builder-work --started-at <the instant you held>`), which owns every timestamp, duration and redaction mechanic so no step derives its own. **Pass the held instant, never `dispatch_at` read back out of the file:** on a retry that field belongs to the earlier attempt, and the recorder would charge this builder with every hour between the two.
 
 All routes include these instructions to the agent (pointers — the underlying rules live in the loaded crew-members files and in the REQ frontmatter the orchestrator already wrote):
 
@@ -463,7 +465,7 @@ Run `fold-timing-summary` for this REQ, with its run identity and current reques
 Run the exact `advance` continuation with the selected request path and the single action-authored finalization manifest, continue only when its global outcome is success and exactly one ordered `finalizations` record matches the REQ/path with `phase: cleanup_complete` and empty `blocked_paths`/`reason_codes`, report that record's archive and settled/created commit hashes, then remove any retained worktree by its operative name without force.
 ### Step 10: Loop or Exit
 
-After integration, replay the canonical selector required by the current run mode and loop while it selects work; when it does not, run `<skill-root>/tools/do-work-cli.sh --repo-root <project-root> --format json advance --checkpoint`, then cleanup and render Step 1's composed exit summary. The checkpoint command is the sole session-end writer and preserves every live foreign or unlabelled in-progress record.
+After integration, replay the canonical selector required by the current run mode and loop while it selects work; when it does not, run `<skill-root>/tools/do-work-cli.sh --repo-root <project-root> --format json advance --checkpoint`, then cleanup and render Step 1's composed exit summary. The checkpoint command is the sole session-end writer and preserves every live foreign or unlabelled in-progress record. Under delegated integration (`actions/work-reference.md` → Fan-Out Dispatch → **Delegated integration — the coordinator shape**) an integrator stops after Step 9 and never runs this step: the checkpoint preserves only foreign or unlabelled records, so an integrator's checkpoint would drop the same-writer claims of its siblings. The coordinator runs the checkpoint, then cleanup, after the last integrator returns.
 
 **Context-wipe principle:** every REQ starts with fresh agents and a fresh canonical selection. Carry only durable REQ evidence, and treat unexplained overlap with the previous Implementation Summary as qualification drift.
 
@@ -484,7 +486,7 @@ The clarify workflow has its own action. Run `do-work clarify` — it handles ba
 □ Step 5: Consult required lessons (all routes); then Explore (Routes B & C only)
 □ Scope judgment (Routes B & C: declare files + acceptance criteria in REQ)
 □ Pre-build evidence judgment (Routes B & C: interpret repository, baseline, and dependency evidence)
-□ Step 6: Implement (spawn agent with lessons + TDD mode if set, log decisions as D-XX)
+□ Step 6: Implement (spawn agent with lessons + TDD mode if set, log decisions as D-XX; a landed hand-back is consumed, never re-dispatched)
 □ Step 6.25: Implementation Summary (append file manifest — mandatory for all routes)
 □ Qualification judgment (orchestrator verifies substantive changes, live flow, requirement coverage, and warnings using advance's mechanical records)
 □ Testing judgment (measure every test file against the <30s budget; run the direct repository gate; plan affected heavy lanes and record the selected ones in the Testing section; load debug rules on attempt 2+; verify TDD evidence if tdd:true)
@@ -493,7 +495,7 @@ The clarify workflow has its own action. Run `do-work clarify` — it handles ba
 □ Step 7.7: Heavy hold after review (held requests stay claimed); drain at exhaustion, finalize green in the same turn
 □ Step 8: Prepare finalization intent (choose terminal status, classify failures, route questions/tasks, collect deferred lessons, and preserve exact lifecycle/release inputs without mutating the tail)
 □ Step 9: Finalize once (pass the strict manifest to `advance`; canonical finalization owns archive/checkpoint/UR/calibration/release, exact commit, provenance, verification, and cleanup)
-□ Step 10: Loop or Exit (fresh selection if looping, else advance --checkpoint + cleanup)
+□ Step 10: Loop or Exit (fresh selection if looping, else advance --checkpoint + cleanup; never run by a delegated integrator)
 ```
 
 
