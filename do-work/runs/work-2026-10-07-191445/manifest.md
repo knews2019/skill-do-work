@@ -2,7 +2,7 @@
 
 Run dir: do-work/runs/work-2026-10-07-191445/
 Concurrency: 1 (UR-138 chain REQ-639 -> REQ-640 -> REQ-641; coordinator shape: pre-dispatch orchestrator, builder in worktree, integrator per REQ in series)
-Status: in-progress
+Status: consumed   # UR-138 (REQ-639..641) and UR-139 (REQ-642) finalized 0.305.74-0.305.77; reports delivered to the coordinator session
 
 | REQ | Builder | Operative name | Handback file | Status | Dispatch instant |
 |-----|---------|----------------|---------------|--------|------------------|
