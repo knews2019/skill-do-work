@@ -180,12 +180,14 @@ type RequestTicket struct {
 	// same treatment every field in this class gets (write_set and prime_files go
 	// through it per element) and is deliberate — padding survives only explicit
 	// YAML quoting, means nothing in a name, and preserving it would make
-	// " cloud-alpha " a different session from "cloud-alpha". DISPLAY ONLY at any
-	// builder count — a badge and a drawer row,
-	// nothing more. The board never buckets, orders, or schedules on it; the one
-	// reader that acts on it is the work pipeline's default scan, which skips and
-	// reports an assigned REQ as a courtesy and is overridden by explicit
-	// targeting (actions/work.md Step 1). Keep this parser in lock-step with the
+	// " cloud-alpha " a different session from "cloud-alpha". On the board it is
+	// a badge, a drawer row, and one placement rule: a pending REQ with no unmet
+	// dependency and a non-empty value sits in Pending → Earmarked instead of
+	// Ready, so Ready keeps meaning "the run takes it next". The board never
+	// orders across groups, schedules, or gates on it; the one reader that acts
+	// on it is the work pipeline's default scan, which skips and reports an
+	// assigned REQ as a courtesy and is overridden by explicit targeting
+	// (actions/work.md Step 1). Keep this parser in lock-step with the
 	// Schema Read Contract in actions/work-reference.md — a change to either lands
 	// in the same commit as the other. "" when absent, which reads as unassigned.
 	AssignedTo string
@@ -378,9 +380,10 @@ type QueueNote struct {
 // BoardColumns holds the active-work buckets. Completed REQs older than the
 // recent window are NOT represented here — they live in Board.Calendar.
 type BoardColumns struct {
-	Pending             []*RequestTicket // status pending and blocked with an unmet dependency (the union of PendingReady and PendingWaiting)
-	PendingReady        []*RequestTicket // status pending with every depends_on target source-ready — actionable now
-	PendingWaiting      []*RequestTicket // pending or blocked with at least one unmet dependency — not yet actionable
+	Pending             []*RequestTicket // status pending and blocked with an unmet dependency (the union of PendingReady, PendingWaiting and PendingEarmarked)
+	PendingReady        []*RequestTicket // status pending, unassigned, with every depends_on target source-ready — the run's default scan takes it
+	PendingWaiting      []*RequestTicket // pending or blocked with at least one unmet dependency, assigned or not — not yet actionable
+	PendingEarmarked    []*RequestTicket // status pending with no unmet dependency and a non-empty assigned_to — the run's default scan skips it
 	Claimed             []*RequestTicket // status claimed
 	NeedsInputOrBlocked []*RequestTicket // operator-actionable pending-answers / blocked-with-no-unmet-deps / blocked-* / failed
 	RecentlyDone        []*RequestTicket // completed*/cancelled whose completion instant is within the window
@@ -1698,7 +1701,8 @@ func parseTimestamp(text string) (time.Time, bool) {
 // bucketColumns sorts every ticket into the active-work columns by normalized
 // status. Dependency readiness (annotated by annotateDependencyState, which must
 // have run first) additionally affects two display cases: pending splits into
-// ready/waiting, while a bare blocked ticket with an unmet dependency joins the
+// ready/waiting/earmarked (earmarked = no unmet dependency but a non-empty
+// assigned_to, which the run's default scan skips), while a bare blocked ticket with an unmet dependency joins the
 // waiting group until its upstream completes. The split is a view, not a status
 // change — each ticket keeps its on-disk status throughout.
 // Terminally resolved tickets (completed*/cancelled) only enter
@@ -1718,10 +1722,13 @@ func bucketColumns(tickets []*RequestTicket, now time.Time, recentWindow time.Du
 		switch {
 		case ticket.Status == "pending" || (ticket.Status == "blocked" && len(ticket.UnmetDependencies) > 0):
 			columns.Pending = append(columns.Pending, ticket)
-			if ticket.Status == "pending" && len(ticket.UnmetDependencies) == 0 {
-				columns.PendingReady = append(columns.PendingReady, ticket)
-			} else {
+			switch {
+			case ticket.Status != "pending" || len(ticket.UnmetDependencies) > 0:
 				columns.PendingWaiting = append(columns.PendingWaiting, ticket)
+			case ticket.AssignedTo != "":
+				columns.PendingEarmarked = append(columns.PendingEarmarked, ticket)
+			default:
+				columns.PendingReady = append(columns.PendingReady, ticket)
 			}
 		case ticket.Status == "claimed":
 			columns.Claimed = append(columns.Claimed, ticket)
@@ -1748,12 +1755,12 @@ func bucketColumns(tickets []*RequestTicket, now time.Time, recentWindow time.Du
 	sort.SliceStable(columns.RecentlyDone, func(i, j int) bool {
 		return columns.RecentlyDone[i].CompletionTime.After(columns.RecentlyDone[j].CompletionTime)
 	})
-	for _, pendingGroup := range [][]*RequestTicket{columns.PendingReady, columns.PendingWaiting} {
+	for _, pendingGroup := range [][]*RequestTicket{columns.PendingReady, columns.PendingWaiting, columns.PendingEarmarked} {
 		sort.SliceStable(pendingGroup, func(leftIndex, rightIndex int) bool {
 			return requestPriorityRank(pendingGroup[leftIndex].Priority) < requestPriorityRank(pendingGroup[rightIndex].Priority)
 		})
 	}
-	columns.Pending = append(append([]*RequestTicket(nil), columns.PendingReady...), columns.PendingWaiting...)
+	columns.Pending = append(append(append([]*RequestTicket(nil), columns.PendingReady...), columns.PendingWaiting...), columns.PendingEarmarked...)
 	return columns, statusWarnings
 }
 

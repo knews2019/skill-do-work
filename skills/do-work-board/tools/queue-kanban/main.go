@@ -122,6 +122,7 @@ func writeBoardSummary(outputWriter io.Writer, board *Board) {
 	fmt.Fprintf(outputWriter, "  pending             : %d\n", len(board.Columns.Pending))
 	fmt.Fprintf(outputWriter, "    ready to work     : %d\n", len(board.Columns.PendingReady))
 	fmt.Fprintf(outputWriter, "    waiting on deps   : %d\n", len(board.Columns.PendingWaiting))
+	fmt.Fprintf(outputWriter, "    earmarked         : %d\n", len(board.Columns.PendingEarmarked))
 	fmt.Fprintf(outputWriter, "  claimed             : %d\n", len(board.Columns.Claimed))
 	fmt.Fprintf(outputWriter, "  needs-input/blocked : %d\n", len(board.Columns.NeedsInputOrBlocked))
 	fmt.Fprintf(outputWriter, "  recently-done       : %d\n", len(board.Columns.RecentlyDone))

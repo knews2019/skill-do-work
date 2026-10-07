@@ -139,12 +139,13 @@ type generatedDiskSpace struct {
 // generatedColumns lists the active-board buckets as REQ id slices. RecentlyDone
 // is the generate-time default-window snapshot; the client recomputes it from the
 // calendar for the 24h/48h/7d toggle, so this slice is just the initial paint.
-// PendingReady and PendingWaiting partition Pending — the full list is kept so a
-// consumer that ignores dependency readiness still sees every pending ticket.
+// PendingReady, PendingWaiting and PendingEarmarked partition Pending — the full
+// list is kept so a consumer that ignores the split still sees every pending ticket.
 type generatedColumns struct {
 	Pending             []string `json:"pending"`
 	PendingReady        []string `json:"pendingReady"`
 	PendingWaiting      []string `json:"pendingWaiting"`
+	PendingEarmarked    []string `json:"pendingEarmarked"`
 	Claimed             []string `json:"claimed"`
 	NeedsInputOrBlocked []string `json:"needsInputOrBlocked"`
 	RecentlyDone        []string `json:"recentlyDone"`
@@ -775,6 +776,7 @@ func buildGeneratedBoardDataWithMentions(board *Board, mentionAnalysis boardTick
 			Pending:             requestIdsOf(board.Columns.Pending),
 			PendingReady:        requestIdsOf(board.Columns.PendingReady),
 			PendingWaiting:      requestIdsOf(board.Columns.PendingWaiting),
+			PendingEarmarked:    requestIdsOf(board.Columns.PendingEarmarked),
 			Claimed:             requestIdsOf(board.Columns.Claimed),
 			NeedsInputOrBlocked: requestIdsOf(board.Columns.NeedsInputOrBlocked),
 			RecentlyDone:        requestIdsOf(board.Columns.RecentlyDone),

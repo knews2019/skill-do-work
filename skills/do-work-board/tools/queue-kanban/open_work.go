@@ -33,6 +33,7 @@ type openWorkCounts struct {
 	Pending             int
 	PendingReady        int
 	PendingWaiting      int
+	PendingEarmarked    int
 	Claimed             int
 	NeedsInputOrBlocked int
 }
@@ -43,6 +44,7 @@ func countOpenWork(board *Board) openWorkCounts {
 		Pending:             len(board.Columns.Pending),
 		PendingReady:        len(board.Columns.PendingReady),
 		PendingWaiting:      len(board.Columns.PendingWaiting),
+		PendingEarmarked:    len(board.Columns.PendingEarmarked),
 		Claimed:             len(board.Columns.Claimed),
 		NeedsInputOrBlocked: len(board.Columns.NeedsInputOrBlocked),
 	}
@@ -57,8 +59,8 @@ func writeOpenWorkDigest(outputWriter io.Writer, board *Board) {
 	openCounts := countOpenWork(board)
 
 	fmt.Fprintf(outputWriter, "queue-kanban open work: %d open %s\n", openCounts.OpenTotal, pluralizeRequestNoun(openCounts.OpenTotal))
-	fmt.Fprintf(outputWriter, "  pending %d (%d ready, %d waiting) | claimed %d | needs-input/blocked %d\n",
-		openCounts.Pending, openCounts.PendingReady, openCounts.PendingWaiting, openCounts.Claimed, openCounts.NeedsInputOrBlocked)
+	fmt.Fprintf(outputWriter, "  pending %d (%d ready, %d waiting, %d earmarked) | claimed %d | needs-input/blocked %d\n",
+		openCounts.Pending, openCounts.PendingReady, openCounts.PendingWaiting, openCounts.PendingEarmarked, openCounts.Claimed, openCounts.NeedsInputOrBlocked)
 
 	writeClaimedSection(outputWriter, board.Columns.Claimed)
 	writeNeedsInputSection(outputWriter, board.Columns.NeedsInputOrBlocked)

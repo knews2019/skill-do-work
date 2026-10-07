@@ -36,8 +36,9 @@ func TestOpenWorkCountsEveryNonTerminalTicketExactlyOnce(t *testing.T) {
 		t.Fatalf("bucket split %d+%d+%d does not sum to the open total %d",
 			openCounts.Pending, openCounts.Claimed, openCounts.NeedsInputOrBlocked, openCounts.OpenTotal)
 	}
-	if openCounts.PendingReady+openCounts.PendingWaiting != openCounts.Pending {
-		t.Fatalf("ready %d + waiting %d does not sum to pending %d", openCounts.PendingReady, openCounts.PendingWaiting, openCounts.Pending)
+	if openCounts.PendingReady+openCounts.PendingWaiting+openCounts.PendingEarmarked != openCounts.Pending {
+		t.Fatalf("ready %d + waiting %d + earmarked %d does not sum to pending %d",
+			openCounts.PendingReady, openCounts.PendingWaiting, openCounts.PendingEarmarked, openCounts.Pending)
 	}
 }
 
@@ -53,7 +54,7 @@ func TestOpenWorkDigestHeadlineCarriesTotalAndBreakdown(t *testing.T) {
 		t.Fatalf("headline does not report the open total (1 pending + 1 claimed + 1 blocked): %q", firstLine)
 	}
 	for _, breakdownFragment := range []string{
-		"pending 1 (1 ready, 0 waiting)",
+		"pending 1 (1 ready, 0 waiting, 0 earmarked)",
 		"claimed 1",
 		"needs-input/blocked 1",
 	} {
