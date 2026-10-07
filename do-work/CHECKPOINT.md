@@ -7,4 +7,3 @@ queue_state: [0 pending, 0 pending-answers, 0 blocked, 0 blocked-archive-collisi
 
 ## In Progress (interrupted)
 
-- REQ-637: [impact-rule-change] Board Panel B compares the stamp gap in whole minutes like the calibration log, and the drawer row is relabelled to mean the gap between events — claimed 2026-10-07T13:58:57Z — writer: t2s-Virtual-Machine.local:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2

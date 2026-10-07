@@ -10,6 +10,14 @@ For the complete release history, read this file and the archives below from new
 - [0.50.0 through 0.64.1](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-13-up-to-v0.64.1.md)
 - [0.1.0 through 0.49.0](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-07-up-to-v0.49.0.md)
 
+## 0.305.72 — Board Panel B Agrees With the Calibration Log at the 2h Gap Boundary (2026-10-07)
+
+The Durations page's Panel B and the calibration log now make the same call on a REQ whose largest stamp gap is just over 2h, and the drawer row that shows the largest gap has a clearer name.
+
+- Panel B now compares the largest gap between lifecycle stamps in whole minutes rounded down, the same way the calibration log records `max_stamp_gap_minutes`. Before, a 2h00m40s gap left a REQ out of the day medians while a re-fit reading the logged 120 kept it. A 2h01m gap is still excluded, and the rule itself is unchanged.
+- The drawer row "Largest idle gap" is now "Largest gap between events". It measures only between recorded events, never the open stretch from the last event to now. We renamed the row instead of adding that open stretch, so the row means the same thing on claimed and done cards, and because the card's `last activity` line already shows the open stretch. The board guide, the calibration doc, and code comments use the new name.
+- The Panel B code comment now says that a REQ with no phase stamps has one gap, its whole claim-to-completion span, so it is excluded when that span is over 2h even if the work was continuous.
+
 ## 0.305.71 — Board Activity Ignores Builder Branches With No Commits of Their Own (2026-10-07)
 
 A claimed card's "last activity" no longer jumps to the moment a builder branch was created. A freshly cut `worktree-agent-REQ-NNN-*` branch points at the integration commit until the builder commits, and the board used to count that commit as the REQ's newest activity, which also split the card's real idle gap.
