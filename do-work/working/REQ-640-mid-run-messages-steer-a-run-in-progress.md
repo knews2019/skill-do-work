@@ -1,7 +1,7 @@
 ---
 id: REQ-640
 title: '[impact-rule-change] Mid-run messages: route a user message that arrives during a run to the right REQ in the user''s own words without stopping the run'
-status: pending
+status: claimed
 created_at: 2026-10-07T19:12:33Z
 user_request: UR-138
 domain: general
@@ -14,6 +14,7 @@ related: [REQ-639, REQ-641]
 batch: coordination-lessons
 depends_on: [REQ-639]
 write_set: [skills/do-work/actions/work.md, skills/do-work/actions/review-work.md, skills/do-work/actions/capture.md]
+claimed_at: 2026-10-07T19:39:49Z
 ---
 # Mid-Run Messages: Steer a Run While It Is in Progress
 ## What
