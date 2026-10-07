@@ -13,6 +13,10 @@ type VisibleSection struct {
 // VisibleSections discovers sections without normalizing line endings or offsets.
 // It shares the timing writer's conservative dialect-fence rule: enclosing runs
 // of punctuation hide their contents, while headings and thematic breaks do not.
+// A heading or fence counts only after CommonMark's block indent (see
+// blockIndentContent). On a line that starts outside a comment, a fence opener is
+// decided before any comment scan, because the rest of that line is its info
+// string, and a "<!--" inside an inline code span on the same line is literal.
 func VisibleSections(body []byte) []VisibleSection {
 	lines := strings.SplitAfter(string(body), "\n")
 	sections := []VisibleSection{}
@@ -31,6 +35,10 @@ func VisibleSections(body []byte) []VisibleSection {
 			continue
 		}
 		startedInComment := inComment
+		if !startedInComment && length >= 3 && isEnclosingFenceCharacter(character) {
+			openCharacter, openLength, hiddenStart = character, length, start
+			continue
+		}
 		remainder := line
 		for {
 			if inComment {
@@ -41,7 +49,7 @@ func VisibleSections(body []byte) []VisibleSection {
 				remainder = remainder[end+3:]
 				inComment, hiddenStart = false, -1
 			}
-			begin := strings.Index(remainder, "<!--")
+			begin := commentOpenerIndex(remainder)
 			if begin < 0 {
 				break
 			}
@@ -51,13 +59,13 @@ func VisibleSections(body []byte) []VisibleSection {
 		if startedInComment {
 			continue
 		}
-		if length >= 3 && isEnclosingFenceCharacter(character) {
-			openCharacter, openLength, hiddenStart = character, length, start
-			continue
-		}
 		// Inline comments do not hide a heading's visible prefix. Keep its raw
 		// name so boundary recognition does not broaden generated-section ownership.
-		if name, found := strings.CutPrefix(strings.TrimLeft(line, " \t"), "## "); found {
+		content, isBlockStart := blockIndentContent(line)
+		if !isBlockStart {
+			continue
+		}
+		if name, found := strings.CutPrefix(content, "## "); found {
 			name = strings.TrimRight(name, " \t\r")
 			if name == "" {
 				continue
@@ -75,11 +83,12 @@ func VisibleSections(body []byte) []VisibleSection {
 }
 
 // leadingPunctuationRun returns the ASCII punctuation mark a line opens with and
-// how many times it repeats. Leading whitespace is skipped rather than measured,
-// so an indented fence still counts as one.
+// how many times it repeats. The mark counts only inside CommonMark's block
+// indent (see blockIndentContent); deeper indentation is code, so it opens or
+// closes no fence.
 func leadingPunctuationRun(line string) (byte, int) {
-	content := strings.TrimLeft(strings.TrimRight(line, " \t\r"), " \t")
-	if content == "" || !isMarkdownBlockPunctuation(content[0]) {
+	content, isBlockStart := blockIndentContent(strings.TrimRight(line, " \t\r"))
+	if !isBlockStart || content == "" || !isMarkdownBlockPunctuation(content[0]) {
 		return 0, 0
 	}
 	runLength := 0
@@ -87,6 +96,62 @@ func leadingPunctuationRun(line string) (byte, int) {
 		runLength++
 	}
 	return content[0], runLength
+}
+
+// blockIndentContent strips CommonMark's block indent: zero to three spaces.
+// A tab anywhere in the indentation, or a fourth space, makes the line indented
+// code, so it reports false and nothing on it can open a heading or a fence. The
+// indent is measured before anything is trimmed, because the indent itself is
+// the structure being tested.
+func blockIndentContent(line string) (string, bool) {
+	spaces := 0
+	for spaces < len(line) && line[spaces] == ' ' {
+		spaces++
+	}
+	if spaces > 3 || spaces < len(line) && line[spaces] == '\t' {
+		return "", false
+	}
+	return line[spaces:], true
+}
+
+// commentOpenerIndex finds the first "<!--" outside an inline code span. A run of
+// n backticks opens a span that closes at the next run of exactly n backticks on
+// the same text, and everything between is literal. A run with no closer is
+// literal text itself, so a "<!--" after it still opens a comment. It returns -1
+// when no opener is visible.
+func commentOpenerIndex(text string) int {
+	for index := 0; index < len(text); {
+		if strings.HasPrefix(text[index:], "<!--") {
+			return index
+		}
+		if text[index] != '`' {
+			index++
+			continue
+		}
+		runLength := backtickRunLength(text, index)
+		index += runLength
+		for search := index; search < len(text); {
+			if text[search] != '`' {
+				search++
+				continue
+			}
+			closeLength := backtickRunLength(text, search)
+			if closeLength == runLength {
+				index = search + closeLength
+				break
+			}
+			search += closeLength
+		}
+	}
+	return -1
+}
+
+func backtickRunLength(text string, start int) int {
+	end := start
+	for end < len(text) && text[end] == '`' {
+		end++
+	}
+	return end - start
 }
 
 // isMarkdownBlockPunctuation is CommonMark's own ASCII punctuation class, taken

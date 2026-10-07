@@ -33,6 +33,26 @@ func TestTimingReplacementPreservesIndentedAndCommentedRequirements(t *testing.T
 	}
 }
 
+// REQ-635 F1 and F5: an indented "    ## Timing" sample is code, so the writer
+// appends a real section and leaves the sample alone; and a "<!--" in a fence
+// opener's info string must not hide the existing Timing section, or the writer
+// appends a duplicate instead of replacing it.
+func TestTimingReplacementIgnoresIndentedSamplesAndFenceInfoComments(t *testing.T) {
+	for _, newline := range []string{"\n", "\r\n"} {
+		sample := "# Request" + newline + "Example:" + newline + newline + "    ## Timing" + newline + "    sample summary" + newline
+		got := replaceTimingSection([]byte(sample), "## Timing\nnew summary\n")
+		if !strings.HasPrefix(string(got), sample) || !strings.HasSuffix(string(got), "\n## Timing\nnew summary\n") {
+			t.Errorf("indented Timing sample was replaced instead of a section appended: got %q", got)
+		}
+		fenced := strings.ReplaceAll("# Request\n``` <!--\n## X\n```\n## Plan\np\n", "\n", newline)
+		original := fenced + "## Timing" + newline + "old summary" + newline
+		got = replaceTimingSection([]byte(original), "## Timing\nnew summary\n")
+		if want := fenced + "## Timing\nnew summary\n"; string(got) != want {
+			t.Errorf("Timing section behind a fence info comment was not replaced: got %q, want %q", got, want)
+		}
+	}
+}
+
 // The stream must be flat, append-safe, Git-private, and shared by a repository's
 // worktrees: two boundary events land as two independent JSON lines under the Git
 // common directory, and the second event's default start is the first event's end
