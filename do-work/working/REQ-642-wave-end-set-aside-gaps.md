@@ -1,7 +1,7 @@
 ---
 id: REQ-642
 title: '[impact-rule-change] Addendum: the wave-end decision reads the set-aside list, and a late set-aside is named in the Decision Brief'
-status: pending
+status: claimed
 created_at: 2026-10-07T20:34:36Z
 user_request: UR-139
 addendum_to: REQ-641
@@ -12,6 +12,7 @@ maintenance: false
 impact: impact-rule-change
 effort_estimate: effort-mechanical
 write_set: [skills/do-work/actions/work-reference.md, skills/do-work/actions/work.md]
+claimed_at: 2026-10-07T20:35:54Z
 ---
 # Addendum: Close the Set-Aside Gaps in the Wave-End Decision
 ## What
