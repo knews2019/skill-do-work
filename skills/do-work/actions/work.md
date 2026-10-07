@@ -533,7 +533,7 @@ Keep the user informed with this format:
 
 (keep the user informed in the running per-REQ progress format shown in `actions/work-reference.md` → **Progress Reporting Example**)
 
-When the run finishes or pauses, hand back with the **Decision Brief** (`actions/work-reference.md` → **Decision Brief (hand-back format)**): lead with WHAT'S BEING BUILT (each REQ's `## Orientation`, at subsystem altitude), then DECISIONS FOR YOU (any escalated `pending-answers` follow-ups, each with value + risk), then WAITING ON OTHERS (stakeholder-routed questions, with each report's path to share), then a collapsed HANDLED list. Never lead with review scores — they stay in the per-REQ progress lines, not in front of the hand-back.
+When the run finishes or pauses, hand back with the **Decision Brief** (`actions/work-reference.md` → **Decision Brief (hand-back format)**): lead with WHAT'S BEING BUILT (each REQ's `## Orientation`, at subsystem altitude), then DECISIONS FOR YOU (any escalated `pending-answers` follow-ups, each with value + risk), then WAITING ON OTHERS (stakeholder-routed questions, with each report's path to share), then a collapsed HANDLED list, unless the run manifest's hand-back emphasis note orders them otherwise (**Mid-Run Messages (any step)**, above). Never lead with review scores — they stay in the per-REQ progress lines, not in front of the hand-back.
 
 
 ## Archived Request File Example
