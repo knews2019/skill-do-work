@@ -1,7 +1,7 @@
 ---
 id: REQ-643
 title: 'Board shows an earmarked pending REQ under Pending → Earmarked instead of Ready, and the ready counts agree'
-status: pending
+status: claimed
 created_at: 2026-10-07T23:21:03Z
 user_request: UR-140
 domain: general
@@ -13,6 +13,7 @@ effort_estimate: effort-substantive
 related: [REQ-644]
 batch: earmark-placement
 write_set: [skills/do-work-board/tools/queue-kanban/model.go, skills/do-work-board/tools/queue-kanban/model_test.go, skills/do-work-board/tools/queue-kanban/generate.go, skills/do-work-board/tools/queue-kanban/open_work.go, skills/do-work-board/tools/queue-kanban/main.go, skills/do-work-board/tools/queue-kanban/web/board-cards.js, skills/do-work-board/docs/board-guide.md, skills/do-work-board/actions/board.md, skills/do-work/actions/work-reference.md]
+claimed_at: 2026-10-07T23:26:38Z
 ---
 # Board Shows an Earmarked Pending REQ Under Pending → Earmarked Instead of Ready
 ## What
