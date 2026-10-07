@@ -10,6 +10,16 @@ For the complete release history, read this file and the archives below from new
 - [0.50.0 through 0.64.1](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-13-up-to-v0.64.1.md)
 - [0.1.0 through 0.49.0](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-07-up-to-v0.49.0.md)
 
+## 0.305.74 — Fan-Out Runs Can Hand Each REQ's Integration to One Agent at a Time (2026-10-07)
+
+In `do-work run --fan-out`, the session that dispatches builders can now stay a coordinator. It hands each REQ's integration, from the hand-back merge through the release, to one agent at a time, so the user's conversation stays free during long integrations.
+
+- A hand-back that has already landed is consumed, never built again. When the hand-back file named in the run manifest exists, Step 6 skips the builder and goes straight to the merge, whatever the manifest row's status says. This also covers a fresh session after a crash.
+- The run manifest row now carries the builder's dispatch time, so a session that did not dispatch the builder can record its timing. The timing event is recorded only when the hand-back has just landed, because the recorder measures up to the current moment.
+- The new "Delegated integration — the coordinator shape" paragraph in the work reference sets the rules. Integrators run one at a time in the same checkout. An integrator enters with `advance REQ-NNN` and never runs `recover`, run-with-recovery, `--assume-sole-authority` or `--take-over`. While it runs, the coordinator writes nothing in the project. The coordinator writes each integrator's brief, `REQ-NNN-integrate.md`, in the gap between integrators.
+- An integrator stops after finalization and never runs the session checkpoint or the loop. The coordinator runs them after the last integrator returns.
+- The time saved is still in the build phase only.
+
 ## 0.305.73 — Release Guard Reads the Module Declaration Once (2026-10-07)
 
 Internal cleanup in the finalization release guard. Behaviour is unchanged.
