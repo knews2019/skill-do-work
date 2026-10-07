@@ -1,7 +1,7 @@
 ---
 id: REQ-639
 title: '[impact-rule-change] Delegated integration: in fan-out mode the main session may hand each REQ''s integration to one agent at a time and stay a coordinator'
-status: pending
+status: claimed
 created_at: 2026-10-07T19:12:33Z
 user_request: UR-138
 domain: general
@@ -13,6 +13,7 @@ effort_estimate: effort-substantive
 related: [REQ-640, REQ-641]
 batch: coordination-lessons
 write_set: [skills/do-work/actions/work.md, skills/do-work/actions/work-reference.md, skills/do-work/docs/work-guide.md]
+claimed_at: 2026-10-07T19:14:46Z
 ---
 # Delegated Integration: The Coordinator Shape
 ## What
