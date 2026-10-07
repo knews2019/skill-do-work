@@ -10,6 +10,17 @@ For the complete release history, read this file and the archives below from new
 - [0.50.0 through 0.64.1](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-13-up-to-v0.64.1.md)
 - [0.1.0 through 0.49.0](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-07-up-to-v0.49.0.md)
 
+## 0.305.75 — Messages Sent During a Run Now Reach the Right REQ Without Stopping It (2026-10-07)
+
+You can now keep talking to a running `do-work run`. Before this, a message sent during a run became an addendum REQ for the next run, and the builder working on that REQ never saw it. The new "Mid-Run Messages (any step)" rule in `actions/work.md` routes each message by what it changes, and the run never stops for it.
+
+- A question about progress is answered from the REQ files, the run manifest and the hand-backs, not from memory of the conversation.
+- A change to a REQ whose builder has not handed back yet is written into that REQ as one `## Addendum (mid-run)` section, in the user's own words. A later message for the same REQ adds an entry inside that section. Review now reads every `## Addendum` section as a requirement, so it judges the build against these words. Route C plan validation reads it too.
+- Under delegated integration the coordinator keeps the words until its next writing gap and puts them in the integrator's brief. The integrator writes the section before the merge, so there is still only one writer in the project at a time.
+- A change to work that already came back, to queued work, or a request for new work goes through capture as before.
+- A note about what to show first goes into the run manifest, and the end-of-run Decision Brief reads it first and may reorder its sections by it.
+- The user guide says you can keep talking while a run is in progress.
+
 ## 0.305.74 — Fan-Out Runs Can Hand Each REQ's Integration to One Agent at a Time (2026-10-07)
 
 In `do-work run --fan-out`, the session that dispatches builders can now stay a coordinator. It hands each REQ's integration, from the hand-back merge through the release, to one agent at a time, so the user's conversation stays free during long integrations.
