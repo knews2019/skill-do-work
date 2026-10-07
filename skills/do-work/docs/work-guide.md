@@ -110,13 +110,13 @@ You can point more than one checkout at the same `do-work/` queue — a second l
 
 **One releaser.** Pick one checkout to run the release tail: merging integration, bumping the version, writing the `CHANGELOG.md` entry, moving REQs into `archive/`, and closing URs. Everything else can happen anywhere; that part should not happen twice. Two changelog prepends against one queue is the failure to watch for, and unique version numbers do not make it safe. There's no mechanism enforcing this — it's a decision you make once and keep.
 
-**Earmarking with `assigned_to`.** To say "leave this one for me", add one field to a pending REQ:
+**Earmarking with `assigned_to`.** To say "leave this one for that session", add one field to a pending REQ:
 
 ```yaml
 assigned_to: 'cloud-alpha'
 ```
 
-Use the single-quoted **Frontmatter Quoting** form from `../actions/work-reference.md`; double an apostrophe inside a session name. Any other checkout's `do-work run` then skips it and tells you why (`REQ-042 — assigned to cloud-alpha`), and the board shows an `assigned` badge. It's a courtesy, not a lock: nothing checks whether that session exists or is still running. Two ways to take an earmarked REQ anyway — name it explicitly (`do-work run REQ-042`), which claims it and clears the field, or delete the field by hand. Reaching it through `do-work run UR-011` does *not* override the earmark: naming a whole capture is a weaker signal than naming the REQ.
+Use the single-quoted **Frontmatter Quoting** form from `../actions/work-reference.md`; double an apostrophe inside a session name. Any other checkout's `do-work run` then skips it and tells you why (`REQ-042 — assigned to cloud-alpha`), and the board shows an `assigned` badge. It's a courtesy, not a lock: nothing checks whether that session exists or is still running. Two ways to take an earmarked REQ anyway — name it explicitly (`do-work run REQ-042`), which claims it and clears the field, or delete the field by hand. Reaching it through `do-work run UR-011` does *not* override the earmark: naming a whole capture is a weaker signal than naming the REQ. The field is for another session or checkout; work that waits on you as operator is captured `blocked` with `blocked_by` naming you, so it shows under Needs Input · Blocked until `do-work clarify` releases it.
 
 **When two checkouts claim the same REQ.** Nothing stops them, and the fix happens where the branches meet. Expect two things from that merge:
 
