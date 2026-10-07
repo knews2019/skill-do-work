@@ -15,11 +15,11 @@ import (
 // The answer is the union of two observed streams — the REQ's own lifecycle
 // stamps (lifecycleTimestampFields) and the git commits correlated to it — so a
 // claimed card shows a growing "last activity" number when work stalls, and a
-// done REQ's drawer states its largest idle gap instead of the board guessing a
-// pause from the span alone. The read is cheap (one windowed `git log` plus one
-// `git log -1` per live worktree-agent branch) and is run per response, never
-// inside serve's mtime cache: commits land without any do-work file changing
-// mtime, which is the REQ-284 shape.
+// done REQ's drawer states its "Largest gap between events" instead of the board
+// guessing a pause from the span alone. The read is cheap (one windowed `git
+// log` plus one `git log -1` per live worktree-agent branch) and is run per
+// response, never inside serve's mtime cache: commits land without any do-work
+// file changing mtime, which is the REQ-284 shape.
 
 // gitCommandRunner runs one read-only git command against repoRoot and returns
 // its stdout. Injectable so tests feed canned output and never spawn git.
