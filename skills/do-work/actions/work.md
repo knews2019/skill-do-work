@@ -162,6 +162,16 @@ The follow-up REQs for builder-decided questions are created during **Step 8 (Ar
 
 If all `- [ ]` items are already `[x]` or `[~]`, or no Open Questions section exists, skip this step entirely.
 
+### Mid-Run Messages (any step)
+
+A user message can arrive while the run is in progress, at any step. It never stops the run: route it, keep the loop going, and say in one progress line where it went. Two rules hold on every branch below. Carry the user's own words, never a paraphrase, because meaning is lost in restatement. Route the message to every REQ it affects, not only the one the user named. Then pick the branch by what the message changes:
+
+- **It asks about progress or state.** Answer from disk: the REQ files, the run manifest, the hand-backs. Never answer from memory of the conversation, which does not see work that agents did out of sight.
+- **It changes an in-flight REQ whose builder has not handed back yet.** The durable record is a `## Addendum (mid-run)` section on the working REQ: one framing line that says which requirement the message extends, narrows, or corrects, then the user's words under `actions/clarify.md` Step 4's **Outside-text containment**. A REQ carries one such section, with entries inside: a later message for the same REQ appends a new entry under its own timestamp line inside the existing section, never a second heading of the same name, because `advance` refuses a REQ whose section name appears twice. In the serial loop the orchestrator writes the section now. Under delegated integration (`actions/work-reference.md` → **Delegated integration — the coordinator shape**) the coordinator keeps the words in its own session scratch until its next writing gap, puts them in that REQ's integrator brief then, and the integrator writes the section before the merge. Where the harness can message a running agent, also forward the words to the builder. Otherwise say in the progress output that the builder will not see them and review will judge the build against them, since `actions/review-work.md` reads `## Addendum` sections as requirements. The section is user intent, not a generated section, so a takeover reset keeps it.
+- **It changes an in-flight REQ whose builder already handed back.** Under fan-out that is Step 6's landed-hand-back condition, and it includes a REQ whose integrator is already running. Use capture's in-flight path, a new REQ with `addendum_to` (`actions/capture.md` → **Immutability Rule**), and report it as queued for the next loop. Under delegated integration the coordinator runs that capture in its next writing gap, never while an integrator runs, and until then keeps the user's words in its own session scratch outside the project root.
+- **It changes a queued REQ, or asks for new work.** Use capture's existing paths (`actions/capture.md`). Under delegated integration the coordinator runs them in its next writing gap.
+- **It changes only what the hand-back shows first.** When the run has a run directory, write it as the hand-back emphasis note in the run manifest, not in memory; the **Decision Brief** reads it there (`actions/work-reference.md` → **Decision Brief (hand-back format)**). When the run has no run directory, the session that received the message is also the one that renders the Decision Brief, so it holds the note itself and says so in one progress line. Do not create a run directory or any other file for this case.
+
 ### Mechanical Evidence-Gate Loop
 
 Whenever per-request `advance` reports a mechanical phase, invoke it again with the judgment-owned inputs named by its typed finding and consume only `advance.gate_records` whose `request_id` and `request_path` match the active REQ. `needs_input` means satisfy the record's tokenized input and retry; `findings` means apply the remaining judgment principle and retry; `failed` stops that evidence boundary; `satisfied` authorizes writing the durable REQ evidence that moves the classifier forward. Then call `advance` again. The command composes estimation, pre-flight, qualification/scope comparison, focused-test baseline comparison, and green-record checks through their existing handlers; do not call those handlers separately or reconstruct their result from display text.
@@ -189,7 +199,7 @@ After triage, check if a specification template matches this REQ's domain or tas
 
 **Plan validation (Route C only):** After the Plan agent returns, run a quick quality check before proceeding:
 
-1. **Requirement coverage:** Re-read the REQ's What/Detailed Requirements. Every requirement should map to at least one planned task. Flag uncovered requirements.
+1. **Requirement coverage:** Re-read the REQ's What/Detailed Requirements and any `## Addendum` section. Every requirement should map to at least one planned task. Flag uncovered requirements.
 2. **No orphan tasks:** Every planned task should trace back to at least one requirement. Tasks that don't address any requirement suggest scope creep.
 3. **Scope sanity:** Count the planned tasks. If 5+, flag: "Plan has [N] tasks — quality degrades past 3. Consider splitting this REQ into multiple smaller REQs."
 4. **Consumer field contract:** For every planned command whose output drives an action-owned mutation, verify that the plan identifies the exact per-record identity, provenance, state, and outcome fields required by its consumer, as applicable. Flag plans that omit the consumer's required fields. This is the plan-time counterpart of `actions/review-work.md`'s **Restatement Sweep**, not a replacement; the sweep still runs at review.
@@ -481,6 +491,7 @@ The clarify workflow has its own action. Run `do-work clarify` — it handles ba
 □ Step 1: Consume advance's committed claim result and frozen continuation argv
 □ Step 3: Triage (decide route, append ## Triage, read original if addendum)
 □ Step 3.5: Handle Open Questions (mark - [~] with D-XX numbered decisions; a user answer obtained mid-run is written in as - [x] before dispatch — never - [~], no D-XX)
+□ Mid-run message: route per Mid-Run Messages; never stop the run for it
 □ Evidence gates: run `advance` at each mechanical phase with the exact request path and consume request-bound `gate_records`
 □ Step 4: Plan (Route C: spawn Plan agent + validate plan / Routes A & B: note skipped)
 □ Step 5: Consult required lessons (all routes); then Explore (Routes B & C only)

@@ -52,7 +52,7 @@ For the ordinary no-change check, obtain the mode-specific diff through Step 4, 
 Read `crew-members/shared-principles.md` before interpreting the REQ, in both review modes.
 
 Read the full REQ file. Extract:
-- **What was requested** — the What/Detailed Requirements sections
+- **What was requested** — the What/Detailed Requirements sections and any `## Addendum` section
 - **Builder Guidance** — certainty level (Firm vs Exploratory), scope cues, implementation hints. Use this to calibrate expectations: Exploratory requests get more latitude on interpretation; Firm requirements must match exactly.
 - **Triage decision** — the route and reasoning
 - **Plan** — what was planned (if Route C)
@@ -84,7 +84,7 @@ Walk through every requirement in the REQ and the original UR input. For each on
 
 This is not a code quality check — it's a checklist. Go requirement by requirement:
 
-1. **Extract all requirements** from the REQ's What/Detailed Requirements sections AND from the UR's original input. Include explicit requirements, implicit UX expectations, constraints, and edge cases the user mentioned.
+1. **Extract all requirements** from the REQ's What/Detailed Requirements sections, any `## Addendum` section (including `## Addendum (mid-run)`, the user's words added while the run was in progress), AND from the UR's original input. Include explicit requirements, implicit UX expectations, constraints, and edge cases the user mentioned.
 2. **For each requirement**, check the diff and implementation:
    - **Delivered**: The requirement is implemented and visible in the diff
    - **Partially delivered**: Some aspects implemented, others missing

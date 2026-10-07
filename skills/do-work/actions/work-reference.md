@@ -477,7 +477,7 @@ What fan-out adds:
 | per-builder input | `REQ-NNN-brief.md` — REQ body, worktree path, branch name, never-touch list, hand-back format |
 | per-builder output | `REQ-NNN-handback.md` — branch, file manifest, integration seams, and **every `##` section the builder would have written into the REQ file** — today `## Discovered Tasks` and `## Decisions`, each under its own heading — because every reader of a builder-authored section reads them from here when the REQ lacks them (**Reading a Builder-Authored Section (any step)**, below). This row and `actions/work.md` Step 6's routed sections are one set: a section Step 6 tells the builder to author and this row does not carry is lost silently. The one main-tree path a builder may write (*Sole integrator*, above) |
 | per-integrator input | `REQ-NNN-integrate.md` — written by the coordinator between integrators, never by a builder (**Delegated integration — the coordinator shape**, above) |
-| `manifest.md` | REQ id → builder, `<operative_name>`, handback file, landed status, held dispatch instant — **the orchestrator's**, never written by a builder |
+| `manifest.md` | REQ id → builder, `<operative_name>`, handback file, landed status, held dispatch instant, plus the run's hand-back emphasis note when the user sent one (`actions/work.md` → **Mid-Run Messages (any step)**) — **the orchestrator's**, never written by a builder |
 | bounded waves | builders per wave, sized to the harness concurrency limit |
 
 Carry that file's own ceiling note verbatim in spirit: the pattern makes fan-out failures **survivable, not prevented**. Never describe it as a fix.
@@ -845,7 +845,7 @@ All 2 requests completed:
 
 ## Decision Brief (hand-back format)
 
-The canonical shape for handing work back to the user. Used by the end-of-run completion hand-back (work.md Step 10 / Progress Reporting), `actions/clarify.md`'s question presentation, and `actions/review-work.md`'s Step 9 report. Lead with what was built and what needs the user; **never lead with a self-grade**. Applies `crew-members/anti-slop.md` § 8 (lead with the decision) and the decide-vs-escalate gate in `crew-members/coding-guardrails.md` § Think Before Coding. Render only the sections that have content.
+The canonical shape for handing work back to the user. Used by the end-of-run completion hand-back (work.md Step 10 / Progress Reporting), `actions/clarify.md`'s question presentation, and `actions/review-work.md`'s Step 9 report. Lead with what was built and what needs the user; **never lead with a self-grade**. Applies `crew-members/anti-slop.md` § 8 (lead with the decision) and the decide-vs-escalate gate in `crew-members/coding-guardrails.md` § Think Before Coding. Render only the sections that have content. When the run manifest carries a hand-back emphasis note (`actions/work.md` → **Mid-Run Messages (any step)**), read it first and order what each section shows by it; the sections and their rules stay the same.
 
 ```
 WHAT'S BEING BUILT            (feature + subsystem altitude — the value)
