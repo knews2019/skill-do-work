@@ -27,6 +27,7 @@ queue-kanban — standalone Go module (`tools/queue-kanban/`, own `go.mod`) that
 
 ## Traps
 
+- [family: git-history-evidence] Commit evidence for a REQ must be commits that REQ's work owns → never narrow the log with a pathspec (merges vanish), and never count a branch tip that is reachable from the integration branch.
 - [family: paired-predicate-drift] Mirroring only one arm of a shared state predicate leaves another reader stale → sweep both sides, including subscriptions, whenever the accepted state set changes.
 - **A merged branch never proves a worktree is disposable** — `verify`'s `Fixable` for a `worktree-agent-*` leftover requires all three of: merged into the integration branch, worktree clean, and its REQ gone from `do-work/working/`. Ancestry alone speaks for the commits only. Anything unestablished — a dirty worktree, an in-flight REQ, an unreadable `git status`, or a REQ id the board never saw — is present-and-non-fixable plus a `SkippedProbes` line, never residue: silence in a verify report reads as checked-and-clean. Answer "is this finished?" with a tri-state, never a boolean, or *no* and *unknowable* collapse into one arm.
 - **`git status` writes** — it refreshes the index it read, so every read-only probe against a worktree passes `--no-optional-locks`, placed **before** `-C` because it is a top-level option, not a subcommand flag.

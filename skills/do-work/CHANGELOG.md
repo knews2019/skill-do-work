@@ -10,6 +10,14 @@ For the complete release history, read this file and the archives below from new
 - [0.50.0 through 0.64.1](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-13-up-to-v0.64.1.md)
 - [0.1.0 through 0.49.0](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-07-up-to-v0.49.0.md)
 
+## 0.305.71 — Board Activity Ignores Builder Branches With No Commits of Their Own (2026-10-07)
+
+A claimed card's "last activity" no longer jumps to the moment a builder branch was created. A freshly cut `worktree-agent-REQ-NNN-*` branch points at the integration commit until the builder commits, and the board used to count that commit as the REQ's newest activity, which also split the card's real idle gap.
+
+- A builder branch's tip counts as activity for its REQ only when the branch owns that commit, that is, when the tip is not reachable from the integration branch. A merged builder's commits still count through its merge.
+- Each board response, and each static `generate`, now reads the worktree-agent worktrees and branches once. The VERIFY band and the activity line share that read, and it takes a fixed number of git commands however many builder branches exist, where it used to list both twice and run one more command per branch.
+- The board guide's "last activity" row states the new rule.
+
 ## 0.305.70 — Recover Take-Over Keeps User Text Under an Indented Heading (2026-10-07)
 
 Data-loss fix in `recover --take-over`: a request that showed an example `## Plan` heading indented by four spaces or a tab lost that example and the user text after it, because the section reader treated the indented line as a real heading and recovery deleted the "generated" section it seemed to start. The section reader now follows the CommonMark indent rule.
