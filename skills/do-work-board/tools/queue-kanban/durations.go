@@ -41,7 +41,8 @@ import (
 // uses commits, so it can show a smaller gap for a REQ this rule excludes.
 
 // activityGapCeiling is the read-time rule's upper bound: a gap between two
-// consecutive lifecycle stamps longer than this is idle time, not work.
+// consecutive lifecycle stamps longer than this, in whole minutes rounded down,
+// is idle time, not work.
 const activityGapCeiling = 2 * time.Hour
 
 // dayMedianExclusionRule is Panel B's statement of the rule, shipped to the
