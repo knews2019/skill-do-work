@@ -10,6 +10,14 @@ For the complete release history, read this file and the archives below from new
 - [0.50.0 through 0.64.1](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-13-up-to-v0.64.1.md)
 - [0.1.0 through 0.49.0](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-07-up-to-v0.49.0.md)
 
+## 0.305.78 — Capture Tells a Session Earmark Apart From Work That Needs You at the Keyboard (2026-10-07)
+
+Before this, "leave this one for me" and "I have to be at the keyboard for this one" both read as an earmark. Capture wrote `assigned_to`, and nothing in the pipeline released the REQ. Now capture writes `assigned_to` only when another session or checkout will take the work. When you have to be present yourself, it captures the REQ as blocked on you, so it shows under Needs input · Blocked and `do-work clarify` releases it.
+
+- `actions/capture.md`: the Earmark assessment states the two cases. Operator-present work is captured `blocked`, with `blocked_by` naming the person in your words and `blocked_at`.
+- `actions/capture.md`: the External-condition assessment now lists the earmark among the look-alikes that are not blocked. The list is keyed on that condition instead of a fixed count of three.
+- `docs/work-guide.md`: the Earmarking paragraph opens with "leave this one for that session" and says the same split in one sentence.
+
 ## 0.305.77 — The Wave-End Check Now Knows Which REQs Were Set Aside (2026-10-07)
 
 The wave-end restatement check from 0.305.76 runs in the review of a wave's last successful integration. Two cases still skipped it with no record. A delegated integrator could not tell a set-aside member from one still building, because a set-aside REQ keeps its claim in `do-work/working/`. And when a member was set aside after the wave's last review had already run, no review got the fact.
