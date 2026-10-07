@@ -7,6 +7,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"sort"
 	"strings"
 
@@ -33,24 +34,18 @@ func releaseShippedChangeError(repositoryRoot string, manifest Manifest) error {
 	for _, path := range tracked {
 		trackedSet[filepath.ToSlash(filepath.Clean(path))] = true
 	}
-	roots, err := releaseownership.DeclaredMaintainerReleaseRoots(trackedSet, headReleaseImage(repositoryRoot))
-	if err != nil {
-		return fmt.Errorf("RELEASE-SHIPPED-CHANGE-UNVERIFIABLE: %w", err)
-	}
-	if len(roots) == 0 {
-		return nil
-	}
 	shippedSources, err := releaseownership.DeclaredModuleSources(trackedSet, headReleaseImage(repositoryRoot))
 	if err != nil {
 		return fmt.Errorf("RELEASE-SHIPPED-CHANGE-UNVERIFIABLE: %w", err)
 	}
-	seenRoots := map[string]bool{}
-	for _, root := range append(append(roots, shippedSources...), "suite", "tools") {
-		seenRoots[root] = true
+	if !slices.ContainsFunc(shippedSources, func(source string) bool { return trackedSet[source+"/VERSION"] }) {
+		return nil
 	}
-	roots = roots[:0]
-	for root := range seenRoots {
-		roots = append(roots, root)
+	roots := shippedSources
+	for _, root := range []string{"suite", "tools"} {
+		if !slices.Contains(roots, root) {
+			roots = append(roots, root)
+		}
 	}
 	sort.Strings(roots)
 
