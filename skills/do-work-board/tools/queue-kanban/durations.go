@@ -24,16 +24,21 @@ import (
 // Panel B applies the calibration's documented read-time rule — a span whose
 // largest gap between consecutive lifecycle stamps exceeds 2h is excluded as
 // idle-gap, a negative span as reversed — so one idle stretch cannot invent a
-// five-hour day while a long continuous session still counts. The rule is stated
-// once, in skills/do-work/actions/estimate-reference.md → Calibration; this is
-// its second reader, not a second definition. The core CLI writes the same gap
+// five-hour day while a long session with phase stamps along the way still
+// counts. A REQ with no phase stamps has one gap, its whole claimed_at →
+// completed_at span, so a phaseless REQ that ran over 2h is excluded even when
+// the work was continuous. The rule is stated once, in
+// skills/do-work/actions/estimate-reference.md → Calibration; this is its
+// second reader, not a second definition. The core CLI writes the same gap
 // into the calibration log's max_stamp_gap_minutes column, from the same stamp
-// set (claimed_at through completed_at, release_at excluded).
+// set (claimed_at through completed_at, release_at excluded), in whole minutes
+// rounded down — so this reader compares whole minutes too, or a 2h00m40s gap
+// would be excluded here and kept by a re-fit reading the logged 120.
 //
 // Stamps only, on purpose: the calibration-log writer runs inside the lifecycle
 // transaction and cannot read git, and both readers must agree exactly. The
-// drawer's idle-gap row (activity_correlation.go) also uses commits, so it can
-// show a smaller gap for a REQ this rule excludes.
+// drawer's "Largest gap between events" row (activity_correlation.go) also
+// uses commits, so it can show a smaller gap for a REQ this rule excludes.
 
 // activityGapCeiling is the read-time rule's upper bound: a gap between two
 // consecutive lifecycle stamps longer than this is idle time, not work.
@@ -355,7 +360,7 @@ func dayMedianExclusionReason(wallSpan time.Duration, largestStampGap time.Durat
 	switch {
 	case wallSpan < 0:
 		return "reversed"
-	case largestStampGap > activityGapCeiling:
+	case int(largestStampGap.Minutes()) > int(activityGapCeiling.Minutes()):
 		return "idle-gap"
 	default:
 		return ""

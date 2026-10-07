@@ -488,7 +488,7 @@
     }
     var gapText = formatElapsedDuration(0, Math.round(Number(largestActivityGap.minutes) * 60000));
     appendMetaRow(
-      "Largest idle gap",
+      "Largest gap between events",
       gapText + " (" + (largestActivityGap.fromPhase || "before any phase") + " → " +
         (largestActivityGap.toPhase || "before any phase") + ")"
     );
