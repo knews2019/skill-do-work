@@ -184,6 +184,13 @@ func runVerifyProbes(repoRootOverride string, now time.Time) (VerifyReport, erro
 // on a tree where no file has changed. Passing a stale `now` would silently restore
 // the blind spot the split was made to remove.
 func collectVerifyFindings(repoRoot string, board *Board, now time.Time) VerifyReport {
+	return collectVerifyFindingsFromGitState(repoRoot, board, now, readWorktreeAgentGitState(repoRoot, runGitCommand))
+}
+
+// collectVerifyFindingsFromGitState is collectVerifyFindings over a worktree and
+// branch read the caller already made, so a served response that also collects
+// request activity lists git once for both.
+func collectVerifyFindingsFromGitState(repoRoot string, board *Board, now time.Time, gitState worktreeAgentGitState) VerifyReport {
 	report := VerifyReport{RepoRoot: repoRoot}
 
 	appendReleaseFindings(&report, repoRoot)
@@ -199,19 +206,18 @@ func collectVerifyFindings(repoRoot string, board *Board, now time.Time) VerifyR
 	appendStrayRequestFileFindings(&report, board)
 	appendAssignedElsewhereFindings(&report, board)
 	appendArchivedUserRequestLiveMemberFindings(&report, board)
-	appendWorktreeFindings(&report, repoRoot, board)
+	appendWorktreeFindings(&report, repoRoot, board, gitState)
 
 	// Worktrees can sit on another disk than the repo root. Without git the
 	// worktree probes above already report themselves skipped; an enumeration
 	// failure skips only the worktree half here, and the root is still measured.
 	var worktreePathsByName map[string]string
 	if gitBinaryAvailable() {
-		listedWorktrees, listError := listWorktreeAgentWorktrees(repoRoot)
-		if listError != nil {
+		if gitState.worktreeListError != nil {
 			report.SkippedProbes = append(report.SkippedProbes,
-				fmt.Sprintf("disk-space probe for worktrees: %v", listError))
+				fmt.Sprintf("disk-space probe for worktrees: %v", gitState.worktreeListError))
 		}
-		worktreePathsByName = listedWorktrees
+		worktreePathsByName = gitState.worktreePathsByName
 	}
 	appendDiskSpaceFindings(&report, repoRoot, worktreePathsByName, diskSpaceMeasurer)
 
@@ -1272,24 +1278,24 @@ func routeWorktreeLeftover(disposition worktreeLeftoverDisposition, requestId st
 // routes only the mechanically-resolvable ones to cleanup. The board answers where
 // a leftover's REQ sits — in do-work/working/, past it, or nowhere the index knows
 // — and it is the board this run already built, never a second walk of the tree.
-func appendWorktreeFindings(report *VerifyReport, repoRoot string, board *Board) {
+func appendWorktreeFindings(report *VerifyReport, repoRoot string, board *Board, gitState worktreeAgentGitState) {
 	if !gitBinaryAvailable() {
 		report.SkippedProbes = append(report.SkippedProbes, "worktree probes: git is not on PATH")
 		return
 	}
 
-	worktreePathsByBranch, listError := listWorktreeAgentWorktrees(repoRoot)
-	if listError != nil {
+	if gitState.worktreeListError != nil {
 		report.SkippedProbes = append(report.SkippedProbes,
-			fmt.Sprintf("worktree probes: %v", listError))
+			fmt.Sprintf("worktree probes: %v", gitState.worktreeListError))
 		return
 	}
-	agentBranches := listWorktreeAgentBranches(repoRoot)
+	worktreePathsByBranch := gitState.worktreePathsByName
+	agentBranches := gitState.branchNames
 
 	// Resolved once: every builder branch is compared against the same integration
 	// point. An unresolvable one disables only the committed-state half, which is
 	// reported rather than passed over — silence would read as "checked and clean."
-	integrationRef, integrationRefError := resolveIntegrationBranchRef(repoRoot)
+	integrationRef, integrationRefError := gitState.integrationRef, gitState.integrationRefError
 	if integrationRefError != nil {
 		report.SkippedProbes = append(report.SkippedProbes,
 			fmt.Sprintf("committed-queue-state probe: %v", integrationRefError))
@@ -1385,9 +1391,8 @@ func appendWorktreeFindings(report *VerifyReport, repoRoot string, board *Board)
 // Dispatch Mode, "Cleanup — happy path"). A detached repo-root checkout has no
 // branch name, so the commit id is returned instead — it names the same point
 // just as explicitly.
-func resolveIntegrationBranchRef(repoRoot string) (string, error) {
-	branchCommand := exec.Command("git", "-C", repoRoot, "rev-parse", "--abbrev-ref", "HEAD")
-	branchOutput, branchError := branchCommand.Output()
+func resolveIntegrationBranchRef(repoRoot string, runner gitCommandRunner) (string, error) {
+	branchOutput, branchError := runner(repoRoot, "rev-parse", "--abbrev-ref", "HEAD")
 	if branchError != nil {
 		return "", fmt.Errorf("cannot resolve the integration branch at %s", repoRoot)
 	}
@@ -1395,8 +1400,7 @@ func resolveIntegrationBranchRef(repoRoot string) (string, error) {
 	if integrationRef != "" && integrationRef != "HEAD" {
 		return integrationRef, nil
 	}
-	commitCommand := exec.Command("git", "-C", repoRoot, "rev-parse", "HEAD")
-	commitOutput, commitError := commitCommand.Output()
+	commitOutput, commitError := runner(repoRoot, "rev-parse", "HEAD")
 	if commitError != nil {
 		return "", fmt.Errorf("cannot resolve the integration commit at %s (detached checkout with no commits?)", repoRoot)
 	}
@@ -1436,12 +1440,58 @@ func worktreeCommittedQueueState(repoRoot string, integrationRef string, branchN
 	return committedPaths, nil
 }
 
+// worktreeAgentGitState is one read of the worktree-agent-* worktrees and
+// branches. A served board response makes it once and hands it to both the
+// verify probes and the request-activity collector, so neither lists git again;
+// the read is a fixed number of git commands however many branches exist.
+type worktreeAgentGitState struct {
+	worktreePathsByName map[string]string
+	worktreeListError   error
+	branchNames         []string
+	integrationRef      string
+	integrationRefError error
+	// Tip commit dates of the branches whose tip is not reachable from the
+	// integration ref, by REQ id. A branch with no commits of its own points at
+	// the commit it was cut from, which is not evidence for its REQ.
+	ownedTipInstantsById map[string][]time.Time
+}
+
+// readWorktreeAgentGitState runs the worktree list, the integration-ref
+// lookup, the branch list, and one `for-each-ref --no-merged` for the owned
+// tips. Each failure is recorded or leaves its part empty; an unresolvable
+// integration ref leaves no owned tips, since ownership cannot be shown.
+func readWorktreeAgentGitState(repoRoot string, runner gitCommandRunner) worktreeAgentGitState {
+	gitState := worktreeAgentGitState{}
+	gitState.worktreePathsByName, gitState.worktreeListError = listWorktreeAgentWorktrees(repoRoot, runner)
+	gitState.branchNames = listWorktreeAgentBranches(repoRoot, runner)
+	gitState.integrationRef, gitState.integrationRefError = resolveIntegrationBranchRef(repoRoot, runner)
+	if gitState.integrationRefError != nil {
+		return gitState
+	}
+	tipOutput, tipError := runner(repoRoot, "for-each-ref", "--no-merged="+gitState.integrationRef,
+		"--format=%(refname:short) %(committerdate:iso-strict)", "refs/heads/"+worktreeAgentNamePrefix+"*")
+	if tipError != nil {
+		return gitState
+	}
+	gitState.ownedTipInstantsById = map[string][]time.Time{}
+	for _, line := range strings.Split(string(tipOutput), "\n") {
+		branchName, tipText, found := strings.Cut(strings.TrimSpace(line), " ")
+		requestId := requestIdFromWorktreeName(branchName)
+		if !found || requestId == "" {
+			continue
+		}
+		if tipInstant, parsed := parseTimestamp(tipText); parsed {
+			gitState.ownedTipInstantsById[requestId] = append(gitState.ownedTipInstantsById[requestId], tipInstant)
+		}
+	}
+	return gitState
+}
+
 // listWorktreeAgentWorktrees maps each worktree-agent-* name to its worktree
 // path, read from `git worktree list --porcelain`. The name is the directory's
 // basename, which worktree dispatch mode keeps identical to the branch name.
-func listWorktreeAgentWorktrees(repoRoot string) (map[string]string, error) {
-	command := exec.Command("git", "-C", repoRoot, "worktree", "list", "--porcelain")
-	output, runError := command.Output()
+func listWorktreeAgentWorktrees(repoRoot string, runner gitCommandRunner) (map[string]string, error) {
+	output, runError := runner(repoRoot, "worktree", "list", "--porcelain")
 	if runError != nil {
 		return nil, fmt.Errorf("`git worktree list` failed (no worktree support, or not a git repo)")
 	}
@@ -1462,9 +1512,8 @@ func listWorktreeAgentWorktrees(repoRoot string) (map[string]string, error) {
 // listWorktreeAgentBranches returns every local worktree-agent-* branch name. A
 // branch can outlive its worktree (the REQ archived, the branch did not), which
 // is why branches are enumerated separately from worktrees.
-func listWorktreeAgentBranches(repoRoot string) []string {
-	command := exec.Command("git", "-C", repoRoot, "branch", "--list", worktreeAgentNamePrefix+"*", "--format=%(refname:short)")
-	output, runError := command.Output()
+func listWorktreeAgentBranches(repoRoot string, runner gitCommandRunner) []string {
+	output, runError := runner(repoRoot, "branch", "--list", worktreeAgentNamePrefix+"*", "--format=%(refname:short)")
 	if runError != nil {
 		return nil
 	}

@@ -16,10 +16,10 @@ import (
 // stamps (lifecycleTimestampFields) and the git commits correlated to it — so a
 // claimed card shows a growing "last activity" number when work stalls, and a
 // done REQ's drawer states its largest idle gap instead of the board guessing a
-// pause from the span alone. The read is cheap (one windowed `git log` plus one
-// `git log -1` per live worktree-agent branch) and is run per response, never
-// inside serve's mtime cache: commits land without any do-work file changing
-// mtime, which is the REQ-284 shape.
+// pause from the span alone. The read is cheap (one windowed `git log` plus the
+// owned worktree-agent branch tips from worktreeAgentGitState) and is run per
+// response, never inside serve's mtime cache: commits land without any do-work
+// file changing mtime, which is the REQ-284 shape.
 
 // gitCommandRunner runs one read-only git command against repoRoot and returns
 // its stdout. Injectable so tests feed canned output and never spawn git.
@@ -179,33 +179,6 @@ func loggedAncestry(commitByHash map[string]*correlatedCommit, startHash string,
 	return reached
 }
 
-// liveBranchTipInstants returns each live worktree-agent-REQ-NNN-* branch's tip
-// commit date by REQ id: a builder's commits before hand-back exist only there.
-// The branch listing mirrors verify's listWorktreeAgentBranches, run through the
-// injected runner.
-func liveBranchTipInstants(repoRoot string, runner gitCommandRunner) map[string][]time.Time {
-	branchOutput, listError := runner(repoRoot, "branch", "--list", worktreeAgentNamePrefix+"*", "--format=%(refname:short)")
-	if listError != nil {
-		return nil
-	}
-	instantsById := map[string][]time.Time{}
-	for _, line := range strings.Split(string(branchOutput), "\n") {
-		branchName := strings.TrimSpace(line)
-		requestId := requestIdFromWorktreeName(branchName)
-		if requestId == "" {
-			continue
-		}
-		tipOutput, tipError := runner(repoRoot, "log", "-1", "--format=%cI", branchName)
-		if tipError != nil {
-			continue
-		}
-		if tipInstant, parsed := parseTimestamp(string(tipOutput)); parsed {
-			instantsById[requestId] = append(instantsById[requestId], tipInstant)
-		}
-	}
-	return instantsById
-}
-
 // activityEvent is one entry of a REQ's union stream.
 type activityEvent struct {
 	instant time.Time
@@ -217,16 +190,18 @@ type activityEvent struct {
 // collectRequestActivity unions each ticket's stamps with its correlated
 // commits and reports the newest event and the largest gap. `since` bounds the
 // git log; `now` drops events past the clock-skew allowance, which only a
-// broken clock can produce. A failed git read leaves the stamps alone, which is
-// still true evidence.
-func collectRequestActivity(repoRoot string, tickets []*RequestTicket, since time.Time, now time.Time, runner gitCommandRunner) map[string]requestActivity {
+// broken clock can produce. ownedTipInstantsById adds each live builder
+// branch's tip — a builder's commits before hand-back exist only there — but
+// only for a branch that owns its tip (worktreeAgentGitState). A failed git
+// read leaves the stamps alone, which is still true evidence.
+func collectRequestActivity(repoRoot string, tickets []*RequestTicket, since time.Time, now time.Time, runner gitCommandRunner, ownedTipInstantsById map[string][]time.Time) map[string]requestActivity {
 	commitInstantsById := map[string][]time.Time{}
 	logOutput, logError := runner(repoRoot, "log", "--since="+since.UTC().Format(time.RFC3339),
 		"--format=%H%x00%cI%x00%P%x00%s", "--name-only")
 	if logError == nil {
 		commitInstantsById = correlateCommitsToRequests(logOutput)
 	}
-	for requestId, tipInstants := range liveBranchTipInstants(repoRoot, runner) {
+	for requestId, tipInstants := range ownedTipInstantsById {
 		commitInstantsById[requestId] = append(commitInstantsById[requestId], tipInstants...)
 	}
 
@@ -332,11 +307,18 @@ type generatedActivityGap struct {
 }
 
 // attachRequestActivity collects activity for the board's claimed and
-// recently-done REQs and folds it into the payload. Both callers use it —
-// generate once for the static snapshot, serve per response with the same
-// `now` as the verify probes. Older archived REQs are left out: reading their
-// commits would mean walking history back to the oldest claim on the board.
+// recently-done REQs and folds it into the payload, reading the worktree-agent
+// branches itself. generate and serve go through attachVerifyFindingsAndRequestActivity
+// instead, which shares one read with the verify probes.
 func attachRequestActivity(data *generatedBoardData, board *Board, now time.Time, runner gitCommandRunner) {
+	attachRequestActivityFromGitState(data, board, now, runner, readWorktreeAgentGitState(board.RepoRoot, runner))
+}
+
+// attachRequestActivityFromGitState is attachRequestActivity over a worktree
+// and branch read the caller already made. Older archived REQs are left out:
+// reading their commits would mean walking history back to the oldest claim on
+// the board.
+func attachRequestActivityFromGitState(data *generatedBoardData, board *Board, now time.Time, runner gitCommandRunner, gitState worktreeAgentGitState) {
 	trackedTickets := append(append([]*RequestTicket{}, board.Columns.Claimed...), board.Columns.RecentlyDone...)
 	if len(trackedTickets) == 0 {
 		return
@@ -348,7 +330,7 @@ func attachRequestActivity(data *generatedBoardData, board *Board, now time.Time
 		}
 	}
 
-	for requestId, activity := range collectRequestActivity(board.RepoRoot, trackedTickets, since, now, runner) {
+	for requestId, activity := range collectRequestActivity(board.RepoRoot, trackedTickets, since, now, runner, gitState.ownedTipInstantsById) {
 		entry := generatedRequestActivity{
 			LastActivityAt:    formatTimestamp(activity.LastActivityAt),
 			LastActivityKind:  activity.LastActivityKind,
