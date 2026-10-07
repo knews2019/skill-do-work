@@ -43,13 +43,13 @@ do-work/
     │   ├── input.md
     │   ├── REQ-013-feature.md
     │   └── assets/
-    ├── REQ-010-legacy-task.md     # Legacy REQs (no UR) archive directly
+    ├── REQ-010-legacy-task.md     # Flat: legacy REQs (no UR), or a UR still open
     └── legacy/                    # Consolidated legacy items
 ```
 
 - **`queue/`**: The queue — only pending `REQ-*.md` files
 - **`working/`**: Claimed requests. Immutable to all actions except the work pipeline.
-- **`archive/`**: Completed UR folders (self-contained) and legacy REQs/CONTEXT docs
+- **`archive/`**: Completed UR folders (self-contained), legacy REQs/CONTEXT docs, and completed REQs whose UR still has open members. Those sit flat in `archive/` until the UR's last REQ completes and moves them into the UR folder.
 - **`user-requests/`**: Active UR folders. Moved to `archive/` when all REQs complete.
 
 This tree exists in the **main working tree only**. Worktree dispatch mode's builder checkouts live outside the repo entirely and never carry their own copy of it — see **Worktree Dispatch Mode (Step 1)**.
