@@ -474,28 +474,35 @@
 
   // The Pending column is the only one that sub-groups: what the work loop could
   // claim right now, versus what is still waiting — on an upstream REQ, or for
-  // the heavy-lane drain the loop runs at queue exhaustion. When
-  // nothing is waiting, the headers are noise — the column renders as a flat
-  // list, exactly as it did before dependency readiness was computed.
-  function fillPendingColumn(readyIds, waitingIds, totalCount) {
+  // the heavy-lane drain the loop runs at queue exhaustion — versus what is
+  // earmarked (assigned_to set), which the loop's default scan skips. When
+  // nothing is waiting or earmarked, the headers are noise — the column renders
+  // as a flat list, exactly as it did before dependency readiness was computed.
+  function fillPendingColumn(readyIds, waitingIds, earmarkedIds, totalCount) {
     var container = document.querySelector('[data-cards="pending"]');
     var countNode = document.querySelector('[data-count="pending"]');
+    var shownCount = readyIds.length + waitingIds.length + earmarkedIds.length;
     container.textContent = "";
-    countNode.textContent = formatFilteredCount(readyIds.length + waitingIds.length, totalCount);
-    updateColumnCopyButton("pending", readyIds.length + waitingIds.length);
+    countNode.textContent = formatFilteredCount(shownCount, totalCount);
+    updateColumnCopyButton("pending", shownCount);
 
-    if (readyIds.length === 0 && waitingIds.length === 0) {
+    if (shownCount === 0) {
       container.appendChild(createElement("p", "column-empty", columnEmptyText()));
       return;
     }
-    if (waitingIds.length === 0) {
+    if (waitingIds.length === 0 && earmarkedIds.length === 0) {
       readyIds.forEach(function (requestId) {
         container.appendChild(makeRequestCard(requestId));
       });
       return;
     }
-    container.appendChild(makePendingGroup("Ready", readyIds, "Nothing ready — everything here is waiting"));
-    container.appendChild(makePendingGroup("Waiting", waitingIds, ""));
+    container.appendChild(makePendingGroup("Ready", readyIds, "Nothing ready — everything here is waiting or earmarked"));
+    if (waitingIds.length > 0) {
+      container.appendChild(makePendingGroup("Waiting", waitingIds, ""));
+    }
+    if (earmarkedIds.length > 0) {
+      container.appendChild(makePendingGroup("Earmarked", earmarkedIds, ""));
+    }
   }
 
   function makePendingGroup(labelText, requestIds, emptyText) {
@@ -564,10 +571,12 @@
     var columns = boardData.columns || {};
     var pendingReadyIds = columns.pendingReady || [];
     var pendingWaitingIds = columns.pendingWaiting || [];
+    var pendingEarmarkedIds = columns.pendingEarmarked || [];
     fillPendingColumn(
       filterRequestIds(pendingReadyIds),
       filterRequestIds(pendingWaitingIds),
-      pendingReadyIds.length + pendingWaitingIds.length
+      filterRequestIds(pendingEarmarkedIds),
+      pendingReadyIds.length + pendingWaitingIds.length + pendingEarmarkedIds.length
     );
     var claimedIds = columns.claimed || [];
     fillColumn("claimed", filterRequestIds(claimedIds), null, claimedIds.length);

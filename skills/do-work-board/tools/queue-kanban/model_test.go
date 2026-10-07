@@ -597,8 +597,8 @@ func TestBlockedDependencyGateControlsColumnsAndInheritedCounts(t *testing.T) {
 	}
 
 	openCounts := countOpenWork(board)
-	if openCounts.Pending != 4 || openCounts.PendingReady != 1 || openCounts.PendingWaiting != 3 || openCounts.NeedsInputOrBlocked != 3 {
-		t.Fatalf("inherited open-work counts = %+v, want pending 4 (1 ready, 3 waiting), needs-input 3", openCounts)
+	if openCounts.Pending != 4 || openCounts.PendingReady != 1 || openCounts.PendingWaiting != 3 || openCounts.PendingEarmarked != 0 || openCounts.NeedsInputOrBlocked != 3 {
+		t.Fatalf("inherited open-work counts = %+v, want pending 4 (1 ready, 3 waiting, 0 earmarked), needs-input 3", openCounts)
 	}
 	var summaryOutput bytes.Buffer
 	writeBoardSummary(&summaryOutput, board)
@@ -606,6 +606,7 @@ func TestBlockedDependencyGateControlsColumnsAndInheritedCounts(t *testing.T) {
 		"  pending             : 4",
 		"    ready to work     : 1",
 		"    waiting on deps   : 3",
+		"    earmarked         : 0",
 		"  needs-input/blocked : 3",
 	} {
 		if !strings.Contains(summaryOutput.String(), expectedLine) {
@@ -1017,31 +1018,46 @@ func TestParseRequestTicketNonCanonicalSweepMarkerReadsFalse(t *testing.T) {
 	}
 }
 
-func TestAssignedToNeverAffectsColumnPlacement(t *testing.T) {
-	temporaryDirectory := t.TempDir()
-	unassignedPath := filepath.Join(temporaryDirectory, "REQ-562-plain.md")
-	assignedPath := filepath.Join(temporaryDirectory, "REQ-563-earmarked.md")
-	if writeError := os.WriteFile(unassignedPath,
-		[]byte("---\nid: REQ-562\ntitle: Plain\nstatus: pending\n---\n\nBody.\n"), 0o644); writeError != nil {
-		t.Fatalf("write fixture: %v", writeError)
+// An earmarked pending REQ is one the work pipeline's default scan skips, so
+// the board must not call it Ready. The test this replaces only compared Status
+// and stayed green while three surfaces counted a skipped REQ as ready (UR-140).
+func TestAssignedPendingRequestIsEarmarkedNotReady(t *testing.T) {
+	repositoryRoot := t.TempDir()
+	queueDirectory := filepath.Join(repositoryRoot, "do-work", "queue")
+	if err := os.MkdirAll(queueDirectory, 0o755); err != nil {
+		t.Fatal(err)
 	}
-	if writeError := os.WriteFile(assignedPath,
-		[]byte("---\nid: REQ-563\ntitle: Earmarked\nstatus: pending\nassigned_to: \"cloud-alpha\"\n---\n\nBody.\n"),
-		0o644); writeError != nil {
-		t.Fatalf("write fixture: %v", writeError)
+	fixtures := []struct {
+		identifier string
+		extra      string
+	}{
+		{"REQ-562", ""},
+		{"REQ-563", "assigned_to: \"cloud-alpha\"\n"},
+		{"REQ-564", "assigned_to: \"cloud-alpha\"\ndepends_on: [REQ-999]\n"},
 	}
-
-	unassignedTicket, parseError := parseRequestTicket(unassignedPath, "queue")
-	if parseError != nil {
-		t.Fatalf("parseRequestTicket: %v", parseError)
+	for _, fixture := range fixtures {
+		contents := "---\nid: " + fixture.identifier + "\ntitle: Earmark fixture\nstatus: pending\n" + fixture.extra + "---\n"
+		if err := os.WriteFile(filepath.Join(queueDirectory, fixture.identifier+"-fixture.md"), []byte(contents), 0o600); err != nil {
+			t.Fatal(err)
+		}
 	}
-	assignedTicket, parseError := parseRequestTicket(assignedPath, "queue")
-	if parseError != nil {
-		t.Fatalf("parseRequestTicket: %v", parseError)
+	board, err := buildBoard(repositoryRoot, time.Now().UTC(), defaultRecentWindow, func(string, string) (time.Time, bool) {
+		return time.Time{}, false
+	})
+	if err != nil {
+		t.Fatal(err)
 	}
-	if assignedTicket.Status != unassignedTicket.Status {
-		t.Fatalf("assigned ticket Status = %q, unassigned = %q — assigned_to must not touch status, which is what buckets the card",
-			assignedTicket.Status, unassignedTicket.Status)
+	if got := requestIdsOf(board.Columns.PendingReady); !reflect.DeepEqual(got, []string{"REQ-562"}) {
+		t.Fatalf("pending ready = %v, want [REQ-562] — an assigned REQ is skipped by the run, so it is not Ready", got)
+	}
+	if got := requestIdsOf(board.Columns.PendingEarmarked); !reflect.DeepEqual(got, []string{"REQ-563"}) {
+		t.Fatalf("pending earmarked = %v, want [REQ-563]", got)
+	}
+	if got := requestIdsOf(board.Columns.PendingWaiting); !reflect.DeepEqual(got, []string{"REQ-564"}) {
+		t.Fatalf("pending waiting = %v, want [REQ-564] — an unmet dependency keeps an assigned REQ in Waiting", got)
+	}
+	if got := requestIdsOf(board.Columns.Pending); !reflect.DeepEqual(got, []string{"REQ-562", "REQ-564", "REQ-563"}) {
+		t.Fatalf("pending union = %v, want ready, then waiting, then earmarked", got)
 	}
 }
 

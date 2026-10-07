@@ -108,8 +108,8 @@ The main Board view shows a `testing` badge on any card carrying a record, so te
 
 - **serve:** the live URL + how to stop it.
 - **static:** the path to `index.html` and a one-line column-count recap.
-- **open-work:** the tool's digest — the open total with its pending (ready/waiting) · claimed · needs-input/blocked breakdown, then each claimed REQ as id + title, then each needs-input/blocked REQ as id + status + title (with the `blocked_by` condition when one is named), then a warnings count when the parse raised any.
-- **summary:** the tool's column-count block (total REQs, pending — split into ready-to-work and waiting-on-deps — claimed, needs-input/blocked, recently-done, completion anomalies — with the offending REQ ids listed when nonzero — calendar entries (one per REQ, so this equals the total), dependency edges).
+- **open-work:** the tool's digest — the open total with its pending (ready/waiting/earmarked) · claimed · needs-input/blocked breakdown, then each claimed REQ as id + title, then each needs-input/blocked REQ as id + status + title (with the `blocked_by` condition when one is named), then a warnings count when the parse raised any.
+- **summary:** the tool's column-count block (total REQs, pending — split into ready-to-work, waiting-on-deps, and earmarked (assigned, so the default work scan skips it) — claimed, needs-input/blocked, recently-done, completion anomalies — with the offending REQ ids listed when nonzero — calendar entries (one per REQ, so this equals the total), dependency edges).
 
 ## Rules
 
