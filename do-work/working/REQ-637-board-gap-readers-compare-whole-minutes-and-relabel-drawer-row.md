@@ -1,7 +1,7 @@
 ---
 id: REQ-637
 title: '[impact-rule-change] Board Panel B compares the stamp gap in whole minutes like the calibration log, and the drawer row is relabelled to mean the gap between events'
-status: pending
+status: claimed
 created_at: 2026-10-06T22:45:18Z
 user_request: UR-137
 domain: backend
@@ -14,6 +14,7 @@ related: [REQ-635, REQ-636, REQ-638]
 batch: review-0305-69-findings
 required_lessons: [_dev/primes/lessons-releases.md]
 write_set: [skills/do-work-board/tools/queue-kanban/durations.go, skills/do-work-board/tools/queue-kanban/durations_test.go, skills/do-work-board/tools/queue-kanban/web/board-detail.js, skills/do-work/CHANGELOG.md, skills/do-work-board/tools/queue-kanban/lessons-do-kanban.md, do-work/lessons-index.md]
+claimed_at: 2026-10-07T13:58:57Z
 ---
 # Board Panel B Compares the Stamp Gap in Whole Minutes Like the Calibration Log, and the Drawer Row Is Relabelled to Mean the Gap Between Events
 
