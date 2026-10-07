@@ -127,14 +127,16 @@ Evaluate the implementation quality by reading the diff:
 - Data integrity risks (race conditions, missing validation at boundaries)
 - Regression risk — identify callers/dependents of changed code, flag interfaces whose contract changed, note shared utilities that other features rely on
 
-**Restatement Sweep (when the diff redefines something other text restates)**
+**Restatement Sweep (when the diff, or an earlier member of its wave, redefines something other text restates)**
 
 Risk Assessment above covers the *code* consumers of a changed interface. This is its documented-consumer twin, and it is the check that catches the most common way a high-scoring REQ still ships broken: the meaning of something changes in its canonical home while a restatement or consumer elsewhere keeps the old meaning.
 
 1. **Trigger — ask the question, don't consult a list.** For each element the diff touches: *does this change the meaning of something that is stated in more than one place?* A contract token, a schema field's semantics, a gate's wording, what a stored value actually holds, the shape a prescribed command's output is consumed as — anything whose definition lives in one home while other files restate, gloss, parse, or act on it. Those are illustrative examples, not the set to check against; a hand-maintained token list goes stale the moment the contract grows, so ask the question of whatever *this* diff redefines.
+   **At a wave end, the trigger set also inherits.** When this REQ is the last successful integration of its wave, the trigger set also includes every element the wave's earlier members recorded as redefined, read from the **Restatement sweep:** line of the `## Review` in each earlier member's archived REQ file. An earlier member's review ran before the later member merged, so only the last review sees both. The wave is the membership the run manifest (`manifest.md` in the run directory, passed to the review by `actions/work.md` Step 7) or a delegated integrator's brief names, not the whole run. This REQ is the last successful integration when every other member of that wave is already finalized or set aside. A set-aside member does not skip the check: the last member that does integrate runs it, and the set-aside member has no archived review to read. An earlier member whose review has no such line is reported as *not recorded*, never read as nothing redefined, because a missing line is unknown, not empty. With no run manifest there is no wave, and the trigger set is this diff's own redefinitions.
 2. **Sweep each redefined element.** Grep the repo for every other statement or consumer of it — the token itself, the phrasings that gloss it, and the tests, tooling, and templates that parse or restate it — and verify each still agrees with the new meaning. This generalizes the rule already required for prescribed shell commands (when a fix changes a command primitive, grep that primitive across every action before calling it fixed — these get copy-pasted, so the fix is rarely local) from commands to contracts.
 3. **Every stale restatement is a finding.** Severity is your judgment: **Important** when the stale text would lead a reader or an agent to act on the old contract, **Minor** when it's cosmetic. **A stale restatement in a file the REQ never declared is still a finding** — drift between a canonical home and its restatements is exactly what this check exists to surface. Record it in the report with its impact token; unless it is `impact-critical`, its line ends `→ report only` and no queue or prose-backlog destination is mutated. Do not score it as the builder's scope drift.
-4. **Skip it when nothing was redefined.** A typo fix, a new case inside one function, or text nothing else restates gets no sweep. The trigger is redefinition, not diff size — this is not a blanket "grep everything" pass on every change.
+4. **Skip it when the trigger set is empty** — nothing this diff redefined and, at a wave end, nothing inherited. A typo fix, a new case inside one function, or text nothing else restates gets no sweep. The trigger is redefinition, not diff size — this is not a blanket "grep everything" pass on every change.
+5. **Record this diff's own redefinitions** on the **Restatement sweep:** line of the appended review (*Append to REQ File*, below), or `nothing redefined`. Inherited elements never go on that line, because a later member reads it as what this member redefined. Their stale restatements are ordinary findings (step 3).
 
 Origin: the REQ-035–040 batch reviewed at 86–98%, yet every top defect a later independent pass found was this one class — a token changed in its canonical home with a restatement elsewhere left on the old semantics, and no review step forcing the sweep.
 
@@ -401,6 +403,7 @@ After generating the report, append a Review section to the REQ file — its `<t
 
 **Minor findings:** [each finding carries its impact token and ends `→ report only`, or "None"]
 **Acceptance:** [Pass/Partial/Fail/Untested] — [1-line summary]
+**Restatement sweep:** redefined [elements this diff redefined, comma-separated] | nothing redefined
 **Suggested testing:** [count] items
 **Follow-ups created:** [critical REQ destinations only] or `None (N findings report only)` when every finding is noncritical
 
@@ -486,7 +489,7 @@ If any of these are true, escalate review depth regardless of route:
 Before presenting the review report:
 
 - [ ] Every requirement from the REQ walked against the diff (not skimmed)
-- [ ] Restatement Sweep applied — for anything the diff redefines, every other statement or consumer of it was grepped and verified (or recorded as "nothing redefined, sweep N/A")
+- [ ] Restatement Sweep applied — every element in the trigger set (this diff's redefinitions, plus earlier members' recorded ones at a wave end) was grepped and verified, and the **Restatement sweep:** line of the appended review names this diff's own redefinitions or `nothing redefined`
 - [ ] All applicable scoring dimensions have a numeric score (no blanks)
 - [ ] Overall score computed using the documented formula
 - [ ] P-A-U checkboxes checked — if the REQ has an "AI Execution State (P-A-U Loop)" section, verify all three boxes (`[PLAN]`, `[APPLY]`, `[UNIFY]`) are marked `[x]`. Unchecked boxes suggest the builder skipped a phase — flag as a Minor finding.
