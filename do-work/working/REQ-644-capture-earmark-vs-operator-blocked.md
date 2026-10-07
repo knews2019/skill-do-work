@@ -2,6 +2,13 @@
 id: REQ-644
 title: '[impact-rule-change] Capture distinguishes a session earmark from work that needs the user as operator'
 status: claimed
+estimate:
+  p50_active_minutes: 5
+  confidence: high
+  basis:
+  - trivial short-circuit
+  calculated_at: 2026-10-07T23:28:10Z
+route: A
 created_at: 2026-10-07T23:21:03Z
 user_request: UR-140
 domain: general
@@ -13,6 +20,8 @@ effort_estimate: effort-mechanical
 related: [REQ-643]
 batch: earmark-placement
 write_set: [skills/do-work/actions/capture.md, skills/do-work/docs/work-guide.md]
+dispatch_at: 2026-10-07T23:30:13Z
+builder_handback_at: 2026-10-07T23:34:57Z
 claimed_at: 2026-10-07T23:26:38Z
 ---
 # Capture Distinguishes a Session Earmark From Work That Needs the User as Operator
@@ -51,3 +60,18 @@ See `do-work/user-requests/UR-140/input.md` for complete verbatim input. No queu
 - [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
 - [ ] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
 *Source: maintainer feedback "Board: a pending REQ earmarked for the user reads as 'Ready', which misleads", change 2, accepted by validate-feedback.*
+---
+
+## Triage
+
+**Route: A** - Simple
+
+**Reasoning:** Prose-only, two named files with named lines, content of each sentence specified by the maintainer; effort-mechanical with wording-only latitude.
+
+**Planning:** Not required
+
+## Plan
+
+**Planning not required** - Route A: Direct implementation
+
+*Skipped by work action*
