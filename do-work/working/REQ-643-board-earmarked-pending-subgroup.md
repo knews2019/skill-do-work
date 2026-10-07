@@ -2,6 +2,16 @@
 id: REQ-643
 title: 'Board shows an earmarked pending REQ under Pending → Earmarked instead of Ready, and the ready counts agree'
 status: claimed
+estimate:
+  p50_active_minutes: 35
+  confidence: medium
+  basis:
+  - Route B
+  - 9-file write set
+  - 3 subsystems involved
+  - 8 acceptance criteria
+  calculated_at: 2026-10-07T23:28:10Z
+route: B
 created_at: 2026-10-07T23:21:03Z
 user_request: UR-140
 domain: general
@@ -12,7 +22,9 @@ impact: impact-user-visible
 effort_estimate: effort-substantive
 related: [REQ-644]
 batch: earmark-placement
-write_set: [skills/do-work-board/tools/queue-kanban/model.go, skills/do-work-board/tools/queue-kanban/model_test.go, skills/do-work-board/tools/queue-kanban/generate.go, skills/do-work-board/tools/queue-kanban/open_work.go, skills/do-work-board/tools/queue-kanban/main.go, skills/do-work-board/tools/queue-kanban/web/board-cards.js, skills/do-work-board/docs/board-guide.md, skills/do-work-board/actions/board.md, skills/do-work/actions/work-reference.md]
+write_set: [skills/do-work-board/tools/queue-kanban/model.go, skills/do-work-board/tools/queue-kanban/model_test.go, skills/do-work-board/tools/queue-kanban/generate.go, skills/do-work-board/tools/queue-kanban/open_work.go, skills/do-work-board/tools/queue-kanban/open_work_test.go, skills/do-work-board/tools/queue-kanban/main.go, skills/do-work-board/tools/queue-kanban/web/board-cards.js, skills/do-work-board/docs/board-guide.md, skills/do-work-board/actions/board.md, skills/do-work/actions/work-reference.md]
+dispatch_at: 2026-10-07T23:31:21Z
+builder_handback_at: 2026-10-07T23:47:22Z
 claimed_at: 2026-10-07T23:26:38Z
 ---
 # Board Shows an Earmarked Pending REQ Under Pending → Earmarked Instead of Ready
@@ -60,3 +72,67 @@ See `do-work/user-requests/UR-140/input.md` for complete verbatim input. No queu
 - [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
 - [ ] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
 *Source: maintainer feedback "Board: a pending REQ earmarked for the user reads as 'Ready', which misleads", change 1, accepted by validate-feedback.*
+---
+
+## Triage
+
+**Route: B** - Medium
+
+**Reasoning:** The outcome is fixed at capture (a Pending → Earmarked sub-group, counts agree, lock-step comment edits) but the change crosses the Go model, the JSON payload, two CLI count surfaces, the browser renderer, docs, and a schema line, with `tdd: true`; exploration confirms the exact threading pattern and the test shape before a builder touches nine files.
+
+**Planning:** Not required
+
+## Plan
+
+**Planning not required** - Route B: Exploration-guided implementation
+
+*Skipped by work action*
+
+## Exploration
+
+Key files and the threading pattern a display bucket follows (verified against HEAD f45fb549 and the capture triage):
+
+- `skills/do-work-board/tools/queue-kanban/model.go` — `BoardColumns` (line ~378) holds `Pending`, `PendingReady`, `PendingWaiting`, `Claimed`, `NeedsInputOrBlocked`, `RecentlyDone`, `CompletionAnomalies`. `bucketColumns` (line ~1714) switches on status: the `pending` arm splits Ready/Waiting on `len(ticket.UnmetDependencies)`; the two pending groups are then priority-sorted in a loop over `[][]*RequestTicket{PendingReady, PendingWaiting}` and `Pending` is rebuilt as their concatenation. `AssignedTo` is parsed at line ~889 (`coerceScalarToString(fields["assigned_to"])`) with the verbatim-read contract in the struct comment (lines ~176-191), which today says the board never buckets on it.
+- `skills/do-work-board/tools/queue-kanban/generate.go` — `generatedColumns` payload struct (lines ~142-146: `PendingReady []string \`json:"pendingReady"\``, `PendingWaiting`), single copy site at line ~776 using `requestIdsOf(board.Columns.X)`.
+- `skills/do-work-board/tools/queue-kanban/open_work.go` — `countOpenWork` (line ~34-44) exposes `PendingReady`/`PendingWaiting` counts; `writeOpenWorkDigest` (line ~58-61) prints `pending %d (%d ready, %d waiting) | claimed %d | needs-input/blocked %d`. Its test (`open_work_test.go`, if present) asserts the exact line; `summary`'s count block is in `main.go:123` (`ready to work     : %d`) with `waiting on deps` beside it.
+- `skills/do-work-board/tools/queue-kanban/web/board-cards.js` — `fillPendingColumn(readyIds, waitingIds, totalCount)` (line ~480) renders a flat list when `waitingIds` is empty, else `makePendingGroup("Ready", …)` + `makePendingGroup("Waiting", …)` (lines ~497-498). `makePendingGroup(labelText, requestIds, emptyText)` (line ~501) is generic: a third call is the whole UI change. `renderColumns` (line ~563) reads `columns.pendingReady` / `columns.pendingWaiting` from `boardData.columns`. The assigned badge is built at lines ~219-239 and stays untouched.
+- `skills/do-work-board/tools/queue-kanban/model_test.go` — `TestAssignedToNeverAffectsColumnPlacement` (line ~1020) asserts only `Status` equality through `parseRequestTicket`; it never calls `bucketColumns`. Existing placement tests use `requestIdsOf(board.Columns.PendingReady)` / `requestIdSet(...)` after a full board build (lines ~507, ~577, ~649, ~854) — follow that shape. Tests at ~864-908 (verbatim read, absent-reads-as-empty) stay.
+- Docs restating Ready/Waiting: `skills/do-work-board/docs/board-guide.md:18`, `skills/do-work-board/actions/board.md:111-112`. Schema line to change in lock-step: `skills/do-work/actions/work-reference.md:114` ("with **no column logic and no scheduling**").
+- Testing conventions: `go test ./...` in the board package takes ~40 s (over the 30 s focused-probe budget), so the probe runs `-run` with the new and neighbouring test names; the repository gate (`_dev/tests/maintainer-verify.sh`) covers the whole package. The board has a browser heavy lane (`queue-kanban-browser`, needs `QUEUE_KANBAN_BROWSER`) and a javascript lane for `web/`.
+- Lessons consulted: `do-work/lessons-index.md` rows for `lessons-do-kanban.md` (7636 tokens) and `_dev/primes/lessons-kanban-board.md` (5912 tokens) both exceed the 2000-token budget and are `slugged: partial`, so no targeted form is legal; `required_lessons` stays absent and the captured drop record stands. The family `paired-predicate-drift` (two readers of one contract) is this bug's shape and the builder reads that bullet directly via the prime's Traps.
+
+*Generated by the orchestrator from the capture-time code read (same session), standing in for a separate Explore agent*
+
+## Scope
+
+**Files I will touch:**
+- `skills/do-work-board/tools/queue-kanban/model.go` (modify) — `PendingEarmarked` bucket in `BoardColumns` and `bucketColumns`; struct comments and the `AssignedTo` doc comment
+- `skills/do-work-board/tools/queue-kanban/model_test.go` (modify) — replace `TestAssignedToNeverAffectsColumnPlacement` with a placement test through the board build
+- `skills/do-work-board/tools/queue-kanban/generate.go` (modify) — `pendingEarmarked` payload list and copy site
+- `skills/do-work-board/tools/queue-kanban/open_work.go` (modify) — earmarked count and digest line
+- `skills/do-work-board/tools/queue-kanban/open_work_test.go` (modify, if it pins the digest line) — expected text
+- `skills/do-work-board/tools/queue-kanban/main.go` (modify) — summary block gains an `earmarked` line; `ready to work` excludes earmarked
+- `skills/do-work-board/tools/queue-kanban/web/board-cards.js` (modify) — third `makePendingGroup("Earmarked", …)` after Waiting; flat-list shortcut only when Waiting and Earmarked are both empty
+- `skills/do-work-board/docs/board-guide.md` (modify) — Pending split sentence names the third group
+- `skills/do-work-board/actions/board.md` (modify) — open-work and summary descriptions name the third group
+- `skills/do-work/actions/work-reference.md` (modify) — `assigned_to:` schema line: replace "no column logic and no scheduling" with the true placement statement, same commit as `model.go`
+
+**Files I will NOT touch:** `web/board.css` (the badge and `.pending-group` styles already cover a third group), `web/board-detail.js` (drawer row unchanged), `frontmatter.go`, any `skills/do-work/tools/do-work-cli` code, `VERSION`, `CHANGELOG.md` and mirrors (release step owns them), `do-work/` paths.
+
+**Acceptance criteria (restated from REQ):**
+- [ ] A `pending` REQ with non-empty `assigned_to` and no unmet dependencies is in `PendingEarmarked`, not `PendingReady`; `Pending` is still the union of the three groups and each group is priority-sorted
+- [ ] A `pending` assigned REQ with an unmet dependency stays in `PendingWaiting`
+- [ ] The board payload carries `pendingEarmarked` and the Pending column renders an "Earmarked" group after Waiting; the badge text and value are unchanged
+- [ ] `queue-kanban summary` reports `ready to work` without earmarked REQs and adds an earmarked line; the open-work digest reads `(N ready, N waiting, N earmarked)`
+- [ ] The replaced Go test fails before the model change and passes after (tdd: true)
+- [ ] `model.go`'s `AssignedTo` comment and `work-reference.md:114` say the board groups on the field, and never orders across groups, schedules, or gates on it; both change in the same commit
+- [ ] `board-guide.md` and `board.md` name the third group
+- [ ] No scheduling, filtering, or sorting on `assigned_to` beyond placement; no alias map or case folding
+
+## Pre-Flight
+
+**Git:** ✓ clean apart from `do-work/` (the two working REQs, `baseline.json`, and this run's directory; sibling REQ-644's builder runs in its own worktree)
+**Tests baseline:** ✓ focused probe `do-work/runs/work-2026-10-07-232637/REQ-643-probe.sh` (go test -run 'AssignedTo|Earmark|PendingColumns|Bucket|OpenWork') exit 0 in 3.6 s; repository gate `bash _dev/tests/maintainer-verify.sh` exit 0 in 125 s at 531dd00e
+**Dependencies:** ✓ Go toolchain present; none to install
+
+*Checked by work action*
