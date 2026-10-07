@@ -10,6 +10,18 @@ For the complete release history, read this file and the archives below from new
 - [0.50.0 through 0.64.1](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-13-up-to-v0.64.1.md)
 - [0.1.0 through 0.49.0](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-07-up-to-v0.49.0.md)
 
+## 0.305.76 — The Last Review in a Parallel Wave Now Checks What Earlier REQs Redefined (2026-10-07)
+
+When several REQs are built at once, a git merge only catches edits to the same lines. It cannot see a later REQ that restates a rule an earlier REQ just changed the meaning of. Each REQ's review ran before the next one merged, so no review saw both. Now the review of the last REQ to integrate in a wave checks for this.
+
+- Every review now records one `**Restatement sweep:**` line in its `## Review` block. It lists what that REQ's own change redefined, or says nothing was redefined.
+- When a REQ is the last successful integration of its wave, the orchestrator tells its reviewer so and passes the earlier members' REQ ids. The review then also sweeps every element those members recorded on their lines, read from their archived REQ files.
+- The orchestrator decides "last" from the archive and from the members it set aside, with the run manifest naming the wave's members. A set-aside member does not skip the check.
+- An earlier review with no such line is named as unread for the sweep. Its changes are never re-derived from its diff.
+- Findings route as before: report only unless impact-critical.
+- The Folder Structure in `actions/work-reference.md` now says that finished REQs of a still-open user request sit flat in `archive/` until the request closes.
+- The user guide says the last review in a wave also checks for these meaning collisions.
+
 ## 0.305.75 — Messages Sent During a Run Now Reach the Right REQ Without Stopping It (2026-10-07)
 
 You can now keep talking to a running `do-work run`. Before this, a message sent during a run became an addendum REQ for the next run, and the builder working on that REQ never saw it. The new "Mid-Run Messages (any step)" rule in `actions/work.md` routes each message by what it changes, and the run never stops for it.
