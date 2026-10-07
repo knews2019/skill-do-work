@@ -307,18 +307,11 @@ type generatedActivityGap struct {
 }
 
 // attachRequestActivity collects activity for the board's claimed and
-// recently-done REQs and folds it into the payload, reading the worktree-agent
-// branches itself. generate and serve go through attachVerifyFindingsAndRequestActivity
-// instead, which shares one read with the verify probes.
-func attachRequestActivity(data *generatedBoardData, board *Board, now time.Time, runner gitCommandRunner) {
-	attachRequestActivityFromGitState(data, board, now, runner, readWorktreeAgentGitState(board.RepoRoot, runner))
-}
-
-// attachRequestActivityFromGitState is attachRequestActivity over a worktree
-// and branch read the caller already made. Older archived REQs are left out:
-// reading their commits would mean walking history back to the oldest claim on
-// the board.
-func attachRequestActivityFromGitState(data *generatedBoardData, board *Board, now time.Time, runner gitCommandRunner, gitState worktreeAgentGitState) {
+// recently-done REQs and folds it into the payload, over a worktree and branch
+// read the caller already made (attachVerifyFindingsAndRequestActivity shares
+// it with the verify probes). Older archived REQs are left out: reading their
+// commits would mean walking history back to the oldest claim on the board.
+func attachRequestActivity(data *generatedBoardData, board *Board, now time.Time, runner gitCommandRunner, gitState worktreeAgentGitState) {
 	trackedTickets := append(append([]*RequestTicket{}, board.Columns.Claimed...), board.Columns.RecentlyDone...)
 	if len(trackedTickets) == 0 {
 		return

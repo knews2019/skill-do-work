@@ -1806,7 +1806,7 @@ func TestJavaScriptBehaviorClaimedCardShowsItsLastCorrelatedActivity(t *testing.
 		return cannedLogRecord("c1", commitInstant, "c0", "docs(do-work): tidy the queue notes",
 			"do-work/working/REQ-711-live-card.md", "do-work/queue/REQ-712-blocked-card.md")
 	}}
-	attachRequestActivity(&boardData, board, moment, runner.run)
+	attachRequestActivity(&boardData, board, moment, runner.run, readWorktreeAgentGitState(board.RepoRoot, runner.run))
 	requestsJson, encodeError := json.Marshal(boardData.Requests)
 	if encodeError != nil {
 		t.Fatalf("encode requests: %v", encodeError)

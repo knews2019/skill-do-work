@@ -2401,7 +2401,7 @@ func TestVerifyNamesTheSubjectEachFindingIsAbout(t *testing.T) {
 	if projectError != nil {
 		t.Fatalf("buildGeneratedBoardData: %v", projectError)
 	}
-	attachVerifyFindings(&boardData, board, moment)
+	attachVerifyReport(&boardData, board, collectVerifyFindings(board.RepoRoot, board, moment))
 
 	payloadBytes, marshalError := json.Marshal(boardData.VerifyFindings)
 	if marshalError != nil {
