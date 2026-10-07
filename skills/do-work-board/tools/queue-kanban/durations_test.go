@@ -507,6 +507,15 @@ func TestImplementationSpanVerdictReadsTheLargestStampGap(t *testing.T) {
 		{"no phase stamps, span one minute under the ceiling: kept", phaselessTicket(activityGapCeiling - time.Minute), ""},
 		{"no phase stamps, span one minute over the ceiling: the whole span is the gap", phaselessTicket(activityGapCeiling + time.Minute), "idle-gap"},
 		{
+			// The calibration log writes the gap in whole minutes rounded down, so a
+			// 2h00m40s gap is logged as 120 and a re-fit reading the log keeps it.
+			// Panel B is the log's second reader and must agree at the boundary.
+			"a 2h00m40s phase gap is kept: in whole minutes it is the ceiling, not over it",
+			&RequestTicket{ClaimedAt: "2026-08-03T01:00:00Z", DispatchAt: "2026-08-03T03:00:40Z", CompletedAt: "2026-08-03T03:30:00Z"},
+			"",
+		},
+		{"no phase stamps, span 59 seconds over the ceiling: still the ceiling in whole minutes, kept", phaselessTicket(activityGapCeiling + 59*time.Second), ""},
+		{
 			// The REQ's Red-Green case: 4h21m worked continuously, largest gap 67 min
 			// (dispatch → builder handback). The retired 4h span rule excluded it.
 			"a 4h21m span whose largest stamp gap is 67 minutes is kept",

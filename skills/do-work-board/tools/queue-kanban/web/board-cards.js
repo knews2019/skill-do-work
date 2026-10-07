@@ -48,8 +48,8 @@
   // Both the number and its verdict arrive decided from Go (durations.go's
   // measureImplementationSpan). Only the "reversed" verdict changes the card: a
   // long span is stated as its wall time, and whether it held an idle stretch is
-  // the drawer's largest-idle-gap row, read from evidence rather than guessed
-  // from the span's length (REQ-632).
+  // the drawer's "Largest gap between events" row, read from evidence rather
+  // than guessed from the span's length (REQ-632).
   //
   // The node is a PLAIN span.elapsed-duration: it reuses the state timer's
   // vocabulary and styling so the card's two time lines read alike, but it

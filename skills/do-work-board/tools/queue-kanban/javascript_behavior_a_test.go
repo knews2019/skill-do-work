@@ -2384,8 +2384,8 @@ process.stdout.write(JSON.stringify(rows));`
 	if len(rows) != 1 {
 		t.Fatalf("rendered %d gap rows for one gap and one absent gap, want 1: %#v", len(rows), rows)
 	}
-	if rows[0].Label != "Largest idle gap" || rows[0].Value != "1h 07m (dispatch → builder handback)" {
+	if rows[0].Label != "Largest gap between events" || rows[0].Value != "1h 07m (dispatch → builder handback)" {
 		t.Errorf("gap row = %q: %q, want %q: %q", rows[0].Label, rows[0].Value,
-			"Largest idle gap", "1h 07m (dispatch → builder handback)")
+			"Largest gap between events", "1h 07m (dispatch → builder handback)")
 	}
 }
