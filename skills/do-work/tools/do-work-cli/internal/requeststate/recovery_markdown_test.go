@@ -76,3 +76,18 @@ func TestRecoverClaimCommitsWithoutDeletingFencedScopeOrRequirements(t *testing.
 		t.Fatalf("recovery was not committed: %s", status)
 	}
 }
+
+// REQ-635 F1: recover --take-over deleted a user's indented "## Plan" sample and
+// the requirement under it, because a four-space indent was read as a heading.
+func TestRecoveryKeepsUserTextUnderAFourSpaceIndentedHeading(t *testing.T) {
+	for _, newline := range []string{"\n", "\r\n"} {
+		user := strings.ReplaceAll("# Request\nExample:\n\n    ## Plan\n    user sample\n\nMUST keep.\n", "\n", newline)
+		prefix := strings.ReplaceAll("---\nid: REQ-501\n---\n", "\n", newline)
+		original := prefix + user + "## Timing" + newline + "generated summary" + newline
+		got, err := stripGeneratedRecoverySections([]byte(original))
+		kept := strings.ReplaceAll("    ## Plan\n    user sample\n\nMUST keep.\n", "\n", newline)
+		if err != nil || string(got) != prefix+user || !strings.Contains(string(got), kept) {
+			t.Fatalf("recovery changed user text: error=%v, got %q, want %q", err, got, prefix+user)
+		}
+	}
+}
