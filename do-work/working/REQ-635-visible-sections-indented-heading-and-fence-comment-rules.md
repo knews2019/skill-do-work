@@ -1,7 +1,7 @@
 ---
 id: REQ-635
 title: '[impact-critical] recover --take-over deletes user text under an indented heading; VisibleSections must apply the CommonMark 0-3 space rule and not open a fence on a comment-opening line'
-status: pending
+status: claimed
 priority: now
 created_at: 2026-10-06T22:45:18Z
 user_request: UR-137
@@ -15,6 +15,7 @@ related: [REQ-636, REQ-637, REQ-638]
 batch: review-0305-69-findings
 required_lessons: [_dev/primes/lessons-releases.md]
 write_set: [skills/do-work/tools/do-work-cli/internal/requestmodel/visible_sections.go, skills/do-work/tools/do-work-cli/internal/requestmodel/visible_sections_test.go, skills/do-work/tools/do-work-cli/internal/requeststate/recovery_markdown_test.go, skills/do-work/tools/do-work-cli/internal/lifecycletiming/lifecycle_timing_test.go, skills/do-work/CHANGELOG.md, skills/do-work/tools/do-work-cli/lessons-do-work-cli.md, do-work/lessons-index.md]
+claimed_at: 2026-10-07T13:16:10Z
 ---
 # Recover --take-over Deletes User Text Under an Indented Heading; VisibleSections Must Apply the CommonMark 0-3 Space Rule and Not Open a Fence on a Comment-Opening Line
 
