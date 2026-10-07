@@ -49,3 +49,14 @@ Commands (from worktree root): `grep -rnE 'set aside|set-aside' skills/`, `grep 
 ## Test wall times
 - shipped-package-reference-contract.sh: PASS, 1.0 s
 - contract-regressions.sh: PASS, 23.1 s
+
+## Addendum
+
+Review fix for F1 (HANDLED bullet could drop the late set-aside note).
+
+- Commit: `aeb3f98f` on `worktree-agent-REQ-642-wave-end-set-aside-gaps` (after 22c2268e).
+- File: `skills/do-work/actions/work-reference.md` (modified), Decision Brief HANDLED bullet only; rest of the bullet byte-identical, no heading or label changed.
+- Changed first sentence: "**HANDLED** lists the **DECIDE & STATE** decisions (reversible `D-NN` entries), plus any run-level call the orchestrator states itself, such as a wave-end sweep that did not run because a member was set aside after the wave's last review (`actions/work.md` Step 7), so the user can spot-check without being asked to ratify."
+- Changed omit condition: "Omit the block when the sections were read and held no DECIDE & STATE entry and the orchestrator stated no such call;"
+- Tests: `shipped-package-reference-contract.sh` PASS, 1.0 s wall; `contract-regressions.sh` PASS, 20.9 s wall; `git diff --check` clean.
+- **D-04 (DECIDE & STATE):** D-01 (HANDLED bullet needs no edit) is superseded by review F1. The bullet's omit rule made it exclusive, so a run whose REQs recorded no decisions would omit HANDLED and lose the late set-aside note. The bullet now names orchestrator-stated run-level calls and keeps the block while one exists.

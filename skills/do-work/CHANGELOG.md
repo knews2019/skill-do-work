@@ -10,6 +10,15 @@ For the complete release history, read this file and the archives below from new
 - [0.50.0 through 0.64.1](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-13-up-to-v0.64.1.md)
 - [0.1.0 through 0.49.0](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-07-up-to-v0.49.0.md)
 
+## 0.305.77 — The Wave-End Check Now Knows Which REQs Were Set Aside (2026-10-07)
+
+The wave-end restatement check from 0.305.76 runs in the review of a wave's last successful integration. Two cases still skipped it with no record. A delegated integrator could not tell a set-aside member from one still building, because a set-aside REQ keeps its claim in `do-work/working/`. And when a member was set aside after the wave's last review had already run, no review got the fact.
+
+- The integrator brief, `REQ-NNN-integrate.md`, now also names every wave member the coordinator has set aside.
+- `actions/work.md` Step 7 decides "last successful integration" from the archive plus the set-aside list the orchestrator holds. Under delegated integration, that is the list in the integrator brief.
+- When a member is set aside after the wave's last review already ran, the check did not run for that wave. The orchestrator now names that gap under HANDLED in the run's Decision Brief. No review is re-run.
+- The Decision Brief's HANDLED block now also lists run-level calls the orchestrator states itself, so this note is not dropped when no REQ recorded a decision.
+
 ## 0.305.76 — The Last Review in a Parallel Wave Now Checks What Earlier REQs Redefined (2026-10-07)
 
 When several REQs are built at once, a git merge only catches edits to the same lines. It cannot see a later REQ that restates a rule an earlier REQ just changed the meaning of. Each REQ's review ran before the next one merged, so no review saw both. Now the review of the last REQ to integrate in a wave checks for this.
