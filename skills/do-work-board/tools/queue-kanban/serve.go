@@ -39,9 +39,9 @@ type liveBoardServer struct {
 	htmlPreviews *htmlFolderPreviewManager
 	currentTime  func() time.Time
 	// The git reads behind each response's per-request activity
-	// (activity_correlation.go). Injectable so tests feed canned output and
-	// never spawn git.
-	activityGitRunner gitCommandRunner
+	// (activity_correlation.go) and its worktree and branch listing for the
+	// verify probes. Injectable so tests feed canned output and never spawn git.
+	liveGitRunner gitCommandRunner
 
 	cacheMu             sync.Mutex
 	cachedFileMtimes    map[string]time.Time        // absPath → last-seen mtime
@@ -59,12 +59,12 @@ type liveBoardServer struct {
 // full tree walk and board build.
 func newLiveBoardServer(repoRoot string, recentWindow time.Duration) *liveBoardServer {
 	return &liveBoardServer{
-		repoRoot:          repoRoot,
-		recentWindow:      recentWindow,
-		htmlPreviews:      newHtmlFolderPreviewManager(),
-		currentTime:       time.Now,
-		activityGitRunner: runGitCommand,
-		cachedFileMtimes:  map[string]time.Time{},
+		repoRoot:         repoRoot,
+		recentWindow:     recentWindow,
+		htmlPreviews:     newHtmlFolderPreviewManager(),
+		currentTime:      time.Now,
+		liveGitRunner:    runGitCommand,
+		cachedFileMtimes: map[string]time.Time{},
 	}
 }
 
@@ -170,8 +170,7 @@ func (liveServer *liveBoardServer) serveLiveBoardDataJs(responseWriter http.Resp
 	// map is shared with the cache and is never written here.
 	if currentBoard := liveServer.currentBoard(); currentBoard != nil {
 		responseInstant := liveServer.currentTime()
-		attachVerifyFindings(&liveBoardData, currentBoard, responseInstant)
-		attachRequestActivity(&liveBoardData, currentBoard, responseInstant, liveServer.activityGitRunner)
+		attachVerifyFindingsAndRequestActivity(&liveBoardData, currentBoard, responseInstant, liveServer.liveGitRunner)
 	}
 
 	jsText, encodeErr := encodeBoardDataForJsAssignment(liveBoardData)

@@ -3088,7 +3088,7 @@ func TestGeneratedBoardDataCarriesVerifyFindingsWithoutTheOnesTheBoardAlreadySho
 	if projectError != nil {
 		t.Fatalf("buildGeneratedBoardData: %v", projectError)
 	}
-	attachVerifyFindings(&boardData, board, moment)
+	attachVerifyReport(&boardData, board, collectVerifyFindings(board.RepoRoot, board, moment))
 
 	sawStaleClaim := false
 	sawStructuralDamage := false
@@ -3177,7 +3177,7 @@ func TestGeneratedVerifyPayloadCarriesNoAbsolutePaths(t *testing.T) {
 			Remedy:   reduceAbsolutePaths(finding.Remedy, board.RepoRoot),
 		})
 	}
-	attachVerifyFindings(&boardData, board, moment)
+	attachVerifyReport(&boardData, board, collectVerifyFindings(board.RepoRoot, board, moment))
 
 	encoded, encodeError := encodeBoardDataForJsAssignment(boardData)
 	if encodeError != nil {
@@ -3232,7 +3232,7 @@ func TestGeneratedVerifyPayloadReducesTheDiskSpaceSkipReason(t *testing.T) {
 		t.Fatalf("buildBoard: %v", buildError)
 	}
 	boardData := generatedBoardData{}
-	attachVerifyFindings(&boardData, board, moment)
+	attachVerifyReport(&boardData, board, collectVerifyFindings(board.RepoRoot, board, moment))
 
 	wantDiskSpace := generatedDiskSpace{Level: "neutral", Directory: ".", SkipReason: "not measured: statfs .: permission denied"}
 	if boardData.DiskSpace == nil || *boardData.DiskSpace != wantDiskSpace {
@@ -3681,7 +3681,8 @@ func buildImplementationSpanFixturePayload(t *testing.T) generatedBoardData {
 	if projectError != nil {
 		t.Fatalf("buildGeneratedBoardData: %v", projectError)
 	}
-	attachRequestActivity(&boardData, board, moment, gitRunnerThatFindsNothing)
+	attachRequestActivity(&boardData, board, moment, gitRunnerThatFindsNothing,
+		readWorktreeAgentGitState(board.RepoRoot, gitRunnerThatFindsNothing))
 	return boardData
 }
 

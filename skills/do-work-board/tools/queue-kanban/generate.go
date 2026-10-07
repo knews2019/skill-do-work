@@ -97,7 +97,7 @@ type generatedBoardData struct {
 
 	// Verify findings carried into the page so a human looking at the board sees
 	// what `queue-kanban verify` sees (REQ-284). Three categories are suppressed
-	// before they get here — see attachVerifyFindings. VerifySkipped is never
+	// before they get here — see attachVerifyReport. VerifySkipped is never
 	// dropped: a skipped probe rendering as nothing reads as "checked and clean".
 	VerifyFindings []generatedVerifyFinding `json:"verifyFindings,omitempty"`
 	VerifySkipped  []string                 `json:"verifySkipped,omitempty"`
@@ -502,8 +502,7 @@ func generateStaticSiteWithPublisher(outputDirectory string, board *Board, publi
 	// keeps its board-only signature — a dozen tests call it — so the findings are
 	// folded in here, at the two real callers, rather than threaded through it.
 	snapshotInstant := time.Now()
-	attachVerifyFindings(&boardData, board, snapshotInstant)
-	attachRequestActivity(&boardData, board, snapshotInstant, runGitCommand)
+	attachVerifyFindingsAndRequestActivity(&boardData, board, snapshotInstant, runGitCommand)
 	boardMarkdownData := mentionAnalysis.MarkdownData
 
 	boardDataJs, encodeError := encodeBoardDataForJsAssignment(boardData)
@@ -676,12 +675,19 @@ var boardRenderedVerifyCategories = map[string]bool{
 	verifyCategoryUnrecognizedRequestStatus: true,
 }
 
-// attachVerifyFindings runs the probe set against an already-built board and folds
-// the result into the payload. Both callers use it — generate for the static
-// snapshot and serve per request — so the suppression list and the path reduction
-// below have exactly one home.
-func attachVerifyFindings(data *generatedBoardData, board *Board, now time.Time) {
-	report := collectVerifyFindings(board.RepoRoot, board, now)
+// attachVerifyFindingsAndRequestActivity is what generate and serve call: one
+// read of the worktree-agent worktrees and branches feeds both the verify
+// probes and the request activity, so a response lists git once for both.
+func attachVerifyFindingsAndRequestActivity(data *generatedBoardData, board *Board, now time.Time, runner gitCommandRunner) {
+	gitState := readWorktreeAgentGitState(board.RepoRoot, runner)
+	attachVerifyReport(data, board, collectVerifyFindingsFromGitState(board.RepoRoot, board, now, gitState))
+	attachRequestActivity(data, board, now, runner, gitState)
+}
+
+// attachVerifyReport folds a collected report into the payload. Every caller
+// ends here, so the suppression list and the path reduction below have
+// exactly one home.
+func attachVerifyReport(data *generatedBoardData, board *Board, report VerifyReport) {
 	for _, finding := range report.Findings {
 		if boardRenderedVerifyCategories[finding.Category] {
 			continue

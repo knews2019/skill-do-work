@@ -2,7 +2,10 @@ package main
 
 import (
 	"errors"
+	"fmt"
 	"net/http/httptest"
+	"slices"
+	"sort"
 	"strings"
 	"sync"
 	"testing"
@@ -28,35 +31,51 @@ func cannedLogRecord(commitHash string, committedAt time.Time, parentHashes stri
 	return record
 }
 
-// cannedGitRunner answers the three git reads the collector makes — the
-// windowed log, the worktree-agent branch list, and one tip date per branch —
-// from fixed text, so attribution tests never spawn git.
+// cannedGitRunner answers the git reads behind a board response — the windowed
+// log, the worktree list, the integration branch, and the worktree-agent branch
+// listings with their tip dates — from fixed text, so attribution tests never
+// spawn git. A branch named in mergedBranches has its tip reachable from
+// the integration branch, which is what `--no-merged` filters on.
 type cannedGitRunner struct {
-	mutex        sync.Mutex
-	logOutput    func() string
-	branchList   string
-	branchTips   map[string]time.Time
-	logCallCount int
+	mutex                 sync.Mutex
+	logOutput             func() string
+	branchTips            map[string]time.Time
+	mergedBranches        map[string]bool
+	logCallCount          int
+	callCount             int
+	worktreeListCallCount int
 }
 
 func (runner *cannedGitRunner) run(_ string, arguments ...string) ([]byte, error) {
 	runner.mutex.Lock()
 	defer runner.mutex.Unlock()
+	runner.callCount++
 	if len(arguments) == 0 {
 		return nil, errors.New("no git subcommand")
 	}
+	branchNames := make([]string, 0, len(runner.branchTips))
+	for branchName := range runner.branchTips {
+		branchNames = append(branchNames, branchName)
+	}
+	sort.Strings(branchNames)
 	switch arguments[0] {
+	case "worktree":
+		runner.worktreeListCallCount++
+		return []byte("worktree /repo\nHEAD c0\nbranch refs/heads/main\n\n"), nil
+	case "rev-parse":
+		return []byte("main\n"), nil
 	case "branch":
-		return []byte(runner.branchList), nil
-	case "log":
-		if len(arguments) >= 2 && arguments[1] == "-1" {
-			branchName := arguments[len(arguments)-1]
-			tipInstant, known := runner.branchTips[branchName]
-			if !known {
-				return nil, errors.New("unknown branch " + branchName)
+		return []byte(strings.Join(branchNames, "\n") + "\n"), nil
+	case "for-each-ref":
+		var listing strings.Builder
+		for _, branchName := range branchNames {
+			if runner.mergedBranches[branchName] && slices.Contains(arguments, "--no-merged=main") {
+				continue
 			}
-			return []byte(tipInstant.Format(time.RFC3339) + "\n"), nil
+			listing.WriteString(branchName + " " + runner.branchTips[branchName].Format(time.RFC3339) + "\n")
 		}
+		return []byte(listing.String()), nil
+	case "log":
 		runner.logCallCount++
 		if runner.logOutput == nil {
 			return nil, nil
@@ -85,7 +104,7 @@ func TestRequestActivityAttributesACommitThatTouchesTheRequestFileWithoutAPrefix
 	}}
 
 	activityById := collectRequestActivity("/repo", []*RequestTicket{claimedTicket},
-		activityFixtureNow.Add(-4*time.Hour), activityFixtureNow, runner.run)
+		activityFixtureNow.Add(-4*time.Hour), activityFixtureNow, runner.run, nil)
 	activity, present := activityById["REQ-701"]
 	if !present {
 		t.Fatalf("REQ-701 carries no activity; a path-only commit must attribute")
@@ -174,7 +193,6 @@ func TestRequestActivityCountsALiveWorktreeAgentBranchTip(t *testing.T) {
 	}
 	tipInstant := activityFixtureNow.Add(-5 * time.Minute)
 	runner := &cannedGitRunner{
-		branchList: "worktree-agent-REQ-701-board-cards\nworktree-agent-REQ-999-someone-else\n",
 		branchTips: map[string]time.Time{
 			"worktree-agent-REQ-701-board-cards":  tipInstant,
 			"worktree-agent-REQ-999-someone-else": activityFixtureNow.Add(-time.Minute),
@@ -182,7 +200,8 @@ func TestRequestActivityCountsALiveWorktreeAgentBranchTip(t *testing.T) {
 	}
 
 	activity := collectRequestActivity("/repo", []*RequestTicket{claimedTicket},
-		activityFixtureNow.Add(-4*time.Hour), activityFixtureNow, runner.run)["REQ-701"]
+		activityFixtureNow.Add(-4*time.Hour), activityFixtureNow, runner.run,
+		readWorktreeAgentGitState("/repo", runner.run).ownedTipInstantsById)["REQ-701"]
 	if !activity.LastActivityAt.Equal(tipInstant) || activity.LastActivityKind != "commit" {
 		t.Errorf("last activity = %v (%s), want the live branch tip at %v (commit)",
 			activity.LastActivityAt, activity.LastActivityKind, tipInstant)
@@ -212,7 +231,7 @@ func TestRequestActivityLargestGapUnitesCommitsWithStamps(t *testing.T) {
 	}}
 
 	activity := collectRequestActivity("/repo", []*RequestTicket{doneTicket},
-		claimInstant.Add(-time.Hour), activityFixtureNow, runner.run)["REQ-702"]
+		claimInstant.Add(-time.Hour), activityFixtureNow, runner.run, nil)["REQ-702"]
 	if activity.LargestGap == nil {
 		t.Fatalf("REQ-702 has no largest gap")
 	}
@@ -259,7 +278,7 @@ func TestServeReadsRequestActivityOnEveryResponse(t *testing.T) {
 		return cannedLogRecord("c1", commitInstant, "c0", "touch", "do-work/working/REQ-711-live-card.md")
 	}}
 	liveServer := newLiveBoardServer(repoRoot, defaultRecentWindow)
-	liveServer.activityGitRunner = runner.run
+	liveServer.liveGitRunner = runner.run
 	testServer := httptest.NewServer(liveServer)
 	defer testServer.Close()
 
@@ -275,6 +294,66 @@ func TestServeReadsRequestActivityOnEveryResponse(t *testing.T) {
 	}
 	if runner.logCallCount != 2 {
 		t.Errorf("git log ran %d times for two responses, want 2", runner.logCallCount)
+	}
+}
+
+// REQ-636's Red-Green case: a builder branch cut from the integration branch with
+// no commits of its own points at the integration commit. That commit is not
+// evidence for the REQ, so the card's last activity stays its claim stamp.
+func TestServedActivityIgnoresABranchTipTheBranchDoesNotOwn(t *testing.T) {
+	claimInstant := time.Now().UTC().Add(-time.Hour).Truncate(time.Second)
+	repoRoot := writeVerifyFixture(t, []verifyFixtureFile{
+		{"do-work/working/REQ-701-unowned-tip.md", "---\nid: REQ-701\ntitle: unowned tip\nstatus: claimed\nclaimed_at: " +
+			claimInstant.Format(time.RFC3339) + "\n---\n\n# unowned tip\n"},
+	})
+	runner := &cannedGitRunner{
+		branchTips:     map[string]time.Time{"worktree-agent-REQ-701-x": claimInstant.Add(50 * time.Minute)},
+		mergedBranches: map[string]bool{"worktree-agent-REQ-701-x": true},
+	}
+	liveServer := newLiveBoardServer(repoRoot, defaultRecentWindow)
+	liveServer.liveGitRunner = runner.run
+	testServer := httptest.NewServer(liveServer)
+	defer testServer.Close()
+
+	activity := fetchServedBoardData(t, testServer.URL).RequestActivity["REQ-701"]
+	if activity.LastActivityAt != claimInstant.Format(time.RFC3339) || activity.LastActivityKind != "stamp" {
+		t.Errorf("last activity = %q (%s), want the claim stamp %q (stamp) — the branch tip is the integration commit",
+			activity.LastActivityAt, activity.LastActivityKind, claimInstant.Format(time.RFC3339))
+	}
+	if activity.LargestActivityGap != nil {
+		t.Errorf("largest gap = %+v, want none — an unowned tip must not split the idle time", *activity.LargestActivityGap)
+	}
+}
+
+// One served response lists worktrees once and reads the worktree-agent branches
+// with a fixed number of git commands, however many branches exist. Verify and
+// activity used to list both twice and then run one `git log -1` per branch.
+func TestServedResponseListsWorktreesAndBranchesOnce(t *testing.T) {
+	claimInstant := time.Now().UTC().Add(-time.Hour).Truncate(time.Second)
+	repoRoot := writeVerifyFixture(t, []verifyFixtureFile{
+		{"do-work/working/REQ-701-counted.md", "---\nid: REQ-701\ntitle: counted\nstatus: claimed\nclaimed_at: " +
+			claimInstant.Format(time.RFC3339) + "\n---\n\n# counted\n"},
+	})
+	gitCallsForBranchCount := func(branchCount int) (totalCalls int, worktreeListCalls int) {
+		runner := &cannedGitRunner{branchTips: map[string]time.Time{}}
+		for branchIndex := 0; branchIndex < branchCount; branchIndex++ {
+			runner.branchTips[fmt.Sprintf("worktree-agent-REQ-%d-x", 801+branchIndex)] = claimInstant
+		}
+		liveServer := newLiveBoardServer(repoRoot, defaultRecentWindow)
+		liveServer.liveGitRunner = runner.run
+		testServer := httptest.NewServer(liveServer)
+		defer testServer.Close()
+		fetchServedBoardData(t, testServer.URL)
+		return runner.callCount, runner.worktreeListCallCount
+	}
+
+	oneBranchCalls, oneBranchWorktreeLists := gitCallsForBranchCount(1)
+	fourBranchCalls, fourBranchWorktreeLists := gitCallsForBranchCount(4)
+	if oneBranchWorktreeLists != 1 || fourBranchWorktreeLists != 1 {
+		t.Errorf("worktree listings per response = %d and %d, want 1 each", oneBranchWorktreeLists, fourBranchWorktreeLists)
+	}
+	if oneBranchCalls != fourBranchCalls {
+		t.Errorf("git commands per response = %d with 1 branch and %d with 4, want a constant", oneBranchCalls, fourBranchCalls)
 	}
 }
 
