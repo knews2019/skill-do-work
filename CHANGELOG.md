@@ -10,6 +10,14 @@ For the complete release history, read this file and the archives below from new
 - [0.50.0 through 0.64.1](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-13-up-to-v0.64.1.md)
 - [0.1.0 through 0.49.0](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-07-up-to-v0.49.0.md)
 
+## 0.305.83 — Clarify Says When a REQ It Releases Is Still Earmarked and Offers to Clear It (2026-10-08)
+
+When you unblock a REQ in `do-work clarify` and it also carries `assigned_to`, clarify now tells you the default run will still skip it. Before, clarify said the REQ was back in the queue, and in a consumer run two released REQs sat under Pending → Earmarked while every default run passed them by without a word.
+
+- Clarify Step 5.5 names the session the REQ is still earmarked for and asks one question: clear the earmark now by removing the field by hand, or keep it and run the REQ by name with `do-work run REQ-NNN`. It never clears the field without your answer.
+- The clarify report lists every released REQ that stays earmarked, with its session name and the run-by-name command.
+- The Earmarking section of the user guide says clarify flags this case.
+
 ## 0.305.82 — The Run Action and the assigned_to Schema Line Say Operator-Gated Work Is Blocked, Never Earmarked (2026-10-08)
 
 A run orchestrator could park work on you with a session earmark, because the rule against it lived only in capture. In a consumer run, an orchestrator wrote `assigned_to: 'user-interactive'` on two REQs that needed production access, so the default run skipped them and the board showed them as Earmarked instead of waiting on you.
