@@ -1,7 +1,7 @@
 ---
 id: REQ-649
 title: 'Board Earmarked badge tooltip names Needs input · Blocked as the home for operator-gated work'
-status: pending
+status: claimed
 created_at: 2026-10-08T15:50:17Z
 user_request: UR-142
 domain: frontend
@@ -13,6 +13,7 @@ effort_estimate: effort-mechanical
 related: [REQ-647, REQ-648]
 batch: earmark-release-visibility
 write_set: [skills/do-work-board/tools/queue-kanban/web/board-cards.js]
+claimed_at: 2026-10-08T15:53:16Z
 ---
 # Board Earmarked Badge Tooltip Names Needs Input · Blocked as the Home for Operator-Gated Work
 ## What
