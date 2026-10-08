@@ -10,6 +10,14 @@ For the complete release history, read this file and the archives below from new
 - [0.50.0 through 0.64.1](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-13-up-to-v0.64.1.md)
 - [0.1.0 through 0.49.0](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-07-up-to-v0.49.0.md)
 
+## 0.305.82 — The Run Action and the assigned_to Schema Line Say Operator-Gated Work Is Blocked, Never Earmarked (2026-10-08)
+
+A run orchestrator could park work on you with a session earmark, because the rule against it lived only in capture. In a consumer run, an orchestrator wrote `assigned_to: 'user-interactive'` on two REQs that needed production access, so the default run skipped them and the board showed them as Earmarked instead of waiting on you.
+
+- The `assigned_to` schema line in `actions/work-reference.md` now says the field is for another session or checkout only. Work that waits on you as operator is `status: blocked` with `blocked_by` naming you.
+- The Error Handling table in `actions/work.md` has a new row for an orchestrator that wants to park a queued REQ on the operator: flip it to blocked, and never write `assigned_to`.
+- The missing-precondition row pointed at a heading that does not exist. Both rows now point at `actions/work-reference.md` → Failure Classification (Step 8), Environment row.
+
 ## 0.305.81 — Recovery No Longer Deletes an Indented User Heading That Shares a Generated Section's Name (2026-10-08)
 
 This fixes data loss in `recover --take-over` that the 0.305.70 fix (REQ-635) left open. A user's sample heading indented by one to three spaces, such as a two-space `## Plan` under a bullet, was removed with the text under it as if it were a generated section.

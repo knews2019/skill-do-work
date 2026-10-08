@@ -145,3 +145,4 @@ Action files must work with **any** agentic coding tool:
 - Use generalized language ("spawn a subagent", "use your environment's ask-user prompt") — no tool-specific APIs in action files.
 - Each action file should work as a standalone prompt pasted into a basic chat interface.
 - Design for the floor: the simplest agent that can read/write files and run shell commands must be able to follow the instructions. Subagents and parallel execution are nice-to-haves.
+- [family: alternate-writer-contract-drift] [REQ-648: a rule stated only in the action that normally writes a field does not reach a session that writes it from elsewhere; put the "not for this" sentence on the field's own schema line, which is what an off-path writer reads first, and check that every pointer you add or keep lands on a heading that exists (the old "Step 8 → Mid-run blocked flip" pointed at nothing)](../../do-work/archive/REQ-648-schema-and-work-action-state-operator-rule.md#lessons-learned)
