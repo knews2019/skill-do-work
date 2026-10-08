@@ -1,7 +1,7 @@
 ---
 id: REQ-646
 title: 'Board activity snapshots direct merge matches before expanding ancestry, so an inner merge of main attributes nothing'
-status: pending
+status: claimed
 created_at: 2026-10-08T14:08:54Z
 user_request: UR-141
 domain: backend
@@ -13,6 +13,7 @@ effort_estimate: effort-mechanical
 related: [REQ-645]
 batch: review-residuals-2026-10-08
 write_set: [skills/do-work-board/tools/queue-kanban/activity_correlation.go, skills/do-work-board/tools/queue-kanban/activity_correlation_test.go, skills/do-work-board/CHANGELOG.md]
+claimed_at: 2026-10-08T14:12:17Z
 ---
 # Board Activity Snapshots Direct Merge Matches Before Expanding Ancestry, So an Inner Merge of Main Attributes Nothing
 ## What
