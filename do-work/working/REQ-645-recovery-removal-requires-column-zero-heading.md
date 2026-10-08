@@ -1,7 +1,7 @@
 ---
 id: REQ-645
 title: '[impact-critical] recover --take-over keeps a 1-3 space indented generated-name heading; only a column-0 section is removable'
-status: pending
+status: claimed
 created_at: 2026-10-08T14:08:54Z
 user_request: UR-141
 domain: backend
@@ -13,6 +13,7 @@ effort_estimate: effort-mechanical
 related: [REQ-646]
 batch: review-residuals-2026-10-08
 write_set: [skills/do-work/tools/do-work-cli/internal/requeststate/state_apply.go, skills/do-work/tools/do-work-cli/internal/requestmodel/visible_sections.go, skills/do-work/tools/do-work-cli/internal/requeststate/recovery_markdown_test.go, skills/do-work/CHANGELOG.md]
+claimed_at: 2026-10-08T14:12:16Z
 ---
 # Recover --take-over Keeps a 1-3 Space Indented Generated-Name Heading; Only a Column-0 Section Is Removable
 ## What
