@@ -182,6 +182,54 @@ func TestRequestActivityAttributesBuilderCommitsReachableOnlyThroughAMatchedMerg
 	}
 }
 
+// A builder that merged main before handing back puts an inner merge inside the
+// outer merge's second-parent range. Range attribution tags that inner merge,
+// but it is no direct match, so its own second parent (main's work) must not be
+// expanded: ancestry runs off the direct matches collected before the loop.
+func TestRequestActivityDoesNotExpandAnInnerMergeOfMainReachedThroughAMatchedMerge(t *testing.T) {
+	baseInstant := activityFixtureNow.Add(-6 * time.Hour)
+	instantByName := map[string]time.Time{
+		"merge1": baseInstant.Add(5 * time.Hour),
+		"main2":  baseInstant.Add(4 * time.Hour),
+		"build2": baseInstant.Add(3 * time.Hour),
+		"inner1": baseInstant.Add(150 * time.Minute),
+		"main1":  baseInstant.Add(2 * time.Hour),
+		"build1": baseInstant.Add(1 * time.Hour),
+		"base0":  baseInstant,
+	}
+	logOutput := cannedLogRecord("merge1", instantByName["merge1"], "main2 build2",
+		"[REQ-701] merge builder branch worktree-agent-REQ-701-board-cards") +
+		cannedLogRecord("main2", instantByName["main2"], "main1", "later main commit", "README.md") +
+		cannedLogRecord("build2", instantByName["build2"], "inner1", "write the parser", "src/parser.go") +
+		// The builder merging main: no REQ token, no REQ path.
+		cannedLogRecord("inner1", instantByName["inner1"], "build1 main1", "Merge branch 'main' into the builder") +
+		cannedLogRecord("main1", instantByName["main1"], "base0", "unrelated main commit", "docs/notes.md") +
+		cannedLogRecord("build1", instantByName["build1"], "base0", "red tests first", "src/parser_test.go") +
+		cannedLogRecord("base0", instantByName["base0"], "", "base", "go.mod")
+
+	instantsById := correlateCommitsToRequests([]byte(logOutput))
+	got := map[time.Time]bool{}
+	for _, instant := range instantsById["REQ-701"] {
+		got[instant] = true
+	}
+	for _, name := range []string{"merge1", "build2", "inner1", "build1"} {
+		if !got[instantByName[name]] {
+			t.Errorf("REQ-701 lacks %s at %v; attributed %v", name, instantByName[name], instantsById["REQ-701"])
+		}
+	}
+	for _, name := range []string{"main1", "main2", "base0"} {
+		if got[instantByName[name]] {
+			t.Errorf("REQ-701 wrongly attributed main-side commit %s at %v", name, instantByName[name])
+		}
+	}
+	if len(instantsById["REQ-701"]) != 4 {
+		t.Errorf("REQ-701 attributed %d instants, want 4: %v", len(instantsById["REQ-701"]), instantsById["REQ-701"])
+	}
+	if len(instantsById) != 1 {
+		t.Errorf("attributed ids = %v, want only REQ-701", instantsById)
+	}
+}
+
 // A builder that has committed but not yet handed back is visible only on its
 // live worktree-agent branch, which the windowed main-line log cannot reach.
 func TestRequestActivityCountsALiveWorktreeAgentBranchTip(t *testing.T) {

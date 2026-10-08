@@ -136,17 +136,27 @@ func correlateCommitsToRequests(logOutput []byte) map[string][]time.Time {
 		}
 	}
 
-	// Ancestry runs off the DIRECT matches only, collected before any range is
-	// attributed, so a merge reached through another merge's range does not
-	// widen the attribution further.
+	// Ancestry runs off the DIRECT matches only, snapshotted here before any
+	// range is attributed: the loop below mutates requestIdsByHash, so a merge
+	// reached through another merge's range (a builder merging main) must not
+	// read its range-given ids back as direct ones and widen the attribution.
+	directIdsByMergeHash := map[string][]string{}
 	for _, commit := range commits {
-		directIds := requestIdsByHash[commit.hash]
-		if len(commit.parentHashes) != 2 || len(directIds) == 0 {
+		if len(commit.parentHashes) != 2 {
+			continue
+		}
+		for requestId := range requestIdsByHash[commit.hash] {
+			directIdsByMergeHash[commit.hash] = append(directIdsByMergeHash[commit.hash], requestId)
+		}
+	}
+	for _, commit := range commits {
+		directIds := directIdsByMergeHash[commit.hash]
+		if len(directIds) == 0 {
 			continue
 		}
 		firstParentAncestry := loggedAncestry(commitByHash, commit.parentHashes[0], nil)
 		for rangeHash := range loggedAncestry(commitByHash, commit.parentHashes[1], firstParentAncestry) {
-			for requestId := range directIds {
+			for _, requestId := range directIds {
 				attribute(rangeHash, requestId)
 			}
 		}
