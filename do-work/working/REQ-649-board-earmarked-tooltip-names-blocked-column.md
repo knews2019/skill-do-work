@@ -22,6 +22,7 @@ batch: earmark-release-visibility
 write_set: [skills/do-work-board/tools/queue-kanban/web/board-cards.js]
 claimed_at: 2026-10-08T15:53:16Z
 dispatch_at: 2026-10-08T15:56:02Z
+builder_handback_at: 2026-10-08T16:17:21Z
 ---
 # Board Earmarked Badge Tooltip Names Needs Input · Blocked as the Home for Operator-Gated Work
 ## What
