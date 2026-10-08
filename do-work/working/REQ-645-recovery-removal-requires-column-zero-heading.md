@@ -2,6 +2,12 @@
 id: REQ-645
 title: '[impact-critical] recover --take-over keeps a 1-3 space indented generated-name heading; only a column-0 section is removable'
 status: claimed
+estimate:
+  p50_active_minutes: 5
+  confidence: high
+  basis:
+  - trivial short-circuit
+  calculated_at: 2026-10-08T14:12:47Z
 created_at: 2026-10-08T14:08:54Z
 user_request: UR-141
 domain: backend
@@ -13,7 +19,10 @@ effort_estimate: effort-mechanical
 related: [REQ-646]
 batch: review-residuals-2026-10-08
 write_set: [skills/do-work/tools/do-work-cli/internal/requeststate/state_apply.go, skills/do-work/tools/do-work-cli/internal/requestmodel/visible_sections.go, skills/do-work/tools/do-work-cli/internal/requeststate/recovery_markdown_test.go, skills/do-work/CHANGELOG.md]
+route: A
 claimed_at: 2026-10-08T14:12:16Z
+dispatch_at: 2026-10-08T14:14:45Z
+builder_handback_at: 2026-10-08T14:28:41Z
 ---
 # Recover --take-over Keeps a 1-3 Space Indented Generated-Name Heading; Only a Column-0 Section Is Removable
 ## What
@@ -56,3 +65,19 @@ See `do-work/user-requests/UR-141/input.md` for complete verbatim input. No queu
 - [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
 - [ ] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
 *Source: review comment "[P2] Exclude list-nested headings from removable request sections — visible_sections.go:64-68", accepted by `do-work-toolbox validate-feedback` on 2026-10-08 with the column-0 removal remedy.*
+
+---
+
+## Triage
+
+**Route: A** - Simple
+
+**Reasoning:** Bug fix with an exact reproduction and a remedy settled at capture: one condition in `stripGeneratedRecoverySections` (plus an indent carrier on `VisibleSection` if the builder prefers), one lock-in test, and a bounded check of two sibling callers. The files are named; exploration would re-read what the triage already read.
+
+**Planning:** Not required
+
+## Plan
+
+**Planning not required** - Route A: Direct implementation
+
+*Skipped by work action*
