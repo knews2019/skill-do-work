@@ -236,7 +236,8 @@
         request.assignedTo +
         " — an advisory claim marker, not a lock. Another session's default run skips and reports it; " +
         "naming it explicitly overrides that and clears the field. The board only groups it under " +
-        "Pending → Earmarked; it never reorders, blocks, or hides on this.";
+        "Pending → Earmarked; it never reorders, blocks, or hides on this. " +
+        "A REQ waiting on the operator belongs under Needs input · Blocked (status: blocked), not here.";
       badges.appendChild(assignedBadge);
     }
     if (request.effortEstimate === "effort-mechanical" || request.effortEstimateUnrecognized) {
