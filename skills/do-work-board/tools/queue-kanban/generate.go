@@ -181,8 +181,8 @@ type generatedRequest struct {
 	Related               []string `json:"related"`
 	WriteSet              []string `json:"writeSet"`
 	// The session a pending REQ is earmarked for (see RequestTicket.AssignedTo).
-	// Verbatim and display only — a card badge and a drawer row, never column or
-	// dispatch meaning.
+	// Verbatim — a card badge and a drawer row. Its one placement effect travels
+	// in Columns.PendingEarmarked; it never carries dispatch meaning.
 	AssignedTo string `json:"assignedTo,omitempty"`
 	// Other pending/claimed REQ ids whose write_set could touch the same files
 	// (see RequestTicket.WriteSetOverlaps). Display only — the card badge and a

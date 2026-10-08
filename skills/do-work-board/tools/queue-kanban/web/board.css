@@ -1034,8 +1034,8 @@ body.is-resizing-detail {
   text-align: center;
 }
 
-/* Pending sub-groups (Ready / Waiting on dependencies). Rendered only when at
-   least one pending REQ is waiting — otherwise the column stays a flat list. */
+/* Pending sub-groups (Ready / Waiting / Earmarked). Rendered only when at least
+   one pending REQ is waiting or earmarked — otherwise the column stays a flat list. */
 .pending-group {
   display: flex;
   flex-direction: column;
@@ -1299,7 +1299,8 @@ body.is-resizing-detail {
    purpose: it is somebody's intention, not a state of the work, and it must not
    read as urgently as blocked or as encouragingly as done. Rendered verbatim
    (session names have no canonical vocabulary), truncated in JS with the full
-   value in the tooltip. Display only — nothing on the board branches on it. */
+   value in the tooltip. Beyond this badge the board uses it only to place a
+   pending card under Pending → Earmarked. */
 .badge-assigned {
   color: var(--ink-soft);
   background-color: var(--surface-3);

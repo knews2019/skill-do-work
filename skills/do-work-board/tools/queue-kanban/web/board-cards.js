@@ -221,10 +221,11 @@
       // session. The value is never normalized — session names have no canonical
       // vocabulary, so nothing folds case, maps aliases, or rewrites it. Only the
       // badge's visible text is truncated for layout; the title tooltip below and
-      // the drawer row carry the full value. Display only: the board never
-      // buckets, orders, or hides a card on it. The one reader that acts on it is
-      // the work pipeline's default scan, which skips and reports an assigned REQ
-      // and is overridden by explicitly targeting it.
+      // the drawer row carry the full value. Beyond the badge, the board uses it
+      // only to place a pending card under Pending → Earmarked (model.go
+      // bucketColumns); it never orders, blocks, or hides a card on it. The one
+      // reader that acts on it is the work pipeline's default scan, which skips
+      // and reports an assigned REQ and is overridden by explicitly targeting it.
       var assignedBadge = makeBadge(
         "badge-assigned",
         "assigned",
@@ -234,8 +235,8 @@
         "Earmarked for " +
         request.assignedTo +
         " — an advisory claim marker, not a lock. Another session's default run skips and reports it; " +
-        "naming it explicitly overrides that and clears the field. Display only: the board never " +
-        "reorders, blocks, or hides on this.";
+        "naming it explicitly overrides that and clears the field. The board only groups it under " +
+        "Pending → Earmarked; it never reorders, blocks, or hides on this.";
       badges.appendChild(assignedBadge);
     }
     if (request.effortEstimate === "effort-mechanical" || request.effortEstimateUnrecognized) {
