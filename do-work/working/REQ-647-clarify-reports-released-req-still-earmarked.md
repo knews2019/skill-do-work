@@ -1,7 +1,7 @@
 ---
 id: REQ-647
 title: 'Clarify tells the user when a released REQ stays earmarked and clears it on request'
-status: pending
+status: claimed
 created_at: 2026-10-08T15:50:17Z
 user_request: UR-142
 domain: general
@@ -13,6 +13,7 @@ effort_estimate: effort-mechanical
 related: [REQ-648, REQ-649]
 batch: earmark-release-visibility
 write_set: [skills/do-work/actions/clarify.md, skills/do-work/docs/work-guide.md]
+claimed_at: 2026-10-08T15:53:15Z
 ---
 # Clarify Tells the User When a Released REQ Stays Earmarked and Clears It on Request
 ## What
