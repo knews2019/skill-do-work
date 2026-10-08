@@ -10,6 +10,13 @@ For the complete release history, read this file and the archives below from new
 - [0.50.0 through 0.64.1](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-13-up-to-v0.64.1.md)
 - [0.1.0 through 0.49.0](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-07-up-to-v0.49.0.md)
 
+## 0.305.80 — Board Activity No Longer Credits Main's Commits to a REQ Through a Merge of Main Inside Its Builder Branch (2026-10-08)
+
+The board counts a builder's commits as REQ activity through the REQ's hand-back merge. When the builder had merged main into its branch before handing back, main's commits were also counted as that REQ's activity, which made the drawer's "Largest gap between events" too small and could move a claimed card's last-activity time.
+
+- Board: only a merge matched directly by its `[REQ-NNN]` subject or a REQ file path expands its merge range. A merge that only got the REQ id from another merge's range, such as a builder's merge of main, no longer expands its own range.
+- A new queue-kanban test nests a merge of main inside a matched hand-back merge and checks that main's commits carry no REQ id. No git command or log format changed.
+
 ## 0.305.79 — The Board Shows Earmarked REQs in Their Own Pending Group Instead of Ready (2026-10-08)
 
 Ready on the board means the run takes that REQ next, but the run's default scan skips a REQ with `assigned_to` set, and the board still listed it under Ready and counted it as ready. Now a pending REQ that is earmarked for a session and waits on nothing shows under Pending → Earmarked, and every ready count agrees with what the run will do.
