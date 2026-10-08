@@ -185,13 +185,17 @@ Is this condition now satisfied?
 
 Note for the user which blocked REQs carry a `blocked_check` probe — those unblock automatically on the next `do-work run`, so confirming them by hand here is optional. Present only the human-confirmable ones prominently.
 
-- **Yes → unblock:** invoke `unblock REQ-NNN --request-path <exact-path> --original-status blocked --source user-via-clarify --confirmed`. The canonical transaction validates the stale preimage, stamps `pending`/`status_changed_at`, removes `blocked_by`/`blocked_at`, retains `blocked_check`, and appends the user-cleared history. A refusal leaves bytes unchanged; do not reproduce the mutation free-form. The REQ re-enters the queue for the next `do-work run`.
+- **Yes → unblock:** invoke `unblock REQ-NNN --request-path <exact-path> --original-status blocked --source user-via-clarify --confirmed`. The canonical transaction validates the stale preimage, stamps `pending`/`status_changed_at`, removes `blocked_by`/`blocked_at`, retains `blocked_check`, and appends the user-cleared history. A refusal leaves bytes unchanged; do not reproduce the mutation free-form. The transaction never touches `assigned_to`, so when the released REQ carries it, tell the user on the spot that the REQ is still earmarked for `<assigned_to, verbatim>` and that the default `do-work run` will skip it, then ask one question with two options:
+  1. Clear the earmark now: remove the `assigned_to` line by hand edit, the documented clear path (`actions/work-reference.md` → **Request File Schema** `assigned_to`, and → **Composed Exit Summary (Step 1)**, the assigned-elsewhere row). Clarify states no commit step for its hand edits, so this one stays in the working tree with the unblock and is committed through `do-work commit` (`actions/commit.md`).
+  2. Keep it, and run the REQ by name with `do-work run REQ-NNN`, which claims it and clears the field.
+
+  Never clear the field without that answer, and leave it untouched on keep. The REQ re-enters the queue for the next `do-work run` unless it carries `assigned_to`, in which case the default run skips it until it is named explicitly or the field is cleared.
 - **Not yet:** leave it `blocked`, unchanged.
 - **Abandon:** hand off to `do-work abandon REQ-NNN` (marks `cancelled`, archives) — same as discarding a question.
 
 ### Step 6: Report
 
-Summary of what was resolved and what's still pending — include any `blocked` REQs unblocked (now `pending`) or left waiting, and any stakeholder-questions REQs handed off, reclaimed from, or left open, alongside the answered/confirmed/discarded questions. When Step 5.25 ran, append its evidence-backed candidate report. When the user deferred an over-threshold scan, say it was not run and include the combined explicit command.
+Summary of what was resolved and what's still pending — include any `blocked` REQs unblocked (now `pending`) or left waiting, and any stakeholder-questions REQs handed off, reclaimed from, or left open, alongside the answered/confirmed/discarded questions. When Step 5.25 ran, append its evidence-backed candidate report. When the user deferred an over-threshold scan, say it was not run and include the combined explicit command. When a REQ unblocked in Step 5.5 still carries `assigned_to`, the summary names it with the session name verbatim and the run-by-name command `do-work run REQ-NNN`.
 
 ## Builder Was Right / Discarded
 
@@ -268,5 +272,6 @@ This is distinct from "Builder Was Right" because confirming a discovered task m
 - [ ] Reversal sources shared one queue scan; a scan above 10,000 queued words required confirmation, and a declined scan emitted one combined explicit command.
 - [ ] Decision revalidation itself changed no candidate REQ or queue status.
 - [ ] `blocked` REQs the user confirmed satisfied flipped to `pending` with `blocked_by`/`blocked_at` removed and a `## Blocked` history line appended; unconfirmed ones stayed `blocked`.
+- [ ] Every unblocked REQ still carrying `assigned_to` was named to the user at release and in the final report, and its field was cleared only on the user's answer.
 - [ ] Stakeholder-questions REQs were routed or reclaimed, never yes/no-confirmed and never ingested here — no stakeholder answer text was written by clarify.
 - [ ] The final report names each REQ by id and what happened to it.
