@@ -10,6 +10,13 @@ For the complete release history, read this file and the archives below from new
 - [0.50.0 through 0.64.1](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-13-up-to-v0.64.1.md)
 - [0.1.0 through 0.49.0](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-07-up-to-v0.49.0.md)
 
+## 0.305.84 — Board Earmarked Badge Tooltip Names Needs Input · Blocked as the Home for Operator-Gated Work (2026-10-08)
+
+Hovering a card's `assigned` badge on the board now says where work that waits on you belongs. In a consumer run, two REQs that needed the operator's input sat under Pending → Earmarked, and nothing on the board said they were in the wrong place.
+
+- The badge tooltip ends with a new sentence: "A REQ waiting on the operator belongs under Needs input · Blocked (status: blocked), not here."
+- Text only. Columns, grouping, card order, and the board data are unchanged.
+
 ## 0.305.83 — Clarify Says When a REQ It Releases Is Still Earmarked and Offers to Clear It (2026-10-08)
 
 When you unblock a REQ in `do-work clarify` and it also carries `assigned_to`, clarify now tells you the default run will still skip it. Before, clarify said the REQ was back in the queue, and in a consumer run two released REQs sat under Pending → Earmarked while every default run passed them by without a word.
