@@ -989,6 +989,10 @@ func stripGeneratedRecoverySections(contents []byte) ([]byte, error) {
 	sections := requestmodel.VisibleSections(body)
 	for index := len(sections) - 1; index >= 0; index-- {
 		section := sections[index]
+		// An indented heading ends the section above it but is the user's text.
+		if section.HeadingIndent != 0 {
+			continue
+		}
 		if !generatedRecoveryHeading.MatchString("## " + section.Name) {
 			continue
 		}

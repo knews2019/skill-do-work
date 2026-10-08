@@ -4,10 +4,15 @@ import "strings"
 
 // VisibleSection identifies an unquoted level-two section in original body bytes.
 // End excludes an unclosed fenced/comment region so destructive writers retain it.
+// HeadingIndent counts the zero to three spaces before the heading's "##". Every
+// generated writer emits its heading at column 0, so a writer that removes,
+// replaces, or counts a section by name must skip one with a nonzero indent: an
+// indented heading is a section boundary, but its bytes are the user's text.
 type VisibleSection struct {
-	Name  string
-	Start int
-	End   int
+	Name          string
+	Start         int
+	End           int
+	HeadingIndent int
 }
 
 // VisibleSections discovers sections without normalizing line endings or offsets.
@@ -73,7 +78,7 @@ func VisibleSections(body []byte) []VisibleSection {
 			if len(sections) > 0 {
 				sections[len(sections)-1].End = start
 			}
-			sections = append(sections, VisibleSection{Name: name, Start: start, End: len(body)})
+			sections = append(sections, VisibleSection{Name: name, Start: start, End: len(body), HeadingIndent: len(line) - len(content)})
 		}
 	}
 	if hiddenStart >= 0 && len(sections) > 0 {

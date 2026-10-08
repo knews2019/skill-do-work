@@ -53,6 +53,18 @@ func TestTimingReplacementIgnoresIndentedSamplesAndFenceInfoComments(t *testing.
 	}
 }
 
+// REQ-645: a two-space "## Timing" under a bullet is a user sample. It is still a
+// section boundary, but the writer must append a real section, not overwrite it.
+func TestTimingReplacementKeepsAListNestedTwoSpaceIndentedSample(t *testing.T) {
+	for _, newline := range []string{"\n", "\r\n"} {
+		sample := strings.ReplaceAll("# Request\n- Example:\n  ## Timing\n  sample summary\n", "\n", newline)
+		got := replaceTimingSection([]byte(sample), "## Timing\nnew summary\n")
+		if want := sample + "\n## Timing\nnew summary\n"; string(got) != want {
+			t.Errorf("indented Timing sample was replaced instead of a section appended: got %q, want %q", got, want)
+		}
+	}
+}
+
 // The stream must be flat, append-safe, Git-private, and shared by a repository's
 // worktrees: two boundary events land as two independent JSON lines under the Git
 // common directory, and the second event's default start is the first event's end

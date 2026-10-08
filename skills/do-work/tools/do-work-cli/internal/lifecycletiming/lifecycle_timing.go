@@ -507,13 +507,13 @@ func RenderTimingSection(summary resultmodel.LifecycleTimingResult) string {
 }
 
 // replaceTimingSection puts exactly one `## Timing` section into the document:
-// it replaces the request's own section in place and otherwise appends at the
-// end. Every byte outside that span is preserved, and the result always ends
+// it replaces the request's own column-0 section in place and otherwise appends
+// at the end. An indented "## Timing" is a user sample and is never replaced. Every byte outside that span is preserved, and the result always ends
 // with exactly one newline because the pipeline appends lesson content after
 // this writer runs.
 func replaceTimingSection(documentBytes []byte, section string) []byte {
 	for _, visible := range requestmodel.VisibleSections(documentBytes) {
-		if visible.Name != "Timing" {
+		if visible.Name != "Timing" || visible.HeadingIndent != 0 {
 			continue
 		}
 		rebuilt := string(documentBytes[:visible.Start]) + strings.TrimSuffix(section, "\n")
