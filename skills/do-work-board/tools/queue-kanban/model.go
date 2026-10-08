@@ -221,8 +221,8 @@ type RequestTicket struct {
 	OriginalImpact     string // verbatim frontmatter impact before normalization ("" when absent)
 	ImpactUnrecognized bool
 
-	// priority is the user's authored ordering inside the Pending Ready and
-	// Pending Waiting groups. It never changes dependency readiness or status.
+	// priority is the user's authored ordering inside each Pending group (Ready,
+	// Waiting, Earmarked). It never changes dependency readiness or status.
 	Priority             string
 	OriginalPriority     string
 	PriorityUnrecognized bool
@@ -1702,8 +1702,8 @@ func parseTimestamp(text string) (time.Time, bool) {
 // status. Dependency readiness (annotated by annotateDependencyState, which must
 // have run first) additionally affects two display cases: pending splits into
 // ready/waiting/earmarked (earmarked = no unmet dependency but a non-empty
-// assigned_to, which the run's default scan skips), while a bare blocked ticket with an unmet dependency joins the
-// waiting group until its upstream completes. The split is a view, not a status
+// assigned_to, which the run's default scan skips), while a bare blocked ticket
+// with an unmet dependency joins the waiting group until its upstream completes. The split is a view, not a status
 // change — each ticket keeps its on-disk status throughout.
 // Terminally resolved tickets (completed*/cancelled) only enter
 // RecentlyDone when their completion instant falls inside the window; older
