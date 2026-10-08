@@ -1,7 +1,7 @@
 ---
 id: REQ-648
 title: '[impact-rule-change] The assigned_to schema line and the work action say operator-gated work is blocked, never earmarked'
-status: pending
+status: claimed
 created_at: 2026-10-08T15:50:17Z
 user_request: UR-142
 domain: general
@@ -13,6 +13,7 @@ effort_estimate: effort-mechanical
 related: [REQ-647, REQ-649]
 batch: earmark-release-visibility
 write_set: [skills/do-work/actions/work-reference.md, skills/do-work/actions/work.md]
+claimed_at: 2026-10-08T15:53:15Z
 ---
 # The assigned_to Schema Line and the Work Action Say Operator-Gated Work Is Blocked, Never Earmarked
 ## What
