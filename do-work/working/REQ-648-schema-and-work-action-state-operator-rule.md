@@ -22,6 +22,7 @@ batch: earmark-release-visibility
 write_set: [skills/do-work/actions/work-reference.md, skills/do-work/actions/work.md]
 claimed_at: 2026-10-08T15:53:15Z
 dispatch_at: 2026-10-08T15:56:02Z
+builder_handback_at: 2026-10-08T16:00:34Z
 ---
 # The assigned_to Schema Line and the Work Action Say Operator-Gated Work Is Blocked, Never Earmarked
 ## What
