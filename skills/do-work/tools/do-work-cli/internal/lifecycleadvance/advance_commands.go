@@ -341,9 +341,14 @@ func validEstimate(value string) bool {
 	return parseError == nil && minutes > 0
 }
 
+// advanceSections counts only column-0 sections: an indented heading is the
+// user's sample, so it is neither lifecycle evidence nor a duplicate of one.
 func advanceSections(body []byte) (map[string]sectionEvidence, string) {
 	sections := map[string]sectionEvidence{}
 	for _, visible := range requestmodel.VisibleSections(body) {
+		if visible.HeadingIndent != 0 {
+			continue
+		}
 		section := sections[visible.Name]
 		section.count++
 		if section.count == 1 {

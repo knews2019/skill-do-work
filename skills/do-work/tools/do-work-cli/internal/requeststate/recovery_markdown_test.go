@@ -91,3 +91,18 @@ func TestRecoveryKeepsUserTextUnderAFourSpaceIndentedHeading(t *testing.T) {
 		}
 	}
 }
+
+// REQ-645: a 1-3 space indented heading still ends the section above it, but it
+// is the user's text, not a generated section, so recovery must never remove it.
+// Here a bullet carries a two-space "## Plan" sample; only the column-0 Timing goes.
+func TestRecoveryKeepsAListNestedTwoSpaceIndentedHeading(t *testing.T) {
+	for _, newline := range []string{"\n", "\r\n"} {
+		user := strings.ReplaceAll("# Request\n- Example:\n  ## Plan\n  user sample\n\nMUST keep.\n", "\n", newline)
+		prefix := strings.ReplaceAll("---\nid: REQ-645\n---\n", "\n", newline)
+		original := prefix + user + "## Timing" + newline + "generated summary" + newline
+		got, err := stripGeneratedRecoverySections([]byte(original))
+		if err != nil || string(got) != prefix+user {
+			t.Fatalf("recovery changed user text: error=%v, got %q, want %q", err, got, prefix+user)
+		}
+	}
+}
