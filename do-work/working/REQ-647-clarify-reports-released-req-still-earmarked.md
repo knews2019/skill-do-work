@@ -22,6 +22,7 @@ batch: earmark-release-visibility
 write_set: [skills/do-work/actions/clarify.md, skills/do-work/docs/work-guide.md]
 claimed_at: 2026-10-08T15:53:15Z
 dispatch_at: 2026-10-08T15:56:02Z
+builder_handback_at: 2026-10-08T16:09:05Z
 ---
 # Clarify Tells the User When a Released REQ Stays Earmarked and Clears It on Request
 ## What
