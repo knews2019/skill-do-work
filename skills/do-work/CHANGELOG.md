@@ -10,6 +10,15 @@ For the complete release history, read this file and the archives below from new
 - [0.50.0 through 0.64.1](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-13-up-to-v0.64.1.md)
 - [0.1.0 through 0.49.0](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-07-up-to-v0.49.0.md)
 
+## 0.305.81 — Recovery No Longer Deletes an Indented User Heading That Shares a Generated Section's Name (2026-10-08)
+
+This fixes data loss in `recover --take-over` that the 0.305.70 fix (REQ-635) left open. A user's sample heading indented by one to three spaces, such as a two-space `## Plan` under a bullet, was removed with the text under it as if it were a generated section.
+
+- Recovery: a heading indented by one to three spaces still ends the section above it, but it is never removed. Generated sections always start at column 0.
+- Timing: the writer no longer overwrites an indented `## Timing` sample. It appends the real `## Timing` section instead.
+- `advance`: an indented heading no longer counts as lifecycle evidence, and it no longer makes the request fail as a duplicate section.
+- Three new do-work CLI tests pin these cases. The recovery and Timing tests cover both `\n` and `\r\n` line endings.
+
 ## 0.305.80 — Board Activity No Longer Credits Main's Commits to a REQ Through a Merge of Main Inside Its Builder Branch (2026-10-08)
 
 The board counts a builder's commits as REQ activity through the REQ's hand-back merge. When the builder had merged main into its branch before handing back, main's commits were also counted as that REQ's activity, which made the drawer's "Largest gap between events" too small and could move a claimed card's last-activity time.
