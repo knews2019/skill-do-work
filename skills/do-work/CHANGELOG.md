@@ -10,6 +10,15 @@ For the complete release history, read this file and the archives below from new
 - [0.50.0 through 0.64.1](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-13-up-to-v0.64.1.md)
 - [0.1.0 through 0.49.0](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-07-up-to-v0.49.0.md)
 
+## 0.305.79 — The Board Shows Earmarked REQs in Their Own Pending Group Instead of Ready (2026-10-08)
+
+Ready on the board means the run takes that REQ next, but the run's default scan skips a REQ with `assigned_to` set, and the board still listed it under Ready and counted it as ready. Now a pending REQ that is earmarked for a session and waits on nothing shows under Pending → Earmarked, and every ready count agrees with what the run will do.
+
+- Board: the Pending column has a third group, Earmarked, after Ready and Waiting. An earmarked REQ that still waits on a dependency stays under Waiting. The `assigned` badge text is unchanged, and its tooltip no longer says the board never acts on the field.
+- `queue-kanban summary` adds an `earmarked` line, and `ready to work` no longer counts earmarked REQs. The `open-work` digest reads `pending N (N ready, N waiting, N earmarked)`.
+- The board data payload carries a `pendingEarmarked` list beside `pendingReady` and `pendingWaiting`.
+- `actions/work-reference.md` (`assigned_to:`), `docs/board-guide.md`, `actions/board.md`, `docs/work-guide.md`, and the board prime describe the new group. The field still drives no scheduling, filter, or sort on the board.
+
 ## 0.305.78 — Capture Tells a Session Earmark Apart From Work That Needs You at the Keyboard (2026-10-07)
 
 Before this, "leave this one for me" and "I have to be at the keyboard for this one" both read as an earmark. Capture wrote `assigned_to`, and nothing in the pipeline released the REQ. Now capture writes `assigned_to` only when another session or checkout will take the work. When you have to be present yourself, it captures the REQ as blocked on you, so it shows under Needs input · Blocked and `do-work clarify` releases it.
