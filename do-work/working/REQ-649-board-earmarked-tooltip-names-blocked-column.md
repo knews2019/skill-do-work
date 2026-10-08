@@ -2,6 +2,13 @@
 id: REQ-649
 title: 'Board Earmarked badge tooltip names Needs input · Blocked as the home for operator-gated work'
 status: claimed
+estimate:
+  p50_active_minutes: 5
+  confidence: high
+  basis:
+  - trivial short-circuit
+  calculated_at: 2026-10-08T15:54:08Z
+route: A
 created_at: 2026-10-08T15:50:17Z
 user_request: UR-142
 domain: frontend
@@ -14,6 +21,7 @@ related: [REQ-647, REQ-648]
 batch: earmark-release-visibility
 write_set: [skills/do-work-board/tools/queue-kanban/web/board-cards.js]
 claimed_at: 2026-10-08T15:53:16Z
+dispatch_at: 2026-10-08T15:56:02Z
 ---
 # Board Earmarked Badge Tooltip Names Needs Input · Blocked as the Home for Operator-Gated Work
 ## What
@@ -55,3 +63,19 @@ See `do-work/user-requests/UR-142/input.md` for complete verbatim input (the con
 - [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
 - [ ] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
 *Source: consumer feedback "the board's Earmarked badge says what the group does, not what it is not for" (Gap 3 / the ask §3), accepted by `do-work-toolbox validate-feedback` on 2026-10-08 as F5.*
+
+---
+
+## Triage
+
+**Route: A** - Simple
+
+**Reasoning:** Names the one file and lines (web/board-cards.js:234-239) and quotes the sentence to append; one string literal, no exploration needed.
+
+**Planning:** Not required
+
+## Plan
+
+**Planning not required** - Route A: Direct implementation
+
+*Skipped by work action*

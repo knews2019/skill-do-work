@@ -2,6 +2,13 @@
 id: REQ-648
 title: '[impact-rule-change] The assigned_to schema line and the work action say operator-gated work is blocked, never earmarked'
 status: claimed
+estimate:
+  p50_active_minutes: 5
+  confidence: high
+  basis:
+  - trivial short-circuit
+  calculated_at: 2026-10-08T15:54:08Z
+route: A
 created_at: 2026-10-08T15:50:17Z
 user_request: UR-142
 domain: general
@@ -14,6 +21,7 @@ related: [REQ-647, REQ-649]
 batch: earmark-release-visibility
 write_set: [skills/do-work/actions/work-reference.md, skills/do-work/actions/work.md]
 claimed_at: 2026-10-08T15:53:15Z
+dispatch_at: 2026-10-08T15:56:02Z
 ---
 # The assigned_to Schema Line and the Work Action Say Operator-Gated Work Is Blocked, Never Earmarked
 ## What
@@ -57,3 +65,19 @@ See `do-work/user-requests/UR-142/input.md` for complete verbatim input (the con
 - [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
 - [ ] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
 *Source: consumer feedback "the marker rule is stated only in capture" (Gap 2 / the ask §2), accepted by `do-work-toolbox validate-feedback` on 2026-10-08 as F4, plus the triage's adjacent observation about the dangling "Mid-run blocked flip" pointer.*
+
+---
+
+## Triage
+
+**Route: A** - Simple
+
+**Reasoning:** Names the two files and lines (work-reference.md:114 schema line, work.md Error Handling table row ~522) and quotes both sentences; prose only, plus one pointer fix the triage located.
+
+**Planning:** Not required
+
+## Plan
+
+**Planning not required** - Route A: Direct implementation
+
+*Skipped by work action*
