@@ -2,6 +2,12 @@
 id: REQ-646
 title: 'Board activity snapshots direct merge matches before expanding ancestry, so an inner merge of main attributes nothing'
 status: claimed
+estimate:
+  p50_active_minutes: 5
+  confidence: high
+  basis:
+  - trivial short-circuit
+  calculated_at: 2026-10-08T14:12:47Z
 created_at: 2026-10-08T14:08:54Z
 user_request: UR-141
 domain: backend
@@ -13,7 +19,10 @@ effort_estimate: effort-mechanical
 related: [REQ-645]
 batch: review-residuals-2026-10-08
 write_set: [skills/do-work-board/tools/queue-kanban/activity_correlation.go, skills/do-work-board/tools/queue-kanban/activity_correlation_test.go, skills/do-work-board/CHANGELOG.md]
+route: A
 claimed_at: 2026-10-08T14:12:17Z
+dispatch_at: 2026-10-08T14:14:45Z
+builder_handback_at: 2026-10-08T14:19:19Z
 ---
 # Board Activity Snapshots Direct Merge Matches Before Expanding Ancestry, So an Inner Merge of Main Attributes Nothing
 ## What
@@ -55,3 +64,19 @@ See `do-work/user-requests/UR-141/input.md` for complete verbatim input. No queu
 - [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
 - [ ] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
 *Source: review comment "[P2] Freeze direct matches before expanding merge ancestry — activity_correlation.go:142-150", accepted by `do-work-toolbox validate-feedback` on 2026-10-08.*
+
+---
+
+## Triage
+
+**Route: A** - Simple
+
+**Reasoning:** Ordering bug in one function (`correlateCommitsToRequests`), stated by the code's own comment, with the fixture shape for the lock-in test given in the Red-Green Proof. One Go file plus its test; no exploration needed.
+
+**Planning:** Not required
+
+## Plan
+
+**Planning not required** - Route A: Direct implementation
+
+*Skipped by work action*
