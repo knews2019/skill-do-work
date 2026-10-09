@@ -199,7 +199,7 @@ Score: **Acceptance (Pass / Partial / Fail / Untested)**
 - **Fail**: Feature doesn't work as specified
 - **Untested**: Couldn't run the code (note why)
 
-The result scores only the stages this review exercised, so a Pass from local runs says nothing about deployment or live acceptance. Name the stages you covered in the result's one-line summary. Step 8 lists every applicable stage you did not exercise.
+The result scores only the stages this review exercised, so a Pass from local runs says nothing about deployment or live acceptance. Name the stages you covered in the result's one-line summary, both in the report and on the `**Acceptance:**` line of the Append to REQ File block, because that line is the durable record. Step 8 lists every applicable stage you did not exercise.
 
 ### Step 8: Suggest Additional Testing
 
