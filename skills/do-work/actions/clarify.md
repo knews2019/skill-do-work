@@ -181,6 +181,7 @@ What it was for: you wanted translation to run on your own machine instead of a 
 Blocked by: LM Studio running locally (waiting 3 days)
 Is this condition now satisfied?
   1. Yes — unblock it        2. Not yet — leave it        3. Abandon this REQ
+  4. Done — I did it myself
 ```
 
 Note for the user which blocked REQs carry a `blocked_check` probe — those unblock automatically on the next `do-work run`, so confirming them by hand here is optional. Present only the human-confirmable ones prominently.
@@ -190,12 +191,13 @@ Note for the user which blocked REQs carry a `blocked_check` probe — those unb
   2. Keep it, and run the REQ by name with `do-work run REQ-NNN`, which claims it and clears the field.
 
   Never clear the field without that answer, and leave it untouched on keep. The REQ re-enters the queue for the next `do-work run` unless it carries `assigned_to`, in which case the default run skips it until it is named explicitly or the field is cleared.
+- **Done (the operator did the remaining work):** append a `## Operator receipts` section holding the user's words verbatim under Step 4's Outside-text containment, then set `status: completed` and `status_changed_at: <now>` in place; do not run `unblock`. This is the same in-place flip the confirmed `builder_decided: true` path takes in Step 5, so the board shows it under Done and `actions/cleanup.md` → **Pass 0: Sweep Finished Queue Items** archives it.
 - **Not yet:** leave it `blocked`, unchanged.
 - **Abandon:** hand off to `do-work abandon REQ-NNN` (marks `cancelled`, archives) — same as discarding a question.
 
 ### Step 6: Report
 
-Summary of what was resolved and what's still pending — include any `blocked` REQs unblocked (now `pending`) or left waiting, and any stakeholder-questions REQs handed off, reclaimed from, or left open, alongside the answered/confirmed/discarded questions. When Step 5.25 ran, append its evidence-backed candidate report. When the user deferred an over-threshold scan, say it was not run and include the combined explicit command. When a REQ unblocked in Step 5.5 still carries `assigned_to`, the summary names it with the session name verbatim and the run-by-name command `do-work run REQ-NNN`.
+Summary of what was resolved and what's still pending — include any `blocked` REQs unblocked (now `pending`), completed by the operator (now `completed`), or left waiting, and any stakeholder-questions REQs handed off, reclaimed from, or left open, alongside the answered/confirmed/discarded questions. When Step 5.25 ran, append its evidence-backed candidate report. When the user deferred an over-threshold scan, say it was not run and include the combined explicit command. When a REQ unblocked in Step 5.5 still carries `assigned_to`, the summary names it with the session name verbatim and the run-by-name command `do-work run REQ-NNN`.
 
 ## Builder Was Right / Discarded
 
