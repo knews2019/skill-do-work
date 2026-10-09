@@ -110,8 +110,9 @@ func parseCorrelationLog(logOutput []byte) []*correlatedCommit {
 // tip that collectRequestActivity adds; once merged, the hand-back merge's own
 // prefix is the evidence. The second-parent range expansion that used to credit
 // un-prefixed builder commits through their merge is gone on purpose: it
-// existed for a case the builder brief forbids (actions/fan-out-reference.md),
-// and it already shipped one defect (REQ-646).
+// existed for a case the per-REQ branch contract has forbidden since 0.305.88
+// (actions/fan-out-reference.md, Naming), and it already shipped one defect
+// (REQ-646).
 func correlateCommitsToRequests(logOutput []byte) map[string][]time.Time {
 	instantsById := map[string][]time.Time{}
 	for _, commit := range parseCorrelationLog(logOutput) {

@@ -10,6 +10,14 @@ For the complete release history, read this file and the archives below from new
 - [0.50.0 through 0.64.1](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-13-up-to-v0.64.1.md)
 - [0.1.0 through 0.49.0](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-07-up-to-v0.49.0.md)
 
+## 0.305.89 — The Commit Prefix Rule Covers Every Run Mode and the Hand-Back Merge (2026-10-10)
+
+A code review of 0.305.88 found that the board now trusts the `[REQ-NNN]` prefix completely, while the rule reached builders only through the fan-out brief and no step named the merge commit's message. The rule now has one home that every run mode reads.
+
+- `actions/fan-out-reference.md` → *Naming* states the rule for the builder's commits and the hand-back merge: `[REQ-NNN] merge builder branch <operative_name>`. Merge step 3 spells that message. The brief row points at it instead of carrying a copy.
+- The 0.305.88 note that the rule was already in the brief was wrong: the rule is new since 0.305.88. The code comment and the board lesson say so now, and the lesson's line count is corrected to the 58 net lines the commit removed.
+- No code behaviour changed.
+
 ## 0.305.88 — Board Activity Credits Commits by Prefix, Path and Owned Branch Tip Only (2026-10-10)
 
 The board no longer walks a merge's second-parent range to credit builder commits that carried no `[REQ-NNN]` prefix. That code existed for a case the builder brief forbids, had already shipped one defect (the inner merge of main fixed in 0.305.80), and in the week before this release credited nothing: every builder commit behind a prefixed merge carried its own prefix.
