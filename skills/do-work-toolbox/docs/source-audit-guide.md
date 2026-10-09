@@ -21,7 +21,7 @@ So the audit records four facts separately for every claim: did the source load 
 |---|---|
 | supported | A quoted passage from the cited content states the claim. |
 | contradicted | A quoted passage states otherwise. |
-| insufficient | Content was read, but nothing in it settles the claim (an index page, a related article, no claim stated, no source cited). |
+| insufficient | Content was read, but nothing in it settles the claim (an index page, a related article, no claim stated, no source cited; illustrative, not exhaustive). |
 | unavailable | The cited content could not be read: a failed fetch, an error page, an unrelated redirect, or no fetch tool in this session. |
 
 A publication date the page does not state is `unknown`. The audit never guesses it from the fetch date, the URL, or an archive's capture date.
