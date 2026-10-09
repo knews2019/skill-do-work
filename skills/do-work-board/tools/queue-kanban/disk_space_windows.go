@@ -4,9 +4,7 @@ package main
 
 import (
 	"fmt"
-	"hash/fnv"
 	"path/filepath"
-	"strings"
 	"syscall"
 	"unsafe"
 )
@@ -44,11 +42,5 @@ func measureDiskSpace(directory string) (diskSpaceMeasurement, error) {
 		return diskSpaceMeasurement{}, callError
 	}
 
-	volumeHash := fnv.New64a()
-	volumeHash.Write([]byte(strings.ToUpper(filepath.VolumeName(absoluteDirectory))))
-	return diskSpaceMeasurement{
-		freeBytes:      availableBytes,
-		totalBytes:     totalBytes,
-		deviceIdentity: volumeHash.Sum64(),
-	}, nil
+	return diskSpaceMeasurement{freeBytes: availableBytes, totalBytes: totalBytes}, nil
 }

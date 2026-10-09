@@ -204,7 +204,7 @@ func TestMain(testMain *testing.M) {
 	// Real free space changes under the suite, so every verify run measures a
 	// plenty-free fake disk; disk_space_test.go swaps in its own fakes.
 	diskSpaceMeasurer = func(string) (diskSpaceMeasurement, error) {
-		return diskSpaceMeasurement{freeBytes: 400 << 30, totalBytes: 500 << 30, deviceIdentity: 1}, nil
+		return diskSpaceMeasurement{freeBytes: 400 << 30, totalBytes: 500 << 30}, nil
 	}
 	exitCode := testMain.Run()
 	if strictProbeGuardFailed(exitCode, os.Getenv(strictJavaScriptBehaviorMarker), javaScriptBehaviorProbeCount.Load()) {
@@ -3142,12 +3142,8 @@ func TestGeneratedVerifyPayloadCarriesNoAbsolutePaths(t *testing.T) {
 	// so a low-space fake keeps that finding live in the payload under test.
 	previousMeasurer := diskSpaceMeasurer
 	t.Cleanup(func() { diskSpaceMeasurer = previousMeasurer })
-	diskSpaceMeasurer = func(directory string) (diskSpaceMeasurement, error) {
-		deviceIdentity := uint64(1)
-		if directory == worktreePath {
-			deviceIdentity = 2
-		}
-		return diskSpaceMeasurement{freeBytes: 2 << 30, totalBytes: 500 << 30, deviceIdentity: deviceIdentity}, nil
+	diskSpaceMeasurer = func(string) (diskSpaceMeasurement, error) {
+		return diskSpaceMeasurement{freeBytes: 2 << 30, totalBytes: 500 << 30}, nil
 	}
 
 	board, buildError := buildBoard(repoRoot, moment, defaultRecentWindow, lookupGitCommitDate)
@@ -3166,9 +3162,9 @@ func TestGeneratedVerifyPayloadCarriesNoAbsolutePaths(t *testing.T) {
 		Detail:   "worktree " + worktreePath + " is unmerged",
 		Remedy:   "inspect " + filepath.Join(repoRoot, "do-work", "queue") + " first",
 	}}}
-	// The fixture is not a git repo, so no worktree is enumerated; the worktree
-	// half of the disk-space probe is seeded here the same way.
-	appendDiskSpaceFindings(&syntheticReport, repoRoot, map[string]string{"worktree-agent-REQ-999": worktreePath}, diskSpaceMeasurer)
+	// A second disk-space finding is seeded the same way, so the reduction of its
+	// absolute Subject is exercised outside the live probe too.
+	appendDiskSpaceFindings(&syntheticReport, repoRoot, diskSpaceMeasurer)
 	for _, finding := range syntheticReport.Findings {
 		boardData.VerifyFindings = append(boardData.VerifyFindings, generatedVerifyFinding{
 			Category: finding.Category,
@@ -3197,9 +3193,8 @@ func TestGeneratedVerifyPayloadCarriesNoAbsolutePaths(t *testing.T) {
 			}
 		}
 	}
-	// One root finding from the live probe, one from the seeded report; the
-	// worktree is named, never located.
-	if diskSpaceSubjects["."] != 2 || diskSpaceSubjects["worktree-agent-REQ-999"] != 1 {
+	// One root finding from the live probe, one from the seeded report.
+	if diskSpaceSubjects["."] != 2 || len(diskSpaceSubjects) != 1 {
 		t.Errorf("low-disk-space findings missing from the payload, so it proves nothing; subjects: %v", diskSpaceSubjects)
 	}
 
