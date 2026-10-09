@@ -1,7 +1,7 @@
 # Builder brief — REQ-653 (Fan-out orchestration prose is compressed in place and moved to a companion reference)
 
 - Worktree (your only writable tree): /Users/t2/Desktop/e1-experimental-repos/skill-do-work2-worktrees/worktree-agent-REQ-653-fan-out-orchestration-prose-companion-reference
-- Branch: worktree-agent-REQ-653-fan-out-orchestration-prose-companion-reference, created from main HEAD BASE_HASH with `git worktree add -b` (commit here; never merge, never rebase, never push, never check out another branch).
+- Branch: worktree-agent-REQ-653-fan-out-orchestration-prose-companion-reference, created from main HEAD e36f92ed with `git worktree add -b` (commit here; never merge, never rebase, never push, never check out another branch).
 - REQ (read-only, main tree): /Users/t2/Desktop/e1-experimental-repos/skill-do-work2/do-work/working/REQ-653-fan-out-orchestration-prose-companion-reference.md. Read it fully: What, Why, Verified Facts, Detailed Requirements 1-7, Constraints, Builder Guidance, Red-Green Proof, and the orchestrator's `## Exploration` (the citation map, with four must-fix findings F1-F4) and `## Scope` (your write boundary and the restated acceptance criteria). Requirement 7 (release) belongs to the integrator; you PROPOSE the changelog entry and the lesson bullet in the hand-back.
 - Full citation table: /Users/t2/Desktop/e1-experimental-repos/skill-do-work2/do-work/runs/work-2026-10-09-160815/REQ-653-exploration.md (read-only).
 - UR (read-only): /Users/t2/Desktop/e1-experimental-repos/skill-do-work2/do-work/user-requests/UR-143/input.md (the F6 verdict and the maintainer's answer: "compress in place and create structured companion reference where things remain clear without any size limitation").
@@ -31,7 +31,7 @@ Exactly the files in the REQ's `## Scope` "Files I will touch" list. Anything el
 - `git diff --stat` and `git diff --check`.
 
 ## Hand-back (write the file at the absolute path above)
-- Branch name, worktree path and every commit hash (one commit preferred). Base: BASE_HASH.
+- Branch name, worktree path and every commit hash (one commit preferred). Base: e36f92ed.
 - File manifest: each file with (new)/(modified) and one line on what changed; for the two big files, the word count before and after.
 - P-A-U text for [PLAN], [APPLY], [UNIFY]; [UNIFY] lists git diff --stat, every test script's exit code and wall time, and each file checked.
 - Red-green evidence in prose terms: RED (no file; counts 13,864 / 22,815; the nine passages spread over two files) and GREEN (the file with its four sections; the counts; the citation grep; the three tests green; the decisions entry).
