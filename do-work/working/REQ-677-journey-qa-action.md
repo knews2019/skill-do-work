@@ -1,7 +1,7 @@
 ---
 id: REQ-677
 title: 'do-work-toolbox journey-qa verifies whole user journeys and classifies each result as passed, product defect, test defect or unresolved'
-status: pending
+status: claimed
 created_at: 2026-10-09T22:53:15Z
 user_request: UR-151
 domain: testing
@@ -13,6 +13,7 @@ effort_estimate: effort-substantive
 required_lessons: [_dev/primes/lessons-releases.md]
 related: [REQ-675, REQ-676, REQ-678]
 batch: portable-verification-actions
+claimed_at: 2026-10-09T22:56:58Z
 ---
 # do-work-toolbox journey-qa
 ## What
