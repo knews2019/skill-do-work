@@ -2,6 +2,13 @@
 id: REQ-675
 title: 'Core review names four delivery stages and reports deployment and live acceptance as unassessed unless the review exercised them'
 status: claimed
+route: A
+estimate:
+  p50_active_minutes: 5
+  confidence: high
+  basis:
+  - trivial short-circuit
+  calculated_at: 2026-10-09T23:02:37Z
 created_at: 2026-10-09T22:53:15Z
 user_request: UR-151
 domain: general
@@ -53,3 +60,17 @@ See `do-work/user-requests/UR-151/input.md` for complete verbatim input. No queu
 - [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
 - [ ] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
 *Source: the brief's CORE REVIEW IMPROVEMENT, first bullet, accepted in the validate-feedback triage.*
+
+## Triage
+
+**Route: A** - Simple
+
+**Reasoning:** The REQ names both files and the exact sentences to add (four stage definitions and the unassessed rule in review-work.md Step 7/8, one line in review-work-guide.md Phase 3), with explicit constraints on what must not change. No location or pattern needs discovery; the Restatement Sweep on "Acceptance" is a review-time check, not exploration.
+
+**Planning:** Not required
+
+## Plan
+
+**Planning not required** - Route A: Direct implementation
+
+*Skipped by work action*
