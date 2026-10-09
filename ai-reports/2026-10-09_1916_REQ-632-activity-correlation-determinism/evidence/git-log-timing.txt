@@ -1,0 +1,16 @@
+# Windowed git log cost on this repository, 2026-10-09 ~19:15 EEST, git 2.50.1, macOS arm64
+# Machine load average was about 10 (sibling sessions running), so treat these as upper-end readings.
+# Command timed (Python perf_counter around subprocess, stdout discarded):
+#   git log --since=<N>.days --format=%H%x00%cI%x00%P%x00%s --name-only
+
+window 7 days: 212 commits, 37 merges
+  run 166 ms
+  run 47 ms
+  run 44 ms
+  run 45 ms
+
+window 60 days: 2931 commits, 364 merges
+  run 253 ms
+  run 158 ms
+  run 161 ms
+  run 152 ms

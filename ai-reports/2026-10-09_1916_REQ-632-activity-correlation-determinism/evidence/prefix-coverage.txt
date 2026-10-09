@@ -1,0 +1,43 @@
+# How often does the merge-range expansion credit a commit that the prefix or path would miss?
+# Run 2026-10-09 on this repository at main. For every merge in the window whose subject carries a
+# bracketed [REQ-NNN] token, list the commits in <merge>^1..<merge>^2 and check each one for (a) its own
+# bracketed token and (b) a touched path matching activity_correlation.go:60's REQ-path pattern.
+# A commit with neither is one that only the expansion attributes.
+
+window 7 days: prefixed merges=37, commits in their ranges=44, without bracketed token=0, without token and without REQ path=0
+
+window 60 days: prefixed merges=208, commits in their ranges=250, without bracketed token=34, without token and without REQ path=34
+  82e88454 2026-09-06 [work run] REQ-594 step 14: the guard leaves one probe file and covers the repository
+  6ab2a200 2026-09-06 [work run] REQ-594 step 13: the one shipped line, select-simple-reqs.sh:47
+  d774c21a 2026-09-06 [work run] REQ-594 step 12: install-suite-behavior.sh, both judgment sites
+  e2ca88fc 2026-09-06 [work run] REQ-594 step 11: staged-skills-contract.sh, the four judgment sites
+  42eb8922 2026-09-06 [work run] REQ-594 step 10: qualify.sh, 31 sites
+  3872b523 2026-09-06 [work run] REQ-594 step 9: audit-archive-timestamps.sh, 15 sites including the two chains
+  d50f2066 2026-09-06 [work run] REQ-594 step 8: repair-req-timestamps.sh, 13 sites
+  e9737a6f 2026-09-06 [work run] REQ-594 step 7: cleanup-req-reservations and protected-inventory
+  f79fb02c 2026-09-06 [work run] REQ-594 step 6: the 21 `find … -print -quit | grep -q .` leak checks
+  94ff09fc 2026-09-06 [work run] REQ-594 step 5: the four single-site prescribed-shell case files
+  d09ac5ea 2026-09-06 [work run] REQ-594 steps 2-4: the four remaining fast-tier quiet-grep pipelines
+  2820b164 2026-09-06 [work run] REQ-594 step 1: core-checks.sh reads grep's verdict, not its writer's death
+  3fa05e22 2026-09-06 REQ-556 remediation: count matches, pin both directions, widen the vocabulary
+  cfcf63e4 2026-09-06 [work run] REQ-554 remediation: make the shared-body lock-in catch a one-sided return
+  d2609378 2026-09-06 REQ-554: give the commit/inspect shared body one home in the prescribed-shell guide
+  564c81a3 2026-09-05 REQ-587: give the Timeline view one scroll surface
+  f44d8cf5 2026-09-05 REQ-553: type the missing-preamble failure, pin the lock-in, cover the heavy lanes
+  7f51a7c5 2026-09-05 REQ-553: source one do-work-cli launcher preamble instead of hand-rolling it
+  bd29594d 2026-09-05 REQ-580: one row per worktree for an undetermined merge state
+  67d7e14e 2026-09-05 Remove redundant launcher fixture loop
+  c6810250 2026-09-05 Consolidate shared implementation and review principles
+  1ff0dd72 2026-09-01 fix(knowledge): harden BKB publication and Dream scans
+  9d562b56 2026-09-01 fix(cleanup): project preflight failure remediation
+  b5de97a9 2026-09-01 fix(doctor): match preflight remediation to failure kind
+  58b4c7d3 2026-08-31 fix(cli): preserve special file mode bits
+  1cd6b04f 2026-08-31 fix(cleanup): gate UR closure on member archival
+  f06a60c1 2026-08-31 Preserve special mode bits during install
+  dca786d0 2026-08-24 feat(board): open duration marks in detail drawer
+  5be0d04a 2026-08-24 REQ-346: name the UR on every Durations sample
+  3cd86ed5 2026-08-24 REQ-344: quote user text written into a frontmatter value
+  fc136015 2026-08-24 REQ-342: neutralize user text written into a REQ body
+  1c5a4461 2026-08-24 REQ-343: let verify see a structurally damaged REQ file
+  ddaaab81 2026-08-23 Count every prescribed-shell case the runner reports (REQ-339)
+  5129388c 2026-08-11 Promote prescribed shell primitives to tested scripts

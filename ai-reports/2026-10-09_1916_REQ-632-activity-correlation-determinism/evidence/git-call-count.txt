@@ -1,0 +1,44 @@
+# Git commands per served board response, counted by execution
+# Run 2026-10-09 against base 2eb14357, in a scratch copy of skills/do-work-board/tools/queue-kanban/
+# with one throwaway test file added (below). The shipped package was not modified.
+# The canned runner is the package's own cannedGitRunner (activity_correlation_test.go:39-86).
+
+$ go test -count=1 -v -run TestZZCountGitCalls .
+branches=0 calls=5 [worktree list branch --list rev-parse --abbrev-ref for-each-ref --no-merged=main log --since=2026-10-02T16:17:18Z]
+branches=1 calls=5 [worktree list branch --list rev-parse --abbrev-ref for-each-ref --no-merged=main log --since=2026-10-02T16:17:18Z]
+branches=4 calls=5 [worktree list branch --list rev-parse --abbrev-ref for-each-ref --no-merged=main log --since=2026-10-02T16:17:18Z]
+
+# Throwaway test source:
+package main
+
+import (
+	"fmt"
+	"net/http/httptest"
+	"strings"
+	"testing"
+	"time"
+)
+
+func TestZZCountGitCalls(t *testing.T) {
+	claimInstant := time.Now().UTC().Add(-time.Hour).Truncate(time.Second)
+	repoRoot := writeVerifyFixture(t, []verifyFixtureFile{
+		{"do-work/working/REQ-701-counted.md", "---\nid: REQ-701\ntitle: counted\nstatus: claimed\nclaimed_at: " +
+			claimInstant.Format(time.RFC3339) + "\n---\n\n# counted\n"},
+	})
+	for _, branchCount := range []int{0, 1, 4} {
+		runner := &cannedGitRunner{branchTips: map[string]time.Time{}}
+		for i := 0; i < branchCount; i++ {
+			runner.branchTips[fmt.Sprintf("worktree-agent-REQ-%d-x", 801+i)] = claimInstant
+		}
+		var subcommands []string
+		liveServer := newLiveBoardServer(repoRoot, defaultRecentWindow)
+		liveServer.liveGitRunner = func(root string, arguments ...string) ([]byte, error) {
+			subcommands = append(subcommands, strings.Join(arguments[:min(2, len(arguments))], " "))
+			return runner.run(root, arguments...)
+		}
+		server := httptest.NewServer(liveServer)
+		fetchServedBoardData(t, server.URL)
+		server.Close()
+		fmt.Printf("branches=%d calls=%d %v\n", branchCount, runner.callCount, subcommands)
+	}
+}

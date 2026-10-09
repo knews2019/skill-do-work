@@ -1,0 +1,336 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>REQ-632 Activity Correlation Determinism</title>
+<style>
+:root {
+  --bg: #f7f5ef;
+  --surface: #fffdf8;
+  --text: #24231f;
+  --muted: #5f5b52;
+  --accent: #1f5fbf;
+  --rule: #d9d4c7;
+  --det: #2a8a7a;
+  --scaf: #c27a12;
+  --code-bg: #efece3;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #15171a;
+    --surface: #1d2024;
+    --text: #e9e6df;
+    --muted: #a8a397;
+    --accent: #7fb0ff;
+    --rule: #34383e;
+    --det: #4fc2ae;
+    --scaf: #e6a446;
+    --code-bg: #262a30;
+  }
+}
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font: 16px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+.page { width: 100%; padding: 0 clamp(16px, 2.6vw, 60px) 96px; }
+header { padding: 48px 0 24px; border-bottom: 1px solid var(--rule); }
+.kicker { font: 600 13px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+h1, h2, h3 { font-family: "Iowan Old Style", Palatino, Georgia, serif; font-weight: 600; line-height: 1.2; }
+h1 { font-size: clamp(28px, 3.4vw, 40px); margin: 10px 0 0; }
+h2 { font-size: 28px; margin: 0 0 16px; }
+h3 { font-size: 22px; margin: 28px 0 10px; }
+section { padding: 40px 0; border-bottom: 1px solid var(--rule); }
+.measure { max-width: 78ch; }
+p { margin: 0 0 14px; }
+code { font: 14px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace; background: var(--code-bg); padding: 1px 5px; border-radius: 4px; overflow-wrap: anywhere; }
+pre { font: 13.5px/1.55 ui-monospace, SFMono-Regular, Menlo, monospace; background: var(--code-bg); padding: 14px 16px; border-radius: 6px; overflow-x: auto; margin: 0 0 14px; }
+.row { display: flex; flex-wrap: wrap; gap: 28px; }
+.row > * { min-width: 0; }
+.card { background: var(--surface); border: 1px solid var(--rule); border-radius: 8px; padding: 20px 22px; }
+.verdict { font-size: 18px; }
+.verdict strong { font-weight: 650; }
+.table-wrap { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-size: 15px; }
+th, td { text-align: left; vertical-align: top; padding: 9px 12px 9px 0; border-bottom: 1px solid var(--rule); }
+th { font: 600 12.5px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
+.part td:first-child { width: 24%; min-width: 230px; }
+.part td:first-child code { overflow-wrap: normal; word-break: normal; white-space: nowrap; }
+a { color: var(--accent); }
+td.num { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.swatch { display: inline-block; width: 11px; height: 11px; border-radius: 2px; margin-right: 8px; vertical-align: baseline; }
+.sw-det { background: var(--det); }
+.sw-scaf { background: var(--scaf); }
+.part { border-left: 4px solid var(--rule); padding-left: 18px; }
+.part-det { border-left-color: var(--det); }
+.part-scaf { border-left-color: var(--scaf); }
+.diagram { width: 100%; max-width: 1100px; height: auto; display: block; }
+.diagram .box { fill: var(--surface); stroke: var(--rule); stroke-width: 1.5; }
+.diagram .box-det { stroke: var(--det); stroke-width: 2; }
+.diagram .box-scaf { stroke: var(--scaf); stroke-width: 2; stroke-dasharray: 6 4; }
+.diagram text { fill: var(--text); font: 14px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+.diagram .small { fill: var(--muted); font: 12px ui-monospace, SFMono-Regular, Menlo, monospace; }
+.diagram .edge { stroke: var(--muted); stroke-width: 1.5; fill: none; }
+.diagram .head { fill: var(--muted); }
+.note { color: var(--muted); font-size: 15px; }
+.options .card { flex: 1 1 420px; }
+.options h3 { margin-top: 0; }
+footer { padding: 32px 0 0; color: var(--muted); font-size: 14px; }
+</style>
+</head>
+<body>
+<div class="page">
+
+<header>
+  <div class="kicker">AI report · REQ-632 (board cards show last correlated activity) · non-visual evidence · 2026-10-09</div>
+  <h1>Which lines of the board's activity correlation read git, and which exist because of what a builder might do</h1>
+</header>
+
+<section id="verdict">
+  <h2>Verdict</h2>
+  <div class="measure verdict">
+    <p><strong>REQ-632 shipped and still works.</strong> It is archived as <code>completed</code> in release 0.305.67, with the repository gate and three heavy lanes green at <code>47c2620e</code>. The 11 activity tests pass on today's code.</p>
+    <p><strong>Most of the code reads deterministic facts.</strong> Lifecycle stamps, one <code>git log</code> over HEAD, touched paths and owned branch tips are things git or the frontmatter record exactly. Of the 357 production lines in <code>activity_correlation.go</code>, 54 exist only because a builder commit might not carry its <code>[REQ-NNN]</code> prefix. They are the merge-range expansion, the in-memory ancestry walk and the REQ-646 guard. The prefix test reads agent-written text too, but it stays on both sides of the decision.</p>
+    <p>The report ends with the decision it exists to support. Either make the prefix deterministic and delete those 54 lines plus 92 test lines, or keep the current code.</p>
+  </div>
+</section>
+
+<section id="shipped">
+  <div class="row">
+    <div style="flex: 1 1 460px">
+      <h2>What shipped</h2>
+      <div class="measure">
+        <p>A claimed card shows a ticking <code>last activity &lt;instant&gt; · &lt;phase&gt;</code> line. The detail drawer shows the largest idle gap between activity events. The <code>over 4h · assumed pause</code> badge on done cards is deleted.</p>
+        <p>Two later REQs changed the same code. REQ-636 (board activity counts only branch-owned commits, 0.305.71) replaced a per-branch <code>git log -1</code> with one shared <code>for-each-ref --no-merged</code>. REQ-646 (inner merge of main attributes nothing, 0.305.80) added the guard described below.</p>
+      </div>
+    </div>
+    <div style="flex: 1 1 460px">
+      <h2>Problem and change</h2>
+      <div class="measure">
+        <p>The badge guessed a pause from one number, the total span. UR-135 (the maintainer's design brief) showed a 4h21m REQ that was worked without a break. The evidence already existed in per-phase stamps and in commits that touch the REQ file.</p>
+        <p>File modification time cannot replace git here. A commit changes <code>.git/</code>, not <code>do-work/</code>, and builder commits land in other worktrees. This is the REQ-284 lesson (never cache the verify probes, because their inputs change while every file mtime stays the same). The code comment at <code>activity_correlation.go:19-22</code> repeats it.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="how">
+  <h2>How it works</h2>
+  <div class="row">
+    <div style="flex: 3 1 640px">
+      <svg class="diagram" viewBox="0 0 1000 350" role="img" aria-label="Data flow: three inputs feed attribution rules, which feed a per-REQ union that drives the card and drawer. The prefix rule and the merge-range expansion are marked as scaffold around agent behaviour.">
+        <defs>
+          <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="head" d="M0,0 L10,5 L0,10 z"/></marker>
+        </defs>
+        <rect class="box box-det" x="10" y="20" width="250" height="70" rx="6"/>
+        <text x="24" y="48">Lifecycle stamps</text>
+        <text class="small" x="24" y="70">frontmatter · :274-281</text>
+        <rect class="box box-det" x="10" y="130" width="250" height="70" rx="6"/>
+        <text x="24" y="158">git log over HEAD, one call</text>
+        <text class="small" x="24" y="180">%H %cI %P %s --name-only · :209</text>
+        <rect class="box box-det" x="10" y="240" width="250" height="70" rx="6"/>
+        <text x="24" y="268">Owned builder branch tips</text>
+        <text class="small" x="24" y="290">for-each-ref --no-merged · verify.go</text>
+
+        <rect class="box box-det" x="330" y="110" width="300" height="52" rx="6"/>
+        <text x="344" y="134">Touched REQ path</text>
+        <text class="small" x="344" y="152">regex · :60</text>
+        <rect class="box box-scaf" x="330" y="172" width="300" height="52" rx="6"/>
+        <text x="344" y="196">[REQ-NNN] subject token</text>
+        <text class="small" x="344" y="214">regex · :64</text>
+        <rect class="box box-scaf" x="330" y="234" width="300" height="76" rx="6"/>
+        <text x="344" y="258">Merge-range expansion</text>
+        <text class="small" x="344" y="278">^1..^2, REQ-646 guard · :139-163</text>
+        <text class="small" x="344" y="296">ancestry walk · :174-190</text>
+
+        <rect class="box" x="700" y="110" width="290" height="90" rx="6"/>
+        <text x="714" y="138">Per-REQ union, sorted</text>
+        <text class="small" x="714" y="160">claim-to-completion window</text>
+        <text class="small" x="714" y="180">:252-303</text>
+        <rect class="box" x="700" y="230" width="290" height="80" rx="6"/>
+        <text x="714" y="258">Card: last activity · phase</text>
+        <text x="714" y="284">Drawer: largest idle gap</text>
+
+        <path class="edge" d="M260,55 C540,55 600,70 700,130" marker-end="url(#arrow)"/>
+        <path class="edge" d="M260,165 L330,136" marker-end="url(#arrow)"/>
+        <path class="edge" d="M260,165 L330,198" marker-end="url(#arrow)"/>
+        <path class="edge" d="M260,165 L330,262" marker-end="url(#arrow)"/>
+        <path class="edge" d="M135,310 L135,336 L665,336 L665,190 L700,190" marker-end="url(#arrow)"/>
+        <path class="edge" d="M630,136 L700,148" marker-end="url(#arrow)"/>
+        <path class="edge" d="M630,198 L700,164" marker-end="url(#arrow)"/>
+        <path class="edge" d="M630,272 L665,240 L665,200 L700,178" marker-end="url(#arrow)"/>
+        <path class="edge" d="M845,200 L845,230" marker-end="url(#arrow)"/>
+      </svg>
+      <p class="note">Hand-authored diagram of the current code at base <code>2eb14357</code>. Solid outline: <span class="swatch sw-det"></span>deterministic git structure. Dashed outline: <span class="swatch sw-scaf"></span>scaffold around agent behaviour. Line numbers are in <code>activity_correlation.go</code> unless named.</p>
+    </div>
+    <div class="measure" style="flex: 2 1 380px">
+      <p>Each served board response reads the worktree-agent state once and shares it with the verify probes. It then runs one windowed <code>git log</code> with hash, committer date, parents, subject and touched paths.</p>
+      <p>A commit is credited to a REQ when it touches that REQ's file or run artifact, or when its subject carries <code>[REQ-NNN]</code>. If a two-parent merge is credited, every commit between its first and second parent is credited too. That walk uses the logged parent hashes in memory and never runs <code>merge-base</code> or <code>rev-list</code>.</p>
+      <p>The tip date of each builder branch that owns its tip is added as one more commit event. The union with the stamps gives the newest event for a claimed card and the largest gap for the drawer.</p>
+    </div>
+  </div>
+</section>
+
+<section id="value">
+  <h2>Value delivered</h2>
+  <p class="measure">An in-progress card now shows a stuck signal that grows when nobody touches the REQ. A finished REQ no longer carries a pause label that the evidence contradicts. Both statements come from observed events, not from a threshold.</p>
+</section>
+
+<section id="evidence">
+  <h2>Evidence</h2>
+  <p class="measure"><strong>UI captures were not expected for this work.</strong> The evidence is the current code at base <code>2eb14357</code>, the archived records of REQ-632, REQ-636 and REQ-646, the UR-135 brief, and commands run for this report. Every line range below was checked against the file.</p>
+
+  <div class="part part-det">
+    <h3><span class="swatch sw-det"></span>Deterministic git structure</h3>
+    <p class="measure note">These lines read facts that git or the REQ frontmatter records exactly. The output depends only on the repository, not on how an agent wrote a message.</p>
+    <div class="table-wrap">
+    <table>
+      <thead><tr><th>File and lines</th><th>What it reads</th><th>Why it is there</th></tr></thead>
+      <tbody>
+        <tr><td><code>activity_correlation.go:274-281</code></td><td>Lifecycle stamps from frontmatter (<code>claimed_at</code>, <code>dispatch_at</code> and the rest) through <code>lifecycleTimestampFields</code>.</td><td>UR-135: the stamps are the evidence the badge ignored (<code>input.md:89-91</code>, append-only by contract).</td></tr>
+        <tr><td><code>activity_correlation.go:209-210</code></td><td>One <code>git log --since … --format=%H%x00%cI%x00%P%x00%s --name-only</code> over HEAD. No <code>--all</code>, no pathspec.</td><td>REQ-284 lesson: commits move no do-work mtime, so the read runs per response outside the cache (<code>:19-22</code>, <code>serve.go:160-174</code>). The pathspec was rejected because merges vanish with it (REQ-632 exploration; <code>prime-do-kanban.md:30</code>, family <code>git-history-evidence</code>).</td></tr>
+        <tr><td><code>activity_correlation.go:60</code>, <code>:129-133</code></td><td>Touched paths matching a REQ file in queue, working or archive, or a run artifact under <code>do-work/runs/</code>.</td><td>UR-135: "The robust key is the commit's touched paths" (<code>input.md:82-84</code>).</td></tr>
+        <tr><td><code>verify.go:1472-1486</code>, merged at <code>activity_correlation.go:214-216</code></td><td>Tip dates of <code>worktree-agent-*</code> branches not reachable from the integration branch, in one <code>for-each-ref --no-merged</code>.</td><td>REQ-636: a branch with no commits of its own reported the commit it was cut from as activity. It also removed one <code>git log -1</code> per branch. The REQ id comes from the branch name, which the dispatcher creates by the rule in <code>work-reference.md:416</code>.</td></tr>
+        <tr><td><code>activity_correlation.go:252-303</code></td><td>No git. It sorts the union, clips it to the claim-to-completion window and labels phases.</td><td>REQ-632 decisions D-03 (queue wait is not idle work) and D-04 (a commit takes the phase of the newest phase stamp).</td></tr>
+      </tbody>
+    </table>
+    </div>
+  </div>
+
+  <div class="part part-scaf">
+    <h3><span class="swatch sw-scaf"></span>Scaffold around agent behaviour</h3>
+    <p class="measure note">These lines exist because the <code>[REQ-NNN]</code> prefix is a prose convention (the format is written in <code>skills/do-work/actions/commit.md:126</code>). No hook or CLI stamps it today. The merge expansion reads exact parent hashes, but it is needed only when a builder commit lacks the prefix.</p>
+    <div class="table-wrap">
+    <table>
+      <thead><tr><th>File and lines</th><th>What it reads</th><th>Why it is there</th></tr></thead>
+      <tbody>
+        <tr><td><code>activity_correlation.go:62-64</code>, <code>:134-136</code></td><td>Every bracketed <code>[REQ-NNN]</code> token in the commit subject, which an agent or a person typed.</td><td>UR-135 kept it as "a second signal" and called prefix-only correlation "lossy" (<code>input.md:82-84</code>). It stays in both options of the decision.</td></tr>
+        <tr><td><code>activity_correlation.go:139-163</code></td><td>The <code>%P</code> parent hashes of a credited two-parent merge. It credits every commit in <code>^1..^2</code>.</td><td>REQ-632 and UR-135: builder commits arrived on main behind merges and carried no prefix, so main-only history under-reported builder work (<code>input.md:73-79</code>; test comment <code>activity_correlation_test.go:141-144</code>).</td></tr>
+        <tr><td><code>activity_correlation.go:143-151</code></td><td>A snapshot of direct matches taken before any range is credited (<code>directIdsByMergeHash</code>).</td><td>REQ-646 (0.305.80): a builder that merged main inside its branch made main's commits count for its REQ. That shortened the reported idle gap.</td></tr>
+        <tr><td><code>activity_correlation.go:174-190</code></td><td>The in-memory ancestry walk over logged parents (<code>loggedAncestry</code>).</td><td>REQ-632 requirement 1 left the choice to the builder: walk the <code>%P</code> graph in Go or run one <code>rev-list</code> per merge. The builder chose the walk.</td></tr>
+        <tr><td><code>activity_correlation.go:70</code>, <code>:96</code>, <code>:116-119</code></td><td>The parent-hash field, its parse, and the hash index.</td><td>They feed only the expansion and the walk.</td></tr>
+        <tr><td><code>activity_correlation_test.go:141-231</code></td><td>Two tests: builder commits reachable only through a credited merge, and an inner merge of main.</td><td>They pin the REQ-632 rule and the REQ-646 fix.</td></tr>
+      </tbody>
+    </table>
+    </div>
+  </div>
+
+  <h3>Git calls per refresh</h3>
+  <div class="row">
+    <div class="measure" style="flex: 1 1 520px">
+      <p><strong>Five git commands per served response or static generate, the same with any number of builder branches.</strong> They are <code>worktree list</code> (<code>verify.go:1495</code>), <code>branch --list</code> (<code>:1517</code>), <code>rev-parse --abbrev-ref HEAD</code> (<code>:1396</code>), <code>for-each-ref --no-merged</code> (<code>:1472-1473</code>) and the <code>git log</code> (<code>activity_correlation.go:209-210</code>). A detached repo-root checkout adds one <code>rev-parse HEAD</code> (<code>verify.go:1404</code>).</p>
+      <p>The verify probes need the first three anyway. The <code>for-each-ref</code> and the <code>git log</code> exist only for activity, so the feature's own cost is two commands.</p>
+      <p><code>TestServedResponseListsWorktreesAndBranchesOnce</code> (<code>activity_correlation_test.go:379-406</code>) pins that the count stays constant, not that it equals five. This report counted the five by running the server against the package's canned runner with 0, 1 and 4 branches (<a href="evidence/git-call-count.txt">evidence/git-call-count.txt</a>). The verify probes also start git directly for each leftover branch (<code>verify.go:1036</code>, <code>:1157</code>, <code>:1428</code>, <code>:1536</code>). That cost belongs to verify, not to activity.</p>
+    </div>
+    <div style="flex: 1 1 520px">
+      <div class="table-wrap">
+      <table>
+        <thead><tr><th>Measured cost</th><th>Window</th><th>Result</th></tr></thead>
+        <tbody>
+          <tr><td>REQ-632 Builder Guidance, archived REQ line 71</td><td>7 days, 72 commits</td><td class="num">50–90 ms</td></tr>
+          <tr><td>REQ-632 exploration, line 116</td><td>7 days, 74 commits, 8 merges</td><td class="num">about 30 ms warm</td></tr>
+          <tr><td>REQ-632 builder, whole <code>/board-data.js</code>, line 224</td><td>response time</td><td class="num">105–129 ms before, 148–157 ms after</td></tr>
+          <tr><td>REQ-632 review, line 256</td><td>60 days, 2,901 commits, 336 merges</td><td class="num">about 0.2 s git + 39 ms Go</td></tr>
+          <tr><td>This report, <a href="evidence/git-log-timing.txt">git-log-timing.txt</a></td><td>7 days, 212 commits, 37 merges</td><td class="num">44–47 ms warm, 166 ms first</td></tr>
+          <tr><td>This report, same file</td><td>60 days, 2,931 commits, 364 merges</td><td class="num">152–161 ms warm, 253 ms first</td></tr>
+        </tbody>
+      </table>
+      </div>
+      <p class="note">The window is 7 days or the oldest open claim, whichever is older (<code>activity_correlation.go:329-334</code>). One abandoned claim therefore widens every read, as the REQ-632 review noted. Today's runs had a machine load average near 10 from sibling sessions.</p>
+    </div>
+  </div>
+
+  <h3>Corrections to the triage facts</h3>
+  <p class="measure note">The REQ for this report estimated 60 to 80 production lines of scaffold. Counting the deletable lines in the file gives 54. UR-135's "lossy" lesson sits at <code>input.md:82-84</code>, not 81-84. The triage said four of the five commands are shared with VERIFY. Four are in the shared read, but verify consumes only three of them.</p>
+</section>
+
+<section id="files">
+  <div class="row">
+    <div style="flex: 1 1 520px">
+      <h2>Key files and commits</h2>
+      <div class="table-wrap">
+      <table>
+        <thead><tr><th>Item</th><th>Role</th></tr></thead>
+        <tbody>
+          <tr><td><code>skills/do-work-board/tools/queue-kanban/activity_correlation.go</code></td><td>Collector and attribution, 357 lines today.</td></tr>
+          <tr><td><code>…/activity_correlation_test.go</code></td><td>Attribution, gap and call-count pins, 429 lines today.</td></tr>
+          <tr><td><code>…/verify.go:1444-1489</code></td><td>The shared worktree and branch read since REQ-636.</td></tr>
+          <tr><td><code>…/generate.go:679-686</code>, <code>…/serve.go:160-174</code></td><td>Where both callers attach findings and activity with one instant.</td></tr>
+          <tr><td>REQ-632 <code>ac5cbe64..47c2620e</code></td><td>Builder <code>55d8ea17</code> merged at <code>b004ecd6</code>; remediation <code>43ea1930</code> merged at <code>47c2620e</code> (the recorded <code>commit</code>). 16 files, 1,049 insertions, 135 deletions.</td></tr>
+          <tr><td>REQ-636 <code>81524052</code></td><td>Owned tips and one shared git read, 0.305.71.</td></tr>
+          <tr><td>REQ-646 <code>e3ef0109</code></td><td>Direct-match snapshot, 0.305.80.</td></tr>
+        </tbody>
+      </table>
+      </div>
+      <p class="note">Current code drift: the REQ-632 commit had a per-branch <code>liveBranchTipInstants</code>. REQ-636 deleted it, and the line numbers here describe the code at <code>2eb14357</code>. The recorded <code>commit</code> is the remediation merge, so its combined view shows only the contrast test. The feature lives in the range above.</p>
+    </div>
+    <div style="flex: 1 1 520px">
+      <h2>Verify it yourself</h2>
+      <p class="note">Run for this report on 2026-10-09: all four. Paths are relative to the repository root.</p>
+<pre>bash skills/do-work/scripts/show-commit-diff.sh 47c2620eb13f8389e6ad0a998c1869c6d1cbad92
+git diff --stat ac5cbe64..47c2620e</pre>
+<pre>cd skills/do-work-board/tools/queue-kanban
+go test -count=1 -run 'TestRequestActivity|TestServedResponseListsWorktreesAndBranchesOnce|TestRequestPathPattern|TestServeReadsRequestActivity|TestServedActivityIgnores|TestGeneratedPayloadCarriesTheLargestActivityGap' .
+# ok  (11 tests, go1.26.1)</pre>
+<pre>git log --since=7.days '--format=%H%x00%cI%x00%P%x00%s' --name-only &gt;/dev/null</pre>
+    </div>
+  </div>
+</section>
+
+<section id="lessons">
+  <h2>Lessons and open questions</h2>
+  <div class="measure">
+    <p>REQ-632 recorded that the do-work pathspec drops every merge and the builder commits behind it. It also recorded that plain <code>git log --name-only</code> lists no files for merge commits, so a merge is credited only by its subject prefix and its second-parent range.</p>
+    <p>Six findings from REQ-632 stayed report-only. Two touch this question: one abandoned claim widens the git window, and a finished REQ without <code>completed_at</code> gets a window that runs to now. REQ-632 recorded no open questions.</p>
+  </div>
+</section>
+
+<section id="decision">
+  <h2>The decision this report exists to support</h2>
+  <p class="measure">Should the <code>[REQ-NNN]</code> commit prefix become deterministic, so the code around missing prefixes can go? This report does not recommend either option.</p>
+  <div class="row options">
+    <div class="card">
+      <h3>Option 1: stamp the prefix, then delete</h3>
+      <p>The do-work CLI or a commit hook stamps <code>[REQ-NNN]</code> on every builder commit. The id can come from the <code>worktree-agent-REQ-NNN-*</code> branch name. Then delete the merge-range expansion, the in-memory ancestry walk and the REQ-646 guard. Commits are credited by prefix plus path only. The owned-tip read stays.</p>
+      <p>Lines deleted from <code>activity_correlation.go</code>: 70, 96, 111-113, 116-120, 139-164 and 174-191. That is 54 lines. Deleted from the test file: 141-232, which is 92 lines.</p>
+      <table>
+        <tbody>
+          <tr><td>Production lines kept</td><td class="num">303</td></tr>
+          <tr><td>Test lines kept</td><td class="num">337</td></tr>
+          <tr><td>New stamp code and its tests</td><td class="num">not written; size unknown</td></tr>
+        </tbody>
+      </table>
+      <p class="note">A builder's merge of main would carry the stamp itself, and main's commits keep their own ids, so the REQ-646 failure could not happen. A commit made outside the stamp gets credit only if it touches the REQ file. Examples are commits made before the stamp exists, by a person, or by another tool. The counts come from pruning a scratch copy of both files with those exact ranges.</p>
+    </div>
+    <div class="card">
+      <h3>Option 2: keep the current code</h3>
+      <p>Un-prefixed builder commits keep their credit through the merge they arrive in, in any repository, however the commits were made.</p>
+      <table>
+        <tbody>
+          <tr><td>Production lines kept</td><td class="num">357</td></tr>
+          <tr><td>Test lines kept</td><td class="num">429</td></tr>
+          <tr><td>New code</td><td class="num">none</td></tr>
+        </tbody>
+      </table>
+      <p class="note">Both options keep the same shared verify read, union, window and payload code. Both also keep five git commands per refresh.</p>
+    </div>
+  </div>
+  <div class="measure" style="margin-top: 24px">
+    <h3>Facts that bear on it</h3>
+    <p>In this repository over the last 7 days, 44 commits sit inside 37 prefixed merge ranges, and all 44 carry their own bracketed prefix. The expansion credits nothing new here today.</p>
+    <p>Over 60 days, 34 of 250 such commits had no bracketed token and touched no REQ file. The newest is dated 2026-09-06. Thirteen have the shape <code>[work run] REQ-NNN step N</code>, with the id present but not bracketed (<a href="evidence/prefix-coverage.txt">evidence/prefix-coverage.txt</a>).</p>
+    <p>UR-135's consumer repository showed the other case. Builder commits arrived behind <code>Integrate …</code> merges with no prefix (<code>input.md:73-79</code>), and its brief names a second tool's branch shape, <code>req-nnnn-*</code> (<code>input.md:85</code>).</p>
+  </div>
+</section>
+
+<footer>
+  Generated by the do-work-toolbox ai-report action for REQ-651 (an AI report on the board activity correlation) on 2026-10-09 at base <code>2eb14357</code>. AI-drafted. Every number traces to a cited file, an archived REQ record, or an evidence file in this folder. <span id="render-status">Rendered over local HTTP in Playwright Chromium at 1440px light and dark, and at 390px dark with no horizontal overflow; two judge passes fixed the diagram edges and table wrapping.</span>
+</footer>
+
+</div>
+</body>
+</html>
