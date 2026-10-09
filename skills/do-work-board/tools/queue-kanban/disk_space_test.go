@@ -40,10 +40,8 @@ func fakeDiskSpaceMeasurer(t *testing.T, answersByDirectory map[string]fakeDiskM
 	}
 }
 
-func freeOnDevice(freeBytes uint64, deviceIdentity uint64) fakeDiskMeasurement {
-	return fakeDiskMeasurement{measurement: diskSpaceMeasurement{
-		freeBytes: freeBytes, totalBytes: fixtureDiskTotalBytes, deviceIdentity: deviceIdentity,
-	}}
+func freeOnDisk(freeBytes uint64) fakeDiskMeasurement {
+	return fakeDiskMeasurement{measurement: diskSpaceMeasurement{freeBytes: freeBytes, totalBytes: fixtureDiskTotalBytes}}
 }
 
 // Pins "probe silently clean when the disk is low": the repo root below each
@@ -63,8 +61,8 @@ func TestDiskSpaceProbeReportsLowFreeSpaceAtEachThreshold(t *testing.T) {
 	for _, testCase := range cases {
 		t.Run(testCase.name, func(t *testing.T) {
 			report := VerifyReport{}
-			measurer := fakeDiskSpaceMeasurer(t, map[string]fakeDiskMeasurement{repoRoot: freeOnDevice(testCase.freeBytes, 1)})
-			appendDiskSpaceFindings(&report, repoRoot, nil, measurer)
+			measurer := fakeDiskSpaceMeasurer(t, map[string]fakeDiskMeasurement{repoRoot: freeOnDisk(testCase.freeBytes)})
+			appendDiskSpaceFindings(&report, repoRoot, measurer)
 
 			findings := findingsMentioning(report, verifyCategoryLowDiskSpace)
 			if !testCase.wantFinding {
@@ -102,45 +100,21 @@ func TestDiskSpaceProbeThresholdBoundariesAreStrict(t *testing.T) {
 	repoRoot := "/fixture/repo"
 
 	atCritical := VerifyReport{}
-	appendDiskSpaceFindings(&atCritical, repoRoot, nil,
-		fakeDiskSpaceMeasurer(t, map[string]fakeDiskMeasurement{repoRoot: freeOnDevice(lowDiskSpaceCriticalBytes, 1)}))
+	appendDiskSpaceFindings(&atCritical, repoRoot,
+		fakeDiskSpaceMeasurer(t, map[string]fakeDiskMeasurement{repoRoot: freeOnDisk(lowDiskSpaceCriticalBytes)}))
 	criticalFindings := findingsMentioning(atCritical, verifyCategoryLowDiskSpace)
 	if len(criticalFindings) != 1 || !strings.Contains(criticalFindings[0].Detail, "warning threshold") {
 		t.Errorf("exactly 3 GiB free should be one warning-level finding, got %+v", atCritical.Findings)
 	}
 
 	atWarning := VerifyReport{}
-	appendDiskSpaceFindings(&atWarning, repoRoot, nil,
-		fakeDiskSpaceMeasurer(t, map[string]fakeDiskMeasurement{repoRoot: freeOnDevice(lowDiskSpaceWarningBytes, 1)}))
+	appendDiskSpaceFindings(&atWarning, repoRoot,
+		fakeDiskSpaceMeasurer(t, map[string]fakeDiskMeasurement{repoRoot: freeOnDisk(lowDiskSpaceWarningBytes)}))
 	if len(atWarning.Findings) != 0 {
 		t.Errorf("exactly 10 GiB free should be clean, got %+v", atWarning.Findings)
 	}
 	if lowDiskSpaceCriticalBytes != 3<<30 || lowDiskSpaceWarningBytes != 10<<30 {
 		t.Errorf("thresholds moved: critical %d, warning %d", lowDiskSpaceCriticalBytes, lowDiskSpaceWarningBytes)
-	}
-}
-
-// Pins duplicate findings per device: two worktrees on one filesystem are one
-// disk, so they are one finding, named after the first worktree in sorted order.
-func TestDiskSpaceProbeReportsOneFindingPerDevice(t *testing.T) {
-	repoRoot := "/fixture/repo"
-	worktreePathsByName := map[string]string{
-		"worktree-agent-REQ-902": "/fixture/worktrees/worktree-agent-REQ-902",
-		"worktree-agent-REQ-901": "/fixture/worktrees/worktree-agent-REQ-901",
-	}
-	report := VerifyReport{}
-	appendDiskSpaceFindings(&report, repoRoot, worktreePathsByName, fakeDiskSpaceMeasurer(t, map[string]fakeDiskMeasurement{
-		repoRoot: freeOnDevice(200<<30, 1),
-		"/fixture/worktrees/worktree-agent-REQ-901": freeOnDevice(2<<30, 2),
-		"/fixture/worktrees/worktree-agent-REQ-902": freeOnDevice(2<<30, 2),
-	}))
-
-	findings := findingsMentioning(report, verifyCategoryLowDiskSpace)
-	if len(findings) != 1 {
-		t.Fatalf("two worktrees on one device should yield one finding, got %+v", report.Findings)
-	}
-	if findings[0].Subject != "worktree-agent-REQ-901" {
-		t.Errorf("Subject = %q, want the first worktree name, never its path", findings[0].Subject)
 	}
 }
 
@@ -150,35 +124,13 @@ func TestDiskSpaceProbeUnsupportedPlatformIsSkippedNotClean(t *testing.T) {
 	repoRoot := "/fixture/repo"
 	report := VerifyReport{}
 	unsupportedError := fmt.Errorf("measuring: %w", errDiskSpaceUnsupported)
-	appendDiskSpaceFindings(&report, repoRoot, map[string]string{"worktree-agent-REQ-901": "/fixture/worktrees/worktree-agent-REQ-901"},
+	appendDiskSpaceFindings(&report, repoRoot,
 		func(string) (diskSpaceMeasurement, error) { return diskSpaceMeasurement{}, unsupportedError })
 
 	if len(report.Findings) != 0 {
 		t.Errorf("an unsupported platform produced findings: %+v", report.Findings)
 	}
 	wantSkip := "disk-space probe: unsupported on " + runtime.GOOS
-	if len(report.SkippedProbes) != 1 || report.SkippedProbes[0] != wantSkip {
-		t.Errorf("SkippedProbes = %q, want exactly [%q]", report.SkippedProbes, wantSkip)
-	}
-}
-
-// Pins a crash or a lost probe on one unreadable directory: that directory is a
-// skip, and every other directory is still measured and reported.
-func TestDiskSpaceProbeMeasurementErrorSkipsOnlyThatDirectory(t *testing.T) {
-	repoRoot := "/fixture/repo"
-	brokenWorktreePath := "/fixture/worktrees/worktree-agent-REQ-901"
-	report := VerifyReport{}
-	appendDiskSpaceFindings(&report, repoRoot, map[string]string{"worktree-agent-REQ-901": brokenWorktreePath},
-		fakeDiskSpaceMeasurer(t, map[string]fakeDiskMeasurement{
-			repoRoot:           freeOnDevice(2<<30, 1),
-			brokenWorktreePath: {measurementError: errors.New("permission denied")},
-		}))
-
-	findings := findingsMentioning(report, verifyCategoryLowDiskSpace)
-	if len(findings) != 1 || findings[0].Subject != repoRoot {
-		t.Errorf("the repo root should still be reported, got %+v", report.Findings)
-	}
-	wantSkip := "disk-space probe for " + brokenWorktreePath + ": permission denied"
 	if len(report.SkippedProbes) != 1 || report.SkippedProbes[0] != wantSkip {
 		t.Errorf("SkippedProbes = %q, want exactly [%q]", report.SkippedProbes, wantSkip)
 	}
@@ -195,7 +147,7 @@ func TestDiskSpaceProbeReachesTheVerifyReport(t *testing.T) {
 	t.Cleanup(func() { diskSpaceMeasurer = previousMeasurer })
 
 	diskSpaceMeasurer = func(string) (diskSpaceMeasurement, error) {
-		return diskSpaceMeasurement{freeBytes: 2 << 30, totalBytes: fixtureDiskTotalBytes, deviceIdentity: 1}, nil
+		return diskSpaceMeasurement{freeBytes: 2 << 30, totalBytes: fixtureDiskTotalBytes}, nil
 	}
 	report, verifyError := runVerifyProbes(repoRoot, time.Now())
 	if verifyError != nil {
@@ -228,8 +180,8 @@ func TestDiskSpaceProbeReachesTheVerifyReport(t *testing.T) {
 func TestDiskSpaceProbeKeepsTheHealthyRepoRootReading(t *testing.T) {
 	repoRoot := "/fixture/repo"
 	report := VerifyReport{}
-	appendDiskSpaceFindings(&report, repoRoot, nil,
-		fakeDiskSpaceMeasurer(t, map[string]fakeDiskMeasurement{repoRoot: freeOnDevice(400<<30, 1)}))
+	appendDiskSpaceFindings(&report, repoRoot,
+		fakeDiskSpaceMeasurer(t, map[string]fakeDiskMeasurement{repoRoot: freeOnDisk(400 << 30)}))
 
 	if len(report.Findings) != 0 || len(report.SkippedProbes) != 0 {
 		t.Errorf("a healthy disk produced findings %+v or skips %q", report.Findings, report.SkippedProbes)
@@ -241,14 +193,13 @@ func TestDiskSpaceProbeKeepsTheHealthyRepoRootReading(t *testing.T) {
 }
 
 // Pins the readout disappearing, or reading as healthy, when the repo root
-// cannot be measured: the reading carries the reason instead, and the probe's
-// skips, findings and worktree measurements stay exactly as REQ-625 made them.
+// cannot be measured: the reading carries the reason instead, the probe is
+// reported skipped, and no finding is invented.
 func TestDiskSpaceProbeKeepsTheRepoRootSkipReason(t *testing.T) {
 	repoRoot := "/fixture/repo"
-	worktreePath := "/fixture/worktrees/worktree-agent-REQ-901"
 
 	unsupported := VerifyReport{}
-	appendDiskSpaceFindings(&unsupported, repoRoot, map[string]string{"worktree-agent-REQ-901": worktreePath},
+	appendDiskSpaceFindings(&unsupported, repoRoot,
 		func(string) (diskSpaceMeasurement, error) {
 			return diskSpaceMeasurement{}, fmt.Errorf("measuring: %w", errDiskSpaceUnsupported)
 		})
@@ -261,18 +212,16 @@ func TestDiskSpaceProbeKeepsTheRepoRootSkipReason(t *testing.T) {
 	}
 
 	failed := VerifyReport{}
-	appendDiskSpaceFindings(&failed, repoRoot, map[string]string{"worktree-agent-REQ-901": worktreePath},
+	appendDiskSpaceFindings(&failed, repoRoot,
 		fakeDiskSpaceMeasurer(t, map[string]fakeDiskMeasurement{
-			repoRoot:     {measurementError: errors.New("permission denied")},
-			worktreePath: freeOnDevice(2<<30, 2),
+			repoRoot: {measurementError: errors.New("permission denied")},
 		}))
 	wantFailed := diskSpaceReading{directory: repoRoot, skipReason: "not measured: permission denied"}
 	if failed.RepoRootDiskSpace == nil || *failed.RepoRootDiskSpace != wantFailed {
 		t.Errorf("failed RepoRootDiskSpace = %+v, want %+v", failed.RepoRootDiskSpace, wantFailed)
 	}
-	findings := findingsMentioning(failed, verifyCategoryLowDiskSpace)
-	if len(findings) != 1 || findings[0].Subject != "worktree-agent-REQ-901" {
-		t.Errorf("the worktree should still be measured and reported, got %+v", failed.Findings)
+	if len(failed.Findings) != 0 {
+		t.Errorf("an unmeasured repo root produced findings: %+v", failed.Findings)
 	}
 	wantSkip := "disk-space probe for " + repoRoot + ": permission denied"
 	if len(failed.SkippedProbes) != 1 || failed.SkippedProbes[0] != wantSkip {
@@ -294,5 +243,34 @@ func TestDiskSpaceLevelMatchesTheFindingThresholds(t *testing.T) {
 		if gotLevel := diskSpaceLevelFor(freeBytes); gotLevel != wantLevel {
 			t.Errorf("diskSpaceLevelFor(%d) = %q, want %q", freeBytes, gotLevel, wantLevel)
 		}
+	}
+}
+
+// Pins REQ-650's red case: the probe once measured every worktree-agent-*
+// worktree beside the repo root and deduplicated by device. The earning
+// incident (REQ-625) was growth inside the repo, so the repo root is the one
+// path measured, even with a builder worktree present.
+func TestDiskSpaceProbeMeasuresOnlyTheRepoRoot(t *testing.T) {
+	repoRoot := newWorktreeFixtureRepo(t)
+	addFixtureWorktree(t, repoRoot, t.TempDir(), "worktree-agent-REQ-1-fixture")
+
+	previousMeasurer := diskSpaceMeasurer
+	t.Cleanup(func() { diskSpaceMeasurer = previousMeasurer })
+	var measuredDirectories []string
+	diskSpaceMeasurer = func(directory string) (diskSpaceMeasurement, error) {
+		measuredDirectories = append(measuredDirectories, directory)
+		return diskSpaceMeasurement{freeBytes: 2 << 30, totalBytes: fixtureDiskTotalBytes}, nil
+	}
+
+	report, verifyError := runVerifyProbes(repoRoot, time.Now())
+	if verifyError != nil {
+		t.Fatalf("runVerifyProbes: %v", verifyError)
+	}
+	if len(measuredDirectories) != 1 || measuredDirectories[0] != report.RepoRoot {
+		t.Errorf("measured %q, want exactly the repo root [%q]", measuredDirectories, report.RepoRoot)
+	}
+	findings := findingsMentioning(report, verifyCategoryLowDiskSpace)
+	if len(findings) != 1 || findings[0].Subject != report.RepoRoot {
+		t.Errorf("want one low-disk-space finding for the repo root, got %+v", findings)
 	}
 }

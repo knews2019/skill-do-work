@@ -4,7 +4,6 @@ package main
 
 import (
 	"fmt"
-	"os"
 	"syscall"
 )
 
@@ -21,14 +20,6 @@ func measureDiskSpace(directory string) (diskSpaceMeasurement, error) {
 	if statfsError := syscall.Statfs(directory, &filesystemStatus); statfsError != nil {
 		return diskSpaceMeasurement{}, fmt.Errorf("statfs: %w", statfsError)
 	}
-	directoryInfo, statError := os.Stat(directory)
-	if statError != nil {
-		return diskSpaceMeasurement{}, statError
-	}
-	fileStatus, isUnixStatus := directoryInfo.Sys().(*syscall.Stat_t)
-	if !isUnixStatus {
-		return diskSpaceMeasurement{}, fmt.Errorf("no device id for %s", directory)
-	}
 
 	// Bavail is signed on some platforms and may go negative when the
 	// root-reserved blocks are in use; that is zero free for this user.
@@ -37,8 +28,7 @@ func measureDiskSpace(directory string) (diskSpaceMeasurement, error) {
 		freeBytes = uint64(availableBlocks) * uint64(filesystemStatus.Bsize)
 	}
 	return diskSpaceMeasurement{
-		freeBytes:      freeBytes,
-		totalBytes:     uint64(filesystemStatus.Blocks) * uint64(filesystemStatus.Bsize),
-		deviceIdentity: uint64(fileStatus.Dev),
+		freeBytes:  freeBytes,
+		totalBytes: uint64(filesystemStatus.Blocks) * uint64(filesystemStatus.Bsize),
 	}, nil
 }
