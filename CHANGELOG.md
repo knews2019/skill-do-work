@@ -10,6 +10,16 @@ For the complete release history, read this file and the archives below from new
 - [0.50.0 through 0.64.1](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-13-up-to-v0.64.1.md)
 - [0.1.0 through 0.49.0](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-07-up-to-v0.49.0.md)
 
+## 0.305.91 — Toolbox Source Audit Checks Each Cited Source Against Its Claim (2026-10-09)
+
+A link that loads is not proof that the page supports a claim: error pages served with success, redirects to a home page and index pages all pass a naive check. The new `do-work-toolbox source-audit <report-or-url-list>` reads each cited source and says, claim by claim, whether it supports what the report says.
+
+- New read-only toolbox action `source-audit` and a short user guide beside it in the toolbox docs. It never edits the report and writes no file.
+- Prints a claim table with one judgment per claim (supported, contradicted, insufficient, unavailable), then the evidence for every source: requested and final URL, every retrieval attempt, what the page is, the quoted passage, publication date and authority.
+- Error pages (also when served with status 200) and unrelated redirects count as unavailable; index pages count as insufficient. A publication date the page does not state stays "unknown".
+- Replacement candidates are checked the same way and listed in their own section; they never change an original judgment.
+- Listed in the toolbox router, both help menus and the README.
+
 ## 0.305.90 — Review Names the Delivery Stages It Checked and Lists the Rest as Unassessed (2026-10-09)
 
 A review's "Acceptance: Pass" from local runs could be read as proof that the served build works. A review now says which delivery stages it checked and lists the applicable stages it did not check as unassessed.
