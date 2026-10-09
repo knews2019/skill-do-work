@@ -1,7 +1,7 @@
 ---
 id: REQ-651
 title: 'AI report on the board activity correlation separates deterministic git structure from scaffold around agent behaviour'
-status: pending
+status: claimed
 created_at: 2026-10-09T16:06:43Z
 user_request: UR-143
 domain: general
@@ -12,6 +12,7 @@ impact: impact-user-visible
 effort_estimate: effort-mechanical
 related: [REQ-650, REQ-652, REQ-653]
 batch: october-review-triage
+claimed_at: 2026-10-09T16:08:10Z
 ---
 # AI Report on the Board Activity Correlation Separates Deterministic Git Structure From Scaffold Around Agent Behaviour
 ## What
