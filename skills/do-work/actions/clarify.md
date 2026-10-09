@@ -191,7 +191,7 @@ Note for the user which blocked REQs carry a `blocked_check` probe — those unb
   2. Keep it, and run the REQ by name with `do-work run REQ-NNN`, which claims it and clears the field.
 
   Never clear the field without that answer, and leave it untouched on keep. The REQ re-enters the queue for the next `do-work run` unless it carries `assigned_to`, in which case the default run skips it until it is named explicitly or the field is cleared.
-- **Done (the operator did the remaining work):** append a `## Operator receipts` section holding the user's words verbatim under Step 4's Outside-text containment, then set `status: completed` and `status_changed_at: <now>` in place; do not run `unblock`. This is the same in-place flip the confirmed `builder_decided: true` path takes in Step 5, so the board shows it under Done and `actions/cleanup.md` → **Pass 0: Sweep Finished Queue Items** archives it.
+- **Done (the operator did the remaining work):** append a `## Operator receipts` section holding the user's words verbatim under Step 4's Outside-text containment, then set `status: completed` and `completed_at: <now>` in place, the stamp every terminal flip carries (`actions/work-reference.md` → Request File Schema); do not run `unblock`. Like the confirmed `builder_decided: true` path in Step 5, it completes a REQ that needs no build, so the board shows it under Done and `actions/cleanup.md` → **Pass 0: Sweep Finished Queue Items** archives it.
 - **Not yet:** leave it `blocked`, unchanged.
 - **Abandon:** hand off to `do-work abandon REQ-NNN` (marks `cancelled`, archives) — same as discarding a question.
 
