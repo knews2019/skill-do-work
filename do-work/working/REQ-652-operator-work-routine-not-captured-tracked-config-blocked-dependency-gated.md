@@ -21,6 +21,8 @@ related: [REQ-650, REQ-651, REQ-653]
 batch: october-review-triage
 write_set: ["skills/do-work/actions/capture.md", "skills/do-work/actions/clarify.md", "skills/do-work/actions/work.md", "skills/do-work/actions/work-reference.md", "skills/do-work/docs/work-guide.md"]
 claimed_at: 2026-10-09T16:08:10Z
+dispatch_at: 2026-10-09T16:11:57Z
+builder_handback_at: 2026-10-09T16:16:57Z
 ---
 # Routine Operator Work Is Never a REQ; a Tracked Operator Configuration Is a Blocked, Dependency-Gated REQ That Clarify Completes
 ## What
