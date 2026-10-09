@@ -1,7 +1,7 @@
 ---
 id: REQ-676
 title: 'do-work-toolbox source-audit checks each cited source and returns a claim-to-source table without rewriting the report'
-status: pending
+status: claimed
 created_at: 2026-10-09T22:53:15Z
 user_request: UR-151
 domain: general
@@ -13,6 +13,7 @@ effort_estimate: effort-substantive
 required_lessons: [_dev/primes/lessons-releases.md]
 related: [REQ-675, REQ-677, REQ-678]
 batch: portable-verification-actions
+claimed_at: 2026-10-09T22:56:58Z
 ---
 # do-work-toolbox source-audit
 ## What
