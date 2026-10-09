@@ -1,7 +1,7 @@
 ---
 id: REQ-653
 title: '[impact-rule-change] Fan-out orchestration prose is compressed in place and moved to a companion reference'
-status: pending
+status: claimed
 created_at: 2026-10-09T16:06:43Z
 user_request: UR-143
 domain: general
@@ -14,6 +14,7 @@ related: [REQ-650, REQ-651, REQ-652]
 batch: october-review-triage
 depends_on: [REQ-652]
 write_set: ["skills/do-work/actions/fan-out-reference.md", "skills/do-work/actions/work.md", "skills/do-work/actions/work-reference.md", "decisions/log.md"]
+claimed_at: 2026-10-09T16:31:01Z
 ---
 # Fan-Out Orchestration Prose Is Compressed in Place and Moved to a Companion Reference
 ## What
