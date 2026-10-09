@@ -115,6 +115,8 @@ For repository comprehension, `do-work-toolbox architecture-report` writes a new
 
 Common extension calls also include `do-work-board board`, `do-work-knowledge bkb`, `do-work-knowledge memory`, `do-work-toolbox code-review`, and `do-work-toolbox inspect`.
 
+To check that a report's citations say what it claims, `do-work-toolbox source-audit <report-or-url-list>` returns a claim-to-source table with one judgment per claim and never edits the report.
+
 ### Deterministic commands without an agent
 
 Fresh installs expose the deterministic core, knowledge, and toolbox command platform as flat Just recipes. Run `just --list` for the live inventory, then invoke a recipe directly, such as `just do-work-doctor`, `just memory-status`, or `just audit-metrics inventory`. Natural-language actions remain the judgment and consent layer; their mechanical phases call the same canonical CLI and stop with its actionable result when tooling is missing, fails, or returns malformed output. See the [Command-Line Guide](skills/do-work/docs/command-line-guide.md).
