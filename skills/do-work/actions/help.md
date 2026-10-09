@@ -35,7 +35,7 @@ Extensions installed beside core — run <package> help for usage on any of thes
   do-work-knowledge  bkb · memory · dream · interview · prompts · setup-memory
   do-work-toolbox    validate-feedback · code-review · maintainability-audit
                      architecture-report · ui-review · ai-report · present-work
-                     present-video · slop-check · source-audit
+                     present-video · slop-check · source-audit · journey-qa
                      quick-wins · scan-ideas · deep-explore · prime · inspect
                      note · stray-check · tidy-repo · tutorial · install
 ```
