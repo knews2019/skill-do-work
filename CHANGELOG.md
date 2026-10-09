@@ -10,6 +10,15 @@ For the complete release history, read this file and the archives below from new
 - [0.50.0 through 0.64.1](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-13-up-to-v0.64.1.md)
 - [0.1.0 through 0.49.0](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-07-up-to-v0.49.0.md)
 
+## 0.305.90 — Review Names the Delivery Stages It Checked and Lists the Rest as Unassessed (2026-10-09)
+
+A review's "Acceptance: Pass" from local runs could be read as proof that the served build works. A review now says which delivery stages it checked and lists the applicable stages it did not check as unassessed.
+
+- `actions/review-work.md` Step 7 defines four delivery stages once: implementation, integration, deployment and live acceptance. Which ones apply is a judgment, and many REQs have no deployment stage.
+- The Acceptance result scores only the stages the review exercised. Its one-line summary names them, in the report and on the persisted `**Acceptance:**` line.
+- Step 8 gains a first category, "Unassessed delivery stages": every applicable stage the review did not exercise, by stage name, with the check that would cover it.
+- `docs/review-work-guide.md` Phase 3 says the same in user words. The persisted Review block, the scores, the verdict mapping and follow-up routing are unchanged.
+
 ## 0.305.89 — The Commit Prefix Rule Covers Every Run Mode and the Hand-Back Merge (2026-10-10)
 
 A code review of 0.305.88 found that the board now trusts the `[REQ-NNN]` prefix completely, while the rule reached builders only through the fan-out brief and no step named the merge commit's message. The rule now has one home that every run mode reads.
