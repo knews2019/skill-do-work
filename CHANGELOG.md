@@ -10,6 +10,14 @@ For the complete release history, read this file and the archives below from new
 - [0.50.0 through 0.64.1](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-13-up-to-v0.64.1.md)
 - [0.1.0 through 0.49.0](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-07-up-to-v0.49.0.md)
 
+## 0.305.87 — Fan-Out Orchestration Moves to Its Own Reference File and the Two Run Files Shrink (2026-10-09)
+
+The two files that drive `do-work run` had grown with dense fan-out prose, and a consumer review called them hard to follow. The fan-out detail now lives in one companion file with no size limit, and the run files keep each rule in a sentence or two with a pointer to it.
+
+- New `actions/fan-out-reference.md` holds worktree dispatch (isolation ladder, naming, the hand-back merge sequence, merge range, cleanup), fan-out and auto-wave, delegated integration and the run-directory table, landed hand-backs and dispatch timing, mid-run message routing, and the wave-end restatement sweep.
+- `actions/work.md` drops from 13,864 to 12,706 words and `actions/work-reference.md` from 22,815 to 17,046 words.
+- Every citation of the moved sections in the core, board, knowledge and toolbox packages now points at the new file. No rule's condition changed.
+
 ## 0.305.86 — The Disk-Space Check Measures the Repo Root Only (2026-10-09)
 
 The board's `low-disk-space` check now takes one reading: the disk that holds the repo root. The problem that created the check was the repo itself growing to about 20 GB, and no problem ever came from a builder worktree on another disk, so the per-worktree, per-disk code is gone.
