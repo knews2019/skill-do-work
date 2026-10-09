@@ -1,7 +1,7 @@
 # Builder brief — REQ-675 (Core review names four delivery stages)
 
 - Worktree (your only writable tree): /Users/t2/Desktop/e1-experimental-repos/skill-do-work2-worktrees/worktree-agent-REQ-675-review-delivery-stages
-- Branch: worktree-agent-REQ-675-review-delivery-stages, created from main HEAD BASE_PENDING with `git worktree add -b` (commit here; never merge, never rebase, never push, never check out another branch).
+- Branch: worktree-agent-REQ-675-review-delivery-stages, created from main HEAD e313e870 with `git worktree add -b` (commit here; never merge, never rebase, never push, never check out another branch).
 - REQ (read-only, main tree): /Users/t2/Desktop/e1-experimental-repos/skill-do-work2/do-work/working/REQ-675-review-delivery-stages.md. Read it fully: What, Why, Finding Provenance, Detailed Requirements, Constraints, Builder Guidance, Red-Green Proof, Required Lessons — Dropped for Budget, and the orchestrator's `## Triage`. The release requirement belongs to the integrator; you PROPOSE the changelog entry and a lesson bullet in the hand-back.
 - UR (read-only): /Users/t2/Desktop/e1-experimental-repos/skill-do-work2/do-work/user-requests/UR-151/input.md (the maintainer's brief and the validate-feedback triage that produced this REQ).
 - Hand-back file (the ONE main-tree path you may write; never stage or commit it): /Users/t2/Desktop/e1-experimental-repos/skill-do-work2/do-work/runs/work-2026-10-09-225703/REQ-675-handback.md
@@ -37,11 +37,11 @@ Scenario: a reviewer following your edited `review-work.md` reviews a scratch RE
 ## Verify before hand-back (from the worktree root, wall times recorded)
 - `bash /Users/t2/Desktop/e1-experimental-repos/skill-do-work2/do-work/runs/work-2026-10-09-225703/REQ-675-probe.sh` run from your worktree root (it reads relative paths, so it checks your tree): exit 0.
 - `bash _dev/tests/shipped-package-reference-contract.sh` (about 1 s) and `bash _dev/tests/contract-regressions.sh` (about 19 s): exit 0.
-- `git diff BASE_PENDING -- skills/do-work/actions/review-work.md`: every hunk is inside Step 7 or Step 8; none touches the Append to REQ File template, Scoring Guidelines, Verdict mapping or Step 10.
+- `git diff e313e870 -- skills/do-work/actions/review-work.md`: every hunk is inside Step 7 or Step 8; none touches the Append to REQ File template, Scoring Guidelines, Verdict mapping or Step 10.
 - `git diff --stat` and `git diff --check`.
 
 ## Hand-back (write the file at the absolute path above)
-- Branch name, worktree path and every commit hash (one commit preferred). Base: BASE_PENDING.
+- Branch name, worktree path and every commit hash (one commit preferred). Base: e313e870.
 - File manifest: each file with (new)/(modified) and one line on what changed.
 - P-A-U text for [PLAN], [APPLY], [UNIFY]; [UNIFY] lists `git diff --stat`, every check's exit code and wall time, and each file checked.
 - Behavioral exercise record: what you ran (fixtures, commands, tool used), what the action produced (paste the key output lines), and every part you could not exercise with the reason. Honest partials beat claimed passes.

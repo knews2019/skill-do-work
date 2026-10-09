@@ -1,7 +1,7 @@
 # Builder brief — REQ-676 (do-work-toolbox source-audit)
 
 - Worktree (your only writable tree): /Users/t2/Desktop/e1-experimental-repos/skill-do-work2-worktrees/worktree-agent-REQ-676-source-audit-action
-- Branch: worktree-agent-REQ-676-source-audit-action, created from main HEAD BASE_PENDING with `git worktree add -b` (commit here; never merge, never rebase, never push, never check out another branch).
+- Branch: worktree-agent-REQ-676-source-audit-action, created from main HEAD e313e870 with `git worktree add -b` (commit here; never merge, never rebase, never push, never check out another branch).
 - REQ (read-only, main tree): /Users/t2/Desktop/e1-experimental-repos/skill-do-work2/do-work/working/REQ-676-source-audit-action.md. Read it fully: What, Why, Finding Provenance, Detailed Requirements, Constraints, Builder Guidance, Red-Green Proof, Required Lessons — Dropped for Budget, and the orchestrator's `## Triage`, `## Exploration` (integration surface and test traps, file:line) and `## Scope` (your write boundary and the restated acceptance criteria). The release requirement belongs to the integrator; you PROPOSE the changelog entry and a lesson bullet in the hand-back.
 - UR (read-only): /Users/t2/Desktop/e1-experimental-repos/skill-do-work2/do-work/user-requests/UR-151/input.md (the maintainer's brief and the validate-feedback triage that produced this REQ).
 - Hand-back file (the ONE main-tree path you may write; never stage or commit it): /Users/t2/Desktop/e1-experimental-repos/skill-do-work2/do-work/runs/work-2026-10-09-225703/REQ-676-handback.md
@@ -46,7 +46,7 @@ Never run `just do-work-update` (or any updater) against this repository or any 
 - `git diff --stat` and `git diff --check`.
 
 ## Hand-back (write the file at the absolute path above)
-- Branch name, worktree path and every commit hash (one commit preferred). Base: BASE_PENDING.
+- Branch name, worktree path and every commit hash (one commit preferred). Base: e313e870.
 - File manifest: each file with (new)/(modified) and one line on what changed.
 - P-A-U text for [PLAN], [APPLY], [UNIFY]; [UNIFY] lists `git diff --stat`, every check's exit code and wall time, and each file checked.
 - Behavioral exercise record: what you ran (fixtures, commands, tool used), what the action produced (paste the key output lines), and every part you could not exercise with the reason. Honest partials beat claimed passes.
