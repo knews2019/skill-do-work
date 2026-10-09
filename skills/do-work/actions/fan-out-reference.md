@@ -90,7 +90,7 @@ The builder verified its own branch; nobody has verified the merged result. Re-r
 
 ### Cleanup — happy path (Step 9, after typed finalization success)
 
-After finalization reports `cleanup_complete`, remove the builder's worktree and branch **by this REQ's operative name**, never re-derived from the slug: `git worktree remove <path>` (no `--force`; `<path>` is the worktree whose basename is `<operative_name>`), then `git branch -d <operative_name>`, then `git worktree prune`. Run `branch -d` **from the integration branch you merged into**: `-d` tests merged-ness against the current HEAD (or the branch's upstream), so from anywhere else "refusal = unmerged" silently becomes "refusal = wrong branch". Both refusals are signal: `worktree remove` refuses on uncommitted builder work, `branch -d` on a merge that was skipped or lost. **Never `-D`, never `--force`.** Report the refusal and stop.
+After finalization reports `cleanup_complete`, remove the builder's worktree and branch **by this REQ's operative name**, never re-derived from the slug: `git worktree remove <path>` (no `--force`; `<path>` is the worktree whose basename is `<operative_name>`), then `git branch -d <operative_name>`, then `git worktree prune`. Run `branch -d` **from the integration branch you merged into**: `-d` tests merged-ness against the current HEAD (or the branch's upstream), so from anywhere else a merged branch can refuse and an unmerged one can pass: "refusal = unmerged" silently becomes "refusal = wrong branch". Both refusals are signal: `worktree remove` refuses on uncommitted builder work, `branch -d` on a merge that was skipped or lost. **Never `-D`, never `--force`.** Report the refusal and stop.
 
 ### Cleanup — crash path
 
