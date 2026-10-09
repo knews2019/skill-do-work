@@ -79,7 +79,7 @@ You know which REQs collide from having built them. Write it down:
 - The critical path, so the new session starts there rather than on leaves.
 - Any REQ to hold back, and what unblocks it.
 
-Set `--fan-out N` in the paste block to match. **Every "must not" is mirrored into queue gates by Step 1** — otherwise the resume command violates your own plan. `write_set` is display-only and gates nothing on its own (`actions/work-reference.md` → **Worktree Dispatch Mode** → *Fan-Out Dispatch*).
+Set `--fan-out N` in the paste block to match. **Every "must not" is mirrored into queue gates by Step 1** — otherwise the resume command violates your own plan. `write_set` is display-only and gates nothing on its own (`actions/fan-out-reference.md` → **Fan-Out Dispatch**).
 
 ### Step 6: Announce it
 

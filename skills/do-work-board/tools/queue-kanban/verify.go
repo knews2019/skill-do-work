@@ -975,7 +975,7 @@ const (
 // the integration branch, which it reads as the repo-root checkout's HEAD.
 //
 // Merged-ness is HEAD-relative — `git branch -d`'s own trap, documented at
-// actions/work-reference.md → Worktree Dispatch Mode, "Cleanup — happy path":
+// actions/fan-out-reference.md → Worktree Dispatch Mode, "Cleanup — happy path":
 // asked from an unrelated checkout, a perfectly merged branch reads unmerged and
 // an unmerged one can read merged. `git -C repoRoot` pins the question to the
 // main checkout the orchestrator merges into, never to a builder's worktree.
@@ -1028,7 +1028,7 @@ const (
 )
 
 // worktreeAgentRequestIdPattern reads a leftover's own REQ id out of the
-// worktree-agent-REQ-NNN-<suffix> convention (actions/work-reference.md →
+// worktree-agent-REQ-NNN-<suffix> convention (actions/fan-out-reference.md →
 // Worktree Dispatch Mode, "Naming"). Anchored at the prefix on purpose: a suffix
 // derived from the REQ's title slug can mention another REQ id, and that mention
 // is not this worktree's owner.
@@ -1225,7 +1225,7 @@ func routeWorktreeLeftover(disposition worktreeLeftoverDisposition, requestId st
 
 // appendWorktreeFindings covers the two worktree-dispatch invariants: no
 // `worktree-agent-*` leftovers should outlive their run, and a builder must never
-// write queue state (actions/work-reference.md → Worktree Dispatch Mode, "state
+// write queue state (actions/fan-out-reference.md → Worktree Dispatch Mode, "state
 // stays home" and "sole integrator").
 //
 // Each name is classified rather than reported as one kind of thing, so the report
@@ -1341,7 +1341,7 @@ func appendWorktreeFindings(report *VerifyReport, repoRoot string, board *Board,
 // checkout the command runs in — inside a builder's worktree it names the
 // builder's own branch, and the comparison would silently become branch-against-
 // itself. That is the same class of error as `git branch -d` testing merged-ness
-// against whatever HEAD happens to be (actions/work-reference.md → Worktree
+// against whatever HEAD happens to be (actions/fan-out-reference.md → Worktree
 // Dispatch Mode, "Cleanup — happy path"). A detached repo-root checkout has no
 // branch name, so the commit id is returned instead — it names the same point
 // just as explicitly.
