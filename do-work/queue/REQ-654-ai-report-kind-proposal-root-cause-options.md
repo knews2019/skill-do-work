@@ -71,3 +71,18 @@ See `do-work/user-requests/UR-144/input.md` for complete verbatim input (section
 - [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
 - [ ] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
 *Source: upstream suggestion report `do-work/inbox/2026-10-09_do-work-upstream-suggestion-ai-report-kinds-and-index.md`, Request item A1: "`ai-report --kind proposal|root-cause|options <topic|REQ-NNN|UR-NNN>` for work that is not completed. Lift the "completed work only" gate for these kinds only."*
+
+## Addendum (2026-10-10)
+
+User added (through the ask tool, recorded in UR-150):
+
+> ```
+> Addendum to REQ-654 (ai-report --kind proposal, root-cause and options): every decision report must include the smallest-change option.
+> 
+> Context: the REQ-651 report on the board's activity correlation (ai-reports/2026-10-09_1916_REQ-632-activity-correlation-determinism) listed two options from its brief, "stamp the [REQ-NNN] prefix then delete the scaffold" and "keep the code". The option that was chosen and shipped in 0.305.88, "delete the scaffold and stamp nothing", was not in the report. The maintainer was asked through the ask tool: "Decision reports today list only the options the brief named. Should that become a rule for the queued proposal-report feature (REQ-654)?" and answered "Yes, add it to REQ-654".
+> 
+> Constraint to add: for the proposal and options kinds, the option list always includes the smallest-change option, usually "delete the mechanism" or "do nothing extra", priced like every other option (benefit, risk, cost), even when the brief or the topic did not name it. The report may recommend against it, but it must be on the list.
+> ```
+
+- Requirement 3's option list (and the `options` kind that shares it) always includes the smallest-change option, usually "delete the mechanism" or "do nothing extra", with benefit, risk and cost like every other option, even when the brief or topic did not name it. The report may recommend against it; it may not omit it.
+- Source: the REQ-651 report listed "stamp then delete" and "keep" and missed "delete, stamp nothing", which is what 0.305.88 shipped.
