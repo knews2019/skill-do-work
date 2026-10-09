@@ -10,6 +10,15 @@ For the complete release history, read this file and the archives below from new
 - [0.50.0 through 0.64.1](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-13-up-to-v0.64.1.md)
 - [0.1.0 through 0.49.0](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-07-up-to-v0.49.0.md)
 
+## 0.305.85 — Routine Operator Work Stays Out of the Queue; a Tracked Operator Setup Waits Behind Its Code and Clarify Completes It (2026-10-09)
+
+Deploys and publishes you do yourself no longer become REQs that block, re-block, and end in abandon. A special operator setup you ask to track now waits behind its code, shows up when that code is done, and moves to Done when you say you did it.
+
+- Capture writes no REQ for a routine operator act after the code ships (deploy, publish, approve, verify on live hosts are examples). It captures only the AI-buildable parts and names the operator step in its summary. A request that holds nothing else writes no UR and no REQ.
+- A special operator configuration you ask to track is captured `blocked` with `depends_on` on the AI-buildable REQs from the same request. The board shows it under Pending → Waiting until they finish, then under Needs input · Blocked.
+- `do-work clarify` adds "4. Done — I did it myself" to the blocked prompt. It records your words under `## Operator receipts` and marks the REQ `completed` with `completed_at`, so the board shows it under Done and `cleanup` archives it. It does not run `unblock`.
+- A run that finds only a routine operator act left completes the REQ and names the step, instead of flipping it to `blocked`.
+
 ## 0.305.84 — Board Earmarked Badge Tooltip Names Needs Input · Blocked as the Home for Operator-Gated Work (2026-10-08)
 
 Hovering a card's `assigned` badge on the board now says where work that waits on you belongs. In a consumer run, two REQs that needed the operator's input sat under Pending → Earmarked, and nothing on the board said they were in the wrong place.
