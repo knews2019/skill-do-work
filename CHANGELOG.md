@@ -10,6 +10,14 @@ For the complete release history, read this file and the archives below from new
 - [0.50.0 through 0.64.1](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-13-up-to-v0.64.1.md)
 - [0.1.0 through 0.49.0](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-07-up-to-v0.49.0.md)
 
+## 0.305.86 — The Disk-Space Check Measures the Repo Root Only (2026-10-09)
+
+The board's `low-disk-space` check now takes one reading: the disk that holds the repo root. The problem that created the check was the repo itself growing to about 20 GB, and no problem ever came from a builder worktree on another disk, so the per-worktree, per-disk code is gone.
+
+- `queue-kanban verify` measures one path, the repo root. The thresholds stay the same: a warning below 10 GiB free and critical below 3 GiB.
+- Removed: the measurement of each `worktree-agent-*` worktree, the merging of readings by disk, and the "disk-space probe for worktrees" skip line.
+- The finding's text and the Testing page's disk line are unchanged.
+
 ## 0.305.85 — Routine Operator Work Stays Out of the Queue; a Tracked Operator Setup Waits Behind Its Code and Clarify Completes It (2026-10-09)
 
 Deploys and publishes you do yourself no longer become REQs that block, re-block, and end in abandon. A special operator setup you ask to track now waits behind its code, shows up when that code is done, and moves to Done when you say you did it.
