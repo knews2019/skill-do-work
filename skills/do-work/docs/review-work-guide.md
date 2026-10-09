@@ -33,6 +33,8 @@ Actually runs the code to verify it works end-to-end:
 
 Result: **Pass** / **Partial** / **Fail** / **Untested**
 
+The result covers only the delivery stages the review actually checked: implementation, integration, deployment and live acceptance. A stage that applies but was not checked, such as the served site for a web change, is listed under Suggested Additional Testing as unassessed.
+
 ## Scoring
 
 Averages the percentage dimensions with qualitative modifiers:

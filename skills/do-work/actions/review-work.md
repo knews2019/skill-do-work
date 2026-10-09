@@ -185,6 +185,12 @@ Actually verify the implementation works. Reading diffs catches logic errors; ru
 - Don't test things unrelated to the change
 - Don't skip this step just because unit tests pass — unit tests and acceptance testing catch different things
 
+**Delivery stages.** A change can be checked at four stages. Which ones apply is a judgment, and many REQs have no deployment stage at all.
+- **Implementation**: the diff does what the REQ asks.
+- **Integration**: the change works in the merged tree with the rest of the system, for example the test suite and adjacent flows.
+- **Deployment**: the built or packaged result reached its serving environment or consumer install.
+- **Live acceptance**: the consumer-visible behavior is right in the real environment.
+
 **If you can't run the code** (e.g., requires external services, credentials, or hardware you don't have), note what you couldn't test and include it in the "Suggested Additional Testing" section.
 
 Score: **Acceptance (Pass / Partial / Fail / Untested)**
@@ -193,12 +199,15 @@ Score: **Acceptance (Pass / Partial / Fail / Untested)**
 - **Fail**: Feature doesn't work as specified
 - **Untested**: Couldn't run the code (note why)
 
+The result scores only the stages this review exercised, so a Pass from local runs says nothing about deployment or live acceptance. Name the stages you covered in the result's one-line summary. Step 8 lists every applicable stage you did not exercise.
+
 ### Step 8: Suggest Additional Testing
 
 After completing your review and acceptance testing, recommend what else should be checked. This is where you flag things only a human can verify, things that need specific environments, or edge cases worth exploring.
 
 **Categories to consider:**
 
+- **Unassessed delivery stages**: each applicable Step 7 stage this review did not exercise, by stage name, marked unassessed, with the check that would cover it (for example "Live acceptance: unassessed. Open the served page and confirm the new rules show."). Required whenever such a stage exists.
 - **Manual verification needed** — UI appearance, UX flow, accessibility, things that need eyes on a screen
 - **Environment-specific testing** — different browsers, mobile, OS-specific behavior, production-like data
 - **Integration testing** — third-party services, APIs, database migrations, auth flows
