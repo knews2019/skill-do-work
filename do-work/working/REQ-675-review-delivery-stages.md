@@ -1,7 +1,7 @@
 ---
 id: REQ-675
 title: 'Core review names four delivery stages and reports deployment and live acceptance as unassessed unless the review exercised them'
-status: pending
+status: claimed
 created_at: 2026-10-09T22:53:15Z
 user_request: UR-151
 domain: general
@@ -14,6 +14,7 @@ required_lessons: [_dev/primes/lessons-releases.md]
 write_set: [skills/do-work/actions/review-work.md, skills/do-work/docs/review-work-guide.md]
 related: [REQ-676, REQ-677, REQ-678]
 batch: portable-verification-actions
+claimed_at: 2026-10-09T22:56:57Z
 ---
 # Core Review Names Four Delivery Stages
 ## What
