@@ -26,6 +26,7 @@ related: [REQ-675, REQ-677, REQ-678]
 batch: portable-verification-actions
 claimed_at: 2026-10-09T22:56:58Z
 dispatch_at: 2026-10-09T23:08:40Z
+builder_handback_at: 2026-10-09T23:28:15Z
 ---
 # do-work-toolbox source-audit
 ## What
