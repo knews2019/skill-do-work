@@ -1,7 +1,7 @@
 ---
 id: REQ-652
 title: '[impact-rule-change] Routine operator work is never a REQ; a tracked operator configuration is a blocked, dependency-gated REQ that clarify completes'
-status: pending
+status: claimed
 created_at: 2026-10-09T16:06:43Z
 user_request: UR-143
 domain: general
@@ -13,6 +13,7 @@ effort_estimate: effort-mechanical
 related: [REQ-650, REQ-651, REQ-653]
 batch: october-review-triage
 write_set: ["skills/do-work/actions/capture.md", "skills/do-work/actions/clarify.md", "skills/do-work/actions/work.md", "skills/do-work/actions/work-reference.md", "skills/do-work/docs/work-guide.md"]
+claimed_at: 2026-10-09T16:08:10Z
 ---
 # Routine Operator Work Is Never a REQ; a Tracked Operator Configuration Is a Blocked, Dependency-Gated REQ That Clarify Completes
 ## What
