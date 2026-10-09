@@ -14,6 +14,7 @@ do-work-toolbox — reviews, reports, discovery, and repository utilities
   present-work all|portfolio     Refresh the cross-project portfolio
   present-video [REQ|UR]         Source-only Remotion video walkthrough
   slop-check [target]            Validate a draft against anti-slop principles
+  source-audit <report|urls>     Check that cited sources support each claim
   quick-wins [dir]               Grounded refactor/test opportunities
   scan-ideas [focus]             Ideas for what to build next
   deep-explore [concept]         Multi-round concept exploration

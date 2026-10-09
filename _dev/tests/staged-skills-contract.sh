@@ -154,6 +154,7 @@ toolbox_actions=(
   ai-report
   present-video
   slop-check
+  source-audit
   quick-wins
   scan-ideas
   deep-explore
