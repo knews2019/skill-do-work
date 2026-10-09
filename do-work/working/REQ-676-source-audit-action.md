@@ -25,6 +25,7 @@ write_set: ["skills/do-work-toolbox/actions/source-audit.md", "skills/do-work-to
 related: [REQ-675, REQ-677, REQ-678]
 batch: portable-verification-actions
 claimed_at: 2026-10-09T22:56:58Z
+dispatch_at: 2026-10-09T23:08:40Z
 ---
 # do-work-toolbox source-audit
 ## What

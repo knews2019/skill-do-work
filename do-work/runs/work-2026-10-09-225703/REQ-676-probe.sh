@@ -4,7 +4,8 @@ set -euo pipefail
 test -f skills/do-work-toolbox/actions/source-audit.md
 test -f skills/do-work-toolbox/docs/source-audit-guide.md
 grep -q 'docs/source-audit-guide.md' skills/do-work-toolbox/actions/source-audit.md
-sed -n '/^argument-hint:/p' skills/do-work-toolbox/SKILL.md | grep -q 'source-audit'
+argument_hint_line="$(sed -n '/^argument-hint:/p' skills/do-work-toolbox/SKILL.md)"
+grep -q 'source-audit' <<<"$argument_hint_line"
 grep -Eq '^\|.*`source-audit`.*\| `\./actions/source-audit\.md` \|$' skills/do-work-toolbox/SKILL.md
 grep -Eq '^  source-audit ' skills/do-work-toolbox/actions/help.md
 grep -q 'source-audit' skills/do-work/actions/help.md

@@ -22,6 +22,7 @@ write_set: [skills/do-work/actions/review-work.md, skills/do-work/docs/review-wo
 related: [REQ-676, REQ-677, REQ-678]
 batch: portable-verification-actions
 claimed_at: 2026-10-09T22:56:57Z
+dispatch_at: 2026-10-09T23:08:40Z
 ---
 # Core Review Names Four Delivery Stages
 ## What

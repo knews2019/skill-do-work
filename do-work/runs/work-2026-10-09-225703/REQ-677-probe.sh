@@ -6,7 +6,8 @@ test -f skills/do-work-toolbox/docs/journey-qa-guide.md
 grep -q 'docs/journey-qa-guide.md' skills/do-work-toolbox/actions/journey-qa.md
 grep -q 'actions/ui-review.md' skills/do-work-toolbox/actions/journey-qa.md
 for result_class in 'product defect' 'test defect' 'unresolved'; do grep -qi "$result_class" skills/do-work-toolbox/actions/journey-qa.md; done
-sed -n '/^argument-hint:/p' skills/do-work-toolbox/SKILL.md | grep -q 'journey-qa'
+argument_hint_line="$(sed -n '/^argument-hint:/p' skills/do-work-toolbox/SKILL.md)"
+grep -q 'journey-qa' <<<"$argument_hint_line"
 grep -Eq '^\|.*`journey-qa`.*\| `\./actions/journey-qa\.md` \|$' skills/do-work-toolbox/SKILL.md
 grep -Eq '^  journey-qa ' skills/do-work-toolbox/actions/help.md
 grep -q 'journey-qa' skills/do-work/actions/help.md
