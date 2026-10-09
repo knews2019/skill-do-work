@@ -1803,7 +1803,7 @@ func TestJavaScriptBehaviorClaimedCardShowsItsLastCorrelatedActivity(t *testing.
 		t.Fatalf("buildGeneratedBoardData: %v", projectError)
 	}
 	runner := &cannedGitRunner{logOutput: func() string {
-		return cannedLogRecord("c1", commitInstant, "c0", "docs(do-work): tidy the queue notes",
+		return cannedLogRecord("c1", commitInstant, "docs(do-work): tidy the queue notes",
 			"do-work/working/REQ-711-live-card.md", "do-work/queue/REQ-712-blocked-card.md")
 	}}
 	attachRequestActivity(&boardData, board, moment, runner.run, readWorktreeAgentGitState(board.RepoRoot, runner.run))

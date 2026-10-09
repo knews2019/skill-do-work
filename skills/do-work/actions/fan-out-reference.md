@@ -136,13 +136,15 @@ After a wave's builders are dispatched, the orchestrator may hand each REQ's int
 | Guardrail slot | Fan-out use |
 | --- | --- |
 | run directory | `do-work/runs/work-<YYYY-MM-DD-HHMMSS>/`, created before any spawn |
-| per-builder input | `REQ-NNN-brief.md` — REQ body, worktree path, branch name, never-touch list, hand-back format |
+| per-builder input | `REQ-NNN-brief.md` — REQ body, worktree path, branch name, never-touch list, commit subject rule, hand-back format |
 | per-builder output | `REQ-NNN-handback.md` — branch, file manifest, integration seams, and **every `##` section the builder would have written into the REQ file** (today `## Discovered Tasks` and `## Decisions`, each under its own heading), because readers take them from here when the REQ lacks them (`actions/work-reference.md` → **Reading a Builder-Authored Section (any step)**). This row and `actions/work.md` Step 6's routed sections are one set: a section Step 6 tells the builder to author and this row does not carry is lost silently. The one main-tree path a builder may write (*Sole integrator*) |
 | per-integrator input | `REQ-NNN-integrate.md` — written by the coordinator between integrators, never by a builder (*Delegated integration — the coordinator shape*) |
 | `manifest.md` | REQ id → builder, `<operative_name>`, handback file, landed status, held dispatch instant, plus the run's hand-back emphasis note when the user sent one (*Mid-Run Messages (any step)*) — **the orchestrator's**, never written by a builder |
 | bounded waves | builders per wave, sized to the harness concurrency limit |
 
 The pattern makes fan-out failures **survivable, not prevented**. Never describe it as a fix.
+
+**Every builder commit subject starts with `[REQ-NNN]`, and the brief says so.** The board credits a commit to a REQ by that bracketed token or by a touched REQ path, and by nothing else: it does not walk a merge's second-parent range to rescue un-prefixed builder commits (deleted in 0.305.88 as scaffold around agent behaviour). A builder commit without the prefix is visible on its live branch tip until the merge and then only through the hand-back merge's own prefix, so its own instant drops out of the drawer's largest-gap line. The prose rule is the whole mechanism; no hook or wrapper stamps it.
 
 **The brief and the hand-back path reach the builder as prompt content or an absolute main-tree path.** A repo-relative path resolves inside the worktree, against its stale tracked copy of `do-work/`, so the builder reads a snapshot or nothing. In the return direction it is worse: the write succeeds, lands in the builder's branch, and the orchestrator reads nothing.
 

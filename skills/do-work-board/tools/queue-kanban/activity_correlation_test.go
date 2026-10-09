@@ -20,11 +20,11 @@ func gitRunnerThatFindsNothing(string, ...string) ([]byte, error) {
 }
 
 // cannedLogRecord renders one commit exactly as the collector's
-// `git log --format=%H%x00%cI%x00%P%x00%s --name-only` prints it: a NUL-joined
+// `git log --format=%H%x00%cI%x00%s --name-only` prints it: a NUL-joined
 // header line, a blank line, then one touched path per line. A merge prints no
 // paths under plain --name-only, which an empty touchedPaths reproduces.
-func cannedLogRecord(commitHash string, committedAt time.Time, parentHashes string, subject string, touchedPaths ...string) string {
-	record := commitHash + "\x00" + committedAt.Format(time.RFC3339) + "\x00" + parentHashes + "\x00" + subject + "\n"
+func cannedLogRecord(commitHash string, committedAt time.Time, subject string, touchedPaths ...string) string {
+	record := commitHash + "\x00" + committedAt.Format(time.RFC3339) + "\x00" + subject + "\n"
 	if len(touchedPaths) > 0 {
 		record += "\n" + strings.Join(touchedPaths, "\n") + "\n"
 	}
@@ -99,7 +99,7 @@ func TestRequestActivityAttributesACommitThatTouchesTheRequestFileWithoutAPrefix
 	}
 	commitInstant := activityFixtureNow.Add(-10 * time.Minute)
 	runner := &cannedGitRunner{logOutput: func() string {
-		return cannedLogRecord("c1", commitInstant, "c0", "docs(do-work): tidy the queue notes",
+		return cannedLogRecord("c1", commitInstant, "docs(do-work): tidy the queue notes",
 			"do-work/working/REQ-701-board-cards.md")
 	}}
 
@@ -125,8 +125,8 @@ func TestRequestActivityAttributesACommitThatTouchesTheRequestFileWithoutAPrefix
 func TestRequestActivityAttributesEveryPrefixTokenInASubject(t *testing.T) {
 	commitInstant := activityFixtureNow.Add(-20 * time.Minute)
 	instantsById := correlateCommitsToRequests([]byte(
-		cannedLogRecord("c1", commitInstant, "c0", "[REQ-701] [REQ-702] fold the shared parser fix; see REQ-703") +
-			cannedLogRecord("c0", commitInstant.Add(-time.Hour), "", "seed", "README.md")))
+		cannedLogRecord("c1", commitInstant, "[REQ-701] [REQ-702] fold the shared parser fix; see REQ-703") +
+			cannedLogRecord("c0", commitInstant.Add(-time.Hour), "seed", "README.md")))
 
 	for _, requestId := range []string{"REQ-701", "REQ-702"} {
 		if instants := instantsById[requestId]; len(instants) != 1 || !instants[0].Equal(commitInstant) {
@@ -135,98 +135,6 @@ func TestRequestActivityAttributesEveryPrefixTokenInASubject(t *testing.T) {
 	}
 	if instants := instantsById["REQ-703"]; len(instants) != 0 {
 		t.Errorf("REQ-703 attributed %v from an unbracketed mention", instants)
-	}
-}
-
-// Builder commits on a worktree branch carry no REQ path and need not carry a
-// prefix. They reach the board only as the second-parent side of the merge that
-// brought them in; without the ancestry rule a builder working for an hour shows
-// nothing until its merge lands.
-func TestRequestActivityAttributesBuilderCommitsReachableOnlyThroughAMatchedMergesSecondParent(t *testing.T) {
-	baseInstant := activityFixtureNow.Add(-5 * time.Hour)
-	logOutput := cannedLogRecord("merge1", baseInstant.Add(4*time.Hour), "main1 build2",
-		"[REQ-701] merge builder branch worktree-agent-REQ-701-board-cards") +
-		cannedLogRecord("build2", baseInstant.Add(3*time.Hour), "build1", "write the parser", "src/parser.go") +
-		cannedLogRecord("main1", baseInstant.Add(150*time.Minute), "base0", "unrelated main commit", "README.md") +
-		cannedLogRecord("build1", baseInstant.Add(2*time.Hour), "base0", "red tests first", "src/parser_test.go") +
-		// An UNMATCHED merge: its second parent must not attribute to anyone.
-		cannedLogRecord("merge9", baseInstant.Add(90*time.Minute), "base0 other1", "merge a branch nobody claimed") +
-		cannedLogRecord("other1", baseInstant.Add(80*time.Minute), "base0", "someone else's work", "src/other.go") +
-		cannedLogRecord("base0", baseInstant, "older9", "base", "go.mod")
-
-	instantsById := correlateCommitsToRequests([]byte(logOutput))
-	got := map[time.Time]bool{}
-	for _, instant := range instantsById["REQ-701"] {
-		got[instant] = true
-	}
-	for name, wantInstant := range map[string]time.Time{
-		"the matched merge":        baseInstant.Add(4 * time.Hour),
-		"the builder tip":          baseInstant.Add(3 * time.Hour),
-		"the first builder commit": baseInstant.Add(2 * time.Hour),
-	} {
-		if !got[wantInstant] {
-			t.Errorf("REQ-701 lacks %s at %v; attributed %v", name, wantInstant, instantsById["REQ-701"])
-		}
-	}
-	for name, unwantedInstant := range map[string]time.Time{
-		"the first parent's own commit": baseInstant.Add(150 * time.Minute),
-		"the shared merge base":         baseInstant,
-		"an unmatched merge's work":     baseInstant.Add(80 * time.Minute),
-	} {
-		if got[unwantedInstant] {
-			t.Errorf("REQ-701 wrongly attributed %s at %v", name, unwantedInstant)
-		}
-	}
-	if len(instantsById["REQ-701"]) != 3 {
-		t.Errorf("REQ-701 attributed %d instants, want 3: %v", len(instantsById["REQ-701"]), instantsById["REQ-701"])
-	}
-}
-
-// A builder that merged main before handing back puts an inner merge inside the
-// outer merge's second-parent range. Range attribution tags that inner merge,
-// but it is no direct match, so its own second parent (main's work) must not be
-// expanded: ancestry runs off the direct matches collected before the loop.
-func TestRequestActivityDoesNotExpandAnInnerMergeOfMainReachedThroughAMatchedMerge(t *testing.T) {
-	baseInstant := activityFixtureNow.Add(-6 * time.Hour)
-	instantByName := map[string]time.Time{
-		"merge1": baseInstant.Add(5 * time.Hour),
-		"main2":  baseInstant.Add(4 * time.Hour),
-		"build2": baseInstant.Add(3 * time.Hour),
-		"inner1": baseInstant.Add(150 * time.Minute),
-		"main1":  baseInstant.Add(2 * time.Hour),
-		"build1": baseInstant.Add(1 * time.Hour),
-		"base0":  baseInstant,
-	}
-	logOutput := cannedLogRecord("merge1", instantByName["merge1"], "main2 build2",
-		"[REQ-701] merge builder branch worktree-agent-REQ-701-board-cards") +
-		cannedLogRecord("main2", instantByName["main2"], "main1", "later main commit", "README.md") +
-		cannedLogRecord("build2", instantByName["build2"], "inner1", "write the parser", "src/parser.go") +
-		// The builder merging main: no REQ token, no REQ path.
-		cannedLogRecord("inner1", instantByName["inner1"], "build1 main1", "Merge branch 'main' into the builder") +
-		cannedLogRecord("main1", instantByName["main1"], "base0", "unrelated main commit", "docs/notes.md") +
-		cannedLogRecord("build1", instantByName["build1"], "base0", "red tests first", "src/parser_test.go") +
-		cannedLogRecord("base0", instantByName["base0"], "", "base", "go.mod")
-
-	instantsById := correlateCommitsToRequests([]byte(logOutput))
-	got := map[time.Time]bool{}
-	for _, instant := range instantsById["REQ-701"] {
-		got[instant] = true
-	}
-	for _, name := range []string{"merge1", "build2", "inner1", "build1"} {
-		if !got[instantByName[name]] {
-			t.Errorf("REQ-701 lacks %s at %v; attributed %v", name, instantByName[name], instantsById["REQ-701"])
-		}
-	}
-	for _, name := range []string{"main1", "main2", "base0"} {
-		if got[instantByName[name]] {
-			t.Errorf("REQ-701 wrongly attributed main-side commit %s at %v", name, instantByName[name])
-		}
-	}
-	if len(instantsById["REQ-701"]) != 4 {
-		t.Errorf("REQ-701 attributed %d instants, want 4: %v", len(instantsById["REQ-701"]), instantsById["REQ-701"])
-	}
-	if len(instantsById) != 1 {
-		t.Errorf("attributed ids = %v, want only REQ-701", instantsById)
 	}
 }
 
@@ -273,9 +181,9 @@ func TestRequestActivityLargestGapUnitesCommitsWithStamps(t *testing.T) {
 		CompletedAt:       claimInstant.Add(200 * time.Minute).Format(time.RFC3339),
 	}
 	runner := &cannedGitRunner{logOutput: func() string {
-		return cannedLogRecord("late1", claimInstant.Add(26*time.Hour), "c9", "[REQ-799] complete: a sibling",
+		return cannedLogRecord("late1", claimInstant.Add(26*time.Hour), "[REQ-799] complete: a sibling",
 			"do-work/archive/UR-099/REQ-702-done-earlier.md", "do-work/archive/UR-099/REQ-799-sibling.md") +
-			cannedLogRecord("mid1", claimInstant.Add(70*time.Minute), "c0", "[REQ-702] builder progress", "src/a.go")
+			cannedLogRecord("mid1", claimInstant.Add(70*time.Minute), "[REQ-702] builder progress", "src/a.go")
 	}}
 
 	activity := collectRequestActivity("/repo", []*RequestTicket{doneTicket},
@@ -323,7 +231,7 @@ func TestServeReadsRequestActivityOnEveryResponse(t *testing.T) {
 	})
 	commitInstant := claimInstant.Add(time.Hour)
 	runner := &cannedGitRunner{logOutput: func() string {
-		return cannedLogRecord("c1", commitInstant, "c0", "touch", "do-work/working/REQ-711-live-card.md")
+		return cannedLogRecord("c1", commitInstant, "touch", "do-work/working/REQ-711-live-card.md")
 	}}
 	liveServer := newLiveBoardServer(repoRoot, defaultRecentWindow)
 	liveServer.liveGitRunner = runner.run

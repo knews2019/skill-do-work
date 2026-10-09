@@ -67,12 +67,11 @@ var requestSubjectPrefixPattern = regexp.MustCompile(`\[(REQ-\d+)\]`)
 type correlatedCommit struct {
 	hash         string
 	committedAt  time.Time
-	parentHashes []string
 	subject      string
 	touchedPaths []string
 }
 
-// parseCorrelationLog reads `git log --format=%H%x00%cI%x00%P%x00%s --name-only`
+// parseCorrelationLog reads `git log --format=%H%x00%cI%x00%s --name-only`
 // output. A header line is the only line that carries NUL bytes; every other
 // non-blank line is a path the preceding commit touched.
 func parseCorrelationLog(logOutput []byte) []*correlatedCommit {
@@ -80,8 +79,8 @@ func parseCorrelationLog(logOutput []byte) []*correlatedCommit {
 	var current *correlatedCommit
 	for _, line := range strings.Split(string(logOutput), "\n") {
 		if strings.Contains(line, "\x00") {
-			fields := strings.SplitN(line, "\x00", 4)
-			if len(fields) != 4 {
+			fields := strings.SplitN(line, "\x00", 3)
+			if len(fields) != 3 {
 				current = nil
 				continue
 			}
@@ -91,10 +90,9 @@ func parseCorrelationLog(logOutput []byte) []*correlatedCommit {
 				continue
 			}
 			current = &correlatedCommit{
-				hash:         fields[0],
-				committedAt:  committedAt,
-				parentHashes: strings.Fields(fields[2]),
-				subject:      fields[3],
+				hash:        fields[0],
+				committedAt: committedAt,
+				subject:     fields[2],
 			}
 			commits = append(commits, current)
 			continue
@@ -106,87 +104,31 @@ func parseCorrelationLog(logOutput []byte) []*correlatedCommit {
 	return commits
 }
 
-// correlateCommitsToRequests attributes each logged commit to REQ ids by any of:
-// a touched REQ path, a [REQ-NNN] subject token, or membership in
-// <merge>^1..<merge>^2 of a two-parent commit already matched by the first two
-// rules. Ancestry is derived from the logged %P graph, so it reaches only as far
-// back as the log window — which is all the board asks about.
+// correlateCommitsToRequests attributes each logged commit to REQ ids by a
+// touched REQ path or a [REQ-NNN] subject token, nothing else. A builder commit
+// that carries neither is seen only while its branch is live, through the owned
+// tip that collectRequestActivity adds; once merged, the hand-back merge's own
+// prefix is the evidence. The second-parent range expansion that used to credit
+// un-prefixed builder commits through their merge is gone on purpose: it
+// existed for a case the builder brief forbids (actions/fan-out-reference.md),
+// and it already shipped one defect (REQ-646).
 func correlateCommitsToRequests(logOutput []byte) map[string][]time.Time {
-	commits := parseCorrelationLog(logOutput)
-	commitByHash := map[string]*correlatedCommit{}
-	for _, commit := range commits {
-		commitByHash[commit.hash] = commit
-	}
-
-	requestIdsByHash := map[string]map[string]bool{}
-	attribute := func(commitHash string, requestId string) {
-		if requestIdsByHash[commitHash] == nil {
-			requestIdsByHash[commitHash] = map[string]bool{}
-		}
-		requestIdsByHash[commitHash][requestId] = true
-	}
-	for _, commit := range commits {
+	instantsById := map[string][]time.Time{}
+	for _, commit := range parseCorrelationLog(logOutput) {
+		requestIds := map[string]bool{}
 		for _, path := range commit.touchedPaths {
 			if match := requestPathPattern.FindStringSubmatch(path); match != nil {
-				attribute(commit.hash, match[1]+match[2])
+				requestIds[match[1]+match[2]] = true
 			}
 		}
 		for _, match := range requestSubjectPrefixPattern.FindAllStringSubmatch(commit.subject, -1) {
-			attribute(commit.hash, match[1])
+			requestIds[match[1]] = true
 		}
-	}
-
-	// Ancestry runs off the DIRECT matches only, snapshotted here before any
-	// range is attributed: the loop below mutates requestIdsByHash, so a merge
-	// reached through another merge's range (a builder merging main) must not
-	// read its range-given ids back as direct ones and widen the attribution.
-	directIdsByMergeHash := map[string][]string{}
-	for _, commit := range commits {
-		if len(commit.parentHashes) != 2 {
-			continue
-		}
-		for requestId := range requestIdsByHash[commit.hash] {
-			directIdsByMergeHash[commit.hash] = append(directIdsByMergeHash[commit.hash], requestId)
-		}
-	}
-	for _, commit := range commits {
-		directIds := directIdsByMergeHash[commit.hash]
-		if len(directIds) == 0 {
-			continue
-		}
-		firstParentAncestry := loggedAncestry(commitByHash, commit.parentHashes[0], nil)
-		for rangeHash := range loggedAncestry(commitByHash, commit.parentHashes[1], firstParentAncestry) {
-			for _, requestId := range directIds {
-				attribute(rangeHash, requestId)
-			}
-		}
-	}
-
-	instantsById := map[string][]time.Time{}
-	for _, commit := range commits {
-		for requestId := range requestIdsByHash[commit.hash] {
+		for requestId := range requestIds {
 			instantsById[requestId] = append(instantsById[requestId], commit.committedAt)
 		}
 	}
 	return instantsById
-}
-
-// loggedAncestry walks parents from startHash through the logged graph,
-// stopping at commits outside the log window and at any hash in stopAt.
-func loggedAncestry(commitByHash map[string]*correlatedCommit, startHash string, stopAt map[string]bool) map[string]bool {
-	reached := map[string]bool{}
-	pending := []string{startHash}
-	for len(pending) > 0 {
-		hash := pending[len(pending)-1]
-		pending = pending[:len(pending)-1]
-		commit, logged := commitByHash[hash]
-		if !logged || reached[hash] || stopAt[hash] {
-			continue
-		}
-		reached[hash] = true
-		pending = append(pending, commit.parentHashes...)
-	}
-	return reached
 }
 
 // activityEvent is one entry of a REQ's union stream.
@@ -207,7 +149,7 @@ type activityEvent struct {
 func collectRequestActivity(repoRoot string, tickets []*RequestTicket, since time.Time, now time.Time, runner gitCommandRunner, ownedTipInstantsById map[string][]time.Time) map[string]requestActivity {
 	commitInstantsById := map[string][]time.Time{}
 	logOutput, logError := runner(repoRoot, "log", "--since="+since.UTC().Format(time.RFC3339),
-		"--format=%H%x00%cI%x00%P%x00%s", "--name-only")
+		"--format=%H%x00%cI%x00%s", "--name-only")
 	if logError == nil {
 		commitInstantsById = correlateCommitsToRequests(logOutput)
 	}

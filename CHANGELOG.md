@@ -10,6 +10,14 @@ For the complete release history, read this file and the archives below from new
 - [0.50.0 through 0.64.1](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-13-up-to-v0.64.1.md)
 - [0.1.0 through 0.49.0](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-07-up-to-v0.49.0.md)
 
+## 0.305.88 — Board Activity Credits Commits by Prefix, Path and Owned Branch Tip Only (2026-10-10)
+
+The board no longer walks a merge's second-parent range to credit builder commits that carried no `[REQ-NNN]` prefix. That code existed for a case the builder brief forbids, had already shipped one defect (the inner merge of main fixed in 0.305.80), and in the week before this release credited nothing: every builder commit behind a prefixed merge carried its own prefix.
+
+- A commit counts for a REQ when it touches that REQ's file or run artifact, or when its subject carries the bracketed `[REQ-NNN]` token. An in-flight builder still shows through its owned branch tip, so a claimed card's last-activity line is unchanged.
+- Removed from `queue-kanban`: the `%P` parent field of the windowed log, the in-memory ancestry walk, and the direct-match snapshot. `activity_correlation.go` drops from 357 to 299 lines and its tests from 429 to 337.
+- `actions/fan-out-reference.md` states the commit subject rule the brief carries, and the board prime's trap line names the new credit rule.
+
 ## 0.305.87 — Fan-Out Orchestration Moves to Its Own Reference File and the Two Run Files Shrink (2026-10-09)
 
 The two files that drive `do-work run` had grown with dense fan-out prose, and a consumer review called them hard to follow. The fan-out detail now lives in one companion file with no size limit, and the run files keep each rule in a sentence or two with a pointer to it.
