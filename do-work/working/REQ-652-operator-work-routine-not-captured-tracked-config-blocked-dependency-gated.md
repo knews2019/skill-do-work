@@ -2,6 +2,13 @@
 id: REQ-652
 title: '[impact-rule-change] Routine operator work is never a REQ; a tracked operator configuration is a blocked, dependency-gated REQ that clarify completes'
 status: claimed
+route: A
+estimate:
+  p50_active_minutes: 5
+  confidence: high
+  basis:
+  - trivial short-circuit
+  calculated_at: 2026-10-09T16:09:30Z
 created_at: 2026-10-09T16:06:43Z
 user_request: UR-143
 domain: general
@@ -58,3 +65,19 @@ See `do-work/user-requests/UR-143/input.md` for complete verbatim input (the ful
 - [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
 - [ ] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
 *Source: upstream proposal "operator work is not a REQ" (verified by `do-work-toolbox validate-feedback` on 2026-10-09 as F11), reshaped by the maintainer: "operator action needs to show up in the Needs input · Blocked column, when the code is ready to be released …", "when the operator section is done, the REQ should be moved to the DONE column", "don't open operator tasks everytime, I'll deploy on my own time … unless special configuration needs to be done".*
+
+---
+
+## Triage
+
+**Route: A** - Simple
+
+**Reasoning:** Names the five files and the exact lines, and states each sentence to add; prose only, no Go, no exploration needed.
+
+**Planning:** Not required
+
+## Plan
+
+**Planning not required** - Route A: Direct implementation
+
+*Skipped by work action*

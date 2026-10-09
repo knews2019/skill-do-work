@@ -2,6 +2,13 @@
 id: REQ-651
 title: 'AI report on the board activity correlation separates deterministic git structure from scaffold around agent behaviour'
 status: claimed
+route: A
+estimate:
+  p50_active_minutes: 5
+  confidence: high
+  basis:
+  - trivial short-circuit
+  calculated_at: 2026-10-09T16:09:30Z
 created_at: 2026-10-09T16:06:43Z
 user_request: UR-143
 domain: general
@@ -49,3 +56,19 @@ See `do-work/user-requests/UR-143/input.md` for complete verbatim input. No queu
 - [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
 - [ ] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
 *Source: consumer review "Activity Correlation … hundreds of lines of code to analyze Git history, merge branches, and track ancestry just to put a date on a dashboard card", triaged by `do-work-toolbox validate-feedback` on 2026-10-09 as F7; maintainer answer "create an ai-report and explain this to me, my concerns are that I don't want to build scaffold around not-deterministic behaviour".*
+
+---
+
+## Triage
+
+**Route: A** - Simple
+
+**Reasoning:** One toolbox action run (`do-work-toolbox ai-report REQ-632`) with the report's required content fully specified in the REQ's Verified Facts; no code change, no exploration needed.
+
+**Planning:** Not required
+
+## Plan
+
+**Planning not required** - Route A: Direct implementation
+
+*Skipped by work action*

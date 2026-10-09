@@ -2,6 +2,13 @@
 id: REQ-650
 title: 'The disk probe measures the repo root only'
 status: claimed
+route: A
+estimate:
+  p50_active_minutes: 5
+  confidence: high
+  basis:
+  - trivial short-circuit
+  calculated_at: 2026-10-09T16:09:30Z
 created_at: 2026-10-09T16:06:43Z
 user_request: UR-143
 domain: backend
@@ -57,3 +64,19 @@ See `do-work/user-requests/UR-143/input.md` for complete verbatim input (both pa
 - [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
 - [ ] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
 *Source: consumer review "the disk space check is over-engineered; it treats the computer like a complex network of different volumes when a simple check of the project folder would have sufficed", accepted by `do-work-toolbox validate-feedback` on 2026-10-09 as F8; maintainer answer "Repo root only (Recommended)".*
+
+---
+
+## Triage
+
+**Route: A** - Simple
+
+**Reasoning:** Names every file and line to delete (verify.go worktree loop and device dedupe, the disk_space helpers' device read, the dedupe tests) and keeps everything else; a focused deletion with a runnable RED test in the existing Go harness.
+
+**Planning:** Not required
+
+## Plan
+
+**Planning not required** - Route A: Direct implementation
+
+*Skipped by work action*
