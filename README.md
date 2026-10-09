@@ -113,6 +113,8 @@ For presentation, choose the artifact explicitly: `do-work-toolbox ai-report REQ
 
 For repository comprehension, `do-work-toolbox architecture-report` writes a new dated, immutable bundle under `ai-reports/` holding one self-contained `index.html` and no Markdown companion. It shares the home of `ai-report`, with a freely redesigned architecture view, rendered diagrams, clickable section navigation, and GitHub source links. Each report opens with an authored account of what changed since the previous HTML report; older Markdown bundles remain untouched and are not baselines. `architecture overview` and `map the repo` are aliases for it.
 
+For user journeys, `do-work-toolbox journey-qa <target> [--brief <path>]` reproduces a reported sequence in a browser, tries the combined transitions around it, and classifies each result as passed, product defect, test defect, or unresolved, without changing source.
+
 Common extension calls also include `do-work-board board`, `do-work-knowledge bkb`, `do-work-knowledge memory`, `do-work-toolbox code-review`, and `do-work-toolbox inspect`.
 
 ### Deterministic commands without an agent

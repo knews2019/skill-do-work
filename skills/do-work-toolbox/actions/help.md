@@ -10,6 +10,7 @@ do-work-toolbox — reviews, reports, discovery, and repository utilities
   maintainability-audit [scope]  Measured maintainability audit with calibrated bands
   architecture-report            Dated immutable HTML architecture map with rendered diagrams
   ui-review [scope]              Read-only UI quality review
+  journey-qa <target> [--brief]  Check whole user journeys; classify each result
   ai-report [REQ|UR]             Detailed stakeholder HTML for one completed item
   present-work all|portfolio     Refresh the cross-project portfolio
   present-video [REQ|UR]         Source-only Remotion video walkthrough

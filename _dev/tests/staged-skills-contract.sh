@@ -150,6 +150,7 @@ toolbox_actions=(
   maintainability-audit
   architecture-report
   ui-review
+  journey-qa
   present-work
   ai-report
   present-video

@@ -1,7 +1,7 @@
 ---
 name: do-work-toolbox
 description: Optional reviews, discovery, presentation, reporting, repository utilities, and companion installers for the modular do-work suite
-argument-hint: "validate-feedback | code-review | maintainability-audit | architecture-report | ui-review | ai-report | present-work | present-video | slop-check | quick-wins | scan-ideas | deep-explore | prime | inspect | note | stray-check | tidy-repo | tutorial | install | help"
+argument-hint: "validate-feedback | code-review | maintainability-audit | architecture-report | ui-review | journey-qa | ai-report | present-work | present-video | slop-check | quick-wins | scan-ideas | deep-explore | prime | inspect | note | stray-check | tidy-repo | tutorial | install | help"
 ---
 
 # Do-Work Toolbox Skill
@@ -20,6 +20,7 @@ Before invoking AGY / Antigravity CLI, read [the AGY usage prime](./docs/prime-a
 | `maintainability-audit`, `audit codebase`, `audit maintainability` | `./actions/maintainability-audit.md` |
 | `architecture-report`, `architecture overview`, `map the repo` | `./actions/architecture-report.md` |
 | `ui-review`, `review ui`, `design audit` | `./actions/ui-review.md` |
+| `journey-qa`, `journey qa`, `user journey` | `./actions/journey-qa.md` |
 | `ai-report`, `showcase`, `visual report`, `proof of work` | `./actions/ai-report.md` |
 | `present-work`, `portfolio`, `work portfolio` | `./actions/present-work.md` |
 | `present-video`, `remotion`, `video walkthrough` | `./actions/present-video.md` |
