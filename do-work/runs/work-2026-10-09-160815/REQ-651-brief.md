@@ -1,7 +1,7 @@
 # Builder brief — REQ-651 (AI report on the board activity correlation separates deterministic git structure from scaffold around agent behaviour)
 
 - Worktree (your only writable tree): /Users/t2/Desktop/e1-experimental-repos/skill-do-work2-worktrees/worktree-agent-REQ-651-ai-report-on-board-activity-correlation-determinism
-- Branch: worktree-agent-REQ-651-ai-report-on-board-activity-correlation-determinism, created from main HEAD BASE_HASH with `git worktree add -b` (commit here; never merge, never rebase, never push, never check out another branch).
+- Branch: worktree-agent-REQ-651-ai-report-on-board-activity-correlation-determinism, created from main HEAD 2eb14357 with `git worktree add -b` (commit here; never merge, never rebase, never push, never check out another branch).
 - REQ (read-only, main tree): /Users/t2/Desktop/e1-experimental-repos/skill-do-work2/do-work/working/REQ-651-ai-report-on-board-activity-correlation-determinism.md. Read it fully: What, Why, Verified Facts, Detailed Requirements 1-5, Constraints, Red-Green Proof.
 - UR (read-only): /Users/t2/Desktop/e1-experimental-repos/skill-do-work2/do-work/user-requests/UR-143/input.md (read the F7 verdict and the maintainer's answer: "I don't want to build scaffold around not-deterministic behaviour").
 - Hand-back file (the ONE main-tree path you may write; never stage or commit it): /Users/t2/Desktop/e1-experimental-repos/skill-do-work2/do-work/runs/work-2026-10-09-160815/REQ-651-handback.md
@@ -24,7 +24,7 @@ Exactly the new `ai-reports/<report-slug>/` directory (index.html plus its evide
 - `git status --short` shows only the new bundle; `git diff --stat HEAD~1` after your commit lists only ai-reports paths.
 
 ## Hand-back (write the file at the absolute path above)
-- Branch name, worktree path and the commit hash. Base: BASE_HASH.
+- Branch name, worktree path and the commit hash. Base: 2eb14357.
 - File manifest: the bundle path (new) and one line per file in it.
 - P-A-U text for [PLAN], [APPLY], [UNIFY].
 - Red-green evidence in prose terms: RED (no bundle existed; the question had no written answer) and GREEN (the bundle path, the two titled parts, the git-call count, the cost figures, the decision with line counts).

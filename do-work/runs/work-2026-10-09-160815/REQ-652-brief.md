@@ -1,7 +1,7 @@
 # Builder brief — REQ-652 (Routine operator work is never a REQ; a tracked operator configuration is a blocked, dependency-gated REQ that clarify completes)
 
 - Worktree (your only writable tree): /Users/t2/Desktop/e1-experimental-repos/skill-do-work2-worktrees/worktree-agent-REQ-652-operator-work-routine-not-captured-tracked-config-blocked-dependency-gated
-- Branch: worktree-agent-REQ-652-operator-work-routine-not-captured-tracked-config-blocked-dependency-gated, created from main HEAD BASE_HASH with `git worktree add -b` (commit here; never merge, never rebase, never push, never check out another branch).
+- Branch: worktree-agent-REQ-652-operator-work-routine-not-captured-tracked-config-blocked-dependency-gated, created from main HEAD 2eb14357 with `git worktree add -b` (commit here; never merge, never rebase, never push, never check out another branch).
 - REQ (read-only, main tree): /Users/t2/Desktop/e1-experimental-repos/skill-do-work2/do-work/working/REQ-652-operator-work-routine-not-captured-tracked-config-blocked-dependency-gated.md. Read it fully: What, Why (the maintainer's three quoted statements are the spec), Verified Facts, Detailed Requirements 1-7, Constraints, Builder Guidance, Red-Green Proof. Requirement 7 (release) belongs to the integrator; you PROPOSE the changelog entry and the lesson bullet in the hand-back.
 - UR (read-only): /Users/t2/Desktop/e1-experimental-repos/skill-do-work2/do-work/user-requests/UR-143/input.md (the full upstream proposal, the maintainer's answers and refinements, the F11 verdict).
 - Hand-back file (the ONE main-tree path you may write; never stage or commit it): /Users/t2/Desktop/e1-experimental-repos/skill-do-work2/do-work/runs/work-2026-10-09-160815/REQ-652-handback.md
@@ -29,7 +29,7 @@ Exactly the five files above. Anything else: stop and say so in the hand-back.
 - `git diff --stat` and `git diff --check`.
 
 ## Hand-back (write the file at the absolute path above)
-- Branch name, worktree path and every commit hash (a single commit preferred). Base: BASE_HASH.
+- Branch name, worktree path and every commit hash (a single commit preferred). Base: 2eb14357.
 - File manifest: each file with (modified) and one line on what changed.
 - P-A-U text for [PLAN], [APPLY], [UNIFY]; [UNIFY] lists git diff --stat, the two test scripts' exit codes, and each file checked.
 - Red-green evidence in prose terms: the RED read (the three places before) and the GREEN read (the new sentences, the clarify option), plus the grep output.

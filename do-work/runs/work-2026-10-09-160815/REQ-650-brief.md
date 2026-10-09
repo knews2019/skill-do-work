@@ -1,7 +1,7 @@
 # Builder brief — REQ-650 (The disk probe measures the repo root only)
 
 - Worktree (your only writable tree): /Users/t2/Desktop/e1-experimental-repos/skill-do-work2-worktrees/worktree-agent-REQ-650-the-disk-probe-measures-the-repo-root-only
-- Branch: worktree-agent-REQ-650-the-disk-probe-measures-the-repo-root-only, created from main HEAD BASE_HASH with `git worktree add -b` (commit here; never merge, never rebase, never push, never check out another branch).
+- Branch: worktree-agent-REQ-650-the-disk-probe-measures-the-repo-root-only, created from main HEAD 2eb14357 with `git worktree add -b` (commit here; never merge, never rebase, never push, never check out another branch).
 - REQ (read-only, main tree): /Users/t2/Desktop/e1-experimental-repos/skill-do-work2/do-work/working/REQ-650-the-disk-probe-measures-the-repo-root-only.md. Read it fully: What, Why, Verified Facts, Detailed Requirements 1-6, Constraints, Red-Green Proof, Required Lessons — Dropped for Budget. Requirement 6 (changelog) belongs to the integrator; you PROPOSE the changelog entry and a lesson bullet in the hand-back.
 - UR (read-only): /Users/t2/Desktop/e1-experimental-repos/skill-do-work2/do-work/user-requests/UR-143/input.md (the review, the maintainer's answers, the triage; read the F8 verdict and the REQ-625 incident).
 - Hand-back file (the ONE main-tree path you may write; never stage or commit it): /Users/t2/Desktop/e1-experimental-repos/skill-do-work2/do-work/runs/work-2026-10-09-160815/REQ-650-handback.md
@@ -27,7 +27,7 @@ Exactly: `verify.go`, `disk_space_unix.go`, `disk_space_windows.go`, `disk_space
 - `git diff --stat` and `git diff --check`.
 
 ## Hand-back (write the file at the absolute path above)
-- Branch name, worktree path and every commit hash (a single commit preferred). Base: BASE_HASH.
+- Branch name, worktree path and every commit hash (a single commit preferred). Base: 2eb14357.
 - File manifest: each file with (modified)/(deleted) and one line on what changed.
 - P-A-U text for [PLAN], [APPLY], [UNIFY]; [UNIFY] lists git diff --stat, go vet/go test exit codes and wall time, and each file checked.
 - Red-green evidence: the new test's name, its failure output before the change, its pass after.
