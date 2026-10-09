@@ -194,7 +194,7 @@ footer { padding: 32px 0 0; color: var(--muted); font-size: 14px; }
         <tr><td><code>activity_correlation.go:274-281</code></td><td>Lifecycle stamps from frontmatter (<code>claimed_at</code>, <code>dispatch_at</code> and the rest) through <code>lifecycleTimestampFields</code>.</td><td>UR-135: the stamps are the evidence the badge ignored (<code>input.md:89-91</code>, append-only by contract).</td></tr>
         <tr><td><code>activity_correlation.go:209-210</code></td><td>One <code>git log --since … --format=%H%x00%cI%x00%P%x00%s --name-only</code> over HEAD. No <code>--all</code>, no pathspec.</td><td>REQ-284 lesson: commits move no do-work mtime, so the read runs per response outside the cache (<code>:19-22</code>, <code>serve.go:160-174</code>). The pathspec was rejected because merges vanish with it (REQ-632 exploration; <code>prime-do-kanban.md:30</code>, family <code>git-history-evidence</code>).</td></tr>
         <tr><td><code>activity_correlation.go:60</code>, <code>:129-133</code></td><td>Touched paths matching a REQ file in queue, working or archive, or a run artifact under <code>do-work/runs/</code>.</td><td>UR-135: "The robust key is the commit's touched paths" (<code>input.md:82-84</code>).</td></tr>
-        <tr><td><code>verify.go:1472-1486</code>, merged at <code>activity_correlation.go:214-216</code></td><td>Tip dates of <code>worktree-agent-*</code> branches not reachable from the integration branch, in one <code>for-each-ref --no-merged</code>.</td><td>REQ-636: a branch with no commits of its own reported the commit it was cut from as activity. It also removed one <code>git log -1</code> per branch. The REQ id comes from the branch name, which the dispatcher creates by the rule in <code>work-reference.md:416</code>.</td></tr>
+        <tr><td><code>verify.go:1425-1439</code>, merged at <code>activity_correlation.go:214-216</code></td><td>Tip dates of <code>worktree-agent-*</code> branches not reachable from the integration branch, in one <code>for-each-ref --no-merged</code>.</td><td>REQ-636: a branch with no commits of its own reported the commit it was cut from as activity. It also removed one <code>git log -1</code> per branch. The REQ id comes from the branch name, which the dispatcher creates by the rule in <code>work-reference.md:416</code>.</td></tr>
         <tr><td><code>activity_correlation.go:252-303</code></td><td>No git. It sorts the union, clips it to the claim-to-completion window and labels phases.</td><td>REQ-632 decisions D-03 (queue wait is not idle work) and D-04 (a commit takes the phase of the newest phase stamp).</td></tr>
       </tbody>
     </table>
@@ -222,9 +222,9 @@ footer { padding: 32px 0 0; color: var(--muted); font-size: 14px; }
   <h3>Git calls per refresh</h3>
   <div class="row">
     <div class="measure" style="flex: 1 1 520px">
-      <p><strong>Five git commands per served response or static generate, the same with any number of builder branches.</strong> They are <code>worktree list</code> (<code>verify.go:1495</code>), <code>branch --list</code> (<code>:1517</code>), <code>rev-parse --abbrev-ref HEAD</code> (<code>:1396</code>), <code>for-each-ref --no-merged</code> (<code>:1472-1473</code>) and the <code>git log</code> (<code>activity_correlation.go:209-210</code>). A detached repo-root checkout adds one <code>rev-parse HEAD</code> (<code>verify.go:1404</code>).</p>
+      <p><strong>Five git commands per served response or static generate, the same with any number of builder branches.</strong> They are <code>worktree list</code> (<code>verify.go:1448</code>), <code>branch --list</code> (<code>:1470</code>), <code>rev-parse --abbrev-ref HEAD</code> (<code>:1349</code>), <code>for-each-ref --no-merged</code> (<code>:1425-1426</code>) and the <code>git log</code> (<code>activity_correlation.go:209-210</code>). A detached repo-root checkout adds one <code>rev-parse HEAD</code> (<code>verify.go:1357</code>).</p>
       <p>The verify probes need the first three anyway. The <code>for-each-ref</code> and the <code>git log</code> exist only for activity, so the feature's own cost is two commands.</p>
-      <p><code>TestServedResponseListsWorktreesAndBranchesOnce</code> (<code>activity_correlation_test.go:379-406</code>) pins that the count stays constant, not that it equals five. This report counted the five by running the server against the package's canned runner with 0, 1 and 4 branches (<a href="evidence/git-call-count.txt">evidence/git-call-count.txt</a>). The verify probes also start git directly for each leftover branch (<code>verify.go:1036</code>, <code>:1157</code>, <code>:1428</code>, <code>:1536</code>). That cost belongs to verify, not to activity.</p>
+      <p><code>TestServedResponseListsWorktreesAndBranchesOnce</code> (<code>activity_correlation_test.go:379-406</code>) pins that the count stays constant, not that it equals five. This report counted the five by running the server against the package's canned runner with 0, 1 and 4 branches (<a href="evidence/git-call-count.txt">evidence/git-call-count.txt</a>). The verify probes also start git directly for each leftover branch (<code>verify.go:989</code>, <code>:1110</code>, <code>:1381</code>, <code>:1489</code>). That cost belongs to verify, not to activity.</p>
     </div>
     <div style="flex: 1 1 520px">
       <div class="table-wrap">
@@ -258,7 +258,7 @@ footer { padding: 32px 0 0; color: var(--muted); font-size: 14px; }
         <tbody>
           <tr><td><code>skills/do-work-board/tools/queue-kanban/activity_correlation.go</code></td><td>Collector and attribution, 357 lines today.</td></tr>
           <tr><td><code>…/activity_correlation_test.go</code></td><td>Attribution, gap and call-count pins, 429 lines today.</td></tr>
-          <tr><td><code>…/verify.go:1444-1489</code></td><td>The shared worktree and branch read since REQ-636.</td></tr>
+          <tr><td><code>…/verify.go:1397-1442</code></td><td>The shared worktree and branch read since REQ-636.</td></tr>
           <tr><td><code>…/generate.go:679-686</code>, <code>…/serve.go:160-174</code></td><td>Where both callers attach findings and activity with one instant.</td></tr>
           <tr><td>REQ-632 <code>ac5cbe64..47c2620e</code></td><td>Builder <code>55d8ea17</code> merged at <code>b004ecd6</code>; remediation <code>43ea1930</code> merged at <code>47c2620e</code> (the recorded <code>commit</code>). 16 files, 1,049 insertions, 135 deletions.</td></tr>
           <tr><td>REQ-636 <code>81524052</code></td><td>Owned tips and one shared git read, 0.305.71.</td></tr>
@@ -266,7 +266,7 @@ footer { padding: 32px 0 0; color: var(--muted); font-size: 14px; }
         </tbody>
       </table>
       </div>
-      <p class="note">Current code drift: the REQ-632 commit had a per-branch <code>liveBranchTipInstants</code>. REQ-636 deleted it, and the line numbers here describe the code at <code>2eb14357</code>. The recorded <code>commit</code> is the remediation merge, so its combined view shows only the contrast test. The feature lives in the range above.</p>
+      <p class="note">Current code drift: the REQ-632 commit had a per-branch <code>liveBranchTipInstants</code>. REQ-636 deleted it. The <code>activity_correlation.go</code> line numbers here describe the code at <code>2eb14357</code>, and that file is unchanged on main after REQ-650 (0.305.86). The <code>verify.go</code> line numbers describe main after REQ-650, which shortened the disk-space probe above them by 47 lines. The recorded <code>commit</code> is the remediation merge, so its combined view shows only the contrast test. The feature lives in the range above.</p>
     </div>
     <div style="flex: 1 1 520px">
       <h2>Verify it yourself</h2>
