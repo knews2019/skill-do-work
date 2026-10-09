@@ -25,6 +25,7 @@ batch: october-review-triage
 depends_on: [REQ-652]
 write_set: ["skills/do-work/actions/fan-out-reference.md", "skills/do-work/actions/work.md", "skills/do-work/actions/work-reference.md", "skills/do-work/actions/review-work.md", "skills/do-work/actions/cleanup.md", "skills/do-work/actions/restart-with-parallel-handoff.md", "skills/do-work/actions/capture.md", "skills/do-work/actions/capture-reference.md", "skills/do-work/crew-members/background-agents.md", "skills/do-work-knowledge/crew-members/background-agents.md", "skills/do-work-toolbox/crew-members/background-agents.md", "skills/do-work/docs/work-guide.md", "skills/do-work-board/actions/board.md", "skills/do-work-board/docs/board-guide.md", "skills/do-work-board/tools/queue-kanban/lessons-do-kanban.md", "skills/do-work-board/tools/queue-kanban/model.go", "skills/do-work-board/tools/queue-kanban/verify.go", "decisions/log.md"]
 claimed_at: 2026-10-09T16:31:01Z
+dispatch_at: 2026-10-09T16:34:28Z
 ---
 # Fan-Out Orchestration Prose Is Compressed in Place and Moved to a Companion Reference
 ## What
