@@ -1,0 +1,10 @@
+# REQ-652 integration report (routine operator work is never a REQ; a tracked operator configuration is blocked, dependency-gated, and completed from clarify)
+
+- Release: 0.305.84 → 0.305.85. Archive: do-work/archive/REQ-652-operator-work-routine-not-captured-tracked-config-blocked-dependency-gated.md (flat, UR-143 stays open).
+- Commits: run artifacts fa288233 (pre). First merge 92a6951c. Review fix 0a1a8da0 on the builder branch, re-merged as e8b3687c (final merge, recorded in commit:). Finalization 1cef71b7. Range fa288233..e8b3687c touches 5 files, +8/-6, all inside write_set.
+- Review: the first pass scored 82% Partial. F1 found that clarify's Done flip stamped status_changed_at, not completed_at, so the board would file the card under Completion anomalies instead of Done. I agreed and fixed F1 and the F2 wording on the builder branch. I recorded the deviation from Detailed Requirement 3 as D-06. The re-review scored 98% Pass. F3 (a doctor STRANDED-TERMINAL-REQUEST warning until cleanup Pass 0) and F4 (D-02 adds a second "no UR" exception next to the duplicate skip) are impact-negligible → report only. Restatement sweep: the assigned_to schema line, board.md Needs input and the badge tooltip all agree.
+- Gate: maintainer-verify.sh ran green twice, 137 s at 92a6951c and 151 s at e8b3687c. The probe was green. contract-regressions.sh was green after finalization, so the lesson link resolves.
+- Heavy: staged-skills, exit 0, executed, 48 s wall, run from a detached checkout at e8b3687c.
+- Timing events: 6 (builder-work 300 s, handback-merge 18 s, three verification-gate events, one review event). The review event spans the fix, re-gate and drain, so attributed time (19m 52s) exceeds the observed total (17m 14s).
+- Dirty under ROOT, not mine: the REQ-650 and REQ-651 working files (coordinator dispatch_at stamp) and the untracked REQ-650 and REQ-651 hand-backs. This report is untracked for the coordinator to commit.
+- Report-only discovered task (from the builder): REQ-652's Verified Facts misstate capture.md:16 as allowing a zero-REQ UR outside fold-only captures. impact-negligible → report only.

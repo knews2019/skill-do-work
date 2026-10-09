@@ -20,6 +20,7 @@ effort_estimate: effort-mechanical
 related: [REQ-650, REQ-652, REQ-653]
 batch: october-review-triage
 claimed_at: 2026-10-09T16:08:10Z
+dispatch_at: 2026-10-09T16:11:57Z
 ---
 # AI Report on the Board Activity Correlation Separates Deterministic Git Structure From Scaffold Around Agent Behaviour
 ## What

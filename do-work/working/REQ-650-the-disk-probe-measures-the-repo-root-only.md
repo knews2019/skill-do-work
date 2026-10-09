@@ -21,6 +21,7 @@ related: [REQ-651, REQ-652, REQ-653]
 batch: october-review-triage
 write_set: ["skills/do-work-board/tools/queue-kanban/verify.go", "skills/do-work-board/tools/queue-kanban/disk_space_unix.go", "skills/do-work-board/tools/queue-kanban/disk_space_windows.go", "skills/do-work-board/tools/queue-kanban/disk_space_test.go", "skills/do-work-board/docs/board-guide.md", "skills/do-work-board/tools/queue-kanban/prime-do-kanban.md"]
 claimed_at: 2026-10-09T16:08:09Z
+dispatch_at: 2026-10-09T16:11:57Z
 ---
 # The Disk Probe Measures the Repo Root Only
 ## What
