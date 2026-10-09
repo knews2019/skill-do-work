@@ -1,7 +1,7 @@
 ---
 id: REQ-650
 title: 'The disk probe measures the repo root only'
-status: pending
+status: claimed
 created_at: 2026-10-09T16:06:43Z
 user_request: UR-143
 domain: backend
@@ -13,6 +13,7 @@ effort_estimate: effort-mechanical
 related: [REQ-651, REQ-652, REQ-653]
 batch: october-review-triage
 write_set: ["skills/do-work-board/tools/queue-kanban/verify.go", "skills/do-work-board/tools/queue-kanban/disk_space_unix.go", "skills/do-work-board/tools/queue-kanban/disk_space_windows.go", "skills/do-work-board/tools/queue-kanban/disk_space_test.go", "skills/do-work-board/docs/board-guide.md", "skills/do-work-board/tools/queue-kanban/prime-do-kanban.md"]
+claimed_at: 2026-10-09T16:08:09Z
 ---
 # The Disk Probe Measures the Repo Root Only
 ## What
