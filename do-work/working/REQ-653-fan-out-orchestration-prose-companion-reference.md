@@ -2,6 +2,16 @@
 id: REQ-653
 title: '[impact-rule-change] Fan-out orchestration prose is compressed in place and moved to a companion reference'
 status: claimed
+route: B
+estimate:
+  p50_active_minutes: 40
+  confidence: medium
+  basis:
+  - Route B
+  - 18-file write set
+  - 2 subsystems involved
+  - 7 acceptance criteria
+  calculated_at: 2026-10-09T16:31:42Z
 created_at: 2026-10-09T16:06:43Z
 user_request: UR-143
 domain: general
@@ -13,7 +23,7 @@ effort_estimate: effort-substantive
 related: [REQ-650, REQ-651, REQ-652]
 batch: october-review-triage
 depends_on: [REQ-652]
-write_set: ["skills/do-work/actions/fan-out-reference.md", "skills/do-work/actions/work.md", "skills/do-work/actions/work-reference.md", "decisions/log.md"]
+write_set: ["skills/do-work/actions/fan-out-reference.md", "skills/do-work/actions/work.md", "skills/do-work/actions/work-reference.md", "skills/do-work/actions/review-work.md", "skills/do-work/actions/cleanup.md", "skills/do-work/actions/restart-with-parallel-handoff.md", "skills/do-work/actions/capture.md", "skills/do-work/actions/capture-reference.md", "skills/do-work/crew-members/background-agents.md", "skills/do-work-knowledge/crew-members/background-agents.md", "skills/do-work-toolbox/crew-members/background-agents.md", "skills/do-work/docs/work-guide.md", "skills/do-work-board/actions/board.md", "skills/do-work-board/docs/board-guide.md", "skills/do-work-board/tools/queue-kanban/lessons-do-kanban.md", "skills/do-work-board/tools/queue-kanban/model.go", "skills/do-work-board/tools/queue-kanban/verify.go", "decisions/log.md"]
 claimed_at: 2026-10-09T16:31:01Z
 ---
 # Fan-Out Orchestration Prose Is Compressed in Place and Moved to a Companion Reference
@@ -58,3 +68,76 @@ See `do-work/user-requests/UR-143/input.md` for complete verbatim input. No queu
 - [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
 - [ ] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
 *Source: consumer review "they added a lot of dense, wordy instructions for the Orchestrating Model … in files that are already huge", accepted in part by `do-work-toolbox validate-feedback` on 2026-10-09 as F6; maintainer answer "compress in place and create structured companion reference where things remain clear without any size limitation".*
+
+---
+
+## Triage
+
+**Route: B** - Medium
+
+**Reasoning:** The outcome is clear (a new companion reference, two files compressed) but every citation of the moved headings across four packages and the tests that pin them had to be discovered first; an Explore agent mapped them, and a Scope declaration keeps the eighteen-file write set honest.
+
+**Planning:** Not required
+
+## Plan
+
+**Planning not required** - Route B: Exploration-guided implementation
+
+*Skipped by work action*
+
+## Exploration
+
+Citation map for the passages that move (Explore agent, 2026-10-09, read-only; full table in the run directory's `REQ-653-exploration.md`):
+
+- **Moved ranges:** `work-reference.md` 394-488 (Worktree Dispatch Mode: Isolation ladder, Naming, operative name, State stays home, Sole integrator, Merge never rebase, When to merge steps 0-4, Hold both endpoints, cumulative range, Post-merge verification, Cleanup happy and crash paths, Fan-Out Dispatch, Auto-wave, Serial-only, Delegated integration, the run-directory table, brief and hand-back path rule, dispatch mechanism); `work.md` 165-174 (Mid-Run Messages), 288 (Landed hand-back), 296 (dispatch instant), 368-370 (Restatement sweep and how to run it).
+- **Test that breaks on a naive move (F1):** `_dev/tests/prescribed-shell-canonicalization.sh:86-99` requires `work-reference.md` to contain the literal `../docs/prescribed-shell-primitives.md`; its only occurrence is the "Hold both endpoints" paragraph (line 437), inside the moved range. Keep one sentence in the shortened `work-reference.md` section that links `../docs/prescribed-shell-primitives.md#state-across-command-blocks`.
+- **Citations inside the two files, outside the moved ranges (F2), to re-point at `actions/fan-out-reference.md`:** `work-reference.md` 19, 55, 112, 491, 848; `work.md` 35, 37, 39, 106, 286, 309, 315, 370, 475, 478, 494, 537, 550, 551, 583.
+- **Bold citations in other files that the reference test checks (F3), to re-point:** `review-work.md:72, :74`; `cleanup.md:39, :134`; `restart-with-parallel-handoff.md:82`; `capture.md:124` (cites `actions/work.md` → **Mid-Run Messages (any step)**); `crew-members/background-agents.md:187` in do-work, and the identical copies in `do-work-knowledge` and `do-work-toolbox` (the sibling copies wrap the name across a line).
+- **Plain-text citations that go stale silently, to re-point:** `capture-reference.md:166`; `docs/work-guide.md:99`; `do-work-board/actions/board.md:94, :120`; `do-work-board/docs/board-guide.md:61`; `do-work-board/tools/queue-kanban/lessons-do-kanban.md:37`; Go comments `model.go:1950` and `verify.go:1025, 1079, 1275, 1392` (comment-only edits).
+- **Rule for the new file (F4):** `_dev/tests/contracts/core-checks.sh` fails when a Common Rationalizations row in a file closely copies a row elsewhere (ratio above 0.75); the new file carries no such table.
+- **What the reference test checks:** every path-shaped token must resolve in both the source and the installed layout; a `path` → **Name** citation's bold name must appear as whole words in a heading or bold label of the target; Markdown anchors must match heading slugs. Companion files open with `# <Name> — Reference` and a `> **Companion file to \`actions/work.md\`.** …` blockquote (`capture-reference.md:1-3`, `estimate-reference.md:1-3`). Same-package citations are spelled `actions/<file>.md` → **Section**; cross-package ones use the literal relative path (`../../do-work/actions/…`).
+- **No registration needed:** `SKILL.md` routes only public actions; `staged-skills-contract.sh` `core_files` is a must-exist list, not a registry; the audit and core-check globs pick up the new file automatically.
+- **No test pins the moved heading strings against the live files** (the hits in `shipped-package-reference-contract.sh` are a comment and parser fixtures).
+
+*Generated by Explore agent*
+
+## Scope
+
+**Files I will touch:**
+- `skills/do-work/actions/fan-out-reference.md` (new)
+- `skills/do-work/actions/work.md`
+- `skills/do-work/actions/work-reference.md`
+- `skills/do-work/actions/review-work.md`
+- `skills/do-work/actions/cleanup.md`
+- `skills/do-work/actions/restart-with-parallel-handoff.md`
+- `skills/do-work/actions/capture.md`
+- `skills/do-work/actions/capture-reference.md`
+- `skills/do-work/crew-members/background-agents.md`
+- `skills/do-work-knowledge/crew-members/background-agents.md`
+- `skills/do-work-toolbox/crew-members/background-agents.md`
+- `skills/do-work/docs/work-guide.md`
+- `skills/do-work-board/actions/board.md`
+- `skills/do-work-board/docs/board-guide.md`
+- `skills/do-work-board/tools/queue-kanban/lessons-do-kanban.md`
+- `skills/do-work-board/tools/queue-kanban/model.go` (one comment)
+- `skills/do-work-board/tools/queue-kanban/verify.go` (four comments)
+- `decisions/log.md`
+
+**Files I will NOT touch:** `skills/do-work/SKILL.md`, every other `crew-members/*.md`, `_dev/tests/**`, `CHANGELOG*.md`, `do-work/archive/**`, `decisions/records/**`, `kb/**`, `ai-reports/**` (historical mentions stay as they are).
+
+**Acceptance criteria (restated from the REQ):**
+1. `skills/do-work/actions/fan-out-reference.md` exists, opens with the companion header convention and a description blockquote saying why it belongs in core, and holds in order: Worktree Dispatch Mode (moved whole, including the Isolation ladder and Delegated integration), Landed hand-back and dispatch timing, Mid-Run Messages, Restatement sweep and wave-end set-aside. Every moved passage is rewritten delete-before-add; the file itself has no size limit.
+2. `work.md`: Mid-Run Messages shrinks to its routing rule plus a pointer; the landed hand-back and dispatch-instant paragraphs shrink to their rule plus a pointer; the Restatement sweep keeps its MUST line and points at the procedure.
+3. `work-reference.md`: Worktree Dispatch Mode becomes a short section stating the every-run-mode rule, the one-writer invariant, the integrator's entry and never-run list, one sentence that still links `../docs/prescribed-shell-primitives.md#state-across-command-blocks`, and a pointer to the new file. The run-directory table row stays.
+4. Every citation of a moved heading outside historical records points at the new file: the grep in the REQ's requirement 4 finds only the new file, the pointers, and historical records.
+5. `wc -w`: `work.md` below 12,711 and `work-reference.md` below 22,162.
+6. `decisions/log.md` gains today's entry reaffirming ADR-001 with the explicit no-size-limit for the companion.
+7. `bash _dev/tests/shipped-package-reference-contract.sh`, `bash _dev/tests/contract-regressions.sh` and `bash _dev/tests/prescribed-shell-canonicalization.sh` are green.
+
+## Pre-Flight
+
+**Git:** ✓ Clean at c951e8e6 apart from this REQ's own working file and `do-work/working/baseline.json` (rewritten by this pre-flight); the two sibling working REQs (REQ-650, REQ-651) are claimed by this session and committed.
+**Tests baseline:** ✓ Repository gate `bash _dev/tests/maintainer-verify.sh` exit 0 at c951e8e6 (124 s wall, both fast stages executed, fingerprint_mismatch); focused baseline `bash _dev/tests/shipped-package-reference-contract.sh` green.
+**Dependencies:** ✓ Go 1.26.1 on PATH (needed only for `go vet` on the comment-only Go edits)
+
+*Checked by work action*
