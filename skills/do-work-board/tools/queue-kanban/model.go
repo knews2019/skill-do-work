@@ -1947,8 +1947,7 @@ func writeSetsIntersect(leftWriteSet []string, rightWriteSet []string) bool {
 // reading the board; it never places a card in a column, never blocks anything,
 // and nothing schedules on it at any builder count — under fan-out dispatch the
 // declared set is advisory input to a human's pick and the merge is the
-// non-interference proof (actions/work-reference.md → Worktree Dispatch Mode →
-// Fan-Out Dispatch).
+// non-interference proof (actions/fan-out-reference.md → Fan-Out Dispatch).
 func annotateWriteSetOverlap(tickets []*RequestTicket) {
 	var candidateTickets []*RequestTicket
 	for _, ticket := range tickets {

@@ -184,7 +184,7 @@ the merged state before starting the next merge. If a merge cannot be reconciled
 safely, abort it; if post-merge verification fails, revert that merge to the last
 verified state. In either case preserve and report the branch and worktree for
 recovery — never force-merge, `git branch -D`, or `git worktree remove --force`.
-For `do-work run`, follow `../../do-work/actions/work-reference.md` → **Worktree Dispatch
+For `do-work run`, follow `../../do-work/actions/fan-out-reference.md` → **Worktree Dispatch
 Mode (Step 1)** for the canonical hand-back, merge-range, verification, and cleanup
 flow.
 
