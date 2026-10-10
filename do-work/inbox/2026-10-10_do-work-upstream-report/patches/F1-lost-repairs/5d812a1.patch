@@ -1,0 +1,211 @@
+From 5d812a12555ba3163525e909a2438e86714d54d5 Mon Sep 17 00:00:00 2001
+From: t2 <t2@example.invalid>
+Date: Sat, 5 Sep 2026 22:47:24 +0300
+Subject: [PATCH] [REQ-185] Restore REQ-174's fixed fixtures for the two
+ timeline probes (Route A)
+
+Implements: do-work/working/REQ-185-restore-fixed-timeline-probe-fixtures.md
+
+The first repair in UR-039 that was dropped wholesale with no supersession
+component. Every anchor 9cf9008 touched was found in its exact pre-REQ-174 state, so
+all six hunks were restorable and all six are restored.
+
+- timelineFixedFixturePayloadScript: REQ-FIXED-DONE completed at the range start,
+  REQ-FIXED-OPEN still running at the fixed now, range 2026-06-01 to 2026-08-31T12:00Z
+  with now at the range end, projection.queueEnd empty
+- Installed in the load handler of both the trailing-window and Now/Fit-all probes,
+  before the first Timeline render
+- boardNowMs reads payload.timeline.now instead of re-reading the global
+- Landing probe filters on REQ-FIXED-DONE instead of the live REQ-164
+- Both Go-side comments describing the step regime as live-queue-dependent replaced
+  with REQ-174's text stating the fixture pins the refusal regime
+- REQ-174's lessons-do-kanban.md entry restored
+
+Kept REQ-174's D-03 (the unreachable enabled branch stays): REQ-177 is the queued
+request that revisits that choice, and pre-empting it here would leave it nothing to do
+and drop refusal coverage it must retain.
+
+The lessons entry is restored in meaning, not bytes: its link named a different
+repository and omitted the UR-037/ path segment, so a verbatim restore would have
+re-introduced a dead link.
+
+Both probes green in a real browser (2.05s, 2.17s); maintainer-check ALL GREEN with the
+strict browser lane at 67.6s.
+
+Unblocks REQ-177, whose requirements name timelineFixedFixturePayloadScript directly.
+
+Co-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com>
+
+UR-039 consolidates into do-work/archive/UR-039/ with this REQ, its last member.
+---
+ .../tools/queue-kanban/lessons-do-kanban.md   |   1 +
+ .../timeline_browser_probe_test.go            | 104 +++++++++++++++---
+ 2 files changed, 89 insertions(+), 16 deletions(-)
+
+diff --git a/.claude/skills/do-work-board/tools/queue-kanban/lessons-do-kanban.md b/.claude/skills/do-work-board/tools/queue-kanban/lessons-do-kanban.md
+index aafcece..7cb920a 100644
+--- a/.claude/skills/do-work-board/tools/queue-kanban/lessons-do-kanban.md
++++ b/.claude/skills/do-work-board/tools/queue-kanban/lessons-do-kanban.md
+@@ -44,3 +44,4 @@ The work pipeline appends here on archive (`../../../do-work/actions/work.md` St
+ - 0.275.3 (in place, 2026-09-04): **a hold the loop resolves by itself is a wait, not an inbox item.** 0.275.0 moved the heavy-lane run from a permission question to the exhaustion drain, but only relabelled the timeline; `isNeedsInputOrBlockedStatus` still listed `pending-heavy-testing`, so every held REQ sat under Needs input · Blocked and read as a validation waiting on the operator. When a status changes owner, walk every classifier that names it: the column bucketer, the timeline exclusion switch (a status that is neither pending nor excluded vanishes from the forecast without a word), the calendar group label, and the docs that call the column an inbox. The hold now waits in Pending → Waiting by status alone.
+ - [family: paired-predicate-drift] 0.294.2 (in place, 2026-09-05): **two readers of one contract drift silently, because each one passes its own tests.** The board annotated a dependency as unmet unless it reached terminal success, while the core selector had widened to source-ready (terminal success, or `claimed` carrying a `commit:`). Both were internally consistent, so nothing failed — the board simply reported zero ready and one waiting for a card the work loop was about to select. The board already parsed the field the rule needs (`CommitHash`), so the fix was a predicate, not a parser: `isDependencySourceReadyStatus` beside `isCompletedStatus`, named after the contract section it implements. When a shared vocabulary section in `../../../do-work/actions/work-reference.md` gains an arm, grep for every predicate that spells out the old arm list; a reader that names one arm of a two-arm set is drift even when it compiles and passes.
+ - [family: subject-not-restated-in-detail] REQ-588 (2026-09-05): **when a payload gains a structured field, the prose that carried the same fact must stop carrying it, and every test that read the fact out of the prose must move to the field.** REQ-579 added `Subject` to `VerifyFinding` and the board grouped on it, but every `Detail` still opened with the subject, so the board printed each name twice and the old test idiom `strings.Contains(finding.Detail, requestId)` kept working by accident. The fix rewrote sixteen details, moved twelve assertions to `finding.Subject == requestId`, and pinned the rule with a producer test that asserts category coverage before the rule so an empty fixture cannot pass. The terminal report, which has no heading, prints the subject itself. Locate a finding by its subject field; never by a substring of its prose. See the archived record: [REQ-588](../../../../do-work/archive/UR-124/REQ-588-make-each-verify-finding-row-read-as-one-warning-line.md#lessons-learned).
++- [family: live-queue-fixture-drift] REQ-174 (restored by REQ-185, 2026-09-05): **a browser probe that asserts on the window the chart is drawn at must pin `timeline.now`, the range, and its rows in its load handler.** Built from the live queue, the range reaches now only while a row is open, so a drained checkout fails the probe's own guards days after its last completion — and three consecutive `capture-request` runs were enough to flip the step-forward arrow's regime under it. `timelineFixedFixturePayloadScript` is the fixture, and three of its numbers are load-bearing: `rangeStart` more than thirty days before now, the 2% bound padding narrower than a seven-day screenful, and an empty `projection.queueEnd`. Same failure family as REQ-171's prose-window fixture. See the archived record: [REQ-174](../../../../do-work/archive/UR-037/REQ-174-fix-timeline-browser-tests-to-fixed-fixtures.md#lessons-learned).
+diff --git a/.claude/skills/do-work-board/tools/queue-kanban/timeline_browser_probe_test.go b/.claude/skills/do-work-board/tools/queue-kanban/timeline_browser_probe_test.go
+index 0a983e8..9d95b9d 100644
+--- a/.claude/skills/do-work-board/tools/queue-kanban/timeline_browser_probe_test.go
++++ b/.claude/skills/do-work-board/tools/queue-kanban/timeline_browser_probe_test.go
+@@ -1768,6 +1768,75 @@ window.addEventListener("load", function () {
+ 	}
+ }
+ 
++// A fixed board for the trailing-window and landing probes. Both used to build
++// their board from this repository's own queue with the wall clock as now, and
++// the assertions' preconditions (a range reaching now, thirty days of history,
++// a step past the data) then held only while something in the queue was open —
++// a drained checkout failed them a few days after its last completion. This
++// payload pins every instant the two cases read: a completed REQ at the start of
++// the range, a REQ still running at the end, and a now the range reaches.
++//
++// Three of its numbers are load-bearing, and a guard in one of the probes fires
++// if any of them moves:
++//   - rangeStart is more than thirty days before now (91.5 days here), or the
++//     30-day chip would be clipped and the trailing probe's span guard fails;
++//   - the 2% bound padding (1.83 days here) is narrower than the seven-day
++//     screenful, so the step forward from Last 7 days is a refused partial step
++//     and the landing probe's clause (3) is pinned to its refusal branch;
++//   - projection.queueEnd stays empty, or renderTimelineView would extend the
++//     bound past now and the trailing anchor would no longer be now.
++const timelineFixedFixturePayloadScript = `
++  var payload = window.queueKanbanBoardData;
++  payload.requests["REQ-FIXED-DONE"] = {
++    id: "REQ-FIXED-DONE",
++    title: "Completed at the start of the fixed range",
++    status: "completed",
++    domain: "backend",
++    route: "A",
++    userRequestId: ""
++  };
++  payload.requests["REQ-FIXED-OPEN"] = {
++    id: "REQ-FIXED-OPEN",
++    title: "Still running at the fixed now",
++    status: "claimed",
++    domain: "frontend",
++    route: "A",
++    userRequestId: ""
++  };
++  payload.timeline = {
++    rows: [{
++      id: "REQ-FIXED-OPEN",
++      createdTime: "2026-08-20T00:00:00Z",
++      claimedTime: "2026-08-21T00:00:00Z",
++      completedTime: "",
++      waitMinutes: 1440,
++      waitOpen: false,
++      hasWork: true,
++      workMinutes: 15120,
++      workOpen: true
++    }, {
++      id: "REQ-FIXED-DONE",
++      createdTime: "2026-06-01T00:00:00Z",
++      claimedTime: "2026-06-02T00:00:00Z",
++      completedTime: "2026-06-03T00:00:00Z",
++      waitMinutes: 1440,
++      waitOpen: false,
++      hasWork: true,
++      workMinutes: 1440,
++      workOpen: false
++    }],
++    rangeStart: "2026-06-01T00:00:00Z",
++    rangeEnd: "2026-08-31T12:00:00Z",
++    now: "2026-08-31T12:00:00Z",
++    projection: {
++      rows: [], excluded: [], queueEnd: "", chainStart: "",
++      windowSize: 0, windowSamples: 0, trivialSamples: 0, normalSamples: 0,
++      trivialMinutes: 0, normalMinutes: 0, minimumSamples: 0,
++      confident: false, declinedReason: "No pending work."
++    }
++  };
++`
++
+ // WHAT THE PERIOD TOOLBAR OFFERS, and where one of its chips lands.
+ //
+ // The controls used to be calendar periods — Day, Week, Month — each setting the
+@@ -1826,12 +1895,12 @@ function windowState(label) {
+     chips: chipInventory()
+   };
+ }
+-window.addEventListener("load", function () {
++window.addEventListener("load", function () {` + timelineFixedFixturePayloadScript + `
+   setTimeout(function () {
+     document.querySelector('[data-view-target="timeline"]').click();
+     setTimeout(function () {
+       var probe = {};
+-      probe.boardNowMs = Date.parse(((window.queueKanbanBoardData || {}).timeline || {}).now);
++      probe.boardNowMs = Date.parse(payload.timeline.now);
+       // The view opens on the payload's whole range, which is the premise the Go
+       // side checks the 30-day case against.
+       probe.opened = windowState("opened");
+@@ -2030,7 +2099,7 @@ function toolbarState(label) {
+     disabled: disabled
+   };
+ }
+-window.addEventListener("load", function () {
++window.addEventListener("load", function () {` + timelineFixedFixturePayloadScript + `
+   setTimeout(function () {
+     document.querySelector('[data-view-target="timeline"]').click();
+     setTimeout(function () {
+@@ -2040,8 +2109,9 @@ window.addEventListener("load", function () {
+       probe.afterNow = toolbarState("afterNow");
+       document.getElementById("timeline-zoom-in").click();
+       probe.afterNowThenZoomIn = toolbarState("afterNowThenZoomIn");
+-      // A trailing seven days, then one step forward. Which regime that step is in
+-      // depends on the live queue — see the Go side's clause (3).
++      // A trailing seven days, then one step forward. On the fixed payload the
++      // screenful past now is only the bound padding, so the arrow must refuse —
++      // the Go side's clause (3) reads the arrow's own verdict either way.
+       document.querySelector('[data-timeline-period="7"]').click();
+       probe.trailingSevenDays = toolbarState("trailingSevenDays");
+       document.getElementById("timeline-period-next").click();
+@@ -2054,7 +2124,7 @@ window.addEventListener("load", function () {
+       // Fit all with a filter on. The search box is the shared filter every view
+       // reads, so this needs no timeline-specific plumbing.
+       var search = document.getElementById("filter-search");
+-      search.value = "REQ-164";
++      search.value = "REQ-FIXED-DONE";
+       search.dispatchEvent(new Event("input", { bubbles: true }));
+       settleUntil(function () {
+         var summary = document.getElementById("timeline-summary").textContent || "";
+@@ -2188,17 +2258,19 @@ window.addEventListener("load", function () {
+ 
+ 	// (3) A step past everything drawn does not happen, and says so first.
+ 	//
+-	// WHICH REGIME THE LAST SEVEN DAYS ARE IN IS DATA, NOT A CONSTANT, and
+-	// asserting one of them here is what made capturing three REQs fail this test.
+ 	// A trailing window ends at now, so the screenful after it is entirely in the
+-	// future: on a drained queue that is only the cosmetic bound padding and the
+-	// arrow must refuse, while a forecast reaching past it — which one ordinary
+-	// `capture-request` is enough to produce — fills it with real projected bars
+-	// and the arrow is right to be enabled. So the arrow's own verdict is READ and
+-	// the press is checked against it, which is the contract in both regimes: it
+-	// never lands the reader on an empty chart, and whatever it is about to do it
+-	// says first. The refusal branch is then exercised deterministically under a
+-	// filter in (6) below, where the live queue cannot move the answer.
++	// future. Which regime that puts the arrow in depends on the payload: with no
++	// forecast past now that screenful is only the cosmetic bound padding and the
++	// arrow must refuse, while a forecast reaching past it fills it with real
++	// projected bars and the arrow is right to be enabled. Asserting one regime
++	// against the live queue is what made capturing three REQs fail this test;
++	// the fixed payload above (timelineFixedFixturePayloadScript) now pins the
++	// refusal regime, so the enabled branch below is not reachable on this board.
++	// It stays because the contract is the same in both regimes and is stated
++	// here as one: the arrow's own verdict is READ and the press is checked
++	// against it — it never lands the reader on an empty chart, and whatever it
++	// is about to do it says first. The refusal is exercised a second time under
++	// a filter in (6) below, on a window this test builds.
+ 	if landingResult.TrailingSevenDays.Disabled["timeline-period-next"] {
+ 		if landingResult.AfterStepFromTrailingSevenDays.Readout != landingResult.TrailingSevenDays.Readout {
+ 			t.Errorf("the step-forward arrow reported itself disabled on the last seven days (%s) "+
+-- 
+2.50.1 (Apple Git-155)
+

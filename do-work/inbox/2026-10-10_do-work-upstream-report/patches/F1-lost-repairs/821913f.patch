@@ -1,0 +1,54 @@
+From 821913fe72f655ce1b49ec97c03e5cadf6c25b33 Mon Sep 17 00:00:00 2001
+From: t2 <t2@example.invalid>
+Date: Sat, 5 Sep 2026 22:41:23 +0300
+Subject: [PATCH] [REQ-184] Restore REQ-172's rationale for the contrast
+ probe's animation wait (Route A)
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Implements: do-work/working/REQ-184-restore-contrast-probe-theme-transition-wait.md
+
+The wait itself was never reverted. a73c3e4 kept REQ-172's
+Promise.all(card.getAnimations().map(a => a.finished)) verbatim, in the same position
+between the device-metrics override and the style measurement, and dropped only the two
+comment lines above it.
+
+Restored anyway rather than closed as a no-op. An await with no stated reason reads as
+defensive boilerplate; it is actually the difference between measuring the settled palette
+and measuring a colour mid-transition, which fails intermittently rather than cleanly. An
+unexplained line is the one a future cleanup deletes as redundant — and this UR exists
+because things got deleted.
+
+No mutation proof, deliberately: the change is a comment, and the only available substitute
+— delete the wait and watch it fail — RACES the transition, so it fails intermittently. A
+single run either way would misreport. Recording a nondeterministic mutation as red-green
+evidence would be worse than recording none.
+
+Focused browser test green in 1.53s across both schemes and all three widths.
+
+Worth noting for any later audit of a73c3e4: it kept the executable line and dropped the
+comment, so comment-only losses are invisible to survival checks based on behavior or test
+names.
+
+Co-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com>
+---
+ .../tools/queue-kanban/completion_contrast_browser_test.go      | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/.claude/skills/do-work-board/tools/queue-kanban/completion_contrast_browser_test.go b/.claude/skills/do-work-board/tools/queue-kanban/completion_contrast_browser_test.go
+index 96efa3b..6ae764c 100644
+--- a/.claude/skills/do-work-board/tools/queue-kanban/completion_contrast_browser_test.go
++++ b/.claude/skills/do-work-board/tools/queue-kanban/completion_contrast_browser_test.go
+@@ -52,6 +52,8 @@ func TestBrowserBehaviorCompletionCompanionsKeepReadableContrast(t *testing.T) {
+ 				session.callDevToolsMethod(t, "Emulation.setDeviceMetricsOverride", map[string]any{
+ 					"width": width, "height": 900, "deviceScaleFactor": 1, "mobile": false,
+ 				}, true)
++				// Theme emulation starts the card's background transition. Wait on the
++				// browser's animation instead of measuring an intermediate palette.
+ 				session.evaluateInPage(t, `(function () {
+   var card = document.querySelector('.req-card[data-status="completed"]');
+   return Promise.all(card.getAnimations().map(function (animation) { return animation.finished; }));
+-- 
+2.50.1 (Apple Git-155)
+

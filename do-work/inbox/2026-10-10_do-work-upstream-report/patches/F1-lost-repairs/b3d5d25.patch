@@ -1,0 +1,176 @@
+From b3d5d2568a224371f30ab5b9f2cc6d50bf558584 Mon Sep 17 00:00:00 2001
+From: t2 <t2@example.invalid>
+Date: Sat, 5 Sep 2026 22:33:57 +0300
+Subject: [PATCH] Re-apply REQ-179's regression test, lost from its own commit
+ by 6cb0b1e
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+REQ-179 is archived as completed, but its commit 768c6e2 contains only the
+archive move and the checkpoint — the code change it describes is not in it.
+
+Suite update 6cb0b1e landed between the edit and the finalize. A suite update
+writes files to disk, so it overwrote the working-tree generate_test.go while
+REQ-179's addition was still uncommitted. By the time finalization staged its
+declared commit_paths, that path was byte-identical to HEAD and produced no
+diff. Nothing failed: the focused test and the whole maintainer gate had already
+run green against the pre-overwrite tree, and finalization has no reason to
+suspect a declared path that yields no change.
+
+Re-applies the same test from 2ef1246, verbatim, with REQ-179's header. Green in
+0.6s. The other two REQs in this run were checked and are unaffected: c64b1ad and
+d39e527 both carry their payloads.
+
+Recorded as D-053.
+
+Co-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com>
+---
+ .../tools/queue-kanban/generate_test.go       | 131 ++++++++++++++++++
+ 1 file changed, 131 insertions(+)
+
+diff --git a/.claude/skills/do-work-board/tools/queue-kanban/generate_test.go b/.claude/skills/do-work-board/tools/queue-kanban/generate_test.go
+index d80e94d..16ee296 100644
+--- a/.claude/skills/do-work-board/tools/queue-kanban/generate_test.go
++++ b/.claude/skills/do-work-board/tools/queue-kanban/generate_test.go
+@@ -662,6 +662,137 @@ func TestGenerateRefusesNonRegularOutputTargetsWithoutMutation(t *testing.T) {
+ 	}
+ }
+ 
++// TestGenerateRefusesUnsupportedTargetsBeforeChangingOutputs is REQ-163's
++// preservation regression, restored by REQ-179 after suite update a73c3e4 dropped
++// it. The guard it covers survived the update — publishStaticSiteOutputs still
++// preflights all three targets and refuses a non-regular one before it creates
++// the private staging directory — but nothing tested it, which is exactly how a
++// guard gets dropped by the update after next. It asserts on the refused PATH
++// rather than the message text, so it holds across either wording.
++
++func TestGenerateRefusesUnsupportedTargetsBeforeChangingOutputs(t *testing.T) {
++	targetNames := []string{boardDataJsFilename, boardMarkdownJsFilename, "index.html"}
++	testCases := []struct {
++		name       string
++		targetName string
++		targetMode string
++	}{
++		{name: "board data directory", targetName: boardDataJsFilename, targetMode: "directory"},
++		{name: "board markdown directory", targetName: boardMarkdownJsFilename, targetMode: "directory"},
++		{name: "index directory", targetName: "index.html", targetMode: "directory"},
++		{name: "index symlink", targetName: "index.html", targetMode: "symlink"},
++	}
++
++	for _, testCase := range testCases {
++		t.Run(testCase.name, func(t *testing.T) {
++			outputDirectory := t.TempDir()
++			originalContents := map[string]string{
++				boardDataJsFilename:     "original board data\n",
++				boardMarkdownJsFilename: "original board markdown\n",
++				"index.html":            "original index\n",
++			}
++			for _, targetName := range targetNames {
++				if targetName == testCase.targetName {
++					continue
++				}
++				if writeError := os.WriteFile(filepath.Join(outputDirectory, targetName), []byte(originalContents[targetName]), 0o644); writeError != nil {
++					t.Fatalf("write original target %s: %v", targetName, writeError)
++				}
++			}
++
++			unsupportedTargetPath := filepath.Join(outputDirectory, testCase.targetName)
++			const sentinelContents = "unsupported target must survive\n"
++			var sentinelPath string
++			if testCase.targetMode == "directory" {
++				if mkdirError := os.Mkdir(unsupportedTargetPath, 0o755); mkdirError != nil {
++					t.Fatalf("create directory target: %v", mkdirError)
++				}
++				sentinelPath = filepath.Join(unsupportedTargetPath, "sentinel.txt")
++				if writeError := os.WriteFile(sentinelPath, []byte(sentinelContents), 0o644); writeError != nil {
++					t.Fatalf("write directory sentinel: %v", writeError)
++				}
++			} else {
++				sentinelPath = filepath.Join(t.TempDir(), "link-destination.txt")
++				if writeError := os.WriteFile(sentinelPath, []byte(sentinelContents), 0o644); writeError != nil {
++					t.Fatalf("write symlink destination: %v", writeError)
++				}
++				if symlinkError := os.Symlink(sentinelPath, unsupportedTargetPath); symlinkError != nil {
++					t.Fatalf("create symlink target: %v", symlinkError)
++				}
++			}
++
++			unrelatedPath := filepath.Join(outputDirectory, "keep-me.txt")
++			const unrelatedContents = "unrelated output stays untouched\n"
++			if writeError := os.WriteFile(unrelatedPath, []byte(unrelatedContents), 0o644); writeError != nil {
++				t.Fatalf("write unrelated output fixture: %v", writeError)
++			}
++
++			board := publicationTestBoard(
++				"New title",
++				"## What\n\nNew body.\n",
++				"new-project",
++				time.Date(2026, 8, 30, 12, 0, 0, 0, time.UTC),
++			)
++			generationError := generateStaticSite(outputDirectory, board)
++			if generationError == nil {
++				t.Error("generation error = nil, want unsupported-target refusal")
++			} else if !strings.Contains(generationError.Error(), unsupportedTargetPath) {
++				t.Errorf("generation error = %q, want unsupported target path %q", generationError, unsupportedTargetPath)
++			}
++
++			targetInfo, statError := os.Lstat(unsupportedTargetPath)
++			if statError != nil {
++				t.Errorf("inspect unsupported target after refusal: %v", statError)
++			} else if testCase.targetMode == "directory" && !targetInfo.IsDir() {
++				t.Errorf("unsupported target mode = %v, want directory", targetInfo.Mode())
++			} else if testCase.targetMode == "symlink" && targetInfo.Mode()&os.ModeSymlink == 0 {
++				t.Errorf("unsupported target mode = %v, want symlink", targetInfo.Mode())
++			}
++			if testCase.targetMode == "symlink" {
++				linkDestination, readlinkError := os.Readlink(unsupportedTargetPath)
++				if readlinkError != nil {
++					t.Errorf("read symlink target after refusal: %v", readlinkError)
++				} else if linkDestination != sentinelPath {
++					t.Errorf("symlink destination = %q, want %q", linkDestination, sentinelPath)
++				}
++			}
++			sentinelBytes, sentinelReadError := os.ReadFile(sentinelPath)
++			if sentinelReadError != nil {
++				t.Errorf("read unsupported-target sentinel after refusal: %v", sentinelReadError)
++			} else if string(sentinelBytes) != sentinelContents {
++				t.Errorf("unsupported-target sentinel changed: got %q, want %q", sentinelBytes, sentinelContents)
++			}
++
++			for _, targetName := range targetNames {
++				if targetName == testCase.targetName {
++					continue
++				}
++				targetBytes, readError := os.ReadFile(filepath.Join(outputDirectory, targetName))
++				if readError != nil {
++					t.Errorf("read sibling target %s after refusal: %v", targetName, readError)
++				} else if string(targetBytes) != originalContents[targetName] {
++					t.Errorf("sibling target %s changed after refusal", targetName)
++				}
++			}
++			unrelatedBytes, unrelatedReadError := os.ReadFile(unrelatedPath)
++			if unrelatedReadError != nil {
++				t.Errorf("read unrelated output after refusal: %v", unrelatedReadError)
++			} else if string(unrelatedBytes) != unrelatedContents {
++				t.Errorf("unrelated output changed: got %q, want %q", unrelatedBytes, unrelatedContents)
++			}
++			outputEntries, readDirectoryError := os.ReadDir(outputDirectory)
++			if readDirectoryError != nil {
++				t.Fatalf("read output directory after refusal: %v", readDirectoryError)
++			}
++			for _, outputEntry := range outputEntries {
++				if strings.HasPrefix(outputEntry.Name(), ".queue-kanban-static-") {
++					t.Errorf("private publication residue remains: %s", outputEntry.Name())
++				}
++			}
++		})
++	}
++}
++
+ func TestGeneratePublicationFailureRestoresThePreviousBundle(t *testing.T) {
+ 	outputDirectory := t.TempDir()
+ 	oldBoard := publicationTestBoard(
+-- 
+2.50.1 (Apple Git-155)
+

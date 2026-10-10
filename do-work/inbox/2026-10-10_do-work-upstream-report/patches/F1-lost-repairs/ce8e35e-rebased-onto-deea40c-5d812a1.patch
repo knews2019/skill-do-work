@@ -1,0 +1,193 @@
+diff --git a/.claude/skills/do-work-board/tools/queue-kanban/timeline_browser_probe_test.go b/.claude/skills/do-work-board/tools/queue-kanban/timeline_browser_probe_test.go
+index 3678cd6..3ccfc3f 100644
+--- a/.claude/skills/do-work-board/tools/queue-kanban/timeline_browser_probe_test.go
++++ b/.claude/skills/do-work-board/tools/queue-kanban/timeline_browser_probe_test.go
+@@ -1793,6 +1793,14 @@ window.addEventListener("load", function () {
+ //     and the landing probe's clause (3) is pinned to its refusal branch;
+ //   - projection.queueEnd stays empty, or renderTimelineView would extend the
+ //     bound past now and the trailing anchor would no longer be now.
++//
++// timelineProbeInstant renders a probe's epoch-millisecond window endpoint the way
++// the board's own range readout does, so a failure message names an instant the
++// reader can match against the page instead of a bare millisecond count.
++func timelineProbeInstant(epochMilliseconds float64) string {
++	return time.UnixMilli(int64(epochMilliseconds)).UTC().Format("2006-01-02 15:04") + " UTC"
++}
++
+ const timelineFixedFixturePayloadScript = `
+   var payload = window.queueKanbanBoardData;
+   payload.requests["REQ-FIXED-DONE"] = {
+@@ -2153,6 +2161,16 @@ window.addEventListener("load", function () {` + timelineFixedFixturePayloadScri
+       probe.trailingSevenDays = toolbarState("trailingSevenDays");
+       document.getElementById("timeline-period-next").click();
+       probe.afterStepFromTrailingSevenDays = toolbarState("afterStepFromTrailingSevenDays");
++      // The same trailing seven days, stepped BACKWARD and then forward again. The
++      // refused press above left the window exactly where it was, so this starts
++      // from the trailing window too. On the fixed payload the seven days before it
++      // still hold the open row, so the backward step lands on drawn data and the
++      // forward step is the inverse that returns to where it started — the enabled
++      // half of the contract clause (3) states, which no click here used to reach.
++      document.getElementById("timeline-period-prev").click();
++      probe.afterPrevFromTrailingSevenDays = toolbarState("afterPrevFromTrailingSevenDays");
++      document.getElementById("timeline-period-next").click();
++      probe.afterNextBackToTrailingSevenDays = toolbarState("afterNextBackToTrailingSevenDays");
+       // All days is the payload's whole range — the outer bound the Go side's
+       // clause (6) checks its premise against. Taken unfiltered because the bounds
+       // come from the payload's range and a filter does not move them.
+@@ -2240,16 +2258,18 @@ window.addEventListener("load", function () {` + timelineFixedFixturePayloadScri
+ 		Disabled      map[string]bool `json:"disabled"`
+ 	}
+ 	var landingResult struct {
+-		Fitted                         toolbarState `json:"fitted"`
+-		AfterNow                       toolbarState `json:"afterNow"`
+-		AfterNowThenZoomIn             toolbarState `json:"afterNowThenZoomIn"`
+-		TrailingSevenDays              toolbarState `json:"trailingSevenDays"`
+-		AfterStepFromTrailingSevenDays toolbarState `json:"afterStepFromTrailingSevenDays"`
+-		AllDays                        toolbarState `json:"allDays"`
+-		FilteredFit                    toolbarState `json:"filteredFit"`
+-		FilteredSummary                string       `json:"filteredSummary"`
+-		NarrowedAtTheDrawnEdge         toolbarState `json:"narrowedAtTheDrawnEdge"`
+-		NarrowedThenStep               toolbarState `json:"narrowedThenStep"`
++		Fitted                           toolbarState `json:"fitted"`
++		AfterNow                         toolbarState `json:"afterNow"`
++		AfterNowThenZoomIn               toolbarState `json:"afterNowThenZoomIn"`
++		TrailingSevenDays                toolbarState `json:"trailingSevenDays"`
++		AfterStepFromTrailingSevenDays   toolbarState `json:"afterStepFromTrailingSevenDays"`
++		AfterPrevFromTrailingSevenDays   toolbarState `json:"afterPrevFromTrailingSevenDays"`
++		AfterNextBackToTrailingSevenDays toolbarState `json:"afterNextBackToTrailingSevenDays"`
++		AllDays                          toolbarState `json:"allDays"`
++		FilteredFit                      toolbarState `json:"filteredFit"`
++		FilteredSummary                  string       `json:"filteredSummary"`
++		NarrowedAtTheDrawnEdge           toolbarState `json:"narrowedAtTheDrawnEdge"`
++		NarrowedThenStep                 toolbarState `json:"narrowedThenStep"`
+ 	}
+ 	if decodeError := json.Unmarshal(probeOutput, &landingResult); decodeError != nil {
+ 		t.Fatalf("decode timeline landing behavior: %v (output %q)", decodeError, probeOutput)
+@@ -2258,6 +2278,7 @@ window.addEventListener("load", function () {` + timelineFixedFixturePayloadScri
+ 	states := []toolbarState{
+ 		landingResult.Fitted, landingResult.AfterNow, landingResult.AfterNowThenZoomIn,
+ 		landingResult.TrailingSevenDays, landingResult.AfterStepFromTrailingSevenDays,
++		landingResult.AfterPrevFromTrailingSevenDays, landingResult.AfterNextBackToTrailingSevenDays,
+ 		landingResult.AllDays, landingResult.FilteredFit,
+ 		landingResult.NarrowedAtTheDrawnEdge, landingResult.NarrowedThenStep,
+ 	}
+@@ -2296,35 +2317,90 @@ window.addEventListener("load", function () {` + timelineFixedFixturePayloadScri
+ 	// (3) A step past everything drawn does not happen, and says so first.
+ 	//
+ 	// A trailing window ends at now, so the screenful after it is entirely in the
+-	// future. Which regime that puts the arrow in depends on the payload: with no
+-	// forecast past now that screenful is only the cosmetic bound padding and the
+-	// arrow must refuse, while a forecast reaching past it fills it with real
+-	// projected bars and the arrow is right to be enabled. Asserting one regime
+-	// against the live queue is what made capturing three REQs fail this test;
+-	// the fixed payload above (timelineFixedFixturePayloadScript) now pins the
+-	// refusal regime, so the enabled branch below is not reachable on this board.
+-	// It stays because the contract is the same in both regimes and is stated
+-	// here as one: the arrow's own verdict is READ and the press is checked
+-	// against it — it never lands the reader on an empty chart, and whatever it
+-	// is about to do it says first. The refusal is exercised a second time under
+-	// a filter in (6) below, on a window this test builds.
+-	if landingResult.TrailingSevenDays.Disabled["timeline-period-next"] {
+-		if landingResult.AfterStepFromTrailingSevenDays.Readout != landingResult.TrailingSevenDays.Readout {
+-			t.Errorf("the step-forward arrow reported itself disabled on the last seven days (%s) "+
+-				"and the press moved the window to %s anyway", landingResult.TrailingSevenDays.Readout,
+-				landingResult.AfterStepFromTrailingSevenDays.Readout)
+-		}
+-	} else {
+-		if landingResult.AfterStepFromTrailingSevenDays.Readout == landingResult.TrailingSevenDays.Readout {
+-			t.Errorf("the step-forward arrow reported itself enabled on the last seven days (%s) "+
+-				"and the press did not move the window", landingResult.TrailingSevenDays.Readout)
+-		}
+-		if landingResult.AfterStepFromTrailingSevenDays.DrawnSegments == 0 {
+-			t.Errorf("the step-forward arrow was enabled on the last seven days (%s) and the press "+
+-				"landed on %s with nothing drawn in it — a step past everything drawn",
+-				landingResult.TrailingSevenDays.Readout,
+-				landingResult.AfterStepFromTrailingSevenDays.Readout)
+-		}
++	// future, and on the fixed payload that screenful is only the cosmetic bound
++	// padding, so the arrow must refuse. That regime is PINNED by
++	// timelineFixedFixturePayloadScript rather than read off the live queue —
++	// asserting a regime against the live queue is what made capturing three REQs
++	// fail this test (REQ-174). Because it is pinned, the refusal is asserted
++	// outright instead of being one arm of a conditional: a conditional whose other
++	// arm this board can never reach is not coverage, it is a branch that reports
++	// success for a button that never worked (REQ-177). The successful step is
++	// exercised for real in (3b) below, and the refusal a second time under a
++	// filter in (6).
++	if !landingResult.TrailingSevenDays.Disabled["timeline-period-next"] {
++		t.Errorf("the step-forward arrow was enabled on the last seven days (%s), but the fixed "+
++			"payload puts only the cosmetic bound padding past now — it has no forecast to step onto",
++			landingResult.TrailingSevenDays.Readout)
++	}
++	if landingResult.AfterStepFromTrailingSevenDays.Readout != landingResult.TrailingSevenDays.Readout {
++		t.Errorf("the step-forward arrow reported itself disabled on the last seven days (%s) "+
++			"and the press moved the window to %s anyway", landingResult.TrailingSevenDays.Readout,
++			landingResult.AfterStepFromTrailingSevenDays.Readout)
++	}
++
++	// (3b) A step that CAN happen does happen, moves exactly one screenful, and
++	// comes back.
++	//
++	// The refusal above proves the arrows say no when they should. It cannot prove
++	// they ever say yes: two permanently disabled buttons satisfy every assertion
++	// in (3) and (6), and did — both strict suites passed with the availability
++	// expression forced to false. So the enabled half is asserted here on presses
++	// that must succeed. Previous from the trailing window lands on the seven days
++	// before it, which the fixed payload fills with the open row; Next is its
++	// inverse and must return to the exact window it started from. Endpoints are
++	// compared as instants, not as readout text, so a step that moved by the wrong
++	// amount cannot pass by rendering the same string.
++	const sevenDaysMs = 7 * 24 * 60 * 60 * 1000
++	trailingStartMs := *landingResult.TrailingSevenDays.StartMs
++	trailingEndMs := *landingResult.TrailingSevenDays.EndMs
++
++	if landingResult.TrailingSevenDays.Disabled["timeline-period-prev"] {
++		t.Fatalf("the step-back arrow reported itself disabled on the last seven days (%s), so the "+
++			"successful-step assertions below have nothing to press; the fixed payload has %.0f days "+
++			"of range before that window", landingResult.TrailingSevenDays.Readout,
++			(trailingStartMs-*landingResult.AllDays.StartMs)/(24*60*60*1000))
++	}
++	if wantStartMs := trailingStartMs - sevenDaysMs; *landingResult.AfterPrevFromTrailingSevenDays.StartMs != wantStartMs {
++		t.Errorf("stepping back from the last seven days (%s) started the window at %s, want %s — "+
++			"one screenful earlier", landingResult.TrailingSevenDays.Readout,
++			timelineProbeInstant(*landingResult.AfterPrevFromTrailingSevenDays.StartMs),
++			timelineProbeInstant(wantStartMs))
++	}
++	if wantEndMs := trailingEndMs - sevenDaysMs; *landingResult.AfterPrevFromTrailingSevenDays.EndMs != wantEndMs {
++		t.Errorf("stepping back from the last seven days (%s) ended the window at %s, want %s — "+
++			"one screenful earlier", landingResult.TrailingSevenDays.Readout,
++			timelineProbeInstant(*landingResult.AfterPrevFromTrailingSevenDays.EndMs),
++			timelineProbeInstant(wantEndMs))
++	}
++	if *landingResult.AfterPrevFromTrailingSevenDays.SpanMs != *landingResult.TrailingSevenDays.SpanMs {
++		t.Errorf("stepping back changed the window's WIDTH from %.2f to %.2f days — a step walks the "+
++			"window, it does not resize it",
++			*landingResult.TrailingSevenDays.SpanMs/(24*60*60*1000),
++			*landingResult.AfterPrevFromTrailingSevenDays.SpanMs/(24*60*60*1000))
++	}
++	if landingResult.AfterPrevFromTrailingSevenDays.DrawnSegments == 0 {
++		t.Errorf("stepping back from the last seven days landed on %s with nothing drawn in it — the "+
++			"fixed payload's open row spans that window, so an empty chart means the step went "+
++			"somewhere else", landingResult.AfterPrevFromTrailingSevenDays.Readout)
++	}
++
++	if landingResult.AfterPrevFromTrailingSevenDays.Disabled["timeline-period-next"] {
++		t.Fatalf("the step-forward arrow reported itself disabled at %s, one screenful before the "+
++			"trailing window it just came from — a step back must always leave a step forward "+
++			"available", landingResult.AfterPrevFromTrailingSevenDays.Readout)
++	}
++	if *landingResult.AfterNextBackToTrailingSevenDays.StartMs != trailingStartMs ||
++		*landingResult.AfterNextBackToTrailingSevenDays.EndMs != trailingEndMs {
++		t.Errorf("back and forward did not return to the window they started from: %s → %s → %s",
++			landingResult.TrailingSevenDays.Readout,
++			landingResult.AfterPrevFromTrailingSevenDays.Readout,
++			landingResult.AfterNextBackToTrailingSevenDays.Readout)
++	}
++	if landingResult.AfterNextBackToTrailingSevenDays.DrawnSegments == 0 {
++		t.Errorf("stepping forward returned to %s with nothing drawn in it, though the same window "+
++			"drew %d segments a moment earlier",
++			landingResult.AfterNextBackToTrailingSevenDays.Readout,
++			landingResult.TrailingSevenDays.DrawnSegments)
+ 	}
+ 
+ 	// (4) Fit all fits WHAT IS ON SCREEN. The fitted window under a one-row filter

@@ -1,0 +1,191 @@
+From bed3763fbea89160b94ed0e3ed185cc9d6ba9e22 Mon Sep 17 00:00:00 2001
+From: t2 <t2@example.invalid>
+Date: Sat, 5 Sep 2026 22:26:49 +0300
+Subject: [PATCH] Re-apply the legacy P-scale priority aliases suite update
+ 6cb0b1e reverted
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+do-work suite update 6cb0b1e (v0.303.8) overwrote the two authorities that
+own the Schema Read Contract and the contract table that documents it,
+wholesale reverting bca815b. The fourteen do-validate-feedback REQs of
+UR-011..UR-015 — which ranked this queue with a finding's severity grade
+(`priority: P2`/`P3`/`P4`) before now/next/later existed — went back to
+spending a permanent data warning each, putting fourteen lines of noise at
+the top of the board in front of the one warning that would matter.
+
+This is the same restore as bca815b, verbatim: the P-scale as read-only
+legacy aliases collapsing onto the three canonical bands, in do-work-cli's
+schemanormalization and queue-kanban's parser, restated in
+work-reference.md's contract table. Nothing writes them back — capture
+still emits only the canonical three, and IsCanonicalAuthoringValue stays
+false so capture-files keeps refusing to author one.
+
+Verified against the live repository through buildBoard, the seam a real
+board read goes through: 0 data warnings, down from 14.
+
+Second time a suite update has reverted this repair; recorded in
+docs/imprintwright-v2/DECISIONS.md alongside D-051.
+
+Co-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com>
+---
+ .../do-work-board/tools/queue-kanban/model.go | 12 +++-
+ .../tools/queue-kanban/model_test.go          | 72 +++++++++++++++++++
+ .../schema_normalization.go                   | 10 ++-
+ .../schema_normalization_test.go              |  5 ++
+ 4 files changed, 95 insertions(+), 4 deletions(-)
+
+diff --git a/.claude/skills/do-work-board/tools/queue-kanban/model.go b/.claude/skills/do-work-board/tools/queue-kanban/model.go
+index abf0963..1629aaa 100644
+--- a/.claude/skills/do-work-board/tools/queue-kanban/model.go
++++ b/.claude/skills/do-work-board/tools/queue-kanban/model.go
+@@ -1195,8 +1195,16 @@ var schemaReadContractFields = map[string]schemaFieldContract{
+ 	},
+ 	"priority": {
+ 		canonicalValues: []string{requestPriorityNow, requestPriorityNext, requestPriorityLater},
+-		aliases:         map[string]string{},
+-		defaultValue:    requestPriorityNext,
++		// P-scale spellings are the pre-vocabulary way this queue ranked work: the
++		// do-validate-feedback REQs of UR-011..UR-015 wrote a finding's severity
++		// grade into this field before now/next/later existed. Read-only legacy
++		// aliases collapsing onto the three canonical bands, so those archived REQs
++		// stay valid unchanged instead of each spending a permanent data warning on
++		// a field no completed REQ is read for. Nothing writes them back — capture
++		// emits only the canonical three. Same rationale as effort_estimate's
++		// trivial/normal pair below.
++		aliases:      map[string]string{"p0": requestPriorityNow, "p1": requestPriorityNow, "p2": requestPriorityNext, "p3": requestPriorityLater, "p4": requestPriorityLater},
++		defaultValue: requestPriorityNext,
+ 	},
+ 	"effort_estimate": {
+ 		// Deliberately a closed two-value enum — a triage bit about SIZE, not an
+diff --git a/.claude/skills/do-work-board/tools/queue-kanban/model_test.go b/.claude/skills/do-work-board/tools/queue-kanban/model_test.go
+index 769a7f2..0ff93f7 100644
+--- a/.claude/skills/do-work-board/tools/queue-kanban/model_test.go
++++ b/.claude/skills/do-work-board/tools/queue-kanban/model_test.go
+@@ -1134,6 +1134,16 @@ func TestNormalizeSchemaFieldCoversContractAliases(t *testing.T) {
+ 		// impact — no aliases; new prefix-unique vocabulary, case-folded.
+ 		{"impact", "impact-critical", "impact-critical"},
+ 		{"impact", " Impact-Negligible ", "impact-negligible"},
++		// priority — canonical bands plus the read-only legacy P-scale that the
++		// do-validate-feedback REQs of UR-011..UR-015 wrote before now/next/later
++		// existed. Case-folded like every other non-upperCase field.
++		{"priority", "now", "now"},
++		{"priority", " Later ", "later"},
++		{"priority", "P0", "now"},
++		{"priority", "P1", "now"},
++		{"priority", "P2", "next"},
++		{"priority", "p3", "later"},
++		{"priority", " P4 ", "later"},
+ 	}
+ 	for _, testCase := range testCases {
+ 		if got := normalizeSchemaField(testCase.fieldName, testCase.raw); got != testCase.want {
+@@ -1576,6 +1586,68 @@ func TestRecognizedEffortEstimateRaisesNoWarning(t *testing.T) {
+ 	}
+ }
+ 
++// TestLegacyPriorityScaleRaisesNoWarning is the priority half of the same
++// silence guarantee. Before now/next/later existed, the do-validate-feedback REQs
++// of UR-011..UR-015 ranked this queue with a finding's severity grade, and the
++// fourteen archived records still carrying `priority: P2`/`P3`/`P4` each spent a
++// permanent data warning on a field no completed REQ is ever read for — fourteen
++// lines of noise in front of the one warning that would matter. The P-scale is a
++// read-only legacy alias now, and this is where those records are proved to
++// resolve quietly through buildBoard, the seam a real board read goes through.
++func TestLegacyPriorityScaleRaisesNoWarning(t *testing.T) {
++	repoRoot := t.TempDir()
++	queueDir := filepath.Join(repoRoot, "do-work", "queue")
++	if mkdirError := os.MkdirAll(queueDir, 0o755); mkdirError != nil {
++		t.Fatalf("mkdir: %v", mkdirError)
++	}
++	for _, fixture := range []struct {
++		fileName        string
++		requestId       string
++		frontmatterLine string
++		wantPriority    string
++	}{
++		{"REQ-0121-p0.md", "REQ-0121", "priority: P0\n", requestPriorityNow},
++		{"REQ-0122-p1.md", "REQ-0122", "priority: P1\n", requestPriorityNow},
++		{"REQ-0123-p2.md", "REQ-0123", "priority: P2\n", requestPriorityNext},
++		{"REQ-0124-p3.md", "REQ-0124", "priority: P3\n", requestPriorityLater},
++		{"REQ-0125-p4.md", "REQ-0125", "priority: P4\n", requestPriorityLater},
++	} {
++		reqFileContent := "---\nid: " + fixture.requestId +
++			"\ntitle: Fixture\nstatus: pending\n" + fixture.frontmatterLine + "---\nbody\n"
++		if writeError := os.WriteFile(filepath.Join(queueDir, fixture.fileName), []byte(reqFileContent), 0o644); writeError != nil {
++			t.Fatalf("write fixture %s: %v", fixture.fileName, writeError)
++		}
++	}
++
++	board, buildError := buildBoard(repoRoot, time.Now(), 7*24*time.Hour, nil)
++	if buildError != nil {
++		t.Fatalf("buildBoard: %v", buildError)
++	}
++	for _, warningText := range board.Warnings {
++		if strings.Contains(warningText, "priority") {
++			t.Errorf("unexpected priority warning for a legacy P-scale value: %q", warningText)
++		}
++	}
++	for requestId, wantPriority := range map[string]string{
++		"REQ-0121": requestPriorityNow,
++		"REQ-0122": requestPriorityNow,
++		"REQ-0123": requestPriorityNext,
++		"REQ-0124": requestPriorityLater,
++		"REQ-0125": requestPriorityLater,
++	} {
++		ticket := board.RequestsById[requestId]
++		if ticket == nil {
++			t.Fatalf("%s not parsed", requestId)
++		}
++		if ticket.Priority != wantPriority || ticket.PriorityUnrecognized {
++			t.Errorf("%s: Priority = %q, PriorityUnrecognized = %v — want %q, false — "+
++				"the legacy P-scale must still resolve, or every archived REQ predating "+
++				"now/next/later warns forever",
++				requestId, ticket.Priority, ticket.PriorityUnrecognized, wantPriority)
++		}
++	}
++}
++
+ // TestEffortEstimateNeverAffectsColumnPlacement pins the display-only guarantee:
+ // the chip is information for a human's pick, and a trivial REQ buckets exactly
+ // like its unmarked twin.
+diff --git a/.claude/skills/do-work/tools/do-work-cli/internal/schemanormalization/schema_normalization.go b/.claude/skills/do-work/tools/do-work-cli/internal/schemanormalization/schema_normalization.go
+index 40ba41f..0647fce 100644
+--- a/.claude/skills/do-work/tools/do-work-cli/internal/schemanormalization/schema_normalization.go
++++ b/.claude/skills/do-work/tools/do-work-cli/internal/schemanormalization/schema_normalization.go
+@@ -70,8 +70,14 @@ var fieldContracts = map[string]fieldContract{
+ 	},
+ 	"priority": {
+ 		canonicalValues: []string{"now", "next", "later"},
+-		aliasValues:     map[string]string{},
+-		defaultValue:    "next",
++		// P-scale spellings are read-only legacy aliases from the pre-vocabulary
++		// era, when do-validate-feedback REQs ranked the queue with a finding's
++		// severity grade. They collapse onto the three canonical bands so archived
++		// REQs carrying them stay valid unchanged; nothing writes them back, and
++		// IsCanonicalAuthoringValue stays false so capture-files still refuses to
++		// author one. Same rationale as effort_estimate's trivial/normal pair.
++		aliasValues:  map[string]string{"p0": "now", "p1": "now", "p2": "next", "p3": "later", "p4": "later"},
++		defaultValue: "next",
+ 	},
+ 	"effort_estimate": {
+ 		canonicalValues: []string{"effort-mechanical", "effort-substantive"},
+diff --git a/.claude/skills/do-work/tools/do-work-cli/internal/schemanormalization/schema_normalization_test.go b/.claude/skills/do-work/tools/do-work-cli/internal/schemanormalization/schema_normalization_test.go
+index ab10d83..04226b2 100644
+--- a/.claude/skills/do-work/tools/do-work-cli/internal/schemanormalization/schema_normalization_test.go
++++ b/.claude/skills/do-work/tools/do-work-cli/internal/schemanormalization/schema_normalization_test.go
+@@ -28,6 +28,11 @@ func TestNormalizeFieldAppliesAliasesDefaultsAndExactWarnings(t *testing.T) {
+ 		{"priority now", "priority", " now ", "now", true, false, ""},
+ 		{"priority next", "priority", "NEXT", "next", true, false, ""},
+ 		{"priority later", "priority", "later", "later", true, false, ""},
++		{"legacy priority P0", "priority", "P0", "now", true, false, ""},
++		{"legacy priority P1", "priority", "P1", "now", true, false, ""},
++		{"legacy priority P2", "priority", "P2", "next", true, false, ""},
++		{"legacy priority P3", "priority", "P3", "later", true, false, ""},
++		{"legacy priority P4", "priority", " P4 ", "later", true, false, ""},
+ 		{
+ 			"priority invalid", "priority", "urgent", "next", false, true,
+ 			"⚠ priority: 'urgent' not recognized — expected one of [now, next, later]. Treating as 'next'.",
+-- 
+2.50.1 (Apple Git-155)
+

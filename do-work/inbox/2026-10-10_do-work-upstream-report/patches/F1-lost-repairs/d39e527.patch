@@ -1,0 +1,166 @@
+From d39e5274b180fa68943f0e58d9eec4994cd6b445 Mon Sep 17 00:00:00 2001
+From: t2 <t2@example.invalid>
+Date: Sat, 5 Sep 2026 22:32:05 +0300
+Subject: [PATCH] [REQ-180] Restore REQ-164's absent-target preservation case
+ (Route A)
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Implements: do-work/working/REQ-180-restore-http-archive-staging-and-validation.md
+
+Of a 284-line commit, one test branch was the correct restoration.
+
+Superseded: a73c3e4 did not just re-implement REQ-164's staging, it replaced the
+file with an os.Root-confined design that is strictly stronger — private randomized
+O_EXCL staging, non-regular target refusal, and identity-plus-digest re-checks
+immediately before publication, using Link for an absent target and Rename otherwise.
+Re-applying createArchiveStage/publishArchive would have been a downgrade.
+
+Mostly superseded: TestFetchArchiveRefusesUnsafeTargetsUnchanged already covers what
+REQ-164's two per-route refusal tests covered, and proves both routes report "not
+attempted" — stronger than testing them separately.
+
+Clobbered: REQ-164 had RENAMED the preservation test while broadening it from one
+case to two. a73c3e4 restored the narrow pre-REQ-164 body under the old name, so the
+absent-target case — a failed fetch must not CREATE a target that was never there —
+was silently gone.
+
+- Parameterize TestTotalFailurePreservesTheTargetAndLeavesNoScratch over pre-existing
+  and absent targets
+- Leave archive_fetch.go byte-identical to HEAD
+
+Proved by mutation. Disabling validation was not enough: it makes the fetch succeed,
+exercising a different failure. Removing private staging and stage cleanup — the bug
+the assertion actually guards — fails the two cases on different lines, the absent one
+on "a failed fetch created the absent target". Mutations reverted.
+
+Co-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com>
+---
+ .../archivefetch/archive_fetch_test.go        | 107 +++++++++++-------
+ 1 file changed, 67 insertions(+), 40 deletions(-)
+
+diff --git a/.claude/skills/do-work/tools/do-work-cli/internal/archivefetch/archive_fetch_test.go b/.claude/skills/do-work/tools/do-work-cli/internal/archivefetch/archive_fetch_test.go
+index 73c3c56..8056b08 100644
+--- a/.claude/skills/do-work/tools/do-work-cli/internal/archivefetch/archive_fetch_test.go
++++ b/.claude/skills/do-work/tools/do-work-cli/internal/archivefetch/archive_fetch_test.go
+@@ -373,49 +373,76 @@ func TestGitRouteHonoursExportIgnore(t *testing.T) {
+ 
+ // Total failure must leave a pre-existing target byte-identical and drop no scratch file
+ // beside it, so a failed update cannot destroy an archive an operator already had.
++// A total fetch failure must leave the target exactly as it found it — and
++// "as it found it" has two cases, not one. REQ-164 broadened this test to cover
++// both; suite update a73c3e4 restored the narrow pre-REQ-164 version, which
++// asserted only that an EXISTING target survives. The absent-target case is the
++// one that catches a staging path publishing a half-fetched or invalid archive
++// to a target that was never there — the failure a caller is least likely to
++// notice, because there is no prior file whose bytes changed.
+ func TestTotalFailurePreservesTheTargetAndLeavesNoScratch(t *testing.T) {
+-	directory := t.TempDir()
+-	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, _ *http.Request) {
+-		_, _ = response.Write([]byte("not an archive\n"))
+-	}))
+-	defer server.Close()
+-	targetPath := filepath.Join(directory, "upstream.tar.gz")
+-	if err := os.WriteFile(targetPath, []byte("existing archive bytes\n"), 0o644); err != nil {
+-		t.Fatalf("seed target: %v", err)
+-	}
+-	_, err := FetchArchive(context.Background(), Request{
+-		ArchiveTargetPath:     targetPath,
+-		UpstreamTarballURL:    server.URL,
+-		UpstreamRepositoryURL: filepath.Join(directory, "no-such-repository"),
+-	})
+-	if err == nil {
+-		t.Fatalf("a total failure reported success")
+-	}
+-	for _, expectedFragment := range []string{
+-		"upstream archive could not be fetched",
+-		"HTTP route: failed",
+-		"Git route: failed",
+-		"DO_WORK_UPSTREAM_URL",
++	for _, testCase := range []struct {
++		name           string
++		seedTarget     bool
++		expectedTarget string
++	}{
++		{name: "pre-existing target", seedTarget: true, expectedTarget: "existing archive bytes\n"},
++		{name: "absent target"},
+ 	} {
+-		if !strings.Contains(err.Error(), expectedFragment) {
+-			t.Errorf("failure report %q is missing %q", err.Error(), expectedFragment)
+-		}
+-	}
+-	preserved, readErr := os.ReadFile(targetPath)
+-	if readErr != nil {
+-		t.Fatalf("read preserved target: %v", readErr)
+-	}
+-	if string(preserved) != "existing archive bytes\n" {
+-		t.Errorf("the pre-existing target was overwritten: %q", preserved)
+-	}
+-	preservedInfo, statError := os.Stat(targetPath)
+-	if statError != nil {
+-		t.Fatal(statError)
+-	}
+-	if preservedInfo.Mode().Perm() != 0o644 {
+-		t.Errorf("the pre-existing target mode changed: %o", preservedInfo.Mode().Perm())
++		t.Run(testCase.name, func(t *testing.T) {
++			directory := t.TempDir()
++			server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, _ *http.Request) {
++				_, _ = response.Write([]byte("not an archive\n"))
++			}))
++			defer server.Close()
++			targetPath := filepath.Join(directory, "upstream.tar.gz")
++			if testCase.seedTarget {
++				if err := os.WriteFile(targetPath, []byte(testCase.expectedTarget), 0o644); err != nil {
++					t.Fatalf("seed target: %v", err)
++				}
++			}
++			_, err := FetchArchive(context.Background(), Request{
++				ArchiveTargetPath:     targetPath,
++				UpstreamTarballURL:    server.URL,
++				UpstreamRepositoryURL: filepath.Join(directory, "no-such-repository"),
++			})
++			if err == nil {
++				t.Fatalf("a total failure reported success")
++			}
++			for _, expectedFragment := range []string{
++				"upstream archive could not be fetched",
++				"HTTP route: failed",
++				"Git route: failed",
++				"DO_WORK_UPSTREAM_URL",
++			} {
++				if !strings.Contains(err.Error(), expectedFragment) {
++					t.Errorf("failure report %q is missing %q", err.Error(), expectedFragment)
++				}
++			}
++			if !testCase.seedTarget {
++				if _, statError := os.Lstat(targetPath); !os.IsNotExist(statError) {
++					t.Errorf("a failed fetch created the absent target: %v", statError)
++				}
++				assertNoArchiveScratch(t, directory)
++				return
++			}
++			preserved, readErr := os.ReadFile(targetPath)
++			if readErr != nil {
++				t.Fatalf("read preserved target: %v", readErr)
++			}
++			if string(preserved) != testCase.expectedTarget {
++				t.Errorf("the pre-existing target was overwritten: %q", preserved)
++			}
++			preservedInfo, statError := os.Stat(targetPath)
++			if statError != nil {
++				t.Fatal(statError)
++			}
++			if preservedInfo.Mode().Perm() != 0o644 {
++				t.Errorf("the pre-existing target mode changed: %o", preservedInfo.Mode().Perm())
++			}
++			assertNoArchiveScratch(t, directory)
++		})
+ 	}
+-	assertNoArchiveScratch(t, directory)
+ }
+ 
+ func TestFetchArchiveRefusesUnsafeTargetsUnchanged(t *testing.T) {
+-- 
+2.50.1 (Apple Git-155)
+

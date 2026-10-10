@@ -1,0 +1,120 @@
+From deea40cb997f90ca3a771e26f7b7b65df3d7c24b Mon Sep 17 00:00:00 2001
+From: t2 <t2@example.invalid>
+Date: Sat, 5 Sep 2026 22:31:20 +0300
+Subject: [PATCH] Re-apply REQ-178's timeline prose-window fixture, reverted by
+ 6cb0b1e
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+The same suite update also rewrote timeline_browser_probe_test.go, undoing
+c64b1ad exactly — REQ-178's deterministic fixture for
+TestBrowserBehaviorTimelineProseDescribesOnlyTheWindowOnScreen. With the
+strict browser lane running again, that left the gate red on the same
+hardcoded late-July window that no longer contains live archive rows, and
+every other REQ's canonical gate inherits the failure.
+
+Re-apply c64b1ad's Route A fixture verbatim; it reverse-applies cleanly, so
+the update contributed nothing of its own to this file.
+
+Verified: `QUEUE_KANBAN_BROWSER=... go test -run
+'^TestMaintainerStrictBrowserBehaviorLane$'` is green in 81s, red before.
+
+Co-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com>
+---
+ .../timeline_browser_probe_test.go            | 67 +++++++++++++++++--
+ 1 file changed, 62 insertions(+), 5 deletions(-)
+
+diff --git a/.claude/skills/do-work-board/tools/queue-kanban/timeline_browser_probe_test.go b/.claude/skills/do-work-board/tools/queue-kanban/timeline_browser_probe_test.go
+index 61dc9e6..0a983e8 100644
+--- a/.claude/skills/do-work-board/tools/queue-kanban/timeline_browser_probe_test.go
++++ b/.claude/skills/do-work-board/tools/queue-kanban/timeline_browser_probe_test.go
+@@ -2357,15 +2357,72 @@ function typeWindow(fromText, toText) {
+   });
+ }
+ window.addEventListener("load", function () {
++  var payload = window.queueKanbanBoardData;
++  payload.requests["REQ-PROSE-WINDOW"] = {
++    id: "REQ-PROSE-WINDOW",
++    title: "Open work inside the past window",
++    status: "claimed",
++    domain: "frontend",
++    route: "A",
++    userRequestId: ""
++  };
++  payload.requests["REQ-PROSE-EXCLUDED"] = {
++    id: "REQ-PROSE-EXCLUDED",
++    title: "A second row outside the filter",
++    status: "blocked",
++    domain: "backend",
++    route: "A",
++    userRequestId: ""
++  };
++  payload.timeline = {
++    rows: [{
++      id: "REQ-PROSE-WINDOW",
++      createdTime: "2026-07-28T00:00:00Z",
++      claimedTime: "2026-07-29T00:00:00Z",
++      completedTime: "",
++      waitMinutes: 1440,
++      waitOpen: false,
++      hasWork: true,
++      workMinutes: 47520,
++      workOpen: true
++    }, {
++      id: "REQ-PROSE-EXCLUDED",
++      createdTime: "2026-07-30T00:00:00Z",
++      claimedTime: "",
++      completedTime: "",
++      waitMinutes: 46080,
++      waitOpen: true,
++      hasWork: false,
++      workMinutes: 0,
++      workOpen: false
++    }],
++    rangeStart: "2026-07-28T00:00:00Z",
++    rangeEnd: "2026-08-31T00:00:00Z",
++    now: "2026-08-31T00:00:00Z",
++    projection: {
++      rows: [],
++      excluded: [{ id: "REQ-PROSE-EXCLUDED", reason: "waiting on an external condition" }],
++      queueEnd: "",
++      chainStart: "2026-08-31T00:00:00Z",
++      windowSize: 60,
++      windowSamples: 5,
++      trivialSamples: 0,
++      normalSamples: 5,
++      trivialMinutes: 360,
++      normalMinutes: 360,
++      minimumSamples: 5,
++      confident: true,
++      declinedReason: ""
++    }
++  };
+   setTimeout(function () {
+     document.querySelector('[data-view-target="timeline"]').click();
+     setTimeout(function () {
+       var probe = {};
+       probe.withNow = proseState("withNow");
+-      // A window well before the now-line that still HAS rows in it. Late July is
+-      // the busiest stretch of this repo's own archive; an empty past week would
+-      // take the "Nothing was drawn" branch instead, which is a different sentence
+-      // and would leave the one under test unexercised.
++      // A window well before the now-line that still HAS the open fixture row in
++      // it. An empty past week would take the "Nothing was drawn" branch instead,
++      // which is a different sentence and would leave the one under test unexercised.
+       typeWindow("2026-07-27", "2026-08-02");
+       settleUntil(function () {
+         return (document.getElementById("timeline-range-readout").textContent || "")
+@@ -2374,7 +2431,7 @@ window.addEventListener("load", function () {
+         probe.withoutNow = proseState("withoutNow");
+         // And the forecast under a filter that leaves a subset on screen.
+         var search = document.getElementById("filter-search");
+-        search.value = "REQ-164";
++        search.value = "REQ-PROSE-WINDOW";
+         search.dispatchEvent(new Event("input", { bubbles: true }));
+         settleUntil(function () {
+           return (document.getElementById("timeline-forecast").textContent || "").length > 0 ||
+-- 
+2.50.1 (Apple Git-155)
+

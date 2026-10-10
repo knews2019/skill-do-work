@@ -1,0 +1,100 @@
+diff --git a/.claude/skills/do-work/tools/do-work-cli/internal/requeststate/append_section_entry_test.go b/.claude/skills/do-work/tools/do-work-cli/internal/requeststate/append_section_entry_test.go
+new file mode 100644
+index 0000000..84d6a54
+--- /dev/null
++++ b/.claude/skills/do-work/tools/do-work-cli/internal/requeststate/append_section_entry_test.go
+@@ -0,0 +1,45 @@
++package requeststate
++
++import (
++	"strings"
++	"testing"
++)
++
++func TestAppendSectionEntryReusesAnExistingHeadingInEveryLineEndingDialect(t *testing.T) {
++	entry := "- [2026-10-01] blocked on \"x\" — cleared by y"
++	for _, testCase := range []struct {
++		name, newline, headingSuffix string
++	}{
++		{"LF", "\n", ""},
++		{"CRLF", "\r\n", ""},
++		{"trailing spaces", "\n", "  "},
++	} {
++		t.Run(testCase.name, func(t *testing.T) {
++			document := strings.Join([]string{
++				"---", "id: REQ-1", "---", "# Title", "",
++				"## Blocked" + testCase.headingSuffix, "",
++				"- earlier entry", "",
++				"## Plan", "", "text", "",
++			}, testCase.newline)
++			updated := string(appendSectionEntry([]byte(document), "Blocked", entry))
++			if got := strings.Count(updated, "## Blocked"); got != 1 {
++				t.Fatalf("want exactly one Blocked heading, got %d in:\n%q", got, updated)
++			}
++			blockedAt := strings.Index(updated, "## Blocked")
++			entryAt := strings.Index(updated, entry)
++			planAt := strings.Index(updated, "## Plan")
++			if entryAt < blockedAt || entryAt > planAt {
++				t.Fatalf("entry must land inside the existing Blocked section, got order blocked=%d entry=%d plan=%d in:\n%q",
++					blockedAt, entryAt, planAt, updated)
++			}
++		})
++	}
++}
++
++func TestAppendSectionEntryIgnoresAHeadingInsideACodeFence(t *testing.T) {
++	document := "---\nid: REQ-1\n---\n# Title\n\n```\n## Blocked\n```\n"
++	updated := string(appendSectionEntry([]byte(document), "Blocked", "- new entry"))
++	if got := strings.Count(updated, "\n## Blocked"); got != 2 {
++		t.Fatalf("a fenced example heading is not a section, so a real one must be added after it; got:\n%q", updated)
++	}
++}
+diff --git a/.claude/skills/do-work/tools/do-work-cli/internal/requeststate/state_apply.go b/.claude/skills/do-work/tools/do-work-cli/internal/requeststate/state_apply.go
+index a1a978b..5b1a3dd 100644
+--- a/.claude/skills/do-work/tools/do-work-cli/internal/requeststate/state_apply.go
++++ b/.claude/skills/do-work/tools/do-work-cli/internal/requeststate/state_apply.go
+@@ -1023,34 +1023,20 @@ func markdownSectionBytes(body []byte, section string) []byte {
+ 
+ func appendSectionEntry(contents []byte, section, entry string) []byte {
+ 	text := strings.TrimRight(string(contents), "\n")
+-	lines := strings.Split(text, "\n")
+-	_, sectionEnd, found := sectionLineBounds(lines, section)
+-	if !found {
+-		heading := "## " + section
+-		return []byte(text + "\n\n" + heading + "\n\n" + entry + "\n")
+-	}
+-	if sectionEnd == len(lines) {
+-		return []byte(text + "\n\n" + entry + "\n")
+-	}
+-	sectionText := strings.TrimRight(strings.Join(lines[:sectionEnd], "\n"), "\n")
+-	followingText := strings.Join(lines[sectionEnd:], "\n")
+-	return []byte(sectionText + "\n\n" + entry + "\n\n" + followingText + "\n")
+-}
+-
+-func sectionLineBounds(lines []string, section string) (int, int, bool) {
+-	heading := "## " + section
+-	for lineIndex, line := range lines {
+-		if line != heading {
++	for _, visible := range requestmodel.VisibleSections([]byte(text)) {
++		// An indented heading ends the section above it but is the user's text.
++		if visible.Name != section || visible.HeadingIndent != 0 {
+ 			continue
+ 		}
+-		for sectionEnd := lineIndex + 1; sectionEnd < len(lines); sectionEnd++ {
+-			if strings.HasPrefix(lines[sectionEnd], "## ") {
+-				return lineIndex, sectionEnd, true
+-			}
++		if visible.End >= len(text) {
++			return []byte(text + "\n\n" + entry + "\n")
+ 		}
+-		return lineIndex, len(lines), true
++		sectionText := strings.TrimRight(text[:visible.End], "\n")
++		followingText := text[visible.End:]
++		return []byte(sectionText + "\n\n" + entry + "\n\n" + followingText + "\n")
+ 	}
+-	return 0, 0, false
++	heading := "## " + section
++	return []byte(text + "\n\n" + heading + "\n\n" + entry + "\n")
+ }
+ 
+ func cancellationReasonBlock(reason, summary string) string {
