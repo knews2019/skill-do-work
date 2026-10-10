@@ -28,7 +28,7 @@
 
 ## Input
 
-`$ARGUMENTS` is `UR-NNN`, `REQ-NNN`, `most recent`, or blank. One invocation covers one UR or one REQ; blank is the explicit `most recent` form.
+`$ARGUMENTS` is `UR-NNN`, `REQ-NNN`, `most recent`, or blank; the `revise` form below writes a new revision of an existing report. One invocation covers one UR or one REQ; blank is the explicit `most recent` form.
 
 ### Catalog forms: index and find
 
