@@ -1,8 +1,8 @@
 # Validate-Feedback Action
 
-> **Part of the do-work-toolbox skill.** Triages external review feedback / audit findings — per item, verifies against the real code + git history and recommends Already done / Accept / Push back / Discuss. Read-only; offers a capture handoff for accepted items.
+> **Part of the do-work-toolbox skill.** Triages external review feedback / audit findings — per item, verifies against the real code + git history and recommends Already done / Accept / Push back / Discuss. Read-only unless `--capture` was given; without it, offers a capture handoff for accepted items, and `--capture [--run]` captures them, verifies the capture, and can start the run.
 
-**Read-only** — this action does NOT modify any files and does NOT create REQs. It produces a triage report only. Accepted items become work through a separate, user-gated `do-work capture-request:` step (Capture ≠ Execute).
+**Read-only unless `--capture` was given** — without the flag this action does NOT modify any files and does NOT create REQs. It produces a triage report only. Accepted items become work through a separate, user-gated `do-work capture-request:` step (Capture ≠ Execute). `--capture` is that user gate given up front: the action then asks about Discuss items, captures the accepts, and verifies the capture (Steps 2.5 and 6 to 8).
 
 ## Philosophy
 
@@ -29,6 +29,12 @@ Two principles do the heavy lifting:
 
 `$ARGUMENTS` — the pasted feedback. Free text, a numbered list, a markdown findings table, or a copied review thread. Severity tags and `file:line` references are optional but used when present. If `$ARGUMENTS` is empty, ask the user to paste the feedback (do not invent findings).
 
+- **`--capture`** — opt in to the capture chain (Steps 2.5, 6, 7 and 8). The phrase "then capture the accepted ones" in the same invocation counts as `--capture`, and "capture and run" counts as `--capture --run`; a close paraphrase with the same explicit intent counts too. A phrase that only suggests capture ("these look good") does not.
+- **`--run`** — with `--capture`, continue into the run after a clean verify (Step 8). `--run` without `--capture` prints one line, `Usage: do-work-toolbox validate-feedback --capture [--run] <findings or file path>`, and stops before any triage.
+- **File path** — when, after the flags, `$ARGUMENTS` is a single token that names an existing regular file, read that file. Its contents are the feedback: in the steps below, "the pasted feedback" and `$ARGUMENTS` mean those contents. Record the path exactly as given as the source of every finding, even when it is outside the repo. Anything else is pasted text, and its source is recorded as "pasted text".
+
+Without `--capture` the action is read-only: Steps 1 to 5 and the Output Format are the whole job.
+
 ## Steps
 
 ### Step 1: Load Guardrails
@@ -47,6 +53,15 @@ Split `$ARGUMENTS` into individual findings. For each, preserve:
 - Any **`file:line` references** cited.
 
 Never silently drop an item. If two findings overlap, note the relationship but keep both — the user pasted them deliberately.
+
+### Step 2.5: Wrong-Repo Check (--capture only)
+
+Skip this step without `--capture`, and when the findings cite no `file:line` paths. Otherwise check each distinct cited path, ignoring line numbers: it resolves when a file exists at that path inside the working tree. When more than half do not resolve, stop before any verification, other question or write. Load `crew-members/clear-questions.md` and ask exactly "These findings cite paths that are not in this repo. Continue capture here, or stop?" with two options, recommended first:
+
+- **Stop (recommended)** — end here with nothing triaged or written. Value: no triage against code the findings do not describe. Risk: none if the review was for another repo; a re-run is needed if the paths were only renamed.
+- **Continue capture here** — run Steps 3 to 8 in this repo. Value: keeps going when the paths moved but the findings still apply. Risk: verdicts and REQs built against the wrong code.
+
+Without a question tool, ask the same question with the same options in chat and wait.
 
 ### Step 3: Load the Project's Decision Store
 
@@ -80,6 +95,31 @@ Assign exactly one verdict to each finding:
 For a surface-adding remedy, **Accept** additionally requires a named incident/replay case, evidence that the added layer is cheaper than the risk it covers, and a test plan. A remedy that cannot clear that bar **must not receive a plain Accept**: use **Push back** when the defense is speculative or a simpler remedy wins, and **Discuss** when the incident is real but the surface-cost trade-off remains unresolved. State that rubric result as the verdict reasoning; this is cost discipline, not permission to push back merely to reduce work.
 
 Carry each item's original severity through to its verdict so the user can prioritize.
+
+### Step 6: Ask About Discuss Items (--capture only)
+
+Print the finding blocks, Summary and Suggested reply from the Output Format now, without its `To act on the accepted findings` block, so the user sees the evidence. Then ask one question per **Discuss** item; never ask about Already done, Accept or Push back items. With no Discuss items, ask nothing and print no line for this step. Load `crew-members/clear-questions.md`, restate the finding in one plain sentence, and offer these options with the one Step 5's reasoning favours first, marked recommended:
+
+- **Accept: capture as a REQ with remedy <one line>** — Value: the work is queued now with its evidence. Risk: the open trade-off is built as written.
+- **Park: `do-work-toolbox note` it for later** — Value: the idea stays visible without queue work. Risk: a note is not a task; nothing builds it until someone captures it.
+- **Drop: no work** — Value: no queue or note noise. Risk: if the concern is real, only this report remembers it.
+
+Park runs `actions/note.md` with the finding's one-line summary in this same invocation (`--capture` already authorizes the write). Drop writes nothing. Without a question tool, list the Discuss items with the same options in chat and wait for the answers.
+
+### Step 7: Capture the Accepted Findings (--capture only)
+
+The accepted set is every **Accept** item plus every Discuss item answered Accept. When it is empty, print the Summary table and "No accepted findings; nothing captured." and stop; with `--run`, start no run.
+
+Otherwise build one payload. For each accepted finding, keep the provenance block the Output Format's handoff names (verbatim claim, original severity/source, Evidence, Surface-cost) plus the remedy, and label it with its finding id and input kind (for example "Finding 3, source: pasted text" or "Finding 3, source: <the file path>") so each REQ's source line carries both. The triage input (the paste, or the file's bytes) is the UR's verbatim input; the UR Summary lists every finding's verdict and each Discuss answer. Run `../../do-work/actions/capture.md` once on that payload: one UR, one REQ per finding. A finding that duplicates a queued REQ folds through capture's fold-first scan and is listed under `## Folded Requests`. Capture's clarification step still applies, but the Step 6 answers count as resolved.
+
+### Step 8: Verify, Report, and Optionally Run (--capture only)
+
+Run `../../do-work/actions/verify-requests.md` on the new `UR-NNN` with no second prompt, through its Step 6 report; do not enter its Step 7 (Offer Fixes). Then print one combined report: the triage Summary table (with the Discuss answers), the UR id with each REQ id and title (and any `## Folded Requests` lines), and the verify verdict with its gap list.
+
+- **Without `--run`:** stop. End the report with the next command: `do-work run UR-NNN` with the real id, or the two commands of the last bullet when the verify listed an Important, Minor or Ambiguous gap.
+- **With `--run`, and the UR owns no REQs** (every finding folded): skip the run and say so.
+- **With `--run` and no Important, Minor or Ambiguous gap** (the gap list decides, not the score; a Nit does not stop the run): continue into `do-work run UR-NNN` by following `../../do-work/actions/work.md` with that UR as its target.
+- **With `--run` and any such gap:** stop before the run. Print the gaps, then the commands to run after fixing them, `do-work verify-requests UR-NNN` then `do-work run UR-NNN`, written with the real id.
 
 ## Output Format
 
@@ -117,9 +157,11 @@ Lead with the framing line, then one block per finding, then the summary and a d
 >   do-work-toolbox note "[a discuss item]"                        Park a Discuss item for later
 ```
 
+With `--capture`, the combined report from Step 8 replaces the `To act on the accepted findings` block above.
+
 ## Rules
 
-- **Read-only.** Modify no files. Create no REQs. The capture handoff is a *suggestion* the user runs deliberately.
+- **Read-only unless `--capture` was given.** Without it, modify no files and create no REQs; the capture handoff is a *suggestion* the user runs deliberately. With `--capture`, write only through Steps 6 to 8.
 - **Verify before verdict.** Never accept or push back on a finding without reading the cited code. A verdict with no evidence is not a verdict.
 - **Be honest.** Don't push back to reduce work; don't accept filler to look agreeable. If a finding is right, accept it; if the codebase already handles it, say "Already done".
 - **Be specific.** Reference actual `file:line`, commits, or documented decisions — not abstract arguments.
@@ -133,7 +175,7 @@ Lead with the framing line, then one block per finding, then the summary and a d
 | "This finding sounds plausible, I'll accept it"        | Read the cited `file:line` and try to refute it first         | Plausible ≠ true; many findings are already fixed or scoped wrong |
 | "I'll push back so there's less to do"                  | Push back only with a technical rationale + evidence          | Dishonest pushback erodes trust and ships real bugs               |
 | "The finding has no line reference, I'll guess"         | Locate the actual code, or mark it Discuss with what's unclear | A guess isn't evidence                                            |
-| "I'll capture the accepts to save the user a step"      | Stop after the report; offer the capture handoff              | Capture ≠ Execute — the user decides what becomes work            |
+| "I'll capture the accepts to save the user a step" (no `--capture` given) | Stop after the report; offer the capture handoff              | Capture ≠ Execute — the user decides what becomes work, and `--capture` is that decision |
 
 ## Red Flags
 
@@ -141,7 +183,7 @@ Lead with the framing line, then one block per finding, then the summary and a d
 - Every finding accepted (or every one pushed back) — suggests the code wasn't actually read.
 - A remedy proposed for an "Accept" that contradicts a `prime-*.md`/`CLAUDE.md`/`decisions/` decision (should have been a push-back).
 - A pasted finding silently missing from the report.
-- The action created or edited files (it must be read-only).
+- The action created or edited files without `--capture` (without the flag it must be read-only).
 
 ## Verification Checklist
 
@@ -151,4 +193,4 @@ Lead with the framing line, then one block per finding, then the summary and a d
 - [ ] The cited code was actually read for every finding (not judged from the claim alone).
 - [ ] Git history was checked for already-addressed findings.
 - [ ] Every finding includes a Surface-cost result; surface-adding remedies name the earning incident, cost judgment, and test, while direct fixes/deletions/simplifications say N/A.
-- [ ] No files were modified and no REQs were created; the report ends with the capture handoff.
+- [ ] Without `--capture`: no files were modified and no REQs were created; the report ends with the capture handoff. With `--capture`: the combined report from Step 8 replaces the handoff.
