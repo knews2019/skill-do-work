@@ -1,7 +1,7 @@
 ---
 id: REQ-685
 title: '[impact-negligible] Git transaction rollback reuses the transaction''s open repository root and the no-root rollback path is deleted'
-status: claimed
+status: completed
 route: B
 estimate:
   p50_active_minutes: 20
@@ -25,6 +25,14 @@ related: [REQ-686]
 batch: upstream-report-accepts
 claimed_at: 2026-10-10T10:07:36Z
 builder_handback_at: 2026-10-10T11:41:21Z
+integration_at: 2026-10-10T11:41:29Z
+review_at: 2026-10-10T11:47:28Z
+kb_status: pending
+heavy_verified_at: 2026-10-10T11:52:43Z
+heavy_verified_revision: 96636dbb9ebd388fb648a947ed735f202d684955
+commit: 96636dbb9ebd388fb648a947ed735f202d684955
+completed_at: 2026-10-10T11:53:03Z
+release_at: 2026-10-10T11:53:03Z
 ---
 # Rollback Uses the Transaction's Open Root
 ## What
@@ -65,9 +73,9 @@ High certainty on the deletion. Medium certainty on whether any other caller rea
 ## Full Context
 See `do-work/user-requests/UR-152/input.md` for complete verbatim input. No queued or archived REQ shares this intent (queue REQ-654 to REQ-674 read by intent).
 ## AI Execution State (P-A-U Loop)
-- [ ] **[PLAN]:** (Agent: Read listed `prime_files` and agent rules. Write brief technical approach here. Do not write code yet.)
-- [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
-- [ ] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
+- [x] **[PLAN]:** Pass the root ExecuteTransaction opens (and defer-closes) into rollbackFailure as a required argument; use rollbackWithRoot only; delete the no-root half, its hook and its two tests; comment-only edits elsewhere. The nil-handle panic REQ-598 fixed stays impossible: rollbackFailure receives the root as a required argument and ExecuteTransaction returns before any change when the open fails, so there is no nil path. A held root follows a renamed repository folder while `git -C <path>` follows the path; nothing renames the folder today. (from the builder hand-back)
+- [x] **[APPLY]:** Done as planned, 4 files, no new function, constant, option, file or test. (from the builder hand-back)
+- [x] **[UNIFY]:** All 4 files checked for diff content, gofmt, vet and stale references: gittransaction and finalization tests exit 0, vet and gofmt clean, `rollbackWithoutRoot`/`openRollbackRoot` no longer appear in `internal/` or `_dev/tests/`, `git diff --check` clean, audit-lockins exit 0. (from the builder hand-back; the integrator re-checked the diff)
 *Source: upstream report 2026-10-10, accepted in the validate-feedback triage of this session.*
 
 ## Triage
@@ -114,12 +122,12 @@ Orchestrator exploration, 2026-10-10, read-only, at 85445ac4. All paths are unde
 **Files I will NOT touch:** `skills/do-work/tools/do-work-cli/internal/finalization/` (read-only; the "HEAD" comment points at it), the recorder methods' own `os.OpenRoot` calls, any behavior of the "HEAD" commit ID, `skills/do-work/CHANGELOG.md`, `CHANGELOG.md`, `VERSION`, `heavy_commands.go` and `lessons-do-work-cli.md` (REQ-686), anything under `do-work/`.
 
 **Acceptance criteria (restated from the REQ):**
-- [ ] `rollbackFailure` takes the transaction's open root as a parameter and uses `rollbackWithRoot` only.
-- [ ] `rollbackWithoutRoot`, `openRollbackRoot`, the open-and-fallback branch and the two no-root tests are deleted; the PLAN says why the nil-handle panic REQ-598 fixed stays impossible.
-- [ ] Every existing test that checks rollback reports a failing root operation as an incomplete rollback still passes; no new test unless the deletion leaves that behavior unpinned.
-- [ ] One comment line at `exact_commit.go` (~77) and one at `git_transaction.go` (~703) says the literal "HEAD" commit ID is deliberate, because a non-empty `PrimaryCommit` blocks rollback of a commit that landed (`finalization_apply.go`, near line 30); no behavior change at either site.
-- [ ] The commit message and PLAN record that a held root follows a renamed repository folder while `git -C <path>` follows the path, and that nothing renames the folder today.
-- [ ] `go test ./internal/gittransaction/ ./internal/finalization/` passes, `go vet ./...` and `gofmt -l` are clean, and no `rollbackWithoutRoot` or `openRollbackRoot` remains in `internal/` or `_dev/tests/`.
+- [x] `rollbackFailure` takes the transaction's open root as a parameter and uses `rollbackWithRoot` only.
+- [x] `rollbackWithoutRoot`, `openRollbackRoot`, the open-and-fallback branch and the two no-root tests are deleted; the PLAN says why the nil-handle panic REQ-598 fixed stays impossible.
+- [x] Every existing test that checks rollback reports a failing root operation as an incomplete rollback still passes; no new test unless the deletion leaves that behavior unpinned.
+- [x] One comment line at `exact_commit.go` (~77) and one at `git_transaction.go` (~703) says the literal "HEAD" commit ID is deliberate, because a non-empty `PrimaryCommit` blocks rollback of a commit that landed (`finalization_apply.go`, near line 30); no behavior change at either site.
+- [x] The commit message and PLAN record that a held root follows a renamed repository folder while `git -C <path>` follows the path, and that nothing renames the folder today.
+- [x] `go test ./internal/gittransaction/ ./internal/finalization/` passes, `go vet ./...` and `gofmt -l` are clean, and no `rollbackWithoutRoot` or `openRollbackRoot` remains in `internal/` or `_dev/tests/`.
 
 ## Pre-Flight
 
@@ -128,3 +136,123 @@ Orchestrator exploration, 2026-10-10, read-only, at 85445ac4. All paths are unde
 **Dependencies:** ✓ Go toolchain only; no new dependency.
 
 *Checked by work action*
+
+## Implementation Summary
+
+**Files changed:**
+- `skills/do-work/tools/do-work-cli/internal/gittransaction/git_transaction.go` (modified)
+- `skills/do-work/tools/do-work-cli/internal/gittransaction/git_transaction_test.go` (modified)
+- `skills/do-work/tools/do-work-cli/internal/gittransaction/exact_commit.go` (modified)
+- `_dev/tests/audit-lockins.sh` (modified, comment only)
+
+**What was done:** `rollbackFailure` now takes the root that `ExecuteTransaction` already opened and calls `rollbackWithRoot` only. `rollbackWithoutRoot`, the `openRollbackRoot` test hook, the open-and-fallback branch and the two tests that forced the no-root path are deleted, one surviving test lost its wrapper loop, and the comments that named the deleted code were fixed. Two-line "HEAD is deliberate" comments were added at the two commit-ID sites.
+
+## Decisions
+*(from the builder hand-back)*
+- D-01 (decided): "HEAD" comment is two wrapped lines at each site, not one, for line width. Same content the REQ names.
+- D-02 (decided): the collapsed creation-intent test keeps its name and drops the t.Run wrapper; assertions unchanged.
+- D-03 (decided): no new test. Rollback reporting a failing root operation as incomplete stays pinned by the retained tests (for example TestIncompleteRollbackReportsRiskWithoutRecursiveDeletion, and the creation-intent test's RollbackIncomplete assertion).
+
+## Discovered Tasks
+*(from the builder hand-back)*
+- None.
+
+## Qualification
+
+**Gate records:** the pre-flight focused baseline (`go test -count=1 ./internal/gittransaction/`) and the repository gate at the dispatch revision were green before the build. The builder reported `gittransaction` (10.9 s) and `finalization` (64.2 s) tests, `go vet ./...`, `gofmt -l`, `bash _dev/tests/audit-lockins.sh` and the REQ probe all exit 0. The repository gate at the merge is run next (below, in `## Testing`).
+
+**Requirement-by-requirement trace** (`git diff 33a0f1b1..96636dbb --stat`: 4 files, +45/-252, read in full):
+1. `rollbackFailure` takes `root *os.Root` and calls only `rollbackWithRoot` (`git_transaction.go:1048-1053`). Met.
+2. `rollbackWithoutRoot`, `openRollbackRoot`, the open-and-fallback branch, `TestRollbackWithoutRootHandleUnstagesRestoresFromHeadAndReportsTheRest` and the "root unavailable" subtest are deleted; `grep` over `skills/` and `_dev/` finds none of the names. The PLAN states why the nil-handle panic stays impossible, and the code confirms it: `ExecuteTransaction` opens `root` at line 520 and returns through `failTransaction` before any change when the open fails, `defer root.Close()` follows, and all ten `rollbackFailure` call sites (lines 639-700) come after it with the same `root`. Met.
+3. Retained rollback tests are untouched; the collapsed `TestCreationIntentPreservesForeignIndexBeforeTransactionStaging` keeps every assertion (`git diff -w` shows only the wrapper loop, the `rootAvailable` switch and the hook override removed). No new test. Met.
+4. The "HEAD is deliberate" comment is added at both commit-ID sites (`exact_commit.go:78-79`, `git_transaction.go:704-705`), two wrapped lines each instead of one (D-01); no code change at either site. Met.
+5. The held-root-versus-renamed-folder note is in the PLAN. Met.
+6. Tests, vet and gofmt are green per the hand-back; confirmed again by the gate below.
+
+**Scope comparison (Route B):** declared and touched sets match exactly (the four declared files; nothing else changed under `skills/` or `_dev/`). The three `SCOPE-DECLARED-NOT-TOUCHED` warnings name Go identifiers (`rollbackFailure`, `rollbackWithoutRoot`, `openRollbackRoot`) from the Scope bullet, not files; all three were edited or deleted in `git_transaction.go`. Judged a parser false positive.
+
+**Debug artifacts:** none (no prints, no TODOs, no commented-out code in the diff). The `audit-lockins.sh` change is comment-only; the ratchet code and its failure message are untouched.
+
+## Testing
+
+**Tests run (at merge `96636dbb`, tree = `33a0f1b1` plus the builder commit):**
+- `DO_WORK_FAST_STAGE_REUSE=off bash _dev/tests/maintainer-verify.sh`: exit 0, gate wall 134 s, 882 Go tests in 70 s, slowest file `internal/finalization/finalization_req499_test.go` 21.92 s under the 30 s limit. Machine load before the run: 1-minute 2.90, no other gate running. One run, no rerun needed.
+- `advance ... --gate-exit-status 0 -- --probe-file .../REQ-685-probe.sh`: probe exit 0 (`gittransaction` ok, 6.3 s), green gate recorded for `96636dbb`.
+- Builder's own runs (hand-back): `go test -count=1 ./internal/gittransaction/ ./internal/finalization/` exit 0 (10.9 s, 64.2 s), `go vet ./...` clean, `gofmt -l` empty, `bash _dev/tests/audit-lockins.sh` exit 0, `git diff --check` clean.
+
+**Red-green validation:** not applicable (tdd: false; a deletion). The probe fails before the build because it greps for the deleted names; the baseline probe and the builder's check record that the names are gone.
+
+**New/updated tests:** none new (D-03). Updated: `TestCreationIntentPreservesForeignIndexBeforeTransactionStaging` lost its one-value loop and the "root unavailable" case, assertions unchanged. Deleted: `TestRollbackWithoutRootHandleUnstagesRestoresFromHeadAndReportsTheRest`. Rollback-incomplete behavior stays pinned by `TestIncompleteRollbackReportsRiskWithoutRecursiveDeletion` and the creation-intent test's `RollbackIncomplete` assertion.
+
+**Heavy verification plan:** range `33a0f1b13b9008981cc8846d3421dac032e69269..96636dbb9ebd388fb648a947ed735f202d684955`; six lanes selected, each via `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane <id>`:
+- `queue-kanban-javascript`: `_dev/tests/audit-lockins.sh` matched subtree `_dev/tests`
+- `queue-kanban-browser`: `_dev/tests/audit-lockins.sh` matched subtree `_dev/tests`
+- `do-work-cli-integrations`: `audit-lockins.sh` and the three `gittransaction/` files matched `_dev/tests` and `skills/do-work/tools/do-work-cli`
+- `staged-skills`: same files matched `_dev/tests` and `skills`
+- `updater`: same reasons
+- `installer`: same reasons
+
+## Review
+
+**Overall: 97%** | 2026-10-10T11:47:28Z
+
+| Dimension | Score |
+|-----------|-------|
+| Requirements | 100% |
+| Code Quality | 92% |
+| Test Adequacy | 95% |
+| Scope | 100% |
+| Risk | None |
+| Acceptance | Pass |
+
+**Important findings (each with its recorded impact token — this is the durable audit record the judgment mandates):**
+- None
+
+**Minor findings:** F1: the comment at `git_transaction.go:704-705` cites `finalization_apply.go` `PrimaryCommit`, but only `CommitExactPaths` results reach `PrimaryCommit`. This site's "HEAD" is read by `cleanup_apply.go:144`, `doctor_repair.go:173` and `publication_commands.go:234`. impact-negligible → report only
+**Acceptance:** Pass. The gate and probe are green at 96636dbb, and the reviewer's vet and gofmt runs were clean.
+**Restatement sweep:** redefined the rollback design (rollback reuses the transaction's held root, and the no-root rollback path is deleted). `rg -i` searched for `rollbackWithoutRoot`, `openRollbackRoot`, `no-root rollback`, `rollback root is unavailable`, `left in place; rollback root`, `reopens the root`, `no-handle rollback`, `open rollback root`, `root unavailable`, `decides once`, `TestRollbackWithoutRoot`, `REQ-598` and nil-root/rooted-handle wording. It covered `skills/` (excluding CHANGELOG history), `_dev/`, `do-work/lessons-index.md` and `skills/do-work/tools/do-work-cli/lessons-do-work-cli.md`. `docs/` does not exist. Nothing still restates the old design. The `audit-lockins.sh:628` failure message ("REQ-598 decided the rollback handle once at its open") still agrees with the new design.
+**Suggested testing:** 0 items
+**Follow-ups created:** None (1 findings report only)
+
+*Reviewed by review-work action*
+
+## Lessons Learned
+
+Nothing beyond the hand-back; the builder proposed no lesson. One observation from the review: when a REQ prescribes the same comment text for two sites, the wording should be checked against each site's actual readers. The `exact_commit.go` copy is accurate, but the `git_transaction.go` copy names `finalization_apply.go`, while the real readers of that site's "HEAD" are `cleanup_apply.go:144`, `doctor_repair.go:173` and `publication_commands.go:234` (review finding F1, report only).
+
+## Orientation
+
+Git transaction rollback (`internal/gittransaction/`) now has a single rooted path: `ExecuteTransaction` opens the repository root once and hands it to `rollbackFailure`, so there is no handle-less rollback to maintain. No map change.
+
+## Heavy Verification Plan
+
+Base `33a0f1b13b9008981cc8846d3421dac032e69269`, target `96636dbb9ebd388fb648a947ed735f202d684955`. Every lane argv is `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane <id>`.
+- `queue-kanban-javascript`: `_dev/tests/audit-lockins.sh` matched subtree `_dev/tests`
+- `queue-kanban-browser`: `_dev/tests/audit-lockins.sh` matched subtree `_dev/tests`
+- `do-work-cli-integrations`: `audit-lockins.sh` and the three `gittransaction/` files matched `_dev/tests` and `skills/do-work/tools/do-work-cli`
+- `staged-skills`: same files matched `_dev/tests` and `skills`
+- `updater`: same reasons
+- `installer`: same reasons
+
+## Heavy Verification Result
+
+Target `96636dbb9ebd388fb648a947ed735f202d684955`, executed in a detached checkout of that revision (execution revision equals target), `QUEUE_KANBAN_BROWSER` set to Chrome. All six lanes exit 0, none skipped:
+- `queue-kanban-javascript`: executed, 9 s
+- `queue-kanban-browser`: executed, 82 s (real browser run)
+- `do-work-cli-integrations`: executed, 64 s
+- `staged-skills`: executed, 37 s
+- `updater`: executed, 64 s
+- `installer`: executed, 26 s
+
+## Timing
+
+Observed 2026-10-10T10:29:20Z to 2026-10-10T11:52:44Z: 1h 23m 24s total, 1h 22m 43s attributed across 5 events, 41s unattributed.
+
+| Category | Elapsed | Events |
+| --- | --- | --- |
+| builder-work | 1h 12m 01s | 1 |
+| verification-gate | 7m 52s | 2 |
+| review | 2m 45s | 1 |
+| handback-merge | 5s | 1 |
+
+Slowest stage: builder-work / builder worktree build, 1h 12m 01s, outcome success.

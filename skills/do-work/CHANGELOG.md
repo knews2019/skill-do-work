@@ -10,6 +10,16 @@ For the complete release history, read this file and the archives below from new
 - [0.50.0 through 0.64.1](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-13-up-to-v0.64.1.md)
 - [0.1.0 through 0.49.0](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-07-up-to-v0.49.0.md)
 
+## 0.305.99 — Transaction Rollback Reuses the Repository Folder It Already Opened, and the Second Rollback Path Is Gone (2026-10-10)
+
+A git transaction opens the repository folder once and holds it until it ends, but rollback opened the same folder a second time and kept a near-copy of its own code for the case where that second open failed. That case cannot happen, because the first open already stops the transaction before any change. The copy and its two tests are deleted, about 200 lines in all. Rollback behavior does not change.
+
+- `rollbackFailure` now receives the open folder from `ExecuteTransaction` as a required argument and uses the rooted rollback only. Removed: `rollbackWithoutRoot`, the `openRollbackRoot` test hook, the open-and-fallback branch, and the two tests that forced the fallback (`TestRollbackWithoutRootHandleUnstagesRestoresFromHeadAndReportsTheRest` and the "root unavailable" case of `TestCreationIntentPreservesForeignIndexBeforeTransactionStaging`).
+- The empty-folder-handle crash fixed earlier (REQ-598) stays impossible: the argument is required and no code path passes nothing.
+- The held folder follows a renamed repository folder while `git -C <path>` follows the path. Nothing renames the folder today.
+- Two comments (`exact_commit.go` and `git_transaction.go`) now say the literal commit ID "HEAD" is deliberate, because a non-empty `PrimaryCommit` blocks rollback of a commit that landed. Code unchanged.
+- The nil-root note in `_dev/tests/audit-lockins.sh` no longer names the deleted code; its check is unchanged.
+
 ## 0.305.98 — Timeline Browser Probes No Longer Depend on the Live Queue's Dates (2026-10-10)
 
 Two Timeline browser probes read the checkout's real queue but typed a fixed week, so a checkout with no REQ dated 2026-07-27 to 2026-08-02 failed the strict browser lane for no product reason. They now build their page from a fixed fixture, and the Previous and Next buttons are pressed in a probe for the first time.
