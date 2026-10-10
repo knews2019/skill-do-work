@@ -1,7 +1,7 @@
 ---
 id: REQ-685
 title: '[impact-negligible] Git transaction rollback reuses the transaction''s open repository root and the no-root rollback path is deleted'
-status: pending
+status: claimed
 created_at: 2026-10-10T10:03:50Z
 user_request: UR-152
 domain: backend
@@ -13,6 +13,7 @@ effort_estimate: effort-substantive
 required_lessons: ["_dev/primes/lessons-releases.md"]
 related: [REQ-686]
 batch: upstream-report-accepts
+claimed_at: 2026-10-10T10:07:36Z
 ---
 # Rollback Uses the Transaction's Open Root
 ## What
