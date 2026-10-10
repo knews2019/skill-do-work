@@ -21,6 +21,7 @@ required_lessons: ["_dev/primes/lessons-releases.md"]
 write_set: ["skills/do-work/tools/do-work-cli/internal/knowledgecommands/interview_derivations.go", "skills/do-work/tools/do-work-cli/internal/knowledgecommands/interview_export_regression_test.go"]
 batch: upstream-report-accepts
 claimed_at: 2026-10-10T10:07:35Z
+builder_handback_at: 2026-10-10T10:54:46Z
 ---
 # Interview Cadence Reads AM and PM
 ## What
