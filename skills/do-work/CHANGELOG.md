@@ -10,6 +10,16 @@ For the complete release history, read this file and the archives below from new
 - [0.50.0 through 0.64.1](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-13-up-to-v0.64.1.md)
 - [0.1.0 through 0.49.0](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-07-up-to-v0.49.0.md)
 
+## 0.305.101 — Lessons Record How to Clear a Stuck Finalization Journal After a Revert, and Comments Name Their Real Readers (2026-10-10)
+
+An upstream report asked for code in three places. The triage answered each with a short written fact instead, so the next reader does not have to ask again. This also closes the upstream-report batch (UR-152).
+
+- `lessons-do-work-cli.md` now says what to do after a performed and verified `git revert` of a finalization's primary commit: delete the stuck journal `.git/do-work-finalization/REQ-N.json` and its payloads folder by hand, because `--discard-journal` accepts only phase `prepared`.
+- A comment above `Handlers()` in `heavy_commands.go` says the three fast-stage commands are called only by `_dev/tests/maintainer-verify.sh`.
+- The comment in `git_transaction.go` about the literal commit ID "HEAD" now names the callers that read a non-empty commit ID (`cleanup_apply.go`, `doctor_repair.go`, `publication_commands.go`) instead of the wrong reader.
+- Two comments in the Timeline scroll browser probe now say three probes share the helper and point at the test that measures the first child.
+- The 0.305.46 wording fix was not made: release rules allow link edits to past entries, not rewording what they claim.
+
 ## 0.305.100 — A Hidden Timeline No Longer Redraws When You Scroll Another Board View (2026-10-10)
 
 After you opened the Timeline once, every scroll in Board, Calendar, Activity or Testing rebuilt the Timeline's invisible rows, because all views share one scroll area. In Testing that was about one frame of work per scroll. The Timeline now ignores those scrolls while it is hidden.
