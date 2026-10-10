@@ -2,6 +2,7 @@ package cleanup
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"os"
 	"path/filepath"
@@ -243,5 +244,70 @@ func TestWorktreeNewAppendsNumericSuffixOnCollision(t *testing.T) {
 	}
 	if tip := runCleanupGit(t, mainRoot, "rev-parse", lifecycleOperativeName); tip != leftoverTip {
 		t.Fatalf("leftover branch moved from %s to %s", leftoverTip, tip)
+	}
+}
+
+// Pins review F4: a builder worktree folder deleted by hand made `worktree status` and
+// `worktree cleanup` exit with WORKTREE-GIT-FAILED instead of listing the row as missing.
+func TestWorktreeStatusAndCleanupSurviveMissingWorktreeFolder(t *testing.T) {
+	mainRoot := lifecycleRepository(t)
+	worktreePath := lifecycleWorktreePath(mainRoot, lifecycleOperativeName)
+	if _, exitCode := runWorktreeCommand(t, mainRoot, "new", "REQ-41"); exitCode != 0 {
+		t.Fatalf("new exit %d", exitCode)
+	}
+	commitInWorktree(t, worktreePath, "feature.txt")
+	if merged, exitCode := runWorktreeCommand(t, mainRoot, "merge", "REQ-41"); exitCode != 0 {
+		t.Fatalf("merge: exit %d findings %#v", exitCode, merged.Findings)
+	}
+	if err := os.RemoveAll(worktreePath); err != nil {
+		t.Fatal(err)
+	}
+
+	status, exitCode := runWorktreeCommand(t, mainRoot, "status")
+	if exitCode != 0 || len(status.Worktree.StatusRows) != 1 {
+		t.Fatalf("status: exit %d rows %#v findings %#v", exitCode, status.Worktree.StatusRows, status.Findings)
+	}
+	if row := status.Worktree.StatusRows[0]; row.OperativeName != lifecycleOperativeName || !row.Missing || row.Dirty || row.LastCommitUnix == 0 {
+		t.Fatalf("status row %#v", row)
+	}
+
+	cleaned, exitCode := runWorktreeCommand(t, mainRoot, "cleanup", "REQ-41")
+	if exitCode != 0 {
+		t.Fatalf("cleanup: exit %d findings %#v", exitCode, cleaned.Findings)
+	}
+	if listing := runCleanupGit(t, mainRoot, "worktree", "list", "--porcelain"); strings.Contains(listing, lifecycleOperativeName) {
+		t.Fatalf("worktree still registered:\n%s", listing)
+	}
+	if branches := runCleanupGit(t, mainRoot, "branch", "--list", lifecycleOperativeName); branches != "" {
+		t.Fatalf("branch still present: %q", branches)
+	}
+}
+
+// Pins review F3: cleanup Pass 5 read the symlink `worktree new` creates from
+// do-work/worktree-links as uncommitted work and asked for consent to remove a finished worktree.
+// REQ-141, not REQ-41: Pass 5 settles a REQ only when the zero-padded filename id matches.
+func TestPass5RemovesMergedWorktreeWhoseOnlyDirtIsAnOwnedLink(t *testing.T) {
+	mainRoot := lifecycleRepository(t)
+	writeCleanupFile(t, mainRoot, "do-work/queue/REQ-141-owned-link.md", cleanupRequest("REQ-141", "pending", ""))
+	commitCleanupFixture(t, mainRoot)
+	worktreePath := lifecycleWorktreePath(mainRoot, "worktree-agent-REQ-141-owned-link")
+	if created, exitCode := runWorktreeCommand(t, mainRoot, "new", "REQ-141"); exitCode != 0 || created.Worktree.WorktreePath != worktreePath {
+		t.Fatalf("new: exit %d result %#v", exitCode, created.Worktree)
+	}
+	if err := os.Remove(filepath.Join(mainRoot, "do-work/queue/REQ-141-owned-link.md")); err != nil {
+		t.Fatal(err)
+	}
+	writeCleanupFile(t, mainRoot, "do-work/archive/REQ-141-owned-link.md", cleanupRequest("REQ-141", "completed", ""))
+	commitCleanupFixture(t, mainRoot)
+
+	changes, findings := ApplyWorktreeRepairs(context.Background(), mainRoot, WorktreeRepairOptions{})
+	if len(findings) != 0 || len(changes) != 1 {
+		t.Fatalf("Pass 5 changes=%#v findings=%#v", changes, findings)
+	}
+	if _, err := os.Lstat(worktreePath); !os.IsNotExist(err) {
+		t.Fatalf("worktree directory still present: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(mainRoot, "shared-deps", "package.txt")); err != nil {
+		t.Fatalf("main tree link target was touched: %v", err)
 	}
 }

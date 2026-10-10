@@ -1103,16 +1103,74 @@ const noOptionalLocksFlag = "--no-optional-locks"
 // broke the "state stays home" rule, this one asks whether Pass 5's non-forced
 // `git worktree remove` would refuse, and it refuses for dirt anywhere.
 //
+// The symlinks `worktree new` created from do-work/worktree-links are not
+// uncommitted work: Pass 5 removes them before its `git worktree remove`.
+//
 // A non-nil error means the question went unanswered. Callers must not read that
 // as clean — VerifyReport's contract is that silence reads as "checked and clean,"
 // which is the one thing an unanswered probe must never say.
-func worktreeHasUncommittedWork(worktreePath string) (bool, error) {
-	command := exec.Command("git", noOptionalLocksFlag, "-C", worktreePath, "status", "--porcelain", "--untracked-files=all")
+func worktreeHasUncommittedWork(worktreePath string, mainWorktreePath string) (bool, error) {
+	command := exec.Command("git", noOptionalLocksFlag, "-C", worktreePath, "status", "--porcelain", "-z", "--untracked-files=all")
 	output, runError := command.Output()
 	if runError != nil {
 		return false, fmt.Errorf("`git status` in %s failed, so whether it holds uncommitted work is unknown", worktreePath)
 	}
-	return strings.TrimSpace(string(output)) != "", nil
+	ownedLinks := ownedWorktreeLinkPaths(mainWorktreePath, worktreePath)
+	statusEntries := strings.Split(string(output), "\x00")
+	for index := 0; index < len(statusEntries); index++ {
+		statusEntry := statusEntries[index]
+		if statusEntry == "" {
+			continue
+		}
+		if len(statusEntry) < 4 {
+			return true, nil // an entry this probe cannot read is never clean
+		}
+		if statusEntry[0] == 'R' || statusEntry[0] == 'C' {
+			index++ // the rename or copy source follows as its own NUL field
+		}
+		if !ownedLinks[statusEntry[3:]] {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+// ownedWorktreeLinkPaths is the board's copy of the owned-link rule whose twin is
+// readWorktreeLinkConfig and ownedWorktreeLinks in do-work-cli's
+// internal/cleanup/worktree_lifecycle.go; this module cannot import it, so change
+// both together. A link is owned when do-work/worktree-links in the main tree
+// lists its path and it is a symlink to that same path in the main tree. A config
+// with an absolute or .. line is invalid as a whole. An unknown main tree, or an
+// unreadable or invalid config, owns nothing, so the probe reports dirt exactly as
+// before.
+func ownedWorktreeLinkPaths(mainWorktreePath string, worktreePath string) map[string]bool {
+	ownedLinks := map[string]bool{}
+	if mainWorktreePath == "" {
+		return ownedLinks
+	}
+	contents, readError := os.ReadFile(filepath.Join(mainWorktreePath, "do-work", "worktree-links"))
+	if readError != nil {
+		return ownedLinks
+	}
+	linkPaths := []string{}
+	for _, line := range strings.Split(string(contents), "\n") {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+		cleaned := filepath.ToSlash(filepath.Clean(line))
+		if filepath.IsAbs(line) || cleaned == "." || cleaned == ".." || strings.HasPrefix(cleaned, "../") || strings.Contains("/"+line+"/", "/../") {
+			return ownedLinks
+		}
+		linkPaths = append(linkPaths, cleaned)
+	}
+	for _, linkPath := range linkPaths {
+		target, linkError := os.Readlink(filepath.Join(worktreePath, filepath.FromSlash(linkPath)))
+		if linkError == nil && target == filepath.Join(mainWorktreePath, filepath.FromSlash(linkPath)) {
+			ownedLinks[linkPath] = true
+		}
+	}
+	return ownedLinks
 }
 
 // classifyWorktreeLeftover decides one leftover's disposition from repository
@@ -1127,7 +1185,8 @@ func worktreeHasUncommittedWork(worktreePath string) (bool, error) {
 // whether or not its builder still runs.
 //
 // requestId is the REQ id the caller already read out of leftoverName, passed in
-// rather than re-derived so one name yields one id.
+// rather than re-derived so one name yields one id. mainWorktreePath is the main
+// tree the worktree's owned links point into.
 //
 // The returned error is non-nil exactly when a fact could not be established; the
 // disposition is then worktreeLeftoverStateUnknown, never a silent "clean". A REQ
@@ -1142,7 +1201,7 @@ func worktreeHasUncommittedWork(worktreePath string) (bool, error) {
 // REQ outside working/: a worktree whose finishedness verify could not establish
 // gets inspected by hand whether or not it is also dirty, so the earlier question
 // is the one that decides.
-func classifyWorktreeLeftover(repoRoot string, board *Board, leftoverName string, requestId string, worktreePath string, hasWorktree bool) (worktreeLeftoverDisposition, error) {
+func classifyWorktreeLeftover(repoRoot string, board *Board, leftoverName string, requestId string, worktreePath string, hasWorktree bool, mainWorktreePath string) (worktreeLeftoverDisposition, error) {
 	switch classifyWorktreeMergeState(repoRoot, leftoverName) {
 	case worktreeMergeStateUnmerged:
 		return worktreeLeftoverUnmergedBranch, nil
@@ -1169,7 +1228,7 @@ func classifyWorktreeLeftover(repoRoot string, board *Board, leftoverName string
 	if !hasWorktree {
 		return worktreeLeftoverFinishedResidue, nil
 	}
-	hasUncommittedWork, statusError := worktreeHasUncommittedWork(worktreePath)
+	hasUncommittedWork, statusError := worktreeHasUncommittedWork(worktreePath, mainWorktreePath)
 	if statusError != nil {
 		return worktreeLeftoverStateUnknown, statusError
 	}
@@ -1278,7 +1337,7 @@ func appendWorktreeFindings(report *VerifyReport, repoRoot string, board *Board,
 			locationDetail = "exists at " + worktreePath
 		}
 		requestId := requestIdFromWorktreeName(leftoverName)
-		disposition, probeError := classifyWorktreeLeftover(repoRoot, board, leftoverName, requestId, worktreePath, hasWorktree)
+		disposition, probeError := classifyWorktreeLeftover(repoRoot, board, leftoverName, requestId, worktreePath, hasWorktree, gitState.mainWorktreePath)
 		if probeError != nil {
 			report.SkippedProbes = append(report.SkippedProbes,
 				fmt.Sprintf("worktree removability probe for %s: %v", leftoverName, probeError))
@@ -1400,6 +1459,8 @@ func worktreeCommittedQueueState(repoRoot string, integrationRef string, branchN
 // the read is a fixed number of git commands however many branches exist.
 type worktreeAgentGitState struct {
 	worktreePathsByName map[string]string
+	// The first `worktree` record: the main tree that owned worktree links point into.
+	mainWorktreePath    string
 	worktreeListError   error
 	branchNames         []string
 	integrationRef      string
@@ -1416,7 +1477,7 @@ type worktreeAgentGitState struct {
 // integration ref leaves no owned tips, since ownership cannot be shown.
 func readWorktreeAgentGitState(repoRoot string, runner gitCommandRunner) worktreeAgentGitState {
 	gitState := worktreeAgentGitState{}
-	gitState.worktreePathsByName, gitState.worktreeListError = listWorktreeAgentWorktrees(repoRoot, runner)
+	gitState.worktreePathsByName, gitState.mainWorktreePath, gitState.worktreeListError = listWorktreeAgentWorktrees(repoRoot, runner)
 	gitState.branchNames = listWorktreeAgentBranches(repoRoot, runner)
 	gitState.integrationRef, gitState.integrationRefError = resolveIntegrationBranchRef(repoRoot, runner)
 	if gitState.integrationRefError != nil {
@@ -1443,24 +1504,29 @@ func readWorktreeAgentGitState(repoRoot string, runner gitCommandRunner) worktre
 
 // listWorktreeAgentWorktrees maps each worktree-agent-* name to its worktree
 // path, read from `git worktree list --porcelain`. The name is the directory's
-// basename, which worktree dispatch mode keeps identical to the branch name.
-func listWorktreeAgentWorktrees(repoRoot string, runner gitCommandRunner) (map[string]string, error) {
+// basename, which worktree dispatch mode keeps identical to the branch name. The
+// first record is the main tree, returned as mainWorktreePath.
+func listWorktreeAgentWorktrees(repoRoot string, runner gitCommandRunner) (map[string]string, string, error) {
 	output, runError := runner(repoRoot, "worktree", "list", "--porcelain")
 	if runError != nil {
-		return nil, fmt.Errorf("`git worktree list` failed (no worktree support, or not a git repo)")
+		return nil, "", fmt.Errorf("`git worktree list` failed (no worktree support, or not a git repo)")
 	}
 	pathsByName := map[string]string{}
+	mainWorktreePath := ""
 	for _, line := range strings.Split(string(output), "\n") {
 		if !strings.HasPrefix(line, "worktree ") {
 			continue
 		}
 		worktreePath := strings.TrimSpace(strings.TrimPrefix(line, "worktree "))
+		if mainWorktreePath == "" {
+			mainWorktreePath = worktreePath
+		}
 		worktreeName := filepath.Base(worktreePath)
 		if strings.HasPrefix(worktreeName, worktreeAgentNamePrefix) {
 			pathsByName[worktreeName] = worktreePath
 		}
 	}
-	return pathsByName, nil
+	return pathsByName, mainWorktreePath, nil
 }
 
 // listWorktreeAgentBranches returns every local worktree-agent-* branch name. A

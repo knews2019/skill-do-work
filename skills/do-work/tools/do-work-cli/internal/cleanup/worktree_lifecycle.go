@@ -248,11 +248,20 @@ func (run *lifecycleRun) reportStatus(builderWorktrees []worktreeRecord) resultm
 		// HEAD, not the name: a detached builder worktree has no branch to count from.
 		counts, countError := cleanupGit(run.ctx, run.mainRoot, "rev-list", "--left-right", "--count", run.report.IntegrationBranch+"..."+record.Head)
 		commitTime, timeError := cleanupGit(run.ctx, run.mainRoot, "log", "-1", "--format=%ct", record.Head)
-		dirtyPaths, dirtyError := run.dirtyPaths(record.Path, linkPaths)
+		row := resultmodel.WorktreeStatusRow{OperativeName: record.Name, WorktreePath: record.Path}
+		// A folder deleted by hand leaves a prunable record: list it as missing, since the
+		// counts above run in the main tree and still answer without it.
+		var dirtyError error
+		if _, statError := os.Stat(record.Path); errors.Is(statError, os.ErrNotExist) {
+			row.Missing = true
+		} else {
+			var dirtyPaths []string
+			dirtyPaths, dirtyError = worktreeDirtyPaths(run.ctx, record.Path, ownedWorktreeLinks(run.mainRoot, record.Path, linkPaths))
+			row.Dirty = len(dirtyPaths) > 0
+		}
 		if err := errors.Join(countError, timeError, dirtyError); err != nil {
 			return run.stop(resultmodel.OutcomeFailure, "WORKTREE-GIT-FAILED", []string{record.Path}, nil, err.Error())
 		}
-		row := resultmodel.WorktreeStatusRow{OperativeName: record.Name, WorktreePath: record.Path, Dirty: len(dirtyPaths) > 0}
 		if countFields := strings.Fields(counts); len(countFields) == 2 {
 			row.Behind, _ = strconv.Atoi(countFields[0])
 			row.Ahead, _ = strconv.Atoi(countFields[1])
@@ -362,8 +371,14 @@ func (run *lifecycleRun) removeBuilderWorktree(requestID, requestedName string, 
 	}
 	run.report.WorktreePath = worktreePath
 	ownedLinks := []string{}
+	folderMissing := false
 	if worktreePath != "" {
-		dirtyPaths, err := run.dirtyPaths(worktreePath, linkPaths)
+		_, statError := os.Stat(worktreePath)
+		folderMissing = errors.Is(statError, os.ErrNotExist)
+	}
+	if worktreePath != "" && !folderMissing {
+		ownedLinks = ownedWorktreeLinks(run.mainRoot, worktreePath, linkPaths)
+		dirtyPaths, err := worktreeDirtyPaths(run.ctx, worktreePath, ownedLinks)
 		if err != nil {
 			return run.stop(resultmodel.OutcomeFailure, "WORKTREE-GIT-FAILED", []string{worktreePath}, nil, err.Error())
 		}
@@ -371,7 +386,6 @@ func (run *lifecycleRun) removeBuilderWorktree(requestID, requestedName string, 
 			return run.stop(resultmodel.OutcomeRefused, "WORKTREE-DIRTY", dirtyPaths, []string{"git", "-C", worktreePath, "status", "--short"},
 				operativeName+" has uncommitted builder work; commit it on the branch or discard it through cleanup Pass 5")
 		}
-		ownedLinks = run.ownedLinks(worktreePath, linkPaths)
 	}
 
 	for _, linkPath := range ownedLinks {
@@ -380,7 +394,10 @@ func (run *lifecycleRun) removeBuilderWorktree(requestID, requestedName string, 
 		}
 	}
 	steps := [][]string{{"branch", "-d", operativeName}, {"worktree", "prune"}}
-	if worktreePath != "" {
+	if folderMissing {
+		// `branch -d` refuses a branch "used by worktree" while the prunable record exists.
+		steps = [][]string{{"worktree", "prune"}, {"branch", "-d", operativeName}}
+	} else if worktreePath != "" {
 		steps = append([][]string{{"worktree", "remove", worktreePath}}, steps...)
 	}
 	for _, step := range steps {
@@ -430,18 +447,35 @@ func (run *lifecycleRun) builderBranches(requestID string) ([]string, error) {
 	return names, nil
 }
 
-// readLinkConfig reads worktreeLinksConfig from the main tree. An absent file means no links;
-// an absolute path or a .. segment refuses the whole command before anything is created.
+// readLinkConfig maps readWorktreeLinkConfig onto this command's refusals, so every
+// subcommand stops before anything is created when the config cannot be trusted.
 func (run *lifecycleRun) readLinkConfig() ([]string, *resultmodel.CommandResult) {
-	contents, err := os.ReadFile(filepath.Join(run.mainRoot, filepath.FromSlash(worktreeLinksConfig)))
-	if errors.Is(err, os.ErrNotExist) {
-		return nil, nil
-	}
-	if err != nil {
-		result := run.stop(resultmodel.OutcomeFailure, "WORKTREE-LINK-CONFIG-UNREADABLE", []string{worktreeLinksConfig}, nil, err.Error())
+	linkPaths, invalidLine, readError := readWorktreeLinkConfig(run.mainRoot)
+	if readError != nil {
+		result := run.stop(resultmodel.OutcomeFailure, "WORKTREE-LINK-CONFIG-UNREADABLE", []string{worktreeLinksConfig}, nil, readError.Error())
 		return nil, &result
 	}
-	linkPaths := []string{}
+	if invalidLine != "" {
+		result := run.stop(resultmodel.OutcomeRefused, "WORKTREE-LINK-CONFIG-INVALID", []string{worktreeLinksConfig}, nil,
+			fmt.Sprintf("%s line %q must be a repository-relative path without .. segments", worktreeLinksConfig, invalidLine))
+		return nil, &result
+	}
+	return linkPaths, nil
+}
+
+// readWorktreeLinkConfig reads worktreeLinksConfig from the main tree. An absent file means
+// no links; invalidLine names the first absolute or .. line. queue-kanban's verify.go
+// (ownedWorktreeLinkPaths) carries a copy of this rule and of ownedWorktreeLinks, because
+// it is a separate module; change both together.
+func readWorktreeLinkConfig(mainRoot string) (linkPaths []string, invalidLine string, readError error) {
+	contents, err := os.ReadFile(filepath.Join(mainRoot, filepath.FromSlash(worktreeLinksConfig)))
+	if errors.Is(err, os.ErrNotExist) {
+		return nil, "", nil
+	}
+	if err != nil {
+		return nil, "", err
+	}
+	linkPaths = []string{}
 	for _, line := range strings.Split(string(contents), "\n") {
 		line = strings.TrimSpace(line)
 		if line == "" {
@@ -449,38 +483,47 @@ func (run *lifecycleRun) readLinkConfig() ([]string, *resultmodel.CommandResult)
 		}
 		cleaned := filepath.ToSlash(filepath.Clean(line))
 		if filepath.IsAbs(line) || cleaned == "." || cleaned == ".." || strings.HasPrefix(cleaned, "../") || strings.Contains("/"+line+"/", "/../") {
-			result := run.stop(resultmodel.OutcomeRefused, "WORKTREE-LINK-CONFIG-INVALID", []string{worktreeLinksConfig}, nil,
-				fmt.Sprintf("%s line %q must be a repository-relative path without .. segments", worktreeLinksConfig, line))
-			return nil, &result
+			return nil, line, nil
 		}
 		linkPaths = append(linkPaths, cleaned)
 	}
-	return linkPaths, nil
+	return linkPaths, "", nil
 }
 
-// ownedLinks are the configured paths that are symlinks to their own main-tree path, the
-// only links this command created and the only ones cleanup may remove.
-func (run *lifecycleRun) ownedLinks(worktreePath string, linkPaths []string) []string {
+// ownedWorktreeLinks are the configured paths that are symlinks to their own main-tree path,
+// the only links `worktree new` created and the only ones cleanup may remove.
+func ownedWorktreeLinks(mainRoot, worktreePath string, linkPaths []string) []string {
 	owned := []string{}
 	for _, linkPath := range linkPaths {
 		target, err := os.Readlink(filepath.Join(worktreePath, filepath.FromSlash(linkPath)))
-		if err == nil && target == filepath.Join(run.mainRoot, filepath.FromSlash(linkPath)) {
+		if err == nil && target == filepath.Join(mainRoot, filepath.FromSlash(linkPath)) {
 			owned = append(owned, linkPath)
 		}
 	}
 	return owned
 }
 
-// dirtyPaths is the worktree's porcelain status minus the owned links: a symlink is not
+// OwnedWorktreeLinks is ownedWorktreeLinks for a reader outside this package that only asks
+// whether a worktree is dirty. An unreadable or invalid config owns nothing, so that reader
+// reports every path as dirt, exactly as before links existed (fail toward consent).
+func OwnedWorktreeLinks(mainRoot, worktreePath string) []string {
+	linkPaths, invalidLine, readError := readWorktreeLinkConfig(mainRoot)
+	if readError != nil || invalidLine != "" {
+		return nil
+	}
+	return ownedWorktreeLinks(mainRoot, worktreePath, linkPaths)
+}
+
+// worktreeDirtyPaths is the worktree's porcelain status minus ownedLinks: a symlink is not
 // matched by a `node_modules/` ignore line, so without this filter every linked worktree
 // would read as dirty.
-func (run *lifecycleRun) dirtyPaths(worktreePath string, linkPaths []string) ([]string, error) {
-	output, err := cleanupGit(run.ctx, worktreePath, "status", "--porcelain=v1", "-z", "--untracked-files=all")
+func worktreeDirtyPaths(ctx context.Context, worktreePath string, ownedLinks []string) ([]string, error) {
+	output, err := cleanupGit(ctx, worktreePath, "status", "--porcelain=v1", "-z", "--untracked-files=all")
 	if err != nil {
 		return nil, err
 	}
 	owned := map[string]bool{}
-	for _, linkPath := range run.ownedLinks(worktreePath, linkPaths) {
+	for _, linkPath := range ownedLinks {
 		owned[linkPath] = true
 	}
 	dirty := []string{}

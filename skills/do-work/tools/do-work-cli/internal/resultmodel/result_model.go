@@ -628,12 +628,15 @@ type WorktreeLifecycleResult struct {
 
 // WorktreeStatusRow is one worktree-agent-REQ-* worktree as `worktree status`
 // saw it; Ahead and Behind count commits against the integration branch.
+// Missing marks a registered worktree whose folder is gone; its Dirty is then
+// unread and false.
 type WorktreeStatusRow struct {
 	OperativeName  string `json:"operative_name"`
 	WorktreePath   string `json:"worktree_path"`
 	Ahead          int    `json:"ahead"`
 	Behind         int    `json:"behind"`
 	Dirty          bool   `json:"dirty"`
+	Missing        bool   `json:"missing"`
 	LastCommitUnix int64  `json:"last_commit_unix"`
 }
 
@@ -1346,7 +1349,9 @@ func renderText(result CommandResult) []byte {
 		}
 		for _, row := range worktree.StatusRows {
 			state := "clean"
-			if row.Dirty {
+			if row.Missing {
+				state = "missing"
+			} else if row.Dirty {
 				state = "dirty"
 			}
 			commitAge := time.Since(time.Unix(row.LastCommitUnix, 0)).Round(time.Minute)
