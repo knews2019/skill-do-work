@@ -25,6 +25,7 @@ estimate:
     - Route B
     - 6-file write set
     - 9 acceptance criteria
+builder_handback_at: 2026-10-10T13:27:53Z
 ---
 # ai-report --kind Proposal and Root-Cause Writes a Decision-First Brief for Unfinished Work
 ## What
@@ -78,7 +79,7 @@ Certainty is high on the shape (the report lists it item by item). Latitude: exa
 ## Required Lessons — Dropped for Budget
 - `_dev/primes/lessons-action-files.md` as a whole satellite (7756 tokens, over the 2000 budget; `slugged: partial`, so no targeted form). Matching reason: its index row covers changing action routing and status contracts, which this REQ does; family `canonical-authoring-vs-tolerant-reading` fits a kind that reads open work without presenting it as shipped.
 ## Full Context
-See `do-work/user-requests/UR-153/input.md` for the 2026-10-10 decision record. The cancelled original, `do-work/archive/REQ-654-ai-report-kind-proposal-root-cause-options.md`, carries the complete body and the UR-150 addendum; the source report is `do-work/inbox/2026-10-09_do-work-upstream-suggestion-ai-report-kinds-and-index.md`, Request item A1, with verbatim input in `do-work/user-requests/UR-144/input.md`.
+See `do-work/user-requests/UR-153/input.md` for the 2026-10-10 decision record. The cancelled original, `do-work/archive/UR-144/REQ-654-ai-report-kind-proposal-root-cause-options.md`, carries the complete body and the UR-150 addendum; the source report is `do-work/inbox/2026-10-09_do-work-upstream-suggestion-ai-report-kinds-and-index.md`, Request item A1, with verbatim input in `do-work/archive/UR-144/input.md`.
 ## AI Execution State (P-A-U Loop)
 - [ ] **[PLAN]:** (Agent: Read listed `prime_files` and agent rules. Write brief technical approach here. Do not write code yet.)
 - [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
