@@ -1,7 +1,7 @@
 ---
 id: REQ-661
 title: 'capture-files init writes a filled manifest skeleton and payload templates, and the capture-reference fence example is fixed'
-status: claimed
+status: pending
 created_at: 2026-10-09T21:14:04Z
 user_request: UR-145
 domain: backend
@@ -13,6 +13,7 @@ effort_estimate: effort-substantive
 related: [REQ-658, REQ-659, REQ-660]
 batch: cli-ergonomics
 claimed_at: 2026-10-10T12:52:20Z
+status_changed_at: 2026-10-10T12:57:16Z
 ---
 # capture-files init Writes a Filled Manifest Skeleton and Payload Templates, and the capture-reference Fence Example Is Fixed
 ## What
