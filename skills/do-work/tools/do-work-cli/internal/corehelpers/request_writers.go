@@ -22,12 +22,20 @@ var requestIDPattern = regexp.MustCompile(`^REQ-[0-9]+$`)
 // in _at is an append-only stamp (actions/work-reference.md → Stamps are
 // append-only): it is written once, in the Timestamp rule's form, and never
 // replaced. Quoting is SetScalar's, so this writer adds no encoding of its own.
+// status and id are refused: the lifecycle commands own status, and an id is
+// never rewritten.
 func handleFrontmatterSet(executionContext commandruntime.ExecutionContext, arguments []string) resultmodel.CommandResult {
 	stampRequested := len(arguments) == 4 && arguments[2] == "--at"
 	if len(arguments) != 3 && !stampRequested {
 		return frontmatterUsageResult("usage: frontmatter set <file|REQ-N> <field> (<value> | --at now)")
 	}
 	target, field, value := arguments[0], arguments[1], arguments[2]
+	switch field {
+	case "status":
+		return writerRefusal("FRONTMATTER-FIELD-OWNED", target, "status is changed by the lifecycle commands (advance, unblock, finalize) or the hand write at the transition's defining site, never by frontmatter set")
+	case "id":
+		return writerRefusal("FRONTMATTER-FIELD-OWNED", target, "id is never rewritten")
+	}
 	isStampField := strings.HasSuffix(field, "_at")
 	if stampRequested {
 		if !isStampField || arguments[3] != "now" {
@@ -115,13 +123,14 @@ func handleRequest(executionContext commandruntime.ExecutionContext, arguments [
 	body := document.BodyBytes()
 	laterSections := requestmodel.SectionsAfter(sectionName)
 	existing := []requestmodel.VisibleSection{}
-	insertAt := -1
+	insertAt, sectionsBefore := -1, 0
 	// Only column-0 headings are sections, matching advance's advanceSections;
 	// fenced, commented or indented headings are the user's text.
 	for _, section := range requestmodel.VisibleSections(body) {
 		if section.HeadingIndent != 0 {
 			continue
 		}
+		sectionsBefore++
 		if section.Name == sectionName {
 			existing = append(existing, section)
 		} else if insertAt < 0 && slices.Contains(laterSections, section.Name) {
@@ -158,16 +167,18 @@ func handleRequest(executionContext commandruntime.ExecutionContext, arguments [
 	if err := document.ReplaceBodySpan(insertAt, insertAt, []byte(insertion)); err != nil {
 		return writerRefusal("SECTION-WRITE-FAILED", requestPath, err.Error())
 	}
-	// An unclosed fence or comment at the end of the file would hide the new
-	// heading, and every retry would then append another invisible copy.
-	visibleCopies := 0
+	// An open fence or comment in the new body hides every later section from
+	// advance, and one already open at the end of the file hides the new
+	// heading (every retry would append another invisible copy). Either way
+	// the column-0 section count does not grow by exactly one.
+	sectionsAfter := 0
 	for _, section := range requestmodel.VisibleSections(document.BodyBytes()) {
-		if section.HeadingIndent == 0 && section.Name == sectionName {
-			visibleCopies++
+		if section.HeadingIndent == 0 {
+			sectionsAfter++
 		}
 	}
-	if visibleCopies != 1 {
-		return writerRefusal("SECTION-WRITE-FAILED", requestPath, "the inserted ## "+sectionName+" would not be a visible section")
+	if sectionsAfter != sectionsBefore+1 {
+		return writerRefusal("SECTION-WRITE-FAILED", requestPath, "the inserted ## "+sectionName+" would hide itself or a later section; close every fence and comment in the body")
 	}
 	if refusal := replaceRequestFile(executionContext.RepositoryRoot, requestPath, contents, document.DocumentBytes()); refusal != nil {
 		return *refusal

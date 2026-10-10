@@ -132,6 +132,27 @@ func TestFrontmatterSetWritesQuotedScalars(t *testing.T) {
 	}
 }
 
+// Pins review F3: set wrote status: bogus-status, which looks validated but bypasses the lifecycle owners.
+func TestFrontmatterSetRefusesLifecycleOwnedFields(t *testing.T) {
+	root := t.TempDir()
+	requestPath := "do-work/working/REQ-701-fixture.md"
+	writeMatrixFile(t, root, requestPath, writerFixtureRequest)
+	for _, owned := range []struct {
+		field, value, wantOwner string
+	}{
+		{"status", "bogus-status", "advance"},
+		{"id", "REQ-999", "never rewritten"},
+	} {
+		t.Run(owned.field, func(t *testing.T) {
+			result := runRegisteredWriter(t, root, CommandFrontmatter, "set", "REQ-701", owned.field, owned.value)
+			assertRefusedUnchanged(t, result, root, requestPath, writerFixtureRequest, "FRONTMATTER-FIELD-OWNED")
+			if evidence := strings.Join(result.Findings[0].Evidence, " "); !strings.Contains(evidence, owned.wantOwner) {
+				t.Fatalf("evidence %q does not name the owner %q", evidence, owned.wantOwner)
+			}
+		})
+	}
+}
+
 // Pins the out-of-order section write that advance later refuses.
 func TestRequestAppendSectionLandsInCanonicalOrder(t *testing.T) {
 	cases := []struct {
@@ -209,6 +230,30 @@ func TestRequestAppendSectionRepeatIsNoOpAndConflictRefuses(t *testing.T) {
 	// advance later refuses.
 	headed := runRegisteredWriter(t, root, CommandRequest, "append-section", "REQ-701", "--section", "Qualification", "--from", "headed.md")
 	assertRefusedUnchanged(t, headed, root, requestPath, written, "SECTION-BODY-HAS-HEADING")
+}
+
+// Pins review N1: an open fence or comment in the body hid the later ## Review from advance.
+func TestRequestAppendSectionRefusesBodyThatHidesLaterSections(t *testing.T) {
+	frontmatter := "---\nid: REQ-701\nstatus: claimed\n---\n"
+	withReview := frontmatter + "## What\nDo it.\n\n## Review\nLooks good.\n"
+	for _, test := range []struct {
+		name, request, from string
+	}{
+		{"an open fence in the body", withReview, "```\n## x\n"},
+		{"an open comment in the body", withReview, "text <!-- open\n"},
+		// The end-of-file case the old single-copy re-check guarded: the
+		// request's own open fence hides the appended heading.
+		{"an open fence already at the end of the file", frontmatter + "## What\n```\nstill fenced\n", "tests ran\n"},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			root := t.TempDir()
+			requestPath := "do-work/working/REQ-701-fixture.md"
+			writeMatrixFile(t, root, requestPath, test.request)
+			writeMatrixFile(t, root, "testing.md", test.from)
+			result := runRegisteredWriter(t, root, CommandRequest, "append-section", "REQ-701", "--section", "Testing", "--from", "testing.md")
+			assertRefusedUnchanged(t, result, root, requestPath, test.request, "SECTION-WRITE-FAILED")
+		})
+	}
 }
 
 // Pins the resolver: an id must name exactly one working or queue file.
