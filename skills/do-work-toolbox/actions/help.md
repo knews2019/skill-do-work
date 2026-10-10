@@ -16,6 +16,7 @@ do-work-toolbox — reviews, reports, discovery, and repository utilities
   present-video [REQ|UR]         Source-only Remotion video walkthrough
   slop-check [target]            Validate a draft against anti-slop principles
   source-audit <report|urls>     Check that cited sources support each claim
+  release-check <target>         Trace delivery to the consumer; give a readiness verdict
   quick-wins [dir]               Grounded refactor/test opportunities
   scan-ideas [focus]             Ideas for what to build next
   deep-explore [concept]         Multi-round concept exploration
