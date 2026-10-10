@@ -16,3 +16,5 @@ queue_state: [21 pending, 0 pending-answers, 0 blocked, 0 blocked-archive-collis
 - REQ-659: frontmatter set and req append-section write REQ stamps and sections with the schema rules enforced — claimed 2026-10-10T12:52:19Z — writer: t2s-Virtual-Machine.local:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2
 
 - REQ-660: worktree new, status, merge and cleanup wrap the builder worktree lifecycle the actions already define — claimed 2026-10-10T12:52:20Z — writer: t2s-Virtual-Machine.local:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2
+
+- REQ-661: capture-files init writes a filled manifest skeleton and payload templates, and the capture-reference fence example is fixed — claimed 2026-10-10T12:52:20Z — writer: t2s-Virtual-Machine.local:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2
