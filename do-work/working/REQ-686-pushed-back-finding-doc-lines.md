@@ -22,6 +22,7 @@ write_set: ["skills/do-work/tools/do-work-cli/lessons-do-work-cli.md", "skills/d
 related: [REQ-685]
 batch: upstream-report-accepts
 claimed_at: 2026-10-10T10:07:36Z
+builder_handback_at: 2026-10-10T12:06:39Z
 ---
 # Doc Lines for the Pushed-Back Findings
 ## What
