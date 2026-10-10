@@ -1,7 +1,7 @@
 ---
 id: REQ-654
 title: 'ai-report --kind proposal, root-cause and options writes a decision-first brief for unfinished work'
-status: claimed
+status: pending
 created_at: 2026-10-09T21:10:00Z
 user_request: UR-144
 domain: general
@@ -14,6 +14,7 @@ related: [REQ-655, REQ-656, REQ-657]
 batch: ai-report-modes
 write_set: ["skills/do-work-toolbox/actions/ai-report.md", "skills/do-work-toolbox/actions/ai-report-reference.md", "skills/do-work-toolbox/actions/completed-work-presentation-reference.md", "skills/do-work-toolbox/docs/ai-report-guide.md", "skills/do-work-toolbox/SKILL.md", "skills/do-work-toolbox/actions/help.md"]
 claimed_at: 2026-10-10T12:52:18Z
+status_changed_at: 2026-10-10T12:57:09Z
 ---
 # ai-report --kind Proposal, Root-Cause and Options Writes a Decision-First Brief for Unfinished Work
 ## What
