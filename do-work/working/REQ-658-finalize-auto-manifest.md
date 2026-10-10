@@ -1,7 +1,7 @@
 ---
 id: REQ-658
 title: 'finalize --auto-manifest builds the mechanical fields of the finalization manifest and preflights the tree'
-status: pending
+status: claimed
 created_at: 2026-10-09T21:14:04Z
 user_request: UR-145
 domain: backend
@@ -12,6 +12,7 @@ impact: impact-user-visible
 effort_estimate: effort-substantive
 related: [REQ-659, REQ-660, REQ-661]
 batch: cli-ergonomics
+claimed_at: 2026-10-10T12:52:19Z
 ---
 # finalize --auto-manifest Builds the Mechanical Fields of the Finalization Manifest and Preflights the Tree
 ## What
