@@ -10,6 +10,15 @@ For the complete release history, read this file and the archives below from new
 - [0.50.0 through 0.64.1](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-13-up-to-v0.64.1.md)
 - [0.1.0 through 0.49.0](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-07-up-to-v0.49.0.md)
 
+## 0.305.103 — do-work-cli Writes REQ Stamps and Sections and Refuses What the Schema Forbids (2026-10-10)
+
+Agents stamped `review_at` and `integration_at` and appended `## Testing` with hand-written scripts, and nothing enforced the append-only or section-order rules: one upstream report counted 112 such scripts in 13 days. Two new commands now do these writes and refuse what the REQ schema forbids.
+
+- `do-work-cli frontmatter set <file|REQ-N> <field> (<value> | --at now)` writes one scalar field on a REQ in `do-work/working/` or `do-work/queue/`, quoted the same way as every other frontmatter write. It refuses to overwrite any `*_at` stamp that already has a value, accepts a stamp only in `YYYY-MM-DDTHH:MM:SSZ` form, refuses list or nested fields, and prints the value it wrote.
+- `do-work-cli req append-section REQ-N --section <name> --from <file>` inserts a lifecycle section in canonical order. Running it again with the same body changes nothing and exits 0. A different body, a second copy, a name outside the canonical list, or a `--from` file that contains its own `## ` heading is refused.
+- `advance` and the new writer read one shared section order, so the writer cannot put a section where `advance` would refuse it.
+- `actions/work.md` and `actions/work-reference.md` name the two commands where stamps and sections are written. Writing by hand stays valid.
+
 ## 0.305.102 — One do-work-cli Command Creates, Merges and Removes Builder Worktrees (2026-10-10)
 
 Sessions typed `git worktree add`, `ln -s`, merge and cleanup commands by hand for every builder: one upstream report counted 85 hand-run `git worktree add` calls in 14 days. `do-work-cli worktree` now runs the steps `actions/fan-out-reference.md` already defines, and it refuses before any change when a step is unsafe. It never passes `--force` or `-D` to git.
