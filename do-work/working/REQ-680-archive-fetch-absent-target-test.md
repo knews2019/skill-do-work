@@ -22,6 +22,7 @@ write_set: ["skills/do-work/tools/do-work-cli/internal/archivefetch/archive_fetc
 related: [REQ-679]
 batch: upstream-report-accepts
 claimed_at: 2026-10-10T10:07:06Z
+builder_handback_at: 2026-10-10T10:44:38Z
 ---
 # Archive Fetch Test Keeps an Absent Target Absent
 ## What
