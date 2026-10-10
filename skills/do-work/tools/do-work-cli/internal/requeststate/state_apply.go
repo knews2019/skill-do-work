@@ -1023,34 +1023,20 @@ func markdownSectionBytes(body []byte, section string) []byte {
 
 func appendSectionEntry(contents []byte, section, entry string) []byte {
 	text := strings.TrimRight(string(contents), "\n")
-	lines := strings.Split(text, "\n")
-	_, sectionEnd, found := sectionLineBounds(lines, section)
-	if !found {
-		heading := "## " + section
-		return []byte(text + "\n\n" + heading + "\n\n" + entry + "\n")
-	}
-	if sectionEnd == len(lines) {
-		return []byte(text + "\n\n" + entry + "\n")
-	}
-	sectionText := strings.TrimRight(strings.Join(lines[:sectionEnd], "\n"), "\n")
-	followingText := strings.Join(lines[sectionEnd:], "\n")
-	return []byte(sectionText + "\n\n" + entry + "\n\n" + followingText + "\n")
-}
-
-func sectionLineBounds(lines []string, section string) (int, int, bool) {
-	heading := "## " + section
-	for lineIndex, line := range lines {
-		if line != heading {
+	for _, visible := range requestmodel.VisibleSections([]byte(text)) {
+		// An indented heading ends the section above it but is the user's text.
+		if visible.Name != section || visible.HeadingIndent != 0 {
 			continue
 		}
-		for sectionEnd := lineIndex + 1; sectionEnd < len(lines); sectionEnd++ {
-			if strings.HasPrefix(lines[sectionEnd], "## ") {
-				return lineIndex, sectionEnd, true
-			}
+		if visible.End >= len(text) {
+			return []byte(text + "\n\n" + entry + "\n")
 		}
-		return lineIndex, len(lines), true
+		sectionText := strings.TrimRight(text[:visible.End], "\n")
+		followingText := text[visible.End:]
+		return []byte(sectionText + "\n\n" + entry + "\n\n" + followingText + "\n")
 	}
-	return 0, 0, false
+	heading := "## " + section
+	return []byte(text + "\n\n" + heading + "\n\n" + entry + "\n")
 }
 
 func cancellationReasonBlock(reason, summary string) string {
