@@ -1,7 +1,7 @@
 ---
 id: REQ-688
 title: 'capture-files --example prints one valid manifest with payload templates, and the capture-reference fence example is fixed'
-status: claimed
+status: completed
 created_at: 2026-10-10T13:05:57Z
 user_request: UR-153
 domain: backend
@@ -23,6 +23,14 @@ estimate:
   basis:
     - trivial short-circuit
 builder_handback_at: 2026-10-10T13:27:57Z
+integration_at: 2026-10-10T16:50:03Z
+review_at: 2026-10-10T17:06:11Z
+kb_status: pending
+commit: f42468daae3d7be77f69a4b6c9ee59354f8c83af
+heavy_verified_at: 2026-10-10T17:06:30Z
+heavy_verified_revision: f42468daae3d7be77f69a4b6c9ee59354f8c83af
+completed_at: 2026-10-10T17:07:09Z
+release_at: 2026-10-10T17:07:09Z
 ---
 # capture-files --example Prints One Valid Manifest, and the capture-reference Fence Example Is Fixed
 ## What
@@ -65,9 +73,18 @@ Certainty is high on the doc fix and the dry-run acceptance target. Latitude: fl
 ## Full Context
 See `do-work/user-requests/UR-153/input.md` for the decision record. The cancelled original is `do-work/archive/UR-145/REQ-661-capture-files-init-manifest-skeleton.md`; its source report is `do-work/inbox/2026-10-09_do-work-upstream-suggestion-cli-ergonomics.md`, Request item 4.
 ## AI Execution State (P-A-U Loop)
-- [ ] **[PLAN]:** (Agent: Read listed `prime_files` and agent rules. Write brief technical approach here. Do not write code yet.)
-- [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
-- [ ] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
+- [x] **[PLAN]:** Branch `--example` for capture-files only before the shared option parser. Build the manifest as a `Manifest` value and encode it; keep both payload templates as Go text (PD-6). Reuse `readPayload`, `validateOutsideBytes`, `containedOutsideBytes`, `commandFailure`, `refusalResult`, `refusedPlan`. Pin with two tests: the published UR example under raw-input containment, and the printed example filled and dry-run.
+- [x] **[APPLY]:** Done as planned in the five Write-boundary files. No other file touched; no file under `do-work/` staged.
+- [x] **[UNIFY]:** `git diff bd56c4b0 --stat`:
+  ```
+   skills/do-work/actions/capture-reference.md        |   6 +-
+   skills/do-work/actions/capture.md                  |   2 +
+   .../internal/publication/capture_files_example.go  | 112 +++++++++++++++++++++
+   .../internal/publication/capture_files_test.go     | 105 ++++++++++++++++++-
+   .../internal/publication/publication_commands.go   |   4 +
+   5 files changed, 221 insertions(+), 8 deletions(-)
+  ```
+  Checks (from the worktree root): `gofmt -l .../internal/publication` printed nothing, exit 0. `go vet -C skills/do-work/tools/do-work-cli ./internal/publication/` exit 0 (under 1 s). `go test -C skills/do-work/tools/do-work-cli -count=1 ./internal/publication/` exit 0, 38.3 s (machine under load from sibling builders, single run, passed). `REQ-688-probe.sh` exit 0, 2 s, printed `REQ-688 GREEN probe: ok`. `git diff --check` and `git diff --cached --check` exit 0. Files checked: all five above, read in full in the diff; no debug output, no stray files (`git status --short` empty after the commit).
 *Source: maintainer decision of 2026-10-10 (UR-153), replacing REQ-661 with the source report's fallback: "If a new subcommand is too much, a `capture-files --example` that prints one valid manifest covers most of the gap."*
 
 ---
@@ -135,3 +152,148 @@ Read by the pre-dispatch agent at main `bd56c4b0` (0.305.101 tree). All Verified
 - [ ] The `capture-reference.md` UR example uses a bare three-backtick fence on both fence lines, and the sizing paragraph agrees with it.
 - [ ] `capture.md` Step 5 names `capture-files --example` as the way to get the manifest shape; the prose description stays.
 - [ ] `--example` writes nothing to disk and never creates a reservation marker; no new frontmatter field or status; the containment rule is unchanged.
+
+## Implementation Summary
+
+**Files changed:**
+- `skills/do-work/tools/do-work-cli/internal/publication/capture_files_example.go` (new)
+- `skills/do-work/tools/do-work-cli/internal/publication/publication_commands.go` (modified)
+- `skills/do-work/tools/do-work-cli/internal/publication/capture_files_test.go` (modified)
+- `skills/do-work/actions/capture-reference.md` (modified)
+- `skills/do-work/actions/capture.md` (modified)
+
+**What was done:** Added `capture-files --example [--raw-input <file>]`, which prints a manifest encoded from the `Manifest` type plus UR and REQ payload templates, each after a `==> <path> <==` line, writes nothing, and refuses under `--format json`; with `--raw-input` the UR template carries `containedOutsideBytes` of the file. Fixed the capture-reference UR example to a bare three-backtick fence, stated the fence derivation once, pointed capture Step 5 at the new command, and made the published-example test pass raw input to the UR case.
+
+## Decisions
+
+*(from the builder hand-back)*
+
+- **D-01 Delimiter:** DECIDE & STATE. `==> <path> <==`, where `<path>` is the payload file the part belongs in (`<payload-dir>/manifest.json`, `<payload-dir>/ur-input.md`, `<payload-dir>/req.md`), so the split also says where to write. Safe because raw-input lines in the UR part are `> `-prefixed (code comment says so).
+- **D-02 Placeholders:** DECIDE & STATE. `UR-NNN`, `REQ-NNN`, `do-work/.req-reservations/REQ-NNN` (fixed by the REQ), `<payload-dir>`, `<slug>`, `<title>`, `<created-at>`, `<word-count>`, plus free body text `<what ...>`, `<original verbatim request>`, `<verbatim input>`. Only `UR-NNN`, `REQ-NNN`, `<payload-dir>`, `<slug>`, `<created-at>`, `<word-count>` must be replaced to pass the dry run; `<title>` and body text pass as is.
+- **D-03 Valid defaults instead of placeholders for enum fields:** DECIDE & STATE. `domain: general`, `tdd: false`, `maintenance: false`, `prime_files: []`, `status: pending` are canonical values, so the validator passes them; a `<domain>` placeholder would fail the canonical-value check and add one more required replacement. Capture Step 1 still owns the real choice.
+- **D-04 Encoder instead of `json.MarshalIndent`:** DECIDE & STATE. `MarshalIndent` escapes `<` and `>` as `<`/`>`, which makes the placeholders unreadable and unreplaceable by plain text substitution. `json.NewEncoder` with `SetEscapeHTML(false)` and `SetIndent("", "  ")` marshals the same `Manifest` value. Still never hand-written JSON.
+- **D-05 Routing location:** DECIDE & STATE. Top of `handlePublicationCommand`, `operation == OperationCaptureFiles && slices.Contains(arguments, "--example")`. So `--manifest/--dry-run/--commit/--at` beside `--example` reach `parseCaptureExampleOptions` and refuse `PUBLICATION-USAGE`; `--raw-input` without `--example` still reaches `parseCommandOptions` and refuses as unknown (PD-2).
+- **D-06 Usage refusal before the format check:** DECIDE & STATE. A bad option combination is reported first; then `--format json` refuses. Both are `PUBLICATION-USAGE`.
+- **D-07 Raw-input read refusals:** DECIDE & STATE. Returned as refusals (`refusalResult(refusedPlan(...))`) with `CAPTURE-RAW-INPUT-INVALID` / `CAPTURE-RAW-INPUT-UNSAFE`, the same outcome and codes `BuildCapturePlan` gives.
+- **D-08 Step 5 sentence placement:** DECIDE & STATE. Its own short paragraph right after the manifest paragraph (`capture.md:230`), inline wrapper command in the same style as `verify-requests.md:168`; it says plain text only, because the Step 5 command line carries `--format json` and a session copying it would get the refusal.
+- **D-09 Test splits with a regexp:** DECIDE & STATE. The test parses `^==> (.+) <==\n` itself rather than importing a production splitter; no splitter exists in production because the CLI never reads its own example back.
+
+## Discovered Tasks
+
+*(from the builder hand-back)*
+
+- `skills/do-work/actions/capture.md:316` (final checklist) says the commit format is `[UR-NNN] captured: ...` with a colon, while `:271` (Step 7) defines `[UR-NNN] captured {title} ({N} REQs)` without one. Two spellings of one format → report only.
+- `skills/do-work/actions/clarify.md:106` (Outside-text containment) says "a code fence longer than the longest backtick run", without the three-backtick minimum or the no-info-string rule that `containedOutsideBytes` applies. Capture byte-checks the UR block, so capture-reference now states the exact derivation; clarify's answer notes are not byte-checked, so this is a precision gap, not a failure → report only.
+
+## Qualification
+
+**Gate records (`advance --diff-range 008cc74c..125c62c2`):** `qualify` satisfied, `scope-drift` satisfied. One `QUALIFY-NEW-FILE-UNWIRED` warning on `capture_files_example.go`: a false positive, because Go wires a file by package membership, and `publication_commands.go:47-48` calls `handleCaptureFilesExample` from it.
+
+**Requirement trace against the diff (`git diff 008cc74c..125c62c2 --stat`: 5 files, +221/-8) and the real files:**
+1. One valid manifest with placeholders: `capture_files_example.go` builds a `Manifest` value (UR-NNN, REQ-NNN, `do-work/.req-reservations/REQ-NNN`, `<payload-dir>/...` payload paths) and encodes it with `json.Encoder`, so the keys come from the strict decoder's own types. Checked by running `capture-files --example` on main at the merge: exit 0, manifest printed.
+2. UR and REQ payload templates follow, each after a `==> <path> <==` line naming the file to write.
+3. `--raw-input <file>`: read through `readPayload` and `validateOutsideBytes`; the UR block is `containedOutsideBytes(raw, "\n")`; `raw_input.source_path` is the path as given.
+4. Filled example passes the dry run: pinned by `TestCaptureFilesExampleFilledInPassesDryRun` (with and without raw input; the raw input holds a triple-backtick run) and by the builder's by-hand run (hand-back proof record 4).
+5. `capture-reference.md:191-193` now uses bare three-backtick fence lines; the paragraph at `:196` states the derivation (longest run + 1, minimum three, no info string, `> ` prefix) and points at the command. Pinned by the `UR input` case of `TestBuildCapturePlanAcceptsPublishedCaptureExamples`, which now passes `RawInput`.
+6. `capture.md:230` names `capture-files --example --raw-input` after the Step 5 manifest paragraph; the prose stays.
+7. Release: done in finalization.
+Constraints: the handler never calls `BuildCapturePlan` or `ApplyPlan` and writes nothing (the test checks no `do-work/` path appears); no frontmatter field, status or containment-rule change. A re-grep for `^> ` plus a fence with an info string across `skills/` finds only `capture.md:136`, the queued-addendum example, which is not byte-checked (pre-dispatch PD-5).
+
+**Scope:** declared `write_set` = 5 files; touched = the same 5. No drift. No debug artifacts in the diff.
+
+## Testing
+
+**Tests run:** `DO_WORK_FAST_STAGE_REUSE=off bash _dev/tests/maintainer-verify.sh` at merge `125c62c2` (load 2.82 before the run), then `advance REQ-688 --gate-arg bash --gate-arg _dev/tests/maintainer-verify.sh --gate-exit-status 0 -- --probe-file do-work/runs/work-2026-10-10-131527/REQ-688-probe.sh`
+**Result:** ✓ Gate exit 0, wall 125 s (do-work-cli 903 Go tests, queue-kanban 420 Go tests, contract and shell suites). GREEN probe exit 0; `test-gate`, `run-blocked-check` and `green-gate` satisfied.
+
+**Repository gate retry:** after the review fix (F1, re-merge `f42468da`), the gate ran again with the same argv. First run exited 1 (load 3.56 before): `internal/nextselection` `TestBlockedProbeRunsFromSelectedRepositoryRoot` failed with `blocked_check could not launch: no such process`, a process-launch flake in a package this REQ does not touch. Rerun exited 0 (129 s, load 4.51 before). The green record at `f42468da` was written with `record-green-gate`; the GREEN probe passed again at `f42468da`.
+
+**Red-green validation:** *(from the builder hand-back proof record)*
+- `TestBuildCapturePlanAcceptsPublishedCaptureExamples/UR_input` (now with `RawInput`): ✗ before the doc fix (`CAPTURE-RAW-INPUT-NOT-CONTAINED` on the four-backtick `text` fence) → ✓ after
+- `TestCaptureFilesExampleFilledInPassesDryRun` (two subtests, with and without `--raw-input`): ✗ before (`unknown publication option "--example"`) → ✓ after
+- CLI at base `bd56c4b0`: `capture-files --example` exit 2 `PUBLICATION-USAGE` → after: exit 0, and the filled example passed `capture-files --dry-run` on the first try with a raw input holding a triple-backtick run
+
+**New tests added:**
+- `TestCaptureFilesExampleFilledInPassesDryRun` in `internal/publication/capture_files_test.go`
+
+**Existing tests updated (cross-REQ impact):**
+- `capture_files_test.go` `TestBuildCapturePlanAcceptsPublishedCaptureExamples` UR case: now passes the sample raw input, so the published UR example is checked for containment (intentional: this is the check the example exists for).
+
+**Heavy verification plan:**
+- Range: 008cc74ca122c33ca5c2d8c6ee82db0d41641160..f42468daae3d7be77f69a4b6c9ee59354f8c83af (the plan at the first merge `125c62c2` selected the same four lanes)
+- do-work-cli-integrations: `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane do-work-cli-integrations` — `internal/publication/` files matched subtree `skills/do-work/tools/do-work-cli`
+- staged-skills: `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane staged-skills` — all five changed files matched subtree `skills`
+- updater: `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane updater` — `internal/publication/` files matched subtree `skills/do-work/tools/do-work-cli`
+- installer: `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane installer` — `internal/publication/` files matched subtree `skills/do-work/tools/do-work-cli`
+
+*Verified by work action*
+
+## Review
+
+**Overall: 94%** | 2026-10-10T17:06:11Z
+
+| Dimension | Score |
+|-----------|-------|
+| Requirements | 100% |
+| Code Quality | 88% |
+| Test Adequacy | 90% |
+| Scope | 100% |
+| Risk | Low |
+| Acceptance | Pass |
+
+**Verdict:** Approve. Fix F1 (one line) before release.
+
+**Important findings (each with its recorded impact token — this is the durable audit record the judgment mandates):**
+None
+
+**Minor findings:** F1 `capture_files_example.go:79-81` header tells sessions to replace every placeholder, which corrupts the verbatim block when the raw input contains `UR-NNN`/`REQ-NNN` (dry run refuses; reproduced). Add the "leave the `> ` lines as printed" line in an else branch — impact-user-visible → fix before release (exact text in the review report); F2 `clarify.md:106` fence rule lacks the three-backtick minimum and the no-info-string rule that all Go writers apply, while `capture-reference.md:196` cites it with the stricter rule — impact-rule-change → report only; F3 `capture.md:136,138` addendum example still uses a four-backtick `text` fence — impact-negligible → report only; F4 unreachable encode-error branch `capture_files_example.go:70-72` — impact-negligible → report only; F5 duplicate-`--example` refusal and `--raw-input --example` path capture `capture_files_example.go:93-100` — impact-negligible → report only; F6 Go REQ template is a second copy of the doc shape, pinned for validity only — impact-negligible → report only; F7 JSON-refusal assertion repeated in both subtests `capture_files_test.go:327` — impact-negligible → report only.
+**Acceptance:** Pass — focused Go tests plus by-hand CLI in a scratch git repo (end-to-end dry run, 13 refusal paths, no writes); release and consumer stages not exercised.
+**Restatement sweep:** redefined the Full Verbatim Input fence rule (longest run + 1, minimum three, no info string, `> ` prefix) and the capture-reference UR example; stale: `clarify.md:106` (F2), `capture.md:136,138` (F3); consistent: `capture.md:129,236`, `stakeholder-answers.md:56`, `abandon.md:66,99`, `fan-out-reference.md:174`, `clarify.md:194`, `work-reference.md:77`, Go `publication_manifest.go:107`, `state_apply.go:1052`.
+**Suggested testing:** 2 items
+**Follow-ups created:** None (7 findings report only)
+
+**Integrator action on the verdict:** F1 fixed with the reviewer's exact text on the builder branch (`2213664b`) and re-merged (`f42468da`, range `008cc74c..f42468da`). Delta check: the delta (`git diff 125c62c2..f42468da`) is the two added lines of the reviewer's replacement, byte for byte, so no second reviewer was spawned. Gate, GREEN probe and the four heavy lanes re-ran green at `f42468da`. F2-F7 stay report only. Full report: `do-work/runs/work-2026-10-10-131527/REQ-688-review.md`.
+
+*Reviewed by review-work action*
+
+## Lessons Learned
+
+**What worked:** feeding the printed example to the real `capture-files` dry run caught every shape error the templates could carry, and giving the published-example test the same raw input the real command gets turned the old fence bug RED in one line.
+**What didn't:** the test fills placeholders with a global replace, the same way a session would, so it could not see that a raw input containing `UR-NNN` or `REQ-NNN` breaks the verbatim block (review F1, fixed with a header note).
+**Worth knowing:** a doc example pinned by a test is only as good as the inputs the test feeds it; when the real command checks an extra input (here `raw_input`), the test must pass it too.
+
+## Orientation
+
+Capture publication lives in `internal/publication/` of do-work-cli: `capture_files.go` validates, `publication_manifest.go` owns `containedOutsideBytes`, and `capture_files_example.go` now prints a fill-in example from the same types. The action-side contract is `actions/capture.md` Step 5 plus `actions/capture-reference.md`.
+
+## Heavy Verification Plan
+
+- Base: `008cc74ca122c33ca5c2d8c6ee82db0d41641160`
+- Target: `f42468daae3d7be77f69a4b6c9ee59354f8c83af`
+- do-work-cli-integrations: `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane do-work-cli-integrations` — `internal/publication/` files matched subtree `skills/do-work/tools/do-work-cli`
+- staged-skills: `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane staged-skills` — all five changed files matched subtree `skills`
+- updater: `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane updater` — `internal/publication/` files matched subtree `skills/do-work/tools/do-work-cli`
+- installer: `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane installer` — `internal/publication/` files matched subtree `skills/do-work/tools/do-work-cli`
+
+## Heavy Verification Result
+
+- Target: `f42468daae3d7be77f69a4b6c9ee59354f8c83af`; execution revision `f42468daae3d7be77f69a4b6c9ee59354f8c83af` (detached checkout `.git/work-run-work-2026-10-10-131527/drain-head-REQ-688`, removed afterwards)
+- do-work-cli-integrations: executed, exit 0, 64 s
+- staged-skills: executed, exit 0, 34 s
+- updater: executed, exit 0, 65 s
+- installer: executed, exit 0, 26 s
+- The earlier drain at the first merge `125c62c2` was also green (64 s, 35 s, 64 s, 28 s).
+
+## Timing
+
+Observed 2026-10-10T16:49:42Z to 2026-10-10T17:05:55Z: 16m 13s total, 17m 52s attributed across 7 events, 0s unattributed.
+
+| Category | Elapsed | Events |
+| --- | --- | --- |
+| verification-gate | 13m 23s | 4 |
+| review | 4m 07s | 1 |
+| handback-merge | 22s | 2 |
+
+Slowest stage: verification-gate / repository gate rerun after review fix (two runs), 4m 25s, outcome success.
+
+Notes: the builder-work event was skipped, because the hand-back had landed long before this integrator started (recording it would charge the builder with the wait). The first heavy drain ran while the reviewer worked, so the attributed total exceeds the observed span.

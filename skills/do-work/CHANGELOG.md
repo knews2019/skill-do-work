@@ -10,6 +10,15 @@ For the complete release history, read this file and the archives below from new
 - [0.50.0 through 0.64.1](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-13-up-to-v0.64.1.md)
 - [0.1.0 through 0.49.0](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-07-up-to-v0.49.0.md)
 
+## 0.305.108 — capture-files Prints a Fill-In Example Manifest With Payload Templates, and the Capture Reference Shows the Fence Capture Accepts (2026-10-10)
+
+A session writing a capture no longer has to read Go source to learn the manifest keys, and copying the reference UR example no longer fails the first dry run. One command prints a manifest and both payloads that pass `capture-files --dry-run` once the placeholders are filled.
+
+- New `do-work-cli capture-files --example [--raw-input <file>]`. It prints the manifest, a UR template and a REQ template, each after a `==> <path> <==` line that names the file to write it to. With `--raw-input`, the UR template already holds the exact Full Verbatim Input block built from the file's bytes, `raw_input` names the file, and a header line says to leave that block as printed. It writes nothing and refuses under `--format json`.
+- `actions/capture-reference.md`: the UR example now uses a bare three-backtick fence. The paragraph after it states the real rule once (one backtick longer than the longest backtick run, never shorter than three, no info string, every line prefixed `> `) and points at the new command.
+- `actions/capture.md` Step 5 names the command as the way to get a valid manifest.
+- The test that checks the published capture examples now runs the UR example through the raw-input check, so a wrong fence can no longer ship green.
+
 ## 0.305.107 — ai-report Revises a Report by Writing a New Linked Revision and Never Editing the Old One (2026-10-10)
 
 You can now update an existing report without breaking the rule that a published report never changes. `ai-report revise <dir|latest> [what changed]` writes a new report next to the old one, and the catalog links the two.

@@ -21,7 +21,6 @@ queue_state: [21 pending, 0 pending-answers, 0 blocked, 0 blocked-archive-collis
 
 - REQ-687: ai-report --kind proposal and root-cause writes a decision-first brief for unfinished work — claimed 2026-10-10T13:14:50Z — writer: t2s-Virtual-Machine.local:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2
 
-- REQ-688: capture-files --example prints one valid manifest with payload templates, and the capture-reference fence example is fixed — claimed 2026-10-10T13:14:50Z — writer: t2s-Virtual-Machine.local:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2
 
 - REQ-689: do-work run --coordinate: the mandatory coordinator shape, its run rules, a prose preflight, a stall loop, and a handoff that resumes coordinated — claimed 2026-10-10T13:14:51Z — writer: t2s-Virtual-Machine.local:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2
 
