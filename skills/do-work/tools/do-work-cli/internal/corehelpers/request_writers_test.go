@@ -187,6 +187,7 @@ func TestRequestAppendSectionRepeatIsNoOpAndConflictRefuses(t *testing.T) {
 	writeMatrixFile(t, root, requestPath, writerFixtureRequest)
 	writeMatrixFile(t, root, "testing.md", "tests ran\n")
 	writeMatrixFile(t, root, "other.md", "different evidence\n")
+	writeMatrixFile(t, root, "headed.md", "## Review\n\nstray\n")
 	arguments := []string{"append-section", "REQ-701", "--section", "Testing", "--from", "testing.md"}
 
 	if first := runRegisteredWriter(t, root, CommandRequest, arguments...); first.Outcome != resultmodel.OutcomeSuccess {
@@ -203,6 +204,11 @@ func TestRequestAppendSectionRepeatIsNoOpAndConflictRefuses(t *testing.T) {
 
 	conflict := runRegisteredWriter(t, root, CommandRequest, "append-section", "REQ-701", "--section", "Testing", "--from", "other.md")
 	assertRefusedUnchanged(t, conflict, root, requestPath, written, "SECTION-CONFLICT")
+
+	// Review F1: a body carrying its own ## heading wrote a stray section that
+	// advance later refuses.
+	headed := runRegisteredWriter(t, root, CommandRequest, "append-section", "REQ-701", "--section", "Qualification", "--from", "headed.md")
+	assertRefusedUnchanged(t, headed, root, requestPath, written, "SECTION-BODY-HAS-HEADING")
 }
 
 // Pins the resolver: an id must name exactly one working or queue file.

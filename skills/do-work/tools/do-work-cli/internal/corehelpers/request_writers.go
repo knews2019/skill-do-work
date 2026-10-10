@@ -98,6 +98,12 @@ func handleRequest(executionContext commandruntime.ExecutionContext, arguments [
 	if !slices.Contains(requestmodel.CanonicalSectionOrder, sectionName) {
 		return writerRefusal("SECTION-NOT-CANONICAL", requestID, sectionName+" is not a canonical REQ section")
 	}
+	sectionBody := trimBlankLines(string(sourceBytes))
+	// The --from file holds the body only: a ## heading inside it would add a
+	// second copy, or a stray section that advance later refuses.
+	if len(requestmodel.VisibleSections([]byte(sectionBody))) > 0 {
+		return writerRefusal("SECTION-BODY-HAS-HEADING", sourcePath, "the --from file must hold the section body only; remove its ## heading")
+	}
 	requestPath, refusal := resolveActiveRequest(executionContext.RepositoryRoot, requestID)
 	if refusal != nil {
 		return *refusal
@@ -106,7 +112,6 @@ func handleRequest(executionContext commandruntime.ExecutionContext, arguments [
 	if err != nil {
 		return writerRefusal("REQUEST-UNREADABLE", requestPath, err.Error())
 	}
-	sectionBody := trimBlankLines(string(sourceBytes))
 	body := document.BodyBytes()
 	laterSections := requestmodel.SectionsAfter(sectionName)
 	existing := []requestmodel.VisibleSection{}
