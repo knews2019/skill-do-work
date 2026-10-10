@@ -146,6 +146,38 @@ func TestQualificationReporterLibraryRenameAndBinaryBoundaries(t *testing.T) {
 	}
 }
 
+func TestQualifyImplementationSummarySectionNotFound(t *testing.T) {
+	repository := t.TempDir()
+	requestPath := "do-work/working/REQ-999-no-summary.md"
+	absolute := filepath.Join(repository, filepath.FromSlash(requestPath))
+	if err := os.MkdirAll(filepath.Dir(absolute), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(absolute, []byte("---\nid: REQ-999\nstatus: claimed\n---\n\n## What\nNo summary here.\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	result := handleQualify(testContext(repository), []string{"--request-path", requestPath})
+	if len(result.Findings) != 1 || result.Findings[0].Code != "QUALIFY-SUMMARY-MISSING" || strings.Join(result.Findings[0].Evidence, "|") != "Implementation Summary section not found" {
+		t.Fatalf("result=%#v", result)
+	}
+}
+
+func TestQualifyImplementationSummaryListsNoBacktickedPaths(t *testing.T) {
+	repository := t.TempDir()
+	requestPath := "do-work/working/REQ-999-no-paths.md"
+	absolute := filepath.Join(repository, filepath.FromSlash(requestPath))
+	if err := os.MkdirAll(filepath.Dir(absolute), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(absolute, []byte("---\nid: REQ-999\nstatus: claimed\n---\n\n## Implementation Summary\nNone, verification only\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	result := handleQualify(testContext(repository), []string{"--request-path", requestPath})
+	if len(result.Findings) != 1 || result.Findings[0].Code != "QUALIFY-SUMMARY-MISSING" || strings.Join(result.Findings[0].Evidence, "|") != "Implementation Summary lists no backticked file paths" {
+		t.Fatalf("result=%#v", result)
+	}
+}
+
 func writeQualificationRequest(t *testing.T, repository string, paths []string) string {
 	t.Helper()
 	relative := "do-work/working/REQ-999-qualification.md"
