@@ -140,7 +140,6 @@ func runStatusAt(executionContext commandruntime.ExecutionContext, arguments []s
 		row := buildRow(repositoryRoot, snapshot, request, runDirectory, manifestLines, now)
 		finalization, hasFinalization := finalizationByID[request.ID]
 		classifyRow(&row, request, hasFinalization, finalization, threshold)
-		row.finding.VerificationArgv = verificationArgv(options, request.ID)
 		rows = append(rows, row)
 	}
 	sort.SliceStable(rows, func(left, right int) bool {
@@ -326,15 +325,18 @@ func classifyRow(row *statusRow, request boardRequest, hasFinalization bool, fin
 	case claimed && record.HandbackPresent != nil && *record.HandbackPresent:
 		record.Class, finding.NextArgv = "C3", []string{"do-work", "run"}
 		row.remedy = "the build is done and waits for integration; run `do-work run`"
-	case request.Column == "needs-input-or-blocked":
+	case request.Column == "needs-input-or-blocked" && (request.Status == "pending-answers" || request.Status == "blocked"):
 		record.Class, finding.NextArgv = "C4", []string{"do-work", "clarify"}
 		row.remedy = "it waits on a person; run `do-work clarify`"
+	case request.Column == "needs-input-or-blocked":
+		record.Class, finding.NextArgv = "C4", []string{"do-work", "forensics"}
+		row.remedy = "status " + request.Status + " is not a question clarify answers; run `do-work forensics` to see what holds it"
 	case request.Column == "pending-waiting":
 		record.Class = "C5"
 		row.remedy = "it waits on " + strings.Join(request.UnmetDependencies, ", ") + "; nothing to run until that is source-ready"
 	case request.Column == "pending-earmarked":
 		record.Class, finding.NextArgv = "C6", []string{"do-work", "run", request.ID}
-		row.remedy = "another session's default run skips it; run `do-work run " + request.ID + "` to run it by name"
+		row.remedy = request.PlacementReason + " Run `do-work run " + request.ID + "` to run it by name"
 	case claimed && record.MinutesSinceClaim != nil && time.Duration(*record.MinutesSinceClaim)*time.Minute >= threshold:
 		// destructive-next-argv: next_argv is followed literally, so it is the
 		// read-only inspection doctor's STUCK-WORK offers; the takeover is named
@@ -482,14 +484,6 @@ func estimateRemaining(p50 *int, minutesSinceClaim *int) (*int, string) {
 	}
 	remaining := *p50 - *minutesSinceClaim
 	return &remaining, fmt.Sprintf("%d min", remaining)
-}
-
-func verificationArgv(options commandOptions, requestID string) []string {
-	argv := []string{"do-work-cli", "run-status", "--board-facts", options.boardFactsPath}
-	if options.runDirectory != "" {
-		argv = append(argv, "--run", options.runDirectory)
-	}
-	return append(argv, "--req", requestID)
 }
 
 func refusal(code, evidence, stopReason string) resultmodel.CommandResult {

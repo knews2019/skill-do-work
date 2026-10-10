@@ -33,7 +33,9 @@ Write the board's open-work facts to a temporary file, hand it to `run-status`, 
 board_facts="$(mktemp)"
 "<skill-root>/../do-work-board/tools/queue-kanban/queue-kanban" open-work --format json --repo-root "<project-root>" >"$board_facts" \
   && "<skill-root>/tools/do-work-cli.sh" --repo-root "<project-root>" run-status --board-facts "$board_facts"
+report_status=$?
 rm -f "$board_facts"
+(exit "$report_status")
 ```
 
 Exit 0 means the report was produced. A `queue-kanban` error, or exit 1 with outcome `refused`, means no report: relay the error and stop. Do not rebuild the rows by hand from REQ files.
@@ -44,7 +46,7 @@ Each row is one `CommandFinding` (`code` is the class, `next_argv` the remedy) p
 | --- | --- | --- | --- |
 | 1 | C8 finalization pending | doctor reports an unfinished finalization for the REQ | doctor's own `next_argv` |
 | 2 | C3 hand-back landed | claimed and `<run>/REQ-NNN-handback.md` exists | `do-work run` |
-| 3 | C4 needs operator | board column Needs input · Blocked | `do-work clarify` |
+| 3 | C4 needs operator | board column Needs input · Blocked | `do-work clarify` for `pending-answers` or `blocked`; `do-work forensics` for any other status |
 | 4 | C5 waiting on dependencies | board column Pending → Waiting | none; the row names the REQ it waits on |
 | 5 | C6 earmarked | board column Pending → Earmarked | `do-work run REQ-NNN` |
 | 6 | C7 claim past threshold | claimed at least the board's stale-claim threshold ago | read-only `git log --full-history -- <REQ path>` |
