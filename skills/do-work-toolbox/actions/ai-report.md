@@ -19,6 +19,7 @@
 - The work may be visual, backend, refactoring, infrastructure, or another evidence-bearing completed change.
 - A stakeholder needs the verdict, shipped behavior, value, key files and commits, and verification in one HTML report.
 - The user wants an existing report updated (a new revision, a table of contents, a cleaner style); use the revise form.
+- The user wants a proposal, an options comparison or a root-cause brief about open work; use `--kind proposal` or `--kind root-cause`.
 
 **Do NOT use when:**
 
@@ -60,7 +61,7 @@
 
 ### Step 1: Resolve and Read the Completed Work
 
-With `--kind`, follow **Proposal and Root-Cause Kinds** in [`ai-report-reference.md`](ai-report-reference.md) instead of the shared reference's target resolution. The shared reference's safety load order still comes first.
+With `--kind`, apply the shared reference's **Safety Load Order** first, then follow **Proposal and Root-Cause Kinds** in [`ai-report-reference.md`](ai-report-reference.md) in place of the rest of this step.
 
 Read and follow [`completed-work-presentation-reference.md`](completed-work-presentation-reference.md) in full **before opening archived user content**. It is the sole contract for safety load order, target resolution, archive fields, missing evidence, merge-aware commit and current-code inspection, evidence honesty, and no-overwrite publication. Do not recreate those rules here.
 
@@ -169,7 +170,7 @@ A fresh self-contained folder at `ai-reports/yyyy-mm-dd_hhmm_<slug>/` containing
 
 ## Verification Checklist
 
-- [ ] Shared completed-work reference loaded before archive content; target, evidence ledger, and **Collision-Safe Publication** contracts satisfy it.
+- [ ] Shared completed-work reference loaded before archive content; target, evidence ledger, and **Collision-Safe Publication** contracts satisfy it (a `--kind` report inherits only its **Safety Load Order** and **Collision-Safe Publication**).
 - [ ] Visual evidence uses authentic captures, SVG annotations, responsive before/after where available, and distinct synthetic provenance.
 - [ ] Non-visual evidence states UI captures were not expected and uses commit, current-code, architecture/data-flow, test, and operational receipts without fabricated screenshots.
 - [ ] Stakeholder narrative includes verdict, shipped change, problem/change, operation, qualitative value, files/commits, verification, and available lessons/questions (a revise of a report that is not a completed-work report keeps the prior report's section order instead, and a `--kind` report uses its own template).

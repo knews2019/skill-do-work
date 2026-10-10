@@ -75,7 +75,7 @@ do-work-toolbox ai-report --kind proposal <topic|REQ-NNN|UR-NNN>    Decision bri
 do-work-toolbox ai-report --kind root-cause <topic|REQ-NNN|UR-NNN>  What happened, why, what to change
 ```
 
-Target statuses are normalized under the do-work schema. The terminal-success set is `completed` or `completed-with-issues`; if the selected target has no successful work, the action stops and explains why.
+Without `--kind`, target statuses are normalized under the do-work schema. The terminal-success set is `completed` or `completed-with-issues`; if the selected target has no successful work, the action stops and explains why.
 
 ## Evidence Safety
 

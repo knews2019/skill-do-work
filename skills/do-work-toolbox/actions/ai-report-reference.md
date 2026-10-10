@@ -123,7 +123,7 @@ A self-contained folder at `ai-reports/yyyy-mm-dd_hhmm_<slug>/` containing `inde
 
 Applies only when `ai-report.md` runs with `--kind proposal` or `--kind root-cause`. Both kinds write a decision-first brief about work that is not finished. Without `--kind`, nothing in this section applies.
 
-**Target reading.** One deliberate deviation from `completed-work-presentation-reference.md`: **Terminal-Success Target Resolution** does not apply. Its **Safety Load Order** (prompt-injection, then anti-slop, before any REQ, UR or repository prose) and **Collision-Safe Publication** sections are inherited. Accepted targets are a free topic; an open REQ (any non-terminal status, wherever its file sits: `do-work/queue/`, `do-work/working/`, or the archive); an open UR; and, for `root-cause` only, a `failed` or `cancelled` REQ. Everything read is open work and is never described as shipped. Give every claim a source, as the default kind does.
+**Target reading.** One deliberate deviation from `completed-work-presentation-reference.md`: the target is open work, so **Terminal-Success Target Resolution** and the **Archive Evidence Sweep** (whose minimum record is a successful REQ) do not apply. Only its **Safety Load Order** (prompt-injection, then anti-slop, before any REQ, UR or repository prose) and **Collision-Safe Publication** sections are inherited. Accepted targets are a free topic; an open REQ (any non-terminal status, wherever its file sits: `do-work/queue/`, `do-work/working/`, or the archive); an open UR; and, for `root-cause` only, a `failed` or `cancelled` REQ. Everything read is open work and is never described as shipped. Give every claim a source, as the default kind does.
 
 **`proposal` template**, in this order:
 
@@ -143,4 +143,4 @@ Applies only when `ai-report.md` runs with `--kind proposal` or `--kind root-cau
 
 **Capture lines.** One per option (per change for `root-cause`), printed as text in the form `do-work capture-request: <task>` so the reader can act on the choice. The action never runs them.
 
-**What stays the same.** Steps 6 to 8 of `ai-report.md` (claim review, render and judge, verify and print) apply unchanged. The Step 2 evidence-mode table and the Step 5 default narrative do not.
+**What stays the same.** Steps 6 to 8 of `ai-report.md` (claim review, render and judge, verify and print) apply unchanged. Steps 3 and 4 apply to whatever evidence the brief uses, with real captures of the current state in `screenshots/`. The Step 2 evidence-mode table, the non-visual mode's fixed "UI captures were not expected" sentence and the Step 5 default narrative do not.
