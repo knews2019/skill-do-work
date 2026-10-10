@@ -11,6 +11,7 @@
 - Context is running out, or the session is ending with work still in the queue.
 - A fresh session should pick up with different parallelism than this one ran with.
 - The user types the `phandoff` shorthand (`crew-members/communication-style.md` → Aliases).
+- In a `--coordinate` run, the harness reports context usage above a threshold: the coordinator follows this action on its own. The harness supplies the reading; with no reading there is no automatic trigger. This automatic handoff writes and commits the handoff only and does not end the session.
 
 **Do NOT use when:**
 
@@ -61,6 +62,7 @@ Exactly two sections, in this order.
 **The paste block** — first thing in the file, one fenced code block, nothing above it. It is the complete restart prompt and must work with zero other reading. Write it as instructions addressed to the next session, not as a status document for a human. The resume command is one of:
 
 - to build — `do-work run --fan-out N` (pick N per Step 5)
+- to build, when this run was started with `--coordinate` — `do-work run --coordinate --fan-out N`
 - to answer questions — `do-work clarify`, included only if some REQ is at `pending-answers`
 
 When this session leaves a REQ claimed in `do-work/working/`, put one line per claim above the resume command: `advance REQ-NNN`, then do the phase it names, so claimed work finishes before new work starts. The resume command's selection reads only the queue, so it does not continue a claim's remaining phases. Never write `recover --take-over` for these claims: it resets a claim (returns it to the queue and strips its orchestrator sections, merged evidence included).
