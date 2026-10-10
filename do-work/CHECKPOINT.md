@@ -31,4 +31,3 @@ queue_state: [21 pending, 0 pending-answers, 0 blocked, 0 blocked-archive-collis
 
 - REQ-692: validate-feedback --capture [--run]: file-path input, wrong-repo check, Discuss questions, one capture, verify, optional run, and a core do-work route — claimed 2026-10-10T13:14:56Z — writer: t2s-Virtual-Machine.local:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2
 
-- REQ-656: ai-report revise writes a new sibling bundle that supersedes the prior one — claimed 2026-10-10T15:51:14Z — writer: t2s-Virtual-Machine.local:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2

@@ -10,6 +10,17 @@ For the complete release history, read this file and the archives below from new
 - [0.50.0 through 0.64.1](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-13-up-to-v0.64.1.md)
 - [0.1.0 through 0.49.0](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-07-up-to-v0.49.0.md)
 
+## 0.305.107 — ai-report Revises a Report by Writing a New Linked Revision and Never Editing the Old One (2026-10-10)
+
+You can now update an existing report without breaking the rule that a published report never changes. `ai-report revise <dir|latest> [what changed]` writes a new report next to the old one, and the catalog links the two.
+
+- New form `ai-report revise <dir|latest> [what changed]`. It re-checks the old report's claims against the current repository, then writes a sibling bundle named `<date>_<time>_<same-slug>-rev<N>` through the normal collision-safe path. `latest` is the newest bundle in the catalog; if that bundle was already revised, the form follows the chain to the newest revision.
+- The new report opens with a "rev-N (date)" block (Changed, Still to do, a link to the old report) and names the old folder in an `ai-report-supersedes` meta tag. The catalog is regenerated, so the old report shows "superseded by" the new one. The old bundle's bytes never change, and nothing is committed.
+- A revise of a report that is not about completed work, such as a deploy guide, keeps that report's own sections. The render check reports the link back to the old report as broken, because it serves only the new folder; for a revise that one finding is expected.
+- Report Design Rules: a report with more than six top-level sections or about 1,500 words gets a table of contents near the top.
+- Every run that writes a report now ends with the report's path and a `file://` link to open it.
+- The guide, the help list and the routing phrases (`revise the report`, `update the report`) name the new form.
+
 ## 0.305.106 — ai-report Render-Checks a Report Bundle With One Command at Phone and Wide Widths in Light and Dark (2026-10-10)
 
 The report render check is now one shipped command instead of prose each session retyped. It catches a report that scrolls sideways on a phone, or links to a missing image, before a stakeholder opens it.
