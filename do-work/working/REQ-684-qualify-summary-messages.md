@@ -21,6 +21,8 @@ required_lessons: ["_dev/primes/lessons-releases.md"]
 write_set: ["skills/do-work/tools/do-work-cli/internal/corehelpers/checks.go", "skills/do-work/tools/do-work-cli/internal/corehelpers/checks_test.go"]
 batch: upstream-report-accepts
 claimed_at: 2026-10-10T10:07:35Z
+dispatch_at: 2026-10-10T10:28:41Z
+builder_handback_at: 2026-10-10T11:05:31Z
 ---
 # Qualify Names Which Summary Problem It Found
 ## What
