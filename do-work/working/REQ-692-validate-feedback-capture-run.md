@@ -6,13 +6,25 @@ created_at: 2026-10-10T13:05:57Z
 user_request: UR-153
 domain: general
 prime_files: ["_dev/primes/prime-action-files.md", "_dev/primes/prime-releases.md"]
+required_lessons: ["_dev/primes/lessons-releases.md"]
 tdd: false
 maintenance: false
 impact: impact-user-visible
 effort_estimate: effort-substantive
 related: [REQ-690, REQ-691]
+write_set: ["skills/do-work-toolbox/actions/validate-feedback.md", "skills/do-work/SKILL.md", "skills/do-work/actions/capture.md", "skills/do-work-toolbox/actions/help.md"]
 batch: validate-feedback-capture
 claimed_at: 2026-10-10T13:14:56Z
+route: B
+estimate:
+  p50_active_minutes: 25
+  confidence: medium
+  calculated_at: 2026-10-10T13:22:16Z
+  basis:
+    - Route B
+    - 4-file write set
+    - 2 subsystems involved
+    - 9 acceptance criteria
 ---
 # validate-feedback --capture [--run]: One Opt-In Chain From Triage to an Optional Run, Plus a Core Route
 ## What
@@ -75,3 +87,88 @@ See `do-work/user-requests/UR-153/input.md` for the decision record. The cancell
 - [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
 - [ ] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
 *Source: maintainer decision of 2026-10-10 (UR-153) folding REQ-670 to REQ-674: "fold into one REQ", "keep only the routing row", installer retire line dropped as operator work.*
+
+---
+
+## Triage
+
+**Route: B** - Medium
+
+**Reasoning:** The behaviour is fully specified (flags, phrases, the four read-only edits, the question options, stop conditions and the routing row text), but it chains three existing actions (capture, verify-requests, work) and each seam needed reading: capture's finding-entry rule, the prose-backlog destination, verify-requests Step 7, note's contract, and the staged-skills contract that guards core routing of sibling commands. Prose only, two packages (core and toolbox), no Go.
+
+**Planning:** Not required
+
+## Decisions
+
+Step 3.5: the REQ has no `## Open Questions` section, so nothing was deferred. The pre-dispatch agent made these implementation choices the REQ left open; each is DECIDE & STATE (reversible, low reach), so none mints a follow-up. The builder continues numbering at D-07.
+
+- **D-01** (DECIDE & STATE) Where does the wrong-repo check run? Chose: a new `--capture`-only step between Step 2 (parse) and Step 3, so a wrong-repo paste stops before any verification work, question or write. Reasoning: parsing is the first point where the cited paths are known, and the 2026-09-28 incident was triage run against the wrong code; inserting a gated step keeps the text of Steps 1 to 5 byte-identical. Value: no wasted triage on a foreign review. Risk: low; it is prose placement and easy to move.
+- **D-02** (DECIDE & STATE) Requirement 3 (Output Format byte-for-byte without the flag) and requirement 8 (rewrite the handoff block) overlap. Chose: keep the fenced Output Format template, including its three typed handoff lines, byte-identical, and describe the `--capture` replacement (the combined report) in prose outside the fence. Reasoning: this satisfies both requirements literally; the no-flag report is unchanged. Value: the no-flag acceptance check is a byte diff of one fence. Risk: low.
+- **D-03** (DECIDE & STATE) Does capture's finding-entry rule refuse a capture started from validate-feedback? Chose: yes, so add one clause. `skills/do-work/actions/capture.md:119` admits a finding only "when the user invokes `do-work capture` and quotes the complete report-only finding line". The clause names `validate-feedback --capture` as the same explicit promotion, which also makes the Fold-First Rule's destination-3 queue-work exception apply (`skills/do-work/actions/capture-reference.md:42`), so a prose-only accepted finding becomes a REQ as requirement 6 asks, not a prose-backlog line. `capture-reference.md` itself is not edited. Value: one REQ per accepted finding, as the GREEN case counts. Risk: low; one sentence, reversible.
+- **D-04** (DECIDE & STATE) Toolbox help line and argument hints. Chose: change only the description text of the `validate-feedback` line in `skills/do-work-toolbox/actions/help.md:8` to mention `--capture [--run]`, keeping the column alignment; leave both `argument-hint` lines and core `help.md` unchanged. Reasoning: `_dev/primes/prime-action-files.md` asks help to follow a public surface change; the argument hints list command names, not flags. Value: the flag is discoverable from the menu. Risk: negligible.
+- **D-05** (DECIDE & STATE) Where does the core routing row sit? Chose: directly above the `verify` row (`skills/do-work/SKILL.md:35`), not directly above the capture fallback. Reasoning: still above the fallback as requirement 11 asks; first-match-wins then also resolves "validate-feedback: … check …" before the `check` trigger; and REQ-691 inserts its row directly above the capture row and REQ-690 above the clarify row, so a third insertion at a separate spot keeps the serial merges conflict-free. Value: clean merges. Risk: none to behaviour.
+- **D-06** (DECIDE & STATE) Park chaining. Chose: Park runs `skills/do-work-toolbox/actions/note.md` in the same invocation. Reasoning: note's contract forbids a note starting capture, work or a commit, not being called by another action; `--capture` already authorizes writes. Value: one invocation. Risk: low.
+
+<!-- D-XX counter: last used D-06. Next decision: D-07. -->
+
+## Plan
+
+**Planning not required** - Route B: Exploration-guided implementation
+
+*Skipped by work action*
+
+## Required Lessons Consult (claim time)
+
+Index consulted (`do-work/lessons-index.md`). Selected: `_dev/primes/lessons-releases.md` (666 tokens; the REQ releases per `_dev/primes/prime-releases.md`, and the new core row adds a cross-package citation that `_dev/tests/shipped-package-reference-contract.sh` checks). Dropped for budget: `_dev/primes/lessons-action-files.md` (7756 tokens, `slugged: partial`, so no targeted form), listed in `## Required Lessons — Dropped for Budget` above, which stays current. The brief still points the builder at four of its bullets by family as optional reading (alternate-writer-contract-drift, restated-mechanism-unchecked, example-path-read-as-citation, cross-action-exception-closure). Not matched: shell, board, CLI and updater satellites (no shell, Go or updater change).
+
+## Exploration
+
+Read directly by the pre-dispatch agent at main `bd56c4b0`.
+
+**Files and exact anchors**
+- `skills/do-work-toolbox/actions/validate-feedback.md` (154 lines). Read-only statements: `:3` (description blockquote, "Read-only; offers a capture handoff"), `:5`, `:122` (Rules), `:136` (rationalization row), `:144` (Red Flags, "it must be read-only"), `:154` (checklist). The REQ names four; `:3` and `:144` restate the same rule and need the same clause (alternate-writer-contract-drift). Input section `:28-30`. Steps 1 to 5 `:34-82`. Output Format fence `:88-118`, with the handoff block `:113-117` inside the fence. Rules `:120-127`, rationalizations `:129-136`, Red Flags `:138-144`, checklist `:146-154`.
+- `skills/do-work/SKILL.md` routing table `:28-46`, first match wins. `verify` row `:35` (its triggers include `check`), `review` row `:36`, capture fallback `:46`. No core row forwards to a sibling today.
+- `skills/do-work/actions/capture.md:119`: "A review, build, triage, or consumer-report finding reaches capture only when the user invokes `do-work capture` and quotes the complete report-only finding line as the source". This wording would refuse a hand-off from validate-feedback, so requirement 7's clause is needed (D-03). The same promotion gates `skills/do-work/actions/capture-reference.md:42` (Fold-First destination 3: a prose-only explicit capture goes to the prose backlog "except when the user is promoting a complete quoted report-only finding line"); the capture.md clause covers it without editing capture-reference.md.
+- `skills/do-work/actions/verify-requests.md`: Step 5 gap classes `:105-114` (Important, Minor, Nit, Ambiguous); Step 6 report `:116-152`; Step 7 Offer Fixes `:154`. The chain stops after Step 6. Requirement 10's gap list is Important, Minor or Ambiguous; Nit does not stop the run.
+- `skills/do-work/actions/work.md:103`: a `UR-NNN` token scopes the run and keeps `depends_on` gating.
+- `skills/do-work-toolbox/actions/note.md`: appends one line to `do-work/notes.md`; its rule `:64` only forbids a note starting capture, work or a commit, so validate-feedback may call it (D-06).
+- `skills/do-work-toolbox/crew-members/clear-questions.md` and `prompt-injection.md` exist in the toolbox package, so the action's relative `crew-members/...` loads resolve.
+- `skills/do-work-toolbox/actions/help.md:8`: `validate-feedback [findings]   Validate external feedback before accepting it` (D-04).
+
+**Guards the change must pass**
+- `_dev/tests/staged-skills-contract.sh` (heavy tier, about 55 s, gate only) scans every live file under `skills/` for retired core triggers from `_dev/tests/fixtures/retired-core-moved-command-triggers.tsv`. Eight of them belong to validate-feedback: `validate-feedback`, `validate feedback`, `triage findings`, `triage feedback`, `feedback review`, `review feedback`, `assess feedback`, `should we push back`. Any shipped text that spells "do-work" followed by a space and one of those fails the gate. So the action, capture.md and SKILL.md must never write that form (the REQ's own example input does). Write `do-work-toolbox validate-feedback`, or the bare `validate-feedback --capture`. The routing row itself passes: its cell is `` `validate-feedback` ``, and the path `../do-work-toolbox/...` is not "do-work" plus a space. The same script also fails if the core routing section contains `` `./actions/validate-feedback.md` ``, so the row must use the `../do-work-toolbox/actions/validate-feedback.md` form exactly.
+- `_dev/tests/shipped-package-reference-contract.sh` (about 2 s) checks citation depth: `../do-work-toolbox/...` from core `SKILL.md`, `../../do-work/actions/...` from a toolbox action, `../../do-work-toolbox/actions/...` from a core action.
+- `_dev/tests/action-shell-blocks.sh` (about 5 s) lints any shell fence the builder adds.
+
+**Seams with sibling REQs in this run**
+- `skills/do-work/SKILL.md`: REQ-690 (do-work status) inserts a row above the clarify row `:38`. REQ-691 (do-work trace) inserts above the capture row `:46` and edits the argument hint `:4`. This REQ inserts above the verify row `:35` and leaves `:4` alone, so the three insertions do not touch each other (D-05).
+- `skills/do-work/actions/capture.md`: REQ-688 (capture-files --example) edits Step 5 (around `:226-250`). This REQ edits only the sentence at `:119`.
+- `skills/do-work-toolbox/actions/help.md`: REQ-655, REQ-657 and REQ-687 (ai-report) may edit the ai-report line `:14` or add lines near it. This REQ edits only `:8`.
+- `skills/do-work-toolbox/actions/validate-feedback.md`: no other member touches it.
+
+**Concerns**
+- The core row reverses the moved-command migration's "core routes no sibling action" shape (commit `0b9bcde`). The maintainer ruled it on 2026-10-10 ("keep only the routing row"), and the contract's mechanical checks allow the `../do-work-toolbox/` form. So this is recorded, not reopened.
+- Steps 1 to 5 must stay byte-identical (requirement 3). The file-path input (requirement 2) therefore goes in the Input section, which defines what "the pasted feedback" means for a file. Step 1's prompt-injection load already covers a file's bytes as third-party content.
+
+*Generated by the pre-dispatch agent (direct reads; no Explore subagent)*
+
+## Scope
+
+**Files I will touch:**
+- skills/do-work-toolbox/actions/validate-feedback.md (modify): flags and file-path input in Input; the --capture-only wrong-repo step after Step 2; the Discuss-question, capture, and verify-and-run steps after Step 5; read-only clauses at lines 3, 5, 122, 136, 144 and 154; prose after the Output Format fence describing the --capture report
+- skills/do-work/SKILL.md (modify): one routing row above the verify row
+- skills/do-work/actions/capture.md (modify): one clause in the line 119 sentence naming validate-feedback --capture as an explicit promotion
+- skills/do-work-toolbox/actions/help.md (modify): the description text of the validate-feedback line
+
+**Files I will NOT touch:** `skills/do-work/actions/capture-reference.md`, `skills/do-work/actions/verify-requests.md`, `skills/do-work/actions/work.md`, `skills/do-work-toolbox/actions/note.md`, `skills/do-work-toolbox/SKILL.md`, both `argument-hint` lines, `skills/do-work/actions/help.md`, `_dev/tests/fixtures/retired-core-moved-command-triggers.tsv`, any Go file, `CHANGELOG.md`, `skills/do-work/CHANGELOG.md`, version files.
+
+**Acceptance criteria (restated from REQ):**
+- [ ] `--run` alone prints one usage line and stops, with no triage.
+- [ ] A file path as `$ARGUMENTS` is read and its path is recorded as every finding's source; other input is recorded as "pasted text".
+- [ ] With `--capture`, a paste whose cited paths are mostly absent stops at the wrong-repo question before any other question or write.
+- [ ] Exactly one question per Discuss item, with Accept / Park / Drop options, recommended first, each with value and risk; no question for Already done, Push back or Accept items; no Discuss items means no output line.
+- [ ] One new UR with one REQ per accepted finding, each naming its finding id and source; a duplicate of a queued REQ folds through the fold-first scan; an empty set says so and stops.
+- [ ] `verify-requests` runs on the new UR without a second prompt, stops before Offer Fixes, and one combined report prints.
+- [ ] With `--run` and no Important, Minor or Ambiguous gap the chain continues to `do-work run UR-NNN`. With a gap it stops and prints the gaps and the exact commands. A UR that owns no REQs skips the run and says so.
+- [ ] "validate-feedback: …" sent to core do-work routes to the toolbox action, not capture; "review feedback" stays out of the core row.
+- [ ] Without the flag or phrase, the report is the same as today and no files are written (Steps 1 to 5 and the Output Format fence byte-identical).
