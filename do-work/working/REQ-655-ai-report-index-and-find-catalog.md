@@ -1,7 +1,7 @@
 ---
 id: REQ-655
 title: 'ai-report index and find build a derived catalog of every report bundle in any naming style'
-status: pending
+status: claimed
 created_at: 2026-10-09T21:10:00Z
 user_request: UR-144
 domain: backend
@@ -13,6 +13,7 @@ effort_estimate: effort-substantive
 related: [REQ-654, REQ-656, REQ-657]
 batch: ai-report-modes
 write_set: ["skills/do-work/tools/do-work-cli/internal/toolboxcommands/**", "skills/do-work-toolbox/actions/ai-report.md", "skills/do-work-toolbox/docs/ai-report-guide.md", "skills/do-work-toolbox/SKILL.md", "skills/do-work-toolbox/actions/help.md"]
+claimed_at: 2026-10-10T12:52:19Z
 ---
 # ai-report Index and Find Build a Derived Catalog of Every Report Bundle in Any Naming Style
 ## What
