@@ -24,6 +24,7 @@ required_lessons: ["_dev/primes/lessons-releases.md"]
 write_set: ["skills/do-work-board/tools/queue-kanban/web/board-timeline.js", "skills/do-work-board/tools/queue-kanban/timeline_scroll_browser_probe_test.go", "skills/do-work-board/tools/queue-kanban/web/board-controls.js"]
 batch: upstream-report-accepts
 claimed_at: 2026-10-10T10:07:06Z
+builder_handback_at: 2026-10-10T11:54:39Z
 ---
 # Hidden Timeline Stops Redrawing on Scroll
 ## What
