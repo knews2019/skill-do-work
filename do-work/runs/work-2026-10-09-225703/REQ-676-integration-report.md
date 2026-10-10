@@ -1,0 +1,12 @@
+REQ-676 (toolbox source-audit action) is integrated and released as 0.305.91.
+
+- Archive: do-work/archive/REQ-676-source-audit-action.md.
+- Range: pre c33b8994 (run artifacts). First merge c93701c3. Final merge 6926c82b (recorded as commit:). Finalization f0efd34d (cleanup_complete, nothing blocked). 081fe626 then fixed the lesson bullet.
+- Review: 91% at c93701c3, Acceptance Pass, Approve. I fixed F2-F6 on the builder branch (fbe78182) and re-merged with the same pre. The re-check of the fix gave 93%, Pass, Approve. Report only: F1 (user-visible) slop-check never points to source-audit (outside Scope); F7, F8 (negligible) two guide wording nits.
+- Gate: exit 0 at c93701c3 (121 s). At 6926c82b: run 1 exit 1 (92 s, per-file budget, load 14), run 2 exit 1 (143 s, process-launch race in nextselection, load 17; passes 3 of 3 alone), run 3 exit 0 after waiting for load under 5 (84 s). Probe exit 0. contract-regressions exit 0 after 081fe626 (20 s).
+- Heavy: six lanes selected. At c93701c3 all executed, exit 0: javascript 7 s, browser 84 s, cli-integrations 65 s, staged-skills 40 s, updater 65 s, installer 35 s. At 6926c82b all exit 0: browser 83 s and staged-skills 34 s executed, the other four reused.
+- Update leg (after f0efd34d): install from e313e870 (v0.305.89) exit 0, action absent. Update to f0efd34d through do-work-update.sh and a local archive server: exit 0, one download, v0.305.91. Action and guide byte-identical, links and citations resolve, router names it. Brief, queue REQ and app file keep their sha256 after install and update.
+- Timing (6 events, folded): handback-merge 14 s, verification-gate 4 events, review 7m 47s. No builder-work event: the hand-back landed 10 minutes before I started, and the recorder would charge that wait to the builder (real build about 8m 51s). The first drain event is off by about 30 s.
+- Lesson: one bullet in _dev/primes/lessons-action-files.md (new family example-path-read-as-citation); index row 7330 -> 7469 tokens. My first wording quoted the example path, which contract-regressions read as a missing file; 081fe626 rewords it. REQ-678's integrator must re-point this link to do-work/archive/UR-151/.
+- Discovered tasks (report only): the run-probe quiet-grep failure, resolved by c4dda51e; the example-path trap, now the lesson.
+- Left dirty under ROOT: REQ-675-integration-report.md and REQ-677-handback.md (not mine), and this report (untracked on purpose). Builder worktree and branch removed. Nothing pushed.
