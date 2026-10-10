@@ -1795,6 +1795,12 @@ window.addEventListener("load", function () {
 // own vacuity guard refuses. Moving `now` back to the last completion satisfied that
 // guard but changed what the test measured; an open request is the data the
 // assertion is about, and a fixture has one whatever state the live queue is in.
+//
+// The same tree serves the Now / Fit all and prose probes, which type or filter on
+// fixed dates and ids. REQ-164 is a short completed row inside the week
+// 2026-07-27 to 2026-08-02, so a filter on it fits to a few days; REQ-0003 has
+// been open since that week, so the board has a long open span that fills the
+// seven days before now and the same week.
 func generateLiveSiteInDirAtRangeEnd(t *testing.T) string {
 	t.Helper()
 	now := time.Now().UTC()
@@ -1807,6 +1813,11 @@ func generateLiveSiteInDirAtRangeEnd(t *testing.T) string {
 	writeFixtureRepoFile(t, fixtureRoot, "do-work/archive/REQ-0002-done.md",
 		"---\nid: REQ-0002\ntitle: Done fixture\nstatus: completed\ncreated_at: "+stamp(45*24*time.Hour)+
 			"\nclaimed_at: "+stamp(40*24*time.Hour)+"\ncompleted_at: "+stamp(35*24*time.Hour)+"\n---\n\n# REQ-0002\n")
+	writeFixtureRepoFile(t, fixtureRoot, "do-work/queue/REQ-0003-long-open.md",
+		"---\nid: REQ-0003\ntitle: Long open fixture\nstatus: pending\ncreated_at: 2026-07-28T00:00:00Z\n---\n\n# REQ-0003\n")
+	writeFixtureRepoFile(t, fixtureRoot, "do-work/archive/REQ-164-short-done.md",
+		"---\nid: REQ-164\ntitle: Short done fixture\nstatus: completed\ncreated_at: 2026-07-28T00:00:00Z"+
+			"\nclaimed_at: 2026-07-28T06:00:00Z\ncompleted_at: 2026-07-29T00:00:00Z\n---\n\n# REQ-164\n")
 	board, buildError := buildBoard(fixtureRoot, now, 7*24*time.Hour, stubGitLookupNever)
 	if buildError != nil {
 		t.Fatalf("buildBoard: %v", buildError)
@@ -2018,7 +2029,7 @@ window.addEventListener("load", function () {
 // Driven in a real engine to check the toolbar's rendered state and Fit all
 // under the shared filter machinery this view reads but does not own.
 func TestBrowserBehaviorTimelineNowAndFitAllLandSomewhereReadable(t *testing.T) {
-	siteDirectory := generateLiveSiteInDir(t)
+	siteDirectory := generateLiveSiteInDirAtRangeEnd(t)
 	indexBytes, readError := os.ReadFile(filepath.Join(siteDirectory, "index.html"))
 	if readError != nil {
 		t.Fatalf("read generated index.html: %v", readError)
@@ -2077,12 +2088,18 @@ window.addEventListener("load", function () {
       probe.afterNow = toolbarState("afterNow");
       document.getElementById("timeline-zoom-in").click();
       probe.afterNowThenZoomIn = toolbarState("afterNowThenZoomIn");
-      // A trailing seven days, then one step forward. Which regime that step is in
-      // depends on the live queue — see the Go side's clause (3).
+      // A trailing seven days, then one step forward, which the Go side's clause (3)
+      // requires to be refused.
       document.querySelector('[data-timeline-period="7"]').click();
       probe.trailingSevenDays = toolbarState("trailingSevenDays");
       document.getElementById("timeline-period-next").click();
       probe.afterStepFromTrailingSevenDays = toolbarState("afterStepFromTrailingSevenDays");
+      // The refused press left the window where it was, so Previous and then Next
+      // start from the trailing window too: the enabled half of clause (3).
+      document.getElementById("timeline-period-prev").click();
+      probe.afterPrevFromTrailingSevenDays = toolbarState("afterPrevFromTrailingSevenDays");
+      document.getElementById("timeline-period-next").click();
+      probe.afterNextBackToTrailingSevenDays = toolbarState("afterNextBackToTrailingSevenDays");
       // All days is the payload's whole range — the outer bound the Go side's
       // clause (6) checks its premise against. Taken unfiltered because the bounds
       // come from the payload's range and a filter does not move them.
@@ -2170,16 +2187,18 @@ window.addEventListener("load", function () {
 		Disabled      map[string]bool `json:"disabled"`
 	}
 	var landingResult struct {
-		Fitted                         toolbarState `json:"fitted"`
-		AfterNow                       toolbarState `json:"afterNow"`
-		AfterNowThenZoomIn             toolbarState `json:"afterNowThenZoomIn"`
-		TrailingSevenDays              toolbarState `json:"trailingSevenDays"`
-		AfterStepFromTrailingSevenDays toolbarState `json:"afterStepFromTrailingSevenDays"`
-		AllDays                        toolbarState `json:"allDays"`
-		FilteredFit                    toolbarState `json:"filteredFit"`
-		FilteredSummary                string       `json:"filteredSummary"`
-		NarrowedAtTheDrawnEdge         toolbarState `json:"narrowedAtTheDrawnEdge"`
-		NarrowedThenStep               toolbarState `json:"narrowedThenStep"`
+		Fitted                           toolbarState `json:"fitted"`
+		AfterNow                         toolbarState `json:"afterNow"`
+		AfterNowThenZoomIn               toolbarState `json:"afterNowThenZoomIn"`
+		TrailingSevenDays                toolbarState `json:"trailingSevenDays"`
+		AfterStepFromTrailingSevenDays   toolbarState `json:"afterStepFromTrailingSevenDays"`
+		AfterPrevFromTrailingSevenDays   toolbarState `json:"afterPrevFromTrailingSevenDays"`
+		AfterNextBackToTrailingSevenDays toolbarState `json:"afterNextBackToTrailingSevenDays"`
+		AllDays                          toolbarState `json:"allDays"`
+		FilteredFit                      toolbarState `json:"filteredFit"`
+		FilteredSummary                  string       `json:"filteredSummary"`
+		NarrowedAtTheDrawnEdge           toolbarState `json:"narrowedAtTheDrawnEdge"`
+		NarrowedThenStep                 toolbarState `json:"narrowedThenStep"`
 	}
 	if decodeError := json.Unmarshal(probeOutput, &landingResult); decodeError != nil {
 		t.Fatalf("decode timeline landing behavior: %v (output %q)", decodeError, probeOutput)
@@ -2188,6 +2207,7 @@ window.addEventListener("load", function () {
 	states := []toolbarState{
 		landingResult.Fitted, landingResult.AfterNow, landingResult.AfterNowThenZoomIn,
 		landingResult.TrailingSevenDays, landingResult.AfterStepFromTrailingSevenDays,
+		landingResult.AfterPrevFromTrailingSevenDays, landingResult.AfterNextBackToTrailingSevenDays,
 		landingResult.AllDays, landingResult.FilteredFit,
 		landingResult.NarrowedAtTheDrawnEdge, landingResult.NarrowedThenStep,
 	}
@@ -2225,34 +2245,55 @@ window.addEventListener("load", function () {
 
 	// (3) A step past everything drawn does not happen, and says so first.
 	//
-	// WHICH REGIME THE LAST SEVEN DAYS ARE IN IS DATA, NOT A CONSTANT, and
-	// asserting one of them here is what made capturing three REQs fail this test.
 	// A trailing window ends at now, so the screenful after it is entirely in the
-	// future: on a drained queue that is only the cosmetic bound padding and the
-	// arrow must refuse, while a forecast reaching past it — which one ordinary
-	// `capture-request` is enough to produce — fills it with real projected bars
-	// and the arrow is right to be enabled. So the arrow's own verdict is READ and
-	// the press is checked against it, which is the contract in both regimes: it
-	// never lands the reader on an empty chart, and whatever it is about to do it
-	// says first. The refusal branch is then exercised deterministically under a
-	// filter in (6) below, where the live queue cannot move the answer.
-	if landingResult.TrailingSevenDays.Disabled["timeline-period-next"] {
-		if landingResult.AfterStepFromTrailingSevenDays.Readout != landingResult.TrailingSevenDays.Readout {
-			t.Errorf("the step-forward arrow reported itself disabled on the last seven days (%s) "+
-				"and the press moved the window to %s anyway", landingResult.TrailingSevenDays.Readout,
-				landingResult.AfterStepFromTrailingSevenDays.Readout)
-		}
-	} else {
-		if landingResult.AfterStepFromTrailingSevenDays.Readout == landingResult.TrailingSevenDays.Readout {
-			t.Errorf("the step-forward arrow reported itself enabled on the last seven days (%s) "+
-				"and the press did not move the window", landingResult.TrailingSevenDays.Readout)
-		}
-		if landingResult.AfterStepFromTrailingSevenDays.DrawnSegments == 0 {
-			t.Errorf("the step-forward arrow was enabled on the last seven days (%s) and the press "+
-				"landed on %s with nothing drawn in it — a step past everything drawn",
-				landingResult.TrailingSevenDays.Readout,
-				landingResult.AfterStepFromTrailingSevenDays.Readout)
-		}
+	// future. The fixture tree has no forecast past now, so that screenful is only
+	// the cosmetic bound padding and the arrow must refuse: it reports itself
+	// disabled and the press leaves the window where it was. The refusal is asserted
+	// outright because the fixture pins it; it is exercised a second time under a
+	// filter in (6) below.
+	if !landingResult.TrailingSevenDays.Disabled["timeline-period-next"] {
+		t.Errorf("the step-forward arrow was enabled on the last seven days (%s), but the fixture "+
+			"puts only the cosmetic bound padding past now", landingResult.TrailingSevenDays.Readout)
+	}
+	if landingResult.AfterStepFromTrailingSevenDays.Readout != landingResult.TrailingSevenDays.Readout {
+		t.Errorf("the step-forward arrow reported itself disabled on the last seven days (%s) "+
+			"and the press moved the window to %s anyway", landingResult.TrailingSevenDays.Readout,
+			landingResult.AfterStepFromTrailingSevenDays.Readout)
+	}
+
+	// (3b) The steps that CAN happen do. Two arrows that are always disabled would
+	// satisfy (3) and (6), so Previous and Next are pressed where they must act.
+	// Previous from the trailing window lands on the seven days before it, which the
+	// fixture's long open REQ fills; Next is its inverse. Endpoints are compared as
+	// instants (epoch milliseconds parsed by one readout parser), not as readout
+	// text, so a step of the wrong size cannot pass by rendering the same string.
+	const sevenDaysMs = 7 * 24 * 60 * 60 * 1000.0
+	trailing := landingResult.TrailingSevenDays
+	afterPrev := landingResult.AfterPrevFromTrailingSevenDays
+	afterNext := landingResult.AfterNextBackToTrailingSevenDays
+	if trailing.Disabled["timeline-period-prev"] {
+		t.Fatalf("the step-back arrow reported itself disabled on the last seven days (%s), so the "+
+			"step assertions below have nothing to press", trailing.Readout)
+	}
+	if *afterPrev.StartMs != *trailing.StartMs-sevenDaysMs || *afterPrev.EndMs != *trailing.EndMs-sevenDaysMs {
+		t.Errorf("stepping back from %s landed on %s; both endpoints should move back exactly "+
+			"seven days (%.0f ms)", trailing.Readout, afterPrev.Readout, sevenDaysMs)
+	}
+	if *afterPrev.SpanMs != *trailing.SpanMs {
+		t.Errorf("stepping back changed the window width from %.0f to %.0f ms; a step walks the "+
+			"window, it does not resize it", *trailing.SpanMs, *afterPrev.SpanMs)
+	}
+	if afterPrev.DrawnSegments == 0 {
+		t.Errorf("stepping back landed on %s with nothing drawn in it, though the fixture's open "+
+			"REQ spans that window", afterPrev.Readout)
+	}
+	if afterPrev.Disabled["timeline-period-next"] {
+		t.Fatalf("the step-forward arrow reported itself disabled on %s, one screenful before the "+
+			"window a step back came from", afterPrev.Readout)
+	}
+	if *afterNext.StartMs != *trailing.StartMs || *afterNext.EndMs != *trailing.EndMs {
+		t.Errorf("back and forward did not return to the starting window: %s, %s, %s",
+			trailing.Readout, afterPrev.Readout, afterNext.Readout)
 	}
 
 	// (4) Fit all fits WHAT IS ON SCREEN. The fitted window under a one-row filter
@@ -2354,7 +2395,7 @@ window.addEventListener("load", function () {
 // remaining REQ is listed below.", above a single row, with the excluded paragraph
 // immediately underneath naming a REQ that was not listed anywhere.
 func TestBrowserBehaviorTimelineProseDescribesOnlyTheWindowOnScreen(t *testing.T) {
-	siteDirectory := generateLiveSiteInDir(t)
+	siteDirectory := generateLiveSiteInDirAtRangeEnd(t)
 	indexBytes, readError := os.ReadFile(filepath.Join(siteDirectory, "index.html"))
 	if readError != nil {
 		t.Fatalf("read generated index.html: %v", readError)
@@ -2399,10 +2440,10 @@ window.addEventListener("load", function () {
     setTimeout(function () {
       var probe = {};
       probe.withNow = proseState("withNow");
-      // A window well before the now-line that still HAS rows in it. Late July is
-      // the busiest stretch of this repo's own archive; an empty past week would
-      // take the "Nothing was drawn" branch instead, which is a different sentence
-      // and would leave the one under test unexercised.
+      // A window well before the now-line that still HAS rows in it: the fixture
+      // tree holds REQ-164 and the long open REQ-0003 in this week. An empty past
+      // week would take the "Nothing was drawn" branch instead, which is a different
+      // sentence and would leave the one under test unexercised.
       typeWindow("2026-07-27", "2026-08-02");
       settleUntil(function () {
         return (document.getElementById("timeline-range-readout").textContent || "")
