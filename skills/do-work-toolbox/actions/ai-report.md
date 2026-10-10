@@ -29,6 +29,16 @@
 
 `$ARGUMENTS` is `UR-NNN`, `REQ-NNN`, `most recent`, or blank. One invocation covers one UR or one REQ; blank is the explicit `most recent` form.
 
+### Catalog forms: index and find
+
+`ai-report index` catalogs every bundle under `ai-reports/`, whatever its folder naming style, and regenerates the derived `ai-reports/catalog.json` and `ai-reports/index.html`:
+
+```bash
+<skill-root>/../do-work/tools/do-work-cli.sh --repo-root <project-root> --format text ai-report-index
+```
+
+`ai-report find <topic>` and "is there a report on <topic>" run the same command with `--find <topic>` appended. It prints matching bundle paths newest first, superseded bundles included, and writes nothing. Print the result, then stop: Steps 1 to 8 do not apply. A `refused` result names a hand-made `catalog.json` or `index.html`; report it and do not move it.
+
 ## Steps
 
 ### Step 1: Resolve and Read the Completed Work
@@ -106,7 +116,7 @@ Use one coherent responsive layout with full-width wrapping bands, readable pros
 
 Apply every current principle from `../../do-work/crew-members/anti-slop.md`; do not rely on a copied principle count. Verify each claim against the provenance ledger, lead with the verdict, compress repetition, disclose synthetic media, and remove any visual that only decorates.
 
-Confirm that the invocation creates only the report bundle. It must not create a Markdown client brief, a separate `.single.html` explainer, a video, Remotion/MP4 output, a `--with-video` path, or any automatic video behavior. It also does not publish, host, or search for distribution targets.
+Confirm that the invocation creates only the report bundle. It must not create a Markdown client brief, a separate `.single.html` explainer, a video, Remotion/MP4 output, a `--with-video` path, or any automatic video behavior. It also does not publish, host, or search for distribution targets; the catalog forms above are the one exception to searching, and they search only existing report bundles.
 
 ### Step 7: Render and Judge
 
@@ -137,4 +147,4 @@ A fresh self-contained folder at `ai-reports/yyyy-mm-dd_hhmm_<slug>/` containing
 - [ ] Non-visual evidence states UI captures were not expected and uses commit, current-code, architecture/data-flow, test, and operational receipts without fabricated screenshots.
 - [ ] Stakeholder narrative includes verdict, shipped change, problem/change, operation, qualitative value, files/commits, verification, and available lessons/questions.
 - [ ] Report is responsive, self-contained at the folder level, and render-judged in full-page light and dark when browser automation exists.
-- [ ] No brief, separate explainer, video, publishing, hosting, or search artifact was created.
+- [ ] No brief, separate explainer, video, publishing, hosting, or search artifact was created (the catalog forms' `catalog.json` and `index.html` excepted).

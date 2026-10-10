@@ -11,6 +11,7 @@ import (
 const (
 	CommandNote             = "do-work-note"
 	CommandArchitecture     = "architecture-report-preflight"
+	CommandAIReportIndex    = "ai-report-index"
 	CommandReportImage      = "generate-report-image"
 	CommandReportImageBatch = "generate-report-image-batch"
 	CommandPortfolio        = "publish-portfolio-summary"
@@ -22,6 +23,7 @@ func Handlers() map[string]commandruntime.CommandHandler {
 	return map[string]commandruntime.CommandHandler{
 		CommandNote:             handleNote,
 		CommandArchitecture:     handleArchitecture,
+		CommandAIReportIndex:    handleAIReportIndex,
 		CommandReportImage:      handleReportImage,
 		CommandReportImageBatch: handleReportImageBatch,
 		CommandPortfolio:        handlePortfolio,
