@@ -1,7 +1,6 @@
 package finalization
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -19,7 +18,7 @@ import (
 // autoManifestOptions are the inputs of finalize --auto-manifest. The judged
 // fields (transition, terminal status, message, provenance, release manifest,
 // failure fields) always come from the action; the command never invents them.
-// Writer, extra paths and the emit path are mechanical overrides.
+// Writer and extra paths are mechanical overrides; --emit is required.
 type autoManifestOptions struct {
 	RequestID          string
 	Transition         string
@@ -92,14 +91,17 @@ func judgedInputProblem(options autoManifestOptions) string {
 		return "--provenance primary_commit or --provenance supplied_commit is required"
 	case options.Provenance == ProvenanceSuppliedCommit && options.ImplementationHash == "":
 		return "--implementation-hash is required with --provenance supplied_commit"
+	case options.EmitPath == "":
+		return "--emit <path> is required: pass the emitted manifest to advance --finalization-manifest"
 	}
 	return ""
 }
 
 // handleAutoManifest builds the mechanical manifest fields from the working REQ,
 // the live files and the finalization planner, preflights the tree before any
-// write, and then either emits the manifest (--emit) or finalizes through the
-// same journal path as finalize --manifest.
+// write, and emits the manifest. It never finalizes: the action passes the
+// emitted file to advance --finalization-manifest, whose phase gate refuses a
+// REQ that has not reached finalization.
 func handleAutoManifest(executionContext commandruntime.ExecutionContext, arguments []string) resultmodel.CommandResult {
 	repositoryRoot := executionContext.RepositoryRoot
 	options, err := parseAutoManifestArguments(arguments)
@@ -121,7 +123,15 @@ func handleAutoManifest(executionContext commandruntime.ExecutionContext, argume
 		}
 	}
 
-	// Preflight (a): a fresh manifest carries a new completed_at, so it can never
+	// Preflight (a): the finalizer commits from an empty index, so name what is staged.
+	staged, err := exec.Command("git", "-C", repositoryRoot, "diff", "--cached", "--name-only").Output()
+	if err != nil {
+		return commandFailure(repositoryRoot, CommandFinalize, "FINALIZATION-PREPARE", "list staged paths: "+err.Error())
+	}
+	if stagedPaths := strings.FieldsFunc(string(staged), func(character rune) bool { return character == '\n' }); len(stagedPaths) > 0 {
+		return autoManifestRefusal(repositoryRoot, requestID, "FINALIZATION-INDEX-NOT-EMPTY", "finalization requires an empty index; staged: "+strings.Join(stagedPaths, ", "), stagedPaths...)
+	}
+	// Preflight (b): a fresh manifest carries a new completed_at, so it can never
 	// match the digest an unfinished journal recorded; only recovery resumes it.
 	journalPath, _, err := journalLocations(repositoryRoot, requestID)
 	if err != nil {
@@ -132,31 +142,22 @@ func handleAutoManifest(executionContext commandruntime.ExecutionContext, argume
 		refusal.Findings[0].NextArgv = []string{"do-work-cli", CommandRecoverFinalization}
 		return refusal
 	}
-	// Preflight (b): the finalizer commits from an empty index, so name what is staged.
-	staged, err := exec.Command("git", "-C", repositoryRoot, "diff", "--cached", "--name-only").Output()
-	if err != nil {
-		return commandFailure(repositoryRoot, CommandFinalize, "FINALIZATION-PREPARE", "list staged paths: "+err.Error())
-	}
-	if stagedPaths := strings.FieldsFunc(string(staged), func(character rune) bool { return character == '\n' }); len(stagedPaths) > 0 {
-		return autoManifestRefusal(repositoryRoot, requestID, "FINALIZATION-INDEX-NOT-EMPTY", "finalization requires an empty index; staged: "+strings.Join(stagedPaths, ", "), stagedPaths...)
-	}
 
 	snapshot, err := repositorymodel.DiscoverRepository(repositoryRoot)
 	if err != nil {
 		return commandFailure(repositoryRoot, CommandFinalize, "FINALIZATION-PREPARE", err.Error())
 	}
-	workingPaths := []string{}
-	for _, requestFile := range snapshot.RequestsByID[requestID] {
-		if requestFile.TreeSection == "working" {
-			workingPaths = append(workingPaths, "do-work/"+requestFile.RelativePath)
-		}
+	requestFile, stateRefusal := requeststate.ResolveTarget(snapshot, requestID, "")
+	if stateRefusal != nil {
+		return autoManifestRefusal(repositoryRoot, requestID, "FINALIZATION-REQUEST-NOT-WORKING", stateRefusal.Code+": "+stateRefusal.Reason)
 	}
-	if len(workingPaths) != 1 {
-		return autoManifestRefusal(repositoryRoot, requestID, "FINALIZATION-REQUEST-NOT-WORKING", fmt.Sprintf("expected exactly one %s file under do-work/working/, found %d", requestID, len(workingPaths)), workingPaths...)
+	requestPath := "do-work/" + requestFile.RelativePath
+	if requestFile.TreeSection != "working" {
+		return autoManifestRefusal(repositoryRoot, requestID, "FINALIZATION-REQUEST-NOT-WORKING", fmt.Sprintf("%s is in %s, not do-work/working/", requestID, requestFile.TreeSection), requestPath)
 	}
-	requestBytes, err := os.ReadFile(filepath.Join(repositoryRoot, filepath.FromSlash(workingPaths[0])))
+	requestBytes, err := os.ReadFile(filepath.Join(repositoryRoot, filepath.FromSlash(requestPath)))
 	if err != nil {
-		return autoManifestRefusal(repositoryRoot, requestID, "FINALIZATION-REQUEST-NOT-WORKING", err.Error(), workingPaths[0])
+		return autoManifestRefusal(repositoryRoot, requestID, "FINALIZATION-REQUEST-NOT-WORKING", err.Error(), requestPath)
 	}
 	checkpointBytes, err := os.ReadFile(filepath.Join(repositoryRoot, "do-work", "CHECKPOINT.md"))
 	if err != nil {
@@ -170,7 +171,7 @@ func handleAutoManifest(executionContext commandruntime.ExecutionContext, argume
 		writerLabel = requeststate.DefaultWriterLabel(snapshot.RepositoryRoot)
 	}
 	manifest := Manifest{
-		RequestID: requestID, RequestPath: workingPaths[0], WriterLabel: writerLabel, Transition: options.Transition,
+		RequestID: requestID, RequestPath: requestPath, WriterLabel: writerLabel, Transition: options.Transition,
 		TerminalStatus: options.TerminalStatus, FailureError: failureError, FailureType: options.FailureType,
 		CompletedAt: completedAt, ExpectedRequestSHA256: digestBytes(requestBytes), ExpectedCheckpointSHA256: digestBytes(checkpointBytes),
 		CommitPaths: options.ExtraPaths, CommitMessage: commitMessage,
@@ -197,13 +198,6 @@ func handleAutoManifest(executionContext commandruntime.ExecutionContext, argume
 		return commandFailure(repositoryRoot, CommandFinalize, "FINALIZATION-PREPARE", err.Error())
 	}
 
-	if options.EmitPath == "" {
-		journal, resumed, _, err := prepareManifestJournal(repositoryRoot, manifest, manifestBytes, false)
-		if err != nil {
-			return commandFailure(repositoryRoot, CommandFinalize, "FINALIZATION-PREPARE", err.Error())
-		}
-		return advanceJournal(context.Background(), repositoryRoot, journal, resumed)
-	}
 	if _, _, _, err := prepareManifestJournal(repositoryRoot, manifest, manifestBytes, true); err != nil {
 		return autoManifestRefusal(repositoryRoot, requestID, "FINALIZATION-PREPARE-REFUSED", err.Error())
 	}
