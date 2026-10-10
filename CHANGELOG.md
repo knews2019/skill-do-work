@@ -10,6 +10,14 @@ For the complete release history, read this file and the archives below from new
 - [0.50.0 through 0.64.1](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-13-up-to-v0.64.1.md)
 - [0.1.0 through 0.49.0](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-07-up-to-v0.49.0.md)
 
+## 0.305.115 — req append-section Refuses a Body That Would Hide Later Sections, and frontmatter set Refuses status and id (2026-10-10)
+
+A section body that left a code fence or HTML comment open used to hide every section written after it, so `advance` read the REQ's phase wrong. Both request writers now refuse the inputs that broke the lifecycle record.
+
+- `req append-section` refuses `SECTION-WRITE-FAILED`, writing nothing, when the `--from` body leaves a fence or comment open. This covers a body inserted before an existing `## Review` and a body appended at the end, where the next section would be hidden. The refusal names the `--from` file and says that a line starting with three or more of one punctuation character, such as three backticks or `...`, opens a fence.
+- The existing check still refuses an append into a request file that already ends inside an open fence.
+- `frontmatter set` refuses `status` and `id` with the new code `FRONTMATTER-FIELD-OWNED`, before the file is read. The refusal names the owner: the lifecycle commands (`advance`, `unblock`, `finalize`) for `status`; an `id` is never rewritten.
+
 ## 0.305.114 — Forensics and the README Send "Is It Stuck" Questions to do-work status, and clarify.md States the Full Fence Rule (2026-10-10)
 
 The previous run changed two rules but left older text that still said the opposite, so a session could copy the wrong one. Six lines now match the current rules.
