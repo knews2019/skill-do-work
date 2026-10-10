@@ -26,6 +26,7 @@ estimate:
     - 9 acceptance criteria
 planning_at: 2026-10-10T13:21:45Z
 required_lessons: ["_dev/primes/lessons-releases.md"]
+builder_handback_at: 2026-10-10T13:31:11Z
 ---
 # ai-report Index and Find Build a Derived Catalog of Every Report Bundle in Any Naming Style
 ## What
