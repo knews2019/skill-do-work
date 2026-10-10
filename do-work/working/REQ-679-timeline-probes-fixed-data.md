@@ -1,7 +1,7 @@
 ---
 id: REQ-679
 title: '[impact-negligible] Timeline browser probes that depend on live queue dates use the fixed-fixture helper, and the lost Previous and Next assertions return'
-status: pending
+status: claimed
 created_at: 2026-10-10T10:03:50Z
 user_request: UR-152
 domain: testing
@@ -13,6 +13,7 @@ effort_estimate: effort-substantive
 required_lessons: ["_dev/primes/lessons-releases.md"]
 related: [REQ-680]
 batch: upstream-report-accepts
+claimed_at: 2026-10-10T10:07:05Z
 ---
 # Timeline Probes Use Fixed Data and Assert Previous and Next
 ## What
