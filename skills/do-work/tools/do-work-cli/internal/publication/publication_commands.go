@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strings"
 	"time"
@@ -43,6 +44,9 @@ func Handlers() map[string]commandruntime.CommandHandler {
 }
 
 func handlePublicationCommand(executionContext commandruntime.ExecutionContext, operation OperationName, arguments []string) resultmodel.CommandResult {
+	if operation == OperationCaptureFiles && slices.Contains(arguments, "--example") {
+		return handleCaptureFilesExample(executionContext, arguments)
+	}
 	options, parseError := parseCommandOptions(arguments)
 	if parseError != nil {
 		return commandFailureWithManifest(executionContext.RepositoryRoot, operation, options.manifestPath, options.answerTime, "PUBLICATION-USAGE", parseError.Error())

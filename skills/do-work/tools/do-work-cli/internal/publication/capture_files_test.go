@@ -5,8 +5,12 @@ import (
 	"os/exec"
 	"path/filepath"
 	"reflect"
+	"regexp"
 	"strings"
 	"testing"
+
+	"github.com/knews2019/skill-do-work/do-work-cli/internal/commandruntime"
+	"github.com/knews2019/skill-do-work/do-work-cli/internal/resultmodel"
 )
 
 func TestCaptureCollidesWithQueueKanbanReservationForSameNumber(t *testing.T) {
@@ -269,18 +273,109 @@ func TestBuildCapturePlanAcceptsPublishedCaptureExamples(t *testing.T) {
 		name                     string
 		reqBytes, urBytes        []byte
 		requestID, userRequestID string
+		rawInput                 []byte
 	}{
-		{"simple", simpleREQ, canonicalURFixture("UR-001", []string{"REQ-001"}), "REQ-001", "UR-001"},
-		{"complex", complexREQ, canonicalURFixture("UR-001", []string{"REQ-001"}), "REQ-001", "UR-001"},
-		{"UR input", canonicalREQFixture("REQ-020", "UR-005"), urExample, "REQ-020", "UR-005"},
-		{"addendum", exampleFor("## Addendum REQ Template"), canonicalURFixture("UR-006", []string{"REQ-021"}), "REQ-021", "UR-006"},
+		{"simple", simpleREQ, canonicalURFixture("UR-001", []string{"REQ-001"}), "REQ-001", "UR-001", nil},
+		{"complex", complexREQ, canonicalURFixture("UR-001", []string{"REQ-001"}), "REQ-001", "UR-001", nil},
+		// The UR example's verbatim block must be exactly what capture-files derives from its sample input.
+		{"UR input", canonicalREQFixture("REQ-020", "UR-005"), urExample, "REQ-020", "UR-005", []byte("add keyboard shortcuts\n")},
+		{"addendum", exampleFor("## Addendum REQ Template"), canonicalURFixture("UR-006", []string{"REQ-021"}), "REQ-021", "UR-006", nil},
 	} {
 		t.Run(testCase.name, func(t *testing.T) {
 			root := t.TempDir()
 			writeFixture(t, root, "payload/ur.md", testCase.urBytes, 0o644)
 			writeFixture(t, root, "payload/req.md", testCase.reqBytes, 0o644)
-			if plan := BuildCapturePlan(root, canonicalCaptureManifest(testCase.userRequestID, testCase.requestID)); plan.Refusal != nil {
+			manifest := canonicalCaptureManifest(testCase.userRequestID, testCase.requestID)
+			if testCase.rawInput != nil {
+				writeFixture(t, root, "payload/raw.txt", testCase.rawInput, 0o644)
+				manifest.Capture.RawInput = &PayloadFile{SourcePath: "payload/raw.txt"}
+			}
+			if plan := BuildCapturePlan(root, manifest); plan.Refusal != nil {
 				t.Fatalf("copyable example refused: %#v", plan.Refusal)
+			}
+		})
+	}
+}
+
+// Pins the failure where a session copies the capture shape by hand and the first dry run refuses it
+// (CAPTURE-RAW-INPUT-NOT-CONTAINED for a hand-written fence, or a schema hunt for the manifest keys).
+func TestCaptureFilesExampleFilledInPassesDryRun(t *testing.T) {
+	examplePartDelimiter := regexp.MustCompile(`(?m)^==> (.+) <==\n`)
+	for _, testCase := range []struct {
+		name     string
+		rawInput []byte
+	}{
+		{"with raw input", []byte("please add this:\n```go\nfmt.Println(1)\n```\n## not a heading\n")},
+		{"without raw input", nil},
+	} {
+		t.Run(testCase.name, func(t *testing.T) {
+			repositoryRoot := initializedGitRepository(t)
+			captureHandler := Handlers()["capture-files"]
+			exampleArguments := []string{"--example"}
+			if testCase.rawInput != nil {
+				writeFixture(t, repositoryRoot, "raw input.txt", testCase.rawInput, 0o644)
+				exampleArguments = append(exampleArguments, "--raw-input", "raw input.txt")
+			}
+			textContext := commandruntime.ExecutionContext{RepositoryRoot: repositoryRoot, Format: resultmodel.FormatText}
+			result := captureHandler(textContext, exampleArguments)
+			if result.Outcome != resultmodel.OutcomeSuccess || result.ExactTextOutput == nil {
+				t.Fatalf("example refused: %#v", result)
+			}
+			if _, err := os.Lstat(filepath.Join(repositoryRoot, "do-work")); !os.IsNotExist(err) {
+				t.Fatalf("--example wrote queue state: %v", err)
+			}
+			if jsonResult := captureHandler(commandruntime.ExecutionContext{RepositoryRoot: repositoryRoot, Format: resultmodel.FormatJSON}, exampleArguments); jsonResult.Outcome == resultmodel.OutcomeSuccess || jsonResult.Findings[0].Code != "PUBLICATION-USAGE" {
+				t.Fatalf("--example under --format json did not refuse: %#v", jsonResult)
+			}
+
+			exampleText := *result.ExactTextOutput
+			delimiters := examplePartDelimiter.FindAllStringSubmatchIndex(exampleText, -1)
+			if len(delimiters) != 3 {
+				t.Fatalf("example has %d delimited parts, want 3:\n%s", len(delimiters), exampleText)
+			}
+			payloadDirectory := t.TempDir()
+			fillPlaceholders := strings.NewReplacer("<payload-dir>", payloadDirectory, "UR-NNN", "UR-001", "REQ-NNN", "REQ-001", "<slug>", "example-work",
+				"<created-at>", "2026-10-10T12:00:00Z", "<word-count>", "12")
+			manifestPath := ""
+			var urPart string
+			for index, delimiter := range delimiters {
+				partEnd := len(exampleText)
+				if index+1 < len(delimiters) {
+					partEnd = delimiters[index+1][0]
+				}
+				partPath := fillPlaceholders.Replace(exampleText[delimiter[2]:delimiter[3]])
+				partBytes := fillPlaceholders.Replace(exampleText[delimiter[1]:partEnd])
+				if err := os.WriteFile(partPath, []byte(partBytes), 0o644); err != nil {
+					t.Fatalf("part path %q is not writable after filling: %v", partPath, err)
+				}
+				switch index {
+				case 0:
+					manifestPath = partPath
+				case 1:
+					urPart = partBytes
+				}
+			}
+			manifestFile, err := os.Open(manifestPath)
+			if err != nil {
+				t.Fatal(err)
+			}
+			manifest, decodeError := DecodeManifest(manifestFile, OperationCaptureFiles)
+			manifestFile.Close()
+			if decodeError != nil {
+				t.Fatalf("filled manifest does not decode: %v", decodeError)
+			}
+			if testCase.rawInput != nil {
+				if manifest.Capture.RawInput == nil || manifest.Capture.RawInput.SourcePath != "raw input.txt" {
+					t.Fatalf("raw_input does not name the given file: %#v", manifest.Capture.RawInput)
+				}
+				if !strings.Contains(urPart, string(containedOutsideBytes(testCase.rawInput, "\n"))) {
+					t.Fatalf("UR part lacks the byte-derived verbatim block:\n%s", urPart)
+				}
+			}
+
+			dryRun := captureHandler(textContext, []string{"--manifest", manifestPath, "--dry-run"})
+			if dryRun.Outcome != resultmodel.OutcomeSuccess {
+				t.Fatalf("filled example failed the dry run: %#v\n%s", dryRun.Findings, exampleText)
 			}
 		})
 	}

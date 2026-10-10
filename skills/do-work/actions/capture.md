@@ -227,6 +227,8 @@ If the user provides one or more screenshots:
 
 Prepare the final UR/REQ bytes, raw verbatim-input bytes, assets, expected/new fold bytes, and one strict `capture-files` JSON manifest as regular payload files in a private temporary directory. The manifest carries every destination, exact ID/linkage, canonical stored-id `do-work/.req-reservations/REQ-NNN` marker, payload path and mode, and optional commit message. These are inputs, not durable queue writes.
 
+For a valid manifest and payload templates to fill in, run `<skill-root>/tools/do-work-cli.sh --repo-root "<project-root>" capture-files --example --raw-input "<raw-input-path>"` (plain text only, no `--format json`); it writes nothing, and each part it prints follows a `==> <path> <==` line naming the file to write it to.
+
 The wrapper invocation below follows the canonical [Prescribed shell primitives](../docs/prescribed-shell-primitives.md); do not restate its shared shell safety mechanics here.
 
 **For all requests (simple and complex):**
