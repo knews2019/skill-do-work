@@ -1,7 +1,7 @@
 ---
 id: REQ-682
 title: 'A hidden Timeline view no longer redraws its rows when the user scrolls another view'
-status: pending
+status: claimed
 created_at: 2026-10-10T10:03:50Z
 user_request: UR-152
 domain: frontend
@@ -12,6 +12,7 @@ impact: impact-user-visible
 effort_estimate: effort-mechanical
 required_lessons: ["_dev/primes/lessons-releases.md"]
 batch: upstream-report-accepts
+claimed_at: 2026-10-10T10:07:06Z
 ---
 # Hidden Timeline Stops Redrawing on Scroll
 ## What

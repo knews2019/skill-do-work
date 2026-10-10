@@ -12,3 +12,5 @@ queue_state: [21 pending, 0 pending-answers, 0 blocked, 0 blocked-archive-collis
 - REQ-680: [impact-negligible] Archive fetch test proves a failed fetch never creates a target that did not exist — claimed 2026-10-10T10:07:06Z — writer: t2s-Virtual-Machine.local:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2
 
 - REQ-681: Appending a section entry finds the section with the shared visible-section reader, so CRLF files, trailing spaces and fenced headings no longer give a duplicate heading — claimed 2026-10-10T10:07:06Z — writer: t2s-Virtual-Machine.local:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2
+
+- REQ-682: A hidden Timeline view no longer redraws its rows when the user scrolls another view — claimed 2026-10-10T10:07:06Z — writer: t2s-Virtual-Machine.local:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2
