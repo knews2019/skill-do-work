@@ -306,8 +306,8 @@ func TestBrowserBehaviorTimelineViewHasOneScrollSurface(t *testing.T) {
 }
 
 // buildTimelineScrollProbeSite writes the tall fixture, adds real finding disclosures
-// and returns the generated site directory with its index page. Both Timeline scroll
-// probes start from it, so they measure the same board.
+// and returns the generated site directory with its index page. The three Timeline
+// scroll probes start from it, so they measure the same board.
 func buildTimelineScrollProbeSite(t *testing.T) (string, string) {
 	t.Helper()
 	fixtureFiles := make([]verifyFixtureFile, 0, timelineScrollProbeRequestCount+1)
@@ -332,7 +332,8 @@ func buildTimelineScrollProbeSite(t *testing.T) (string, string) {
 	// data warning, so board-cards.js inserts the warnings banner as the board's
 	// FIRST child. That banner is not in template.html and carries no id, so it
 	// is the case a rule that named the strips by id would have missed — the
-	// measurement below reports whichever element actually came first.
+	// measurement in TestBrowserBehaviorTimelineViewHasOneScrollSurface reports whichever
+	// element actually came first.
 	fixtureFiles = append(fixtureFiles, verifyFixtureFile{
 		RelativePath: "do-work/archive/REQ-7999-timeline-scroll-anomaly.md",
 		Content: "---\n" +

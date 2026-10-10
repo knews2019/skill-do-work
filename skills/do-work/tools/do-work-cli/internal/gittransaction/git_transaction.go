@@ -701,8 +701,8 @@ func ExecuteTransaction(ctx context.Context, options TransactionOptions, mutate 
 	}
 	commitSHA, err := runGit(ctx, repositoryRoot, "rev-parse", "HEAD")
 	if err != nil {
-		// "HEAD" is deliberate: a non-empty PrimaryCommit blocks rollback of a commit that landed
-		// (finalization_apply.go, near line 30).
+		// "HEAD" is deliberate: a non-empty CommitSHA tells callers (cleanup_apply.go, doctor_repair.go,
+		// publication_commands.go) that a commit landed, so they report it instead of a clean rollback.
 		return committedRisk(result, "the commit succeeded but its ID could not be read", "HEAD")
 	}
 	commitSHA = strings.TrimSpace(commitSHA)
