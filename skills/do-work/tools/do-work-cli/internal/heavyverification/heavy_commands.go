@@ -21,6 +21,7 @@ const (
 	CommandInvalidateFastStage   = "invalidate-fast-stage"
 )
 
+// The three fast-stage commands serve _dev/tests/maintainer-verify.sh only; no action calls them.
 func Handlers() map[string]commandruntime.CommandHandler {
 	return map[string]commandruntime.CommandHandler{
 		CommandPlanHeavyVerification: handlePlanHeavyVerification,
