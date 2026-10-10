@@ -1,7 +1,7 @@
 ---
 id: REQ-683
 title: 'Interview cadence parsing reads AM and PM, so a 5:00 PM answer becomes 17:00 and 12:30 AM becomes 00:30'
-status: pending
+status: claimed
 created_at: 2026-10-10T10:03:50Z
 user_request: UR-152
 domain: backend
@@ -12,6 +12,7 @@ impact: impact-user-visible
 effort_estimate: effort-mechanical
 required_lessons: ["_dev/primes/lessons-releases.md"]
 batch: upstream-report-accepts
+claimed_at: 2026-10-10T10:07:35Z
 ---
 # Interview Cadence Reads AM and PM
 ## What
