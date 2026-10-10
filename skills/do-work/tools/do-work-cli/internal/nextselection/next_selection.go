@@ -298,7 +298,7 @@ func evaluateCandidate(snapshot *repositorymodel.RepositorySnapshot, candidate s
 		}
 	}
 
-	estimateMinutes, estimateKnown := frozenEstimate(record.FieldEvidenceByName)
+	estimateMinutes, estimateKnown := FrozenEstimate(record.FieldEvidenceByName)
 	if options.SimpleOnly && !estimateKnown {
 		estimateMinutes, estimateKnown = 5, true
 	}
@@ -468,7 +468,9 @@ func justRecipeFor(nextArgv []string) string {
 	return ""
 }
 
-func frozenEstimate(fields map[string]requestmodel.FieldEvidence) (int, bool) {
+// FrozenEstimate is the one core parse of a REQ's frozen
+// `estimate.p50_active_minutes`; run-status reads its ETA through it too.
+func FrozenEstimate(fields map[string]requestmodel.FieldEvidence) (int, bool) {
 	estimate, found := fields["estimate"]
 	if !found || estimate.NestedValues == nil {
 		return 0, false

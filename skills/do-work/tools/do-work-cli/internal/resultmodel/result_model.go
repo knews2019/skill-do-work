@@ -606,6 +606,53 @@ type LifecycleTimingResult struct {
 	SectionWritten       bool                  `json:"section_written"`
 }
 
+// RunStatusResult is run-status's typed report: one row per claimed, blocked,
+// waiting or earmarked REQ (each row also has one CommandFinding whose code is
+// the row's class), plus the run-directory files the suite does not define.
+// Ages are reported; nothing here judges a run or builder dead.
+type RunStatusResult struct {
+	RunDirectory  string         `json:"run_directory,omitempty"`
+	Rows          []RunStatusRow `json:"rows"`
+	RunLocalFiles []RunLocalFile `json:"run_local_files"`
+}
+
+type RunStatusRow struct {
+	RequestID            string   `json:"request_id"`
+	Title                string   `json:"title"`
+	Class                string   `json:"class"`
+	Status               string   `json:"status"`
+	Column               string   `json:"column"`
+	PlacementReason      string   `json:"placement_reason"`
+	UnmetDependencies    []string `json:"unmet_dependencies"`
+	DependsOn            []string `json:"depends_on"`
+	BlockedBy            []string `json:"blocked_by"`
+	BlockedAt            string   `json:"blocked_at,omitempty"`
+	AssignedTo           string   `json:"assigned_to,omitempty"`
+	OpenQuestions        int      `json:"open_questions"`
+	ClaimedAt            string   `json:"claimed_at,omitempty"`
+	MinutesSinceClaim    *int     `json:"minutes_since_claim,omitempty"`
+	LastActivityAt       string   `json:"last_activity_at,omitempty"`
+	LastActivityKind     string   `json:"last_activity_kind,omitempty"`
+	LastActivityPhase    string   `json:"last_activity_phase,omitempty"`
+	MinutesSinceActivity *int     `json:"minutes_since_activity,omitempty"`
+	P50ActiveMinutes     *int     `json:"p50_active_minutes,omitempty"`
+	EtaMinutes           *int     `json:"eta_minutes,omitempty"`
+	EtaText              string   `json:"eta_text"`
+	HandbackPresent      *bool    `json:"handback_present,omitempty"`
+	ManifestRow          string   `json:"manifest_row,omitempty"`
+	DispatchedAt         string   `json:"dispatched_at,omitempty"`
+	BuilderBranch        string   `json:"builder_branch,omitempty"`
+	BuilderBranchTipAt   string   `json:"builder_branch_tip_at,omitempty"`
+	OtherBuilderBranches []string `json:"other_builder_branches,omitempty"`
+}
+
+type RunLocalFile struct {
+	Path       string `json:"path"`
+	AgeMinutes int    `json:"age_minutes"`
+	FirstLine  string `json:"first_line"`
+	Label      string `json:"label"`
+}
+
 type CommandResult struct {
 	SchemaVersion        int                           `json:"schema_version"`
 	Command              string                        `json:"command"`
@@ -634,6 +681,7 @@ type CommandResult struct {
 	Recovery             *RecoveryResult               `json:"recovery,omitempty"`
 	Checkpoint           *CheckpointResult             `json:"checkpoint,omitempty"`
 	LifecycleTiming      *LifecycleTimingResult        `json:"lifecycle_timing,omitempty"`
+	RunStatus            *RunStatusResult              `json:"run_status,omitempty"`
 	// ExactTextOutput preserves compatibility-shaped stdout without polluting
 	// JSON with an opaque duplicate. It must be derived from the same typed
 	// observation carried by the result.
