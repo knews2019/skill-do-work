@@ -10,6 +10,15 @@ For the complete release history, read this file and the archives below from new
 - [0.50.0 through 0.64.1](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-13-up-to-v0.64.1.md)
 - [0.1.0 through 0.49.0](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-07-up-to-v0.49.0.md)
 
+## 0.305.114 — Forensics and the README Send "Is It Stuck" Questions to do-work status, and clarify.md States the Full Fence Rule (2026-10-10)
+
+The previous run changed two rules but left older text that still said the opposite, so a session could copy the wrong one. Six lines now match the current rules.
+
+- `actions/forensics.md` and `README.md`: a question about quiet in-flight work points at `do-work status`; forensics stays the tool for failed or broken work.
+- `actions/clarify.md`: the outside-text containment fence is one backtick longer than the longest backtick run, never shorter than three, with no info string, the same rule the Go writers and `capture-reference.md` apply.
+- `actions/capture.md`: the queued-addendum example uses a bare three-backtick fence.
+- Test text only: the retired-trigger fixture header and the staged-skills contract fail message name the validate-feedback forward-row exception.
+
 ## 0.305.113 — do-work run --coordinate Keeps the Main Session a Coordinator, With Run Rules, a Preflight and a Stall Check (2026-10-10)
 
 About 13 sessions started with a pasted directive telling the main session to coordinate and not integrate. One flag, or the phrase "drive the queue", now does that, and the run rules that lived only in a memory note are in the skill. The rules make stalls and load-only failures visible and shorter; they do not prevent them.
