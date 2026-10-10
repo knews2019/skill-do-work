@@ -1,7 +1,7 @@
 ---
 id: REQ-660
 title: 'worktree new, status, merge and cleanup wrap the builder worktree lifecycle the actions already define'
-status: pending
+status: claimed
 created_at: 2026-10-09T21:14:04Z
 user_request: UR-145
 domain: backend
@@ -12,6 +12,7 @@ impact: impact-user-visible
 effort_estimate: effort-substantive
 related: [REQ-658, REQ-659, REQ-661]
 batch: cli-ergonomics
+claimed_at: 2026-10-10T12:52:20Z
 ---
 # worktree new, status, merge and cleanup Wrap the Builder Worktree Lifecycle the Actions Already Define
 ## What
