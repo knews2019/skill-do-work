@@ -1,7 +1,7 @@
 ---
 id: REQ-657
 title: 'ai-report judge runs the render check as a bundled command'
-status: pending
+status: claimed
 created_at: 2026-10-09T21:10:00Z
 user_request: UR-144
 domain: testing
@@ -13,6 +13,7 @@ effort_estimate: effort-substantive
 priority: later
 related: [REQ-654, REQ-655, REQ-656]
 batch: ai-report-modes
+claimed_at: 2026-10-10T12:52:22Z
 ---
 # ai-report Judge Runs the Render Check as a Bundled Command
 ## What
