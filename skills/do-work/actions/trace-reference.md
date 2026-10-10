@@ -38,7 +38,7 @@ Build and run the board tool's read-only `request-commits` subcommand with every
   && <suite-root>/do-work-board/tools/queue-kanban/queue-kanban request-commits --repo-root <project-root> <REQ ids>
 ```
 
-The build writes only the gitignored `queue-kanban` binary in the board tool directory. Exit 0 prints a tab-separated header (`request_id`, `commit`, `committed_at`, `paths_outside_do_work`, `subject`) and one row per commit the board credits to a named REQ, newest first. The header alone means no commit credits any named REQ. A `paths_outside_do_work` of 0 is bookkeeping (claim, archive, run artifacts) or a merge; above 0 is code or docs evidence. Cite the newest row above 0 in the Commit column.
+The build writes only the gitignored `queue-kanban` binary in the board tool directory. Exit 0 prints a tab-separated header (`request_id`, `commit`, `committed_at`, `paths_outside_do_work`, `subject`) and one row per commit the board credits to a named REQ, newest first. The header alone means no commit credits any named REQ. A `paths_outside_do_work` of 0 is bookkeeping (claim, archive, run artifacts) or a merge; above 0 touched files outside `do-work/`: code, docs, or, where the completion commit also releases, the changelog and version files. Cite the newest row above 0 in the Commit column.
 
 Any other exit (no `go`, a failed build, exit 1 for a git failure, exit 2 for a bad argument) means the git search was skipped. Say so in the report, use each matched REQ's `commit:` value as its commit evidence, and mark a row `unverified`, never `not started`, when its verdict rests on the skipped search.
 
@@ -64,6 +64,6 @@ On go, invoke capture once, as `capture-request:`, for the `partial` and `not st
 
 - the ask id and its verdict;
 - for a `partial` row: the matched REQ id and its archive path, so capture writes an addendum REQ with `addendum_to` (`actions/capture.md` Step 2), and the cited commit hash for its `## Prior Implementation`;
-- when the source has one: the external ticket id (capture puts it in the UR title), the source URL and the fetch date (already the transcription's first lines).
+- when the source has one: the external ticket id, with the instruction that the UR title starts with it (capture has no ticket rule of its own), and the source URL and fetch date (already the transcription's first lines).
 
 Capture picks the UR and REQ numbers when it writes. `complete` rows stay in the printed table only.

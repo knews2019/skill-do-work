@@ -13,10 +13,11 @@ import (
 // board subcommands — `summary` (column counts), `open-work` (a per-ticket
 // digest of what is in flight), `generate` (a self-contained static board), and
 // `serve` (a live local board that re-walks the tree per
-// request) — plus the read-only `frontmatter` field reader and three
-// release-ritual subcommands: `next-req` atomically reserves a number,
-// `next-version` allocates a version, and `verify` checks the cross-file
-// invariants otherwise checked by hand.
+// request) — plus the read-only `frontmatter` field reader, the read-only
+// `request-commits` commit evidence for do-work trace, `now` (the Timestamp
+// rule's stamp), and three release-ritual subcommands: `next-req` atomically
+// reserves a number, `next-version` allocates a version, and `verify` checks
+// the cross-file invariants otherwise checked by hand.
 //
 // Dispatch is a minimal hand-rolled subcommand switch over os.Args[1] — no
 // external CLI library — with each subcommand owning its own flag.FlagSet:
