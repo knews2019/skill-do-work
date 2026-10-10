@@ -10,6 +10,16 @@ For the complete release history, read this file and the archives below from new
 - [0.50.0 through 0.64.1](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-13-up-to-v0.64.1.md)
 - [0.1.0 through 0.49.0](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-07-up-to-v0.49.0.md)
 
+## 0.305.117 — worktree status and cleanup Handle a Deleted Worktree Folder, and Dirt Checks Ignore the Links worktree new Created (2026-10-10)
+
+A builder worktree folder deleted by hand made `worktree status` and `worktree cleanup` stop with an error, so one stale record hid every row. And every dirt check except the worktree command itself counted the `do-work/worktree-links` symlinks as uncommitted work, so a finished worktree always asked for consent.
+
+- `do-work-cli worktree status` lists a worktree whose folder is gone as `missing` (JSON `missing: true`) and exits 0. `worktree cleanup REQ-N` then prunes the record and deletes the merged branch.
+- Cleanup Pass 5, `handoff-state-survey` and the board's verify check ignore owned links: configured paths that are symlinks to the same path in the main tree. Pass 5 deletes those links (never their targets) before its non-forced `git worktree remove`.
+- An unreadable or invalid `do-work/worktree-links` filters nothing, so those checks still report dirt and ask for consent.
+- `actions/cleanup.md` Pass 5 and `actions/fan-out-reference.md` describe both behaviors, and the by-hand cleanup in `actions/fan-out-reference.md` deletes the owned links before `git worktree remove`.
+- `do-work-toolbox tutorial` and `docs/roadmap-guide.md` send "stuck" questions to `do-work status` and keep `do-work forensics` for broken or failed work.
+
 ## 0.305.116 — run-status Names a Missing Run Folder and Stops Recommending do-work run While an Integrator Works (2026-10-10)
 
 A mistyped `--run` used to read as "no run": landed hand-backs counted as absent, rows turned from hand-back landed into stale claim, and nothing said which folder was read. And a REQ that an integrator was working on was still told to run `do-work run`, which invites a second orchestrator.
