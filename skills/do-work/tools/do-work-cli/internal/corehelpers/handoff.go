@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/knews2019/skill-do-work/do-work-cli/internal/cleanup"
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/commandruntime"
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/resultmodel"
 )
@@ -64,6 +65,7 @@ func handleHandoffSurvey(executionContext commandruntime.ExecutionContext, argum
 	if err != nil {
 		return usageResult(CommandHandoffSurvey, err.Error())
 	}
+	mainRoot := ""
 	for _, record := range strings.Split(strings.TrimSpace(string(porcelain)), "\n\n") {
 		worktreePath, head, branch := "", "", ""
 		for _, line := range strings.Split(record, "\n") {
@@ -79,6 +81,9 @@ func handleHandoffSurvey(executionContext commandruntime.ExecutionContext, argum
 		if worktreePath == "" {
 			continue
 		}
+		if mainRoot == "" {
+			mainRoot = worktreePath // the first porcelain record is the main tree
+		}
 		findings = append(findings, resultmodel.CommandFinding{Code: "HANDOFF-WORKTREE", Severity: resultmodel.SeverityInfo, AffectedIDs: nonemptyStrings(branch, head), AffectedPaths: []string{worktreePath}, Evidence: []string{"path=" + worktreePath, "head=" + head, "branch=" + branch}, Fixability: resultmodel.FixabilityAutomatic, VerificationArgv: []string{"git", "-C", worktreePath, "rev-parse", "HEAD"}})
 		if info, err := os.Stat(worktreePath); err != nil || !info.IsDir() {
 			findings = append(findings, helperFinding("HANDOFF-WORKTREE-MISSING", resultmodel.SeverityWarning, []string{worktreePath}, "worktree path is missing or prunable", resultmodel.FixabilityManual, "prune or restore the worktree", []string{"git", "worktree", "prune", "--dry-run"}, nil))
@@ -92,9 +97,20 @@ func handleHandoffSurvey(executionContext commandruntime.ExecutionContext, argum
 		if value, err := filepath.Rel(executionContext.RepositoryRoot, worktreePath); err == nil {
 			relative = value
 		}
-		dirtyRows, parseError := parseHandoffStatus(status)
+		statusRows, parseError := parseHandoffStatus(status)
 		if parseError != nil {
 			return usageResult(CommandHandoffSurvey, fmt.Sprintf("status %s: %v", worktreePath, parseError))
+		}
+		// The links `worktree new` created from do-work/worktree-links are not builder work.
+		ownedLinks := map[string]bool{}
+		for _, linkPath := range cleanup.OwnedWorktreeLinks(mainRoot, worktreePath) {
+			ownedLinks[linkPath] = true
+		}
+		dirtyRows := []handoffStatusRow{}
+		for _, row := range statusRows {
+			if !ownedLinks[row.path] {
+				dirtyRows = append(dirtyRows, row)
+			}
 		}
 		if len(dirtyRows) == 0 {
 			findings = append(findings, helperFinding("HANDOFF-WORKTREE-CLEAN", resultmodel.SeverityInfo, []string{relative}, "clean", resultmodel.FixabilityManual, "", nil, []string{"git", "-C", worktreePath, "status", "--short", "--untracked-files=all"}))

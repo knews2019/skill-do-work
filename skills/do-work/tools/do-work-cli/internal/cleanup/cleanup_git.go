@@ -227,6 +227,13 @@ func ApplyWorktreeRepairs(ctx context.Context, repositoryRoot string, options Wo
 		return changes, []resultmodel.CommandFinding{manualFinding("WORKTREE-ENUMERATION-FAILED", nil, nil, err.Error())}
 	}
 	trees := parseWorktrees(listOutput)
+	// The first porcelain record is the main tree, whose paths `worktree new` links from. An
+	// unreadable or invalid link config owns nothing, so dirt is reported as before.
+	mainRoot := strings.TrimPrefix(string(bytes.SplitN(listOutput, []byte{0}, 2)[0]), "worktree ")
+	linkPaths, invalidLine, linkConfigError := readWorktreeLinkConfig(mainRoot)
+	if linkConfigError != nil || invalidLine != "" {
+		linkPaths = nil
+	}
 	branchOutput, branchError := cleanupGit(ctx, repositoryRoot, "branch", "--format=%(refname:short)", "--list", "worktree-agent-*")
 	if branchError != nil {
 		return changes, []resultmodel.CommandFinding{manualFinding("WORKTREE-ENUMERATION-FAILED", nil, nil, branchError.Error())}
@@ -252,7 +259,11 @@ func ApplyWorktreeRepairs(ctx context.Context, repositoryRoot string, options Wo
 		requestState := worktreeRequestState(repositorySnapshot, discoveryError, requestID)
 		tree := worktreeByName(trees, name)
 		path := tree.Path
-		clean := path == "" || worktreeClean(ctx, path)
+		ownedLinks := []string{}
+		if path != "" {
+			ownedLinks = ownedWorktreeLinks(mainRoot, path, linkPaths)
+		}
+		clean := path == "" || worktreeClean(ctx, path, ownedLinks)
 		ancestryTarget := name
 		if !branches[name] {
 			ancestryTarget = tree.Head
@@ -273,6 +284,20 @@ func ApplyWorktreeRepairs(ctx context.Context, repositoryRoot string, options Wo
 			args := []string{"worktree", "remove", path}
 			if discardApproved {
 				args = append(args, "--force")
+			}
+			// The non-forced remove refuses an untracked symlink, so remove the owned links
+			// first (the links only, never their main-tree targets).
+			var linkError error
+			if !discardApproved {
+				for _, linkPath := range ownedLinks {
+					if linkError = os.Remove(filepath.Join(path, filepath.FromSlash(linkPath))); linkError != nil {
+						break
+					}
+				}
+			}
+			if linkError != nil {
+				findings = append(findings, manualFinding("WORKTREE-REMOVE-FAILED", nil, nonEmpty(path), linkError.Error()))
+				continue
 			}
 			if _, removeError := cleanupGit(ctx, repositoryRoot, args...); removeError != nil {
 				findings = append(findings, manualFinding("WORKTREE-REMOVE-FAILED", nil, nonEmpty(path), removeError.Error()))
@@ -342,10 +367,11 @@ func worktreeByName(records []worktreeRecord, name string) worktreeRecord {
 	return worktreeRecord{Name: name}
 }
 
-func worktreeClean(ctx context.Context, path string) bool {
-	command := exec.CommandContext(ctx, "git", "-C", path, "status", "--porcelain=v1", "-z", "--untracked-files=all")
-	output, err := command.Output()
-	return err == nil && len(output) == 0
+// worktreeClean ignores the owned links `worktree new` created; a failed status read is
+// never clean.
+func worktreeClean(ctx context.Context, path string, ownedLinks []string) bool {
+	dirtyPaths, err := worktreeDirtyPaths(ctx, path, ownedLinks)
+	return err == nil && len(dirtyPaths) == 0
 }
 
 func requestIDFromWorktree(name string) string {
