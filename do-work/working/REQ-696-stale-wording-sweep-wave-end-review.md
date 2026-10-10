@@ -1,7 +1,7 @@
 ---
 id: REQ-696
 title: '[impact-rule-change] Sweep stale wording left by the wave-end review: stuck routing, fence rule, addendum example, sibling-route test text'
-status: pending
+status: claimed
 created_at: 2026-10-10T19:19:53Z
 user_request: UR-154
 domain: general
@@ -14,6 +14,7 @@ related: [REQ-693, REQ-694, REQ-695]
 batch: review-followups-ur154
 required_lessons: ["_dev/primes/lessons-releases.md"]
 write_set: ["skills/do-work/actions/forensics.md", "README.md", "skills/do-work/actions/clarify.md", "skills/do-work/actions/capture.md", "_dev/tests/fixtures/retired-core-moved-command-triggers.tsv", "_dev/tests/staged-skills-contract.sh"]
+claimed_at: 2026-10-10T19:22:01Z
 ---
 # Sweep Stale Wording Left by the Wave-End Review
 
