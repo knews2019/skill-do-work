@@ -12,6 +12,7 @@ do-work-toolbox — reviews, reports, discovery, and repository utilities
   ui-review [scope]              Read-only UI quality review
   journey-qa <target> [--brief]  Check whole user journeys; classify each result
   ai-report [REQ|UR]             Detailed stakeholder HTML for one completed item
+  ai-report --kind proposal|root-cause <target>  Decision brief for open work
   present-work all|portfolio     Refresh the cross-project portfolio
   present-video [REQ|UR]         Source-only Remotion video walkthrough
   slop-check [target]            Validate a draft against anti-slop principles

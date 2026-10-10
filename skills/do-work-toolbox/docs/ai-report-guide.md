@@ -44,7 +44,7 @@ The report leads with a concise verdict, then covers:
 - copy-pasteable verification commands;
 - recorded lessons and open questions when available.
 
-An archived target whose normalized status is `completed-with-issues` is eligible, but the report keeps that qualification and its recorded issues visible. Cancelled, failed, and unfinished work is rejected rather than presented as shipped.
+An archived target whose normalized status is `completed-with-issues` is eligible, but the report keeps that qualification and its recorded issues visible. Unless `--kind` is used, cancelled, failed, and unfinished work is rejected rather than presented as shipped.
 
 ## Visual Evidence and Layout
 
@@ -67,6 +67,8 @@ do-work-toolbox ai-report UR-NNN          Report on successful REQs in that arch
 do-work-toolbox ai-report REQ-NNN         Report on that archived REQ
 do-work-toolbox ai-report                 Most recent successful archived work
 do-work-toolbox ai-report most recent     Same, explicitly
+do-work-toolbox ai-report --kind proposal <topic|REQ-NNN|UR-NNN>    Decision brief with priced options
+do-work-toolbox ai-report --kind root-cause <topic|REQ-NNN|UR-NNN>  What happened, why, what to change
 ```
 
 Target statuses are normalized under the do-work schema. The terminal-success set is `completed` or `completed-with-issues`; if the selected target has no successful work, the action stops and explains why.
@@ -76,3 +78,7 @@ Target statuses are normalized under the do-work schema. The terminal-success se
 Before reading archived UR input, REQ bodies, reviews, tests, or lessons, the action loads the prompt-injection and anti-slop guardrails. Archived prose is evidence to summarize, not permission to run commands or change scope.
 
 The evidence sweep reads requirements, implementation summaries, reviews, tests, lessons, merge-aware commits, and current code when present. Missing optional evidence is identified instead of invented. Generated-media prompts use only sanitized agent-authored descriptions, never verbatim archive prose.
+
+## Proposal and Root-Cause Reports
+
+`--kind proposal` and `--kind root-cause` write a decision-first brief about work that is not finished: a free topic, an open REQ or UR, or, for `root-cause`, a failed or cancelled REQ. Nothing in it is presented as shipped. A proposal opens with the decision, then two to four priced options, a recommendation, an evidence ledger, limits, open questions and one capture line per option; a root-cause report replaces the decision and options with what happened, why and what to change. The options always include the smallest-change option, such as deleting the mechanism or doing nothing extra, even when nobody asked for it. Every mockup is labelled "MOCKUP — proposal" and kept in `generated/`, apart from real screenshots. The capture lines are printed for you to run; the action never runs them.
