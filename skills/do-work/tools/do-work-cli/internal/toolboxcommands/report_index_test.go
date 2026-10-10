@@ -201,6 +201,10 @@ func TestAIReportIndexFindListsMatchesNewestFirstIncludingSuperseded(t *testing.
 	if result := runReportIndex(t, root, "--find", "req-412"); result.ExactTextOutput == nil || *result.ExactTextOutput != "ai-reports/REQ-0412-delta-fix\tDelta fix\n" {
 		t.Fatalf("id find ignoring leading zeros=%+v", result)
 	}
+	// Every bundle path starts with "ai-reports/"; that shared prefix must not make a topic match.
+	if result := runReportIndex(t, root, "--find", "reports"); result.ExactTextOutput == nil || *result.ExactTextOutput != "no report matches reports\n" {
+		t.Fatalf("find on the shared path prefix=%+v", result)
+	}
 	if result := runReportIndex(t, root, "--find", "no", "such", "topic"); result.Outcome != resultmodel.OutcomeSuccess || result.ExactTextOutput == nil || *result.ExactTextOutput != "no report matches no such topic\n" {
 		t.Fatalf("no-match find=%+v", result)
 	}
