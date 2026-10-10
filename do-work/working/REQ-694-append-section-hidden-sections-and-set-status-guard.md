@@ -25,6 +25,8 @@ estimate:
     - Route A
     - 2-file write set
     - 2 acceptance criteria
+builder_handback_at: 2026-10-10T19:28:12Z
+dispatch_at: 2026-10-10T19:26:34Z
 ---
 # Addendum: req append-section Refuses a Body That Hides Later Sections, and frontmatter set Refuses status and id
 
