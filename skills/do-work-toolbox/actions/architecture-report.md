@@ -100,7 +100,7 @@ Run the current principles in `../../do-work/crew-members/anti-slop.md` over the
 <skill-root>/../do-work/tools/do-work-cli.sh --repo-root <project-root> --format json ai-report-judge <draft-directory>
 ```
 
-Inspect the four captures it names for the drawn diagrams, section navigation, and legibility, and read overflow and missing-asset findings from its `judge.json`; fix and rerun until the verdict is `pass`. Test with network access disabled so rendering does not depend on GitHub or a CDN. If the verdict is `skipped` (no browser engine found) or the check exits 2, inspect the HTML and links and report that visual verification was unavailable; never claim an unperformed check passed.
+Inspect the four captures it names for the drawn diagrams, section navigation, and legibility, and read overflow and missing-asset findings from its `judge.json`; fix and rerun until no finding remains except the expected one below. The judge serves only the draft directory, so an `AI-REPORT-JUDGE-BROKEN-LINK` finding whose target starts with `../` (the link to the prior bundle) is expected here; check that link after publication in Step 6. Test with network access disabled so rendering does not depend on GitHub or a CDN. If the verdict is `skipped` (no browser engine found) or the check exits 2, inspect the HTML and links and report that visual verification was unavailable; never claim an unperformed check passed.
 
 ### Step 6: Publish
 

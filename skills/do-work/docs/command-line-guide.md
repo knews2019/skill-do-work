@@ -23,7 +23,7 @@ The managed section currently publishes these command families:
 
 - Core lifecycle and maintenance: `do-work-cleanup`, `do-work-doctor`, `do-work-next`, `do-work-claim`, `do-work-complete`, `do-work-fail`, `do-work-cancel`, `do-work-unblock`, `do-work-answer`, `do-work-capture-files`, `do-work-defer-gate`, `do-work-release`, and `do-work-update`.
 - Knowledge: `bkb-init`, `bkb-status`, `bkb-lint-structure`, `dream-scan`, the `interview-*` recipes, and the `memory-*` recipes.
-- Toolbox: `do-work-note`, `architecture-report-preflight`, `generate-report-image`, `generate-report-image-batch`, `publish-portfolio-summary`, `install-last30days`, and `audit-metrics`. The toolbox CLI verb `ai-report-judge` has no recipe; actions call it through `do-work-cli.sh`.
+- Toolbox: `do-work-note`, `architecture-report-preflight`, `generate-report-image`, `generate-report-image-batch`, `publish-portfolio-summary`, `install-last30days`, and `audit-metrics`. The toolbox CLI verbs `ai-report-index` and `ai-report-judge` have no recipe; actions call them through `do-work-cli.sh`.
 - Board and compatibility: `run-kanban`, `run-kanban-cli`, `kanban-static`, `kanban-summary`, and the update compatibility alias `run-do-work-update`.
 
 This grouped overview is orientation, not a second parser contract. `just --list` is the live inventory installed from the managed template.
