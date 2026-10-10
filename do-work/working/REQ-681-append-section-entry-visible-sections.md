@@ -22,6 +22,8 @@ write_set: ["skills/do-work/tools/do-work-cli/internal/requeststate/state_apply.
 related: [REQ-659]
 batch: upstream-report-accepts
 claimed_at: 2026-10-10T10:07:06Z
+dispatch_at: 2026-10-10T10:26:48Z
+builder_handback_at: 2026-10-10T10:28:57Z
 ---
 # appendSectionEntry Reuses VisibleSections
 ## What
