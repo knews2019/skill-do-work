@@ -123,14 +123,14 @@ func handleRequest(executionContext commandruntime.ExecutionContext, arguments [
 	body := document.BodyBytes()
 	laterSections := requestmodel.SectionsAfter(sectionName)
 	existing := []requestmodel.VisibleSection{}
-	insertAt, sectionsBefore := -1, 0
+	insertAt, sectionsBefore := -1, []requestmodel.VisibleSection{}
 	// Only column-0 headings are sections, matching advance's advanceSections;
 	// fenced, commented or indented headings are the user's text.
 	for _, section := range requestmodel.VisibleSections(body) {
 		if section.HeadingIndent != 0 {
 			continue
 		}
-		sectionsBefore++
+		sectionsBefore = append(sectionsBefore, section)
 		if section.Name == sectionName {
 			existing = append(existing, section)
 		} else if insertAt < 0 && slices.Contains(laterSections, section.Name) {
@@ -169,15 +169,36 @@ func handleRequest(executionContext commandruntime.ExecutionContext, arguments [
 	}
 	// An open fence or comment in the new body hides every later section from
 	// advance, and one already open at the end of the file hides the new
-	// heading (every retry would append another invisible copy). Either way
-	// the column-0 section count does not grow by exactly one.
-	sectionsAfter := 0
+	// heading (every retry would append another invisible copy). So every
+	// section visible before must stay visible at its shifted offset, and the
+	// appended heading must be the only new one. A net count is not enough: an
+	// open fence can hide a later section and reveal a fenced example heading.
+	headingStart := insertAt + strings.Index(insertion, "## ")
+	sectionsAfter := []requestmodel.VisibleSection{}
 	for _, section := range requestmodel.VisibleSections(document.BodyBytes()) {
 		if section.HeadingIndent == 0 {
-			sectionsAfter++
+			sectionsAfter = append(sectionsAfter, section)
 		}
 	}
-	if sectionsAfter != sectionsBefore+1 {
+	allStillVisible := len(sectionsAfter) == len(sectionsBefore)+1
+	for afterIndex, priorIndex := 0, 0; allStillVisible && afterIndex < len(sectionsAfter); afterIndex++ {
+		section := sectionsAfter[afterIndex]
+		if section.Start == headingStart && section.Name == sectionName {
+			continue
+		}
+		if priorIndex == len(sectionsBefore) {
+			allStillVisible = false
+			break
+		}
+		prior := sectionsBefore[priorIndex]
+		priorIndex++
+		expectedStart := prior.Start
+		if expectedStart >= insertAt {
+			expectedStart += len(insertion)
+		}
+		allStillVisible = section.Name == prior.Name && section.Start == expectedStart
+	}
+	if !allStillVisible {
 		return writerRefusal("SECTION-WRITE-FAILED", requestPath, "the inserted ## "+sectionName+" would hide itself or a later section; close every fence and comment in the body")
 	}
 	if refusal := replaceRequestFile(executionContext.RepositoryRoot, requestPath, contents, document.DocumentBytes()); refusal != nil {
