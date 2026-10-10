@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"slices"
 
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/commandruntime"
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/resultmodel"
@@ -30,6 +31,9 @@ func Handlers() map[string]commandruntime.CommandHandler {
 }
 
 func handleFinalize(executionContext commandruntime.ExecutionContext, arguments []string) resultmodel.CommandResult {
+	if slices.Contains(arguments, "--auto-manifest") {
+		return handleAutoManifest(executionContext, arguments)
+	}
 	manifestPath, err := parseFinalizeArguments(arguments)
 	if err != nil {
 		return commandFailure(executionContext.RepositoryRoot, CommandFinalize, "FINALIZATION-USAGE", err.Error())

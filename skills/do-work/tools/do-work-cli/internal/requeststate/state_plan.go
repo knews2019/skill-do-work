@@ -341,8 +341,7 @@ func planCheckpoint(snapshot *repositorymodel.RepositorySnapshot, plan *StatePla
 	}
 	writerLabel := plan.Options.WriterLabel
 	if writerLabel == "" {
-		hostname, _ := os.Hostname()
-		writerLabel = hostname + ":" + snapshot.RepositoryRoot
+		writerLabel = DefaultWriterLabel(snapshot.RepositoryRoot)
 		plan.Options.WriterLabel = writerLabel
 	}
 	if plan.Transition == TransitionClaim {
@@ -363,6 +362,14 @@ func planCheckpoint(snapshot *repositorymodel.RepositorySnapshot, plan *StatePla
 		plan.CheckpointPath = ""
 		plan.SkippedWork = append(plan.SkippedWork, resultmodel.SkippedWork{Code: "CHECKPOINT-ENTRY-NOT-PRESENT", Reason: "the checkpoint holds no entry for the REQ"})
 	}
+}
+
+// DefaultWriterLabel is the writer label a lifecycle transition records when
+// the caller names none: this host plus the repository root, the shape the
+// live CHECKPOINT claims carry.
+func DefaultWriterLabel(repositoryRoot string) string {
+	hostname, _ := os.Hostname()
+	return hostname + ":" + repositoryRoot
 }
 
 func planRecoverCheckpoint(existingBytes []byte, plan *StatePlan) {
