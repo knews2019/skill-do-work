@@ -22,6 +22,7 @@ estimate:
   calculated_at: 2026-10-10T13:19:39Z
   basis:
     - trivial short-circuit
+builder_handback_at: 2026-10-10T13:27:57Z
 ---
 # capture-files --example Prints One Valid Manifest, and the capture-reference Fence Example Is Fixed
 ## What
@@ -62,7 +63,7 @@ Certainty is high on the doc fix and the dry-run acceptance target. Latitude: fl
 - `skills/do-work/tools/do-work-cli/lessons-do-work-cli.md` as a whole satellite (19046 tokens, over the 2000 budget; `slugged: partial`, so no targeted form). Matching reason: family `alternate-writer-contract-drift` fits an example that must match the capture-files contract byte for byte.
 - `_dev/primes/lessons-action-files.md` as a whole satellite (7756 tokens, over budget; `slugged: partial`). Matching reason: family `restated-mechanism-unchecked` fits a doc example that restates the fence mechanism with no check.
 ## Full Context
-See `do-work/user-requests/UR-153/input.md` for the decision record. The cancelled original is `do-work/archive/REQ-661-capture-files-init-manifest-skeleton.md`; its source report is `do-work/inbox/2026-10-09_do-work-upstream-suggestion-cli-ergonomics.md`, Request item 4.
+See `do-work/user-requests/UR-153/input.md` for the decision record. The cancelled original is `do-work/archive/UR-145/REQ-661-capture-files-init-manifest-skeleton.md`; its source report is `do-work/inbox/2026-10-09_do-work-upstream-suggestion-cli-ergonomics.md`, Request item 4.
 ## AI Execution State (P-A-U Loop)
 - [ ] **[PLAN]:** (Agent: Read listed `prime_files` and agent rules. Write brief technical approach here. Do not write code yet.)
 - [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
