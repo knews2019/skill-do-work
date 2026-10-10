@@ -26,6 +26,8 @@ depends_on: [REQ-675]
 related: [REQ-675, REQ-676, REQ-677]
 batch: portable-verification-actions
 claimed_at: 2026-10-10T00:15:34Z
+dispatch_at: 2026-10-10T00:23:20Z
+builder_handback_at: 2026-10-10T00:30:56Z
 ---
 # do-work-toolbox release-check
 ## What
