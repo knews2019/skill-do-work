@@ -18,7 +18,7 @@ An orchestrated build system that processes request files created by actions/cap
 
 ## Request Files as Living Logs
 
-Each request file becomes a historical record. As you process a request, append sections documenting each phase: Triage, Plan, Exploration, Implementation Summary (mandatory file manifest), Testing, Review. This ensures full traceability — what was planned vs done, what files were touched, and whether triage was accurate.
+Each request file becomes a historical record. As you process a request, append sections documenting each phase: Triage, Plan, Exploration, Implementation Summary (mandatory file manifest), Testing, Review. This ensures full traceability — what was planned vs done, what files were touched, and whether triage was accurate. `<skill-root>/tools/do-work-cli.sh --format text req append-section REQ-NNN --section <name> --from <file>` writes one such section from a file holding only its body: it places the section in canonical order, refuses a second copy with a different body, and exits 0 with no change when the same body is already there; appending by hand in that order stays valid.
 
 This living log is also the **trail of intent**. The REQ starts as a validated statement of what the user wants (written by capture). As actions/work.md processes it, each appended section documents how intent was interpreted and realized: builder decisions (## Decisions) record where the builder exercised judgment beyond stated intent, scope declarations (## Scope) record what the builder committed to, and implementation summaries record what was actually built. The gap between captured intent and realized implementation is visible in a single file.
 
@@ -198,7 +198,7 @@ After triage, check if a specification template matches this REQ's domain or tas
 
 Append validation findings to the `## Plan` section (if any issues found). These are **warnings, not blockers** — the builder can adapt. But flag them visibly so the orchestrator and review step are aware.
 
-After the Route C plan is saved and this validation finishes, stamp `planning_at: <now>` using the current UTC instant (Timestamp rule, `actions/work-reference.md`) — only if the field is absent, because a REQ re-planned after a recovery keeps the first attempt's observation (**Stamps are append-only**, `actions/work-reference.md`). Stamp only this successful observed event. Routes A and B omit the field.
+After the Route C plan is saved and this validation finishes, stamp `planning_at: <now>` using the current UTC instant (Timestamp rule, `actions/work-reference.md`) — only if the field is absent, because a REQ re-planned after a recovery keeps the first attempt's observation (`frontmatter set` enforces this; **Stamps are append-only**, `actions/work-reference.md`). Stamp only this successful observed event. Routes A and B omit the field.
 
 **Routes A and B:** Append a skip note (if not already present):
 
@@ -285,7 +285,7 @@ Spawn a **general-purpose agent** with the loaded rules, any files listed in the
 - **Route B**: Request + exploration output — "follow existing patterns identified above"
 - **Route C**: Request + plan + exploration output — "implement according to the plan"
 
-Once the implementation builder has accepted that dispatch, take the current UTC instant (Timestamp rule), hold it, and write it into this REQ's run-manifest row when the run has one. Stamp `dispatch_at` with it only if the field is absent (**Stamps are append-only**, `actions/work-reference.md`); if dispatch fails before a builder accepts it, leave the field absent. When the builder returns its completed hand-back, stamp `builder_handback_at: <now>` on the same condition, before the hand-back merge begins, then record that delegated wait once through `record-timing-event` (`--category builder-work --started-at <the instant you held>`). **Pass the held instant, never `dispatch_at` read back out of the file** (why: `actions/fan-out-reference.md` → **Dispatch instant**).
+Once the implementation builder has accepted that dispatch, take the current UTC instant (Timestamp rule), hold it, and write it into this REQ's run-manifest row when the run has one. Stamp `dispatch_at` with it only if the field is absent (`frontmatter set` with the held instant as its value enforces this; **Stamps are append-only**, `actions/work-reference.md`); if dispatch fails before a builder accepts it, leave the field absent. When the builder returns its completed hand-back, stamp `builder_handback_at: <now>` on the same condition, before the hand-back merge begins, then record that delegated wait once through `record-timing-event` (`--category builder-work --started-at <the instant you held>`). **Pass the held instant, never `dispatch_at` read back out of the file** (why: `actions/fan-out-reference.md` → **Dispatch instant**).
 
 All routes include these instructions to the agent (pointers — the underlying rules live in the loaded crew-members files and in the REQ frontmatter the orchestrator already wrote):
 
@@ -306,7 +306,7 @@ All routes include these instructions to the agent (pointers — the underlying 
 
 **Hand-back merge (the orchestrator's job, not the builder's).** At builder hand-back, before Step 6.25, read and execute the full sequence in `actions/fan-out-reference.md` → **When to merge, and the range every evidence step reads**. Run it on the integration branch and retain `<operative_name>`, `<pre>`, and `<merge_hash>` for the downstream evidence steps, following [State across command blocks](../docs/prescribed-shell-primitives.md#state-across-command-blocks).
 
-After the hand-back is successfully merged, stamp `integration_at: <now>` using the Timestamp rule, only if the field is absent (**Stamps are append-only**, `actions/work-reference.md`). A failed or empty hand-back does not create an integration observation.
+After the hand-back is successfully merged, stamp `integration_at: <now>` using the Timestamp rule, only if the field is absent (`frontmatter set` enforces this; **Stamps are append-only**, `actions/work-reference.md`). A failed or empty hand-back does not create an integration observation.
 
 ### Step 6.25: Implementation Summary
 
@@ -339,7 +339,7 @@ Run the declared canonical repository gate directly, unpiped, against the final 
 
 Append to the request file:
 
-(append per the **Testing Section Template** in `actions/work-reference.md`; omit Red-green validation for non-behavioral changes, and trace it back to `## Red-Green Proof` when present)
+(append per the **Testing Section Template** in `actions/work-reference.md`, by hand or with `req append-section` (**Request Files as Living Logs** above); omit Red-green validation for non-behavioral changes, and trace it back to `## Red-Green Proof` when present)
 
 Omit `Red-green validation` if no request-specific tests were written or identified, or if the change is non-behavioral (refactor, config, docs, cleanup) — use regression evidence instead. Omit `Existing tests updated` if no prior tests were modified.
 
@@ -372,7 +372,7 @@ The review reads the REQ (in `do-work/working/`), the original UR, and the curre
   4. Re-run Steps 6.25 through 7 (Summary → Qualification → Testing → Review) on the remediated code.
   5. If still failing after remediation: update frontmatter to `status: completed-with-issues`, `completed_at: <timestamp>` (current UTC instant — Timestamp rule, `actions/work-reference.md`), append a `## Remediation` section documenting both attempts, and route the remaining findings through `actions/review-work.md` Step 10. Only `impact-critical` findings auto-queue; the rest stay in the Review section. Then proceed to archive (Step 8) — the frontmatter is already set, so Step 8 should not overwrite it.
 
-After the first review result is recorded, stamp `review_at: <now>` using the Timestamp rule, regardless of its verdict. If remediation runs, stamp `remediation_at: <now>` only after that builder hand-back is successfully integrated, then stamp `re_review_at: <now>` only after the post-remediation review result is recorded. All three are written only if the field is absent (**Stamps are append-only**, `actions/work-reference.md`). A passing first review leaves both remediation fields absent.
+After the first review result is recorded, stamp `review_at: <now>` using the Timestamp rule, regardless of its verdict. If remediation runs, stamp `remediation_at: <now>` only after that builder hand-back is successfully integrated, then stamp `re_review_at: <now>` only after the post-remediation review result is recorded. All three are written only if the field is absent (`frontmatter set` enforces this; **Stamps are append-only**, `actions/work-reference.md`). A passing first review leaves both remediation fields absent.
 
 The status `completed-with-issues` means the REQ was archived but has known unresolved problems. It counts toward UR completion for archiving purposes. Any critical follow-up remains queued; noncritical findings remain visible in the archived Review until a maintainer explicitly captures one. This status remains visible to recap and every completed-work presentation action; those readers inherit the Terminal-success status set from `actions/work-reference.md` rather than defining a caller-specific filter.
 

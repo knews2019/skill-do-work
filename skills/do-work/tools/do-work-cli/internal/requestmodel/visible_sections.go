@@ -2,6 +2,28 @@ package requestmodel
 
 import "strings"
 
+// CanonicalSectionOrder is the one order of lifecycle sections in a REQ body.
+// `advance` refuses a section that appears before an earlier one is written,
+// and `req append-section` inserts by it, so both read this list. Sections not
+// named here (Why, Constraints, Timing, Decisions and the rest) are free text
+// and never order anything.
+var CanonicalSectionOrder = []string{
+	"What", "Red-Green Proof", "AI Execution State (P-A-U Loop)", "Triage", "Plan",
+	"Exploration", "Scope", "Pre-Flight", "Implementation Summary", "Qualification",
+	"Testing", "Review", "Lessons Learned", "Orientation",
+}
+
+// SectionsAfter returns the canonical section names that follow sectionName,
+// or nothing when sectionName is last or not canonical.
+func SectionsAfter(sectionName string) []string {
+	for index, candidate := range CanonicalSectionOrder {
+		if candidate == sectionName {
+			return append([]string(nil), CanonicalSectionOrder[index+1:]...)
+		}
+	}
+	return nil
+}
+
 // VisibleSection identifies an unquoted level-two section in original body bytes.
 // End excludes an unclosed fenced/comment region so destructive writers retain it.
 // HeadingIndent counts the zero to three spaces before the heading's "##". Every

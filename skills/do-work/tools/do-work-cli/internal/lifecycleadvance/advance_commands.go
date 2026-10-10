@@ -136,7 +136,7 @@ func classifyWorkingAdvance(target *repositorymodel.RequestFile, advance *result
 	}
 
 	if record.RouteValue == "" {
-		if hasAnySection(sections, "Plan", "Exploration", "Scope", "Pre-Flight", "Implementation Summary", "Qualification", "Testing", "Review", "Lessons Learned", "Orientation") {
+		if hasAnySection(sections, requestmodel.SectionsAfter("Triage")...) {
 			return missingBeforeLaterRefusal(advance, "route")
 		}
 		return advancePhase(advance, "agent judgment: triage and open questions", resultmodel.AdvancePhaseAgentJudgment,
@@ -146,21 +146,21 @@ func classifyWorkingAdvance(target *repositorymodel.RequestFile, advance *result
 		return advanceRefusal(advance.RequestID, []string{requestPath}, "ADVANCE-PHASE-UNKNOWN", "route is not A, B, or C", advance)
 	}
 	if !hasSection(sections, "Triage") {
-		if hasAnySection(sections, "Plan", "Exploration", "Scope", "Pre-Flight", "Implementation Summary", "Qualification", "Testing", "Review", "Lessons Learned", "Orientation") {
+		if hasAnySection(sections, requestmodel.SectionsAfter("Triage")...) {
 			return missingBeforeLaterRefusal(advance, "Triage")
 		}
 		return advancePhase(advance, "agent judgment: triage and open questions", resultmodel.AdvancePhaseAgentJudgment,
 			advanceEvidence("section", requestPath, "", "Triage", "route decision"), nil)
 	}
 	if sectionContains(target.ParsedDocument.BodyBytes(), sections, "Open Questions", unresolvedQuestionPattern) {
-		if hasAnySection(sections, "Plan", "Exploration", "Scope", "Pre-Flight", "Implementation Summary", "Qualification", "Testing", "Review", "Lessons Learned", "Orientation") {
+		if hasAnySection(sections, requestmodel.SectionsAfter("Triage")...) {
 			return missingBeforeLaterRefusal(advance, "resolved Open Questions")
 		}
 		return advancePhase(advance, "agent judgment: triage and open questions", resultmodel.AdvancePhaseAgentJudgment,
 			advanceEvidence("section", requestPath, "", "Open Questions", "all questions resolved or deferred"), nil)
 	}
 	if !validEstimate(record.FieldEvidenceByName["estimate"].NestedValues["p50_active_minutes"]) {
-		if hasAnySection(sections, "Plan", "Exploration", "Scope", "Pre-Flight", "Implementation Summary", "Qualification", "Testing", "Review", "Lessons Learned", "Orientation") {
+		if hasAnySection(sections, requestmodel.SectionsAfter("Triage")...) {
 			return missingBeforeLaterRefusal(advance, "estimate.p50_active_minutes")
 		}
 		nextArgv := []string{"do-work-cli", "--format", "json", CommandAdvance, advance.RequestID, "--request-path", requestPath, "--", "--route", record.RouteValue, "--write-set", "<count>", "--subsystems", "<count>", "--acceptance", "<count>"}
@@ -175,7 +175,7 @@ func classifyWorkingAdvance(target *repositorymodel.RequestFile, advance *result
 		return advanceRefusal(advance.RequestID, []string{requestPath}, "ADVANCE-PHASE-UNKNOWN", "Route A contains a Route B/C-only phase", advance)
 	}
 	if !hasSection(sections, "Plan") {
-		if hasAnySection(sections, "Exploration", "Scope", "Pre-Flight", "Implementation Summary", "Qualification", "Testing", "Review", "Lessons Learned", "Orientation") {
+		if hasAnySection(sections, requestmodel.SectionsAfter("Plan")...) {
 			return missingBeforeLaterRefusal(advance, "Plan")
 		}
 		phase := "agent judgment: record planning not required"
@@ -188,7 +188,7 @@ func classifyWorkingAdvance(target *repositorymodel.RequestFile, advance *result
 			advanceEvidence("section", requestPath, "", "Plan", expected), nil)
 	}
 	if record.RouteValue == "C" && strings.TrimSpace(record.FieldEvidenceByName["planning_at"].ScalarValue) == "" {
-		if hasAnySection(sections, "Exploration", "Scope", "Pre-Flight", "Implementation Summary", "Qualification", "Testing", "Review", "Lessons Learned", "Orientation") {
+		if hasAnySection(sections, requestmodel.SectionsAfter("Plan")...) {
 			return missingBeforeLaterRefusal(advance, "planning_at")
 		}
 		return advancePhase(advance, "agent judgment: planning", resultmodel.AdvancePhaseAgentJudgment,
@@ -196,14 +196,14 @@ func classifyWorkingAdvance(target *repositorymodel.RequestFile, advance *result
 	}
 
 	if record.RouteValue != "A" && !hasSection(sections, "Exploration") {
-		if hasAnySection(sections, "Scope", "Pre-Flight", "Implementation Summary", "Qualification", "Testing", "Review", "Lessons Learned", "Orientation") {
+		if hasAnySection(sections, requestmodel.SectionsAfter("Exploration")...) {
 			return missingBeforeLaterRefusal(advance, "Exploration")
 		}
 		return advancePhase(advance, "agent judgment: exploration", resultmodel.AdvancePhaseAgentJudgment,
 			advanceEvidence("section", requestPath, "", "Exploration", "exploration findings"), nil)
 	}
 	if record.RouteValue != "A" && !hasSection(sections, "Scope") {
-		if hasAnySection(sections, "Pre-Flight", "Implementation Summary", "Qualification", "Testing", "Review", "Lessons Learned", "Orientation") {
+		if hasAnySection(sections, requestmodel.SectionsAfter("Scope")...) {
 			return missingBeforeLaterRefusal(advance, "Scope")
 		}
 		return advancePhase(advance, "agent judgment: scope declaration", resultmodel.AdvancePhaseAgentJudgment,
@@ -215,7 +215,7 @@ func classifyWorkingAdvance(target *repositorymodel.RequestFile, advance *result
 	}
 
 	if !hasSection(sections, "Implementation Summary") {
-		if hasAnySection(sections, "Qualification", "Testing", "Review", "Lessons Learned", "Orientation") {
+		if hasAnySection(sections, requestmodel.SectionsAfter("Implementation Summary")...) {
 			return missingBeforeLaterRefusal(advance, "Implementation Summary")
 		}
 		if record.RouteValue == "A" {
@@ -227,7 +227,7 @@ func classifyWorkingAdvance(target *repositorymodel.RequestFile, advance *result
 			[]string{"do-work-cli", "--format", "json", CommandAdvance, advance.RequestID, "--request-path", requestPath, "--gate-arg", "<canonical-gate-argv-token>", "--", "<resolved-test-argv>"})
 	}
 	if !hasSection(sections, "Qualification") {
-		if hasAnySection(sections, "Testing", "Review", "Lessons Learned", "Orientation") {
+		if hasAnySection(sections, requestmodel.SectionsAfter("Qualification")...) {
 			return missingBeforeLaterRefusal(advance, "Qualification")
 		}
 		return advancePhase(advance, "qualify", resultmodel.AdvancePhaseMechanical,
@@ -235,7 +235,7 @@ func classifyWorkingAdvance(target *repositorymodel.RequestFile, advance *result
 			[]string{"do-work-cli", "--format", "json", CommandAdvance, advance.RequestID, "--request-path", requestPath, "--diff-range", "<pre>..<merge_hash>"})
 	}
 	if !hasSection(sections, "Testing") {
-		if hasAnySection(sections, "Review", "Lessons Learned", "Orientation") {
+		if hasAnySection(sections, requestmodel.SectionsAfter("Testing")...) {
 			return missingBeforeLaterRefusal(advance, "Testing")
 		}
 		return advancePhase(advance, "test-gate", resultmodel.AdvancePhaseMechanical,
@@ -243,7 +243,7 @@ func classifyWorkingAdvance(target *repositorymodel.RequestFile, advance *result
 			[]string{"do-work-cli", "--format", "json", CommandAdvance, advance.RequestID, "--request-path", requestPath, "--gate-arg", "<canonical-gate-argv-token>", "--", "--probe-file", "<focused-test-probe>"})
 	}
 	if !hasSection(sections, "Review") {
-		if hasAnySection(sections, "Lessons Learned", "Orientation") {
+		if hasAnySection(sections, requestmodel.SectionsAfter("Review")...) {
 			return missingBeforeLaterRefusal(advance, "Review")
 		}
 		return advancePhase(advance, "agent judgment: review", resultmodel.AdvancePhaseAgentJudgment,

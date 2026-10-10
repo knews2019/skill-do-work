@@ -13,7 +13,7 @@ import (
 )
 
 func TestEveryRemainingUtilityHasOneHandler(t *testing.T) {
-	expected := []string{CommandPreflight, CommandQualify, CommandScopeDrift, CommandInventory, CommandAssociate, CommandProtectedInventory, CommandRecordCommit, CommandCaptureScreenshot, CommandAtomicDownload, CommandAddExclude, CommandBlockedCheck, CommandShowCommitDiff, CommandStageDeletion, CommandCleanupReservations, CommandRepairTimestamps, CommandAuditTimestamps, CommandHandoffSurvey, CommandArchiveCollision, CommandEstimateP50, CommandNow, CommandFrontmatter}
+	expected := []string{CommandPreflight, CommandQualify, CommandScopeDrift, CommandInventory, CommandAssociate, CommandProtectedInventory, CommandRecordCommit, CommandCaptureScreenshot, CommandAtomicDownload, CommandAddExclude, CommandBlockedCheck, CommandShowCommitDiff, CommandStageDeletion, CommandCleanupReservations, CommandRepairTimestamps, CommandAuditTimestamps, CommandHandoffSurvey, CommandArchiveCollision, CommandEstimateP50, CommandNow, CommandFrontmatter, CommandRequest}
 	handlers := Handlers()
 	if len(handlers) != len(expected) {
 		t.Fatalf("handlers=%d want %d", len(handlers), len(expected))
