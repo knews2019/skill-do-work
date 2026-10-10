@@ -10,6 +10,16 @@ For the complete release history, read this file and the archives below from new
 - [0.50.0 through 0.64.1](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-13-up-to-v0.64.1.md)
 - [0.1.0 through 0.49.0](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-07-up-to-v0.49.0.md)
 
+## 0.305.111 — do-work status Shows Each In-Flight REQ's Class, ETA and Remedy in One Table (2026-10-10)
+
+Asking "is it stuck?" used to mean rebuilding the answer by hand from REQ files, the run manifest, builder branches and the run directory. `do-work status` now answers it in one table, from the same facts the board shows. It reports ages and never says a run or builder is dead.
+
+- New action `do-work status [REQ] [--watch]` (`actions/status.md`, `docs/status-guide.md`), routed from "status", "status and ETA", "eta", "is it stuck", "stuck", "how do I unblock" and "why is REQ-N taking so long" or "why is REQ-N in". The bare word "blocked" still routes to clarify.
+- New `do-work-cli run-status --board-facts FILE [--run DIR] [--req REQ-NNN] [--watch]`: one finding per claimed, blocked, waiting or earmarked REQ, in the same shape doctor uses. Each row gets one class from C1 to C8 (first match wins: C8, C3, C4, C5, C6, C7, C2, C1), an ETA from the frozen p50 estimate ("over estimate by N min" once past it, never negative), and a `run_status` block with ages, the run-manifest row, whether the hand-back landed, the builder branch, and run-directory files labelled "run-local, not interpreted".
+- A claim older than the board's 3-hour threshold offers the read-only `git log --full-history` as its next command. `run-with-recovery` is named only in the explanation, with what it destroys and when it is safe.
+- `queue-kanban open-work --format json` prints the board's open tickets with column, placement reason and last activity. The text digest is unchanged.
+- `/loop 15m /do-work status --watch` prints a compact tick of about 10 lines for 8 open REQs and writes nothing.
+
 ## 0.305.110 — ai-report Writes a Decision Brief for Unfinished Work With --kind proposal or root-cause (2026-10-10)
 
 Proposal and "why did this fail" reports were written from scratch each time, because `ai-report` accepted only completed work. Two opt-in kinds now give them a fixed, decision-first shape. Without `--kind`, the report works as before.

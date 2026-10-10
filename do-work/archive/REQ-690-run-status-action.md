@@ -1,7 +1,7 @@
 ---
 id: REQ-690
 title: 'do-work status action and do-work-cli run-status report one class, ETA and remedy per open REQ'
-status: claimed
+status: completed
 created_at: 2026-10-10T13:05:57Z
 user_request: UR-153
 domain: general
@@ -15,7 +15,7 @@ status_changed_at: 2026-10-10T13:14:51Z
 related: [REQ-689, REQ-691]
 route: C
 required_lessons: ["_dev/primes/lessons-releases.md"]
-write_set: ["skills/do-work-board/tools/queue-kanban/model.go", "skills/do-work-board/tools/queue-kanban/open_work.go", "skills/do-work-board/tools/queue-kanban/main.go", "skills/do-work-board/tools/queue-kanban/open_work_test.go", "skills/do-work-board/actions/board.md", "skills/do-work/tools/do-work-cli/internal/runstatus/run_status.go", "skills/do-work/tools/do-work-cli/internal/runstatus/run_status_test.go", "skills/do-work/tools/do-work-cli/cmd/do-work-cli/main.go", "skills/do-work/tools/do-work-cli/internal/resultmodel/result_model.go", "skills/do-work/tools/do-work-cli/internal/nextselection/next_selection.go", "skills/do-work/tools/do-work-cli/lessons-do-work-cli.md", "skills/do-work/actions/status.md", "skills/do-work/SKILL.md", "skills/do-work/actions/help.md", "skills/do-work/docs/status-guide.md", "skills/do-work/actions/fan-out-reference.md"]
+write_set: ["skills/do-work-board/tools/queue-kanban/model.go", "skills/do-work-board/tools/queue-kanban/open_work.go", "skills/do-work-board/tools/queue-kanban/main.go", "skills/do-work-board/tools/queue-kanban/open_work_test.go", "skills/do-work-board/actions/board.md", "skills/do-work/tools/do-work-cli/internal/runstatus/run_status.go", "skills/do-work/tools/do-work-cli/internal/runstatus/run_status_test.go", "skills/do-work/tools/do-work-cli/internal/runstatus/run_status_render.go", "skills/do-work/tools/do-work-cli/cmd/do-work-cli/main.go", "skills/do-work/tools/do-work-cli/internal/resultmodel/result_model.go", "skills/do-work/tools/do-work-cli/internal/nextselection/next_selection.go", "skills/do-work/tools/do-work-cli/lessons-do-work-cli.md", "skills/do-work/actions/status.md", "skills/do-work/SKILL.md", "skills/do-work/actions/help.md", "skills/do-work/docs/status-guide.md", "skills/do-work/actions/fan-out-reference.md"]
 planning_at: 2026-10-10T13:23:24Z
 estimate:
   p50_active_minutes: 50
@@ -27,6 +27,14 @@ estimate:
   - 8 acceptance criteria
   calculated_at: 2026-10-10T13:22:28Z
 builder_handback_at: 2026-10-10T13:42:46Z
+integration_at: 2026-10-10T17:42:54Z
+review_at: 2026-10-10T17:57:36Z
+kb_status: pending
+commit: 65820f4511c4bbb0c8aceae749989d5cc84a8691
+heavy_verified_at: 2026-10-10T18:01:39Z
+heavy_verified_revision: 65820f4511c4bbb0c8aceae749989d5cc84a8691
+completed_at: 2026-10-10T18:02:08Z
+release_at: 2026-10-10T18:02:08Z
 ---
 # do-work status: One Class, ETA and Remedy per Open REQ
 ## What
@@ -128,9 +136,9 @@ Medium-high certainty on what to show; the report gives the class table and acce
 ## Full Context
 See `do-work/user-requests/UR-153/input.md` for the 2026-10-10 decision record. The cancelled original, `do-work/archive/UR-147/REQ-668-run-status-action.md`, carries the complete body; the source report stays at `do-work/inbox/2026-10-09_do-work-upstream-suggestion-run-status-action.md`, with verbatim input in `do-work/archive/UR-147/input.md`.
 ## AI Execution State (P-A-U Loop)
-- [ ] **[PLAN]:** (Agent: Read listed `prime_files` and agent rules. Write brief technical approach here. Do not write code yet.)
-- [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
-- [ ] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
+- [x] **[PLAN]:** Followed the pre-dispatch Plan (D-01 to D-04) exactly. Board side first (test, then `PlacementReason` + JSON writer + flag), then core side (tests, result field, `FrozenEstimate` export, package, registration), then action, routing and docs. The action's shell stays at 4 lines, so no launcher script (D-14). *(from the builder hand-back)*
+- [x] **[APPLY]:** As planned, plus one split of the renderer into `run_status_render.go` after `run_status.go` reached 612 lines (D-05). End-to-end run against the main tree's real queue (read-only, binaries built into a `mktemp -d`): 12 rows, 9 C3 for the siblings whose hand-backs had landed, 1 C5 (REQ-656 waiting on REQ-655), 2 C1; run-local lines for `INTEGRATOR-GUIDE.md`, `PREDISPATCH-GUIDE.md`, `helpers`; last line `next: do-work run`; `--watch` printed 14 lines. *(from the builder hand-back)*
+- [x] **[UNIFY]:** `git diff bd56c4b0 --stat`: 17 files changed, 1266 insertions(+), 6 deletions(-). Checks from the worktree root after the last builder commit, each exit 0: the GREEN probe (`REQ-690 GREEN probe: PASS`), `gofmt -l` (empty) over runstatus, resultmodel, nextselection, cmd/do-work-cli and queue-kanban, `go vet` on the same packages, `go test` for resultmodel, the nextselection `FrozenEstimate|Simple` subset, `^TestRunStatus` (9 PASS, 0 SKIP), the queue-kanban open-work subset (10 PASS) and a broader board subset, `_dev/tests/action-shell-blocks.sh`, `_dev/tests/shipped-package-reference-contract.sh`, `git diff --check bd56c4b0`, clean `git status --short`. Files reviewed: all 17; no debug output, no `os.Remove` / `syscall.Kill` / `FindProcess` in `internal/runstatus/`, comments match behavior, text digest code path untouched. *(from the builder hand-back)*
 *Source: upstream suggestion report `do-work/inbox/2026-10-09_do-work-upstream-suggestion-run-status-action.md`, Request: "Please add one read-only action, `do-work status`, backed by one deterministic subcommand, `do-work-cli run-status [--run <dir>] [--req REQ-NNN] [--watch]`, with `--format json|text`."*
 
 ---
@@ -207,6 +215,7 @@ Read at main `bd56c4b0` by the pre-dispatch agent (inline, not a separate Explor
 - `skills/do-work-board/actions/board.md` (modify) — one mention of the JSON mode in the open-work bullet
 - `skills/do-work/tools/do-work-cli/internal/runstatus/run_status.go` (new) — the run-status command, classes, remedies, text and watch rendering
 - `skills/do-work/tools/do-work-cli/internal/runstatus/run_status_test.go` (new) — the RED/GREEN fixture tests
+- `skills/do-work/tools/do-work-cli/internal/runstatus/run_status_render.go` (new) — text and watch-mode rendering, split out of run_status.go (added by the integrator from the hand-back, D-05 and D-18)
 - `skills/do-work/tools/do-work-cli/cmd/do-work-cli/main.go` (modify) — register the package's handlers
 - `skills/do-work/tools/do-work-cli/internal/resultmodel/result_model.go` (modify) — the typed run_status sibling field
 - `skills/do-work/tools/do-work-cli/internal/nextselection/next_selection.go` (modify) — export the one estimate parse in place as FrozenEstimate
@@ -228,3 +237,199 @@ Read at main `bd56c4b0` by the pre-dispatch agent (inline, not a separate Explor
 - [ ] `grep -nE 'os\.Remove|syscall\.Kill|FindProcess'` over the new run-status Go files finds nothing.
 - [ ] The JSON output uses the `resultmodel.CommandFinding` shape doctor emits.
 - [ ] `--watch` output fits in 20 lines for 8 open REQs.
+
+## Implementation Summary
+
+**Files changed:**
+- `skills/do-work-board/tools/queue-kanban/model.go` (modified)
+- `skills/do-work-board/tools/queue-kanban/open_work.go` (modified)
+- `skills/do-work-board/tools/queue-kanban/main.go` (modified)
+- `skills/do-work-board/tools/queue-kanban/open_work_test.go` (modified)
+- `skills/do-work-board/actions/board.md` (modified)
+- `skills/do-work/tools/do-work-cli/internal/runstatus/run_status.go` (new)
+- `skills/do-work/tools/do-work-cli/internal/runstatus/run_status_render.go` (new)
+- `skills/do-work/tools/do-work-cli/internal/runstatus/run_status_test.go` (new)
+- `skills/do-work/tools/do-work-cli/cmd/do-work-cli/main.go` (modified)
+- `skills/do-work/tools/do-work-cli/internal/resultmodel/result_model.go` (modified)
+- `skills/do-work/tools/do-work-cli/internal/nextselection/next_selection.go` (modified)
+- `skills/do-work/tools/do-work-cli/lessons-do-work-cli.md` (modified)
+- `skills/do-work/actions/status.md` (new)
+- `skills/do-work/SKILL.md` (modified)
+- `skills/do-work/actions/help.md` (modified)
+- `skills/do-work/docs/status-guide.md` (new)
+- `skills/do-work/actions/fan-out-reference.md` (modified)
+
+**What was done:** The board tool gained `queue-kanban open-work --format json`: every open ticket with its column, a placement reason set inside the same `bucketColumns` arm that picks the column (`RequestTicket.PlacementReason`), unmet dependencies, `assigned_to`, and for claimed tickets the board's own last activity from `attachRequestActivity`; the top level carries `stale_claim_threshold_minutes` read from `staleClaimThreshold`. The text digest is unchanged. The core CLI gained `do-work-cli run-status --board-facts FILE [--run DIR] [--req REQ-NNN] [--watch]` (`internal/runstatus/`): one `CommandFinding` per claimed, needs-input or blocked, waiting or earmarked REQ with code C1 to C8 (first match wins: C8, C3, C4, C5, C6, C7, C2, C1), the remedy in `next_argv` (C7's is the read-only `git log --full-history`; `run-with-recovery` is named only in the stop reason), and a typed `run_status` block on `CommandResult` with ages, ETA from the frozen p50 (`nextselection.FrozenEstimate`, exported in place), manifest row, hand-back presence, builder branch and run-local files labelled "run-local, not interpreted". Text output is one table, one remedy line per non-C1 row and a last `next:` line; `--watch` is a compact header plus one line per row. The new `do-work status` action (`actions/status.md`) builds the board, writes the JSON to a temp file, runs `run-status`, then adds the session-local agent and lock checks; it is routed from `skills/do-work/SKILL.md` by a row above clarify and documented in `help.md`, `docs/status-guide.md`, `board.md` and `fan-out-reference.md`. Integrator changes: the coordinator's D-11 ruling removed the two refusals no incident earned (zero stale-claim threshold, `--run` path that is not a directory) on the builder branch (`d6945bef`); the hand-back merge kept both REQ-660's `Worktree` result block and this REQ's `RunStatus` block in `result_model.go`. Review fixes (integrator, on the builder branch, `b5dd78f5`): C4 sends only `pending-answers` and `blocked` rows to `do-work clarify` and any other Needs input · Blocked status to `do-work forensics` (F1), the action's shell block keeps the `run-status` exit status (F2), the C6 text line quotes the board's Earmarked reason (F6), and the unused `verificationArgv` is gone (F10).
+
+## Decisions
+
+*(from the builder hand-back)*
+
+Class precedence shipped as item 4: C8, C3, C4, C5, C6, C7, C2, C1. D-01 to D-04 followed as written.
+
+- **D-05 DECIDE & STATE: renderer split into a 17th file.** `run_status.go` reached 612 lines; brief item 3 says split when one file passes about 500. The text/`--watch` renderer and its four display helpers moved to `run_status_render.go` (102 lines); `run_status.go` is 522. Value: the brief's size rule holds. Risk: one path beyond the Scope list of 16; reversible by folding it back.
+- **D-06 DECIDE & STATE: builder-branch read follows the brief's `for-each-ref` without `--no-merged`.** It is display only (`builder_branch`, `builder_branch_tip_at`, `other_builder_branches`); no class reads it. Classes use the board's activity, which does apply `--no-merged` (git-history-evidence). Risk: a builder branch with no commits of its own shows the integration tip's date. Value: no integration-ref guess in core. See Discovered Tasks.
+- **D-07 DECIDE & STATE: ETA text for a row with an estimate but no claim** is `N min estimate, not claimed`. With no estimate it is `no estimate`. A claimed row past p50 is `over estimate by N min` and `eta_minutes` is absent, never negative.
+- **D-08 DECIDE & STATE: phase column** shows the board's `last_activity_phase`, or the board column name for an unclaimed row, or `-`.
+- **D-09 DECIDE & STATE: rows are listed in class precedence order** (stable within a class, in board order), so the most urgent rows come first.
+- **D-10 DECIDE & STATE: the last line** is `next: <argv>` of the first row (in that order) with a non-empty `next_argv`; with none, `next: nothing to run now; check again with \`do-work status\``.
+- **D-11 DECIDE & STATE: two refusals beyond the brief.** Board facts without a positive `stale_claim_threshold_minutes` are refused (a zero threshold would class every claim C7), and a `--run` that is not a directory is refused (a typo would otherwise silently drop every run field). Both use outcome `refused`, `next_argv` `["do-work","status"]`. Not earned by an incident; the integrator may delete either (3 lines each).
+- **D-12 DECIDE & STATE: frontmatter wins over the board** for `status`, `claimed_at`, `assigned_to` when the REQ file is found (the queue copy before an archived one); board values are the fallback.
+- **D-13 DECIDE & STATE: placement sentences.** Waiting and Earmarked restate `board.md` and the badge tooltip as the brief asked; Ready, Claimed, Needs input and the unrecognized-status arm also get one plain sentence so every open ticket in the JSON carries a reason. No `web/`, payload or `verify.go` change.
+- **D-14 DECIDE & STATE: no launcher script.** The action's shell is 4 lines (`mktemp`; open-work JSON `&&` run-status; `rm -f`).
+- **D-15 DECIDE & STATE: `do-work/lessons-index.md` not refreshed.** The added line is a Package-routing bullet, not a `[family:]` lesson, and `do-work/` is outside my write boundary. The integrator may refresh the satellite's size estimate.
+- **D-16 DECIDE & STATE: `--watch`** prints one header line (time, row count, class counts, run-local file count), one line per row and the `next:` line: 10 lines for 8 rows. Run-local files appear only as a count there.
+- **D-17 DECIDE & STATE: `verification_argv`** is `do-work-cli run-status --board-facts <the given file> [--run DIR] --req REQ-NNN`. Through the action that file is a deleted temp file, so re-verifying means re-running `do-work status`. Kept because the brief names the run-status argv.
+
+*(integrator)*
+
+- **D-18 DECIDE & STATE: scope extended by one file.** `skills/do-work/tools/do-work-cli/internal/runstatus/run_status_render.go` (D-05) was added to `## Scope` and `write_set` at integration. Reasoning: the Plan's own size rule required the split; the file holds code the declared `run_status.go` would otherwise hold. Value: scope-drift stays honest. Risk: none beyond D-05.
+- **D-19 DECIDE & STATE: D-11's two refusals removed.** Coordinator ruling (YAGNI, the maintainer's standing preference): neither refusal is asked for by the brief or earned by an incident. Removed in one builder-branch commit `d6945bef` before the first merge (`readBoardFacts` no longer checks the threshold; `resolveRunDirectory` returns the `--run` path without a stat and no longer returns an error). A missing run directory now reads as no manifest and no run-local files. The tests that pin the REQ's named failures are unchanged and pass. Value: two fewer guards to maintain. Risk: a mistyped `--run` silently shows no run fields, and a board-facts file with no threshold would class every claim C7; the board always writes the threshold.
+- **D-20 DECIDE & STATE: review fixes applied, F3 left as report only.** Applied on the builder branch (`b5dd78f5`) with the reviewer's text: F1 (C4 keeps `do-work clarify` only for `pending-answers` and `blocked`; any other Needs input · Blocked status gets the read-only `do-work forensics`, pinned by `TestRunStatusFailedRequestNamesForensicsNotClarify`, which fails on the old arm), F2 (the `status.md` block keeps the run-status exit status past `rm -f`), F6 (the C6 text line quotes the board's Earmarked reason), F10 (the dead `verificationArgv`, D-17, deleted: through the action it named a deleted temp file). F3's optional "not found" display line was not applied: it partly restores the check the D-19 ruling removed, and C7's `next_argv` stays read-only. Value: the remedy table now matches the REQ for every status. Risk: none beyond D-19.
+
+## Discovered Tasks
+
+*(from the builder hand-back)*
+
+- impact-negligible: `skills/do-work-board/tools/queue-kanban/prime-do-kanban.md` Read-first lines for `main.go` (flag list) and `open_work.go` ("the headless in-flight digest") do not mention `open-work --format json`; restatement drift per paired-predicate-drift → report only
+- impact-negligible: `run-status`'s builder-branch field could adopt the board's `--no-merged=<integration ref>` rule so an unowned branch tip never shows as builder activity (D-06) → report only
+- impact-negligible: `do-work/lessons-index.md` row for `skills/do-work/tools/do-work-cli/lessons-do-work-cli.md` may need its size estimate refreshed for one added Package-routing bullet (D-15) → report only
+
+## Qualification
+
+**Gate records (`advance --diff-range bd8f3c9e..ada0ccab`):** `qualify` satisfied, `scope-drift` satisfied. The first scope-drift call reported `SCOPE-DECLARED-NOT-TOUCHED` for the token `--watch`, which the qualifier read as a path inside my added Scope line; I removed the backticks from that word and changed nothing else. Two `QUALIFY-NEW-FILE-UNWIRED` warnings are false positives: `run_status_render.go` is in package `runstatus` and `renderReport` is called from `run_status.go`; `run_status_test.go` is a Go test file found by `go test`. No debug artifacts.
+
+**Requirement trace against the diff (`git diff bd8f3c9e..ada0ccab --stat`: 17 files, +1256/-6) and the merged files** (RS = `skills/do-work/tools/do-work-cli/internal/runstatus/run_status.go`):
+1. Newest `do-work/runs/work-*` by name unless `--run`; `--req` filters: RS `resolveRunDirectory`, `parseCommandOptions`, the `options.requestID` filter in `runStatusAt`.
+2. One record per claimed, needs-input/blocked, waiting or earmarked REQ with status, claimed_at, blocked_by, blocked_at, depends_on, assigned_to, open questions: `reportedColumns` (D-04) and `buildRow` (frontmatter wins, D-12).
+3. Column and placement reason from the board: `queue-kanban open-work --format json` (`open_work.go` `writeOpenWorkJSON`), with `PlacementReason` set in each `bucketColumns` arm (`model.go`), so column and reason come from one switch.
+4. Last activity, kind, phase and minutes since: the board's `attachRequestActivity` result in the JSON; RS reads it, no second correlation.
+5. Manifest dispatch instant, hand-back presence: `manifestRowFor`, the `REQ-NNN-handback.md` stat in `buildRow`. Landed status is kept as the verbatim manifest row.
+6. Builder branch tip: `builderBranches` (`for-each-ref` on `worktree-agent-REQ-NNN-*`, newest used, others listed; D-06).
+7. ETA = p50 minus elapsed via `nextselection.FrozenEstimate` (exported in place, one parse); "over estimate by N min" past p50, never negative (D-07); test `TestRunStatusEtaCountsDownFromTheFrozenEstimate`.
+8. Run-local files: `listRunLocalFiles` (condition: not `manifest.md`, not `REQ-NNN-*`), path, age, first line, label; `TestRunStatusListsRunLocalLockFileAndLeavesIt` checks the lock is still there.
+9. Class and `next_argv` per the table, precedence C8, C3, C4, C5, C6, C7, C2, C1 in `classifyRow`; C7 `next_argv` is the read-only `git log --full-history` (D-01), threshold from the board's `staleClaimThreshold` (one definition). `CommandFinding` unchanged; typed fields in `CommandResult.RunStatus`.
+10-13. `skills/do-work/actions/status.md` Steps 1-4: board build, the 4-line shell, the two "this machine, this session, now" checks (agent transcript age plus nudge line; lock owner `ps`/`pgrep` and a printed, never-run `rm`), table plus remedy lines plus last `next:` line.
+14. Routing: `skills/do-work/SKILL.md` row directly above clarify with every trigger item 14 names; `blocked` stays on clarify; argument hint gains `status [REQ] [--watch]`.
+15. `--watch`: compact render in `run_status_render.go`; `/loop 15m /do-work status --watch` documented in status.md § Watching; `TestRunStatusWatchFitsTwentyLinesForEightOpenRequests`.
+17. Docs: `skills/do-work/actions/help.md`, `skills/do-work/docs/status-guide.md`, `skills/do-work-board/actions/board.md`, `skills/do-work/actions/fan-out-reference.md`. Release: finalization.
+- Constraint check: `grep -nE 'os\.Remove|syscall\.Kill|FindProcess'` over `internal/runstatus/*.go` finds nothing (exit 1). No lock, heartbeat, PID check or new REQ field in Go. No board `web/` or payload change.
+
+**Merge seams (integrator):** one conflict, `internal/resultmodel/result_model.go`, resolved as a union (REQ-660's `WorktreeLifecycleResult`, `WorktreeStatusRow` and `Worktree` field; this REQ's three types and `RunStatus` field). `SKILL.md` auto-merged with REQ-692's row above verify and keeps the status row above clarify; `fan-out-reference.md`, `lessons-do-work-cli.md` and `cmd/do-work-cli/main.go` auto-merged; I read each merged hunk and none landed in the wrong section. `go vet` and `go test` of `cmd/do-work-cli`, `resultmodel`, `runstatus` and `corehelpers` pass on the merge.
+
+**Scope:** declared `write_set` = 16 files plus `run_status_render.go` (D-18) = 17; touched = the same 17. No drift. Anti-bloat: beyond the brief, one file split (D-05); the two unearned refusals (D-11) were removed by coordinator ruling (D-19).
+
+**Re-merge after review (`bd8f3c9e..65820f45`, 17 files, +1263/-6):** the review-fix delta (`b5dd78f5`, D-20) changes `run_status.go`, `run_status_test.go`, `skills/do-work/actions/status.md` and `skills/do-work/docs/status-guide.md`, all inside the declared write set. No conflict. The classifier had moved to the review phase, so the re-merge gate was recorded with `record-green-gate`.
+
+## Testing
+
+**Tests run:** `DO_WORK_FAST_STAGE_REUSE=off bash _dev/tests/maintainer-verify.sh` at merge `ada0ccab` (1-minute load 1.91 before the run, no other gate running), then `advance REQ-690 --gate-arg bash --gate-arg _dev/tests/maintainer-verify.sh --gate-exit-status 0 -- --probe-file do-work/runs/work-2026-10-10-131527/REQ-690-probe.sh`
+**Result:** ✓ Gate exit 0, wall 113 s (do-work-cli 912 Go tests, queue-kanban 421 Go tests, contract and shell suites including `contract-regressions.sh`). GREEN probe exit 0 (`BLOCKED-PROBE-SUCCEEDED`, raw status 0); `scope-drift`, `run-blocked-check` and `green-gate` satisfied; green record at `ada0ccab`.
+
+**Red-green validation:** *(from the builder hand-back proof record; tdd: true)*
+- RED probe at base before any edit (2026-10-10T13:33:27Z): ✗ `missing skills/do-work/actions/status.md`, exit 1 → ✓ `REQ-690 GREEN probe: PASS`, exit 0 in the worktree and again at merge `ada0ccab`.
+- `TestOpenWorkJSONPlacesWaitingAndEarmarkedTicketsWithTheirReasons` (queue-kanban): ✗ build failed, `undefined: writeOpenWorkJSON`, `openWorkFacts`, `openWorkRequestFacts` → ✓ PASS. Pins the Waiting and Earmarked placement through the full `buildBoard`.
+- `^TestRunStatus` (9 tests, `internal/runstatus`): ✗ build failed, `undefined: runStatusAt`, `CommandResult has no field RunStatus`, `undefined: resultmodel.RunLocalFile`, `undefined: Handlers` → ✓ 9 PASS, 0 SKIP. First GREEN attempt failed one test on wording ("Only if" vs "only if"); the stop reason was reworded. They trace to `## Red-Green Proof`: ETA 15 at 45 of 60 min and "over estimate by 15 min" at 75 (`TestRunStatusEtaCountsDownFromTheFrozenEstimate`), C3 (`TestRunStatusLandedHandbackIsClassC3`), C5 and C6 quoting the board reasons, the `full-gate.lock` run-local line that survives the run, the `CommandFinding` JSON shape, `--watch` ≤ 20 lines for 8 REQs, queue rows with no run directory, and C7's read-only `next_argv` (`TestRunStatusStaleClaimNamesRecoveryOnlyInTheStopReason`). Routing ("status", "status and ETA", "stuck" → status; "blocked" → clarify) is checked by the probe.
+- After the D-19 refusal removal (`d6945bef`) the same 9 tests pass.
+- Review fix F1 (`b5dd78f5`): `TestRunStatusFailedRequestNamesForensicsNotClarify` ✗ with the old C4 arm (`NextArgv:[do-work clarify]`) → ✓ with the fix; all 10 runstatus tests pass.
+
+**Repository gate after the review fix:** same argv at re-merge `65820f45` (1-minute load 3.53 before, no other gate running): exit 0, wall 121 s (do-work-cli 913 Go tests, queue-kanban 421); GREEN probe exit 0 (1 s); green record written with `record-green-gate --gate-exit-status 0 -- bash _dev/tests/maintainer-verify.sh` (recorded revision `65820f45`). `_dev/tests/action-shell-blocks.sh` passes on the new `status.md` block.
+
+**New tests added:**
+- `skills/do-work/tools/do-work-cli/internal/runstatus/run_status_test.go` — the 9 run-status tests above, plus `TestRunStatusFailedRequestNamesForensicsNotClarify` from review fix F1.
+- `skills/do-work-board/tools/queue-kanban/open_work_test.go` — `TestOpenWorkJSONPlacesWaitingAndEarmarkedTicketsWithTheirReasons` (the existing digest tests are unchanged and still pass).
+
+**Heavy verification plan:**
+- Range: bd8f3c9e92b41b398fbec0f725f706466fdc720b..65820f4511c4bbb0c8aceae749989d5cc84a8691 (the plan at the first merge `ada0ccab` selected the same six lanes)
+- queue-kanban-javascript: `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane queue-kanban-javascript` — `main.go`, `model.go`, `open_work.go`, `open_work_test.go` matched subtree `skills/do-work-board/tools/queue-kanban`
+- queue-kanban-browser: `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane queue-kanban-browser` — the same four queue-kanban files
+- do-work-cli-integrations: `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane do-work-cli-integrations` — 7 do-work-cli files matched subtree `skills/do-work/tools/do-work-cli`
+- staged-skills: `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane staged-skills` — all 17 changed files matched subtree `skills`
+- updater: `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane updater` — the 7 do-work-cli files
+- installer: `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane installer` — the 7 do-work-cli files
+
+*Verified by work action*
+
+## Review
+
+**Overall: 87%** | 2026-10-10T17:57:36Z
+
+| Dimension | Score |
+|-----------|-------|
+| Requirements | 90% |
+| Code Quality | 85% |
+| Test Adequacy | 80% |
+| Scope | 95% |
+| Risk | Low |
+| Acceptance | Pass |
+
+**Important findings (each with its recorded impact token — this is the durable audit record the judgment mandates):**
+- F1 `run_status.go` C4 gave `do-work clarify` to every Needs input · Blocked row, including `failed`, `blocked-archive-collision`, `blocked-dependency-cycle` and unrecognized statuses, which clarify does not handle. The REQ limits that remedy to pending-answers or blocked. — impact-user-visible → report only. **Fixed** by the integrator with the reviewer's text (`b5dd78f5`, D-20): forensics for the other statuses, plus one test.
+
+**Minor findings:**
+- F2 `actions/status.md` block ended with `rm -f`, so it always exited 0 while the next line keys on the exit status. — impact-negligible → report only. **Fixed** (`b5dd78f5`).
+- F3 D-19 result: a mistyped `--run` silently drops run fields; live claims over 3 h move from C3 to C7, and the text names `run-with-recovery`. The text never says which run directory was read. — impact-user-visible → report only (not applied, D-20)
+- F4 C3 recommends `do-work run` while an integrator is running now (seen on REQ-690). This is per the REQ table. — impact-user-visible → report only
+- F5 No tests for C2 (including "no activity record goes to C2"), the 20-minute boundary, C8, or the class precedence. — impact-negligible → report only
+- F6 the C6 text remedy did not quote the board's Earmarked reason. — impact-negligible → report only. **Fixed** (`b5dd78f5`).
+- F7 Item 6: builder branch shows a tip instant in the local offset, not an age, and is not in the text table. — impact-negligible → report only
+- F8 `skills/do-work-board/tools/queue-kanban/prime-do-kanban.md:3,7` do not mention `open-work --format json`. — impact-negligible → report only
+- F9 `skills/do-work/actions/forensics.md:10` and `README.md:176` still send "stuck" questions to forensics. — impact-negligible → report only
+- F10 Anti-bloat: `verificationArgv` (D-17) named a temp file the action deletes. — impact-negligible → report only. **Fixed** (deleted, `b5dd78f5`).
+- F11 (Nit) Anti-bloat inventory of small unrequested items, all kept: render file split, class-ordered rows, `--req` regex, `RunDirectory` field, `classNames`, the four extra placement sentences, watch class counts, the 160-character cap, `refusal()`. — impact-negligible → report only
+
+**Acceptance:** Pass. Implementation and integration stages: focused Go tests, vet and gofmt pass. On the real queue, the board JSON → run-status flow gives 3 C3 rows, `--watch` gives 5 lines, the text digest is byte-identical, and the tree stays unchanged.
+**Restatement sweep:** redefined: the `status`/`stuck`/`eta` routing words (stale: `forensics.md:10`, `README.md:176`, F9); the `queue-kanban open-work` flag set (stale: `prime-do-kanban.md:3,7`, F8; `board.md`, `board-guide.md` and `justfile.template` agree); the fan-out progress-question rule (no other restatement). Claim staleness is not redefined: the threshold is read from `staleClaimThreshold`.
+**Re-review:** none. The fix delta is the reviewer's own text plus the one test it specified; the gate and probe passed at `65820f45`.
+**Suggested testing:** 5 items (full report: `do-work/runs/work-2026-10-10-131527/REQ-690-review.md`)
+**Follow-ups created:** None (11 findings report only)
+
+*Reviewed by review-work action*
+
+## Lessons Learned
+
+**What worked:** Handing a fact across Go modules as a JSON file. The board prints its own column, placement reason and last activity; `run-status` reads the file and never imports, builds or re-derives the board's predicate, so the two can't drift. Setting `PlacementReason` in the same `bucketColumns` arm as the column made column and reason one decision.
+**What didn't:** Widening a class to "the whole board column" in the Plan without a decision line: the Needs input · Blocked column also holds `failed` and collision statuses, which `clarify` cannot fix (review F1). A column is a display grouping, not a remedy; key a remedy on the status that the remedy actually handles. Also, a temp file named in `verification_argv` cannot be re-run once the action deletes it (F10).
+**Worth knowing:** Removing a guard moves its failure somewhere quieter: without the `--run` stat, a mistyped run directory reads as "no hand-backs", which turns C3 rows into C7 (F3, kept as report only by the D-19 ruling). The qualifier's scope check reads any backticked token in `## Scope` as a path, so a backticked flag like `--watch` there reports `SCOPE-DECLARED-NOT-TOUCHED`.
+
+## Orientation
+
+Now you can ask "status", "is it stuck" or "ETA" and get one row per in-flight REQ with a class, ETA and remedy; lives in the core do-work-cli (`internal/runstatus/`, see `skills/do-work/tools/do-work-cli/prime-do-work-cli.md`) fed by a new machine mode of the board tool (`queue-kanban open-work --format json`, `_dev/primes/prime-kanban-board.md`), with the `actions/status.md` action and its routing row. [MAP CHANGED]: a new cross-module data flow, board JSON file → core CLI, with no Go import between the modules. Prime staleness: `prime-do-kanban.md` does not yet name the JSON mode (F8); the other primes' paths still exist.
+
+## Heavy Verification Plan
+
+- Base: bd8f3c9e92b41b398fbec0f725f706466fdc720b
+- Target: 65820f4511c4bbb0c8aceae749989d5cc84a8691
+- queue-kanban-javascript: `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane queue-kanban-javascript` — `main.go`, `model.go`, `open_work.go`, `open_work_test.go` matched subtree `skills/do-work-board/tools/queue-kanban`
+- queue-kanban-browser: `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane queue-kanban-browser` — the same four queue-kanban files
+- do-work-cli-integrations: `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane do-work-cli-integrations` — 7 do-work-cli files matched subtree `skills/do-work/tools/do-work-cli`
+- staged-skills: `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane staged-skills` — all 17 changed files matched subtree `skills`
+- updater: `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane updater` — the 7 do-work-cli files
+- installer: `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane installer` — the 7 do-work-cli files
+
+## Heavy Verification Result
+
+- Target: 65820f4511c4bbb0c8aceae749989d5cc84a8691
+- Execution revision: 65820f4511c4bbb0c8aceae749989d5cc84a8691 (detached checkout `.git/work-run-work-2026-10-10-131527/drain-head-REQ-690`, `QUEUE_KANBAN_BROWSER` set to Google Chrome)
+- queue-kanban-javascript: reused, exit 0 (executed at the first merge `ada0ccab`, exit 0, 8 s; the review delta touched no board file)
+- queue-kanban-browser: executed, exit 0, 75 s
+- do-work-cli-integrations: executed, exit 0, 57 s
+- staged-skills: executed, exit 0, 35 s
+- updater: executed, exit 0, 64 s
+- installer: executed, exit 0, 25 s
+- No lane skipped. The first drain at `ada0ccab` also passed every lane (87 s browser, 63 s integrations, 36 s staged-skills, 65 s updater, 25 s installer).
+
+## Timing
+
+Observed 2026-10-10T17:41:58Z to 2026-10-10T18:01:39Z: 19m 41s total, 22m 13s attributed across 7 events, 0s unattributed.
+
+| Category | Elapsed | Events |
+| --- | --- | --- |
+| verification-gate | 14m 07s | 4 |
+| review | 6m 59s | 1 |
+| handback-merge | 1m 07s | 2 |
+
+Slowest stage: review / review agent, REQ-690 bd8f3c9e..ada0ccab, 6m 59s, outcome success.
+Slowest command: verification-gate / heavy drain, 4m 53s, exit 0, .
+
+Note: no builder-work event was recorded. The hand-back had landed long before this integrator started (dispatch 2026-10-10T13:31:31Z, builder hand-back 13:42:46Z), so per fan-out-reference "Landed hand-back" the builder wait is not timed here.
