@@ -12,3 +12,5 @@ queue_state: [21 pending, 0 pending-answers, 0 blocked, 0 blocked-archive-collis
 - REQ-655: ai-report index and find build a derived catalog of every report bundle in any naming style — claimed 2026-10-10T12:52:19Z — writer: t2s-Virtual-Machine.local:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2
 
 - REQ-658: finalize --auto-manifest builds the mechanical fields of the finalization manifest and preflights the tree — claimed 2026-10-10T12:52:19Z — writer: t2s-Virtual-Machine.local:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2
+
+- REQ-659: frontmatter set and req append-section write REQ stamps and sections with the schema rules enforced — claimed 2026-10-10T12:52:19Z — writer: t2s-Virtual-Machine.local:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2

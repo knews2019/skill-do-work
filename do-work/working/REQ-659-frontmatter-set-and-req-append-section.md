@@ -1,7 +1,7 @@
 ---
 id: REQ-659
 title: 'frontmatter set and req append-section write REQ stamps and sections with the schema rules enforced'
-status: pending
+status: claimed
 created_at: 2026-10-09T21:14:04Z
 user_request: UR-145
 domain: backend
@@ -12,6 +12,7 @@ impact: impact-user-visible
 effort_estimate: effort-substantive
 related: [REQ-658, REQ-660, REQ-661]
 batch: cli-ergonomics
+claimed_at: 2026-10-10T12:52:19Z
 ---
 # frontmatter set and req append-section Write REQ Stamps and Sections With the Schema Rules Enforced
 ## What
