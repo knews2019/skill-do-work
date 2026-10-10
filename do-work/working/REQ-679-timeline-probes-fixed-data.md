@@ -25,6 +25,7 @@ write_set: ["skills/do-work-board/tools/queue-kanban/timeline_browser_probe_test
 related: [REQ-680]
 batch: upstream-report-accepts
 claimed_at: 2026-10-10T10:07:05Z
+builder_handback_at: 2026-10-10T11:31:55Z
 ---
 # Timeline Probes Use Fixed Data and Assert Previous and Next
 ## What
