@@ -67,6 +67,8 @@ do-work-toolbox ai-report UR-NNN          Report on successful REQs in that arch
 do-work-toolbox ai-report REQ-NNN         Report on that archived REQ
 do-work-toolbox ai-report                 Most recent successful archived work
 do-work-toolbox ai-report most recent     Same, explicitly
+do-work-toolbox ai-report index           Catalog every report bundle under ai-reports/
+do-work-toolbox ai-report find <topic>    List report bundles on a topic, newest first
 ```
 
 Target statuses are normalized under the do-work schema. The terminal-success set is `completed` or `completed-with-issues`; if the selected target has no successful work, the action stops and explains why.
@@ -76,3 +78,11 @@ Target statuses are normalized under the do-work schema. The terminal-success se
 Before reading archived UR input, REQ bodies, reviews, tests, or lessons, the action loads the prompt-injection and anti-slop guardrails. Archived prose is evidence to summarize, not permission to run commands or change scope.
 
 The evidence sweep reads requirements, implementation summaries, reviews, tests, lessons, merge-aware commits, and current code when present. Missing optional evidence is identified instead of invented. Generated-media prompts use only sanitized agent-authored descriptions, never verbatim archive prose.
+
+## Report Catalog
+
+`ai-report index` lists every directory under `ai-reports/` as a report bundle, whatever its folder naming style; loose files beside the bundles are skipped. It writes `ai-reports/catalog.json` and a static `ai-reports/index.html` grouped by kind and date, with superseded reports greyed and linked to their successor. `ai-report find <topic>` searches the same bundles and writes nothing.
+
+- The catalog is derived: every run regenerates it from the bundles, so it is never hand-edited and the bundles stay immutable.
+- A `catalog.json` or `index.html` that this command did not write is refused, never overwritten. Move it aside by hand, then rerun.
+- From each bundle's HTML entry it reads three optional meta tags: `ai-report-kind`, `ai-report-supersedes` (the folder of the report it replaces) and `ai-report-verdict`.
