@@ -7,7 +7,7 @@ A diagnostic tool for when the work pipeline feels broken, stuck, or produces co
 ## When to Use
 
 **Use when:**
-- User suspects something is stuck, broken, or producing confusing results
+- User suspects something is broken or producing confusing results (for how long in-flight work has been quiet, see `actions/status.md`)
 - User says "forensics", "diagnose", "health check", or "health"
 - Pipeline feels broken or work output seems hollow
 

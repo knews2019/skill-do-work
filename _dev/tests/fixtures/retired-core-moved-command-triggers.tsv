@@ -1,4 +1,4 @@
-# TEST-ONLY historical inventory. Do not copy these retired aliases into runtime routing or guidance.
+# TEST-ONLY historical inventory. Do not copy these retired aliases into runtime routing or guidance. The one exception is the core forward row for validate-feedback / triage feedback (UR-153, 2026-10-10).
 # Sources: 0b9bcde^:skills/do-work/SKILL.md; 0b9bcde^:skills/do-work/actions/moved-command-shim.md; a3c2612^:SKILL.md (install normalization).
 owner	canonical_action	match_kind	legacy_trigger
 do-work-board	board	direct	board

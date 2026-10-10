@@ -789,7 +789,7 @@ for sibling_route_contract in "${sibling_route_contracts[@]}"; do
 
   core_route_count="$(printf '%s\n' "$core_routing_section" | grep -cF "\`./actions/$public_action.md\`" || true)"
   if [ "$core_route_count" -ne 0 ]; then
-    fail "core must not route sibling-owned action $public_action"
+    fail "core must not route sibling-owned action $public_action through ./actions/ (a ../$sibling_owner/ forward row is allowed)"
   fi
 done
 

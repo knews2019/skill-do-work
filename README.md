@@ -173,7 +173,7 @@ Yes. Install it in your project root. Installation and updates write only the ma
 
 ### What happens if something goes wrong during processing?
 
-The work loop processes one request at a time. If a request fails, it's marked as failed with notes on what went wrong, and the loop moves to the next one. Nothing is lost — you can fix the issue and re-queue. Run `do-work forensics` to diagnose stuck or failed work.
+The work loop processes one request at a time. If a request fails, it's marked as failed with notes on what went wrong, and the loop moves to the next one. Nothing is lost — you can fix the issue and re-queue. Run `do-work status` to see how long in-flight work has been quiet, and `do-work forensics` to diagnose failed or broken work.
 
 ### Can I edit REQ files manually?
 

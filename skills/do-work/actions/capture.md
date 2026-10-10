@@ -133,9 +133,9 @@ The addendum carries outside text into an existing REQ body. Apply `actions/clar
 
 User added:
 
-> ````text
+> ```
 > dark mode should also affect the sidebar
-> ````
+> ```
 
 - Sidebar must also respect dark mode theme
 ```
