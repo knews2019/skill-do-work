@@ -23,6 +23,7 @@ related: [REQ-658, REQ-659, REQ-661]
 batch: cli-ergonomics
 required_lessons: [_dev/primes/lessons-releases.md]
 claimed_at: 2026-10-10T12:52:20Z
+builder_handback_at: 2026-10-10T13:30:43Z
 route: B
 write_set: ["skills/do-work/tools/do-work-cli/internal/cleanup/worktree_lifecycle.go", "skills/do-work/tools/do-work-cli/internal/cleanup/worktree_lifecycle_test.go", "skills/do-work/tools/do-work-cli/internal/cleanup/cleanup_commands.go", "skills/do-work/tools/do-work-cli/internal/resultmodel/result_model.go", "skills/do-work/actions/fan-out-reference.md", "skills/do-work/tools/do-work-cli/lessons-do-work-cli.md"]
 ---

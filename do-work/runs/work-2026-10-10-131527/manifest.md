@@ -10,7 +10,7 @@ Gate record: `DO_WORK_FAST_STAGE_REUSE=off bash _dev/tests/maintainer-verify.sh`
 
 | REQ | Builder | Operative name | Handback file | Status | Dispatch instant |
 |-----|---------|----------------|---------------|--------|------------------|
-| REQ-660 | builder agent in worktree (dispatched by the coordinator) | worktree-agent-REQ-660-worktree-lifecycle-command | do-work/runs/work-2026-10-10-131527/REQ-660-handback.md | dispatched | 2026-10-10T13:23:49Z |
+| REQ-660 | builder agent in worktree (dispatched by the coordinator) | worktree-agent-REQ-660-worktree-lifecycle-command | do-work/runs/work-2026-10-10-131527/REQ-660-handback.md | landed, integrating | 2026-10-10T13:23:49Z |
 | REQ-659 | builder agent in worktree (dispatched by the coordinator) | worktree-agent-REQ-659-frontmatter-set-append-section | do-work/runs/work-2026-10-10-131527/REQ-659-handback.md | dispatched | 2026-10-10T13:24:46Z |
 | REQ-658 | builder agent in worktree (dispatched by the coordinator) | worktree-agent-REQ-658-finalize-auto-manifest | do-work/runs/work-2026-10-10-131527/REQ-658-handback.md | dispatched | 2026-10-10T13:25:57Z |
 | REQ-655 | builder agent in worktree (dispatched by the coordinator) | worktree-agent-REQ-655-ai-report-index-and-find | do-work/runs/work-2026-10-10-131527/REQ-655-handback.md | dispatched | 2026-10-10T13:25:37Z |
