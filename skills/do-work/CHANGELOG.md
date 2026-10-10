@@ -10,6 +10,15 @@ For the complete release history, read this file and the archives below from new
 - [0.50.0 through 0.64.1](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-13-up-to-v0.64.1.md)
 - [0.1.0 through 0.49.0](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-07-up-to-v0.49.0.md)
 
+## 0.305.104 — do-work-cli Builds the Finalization Manifest From the Judged Inputs and Checks the Tree First (2026-10-10)
+
+Sessions hand-built the finalization manifest about 171 times in 15 days and learned the required commit paths by reading refusals. The CLI now fills every mechanical field and runs the finalizer's own checks before anything is written. This closes the CLI-ergonomics batch (UR-145).
+
+- `do-work-cli finalize --auto-manifest REQ-NNN --emit <path>` takes the judged inputs (`--transition`, `--terminal-status` or `--failure-type` with `--failure-error-file`, `--message-file`, `--provenance` with `--implementation-hash` for `supplied_commit`, optional `--release-manifest`, and `--extra-path` for each extra path). It fills the request path, both digests, `completed_at`, `release_at`, the writer label and the planner's required `commit_paths`.
+- It refuses with exit 1 and writes nothing when a judged input or `--emit` is missing, the index has staged paths (it lists them), an unfinished journal exists (it names `recover-finalization`), or the release version is stale (`RELEASE-PREIMAGE-STALE`).
+- The emitted file goes to `advance --finalization-manifest` unchanged. The command never finalizes by itself, so the `advance` phase gate always applies. Hand-built manifests stay valid.
+- `actions/work.md` Steps 8 and 9 and the work-reference Commit procedure name the command and say which fields are judged and which are filled.
+
 ## 0.305.103 — do-work-cli Writes REQ Stamps and Sections and Refuses What the Schema Forbids (2026-10-10)
 
 Agents stamped `review_at` and `integration_at` and appended `## Testing` with hand-written scripts, and nothing enforced the append-only or section-order rules: one upstream report counted 112 such scripts in 13 days. Two new commands now do these writes and refuse what the REQ schema forbids.
