@@ -88,6 +88,7 @@ Per-image diagnostics and the published path come from the typed result. A succe
 - **All images (screenshots, user-supplied, AI-generated):** linked by **relative path** from the report folder (`<img src="screenshots/after.png">`, `<img src="generated/01-arch.png">`). **Never base64-inline** — it bloats the HTML, wrecks diffs, and hides the assets. The report is self-contained as a **folder**: `index.html` + `screenshots/` (+ `generated/`) travel together.
 - **Click-to-full-res screenshots:** wrap each screenshot `<img>` in an anchor to its own file (`<a href="screenshots/after.png" target="_blank" rel="noopener">`) so a click opens the capture at native resolution; give any overlay `<svg>` `pointer-events:none` so it does not swallow the click.
 - **Disclose generated images:** each carries a small visible caption/badge reading "AI-generated" (or "AI-generated diagram"). Never style a synthetic image to look like a captured screenshot.
+- **Table of contents for long reports:** a report with more than six top-level sections or about 1,500 words of body text (both approximate) gets a table of contents near the top: a `<nav>` of in-page anchor links to each top-level section's `id`, working without a script.
 
 ## Before/After Toggle Reference Implementation (Step 4)
 

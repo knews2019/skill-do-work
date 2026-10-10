@@ -18,7 +18,7 @@ ai-reports/
 
 The HTML uses relative paths for local media, so the folder travels as one unit. Existing output paths are never overwritten; a same-name run receives a numeric suffix. Prior reports and other completed-work artifacts remain unchanged.
 
-This action produces only the report bundle. It does not create a Markdown client brief, a separate `.single.html` explainer, video, Remotion/MP4 output, a `--with-video` variant, publishing, hosting, or automatic video behavior.
+This action produces only the report bundle (a revise also regenerates the report catalog). It does not create a Markdown client brief, a separate `.single.html` explainer, video, Remotion/MP4 output, a `--with-video` variant, publishing, hosting, or automatic video behavior.
 
 ## Two Evidence Modes
 
@@ -69,6 +69,7 @@ do-work-toolbox ai-report                 Most recent successful archived work
 do-work-toolbox ai-report most recent     Same, explicitly
 do-work-toolbox ai-report index           Catalog every report bundle under ai-reports/
 do-work-toolbox ai-report find <topic>    List report bundles on a topic, newest first
+do-work-toolbox ai-report revise <dir|latest> [what changed]  New revision of a report; the old one is kept
 ```
 
 Target statuses are normalized under the do-work schema. The terminal-success set is `completed` or `completed-with-issues`; if the selected target has no successful work, the action stops and explains why.
@@ -86,3 +87,7 @@ The evidence sweep reads requirements, implementation summaries, reviews, tests,
 - The catalog is derived: every run regenerates it from the bundles, so it is never hand-edited and the bundles stay immutable.
 - A `catalog.json` or `index.html` that this command did not write is refused, never overwritten. Move it aside by hand, then rerun.
 - From each bundle's HTML entry it reads three optional meta tags: `ai-report-kind`, `ai-report-supersedes` (the folder of the report it replaces) and `ai-report-verdict`.
+
+## Revising a Report
+
+`ai-report revise <dir|latest> [what changed]` never edits the old report. It writes a new sibling report with the same name plus `-rev<N>`, which opens with a "rev-N (date)" block listing what changed and what is still to do, and names the old report's folder in an `ai-report-supersedes` meta tag. `latest` picks the newest report in the catalog, and the catalog is regenerated afterwards, so the old report shows "superseded by" the new one. A long report gets a table of contents near the top. The last output line is the new report's path and a `file://` link to open it; committing is left to you.
