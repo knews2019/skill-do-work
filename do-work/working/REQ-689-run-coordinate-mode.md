@@ -1,7 +1,7 @@
 ---
 id: REQ-689
 title: 'do-work run --coordinate: the mandatory coordinator shape, its run rules, a prose preflight, a stall loop, and a handoff that resumes coordinated'
-status: pending
+status: claimed
 created_at: 2026-10-10T13:05:57Z
 user_request: UR-153
 domain: general
@@ -12,6 +12,7 @@ impact: impact-user-visible
 effort_estimate: effort-substantive
 related: [REQ-690]
 batch: run-coordinate-mode
+claimed_at: 2026-10-10T13:14:51Z
 ---
 # do-work run --coordinate: Mandatory Coordinator Shape, Run Rules, Preflight, Stall Loop and Coordinated Handoff
 ## What
