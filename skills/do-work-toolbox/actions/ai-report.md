@@ -118,13 +118,13 @@ Run the render check on the bundle:
 <skill-root>/../do-work/tools/do-work-cli.sh --repo-root <project-root> --format json ai-report-judge <bundle-dir>
 ```
 
-The command serves the bundle over HTTP on a free local port, takes full-page captures at 1440x1000 and 390x844 in light and dark (`wide-light.png`, `wide-dark.png`, `phone-light.png`, `phone-dark.png`), fails on horizontal overflow and on any same-origin `href` or `src` that does not load, and stops its server. The captures and `judge.json` go to a fresh directory outside the bundle; the result's `changes` entry names `judge.json`. Read the verdict and findings from `judge.json`. Exit 0 is `pass`; exit 1 is `fail` or `skipped`; exit 2 means the check itself failed, so report its finding and never treat the layout as verified. Inspect the four captures it names, fix defects, and rerun until the verdict is `pass`. Any report containing text-bearing SVG requires at least two render-and-judge passes.
+The command serves the bundle over HTTP on a free local port, takes full-page captures at 1440x1000 and 390x844 in light and dark (`wide-light.png`, `wide-dark.png`, `phone-light.png`, `phone-dark.png`), fails on horizontal overflow and on any same-origin `href` or `src` that does not load, and stops its server. The captures and `judge.json` go to a fresh directory outside the bundle; the result's `changes` entry names `judge.json`. Read the verdict and findings from `judge.json`. Exit 0 is `pass`; exit 1 is `fail` or `skipped`; exit 2 means the check itself failed, so report its finding, never treat the layout as verified, and disclose it in the footer as for `skipped`. Inspect the four captures it names, fix defects, and rerun until the verdict is `pass`. Any report containing text-bearing SVG requires at least two render-and-judge passes.
 
 Judge width usage, table shape, diagram informativeness, emphasis hierarchy, light/dark contrast, SVG label collisions, edge clipping, screenshot sharpness, and responsive stacking. A `skipped` verdict means no browser engine was found: ship the report and state in its footer that the layout was not render-verified.
 
 ### Step 8: Verify and Report the Result
 
-Confirm `index.html` exists, the last `judge.json` verdict is `pass` (or `skipped` and disclosed in the footer), screenshots open at full resolution, synthetic assets are disclosed, and the final bundle satisfies the shared **Collision-Safe Publication** section. Remove the judge output directory and its captures.
+Confirm `index.html` exists, the last `judge.json` verdict is `pass` (or `skipped` or `error` and disclosed in the footer), screenshots open at full resolution, synthetic assets are disclosed, and the final bundle satisfies the shared **Collision-Safe Publication** section. Remove the judge output directory and its captures.
 
 Print a compact summary containing the report path, target and verdict, evidence mode, evidence used, recorded issues, and light/dark render status.
 
@@ -144,5 +144,5 @@ A fresh self-contained folder at `ai-reports/yyyy-mm-dd_hhmm_<slug>/` containing
 - [ ] Visual evidence uses authentic captures, SVG annotations, responsive before/after where available, and distinct synthetic provenance.
 - [ ] Non-visual evidence states UI captures were not expected and uses commit, current-code, architecture/data-flow, test, and operational receipts without fabricated screenshots.
 - [ ] Stakeholder narrative includes verdict, shipped change, problem/change, operation, qualitative value, files/commits, verification, and available lessons/questions.
-- [ ] Report is responsive, self-contained at the folder level, and render-judged with `ai-report-judge` at wide and phone widths in light and dark (verdict `pass`, or `skipped` and disclosed in the footer).
+- [ ] Report is responsive, self-contained at the folder level, and render-judged with `ai-report-judge` at wide and phone widths in light and dark (verdict `pass`, or `skipped` or `error` and disclosed in the footer).
 - [ ] No brief, separate explainer, video, publishing, hosting, or search artifact was created.
