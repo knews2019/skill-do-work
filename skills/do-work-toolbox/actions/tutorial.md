@@ -258,6 +258,9 @@ WORKFLOW RECIPES — common scenarios → exact commands
     do-work-toolbox present-video REQ-NNN
 
   "Something seems stuck"
+    do-work status
+
+  "Something seems broken or failed"
     do-work forensics
 
   "I want to review code quality (not a specific task)"

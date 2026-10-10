@@ -45,7 +45,7 @@ do-work what should I work on next
 
 ## When NOT to use
 
-- Suspect something is *broken* or *stuck* → `do-work forensics`
+- Suspect something is *broken* or *failed* → `do-work forensics`; in-flight work seems *stuck* → `do-work status`
 - Want *new ideas* for what to build → `do-work-toolbox scan-ideas`
 - Want to *review specific completed code* → `do-work review-work` or `do-work-toolbox code-review`
 - Want to *explain uncommitted local changes* → `do-work-toolbox inspect`
