@@ -23,7 +23,7 @@ First match wins, in this order:
 | Class | Meaning | What to do |
 |-------|---------|------------|
 | **C8** finalization pending | An earlier finalization stopped partway | The command doctor prints |
-| **C3** hand-back landed | The builder's hand-back file is in the run directory | `do-work run` integrates it |
+| **C3** hand-back landed | The builder's hand-back file is in the run directory | `do-work run` integrates it; nothing while an integrator is already working on it |
 | **C4** needs operator | Needs input · Blocked on the board | `do-work clarify`; `do-work forensics` when the status is failed or a collision |
 | **C5** waiting on dependencies | Waits for the REQ it names | Nothing; it moves when that REQ is done |
 | **C6** earmarked | Reserved for another session, which a default run skips | `do-work run REQ-NNN` runs it by name |

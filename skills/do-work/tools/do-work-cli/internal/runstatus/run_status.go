@@ -40,6 +40,13 @@ const quietActivityBoundary = 20 * time.Minute
 
 const runLocalLabel = "run-local, not interpreted"
 
+// integratorPhases are the board's pipeline phases stamped at or after the
+// hand-back merge (actions/work.md: integration_at, then review_at,
+// remediation_at, re_review_at). Source: phaseMilestonesOf in
+// skills/do-work-board/tools/queue-kanban/durations.go, lowercased by
+// activity_correlation.go. A fixed pipeline, not a sample of examples.
+var integratorPhases = map[string]bool{"integration": true, "review": true, "remediation": true, "re-review": true}
+
 // classPrecedence is the order classes are tested in (first match wins) and the
 // order rows are listed in. actions/status.md documents the same order.
 var classPrecedence = []string{"C8", "C3", "C4", "C5", "C6", "C7", "C2", "C1"}
@@ -113,6 +120,15 @@ func runStatusAt(executionContext commandruntime.ExecutionContext, arguments []s
 			"run-status needs the board's facts: build queue-kanban and run `queue-kanban open-work --format json --repo-root %s > FILE`, then pass --board-facts FILE (actions/status.md does both)", repositoryRoot))
 	}
 	runDirectory := resolveRunDirectory(repositoryRoot, options.runDirectory)
+	runDirectoryDisplay := ""
+	if runDirectory != "" {
+		runDirectoryDisplay = displayPath(repositoryRoot, runDirectory)
+		// A missing folder reads like no folder (run fields absent, not false),
+		// and the display path says so (D-19: reported, never refused).
+		if info, statError := os.Stat(runDirectory); statError != nil || !info.IsDir() {
+			runDirectory, runDirectoryDisplay = "", runDirectoryDisplay+" (not found; run fields absent)"
+		}
+	}
 	snapshot, discoveryError := repositorymodel.DiscoverRepository(repositoryRoot)
 	if discoveryError != nil {
 		return resultmodel.CommandResult{Outcome: resultmodel.OutcomeFailure, Findings: []resultmodel.CommandFinding{{
@@ -146,10 +162,7 @@ func runStatusAt(executionContext commandruntime.ExecutionContext, arguments []s
 		return slices.Index(classPrecedence, rows[left].record.Class) < slices.Index(classPrecedence, rows[right].record.Class)
 	})
 
-	report := &resultmodel.RunStatusResult{Rows: []resultmodel.RunStatusRow{}, RunLocalFiles: listRunLocalFiles(repositoryRoot, runDirectory, now)}
-	if runDirectory != "" {
-		report.RunDirectory = displayPath(repositoryRoot, runDirectory)
-	}
+	report := &resultmodel.RunStatusResult{Rows: []resultmodel.RunStatusRow{}, RunLocalFiles: listRunLocalFiles(repositoryRoot, runDirectory, now), RunDirectory: runDirectoryDisplay}
 	findings := []resultmodel.CommandFinding{}
 	for _, row := range rows {
 		report.Rows = append(report.Rows, row.record)
@@ -322,6 +335,10 @@ func classifyRow(row *statusRow, request boardRequest, hasFinalization bool, fin
 		record.Class, finding.NextArgv = "C8", append([]string{}, finalization.NextArgv...)
 		finding.Evidence = append(finding.Evidence, finalization.Evidence...)
 		row.remedy = "an unfinished finalization holds it; run `" + strings.Join(finding.NextArgv, " ") + "`"
+	case claimed && record.HandbackPresent != nil && *record.HandbackPresent && integratorPhases[record.LastActivityPhase] &&
+		record.MinutesSinceActivity != nil && time.Duration(*record.MinutesSinceActivity)*time.Minute < quietActivityBoundary:
+		record.Class = "C3"
+		row.remedy = fmt.Sprintf("an integrator is working on it now (phase %s, last activity %d min ago); do not start a second run", record.LastActivityPhase, *record.MinutesSinceActivity)
 	case claimed && record.HandbackPresent != nil && *record.HandbackPresent:
 		record.Class, finding.NextArgv = "C3", []string{"do-work", "run"}
 		row.remedy = "the build is done and waits for integration; run `do-work run`"

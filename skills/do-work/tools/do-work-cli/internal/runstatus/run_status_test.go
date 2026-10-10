@@ -26,6 +26,7 @@ type fixtureRequest struct {
 	unmetDependencies                                     []string
 	assignedTo                                            string
 	lastActivityAt                                        time.Time
+	lastActivityPhase                                     string // "" means "implementation"
 }
 
 // writeRunStatusFixture is the one fixture builder: it writes each REQ under
@@ -52,6 +53,9 @@ func writeRunStatusFixture(t *testing.T, requests ...fixtureRequest) (string, st
 			boardRequest["last_activity_at"] = request.lastActivityAt.Format(time.RFC3339)
 			boardRequest["last_activity_kind"] = "commit"
 			boardRequest["last_activity_phase"] = "implementation"
+			if request.lastActivityPhase != "" {
+				boardRequest["last_activity_phase"] = request.lastActivityPhase
+			}
 		}
 		boardRequests = append(boardRequests, boardRequest)
 	}
@@ -291,5 +295,43 @@ func TestRunStatusFailedRequestNamesForensicsNotClarify(t *testing.T) {
 	finding := findingFor(t, runFixture(t, repositoryRoot, fixtureNow, "--board-facts", boardFacts), "REQ-809")
 	if finding.Code != "C4" || !reflect.DeepEqual(finding.NextArgv, []string{"do-work", "forensics"}) {
 		t.Fatalf("finding = %+v", finding)
+	}
+}
+
+// Pins F3: a mistyped --run read as "no run" with nothing saying which folder
+// was read, so a landed hand-back silently turned C3 into C7.
+func TestRunStatusMissingRunFolderIsNamedInTextAndJSON(t *testing.T) {
+	repositoryRoot, boardFacts := writeRunStatusFixture(t, claimedFixture("REQ-820", fixtureNow.Add(-200*time.Minute), ""))
+	writeFixtureFile(t, repositoryRoot, "do-work/runs/work-2026-10-10-113000/REQ-820-handback.md", "# Hand-back\n")
+
+	result := runFixture(t, repositoryRoot, fixtureNow, "--board-facts", boardFacts, "--run", "do-work/runs/typo")
+	if !strings.Contains(result.RunStatus.RunDirectory, "do-work/runs/typo") || !strings.Contains(result.RunStatus.RunDirectory, "not found") {
+		t.Fatalf("run_directory = %q", result.RunStatus.RunDirectory)
+	}
+	if !strings.Contains(textOf(result), "run: do-work/runs/typo (not found") {
+		t.Fatalf("text does not name the missing run folder:\n%s", textOf(result))
+	}
+	if result.RunStatus.Rows[0].HandbackPresent != nil || findingFor(t, result, "REQ-820").Code != "C7" {
+		t.Fatalf("row = %+v", result.RunStatus.Rows[0])
+	}
+}
+
+// Pins F4: C3 recommended `do-work run` while an integrator was working on the
+// REQ, inviting a second orchestrator.
+func TestRunStatusIntegratingHandbackDoesNotRecommendRun(t *testing.T) {
+	request := claimedFixture("REQ-821", fixtureNow.Add(-30*time.Minute), "")
+	request.lastActivityPhase = "integration"
+	repositoryRoot, boardFacts := writeRunStatusFixture(t, request)
+	writeFixtureFile(t, repositoryRoot, "do-work/runs/work-2026-10-10-113000/REQ-821-handback.md", "# Hand-back\n")
+
+	result := runFixture(t, repositoryRoot, fixtureNow, "--board-facts", boardFacts)
+	finding := findingFor(t, result, "REQ-821")
+	if finding.Code != "C3" || len(finding.NextArgv) != 0 || !strings.Contains(finding.AutomationStopReason, "integrator") {
+		t.Fatalf("finding = %+v", finding)
+	}
+	text := textOf(result)
+	nextLine := text[strings.LastIndex(strings.TrimRight(text, "\n"), "\n")+1:]
+	if !strings.HasPrefix(nextLine, "next:") || strings.Contains(nextLine, "do-work run") {
+		t.Fatalf("next line = %q\n%s", nextLine, text)
 	}
 }
