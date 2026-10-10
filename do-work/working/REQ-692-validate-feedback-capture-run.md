@@ -25,6 +25,7 @@ estimate:
     - 4-file write set
     - 2 subsystems involved
     - 9 acceptance criteria
+builder_handback_at: 2026-10-10T13:29:20Z
 ---
 # validate-feedback --capture [--run]: One Opt-In Chain From Triage to an Optional Run, Plus a Core Route
 ## What
