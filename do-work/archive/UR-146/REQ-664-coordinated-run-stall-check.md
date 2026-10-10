@@ -1,7 +1,7 @@
 ---
 id: REQ-664
 title: 'Coordinated run arms one stall check that restarts a silent integrator from its landed phase and reports a silent builder'
-status: pending
+status: cancelled
 created_at: 2026-10-09T21:16:07Z
 user_request: UR-146
 domain: general
@@ -13,6 +13,7 @@ effort_estimate: effort-substantive
 depends_on: [REQ-662]
 related: [REQ-662, REQ-663, REQ-665, REQ-666, REQ-667]
 batch: run-coordinate-mode
+completed_at: 2026-10-10T12:59:15Z
 ---
 # Coordinated Run Arms One Stall Check
 ## What
@@ -63,3 +64,9 @@ See `do-work/user-requests/UR-146/input.md` for complete verbatim input (section
 - [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
 - [ ] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
 *Source: upstream suggestion report `do-work/inbox/2026-10-09_do-work-upstream-suggestion-run-coordinate-mode.md`, Request item A3: "One stall check armed for the run (every 15 to 20 minutes) that reads run liveness. A silent integrator is stopped and restarted from its landed phase. A silent builder is only reported."*
+
+## Cancelled
+
+- **When:** 2026-10-10T12:59:15Z
+- **Why:** folded into the simplified recapture of 2026-10-10 (maintainer chose the aggressive simplification)
+- **Decided by:** user, via `do-work abandon`

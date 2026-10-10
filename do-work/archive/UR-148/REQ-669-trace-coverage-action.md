@@ -1,7 +1,7 @@
 ---
 id: REQ-669
 title: 'do-work trace action reports how much of an outside spec is captured and built, with one dated verdict per ask'
-status: pending
+status: cancelled
 created_at: 2026-10-09T21:23:50Z
 user_request: UR-148
 domain: general
@@ -12,6 +12,7 @@ impact: impact-user-visible
 effort_estimate: effort-substantive
 claimed_at: 2026-10-10T12:52:21Z
 status_changed_at: 2026-10-10T12:57:18Z
+completed_at: 2026-10-10T12:59:20Z
 ---
 # do-work trace: Coverage of an Outside Spec Before Capture
 ## What
@@ -117,3 +118,9 @@ See `do-work/user-requests/UR-148/input.md` for complete verbatim input. The sou
 - [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
 - [ ] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
 *Source: upstream suggestion report `do-work/inbox/2026-10-09_do-work-upstream-suggestion-trace-coverage.md`, Request: "Please add one read-only action, `do-work trace <url | image | pasted text | UR-NNN>`, routed before capture."*
+
+## Cancelled
+
+- **When:** 2026-10-10T12:59:20Z
+- **Why:** folded into the simplified recapture of 2026-10-10 (maintainer chose the aggressive simplification)
+- **Decided by:** user, via `do-work abandon`

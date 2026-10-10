@@ -1,7 +1,7 @@
 ---
 id: REQ-672
 title: 'validate-feedback --capture captures the accepted findings as one UR with one REQ per finding and its provenance'
-status: pending
+status: cancelled
 created_at: 2026-10-09T21:26:55Z
 user_request: UR-149
 domain: general
@@ -13,6 +13,7 @@ effort_estimate: effort-substantive
 depends_on: [REQ-671]
 related: [REQ-670, REQ-671, REQ-673, REQ-674]
 batch: validate-feedback-capture
+completed_at: 2026-10-10T12:59:18Z
 ---
 # validate-feedback --capture Captures the Accepted Findings as One UR
 ## What
@@ -59,3 +60,9 @@ See `do-work/user-requests/UR-149/input.md` for complete verbatim input (section
 - [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
 - [ ] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
 *Source: upstream suggestion report `do-work/inbox/2026-10-09_do-work-upstream-suggestion-validate-feedback-capture.md`, Request item C3: "Capture the Accept items plus the Discuss items the user accepted as one UR (one user request record) with one REQ per finding. Each REQ cites its finding id and the source (pasted text, or the path of a review or audit file) in the provenance block the handoff already asks for (`validate-feedback.md:114`)."*
+
+## Cancelled
+
+- **When:** 2026-10-10T12:59:18Z
+- **Why:** folded into the simplified recapture of 2026-10-10 (maintainer chose the aggressive simplification)
+- **Decided by:** user, via `do-work abandon`

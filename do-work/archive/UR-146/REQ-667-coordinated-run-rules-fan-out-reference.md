@@ -1,7 +1,7 @@
 ---
 id: REQ-667
 title: 'Coordinated-run rules for heartbeat log, full-gate lock, focused builder suites, red-gate triage and manifest timing go into fan-out-reference'
-status: pending
+status: cancelled
 created_at: 2026-10-09T21:16:07Z
 user_request: UR-146
 domain: general
@@ -14,6 +14,7 @@ related: [REQ-662, REQ-663, REQ-664, REQ-665, REQ-666]
 batch: run-coordinate-mode
 claimed_at: 2026-10-10T12:52:20Z
 status_changed_at: 2026-10-10T12:57:16Z
+completed_at: 2026-10-10T12:59:17Z
 ---
 # Coordinated-Run Rules Go Into fan-out-reference
 ## What
@@ -62,3 +63,9 @@ See `do-work/user-requests/UR-146/input.md` for complete verbatim input (section
 - [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
 - [ ] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
 *Source: upstream suggestion report `do-work/inbox/2026-10-09_do-work-upstream-suggestion-run-coordinate-mode.md`, Request item A6: "The run rules (heartbeat line, full-gate lock, focused suites for builders, red-gate triage, manifest timing row) are written into `actions/fan-out-reference.md`. None of them is in the suite today."*
+
+## Cancelled
+
+- **When:** 2026-10-10T12:59:17Z
+- **Why:** folded into the simplified recapture of 2026-10-10 (maintainer chose the aggressive simplification)
+- **Decided by:** user, via `do-work abandon`

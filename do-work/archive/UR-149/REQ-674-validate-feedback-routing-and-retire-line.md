@@ -1,7 +1,7 @@
 ---
 id: REQ-674
 title: 'Core do-work routes validate-feedback to the toolbox, and the suite installer narrates a retire line for the old standalone do-validate-feedback skill'
-status: pending
+status: cancelled
 created_at: 2026-10-09T21:26:55Z
 user_request: UR-149
 domain: backend
@@ -15,6 +15,7 @@ batch: validate-feedback-capture
 required_lessons: ["skills/do-work/tools/lessons-do-work-update.md"]
 claimed_at: 2026-10-10T12:52:22Z
 status_changed_at: 2026-10-10T12:57:19Z
+completed_at: 2026-10-10T12:59:19Z
 ---
 # Core do-work Routes validate-feedback, and the Installer Narrates a Retire Line for do-validate-feedback
 ## What
@@ -68,3 +69,9 @@ See `do-work/user-requests/UR-149/input.md` for complete verbatim input (section
 - [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
 - [ ] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
 *Source: upstream suggestion report `do-work/inbox/2026-10-09_do-work-upstream-suggestion-validate-feedback-capture.md`, Request item C5: "Give `validate-feedback` a forward in the core `do-work` routing table, and have the suite installer detect the older standalone `do-validate-feedback` skill that still answers the same phrase in consumer repos, and offer to retire it."*
+
+## Cancelled
+
+- **When:** 2026-10-10T12:59:19Z
+- **Why:** folded into the simplified recapture of 2026-10-10 (maintainer chose the aggressive simplification)
+- **Decided by:** user, via `do-work abandon`

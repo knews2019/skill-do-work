@@ -1,7 +1,7 @@
 ---
 id: REQ-665
 title: 'Resuming from a handoff prints GO or NO-GO with one line per drift between the handoff and the live repo'
-status: pending
+status: cancelled
 created_at: 2026-10-09T21:16:07Z
 user_request: UR-146
 domain: backend
@@ -13,6 +13,7 @@ effort_estimate: effort-substantive
 depends_on: [REQ-667]
 related: [REQ-662, REQ-663, REQ-664, REQ-666, REQ-667]
 batch: run-coordinate-mode
+completed_at: 2026-10-10T12:59:16Z
 ---
 # Resuming From a Handoff Prints GO or NO-GO
 ## What
@@ -61,3 +62,9 @@ See `do-work/user-requests/UR-146/input.md` for complete verbatim input (section
 - [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
 - [ ] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
 *Source: upstream suggestion report `do-work/inbox/2026-10-09_do-work-upstream-suggestion-run-coordinate-mode.md`, Request item A4: "A resume drift check when a session starts from a handoff: print go or no-go before running."*
+
+## Cancelled
+
+- **When:** 2026-10-10T12:59:16Z
+- **Why:** folded into the simplified recapture of 2026-10-10 (maintainer chose the aggressive simplification)
+- **Decided by:** user, via `do-work abandon`

@@ -1,7 +1,7 @@
 ---
 id: REQ-668
 title: 'do-work status action and do-work-cli run-status report one class, ETA and remedy per open REQ'
-status: pending
+status: cancelled
 created_at: 2026-10-09T21:20:59Z
 user_request: UR-147
 domain: general
@@ -12,6 +12,7 @@ impact: impact-user-visible
 effort_estimate: effort-substantive
 claimed_at: 2026-10-10T12:52:21Z
 status_changed_at: 2026-10-10T12:57:17Z
+completed_at: 2026-10-10T12:59:20Z
 ---
 # do-work status: One Class, ETA and Remedy per Open REQ
 ## What
@@ -119,3 +120,9 @@ See `do-work/user-requests/UR-147/input.md` for complete verbatim input. The sou
 - [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
 - [ ] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
 *Source: upstream suggestion report `do-work/inbox/2026-10-09_do-work-upstream-suggestion-run-status-action.md`, Request: "Please add one read-only action, `do-work status`, backed by one deterministic subcommand, `do-work-cli run-status [--run <dir>] [--req REQ-NNN] [--watch]`, with `--format json|text`."*
+
+## Cancelled
+
+- **When:** 2026-10-10T12:59:20Z
+- **Why:** folded into the simplified recapture of 2026-10-10 (maintainer chose the aggressive simplification)
+- **Decided by:** user, via `do-work abandon`

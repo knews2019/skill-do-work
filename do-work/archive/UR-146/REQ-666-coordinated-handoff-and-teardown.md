@@ -1,7 +1,7 @@
 ---
 id: REQ-666
 title: 'Coordinator writes its own handoff at high context, the handoff resumes with --coordinate, and teardown stops idle agents'
-status: pending
+status: cancelled
 created_at: 2026-10-09T21:16:07Z
 user_request: UR-146
 domain: general
@@ -13,6 +13,7 @@ effort_estimate: effort-mechanical
 depends_on: [REQ-662]
 related: [REQ-662, REQ-663, REQ-664, REQ-665, REQ-667]
 batch: run-coordinate-mode
+completed_at: 2026-10-10T12:59:16Z
 ---
 # Coordinator Writes Its Own Handoff and the Handoff Resumes Coordinated
 ## What
@@ -56,3 +57,9 @@ See `do-work/user-requests/UR-146/input.md` for complete verbatim input (section
 - [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
 - [ ] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
 *Source: upstream suggestion report `do-work/inbox/2026-10-09_do-work-upstream-suggestion-run-coordinate-mode.md`, Request item A5: "Teardown and handoff: the coordinator writes the handoff on its own when context gets high, and a handoff written from a coordinated run resumes with `--coordinate`."*
+
+## Cancelled
+
+- **When:** 2026-10-10T12:59:16Z
+- **Why:** folded into the simplified recapture of 2026-10-10 (maintainer chose the aggressive simplification)
+- **Decided by:** user, via `do-work abandon`

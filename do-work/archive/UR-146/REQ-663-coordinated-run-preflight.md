@@ -1,7 +1,7 @@
 ---
 id: REQ-663
 title: 'Coordinated run prints a four-line preflight for disk, leftover processes, stale locks and run policy before the first dispatch'
-status: pending
+status: cancelled
 created_at: 2026-10-09T21:16:07Z
 user_request: UR-146
 domain: backend
@@ -13,6 +13,7 @@ effort_estimate: effort-substantive
 depends_on: [REQ-662]
 related: [REQ-662, REQ-664, REQ-665, REQ-666, REQ-667]
 batch: run-coordinate-mode
+completed_at: 2026-10-10T12:58:54Z
 ---
 # Coordinated Run Prints a Four-Line Preflight Before the First Dispatch
 ## What
@@ -67,3 +68,9 @@ See `do-work/user-requests/UR-146/input.md` for complete verbatim input (section
 - [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
 - [ ] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
 *Source: upstream suggestion report `do-work/inbox/2026-10-09_do-work-upstream-suggestion-run-coordinate-mode.md`, Request item A2: "Preflight before the first dispatch: free disk, leftover test or browser processes, stale locks whose owner process is dead, and an optional `do-work/run-policy.md` read at start."*
+
+## Cancelled
+
+- **When:** 2026-10-10T12:58:54Z
+- **Why:** folded into the simplified recapture of 2026-10-10 (maintainer chose the aggressive simplification)
+- **Decided by:** user, via `do-work abandon`

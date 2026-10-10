@@ -1,7 +1,7 @@
 ---
 id: REQ-670
 title: 'validate-feedback --capture and --run flags, a file-path input, and a wrong-repo check before any write'
-status: pending
+status: cancelled
 created_at: 2026-10-09T21:26:55Z
 user_request: UR-149
 domain: general
@@ -14,6 +14,7 @@ related: [REQ-671, REQ-672, REQ-673, REQ-674]
 batch: validate-feedback-capture
 claimed_at: 2026-10-10T12:52:21Z
 status_changed_at: 2026-10-10T12:57:18Z
+completed_at: 2026-10-10T12:59:18Z
 ---
 # validate-feedback --capture and --run Flags, a File-Path Input, and a Wrong-Repo Check Before Any Write
 ## What
@@ -65,3 +66,9 @@ See `do-work/user-requests/UR-149/input.md` for complete verbatim input (section
 - [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
 - [ ] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
 *Source: upstream suggestion report `do-work/inbox/2026-10-09_do-work-upstream-suggestion-validate-feedback-capture.md`, Request item C1: "`validate-feedback --capture [--run]`, plus the phrases "then capture the accepted ones" and "capture and run" in the same invocation. `--run` is only valid together with `--capture`. Also accept a file path as the input, so a review or audit file keeps its source."*
+
+## Cancelled
+
+- **When:** 2026-10-10T12:59:18Z
+- **Why:** folded into the simplified recapture of 2026-10-10 (maintainer chose the aggressive simplification)
+- **Decided by:** user, via `do-work abandon`

@@ -1,7 +1,7 @@
 ---
 id: REQ-673
 title: 'validate-feedback --capture runs verify-requests on the new UR, prints one combined report, and with --run continues into do-work run UR-NNN'
-status: pending
+status: cancelled
 created_at: 2026-10-09T21:26:55Z
 user_request: UR-149
 domain: general
@@ -13,6 +13,7 @@ effort_estimate: effort-substantive
 depends_on: [REQ-672]
 related: [REQ-670, REQ-671, REQ-672, REQ-674]
 batch: validate-feedback-capture
+completed_at: 2026-10-10T12:59:17Z
 ---
 # validate-feedback --capture Verifies the New UR, Then Optionally Runs It
 ## What
@@ -60,3 +61,9 @@ See `do-work/user-requests/UR-149/input.md` for complete verbatim input (section
 - [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
 - [ ] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
 *Source: upstream suggestion report `do-work/inbox/2026-10-09_do-work-upstream-suggestion-validate-feedback-capture.md`, Request item C4: "Run `verify-requests` on that UR automatically and print one combined report. With `--run`, and only when verification finds no gaps, continue into `do-work run` on just that UR."*
+
+## Cancelled
+
+- **When:** 2026-10-10T12:59:17Z
+- **Why:** folded into the simplified recapture of 2026-10-10 (maintainer chose the aggressive simplification)
+- **Decided by:** user, via `do-work abandon`

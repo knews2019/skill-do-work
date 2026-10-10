@@ -1,7 +1,7 @@
 ---
 id: REQ-654
 title: 'ai-report --kind proposal, root-cause and options writes a decision-first brief for unfinished work'
-status: pending
+status: cancelled
 created_at: 2026-10-09T21:10:00Z
 user_request: UR-144
 domain: general
@@ -15,6 +15,7 @@ batch: ai-report-modes
 write_set: ["skills/do-work-toolbox/actions/ai-report.md", "skills/do-work-toolbox/actions/ai-report-reference.md", "skills/do-work-toolbox/actions/completed-work-presentation-reference.md", "skills/do-work-toolbox/docs/ai-report-guide.md", "skills/do-work-toolbox/SKILL.md", "skills/do-work-toolbox/actions/help.md"]
 claimed_at: 2026-10-10T12:52:18Z
 status_changed_at: 2026-10-10T12:57:09Z
+completed_at: 2026-10-10T12:59:19Z
 ---
 # ai-report --kind Proposal, Root-Cause and Options Writes a Decision-First Brief for Unfinished Work
 ## What
@@ -88,3 +89,9 @@ User added (through the ask tool, recorded in UR-150):
 
 - Requirement 3's option list (and the `options` kind that shares it) always includes the smallest-change option, usually "delete the mechanism" or "do nothing extra", with benefit, risk and cost like every other option, even when the brief or topic did not name it. The report may recommend against it; it may not omit it.
 - Source: the REQ-651 report listed "stamp then delete" and "keep" and missed "delete, stamp nothing", which is what 0.305.88 shipped.
+
+## Cancelled
+
+- **When:** 2026-10-10T12:59:19Z
+- **Why:** folded into the simplified recapture of 2026-10-10 (maintainer chose the aggressive simplification)
+- **Decided by:** user, via `do-work abandon`

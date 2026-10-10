@@ -1,7 +1,7 @@
 ---
 id: REQ-662
 title: 'do-work run --coordinate makes the coordinator shape mandatory and routes from drive the queue'
-status: pending
+status: cancelled
 created_at: 2026-10-09T21:16:07Z
 user_request: UR-146
 domain: general
@@ -13,6 +13,7 @@ effort_estimate: effort-substantive
 depends_on: [REQ-667]
 related: [REQ-663, REQ-664, REQ-665, REQ-666, REQ-667]
 batch: run-coordinate-mode
+completed_at: 2026-10-10T12:59:16Z
 ---
 # do-work run --coordinate Makes the Coordinator Shape Mandatory
 ## What
@@ -64,3 +65,9 @@ See `do-work/user-requests/UR-146/input.md` for complete verbatim input (section
 - [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
 - [ ] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
 *Source: upstream suggestion report `do-work/inbox/2026-10-09_do-work-upstream-suggestion-run-coordinate-mode.md`, Request item A1: "A run mode. `do-work run --coordinate [--fan-out N] [REQ-NNN ...]`, routed also from "drive the queue", "coordinator" and "use the main session as a coordinator"."*
+
+## Cancelled
+
+- **When:** 2026-10-10T12:59:16Z
+- **Why:** folded into the simplified recapture of 2026-10-10 (maintainer chose the aggressive simplification)
+- **Decided by:** user, via `do-work abandon`

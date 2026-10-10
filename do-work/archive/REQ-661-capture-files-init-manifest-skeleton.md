@@ -1,7 +1,7 @@
 ---
 id: REQ-661
 title: 'capture-files init writes a filled manifest skeleton and payload templates, and the capture-reference fence example is fixed'
-status: pending
+status: cancelled
 created_at: 2026-10-09T21:14:04Z
 user_request: UR-145
 domain: backend
@@ -14,6 +14,7 @@ related: [REQ-658, REQ-659, REQ-660]
 batch: cli-ergonomics
 claimed_at: 2026-10-10T12:52:20Z
 status_changed_at: 2026-10-10T12:57:16Z
+completed_at: 2026-10-10T12:59:19Z
 ---
 # capture-files init Writes a Filled Manifest Skeleton and Payload Templates, and the capture-reference Fence Example Is Fixed
 ## What
@@ -64,3 +65,9 @@ See `do-work/user-requests/UR-145/input.md` for complete verbatim input (section
 - [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
 - [ ] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
 *Source: upstream suggestion report `do-work/inbox/2026-10-09_do-work-upstream-suggestion-cli-ergonomics.md`, Request item 4: "`capture-files init <dir>`: write a filled `capture-files` manifest skeleton and the UR/REQ payload templates."*
+
+## Cancelled
+
+- **When:** 2026-10-10T12:59:19Z
+- **Why:** folded into the simplified recapture of 2026-10-10 (maintainer chose the aggressive simplification)
+- **Decided by:** user, via `do-work abandon`
