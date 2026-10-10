@@ -82,7 +82,7 @@ The verdict follows from the stage results:
 
 - **not ready:** any applicable stage failed.
 - **ready:** no stage failed, and live acceptance is verified with current-run evidence.
-- **unknown:** no stage failed, and live acceptance is unassessed.
+- **unknown:** no stage failed, and live acceptance is unassessed or not applicable.
 
 List the gaps: every failed or unassessed stage, with the check or change that would close it. Name the operator next steps the gaps call for (deploy, roll back, repair content, purge a cache, set up recurring monitoring; illustrative, not exhaustive). Do none of them.
 

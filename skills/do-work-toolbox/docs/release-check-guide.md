@@ -16,7 +16,7 @@ The four stages are implementation, integration, deployment and live acceptance,
 |---|---|
 | **ready** | No stage failed, and live acceptance is verified in this run. |
 | **not ready** | An applicable stage failed. |
-| **unknown** | No stage failed, but live acceptance is unassessed. |
+| **unknown** | No stage failed, but live acceptance is unassessed or not applicable. |
 
 Deployment, rollback, content repair and recurring monitoring stay with you. The report names the ones the gaps call for.
 
