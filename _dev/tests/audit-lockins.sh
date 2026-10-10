@@ -597,29 +597,23 @@ elif [ -n "$shell_machinery_rows" ]; then
 fi
 
 # Finding 3: nil-root-guards-git-transaction (REQ-558; pin moved to zero by REQ-598)
-# git_transaction.go opens eight rooted filesystem handles. Seven return the moment
-# os.OpenRoot fails. The eighth, in rollbackFailure, records the failure and keeps going on
-# purpose, so a failed transaction still unstages its paths and still returns a typed
-# incomplete-rollback result when the worktree root cannot be opened.
+# git_transaction.go opens its rooted filesystem handles and each one returns the moment
+# os.OpenRoot fails.
 #
-# REQ-558 traced that one possibly-nil handle to eleven consumers across four loops, found
+# REQ-558 traced one possibly-nil rollback handle to eleven consumers across four loops, found
 # eight per-consumer nil guards load-bearing and a ninth consumer, quarantineAndRollbackPrivate,
 # unguarded and panicking, and pinned the count at exactly 8 while REQ-598 owned the fix.
-# REQ-598 moved the decision to the open instead of adding the ninth guard: rollbackFailure
-# hands a handle that opened to rollbackWithRoot, and when the open fails runs
-# rollbackWithoutRoot, the Git-side half, which never holds a handle at all. Nothing downstream
-# of the open tests the handle any more, so the eight guards were dead and were deleted, and
-# the pin moved from 8 to 0. The package's first no-handle rollback test
-# (TestRollbackWithoutRootHandle…, driven through ExecuteTransaction with the open forced to
-# fail) now stands where the guards stood.
+# REQ-598 moved the decision to the open instead of adding the ninth guard, and the pin moved
+# from 8 to 0. Today ExecuteTransaction opens the one root, returns before any change when the
+# open fails, and passes the handle to rollbackFailure as a required argument, so a rooted
+# call never tests it and no nil path exists.
 #
 # Zero is a ceiling and needs no floor. A nil test on `root` anywhere in this file means a
 # consumer has gone back to answering the handle question for itself, downstream of the one
 # place that already answered it. The pattern is anchored to a guard SHAPE — an `if` on a
 # non-comment line testing root against nil in either operand order — so a comment mentioning
 # `root != nil` does not count. What it still cannot see: a guard rewritten as a helper call
-# (`if hasRoot(root)`), or a rooted call added to rollbackWithoutRoot; the no-handle test is
-# the check for the second.
+# (`if hasRoot(root)`).
 nil_root_guard_file="$repo_root/skills/do-work/tools/do-work-cli/internal/gittransaction/git_transaction.go"
 nil_root_guard_sites="$(rg -n '^[[:space:]]*(\}[[:space:]]*else[[:space:]]+)?if\b[^/]*\b(root [=!]= nil|nil [=!]= root)\b' "$nil_root_guard_file")"
 nil_root_guard_scan_status=$?

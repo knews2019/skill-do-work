@@ -636,14 +636,14 @@ func ExecuteTransaction(ctx context.Context, options TransactionOptions, mutate 
 	}
 	recorder := newMutationRecorder(repositoryRoot, states, createdDirectories)
 	if mutationErr := mutate(recorder); mutationErr != nil {
-		return rollbackFailure(ctx, result, repositoryRoot, states, recorder, FailureMutation, mutationErr)
+		return rollbackFailure(ctx, result, root, repositoryRoot, states, recorder, FailureMutation, mutationErr)
 	}
 	if captureError := recorder.captureTrackedPublications(root); captureError != nil {
-		return rollbackFailure(ctx, result, repositoryRoot, states, recorder, FailureMutation, captureError)
+		return rollbackFailure(ctx, result, root, repositoryRoot, states, recorder, FailureMutation, captureError)
 	}
 	changedPaths, err := changedTargets(ctx, repositoryRoot, states)
 	if err != nil {
-		return rollbackFailure(ctx, result, repositoryRoot, states, recorder, FailureMutation, err)
+		return rollbackFailure(ctx, result, root, repositoryRoot, states, recorder, FailureMutation, err)
 	}
 	result.ChangedPaths = changedPaths
 	result.CreatedPaths = sortedKeys(recorder.createdPaths)
@@ -658,31 +658,31 @@ func ExecuteTransaction(ctx context.Context, options TransactionOptions, mutate 
 	}
 	for _, path := range changedPaths {
 		if _, recorded := recorder.touchedPaths[path]; !recorded {
-			return rollbackFailure(ctx, result, repositoryRoot, states, recorder, FailureMutation,
+			return rollbackFailure(ctx, result, root, repositoryRoot, states, recorder, FailureMutation,
 				fmt.Errorf("changed path %q was not recorded by the mutation", path))
 		}
 		if _, created := recorder.createdPaths[path]; !created && !existedBefore[path] {
-			return rollbackFailure(ctx, result, repositoryRoot, states, recorder, FailureMutation,
+			return rollbackFailure(ctx, result, root, repositoryRoot, states, recorder, FailureMutation,
 				fmt.Errorf("changed path %q was created but was not recorded as created", path))
 		}
 	}
 	if verifyError := verifyPublishedPrivateTargets(root, states, recorder, changedPaths); verifyError != nil {
-		return rollbackFailure(ctx, result, repositoryRoot, states, recorder, FailureMutation, verifyError)
+		return rollbackFailure(ctx, result, root, repositoryRoot, states, recorder, FailureMutation, verifyError)
 	}
 	if !options.Commit || len(changedPaths) == 0 {
 		return result
 	}
 	commitPaths, err := committableChangedPaths(repositoryRoot, states, changedPaths)
 	if err != nil {
-		return rollbackFailure(ctx, result, repositoryRoot, states, recorder, FailureCommit, err)
+		return rollbackFailure(ctx, result, root, repositoryRoot, states, recorder, FailureCommit, err)
 	}
 	if len(commitPaths) == 0 {
-		return rollbackFailure(ctx, result, repositoryRoot, states, recorder, FailureCommit, errors.New("the transaction changed no paths Git can commit"))
+		return rollbackFailure(ctx, result, root, repositoryRoot, states, recorder, FailureCommit, errors.New("the transaction changed no paths Git can commit"))
 	}
 	// Git add can partially stage before failing; remember its exact scope first.
 	recorder.stagingPaths = stringSet(commitPaths)
 	if _, err := runGit(ctx, repositoryRoot, append([]string{"add", "-A", "--"}, commitPaths...)...); err != nil {
-		return rollbackFailure(ctx, result, repositoryRoot, states, recorder, FailureCommit, err)
+		return rollbackFailure(ctx, result, root, repositoryRoot, states, recorder, FailureCommit, err)
 	}
 	headBeforeCommit := currentHeadDespiteCancellation(ctx, repositoryRoot)
 	if _, err := runGit(ctx, repositoryRoot, "commit", "-m", options.CommitMessage); err != nil {
@@ -697,10 +697,12 @@ func ExecuteTransaction(ctx context.Context, options TransactionOptions, mutate 
 		if headAfterCommit := currentHeadDespiteCancellation(ctx, repositoryRoot); headAfterCommit != "" && headAfterCommit != headBeforeCommit {
 			return committedRisk(result, "Git reported a commit failure after HEAD advanced", headAfterCommit)
 		}
-		return rollbackFailure(ctx, result, repositoryRoot, states, recorder, FailureCommit, err)
+		return rollbackFailure(ctx, result, root, repositoryRoot, states, recorder, FailureCommit, err)
 	}
 	commitSHA, err := runGit(ctx, repositoryRoot, "rev-parse", "HEAD")
 	if err != nil {
+		// "HEAD" is deliberate: a non-empty PrimaryCommit blocks rollback of a commit that landed
+		// (finalization_apply.go, near line 30).
 		return committedRisk(result, "the commit succeeded but its ID could not be read", "HEAD")
 	}
 	commitSHA = strings.TrimSpace(commitSHA)
@@ -1041,29 +1043,14 @@ func changedTargets(ctx context.Context, repositoryRoot string, states []targetS
 	return changed, nil
 }
 
-// openRollbackRoot is os.OpenRoot outside tests. The no-handle rollback test replaces it:
-// the real failure is a worktree root the process can traverse but not read, which makes
-// os.OpenRoot fail while `git -C` still works, and uid 0 — where this suite usually runs —
-// bypasses that permission. No other ordinary condition separates the two.
-var openRollbackRoot = os.OpenRoot
-
-func rollbackFailure(ctx context.Context, result TransactionResult, repositoryRoot string, states []targetState, recorder *MutationRecorder, failureKind FailureKind, operationError error) TransactionResult {
+// rollbackFailure restores under the root ExecuteTransaction opened and still holds, so
+// the rooted half of rollback never sees a handle that failed to open.
+func rollbackFailure(ctx context.Context, result TransactionResult, root *os.Root, repositoryRoot string, states []targetState, recorder *MutationRecorder, failureKind FailureKind, operationError error) TransactionResult {
 	// Cancellation stops the requested operation, never the cleanup needed to
 	// restore or safely preserve exact targets.
 	ctx = context.WithoutCancel(ctx)
 	rollback := resultmodel.RollbackResult{Status: resultmodel.RollbackSucceeded, Actions: []string{}, Errors: []string{}}
-	// The rooted handle is decided once, here. A failed open does not end rollback: the
-	// Git-side half still runs so the failed transaction leaves nothing staged, and the
-	// result still names every target it could not touch. Nothing below tests the handle
-	// for nil — the rooted half only ever receives one that opened.
-	root, rootError := openRollbackRoot(repositoryRoot)
-	if rootError != nil {
-		rollback.Errors = append(rollback.Errors, "open rollback root: "+rootError.Error())
-		rollbackWithoutRoot(ctx, repositoryRoot, states, recorder, &rollback)
-	} else {
-		defer root.Close()
-		rollbackWithRoot(ctx, root, repositoryRoot, states, recorder, &rollback)
-	}
+	rollbackWithRoot(ctx, root, repositoryRoot, states, recorder, &rollback)
 	rolledBackPaths := make([]string, 0, len(states))
 	for _, state := range states {
 		rolledBackPaths = append(rolledBackPaths, state.path)
@@ -1083,8 +1070,6 @@ func rollbackFailure(ctx context.Context, result TransactionResult, repositoryRo
 
 // rollbackWithRoot restores and removes under a handle whose open succeeded. rollbackFailure
 // hands it nothing else, so neither this function nor any helper it calls tests the handle.
-// The same targets without a handle are rollbackWithoutRoot's job; the two walk the target
-// kinds in the same order.
 func rollbackWithRoot(ctx context.Context, root *os.Root, repositoryRoot string, states []targetState, recorder *MutationRecorder, rollback *resultmodel.RollbackResult) {
 	for _, state := range states {
 		if state.existingDirtyAllowed {
@@ -1205,65 +1190,6 @@ func rollbackWithRoot(ctx context.Context, root *os.Root, repositoryRoot string,
 		} else {
 			rollback.Actions = append(rollback.Actions, "removed owned created directory "+path)
 		}
-	}
-}
-
-// rollbackWithoutRoot is the half of rollback that needs no rooted handle: every Git-side
-// unstage and restore, and the plain-path restore of existing untracked targets. What the
-// handle would have done — identity checks, quarantine, removing created objects — is not
-// attempted, and each target it would have touched is reported as left in place, so the
-// caller sees exactly which paths may still carry the transaction's bytes. It walks the
-// target kinds in the same order as rollbackWithRoot.
-func rollbackWithoutRoot(ctx context.Context, repositoryRoot string, states []targetState, recorder *MutationRecorder, rollback *resultmodel.RollbackResult) {
-	leftInPlace := func(kind, path string) {
-		rollback.Errors = append(rollback.Errors, kind+" left in place; rollback root is unavailable: "+path)
-	}
-	for _, state := range states {
-		switch {
-		case state.existingDirtyAllowed:
-			if _, unstageError := runGit(ctx, repositoryRoot, "restore", "--staged", "--", state.path); unstageError != nil {
-				rollback.Errors = append(rollback.Errors, fmt.Sprintf("unstage dirty tracked target %s: %v", state.path, unstageError))
-				continue
-			}
-			leftInPlace("dirty tracked target", state.path)
-		case state.privateUntracked:
-			leftInPlace("private target", state.path)
-		case state.existingUntrackedAllowed:
-			restoreExistingUntracked(ctx, repositoryRoot, state, rollback)
-		case state.tracked:
-			dirty, err := targetIsDirty(ctx, repositoryRoot, state.path)
-			if err != nil {
-				rollback.Errors = append(rollback.Errors, err.Error())
-				continue
-			}
-			if !dirty {
-				continue
-			}
-			// A recorded publication is overwritten only after its identity is proved still
-			// ours, and that proof needs the handle. Unstaging it needs only Git.
-			if _, recorded := recorder.publishedTracked[state.path]; recorded {
-				if _, unstageError := runGit(ctx, repositoryRoot, "restore", "--staged", "--", state.path); unstageError != nil {
-					rollback.Errors = append(rollback.Errors, unstageError.Error())
-				}
-				leftInPlace("tracked target", state.path)
-				continue
-			}
-			restoreTrackedFromHead(ctx, repositoryRoot, state.path, rollback)
-		}
-	}
-	for _, path := range deepestFirst(mapKeys(recorder.createdPaths)) {
-		if restoredByTargetLoop(states, path) {
-			continue
-		}
-		if _, staged := recorder.stagingPaths[path]; staged {
-			if _, err := runGit(ctx, repositoryRoot, "rm", "--cached", "--ignore-unmatch", "--", path); err != nil {
-				rollback.Errors = append(rollback.Errors, fmt.Sprintf("unstage created target %s: %v", path, err))
-			}
-		}
-		leftInPlace("created target", path)
-	}
-	for _, path := range deepestFirst(mapKeys(recorder.createdDirectories)) {
-		leftInPlace("created directory", path)
 	}
 }
 
@@ -1414,9 +1340,7 @@ func rootedRegularPreimage(root *os.Root, path string) (os.FileInfo, [sha256.Siz
 }
 
 // rootedOpenSnapshot requires a handle whose open succeeded and does not re-check one.
-// Every os.OpenRoot in this file either returns on failure or, in rollbackFailure, decides
-// once and keeps the rooted half of rollback off a handle that never opened, so no caller
-// reaches here without one.
+// Every os.OpenRoot in this file returns on failure, so no caller reaches here without one.
 func rootedOpenSnapshot(root *os.Root, path, targetDescription, hookStage string) (os.FileInfo, [sha256.Size]byte, []byte, error) {
 	var empty [sha256.Size]byte
 	rootPath := filepath.FromSlash(path)
