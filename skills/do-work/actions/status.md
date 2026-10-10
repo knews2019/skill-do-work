@@ -45,7 +45,7 @@ Each row is one `CommandFinding` (`code` is the class, `next_argv` the remedy) p
 | Order | Class | Shown when | Remedy (`next_argv`) |
 | --- | --- | --- | --- |
 | 1 | C8 finalization pending | doctor reports an unfinished finalization for the REQ | doctor's own `next_argv` |
-| 2 | C3 hand-back landed | claimed and `<run>/REQ-NNN-handback.md` exists | `do-work run` |
+| 2 | C3 hand-back landed | claimed and `<run>/REQ-NNN-handback.md` exists | `do-work run`; none while an integrator worked on it in the last 20 min (phase integration or later) |
 | 3 | C4 needs operator | board column Needs input · Blocked | `do-work clarify` for `pending-answers` or `blocked`; `do-work forensics` for any other status |
 | 4 | C5 waiting on dependencies | board column Pending → Waiting | none; the row names the REQ it waits on |
 | 5 | C6 earmarked | board column Pending → Earmarked | `do-work run REQ-NNN` |

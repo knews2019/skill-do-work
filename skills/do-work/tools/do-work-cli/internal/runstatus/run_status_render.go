@@ -64,6 +64,9 @@ func renderReport(rows []statusRow, report *resultmodel.RunStatusResult, watch b
 			fmt.Fprintf(&output, "  %s  %d min old  %s\n", localFile.Path, localFile.AgeMinutes, fallbackDash(localFile.FirstLine))
 		}
 	}
+	if report.RunDirectory != "" {
+		output.WriteString("run: " + report.RunDirectory + "\n")
+	}
 	output.WriteString(nextLine + "\n")
 	return output.String()
 }
