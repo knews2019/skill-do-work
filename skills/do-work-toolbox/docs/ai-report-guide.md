@@ -1,6 +1,6 @@
 # AI Report
 
-`do-work-toolbox ai-report [UR|REQ|most recent]` creates the canonical detailed stakeholder HTML for one completed UR or REQ. It works for visual UI changes, backend systems, refactors, infrastructure, and other non-visual work by changing the evidence—not by sending detailed reports to another action.
+`do-work-toolbox ai-report [UR|REQ|most recent]` creates the canonical detailed stakeholder HTML for one completed UR or REQ; `--kind proposal|root-cause` writes a decision brief about open work instead. It works for visual UI changes, backend systems, refactors, infrastructure, and other non-visual work by changing the evidence—not by sending detailed reports to another action.
 
 Cross-project portfolio presentation belongs to `present-work`. An animated walkthrough belongs to the separate present-video action. Neither replaces this detailed report.
 

@@ -29,7 +29,7 @@
 
 ## Input
 
-`$ARGUMENTS` is `UR-NNN`, `REQ-NNN`, `most recent`, or blank; the `judge`, `index` and `find` forms below create no report, and the `revise` form below writes a new revision of an existing report. One report invocation covers one UR or one REQ; a revise covers one existing bundle; blank is the explicit `most recent` form.
+`$ARGUMENTS` is `UR-NNN`, `REQ-NNN`, `most recent`, or blank; the `judge`, `index` and `find` forms below create no report, the `revise` form below writes a new revision of an existing report, and the `--kind` form below writes a decision brief about open work. One report invocation covers one UR or one REQ (a `--kind` brief covers one topic, REQ or UR); a revise covers one existing bundle; blank is the explicit `most recent` form.
 
 `judge <bundle-dir>` runs only the Step 7 render check on an existing report bundle and reports its verdict; it creates no report.
 

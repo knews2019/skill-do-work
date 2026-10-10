@@ -60,7 +60,7 @@ The 20-minute boundary is display only. ETA is the frozen `p50_active_minutes` m
 Only these two checks, and only on this machine. Label each line "this machine, this session, now".
 
 - **C2 rows owned by an agent this session spawned.** Read the harness's agent list (for example a `ListAgents` tool) and the modified time of that agent's transcript file. Print the transcript age, then one nudge line the user can paste or approve, such as `Status check: REQ-NNN shows no stamp or commit for N min. Reply with your current step, or hand back if done.` Skip rows owned by other sessions.
-- **Run-local lock files.** For a run-local file whose first line names an owner process, look it up: `ps -p <pid> -o pid=,etime=,command=` when the line carries a pid, otherwise `pgrep -fl -- '<command named in the line>'`. When no owner is found, print the lock's path, its age, and `rm -- '<absolute lock path>'` with the real path filled in. Never run that `rm`.
+- **Run-local lock files.** For a run-local file whose first line names an owner process, look it up: `ps -p <pid> -o pid=,etime=,command=` when the line carries a pid, otherwise `pgrep -fl -- '<command named in the line>'`. When no owner is found, print the lock's path, its age, and `rm -- '<absolute lock path>'` with the real path filled in. Never run that `rm`. A `full-gate.lock` (`actions/fan-out-reference.md` → **Coordinated run rules**) names a writer label, not a process: report its holder and age, never an `rm` line.
 
 ### Step 4: Report
 
