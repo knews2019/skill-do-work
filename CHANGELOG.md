@@ -10,6 +10,14 @@ For the complete release history, read this file and the archives below from new
 - [0.50.0 through 0.64.1](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-13-up-to-v0.64.1.md)
 - [0.1.0 through 0.49.0](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-07-up-to-v0.49.0.md)
 
+## 0.305.116 — run-status Names a Missing Run Folder and Stops Recommending do-work run While an Integrator Works (2026-10-10)
+
+A mistyped `--run` used to read as "no run": landed hand-backs counted as absent, rows turned from hand-back landed into stale claim, and nothing said which folder was read. And a REQ that an integrator was working on was still told to run `do-work run`, which invites a second orchestrator.
+
+- `run-status` text now prints `run: <folder>` above the `next:` line. When the folder does not exist, that line and JSON `run_directory` end with `(not found; run fields absent)`, and the hand-back and manifest fields are absent instead of false. There is still no refusal and no exit-code change. The `--watch` form is unchanged.
+- A C3 (hand-back landed) row whose last activity is in phase integration, review, remediation or re-review, less than 20 minutes ago, has no `next_argv` and says an integrator is working on it now.
+- The C3 rows in `actions/status.md` and `docs/status-guide.md` name this exception, `actions/status.md` tells the agent to relay the `run:` line, and the coordinator stall loop in `actions/fan-out-reference.md` no longer briefs a second integrator for a C3 row that already has one.
+
 ## 0.305.115 — req append-section Refuses a Body That Would Hide Later Sections, and frontmatter set Refuses status and id (2026-10-10)
 
 A section body that left a code fence or HTML comment open used to hide every section written after it, so `advance` read the REQ's phase wrong. Both request writers now refuse the inputs that broke the lifecycle record.
