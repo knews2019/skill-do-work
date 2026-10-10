@@ -1,7 +1,7 @@
 ---
 id: REQ-694
 title: 'Addendum: req append-section refuses a body that hides later sections, and frontmatter set refuses status and id'
-status: pending
+status: claimed
 created_at: 2026-10-10T19:19:53Z
 user_request: UR-154
 addendum_to: REQ-659
@@ -15,6 +15,7 @@ related: [REQ-693, REQ-695, REQ-696]
 batch: review-followups-ur154
 required_lessons: ["_dev/primes/lessons-releases.md"]
 write_set: ["skills/do-work/tools/do-work-cli/internal/corehelpers/request_writers.go", "skills/do-work/tools/do-work-cli/internal/corehelpers/request_writers_test.go"]
+claimed_at: 2026-10-10T19:22:00Z
 ---
 # Addendum: req append-section Refuses a Body That Hides Later Sections, and frontmatter set Refuses status and id
 
