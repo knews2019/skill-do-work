@@ -22,6 +22,7 @@ estimate:
   calculated_at: 2026-10-10T19:23:55Z
   basis:
     - trivial short-circuit
+builder_handback_at: 2026-10-10T19:27:28Z
 ---
 # Sweep Stale Wording Left by the Wave-End Review
 
