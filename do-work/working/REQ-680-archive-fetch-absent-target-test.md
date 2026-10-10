@@ -1,7 +1,7 @@
 ---
 id: REQ-680
 title: '[impact-negligible] Archive fetch test proves a failed fetch never creates a target that did not exist'
-status: pending
+status: claimed
 created_at: 2026-10-10T10:03:50Z
 user_request: UR-152
 domain: testing
@@ -13,6 +13,7 @@ effort_estimate: effort-mechanical
 required_lessons: ["_dev/primes/lessons-releases.md"]
 related: [REQ-679]
 batch: upstream-report-accepts
+claimed_at: 2026-10-10T10:07:06Z
 ---
 # Archive Fetch Test Keeps an Absent Target Absent
 ## What
