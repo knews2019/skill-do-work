@@ -10,6 +10,15 @@ For the complete release history, read this file and the archives below from new
 - [0.50.0 through 0.64.1](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-13-up-to-v0.64.1.md)
 - [0.1.0 through 0.49.0](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-07-up-to-v0.49.0.md)
 
+## 0.305.96 — Interview Cadence Reads AM and PM, So 5:00 PM Is Stored as 17:00 (2026-10-10)
+
+Interview cadence now reads AM and PM in a clock answer, so "daily 5:00 PM" is stored as 17:00 and "weekly Friday 12:30 AM" as 00:30. Before, the AM/PM marker was ignored: the first was stored as 05:00 and the second as 12:30, so the standing slot was 12 hours off.
+
+- `parseInterviewCadence` accepts an optional `am` or `pm` after the `H:MM` clock, in any case and with or without a space, and converts to 24-hour time: 12 AM is 00, 12 PM stays 12, other PM hours add 12.
+- An AM/PM marker on an hour above 12, such as "13:00 PM", is refused. `interviewValidClock` is still the last check.
+- "5pm" without a colon still gives no time.
+- Four rows were added to `TestInterviewStandingSlotsParseOnlyRecurringTiming`.
+
 ## 0.305.95 — Archive Fetch Test Proves a Failed Fetch Never Creates a Target That Did Not Exist (2026-10-10)
 
 A failed archive update must not publish a half-fetched file at a path that held nothing before. Only the case with an existing target had a test, so removing the private staging step would have broken the absent-target guarantee without any test noticing.

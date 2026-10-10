@@ -13,7 +13,6 @@ queue_state: [21 pending, 0 pending-answers, 0 blocked, 0 blocked-archive-collis
 
 - REQ-682: A hidden Timeline view no longer redraws its rows when the user scrolls another view — claimed 2026-10-10T10:07:06Z — writer: t2s-Virtual-Machine.local:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2
 
-- REQ-683: Interview cadence parsing reads AM and PM, so a 5:00 PM answer becomes 17:00 and 12:30 AM becomes 00:30 — claimed 2026-10-10T10:07:35Z — writer: t2s-Virtual-Machine.local:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2
 
 - REQ-684: Qualify tells a missing Implementation Summary section apart from a section that names no files — claimed 2026-10-10T10:07:35Z — writer: t2s-Virtual-Machine.local:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2
 
