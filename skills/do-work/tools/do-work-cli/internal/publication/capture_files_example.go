@@ -78,6 +78,8 @@ func handleCaptureFilesExample(executionContext commandruntime.ExecutionContext,
 	output.WriteString("# <created-at> (whole-second UTC, e.g. 2026-01-26T10:00:00Z), <word-count>, and the angle-bracket body text.\n")
 	if rawInputPath == "" {
 		output.WriteString("# Rerun with --raw-input <file> to get the Full Verbatim Input block derived from the raw input bytes.\n")
+	} else {
+		output.WriteString("# Leave the \"> \" lines under ## Full Verbatim Input as printed, even where they contain UR-NNN or REQ-NNN: they must match the raw input byte for byte.\n")
 	}
 	output.WriteString("# Then check it: capture-files --manifest " + manifestPath + " --dry-run\n")
 	// The ==> delimiter lines are safe to split on: every raw-input line inside the UR part is "> "-prefixed by containment.
