@@ -2,7 +2,7 @@
 
 Run dir: do-work/runs/work-2026-10-10-100748/
 Concurrency: 4 (UR-152 batch upstream-report-accepts, eight REQs claimed in two claims of four; wave A = REQ-679, REQ-680, REQ-681, REQ-682, wave B = REQ-683, REQ-684, REQ-685, REQ-686; coordinator shape: a pre-dispatch agent writes the pre-dispatch sections, briefs and probes, one builder per REQ in its own worktree, one integrator per REQ in series, order REQ-679, REQ-680, REQ-681, REQ-682, REQ-683, REQ-684, REQ-685, REQ-686)
-Status: running (wave A dispatched 2026-10-10T10:26:48Z at b629e5cd)
+Status: consumed   # UR-152 closed: REQ-681 0.305.94, REQ-680 0.305.95, REQ-683 0.305.96, REQ-684 0.305.97, REQ-679 0.305.98, REQ-685 0.305.99, REQ-682 0.305.100, REQ-686 0.305.101 (1fc1e3e6); all eight archived under do-work/archive/UR-152/
 Set aside: none
 Hand-back emphasis note: none
 Gate record (coordinator, once at the dispatch revision, then per REQ): run `bash _dev/tests/maintainer-verify.sh` on a quiet machine; for each Route B REQ (679, 682, 685) record the green gate with `advance REQ-NNN --request-path <working REQ path> --gate-arg bash --gate-arg _dev/tests/maintainer-verify.sh --gate-exit-status 0 -- bash do-work/runs/work-2026-10-10-100748/REQ-NNN-preflight-probe.sh`. Route A REQs (680, 681, 683, 684, 686) have no pre-flight phase.

@@ -1,0 +1,12 @@
+# REQ-681 integration report (appending a section entry reuses the shared VisibleSections reader)
+
+- Release: 0.305.94, "Section Appends No Longer Duplicate a Heading in CRLF Files, After Trailing Spaces or Inside a Code Fence". Archive: do-work/archive/REQ-681-append-section-entry-visible-sections.md. UR-152 stays open.
+- Commits: pre 0362663f (run artifacts), merge 61a42672 (full 61a42672f13670843a327a0c3b46a9dce3aa7307, builder commit 8994fd85), finalization f6694f7c (no metadata commit). Finalization record: phase cleanup_complete, no blocked paths or reason codes, first try. Worktree and branch removed.
+- Gate: maintainer-verify with DO_WORK_FAST_STAGE_REUSE=off, exit 0, wall 139 s (load 4.71 at start, none running). Probe REQ-681-probe.sh exit 0 through advance. contract-regressions.sh after finalization: exit 0 (lesson links fine; no lesson added).
+- Review: 97%, Pass, Low risk, no important findings, 3 minor/nit findings, all impact-negligible, report only. F1: a line starting with 3+ of one punctuation mark (such as "...") left unclosed before the section hides it, so each append would add another heading; same rule as markdownSectionBytes, no REQ file in do-work/ has such a line. F2: a last section ending in an unclosed fence or comment takes the "middle" path, untested (the builder's discovered task, report only). F3: the checkpoint fallback can adopt a trailing-space "In Progress (interrupted)" heading. Anti-bloat count: 0 new helpers/options, 1 named test file. Restatement sweep: no stale text found.
+- Heavy lanes at 61a42672 (all executed, exit 0): do-work-cli-integrations 69 s, staged-skills 36 s, updater 70 s, installer 26 s.
+- Timing events recorded: builder-work, handback-merge, verification-gate (gate), review, verification-gate (heavy drain); folded into the REQ's ## Timing.
+- Qualify warning QUALIFY-NEW-FILE-UNWIRED on the new Go _test.go file: judged not a defect (go test discovers it).
+- Notes: coordinator had not stamped dispatch_at, so I stamped it from the manifest dispatch instant 2026-10-10T10:26:48Z. manifest.md (coordinator's dispatch update) was committed in my "run artifacts" commit per the guide.
+- Left dirty under ROOT: only untracked REQ-679/680/682/683/684/685/686-handback.md (siblings', not mine) and this report (untracked for the coordinator's checkpoint). do-work/working/baseline.json was clean.
+- Discovered tasks: none beyond report-only F2. Merged build refused nothing new.
