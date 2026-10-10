@@ -29,6 +29,7 @@ import (
 //	queue-kanban next-version <patch|minor|major> [--repo-root DIR] [--version-file PATH]
 //	queue-kanban verify       [--repo-root DIR]
 //	queue-kanban frontmatter get FILE FIELD [--normalize] [--in-set SET]
+//	queue-kanban request-commits [--repo-root DIR] REQ-NNN [REQ-NNN ...]
 //	queue-kanban now
 //
 // Invoking the binary with no subcommand prints the model summary.
@@ -82,8 +83,10 @@ func main() {
 		runNowCommand(subcommandArgs)
 	case "frontmatter":
 		os.Exit(runFrontmatterCommand(subcommandArgs, os.Stdout, os.Stderr))
+	case "request-commits":
+		os.Exit(runRequestCommitsCommand(subcommandArgs, os.Stdout, os.Stderr, runGitCommand))
 	default:
-		fmt.Fprintf(os.Stderr, "queue-kanban: unknown subcommand %q (want summary | generate | serve | next-req | next-version | verify | now | frontmatter | open-work)\n", subcommand)
+		fmt.Fprintf(os.Stderr, "queue-kanban: unknown subcommand %q (want summary | generate | serve | next-req | next-version | verify | now | frontmatter | open-work | request-commits)\n", subcommand)
 		os.Exit(2)
 	}
 }

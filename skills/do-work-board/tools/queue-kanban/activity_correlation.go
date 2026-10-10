@@ -116,20 +116,28 @@ func parseCorrelationLog(logOutput []byte) []*correlatedCommit {
 func correlateCommitsToRequests(logOutput []byte) map[string][]time.Time {
 	instantsById := map[string][]time.Time{}
 	for _, commit := range parseCorrelationLog(logOutput) {
-		requestIds := map[string]bool{}
-		for _, path := range commit.touchedPaths {
-			if match := requestPathPattern.FindStringSubmatch(path); match != nil {
-				requestIds[match[1]+match[2]] = true
-			}
-		}
-		for _, match := range requestSubjectPrefixPattern.FindAllStringSubmatch(commit.subject, -1) {
-			requestIds[match[1]] = true
-		}
-		for requestId := range requestIds {
+		for requestId := range requestIdsCreditedByCommit(commit) {
 			instantsById[requestId] = append(instantsById[requestId], commit.committedAt)
 		}
 	}
 	return instantsById
+}
+
+// requestIdsCreditedByCommit is the one commit-to-REQ attribution rule: the
+// REQ ids of every touched REQ path plus every [REQ-NNN] subject token. The
+// board's activity lines and `request-commits` (request_commits.go) both call
+// it, so the two can never credit different commits.
+func requestIdsCreditedByCommit(commit *correlatedCommit) map[string]bool {
+	requestIds := map[string]bool{}
+	for _, path := range commit.touchedPaths {
+		if match := requestPathPattern.FindStringSubmatch(path); match != nil {
+			requestIds[match[1]+match[2]] = true
+		}
+	}
+	for _, match := range requestSubjectPrefixPattern.FindAllStringSubmatch(commit.subject, -1) {
+		requestIds[match[1]] = true
+	}
+	return requestIds
 }
 
 // activityEvent is one entry of a REQ's union stream.
