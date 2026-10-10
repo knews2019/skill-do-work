@@ -10,6 +10,14 @@ For the complete release history, read this file and the archives below from new
 - [0.50.0 through 0.64.1](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-13-up-to-v0.64.1.md)
 - [0.1.0 through 0.49.0](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-07-up-to-v0.49.0.md)
 
+## 0.305.95 — Archive Fetch Test Proves a Failed Fetch Never Creates a Target That Did Not Exist (2026-10-10)
+
+A failed archive update must not publish a half-fetched file at a path that held nothing before. Only the case with an existing target had a test, so removing the private staging step would have broken the absent-target guarantee without any test noticing.
+
+- `TestTotalFailurePreservesTheTargetAndLeavesNoScratch` is now a table with a `pre-existing target` row and an `absent target` row.
+- The absent row seeds no file, forces the same failing fetch, and checks that the target path still does not exist and that no scratch file is left beside it.
+- Test only. `archivefetch` production code is unchanged.
+
 ## 0.305.94 — Section Appends No Longer Duplicate a Heading in CRLF Files, After Trailing Spaces or Inside a Code Fence (2026-10-10)
 
 Blocking a request, cancelling it and recovering an interrupted claim each add a line to a section such as `## Blocked`. The old line scanner compared whole lines, so a CRLF file, a heading with trailing spaces or an example heading inside a code fence ended with a second `## Blocked` heading or an entry written in the wrong place.
