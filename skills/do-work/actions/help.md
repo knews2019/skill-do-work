@@ -22,6 +22,7 @@ do-work — core request and queue orchestration
   do-work cleanup                   Consolidate completed archive records
   do-work commit                    Build focused, traceable commits
   do-work forensics                 Diagnose queue and archive integrity
+  do-work status [REQ] [--watch]    Show each in-flight REQ's class, ETA, and remedy
   do-work roadmap [scope]           Summarize ready, blocked, stale, and completed work
   do-work handoff                   Hand off to a fresh session with a paste-ready restart prompt
   do-work version                   Show the installed version and recent releases

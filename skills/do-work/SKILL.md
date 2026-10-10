@@ -1,7 +1,7 @@
 ---
 name: do-work
 description: Core request capture, queue orchestration, verification, review, and maintenance for the modular do-work suite
-argument-hint: "capture-request: <task> | run [REQ|UR] | run-with-recovery [REQ|UR] | run-simple-reqs | verify-requests [REQ|UR|--against source] | review-work [REQ|UR] | clarify | stakeholder-answers [REQ] | abandon [REQ|UR] | cleanup | commit | forensics | roadmap | handoff | version | update | recap | help"
+argument-hint: "capture-request: <task> | run [REQ|UR] | run-with-recovery [REQ|UR] | run-simple-reqs | verify-requests [REQ|UR|--against source] | review-work [REQ|UR] | clarify | stakeholder-answers [REQ] | abandon [REQ|UR] | cleanup | commit | forensics | status [REQ] [--watch] | roadmap | handoff | version | update | recap | help"
 ---
 
 # Do-Work Core Skill
@@ -36,6 +36,7 @@ Check these patterns in order; first match wins.
 | `verify`, `verify-requests`, `check`, `review requests` | `./actions/verify-requests.md` |
 | `review`, `review-work`, `review code`, `audit implementation` | `./actions/review-work.md` |
 | `stakeholder-answers`, `stakeholder reply`, `stakeholder answers` | `./actions/stakeholder-answers.md` |
+| `status`, `status and ETA`, `eta`, `is it stuck`, `stuck`, `why is REQ-N taking so long`, `how do I unblock`, `why is REQ-N in` | `./actions/status.md` |
 | `clarify`, `questions`, `pending answers`, `blocked` | `./actions/clarify.md` |
 | `abandon`, `cancel`, `wont-do`, `won't do` with an optional REQ/UR target | `./actions/abandon.md` |
 | `cleanup`, `organize archive`, `fix archive` | `./actions/cleanup.md` |

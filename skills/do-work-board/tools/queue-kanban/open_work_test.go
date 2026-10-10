@@ -1,8 +1,13 @@
 package main
 
 import (
+	"encoding/json"
+	"errors"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 )
 
 // renderOpenWorkDigest is the shared render-to-string helper for these tests.
@@ -169,4 +174,61 @@ func sectionAfterHeading(t *testing.T, digestOutput string, sectionHeading strin
 		sectionBody = sectionBody[:sectionEnd]
 	}
 	return sectionBody
+}
+
+// The JSON mode is what do-work-cli run-status reads, so its column and reason
+// are a claim about the board's own partition. Pinned through the full board
+// build (paired-predicate-drift): a blocked REQ with an unmet dependency waits,
+// an assigned pending REQ is earmarked, and each carries the reason the
+// bucketColumns arm that placed it wrote.
+func TestOpenWorkJSONPlacesWaitingAndEarmarkedTicketsWithTheirReasons(t *testing.T) {
+	repositoryRoot := t.TempDir()
+	for _, directoryName := range []string{"queue", "working"} {
+		if err := os.MkdirAll(filepath.Join(repositoryRoot, "do-work", directoryName), 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	fixtureFiles := map[string]string{
+		"queue/REQ-701-waiting.md":   "---\nid: REQ-701\ntitle: Waiting fixture\nstatus: blocked\nblocked_by: [vendor key]\ndepends_on: [REQ-999]\n---\n",
+		"queue/REQ-702-earmarked.md": "---\nid: REQ-702\ntitle: Earmarked fixture\nstatus: pending\nassigned_to: \"cloud-alpha\"\n---\n",
+		"working/REQ-703-claimed.md": "---\nid: REQ-703\ntitle: Claimed fixture\nstatus: claimed\nclaimed_at: 2026-10-10T10:00:00Z\n---\n",
+	}
+	for relativePath, contents := range fixtureFiles {
+		if err := os.WriteFile(filepath.Join(repositoryRoot, "do-work", relativePath), []byte(contents), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	board, err := buildBoard(repositoryRoot, time.Date(2026, 10, 10, 11, 0, 0, 0, time.UTC), defaultRecentWindow, func(string, string) (time.Time, bool) {
+		return time.Time{}, false
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var factsBuffer strings.Builder
+	noGitRunner := func(string, ...string) ([]byte, error) { return nil, errors.New("no git in this fixture") }
+	if err := writeOpenWorkJSON(&factsBuffer, board, noGitRunner); err != nil {
+		t.Fatal(err)
+	}
+	var facts openWorkFacts
+	if err := json.Unmarshal([]byte(factsBuffer.String()), &facts); err != nil {
+		t.Fatalf("open-work JSON does not decode: %v\n%s", err, factsBuffer.String())
+	}
+	if facts.StaleClaimThresholdMinutes != int(staleClaimThreshold/time.Minute) || facts.GeneratedAt != "2026-10-10T11:00:00Z" {
+		t.Fatalf("top level = %+v", facts)
+	}
+	requestsById := map[string]openWorkRequestFacts{}
+	for _, request := range facts.Requests {
+		requestsById[request.Id] = request
+	}
+	waiting, earmarked, claimed := requestsById["REQ-701"], requestsById["REQ-702"], requestsById["REQ-703"]
+	if waiting.Column != "pending-waiting" || waiting.Status != "blocked" || !strings.Contains(waiting.PlacementReason, "Waiting on dependencies") ||
+		len(waiting.UnmetDependencies) != 1 || waiting.UnmetDependencies[0] != "REQ-999" {
+		t.Fatalf("blocked REQ with an unmet dependency = %+v, want pending-waiting with its reason and REQ-999 unmet", waiting)
+	}
+	if earmarked.Column != "pending-earmarked" || earmarked.AssignedTo != "cloud-alpha" || !strings.Contains(earmarked.PlacementReason, "Earmarked for cloud-alpha") {
+		t.Fatalf("assigned pending REQ = %+v, want pending-earmarked with its reason", earmarked)
+	}
+	if claimed.Column != "claimed" || claimed.LastActivityAt == "" {
+		t.Fatalf("claimed REQ = %+v, want column claimed with the board's last activity (its claim stamp)", claimed)
+	}
 }

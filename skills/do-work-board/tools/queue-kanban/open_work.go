@@ -1,9 +1,11 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"strings"
+	"time"
 )
 
 // The `open-work` subcommand: the terminal answer to "what is in flight right
@@ -21,6 +23,12 @@ import (
 // carries every REQ, open ones included, and is not a model for this digest.)
 //
 // This digest is read-only.
+//
+// `--format json` prints the same open tickets as machine facts for
+// do-work-cli run-status, which cannot import this module: the column, the
+// sentence bucketColumns wrote for it, and, for claimed tickets, the last
+// activity attachRequestActivity computes for the HTML board. One home for the
+// partition and the correlation; the reader only quotes them.
 
 // openWorkCounts is the headline breakdown: the open total plus the per-bucket
 // split behind it. Open means "not terminally resolved" — bucketColumns puts
@@ -162,4 +170,68 @@ func widestRequestId(tickets []*RequestTicket) int {
 		}
 	}
 	return widestWidth
+}
+
+// openWorkFacts is the `open-work --format json` document. Keys are snake_case
+// because the reader is do-work-cli, whose results use that case.
+type openWorkFacts struct {
+	GeneratedAt                string                 `json:"generated_at"`
+	StaleClaimThresholdMinutes int                    `json:"stale_claim_threshold_minutes"`
+	Requests                   []openWorkRequestFacts `json:"requests"`
+}
+
+type openWorkRequestFacts struct {
+	Id                string   `json:"id"`
+	Title             string   `json:"title"`
+	Status            string   `json:"status"`
+	Column            string   `json:"column"`
+	PlacementReason   string   `json:"placement_reason"`
+	UnmetDependencies []string `json:"unmet_dependencies"`
+	AssignedTo        string   `json:"assigned_to"`
+	LastActivityAt    string   `json:"last_activity_at,omitempty"`
+	LastActivityKind  string   `json:"last_activity_kind,omitempty"`
+	LastActivityPhase string   `json:"last_activity_phase,omitempty"`
+}
+
+// writeOpenWorkJSON renders every open ticket with the column the board put it
+// in. Activity comes from the board's own correlation over one worktree-agent
+// git read, the call attachVerifyFindingsAndRequestActivity makes.
+func writeOpenWorkJSON(outputWriter io.Writer, board *Board, runner gitCommandRunner) error {
+	var activityData generatedBoardData
+	attachRequestActivity(&activityData, board, board.GeneratedAt, runner, readWorktreeAgentGitState(board.RepoRoot, runner))
+
+	facts := openWorkFacts{
+		GeneratedAt:                formatTimestamp(board.GeneratedAt),
+		StaleClaimThresholdMinutes: int(staleClaimThreshold / time.Minute),
+		Requests:                   []openWorkRequestFacts{},
+	}
+	for _, columnGroup := range []struct {
+		columnName string
+		tickets    []*RequestTicket
+	}{
+		{"pending-ready", board.Columns.PendingReady},
+		{"pending-waiting", board.Columns.PendingWaiting},
+		{"pending-earmarked", board.Columns.PendingEarmarked},
+		{"claimed", board.Columns.Claimed},
+		{"needs-input-or-blocked", board.Columns.NeedsInputOrBlocked},
+	} {
+		for _, ticket := range columnGroup.tickets {
+			activity := activityData.RequestActivity[ticket.RequestId]
+			facts.Requests = append(facts.Requests, openWorkRequestFacts{
+				Id:                ticket.RequestId,
+				Title:             ticket.Title,
+				Status:            openWorkStatusLabel(ticket),
+				Column:            columnGroup.columnName,
+				PlacementReason:   ticket.PlacementReason,
+				UnmetDependencies: append([]string{}, ticket.UnmetDependencies...),
+				AssignedTo:        ticket.AssignedTo,
+				LastActivityAt:    activity.LastActivityAt,
+				LastActivityKind:  activity.LastActivityKind,
+				LastActivityPhase: activity.LastActivityPhase,
+			})
+		}
+	}
+	encoder := json.NewEncoder(outputWriter)
+	encoder.SetIndent("", "  ")
+	return encoder.Encode(facts)
 }

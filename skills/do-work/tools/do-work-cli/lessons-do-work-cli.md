@@ -139,6 +139,7 @@ Accumulated lessons for [`prime-do-work-cli.md`](prime-do-work-cli.md). Read thi
 - `internal/atomicfile/` owns safe existing-file replacement and exclusive marker creation.
 - `internal/gittransaction/` owns dirty-target checks, rollback, staging, and commit guards.
 - `internal/ownedprocess/` is the sole owner of owned-process-group launch and teardown for `gittransaction`, `toolboxcommands`, and `heavyverification`. `ConfigureGroup` reports whether group ownership was established rather than deciding what that means, so one API serves a caller that must fail closed and a caller that must degrade. `TerminateGroup` blocks until the group is gone, signalling descendants level-by-level before their parents. `nextselection`'s blocked probe keeps its own runner for its signal-forwarding and `128+signal` status contract.
+- `internal/runstatus/` owns read-only `run-status`: one class (C1–C8), ETA and remedy per in-flight REQ, from the board's `open-work --format json` facts passed as `--board-facts`, frontmatter, the run directory and builder branches. It never builds or launches the board and never looks up a process.
 
 ## Package direction
 

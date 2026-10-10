@@ -192,6 +192,13 @@ type RequestTicket struct {
 	// in the same commit as the other. "" when absent, which reads as unassigned.
 	AssignedTo string
 
+	// Derived by bucketColumns, in the same switch arm that picks the column, so
+	// the column and the sentence explaining it cannot drift apart. Plain words
+	// restating actions/board.md (Needs input · Blocked, Waiting on
+	// dependencies) and the Earmarked badge tooltip. Empty for terminal tickets.
+	// Read by `open-work --format json` (do-work-cli run-status quotes it).
+	PlacementReason string
+
 	// Derived by annotateWriteSetOverlap after bucketing — never read from
 	// frontmatter. Other pending/claimed REQ ids whose write_set intersects this
 	// one's, in id order. Display only (badge + drawer row): it makes contention
@@ -1724,15 +1731,20 @@ func bucketColumns(tickets []*RequestTicket, now time.Time, recentWindow time.Du
 			columns.Pending = append(columns.Pending, ticket)
 			switch {
 			case ticket.Status != "pending" || len(ticket.UnmetDependencies) > 0:
+				ticket.PlacementReason = "Waiting on dependencies: it stays under Pending until every depends_on target is source-ready (terminally successful, or claimed with a commit)."
 				columns.PendingWaiting = append(columns.PendingWaiting, ticket)
 			case ticket.AssignedTo != "":
+				ticket.PlacementReason = fmt.Sprintf("Earmarked for %s: an advisory claim marker, not a lock. Another session's default run skips it; naming it explicitly overrides that.", ticket.AssignedTo)
 				columns.PendingEarmarked = append(columns.PendingEarmarked, ticket)
 			default:
+				ticket.PlacementReason = "Ready to work: every dependency is source-ready and no session is earmarked, so the run's default scan can take it."
 				columns.PendingReady = append(columns.PendingReady, ticket)
 			}
 		case ticket.Status == "claimed":
+			ticket.PlacementReason = "Claimed: a run picked it up. The claim is a record, not a lock."
 			columns.Claimed = append(columns.Claimed, ticket)
 		case isNeedsInputOrBlockedStatus(ticket.Status):
+			ticket.PlacementReason = "Needs input · Blocked: the operator-actionable inbox. Its question, external blocked condition or repair waits on a person."
 			columns.NeedsInputOrBlocked = append(columns.NeedsInputOrBlocked, ticket)
 		case isTerminalResolvedStatus(ticket.Status):
 			if ticket.CompletionAnomaly {
@@ -1746,6 +1758,7 @@ func bucketColumns(tickets []*RequestTicket, now time.Time, recentWindow time.Du
 			}
 		default:
 			ticket.StatusUnrecognized = true
+			ticket.PlacementReason = fmt.Sprintf("Needs input · Blocked: status %q is not in the Schema Read Contract, so it is parked here to stay visible.", ticket.OriginalStatus)
 			columns.NeedsInputOrBlocked = append(columns.NeedsInputOrBlocked, ticket)
 			statusWarnings = append(statusWarnings, fmt.Sprintf(
 				"%s has unrecognized status %q — shown under Needs input / Blocked; fix: edit its status: to a Schema Read Contract value (actions/work-reference.md) or run do-work forensics",
