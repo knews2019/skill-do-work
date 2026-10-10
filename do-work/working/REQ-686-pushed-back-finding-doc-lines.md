@@ -2,6 +2,13 @@
 id: REQ-686
 title: '[impact-negligible] Short doc and comment lines record the answers to three pushed-back upstream findings'
 status: claimed
+route: A
+estimate:
+  p50_active_minutes: 5
+  confidence: high
+  basis:
+  - trivial short-circuit
+  calculated_at: 2026-10-10T10:18:29Z
 created_at: 2026-10-10T10:03:50Z
 user_request: UR-152
 domain: general
@@ -11,6 +18,7 @@ maintenance: false
 impact: impact-negligible
 effort_estimate: effort-mechanical
 required_lessons: ["_dev/primes/lessons-releases.md"]
+write_set: ["skills/do-work/tools/do-work-cli/lessons-do-work-cli.md", "skills/do-work/tools/do-work-cli/internal/heavyverification/heavy_commands.go"]
 related: [REQ-685]
 batch: upstream-report-accepts
 claimed_at: 2026-10-10T10:07:36Z
@@ -56,3 +64,17 @@ See `do-work/user-requests/UR-152/input.md` for complete verbatim input. No queu
 - [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
 - [ ] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
 *Source: upstream report 2026-10-10, accepted in the validate-feedback triage of this session.*
+
+## Triage
+
+**Route: A** - Simple
+
+**Reasoning:** The REQ names two one-line additions, their exact files and the sentence each must carry, and states that the third item is dropped. Documentation and one Go comment only. No location or pattern needs discovery.
+
+**Planning:** Not required
+
+## Plan
+
+**Planning not required** - Route A: Direct implementation
+
+*Skipped by work action*

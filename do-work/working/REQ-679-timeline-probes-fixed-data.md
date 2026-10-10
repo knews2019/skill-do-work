@@ -2,6 +2,16 @@
 id: REQ-679
 title: '[impact-negligible] Timeline browser probes that depend on live queue dates use the fixed-fixture helper, and the lost Previous and Next assertions return'
 status: claimed
+route: B
+estimate:
+  p50_active_minutes: 25
+  confidence: medium
+  basis:
+  - Route B
+  - 1-file write set
+  - 4 acceptance criteria
+  - browser evidence
+  calculated_at: 2026-10-10T10:11:23Z
 created_at: 2026-10-10T10:03:50Z
 user_request: UR-152
 domain: testing
@@ -11,6 +21,7 @@ maintenance: false
 impact: impact-negligible
 effort_estimate: effort-substantive
 required_lessons: ["_dev/primes/lessons-releases.md"]
+write_set: ["skills/do-work-board/tools/queue-kanban/timeline_browser_probe_test.go"]
 related: [REQ-680]
 batch: upstream-report-accepts
 claimed_at: 2026-10-10T10:07:05Z
@@ -57,3 +68,56 @@ See `do-work/user-requests/UR-152/input.md` for complete verbatim input. No queu
 - [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
 - [ ] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
 *Source: upstream report 2026-10-10, accepted in the validate-feedback triage of this session.*
+
+## Triage
+
+**Route: B** - Medium
+
+**Reasoning:** The outcome is clear (fixed fixtures for the live-data timeline probes, plus the missing Previous and Next assertions), but which of the other nine live-queue probes depend on dates or counts has to be read out of the probe bodies, and the new assertions go into an existing 3,900-line probe file with a shared stub style. Exploration records the facts; no plan is needed.
+
+**Planning:** Not required
+
+## Plan
+
+**Planning not required** - Route B: Exploration-guided implementation
+
+*Skipped by work action*
+
+## Exploration
+
+Orchestrator exploration, 2026-10-10, read-only, at 85445ac4. All paths are under `skills/do-work-board/tools/queue-kanban/`.
+
+- **The fixture helper to reuse.** `generateLiveSiteInDirAtRangeEnd` is at `timeline_browser_probe_test.go:1798-1819`. It builds a temp tree with `writeFixtureRepoFile` (one open `do-work/queue/REQ-0001-open.md` created two hours ago, one completed `do-work/archive/REQ-0002-done.md` 35 days ago), calls `buildBoard(fixtureRoot, now, 7*24*time.Hour, stubGitLookupNever)` and `generateStaticSite`. Its only caller is `TestBrowserBehaviorTimelineTrailingWindowsEndAtNow` (`:1821`). The live-tree twin is `generateLiveSiteInDir` (`generate_test.go:342`), which resolves the repo root and builds the real tree.
+- **The two named probes and the data they read.** `TestBrowserBehaviorTimelineProseDescribesOnlyTheWindowOnScreen` (`:2356`) types the fixed week 2026-07-27 to 2026-08-02 (`typeWindow`, `:2406`) and then asserts the summary contains "still open" (`:2467`), so that week must hold at least one drawn row and one that is still open. It also filters the search box with `REQ-164` (`:2414`) and asserts the forecast and excluded paragraphs (P2, `:2495-2503`). `TestBrowserBehaviorTimelineNowAndFitAllLandSomewhereReadable` (`:2020`) filters with `REQ-164` (`:2094`) and asserts clause (4) (filtered fit under half of the unfiltered span, `:2262`) and clause (6) (a one-hour window pinned at the filtered extent with more than one window of room to its right, `:2339-2353`). So a fixture tree must hold a REQ whose id matches `REQ-164`, a row with a long span elsewhere so the filtered fit is under half, and an open REQ so the range ends at now (the helper's own comment, `:1790-1797`, says why).
+- **The live-queue regime branch that must become a refusal.** Clause (3) (`:2234-2260`) reads the forward arrow's own disabled state on the trailing 7 days and checks the press against it in either regime. That is the two-branch conditional the REQ asks to remove. With the open-REQ fixture the trailing window ends at now, so the forward step is refused (the helper comment and clause (6) describe the same refusal).
+- **No probe presses Previous or Next on a trailing window.** `grep` finds `timeline-period-prev` only in the toolbar-state list at `:2053`, and `timeline-period-next` is pressed at `:2084` (afterStep) and `:2142` (narrowedThenStep), both read through `toolbarState` (`:2049-2070`), which already returns `startMs`, `endMs`, `spanMs`, `drawnSegments` and `disabled` for the five toolbar buttons. The new press-Previous-then-Next capture reuses `toolbarState` and the Go-side `toolbarState` struct (`:2183-2193`).
+- **The other nine probes that call `generateLiveSiteInDir`.** Lines 629 (pan), 901 (drag renders once per frame), 1328 (detail drawer), 1599 (range fields), 2545 (pointer and keyboard), 3176 (pointer capture), 3382 (one tab stop), 3564 (rows under user-request headers), 3832 (group headers in both themes). `:1655` types 2099-12-31 on purpose (out of range), which does not depend on the queue. The REQ expects two or three at most to depend on queue dates or counts; the builder reads each body and records the verdict.
+- **How a browser probe runs.** `runBrowserBehaviorProbeInDirectory` (`browser_probe_test.go`) drives headless Chromium over a DevTools pipe. The lane is off unless `QUEUE_KANBAN_BROWSER_PROBES=on`; `lookupBrowserForBehaviorProbe` (`browser_probe_test.go:70`) then uses `QUEUE_KANBAN_BROWSER` as an explicit binary or falls back to PATH names, and otherwise calls `t.Skipf`. A skipped probe is not a pass. On this machine export `QUEUE_KANBAN_BROWSER="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"`.
+- **Versioning.** `_dev/primes/prime-kanban-board.md` § Conventions: the board has no version of its own. A test-only change under `skills/do-work-board/` is a shipped-path change, so the integrator releases it with a normal patch bump and a root `CHANGELOG.md` entry. Nothing in this REQ edits a version file.
+- **Merge seam with REQ-682.** REQ-682 (the hidden-timeline scroll guard) edits `web/board-timeline.js` and may add one browser probe. This REQ owns `timeline_browser_probe_test.go`. The REQ-682 brief tells its builder to put any kept probe in `timeline_scroll_browser_probe_test.go`, so the two branches share no file.
+- **Required-lessons consult at claim.** `do-work/lessons-index.md` matches no new satellite: `lessons-releases.md` (666 tokens) stays. `lessons-kanban-board.md` (5912 tokens) and `lessons-do-kanban.md` (8815 tokens) stay dropped for budget as captured; the prime's Traps and Conventions on measured browser values and page-address evidence apply (return `location.href` with each measurement, already the probe style).
+
+*Generated by Explore agent*
+
+## Scope
+
+**Files I will touch:**
+- `skills/do-work-board/tools/queue-kanban/timeline_browser_probe_test.go` (modify): fixed fixtures for the live-data probes, Previous and Next assertions
+
+**Files I will NOT touch:** `skills/do-work-board/tools/queue-kanban/web/`, every Go production file, `generate_test.go` (the live-tree helper stays), `skills/do-work-board/tools/queue-kanban/timeline_scroll_browser_probe_test.go` (REQ-682's home), `CHANGELOG.md`, `VERSION`, anything under `do-work/` (the release and the REQ record are the integrator's).
+
+**Acceptance criteria (restated from the REQ):**
+- [ ] `TestBrowserBehaviorTimelineProseDescribesOnlyTheWindowOnScreen` and `TestBrowserBehaviorTimelineNowAndFitAllLandSomewhereReadable` build their page from a fixed fixture made the way `generateLiveSiteInDirAtRangeEnd` builds its tree; if the prose test needs rows in a known week, they are added to a fixture tree in that style, with no new helper family.
+- [ ] The other nine `generateLiveSiteInDir` timeline probes are read; one moves only if an assertion depends on which dates or counts the live queue holds; the PLAN says which were checked.
+- [ ] After the refused forward press on the trailing 7 days, the probe presses Previous then Next and captures toolbar state: Previous enabled, both endpoints back exactly `7*24*60*60*1000` ms, span unchanged, data still drawn; Next enabled and both endpoints back at the exact start instants. Endpoints compared as epoch milliseconds, not readout text.
+- [ ] The forward refusal on the trailing 7 days is asserted outright, not in a two-branch conditional.
+- [ ] None of the upstream patches is applied as a chain and no comment cites a consumer commit ID or REQ number from them.
+- [ ] Test-only: no change to `web/` or Go production code; `QUEUE_KANBAN_BROWSER_PROBES=on go test -count=1 -run Timeline ./...` passes with no skipped timeline test, also in a scratch worktree with the week's archive rows removed.
+
+## Pre-Flight
+
+**Git:** ✓ Clean at 85445ac4 apart from this run's own pre-dispatch edits: the eight claimed working REQs of UR-152, `do-work/working/baseline.json` (rewritten by this pre-flight) and the untracked run directory `do-work/runs/work-2026-10-10-100748/`. The coordinator commits them together as `[UR-152] run artifacts` before dispatch.
+**Tests baseline:** ✓ Focused baseline: the two probes this REQ moves (`TestBrowserBehaviorTimelineProseDescribesOnlyTheWindowOnScreen`, `TestBrowserBehaviorTimelineNowAndFitAllLandSomewhereReadable`) pass today with `QUEUE_KANBAN_BROWSER_PROBES=on` and are not skipped (probe `do-work/runs/work-2026-10-10-100748/REQ-679-preflight-probe.sh`, exit 0, 18.6 s wall at load 19). `advance` recorded it as `preflight: satisfied`. The repository gate `bash _dev/tests/maintainer-verify.sh` was not run by pre-dispatch (the coordinator's single run at the dispatch revision records the green gate for all eight REQs).
+**Dependencies:** ✓ Chrome at `/Applications/Google Chrome.app/Contents/MacOS/Google Chrome` (exported as `QUEUE_KANBAN_BROWSER`); Go toolchain present; no new dependency.
+
+*Checked by work action*

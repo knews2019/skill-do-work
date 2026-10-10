@@ -2,6 +2,13 @@
 id: REQ-683
 title: 'Interview cadence parsing reads AM and PM, so a 5:00 PM answer becomes 17:00 and 12:30 AM becomes 00:30'
 status: claimed
+route: A
+estimate:
+  p50_active_minutes: 5
+  confidence: high
+  basis:
+  - trivial short-circuit
+  calculated_at: 2026-10-10T10:18:29Z
 created_at: 2026-10-10T10:03:50Z
 user_request: UR-152
 domain: backend
@@ -11,6 +18,7 @@ maintenance: false
 impact: impact-user-visible
 effort_estimate: effort-mechanical
 required_lessons: ["_dev/primes/lessons-releases.md"]
+write_set: ["skills/do-work/tools/do-work-cli/internal/knowledgecommands/interview_derivations.go", "skills/do-work/tools/do-work-cli/internal/knowledgecommands/interview_export_regression_test.go"]
 batch: upstream-report-accepts
 claimed_at: 2026-10-10T10:07:35Z
 ---
@@ -53,3 +61,17 @@ See `do-work/user-requests/UR-152/input.md` for complete verbatim input. No queu
 - [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
 - [ ] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
 *Source: upstream report 2026-10-10, accepted in the validate-feedback triage of this session.*
+
+## Triage
+
+**Route: A** - Simple
+
+**Reasoning:** The REQ names the one regular expression, the 12-hour conversion rule, the validity check that stays last, and the existing table test that gets four rows. The three wrong outputs were reproduced at HEAD. No location or pattern needs discovery.
+
+**Planning:** Not required
+
+## Plan
+
+**Planning not required** - Route A: Direct implementation
+
+*Skipped by work action*

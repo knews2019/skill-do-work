@@ -2,6 +2,13 @@
 id: REQ-681
 title: 'Appending a section entry finds the section with the shared visible-section reader, so CRLF files, trailing spaces and fenced headings no longer give a duplicate heading'
 status: claimed
+route: A
+estimate:
+  p50_active_minutes: 5
+  confidence: high
+  basis:
+  - trivial short-circuit
+  calculated_at: 2026-10-10T10:18:29Z
 created_at: 2026-10-10T10:03:50Z
 user_request: UR-152
 domain: backend
@@ -11,6 +18,7 @@ maintenance: false
 impact: impact-user-visible
 effort_estimate: effort-mechanical
 required_lessons: ["_dev/primes/lessons-releases.md"]
+write_set: ["skills/do-work/tools/do-work-cli/internal/requeststate/state_apply.go", "skills/do-work/tools/do-work-cli/internal/requeststate/append_section_entry_test.go"]
 related: [REQ-659]
 batch: upstream-report-accepts
 claimed_at: 2026-10-10T10:07:06Z
@@ -54,3 +62,17 @@ See `do-work/user-requests/UR-152/input.md` for complete verbatim input. No queu
 - [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
 - [ ] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
 *Source: upstream report 2026-10-10, accepted in the validate-feedback triage of this session.*
+
+## Triage
+
+**Route: A** - Simple
+
+**Reasoning:** The REQ names the function to change, the function to delete, the new test file with its three cases, the callers, and a verified reference patch. The defect reproduces at HEAD (three failures from the patch's tests). No location or pattern needs discovery.
+
+**Planning:** Not required
+
+## Plan
+
+**Planning not required** - Route A: Direct implementation
+
+*Skipped by work action*
