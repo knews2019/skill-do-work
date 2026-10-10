@@ -213,6 +213,12 @@ func (run *lifecycleRun) createWorktree(requestID string, builderWorktrees []wor
 			return run.stop(resultmodel.OutcomeFailure, "WORKTREE-LINK-FAILED", []string{linkPath}, nil, err.Error())
 		}
 		run.report.LinksCreated = append(run.report.LinksCreated, linkPath)
+		// A `dir/` ignore line does not match a symlink, so `git add -A` in the worktree would
+		// commit the link, and merging it replaces the main tree's path (merge refuses that).
+		if !gitExitSuccess(run.ctx, worktreePath, "check-ignore", "-q", "--", linkPath) {
+			run.finding(resultmodel.SeverityWarning, "WORKTREE-LINK-NOT-IGNORED", []string{linkPath}, nil,
+				linkPath+" is not git-ignored as a symlink; add an ignore line without a trailing slash (`"+linkPath+"`), or a builder's `git add -A` commits the link")
+		}
 	}
 	return run.finish(resultmodel.OutcomeSuccess)
 }
@@ -295,6 +301,23 @@ func (run *lifecycleRun) mergeBuilderBranch(requestID, requestedName string) res
 	if queueWrites := strings.Fields(queuePaths); len(queueWrites) > 0 {
 		return run.stop(resultmodel.OutcomeRefused, "WORKTREE-QUEUE-GUARD", queueWrites, []string{"git", "-C", run.mainRoot, "diff", "--name-only", run.report.Pre + "..." + operativeName, "--", "do-work/"},
 			operativeName+" commits queue state under do-work/; drop or revert those commits on the branch before integrating")
+	}
+	// Link guard: a committed link would replace the main tree's linked path on merge, and git
+	// deletes an ignored directory there to make room for it.
+	linkPaths, linkFinding := run.readLinkConfig()
+	if linkFinding != nil {
+		return *linkFinding
+	}
+	if len(linkPaths) > 0 {
+		linkDiff := append([]string{"diff", "--name-only", run.report.Pre + "..." + operativeName, "--"}, linkPaths...)
+		linkCommits, err := cleanupGit(run.ctx, run.mainRoot, linkDiff...)
+		if err != nil {
+			return run.stop(resultmodel.OutcomeFailure, "WORKTREE-GIT-FAILED", nil, nil, err.Error())
+		}
+		if committedLinks := strings.Fields(linkCommits); len(committedLinks) > 0 {
+			return run.stop(resultmodel.OutcomeRefused, "WORKTREE-LINK-COMMITTED", committedLinks, append([]string{"git", "-C", run.mainRoot}, linkDiff...),
+				operativeName+" commits a path listed in "+worktreeLinksConfig+"; merging it would replace the main tree's copy, so drop it from the branch first")
+		}
 	}
 	if _, mergeError := cleanupGit(run.ctx, run.mainRoot, "merge", "--no-ff", "--no-commit", operativeName); mergeError != nil {
 		conflicts, _ := cleanupGit(run.ctx, run.mainRoot, "diff", "--name-only", "--diff-filter=U")

@@ -50,7 +50,7 @@ The worktree directory's basename and the branch name are the **same string**: `
 
 Outside the repo working tree: a sibling directory (`../<repo>-worktrees/worktree-agent-REQ-NNN-…`) or a scratch directory, never nested inside the repo. A nested one is a second checkout sitting in the repo: `actions/cleanup.md` Pass 3a scans for any `do-work/` directory outside the project root and, where the consumer commits `do-work/`, would try to relocate the builder's copy into the canonical queue. That is a corruption path, and the tree also reads as stray residue to every status check downstream.
 
-An optional `do-work/worktree-links` file in the main tree lists repository-relative paths (one per line, such as `node_modules` or `env.vars`) that `worktree new` symlinks into each new worktree from the main tree; an existing path in the worktree is never overwritten. `do-work-cli worktree status` lists each `worktree-agent-REQ-*` worktree with ahead/behind against the integration branch, dirty or clean, and its last-commit age.
+An optional `do-work/worktree-links` file in the main tree lists repository-relative paths (one per line, such as `node_modules` or `env.vars`) that `worktree new` symlinks into each new worktree from the main tree; an existing path in the worktree is never overwritten. The ignore line must match the link itself (`node_modules`, not `node_modules/`, which matches only a directory): otherwise `worktree new` warns, a builder's `git add -A` commits the link, and `worktree merge` refuses it. `do-work-cli worktree status` lists each `worktree-agent-REQ-*` worktree with ahead/behind against the integration branch, dirty or clean, and its last-commit age.
 
 ### State stays home
 
@@ -80,7 +80,7 @@ The orchestrator merges each builder branch **at hand-back — end of Step 6, be
 3. **Apply the integration seams, then commit** — stage the handed-back seam lines and `git commit -m "[REQ-NNN] merge builder branch <operative_name>"` (the prefix rule under *Naming*; a remediation re-merge appends its reason in parentheses). A seam committed *after* the merge is the merge commit's child, outside `<pre>..<merge_hash>`, where qualify, review and Step 9's validation never see it.
 4. **Capture `<merge_hash>`** — `git rev-parse --short HEAD` on the commit just made. It is the range's upper bound and the supplied-provenance hash finalization records in the REQ's `commit:` field.
 
-After step 0, `do-work-cli worktree merge REQ-NNN` (with `--name <operative_name>` when several branches match) runs steps 1 to 4 and reports `<pre>` and `<merge_hash>`; it refuses an empty hand-back, a non-empty index and a queue-guard hit without merging. A hand-back that carries integration seams, or a merge that stops on a conflict, continues by hand from step 2.
+After step 0, `do-work-cli worktree merge REQ-NNN` (with `--name <operative_name>` when several branches match) runs steps 1 to 4 and reports `<pre>` and `<merge_hash>`; it refuses an empty hand-back, a non-empty index, a queue-guard hit and a committed link path without merging. A hand-back that carries integration seams, or a merge that stops on a conflict, continues by hand from step 2. On a remediation re-merge the reported `pre` is this merge's parent, not the range's lower bound: keep the first `<pre>`.
 
 ### Hold both endpoints as re-typed literals
 

@@ -155,6 +155,34 @@ func TestWorktreeMergeRefusesBuilderCommitUnderDoWork(t *testing.T) {
 	}
 }
 
+// Pins the link guard (REQ-660 review F1): a `shared-deps/` ignore line does not match the
+// symlink `new` creates, so a builder's `git add -A` commits it, and merging that commit made
+// git delete the main tree's ignored shared-deps/ directory. `new` warns, and merge refuses
+// before git merge runs.
+func TestWorktreeMergeRefusesCommittedLinkBeforeItReplacesTheMainTreePath(t *testing.T) {
+	mainRoot := lifecycleRepository(t)
+	created, exitCode := runWorktreeCommand(t, mainRoot, "new", "REQ-41")
+	if exitCode != 0 || !hasFindingCode(created, "WORKTREE-LINK-NOT-IGNORED") {
+		t.Fatalf("new: exit %d findings %#v", exitCode, created.Findings)
+	}
+	worktreePath := lifecycleWorktreePath(mainRoot, lifecycleOperativeName)
+	writeCleanupFile(t, worktreePath, "feature.txt", "builder work\n")
+	runCleanupGit(t, worktreePath, "add", "-A")
+	runCleanupGit(t, worktreePath, "commit", "-q", "-m", "[REQ-41] builder work")
+	headBefore := runCleanupGit(t, mainRoot, "rev-parse", "HEAD")
+
+	refused, exitCode := runWorktreeCommand(t, mainRoot, "merge", "REQ-41")
+	if exitCode == 0 || refused.Outcome != resultmodel.OutcomeRefused || !hasFindingCode(refused, "WORKTREE-LINK-COMMITTED") {
+		t.Fatalf("merge: exit %d outcome %s findings %#v", exitCode, refused.Outcome, refused.Findings)
+	}
+	if headAfter := runCleanupGit(t, mainRoot, "rev-parse", "HEAD"); headAfter != headBefore {
+		t.Fatalf("HEAD moved from %s to %s", headBefore, headAfter)
+	}
+	if _, err := os.Stat(filepath.Join(mainRoot, "shared-deps", "package.txt")); err != nil {
+		t.Fatalf("main tree shared-deps/ lost: %v", err)
+	}
+}
+
 // Pins the empty hand-back: git merge says "Already up to date." and exits 0, so the command
 // must detect the empty branch itself and refuse instead of fabricating a commit.
 func TestWorktreeMergeReportsEmptyHandBackWithoutCommit(t *testing.T) {
