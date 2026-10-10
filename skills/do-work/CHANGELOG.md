@@ -10,6 +10,16 @@ For the complete release history, read this file and the archives below from new
 - [0.50.0 through 0.64.1](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-13-up-to-v0.64.1.md)
 - [0.1.0 through 0.49.0](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-07-up-to-v0.49.0.md)
 
+## 0.305.109 — validate-feedback Can Capture, Verify and Run the Accepted Findings, and Core do-work Routes to It (2026-10-10)
+
+Accepting review findings used to take two to five hand-typed prompts after the triage, and a review written for another repo could be triaged against the wrong code. One opt-in flag now carries the accepted findings into the queue, verifies them, and can start the run.
+
+- `do-work-toolbox validate-feedback --capture [--run]` (or "then capture the accepted ones" / "capture and run" in the same request) asks one Accept / Park / Drop question per Discuss item, captures every accepted finding as one REQ under one new UR with its finding id and source, runs verify-requests on that UR, and prints one combined report. With `--run` and no Important, Minor or Ambiguous gap it continues into `do-work run UR-NNN`; with a gap it stops and prints the two commands to run after the fix. `--run` alone prints a usage line.
+- With `--capture`, a wrong-repo check stops before any triage or write when more than half of the cited paths are not in this repo.
+- The action reads a file path as input and records the path as each finding's source.
+- Core `do-work` now routes `validate-feedback` and `triage feedback` to the toolbox action instead of capturing the text as a new request. `capture.md` accepts the validate-feedback hand-off as an explicit promotion.
+- Without the flag the action stays read-only and its report is unchanged.
+
 ## 0.305.108 — capture-files Prints a Fill-In Example Manifest With Payload Templates, and the Capture Reference Shows the Fence Capture Accepts (2026-10-10)
 
 A session writing a capture no longer has to read Go source to learn the manifest keys, and copying the reference UR example no longer fails the first dry run. One command prints a manifest and both payloads that pass `capture-files --dry-run` once the placeholders are filled.
