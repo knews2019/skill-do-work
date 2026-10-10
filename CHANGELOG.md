@@ -10,6 +10,15 @@ For the complete release history, read this file and the archives below from new
 - [0.50.0 through 0.64.1](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-13-up-to-v0.64.1.md)
 - [0.1.0 through 0.49.0](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-07-up-to-v0.49.0.md)
 
+## 0.305.106 — ai-report Render-Checks a Report Bundle With One Command at Phone and Wide Widths in Light and Dark (2026-10-10)
+
+The report render check is now one shipped command instead of prose each session retyped. It catches a report that scrolls sideways on a phone, or links to a missing image, before a stakeholder opens it.
+
+- A new toolbox CLI verb, `do-work-cli ai-report-judge <bundle-dir> [--out <dir>] [--browser <path>]`, serves the bundle on a free local port and renders `index.html` in a headless Chromium-family browser at 1440x1000 and 390x844, in light and dark.
+- It fails on horizontal overflow (`scrollWidth > innerWidth`) and on any same-origin `href` or `src` that answers 400 or more. Other origins and `mailto:`, `data:` and `javascript:` links are never fetched.
+- It writes `judge.json` and four full-page captures to `--out` or a fresh temporary directory outside the bundle, and stops its server and browser on every exit path. Verdicts: `pass` (exit 0), `fail` and `skipped` (exit 1), `error` (exit 2). With no browser found the verdict is `skipped`, never `pass`.
+- `ai-report` Step 7, `stakeholder-report` Step 5 and `architecture-report` Step 5 call the command. `ai-report judge <dir>` is routed, listed in help and described in the ai-report guide. In `architecture-report`, the link back to the previous report is checked after publication, because the judge serves only the draft folder.
+
 ## 0.305.105 — ai-report Lists Every Report Bundle in One Catalog and Finds Reports on a Topic (2026-10-10)
 
 Sessions in three repositories asked "is there an ai-report on X" and answered it by reading folder names. One built an index page by hand. `ai-report index` and `ai-report find <topic>` now answer it with one command, whatever folder naming style a project has used.
