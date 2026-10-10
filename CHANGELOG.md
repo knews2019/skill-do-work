@@ -10,6 +10,17 @@ For the complete release history, read this file and the archives below from new
 - [0.50.0 through 0.64.1](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-13-up-to-v0.64.1.md)
 - [0.1.0 through 0.49.0](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-07-up-to-v0.49.0.md)
 
+## 0.305.105 — ai-report Lists Every Report Bundle in One Catalog and Finds Reports on a Topic (2026-10-10)
+
+Sessions in three repositories asked "is there an ai-report on X" and answered it by reading folder names. One built an index page by hand. `ai-report index` and `ai-report find <topic>` now answer it with one command, whatever folder naming style a project has used.
+
+- A new toolbox CLI verb, `do-work-cli ai-report-index`, treats every directory under `ai-reports/` as a report bundle and skips loose files beside them. It picks the entry file (`index.html`, `index.md`, `README.md`, `prompt.md`, `report.md`, then the first `.html`, then the first `.md`) and records path, entry, title, date, kind, linked UR/REQ ids, verdict, `supersedes` and `superseded_by`.
+- It writes `ai-reports/catalog.json` and a static `ai-reports/index.html`, grouped by kind and newest first, with superseded reports greyed and linked to the report that replaced them. A rerun over an unchanged folder writes the same bytes.
+- Kind, verdict and the replaced report come from the optional `ai-report-kind`, `ai-report-verdict` and `ai-report-supersedes` meta tags. Without a kind tag, a known kind word in the folder name is used, else `unknown`.
+- `--find <topic>` matches the topic against each folder name, title, kind, verdict and linked id, prints the matching bundle paths newest first, replaced reports included, and writes nothing. An id such as `REQ-412` also matches `REQ-0412`.
+- A `catalog.json` or `index.html` that the command did not write is refused (`AI-REPORT-INDEX-HAND-MADE`) and never overwritten.
+- The ai-report action, its guide, the toolbox router and the help list the two new forms.
+
 ## 0.305.104 — do-work-cli Builds the Finalization Manifest From the Judged Inputs and Checks the Tree First (2026-10-10)
 
 Sessions hand-built the finalization manifest about 171 times in 15 days and learned the required commit paths by reading refusals. The CLI now fills every mechanical field and runs the finalizer's own checks before anything is written. This closes the CLI-ergonomics batch (UR-145).

@@ -1,7 +1,7 @@
 ---
 id: REQ-655
 title: 'ai-report index and find build a derived catalog of every report bundle in any naming style'
-status: claimed
+status: completed
 created_at: 2026-10-09T21:10:00Z
 user_request: UR-144
 domain: backend
@@ -27,6 +27,14 @@ estimate:
 planning_at: 2026-10-10T13:21:45Z
 required_lessons: ["_dev/primes/lessons-releases.md"]
 builder_handback_at: 2026-10-10T13:31:11Z
+integration_at: 2026-10-10T15:29:59Z
+review_at: 2026-10-10T15:40:38Z
+kb_status: pending
+commit: d91312aeaefb3600cf6fc3c7f4fa156451ebaf17
+heavy_verified_at: 2026-10-10T15:49:00Z
+heavy_verified_revision: d91312aeaefb3600cf6fc3c7f4fa156451ebaf17
+completed_at: 2026-10-10T15:49:44Z
+release_at: 2026-10-10T15:49:44Z
 ---
 # ai-report Index and Find Build a Derived Catalog of Every Report Bundle in Any Naming Style
 ## What
@@ -76,9 +84,31 @@ Certainty is high on the contract (the report gives the acceptance check). Latit
 ## Full Context
 See `do-work/user-requests/UR-144/input.md` for complete verbatim input (sections Request A2, What happened, Where the behaviour lives today, Proposed direction A2, Acceptance check). No queued candidate in any UR shares this root cause (the queue was empty at capture).
 ## AI Execution State (P-A-U Loop)
-- [ ] **[PLAN]:** (Agent: Read listed `prime_files` and agent rules. Write brief technical approach here. Do not write code yet.)
-- [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
-- [ ] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
+- [x] **[PLAN]:** (from the builder hand-back) I followed the REQ `## Plan` and the brief step by step. I read all of the REQ, the brief, UR-144 A2 (as data), the crew rules, the action-files, releases and shell primes, `lessons-releases.md`, and the three named lesson families. The tests were written first. Then I built one Go file holding a walk shared by both forms, then the prose. The deviations are D-11 to D-22 below.
+- [x] **[APPLY]:** (from the builder hand-back) Code was written as planned, and only the eight files in Scope changed. `architecture.go` was not changed (D-08). There is no `--dry-run`, `--commit`, `--reports` or Just recipe. No `runTransaction`. No "may be stale" mark.
+- [x] **[UNIFY]:** (from the builder hand-back) `git diff bd56c4b0 --stat`:
+  ```
+   skills/do-work-toolbox/SKILL.md                    |   2 +-
+   skills/do-work-toolbox/actions/ai-report.md        |  14 +-
+   skills/do-work-toolbox/actions/help.md             |   1 +
+   skills/do-work-toolbox/docs/ai-report-guide.md     |  10 +
+   .../internal/toolboxcommands/commands.go           |   2 +
+   .../internal/toolboxcommands/commands_test.go      |  11 +-
+   .../internal/toolboxcommands/report_index.go       | 418 +++++++++++++++++++++
+   .../internal/toolboxcommands/report_index_test.go  | 245 ++++++++++++
+   8 files changed, 697 insertions(+), 6 deletions(-)
+  ```
+  Checks (all run from the worktree root, on a loaded machine):
+
+  | Check | Exit | Wall time |
+  |---|---|---|
+  | `bash .../REQ-655-probe.sh` (gofmt, vet, five named tests with `--- PASS:`) | 0 | about 1 s (warm cache) |
+  | `go test -C skills/do-work/tools/do-work-cli -count=1 ./internal/toolboxcommands/` | 0 (`ok ... 4.461s`) | 5 s |
+  | `go vet -C skills/do-work/tools/do-work-cli ./internal/toolboxcommands/` | 0 | under 1 s |
+  | `bash _dev/tests/shipped-package-reference-contract.sh` | 0 (`PASS`) | 1 s |
+  | `git diff bd56c4b0 --check` | 0, clean | n/a |
+
+  Every check passed on its first run, so nothing needed a rerun. I checked each changed file in the diff: the Go is gofmt-clean, vets, and has no debug output. The prose edits stay local, with no reflow of neighbouring lines. The help and guide columns line up with their neighbours (description at column 34 in help, column 43 in the guide).
 *Source: upstream suggestion report `do-work/inbox/2026-10-09_do-work-upstream-suggestion-ai-report-kinds-and-index.md`, Request item A2: "`ai-report find <topic>` and `ai-report index`. One command answers "is there a report on X" and "which reports have design proposals, including rejected ones"."*
 
 ---
@@ -204,3 +234,179 @@ See `do-work/user-requests/UR-144/input.md` for complete verbatim input (section
 - [ ] `find <topic>` is a substring plus UR/REQ id match that prints paths newest first, including superseded bundles.
 - [ ] No existing bundle file changes. A hand-made `catalog.json` or `index.html` without the generator marker is refused, not overwritten.
 - [ ] Both forms are wired into `ai-report.md` (the `:109` sentence relaxed for this form only), `docs/ai-report-guide.md`, the `SKILL.md:23` routing phrases and the `help.md` help line. Focused Go tests run on a fixture `ai-reports/` folder.
+
+## Implementation Summary
+
+**Files changed:**
+- `skills/do-work/tools/do-work-cli/internal/toolboxcommands/report_index.go` (new)
+- `skills/do-work/tools/do-work-cli/internal/toolboxcommands/report_index_test.go` (new)
+- `skills/do-work/tools/do-work-cli/internal/toolboxcommands/commands.go` (modified)
+- `skills/do-work/tools/do-work-cli/internal/toolboxcommands/commands_test.go` (modified)
+- `skills/do-work-toolbox/actions/ai-report.md` (modified)
+- `skills/do-work-toolbox/docs/ai-report-guide.md` (modified)
+- `skills/do-work-toolbox/SKILL.md` (modified)
+- `skills/do-work-toolbox/actions/help.md` (modified)
+
+**What was done:** Added the toolbox CLI verb `ai-report-index`. It treats every non-dot directory under `ai-reports/` as a bundle (loose files and links skipped), picks the entry file (`index.html`, `index.md`, `README.md`, `prompt.md`, `report.md`, first `.html`, first `.md`), reads title, date, kind, linked UR/REQ ids, and the `ai-report-kind`, `ai-report-supersedes` and `ai-report-verdict` metas, computes `superseded_by`, and publishes a deterministic `ai-reports/catalog.json` and a static `ai-reports/index.html` (grouped by kind, superseded rows greyed and linked to the successor). A file at either output without the generator marker is refused with `AI-REPORT-INDEX-HAND-MADE` and nothing is written. `--find <topic>` walks the same bundles in memory and prints matching paths newest first, superseded ones included, and writes nothing. The verb is registered in `commands.go` (toolbox handler count 7 to 8), and the ai-report action, guide, toolbox router row and help list the `index` and `find` forms. The hand-back merge `355ea12f..6a031809` needed no conflict resolution and no seam edits.
+
+After review (builder-branch commit `851fa107` by the integrator, re-merged with the same `<pre>` as `d91312ae`): `--find` matches the bundle folder name (`path.Base`) instead of the full path, because every path starts with `ai-reports/` and topics such as `ai` or `reports` matched every bundle (review F1). The find test gained one assertion that `--find reports` prints the no-match line.
+
+## Decisions
+
+(from the builder hand-back, verbatim; D-01 to D-10 are in `## Plan`)
+
+- **D-11** DECIDE & STATE: the action prose runs the verb with `--format text`, not the brief's `--format json`. The reason is that `ExactTextOutput` is tagged `json:"-"` (`resultmodel/result_model.go:640`). With JSON, the find matches and the bundle count would not appear in the output at all. Text prints the exact lines on success. On a refusal it prints `ai-report-index: refused` plus the finding and exits 1. This needs no extra Go. If the run wants JSON, the alternative is an info finding that carries the lines, the way `ARCHITECTURE-SCAN` does.
+- **D-12** DECIDE & STATE: the linked-id regex is `(?i)(?:^|[^A-Za-z0-9])((?:UR|REQ)-\d+)`, not `\b...\b`. Go's `\b` counts `_` as a word character, so the brief's regex misses `2026-08-27_1428_req-341-...`, a real bundle in this repo. The fixture `2026-09-02_req-77-beta-notes` pins this. No trailing boundary is needed because `\d+` is greedy.
+- **D-13** DECIDE & STATE: kind is matched over the kebab words of the whole folder name, not only "the slug after the date". Kind words contain no digits, so dated names give the same result. Names in the `slug-yyyy-mm-dd` style keep their slug, which comes before the date.
+- **D-14** DECIDE & STATE: meta tags are read only from HTML entries. A Markdown entry that quotes `<meta name="ai-report-kind" ...>` in prose or code would otherwise set the kind falsely.
+- **D-15** DECIDE & STATE: the help line sits under `ai-report [REQ|UR]`, which is `help.md:14` at base. The brief's `:13` is `journey-qa` at base. The REQ describes `:13` as the ai-report line, so the line numbers drifted by one.
+- **D-16** DECIDE & STATE: the hand-made check is a byte-substring test for the generator marker in each existing file. For JSON the marker is `"generator": "do-work-cli ai-report-index"`. An existing path at either output that is not a regular file (a directory or a link) also counts as "not written by this verb" and gets the same refusal code.
+- **D-17** DECIDE & STATE: one failure code, `AI-REPORT-INDEX-FAILED`, covers an unreadable `ai-reports/` and a publish error. The brief named no code for these, and both are manual fixes.
+- **D-18** DECIDE & STATE: `--find` with a blank topic returns usage. Otherwise it would match every bundle.
+- **D-19** DECIDE & STATE: on the page, kind groups are sorted alphabetically with `unknown` last.
+- **D-20** DECIDE & STATE: page hrefs go through `(&url.URL{Path: ...}).String()` before `html.EscapeString`. Without this, a folder name with a space, `#` or `:` would produce a broken link.
+- **D-21** DECIDE & STATE: the catalog uses a JSON encoder with `SetEscapeHTML(false)`, so `&` and `<` in titles stay readable. Output is still deterministic, and the byte-identical rerun is pinned.
+- **D-22** DECIDE & STATE: if a bundle folder or its entry file cannot be read, the bundle is still listed, with an empty entry or the folder-name title. A lookup walk never drops a record and never fails because of one (lesson family `silent-skip-reads-as-red`).
+- **D-23** (integrator, after review, DECIDE & STATE): review F1 showed that `find` matched the shared `ai-reports/` prefix, so `find ai` and `find report` returned all 41 bundles of this repo. The integrator changed the matched field from the full path to the folder name and pinned it in `TestAIReportIndexFindListsMatchesNewestFirstIncludingSuperseded` (fails at `report_index_test.go:206` without the fix, per the delta re-review). Side effect, accepted: a topic written as a full `ai-reports/<folder>` path no longer matches (review F10, report only); the bare folder name still does. The plan's task 3 wording "substring over path" now reads "over the folder name".
+
+## Discovered Tasks
+
+(from the builder hand-back; impact tokens are the builder's)
+
+- impact-low: other toolbox verbs whose prose uses `--format json` may return only `exactOutputResult`. If so, the JSON caller sees no payload, the trap D-11 avoided here. Audit the `exactOutputResult` callers against their action prose. → report only
+- impact-low: this repo's own `ai-reports/2026-05-28_2335_background-agents-durability.html` is a loose file, so `ai-report index` and `find` skip it by design. If it is a real report, it is invisible to the catalog until someone moves it into a bundle folder. → report only
+
+## Qualification
+
+**Gate records (`advance --diff-range 355ea12f..6a031809`):** `qualify` satisfied (success), `scope-drift` satisfied (success). One `QUALIFY-NEW-FILE-UNWIRED` warning on `report_index_test.go`, judged a false positive: a `_test.go` file is found by the Go test runner by convention. `report_index.go` was not flagged because `commands.go` registers `handleAIReportIndex`. No debug-artifact, P-A-U or output-primitive findings.
+
+**Scope:** the declared `write_set` (8 paths) equals the touched set in `git diff 355ea12f..6a031809 --stat` (8 files, 697 insertions, 6 deletions). The queue guard printed nothing before the merge. The merge auto-resolved against REQ-658, REQ-659 and REQ-660 with no conflict (none of them touch these files), and the merged tree builds and vets (`go build ./...`, `go vet ./internal/toolboxcommands/`).
+
+**Requirement trace (read against the merged files):**
+1. Any directory is a bundle: `reportIndexWalk` (`report_index.go:81`) lists every non-dot directory under `ai-reports/`. There is no list of naming styles; the date is read by one condition (`reportDatePattern`, `yyyy-mm-dd` plus an optional `_hhmm`/`_hhmmss`). The fixture covers the six named styles.
+2. Entry pick order: `reportEntryNames` (`:31`) then the first `.html`, then the first `.md` (pre-dispatch D-03), regular files only (`pickReportEntry`, `:167`).
+3. Per bundle: `<title>` else the first `<h1>`-`<h6>` for HTML, the first `#` heading for Markdown, else the folder name; the three metas from HTML entries only (D-14); linked ids from folder name plus title with the explicit non-alphanumeric lead (D-12).
+4. Catalog fields: `reportBundle` (`:55`) holds path, entry, title, date, kind, linked_ids, verdict, supersedes, superseded_by. `superseded_by` is computed in the walk from the other bundles' `supersedes`, matched by exact last path segment; with several successors the newest wins (bundles are sorted newest first).
+5. Outputs: `reportIndexWrite` publishes both files with `rootedPublishFile`; the page groups by kind (alphabetical, `unknown` last, D-19), rows newest first, superseded rows get `class="superseded"` (opacity .5) and a link to the successor's entry.
+6. Loose files skipped: only `entry.IsDir()` entries are bundles; a symbolic link reports as a link, not a directory.
+7. Find: case-insensitive substring over path, title, kind, verdict and linked ids, plus an id compare with leading zeros ignored (`normalizeReportID`); output order is the walk's newest-first order and superseded rows are kept with a `(superseded by ...)` suffix.
+8. No bundle changes: only the two root outputs are written. A file at either output without the generator marker (or not a regular file, D-16) is refused with `AI-REPORT-INDEX-HAND-MADE` before any write. Output carries no timestamp, so a rerun is byte-identical (pinned in the refusal test).
+9. Prose: `ai-report.md` gains `### Catalog forms: index and find` after Input; the Step 6 no-search sentence and the checklist item name the catalog forms as the one exception. The guide gains two Input lines and `## Report Catalog`. `SKILL.md:24` gains `report index`, `is there a report on` at the end of the ai-report cell. `help.md` gains one line under `ai-report [REQ|UR]`.
+10. Tests and release: four focused fixture tests plus the updated registration test; the release is made at finalization.
+
+**Builder deviations judged:** D-11 holds: `ExactTextOutput` is tagged `json:"-"` (`resultmodel/result_model.go:672`) and `exactOutputResult` sets only that field, so `--format json` would drop the find lines and the bundle count; the action's `--format text` call is right. D-12 holds: Go RE2 `\b` treats `_` as a word character, so `\bREQ-` misses `_req-341`; the fixture `2026-09-02_req-77-beta-notes` pins it. D-13 to D-22 are local and reversible, consistent with the code.
+
+**Constraints:** no new queue field or status; no bundle renamed; `architecture.go` unchanged (D-08); no Just recipe (D-09); own release.
+
+**Review-fix re-merge, cumulative range `355ea12f..d91312ae`:** `advance` takes no qualify input at this phase, so the integrator ran the same `qualify --request-path <P> --diff-range 355ea12f..d91312ae` handler directly: success, only the judged `QUALIFY-NEW-FILE-UNWIRED` warning on `report_index_test.go`. The touched set is still the 8 declared files (703 insertions, 6 deletions); the delta touches `report_index.go` and its test only. The queue guard before the re-merge printed nothing. Requirement 7 now reads: the substring match runs over the folder name, title, kind, verdict and linked ids (D-23).
+
+## Testing
+
+**Tests run:** `DO_WORK_FAST_STAGE_REUSE=off bash _dev/tests/maintainer-verify.sh` at merge `6a031809` (machine quiet before launch: 1-minute load 3.07, no other gate running; load 6.14 at the end), then `advance REQ-655 --gate-arg bash --gate-arg _dev/tests/maintainer-verify.sh --gate-exit-status 0 -- --probe-file do-work/runs/work-2026-10-10-131527/REQ-655-probe.sh`.
+**Result:** ✓ Repository gate passed on the first run (exit 0, gate wall 166 s; do-work-cli 901 tests in 78 s, slowest file `internal/finalization/finalization_recovery_test.go` 25.58 s under the 30 s limit; queue-kanban 421 tests in 55 s, slowest 20.90 s). Probe exit 0 (gofmt, vet, five named tests each `--- PASS:`). Gate records `green-gate`, `scope-drift` and `run-blocked-check` satisfied.
+
+**Red-green validation:** (from the builder hand-back, traced to `## Red-Green Proof`)
+- `TestAIReportIndexCatalogsEveryBundleNamingStyleOnce`, `TestAIReportIndexLinksSupersededProposalToSuccessor`, `TestAIReportIndexFindListsMatchesNewestFirstIncludingSuperseded`, `TestAIReportIndexRefusesHandMadeCatalog` (`internal/toolboxcommands/report_index_test.go`): ✗ before the production code (build failure: `undefined: CommandAIReportIndex`, `undefined: reportCatalog`, `undefined: reportIndexGenerator`, `undefined: reportBundle`; at base the launcher answered `ai-report-index` with `UNKNOWN-COMMAND`) → ✓ after (0.03 s, 0.03 s, 0.01 s, 0.06 s). The fixture is the captured RED case: one bundle per naming style, a `README.md`-only bundle, a proposal superseded by a later one, and loose `.patch` and `.md` files; `find proposal` prints both proposals newest first.
+- `TestHandlersRegisterCanonicalToolboxCommands`: updated for the new verb (count 8), passes.
+
+**New tests added:**
+- `skills/do-work/tools/do-work-cli/internal/toolboxcommands/report_index_test.go` (four tests on one shared fixture)
+
+**Existing tests updated:**
+- `skills/do-work/tools/do-work-cli/internal/toolboxcommands/commands_test.go` (registration list and count 7 to 8)
+
+**Heavy verification plan:**
+- Range: 355ea12f6c4485c8fd3de1bfae65062bbe64d0cc..d91312aeaefb3600cf6fc3c7f4fa156451ebaf17 (re-planned after the review-fix re-merge; same four lanes as the first plan at `6a031809`)
+- do-work-cli-integrations: `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane do-work-cli-integrations` — changed files under `skills/do-work/tools/do-work-cli`
+- staged-skills: `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane staged-skills` — changed files under `skills`
+- updater: `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane updater` — changed files under `skills/do-work/tools/do-work-cli`
+- installer: `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane installer` — changed files under `skills/do-work/tools/do-work-cli`
+
+**After the review-fix re-merge (`d91312ae`):** the same gate argv ran again (load 3.85 before launch, 8.08 at the end): exit 0, gate wall 160 s, do-work-cli 901 tests in 74 s, slowest file `internal/finalization/finalization_recovery_test.go` 23.12 s. `advance` refuses gate input past this phase, so the green record was written with `record-green-gate --gate-exit-status 0 -- bash _dev/tests/maintainer-verify.sh` at `d91312ae`, and `REQ-655-probe.sh` was run directly: exit 0. Red-green for the fix: the new `--find reports` assertion fails with the old full-path match (`report_index_test.go:206`) and passes with the fix. The heavy plan was recomputed for `355ea12f..d91312ae`: the same four lanes.
+
+*Verified by work action*
+
+## Review
+
+**Overall: 91%** | 2026-10-10T15:40:38Z
+
+| Dimension | Score |
+|-----------|-------|
+| Requirements | 100% |
+| Code Quality | 85% |
+| Test Adequacy | 85% |
+| Scope | 95% |
+| Risk | Low |
+| Acceptance | Pass |
+
+**Important findings (each with its recorded impact token — this is the durable audit record the judgment mandates):**
+None
+
+**Minor findings:**
+- F1 `report_index.go:386`: the find search text includes the `ai-reports/` prefix, so `find ai` and `find report` match all 41 bundles. Match `path.Base(bundle.Path)` instead. impact-user-visible → report only
+- F2 `ai-report.md:30`, `:135` and `ai-report-guide.md:21`, `:84`: neighbouring input, output and "only the bundle" lines are stale against the new index/find forms (Restatement Sweep). impact-negligible → report only
+- F3 `report_index_test.go:211`: a hand-made `index.html` and a non-regular output (D-16) are not pinned. Both were verified refused by hand. impact-negligible → report only
+- F4 `report_index.go:43`, `:145`: the Markdown title can come from a `#` line inside a fenced code block. impact-negligible → report only
+- F5 (nit) `report_index.go:44-45`: meta parsing misses `data-name=`, a `>` inside a quoted value, and unquoted attributes. impact-negligible → report only
+- F6 (nit) `report_index.go:222-223`: the kind meta is not lowercased, so the page splits its groups. impact-negligible → report only
+- F7 (nit) `report_index.go:157-163`: `REQ-0412` and `REQ-412` are not deduped, and `UR-007-008` links only `UR-007`. impact-negligible → report only
+- F8 (nit) `report_index.go:236-239`: a symlinked `ai-reports/` makes index fail but find follow the link, and the failure suggests a rerun. impact-negligible → report only
+- F9 (nit) anti-bloat: 1 option form, 2 finding codes, 1 extra field (`entry`), 1 invented meta (`ai-report-verdict`, which no writer emits), 1 kind table, 4 constants, 13 functions, 3 test helpers, 0 decorative tests, and cosmetic `commands_test.go` list churn. All are plan-traced except `entry`, which the hand-back omits. impact-negligible → report only
+
+**Acceptance:** Pass. Implementation and integration stages: the package tests pass, and the CLI smoke on a temp copy of `ai-reports/` gave 41 bundles, only two new files, correct find order, and hand-made, symlink and absent-folder refusals as specified.
+**Restatement sweep:** redefined the ai-report action's input forms and its "only the bundle, no search" boundary. Stale neighbours found in `ai-report.md:30`, `:135` and `ai-report-guide.md:21` (F2). The bundle naming `ai-reports/yyyy-mm-dd_hhmm_<slug>/` was not redefined (the verb reads all styles and writes no bundle). The entry-file pick order is new and not restated in shipped prose. `architectureScan` stays `index.html`-only by D-08. `command-line-guide.md:26` lists Just recipes, and none was added (D-09), so it is not stale.
+**Suggested testing:** 4 items
+**Follow-ups created:** None (9 findings report only)
+
+*Reviewed by review-work action*
+
+**Delta re-review** | 2026-10-10T15:48:47Z | delta `6a031809..d91312ae` (builder-branch commit `851fa107`)
+
+**Overall: 92%** (Code Quality 85% → 90%; others unchanged). Acceptance: Pass. F1 closed: `find` matches the folder name; the new assertion fails without the fix; `find ai` and `find report` dropped from 41/41 to 5 and 11 on a copy of this repo's `ai-reports/`, and `find architecture` still finds 7.
+- F10 (nit) `report_index.go:388`: a topic written as a full `ai-reports/<folder>` path no longer matches its own bundle; the bare folder name does. impact-negligible → report only
+
+**Follow-ups created:** None (10 findings report only)
+
+## Lessons Learned
+
+**What worked:** One in-memory walk shared by `index` and `find` kept the two forms consistent and let `find` stay read-only. Running the verb on a scratch copy of this repo's real `ai-reports/` (41 bundles) found the underscore-joined `req-341` id that a `\b` regex misses (D-12).
+**What didn't:** Matching the topic against the full stored path: every bundle path shares the `ai-reports/` prefix, so short topics matched everything (review F1). The fixture tests did not catch it because no test searched for a word inside the shared prefix.
+**Worth knowing:** Toolbox verbs that return `exactOutputResult` print nothing useful under `--format json` (`ExactTextOutput` is `json:"-"`), so their action prose must call them with `--format text` (D-11). Go RE2 `\b` counts `_` as a word character. The catalog field names `path`, `date`, `supersedes` and `superseded_by` are read by REQ-656 (ai-report revise).
+
+## Orientation
+
+Now `ai-report index` writes a derived catalog (`ai-reports/catalog.json` plus a static `index.html`) of every report bundle in any naming style, and `ai-report find <topic>` lists matching bundles newest first; the walk lives in the toolbox CLI (`toolboxcommands/report_index.go`), the prose in `skills/do-work-toolbox/actions/ai-report.md`. [MAP CHANGED]: a new toolbox CLI verb and a new derived catalog contract that REQ-656 consumes. Touched primes (`prime-action-files.md`, `prime-releases.md`) name no path this change removed.
+
+## Heavy Verification Plan
+
+- Base: 355ea12f6c4485c8fd3de1bfae65062bbe64d0cc
+- Target: d91312aeaefb3600cf6fc3c7f4fa156451ebaf17
+- do-work-cli-integrations: `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane do-work-cli-integrations` — changed files under `skills/do-work/tools/do-work-cli`
+- staged-skills: `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane staged-skills` — changed files under `skills`
+- updater: `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane updater` — changed files under `skills/do-work/tools/do-work-cli`
+- installer: `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane installer` — changed files under `skills/do-work/tools/do-work-cli`
+
+## Heavy Verification Result
+
+- Target revision: d91312aeaefb3600cf6fc3c7f4fa156451ebaf17
+- Execution revision: d91312aeaefb3600cf6fc3c7f4fa156451ebaf17 (detached checkout under `.git/work-run-work-2026-10-10-131527/`, `QUEUE_KANBAN_BROWSER` set)
+- do-work-cli-integrations: exit 0, executed, 79 s
+- staged-skills: exit 0, executed, 38 s
+- updater: exit 0, executed, 68 s
+- installer: exit 0, executed, 32 s
+- The earlier drain at `6a031809` was also green (78 s, 42 s, 71 s, 33 s, all executed).
+
+## Timing
+
+Observed 2026-10-10T15:29:30Z to 2026-10-10T15:48:18Z: 18m 48s total, 20m 37s attributed across 7 events, 0s unattributed.
+
+| Category | Elapsed | Events |
+| --- | --- | --- |
+| verification-gate | 13m 50s | 4 |
+| review | 6m 00s | 1 |
+| handback-merge | 47s | 2 |
+
+Slowest stage: review / review, 6m 00s, outcome success.
+Slowest command: verification-gate / heavy drain, 3m 57s, exit 0, .
+
+Notes: the builder-work event was skipped because the hand-back had already landed when integration began (`actions/fan-out-reference.md` → Landed hand-back); `builder_handback_at` is the builder commit's committer date.
