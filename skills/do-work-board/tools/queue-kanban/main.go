@@ -22,7 +22,7 @@ import (
 // external CLI library — with each subcommand owning its own flag.FlagSet:
 //
 //	queue-kanban summary      [--repo-root DIR] [--recent-window DUR]
-//	queue-kanban open-work    [--repo-root DIR]
+//	queue-kanban open-work    [--repo-root DIR] [--format text|json]
 //	queue-kanban generate     --out DIR [--repo-root DIR]
 //	queue-kanban serve        [--port PORT] [--repo-root DIR] [--open]
 //	queue-kanban next-req     [--repo-root DIR]
@@ -147,12 +147,24 @@ func writeBoardSummary(outputWriter io.Writer, board *Board) {
 func runOpenWorkCommand(args []string) {
 	flagSet := flag.NewFlagSet("open-work", flag.ExitOnError)
 	repoRootOverride := flagSet.String("repo-root", "", "repo root containing do-work/ (default: walk up from the working directory)")
+	outputFormat := flagSet.String("format", "text", "text (the digest) or json (machine facts for do-work-cli run-status)")
 	_ = flagSet.Parse(args)
 	exitOnLeftoverArguments("open-work", flagSet.Args())
+	if *outputFormat != "text" && *outputFormat != "json" {
+		fmt.Fprintf(os.Stderr, "queue-kanban open-work: --format must be text or json, got %q\n", *outputFormat)
+		os.Exit(2)
+	}
 
 	// defaultRecentWindow is passed because LoadBoard requires a window, not
 	// because the digest has anything windowed to show.
 	board := loadBoardOrExit(*repoRootOverride, defaultRecentWindow)
+	if *outputFormat == "json" {
+		if writeError := writeOpenWorkJSON(os.Stdout, board, runGitCommand); writeError != nil {
+			fmt.Fprintln(os.Stderr, "queue-kanban:", writeError)
+			os.Exit(1)
+		}
+		return
+	}
 	writeOpenWorkDigest(os.Stdout, board)
 }
 
