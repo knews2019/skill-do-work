@@ -1,7 +1,7 @@
 ---
 id: REQ-667
 title: 'Coordinated-run rules for heartbeat log, full-gate lock, focused builder suites, red-gate triage and manifest timing go into fan-out-reference'
-status: pending
+status: claimed
 created_at: 2026-10-09T21:16:07Z
 user_request: UR-146
 domain: general
@@ -12,6 +12,7 @@ impact: impact-user-visible
 effort_estimate: effort-mechanical
 related: [REQ-662, REQ-663, REQ-664, REQ-665, REQ-666]
 batch: run-coordinate-mode
+claimed_at: 2026-10-10T12:52:20Z
 ---
 # Coordinated-Run Rules Go Into fan-out-reference
 ## What
