@@ -2588,6 +2588,7 @@ function makeStubNode() {
     hidden: false,
     stubText: "",
     classList: { toggle: function () {} },
+    dispatchEvent: function () {},
     setAttribute: function (attributeName, attributeValue) { this.attributes[attributeName] = attributeValue; },
     appendChild: function (childNode) { this.children.push(childNode); return childNode; }
   };

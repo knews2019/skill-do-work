@@ -2136,6 +2136,14 @@
     var labelCharacterBudget = 0;
 
     function renderVisibleRows() {
+      // The scroll and toggle listeners below outlive a view switch and
+      // #board-main scrolls for every view, so a hidden Timeline would otherwise
+      // rebuild rows nobody can see. A missing panel (the Node lane's stub
+      // document) is not a hidden one.
+      var timelinePanel = document.getElementById("view-timeline");
+      if (timelinePanel && timelinePanel.hidden) {
+        return;
+      }
       // Measure before rebuilding SVG nodes, while the current layout is clean.
       var visibleRowsScrollTop = rowsScrollTop();
       // WHICH ROW HELD FOCUS, captured before the rebuild destroys it.
