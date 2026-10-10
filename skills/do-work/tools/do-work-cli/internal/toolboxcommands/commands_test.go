@@ -4,13 +4,13 @@ import "testing"
 
 func TestHandlersRegisterCanonicalToolboxCommands(t *testing.T) {
 	handlers := Handlers()
-	for _, name := range []string{CommandNote, CommandArchitecture, CommandReportImage, CommandReportImageBatch, CommandPortfolio, CommandLast30Days, CommandAuditMetrics} {
+	for _, name := range []string{CommandNote, CommandArchitecture, CommandReportImage, CommandReportImageBatch, CommandPortfolio, CommandLast30Days, CommandAuditMetrics, CommandAIReportJudge} {
 		if handlers[name] == nil {
 			t.Errorf("canonical command %q is not registered", name)
 		}
 	}
-	if len(handlers) != 7 {
-		t.Fatalf("registered %d toolbox commands, want 7", len(handlers))
+	if len(handlers) != 8 {
+		t.Fatalf("registered %d toolbox commands, want 8", len(handlers))
 	}
 }
 
