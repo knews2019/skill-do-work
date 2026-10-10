@@ -14,6 +14,7 @@ do-work-toolbox — reviews, reports, discovery, and repository utilities
   ai-report [REQ|UR]             Detailed stakeholder HTML for one completed item
   ai-report index|find <topic>   Catalog report bundles; find reports on a topic
   ai-report judge <dir>          Render-check a report bundle (widths, themes, links)
+  ai-report revise <dir|latest>  New revision; the old report is kept
   present-work all|portfolio     Refresh the cross-project portfolio
   present-video [REQ|UR]         Source-only Remotion video walkthrough
   slop-check [target]            Validate a draft against anti-slop principles
