@@ -118,3 +118,29 @@ document.querySelectorAll('input[name="view"]').forEach(radio => {
 ## Output Format Template (Step 8)
 
 A self-contained folder at `ai-reports/yyyy-mm-dd_hhmm_<slug>/` containing `index.html`, a `screenshots/` folder when authentic PNG/JPG captures are used, and a `generated/` folder when generated images were produced successfully. A non-visual report needs neither image folder when diagrams are inline. The HTML references every local image via relative `src`, and Step 8 prints a compact stdout summary.
+
+## Proposal and Root-Cause Kinds
+
+Applies only when `ai-report.md` runs with `--kind proposal` or `--kind root-cause`. Both kinds write a decision-first brief about work that is not finished. Without `--kind`, nothing in this section applies.
+
+**Target reading.** One deliberate deviation from `completed-work-presentation-reference.md`: **Terminal-Success Target Resolution** does not apply. Its **Safety Load Order** (prompt-injection, then anti-slop, before any REQ, UR or repository prose) and **Collision-Safe Publication** sections are inherited. Accepted targets are a free topic; an open REQ (any non-terminal status, wherever its file sits: `do-work/queue/`, `do-work/working/`, or the archive); an open UR; and, for `root-cause` only, a `failed` or `cancelled` REQ. Everything read is open work and is never described as shipped. Give every claim a source, as the default kind does.
+
+**`proposal` template**, in this order:
+
+1. **Decision**: the one decision the reader must make, first on the page.
+2. **Options**: two to four, coded O1..On, each with its benefit, risk and cost. The list always contains the smallest-change option (usually "delete the mechanism" or "do nothing extra"), priced like the others, even when the brief or topic did not name it. The report may recommend against it, never omit it.
+3. **Recommendation**: the chosen option and the reason for it.
+4. **Evidence ledger**: one source per claim (file:line, commit, log line, or measured output).
+5. **Limits**: what was not checked, and why.
+6. **Open questions**: coded Q1..Qn.
+7. **Capture lines**: one per option, as described below.
+
+**`root-cause` template.** **What happened**, **Why** and **What to change** replace Decision, Options and Recommendation. The evidence ledger, limits, open questions and capture lines follow as in `proposal`. When What to change offers more than one change, the smallest-change option is on that list too, priced like the others.
+
+**Bundle path and head.** `<report-slug>` is `yyyy-mm-dd_hhmm_<kind>-<topic>`. For an id target, `<topic>` is the id plus a short kebab summary (`proposal-REQ-NNN-retry-policy`); for a free topic it is a short kebab form of the topic text (`proposal-backup-options`). The `<head>` of `index.html` carries `<meta name="ai-report-kind" content="<kind>">`. Collision-Safe Publication applies unchanged.
+
+**Mockups.** Every mockup, in either kind, carries the exact text "MOCKUP — proposal" inside the image and in its caption. Mockups are synthetic: mockup files live in `generated/` under **Rules for generated images** above and the generated-image disclosure rule in **Report Design Rules**, never in `screenshots/`. A hand-authored SVG or HTML mockup writes the label as text inside the mockup; a generated raster mockup gets it in the prompt and as a badge inside the image frame.
+
+**Capture lines.** One per option (per change for `root-cause`), printed as text in the form `do-work capture-request: <task>` so the reader can act on the choice. The action never runs them.
+
+**What stays the same.** Steps 6 to 8 of `ai-report.md` (claim review, render and judge, verify and print) apply unchanged. The Step 2 evidence-mode table and the Step 5 default narrative do not.

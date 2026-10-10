@@ -1,6 +1,6 @@
 # AI Report Action
 
-> **Part of the do-work-toolbox skill.** Creates the canonical detailed stakeholder HTML for one completed UR or REQ. It adapts its evidence to visual UI work, backend work, refactors, infrastructure, and other non-visual changes while preserving a timestamped, self-contained `ai-reports/` bundle. User-facing walkthrough: [`docs/ai-report-guide.md`](../docs/ai-report-guide.md).
+> **Part of the do-work-toolbox skill.** Creates the canonical detailed stakeholder HTML for one completed UR or REQ; its `--kind proposal|root-cause` forms present open work as a decision brief instead. It adapts its evidence to visual UI work, backend work, refactors, infrastructure, and other non-visual changes while preserving a timestamped, self-contained `ai-reports/` bundle. User-facing walkthrough: [`docs/ai-report-guide.md`](../docs/ai-report-guide.md).
 
 `ai-report` is the only action that produces detailed stakeholder-facing HTML. The narrow open-questions digest for an outside stakeholder is not a detailed report — that is `stakeholder-report.md`, a non-routed file invoked by core. Cross-project portfolio presentation belongs to `present-work`; an animated walkthrough belongs to the separate present-video action.
 
@@ -24,13 +24,15 @@
 
 - The user wants a cross-project portfolio; use `do-work-toolbox present-work`.
 - The user wants an animated walkthrough; use the separate present-video action.
-- The target is unfinished or unsuccessful; report its status instead of presenting it as shipped (a revise targets an existing report, and its step 2 covers unfinished linked work).
+- The target is unfinished or unsuccessful and no `--kind` is given; report its status instead of presenting it as shipped (a revise targets an existing report, and its step 2 covers unfinished linked work).
 
 ## Input
 
 `$ARGUMENTS` is `UR-NNN`, `REQ-NNN`, `most recent`, or blank; the `judge`, `index` and `find` forms below create no report, and the `revise` form below writes a new revision of an existing report. One report invocation covers one UR or one REQ; a revise covers one existing bundle; blank is the explicit `most recent` form.
 
 `judge <bundle-dir>` runs only the Step 7 render check on an existing report bundle and reports its verdict; it creates no report.
+
+`--kind proposal|root-cause <topic|REQ-NNN|UR-NNN>` writes a decision brief about open work instead of a completed-work report. Any other `--kind` value stops with one line naming the two kinds; `--kind` without a target stops with a one-line usage. A plain-language ask for an "options report" is `--kind proposal`.
 
 ### Catalog forms: index and find
 
@@ -58,6 +60,8 @@
 
 ### Step 1: Resolve and Read the Completed Work
 
+With `--kind`, follow **Proposal and Root-Cause Kinds** in [`ai-report-reference.md`](ai-report-reference.md) instead of the shared reference's target resolution. The shared reference's safety load order still comes first.
+
 Read and follow [`completed-work-presentation-reference.md`](completed-work-presentation-reference.md) in full **before opening archived user content**. It is the sole contract for safety load order, target resolution, archive fields, missing evidence, merge-aware commit and current-code inspection, evidence honesty, and no-overwrite publication. Do not recreate those rules here.
 
 Build the reference's provenance ledger for the selected work. Its commit inspection follows the canonical [Merge-aware commit diff](../../do-work/docs/prescribed-shell-primitives.md#merge-aware-commit-diff) contract. Complete this read before drafting stakeholder claims or generating media.
@@ -73,7 +77,7 @@ Choose the mode from the work, not from the tools installed:
 
 A multi-REQ UR may use the appropriate mode per section, but it remains one report. Never force a non-visual change into screenshot-shaped cards, and never downgrade visual work to generic diagrams when authentic captures are available.
 
-Derive `<report-slug>` as `yyyy-mm-dd_hhmm_<description>`, where the description contains the UR/REQ ID and a short kebab-case summary. Use `ai-reports/<report-slug>/` as this consumer's preferred bundle path and apply the shared reference's **Collision-Safe Publication** section before creating it. Create `screenshots/` only when authentic captures will be included and `generated/` only when current-run generated images succeed.
+Derive `<report-slug>` as `yyyy-mm-dd_hhmm_<description>`, where the description contains the UR/REQ ID and a short kebab-case summary. Use `ai-reports/<report-slug>/` as this consumer's preferred bundle path and apply the shared reference's **Collision-Safe Publication** section before creating it. Create `screenshots/` only when authentic captures will be included and `generated/` only when current-run generated images succeed. With `--kind`, skip the mode table and take the slug from **Proposal and Root-Cause Kinds**.
 
 ### Step 3: Collect Mode-Appropriate Evidence
 
@@ -125,6 +129,8 @@ Write `ai-reports/<report-slug>/index.html` using **Report Design Rules** in `ai
 8. **Verify It Yourself** — copy-pasteable recorded test, operational, and canonical commit-inspection commands, accurately labeled as run or unrun.
 9. **Lessons and Open Questions** — include when present; handle missing optional records under the shared evidence contract.
 
+With `--kind`, write the template in **Proposal and Root-Cause Kinds** instead of this narrative.
+
 Use one coherent responsive layout with full-width wrapping bands, readable prose measures, and native-resolution image caps. Add interaction only when it improves comparison or comprehension; static HTML is the default.
 
 ### Step 6: Review the Claims and Artifact Boundaries
@@ -149,7 +155,7 @@ Judge width usage, table shape, diagram informativeness, emphasis hierarchy, lig
 
 Confirm `index.html` exists, the last `judge.json` verdict is `pass` (or `skipped` or `error` and disclosed in the footer, or for a revise `fail` whose only finding is the expected link to the prior bundle), screenshots open at full resolution, synthetic assets are disclosed, and the final bundle satisfies the shared **Collision-Safe Publication** section. Remove the judge output directory and its captures.
 
-Print a compact summary containing the report path, target and verdict, evidence mode, evidence used, recorded issues, and light/dark render status.
+Print a compact summary containing the report path, target and verdict, evidence mode, evidence used, recorded issues, and light/dark render status. For a `--kind` report, the summary names the kind and the recommended option or change in place of the verdict and evidence mode.
 
 ## Output Format
 
@@ -166,7 +172,8 @@ A fresh self-contained folder at `ai-reports/yyyy-mm-dd_hhmm_<slug>/` containing
 - [ ] Shared completed-work reference loaded before archive content; target, evidence ledger, and **Collision-Safe Publication** contracts satisfy it.
 - [ ] Visual evidence uses authentic captures, SVG annotations, responsive before/after where available, and distinct synthetic provenance.
 - [ ] Non-visual evidence states UI captures were not expected and uses commit, current-code, architecture/data-flow, test, and operational receipts without fabricated screenshots.
-- [ ] Stakeholder narrative includes verdict, shipped change, problem/change, operation, qualitative value, files/commits, verification, and available lessons/questions (a revise of a report that is not a completed-work report keeps the prior report's section order instead).
+- [ ] Stakeholder narrative includes verdict, shipped change, problem/change, operation, qualitative value, files/commits, verification, and available lessons/questions (a revise of a report that is not a completed-work report keeps the prior report's section order instead, and a `--kind` report uses its own template).
 - [ ] Report is responsive, self-contained at the folder level, and render-judged with `ai-report-judge` at wide and phone widths in light and dark (verdict `pass`, or `skipped` or `error` and disclosed in the footer, or for a revise `fail` with only the expected prior-bundle link finding).
+- [ ] A `--kind` report follows **Proposal and Root-Cause Kinds**: decision first, smallest-change option priced, `<kind>` slug and meta tag, labelled mockups, capture lines printed and never run.
 - [ ] No brief, separate explainer, video, publishing, hosting, or search artifact was created (the catalog forms' and the revise form's `catalog.json` and `index.html` excepted).
 - [ ] A revise wrote a new `-rev<N>` sibling with the rev block and supersedes meta, regenerated the catalog, and left the prior bundle byte-identical.

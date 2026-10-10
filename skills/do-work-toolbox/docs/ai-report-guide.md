@@ -44,7 +44,7 @@ The report leads with a concise verdict, then covers:
 - copy-pasteable verification commands;
 - recorded lessons and open questions when available.
 
-An archived target whose normalized status is `completed-with-issues` is eligible, but the report keeps that qualification and its recorded issues visible. Cancelled, failed, and unfinished work is rejected rather than presented as shipped.
+An archived target whose normalized status is `completed-with-issues` is eligible, but the report keeps that qualification and its recorded issues visible. Unless `--kind` is used, cancelled, failed, and unfinished work is rejected rather than presented as shipped.
 
 ## Visual Evidence and Layout
 
@@ -71,6 +71,8 @@ do-work-toolbox ai-report index           Catalog every report bundle under ai-r
 do-work-toolbox ai-report find <topic>    List report bundles on a topic, newest first
 do-work-toolbox ai-report judge <dir>     Render-check an existing report bundle
 do-work-toolbox ai-report revise <dir|latest> [what changed]  New revision of a report; the old one is kept
+do-work-toolbox ai-report --kind proposal <topic|REQ-NNN|UR-NNN>    Decision brief with priced options
+do-work-toolbox ai-report --kind root-cause <topic|REQ-NNN|UR-NNN>  What happened, why, what to change
 ```
 
 Target statuses are normalized under the do-work schema. The terminal-success set is `completed` or `completed-with-issues`; if the selected target has no successful work, the action stops and explains why.
@@ -92,3 +94,7 @@ The evidence sweep reads requirements, implementation summaries, reviews, tests,
 ## Revising a Report
 
 `ai-report revise <dir|latest> [what changed]` never edits the old report. It writes a new sibling report with the same name plus `-rev<N>`, which opens with a "rev-N (date)" block listing what changed and what is still to do, and names the old report's folder in an `ai-report-supersedes` meta tag. `latest` picks the newest report in the catalog, and the catalog is regenerated afterwards, so the old report shows "superseded by" the new one. A long report gets a table of contents near the top. The last output line is the new report's path and a `file://` link to open it; committing is left to you.
+
+## Proposal and Root-Cause Reports
+
+`--kind proposal` and `--kind root-cause` write a decision-first brief about work that is not finished: a free topic, an open REQ or UR, or, for `root-cause`, a failed or cancelled REQ. Nothing in it is presented as shipped. A proposal opens with the decision, then two to four priced options, a recommendation, an evidence ledger, limits, open questions and one capture line per option; a root-cause report replaces the decision and options with what happened, why and what to change. The options always include the smallest-change option, such as deleting the mechanism or doing nothing extra, even when nobody asked for it. Every mockup is labelled "MOCKUP — proposal" and kept in `generated/`, apart from real screenshots. The capture lines are printed for you to run; the action never runs them.
