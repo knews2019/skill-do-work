@@ -10,6 +10,16 @@ For the complete release history, read this file and the archives below from new
 - [0.50.0 through 0.64.1](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-13-up-to-v0.64.1.md)
 - [0.1.0 through 0.49.0](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-07-up-to-v0.49.0.md)
 
+## 0.305.92 — Toolbox Journey QA Checks Whole User Journeys and Names Product, Test or Unresolved Failures (2026-10-10)
+
+Zoom alone, pan alone and reset alone can each pass their check while zoom, then pan, then reset leaves the panel offset. A broken test or an emulated phone could also be reported as a product bug or a device check. The new `do-work-toolbox journey-qa <target> [--brief <path>]` reproduces the reported sequence in a browser, tries the combined transitions around it, and gives each result one class.
+
+- New read-only toolbox action `journey-qa` and a short user guide beside it in the toolbox docs. It changes no project source and creates no REQ.
+- Runs the reported sequence first, then each named transition alone and in the combined orders the requirements or brief name. It waits on observable state, never a fixed delay, and keeps screenshots outside timed spans.
+- Each result is passed, product defect, test defect or unresolved, with revision, environment (browser, viewport, physical device or emulation), steps, expected, actual and evidence paths. Emulation is labeled emulation. No browser tool or no device means unresolved, never passed.
+- Ends with the smallest justified repair, the checks still left, and a capture line the user runs.
+- Listed in the toolbox router, both help menus and the README.
+
 ## 0.305.91 — Toolbox Source Audit Checks Each Cited Source Against Its Claim (2026-10-09)
 
 A link that loads is not proof that the page supports a claim: error pages served with success, redirects to a home page and index pages all pass a naive check. The new `do-work-toolbox source-audit <report-or-url-list>` reads each cited source and says, claim by claim, whether it supports what the report says.
