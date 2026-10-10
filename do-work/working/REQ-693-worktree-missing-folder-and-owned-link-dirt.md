@@ -14,7 +14,7 @@ effort_estimate: effort-substantive
 related: [REQ-694, REQ-695, REQ-696]
 batch: review-followups-ur154
 required_lessons: ["_dev/primes/lessons-releases.md"]
-write_set: ["skills/do-work/tools/do-work-cli/internal/cleanup/worktree_lifecycle.go", "skills/do-work/tools/do-work-cli/internal/cleanup/worktree_lifecycle_test.go", "skills/do-work/tools/do-work-cli/internal/cleanup/cleanup_git.go", "skills/do-work/tools/do-work-cli/internal/resultmodel/result_model.go", "skills/do-work/tools/do-work-cli/internal/corehelpers/handoff.go", "skills/do-work-board/tools/queue-kanban/verify.go", "skills/do-work/actions/cleanup.md", "skills/do-work/actions/fan-out-reference.md"]
+write_set: ["skills/do-work/tools/do-work-cli/internal/cleanup/worktree_lifecycle.go", "skills/do-work/tools/do-work-cli/internal/cleanup/worktree_lifecycle_test.go", "skills/do-work/tools/do-work-cli/internal/cleanup/cleanup_git.go", "skills/do-work/tools/do-work-cli/internal/resultmodel/result_model.go", "skills/do-work/tools/do-work-cli/internal/corehelpers/handoff.go", "skills/do-work-board/tools/queue-kanban/verify.go", "skills/do-work/actions/cleanup.md", "skills/do-work/actions/fan-out-reference.md", "skills/do-work-toolbox/actions/tutorial.md", "skills/do-work/docs/roadmap-guide.md"]
 claimed_at: 2026-10-10T19:22:00Z
 route: B
 estimate:
@@ -26,6 +26,8 @@ estimate:
   - 3 subsystems involved
   - 7 acceptance criteria
   calculated_at: 2026-10-10T19:25:00Z
+dispatch_at: 2026-10-10T19:29:01Z
+builder_handback_at: 2026-10-10T19:35:16Z
 ---
 # Addendum: Worktree Status and Cleanup Survive a Missing Folder, and Dirt Readers Ignore Owned Worktree Links
 
@@ -144,6 +146,8 @@ Read at main HEAD `fd9a2378` by the pre-dispatch agent (no separate Explore agen
 - `skills/do-work-board/tools/queue-kanban/verify.go` (modify) — board dirt probe ignores owned links with the same rule
 - `skills/do-work/actions/cleanup.md` (modify) — one clause in Pass 5 step 3
 - `skills/do-work/actions/fan-out-reference.md` (modify) — one clause in the worktree status sentence
+- `skills/do-work-toolbox/actions/tutorial.md` (modify) — coordinator addendum: the "Something seems stuck" recipe points at `do-work status` (REQ-696 review F1)
+- `skills/do-work/docs/roadmap-guide.md` (modify) — coordinator addendum: "stuck" routes to `do-work status`, broken or failed to `do-work forensics` (REQ-696 review F2)
 
 **Files I will NOT touch:** `skills/do-work/actions/work-reference.md` (Crash Recovery does not restate the dirt rule), `skills/do-work/tools/do-work-cli/internal/cleanup/cleanup_git_test.go`, `skills/do-work/tools/do-work-cli/internal/corehelpers/handoff_test.go`, queue-kanban tests, `CHANGELOG.md`, any VERSION file or mirror, anything under `do-work/` except the builder hand-back file.
 
