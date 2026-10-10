@@ -1,7 +1,7 @@
 ---
 id: REQ-692
 title: 'validate-feedback --capture [--run]: file-path input, wrong-repo check, Discuss questions, one capture, verify, optional run, and a core do-work route'
-status: pending
+status: claimed
 created_at: 2026-10-10T13:05:57Z
 user_request: UR-153
 domain: general
@@ -12,6 +12,7 @@ impact: impact-user-visible
 effort_estimate: effort-substantive
 related: [REQ-690, REQ-691]
 batch: validate-feedback-capture
+claimed_at: 2026-10-10T13:14:56Z
 ---
 # validate-feedback --capture [--run]: One Opt-In Chain From Triage to an Optional Run, Plus a Core Route
 ## What

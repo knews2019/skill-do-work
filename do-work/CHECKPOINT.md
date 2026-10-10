@@ -33,3 +33,5 @@ queue_state: [21 pending, 0 pending-answers, 0 blocked, 0 blocked-archive-collis
 - REQ-690: do-work status action and do-work-cli run-status report one class, ETA and remedy per open REQ — claimed 2026-10-10T13:14:51Z — writer: t2s-Virtual-Machine.local:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2
 
 - REQ-691: do-work trace action reports how much of an outside spec is captured and built, with one dated verdict per ask — claimed 2026-10-10T13:14:55Z — writer: t2s-Virtual-Machine.local:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2
+
+- REQ-692: validate-feedback --capture [--run]: file-path input, wrong-repo check, Discuss questions, one capture, verify, optional run, and a core do-work route — claimed 2026-10-10T13:14:56Z — writer: t2s-Virtual-Machine.local:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2
