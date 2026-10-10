@@ -1,7 +1,7 @@
 ---
 id: REQ-678
 title: 'do-work-toolbox release-check reports each delivery stage with evidence and a readiness verdict that stale or empty content cannot pass'
-status: claimed
+status: completed
 route: B
 estimate:
   p50_active_minutes: 35
@@ -28,6 +28,14 @@ batch: portable-verification-actions
 claimed_at: 2026-10-10T00:15:34Z
 dispatch_at: 2026-10-10T00:23:20Z
 builder_handback_at: 2026-10-10T00:30:56Z
+integration_at: 2026-10-10T00:31:11Z
+review_at: 2026-10-10T00:44:13Z
+kb_status: pending
+commit: 44548b5912dc745087b8f048864ad42230d32e60
+heavy_verified_at: 2026-10-10T00:46:07Z
+heavy_verified_revision: 44548b5912dc745087b8f048864ad42230d32e60
+completed_at: 2026-10-10T00:46:24Z
+release_at: 2026-10-10T00:46:24Z
 ---
 # do-work-toolbox release-check
 ## What
@@ -78,9 +86,9 @@ Firm on the per-stage table and on the readiness rule. Latitude on layout and on
 ## Full Context
 See `do-work/user-requests/UR-151/input.md` for complete verbatim input. No queued or archived REQ shares this intent (queue REQ-654 to REQ-674 read by intent; archive filenames scanned for release, deploy and readiness checks).
 ## AI Execution State (P-A-U Loop)
-- [ ] **[PLAN]:** (Agent: Read listed `prime_files` and agent rules. Write brief technical approach here. Do not write code yet.)
-- [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
-- [ ] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
+- [x] **[PLAN]:** Third toolbox action in the journey-qa/source-audit pattern. Action carries the REQ's Detailed Requirements 1-7 as a short procedure; stage definitions are cited, never copied (only the four names are used). Readiness is a strict three-way partition on stage results: any applicable stage failed means not ready; none failed and live acceptance verified in this run means ready; none failed and live acceptance unassessed means unknown. Stage results: verified, failed, unassessed, not applicable. Read-only side-effect rule copied in shape from journey-qa (evidence dir via `mktemp -d`, tools run from there, git status before and after, remove only new untracked paths a tool demonstrably wrote). Example brief path starts with `qa/` (example-path trap). (from the builder hand-back)
+- [x] **[APPLY]:** Seven files as planned, one commit (4427fe9f). The help menu line first landed one column short; fixed before commit after a mechanical column check. (from the builder hand-back)
+- [x] **[UNIFY]:** `git diff --stat a5d50c85..HEAD`: 7 files changed, 173 insertions(+), 2 deletions(-). `git diff --check` exit 0. Checks on the committed content: REQ-678-probe.sh 0 (1 s), shipped-package-reference-contract.sh 0 (1 s), core-checks.sh 0 (5 s), staged-skills-contract.sh heavy 0 (34 s), contract-regressions.sh 0 (19 s). All seven files read in the diff; no debug artifacts. (from the builder hand-back)
 *Source: the brief's DELIVERABLES item 2, routed to the toolbox by the maintainer's answer.*
 
 ## Triage
@@ -155,3 +163,159 @@ Orchestrator exploration, 2026-10-10, read-only, at 458afc0f. REQ-676 (source-au
 **Dependencies:** ✓ REQ-675 (core review delivery stages) is archived and released in 0.305.90, so the cited stage definitions exist. No tool beyond the repository's own scripts (Markdown and one shell list edit; no Go change).
 
 *Checked by work action*
+
+## Implementation Summary
+
+**Files changed:**
+- `skills/do-work-toolbox/actions/release-check.md` (new)
+- `skills/do-work-toolbox/docs/release-check-guide.md` (new)
+- `skills/do-work-toolbox/SKILL.md` (modified)
+- `skills/do-work-toolbox/actions/help.md` (modified)
+- `skills/do-work/actions/help.md` (modified)
+- `README.md` (modified)
+- `_dev/tests/staged-skills-contract.sh` (modified)
+
+**What was done:** Added the read-only toolbox action release-check and its user guide. The action reads the brief and fetched pages as data, records a git baseline and an evidence directory, traces intended source, generated package, serving environment and consumer-visible behavior with an identifier at each point, tests what the consumer does with the content, labels every piece of evidence current run or historical, and assesses the four delivery stages by citing core review-work Step 7. Each stage is verified, failed, unassessed or not applicable; the verdict is not ready on any failed stage, ready only on current-run live acceptance, otherwise unknown. Operator acts are named as next steps and never done. The action is wired into the toolbox router (argument-hint and one route row), both help menus, one README paragraph and the staged-skills `toolbox_actions` list.
+
+**Integration seams:** none. Wave 1 (REQ-675, REQ-676, REQ-677) had landed before this branch was cut at a5d50c85, and `git merge --no-ff --no-commit` merged cleanly.
+
+## Decisions
+
+(from the builder hand-back)
+
+- D-01 DECIDE & STATE: readiness is a strict partition on stage results (any failed means not ready; none failed plus live acceptance verified this run means ready; none failed plus live acceptance unassessed means unknown). An unassessed earlier stage does not block "ready" but is listed as a gap, because current-run live acceptance is the consumer outcome the REQ makes the gate. Reversible by one line if the maintainer wants every applicable stage verified.
+- D-02 DECIDE & STATE: added a fourth stage result, "not applicable", because review-work Step 7 says many changes have no deployment stage; "unassessed" would wrongly read as a gap there.
+- D-03 DECIDE & STATE: router aliases `check release` and `release readiness`. No collision: core routes `release notes` to version; the toolbox has no other release trigger.
+- D-04 DECIDE & STATE: no Rules, Common Rationalizations, Red Flags or Verification Checklist. Nothing passed the earned test beyond what the Steps already state.
+- D-05 DECIDE & STATE: the guide cites core review with a plain relative link rather than the arrow section form; the action carries the section form that the reference contract checks.
+
+## Discovered Tasks
+
+(from the builder hand-back)
+
+- **impact-negligible** The toolbox help menu's description column is index 33 (column 34 counted from 1), while the brief and the REQ Exploration call it column 33; a builder padding to 32 lands one short and nothing tests the alignment. → report only
+
+## Qualification
+
+**Gate records (advance --diff-range 90ef7b4d..335c1739):** `qualify` satisfied (success: no debug artifacts, no output primitives, P-A-U boxes ticked). `scope-drift` satisfied with no finding.
+
+**Scope comparison (Route B):** declared 7 files, touched 7 files, the same set (`git diff --stat 90ef7b4d..335c1739`: 7 files, 173 insertions, 2 deletions). Nothing under `suite/`, `tools/`, `skills/do-work/tools/` or `skills/do-work/actions/review-work.md` changed, so modules.tsv, the installer and the updater are unchanged and core review is cited, not edited. The queue guard printed nothing before the merge.
+
+**Requirement trace (against the merged files):**
+- R1 trace the four points: release-check.md Step 3 (intended source, generated package, serving environment, consumer-visible behavior, an identifier at each, unreachable points recorded with the reason) and the Output Format Trace table.
+- R2 test what the consumer does; presence, decode or identifier alone never count: line 7 and Step 4 ("File presence, a successful decode or a matching identifier alone is never consumer evidence"; the hit-mask example).
+- R3 version mixing, stale caches, missing dependencies, interrupted activation as examples: Step 3 last paragraph, marked "illustrative, not exhaustive".
+- R4 four stages reported separately, definitions cited, "unassessed": Step 5 cites `../../do-work/actions/review-work.md` → **Step 7: Acceptance Testing** and does not copy the definition sentences; the result table has unassessed (with reason and covering check) and adds not applicable (D-02); the Stages table in the Output Format.
+- R5 current run or historical with date or revision; historical never verifies: line 7 and Step 5 first paragraph; the unassessed row says a stage covered only by historical evidence is unassessed.
+- R6 verdict and gaps; ready needs current-run live acceptance; operator acts named, never done: Step 6 (the three-way rule, the Gaps list, Operator Next Steps "Do none of them"), line 5, Output Format.
+- R7 toolbox ownership, no queue machinery, no REQ for operator work: blockquote line 3, line 5 and the closing line (capture only a content or product defect).
+- Integration: argument-hint and route row (`skills/do-work-toolbox/SKILL.md:4` and `:29`), toolbox menu line (description column 33 like every other line, checked mechanically), core help toolbox row, README paragraph, `toolbox_actions` entry, guide present with a "Not to be confused with" note; prompt-injection loaded in Step 1 and anti-slop in Step 6 (same-package toolbox copies); example brief path starts with `qa/`; per-command help is served by the router rule from When to Use and Input.
+- Constraints: read-only (line 5, Step 2 baseline and evidence directory, Step 6 status comparison and narrow cleanup).
+
+**Judgment for review:** the verdict rule covers failed, verified and unassessed live acceptance, but not a target whose live acceptance is "not applicable" (a stage result D-02 added). Passed to the reviewer.
+
+**Debug artifacts:** none found by the gate. No em-dashes in the two new files.
+
+## Testing
+
+**Tests run:** `bash _dev/tests/maintainer-verify.sh` run directly, unpiped, at the first merge 335c1739 and again at the fix merge 44548b59, each after the 1-minute load fell under 5 (4.68, then 4.02) with no other gate running; at 335c1739 also `advance --gate-arg bash --gate-arg _dev/tests/maintainer-verify.sh --gate-exit-status 0 -- --probe-file do-work/runs/work-2026-10-09-225703/REQ-678-probe.sh` (advance ran the probe itself).
+**Result:** ✓ Repository gate exit 0 at 335c1739 (140 s wall) and exit 0 at 44548b59 (127 s wall); no red run, so no retry and no load rerun. Green probe exit 0 at 335c1739 through advance (BLOCKED-PROBE-SUCCEEDED; the green-gate record is satisfied) and exit 0 at 44548b59 run directly (advance refuses gate input once the REQ is in the review phase: ADVANCE-GATE-INPUT-IRRELEVANT).
+
+**Red-green validation:** *(one-off behavioral exercise from `## Red-Green Proof`; nothing committed)*
+- Routing: ✗ before (`git show 90ef7b4d:skills/do-work-toolbox/SKILL.md | grep -c release-check` prints 0, so the word falls to "unknown single words print help") → ✓ after (route row `skills/do-work-toolbox/SKILL.md:29` `release-check` → `./actions/release-check.md`, which exists). Re-run by the integrator at the merge.
+- Per-command help: re-checked by the integrator at the merge. The toolbox router says "Per-command help reads the selected action without executing it" and core `help.md:62` says to read Input and When to Use and "Never execute the command while serving help"; the action's When to Use and Input hold the usage line and two examples, so help prints usage and runs nothing. The builder's served help text was 12 lines.
+- Builder exercise (hand-back, three local fixtures served by `python3 -m http.server` on 127.0.0.1, Pillow 11.3.0, by the agent that wrote the action): A (hit-mask decodes, 0 opaque pixels, matching 1.4.0 identifier) gave not ready, live acceptance failed, integration unassessed with the covering check; B (served 2.0.3 against package 2.1.0, a 2026-10-03 "deployed and verified" note) gave not ready, deployment failed, live acceptance failed, the note labeled historical; C (all three copies identical at 2.1.0) gave ready with every stage current run. Servers stopped, main tree status unchanged.
+- Independent exercise of fixture B (coordinator ruling): the reviewer built fixture B itself and followed the shipped action cold at 335c1739: implementation verified (source 2.1.0, "New: daily puzzle"), integration verified (`build.sh` exit 0, rebuild equals package), deployment failed (served `app.js` 2.0.3 against package 2.1.0, different sha256), live acceptance failed (served page shows "Weekly puzzle"); verdict not ready; the 2026-10-03 deploy note labeled historical and verifying no stage. GREEN. Server stopped, ROOT and fixture status unchanged.
+- Packaging install leg: the builder installed the branch tip 4427fe9f into a disposable Git consumer through the canonical installer: exit 0, both new files present under `.claude/skills/do-work-toolbox/`, every relative link and arrow citation resolves, and the brief, the `do-work/queue/` REQ and the app file keep their sha256. The update leg runs after the release commit (coordinator ruling), with the result in the integration report.
+- Not exercised by anyone: a real browser click on a script-rendered page (the fixtures are static and the click used the fixture's alpha rule on the fetched image); the cause list (cache, activation) beyond naming it, since a static server has neither layer.
+
+**New tests added:**
+- None kept (the maintainer chose one-off exercises). `release-check` added to `toolbox_actions`, so staged-skills now requires the action file to exist and stage.
+
+**Heavy verification plan:**
+- Range: 90ef7b4d7fdeef14dd4e253a9d34f1d0de6da858..44548b5912dc745087b8f048864ad42230d32e60 (the plan at the first merge 335c1739 selected the same six lanes)
+- queue-kanban-javascript: `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane queue-kanban-javascript` (staged-skills-contract.sh matched subtree _dev/tests)
+- queue-kanban-browser: `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane queue-kanban-browser` (staged-skills-contract.sh matched subtree _dev/tests)
+- do-work-cli-integrations: `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane do-work-cli-integrations` (staged-skills-contract.sh matched subtree _dev/tests)
+- staged-skills: `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane staged-skills` (staged-skills-contract.sh matched subtree _dev/tests; the toolbox SKILL.md, help.md, release-check.md, release-check-guide.md and core help.md matched subtree skills)
+- updater: `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane updater` (staged-skills-contract.sh matched subtree _dev/tests)
+- installer: `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane installer` (README.md matched exact path; staged-skills-contract.sh matched subtree _dev/tests)
+
+*Verified by work action*
+
+## Review
+
+**Overall: 96%** | 2026-10-10T00:44:13Z
+
+| Dimension | Score |
+|-----------|-------|
+| Requirements | 100% |
+| Code Quality | 92% |
+| Test Adequacy | 90% |
+| Scope | 100% |
+| Risk | None |
+| Acceptance | Pass |
+
+**Important findings (each with its recorded impact token — this is the durable audit record the judgment mandates):**
+- None
+
+**Minor findings:**
+- F1: the Step 6 verdict rule had no outcome when no stage failed and live acceptance was "not applicable" (the result D-02 added). Resolved in 2c586918 (merged 44548b59): `release-check.md:85` and `release-check-guide.md:19` now read "unassessed or not applicable", so that case is unknown. — resolved
+- F2: no toolbox sibling points users to the new verification actions: `skills/do-work-toolbox/actions/journey-qa.md:16-19` and `docs/journey-qa-guide.md:5` give no redirect to release-check; the slop-check to source-audit (REQ-676 review F1) and ui-review to journey-qa (REQ-677 review F4) redirects are still missing. Outside this REQ's Scope. — impact-user-visible → report only
+- F3: inherited from REQ-675 review F1, still stale: `skills/do-work/crew-members/shared-principles.md:15` "Acceptance cannot be exercised, Record Untested" does not cover a review that exercised some delivery stages but not all. — impact-rule-change → report only
+- F4: inherited from REQ-675 review F3 and F4, still stale: `skills/do-work/actions/sample-archived-req.md:99` names no stage; `skills/do-work/actions/review-work.md:460` says Route A suggested testing is "usually empty or 1 item". — impact-negligible → report only
+- F5 (nit): Step 2 does not say which repository to baseline when the target is not the current checkout, and Step 5 does not map trace points to stages; the builder and the reviewer made the same choices. — impact-negligible → report only
+- F6 (nit): the Output Format always shows the capture line, while the closing line limits it to content or product defects. — impact-negligible → report only
+
+**Acceptance:** Pass. Implementation and integration assessed: the reviewer followed the shipped action cold on fixture B (served 2.0.3 against package 2.1.0, a 2026-10-03 "deployed and verified" note) and got not ready, deployment failed, live acceptance failed, the note labeled historical and verifying no stage; shipped-package reference contract green at 335c1739 and 44548b59; routing and per-command help traced. Deployment assessed only as the builder's fresh install at review time (the update leg runs after the release commit). Live acceptance in a real consumer unassessed.
+**Restatement sweep:** wave-end sweep (last successful integration of REQ-675, REQ-676, REQ-677, REQ-678). Redefined the list of toolbox actions (one more: release-check). With the REQ-675 stage words and the REQ-676 and REQ-677 action lists, checked the router argument-hint and route table, both help menus, README, `toolbox_actions`, the absent toolbox count, `tutorial.md`, `next-steps.md`, guide lists, crew-member caller lists, the Go registry, the retired-trigger fixture, review-work-guide.md, work.md Step 7, completed-work-presentation-reference.md and the two new files. All lists hold the three new actions and agree; stale: shared-principles.md:15 (F3), sample-archived-req.md:99 and review-work.md:460 (F4); missing redirects (F2).
+**Suggested testing:** 4 items (update leg after release, a target with no deployment stage to see not applicable and unknown, a script-rendered page with a real browser click, a real consumer's live host)
+**Follow-ups created:** None (F1 resolved, 5 findings report only)
+
+*Reviewed by review-work action* (first pass 95% at 335c1739, re-check of 90ef7b4d..44548b59 96%; full report `do-work/runs/work-2026-10-09-225703/REQ-678-review.md`)
+
+## Lessons Learned
+
+**What worked:** Building wave 2 on a base that already held all of wave 1 gave a clean merge with no seam. Running the heavy drain in a detached checkout while the reviewer worked saved one full wait, and the reviewer's cold run of fixture B gave the same stage table as the builder's own run.
+**What didn't:** The builder added a fourth stage result ("not applicable") and did not extend the verdict rule that partitions on stage results, so one case had no verdict; review caught it (F1) and the fix was two lines. The help menu line first landed one column short because the brief named the description column by a number that did not match the existing lines.
+**Worth knowing:** When a decision rule is a partition over a set of values, adding a value means re-reading every rule that partitions on that set. Measure a fenced menu's column from an existing line, not from a number in a brief. Three toolbox siblings now lack a redirect to the new verification actions (F2), report only.
+
+## Orientation
+
+Now `do-work-toolbox release-check <target> [--brief <path>]` traces content from source to package to serving environment to what the consumer sees, reports the four delivery stages of core review with current-run or historical evidence, and gives ready, not ready or unknown; lives in the toolbox package beside journey-qa and source-audit (`skills/do-work-toolbox/actions/release-check.md`, guide in `docs/`; prime `_dev/primes/prime-action-files.md`). Leaf addition: one more toolbox action, no change to the suite's shape. Prime spot-check: the paths `_dev/primes/prime-action-files.md` names for toolbox actions still exist.
+
+## Heavy Verification Plan
+
+- Base: 90ef7b4d7fdeef14dd4e253a9d34f1d0de6da858
+- Target: 44548b5912dc745087b8f048864ad42230d32e60
+- queue-kanban-javascript: `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane queue-kanban-javascript`. Reasons: _dev/tests/staged-skills-contract.sh matched subtree _dev/tests.
+- queue-kanban-browser: `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane queue-kanban-browser`. Reasons: _dev/tests/staged-skills-contract.sh matched subtree _dev/tests.
+- do-work-cli-integrations: `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane do-work-cli-integrations`. Reasons: _dev/tests/staged-skills-contract.sh matched subtree _dev/tests.
+- staged-skills: `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane staged-skills`. Reasons: _dev/tests/staged-skills-contract.sh matched subtree _dev/tests; skills/do-work-toolbox/SKILL.md, skills/do-work-toolbox/actions/help.md, skills/do-work-toolbox/actions/release-check.md, skills/do-work-toolbox/docs/release-check-guide.md and skills/do-work/actions/help.md matched subtree skills.
+- updater: `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane updater`. Reasons: _dev/tests/staged-skills-contract.sh matched subtree _dev/tests.
+- installer: `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane installer`. Reasons: README.md matched exact path README.md; _dev/tests/staged-skills-contract.sh matched subtree _dev/tests.
+
+## Heavy Verification Result
+
+- Target revision: 44548b5912dc745087b8f048864ad42230d32e60
+- Execution revision: 44548b5912dc745087b8f048864ad42230d32e60 (detached checkout `.git/work-run-work-2026-10-09-225703/drain-head-REQ-678`, removed after the run)
+- queue-kanban-javascript: exit 0, reused (fingerprint_match; executed at the first merge 335c1739 in 8 s)
+- queue-kanban-browser: exit 0, executed (fingerprint_uncertain), 86 s, QUEUE_KANBAN_BROWSER set, no HEAVY-RUN-LANE-SKIPPED
+- do-work-cli-integrations: exit 0, reused (fingerprint_match; executed at 335c1739 in 63 s)
+- staged-skills: exit 0, executed (fingerprint_mismatch), 45 s
+- updater: exit 0, reused (fingerprint_match; executed at 335c1739 in 65 s)
+- installer: exit 0, reused (fingerprint_match; executed at 335c1739 in 28 s)
+- The first drain at 335c1739 ran all six lanes, every one executed and exit 0 (8, 81, 63, 36, 65, 28 s; 284 s wall); the fix merge then re-ran the two lanes whose inputs changed or are uncertain.
+
+## Timing
+
+Observed 2026-10-10T00:23:20Z to 2026-10-10T00:46:06Z: 22m 46s total, 20m 12s attributed across 7 events, 2m 34s unattributed.
+
+| Category | Elapsed | Events |
+| --- | --- | --- |
+| builder-work | 7m 36s | 1 |
+| verification-gate | 7m 11s | 3 |
+| review | 5m 06s | 1 |
+| handback-merge | 19s | 2 |
+
+Slowest stage: builder-work / builder worktree build, 7m 36s, outcome success.

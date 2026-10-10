@@ -10,6 +10,16 @@ For the complete release history, read this file and the archives below from new
 - [0.50.0 through 0.64.1](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-13-up-to-v0.64.1.md)
 - [0.1.0 through 0.49.0](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-07-up-to-v0.49.0.md)
 
+## 0.305.93 — Toolbox Release Check Reports Each Delivery Stage and Will Not Call Stale or Empty Content Ready (2026-10-10)
+
+A file that exists, decodes and carries the right version can still give the consumer nothing: a hit-mask image can be fully transparent, and a served copy can be an older build than the source. An old "deployed and verified" note proves nothing today. The new `do-work-toolbox release-check <target> [--brief <path>]` traces the content to the consumer and says whether it is ready.
+
+- New read-only toolbox action `release-check` and a short user guide beside it in the toolbox docs. It changes no project file, creates no REQ, and deploys, rolls back or repairs nothing.
+- Traces intended source, generated package, serving environment and consumer-visible behavior, and tests what the consumer does with the content. File presence, a clean decode or a matching identifier alone is never consumer evidence.
+- Reports implementation, integration, deployment and live acceptance separately, using core review's stage definitions by citation. Each stage is verified, failed, unassessed or not applicable, and every piece of evidence is labeled current run or historical. Historical evidence never verifies a stage.
+- The verdict is not ready when any stage failed, ready only when live acceptance is verified in this run, and unknown otherwise, with the gaps and the operator steps they call for.
+- Listed in the toolbox router, both help menus and the README.
+
 ## 0.305.92 — Toolbox Journey QA Checks Whole User Journeys and Names Product, Test or Unresolved Failures (2026-10-10)
 
 Zoom alone, pan alone and reset alone can each pass their check while zoom, then pan, then reset leaves the panel offset. A broken test or an emulated phone could also be reported as a product bug or a device check. The new `do-work-toolbox journey-qa <target> [--brief <path>]` reproduces the reported sequence in a browser, tries the combined transitions around it, and gives each result one class.
