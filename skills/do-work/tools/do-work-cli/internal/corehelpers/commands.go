@@ -48,6 +48,7 @@ const (
 	CommandEstimateP50         = "estimate-p50"
 	CommandNow                 = "now"
 	CommandFrontmatter         = "frontmatter"
+	CommandRequest             = "req"
 )
 
 func Handlers() map[string]commandruntime.CommandHandler {
@@ -62,7 +63,7 @@ func Handlers() map[string]commandruntime.CommandHandler {
 		CommandRepairTimestamps: handleRepairTimestamps, CommandAuditTimestamps: handleAuditTimestamps,
 		CommandHandoffSurvey:    handleHandoffSurvey,
 		CommandArchiveCollision: handleArchiveCollision, CommandEstimateP50: handleEstimateP50,
-		CommandNow: handleNow, CommandFrontmatter: handleFrontmatter,
+		CommandNow: handleNow, CommandFrontmatter: handleFrontmatter, CommandRequest: handleRequest,
 	}
 }
 
@@ -75,8 +76,11 @@ func handleNow(_ commandruntime.ExecutionContext, arguments []string) resultmode
 }
 
 func handleFrontmatter(executionContext commandruntime.ExecutionContext, arguments []string) resultmodel.CommandResult {
+	if len(arguments) > 0 && arguments[0] == "set" {
+		return handleFrontmatterSet(executionContext, arguments[1:])
+	}
 	if len(arguments) < 3 || arguments[0] != "get" {
-		return frontmatterUsageResult("usage: frontmatter get <file> <field> [--normalize] [--in-set SET]")
+		return frontmatterUsageResult("usage: frontmatter get <file> <field> [--normalize] [--in-set SET] | frontmatter set <file|REQ-N> <field> (<value> | --at now)")
 	}
 	filePath, field := arguments[1], arguments[2]
 	normalize, setGiven, setName := false, false, ""
