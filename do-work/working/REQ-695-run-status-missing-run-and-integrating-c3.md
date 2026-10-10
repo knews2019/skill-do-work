@@ -26,6 +26,8 @@ estimate:
     - 5-file write set
     - 2 subsystems involved
     - 5 acceptance criteria
+dispatch_at: 2026-10-10T19:27:42Z
+builder_handback_at: 2026-10-10T19:28:50Z
 ---
 # Addendum: run-status Names a Missing --run Folder and Stops Recommending do-work run While an Integrator Works
 
