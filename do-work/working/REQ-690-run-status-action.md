@@ -26,6 +26,7 @@ estimate:
   - 3 subsystems involved
   - 8 acceptance criteria
   calculated_at: 2026-10-10T13:22:28Z
+builder_handback_at: 2026-10-10T13:42:46Z
 ---
 # do-work status: One Class, ETA and Remedy per Open REQ
 ## What
