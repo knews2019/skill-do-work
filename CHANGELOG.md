@@ -10,6 +10,15 @@ For the complete release history, read this file and the archives below from new
 - [0.50.0 through 0.64.1](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-13-up-to-v0.64.1.md)
 - [0.1.0 through 0.49.0](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-07-up-to-v0.49.0.md)
 
+## 0.305.98 — Timeline Browser Probes No Longer Depend on the Live Queue's Dates (2026-10-10)
+
+Two Timeline browser probes read the checkout's real queue but typed a fixed week, so a checkout with no REQ dated 2026-07-27 to 2026-08-02 failed the strict browser lane for no product reason. They now build their page from a fixed fixture, and the Previous and Next buttons are pressed in a probe for the first time.
+
+- `TestBrowserBehaviorTimelineProseDescribesOnlyTheWindowOnScreen` and `TestBrowserBehaviorTimelineNowAndFitAllLandSomewhereReadable` use the existing range-end fixture tree, which gained two rows: a short completed REQ-164 and a long open REQ-0003.
+- The Now / Fit all probe presses Previous then Next on the trailing 7 days. Both window endpoints must move exactly 7 days and return to the start instants, compared in epoch milliseconds, with the span unchanged and data still drawn.
+- The forward-arrow refusal on the trailing 7 days is asserted outright instead of in a two-branch conditional.
+- The other nine live-queue probes were read and left alone; none depends on dates.
+
 ## 0.305.97 — Qualify Says Whether the Implementation Summary Is Missing or Names No Files (2026-10-10)
 
 Qualify now tells the two Implementation Summary problems apart. Before, one message, "Implementation Summary is missing or empty", covered both. A builder whose summary said "None, verification only" was told the section was missing and went looking for the wrong fix.

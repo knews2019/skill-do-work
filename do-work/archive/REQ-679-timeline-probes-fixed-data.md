@@ -1,7 +1,7 @@
 ---
 id: REQ-679
 title: '[impact-negligible] Timeline browser probes that depend on live queue dates use the fixed-fixture helper, and the lost Previous and Next assertions return'
-status: claimed
+status: completed
 route: B
 estimate:
   p50_active_minutes: 25
@@ -26,6 +26,14 @@ related: [REQ-680]
 batch: upstream-report-accepts
 claimed_at: 2026-10-10T10:07:05Z
 builder_handback_at: 2026-10-10T11:31:55Z
+integration_at: 2026-10-10T11:32:07Z
+review_at: 2026-10-10T11:37:07Z
+kb_status: pending
+heavy_verified_at: 2026-10-10T11:39:47Z
+heavy_verified_revision: 0aab0216f7d2aac86d5d56737dbe9d509373a85c
+commit: 0aab0216f7d2aac86d5d56737dbe9d509373a85c
+completed_at: 2026-10-10T11:40:16Z
+release_at: 2026-10-10T11:40:16Z
 ---
 # Timeline Probes Use Fixed Data and Assert Previous and Next
 ## What
@@ -65,9 +73,9 @@ Medium certainty on which of the nine other probes are date-dependent; expect tw
 ## Full Context
 See `do-work/user-requests/UR-152/input.md` for complete verbatim input. No queued or archived REQ shares this intent (queue REQ-654 to REQ-674 read by intent; the archive was searched for timeline probe fixture work).
 ## AI Execution State (P-A-U Loop)
-- [ ] **[PLAN]:** (Agent: Read listed `prime_files` and agent rules. Write brief technical approach here. Do not write code yet.)
-- [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
-- [ ] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
+- [x] **[PLAN]:** Reuse `generateLiveSiteInDirAtRangeEnd` and add two rows to its one tree (REQ-164, a short completed row in the typed week 2026-07-27 to 2026-08-02; REQ-0003, a pending row open since 2026-07-28) instead of a second tree. The trailing-windows probe only needs range end at now and a start more than 30 days back, so older rows cannot break it. Read the nine other `generateLiveSiteInDir` probes (:629, :901, :1328, :1599, :2545, :3176, :3382, :3564, :3832): none depends on dates; :3564 depends on queue counts by design and stays on the real board. (from the builder hand-back)
+- [x] **[APPLY]:** As planned: two fixture rows plus doc comment, two `generateLiveSiteInDir` calls switched to the fixture tree, Previous and Next presses added to the Now/Fit all script, two struct fields and two `states` entries, clause (3) rewritten as an outright forward refusal, new clause (3b) for the Previous/Next instants. Stale comments ("Late July is the busiest stretch of this repo's own archive", "depends on the live queue") updated. (from the builder hand-back)
+- [x] **[UNIFY]:** `git diff b629e5cd --stat`: 1 file changed, 86 insertions(+), 45 deletions(-). probe.sh exit 0, `gofmt -l` empty, `go vet` exit 0, `git diff --check` exit 0, no `web/` path in the diff. File checked: `timeline_browser_probe_test.go`, full diff read for debug artifacts and consumer commit IDs or REQ numbers in new comments: none (REQ-164 and REQ-0003 appear only as fixture row ids). (from the builder hand-back)
 *Source: upstream report 2026-10-10, accepted in the validate-feedback triage of this session.*
 
 ## Triage
@@ -122,3 +130,128 @@ Orchestrator exploration, 2026-10-10, read-only, at 85445ac4. All paths are unde
 **Dependencies:** ✓ Chrome at `/Applications/Google Chrome.app/Contents/MacOS/Google Chrome` (exported as `QUEUE_KANBAN_BROWSER`); Go toolchain present; no new dependency.
 
 *Checked by work action*
+
+## Implementation Summary
+
+**Files changed:**
+- `skills/do-work-board/tools/queue-kanban/timeline_browser_probe_test.go` (modified)
+
+**What was done:** The shared range-end fixture tree (`generateLiveSiteInDirAtRangeEnd`) gained two rows, a short completed `REQ-164` in the typed week and a pending `REQ-0003` open since 2026-07-28. `TestBrowserBehaviorTimelineProseDescribesOnlyTheWindowOnScreen` and `TestBrowserBehaviorTimelineNowAndFitAllLandSomewhereReadable` now build from that tree instead of the live queue. The Now/Fit all probe presses Previous then Next on the trailing 7 days and asserts exact 7-day endpoint moves in epoch milliseconds, unchanged span, data drawn, and Next returning to the start instants. The forward refusal on the trailing 7 days is asserted outright instead of in a two-branch conditional. None of the nine other `generateLiveSiteInDir` probes moved. No `web/` or production Go change.
+
+## Decisions (from the builder hand-back)
+
+- D-01 DECIDE & STATE: two added rows, not three or a second tree. Both named probes and the trailing-windows probe share the one tree. Reason: the trailing probe only needs range end at now and start more than 30 days back, and it passes unchanged. The REQ's Exploration also listed "a long-span row elsewhere"; REQ-0003 serves that and the open-in-week need and the drawn-previous-week need in one row.
+- D-02 DECIDE & STATE: zero of the nine moved (REQ expected two or three at most). Only :3564 depends on counts and the queue (not dates) and it is a documented design choice. If the maintainer wants it moved, that is a separate fixture of dozens of rows.
+- D-03 DECIDE & STATE: kept the helper name `generateLiveSiteInDirAtRangeEnd` (YAGNI, no rename); its doc comment now says the tree also serves the prose and Now/Fit all probes.
+- D-04 DECIDE & STATE: no `timelineProbeInstant` helper (the patch adds one). Failure messages quote the readouts, which already show instants.
+- D-05 DECIDE & STATE: dropped the patch's extra "nothing drawn after Next" assertion; the REQ names Previous drawn, Next returns exact start instants.
+
+## Discovered Tasks (from the builder hand-back)
+
+- The fixture rows use absolute 2026 dates for the typed week; the probe will stay valid as long as the real clock is after 2026-08-02. No action. -> report only
+- `REQ-679-probe.sh` finishes in 3.5 s, so it cannot be running the browser lane; the GREEN above is from the direct go test run. -> report only (integrator note: the probe runs two browser tests with `QUEUE_KANBAN_BROWSER_PROBES=on` and requires a `--- PASS:` line for each, and two 1.6 to 1.9 s tests fit 3.5 s)
+
+## Qualification
+
+**Qualify gate:** `advance --diff-range 77b1d33f..0aab0216` returned success with no findings (no debug artifacts, no pre-existing dirt in the diff).
+
+**Requirement trace against `git diff 77b1d33f..0aab0216` (1 file, +86/-45):**
+1. Prose probe and Now/Fit all probe build from a fixed fixture made the way `generateLiveSiteInDirAtRangeEnd` builds its tree: met. Both `generateLiveSiteInDir(t)` calls became `generateLiveSiteInDirAtRangeEnd(t)`; two rows (`REQ-0003` pending since 2026-07-28, `REQ-164` completed 2026-07-28 to 07-29) were added to that one tree through the same `writeFixtureRepoFile` style. No new helper.
+2. Other nine `generateLiveSiteInDir` probes read, none moved: met. The hand-back lists the verdict for each of the nine (:629, :901, :1328, :1599, :2545, :3176, :3382, :3564, :3832). The diff touches none of them; `git diff` shows only hunks at the fixture helper, the Now/Fit all probe and the prose probe.
+3. Previous then Next after the refused forward press, instants in epoch milliseconds: met. The script presses `timeline-period-prev` then `timeline-period-next`; clause (3b) checks both endpoints move back by `7*24*60*60*1000`, span unchanged (`SpanMs`), `DrawnSegments` non-zero, Next not disabled after Previous, and Next returns both start instants. The nil guards in the shared `states` loop cover the two new states, so the pointer dereferences cannot panic. The assertions sit inside `TestBrowserBehaviorTimelineNowAndFitAllLandSomewhereReadable`, one of the two tests the green probe names, so the probe needs no extra test name.
+4. Forward refusal asserted outright: met. The two-branch `if Disabled { ... } else { ... }` is replaced by two plain checks (arrow disabled; press leaves the readout unchanged).
+5. No patch chain applied and no consumer commit id or REQ number in new comments: met. New comments name `REQ-164` and `REQ-0003` only as fixture row ids.
+6. Test-only, no `web/` or production Go change: met. The diff is the one test file.
+
+**Scope:** declared `write_set` and "Files I will touch" are the one file `skills/do-work-board/tools/queue-kanban/timeline_browser_probe_test.go`; touched files are exactly that. Anti-bloat count: new functions 0, constants 1 (`sevenDaysMs`, local), options 0, files 0, new tests 0 (assertions added to an existing test); two fixture rows, two struct fields.
+
+## Testing
+
+**Tests run:** `DO_WORK_FAST_STAGE_REUSE=off bash _dev/tests/maintainer-verify.sh` at merge `0aab0216`
+**Result:** ✓ Maintainer verification passed, exit 0 on the first run (gate wall 120 s; started at 1-minute load 4.03 after `pgrep` showed no other gate; `queue-kanban` uncached tests 421 tests in 42 s with slowest file `strict_behavior_regression_test.go` 17.83 s; `do-work-cli` 883 tests in 55 s, slowest file 19.17 s, both under the 30 s limit). The green probe `do-work/runs/work-2026-10-10-100748/REQ-679-probe.sh` ran through `advance` (browser env `QUEUE_KANBAN_BROWSER_PROBES=on`, Chrome) and exited 0 (`BLOCKED-PROBE-SUCCEEDED`, the expected record for a passing probe); it requires a `--- PASS:` line for both named tests, so a skip fails it. The Previous and Next assertions sit inside `TestBrowserBehaviorTimelineNowAndFitAllLandSomewhereReadable`, one of the two probe tests, so no test name was added to the probe.
+
+**Red-green validation:** (Route B, tdd false; from the builder hand-back)
+- Prose probe: with the 54 files dated 2026-07-27 to 2026-08-02 deleted from `do-work/archive|queue|working` in a scratch detached worktree at `b629e5cd`, the base probe FAILED at `timeline_browser_probe_test.go:2482` ("Nothing was drawn between 2026-07-27 00:00 UTC and 2026-08-03 00:00 UTC ... 616 REQs are outside it"); the new test file copied into the same scratch tree made both `TestBrowserBehaviorTimelineProseDescribesOnlyTheWindowOnScreen` and `TestBrowserBehaviorTimelineNowAndFitAllLandSomewhereReadable` PASS. Scratch worktree removed.
+- Step assertions: a throwaway edit in `web/board-timeline.js` `applyTrailingWindowStep` moving by one day instead of the stepped screenful made `NowAndFitAll` FAIL at `:2279` ("both endpoints should move back exactly seven days") and `:2291`; reverted, `web/` clean. A second mutation (step count divided by 7 in `steppedWindowFor`) also failed `:2279` and `:2295`.
+- Builder green run: `go test -count=1 -v -run Timeline ./...` with the browser variables: exit 0, 49 s, 38 PASS, 0 FAIL, 22 `TestBrowserBehavior*` PASS; the 23 SKIP lines are all `TestJavaScriptBehaviorTimeline*` (heavy-only, other lane); no `TestBrowserBehavior*` test skipped.
+
+**New tests added:** none (assertions added to the existing `TestBrowserBehaviorTimelineNowAndFitAllLandSomewhereReadable`; two fixture rows added to the shared range-end tree).
+
+**Existing tests updated (cross-REQ impact):** `TestBrowserBehaviorTimelineProseDescribesOnlyTheWindowOnScreen` and `TestBrowserBehaviorTimelineNowAndFitAllLandSomewhereReadable` now read the fixture tree; `TestBrowserBehaviorTimelineTrailingWindowsEndAtNow` shares the tree and passes unchanged.
+
+**Heavy verification plan:**
+- Range: 77b1d33f234206dec15aed9d8aa808aff6795550..0aab0216f7d2aac86d5d56737dbe9d509373a85c
+- queue-kanban-javascript: `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane queue-kanban-javascript` — `timeline_browser_probe_test.go` matched subtree `skills/do-work-board/tools/queue-kanban`
+- queue-kanban-browser: `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane queue-kanban-browser` — same subtree match
+- staged-skills: `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane staged-skills` — matched subtree `skills`
+
+*Verified by work action*
+
+## Review
+
+**Overall: 96%** | 2026-10-10T11:37:07Z
+
+| Dimension | Score |
+|-----------|-------|
+| Requirements | 100% |
+| Code Quality | 92% |
+| Test Adequacy | 95% |
+| Scope | 100% |
+| Risk | None |
+| Acceptance | Pass |
+
+**Important findings (each with its recorded impact token):**
+None
+
+**Minor findings:**
+- F1 clause (3) comment claims "no forecast past now" without proof; the assertion itself holds - impact-negligible -> report only
+- F2 clause (6) comment still says the filtered width "is live queue data" - impact-negligible -> report only
+- F3 no explicit drawn-segments check on the trailing window itself - impact-negligible -> report only
+
+**Anti-bloat count (reviewer):** 0 new helpers, options, files or decorative tests; 1 function-local constant, 2 struct fields, 2 `states` entries, 2 fixture rows. None forbidden by the REQ's Constraints.
+
+**Acceptance:** Pass - implementation and integration stages: the three browser probes passed with the lane on and none skipped; deployment and live acceptance not applicable.
+**Restatement sweep:** nothing redefined
+**Suggested testing:** 2 items (scratch-worktree rerun and heavy lanes, both covered below)
+**Follow-ups created:** None (3 findings report only)
+
+*Reviewed by review-work action*
+
+## Lessons Learned
+
+**What worked:** The builder reused the one existing range-end fixture tree and added two rows, so the three timeline probes share one tree and the third (trailing windows) passed unchanged. Proving the prose probe red in a scratch tree with the week's rows removed, and the step assertions red with a one-day mutation, showed both fixes catch the named failures.
+**What did not:** `REQ-679-probe.sh` is a green-only probe that cannot distinguish a fixed-fixture build from a live-queue build while the archive still holds rows in that week; the red proof lives in the hand-back's scratch run, not in the probe.
+**Worth knowing:** A refusal-only assertion on a step button is satisfied by an arrow that is always disabled; the Previous and Next presses are what give the step logic coverage. A browser probe that types fixed dates must get its rows from a fixture, or it passes only while the live archive happens to hold them. The builder's proposed lesson bullet is appended to `_dev/primes/lessons-kanban-board.md`.
+
+## Orientation
+
+The timeline browser probes live in `skills/do-work-board/tools/queue-kanban/timeline_browser_probe_test.go`. `generateLiveSiteInDirAtRangeEnd` builds a fixed temp tree (an open REQ ending at now, an old completed REQ, a long open REQ and a short completed REQ-164 in the week 2026-07-27 to 2026-08-02) and now serves the trailing-windows, prose-window and Now/Fit all probes; `generateLiveSiteInDir` (real queue) remains for the nine probes that need only some rows. Prime files: `_dev/primes/prime-kanban-board.md`, `_dev/primes/prime-releases.md`. No `[MAP CHANGED]`.
+
+## Heavy Verification Plan
+
+- Base: 77b1d33f234206dec15aed9d8aa808aff6795550
+- Target: 0aab0216f7d2aac86d5d56737dbe9d509373a85c
+- queue-kanban-javascript: `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane queue-kanban-javascript` — `timeline_browser_probe_test.go` matches subtree `skills/do-work-board/tools/queue-kanban`
+- queue-kanban-browser: `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane queue-kanban-browser` — same subtree match
+- staged-skills: `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane staged-skills` — matches subtree `skills`
+
+## Heavy Verification Result
+
+- Target: 0aab0216f7d2aac86d5d56737dbe9d509373a85c; execution revision 0aab0216f7d2aac86d5d56737dbe9d509373a85c (detached checkout of the merge, `QUEUE_KANBAN_BROWSER` set to Chrome)
+- queue-kanban-javascript: executed, exit 0, 7 s
+- queue-kanban-browser: executed, exit 0, 72 s
+- staged-skills: executed, exit 0, 36 s
+
+## Timing
+
+Observed 2026-10-10T10:26:48Z to 2026-10-10T11:39:47Z: 1h 12m 59s total, 1h 10m 42s attributed across 5 events, 2m 17s unattributed.
+
+| Category | Elapsed | Events |
+| --- | --- | --- |
+| builder-work | 1h 05m 11s | 1 |
+| verification-gate | 3m 52s | 2 |
+| review | 1m 24s | 1 |
+| handback-merge | 15s | 1 |
+
+Slowest stage: builder-work / builder worktree build, 1h 05m 11s, outcome success.
+Slowest command: verification-gate / repository gate, green probe, heavy plan, 2m 45s, exit 0, .
