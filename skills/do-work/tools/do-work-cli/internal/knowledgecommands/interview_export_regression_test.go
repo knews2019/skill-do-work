@@ -175,6 +175,10 @@ func TestInterviewStandingSlotsParseOnlyRecurringTiming(t *testing.T) {
 		{"2026-10-15", "", "", "", false},
 		{"when ready", "", "", "", false},
 		{"daily at 29:00", "", "", "", false},
+		{"daily 5:00 PM", "daily", "rolling", "17:00", true},
+		{"weekly Friday 12:30 AM", "weekly", "Fri", "00:30", true},
+		{"daily 12:00 PM", "daily", "rolling", "12:00", true},
+		{"daily 13:00 PM", "", "", "", false},
 	} {
 		t.Run(tc.input, func(t *testing.T) {
 			cadence, day, clock, ok := parseInterviewCadence(tc.input)
