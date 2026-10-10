@@ -11,4 +11,4 @@ Hand-back emphasis note: none
 | REQ-675 | builder agent in worktree (dispatched by the coordinator) | worktree-agent-REQ-675-review-delivery-stages | do-work/runs/work-2026-10-09-225703/REQ-675-handback.md | dispatched | 2026-10-09T23:08:40Z |
 | REQ-676 | builder agent in worktree (dispatched by the coordinator) | worktree-agent-REQ-676-source-audit-action | do-work/runs/work-2026-10-09-225703/REQ-676-handback.md | dispatched | 2026-10-09T23:08:40Z |
 | REQ-677 | builder agent in worktree (dispatched by the coordinator) | worktree-agent-REQ-677-journey-qa-action | do-work/runs/work-2026-10-09-225703/REQ-677-handback.md | dispatched | 2026-10-09T23:08:40Z |
-| REQ-678 | wave 2, after REQ-675 integrates | | do-work/runs/work-2026-10-09-225703/REQ-678-handback.md | queued (depends_on REQ-675) | |
+| REQ-678 | builder agent in worktree (dispatched by the coordinator), wave 2, base a5d50c85 | worktree-agent-REQ-678-release-check-action | do-work/runs/work-2026-10-09-225703/REQ-678-handback.md | pre-dispatch done | |
