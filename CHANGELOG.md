@@ -10,6 +10,16 @@ For the complete release history, read this file and the archives below from new
 - [0.50.0 through 0.64.1](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-13-up-to-v0.64.1.md)
 - [0.1.0 through 0.49.0](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-07-up-to-v0.49.0.md)
 
+## 0.305.113 — do-work run --coordinate Keeps the Main Session a Coordinator, With Run Rules, a Preflight and a Stall Check (2026-10-10)
+
+About 13 sessions started with a pasted directive telling the main session to coordinate and not integrate. One flag, or the phrase "drive the queue", now does that, and the run rules that lived only in a memory note are in the skill. The rules make stalls and load-only failures visible and shorter; they do not prevent them.
+
+- `do-work run --coordinate [--fan-out N] [REQ-NNN ...]`: the main session dispatches builders, writes briefs and reports. It never builds, merges or runs the span from the hand-back merge through Step 9; no integrator pushes; a blocking question becomes a `pending-answers` follow-up. Bare `--coordinate` implies `--fan-out`. Plain `--fan-out` is unchanged. Routed from "drive the queue", "use the main session as a coordinator" and `run --coordinate`, and shown in the argument hint.
+- Run rules whenever the coordinator shape is used: each builder and integrator appends to `REQ-NNN-progress.log`; one full suite at a time under `full-gate.lock`; a red full gate reruns the failed suites alone first; three new `manifest.md` columns (takeover-to-finalization minutes, full gates run, stall restarts); a hand-back coverage check. Neither file is queue state or a liveness claim.
+- A four-line preflight before the first spawn (board disk level, leftover processes, stale locks, optional `do-work/run-policy.md` copied into every brief) and a stall check every 15 to 20 minutes that reads `do-work status --watch` and the progress logs. An integrator silent about 20 minutes, and not inside a long command such as a full gate, is replaced by a fresh one through `advance REQ-NNN`, never `recover`.
+- A handoff from a coordinated run resumes with `do-work run --coordinate --fan-out N` and hands leftover claims to integrators. The coordinator writes one on its own, in a writing gap and once per run, when the harness reports high context use. Teardown stops idle background agents and lists merged worktrees without removing them.
+- `do-work status` no longer offers an `rm` line for a `full-gate.lock`. Stale restatements fixed at the end of the wave: two cleanup step pointers now say Step 9, and the ai-report Input sentence, guide and architecture-report row now name the `--kind` form for open work.
+
 ## 0.305.112 — do-work trace Shows How Much of a Spec Is Already Captured and Built Before Anything Is Captured Again (2026-10-10)
 
 Asking "is this captured, and how much of it is built?" about a ticket page, a screenshot, pasted text or a UR used to mean a hand search, and shipped asks were sometimes captured twice. `do-work trace` answers it with one table and a dated verdict per ask, and captures only the gaps, and only when you say go.

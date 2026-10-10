@@ -1,7 +1,7 @@
 ---
 id: REQ-689
 title: 'do-work run --coordinate: the mandatory coordinator shape, its run rules, a prose preflight, a stall loop, and a handoff that resumes coordinated'
-status: claimed
+status: completed
 created_at: 2026-10-10T13:05:57Z
 user_request: UR-153
 domain: general
@@ -16,6 +16,9 @@ claimed_at: 2026-10-10T13:14:51Z
 required_lessons: [_dev/primes/lessons-releases.md]
 write_set: [skills/do-work/SKILL.md, skills/do-work/actions/work.md, skills/do-work/actions/fan-out-reference.md, skills/do-work/actions/restart-with-parallel-handoff.md, skills/do-work/actions/work-reference.md, skills/do-work/docs/work-guide.md, skills/do-work/crew-members/background-agents.md, skills/do-work/docs/standing-preferences.md]
 builder_handback_at: 2026-10-10T13:27:27Z
+integration_at: 2026-10-10T18:22:38Z
+review_at: 2026-10-10T18:38:00Z
+kb_status: pending
 route: B
 estimate:
   p50_active_minutes: 30
@@ -26,6 +29,11 @@ estimate:
     - 8-file write set
     - 2 subsystems involved
     - 7 acceptance criteria
+commit: 9f815f154c8c206638d5d595ee15f85e3961c3f6
+heavy_verified_at: 2026-10-10T18:39:03Z
+heavy_verified_revision: 9f815f154c8c206638d5d595ee15f85e3961c3f6
+completed_at: 2026-10-10T18:39:58Z
+release_at: 2026-10-10T18:39:58Z
 ---
 # do-work run --coordinate: Mandatory Coordinator Shape, Run Rules, Preflight, Stall Loop and Coordinated Handoff
 ## What
@@ -101,9 +109,28 @@ High certainty on the flag, the five rules, the preflight lines and the resume c
 ## Full Context
 See `do-work/user-requests/UR-153/input.md` for the decision record. The cancelled originals with their full bodies are under `do-work/archive/UR-146/` (REQ-662 to REQ-667); their source report is `do-work/inbox/2026-10-09_do-work-upstream-suggestion-run-coordinate-mode.md`.
 ## AI Execution State (P-A-U Loop)
-- [ ] **[PLAN]:** (Agent: Read listed `prime_files` and agent rules. Write brief technical approach here. Do not write code yet.)
-- [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
-- [ ] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
+- [x] **[PLAN]:** (from the builder hand-back) Read the brief, REQ (all sections incl. Exploration PD-1 to PD-6 and Scope), UR-153, archived REQ-662/666/667 (as data), crew members general, coding-guardrails, shared-principles, communication-style, primes prime-action-files and prime-releases, lessons-releases. Verified before restating: queue-mode `advance` refuses unknown tokens (per the Exploration's cited `next_targets.go`), `verify.go` `diskSpaceLevelFor` returns critical/warning/neutral and emits a `low-disk-space` finding only for the first two, `actions/forensics.md` heading is `### 14. Release and Queue Invariants (board-owned)`, REQ-690 defines `--watch` as an output shape for a scheduler body. Plan: insert-only edits at the exact anchors in the brief; one subsection under Delegated integration holding the rules, preflight, run policy and stall loop; teardown in work.md Step 10 only (fan-out-reference's stall loop points there).
+- [x] **[APPLY]:** (from the builder hand-back) Edits as planned, all insertions beside existing lines, no reflow. Six files changed, two named files left unchanged after the sweep.
+- [x] **[UNIFY]:** (from the builder hand-back) `git diff bd56c4b0 --stat`:
+  ```
+   skills/do-work/SKILL.md                            |  1 +
+   skills/do-work/actions/fan-out-reference.md        | 29 +++++++++++++++++++++-
+   .../actions/restart-with-parallel-handoff.md       |  2 ++
+   skills/do-work/actions/work.md                     | 13 +++++-----
+   skills/do-work/docs/standing-preferences.md        |  1 +
+   skills/do-work/docs/work-guide.md                  |  2 +-
+   6 files changed, 40 insertions(+), 8 deletions(-)
+  ```
+  Checks (from the worktree root):
+  - RED probe at base: exit 1, 0.14 s wall.
+  - GREEN probe (runs shipped-package-reference-contract.sh and action-shell-blocks.sh): exit 0, 3.96 s wall before commit; exit 0, 8.90 s wall after commit.
+  - `grep -rniw pid skills/do-work/actions/fan-out-reference.md`: no output (exit 1 = no match).
+  - `git diff --check`: exit 0, clean.
+  - `_dev/tests/contract-regressions.sh`: exit 0, 34 s wall.
+  - `_dev/tests/staged-skills-contract.sh`: refuses to run outside `maintainer-verify.sh --heavy` ("heavy-only"); not run, the gate is the integrator's.
+  - Citation check is live: temporarily renaming my forensics citation to a nonexistent section made `shipped-package-reference-contract.sh` FAIL on that line; restored before commit.
+  - Files checked by reading the diff: all six changed files; `work-reference.md:396`, `background-agents.md` (whole-file grep for argument list, run-directory table, builder test rule), `run-simple-reqs.md` (PD-6, not edited).
+  - No debug artifacts; nothing under `do-work/` staged or committed.
 *Source: maintainer decision of 2026-10-10 (UR-153) folding REQ-662 to REQ-667: "fold 662/664/666 into one, cancel 665, 663 reduced to a prose checklist".*
 
 ---
@@ -162,6 +189,11 @@ See `do-work/user-requests/UR-153/input.md` for the decision record. The cancell
 - `skills/do-work/docs/work-guide.md` (modify) — the coordinator sentence and the run-flag description
 - `skills/do-work/crew-members/background-agents.md` (modify) — only if the sweep finds a restated run-directory table or builder test rule; expected unchanged
 - `skills/do-work/docs/standing-preferences.md` (modify) — one row for the pasted coordinator directive (PD-5)
+- `skills/do-work/docs/status-guide.md` (modify, added by the integrator as a merge seam) — drop progress logs from the run-local file example, because run-status skips every REQ-NNN name
+- `skills/do-work/actions/status.md` (modify, added by the integrator for review F6) — full-gate.lock names a writer label, so no rm line
+- `skills/do-work-toolbox/actions/ai-report.md` (modify, added by the integrator for the wave-end sweep F12) — Input sentence names the kind form
+- `skills/do-work-toolbox/actions/architecture-report.md` (modify, added by the integrator for the wave-end sweep F13) — ai-report input contract restatement
+- `skills/do-work-toolbox/docs/ai-report-guide.md` (modify, added by the integrator for the wave-end sweep F14) — opening sentence names the kind form
 
 **Files I will NOT touch:** any Go source or test under `skills/do-work/tools/` or `skills/do-work-board/`; `skills/do-work/actions/run-simple-reqs.md` (PD-6); `skills/do-work/crew-members/communication-style.md` (the `phandoff` alias stays as is); the release paths (`CHANGELOG.md`, `VERSION`, mirrors), which the integrator writes at finalization.
 
@@ -178,3 +210,145 @@ See `do-work/user-requests/UR-153/input.md` for the decision record. The cancell
 - [ ] `grep -rn "pid" skills/do-work/actions/fan-out-reference.md` finds no liveness check
 - [ ] Restatements swept across `actions/work.md`, `actions/work-reference.md`, `docs/work-guide.md`, `crew-members/background-agents.md`
 
+## Implementation Summary
+
+**Files changed:**
+- `skills/do-work/SKILL.md` (modified)
+- `skills/do-work/actions/work.md` (modified)
+- `skills/do-work/actions/fan-out-reference.md` (modified)
+- `skills/do-work/actions/restart-with-parallel-handoff.md` (modified)
+- `skills/do-work/docs/work-guide.md` (modified)
+- `skills/do-work/docs/standing-preferences.md` (modified)
+- `skills/do-work/docs/status-guide.md` (modified, integrator seam and review F6)
+- `skills/do-work/actions/status.md` (modified, review F6)
+- `skills/do-work-toolbox/actions/ai-report.md` (modified, wave-end sweep F12)
+- `skills/do-work-toolbox/actions/architecture-report.md` (modified, wave-end sweep F13)
+- `skills/do-work-toolbox/docs/ai-report-guide.md` (modified, wave-end sweep F14)
+
+**What was done:** `do-work run --coordinate [--fan-out N] [REQ-NNN ...]` now exists. `work.md` `## Input` defines the flag (composes with `--fan-out`, `--wave` and targets; bare `--coordinate` implies `--fan-out`; the action consumes it and never passes it to queue-mode `advance`; the session keeps the mode because the continuation does not carry it; without worktree or agent dispatch it prints one line and runs the serial loop), and the stripped-token list, usage line, Architecture paragraph, Step 10 teardown and both checklist lines name it. `SKILL.md` routes `drive the queue`, `use the main session as a coordinator` and `run --coordinate` to `./actions/work.md` with `--coordinate`, from a row between run-with-recovery and the plain run row. `fan-out-reference.md` → Delegated integration gains the mandatory-shape paragraph and a `#### Coordinated run rules` subsection: progress log, full-gate lock, red-gate triage, manifest timing columns, hand-back coverage, the REQ-069/REQ-073 boundary sentence, a four-line prose preflight (board disk level, leftover processes, stale locks, optional `do-work/run-policy.md`) and the stall loop; the run-directory table gains the `REQ-NNN-progress.log` and `full-gate.lock` rows and three `manifest.md` columns. `restart-with-parallel-handoff.md` adds the automatic context-threshold trigger under `--coordinate` and the `do-work run --coordinate --fan-out N` resume line. `work-guide.md` describes the flag in one sentence; `standing-preferences.md` maps the pasted coordinator directive to it. `work-reference.md` and `background-agents.md` were swept and left unchanged (D-07, D-08). Integrator seams in the merge commit: REQ-690's `do-work status` has shipped, so the stall loop reads `do-work status --watch` (`actions/status.md`) plus the progress-log tails (status does not read them) and keeps the tails-and-commit reading only for when status cannot report (no board or no Go toolchain); `status-guide.md` no longer says progress logs show as run-local files, because `run-status` skips every `REQ-NNN-*` name. Review fixes (integrator, on the builder branch `927f61d8` and `209e0bb5`, re-merged as `9cd669eb` and `9f815f15`): a builder may also write its own `REQ-NNN-progress.log` by the absolute main-tree path, and the hand-back merge allows but never stages progress logs and `full-gate.lock` (F1, N2); the stall loop does not stop an integrator whose last line starts a command still inside its usual run time, and frees the lock of an integrator it stopped (F2); C2 rows are acted on only for this session's agents, and a C3 row means "brief the next integrator" (F3); a coordinated handoff writes claim lines as "hand REQ-NNN to an integrator" and the automatic handoff waits for a writing gap, runs once per run and still ends with its two announcement lines (F4, F5, N1); `status` never offers `rm` for `full-gate.lock` (F6); the coordinator never runs the span from the hand-back merge through Step 9 (F7); the argument hint shows `run [REQ|UR] [--fan-out [N]] [--coordinate]` (F8); the work-guide trigger aliases name the two phrases (F9). Wave-end sweep fixes: Step 9 cleanup pointers in `work.md` and `fan-out-reference.md` (F10, F11) and the ai-report `--kind` input wording in `ai-report.md`, `architecture-report.md` and `ai-report-guide.md` (F12 to F14).
+
+## Decisions
+
+*(from the builder hand-back)*
+
+- D-01 DECIDE & STATE: route phrasing is exactly `drive the queue`, `use the main session as a coordinator`, `run --coordinate`; no bare `coordinator` (PD-1). Route cell `./actions/work.md` with `--coordinate`.
+- D-02 DECIDE & STATE: subsection title `#### Coordinated run rules`. Preflight, run policy and stall loop sit inside it as bold-led paragraphs, each stating its own condition (`--coordinate` only), while the five rules apply whenever the coordinator shape is used. Keeps the new heading count at one.
+- D-03 DECIDE & STATE: the heartbeat rule is titled **Progress log**, not "Heartbeat", so it does not read as the `heartbeat_at` machinery REQ-069/REQ-073 deleted, which the next sentence of the same subsection rules out.
+- D-04 DECIDE & STATE: degradation wording under `--coordinate`: it prints one line, `--coordinate: no worktree or agent dispatch here, running the serial loop`, and runs the serial loop (PD-4). Plain `--fan-out` still degrades silently.
+- D-05 DECIDE & STATE: the Input entry adds one clause that `advance`'s continuation does not carry the flag, so the session keeps the mode for the whole run (fact from the Exploration, `lifecycleadvance/queue_commands.go:306-326`). Without it a coordinator following the continuation argv could drop the mode.
+- D-06 DECIDE & STATE: "Each tick re-runs the selector" gained "in a writing gap", because a queue-mode selection commits a claim and the existing one-writer rule forbids coordinator writes while an integrator runs.
+- D-07 DECIDE & STATE: `work-reference.md:396` left unchanged. It restates the integrator rules (entry, never recover, never Step 10), none of which changed; it says nothing about the shape being optional, so it is not stale.
+- D-08 DECIDE & STATE: `background-agents.md` left unchanged. It restates neither the run argument list nor the run-directory table nor a builder test rule; its manifest example is a generic code-review manifest. Ceiling note kept.
+- D-09 DECIDE & STATE: the preflight disk line cites `actions/forensics.md` → **14. Release and Queue Invariants (board-owned)** (the heading's full text; the brief's shorter form would fail the section-citation check). It quotes the level as warning, critical or none: `verify.go` emits a `low-disk-space` finding only at warning or critical, and "neutral" otherwise.
+- D-10 DECIDE & STATE: the manifest-row rule names the coordinator as the writer of the three columns, in the gap after each integration, consistent with the existing "the orchestrator's, never written by a builder" and the one-writer rule.
+- D-11 DECIDE & STATE: the full-gate lock is removed by the integrator after its suite; a lock left behind is what the preflight reports as stale and never deletes.
+
+## Discovered Tasks
+
+*(from the builder hand-back)*
+
+- `skills/do-work/actions/run-simple-reqs.md:24,64,67` forwards only `--fan-out` to `do-work run`, so a simple-REQs run cannot be coordinated (PD-6). impact-user-visible → report only
+- `skills/do-work/SKILL.md:4` `argument-hint` lists no run flags at all (`run [REQ|UR]`), so neither `--fan-out` nor `--coordinate` is discoverable there; left alone because REQ-690/691/692 edit that line. impact-negligible → report only
+
+## Qualification
+
+**Gate records.** `advance REQ-689 --diff-range cc049a01..f8f32682`: `qualify` satisfied (P-A-U boxes ticked from the hand-back, no debug artifacts; `git diff cc049a01..f8f32682` has no `console.log`, `TODO`, `XXX` or `DEBUG`). `scope-drift` first reported `SCOPE-UNDECLARED-TOUCH` for `skills/do-work/docs/status-guide.md`, the integrator's merge seam; I added that file to Scope with its reason and the error cleared. Two `SCOPE-DECLARED-NOT-TOUCHED` warnings remain, for `actions/work-reference.md` and `crew-members/background-agents.md`: Scope declared both as "only if the sweep finds a restatement", and the builder's D-07 and D-08 record that it did not. Declared 9, touched 7, nothing touched outside Scope.
+
+**Requirement trace against `git diff cc049a01..f8f32682 --stat` (7 files, +41 -9) and the merged files:**
+- 1 (flag): `work.md` `## Input` has the `--coordinate` entry (composes with `--fan-out [N]`, `--wave N`, targets; bare form implies `--fan-out`); the stripped-token list, the usage line and the Step 0 checklist line name it.
+- 2 (route): `SKILL.md:33` routes the three phrases to `./actions/work.md` with `--coordinate`, above the plain run row at `:34`; no bare `coordinator` (PD-1).
+- 3 (mandatory shape): `fan-out-reference.md` Delegated integration carries the paragraph word for word.
+- 4 (plain `--fan-out`): the `--fan-out [N]` entry and "degrades silently to the serial loop" are byte-unchanged; only the stripped list gains `--coordinate`.
+- 5 to 10 (run rules): `#### Coordinated run rules` holds Progress log, Full-gate lock, Red full gate, Manifest row, Hand-back coverage and the REQ-069/REQ-073 boundary sentence; the run-directory table has the `REQ-NNN-progress.log` and `full-gate.lock` rows and the three `manifest.md` columns. `grep -niw pid` on the file finds nothing.
+- 11 and 12 (preflight, run policy): four numbered lines (disk level from the board's verify via `actions/forensics.md` section 14, leftover processes, stale locks, run policy) and the optional `do-work/run-policy.md` paragraph.
+- 13 and 14 (stall loop): one recurring check every 15 to 20 minutes, turn-start fallback, `do-work status --watch` plus progress-log tails (integrator seam, REQ-690 shipped), restart of an integrator silent about 20 minutes through `advance REQ-NNN`, never `recover`, silent builder reported only, selector re-run in a writing gap, one-line turn status, deleted at teardown.
+- 15 (handoff): `restart-with-parallel-handoff.md` has the context-threshold trigger (writes and commits only) and the `do-work run --coordinate --fan-out N` resume line.
+- 16 (teardown): `work.md` Step 10 and its checklist line stop idle agents, delete the stall check and list merged worktrees without removing them.
+- 17 (sweep): `work-reference.md`, `background-agents.md` unchanged with stated reasons; `work-guide.md` gains one sentence; the wave-end Restatement Sweep goes to the reviewer.
+- 18 (release): at finalization.
+
+**Scope comparison.** Every touched file is in Scope. No Go, no new action file, no frontmatter field, no status. The extras the builder named (standing-preferences row, the continuation clause, "in a writing gap", "removing it after") are each one line with a recorded reason (PD-5, D-05, D-06, D-11).
+
+## Testing
+
+**Tests run:**
+- Repository gate `DO_WORK_FAST_STAGE_REUSE=off bash _dev/tests/maintainer-verify.sh` in ROOT, after waiting for no other gate and 1-minute load under 5: exit 0 at `f8f32682` (115 s, load 2.27), exit 0 at `9cd669eb` (117 s, load 4.97), exit 0 at `9f815f15` (117 s, load 4.65). No retry needed.
+- `advance REQ-689 --gate-arg bash --gate-arg _dev/tests/maintainer-verify.sh --gate-exit-status 0 -- --probe-file do-work/runs/work-2026-10-10-131527/REQ-689-probe.sh` at `9f815f15`: green-gate satisfied, run-blocked-check satisfied, the GREEN probe exit 0 (`BLOCKED-PROBE-SUCCEEDED`). The two scope-drift warnings are the conditional files from Qualification.
+- The GREEN probe runs `shipped-package-reference-contract.sh` and `action-shell-blocks.sh` and checks the flag, route, rules, rows, columns, preflight, stall loop, resume line and teardown text.
+
+**Result:** pass at all three merges.
+
+**Red-green validation:** `tdd: false`. Builder proof from the hand-back: RED probe at base `bd56c4b0` exit 1 with 19 failed checks; GREEN probe exit 0 at the builder commit. The integrator's GREEN probe runs at `f8f32682` (reviewer, 2.6 s), `9cd669eb` (reviewer) and `9f815f15` (advance) all exit 0.
+
+**New/updated tests:** none. The REQ is prose only; the GREEN probe is a run artifact, not a shipped test.
+
+**Heavy verification plan:** range `cc049a01ecf60b538745a154d2940b99140331e6..9f815f154c8c206638d5d595ee15f85e3961c3f6` (cumulative, three merges). One lane: `staged-skills`, argv `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane staged-skills`, reason: the 11 changed files match subtree `skills`. Early drain at `f8f32682`: executed, exit 0, 36 s (a first try failed in 0 s on a wrong `test-durations.tsv` header I wrote; rerun with ROOT's header line).
+
+## Review
+
+**Overall: 86%** | 2026-10-10T18:38:00Z
+
+**Verdict:** Approve after fixes F1, F2, F4, F5 (one sentence each; exact text above).
+
+| Dimension | Score |
+|-----------|-------|
+| Requirements | 90% |
+| Code Quality | 75% |
+| Test Adequacy | 85% |
+| Scope | 95% |
+| Risk | Low |
+| Acceptance | Pass |
+
+**Important findings (each with its recorded impact token — this is the durable audit record the judgment mandates):**
+- F1 progress log contradicts the builder's one-exception write rule (`fan-out-reference.md:61`, `:73`, `:146`, `:173`); fix text in report — impact-user-visible → fix
+- F2 stall loop stops an integrator mid full gate and strands `full-gate.lock` (`fan-out-reference.md:163`); fix text in report — impact-user-visible → fix
+- F4 coordinated handoff's claim lines make the next session integrate in the main session (`restart-with-parallel-handoff.md:68`) — impact-user-visible → fix
+- F5 automatic handoff writes during an integrator's span, refires each turn (`restart-with-parallel-handoff.md:14`) — impact-user-visible → fix
+- F6 `status` offers `rm` for a live `full-gate.lock` (`status.md:63`, `status-guide.md:34`); Go comment `run_status.go:363` report only — impact-user-visible → fix
+
+**Minor findings:** F3 stall loop lacks the this-machine label and C3 handling (`fan-out-reference.md:163`) — impact-negligible → fix; F7 "never runs Step 6 to Step 9" vs dispatch in Step 6 (`:134`) — impact-negligible → fix; F8 argument-hint lacks run flags (`SKILL.md:4`) — impact-negligible → fix; F9 trigger-alias list omits the new phrases (`work-guide.md:146`) — impact-negligible → fix; F10 "Step 8 substep 8" (`work.md:575-576`) — impact-negligible → fix; F11 "Step 8's" cleanup (`fan-out-reference.md:47`) — impact-negligible → fix; F12 `ai-report.md:32` Input sentence — impact-negligible → fix; F13 `architecture-report.md:135` — impact-negligible → fix; F14 (nit) `ai-report-guide.md:3` — impact-negligible → fix; F15 (nit) anti-bloat count, all within budget — impact-negligible → report only
+**Acceptance:** Pass — GREEN probe at HEAD exit 0 (flag, route, rules, rows, columns, preflight, stall loop, resume line, teardown present; no `pid` in fan-out-reference.md)
+**Restatement sweep:** redefined the run argument set (`--coordinate`), the coordinator shape (mandatory under the flag), the run-directory file set (`REQ-NNN-progress.log`, `full-gate.lock`) and three manifest columns, the builder's main-tree writes, the handoff triggers and resume command, the Step 10 teardown, and the core run route phrases; stale: F1, F4, F5, F6, F8, F9; inherited elements of all 11 siblings swept (none unread): F10, F11, F12, F13, F14 new, earlier recorded REQ-688 F2/F3, REQ-690 F8/F9, REQ-692 M2, REQ-660 F3 still stale
+**Suggested testing:** 2 items — (1) read-through of a coordinated handoff paste block with one leftover claim after F4; (2) `do-work status` against a run directory holding a `full-gate.lock` with a label first line after F6
+**Follow-ups created:** None (15 findings report only or fix-in-integration)
+
+**Integrator disposition (2026-10-10T18:38:00Z):** F1 to F14 fixed with the reviewer's text on the builder branch (`927f61d8`), re-merged as `9cd669eb`; F5's last sentence changed so the two announcement lines still end the message (`restart-with-parallel-handoff.md` Step 6). Delta re-check of `f8f32682..9cd669eb`: 95%, Approve; N1 and N2 fixed (`209e0bb5`, re-merged as `9f815f15`); N3 (a remote builder gets no main-tree path, so it keeps no progress log; older than this REQ) → report only. F15 → report only. Still-stale items recorded by earlier siblings (REQ-688 F2/F3, REQ-690 F8/F9, REQ-692 M2, REQ-660 F3, the `run_status.go:363` comment) → report only. Gate and heavy lane re-run at `9f815f15`. Full report: `do-work/runs/work-2026-10-10-131527/REQ-689-review.md`.
+
+*Reviewed by review-work action*
+
+## Lessons Learned
+
+**What worked:** the wave-end reviewer, launched right after qualify, found five seams between the new run rules and older rules (the builder's one main-tree write, the one-writer rule, the handoff's claim lines, a long gate inside the 20-minute silence window, and `status`'s `rm` line for locks) plus five stale sibling restatements; each fix was one sentence and the delta re-check took under a minute.
+
+**What didn't:** a review fix written against one file broke a rule in the same file's Step 6 (the handoff message must end with its announcement lines). Reading the fix target's own Red Flags before applying the text caught it; the re-check then caught the matching sentence in `fan-out-reference.md` (N1).
+
+**Worth knowing:** a new run-directory file is also a new write path. Before adding one, check who may write the main tree (`fan-out-reference.md` → Sole integrator), what the hand-back merge stages (step 0), and how `run-status` lists it. A brief's section citation is a claim too: cite a heading's full text, number included, and let `shipped-package-reference-contract.sh` prove it (builder lesson).
+
+## Orientation
+
+Coordinated runs: `actions/work.md` `## Input` owns the `--coordinate` flag; `actions/fan-out-reference.md` → Delegated integration → Coordinated run rules owns the run rules, preflight and stall loop; `actions/restart-with-parallel-handoff.md` owns the coordinated resume.
+
+## Heavy Verification Plan
+
+- Base: `cc049a01ecf60b538745a154d2940b99140331e6`
+- Target: `9f815f154c8c206638d5d595ee15f85e3961c3f6`
+- `staged-skills`: `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane staged-skills`; reasons: the 11 changed files under `skills/do-work/` and `skills/do-work-toolbox/` match subtree `skills`.
+
+## Heavy Verification Result
+
+- Target: `9f815f154c8c206638d5d595ee15f85e3961c3f6`; execution revision `9f815f154c8c206638d5d595ee15f85e3961c3f6` (detached checkout `.git/work-run-work-2026-10-10-131527/drain-head-REQ-689`, removed after).
+- `staged-skills`: executed, exit 0, 32 s; no `HEAVY-RUN-LANE-SKIPPED`. Earlier drain at `f8f32682`: executed, exit 0, 36 s.
+
+## Timing
+
+Observed 2026-10-10T18:21:44Z to 2026-10-10T18:38:54Z: 17m 10s total, 21m 52s attributed across 6 events, 0s unattributed.
+
+| Category | Elapsed | Events |
+| --- | --- | --- |
+| review | 14m 30s | 1 |
+| verification-gate | 6m 28s | 4 |
+| handback-merge | 54s | 1 |
+
+Slowest stage: review / review, delta re-check and review fixes, 14m 30s, outcome success.
+
+Notes: no builder-work event; the hand-back (builder commit 2026-10-10T13:27:27Z) landed long before integration began. The review event runs from the reviewer spawn to the recorded Review and overlaps the three gate runs, so attributed time exceeds the observed span.
