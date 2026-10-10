@@ -10,6 +10,15 @@ For the complete release history, read this file and the archives below from new
 - [0.50.0 through 0.64.1](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-13-up-to-v0.64.1.md)
 - [0.1.0 through 0.49.0](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-07-up-to-v0.49.0.md)
 
+## 0.305.94 — Section Appends No Longer Duplicate a Heading in CRLF Files, After Trailing Spaces or Inside a Code Fence (2026-10-10)
+
+Blocking a request, cancelling it and recovering an interrupted claim each add a line to a section such as `## Blocked`. The old line scanner compared whole lines, so a CRLF file, a heading with trailing spaces or an example heading inside a code fence ended with a second `## Blocked` heading or an entry written in the wrong place.
+
+- `appendSectionEntry` now finds its section with `requestmodel.VisibleSections`, the reader that `markdownSectionBytes` already uses. An indented heading is not taken as the section.
+- `sectionLineBounds` is deleted, which leaves `state_apply.go` 14 lines shorter.
+- New `append_section_entry_test.go` pins the CRLF, trailing-space and fenced-heading cases.
+- A CRLF file still receives the new entry with LF line endings. Matching the file's line ending was left out on purpose.
+
 ## 0.305.93 — Toolbox Release Check Reports Each Delivery Stage and Will Not Call Stale or Empty Content Ready (2026-10-10)
 
 A file that exists, decodes and carries the right version can still give the consumer nothing: a hit-mask image can be fully transparent, and a served copy can be an older build than the source. An old "deployed and verified" note proves nothing today. The new `do-work-toolbox release-check <target> [--brief <path>]` traces the content to the consumer and says whether it is ready.
