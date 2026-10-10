@@ -26,6 +26,7 @@ estimate:
     - 10-file write set
     - 2 subsystems involved
     - 7 acceptance criteria
+builder_handback_at: 2026-10-10T14:03:37Z
 ---
 # ai-report Judge Runs the Render Check as a Bundled Command
 ## What
