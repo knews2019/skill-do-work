@@ -1,11 +1,12 @@
 # Prime: do-kanban
 
-queue-kanban — standalone Go module (`tools/queue-kanban/`, own `go.mod`) that walks the version-controlled `do-work/` Markdown tree and renders it as a Kanban board plus the other pages in its page switcher. Subcommands: `summary` | `open-work` | `generate --out DIR` | `serve` | `frontmatter get FILE FIELD` | `next-req` | `next-version <patch|minor|major>` | `verify` | `now` | `request-commits REQ-NNN…`. The latter group reads frontmatter or supports the release ritual and Timestamp rule rather than rendering the board. It ships in `do-work-board` and rides the suite version; the ergonomic entry point is `do-work-board board` (`actions/board.md`).
+queue-kanban — standalone Go module (`tools/queue-kanban/`, own `go.mod`) that walks the version-controlled `do-work/` Markdown tree and renders it as a Kanban board plus the other pages in its page switcher. Subcommands: `summary` | `open-work` | `generate --out DIR` | `serve` | `frontmatter get FILE FIELD` | `next-req` | `next-version <patch|minor|major>` | `verify` | `now` | `request-commits REQ-NNN…`. The latter group reads frontmatter or git history, or supports the release ritual and Timestamp rule, rather than rendering the board. It ships in `do-work-board` and rides the suite version; the ergonomic entry point is `do-work-board board` (`actions/board.md`).
 
 ## Read first
 - `main.go` — subcommand dispatch + flags (`--repo-root`, `--out`, `--port`; `--recent-window` on summary only, `--version-file` on next-version only)
 - `open_work.go` — `open-work`: the headless in-flight digest (open count, claimed titles, needs-input statuses); reads the bucketed columns only, shows nothing terminal
 - `frontmatter_cli.go` — `frontmatter`: typed, read-only field access with optional Schema Read Contract normalization/status-set membership
+- `request_commits.go` — `request-commits`: read-only TSV of every commit the board's attribution helper (`requestIdsCreditedByCommit`, `activity_correlation.go`) credits to each named REQ; the commit evidence for `../../../do-work/actions/trace-reference.md`
 - `allocate.go` — `next-req`: atomically reserves max REQ/reservation number + 1 across queue/working/archive and `do-work/.req-reservations/`
 - `release.go` — the `**Current version**: X.Y.Z` line reader/bumper/writer and the `CHANGELOG.md` entry parser
 - `verify.go` — the read-only invariant probes and their report (wired into `../../../do-work/actions/forensics.md` Check 14)
