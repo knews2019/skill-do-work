@@ -19,7 +19,7 @@ type commandOptions struct {
 }
 
 func Handlers() map[string]commandruntime.CommandHandler {
-	return map[string]commandruntime.CommandHandler{"cleanup": handleCleanup}
+	return map[string]commandruntime.CommandHandler{"cleanup": handleCleanup, "worktree": handleWorktree}
 }
 
 func handleCleanup(executionContext commandruntime.ExecutionContext, arguments []string) resultmodel.CommandResult {

@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"time"
 )
 
 const SchemaVersion = 1
@@ -606,6 +607,36 @@ type LifecycleTimingResult struct {
 	SectionWritten       bool                  `json:"section_written"`
 }
 
+// WorktreeLifecycleResult is the typed projection of one `worktree` subcommand:
+// the operative name and links `new` created, the <pre>..<merge_hash> range
+// `merge` committed, and the rows `status` observed. Consumers read these
+// fields; nothing is packed into a change detail string.
+type WorktreeLifecycleResult struct {
+	Subcommand        string              `json:"subcommand"`
+	RequestID         string              `json:"request_id,omitempty"`
+	OperativeName     string              `json:"operative_name,omitempty"`
+	WorktreePath      string              `json:"worktree_path,omitempty"`
+	IntegrationBranch string              `json:"integration_branch,omitempty"`
+	LinksCreated      []string            `json:"links_created,omitempty"`
+	LinksSkipped      []string            `json:"links_skipped,omitempty"`
+	Pre               string              `json:"pre,omitempty"`
+	MergeHash         string              `json:"merge_hash,omitempty"`
+	EmptyHandBack     bool                `json:"empty_hand_back"`
+	ConflictedPaths   []string            `json:"conflicted_paths,omitempty"`
+	StatusRows        []WorktreeStatusRow `json:"status_rows,omitempty"`
+}
+
+// WorktreeStatusRow is one worktree-agent-REQ-* worktree as `worktree status`
+// saw it; Ahead and Behind count commits against the integration branch.
+type WorktreeStatusRow struct {
+	OperativeName  string `json:"operative_name"`
+	WorktreePath   string `json:"worktree_path"`
+	Ahead          int    `json:"ahead"`
+	Behind         int    `json:"behind"`
+	Dirty          bool   `json:"dirty"`
+	LastCommitUnix int64  `json:"last_commit_unix"`
+}
+
 type CommandResult struct {
 	SchemaVersion        int                           `json:"schema_version"`
 	Command              string                        `json:"command"`
@@ -634,6 +665,7 @@ type CommandResult struct {
 	Recovery             *RecoveryResult               `json:"recovery,omitempty"`
 	Checkpoint           *CheckpointResult             `json:"checkpoint,omitempty"`
 	LifecycleTiming      *LifecycleTimingResult        `json:"lifecycle_timing,omitempty"`
+	Worktree             *WorktreeLifecycleResult      `json:"worktree,omitempty"`
 	// ExactTextOutput preserves compatibility-shaped stdout without polluting
 	// JSON with an opaque duplicate. It must be derived from the same typed
 	// observation carried by the result.
@@ -1247,6 +1279,30 @@ func renderText(result CommandResult) []byte {
 				fmt.Fprintf(&output, "  category %s: %ds across %d events\n", total.Category, total.ElapsedSeconds, total.EventCount)
 			}
 			fmt.Fprintf(&output, "  request: %s (section written: %t)\n", timing.RequestPath, timing.SectionWritten)
+		}
+	}
+	if result.Worktree != nil {
+		worktree := result.Worktree
+		fmt.Fprintf(&output, "worktree %s: request=%s name=%s integration=%s\n", worktree.Subcommand, worktree.RequestID, worktree.OperativeName, worktree.IntegrationBranch)
+		if worktree.WorktreePath != "" {
+			fmt.Fprintf(&output, "  path: %s\n", worktree.WorktreePath)
+		}
+		if len(worktree.LinksCreated) > 0 || len(worktree.LinksSkipped) > 0 {
+			fmt.Fprintf(&output, "  links created: %s; skipped: %s\n", strings.Join(worktree.LinksCreated, ", "), strings.Join(worktree.LinksSkipped, ", "))
+		}
+		if worktree.Pre != "" {
+			fmt.Fprintf(&output, "  range: %s..%s (empty hand-back: %t)\n", worktree.Pre, worktree.MergeHash, worktree.EmptyHandBack)
+		}
+		if len(worktree.ConflictedPaths) > 0 {
+			fmt.Fprintf(&output, "  conflicted paths: %s\n", strings.Join(worktree.ConflictedPaths, ", "))
+		}
+		for _, row := range worktree.StatusRows {
+			state := "clean"
+			if row.Dirty {
+				state = "dirty"
+			}
+			commitAge := time.Since(time.Unix(row.LastCommitUnix, 0)).Round(time.Minute)
+			fmt.Fprintf(&output, "  %s: ahead %d, behind %d, %s, last commit %s ago at %s\n", row.OperativeName, row.Ahead, row.Behind, state, commitAge, row.WorktreePath)
 		}
 	}
 	for _, skipped := range result.SkippedWork {
