@@ -38,7 +38,13 @@ Core authors each question for a cold outside reader. When rendering an existing
 
 ### Step 5: Render-Check (optional)
 
-When browser automation is available, serve the bundle over HTTP and take one full-page light and dark screenshot pass — a lighter bar than `ai-report.md`'s two-pass rule, since no text-bearing SVG is expected. Otherwise ship it with a footer note that the layout was not render-verified.
+Run the same render check as `ai-report.md` Step 7:
+
+```bash
+<skill-root>/../do-work/tools/do-work-cli.sh --repo-root <project-root> --format json ai-report-judge <bundle-dir>
+```
+
+Inspect its four captures once and fix any finding in its `judge.json` — a lighter bar than `ai-report.md`'s two-pass rule, since no text-bearing SVG is expected. A `skipped` verdict (no browser engine found) or an exit 2 check failure means shipping with a footer note that the layout was not render-verified.
 
 ### Step 6: Print the Bundle Path and Return
 

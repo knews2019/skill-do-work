@@ -22,6 +22,7 @@ Before invoking AGY / Antigravity CLI, read [the AGY usage prime](./docs/prime-a
 | `ui-review`, `review ui`, `design audit` | `./actions/ui-review.md` |
 | `journey-qa`, `journey qa`, `user journey` | `./actions/journey-qa.md` |
 | `ai-report`, `showcase`, `visual report`, `proof of work`, `report index`, `is there a report on` | `./actions/ai-report.md` |
+| `ai-report judge`, `render check`, `judge report` | `./actions/ai-report.md` |
 | `present-work`, `portfolio`, `work portfolio` | `./actions/present-work.md` |
 | `present-video`, `remotion`, `video walkthrough` | `./actions/present-video.md` |
 | `slop-check`, `anti-slop` | `./actions/slop-check.md` |

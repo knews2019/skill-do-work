@@ -17,6 +17,7 @@ const (
 	CommandPortfolio        = "publish-portfolio-summary"
 	CommandLast30Days       = "install-last30days"
 	CommandAuditMetrics     = "audit-metrics"
+	CommandAIReportJudge    = "ai-report-judge"
 )
 
 func Handlers() map[string]commandruntime.CommandHandler {
@@ -29,6 +30,7 @@ func Handlers() map[string]commandruntime.CommandHandler {
 		CommandPortfolio:        handlePortfolio,
 		CommandLast30Days:       handleLast30Days,
 		CommandAuditMetrics:     handleAuditMetrics,
+		CommandAIReportJudge:    handleAIReportJudge,
 	}
 }
 

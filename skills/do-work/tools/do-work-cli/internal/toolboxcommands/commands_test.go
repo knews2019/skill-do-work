@@ -9,13 +9,14 @@ func TestHandlersRegisterCanonicalToolboxCommands(t *testing.T) {
 		CommandArchitecture,
 		CommandAIReportIndex,
 		CommandReportImage, CommandReportImageBatch, CommandPortfolio, CommandLast30Days, CommandAuditMetrics,
+		CommandAIReportJudge,
 	} {
 		if handlers[name] == nil {
 			t.Errorf("canonical command %q is not registered", name)
 		}
 	}
-	if len(handlers) != 8 {
-		t.Fatalf("registered %d toolbox commands, want 8", len(handlers))
+	if len(handlers) != 9 {
+		t.Fatalf("registered %d toolbox commands, want 9", len(handlers))
 	}
 }
 

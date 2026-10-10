@@ -52,7 +52,7 @@ When authentic before and after captures exist, the report shows them side by si
 
 The page is responsive and full-width, while running prose stays at a readable measure. Screenshots stop at native resolution rather than stretching. Light and dark themes share one coherent visual direction.
 
-When browser automation is available, the action serves the bundle over HTTP, captures full-page light and dark renders, judges the rendered pixels, fixes defects, and repeats. Without browser automation the report still ships, with a footer stating that the layout was not render-verified.
+The action render-checks the bundle with the `ai-report-judge` command. It serves the bundle on a free local port, captures full-page renders at a wide (1440x1000) and a phone (390x844) width in light and dark, fails on horizontal overflow and on any same-origin link or image that does not load, and writes the four captures plus a `judge.json` verdict to a directory outside the bundle. The action judges the rendered pixels, fixes defects, and reruns until the verdict is `pass`. When no browser engine is found the verdict is `skipped`, never `pass`: the report still ships, with a footer stating that the layout was not render-verified.
 
 ## Optional Generated Visuals
 
@@ -69,6 +69,7 @@ do-work-toolbox ai-report                 Most recent successful archived work
 do-work-toolbox ai-report most recent     Same, explicitly
 do-work-toolbox ai-report index           Catalog every report bundle under ai-reports/
 do-work-toolbox ai-report find <topic>    List report bundles on a topic, newest first
+do-work-toolbox ai-report judge <dir>     Render-check an existing report bundle
 ```
 
 Target statuses are normalized under the do-work schema. The terminal-success set is `completed` or `completed-with-issues`; if the selected target has no successful work, the action stops and explains why.
