@@ -12,9 +12,10 @@ export QUEUE_KANBAN_BROWSER_PROBES=on
 export QUEUE_KANBAN_BROWSER="${QUEUE_KANBAN_BROWSER:-/Applications/Google Chrome.app/Contents/MacOS/Google Chrome}"
 probe_tests=(TestBrowserBehaviorTimelineViewHasOneScrollSurface)
 scroll_probe_source="$(<"$board_dir/timeline_scroll_browser_probe_test.go")"
+hidden_probe_list="$(grep -o 'func TestBrowserBehaviorTimelineHiddenView[A-Za-z]*' <<<"$scroll_probe_source" || true)"
 while IFS= read -r hidden_probe; do
-  probe_tests+=("${hidden_probe#func }")
-done < <(grep -o 'func TestBrowserBehaviorTimelineHiddenView[A-Za-z]*' <<<"$scroll_probe_source" || true)
+  [ -n "$hidden_probe" ] && probe_tests+=("${hidden_probe#func }")
+done <<<"$hidden_probe_list"
 output="$(go test -C "$board_dir" -count=1 -v -run "^($(IFS='|'; echo "${probe_tests[*]}"))\$" . 2>&1)" || { printf '%s\n' "$output"; exit 1; }
 for probe_test in "${probe_tests[@]}"; do
   grep -q -- "^--- PASS: $probe_test " <<<"$output" || { printf '%s\n' "$output"; echo "$probe_test did not pass (skipped or missing)"; exit 1; }
