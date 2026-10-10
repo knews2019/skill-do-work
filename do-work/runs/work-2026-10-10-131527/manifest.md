@@ -2,7 +2,7 @@
 
 Run dir: do-work/runs/work-2026-10-10-131527/
 Concurrency: eleven builders at once (UR-145 tool REQs REQ-658/659/660 and UR-144 ai-report REQs REQ-655/657 handed over by the UR-144 handoff at c644ee47, plus the UR-153 recaptures REQ-687 to REQ-692 claimed with two `advance --fan-out 4` calls at bd56c4b0). Coordinator shape: one pre-dispatch agent per REQ (PREDISPATCH-GUIDE.md), one builder per REQ in its own worktree, one integrator per REQ in series (INTEGRATOR-GUIDE.md). Integration order: hand-back order, with REQ-660, REQ-659, REQ-658 (tool REQs) taken first whenever their hand-back has landed, and REQ-655 before REQ-657. Coordinator ruling: the UR-144 handoff's fixed order (660, 659, 658, 655, 657) existed because the tool REQs fed the recaptured coordinator REQs; those recaptures (REQ-687 to REQ-692) are now built in parallel from the same base with no depends_on edge, so a fixed order would only leave the serial integrator idle while landed hand-backs wait.
-Status: building
+Status: consumed   # all twelve members released 0.305.102 to 0.305.113; UR-144, UR-145 and UR-153 closed
 Set aside: none
 Hand-back emphasis note: none
 Queued after this wave: REQ-656 (ai-report revise, depends_on REQ-655).
@@ -17,7 +17,7 @@ Gate record: `DO_WORK_FAST_STAGE_REUSE=off bash _dev/tests/maintainer-verify.sh`
 | REQ-657 | builder agent in worktree (dispatched by the coordinator) | worktree-agent-REQ-657-ai-report-judge-render-check | do-work/runs/work-2026-10-10-131527/REQ-657-handback.md | released 0.305.106 (bbc03236) | 2026-10-10T13:25:39Z |
 | REQ-687 | builder agent in worktree (dispatched by the coordinator) | worktree-agent-REQ-687-ai-report-proposal-root-cause-kinds | do-work/runs/work-2026-10-10-131527/REQ-687-handback.md | released 0.305.110 (18167d00) | 2026-10-10T13:25:22Z |
 | REQ-688 | builder agent in worktree (dispatched by the coordinator) | worktree-agent-REQ-688-capture-files-example-fence-fix | do-work/runs/work-2026-10-10-131527/REQ-688-handback.md | released 0.305.108 (196690b1) | 2026-10-10T13:23:59Z |
-| REQ-689 | builder agent in worktree (dispatched by the coordinator) | worktree-agent-REQ-689-run-coordinate-mode | do-work/runs/work-2026-10-10-131527/REQ-689-handback.md | landed, integrating | 2026-10-10T13:23:28Z |
+| REQ-689 | builder agent in worktree (dispatched by the coordinator) | worktree-agent-REQ-689-run-coordinate-mode | do-work/runs/work-2026-10-10-131527/REQ-689-handback.md | released 0.305.113 (7135c0fe), closed UR-153 | 2026-10-10T13:23:28Z |
 | REQ-691 | builder agent in worktree (dispatched by the coordinator) | worktree-agent-REQ-691-trace-coverage-action | do-work/runs/work-2026-10-10-131527/REQ-691-handback.md | released 0.305.112 (0bf90ad8) | 2026-10-10T13:26:03Z |
 | REQ-692 | builder agent in worktree (dispatched by the coordinator) | worktree-agent-REQ-692-validate-feedback-capture-chain | do-work/runs/work-2026-10-10-131527/REQ-692-handback.md | released 0.305.109 (08759290) | 2026-10-10T13:26:22Z |
 | REQ-690 | builder agent in worktree (dispatched by the coordinator) | worktree-agent-REQ-690-run-status-action | do-work/runs/work-2026-10-10-131527/REQ-690-handback.md | released 0.305.111 (8ab3d327) | 2026-10-10T13:31:31Z |
