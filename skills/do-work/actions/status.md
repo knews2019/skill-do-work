@@ -45,7 +45,7 @@ Each row is one `CommandFinding` (`code` is the class, `next_argv` the remedy) p
 | Order | Class | Shown when | Remedy (`next_argv`) |
 | --- | --- | --- | --- |
 | 1 | C8 finalization pending | doctor reports an unfinished finalization for the REQ | doctor's own `next_argv` |
-| 2 | C3 hand-back landed | claimed and `<run>/REQ-NNN-handback.md` exists | `do-work run`; none while an integrator worked on it in the last 20 min (phase integration or later) |
+| 2 | C3 hand-back landed | claimed and `<run>/REQ-NNN-handback.md` exists | `do-work run`; none while an integrator worked on it in the last 20 min (phase integration, review, remediation or re-review) |
 | 3 | C4 needs operator | board column Needs input · Blocked | `do-work clarify` for `pending-answers` or `blocked`; `do-work forensics` for any other status |
 | 4 | C5 waiting on dependencies | board column Pending → Waiting | none; the row names the REQ it waits on |
 | 5 | C6 earmarked | board column Pending → Earmarked | `do-work run REQ-NNN` |
@@ -64,7 +64,7 @@ Only these two checks, and only on this machine. Label each line "this machine, 
 
 ### Step 4: Report
 
-Relay the command's text: the table (REQ, short title, phase, minutes since activity, ETA, class), then one remedy line per row that is not C1. Put the Step 3 lines after the remedy lines and keep the command's `next:` line last: it is the single most useful next command. With `--watch`, relay the compact output as is.
+Relay the command's text: the table (REQ, short title, phase, minutes since activity, ETA, class), then one remedy line per row that is not C1, and the `run:` line, which names the run folder read and says when it was not found. Put the Step 3 lines after the remedy lines and keep the command's `next:` line last: it is the single most useful next command. With `--watch`, relay the compact output as is.
 
 ## Watching
 

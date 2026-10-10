@@ -334,4 +334,16 @@ func TestRunStatusIntegratingHandbackDoesNotRecommendRun(t *testing.T) {
 	if !strings.HasPrefix(nextLine, "next:") || strings.Contains(nextLine, "do-work run") {
 		t.Fatalf("next line = %q\n%s", nextLine, text)
 	}
+
+	// Past the quiet boundary the integrator is presumed gone, so the row must
+	// offer `do-work run` again; without the boundary a dead integrator's REQ
+	// would say "an integrator is working" forever.
+	quiet := claimedFixture("REQ-822", fixtureNow.Add(-30*time.Minute), "")
+	quiet.lastActivityPhase, quiet.lastActivityAt = "integration", fixtureNow.Add(-25*time.Minute)
+	quietRoot, quietFacts := writeRunStatusFixture(t, quiet)
+	writeFixtureFile(t, quietRoot, "do-work/runs/work-2026-10-10-113000/REQ-822-handback.md", "# Hand-back\n")
+	quietFinding := findingFor(t, runFixture(t, quietRoot, fixtureNow, "--board-facts", quietFacts), "REQ-822")
+	if quietFinding.Code != "C3" || !reflect.DeepEqual(quietFinding.NextArgv, []string{"do-work", "run"}) {
+		t.Fatalf("quiet integration finding = %+v", quietFinding)
+	}
 }
