@@ -7,21 +7,4 @@ queue_state: [0 pending, 0 pending-answers, 0 blocked, 0 blocked-archive-collisi
 
 ## In Progress (interrupted)
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+- REQ-693: Addendum: worktree status and cleanup survive a missing folder, and dirt readers ignore owned worktree links — claimed 2026-10-10T19:22:00Z — writer: t2s-Virtual-Machine.local:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2

@@ -1,7 +1,7 @@
 ---
 id: REQ-693
 title: 'Addendum: worktree status and cleanup survive a missing folder, and dirt readers ignore owned worktree links'
-status: pending
+status: claimed
 created_at: 2026-10-10T19:19:53Z
 user_request: UR-154
 addendum_to: REQ-660
@@ -15,6 +15,7 @@ related: [REQ-694, REQ-695, REQ-696]
 batch: review-followups-ur154
 required_lessons: ["_dev/primes/lessons-releases.md"]
 write_set: ["skills/do-work/tools/do-work-cli/internal/cleanup/worktree_lifecycle.go", "skills/do-work/tools/do-work-cli/internal/cleanup/worktree_lifecycle_test.go", "skills/do-work/tools/do-work-cli/internal/cleanup/cleanup_git.go", "skills/do-work/tools/do-work-cli/internal/corehelpers/handoff.go", "skills/do-work-board/tools/queue-kanban/verify.go"]
+claimed_at: 2026-10-10T19:22:00Z
 ---
 # Addendum: Worktree Status and Cleanup Survive a Missing Folder, and Dirt Readers Ignore Owned Worktree Links
 
