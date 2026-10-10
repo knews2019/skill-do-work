@@ -10,6 +10,15 @@ For the complete release history, read this file and the archives below from new
 - [0.50.0 through 0.64.1](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-13-up-to-v0.64.1.md)
 - [0.1.0 through 0.49.0](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-07-up-to-v0.49.0.md)
 
+## 0.305.100 — A Hidden Timeline No Longer Redraws When You Scroll Another Board View (2026-10-10)
+
+After you opened the Timeline once, every scroll in Board, Calendar, Activity or Testing rebuilt the Timeline's invisible rows, because all views share one scroll area. In Testing that was about one frame of work per scroll. The Timeline now ignores those scrolls while it is hidden.
+
+- `renderVisibleRows` returns at once when the Timeline panel is hidden. A missing panel counts as visible, so the Node-lane test page still works.
+- Arriving at the Timeline sends one scroll event, so a Timeline left scrolled down and returned to after a short view clamped the position still redraws its top rows. The guard alone would have left the old rows on screen.
+- Two browser probes pin both behaviors: zero row changes over ten scrolls in Testing (2330 before the fix), and the top rows back after the clamped return.
+- The Node-lane test page gained a `dispatchEvent` stub for the new arrival line.
+
 ## 0.305.99 — Transaction Rollback Reuses the Repository Folder It Already Opened, and the Second Rollback Path Is Gone (2026-10-10)
 
 A git transaction opens the repository folder once and holds it until it ends, but rollback opened the same folder a second time and kept a near-copy of its own code for the case where that second open failed. That case cannot happen, because the first open already stops the transaction before any change. The copy and its two tests are deleted, about 200 lines in all. Rollback behavior does not change.

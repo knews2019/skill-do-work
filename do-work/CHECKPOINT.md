@@ -10,7 +10,6 @@ queue_state: [21 pending, 0 pending-answers, 0 blocked, 0 blocked-archive-collis
 
 
 
-- REQ-682: A hidden Timeline view no longer redraws its rows when the user scrolls another view — claimed 2026-10-10T10:07:06Z — writer: t2s-Virtual-Machine.local:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2
 
 
 
