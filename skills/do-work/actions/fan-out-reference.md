@@ -40,6 +40,8 @@ The worktree directory's basename and the branch name are the **same string**: `
 
 **On a name collision at creation** — the name already exists as a leftover, typically a crash-recovered REQ re-dispatching into the name its own reported-but-not-deleted leftover still holds — do **not** delete or force. Append an **incrementing numeric token** to the suffix (`-2`, then `-3`), keeping the `worktree-agent-REQ-NNN-` prefix the sweeps grep for. **One scheme, not a choice:** a free pick between a counter and a timestamp would let two runs shape the same collision differently. Report the coexistence and leave the original to its owners: the crash sweep if it turns out merged, `actions/cleanup.md` → **Pass 5: Orphaned Worktrees (consent-gated)** if unmerged.
 
+`do-work-cli worktree new REQ-NNN` (optionally `--from <branch>` for the base) does all of this on the worktree rung: it derives the name from the filename slug, applies the collision suffix, creates the branch and worktree from the branch checked out in the main tree, and prints the operative name in its `worktree.operative_name` result. Without the command, the steps above are the same by hand.
+
 ### The operative name
 
 **The name actually created is this REQ's operative name.** Whatever `git worktree add` succeeded with — the derived name, or the variant after a collision — is the one string every later operation uses: the hand-back merge's `git merge` argument, Step 8's `git worktree remove` and `git branch -d` (*Cleanup — happy path*), the crash sweep's own-session bookkeeping, and anything reported to the user. This file calls it **`<operative_name>`**; the worktree path is that name under the worktrees parent directory. Hold it like `<pre>`/`<merge_hash>`: known from this session's context and re-typed as a literal into each fresh command (*Hold both endpoints as re-typed literals*). Nothing persists it, because the sweeps discover leftover names by enumerating git. **Re-deriving the name from the slug at cleanup is the failure this closes:** after a variant dispatch the derived string names the *leftover*, so remove and `-d` target unmerged work, refuse, and halt the run on a false "merge skipped or lost" alarm while the variant is never cleaned.
@@ -47,6 +49,8 @@ The worktree directory's basename and the branch name are the **same string**: `
 ### Where worktrees live
 
 Outside the repo working tree: a sibling directory (`../<repo>-worktrees/worktree-agent-REQ-NNN-…`) or a scratch directory, never nested inside the repo. A nested one is a second checkout sitting in the repo: `actions/cleanup.md` Pass 3a scans for any `do-work/` directory outside the project root and, where the consumer commits `do-work/`, would try to relocate the builder's copy into the canonical queue. That is a corruption path, and the tree also reads as stray residue to every status check downstream.
+
+An optional `do-work/worktree-links` file in the main tree lists repository-relative paths (one per line, such as `node_modules` or `env.vars`) that `worktree new` symlinks into each new worktree from the main tree; an existing path in the worktree is never overwritten. `do-work-cli worktree status` lists each `worktree-agent-REQ-*` worktree with ahead/behind against the integration branch, dirty or clean, and its last-commit age.
 
 ### State stays home
 
@@ -76,6 +80,8 @@ The orchestrator merges each builder branch **at hand-back — end of Step 6, be
 3. **Apply the integration seams, then commit** — stage the handed-back seam lines and `git commit -m "[REQ-NNN] merge builder branch <operative_name>"` (the prefix rule under *Naming*; a remediation re-merge appends its reason in parentheses). A seam committed *after* the merge is the merge commit's child, outside `<pre>..<merge_hash>`, where qualify, review and Step 9's validation never see it.
 4. **Capture `<merge_hash>`** — `git rev-parse --short HEAD` on the commit just made. It is the range's upper bound and the supplied-provenance hash finalization records in the REQ's `commit:` field.
 
+After step 0, `do-work-cli worktree merge REQ-NNN` (with `--name <operative_name>` when several branches match) runs steps 1 to 4 and reports `<pre>` and `<merge_hash>`; it refuses an empty hand-back, a non-empty index and a queue-guard hit without merging. A hand-back that carries integration seams, or a merge that stops on a conflict, continues by hand from step 2.
+
 ### Hold both endpoints as re-typed literals
 
 The canonical [State across command blocks](../docs/prescribed-shell-primitives.md#state-across-command-blocks) rule applies: the consumers sit in later blocks with model round-trips in between, and a `"$pre..$merge_hash"` composed in a fresh shell expands to `".."`, which git rejects. Hold both hashes in this session's context and re-type them into each fresh command, never as shell variables. `tools/checks/qualify.sh` hard-FAILs on a range it cannot resolve, so a lost endpoint surfaces as a qualification failure naming the range instead of a vacuous pass.
@@ -92,7 +98,7 @@ The builder verified its own branch; nobody has verified the merged result. Re-r
 
 ### Cleanup — happy path (Step 9, after typed finalization success)
 
-After finalization reports `cleanup_complete`, remove the builder's worktree and branch **by this REQ's operative name**, never re-derived from the slug: `git worktree remove <path>` (no `--force`; `<path>` is the worktree whose basename is `<operative_name>`), then `git branch -d <operative_name>`, then `git worktree prune`. Run `branch -d` **from the integration branch you merged into**: `-d` tests merged-ness against the current HEAD (or the branch's upstream), so from anywhere else a merged branch can refuse and an unmerged one can pass: "refusal = unmerged" silently becomes "refusal = wrong branch". Both refusals are signal: `worktree remove` refuses on uncommitted builder work, `branch -d` on a merge that was skipped or lost. **Never `-D`, never `--force`.** Report the refusal and stop.
+After finalization reports `cleanup_complete`, remove the builder's worktree and branch **by this REQ's operative name**, never re-derived from the slug: `git worktree remove <path>` (no `--force`; `<path>` is the worktree whose basename is `<operative_name>`), then `git branch -d <operative_name>`, then `git worktree prune`. Run `branch -d` **from the integration branch you merged into**: `-d` tests merged-ness against the current HEAD (or the branch's upstream), so from anywhere else a merged branch can refuse and an unmerged one can pass: "refusal = unmerged" silently becomes "refusal = wrong branch". Both refusals are signal: `worktree remove` refuses on uncommitted builder work, `branch -d` on a merge that was skipped or lost. **Never `-D`, never `--force`.** Report the refusal and stop. `do-work-cli worktree cleanup REQ-NNN` runs this sequence from the integration branch. It first refuses a branch not merged into HEAD or a worktree with uncommitted work, then removes the links it created, the worktree and the branch, and prunes.
 
 ### Cleanup — crash path
 
