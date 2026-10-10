@@ -188,12 +188,12 @@ requests: [REQ-020]
 word_count: 3
 ---
 ## Full Verbatim Input
-> ````text
+> ```
 > add keyboard shortcuts
-> ````
+> ```
 ```
 
-For complex requests, add a Summary, an Extracted Requests table, and a Batch Constraints section before the Full Verbatim Input. The verbatim section must contain the COMPLETE, UNEDITED input — never summarize or clean it up. It uses `actions/clarify.md` Step 4's **Outside-text containment** body-passage form: prefix every physical line and use a fence longer than the longest backtick run in the input. The example's four-backtick fence is sized for its sample text, not a fixed fence to copy regardless of content.
+For complex requests, add a Summary, an Extracted Requests table, and a Batch Constraints section before the Full Verbatim Input. The verbatim section must contain the COMPLETE, UNEDITED input — never summarize or clean it up. It uses `actions/clarify.md` Step 4's **Outside-text containment** body-passage form: a fence one backtick longer than the longest backtick run in the input and never shorter than three, with no info string, and every line prefixed `> `. `capture-files` derives the same block from the raw input bytes and refuses a UR that does not contain it, so take the exact block from `capture-files --example --raw-input <file>`.
 
 **`## Folded Requests` — written only when the fold-first scan resolved a request** (`actions/capture.md` Step 5), placed above the Full Verbatim Input so it never edits the verbatim body. One line per fold, naming the destination and the part of the input it absorbed. The destination is a REQ id for destinations 1 and 2, or the literal `prose-backlog` for destination 3, which lands on `do-work/prose-backlog.md` and mints no REQ at all:
 
