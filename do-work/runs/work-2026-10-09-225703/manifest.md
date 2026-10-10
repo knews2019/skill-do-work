@@ -2,7 +2,7 @@
 
 Run dir: do-work/runs/work-2026-10-09-225703/
 Concurrency: 3 (UR-151 wave REQ-675 + REQ-676 + REQ-677; REQ-678 waits on REQ-675 and is claimed as a second wave; coordinator shape: a pre-dispatch agent writes the pre-dispatch sections and briefs, one builder per REQ in its own worktree, one integrator per REQ in series)
-Status: building (wave 1 dispatched)
+Status: consumed   # UR-151 closed: REQ-675 0.305.90 (19ec46fd), REQ-676 0.305.91 (f0efd34d), REQ-677 0.305.92 (22d053bd), REQ-678 0.305.93 (0bdfee78); all four archived under do-work/archive/UR-151/
 Set aside: none
 Hand-back emphasis note: none
 
