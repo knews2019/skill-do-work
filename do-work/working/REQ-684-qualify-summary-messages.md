@@ -1,7 +1,7 @@
 ---
 id: REQ-684
 title: 'Qualify tells a missing Implementation Summary section apart from a section that names no files'
-status: pending
+status: claimed
 created_at: 2026-10-10T10:03:50Z
 user_request: UR-152
 domain: backend
@@ -12,6 +12,7 @@ impact: impact-user-visible
 effort_estimate: effort-mechanical
 required_lessons: ["_dev/primes/lessons-releases.md"]
 batch: upstream-report-accepts
+claimed_at: 2026-10-10T10:07:35Z
 ---
 # Qualify Names Which Summary Problem It Found
 ## What
