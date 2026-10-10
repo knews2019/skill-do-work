@@ -1,7 +1,7 @@
 ---
 id: REQ-681
 title: 'Appending a section entry finds the section with the shared visible-section reader, so CRLF files, trailing spaces and fenced headings no longer give a duplicate heading'
-status: pending
+status: claimed
 created_at: 2026-10-10T10:03:50Z
 user_request: UR-152
 domain: backend
@@ -13,6 +13,7 @@ effort_estimate: effort-mechanical
 required_lessons: ["_dev/primes/lessons-releases.md"]
 related: [REQ-659]
 batch: upstream-report-accepts
+claimed_at: 2026-10-10T10:07:06Z
 ---
 # appendSectionEntry Reuses VisibleSections
 ## What
