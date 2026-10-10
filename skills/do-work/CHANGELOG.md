@@ -10,6 +10,17 @@ For the complete release history, read this file and the archives below from new
 - [0.50.0 through 0.64.1](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-13-up-to-v0.64.1.md)
 - [0.1.0 through 0.49.0](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-07-up-to-v0.49.0.md)
 
+## 0.305.110 — ai-report Writes a Decision Brief for Unfinished Work With --kind proposal or root-cause (2026-10-10)
+
+Proposal and "why did this fail" reports were written from scratch each time, because `ai-report` accepted only completed work. Two opt-in kinds now give them a fixed, decision-first shape. Without `--kind`, the report works as before.
+
+- `do-work-toolbox ai-report --kind proposal <topic|REQ-NNN|UR-NNN>` writes a brief that opens with the decision, then two to four options (O1..On) with benefit, risk and cost, a recommendation with its reason, an evidence ledger, limits, open questions (Q1..Qn) and one `do-work capture-request:` line per option. The action prints the capture lines and never runs them.
+- The options always include the smallest-change option, such as deleting the mechanism or doing nothing extra, priced like the others.
+- `--kind root-cause` puts "what happened, why, what to change" in place of the decision and options. It also accepts a failed or cancelled REQ.
+- Both kinds accept a free topic, an open REQ or an open UR, and never present that work as shipped. The default kind keeps its completed-work check unchanged.
+- Bundles are named `yyyy-mm-dd_hhmm_<kind>-<topic>` and carry `<meta name="ai-report-kind">`, so the report catalog can show the kind. Every mockup is labelled "MOCKUP — proposal" and kept in `generated/`, apart from real screenshots.
+- Routing adds `proposal report`, `root cause report` and `options report`; the toolbox help and the ai-report guide list the new form.
+
 ## 0.305.109 — validate-feedback Can Capture, Verify and Run the Accepted Findings, and Core do-work Routes to It (2026-10-10)
 
 Accepting review findings used to take two to five hand-typed prompts after the triage, and a review written for another repo could be triaged against the wrong code. One opt-in flag now carries the accepted findings into the queue, verifies them, and can start the run.
