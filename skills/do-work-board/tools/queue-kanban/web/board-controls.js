@@ -41,7 +41,12 @@
     // Resetting is what keeps arrival looking the way it does today. It runs
     // before the first render below, so the first anchor read sees 0.
     if (viewState.view === "timeline") {
-      document.getElementById("board-main").scrollTop = 0;
+      var boardMain = document.getElementById("board-main");
+      boardMain.scrollTop = 0;
+      // A Timeline whose position was already 0 gets no scroll event from the
+      // reset, and the hidden-panel guard in renderVisibleRows dropped any it
+      // missed while away, so ask the still-live listener for the redraw.
+      boardMain.dispatchEvent(new Event("scroll"));
     }
 
     // The grouping lens and the recently-done window only shape the board view;

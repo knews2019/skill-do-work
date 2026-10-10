@@ -164,73 +164,10 @@ type timelineAnchorMeasurement struct {
 func TestBrowserBehaviorTimelineViewHasOneScrollSurface(t *testing.T) {
 	lookupBrowserForBehaviorProbe(t)
 
-	fixtureFiles := make([]verifyFixtureFile, 0, timelineScrollProbeRequestCount+1)
-	stampBase := time.Now().UTC().Add(-2 * time.Hour)
-	for requestIndex := 0; requestIndex < timelineScrollProbeRequestCount; requestIndex++ {
-		requestID := fmt.Sprintf("REQ-%04d", 7000+requestIndex)
-		fixtureFiles = append(fixtureFiles, verifyFixtureFile{
-			RelativePath: "do-work/archive/" + requestID + "-timeline-scroll.md",
-			Content:      timelineScrollProbeFixtureRequest(requestID, stampBase, requestIndex),
-		})
-	}
-	// One terminal REQ with no completion instant anyone can resolve — no
-	// completed_at, no commit hash. That is exactly what the completion-anomalies
-	// strip exists for, and the strip sits OUTSIDE the view panels, so this is
-	// what puts a visible sibling above #view-timeline and makes the moved
-	// padding testable in the arrangement that can break it. (#board-findings
-	// carries the same class and the same position, so pinning one pins the
-	// rule for both; producing a real verify finding costs more and proves
-	// nothing extra.)
-	//
-	// It buys a second sibling for free, and a better one: the same REQ raises a
-	// data warning, so board-cards.js inserts the warnings banner as the board's
-	// FIRST child. That banner is not in template.html and carries no id, so it
-	// is the case a rule that named the strips by id would have missed — the
-	// measurement below reports whichever element actually came first.
-	fixtureFiles = append(fixtureFiles, verifyFixtureFile{
-		RelativePath: "do-work/archive/REQ-7999-timeline-scroll-anomaly.md",
-		Content: "---\n" +
-			"id: REQ-7999\n" +
-			"title: Timeline scroll fixture with no resolvable completion instant\n" +
-			"status: completed\n" +
-			"user_request: UR-100\n" +
-			"created_at: " + stampBase.Add(-30*time.Hour).Format("2006-01-02T15:04:05Z") + "\n" +
-			"claimed_at: " + stampBase.Add(-26*time.Hour).Format("2006-01-02T15:04:05Z") + "\n" +
-			"---\n",
-	})
-	repoRoot := writeVerifyFixture(t, fixtureFiles)
-
-	board, buildError := buildBoard(repoRoot, time.Now().UTC(), defaultRecentWindow, nil)
-	if buildError != nil {
-		t.Fatal(buildError)
-	}
-	siteDirectory := t.TempDir()
-	if generateError := generateStaticSite(siteDirectory, board); generateError != nil {
-		t.Fatal(generateError)
-	}
-	// Feed real finding disclosures through the shipped renderer. Their height
-	// changes after Timeline has measured its initial position.
-	dataPath := filepath.Join(siteDirectory, "board-data.js")
-	dataBytes, err := os.ReadFile(dataPath)
-	if err != nil {
-		t.Fatal(err)
-	}
-	dataBytes = append(dataBytes, []byte(`
-window.queueKanbanBoardData.verifyFindings = Array.from({length: 20}, function (_, index) {
-  return {category: "stale-claim", detail: "Finding " + index,
-    remedy: "Review this request and resolve the stale claim. ".repeat(300)};
-});
-`)...)
-	if err := os.WriteFile(dataPath, dataBytes, 0o644); err != nil {
-		t.Fatal(err)
-	}
-	indexBytes, readError := os.ReadFile(filepath.Join(siteDirectory, "index.html"))
-	if readError != nil {
-		t.Fatal(readError)
-	}
+	siteDirectory, indexHTML := buildTimelineScrollProbeSite(t)
 
 	session := startTrustedInputBrowserSession(
-		t, "timeline view scroll surfaces", siteDirectory, string(indexBytes), "--window-size=1600,900")
+		t, "timeline view scroll surfaces", siteDirectory, indexHTML, "--window-size=1600,900")
 	defer session.closeBrowserSession()
 
 	session.waitForPageCondition(t, "the Timeline view button",
@@ -366,6 +303,79 @@ window.queueKanbanBoardData.verifyFindings = Array.from({length: 20}, function (
 			boardViewPaddingTop)
 	}
 	t.Logf("board view boardMainPaddingTop=%s", boardViewPaddingTop)
+}
+
+// buildTimelineScrollProbeSite writes the tall fixture, adds real finding disclosures
+// and returns the generated site directory with its index page. Both Timeline scroll
+// probes start from it, so they measure the same board.
+func buildTimelineScrollProbeSite(t *testing.T) (string, string) {
+	t.Helper()
+	fixtureFiles := make([]verifyFixtureFile, 0, timelineScrollProbeRequestCount+1)
+	stampBase := time.Now().UTC().Add(-2 * time.Hour)
+	for requestIndex := 0; requestIndex < timelineScrollProbeRequestCount; requestIndex++ {
+		requestID := fmt.Sprintf("REQ-%04d", 7000+requestIndex)
+		fixtureFiles = append(fixtureFiles, verifyFixtureFile{
+			RelativePath: "do-work/archive/" + requestID + "-timeline-scroll.md",
+			Content:      timelineScrollProbeFixtureRequest(requestID, stampBase, requestIndex),
+		})
+	}
+	// One terminal REQ with no completion instant anyone can resolve — no
+	// completed_at, no commit hash. That is exactly what the completion-anomalies
+	// strip exists for, and the strip sits OUTSIDE the view panels, so this is
+	// what puts a visible sibling above #view-timeline and makes the moved
+	// padding testable in the arrangement that can break it. (#board-findings
+	// carries the same class and the same position, so pinning one pins the
+	// rule for both; producing a real verify finding costs more and proves
+	// nothing extra.)
+	//
+	// It buys a second sibling for free, and a better one: the same REQ raises a
+	// data warning, so board-cards.js inserts the warnings banner as the board's
+	// FIRST child. That banner is not in template.html and carries no id, so it
+	// is the case a rule that named the strips by id would have missed — the
+	// measurement below reports whichever element actually came first.
+	fixtureFiles = append(fixtureFiles, verifyFixtureFile{
+		RelativePath: "do-work/archive/REQ-7999-timeline-scroll-anomaly.md",
+		Content: "---\n" +
+			"id: REQ-7999\n" +
+			"title: Timeline scroll fixture with no resolvable completion instant\n" +
+			"status: completed\n" +
+			"user_request: UR-100\n" +
+			"created_at: " + stampBase.Add(-30*time.Hour).Format("2006-01-02T15:04:05Z") + "\n" +
+			"claimed_at: " + stampBase.Add(-26*time.Hour).Format("2006-01-02T15:04:05Z") + "\n" +
+			"---\n",
+	})
+	repoRoot := writeVerifyFixture(t, fixtureFiles)
+
+	board, buildError := buildBoard(repoRoot, time.Now().UTC(), defaultRecentWindow, nil)
+	if buildError != nil {
+		t.Fatal(buildError)
+	}
+	siteDirectory := t.TempDir()
+	if generateError := generateStaticSite(siteDirectory, board); generateError != nil {
+		t.Fatal(generateError)
+	}
+	// Feed real finding disclosures through the shipped renderer. Their height
+	// changes after Timeline has measured its initial position.
+	dataPath := filepath.Join(siteDirectory, "board-data.js")
+	dataBytes, err := os.ReadFile(dataPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	dataBytes = append(dataBytes, []byte(`
+window.queueKanbanBoardData.verifyFindings = Array.from({length: 20}, function (_, index) {
+  return {category: "stale-claim", detail: "Finding " + index,
+    remedy: "Review this request and resolve the stale claim. ".repeat(300)};
+});
+`)...)
+	if err := os.WriteFile(dataPath, dataBytes, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	indexBytes, readError := os.ReadFile(filepath.Join(siteDirectory, "index.html"))
+	if readError != nil {
+		t.Fatal(readError)
+	}
+
+	return siteDirectory, string(indexBytes)
 }
 
 func assertTimelineRowsSurviveFindingDisclosures(t *testing.T, session *trustedInputBrowserSession) {
@@ -732,4 +742,156 @@ func timelineAnchorAfterProbeExpression(anchorRowID string) string {
     });
   });
 })()`
+}
+
+// REQ-682. #board-main is the scroll surface of every view, and the Timeline's
+// scroll listener on it outlives a view switch, so each scroll in a hidden
+// Timeline's neighbour once rebuilt the Timeline's rows nobody could see. These
+// two probes pin that failure and the re-entry it must not break.
+
+type timelineHiddenScrollMeasurement struct {
+	Href               string  `json:"href"`
+	PanelHidden        bool    `json:"panelHidden"`
+	RowsDrawnBefore    int     `json:"rowsDrawnBefore"`
+	BoardScrollRange   float64 `json:"boardScrollRange"`
+	BoardScrollTopEnd  float64 `json:"boardScrollTopEnd"`
+	ChildListMutations int     `json:"childListMutations"`
+	NodesAdded         int     `json:"nodesAdded"`
+	NodesRemoved       int     `json:"nodesRemoved"`
+}
+
+// The Testing view is the one the REQ measured: the findings strip the probe site
+// carries keeps the board tall enough there to scroll ten steps.
+func TestBrowserBehaviorTimelineHiddenViewIgnoresBoardScroll(t *testing.T) {
+	lookupBrowserForBehaviorProbe(t)
+	siteDirectory, indexHTML := buildTimelineScrollProbeSite(t)
+	session := startTrustedInputBrowserSession(
+		t, "timeline hidden view scroll", siteDirectory, indexHTML, "--window-size=1600,900")
+	defer session.closeBrowserSession()
+
+	session.waitForPageCondition(t, "the Timeline view button",
+		`document.querySelector('[data-view-target="timeline"]')`)
+	session.evaluateInPage(t,
+		`(document.querySelector('[data-view-target="timeline"]').click(), "switched")`)
+	session.waitForPageCondition(t, "a rendered timeline",
+		`document.getElementById('timeline-summary').textContent.length > 0`)
+	session.evaluateInPage(t,
+		`(document.querySelector('[data-view-target="testing"]').click(), "switched")`)
+	session.waitForPageCondition(t, "the Testing view",
+		`!document.getElementById('view-testing').hidden`)
+
+	var measured timelineHiddenScrollMeasurement
+	session.decodeResult(t, "timeline hidden view scroll", session.evaluateInPage(t, `(async function () {
+  var boardMain = document.getElementById('board-main');
+  var rowsHost = document.getElementById('timeline-scroll');
+  var measurement = {
+    href: location.href,
+    panelHidden: document.getElementById('view-timeline').hidden,
+    rowsDrawnBefore: rowsHost.querySelectorAll('[data-detail-id]').length,
+    boardScrollRange: boardMain.scrollHeight - boardMain.clientHeight,
+    childListMutations: 0, nodesAdded: 0, nodesRemoved: 0
+  };
+  var observer = new MutationObserver(function (records) {
+    records.forEach(function (record) {
+      measurement.childListMutations += 1;
+      measurement.nodesAdded += record.addedNodes.length;
+      measurement.nodesRemoved += record.removedNodes.length;
+    });
+  });
+  observer.observe(rowsHost, { childList: true, subtree: true });
+  var step = Math.floor(measurement.boardScrollRange / 10);
+  for (var stepIndex = 1; stepIndex <= 10; stepIndex++) {
+    boardMain.scrollTop = step * stepIndex;
+    await new Promise(function (resolve) {
+      requestAnimationFrame(function () { requestAnimationFrame(resolve); });
+    });
+  }
+  observer.disconnect();
+  measurement.boardScrollTopEnd = boardMain.scrollTop;
+  return measurement;
+})()`), &measured)
+
+	// Guards first: a board that cannot scroll, or a Timeline that was never
+	// drawn, would report zero mutations for the wrong reason.
+	if !measured.PanelHidden || measured.RowsDrawnBefore == 0 || measured.BoardScrollTopEnd < 10 {
+		t.Fatalf("the probe did not measure a drawn, hidden Timeline under a scrolling board: %+v", measured)
+	}
+	if measured.ChildListMutations != 0 {
+		t.Errorf("the hidden Timeline rebuilt its rows %d times (%d nodes added, %d removed) while the board scrolled ten steps under Testing: %+v",
+			measured.ChildListMutations, measured.NodesAdded, measured.NodesRemoved, measured)
+	}
+	t.Logf("hidden timeline scroll: %+v", measured)
+}
+
+type timelineReentryMeasurement struct {
+	Href               string   `json:"href"`
+	RowIdsAtTop        []string `json:"rowIdsAtTop"`
+	RowIdsScrolledDown []string `json:"rowIdsScrolledDown"`
+	ScrollTopWhileAway float64  `json:"scrollTopWhileAway"`
+	ScrollTopOnReturn  float64  `json:"scrollTopOnReturn"`
+	RowIdsAfterReturn  []string `json:"rowIdsAfterReturn"`
+}
+
+// A Timeline left scrolled down and hidden behind a view too short to keep that
+// scrollTop comes back with scrollTop already 0, so the scroll reset on arrival
+// fires no event. The rows drawn for the old position must not be what the
+// reader sees.
+func TestBrowserBehaviorTimelineHiddenViewRedrawsOnReturnAfterScrollClamp(t *testing.T) {
+	lookupBrowserForBehaviorProbe(t)
+	siteDirectory, indexHTML := buildTimelineScrollProbeSite(t)
+	session := startTrustedInputBrowserSession(
+		t, "timeline hidden view return", siteDirectory, indexHTML, "--window-size=1600,900")
+	defer session.closeBrowserSession()
+
+	session.waitForPageCondition(t, "the Timeline view button",
+		`document.querySelector('[data-view-target="timeline"]')`)
+	session.evaluateInPage(t,
+		`(document.querySelector('[data-view-target="timeline"]').click(), "switched")`)
+	session.waitForPageCondition(t, "a rendered timeline",
+		`document.getElementById('timeline-summary').textContent.length > 0`)
+
+	var measured timelineReentryMeasurement
+	session.decodeResult(t, "timeline hidden view return", session.evaluateInPage(t, `(async function () {
+  var boardMain = document.getElementById('board-main');
+  function afterTwoFrames() {
+    return new Promise(function (resolve) {
+      requestAnimationFrame(function () { requestAnimationFrame(resolve); });
+    });
+  }
+  function rowIds() {
+    return Array.prototype.map.call(
+      document.querySelectorAll('#timeline-scroll [data-detail-id]'),
+      function (rowNode) { return rowNode.getAttribute('data-detail-id'); });
+  }
+  var measurement = { href: location.href, rowIdsAtTop: rowIds() };
+  var rowsOffset = document.getElementById('timeline-scroll').getBoundingClientRect().top + boardMain.scrollTop;
+  boardMain.scrollTop = rowsOffset + 1500;
+  await afterTwoFrames();
+  measurement.rowIdsScrolledDown = rowIds();
+  document.querySelector('[data-view-target="activity"]').click();
+  await afterTwoFrames();
+  measurement.scrollTopWhileAway = boardMain.scrollTop;
+  document.querySelector('[data-view-target="timeline"]').click();
+  await afterTwoFrames();
+  measurement.scrollTopOnReturn = boardMain.scrollTop;
+  measurement.rowIdsAfterReturn = rowIds();
+  return measurement;
+})()`), &measured)
+
+	// Guards: the scrolled-down window must differ from the top one, and the
+	// short view must have clamped the position, or the comparison below proves
+	// nothing about the failure.
+	if len(measured.RowIdsAtTop) == 0 || len(intersectingRowIds(measured.RowIdsAtTop, measured.RowIdsScrolledDown)) > 0 ||
+		measured.ScrollTopWhileAway != 0 || measured.ScrollTopOnReturn != 0 {
+		t.Fatalf("the probe did not leave the Timeline scrolled down behind a view that clamps it to 0: %+v", measured)
+	}
+	// The first draw and a redraw can differ in how many rows they carry, so the
+	// check is the window's position: the top row is back and nothing from the
+	// scrolled-down window is left.
+	if len(measured.RowIdsAfterReturn) == 0 || measured.RowIdsAfterReturn[0] != measured.RowIdsAtTop[0] ||
+		len(intersectingRowIds(measured.RowIdsScrolledDown, measured.RowIdsAfterReturn)) > 0 {
+		t.Errorf("the Timeline came back at scrollTop 0 still drawing the rows for its old scrolled-down position: %+v", measured)
+	}
+	t.Logf("hidden timeline return: href=%s rowsAtTop=%d rowsAfterReturn=%d", measured.Href,
+		len(measured.RowIdsAtTop), len(measured.RowIdsAfterReturn))
 }
