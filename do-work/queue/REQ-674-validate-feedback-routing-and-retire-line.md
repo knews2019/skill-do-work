@@ -1,7 +1,7 @@
 ---
 id: REQ-674
 title: 'Core do-work routes validate-feedback to the toolbox, and the suite installer narrates a retire line for the old standalone do-validate-feedback skill'
-status: claimed
+status: pending
 created_at: 2026-10-09T21:26:55Z
 user_request: UR-149
 domain: backend
@@ -14,6 +14,7 @@ related: [REQ-670, REQ-671, REQ-672, REQ-673]
 batch: validate-feedback-capture
 required_lessons: ["skills/do-work/tools/lessons-do-work-update.md"]
 claimed_at: 2026-10-10T12:52:22Z
+status_changed_at: 2026-10-10T12:57:19Z
 ---
 # Core do-work Routes validate-feedback, and the Installer Narrates a Retire Line for do-validate-feedback
 ## What

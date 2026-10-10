@@ -21,6 +21,5 @@ queue_state: [21 pending, 0 pending-answers, 0 blocked, 0 blocked-archive-collis
 
 
 
-- REQ-674: Core do-work routes validate-feedback to the toolbox, and the suite installer narrates a retire line for the old standalone do-validate-feedback skill — claimed 2026-10-10T12:52:22Z — writer: t2s-Virtual-Machine.local:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2
 
 - REQ-657: ai-report judge runs the render check as a bundled command — claimed 2026-10-10T12:52:22Z — writer: t2s-Virtual-Machine.local:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2
