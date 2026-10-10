@@ -75,6 +75,8 @@ func CommitExactPaths(ctx context.Context, repositoryRoot string, paths []string
 	}
 	commitSHA, err := runGit(ctx, resolvedRoot, "rev-parse", "HEAD")
 	if err != nil {
+		// "HEAD" is deliberate: a non-empty PrimaryCommit blocks rollback of a commit that landed
+		// (finalization_apply.go, near line 30).
 		return committedRisk(result, "the exact-path commit succeeded but its ID could not be read", "HEAD")
 	}
 	commitSHA = strings.TrimSpace(commitSHA)
