@@ -6,7 +6,7 @@ Cross-project portfolio presentation belongs to `present-work`. An animated walk
 
 ## What It Produces
 
-Every invocation creates a fresh timestamped bundle under `ai-reports/`:
+Every report-writing invocation creates a fresh timestamped bundle under `ai-reports/`:
 
 ```text
 ai-reports/
@@ -52,7 +52,7 @@ When authentic before and after captures exist, the report shows them side by si
 
 The page is responsive and full-width, while running prose stays at a readable measure. Screenshots stop at native resolution rather than stretching. Light and dark themes share one coherent visual direction.
 
-The action render-checks the bundle with the `ai-report-judge` command. It serves the bundle on a free local port, captures full-page renders at a wide (1440x1000) and a phone (390x844) width in light and dark, fails on horizontal overflow and on any same-origin link or image that does not load, and writes the four captures plus a `judge.json` verdict to a directory outside the bundle. The action judges the rendered pixels, fixes defects, and reruns until the verdict is `pass`. When no browser engine is found the verdict is `skipped`, never `pass`: the report still ships, with a footer stating that the layout was not render-verified.
+The action render-checks the bundle with the `ai-report-judge` command. It serves the bundle on a free local port, captures full-page renders at a wide (1440x1000) and a phone (390x844) width in light and dark, fails on horizontal overflow and on any same-origin link or image that does not load, and writes the four captures plus a `judge.json` verdict to a directory outside the bundle. The action judges the rendered pixels, fixes defects, and reruns until the verdict is `pass`. When no browser engine is found the verdict is `skipped`, never `pass`: the report still ships, with a footer stating that the layout was not render-verified. For a revised report, the link back to the old report is the one expected finding, because the check serves only the new folder.
 
 ## Optional Generated Visuals
 
