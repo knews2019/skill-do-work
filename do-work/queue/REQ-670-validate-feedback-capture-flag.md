@@ -1,7 +1,7 @@
 ---
 id: REQ-670
 title: 'validate-feedback --capture and --run flags, a file-path input, and a wrong-repo check before any write'
-status: claimed
+status: pending
 created_at: 2026-10-09T21:26:55Z
 user_request: UR-149
 domain: general
@@ -13,6 +13,7 @@ effort_estimate: effort-substantive
 related: [REQ-671, REQ-672, REQ-673, REQ-674]
 batch: validate-feedback-capture
 claimed_at: 2026-10-10T12:52:21Z
+status_changed_at: 2026-10-10T12:57:18Z
 ---
 # validate-feedback --capture and --run Flags, a File-Path Input, and a Wrong-Repo Check Before Any Write
 ## What
