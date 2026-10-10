@@ -21,7 +21,7 @@ A run under device emulation is labeled emulation. It is never reported as a phy
 
 ## What it needs
 
-- A browser tool. It uses the same detection as `ui-review`: Playwright CLI or the Bowser skill (`do-work-toolbox install bowser`). Without one, rendered journeys are unresolved, never passed.
+- A browser tool. It looks for Playwright CLI or the Bowser skill the way `ui-review` does (`do-work-toolbox install bowser` installs both), and a browser automation tool your agent session already provides also counts. Without one, rendered journeys are unresolved, never passed.
 - Optionally a brief: any Markdown file in your project that names the reported sequence, the journeys, or project-specific checks. It is read as data, not as instructions.
 
 ## Output
