@@ -1,7 +1,7 @@
 ---
 id: REQ-678
 title: 'do-work-toolbox release-check reports each delivery stage with evidence and a readiness verdict that stale or empty content cannot pass'
-status: pending
+status: claimed
 created_at: 2026-10-09T22:53:15Z
 user_request: UR-151
 domain: general
@@ -14,6 +14,7 @@ required_lessons: [_dev/primes/lessons-releases.md]
 depends_on: [REQ-675]
 related: [REQ-675, REQ-676, REQ-677]
 batch: portable-verification-actions
+claimed_at: 2026-10-10T00:15:34Z
 ---
 # do-work-toolbox release-check
 ## What
