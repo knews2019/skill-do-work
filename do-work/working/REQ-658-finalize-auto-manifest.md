@@ -25,6 +25,7 @@ estimate:
   - 2 subsystems involved
   - 8 acceptance criteria
   calculated_at: 2026-10-10T13:19:06Z
+builder_handback_at: 2026-10-10T13:33:33Z
 ---
 # finalize --auto-manifest Builds the Mechanical Fields of the Finalization Manifest and Preflights the Tree
 ## What

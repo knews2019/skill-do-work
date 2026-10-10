@@ -1,0 +1,19 @@
+# Integrator brief: REQ-658 (finalize --auto-manifest)
+
+Read `INTEGRATOR-GUIDE.md` in this directory first; it holds every argv. This file holds the facts for REQ-658.
+
+- REQ id: REQ-658. Working REQ path: `do-work/working/REQ-658-finalize-auto-manifest.md`. UR: UR-145 (`do-work/user-requests/UR-145/input.md`).
+- Run directory: `do-work/runs/work-2026-10-10-131527/` (run id `work-2026-10-10-131527`).
+- Hand-back (landed, builder done): `do-work/runs/work-2026-10-10-131527/REQ-658-handback.md`. Read it in full: file manifest, P-A-U text, proof record, Decisions, Discovered Tasks, proposed CHANGELOG entry, proposed lesson bullet.
+- Operative name (branch = worktree basename): `worktree-agent-REQ-658-finalize-auto-manifest`; worktree at `/Users/t2/Desktop/e1-experimental-repos/skill-do-work2-worktrees/worktree-agent-REQ-658-finalize-auto-manifest`. Base `bd56c4b0`.
+- Dispatch instant (for the builder-work timing event): `2026-10-10T13:25:57Z`. The hand-back landed a while ago, so per fan-out-reference "Landed hand-back" skip the builder-work event and say so in `## Timing` notes; stamp `builder_handback_at` from the builder commit's committer date (`git log -1 --format=%cI worktree-agent-REQ-658-finalize-auto-manifest`, converted to UTC Z).
+- Route B, tdd: true, impact-user-visible, effort-substantive. Test-gate probe: `do-work/runs/work-2026-10-10-131527/REQ-658-probe.sh`.
+- Integration order: third integrator. REQ-660 released 0.305.102 and REQ-659 released 0.305.103 before you (both archived flat: do-work/archive/REQ-660-worktree-lifecycle-command.md, do-work/archive/REQ-659-frontmatter-set-and-req-append-section.md). Re-read VERSION before the payloads (expect 0.305.104).
+- Not the run's last integration, but you close UR-145: your reviewer runs the Restatement Sweep over your own diff's redefinitions (the finalization manifest fields and work.md Steps 8/9 wording) and over the elements REQ-659 and REQ-660 recorded on their **Restatement sweep:** lines (read them from their archived REQ files before your finalization moves them).
+- Mid-run addendum text: none.
+- Do not run Step 10 (`advance --checkpoint`, the loop, worktree cleanup of other REQs); the coordinator does after you report.
+- Finalization: `UR_CLOSES=1`; archive path `do-work/archive/UR-145/REQ-658-finalize-auto-manifest.md`.
+- Changelog: the builder's proposed entry is in the hand-back; rewrite its title so it says what shipped in plain words, verify it is unused in `CHANGELOG.md`.
+- You close UR-145. Members: REQ-660 and REQ-659 (archived flat, released), REQ-661 (cancelled, flat at do-work/archive/REQ-661-capture-files-init-manifest-skeleton.md), and you. Follow INTEGRATOR-GUIDE section 12 'UR closings': every sibling's flat path and its do-work/archive/UR-145/ destination, plus do-work/user-requests/UR-145/input.md and do-work/archive/UR-145/input.md, go in commit_paths up front; the refusal names any you miss. Re-point the UR-145 lesson links in skills/do-work/tools/do-work-cli/lessons-do-work-cli.md (REQ-660's two bullets and REQ-659's one bullet use the file's GitHub-link style to the flat archive path) to the archive/UR-145/ path right before building the manifests, refresh the lessons-index row, and run contract-regressions.sh after the finalization commit.
+- Seams: REQ-659 already landed advance_commands.go and work.md/work-reference.md edits; REQ-659's report says REQ-658 should reuse requeststate.ResolveTarget rather than a new resolver; check your diff for that and treat a second resolver as a review finding. core-checks.sh (about lines 752-788) limits work.md Step 8/9 wording; the gate catches a break.
+- The merged build runs your own finalize code: you finalize with the code you just merged. If finalization refuses in a new way after the merge, stop and report; do not hand-edit queue state.
