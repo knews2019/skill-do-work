@@ -19,7 +19,6 @@ queue_state: [21 pending, 0 pending-answers, 0 blocked, 0 blocked-archive-collis
 
 
 
-- REQ-669: do-work trace action reports how much of an outside spec is captured and built, with one dated verdict per ask — claimed 2026-10-10T12:52:21Z — writer: t2s-Virtual-Machine.local:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2
 
 - REQ-670: validate-feedback --capture and --run flags, a file-path input, and a wrong-repo check before any write — claimed 2026-10-10T12:52:21Z — writer: t2s-Virtual-Machine.local:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2
 

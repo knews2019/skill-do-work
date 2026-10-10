@@ -1,7 +1,7 @@
 ---
 id: REQ-669
 title: 'do-work trace action reports how much of an outside spec is captured and built, with one dated verdict per ask'
-status: claimed
+status: pending
 created_at: 2026-10-09T21:23:50Z
 user_request: UR-148
 domain: general
@@ -11,6 +11,7 @@ maintenance: false
 impact: impact-user-visible
 effort_estimate: effort-substantive
 claimed_at: 2026-10-10T12:52:21Z
+status_changed_at: 2026-10-10T12:57:18Z
 ---
 # do-work trace: Coverage of an Outside Spec Before Capture
 ## What
