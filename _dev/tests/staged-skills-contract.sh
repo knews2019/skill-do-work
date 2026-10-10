@@ -156,6 +156,7 @@ toolbox_actions=(
   present-video
   slop-check
   source-audit
+  release-check
   quick-wins
   scan-ideas
   deep-explore

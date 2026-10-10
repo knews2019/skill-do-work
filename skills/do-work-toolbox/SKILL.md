@@ -1,7 +1,7 @@
 ---
 name: do-work-toolbox
 description: Optional reviews, discovery, presentation, reporting, repository utilities, and companion installers for the modular do-work suite
-argument-hint: "validate-feedback | code-review | maintainability-audit | architecture-report | ui-review | journey-qa | ai-report | present-work | present-video | slop-check | source-audit | quick-wins | scan-ideas | deep-explore | prime | inspect | note | stray-check | tidy-repo | tutorial | install | help"
+argument-hint: "validate-feedback | code-review | maintainability-audit | architecture-report | ui-review | journey-qa | ai-report | present-work | present-video | slop-check | source-audit | release-check | quick-wins | scan-ideas | deep-explore | prime | inspect | note | stray-check | tidy-repo | tutorial | install | help"
 ---
 
 # Do-Work Toolbox Skill
@@ -26,6 +26,7 @@ Before invoking AGY / Antigravity CLI, read [the AGY usage prime](./docs/prime-a
 | `present-video`, `remotion`, `video walkthrough` | `./actions/present-video.md` |
 | `slop-check`, `anti-slop` | `./actions/slop-check.md` |
 | `source-audit`, `audit sources`, `check citations` | `./actions/source-audit.md` |
+| `release-check`, `check release`, `release readiness` | `./actions/release-check.md` |
 | `quick-wins`, `low-hanging`, `opportunities` | `./actions/quick-wins.md` |
 | `scan-ideas`, `ideas`, `brainstorm` | `./actions/scan-ideas.md` |
 | `deep-explore`, `deep dive`, `develop idea` | `./actions/deep-explore.md` |
