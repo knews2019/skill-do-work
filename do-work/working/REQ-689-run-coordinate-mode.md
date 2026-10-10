@@ -15,6 +15,7 @@ batch: run-coordinate-mode
 claimed_at: 2026-10-10T13:14:51Z
 required_lessons: [_dev/primes/lessons-releases.md]
 write_set: [skills/do-work/SKILL.md, skills/do-work/actions/work.md, skills/do-work/actions/fan-out-reference.md, skills/do-work/actions/restart-with-parallel-handoff.md, skills/do-work/actions/work-reference.md, skills/do-work/docs/work-guide.md, skills/do-work/crew-members/background-agents.md, skills/do-work/docs/standing-preferences.md]
+builder_handback_at: 2026-10-10T13:27:27Z
 route: B
 estimate:
   p50_active_minutes: 30
