@@ -24,6 +24,7 @@ write_set: ["skills/do-work/tools/do-work-cli/internal/gittransaction/git_transa
 related: [REQ-686]
 batch: upstream-report-accepts
 claimed_at: 2026-10-10T10:07:36Z
+builder_handback_at: 2026-10-10T11:41:21Z
 ---
 # Rollback Uses the Transaction's Open Root
 ## What
