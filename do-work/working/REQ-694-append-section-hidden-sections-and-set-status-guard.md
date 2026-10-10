@@ -16,6 +16,15 @@ batch: review-followups-ur154
 required_lessons: ["_dev/primes/lessons-releases.md"]
 write_set: ["skills/do-work/tools/do-work-cli/internal/corehelpers/request_writers.go", "skills/do-work/tools/do-work-cli/internal/corehelpers/request_writers_test.go"]
 claimed_at: 2026-10-10T19:22:00Z
+route: A
+estimate:
+  p50_active_minutes: 10
+  confidence: high
+  calculated_at: 2026-10-10T19:23:55Z
+  basis:
+    - Route A
+    - 2-file write set
+    - 2 acceptance criteria
 ---
 # Addendum: req append-section Refuses a Body That Hides Later Sections, and frontmatter set Refuses status and id
 
@@ -62,3 +71,27 @@ See `do-work/user-requests/UR-154/input.md` for complete verbatim input. Sources
 - [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
 - [ ] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
 *Source: UR-154 R2 and R3 — "`req append-section` accepts a body that leaves a code fence or comment open, which hides every later section from `advance` (review N1; suggested fix: refuse unless the visible section count grows by exactly one)." and "`frontmatter set` accepts any value for `status` (review F3, impact-rule-change)."*
+
+## Triage
+
+**Route: A** - Simple
+
+**Reasoning:** The REQ names the one production file and its test file, and both changes are decided: a visible-section count check after the insert in `handleRequest`, and a refusal for `status` and `id` at the top of `handleFrontmatterSet`. The reviewer reproduced both failures and sized the first fix at about four lines.
+
+**Planning:** Not required
+
+No `## Open Questions` section exists, so Step 3.5 records nothing there. Pre-dispatch decisions:
+
+- **D-01 (DECIDE & STATE):** Route A, not B. The location is known (`request_writers.go:161-171` and `:25-41`), so exploration would only re-read what this triage already read. The builder brief carries the file:line pointers.
+- **D-02 (DECIDE & STATE):** N1 replaces the single-copy re-check at `request_writers.go:161-171` with the count check (column-0 visible sections after the insert must equal the count before plus one). The REQ allows "replaces or extends"; the count check also covers the end-of-file case the old check guarded (a hidden new heading does not raise the count), so keeping both would be dead code.
+- **D-03 (DECIDE & STATE):** F3 adds one new refusal code, `FRONTMATTER-FIELD-OWNED`, checked right after argument parsing in `handleFrontmatterSet` and before the target is resolved or read, so the file is never touched. The evidence text names the owner: for `status`, the lifecycle commands (`advance`, `unblock`, `finalize`) or the hand write at the transition's defining site (clarify's `pending-answers` to `pending` flip is a hand write, `actions/clarify.md:136`); for `id`, that an id is never rewritten. A shipped-prose search found no action that tells an agent to run `frontmatter set` on `status` or `id`, so no caller breaks.
+- **D-04 (DECIDE & STATE):** Because D-02 removes the only guard for an unclosed fence or comment at the end of the file (a hidden new heading), the new N1 test carries that case as a third table row beside the open-fence and open-comment bodies. It pins that the replacement keeps the old guarantee; no test pinned it before. Each row fails with the count check removed.
+- **D-05 (DECIDE & STATE):** Test names are fixed so the GREEN probe can name them: `TestRequestAppendSectionRefusesBodyThatHidesLaterSections` and `TestFrontmatterSetRefusesLifecycleOwnedFields`, both in `request_writers_test.go`. The builder's first implementation decision is D-06.
+
+<!-- D-XX counter: last used D-05. Next decision: D-06. -->
+
+## Plan
+
+**Planning not required** - Route A: Direct implementation
+
+*Skipped by work action*

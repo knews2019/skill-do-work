@@ -15,6 +15,13 @@ batch: review-followups-ur154
 required_lessons: ["_dev/primes/lessons-releases.md"]
 write_set: ["skills/do-work/actions/forensics.md", "README.md", "skills/do-work/actions/clarify.md", "skills/do-work/actions/capture.md", "_dev/tests/fixtures/retired-core-moved-command-triggers.tsv", "_dev/tests/staged-skills-contract.sh"]
 claimed_at: 2026-10-10T19:22:01Z
+route: A
+estimate:
+  p50_active_minutes: 5
+  confidence: high
+  calculated_at: 2026-10-10T19:23:55Z
+  basis:
+    - trivial short-circuit
 ---
 # Sweep Stale Wording Left by the Wave-End Review
 
@@ -59,3 +66,31 @@ See `do-work/user-requests/UR-154/input.md` for complete verbatim input. Sources
 - [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
 - [ ] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
 *Source: UR-154 R5 — "stale wording the wave-end sweep left: `forensics.md:10` and `README.md:176` still send \"stuck\" questions to forensics (REQ-690 F9); `clarify.md:106` ...; the addendum example at `capture.md:136,138` ...; the retired-trigger fixture header and the message at `_dev/tests/staged-skills-contract.sh:792` ... (REQ-692 M2)."*
+
+---
+
+## Triage
+
+**Route: A** - Simple
+
+**Reasoning:** The REQ names all six files, the exact lines, and the reviewers' exact replacement text. Prose plus one test message and one fixture comment, no code path, so nothing needs discovery.
+
+**Planning:** Not required
+
+### Open Questions
+
+No `## Open Questions` section exists. Choices made unattended at triage:
+
+- D-01: forensics.md:10 and README.md:176 use the REQ-690 review's exact F9 fix text (`do-work/runs/work-2026-10-10-131527/REQ-690-review.md:85`), because the REQ says to use the reviewers' exact text where given and F9 gives one. DECIDE & STATE.
+- D-02: forensics.md:5 ("feels broken, stuck, or produces confusing results") and `skills/do-work/docs/forensics-guide.md:3` ("detects stuck work") stay. They describe what forensics detects (stuck REQs are one of its checks, forensics.md:49), not where a "stuck" question routes, and the REQ-690 restatement sweep named only :10 and README:176. DECIDE & STATE.
+- D-03: capture.md:136 and :138 both become `> ` plus three backticks. The enclosing example fence is a three-backtick markdown fence, but a line that starts with `> ` cannot close it (a closing fence may start only with up to three spaces), so the example still renders whole. DECIDE & STATE.
+- D-04: The builder does not run `_dev/tests/staged-skills-contract.sh`. It is a heavy-only lane (it refuses without `DO_WORK_MAINTAINER_TIER=heavy`), and the integrator's heavy drain runs the `staged-skills` lane from `_dev/tests/heavy-lanes.json`, which covers `skills/` and `_dev/tests/`. The builder runs `bash -n` on it and the focused probe `do-work/runs/work-2026-10-10-192201/REQ-696-probe.sh`. DECIDE & STATE.
+<!-- D-XX counter: last used D-04. Next decision: D-05. -->
+
+## Plan
+
+**Planning not required** - Route A: Direct implementation
+
+Required-lessons consult (claim time): the captured set stays `_dev/primes/lessons-releases.md` (666 tokens, read; neither family applies, because this REQ moves no archived record and edits no manifest). Index re-check: `_dev/primes/lessons-action-files.md` still matches the action-file edits but is `slugged: partial` at 8128 tokens, so it cannot be narrowed and stays dropped (the `## Required Lessons — Dropped for Budget` section above is unchanged). No other index row matches six prose and test-message lines.
+
+*Skipped by work action*
