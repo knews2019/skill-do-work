@@ -1,7 +1,7 @@
 ---
 id: REQ-690
 title: 'do-work status action and do-work-cli run-status report one class, ETA and remedy per open REQ'
-status: pending
+status: claimed
 created_at: 2026-10-10T13:05:57Z
 user_request: UR-153
 domain: general
@@ -11,7 +11,7 @@ maintenance: false
 impact: impact-user-visible
 effort_estimate: effort-substantive
 claimed_at: 2026-10-10T12:52:21Z
-status_changed_at: 2026-10-10T12:57:17Z
+status_changed_at: 2026-10-10T13:14:51Z
 related: [REQ-689, REQ-691]
 ---
 # do-work status: One Class, ETA and Remedy per Open REQ
