@@ -26,6 +26,7 @@ planning_at: 2026-10-10T13:21:17Z
 related: [REQ-690, REQ-692]
 required_lessons: ["_dev/primes/lessons-releases.md"]
 write_set: ["skills/do-work/actions/trace.md", "skills/do-work/actions/trace-reference.md", "skills/do-work/SKILL.md", "skills/do-work/actions/help.md", "skills/do-work-board/tools/queue-kanban/activity_correlation.go", "skills/do-work-board/tools/queue-kanban/request_commits.go", "skills/do-work-board/tools/queue-kanban/request_commits_test.go", "skills/do-work-board/tools/queue-kanban/main.go", "skills/do-work-board/tools/queue-kanban/prime-do-kanban.md"]
+builder_handback_at: 2026-10-10T13:32:48Z
 ---
 # do-work trace: Coverage of an Outside Spec Before Capture
 ## What
