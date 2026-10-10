@@ -25,6 +25,7 @@ estimate:
     - Route B
     - 5-file write set
     - 8 acceptance criteria
+builder_handback_at: 2026-10-10T16:04:10Z
 ---
 # ai-report Revise Writes a New Sibling Bundle That Supersedes the Prior One
 ## What

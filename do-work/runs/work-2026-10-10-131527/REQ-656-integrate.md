@@ -1,0 +1,20 @@
+# Integrator brief: REQ-656 (ai-report revise writes a superseding sibling bundle)
+
+Read `INTEGRATOR-GUIDE.md` in this directory first; it holds every argv. This file holds the facts for REQ-656.
+
+- REQ id: REQ-656. Working REQ path: `do-work/working/REQ-656-ai-report-revise-supersedes-sibling-bundle.md`. UR: UR-144 (`do-work/user-requests/UR-144/input.md`).
+- Run directory: `do-work/runs/work-2026-10-10-131527/` (run id `work-2026-10-10-131527`).
+- Hand-back (landed, builder done): `do-work/runs/work-2026-10-10-131527/REQ-656-handback.md`. Read it in full: file manifest, P-A-U text, proof record, Decisions, Discovered Tasks, proposed CHANGELOG entry, proposed lesson bullet.
+- Operative name (branch = worktree basename): `worktree-agent-REQ-656-ai-report-revise-sibling-bundle`; worktree at `/Users/t2/Desktop/e1-experimental-repos/skill-do-work2-worktrees/worktree-agent-REQ-656-ai-report-revise-sibling-bundle`. Base `bd56c4b0`.
+- Dispatch instant (for the builder-work timing event): `2026-10-10T16:01:00Z`. The hand-back landed a while ago, so per fan-out-reference "Landed hand-back" skip the builder-work event and say so in `## Timing` notes; stamp `builder_handback_at` from the builder commit's committer date (`git log -1 --format=%cI worktree-agent-REQ-656-ai-report-revise-sibling-bundle`, converted to UTC Z).
+- Route B, tdd: false, impact-user-visible, effort-substantive. Test-gate probe: `do-work/runs/work-2026-10-10-131527/REQ-656-probe.sh`.
+- Integration order: sixth integrator. Released before you: REQ-660 0.305.102, REQ-659 0.305.103, REQ-658 0.305.104 (UR-145 closed), REQ-655 0.305.105 and REQ-657 0.305.106 (both UR-144, archived flat). Re-read VERSION before the payloads (expect 0.305.107). Your builder branched from 7fbeff30 (after REQ-655, before REQ-657), not bd56c4b0: use that as the base when you read its diff.
+- Not the run's last integration, but you close UR-144: your reviewer runs the Restatement Sweep over your diff's redefinitions (revise, latest, the path-last and table-of-contents rules) and over the elements REQ-655 and REQ-657 recorded on their **Restatement sweep:** lines (read them from their archived REQ files before your finalization moves them).
+- Mid-run addendum text: none.
+- Do not run Step 10 (`advance --checkpoint`, the loop, worktree cleanup of other REQs); the coordinator does after you report.
+- Finalization: `UR_CLOSES=1`; archive path `do-work/archive/UR-144/REQ-656-ai-report-revise-supersedes-sibling-bundle.md`.
+- Changelog: the builder's proposed entry is in the hand-back; rewrite its title so it says what shipped in plain words, verify it is unused in `CHANGELOG.md`.
+- You close UR-144. Members: REQ-654 (cancelled, flat at do-work/archive/REQ-654-ai-report-kind-proposal-root-cause-options.md), REQ-655 and REQ-657 (released, flat), and you. Follow INTEGRATOR-GUIDE section 12 'UR closings': every sibling's flat path and its do-work/archive/UR-144/ destination, plus do-work/user-requests/UR-144/input.md and do-work/archive/UR-144/input.md, in commit_paths up front. Re-point the REQ-655 and REQ-657 lesson bullets in skills/do-work/tools/do-work-cli/lessons-do-work-cli.md (GitHub-link style, flat path) to archive/UR-144/ right before building the manifests, refresh the lessons-index row, and run contract-regressions.sh after the finalization commit. Also run git grep for archive/REQ-65[457] outside do-work/ for other links the move breaks.
+- Seams: REQ-657 landed edits to the same toolbox files after your base (ai-report.md checklist end, SKILL.md routing row: REQ-657 moved its judge phrases INTO the single ai-report routing row because staged-skills fails when ai-report is routed twice; keep it one row). REQ-687 (ai-report --kind proposal/root-cause) integrates after you and touches the same files.
+- Builder decision D-17 (latest follows the forward chain because same-minute revisions sort oldest first) and its discovered Go-side task: judge; report only unless review finds latest wrong.
+- Disk: the coordinator cleared the Go build cache (26 GB free); your first gate rebuilds from cold and may take longer.
