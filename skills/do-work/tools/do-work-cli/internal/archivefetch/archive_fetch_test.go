@@ -376,51 +376,72 @@ func TestGitRouteHonoursExportIgnore(t *testing.T) {
 	}
 }
 
-// Total failure must leave a pre-existing target byte-identical and drop no scratch file
-// beside it, so a failed update cannot destroy an archive an operator already had.
+// Total failure must leave the target exactly as it found it, and drop no scratch file
+// beside it. Two starting states matter. A pre-existing target must stay byte-identical, so
+// a failed update cannot destroy an archive an operator already had. An absent target must
+// stay absent, so a half-fetched archive is never published at a path that held nothing.
 func TestTotalFailurePreservesTheTargetAndLeavesNoScratch(t *testing.T) {
-	directory := t.TempDir()
-	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, _ *http.Request) {
-		_, _ = response.Write([]byte("not an archive\n"))
-	}))
-	defer server.Close()
-	targetPath := filepath.Join(directory, "upstream.tar.gz")
-	if err := os.WriteFile(targetPath, []byte("existing archive bytes\n"), 0o644); err != nil {
-		t.Fatalf("seed target: %v", err)
-	}
-	_, err := FetchArchive(context.Background(), Request{
-		ArchiveTargetPath:     targetPath,
-		UpstreamTarballURL:    server.URL,
-		UpstreamRepositoryURL: filepath.Join(directory, "no-such-repository"),
-	})
-	if err == nil {
-		t.Fatalf("a total failure reported success")
-	}
-	for _, expectedFragment := range []string{
-		"upstream archive could not be fetched",
-		"HTTP route: failed",
-		"Git route: failed",
-		"DO_WORK_UPSTREAM_URL",
+	for _, testCase := range []struct {
+		name          string
+		existingBytes string // empty means no target file is seeded
+	}{
+		{name: "pre-existing target", existingBytes: "existing archive bytes\n"},
+		{name: "absent target"},
 	} {
-		if !strings.Contains(err.Error(), expectedFragment) {
-			t.Errorf("failure report %q is missing %q", err.Error(), expectedFragment)
-		}
+		t.Run(testCase.name, func(t *testing.T) {
+			directory := t.TempDir()
+			server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, _ *http.Request) {
+				_, _ = response.Write([]byte("not an archive\n"))
+			}))
+			defer server.Close()
+			targetPath := filepath.Join(directory, "upstream.tar.gz")
+			if testCase.existingBytes != "" {
+				if err := os.WriteFile(targetPath, []byte(testCase.existingBytes), 0o644); err != nil {
+					t.Fatalf("seed target: %v", err)
+				}
+			}
+			_, err := FetchArchive(context.Background(), Request{
+				ArchiveTargetPath:     targetPath,
+				UpstreamTarballURL:    server.URL,
+				UpstreamRepositoryURL: filepath.Join(directory, "no-such-repository"),
+			})
+			if err == nil {
+				t.Fatalf("a total failure reported success")
+			}
+			for _, expectedFragment := range []string{
+				"upstream archive could not be fetched",
+				"HTTP route: failed",
+				"Git route: failed",
+				"DO_WORK_UPSTREAM_URL",
+			} {
+				if !strings.Contains(err.Error(), expectedFragment) {
+					t.Errorf("failure report %q is missing %q", err.Error(), expectedFragment)
+				}
+			}
+			if testCase.existingBytes == "" {
+				if _, statError := os.Lstat(targetPath); !os.IsNotExist(statError) {
+					t.Errorf("a failed fetch created the absent target: %v", statError)
+				}
+				assertNoArchiveScratch(t, directory)
+				return
+			}
+			preserved, readErr := os.ReadFile(targetPath)
+			if readErr != nil {
+				t.Fatalf("read preserved target: %v", readErr)
+			}
+			if string(preserved) != testCase.existingBytes {
+				t.Errorf("the pre-existing target was overwritten: %q", preserved)
+			}
+			preservedInfo, statError := os.Stat(targetPath)
+			if statError != nil {
+				t.Fatal(statError)
+			}
+			if preservedInfo.Mode().Perm() != 0o644 {
+				t.Errorf("the pre-existing target mode changed: %o", preservedInfo.Mode().Perm())
+			}
+			assertNoArchiveScratch(t, directory)
+		})
 	}
-	preserved, readErr := os.ReadFile(targetPath)
-	if readErr != nil {
-		t.Fatalf("read preserved target: %v", readErr)
-	}
-	if string(preserved) != "existing archive bytes\n" {
-		t.Errorf("the pre-existing target was overwritten: %q", preserved)
-	}
-	preservedInfo, statError := os.Stat(targetPath)
-	if statError != nil {
-		t.Fatal(statError)
-	}
-	if preservedInfo.Mode().Perm() != 0o644 {
-		t.Errorf("the pre-existing target mode changed: %o", preservedInfo.Mode().Perm())
-	}
-	assertNoArchiveScratch(t, directory)
 }
 
 func TestFetchArchiveRefusesUnsafeTargetsUnchanged(t *testing.T) {
