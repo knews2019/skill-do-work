@@ -288,9 +288,11 @@ func handleQualify(executionContext commandruntime.ExecutionContext, arguments [
 	}
 	paths, found, parseError := allBacktickedPaths(string(contents), "Implementation Summary")
 	if parseError != nil || !found || len(paths) == 0 {
-		evidence := "Implementation Summary is missing or empty"
+		evidence := "Implementation Summary lists no backticked file paths"
 		if parseError != nil {
 			evidence = parseError.Error()
+		} else if !found {
+			evidence = "Implementation Summary section not found"
 		}
 		return qualificationCompatibilityResult(resultmodel.CommandResult{Outcome: resultmodel.OutcomeFindings, Findings: []resultmodel.CommandFinding{helperFinding("QUALIFY-SUMMARY-MISSING", resultmodel.SeverityError, []string{requestPath}, evidence, resultmodel.FixabilityManual, "qualification has no claimed files", nil, nil)}})
 	}
