@@ -382,8 +382,10 @@ func reportIndexFind(repositoryRoot, topic string) resultmodel.CommandResult {
 	topicID := normalizeReportID(topic)
 	var output strings.Builder
 	for _, bundle := range bundles {
+		// Match the folder name, not the full path: every path starts with "ai-reports/", so topics
+		// such as "ai" or "reports" would otherwise match every bundle.
 		matched := false
-		for _, field := range append([]string{bundle.Path, bundle.Title, bundle.Kind, bundle.Verdict}, bundle.LinkedIDs...) {
+		for _, field := range append([]string{path.Base(bundle.Path), bundle.Title, bundle.Kind, bundle.Verdict}, bundle.LinkedIDs...) {
 			matched = matched || strings.Contains(strings.ToLower(field), needle)
 		}
 		for _, id := range bundle.LinkedIDs {
