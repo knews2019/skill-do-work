@@ -1,7 +1,7 @@
 ---
 id: REQ-695
 title: 'Addendum: run-status names a missing --run folder and stops recommending do-work run while an integrator works'
-status: pending
+status: claimed
 created_at: 2026-10-10T19:19:53Z
 user_request: UR-154
 addendum_to: REQ-690
@@ -15,6 +15,7 @@ related: [REQ-693, REQ-694, REQ-696]
 batch: review-followups-ur154
 required_lessons: ["_dev/primes/lessons-releases.md"]
 write_set: ["skills/do-work/tools/do-work-cli/internal/runstatus/run_status.go", "skills/do-work/tools/do-work-cli/internal/runstatus/run_status_render.go", "skills/do-work/tools/do-work-cli/internal/runstatus/run_status_test.go"]
+claimed_at: 2026-10-10T19:22:01Z
 ---
 # Addendum: run-status Names a Missing --run Folder and Stops Recommending do-work run While an Integrator Works
 
