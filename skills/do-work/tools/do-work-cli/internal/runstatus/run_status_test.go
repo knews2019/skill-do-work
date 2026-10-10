@@ -282,3 +282,14 @@ func TestRunStatusReportsQueueRowsWithoutARunDirectory(t *testing.T) {
 		t.Fatalf("run status = %+v", result.RunStatus)
 	}
 }
+
+// A failed REQ also sits in Needs input · Blocked, but clarify answers
+// questions and never resolves a failure, so its remedy is the read-only
+// diagnostic instead.
+func TestRunStatusFailedRequestNamesForensicsNotClarify(t *testing.T) {
+	repositoryRoot, boardFacts := writeRunStatusFixture(t, fixtureRequest{id: "REQ-809", status: "failed", column: "needs-input-or-blocked", placementReason: "Needs input · Blocked"})
+	finding := findingFor(t, runFixture(t, repositoryRoot, fixtureNow, "--board-facts", boardFacts), "REQ-809")
+	if finding.Code != "C4" || !reflect.DeepEqual(finding.NextArgv, []string{"do-work", "forensics"}) {
+		t.Fatalf("finding = %+v", finding)
+	}
+}

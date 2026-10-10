@@ -24,7 +24,7 @@ First match wins, in this order:
 |-------|---------|------------|
 | **C8** finalization pending | An earlier finalization stopped partway | The command doctor prints |
 | **C3** hand-back landed | The builder's hand-back file is in the run directory | `do-work run` integrates it |
-| **C4** needs operator | Needs input · Blocked on the board | `do-work clarify` |
+| **C4** needs operator | Needs input · Blocked on the board | `do-work clarify`; `do-work forensics` when the status is failed or a collision |
 | **C5** waiting on dependencies | Waits for the REQ it names | Nothing; it moves when that REQ is done |
 | **C6** earmarked | Reserved for another session, which a default run skips | `do-work run REQ-NNN` runs it by name |
 | **C7** claim past 3 hours | Claimed longer than the board's stale-claim threshold | Read `git log --full-history -- <REQ file>`. Use `do-work run-with-recovery REQ-NNN` only if you know the run that claimed it is gone: it requeues the claim and strips generated sections |
