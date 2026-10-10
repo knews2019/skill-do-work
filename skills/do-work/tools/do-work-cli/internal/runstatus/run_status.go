@@ -21,9 +21,9 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"sort"
 	"strings"
-	"text/tabwriter"
 	"time"
 
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/commandruntime"
@@ -147,7 +147,7 @@ func runStatusAt(executionContext commandruntime.ExecutionContext, arguments []s
 		rows = append(rows, row)
 	}
 	sort.SliceStable(rows, func(left, right int) bool {
-		return precedenceIndex(rows[left].record.Class) < precedenceIndex(rows[right].record.Class)
+		return slices.Index(classPrecedence, rows[left].record.Class) < slices.Index(classPrecedence, rows[right].record.Class)
 	})
 
 	report := &resultmodel.RunStatusResult{Rows: []resultmodel.RunStatusRow{}, RunLocalFiles: listRunLocalFiles(repositoryRoot, runDirectory, now)}
@@ -350,7 +350,7 @@ func classifyRow(row *statusRow, request boardRequest, hasFinalization bool, fin
 		// read-only inspection doctor's STUCK-WORK offers; the takeover is named
 		// only here, with what it destroys and when it is safe.
 		record.Class = "C7"
-		finding.NextArgv = []string{"git", "log", "--full-history", "--", firstPath(finding.AffectedPaths)}
+		finding.NextArgv = []string{"git", "log", "--full-history", "--", finding.AffectedPaths[0]} // claimed_at came from this REQ file
 		row.remedy = fmt.Sprintf("claimed %d min ago, past the %d min threshold; inspect `%s`. Run `do-work run-with-recovery %s` only if you know the run that claimed it is gone: it requeues the claim and strips generated sections",
 			*record.MinutesSinceClaim, int(threshold/time.Minute), strings.Join(finding.NextArgv, " "), request.ID)
 	case claimed && (record.MinutesSinceActivity == nil || time.Duration(*record.MinutesSinceActivity)*time.Minute >= quietActivityBoundary):
@@ -366,62 +366,6 @@ func classifyRow(row *statusRow, request boardRequest, hasFinalization bool, fin
 	}
 	finding.Code = record.Class
 	finding.AutomationStopReason = row.remedy
-}
-
-func renderReport(rows []statusRow, report *resultmodel.RunStatusResult, watch bool, now time.Time) string {
-	var output strings.Builder
-	nextLine := "next: nothing to run now; check again with `do-work status`"
-	for _, row := range rows {
-		if len(row.finding.NextArgv) > 0 {
-			nextLine = "next: " + strings.Join(row.finding.NextArgv, " ")
-			break
-		}
-	}
-	if watch {
-		classCounts := []string{}
-		for _, class := range classPrecedence {
-			count := 0
-			for _, row := range rows {
-				if row.record.Class == class {
-					count++
-				}
-			}
-			if count > 0 {
-				classCounts = append(classCounts, fmt.Sprintf("%s %d", class, count))
-			}
-		}
-		fmt.Fprintf(&output, "status %s: %d open rows (%s), %d run-local files\n", now.Format("15:04Z"), len(rows), strings.Join(classCounts, ", "), len(report.RunLocalFiles))
-		for _, row := range rows {
-			fmt.Fprintf(&output, "%s %s %s, activity %s, ETA %s\n", row.record.RequestID, row.record.Class, phaseOf(row.record), minutesText(row.record.MinutesSinceActivity), row.record.EtaText)
-		}
-		output.WriteString(nextLine + "\n")
-		return output.String()
-	}
-	if len(rows) == 0 {
-		output.WriteString("No claimed, blocked, waiting or earmarked REQs.\n")
-	} else {
-		table := tabwriter.NewWriter(&output, 0, 0, 2, ' ', 0)
-		fmt.Fprintln(table, "REQ\tTITLE\tPHASE\tSINCE ACTIVITY\tETA\tCLASS")
-		for _, row := range rows {
-			fmt.Fprintf(table, "%s\t%s\t%s\t%s\t%s\t%s %s\n", row.record.RequestID, shortTitle(row.record.Title), phaseOf(row.record),
-				minutesText(row.record.MinutesSinceActivity), row.record.EtaText, row.record.Class, classNames[row.record.Class])
-		}
-		_ = table.Flush()
-		output.WriteString("\n")
-		for _, row := range rows {
-			if row.record.Class != "C1" {
-				fmt.Fprintf(&output, "%s %s %s: %s.\n", row.record.RequestID, row.record.Class, classNames[row.record.Class], row.remedy)
-			}
-		}
-	}
-	if len(report.RunLocalFiles) > 0 {
-		output.WriteString(runLocalLabel + ":\n")
-		for _, localFile := range report.RunLocalFiles {
-			fmt.Fprintf(&output, "  %s  %d min old  %s\n", localFile.Path, localFile.AgeMinutes, fallbackDash(localFile.FirstLine))
-		}
-	}
-	output.WriteString(nextLine + "\n")
-	return output.String()
 }
 
 // listRunLocalFiles lists every run-directory entry the suite does not define:
@@ -570,58 +514,9 @@ func minutesBetween(earlier, later time.Time) *int {
 	return &minutes
 }
 
-func precedenceIndex(class string) int {
-	for index, candidate := range classPrecedence {
-		if candidate == class {
-			return index
-		}
-	}
-	return len(classPrecedence)
-}
-
-func phaseOf(record resultmodel.RunStatusRow) string {
-	if record.LastActivityPhase != "" {
-		return record.LastActivityPhase
-	}
-	if record.Column != "claimed" {
-		return record.Column
-	}
-	return "-"
-}
-
-func minutesText(minutes *int) string {
-	if minutes == nil {
-		return "-"
-	}
-	return fmt.Sprintf("%d min", *minutes)
-}
-
-// shortTitle cuts a title to six words for the table.
-func shortTitle(title string) string {
-	words := strings.Fields(title)
-	if len(words) <= 6 {
-		return strings.Join(words, " ")
-	}
-	return strings.Join(words[:6], " ") + "…"
-}
-
 func displayPath(repositoryRoot, path string) string {
 	if relative, relError := filepath.Rel(repositoryRoot, path); relError == nil && !strings.HasPrefix(relative, "..") {
 		return filepath.ToSlash(relative)
 	}
 	return path
-}
-
-func firstPath(paths []string) string {
-	if len(paths) == 0 {
-		return ""
-	}
-	return paths[0]
-}
-
-func fallbackDash(value string) string {
-	if value == "" {
-		return "-"
-	}
-	return value
 }
