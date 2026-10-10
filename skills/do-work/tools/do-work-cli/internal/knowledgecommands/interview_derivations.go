@@ -1,6 +1,7 @@
 package knowledgecommands
 
 import (
+	"fmt"
 	"regexp"
 	"sort"
 	"strings"
@@ -56,7 +57,7 @@ func deriveStakeholderTones(session map[string]any) []any {
 
 var interviewWeekdayPattern = regexp.MustCompile(`(?i)\b(mon(?:day)?|tue(?:sday)?|wed(?:nesday)?|thu(?:rsday)?|fri(?:day)?|sat(?:urday)?|sun(?:day)?)\b`)
 var interviewCadencePattern = regexp.MustCompile(`(?i)\b(daily|weekly|monthly|every day|each day|every week|each week|every month|each month)\b`)
-var interviewClockPattern = regexp.MustCompile(`\b([0-9]{1,2}:[0-9]{2})\b`)
+var interviewClockPattern = regexp.MustCompile(`(?i)\b([0-9]{1,2}:[0-9]{2})(?: ?([ap]m))?\b`)
 var interviewValidClock = regexp.MustCompile(`^(?:[01][0-9]|2[0-3]):[0-5][0-9]$`)
 
 func parseInterviewCadence(text string) (cadence, day, clock string, ok bool) {
@@ -79,9 +80,25 @@ func parseInterviewCadence(text string) (cadence, day, clock string, ok bool) {
 	if cadence == "" {
 		return "", "", "", false
 	}
-	clock = interviewClockPattern.FindString(text)
+	var meridiem string
+	if match := interviewClockPattern.FindStringSubmatch(text); match != nil {
+		clock, meridiem = match[1], strings.ToLower(match[2])
+	}
 	if len(clock) == 4 {
 		clock = "0" + clock
+	}
+	if meridiem != "" {
+		// 12-hour clock: 12 AM is 00, 12 PM stays 12, other PM hours add 12.
+		var hour, minute int
+		fmt.Sscanf(clock, "%d:%d", &hour, &minute)
+		if hour > 12 {
+			return "", "", "", false
+		}
+		hour %= 12
+		if meridiem == "pm" {
+			hour += 12
+		}
+		clock = fmt.Sprintf("%02d:%02d", hour, minute)
 	}
 	if clock != "" && !interviewValidClock.MatchString(clock) {
 		return "", "", "", false
