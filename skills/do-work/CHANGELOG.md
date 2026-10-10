@@ -10,6 +10,16 @@ For the complete release history, read this file and the archives below from new
 - [0.50.0 through 0.64.1](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-13-up-to-v0.64.1.md)
 - [0.1.0 through 0.49.0](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-07-up-to-v0.49.0.md)
 
+## 0.305.112 — do-work trace Shows How Much of a Spec Is Already Captured and Built Before Anything Is Captured Again (2026-10-10)
+
+Asking "is this captured, and how much of it is built?" about a ticket page, a screenshot, pasted text or a UR used to mean a hand search, and shipped asks were sometimes captured twice. `do-work trace` answers it with one table and a dated verdict per ask, and captures only the gaps, and only when you say go.
+
+- New action `do-work trace <url|image|text|UR-NNN>` (`actions/trace.md`, details in `actions/trace-reference.md`). It splits the source into asks A1, A2, ..., searches URs, REQs, credited commits, code and tests for each ask, and prints one row per ask: the matched REQ, the commit, the criteria with evidence (`N of M + GREEN yes|no`), the verdict `complete`, `partial`, `not started` or `unverified` with the date, the gap, and any open question.
+- Read-only until go: the transcription stays in a temporary directory outside the repo, so `git status --porcelain` is unchanged after a no-go trace. A URL fetch that returns only a site name is never judged; trace asks for a paste or a screenshot instead.
+- On go, trace makes one `capture-request:` call with only the `partial` and `not started` rows. A partial match on an archived REQ becomes an addendum REQ with the commit in `## Prior Implementation`, and an external ticket id starts the UR title and the transcription's first lines.
+- New read-only board subcommand `queue-kanban request-commits [--repo-root DIR] REQ-NNN...` lists every commit the board credits to each REQ (a bracketed `[REQ-NNN]` subject token or a touched REQ file), with hash, date, the count of paths outside `do-work/`, and subject. It uses the same attribution helper as the board's activity lines, so the two cannot disagree.
+- Routing: "is this captured", "already implemented", "how much of it is implemented", "didn't we have a request", `trace`, and "coverage" together with a spec, URL, image or UR now go to trace, from a row above the capture fallback. Also added to the argument hint and the help menu.
+
 ## 0.305.111 — do-work status Shows Each In-Flight REQ's Class, ETA and Remedy in One Table (2026-10-10)
 
 Asking "is it stuck?" used to mean rebuilding the answer by hand from REQ files, the run manifest, builder branches and the run directory. `do-work status` now answers it in one table, from the same facts the board shows. It reports ages and never says a run or builder is dead.
