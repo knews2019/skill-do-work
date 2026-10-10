@@ -1,7 +1,7 @@
 ---
 name: do-work
 description: Core request capture, queue orchestration, verification, review, and maintenance for the modular do-work suite
-argument-hint: "capture-request: <task> | run [REQ|UR] | run-with-recovery [REQ|UR] | run-simple-reqs | verify-requests [REQ|UR|--against source] | review-work [REQ|UR] | clarify | stakeholder-answers [REQ] | abandon [REQ|UR] | cleanup | commit | forensics | status [REQ] [--watch] | roadmap | handoff | version | update | recap | help"
+argument-hint: "capture-request: <task> | run [REQ|UR] | run-with-recovery [REQ|UR] | run-simple-reqs | verify-requests [REQ|UR|--against source] | review-work [REQ|UR] | clarify | stakeholder-answers [REQ] | abandon [REQ|UR] | cleanup | commit | forensics | status [REQ] [--watch] | roadmap | trace <url|image|text|UR-NNN> | handoff | version | update | recap | help"
 ---
 
 # Do-Work Core Skill
@@ -45,6 +45,7 @@ Check these patterns in order; first match wins.
 | `roadmap`, `queue-status`, `where are we`, `what's left` | `./actions/roadmap.md` |
 | `handoff`, `hand off`, `restart prompt`, `restart-with-parallel-handoff` | `./actions/restart-with-parallel-handoff.md` |
 | `version`, `update`, `updates`, `what version`, `what's new`, `what's changed`, `release notes`, `history`, `recap` | `./actions/version.md` |
+| `trace`, `is this captured`, `already implemented`, `how much of it is implemented`, `didn't we have a request`, or `coverage` together with a spec, URL, image or UR target | `./actions/trace.md` |
 | `capture-request:` / `capture request:` or unmatched descriptive multi-word input | `./actions/capture.md` |
 
 An unknown single word is ambiguous: ask whether the user wants it captured or meant another command.

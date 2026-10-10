@@ -1,6 +1,6 @@
 # Prime: do-kanban
 
-queue-kanban — standalone Go module (`tools/queue-kanban/`, own `go.mod`) that walks the version-controlled `do-work/` Markdown tree and renders it as a Kanban board plus the other pages in its page switcher. Subcommands: `summary` | `open-work` | `generate --out DIR` | `serve` | `frontmatter get FILE FIELD` | `next-req` | `next-version <patch|minor|major>` | `verify` | `now`. The latter group reads frontmatter or supports the release ritual and Timestamp rule rather than rendering the board. It ships in `do-work-board` and rides the suite version; the ergonomic entry point is `do-work-board board` (`actions/board.md`).
+queue-kanban — standalone Go module (`tools/queue-kanban/`, own `go.mod`) that walks the version-controlled `do-work/` Markdown tree and renders it as a Kanban board plus the other pages in its page switcher. Subcommands: `summary` | `open-work` | `generate --out DIR` | `serve` | `frontmatter get FILE FIELD` | `next-req` | `next-version <patch|minor|major>` | `verify` | `now` | `request-commits REQ-NNN…`. The latter group reads frontmatter or supports the release ritual and Timestamp rule rather than rendering the board. It ships in `do-work-board` and rides the suite version; the ergonomic entry point is `do-work-board board` (`actions/board.md`).
 
 ## Read first
 - `main.go` — subcommand dispatch + flags (`--repo-root`, `--out`, `--port`; `--recent-window` on summary only, `--version-file` on next-version only)

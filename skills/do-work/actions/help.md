@@ -24,6 +24,8 @@ do-work — core request and queue orchestration
   do-work forensics                 Diagnose queue and archive integrity
   do-work status [REQ] [--watch]    Show each in-flight REQ's class, ETA, and remedy
   do-work roadmap [scope]           Summarize ready, blocked, stale, and completed work
+  do-work trace <url|image|text|UR-NNN>
+                                      Show how much of a spec is captured and built, then ask before capturing the gaps
   do-work handoff                   Hand off to a fresh session with a paste-ready restart prompt
   do-work version                   Show the installed version and recent releases
   do-work update                    Update the complete four-skill suite
