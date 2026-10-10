@@ -10,6 +10,17 @@ For the complete release history, read this file and the archives below from new
 - [0.50.0 through 0.64.1](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-13-up-to-v0.64.1.md)
 - [0.1.0 through 0.49.0](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-07-up-to-v0.49.0.md)
 
+## 0.305.102 — One do-work-cli Command Creates, Merges and Removes Builder Worktrees (2026-10-10)
+
+Sessions typed `git worktree add`, `ln -s`, merge and cleanup commands by hand for every builder: one upstream report counted 85 hand-run `git worktree add` calls in 14 days. `do-work-cli worktree` now runs the steps `actions/fan-out-reference.md` already defines, and it refuses before any change when a step is unsafe. It never passes `--force` or `-D` to git.
+
+- `worktree new REQ-NNN [--from <branch>]` names the branch and worktree `worktree-agent-REQ-NNN-<slug>` from the request filename, adds `-2`, `-3` when the name is taken without deleting anything, creates the worktree in the sibling `<repo>-worktrees/` directory, and symlinks each path listed in an optional `do-work/worktree-links` file (for example `node_modules`).
+- `worktree status` lists each builder worktree with commits ahead and behind the integration branch, dirty or clean, and the age of its last commit.
+- `worktree merge REQ-NNN [--name <operative_name>]` runs hand-back merge steps 1 to 4: it refuses a staged index, an empty hand-back and any builder commit under `do-work/`, then merges with `--no-ff`, commits `[REQ-NNN] merge builder branch <name>`, and reports `pre` and `merge_hash`. A conflict stops with the merge in progress and lists the conflicted paths.
+- `merge` also refuses a builder commit that touches a linked path. A `node_modules/` ignore line does not match the symlink, so `git add -A` in the worktree can commit it, and merging that commit would delete the main tree's `node_modules/` directory. `new` now warns when a link is not ignored; the ignore line must be `node_modules` without the slash.
+- `worktree cleanup REQ-NNN [--name <operative_name>]` refuses an unmerged branch or uncommitted work, then removes the links it created, the worktree and the branch, and prunes.
+- The hand sequences in `fan-out-reference.md` stay valid for agents that cannot run the command.
+
 ## 0.305.101 — Lessons Record How to Clear a Stuck Finalization Journal After a Revert, and Comments Name Their Real Readers (2026-10-10)
 
 An upstream report asked for code in three places. The triage answered each with a short written fact instead, so the next reader does not have to ask again. This also closes the upstream-report batch (UR-152).
