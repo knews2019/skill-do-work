@@ -94,7 +94,13 @@ This metadata is the helper's watermark and does not prescribe the visible layou
 
 ### Step 5: Verify the Draft
 
-Run the current principles in `../../do-work/crew-members/anti-slop.md` over the draft. Check every claim and source link, the authored opening change account, and the metadata. Open the HTML locally in a browser when available and inspect the drawn diagrams, section navigation, legibility, and absence of missing assets. Test with network access disabled so rendering does not depend on GitHub or a CDN. If browser inspection is unavailable, inspect the HTML and links and report that visual verification was unavailable; never claim an unperformed check passed.
+Run the current principles in `../../do-work/crew-members/anti-slop.md` over the draft. Check every claim and source link, the authored opening change account, and the metadata. Render-check the draft; the command serves a directory, so keep the draft as `index.html` in a directory of its own:
+
+```bash
+<skill-root>/../do-work/tools/do-work-cli.sh --repo-root <project-root> --format json ai-report-judge <draft-directory>
+```
+
+Inspect the four captures it names for the drawn diagrams, section navigation, and legibility, and read overflow and missing-asset findings from its `judge.json`; fix and rerun until the verdict is `pass`. Test with network access disabled so rendering does not depend on GitHub or a CDN. If the verdict is `skipped` (no browser engine found) or the check exits 2, inspect the HTML and links and report that visual verification was unavailable; never claim an unperformed check passed.
 
 ### Step 6: Publish
 
