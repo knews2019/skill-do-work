@@ -20,3 +20,5 @@ queue_state: [21 pending, 0 pending-answers, 0 blocked, 0 blocked-archive-collis
 - REQ-661: capture-files init writes a filled manifest skeleton and payload templates, and the capture-reference fence example is fixed — claimed 2026-10-10T12:52:20Z — writer: t2s-Virtual-Machine.local:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2
 
 - REQ-667: Coordinated-run rules for heartbeat log, full-gate lock, focused builder suites, red-gate triage and manifest timing go into fan-out-reference — claimed 2026-10-10T12:52:20Z — writer: t2s-Virtual-Machine.local:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2
+
+- REQ-668: do-work status action and do-work-cli run-status report one class, ETA and remedy per open REQ — claimed 2026-10-10T12:52:21Z — writer: t2s-Virtual-Machine.local:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2
