@@ -10,14 +10,14 @@ Gate record: `DO_WORK_FAST_STAGE_REUSE=off bash _dev/tests/maintainer-verify.sh`
 
 | REQ | Builder | Operative name | Handback file | Status | Dispatch instant |
 |-----|---------|----------------|---------------|--------|------------------|
-| REQ-660 | builder agent in worktree (dispatched by the coordinator) | worktree-agent-REQ-660-worktree-lifecycle-command | do-work/runs/work-2026-10-10-131527/REQ-660-handback.md | landed, integrating | 2026-10-10T13:23:49Z |
-| REQ-659 | builder agent in worktree (dispatched by the coordinator) | worktree-agent-REQ-659-frontmatter-set-append-section | do-work/runs/work-2026-10-10-131527/REQ-659-handback.md | dispatched | 2026-10-10T13:24:46Z |
-| REQ-658 | builder agent in worktree (dispatched by the coordinator) | worktree-agent-REQ-658-finalize-auto-manifest | do-work/runs/work-2026-10-10-131527/REQ-658-handback.md | dispatched | 2026-10-10T13:25:57Z |
-| REQ-655 | builder agent in worktree (dispatched by the coordinator) | worktree-agent-REQ-655-ai-report-index-and-find | do-work/runs/work-2026-10-10-131527/REQ-655-handback.md | dispatched | 2026-10-10T13:25:37Z |
-| REQ-657 | builder agent in worktree (dispatched by the coordinator) | worktree-agent-REQ-657-ai-report-judge-render-check | do-work/runs/work-2026-10-10-131527/REQ-657-handback.md | dispatched | 2026-10-10T13:25:39Z |
+| REQ-660 | builder agent in worktree (dispatched by the coordinator) | worktree-agent-REQ-660-worktree-lifecycle-command | do-work/runs/work-2026-10-10-131527/REQ-660-handback.md | released 0.305.102 (500a1fc3) | 2026-10-10T13:23:49Z |
+| REQ-659 | builder agent in worktree (dispatched by the coordinator) | worktree-agent-REQ-659-frontmatter-set-append-section | do-work/runs/work-2026-10-10-131527/REQ-659-handback.md | landed, integrating | 2026-10-10T13:24:46Z |
+| REQ-658 | builder agent in worktree (dispatched by the coordinator) | worktree-agent-REQ-658-finalize-auto-manifest | do-work/runs/work-2026-10-10-131527/REQ-658-handback.md | landed | 2026-10-10T13:25:57Z |
+| REQ-655 | builder agent in worktree (dispatched by the coordinator) | worktree-agent-REQ-655-ai-report-index-and-find | do-work/runs/work-2026-10-10-131527/REQ-655-handback.md | landed | 2026-10-10T13:25:37Z |
+| REQ-657 | builder agent in worktree (dispatched by the coordinator) | worktree-agent-REQ-657-ai-report-judge-render-check | do-work/runs/work-2026-10-10-131527/REQ-657-handback.md | landed | 2026-10-10T13:25:39Z |
 | REQ-687 | builder agent in worktree (dispatched by the coordinator) | worktree-agent-REQ-687-ai-report-proposal-root-cause-kinds | do-work/runs/work-2026-10-10-131527/REQ-687-handback.md | landed | 2026-10-10T13:25:22Z |
 | REQ-688 | builder agent in worktree (dispatched by the coordinator) | worktree-agent-REQ-688-capture-files-example-fence-fix | do-work/runs/work-2026-10-10-131527/REQ-688-handback.md | landed | 2026-10-10T13:23:59Z |
 | REQ-689 | builder agent in worktree (dispatched by the coordinator) | worktree-agent-REQ-689-run-coordinate-mode | do-work/runs/work-2026-10-10-131527/REQ-689-handback.md | landed | 2026-10-10T13:23:28Z |
-| REQ-691 | builder agent in worktree (dispatched by the coordinator) | worktree-agent-REQ-691-trace-coverage-action | do-work/runs/work-2026-10-10-131527/REQ-691-handback.md | dispatched | 2026-10-10T13:26:03Z |
+| REQ-691 | builder agent in worktree (dispatched by the coordinator) | worktree-agent-REQ-691-trace-coverage-action | do-work/runs/work-2026-10-10-131527/REQ-691-handback.md | landed | 2026-10-10T13:26:03Z |
 | REQ-692 | builder agent in worktree (dispatched by the coordinator) | worktree-agent-REQ-692-validate-feedback-capture-chain | do-work/runs/work-2026-10-10-131527/REQ-692-handback.md | landed | 2026-10-10T13:26:22Z |
-| REQ-690 | builder agent in worktree (dispatched by the coordinator) | worktree-agent-REQ-690-run-status-action | do-work/runs/work-2026-10-10-131527/REQ-690-handback.md | dispatched | 2026-10-10T13:31:31Z |
+| REQ-690 | builder agent in worktree (dispatched by the coordinator) | worktree-agent-REQ-690-run-status-action | do-work/runs/work-2026-10-10-131527/REQ-690-handback.md | landed | 2026-10-10T13:31:31Z |
