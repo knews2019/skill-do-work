@@ -43,7 +43,7 @@ Read the requirements for the target (REQ, UR, issue text, or the user's descrip
 
 Detect a browser tool as `actions/ui-review.md` → **Step 2: Load Design Context** describes in its item 4; a browser automation tool the session already provides also counts. With none, every journey that needs a rendered page is **unresolved** with the reason "no browser tool", never passed. Still report what reading the code found, and the install suggestion from that step.
 
-List the existing checks that cover the target (end-to-end specs, helpers, fixtures) and reuse their selectors and setup. Record the revision (`git rev-parse --short HEAD`, noting uncommitted changes) and the output of `git status --porcelain`, so Step 6 can prove nothing changed.
+List the existing checks that cover the target (end-to-end specs, helpers, fixtures) and reuse their selectors and setup. Record the revision (`git rev-parse --short HEAD`, noting uncommitted changes) and the output of `git status --porcelain --untracked-files=all`, so Step 6 can prove nothing changed.
 
 Create the evidence directory with `mktemp -d`, or use a path the project already ignores. Run the browser tool from that directory, because some tools write session files into the current directory, and save every screenshot or trace there.
 
@@ -74,7 +74,7 @@ Rule out a test defect before calling a failure a product defect. Show the produ
 
 For each product defect and test defect, name the smallest justified repair: the file or area, the behavior to change, and the evidence that points there. Do not apply it. List the checks still left: unresolved items, device checks, combinations not run.
 
-Compare `git status --porcelain` with the Step 2 record. If the browser tool wrote anything inside the project, remove it and name it in the report.
+Compare `git status --porcelain --untracked-files=all` with the Step 2 record. Remove only new untracked paths the browser tool wrote (session files, screenshots, traces) and name each in the report. Never revert a tracked file or delete a path you cannot tie to the browser tool. Report it instead.
 
 Read `crew-members/anti-slop.md`, then write the report below. Lead with the verdict.
 
