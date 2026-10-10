@@ -47,39 +47,58 @@ func prepareBoundJournal(ctx context.Context, repositoryRoot, manifestPath, expe
 	if requiredTransition != "" && manifest.Transition != requiredTransition {
 		return nil, false, fmt.Errorf("this lifecycle phase only permits finalization transition %q", requiredTransition)
 	}
+	journal, resumed, _, err := prepareManifestJournal(repositoryRoot, manifest, manifestBytes, false)
+	return journal, resumed, err
+}
+
+// prepareManifestJournal is the one planner path behind finalize --manifest,
+// FinalizeBound and finalize --auto-manifest. It checks a decoded manifest
+// against the live tree and returns the required commit paths (the lifecycle
+// targets plus every release postimage) as soon as the planners have computed
+// them, even when the manifest's commit_paths then omits some of them: auto mode
+// learns the set from a draft manifest that cannot list it yet. A nil set means
+// the refusal came before that point.
+//
+// dryRun runs every check without a side effect: release payloads are adopted
+// into a temporary directory removed on return, never the Git-private payload
+// directory, and no journal is written.
+func prepareManifestJournal(repositoryRoot string, manifest Manifest, manifestBytes []byte, dryRun bool) (*Journal, bool, []string, error) {
 	if err := exec.Command("git", "-C", repositoryRoot, "diff", "--cached", "--quiet", "--exit-code").Run(); err != nil {
-		return nil, false, fmt.Errorf("finalization requires an empty existing index")
+		return nil, false, nil, fmt.Errorf("finalization requires an empty existing index")
 	}
 	journalPath, payloadDirectory, err := journalLocations(repositoryRoot, manifest.RequestID)
 	if err != nil {
-		return nil, false, err
+		return nil, false, nil, err
+	}
+	if dryRun {
+		payloadDirectory = "" // the cleanup calls below must never reach the Git-private directory
 	}
 	manifestDigest := digestBytes(manifestBytes)
 	if _, err := os.Lstat(journalPath); err == nil {
 		journal, readError := readJournal(repositoryRoot, journalPath)
 		if readError != nil {
-			return nil, false, readError
+			return nil, false, nil, readError
 		}
 		if journal.ManifestSHA256 != manifestDigest {
-			return nil, false, fmt.Errorf("an unfinished journal exists for %s with a different manifest", manifest.RequestID)
+			return nil, false, nil, fmt.Errorf("an unfinished journal exists for %s with a different manifest", manifest.RequestID)
 		}
-		return journal, true, nil
+		return journal, true, nil, nil
 	} else if !os.IsNotExist(err) {
-		return nil, false, err
+		return nil, false, nil, err
 	}
 
 	requestBytes, err := os.ReadFile(filepath.Join(repositoryRoot, filepath.FromSlash(manifest.RequestPath)))
 	if err != nil || digestBytes(requestBytes) != strings.ToLower(manifest.ExpectedRequestSHA256) {
-		return nil, false, fmt.Errorf("request preimage does not match expected_request_sha256")
+		return nil, false, nil, fmt.Errorf("request preimage does not match expected_request_sha256")
 	}
 	checkpointBytes, err := os.ReadFile(filepath.Join(repositoryRoot, "do-work", "CHECKPOINT.md"))
 	if err != nil || digestBytes(checkpointBytes) != strings.ToLower(manifest.ExpectedCheckpointSHA256) {
-		return nil, false, fmt.Errorf("checkpoint preimage does not match expected_checkpoint_sha256")
+		return nil, false, nil, fmt.Errorf("checkpoint preimage does not match expected_checkpoint_sha256")
 	}
 
 	snapshot, err := repositorymodel.DiscoverRepository(repositoryRoot)
 	if err != nil {
-		return nil, false, err
+		return nil, false, nil, err
 	}
 	completedAt, _ := time.Parse(time.RFC3339, manifest.CompletedAt)
 	stateOptions := requeststate.StateOptions{
@@ -97,17 +116,17 @@ func prepareBoundJournal(ctx context.Context, repositoryRoot, manifestPath, expe
 	statePlan := requeststate.BuildPlan(snapshot, dependencygraph.BuildGraph(snapshot), stateOptions)
 	if !statePlan.Runnable() {
 		if statePlan.Refusal != nil {
-			return nil, false, fmt.Errorf("lifecycle plan refused: %s: %s", statePlan.Refusal.Code, statePlan.Refusal.Reason)
+			return nil, false, nil, fmt.Errorf("lifecycle plan refused: %s: %s", statePlan.Refusal.Code, statePlan.Refusal.Reason)
 		}
-		return nil, false, fmt.Errorf("lifecycle plan is not runnable")
+		return nil, false, nil, fmt.Errorf("lifecycle plan is not runnable")
 	}
 	lifecyclePostimages, err := requeststate.PlannedPostimages(statePlan)
 	if err != nil {
-		return nil, false, err
+		return nil, false, nil, err
 	}
 	lifecyclePreimages, err := snapshotImages(repositoryRoot, statePlan.TargetPaths)
 	if err != nil {
-		return nil, false, err
+		return nil, false, nil, err
 	}
 	journalLifecyclePostimages := make([]FileImage, 0, len(lifecyclePostimages))
 	for _, image := range lifecyclePostimages {
@@ -117,37 +136,43 @@ func prepareBoundJournal(ctx context.Context, repositoryRoot, manifestPath, expe
 	var releaseManifest *publication.Manifest
 	var releasePreimages, releasePostimages []FileImage
 	if manifest.ReleaseManifestPath != "" {
-		if err := os.MkdirAll(payloadDirectory, 0o700); err != nil {
-			return nil, false, err
+		if dryRun {
+			payloadDirectory, err = os.MkdirTemp("", "do-work-finalization-dry-*")
+			if err != nil {
+				return nil, false, nil, err
+			}
+			defer os.RemoveAll(payloadDirectory)
+		} else if err := os.MkdirAll(payloadDirectory, 0o700); err != nil {
+			return nil, false, nil, err
 		}
 		preparedRelease, prepareError := adoptReleaseManifest(repositoryRoot, manifest.ReleaseManifestPath, payloadDirectory)
 		if prepareError != nil {
 			_ = os.RemoveAll(payloadDirectory)
-			return nil, false, prepareError
+			return nil, false, nil, prepareError
 		}
 		releaseManifest = &preparedRelease
 		if err := releaseShippedChangeError(repositoryRoot, manifest); err != nil {
 			_ = os.RemoveAll(payloadDirectory)
-			return nil, false, err
+			return nil, false, nil, err
 		}
 		releasePlan := publication.BuildReleasePlan(repositoryRoot, preparedRelease)
 		if !releasePlan.Runnable() {
 			_ = os.RemoveAll(payloadDirectory)
 			if releasePlan.Refusal != nil {
-				return nil, false, fmt.Errorf("release plan refused: %s: %s", releasePlan.Refusal.Code, releasePlan.Refusal.Reason)
+				return nil, false, nil, fmt.Errorf("release plan refused: %s: %s", releasePlan.Refusal.Code, releasePlan.Refusal.Reason)
 			}
-			return nil, false, fmt.Errorf("release plan is not runnable")
+			return nil, false, nil, fmt.Errorf("release plan is not runnable")
 		}
 		releasePreimages, err = snapshotImages(repositoryRoot, releasePlan.TargetPaths)
 		if err != nil {
 			_ = os.RemoveAll(payloadDirectory)
-			return nil, false, err
+			return nil, false, nil, err
 		}
 		releasePostimages = publicationPostimages(releasePlan, releasePreimages)
 		archiveBefore, archiveAfter, stampError := releaseStampImages(statePlan.DestinationPath, journalLifecyclePostimages, manifest.ReleaseAt)
 		if stampError != nil {
 			_ = os.RemoveAll(payloadDirectory)
-			return nil, false, stampError
+			return nil, false, nil, stampError
 		}
 		releasePreimages = append(releasePreimages, archiveBefore)
 		releasePostimages = append(releasePostimages, archiveAfter)
@@ -158,7 +183,7 @@ func prepareBoundJournal(ctx context.Context, repositoryRoot, manifestPath, expe
 	effectiveCommitPaths, err := normalizeRepositoryPaths(manifest.CommitPaths)
 	if err != nil {
 		_ = os.RemoveAll(payloadDirectory)
-		return nil, false, err
+		return nil, false, nil, err
 	}
 	requiredCommitPaths := append([]string(nil), statePlan.TargetPaths...)
 	for _, image := range releasePostimages {
@@ -167,11 +192,14 @@ func prepareBoundJournal(ctx context.Context, repositoryRoot, manifestPath, expe
 	missing, missingError := missingCommitPaths(requiredCommitPaths, effectiveCommitPaths)
 	if missingError != nil {
 		_ = os.RemoveAll(payloadDirectory)
-		return nil, false, missingError
+		return nil, false, nil, missingError
 	}
 	if len(missing) > 0 {
 		_ = os.RemoveAll(payloadDirectory)
-		return nil, false, fmt.Errorf("commit_paths omits planned lifecycle or release targets: %s", strings.Join(missing, ", "))
+		return nil, false, requiredCommitPaths, fmt.Errorf("commit_paths omits planned lifecycle or release targets: %s", strings.Join(missing, ", "))
+	}
+	if dryRun {
+		return nil, false, requiredCommitPaths, nil
 	}
 
 	now := time.Now().UTC().Truncate(time.Second)
@@ -188,9 +216,9 @@ func prepareBoundJournal(ctx context.Context, repositoryRoot, manifestPath, expe
 	}
 	if err := writeJournal(journal); err != nil {
 		_ = os.RemoveAll(payloadDirectory)
-		return nil, false, err
+		return nil, false, nil, err
 	}
-	return journal, false, nil
+	return journal, false, requiredCommitPaths, nil
 }
 
 func releaseStampImages(archivedPath string, lifecyclePostimages []FileImage, releaseAt string) (FileImage, FileImage, error) {
