@@ -1,7 +1,7 @@
 ---
 id: REQ-656
 title: 'ai-report revise writes a new sibling bundle that supersedes the prior one'
-status: pending
+status: claimed
 created_at: 2026-10-09T21:10:00Z
 user_request: UR-144
 domain: general
@@ -14,6 +14,7 @@ related: [REQ-654, REQ-655, REQ-657]
 batch: ai-report-modes
 depends_on: [REQ-655]
 write_set: ["skills/do-work-toolbox/actions/ai-report.md", "skills/do-work-toolbox/actions/ai-report-reference.md", "skills/do-work-toolbox/docs/ai-report-guide.md", "skills/do-work-toolbox/SKILL.md", "skills/do-work-toolbox/actions/help.md"]
+claimed_at: 2026-10-10T15:51:14Z
 ---
 # ai-report Revise Writes a New Sibling Bundle That Supersedes the Prior One
 ## What
