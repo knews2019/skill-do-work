@@ -10,6 +10,15 @@ For the complete release history, read this file and the archives below from new
 - [0.50.0 through 0.64.1](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-13-up-to-v0.64.1.md)
 - [0.1.0 through 0.49.0](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-07-up-to-v0.49.0.md)
 
+## 0.305.97 — Qualify Says Whether the Implementation Summary Is Missing or Names No Files (2026-10-10)
+
+Qualify now tells the two Implementation Summary problems apart. Before, one message, "Implementation Summary is missing or empty", covered both. A builder whose summary said "None, verification only" was told the section was missing and went looking for the wrong fix.
+
+- `QUALIFY-SUMMARY-MISSING` evidence reads "Implementation Summary section not found" when the section is absent.
+- It reads "Implementation Summary lists no backticked file paths" when the section exists but names no files.
+- The finding code, severity and fixability are unchanged, and so is the parse-error message.
+- Two tests in `corehelpers/checks_test.go` pin the two messages.
+
 ## 0.305.96 — Interview Cadence Reads AM and PM, So 5:00 PM Is Stored as 17:00 (2026-10-10)
 
 Interview cadence now reads AM and PM in a clock answer, so "daily 5:00 PM" is stored as 17:00 and "weekly Friday 12:30 AM" as 00:30. Before, the AM/PM marker was ignored: the first was stored as 05:00 and the second as 12:30, so the standing slot was 12 hours off.

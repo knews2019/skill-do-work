@@ -14,7 +14,6 @@ queue_state: [21 pending, 0 pending-answers, 0 blocked, 0 blocked-archive-collis
 - REQ-682: A hidden Timeline view no longer redraws its rows when the user scrolls another view — claimed 2026-10-10T10:07:06Z — writer: t2s-Virtual-Machine.local:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2
 
 
-- REQ-684: Qualify tells a missing Implementation Summary section apart from a section that names no files — claimed 2026-10-10T10:07:35Z — writer: t2s-Virtual-Machine.local:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2
 
 - REQ-685: [impact-negligible] Git transaction rollback reuses the transaction's open repository root and the no-root rollback path is deleted — claimed 2026-10-10T10:07:36Z — writer: t2s-Virtual-Machine.local:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2
 
