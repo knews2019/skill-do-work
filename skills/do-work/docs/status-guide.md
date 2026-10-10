@@ -31,7 +31,7 @@ First match wins, in this order:
 | **C2** quiet | No new stamp or commit for about 20 minutes | The action checks agents this session started |
 | **C1** progressing | Activity in the last 20 minutes | Nothing |
 
-The report also lists files in the run directory that the suite does not define (lock files, progress logs), labelled "run-local, not interpreted", with their age and first line. When a lock's owner process is not running on this machine, the action prints an `rm` line with the real path. You decide whether to run it: the lock may belong to another checkout.
+The report also lists files in the run directory that the suite does not define (lock files, for example), labelled "run-local, not interpreted", with their age and first line. When a lock's owner process is not running on this machine, the action prints an `rm` line with the real path. You decide whether to run it: the lock may belong to another checkout.
 
 ## Usage
 

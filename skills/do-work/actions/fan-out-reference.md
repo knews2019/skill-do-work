@@ -131,11 +131,36 @@ Never parallelised, at any builder count: every `do-work/` queue transition (cla
 
 After a wave's builders are dispatched, the orchestrator may hand each REQ's integration, from the hand-back merge through `actions/work.md` Step 9, to one agent at a time, in series, in the same checkout. That agent is the REQ's integrator and plays the orchestrator role for that span; release and changelog stay serial-only. The shape exists because the integration span is long and context-heavy, and running it in the main session blocks the conversation the user steers from.
 
+Under `--coordinate` this shape is mandatory. The main session dispatches, writes briefs in writing gaps, and reports. It never builds, never merges and never runs Step 6 to Step 9 itself. No integrator pushes. A blocking question becomes a `pending-answers` follow-up, never a wait.
+
 - **Entry.** The integrator enters with the read-only `advance REQ-NNN`, which continues the live claim. The section steps of `actions/work.md` skip what is already written, and Step 6's landed-hand-back condition takes it straight to the hand-back merge.
 - **Never `recover`.** The coordinator already ran it at the queue boundary, and a `recover` mid-wave reads the wave's own in-flight artifacts, such as the untracked run directory, as dirt it cannot attribute. Never give an integrator run-with-recovery, `recover --assume-sole-authority` or `recover --take-over`: the first two reset every sibling claim and requeue the whole wave, and `--take-over` resets the integrator's own claim and strips the sections the coordinator wrote.
 - **Never Step 10.** An integrator stops after Step 9 (`actions/work.md` Step 10 says why). The coordinator runs the checkpoint, then cleanup, after the last integrator returns.
 - **One writer under the project root at a time.** While an integrator runs, the coordinator writes nothing under the project root: no REQ sections, no manifest edits, no captures. Otherwise this is two sessions in one working tree, which `actions/work-reference.md` → **Execution Model — Claim Anywhere, One Releaser** leaves unspecified. The coordinator writes in the gap between integrators and keeps live notes in its own session scratch until then.
 - **The integrator brief.** In the gap before each integrator starts, the coordinator writes `REQ-NNN-integrate.md` in the run directory: the REQ id, the run directory, the hand-back path, the operative name, the wave membership, every wave member the coordinator has set aside (a set-aside member keeps its claim in `do-work/working/`, so without this list the integrator cannot tell it from one still building), any mid-run addendum text, and the instruction not to run Step 10.
+
+#### Coordinated run rules
+
+These rules apply whenever the coordinator shape is used, with or without `--coordinate`. They make stalls and load-only failures visible and shorter; they do not prevent them.
+
+- **Progress log.** Every builder and integrator appends `<UTC> <phase> <command>` to `REQ-NNN-progress.log` in the run directory before and after any command expected to take over a minute. An agent never ends its turn while a command it started is still running.
+- **Full-gate lock.** Only integrators run the full test suite, one at a time, each holding `full-gate.lock` in the run directory while its suite runs and removing it after. The lock holds the owner's writer label (the label the checkpoint uses) and the UTC start, nothing else; no process identity is recorded. Builders run focused suites for the files they touched.
+- **Red full gate.** Rerun the failed suites alone. A failure that passes alone is load-only: run one more full gate. A real regression is fixed, then one full gate runs.
+- **Manifest row.** In the writing gap after each integration, the coordinator fills that REQ's `manifest.md` columns: takeover-to-finalization minutes, full gates run, stall restarts.
+- **Hand-back coverage.** Before writing an integrator brief, the coordinator checks that the hand-back covers every item forwarded to the builder mid-run.
+
+The progress log is an append-only run-directory text file, and the lock serializes one test command inside one run. Neither is queue state, a liveness claim, or the lock, heartbeat and claim machinery REQ-069 and REQ-073 deleted.
+
+**Preflight, before the first spawn of a `--coordinate` run.** Report four lines, each read from a surface that already exists. This is the coordinator's judgment on this machine, not a command.
+
+1. **Disk.** Run the board's `verify` as `actions/forensics.md` → **14. Release and Queue Invariants (board-owned)** does, and quote the `low-disk-space` level (warning, critical, or none). Stop the run on critical; continue on warning. When the board or `go` is absent, say "unknown", never healthy. The probe reports and never deletes, and neither does the preflight.
+2. **Leftover processes.** Test or browser processes still running under the repo root or its worktrees: report them and ask before killing any. Never kill one unasked.
+3. **Stale locks.** Any `full-gate.lock` under `do-work/runs/`: report its path and age. Never delete it.
+4. **Run policy.** `do-work/run-policy.md` with its bullet count, or absent.
+
+`do-work/run-policy.md` is optional and committed: plain bullets the coordinator copies into every builder and integrator brief (for example REQs to skip, "one heavy gate at a time", "no browser QA while `full-gate.lock` is held", "no live-ops").
+
+**Stall loop, under `--coordinate`.** After the first dispatch the coordinator arms exactly one recurring check every 15 to 20 minutes on whatever scheduler the harness offers. Without one, it checks at the start of each of its own turns and says so. Each tick reads `do-work status --watch` (`actions/status.md`) and the tail of each `REQ-NNN-progress.log`, which status does not read. When status cannot report (no board or no Go toolchain), the progress-log tails and each worktree's last commit time are the whole reading. An integrator silent about 20 minutes or more (no new progress line, no new commit) is stopped, and a fresh integrator resumes from its landed phase through `advance REQ-NNN`, never `recover`, and never redoes a merge already on the integration branch. A silent builder is reported only, unless the user says restart. Each tick also re-runs the selector, in a writing gap, so newly captured REQs join the next wave. Each coordinator turn ends with one line: done/total, active lanes, ETA or unknown. Teardown deletes the check (`actions/work.md` Step 10).
 
 ### Run directory, briefs and hand-backs
 
@@ -147,7 +172,9 @@ After a wave's builders are dispatched, the orchestrator may hand each REQ's int
 | per-builder input | `REQ-NNN-brief.md` — REQ body, worktree path, branch name, never-touch list, the commit subject rule (*Naming*), hand-back format |
 | per-builder output | `REQ-NNN-handback.md` — branch, file manifest, integration seams, and **every `##` section the builder would have written into the REQ file** (today `## Discovered Tasks` and `## Decisions`, each under its own heading), because readers take them from here when the REQ lacks them (`actions/work-reference.md` → **Reading a Builder-Authored Section (any step)**). This row and `actions/work.md` Step 6's routed sections are one set: a section Step 6 tells the builder to author and this row does not carry is lost silently. The one main-tree path a builder may write (*Sole integrator*) |
 | per-integrator input | `REQ-NNN-integrate.md` — written by the coordinator between integrators, never by a builder (*Delegated integration — the coordinator shape*) |
-| `manifest.md` | REQ id → builder, `<operative_name>`, handback file, landed status, held dispatch instant, plus the run's hand-back emphasis note when the user sent one (*Mid-Run Messages (any step)*) — **the orchestrator's**, never written by a builder |
+| `REQ-NNN-progress.log` | append-only `<UTC> <phase> <command>` lines from the REQ's builder and integrator (*Coordinated run rules*) |
+| `full-gate.lock` | present only while one integrator runs the full suite; holds its writer label and UTC start (*Coordinated run rules*) |
+| `manifest.md` | REQ id → builder, `<operative_name>`, handback file, landed status, held dispatch instant, takeover-to-finalization minutes, full gates run, stall restarts, plus the run's hand-back emphasis note when the user sent one (*Mid-Run Messages (any step)*) — **the orchestrator's**, never written by a builder |
 | bounded waves | builders per wave, sized to the harness concurrency limit |
 
 The pattern makes fan-out failures **survivable, not prevented**. Never describe it as a fix.
