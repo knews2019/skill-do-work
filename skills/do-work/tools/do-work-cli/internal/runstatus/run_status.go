@@ -112,10 +112,7 @@ func runStatusAt(executionContext commandruntime.ExecutionContext, arguments []s
 		return refusal("RUN-STATUS-BOARD-FACTS", factsError.Error(), fmt.Sprintf(
 			"run-status needs the board's facts: build queue-kanban and run `queue-kanban open-work --format json --repo-root %s > FILE`, then pass --board-facts FILE (actions/status.md does both)", repositoryRoot))
 	}
-	runDirectory, runError := resolveRunDirectory(repositoryRoot, options.runDirectory)
-	if runError != nil {
-		return refusal("RUN-STATUS-USAGE", runError.Error(), "the --run directory does not exist")
-	}
+	runDirectory := resolveRunDirectory(repositoryRoot, options.runDirectory)
 	snapshot, discoveryError := repositorymodel.DiscoverRepository(repositoryRoot)
 	if discoveryError != nil {
 		return resultmodel.CommandResult{Outcome: resultmodel.OutcomeFailure, Findings: []resultmodel.CommandFinding{{
@@ -206,24 +203,17 @@ func readBoardFacts(path string) (boardFacts, error) {
 	if decodeError := json.Unmarshal(contents, &facts); decodeError != nil {
 		return facts, fmt.Errorf("board facts %s are not open-work JSON: %w", path, decodeError)
 	}
-	// A zero threshold would class every claim C7, so a file without it is refused.
-	if facts.StaleClaimThresholdMinutes <= 0 {
-		return facts, fmt.Errorf("board facts %s carry no stale_claim_threshold_minutes", path)
-	}
 	return facts, nil
 }
 
 // resolveRunDirectory returns --run, or the newest do-work/runs/work-* directory
 // by name, or "" when there is none (not an error: run fields stay absent).
-func resolveRunDirectory(repositoryRoot, override string) (string, error) {
+func resolveRunDirectory(repositoryRoot, override string) string {
 	if override != "" {
 		if !filepath.IsAbs(override) {
 			override = filepath.Join(repositoryRoot, override)
 		}
-		if info, statError := os.Stat(override); statError != nil || !info.IsDir() {
-			return "", fmt.Errorf("--run %s is not a directory", override)
-		}
-		return override, nil
+		return override
 	}
 	entries, _ := os.ReadDir(filepath.Join(repositoryRoot, "do-work", "runs"))
 	newest := ""
@@ -233,9 +223,9 @@ func resolveRunDirectory(repositoryRoot, override string) (string, error) {
 		}
 	}
 	if newest == "" {
-		return "", nil
+		return ""
 	}
-	return filepath.Join(repositoryRoot, "do-work", "runs", newest), nil
+	return filepath.Join(repositoryRoot, "do-work", "runs", newest)
 }
 
 func readManifestLines(runDirectory string) []string {
