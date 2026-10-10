@@ -1,7 +1,7 @@
 ---
 id: REQ-688
 title: 'capture-files --example prints one valid manifest with payload templates, and the capture-reference fence example is fixed'
-status: pending
+status: claimed
 created_at: 2026-10-10T13:05:57Z
 user_request: UR-153
 domain: backend
@@ -12,6 +12,7 @@ impact: impact-user-visible
 effort_estimate: effort-mechanical
 related: [REQ-658, REQ-659, REQ-660]
 batch: cli-ergonomics
+claimed_at: 2026-10-10T13:14:50Z
 ---
 # capture-files --example Prints One Valid Manifest, and the capture-reference Fence Example Is Fixed
 ## What
