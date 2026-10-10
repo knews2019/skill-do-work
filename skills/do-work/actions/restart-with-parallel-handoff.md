@@ -11,7 +11,7 @@
 - Context is running out, or the session is ending with work still in the queue.
 - A fresh session should pick up with different parallelism than this one ran with.
 - The user types the `phandoff` shorthand (`crew-members/communication-style.md` → Aliases).
-- In a `--coordinate` run, the harness reports context usage above a threshold: the coordinator follows this action on its own. The harness supplies the reading; with no reading there is no automatic trigger. This automatic handoff writes and commits the handoff only and does not end the session.
+- In a `--coordinate` run, the harness reports context usage above a threshold: the coordinator follows this action on its own. The harness supplies the reading; with no reading there is no automatic trigger. This automatic handoff waits for the next writing gap (no integrator running), runs once per run, writes and commits the handoff only, and does not end the session. In that turn the coordinator's turn-status line comes just before the two announcement lines, which still end the message (Step 6).
 
 **Do NOT use when:**
 
@@ -65,7 +65,7 @@ Exactly two sections, in this order.
 - to build, when this run was started with `--coordinate` — `do-work run --coordinate --fan-out N`
 - to answer questions — `do-work clarify`, included only if some REQ is at `pending-answers`
 
-When this session leaves a REQ claimed in `do-work/working/`, put one line per claim above the resume command: `advance REQ-NNN`, then do the phase it names, so claimed work finishes before new work starts. The resume command's selection reads only the queue, so it does not continue a claim's remaining phases. Never write `recover --take-over` for these claims: it resets a claim (returns it to the queue and strips its orchestrator sections, merged evidence included).
+When this session leaves a REQ claimed in `do-work/working/`, put one line per claim above the resume command: `advance REQ-NNN`, then do the phase it names, so claimed work finishes before new work starts. The resume command's selection reads only the queue, so it does not continue a claim's remaining phases. Never write `recover --take-over` for these claims: it resets a claim (returns it to the queue and strips its orchestrator sections, merged evidence included). In a handoff from a `--coordinate` run, write each claim line as `hand REQ-NNN to an integrator (it enters with advance REQ-NNN)`: the next session coordinates from its first line and never runs a claim's phase itself (`actions/fan-out-reference.md` → **Delegated integration — the coordinator shape**).
 
 Immediately after the commands, write: `These commands are sufficient; everything below them is context.` **If you cannot honestly write that sentence, return to Step 1 until you can.**
 

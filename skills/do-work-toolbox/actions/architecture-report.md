@@ -132,7 +132,7 @@ One new bundle directory at `ai-reports/<yyyy-mm-dd>_<hhmm>_architecture-report/
 | If you're thinking... | STOP. Instead... | Because... |
 | --- | --- | --- |
 | "The prior report is out of date, so I'll update it in place" | Publish a new dated bundle and leave the prior one untouched | Editing history destroys the baseline for the next authored comparison |
-| "This belongs with the completed-work reports — I'll add an architecture mode to `ai-report`" | Keep it here; `ai-report` takes a UR or REQ and presents completed work | This action has no UR/REQ input and no archive evidence to resolve; folding it in would give `ai-report` a second, incompatible input contract |
+| "This belongs with the completed-work reports — I'll add an architecture mode to `ai-report`" | Keep it here; `ai-report` takes a UR or REQ and presents completed work, or with `--kind` writes a decision brief about open work | This action has no UR/REQ input and no archive evidence to resolve; folding it in would give `ai-report` another, incompatible input contract |
 | "I'll write the report now and commit it with the code" | Commit the code first, then run this action against that commit | The watermark would name a commit whose tree the claims were never checked against |
 | "The prior watermark hash won't resolve, so nothing changed" | Re-verify every claim and disclose the missing scope | An unresolvable scope is a missing answer, not an empty one |
 

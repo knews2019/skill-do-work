@@ -158,6 +158,8 @@ do-work continue
 do-work resume
 ```
 
+`do-work drive the queue` and `do-work use the main session as a coordinator` run the same loop as `do-work run --coordinate`: the main session only coordinates (see **Building several REQs at once** above).
+
 Use whichever feels natural. `continue` and `resume` read well after a break; `run` and `go` are good for fresh starts.
 
 ## Tips

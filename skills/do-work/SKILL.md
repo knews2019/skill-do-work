@@ -1,7 +1,7 @@
 ---
 name: do-work
 description: Core request capture, queue orchestration, verification, review, and maintenance for the modular do-work suite
-argument-hint: "capture-request: <task> | run [REQ|UR] | run-with-recovery [REQ|UR] | run-simple-reqs | verify-requests [REQ|UR|--against source] | review-work [REQ|UR] | clarify | stakeholder-answers [REQ] | abandon [REQ|UR] | cleanup | commit | forensics | status [REQ] [--watch] | roadmap | trace <url|image|text|UR-NNN> | handoff | version | update | recap | help"
+argument-hint: "capture-request: <task> | run [REQ|UR] [--fan-out [N]] [--coordinate] | run-with-recovery [REQ|UR] | run-simple-reqs | verify-requests [REQ|UR|--against source] | review-work [REQ|UR] | clarify | stakeholder-answers [REQ] | abandon [REQ|UR] | cleanup | commit | forensics | status [REQ] [--watch] | roadmap | trace <url|image|text|UR-NNN> | handoff | version | update | recap | help"
 ---
 
 # Do-Work Core Skill
