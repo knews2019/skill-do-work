@@ -244,10 +244,12 @@ func TestRequestAppendSectionRefusesBodyThatHidesLaterSections(t *testing.T) {
 		// The end-of-file case the old single-copy re-check guarded: the
 		// request's own open fence hides the appended heading.
 		{"an open fence already at the end of the file", frontmatter + "## What\n```\nstill fenced\n", "tests ran\n"},
-		// The open fence hides the real ## Review and reveals the fenced
-		// example ## Review: the count still grows by one and the names still
-		// match, so only the heading offsets show the real section is gone.
-		{"an open fence that reveals a fenced example heading", withReview + "\n```\n## Review\n```\n", "```\nopen\n"},
+		// A net section count is fooled here: the open fence hides ## Review
+		// and reveals the fenced example ## Hidden, so the count grows by one.
+		{"an open fence that reveals a fenced example heading", withReview + "\n```\n## Hidden\n```\n", "```\nopen\n"},
+		// Appended at the end, nothing follows yet, but the open fence hides
+		// the ## Review written after it.
+		{"an open fence in a body appended at the end", frontmatter + "## What\nDo it.\n", "```\nopen\n"},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			root := t.TempDir()

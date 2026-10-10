@@ -112,6 +112,13 @@ func handleRequest(executionContext commandruntime.ExecutionContext, arguments [
 	if len(requestmodel.VisibleSections([]byte(sectionBody))) > 0 {
 		return writerRefusal("SECTION-BODY-HAS-HEADING", sourcePath, "the --from file must hold the section body only; remove its ## heading")
 	}
+	// A body that leaves a fence or comment open hides everything after it from
+	// advance: the later sections already in the file, or the next section
+	// written after an append at the end. A heading placed after the body is
+	// visible only when the body closes everything it opens.
+	if len(requestmodel.VisibleSections([]byte(sectionBody+"\n\n## Sentinel\n"))) != 1 {
+		return writerRefusal("SECTION-WRITE-FAILED", sourcePath, "the --from body leaves a fence or comment open, which would hide every section after it; close it (a line that starts with three or more of one punctuation character, such as ``` or ..., opens a fence)")
+	}
 	requestPath, refusal := resolveActiveRequest(executionContext.RepositoryRoot, requestID)
 	if refusal != nil {
 		return *refusal
@@ -123,14 +130,13 @@ func handleRequest(executionContext commandruntime.ExecutionContext, arguments [
 	body := document.BodyBytes()
 	laterSections := requestmodel.SectionsAfter(sectionName)
 	existing := []requestmodel.VisibleSection{}
-	insertAt, sectionsBefore := -1, []requestmodel.VisibleSection{}
+	insertAt := -1
 	// Only column-0 headings are sections, matching advance's advanceSections;
 	// fenced, commented or indented headings are the user's text.
 	for _, section := range requestmodel.VisibleSections(body) {
 		if section.HeadingIndent != 0 {
 			continue
 		}
-		sectionsBefore = append(sectionsBefore, section)
 		if section.Name == sectionName {
 			existing = append(existing, section)
 		} else if insertAt < 0 && slices.Contains(laterSections, section.Name) {
@@ -167,39 +173,16 @@ func handleRequest(executionContext commandruntime.ExecutionContext, arguments [
 	if err := document.ReplaceBodySpan(insertAt, insertAt, []byte(insertion)); err != nil {
 		return writerRefusal("SECTION-WRITE-FAILED", requestPath, err.Error())
 	}
-	// An open fence or comment in the new body hides every later section from
-	// advance, and one already open at the end of the file hides the new
-	// heading (every retry would append another invisible copy). So every
-	// section visible before must stay visible at its shifted offset, and the
-	// appended heading must be the only new one. A net count is not enough: an
-	// open fence can hide a later section and reveal a fenced example heading.
-	headingStart := insertAt + strings.Index(insertion, "## ")
-	sectionsAfter := []requestmodel.VisibleSection{}
+	// An unclosed fence or comment at the end of the file would hide the new
+	// heading, and every retry would then append another invisible copy.
+	visibleCopies := 0
 	for _, section := range requestmodel.VisibleSections(document.BodyBytes()) {
-		if section.HeadingIndent == 0 {
-			sectionsAfter = append(sectionsAfter, section)
+		if section.HeadingIndent == 0 && section.Name == sectionName {
+			visibleCopies++
 		}
 	}
-	allStillVisible := len(sectionsAfter) == len(sectionsBefore)+1
-	for afterIndex, priorIndex := 0, 0; allStillVisible && afterIndex < len(sectionsAfter); afterIndex++ {
-		section := sectionsAfter[afterIndex]
-		if section.Start == headingStart && section.Name == sectionName {
-			continue
-		}
-		if priorIndex == len(sectionsBefore) {
-			allStillVisible = false
-			break
-		}
-		prior := sectionsBefore[priorIndex]
-		priorIndex++
-		expectedStart := prior.Start
-		if expectedStart >= insertAt {
-			expectedStart += len(insertion)
-		}
-		allStillVisible = section.Name == prior.Name && section.Start == expectedStart
-	}
-	if !allStillVisible {
-		return writerRefusal("SECTION-WRITE-FAILED", requestPath, "the inserted ## "+sectionName+" would hide itself or a later section; close every fence and comment in the body")
+	if visibleCopies != 1 {
+		return writerRefusal("SECTION-WRITE-FAILED", requestPath, "the inserted ## "+sectionName+" would not be a visible section")
 	}
 	if refusal := replaceRequestFile(executionContext.RepositoryRoot, requestPath, contents, document.DocumentBytes()); refusal != nil {
 		return *refusal
