@@ -122,7 +122,7 @@ func TestFinalizeAutoManifestRefusesAStagedPathBeforeAnyJournal(t *testing.T) {
 // Pins "the judged fields are never invented": without the commit message the
 // command refuses and names the missing flag.
 func TestFinalizeAutoManifestRefusesWithoutAMessageFile(t *testing.T) {
-	repositoryRoot, _, releasePath, emitPath := autoManifestFixture(t)
+	repositoryRoot, messagePath, releasePath, emitPath := autoManifestFixture(t)
 	result := runAutoManifest(repositoryRoot, "--auto-manifest", "REQ-760", "--transition", "complete", "--terminal-status", "completed",
 		"--provenance", "primary_commit", "--release-manifest", releasePath, "--emit", emitPath)
 	if result.Outcome != resultmodel.OutcomeRefused || resultmodel.ExitCode(result.Outcome) != 1 {
@@ -134,6 +134,15 @@ func TestFinalizeAutoManifestRefusesWithoutAMessageFile(t *testing.T) {
 	if _, statError := os.Lstat(emitPath); !os.IsNotExist(statError) {
 		t.Fatalf("refusal emitted %s", emitPath)
 	}
+
+	// Without --emit the command would finalize past the advance phase gate
+	// (review F1), so it refuses and points at advance instead.
+	result = runAutoManifest(repositoryRoot, "--auto-manifest", "REQ-760", "--transition", "complete", "--terminal-status", "completed",
+		"--message-file", messagePath, "--provenance", "primary_commit", "--release-manifest", releasePath)
+	if result.Outcome != resultmodel.OutcomeRefused || !strings.Contains(findingText(result), "--emit") {
+		t.Fatalf("missing --emit result = %#v", result)
+	}
+	assertNothingWritten(t, repositoryRoot, "REQ-760", emitPath)
 }
 
 // Pins the version preflight: when the project version no longer matches the
