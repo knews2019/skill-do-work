@@ -19,6 +19,10 @@ write_set: ["skills/do-work-board/tools/queue-kanban/model.go", "skills/do-work-
 claimed_at: 2026-10-11T17:38:52Z
 dispatch_at: 2026-10-11T17:41:15Z
 builder_handback_at: 2026-10-11T17:45:18Z
+integration_at: 2026-10-11T17:45:33Z
+commit: 8d3516621ffbc5293bf9c761278b21b8317578a4
+review_at: 2026-10-11T17:54:27Z
+kb_status: skipped
 ---
 # Board Re-Walks Once When a Listed File Is Gone at Read Time
 ## What
@@ -69,3 +73,80 @@ Planning not required — Route A. Add an injected-rename regression first, then
 
 - **D-01 — DECIDE & STATE:** Numeric fixture IDs replace symbolic REQ-A/REQ-C because checkpoint extraction accepts numeric request IDs.
 - **D-02 — DECIDE & STATE:** One bounded restart label resets the entire board without extracting or reindenting its assembly. The shared flag limits both parse loops collectively to one retry.
+
+## Implementation Summary
+
+**Files changed:**
+- `skills/do-work-board/tools/queue-kanban/model.go` (modified)
+- `skills/do-work-board/tools/queue-kanban/model_retry_test.go` (new)
+
+**What was done:** The walk-then-read race treated a renamed file as real absence. Both ticket parsers now use an injectable reader; a first-pass fs.ErrNotExist restarts enumeration and all board assembly once. Other errors and second-pass missing files keep the existing skip. Four regression tests cover both moves, permission errors, and the shared retry bound.
+
+## Qualification
+
+Passed — advance returned a satisfied merged_range qualification record for 32e4851f..8d351662. Reviewed both files against every Detailed Requirement and the captured reproduction. QUALIFY-NEW-FILE-UNWIRED is a Go test-discovery exception: model_retry_test.go is discovered by go test and its four tests were actually executed. P-A-U is complete; no extra project paths, debug artifacts, new Board fields, cache changes, or verify wording changes.
+
+## Testing
+
+**Tests run:** Builder: go vet ./... and go test ./... (exit 0; full module 56.978s). Merged tree: focused four-test probe (exit 0, 0.370s) and bash _dev/tests/maintainer-verify.sh (exit 0, 128s wall).
+**Result:** All passing. Uncached fast gate ran 427 board tests and 919 core tests; slowest files were 18.85s and 21.20s, both below 30s. advance returned satisfied focused-test and green-gate records at 8d3516621ffbc5293bf9c761278b21b8317578a4.
+
+**Red-green validation:**
+- TestBuildBoardRecoversRequestMovedDuringRead: RED missing REQ plus false dependency warning and checkpoint ghost → GREEN restored working REQ and no false findings.
+- TestBuildBoardRecoversUserRequestArchivedDuringRead: RED missing UR and stale first-pass REQ title → GREEN archived input plus fresh REQ title.
+- TestBuildBoardStopsAfterOneMissingFileRetry: RED one read → GREEN exactly two reads for either ticket kind and retained readable sibling.
+- TestBuildBoardSkipsNonMissingReadErrorsWithoutRetry: permission errors pass before and after, skipped with one read.
+- RED observed before implementation (exit 1, 0.430s); same four-test command GREEN after (exit 0, 0.399s). Numeric fixture IDs are the captured symbolic-case equivalent required by checkpoint extraction.
+
+**New tests added:** the four named tests in model_retry_test.go. Existing true-absence tests TestDanglingDependencyWarnsAndBlocks and TestVerifyFlagsCheckpointNamingAMissingRequest still pass. No existing tests changed.
+
+**Heavy verification plan:**
+- Range: 32e4851f86ec95074277993c9b2db6636c2521e1..8d3516621ffbc5293bf9c761278b21b8317578a4
+- queue-kanban-javascript: `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane queue-kanban-javascript` — changed board source matched the declared subtree coverage.
+- queue-kanban-browser: `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane queue-kanban-browser` — changed board source matched the declared subtree coverage.
+- staged-skills: `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane staged-skills` — changed board source matched the declared subtree coverage.
+
+*Verified by work action*
+
+## Review
+
+**Overall: 100%** | 2026-10-11T17:50:04Z
+
+| Dimension | Score |
+|-----------|-------|
+| Requirements | 100% |
+| Code Quality | 100% |
+| Test Adequacy | 100% |
+| Scope | 100% |
+| Risk | Low |
+| Acceptance | Pass |
+
+**Important findings (each with its recorded impact token — this is the durable audit record the judgment mandates):**
+None
+
+**Minor findings:** None
+**Acceptance:** Pass — implementation and merged-tree integration; independent uncached four new regression tests plus true-absence dependency/checkpoint tests passed (0.270s), with the already-green maintainer gate/full module/vet evidence reused.
+**Restatement sweep:** nothing redefined — bounded missing-read recovery preserves parser, schema, column, cache, warning, and verify contracts; no inherited wave triggers or stale board/prime restatements found.
+**Suggested testing:** 2 items — Deployment unassessed: complete recorded release/package verification and rebuild the consumer board. Live acceptance unassessed: inspect the rebuilt served board after a claim/archive.
+**Follow-ups created:** None (0 findings report only)
+
+*Reviewed by review-work action*
+
+## Orientation
+
+The queue board rebuilds once from current paths when a REQ or UR moves during a read, keeping tickets visible and dependency/checkpoint diagnostics accurate.
+
+## Heavy Verification Plan
+
+Base revision: `32e4851f86ec95074277993c9b2db6636c2521e1`
+Target revision: `8d3516621ffbc5293bf9c761278b21b8317578a4`
+
+- Lane: `queue-kanban-javascript`
+  - Argv: `["env", "GIT_CONFIG_NOSYSTEM=1", "GIT_CONFIG_GLOBAL=/dev/null", "bash", "_dev/tests/maintainer-verify.sh", "--heavy-lane", "queue-kanban-javascript"]`
+  - Reasons: skills/do-work-board/tools/queue-kanban/model.go matched subtree skills/do-work-board/tools/queue-kanban; skills/do-work-board/tools/queue-kanban/model_retry_test.go matched subtree skills/do-work-board/tools/queue-kanban
+- Lane: `queue-kanban-browser`
+  - Argv: `["env", "GIT_CONFIG_NOSYSTEM=1", "GIT_CONFIG_GLOBAL=/dev/null", "bash", "_dev/tests/maintainer-verify.sh", "--heavy-lane", "queue-kanban-browser"]`
+  - Reasons: skills/do-work-board/tools/queue-kanban/model.go matched subtree skills/do-work-board/tools/queue-kanban; skills/do-work-board/tools/queue-kanban/model_retry_test.go matched subtree skills/do-work-board/tools/queue-kanban
+- Lane: `staged-skills`
+  - Argv: `["env", "GIT_CONFIG_NOSYSTEM=1", "GIT_CONFIG_GLOBAL=/dev/null", "bash", "_dev/tests/maintainer-verify.sh", "--heavy-lane", "staged-skills"]`
+  - Reasons: skills/do-work-board/tools/queue-kanban/model.go matched subtree skills; skills/do-work-board/tools/queue-kanban/model_retry_test.go matched subtree skills
