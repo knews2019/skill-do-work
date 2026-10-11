@@ -200,6 +200,8 @@ func TestBuildCapturePlanEnforcesAuthoredFieldsWithoutChangingJudgments(t *testi
 		{"default impact tag", bytesReplace(validREQ, "'Work title'", "'[impact-user-visible] Work title'"), false},
 		{"scalar addendum", bytesReplace(validREQ, "maintenance: false", "maintenance: false\naddendum_to: REQ-2"), true},
 		{"list addendum", bytesReplace(validREQ, "maintenance: false", "maintenance: false\naddendum_to: [REQ-2]"), false},
+		// A fold copied REQ-654's claimed_at into REQ-687, which was then claimed before it was created.
+		{"inherited claim stamp", bytesReplace(validREQ, "maintenance: false", "maintenance: false\nclaimed_at: 2026-09-04T11:00:00Z"), false},
 	}
 	for _, aliasKey := range []string{"amends", "parent", "amendment_to", "dependencies", "batch_name", "related_reqs", "spec_hint", "suggested-spec"} {
 		testCases = append(testCases, struct {

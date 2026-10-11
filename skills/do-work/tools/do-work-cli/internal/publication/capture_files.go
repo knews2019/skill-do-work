@@ -257,6 +257,17 @@ func validateCaptureREQSchema(document *requestmodel.RequestDocument, record req
 	} else if hasBlockedBy || hasBlockedAt || hasBlockedCheck {
 		return fmt.Errorf("blocked metadata is only valid with blocked status")
 	}
+	// A new REQ has lived through no lifecycle yet, so the only `*_at` stamps it
+	// may carry are created_at and the blocked_at checked above. Keyed on the
+	// suffix, not a list: a fold that copies an old REQ's front matter otherwise
+	// carries that REQ's claimed_at forward, and the claim transition keeps an
+	// existing claimed_at (UR-153's REQ-687/690/691 ended up claimed before
+	// they were created).
+	for fieldName := range record.FieldEvidenceByName {
+		if strings.HasSuffix(fieldName, "_at") && fieldName != "created_at" && fieldName != "blocked_at" {
+			return fmt.Errorf("new REQ must not carry lifecycle stamp %s; only created_at (and blocked_at when blocked) belong to a fresh capture", fieldName)
+		}
+	}
 	for _, fieldName := range []string{"depends_on", "related"} {
 		if field, found := document.FieldValue(fieldName); found {
 			for _, requestID := range field.ListValues {
