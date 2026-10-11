@@ -20,8 +20,7 @@ tdd: false
 maintenance: false
 impact: impact-user-visible
 effort_estimate: effort-substantive
-claimed_at: 2026-10-10T12:52:21Z
-status_changed_at: 2026-10-10T13:14:55Z
+claimed_at: 2026-10-10T13:14:55Z
 planning_at: 2026-10-10T13:21:17Z
 related: [REQ-690, REQ-692]
 required_lessons: ["_dev/primes/lessons-releases.md"]

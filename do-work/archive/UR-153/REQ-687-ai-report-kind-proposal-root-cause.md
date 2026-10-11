@@ -13,8 +13,7 @@ effort_estimate: effort-substantive
 related: [REQ-655, REQ-656, REQ-657]
 batch: ai-report-modes
 write_set: ["skills/do-work-toolbox/actions/ai-report.md", "skills/do-work-toolbox/actions/ai-report-reference.md", "skills/do-work-toolbox/docs/ai-report-guide.md", "skills/do-work-toolbox/SKILL.md", "skills/do-work-toolbox/actions/help.md"]
-claimed_at: 2026-10-10T12:52:18Z
-status_changed_at: 2026-10-10T13:14:50Z
+claimed_at: 2026-10-10T13:14:50Z
 required_lessons: ["_dev/primes/lessons-releases.md"]
 route: B
 estimate:

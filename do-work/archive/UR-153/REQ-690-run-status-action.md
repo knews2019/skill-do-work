@@ -10,8 +10,7 @@ tdd: true
 maintenance: false
 impact: impact-user-visible
 effort_estimate: effort-substantive
-claimed_at: 2026-10-10T12:52:21Z
-status_changed_at: 2026-10-10T13:14:51Z
+claimed_at: 2026-10-10T13:14:51Z
 related: [REQ-689, REQ-691]
 route: C
 required_lessons: ["_dev/primes/lessons-releases.md"]
