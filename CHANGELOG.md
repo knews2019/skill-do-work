@@ -10,6 +10,10 @@ For the complete release history, read this file and the archives below from new
 - [0.50.0 through 0.64.1](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-13-up-to-v0.64.1.md)
 - [0.1.0 through 0.49.0](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-07-up-to-v0.49.0.md)
 
+## 0.305.119 — Board Keeps Tickets That Move During a Read (2026-10-11)
+
+A request being claimed or archived stays visible when it moves between the board’s directory walk and file read. The board retries the full read once for a vanished REQ or UR, preventing false missing-dependency warnings and checkpoint findings.
+
 ## 0.305.118 — Capture Refuses Claim and Other Lifecycle Stamps on a New REQ (2026-10-11)
 
 A REQ captured by folding older REQs could copy their `claimed_at`. The claim step keeps an existing `claimed_at`, so the board's verify check reported the new REQ as claimed before it was created.

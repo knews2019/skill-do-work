@@ -1,7 +1,7 @@
 ---
 id: REQ-697
 title: 'Board re-walks once when a listed REQ or UR file is gone at read time, instead of dropping it'
-status: claimed
+status: completed
 route: A
 estimate:
   p50_active_minutes: 5
@@ -23,6 +23,10 @@ integration_at: 2026-10-11T17:45:33Z
 commit: 8d3516621ffbc5293bf9c761278b21b8317578a4
 review_at: 2026-10-11T17:54:27Z
 kb_status: skipped
+heavy_verified_at: 2026-10-11T17:58:15Z
+heavy_verified_revision: 967ad79471fa4747a1f4cede2c8bf1dfd7be9bab
+completed_at: 2026-10-11T17:58:20Z
+release_at: 2026-10-11T17:58:20Z
 ---
 # Board Re-Walks Once When a Listed File Is Gone at Read Time
 ## What
@@ -150,3 +154,27 @@ Target revision: `8d3516621ffbc5293bf9c761278b21b8317578a4`
 - Lane: `staged-skills`
   - Argv: `["env", "GIT_CONFIG_NOSYSTEM=1", "GIT_CONFIG_GLOBAL=/dev/null", "bash", "_dev/tests/maintainer-verify.sh", "--heavy-lane", "staged-skills"]`
   - Reasons: skills/do-work-board/tools/queue-kanban/model.go matched subtree skills; skills/do-work-board/tools/queue-kanban/model_retry_test.go matched subtree skills
+
+## Heavy Verification Result
+
+Target revision: `8d3516621ffbc5293bf9c761278b21b8317578a4`
+Execution revision: `967ad79471fa4747a1f4cede2c8bf1dfd7be9bab`
+Browser: Google Chrome 155.0.8059.39. All selected lanes passed; none skipped.
+
+- `queue-kanban-javascript`: exit 0, 9s, executed (fingerprint_mismatch).
+- `queue-kanban-browser`: exit 0, 96s, executed (fingerprint_uncertain).
+- `staged-skills`: exit 0, 38s, executed (fingerprint_mismatch).
+
+Prime path staleness spot-check passed; no map change or stale restatement.
+
+## Timing
+
+Observed 2026-10-11T17:41:15Z to 2026-10-11T17:47:53Z: 6m 38s total, 6m 10s attributed across 2 events, 28s unattributed.
+
+| Category | Elapsed | Events |
+| --- | --- | --- |
+| builder-work | 4m 03s | 1 |
+| verification-gate | 2m 07s | 1 |
+
+Slowest stage: builder-work / board-builder, 4m 03s, outcome success.
+Slowest command: verification-gate / maintainer-fast, 2m 07s, exit 0, bash (2 argv tokens).
