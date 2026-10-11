@@ -10,6 +10,12 @@ For the complete release history, read this file and the archives below from new
 - [0.50.0 through 0.64.1](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-13-up-to-v0.64.1.md)
 - [0.1.0 through 0.49.0](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-07-up-to-v0.49.0.md)
 
+## 0.305.118 — Capture Refuses Claim and Other Lifecycle Stamps on a New REQ (2026-10-11)
+
+A REQ captured by folding older REQs could copy their `claimed_at`. The claim step keeps an existing `claimed_at`, so the board's verify check reported the new REQ as claimed before it was created.
+
+- `do-work-cli capture-files` refuses a new REQ that carries any `*_at` field other than `created_at` (and `blocked_at` when the status is blocked), with `CAPTURE-REQ-SCHEMA-INVALID`.
+
 ## 0.305.117 — worktree status and cleanup Handle a Deleted Worktree Folder, and Dirt Checks Ignore the Links worktree new Created (2026-10-10)
 
 A builder worktree folder deleted by hand made `worktree status` and `worktree cleanup` stop with an error, so one stale record hid every row. And every dirt check except the worktree command itself counted the `do-work/worktree-links` symlinks as uncommitted work, so a finished worktree always asked for consent.
