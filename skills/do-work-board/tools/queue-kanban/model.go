@@ -1,7 +1,9 @@
 package main
 
 import (
+	"errors"
 	"fmt"
+	"io/fs"
 	"log"
 	"math"
 	"os"
@@ -14,6 +16,8 @@ import (
 	"sync"
 	"time"
 )
+
+var readTicketFile = os.ReadFile
 
 // CompletionTimeSource records how a RequestTicket's completion instant was
 // resolved, so a consumer can tell an authoritative frontmatter timestamp from a
@@ -449,6 +453,8 @@ func LoadBoard(repoRootOverride string, now time.Time, recentWindow time.Duratio
 
 // buildBoard is the testable core of LoadBoard with the git lookup injected.
 func buildBoard(repoRoot string, now time.Time, recentWindow time.Duration, gitLookup gitCommitDateLookup) (*Board, error) {
+	retriedRead := false
+retryRead:
 	discovered, enumerateError := enumerateDoWorkTree(repoRoot)
 	if enumerateError != nil {
 		return nil, enumerateError
@@ -468,7 +474,11 @@ func buildBoard(repoRoot string, now time.Time, recentWindow time.Duration, gitL
 	for _, reference := range discovered.RequestFiles {
 		ticket, parseError := parseRequestTicket(reference.AbsolutePath, reference.TreeSection)
 		if parseError != nil {
-			continue // best-effort: skip an unreadable REQ file
+			if errors.Is(parseError, fs.ErrNotExist) && !retriedRead {
+				retriedRead = true
+				goto retryRead // a listed ticket moved; rebuild the whole board once
+			}
+			continue // best-effort: skip a corrupt or unreadable REQ file
 		}
 		parsedTickets = append(parsedTickets, ticket)
 	}
@@ -516,7 +526,11 @@ func buildBoard(repoRoot string, now time.Time, recentWindow time.Duration, gitL
 	for _, userRequestPath := range discovered.UserRequestFiles {
 		userRequestTicket, parseError := parseUserRequestTicket(userRequestPath)
 		if parseError != nil {
-			continue
+			if errors.Is(parseError, fs.ErrNotExist) && !retriedRead {
+				retriedRead = true
+				goto retryRead
+			}
+			continue // best-effort: skip a corrupt or unreadable UR file
 		}
 		if _, exists := board.UserRequestsById[userRequestTicket.UserRequestId]; exists {
 			continue // first input.md for a UR wins
@@ -732,7 +746,7 @@ func dedupeTicketsByRequestId(parsedTickets []*RequestTicket) ([]*RequestTicket,
 // Completion-time resolution is left to the caller (it needs the repo root and
 // the git lookup).
 func parseRequestTicket(filePath string, treeSection string) (*RequestTicket, error) {
-	contentBytes, readError := os.ReadFile(filePath)
+	contentBytes, readError := readTicketFile(filePath)
 	if readError != nil {
 		return nil, readError
 	}
@@ -958,7 +972,7 @@ func countSweepInstances(bodyMarkdown string) (openCount int, doneCount int) {
 
 // parseUserRequestTicket reads and parses a single UR input.md into a ticket.
 func parseUserRequestTicket(filePath string) (*UserRequestTicket, error) {
-	contentBytes, readError := os.ReadFile(filePath)
+	contentBytes, readError := readTicketFile(filePath)
 	if readError != nil {
 		return nil, readError
 	}
