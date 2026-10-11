@@ -1,7 +1,7 @@
 ---
 id: REQ-697
 title: 'Board re-walks once when a listed REQ or UR file is gone at read time, instead of dropping it'
-status: pending
+status: claimed
 created_at: 2026-10-11T17:04:32Z
 user_request: UR-155
 domain: backend
@@ -11,6 +11,7 @@ maintenance: false
 impact: impact-user-visible
 effort_estimate: effort-mechanical
 write_set: ["skills/do-work-board/tools/queue-kanban/model.go", "skills/do-work-board/tools/queue-kanban/*_test.go"]
+claimed_at: 2026-10-11T17:38:52Z
 ---
 # Board Re-Walks Once When a Listed File Is Gone at Read Time
 ## What
