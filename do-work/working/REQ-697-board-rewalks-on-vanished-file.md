@@ -2,6 +2,11 @@
 id: REQ-697
 title: 'Board re-walks once when a listed REQ or UR file is gone at read time, instead of dropping it'
 status: claimed
+route: A
+estimate:
+  p50_active_minutes: 5
+  confidence: high
+  basis: [trivial short-circuit]
 created_at: 2026-10-11T17:04:32Z
 user_request: UR-155
 domain: backend
@@ -12,6 +17,8 @@ impact: impact-user-visible
 effort_estimate: effort-mechanical
 write_set: ["skills/do-work-board/tools/queue-kanban/model.go", "skills/do-work-board/tools/queue-kanban/*_test.go"]
 claimed_at: 2026-10-11T17:38:52Z
+dispatch_at: 2026-10-11T17:41:15Z
+builder_handback_at: 2026-10-11T17:45:18Z
 ---
 # Board Re-Walks Once When a Listed File Is Gone at Read Time
 ## What
@@ -43,7 +50,22 @@ Finding provenance: F1 (High, source: pasted text, upstream suggestion from a co
 ## Full Context
 See `do-work/user-requests/UR-155/input.md` for complete verbatim input.
 ## AI Execution State (P-A-U Loop)
-- [ ] **[PLAN]:** (Agent: Read listed `prime_files` and agent rules. Write brief technical approach here. Do not write code yet.)
-- [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
-- [ ] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
+- [x] **[PLAN]:** Read board primes and implementation crews. Inject ticket reads, reproduce the rename race, and retry both parse loops from a fresh enumeration once.
+- [x] **[APPLY]:** Added the ticket-reader seam and one bounded whole-board retry in model.go; added model_retry_test.go for REQ/UR moves, permission errors, and retry limit.
+- [x] **[UNIFY]:** Reviewed model.go and model_retry_test.go; gofmt and diff checks clean, go vet passed, and go test ./... passed (56.978s total; per-file budget checked by repository gate). No debug artifacts or extra source files.
 *Source: F1 and F3 of the validate-feedback triage of the pasted upstream suggestion "the board must not drop a REQ that moves between its walk and its read"*
+
+## Triage
+
+**Route:** A — clear reproduction and explicitly named parse loops; focused board-reader fix.
+
+<!-- D-XX counter: none used. Next decision: D-01. -->
+
+## Plan
+
+Planning not required — Route A. Add an injected-rename regression first, then retry the whole board read once for missing REQ or UR files; preserve all other skips.
+
+## Decisions
+
+- **D-01 — DECIDE & STATE:** Numeric fixture IDs replace symbolic REQ-A/REQ-C because checkpoint extraction accepts numeric request IDs.
+- **D-02 — DECIDE & STATE:** One bounded restart label resets the entire board without extracting or reindenting its assembly. The shared flag limits both parse loops collectively to one retry.
