@@ -687,36 +687,64 @@ type RunLocalFile struct {
 	Label      string `json:"label"`
 }
 
+// AIReportSecondOpinionResult keeps every backend disposition in JSON and text.
+type AIReportSecondOpinionResult struct {
+	BundlePath     string                     `json:"bundle"`
+	InvocationMode string                     `json:"mode"`
+	BackendRuns    []AIReportSecondOpinionRun `json:"runs"`
+}
+type AIReportSecondOpinionRun struct {
+	BackendName    string                         `json:"backend"`
+	RequestedModel string                         `json:"requested_model"`
+	ActualModel    string                         `json:"actual_model"`
+	RunState       string                         `json:"state"`
+	PagePath       string                         `json:"page"`
+	ReplyPath      string                         `json:"reply"`
+	JudgeVerdict   string                         `json:"judge_verdict"`
+	JudgeFindings  []AIReportSecondOpinionFinding `json:"judge_findings"`
+	BannerState    string                         `json:"banner_state"`
+	FailureReason  string                         `json:"reason"`
+	OutsidePaths   []string                       `json:"outside_paths"`
+}
+type AIReportSecondOpinionFinding struct {
+	FindingKind   string `json:"kind"`
+	ViewportName  string `json:"viewport,omitempty"`
+	ColorScheme   string `json:"scheme,omitempty"`
+	TargetPath    string `json:"target,omitempty"`
+	FindingDetail string `json:"detail,omitempty"`
+}
+
 type CommandResult struct {
-	SchemaVersion        int                           `json:"schema_version"`
-	Command              string                        `json:"command"`
-	Outcome              CommandOutcome                `json:"outcome"`
-	RepositoryRoot       string                        `json:"repository_root"`
-	Findings             []CommandFinding              `json:"findings"`
-	Changes              []RecordedChange              `json:"changes"`
-	SkippedWork          []SkippedWork                 `json:"skipped_work"`
-	AvailableCommands    []string                      `json:"available_commands,omitempty"`
-	Selected             []SelectionRecord             `json:"selected"`
-	Excluded             []SelectionExclusion          `json:"excluded"`
-	SelectionSummary     SelectionSummary              `json:"selection_summary"`
-	Rollback             RollbackResult                `json:"rollback"`
-	ProtocolOutput       *string                       `json:"protocol_output,omitempty"`
-	AuditMetrics         *AuditMetricsResult           `json:"audit_metrics,omitempty"`
-	GateDeferral         *GateDeferralResult           `json:"gate_deferral,omitempty"`
-	GateEvidence         *GateEvidenceResult           `json:"gate_evidence,omitempty"`
-	FocusedTest          *FocusedTestResult            `json:"focused_test,omitempty"`
-	HeavyVerification    *HeavyVerificationPlan        `json:"heavy_verification,omitempty"`
-	HeavyVerificationRun *HeavyVerificationRun         `json:"heavy_verification_run,omitempty"`
-	AlreadyGreenRepair   *AlreadyGreenRepairValidation `json:"already_green_repair,omitempty"`
-	Finalization         *FinalizationResult           `json:"finalization,omitempty"`
-	Finalizations        []FinalizationResult          `json:"finalizations"`
-	Advance              *AdvanceLifecycleResult       `json:"advance,omitempty"`
-	QueueAdvance         *QueueAdvanceResult           `json:"queue_advance,omitempty"`
-	Recovery             *RecoveryResult               `json:"recovery,omitempty"`
-	Checkpoint           *CheckpointResult             `json:"checkpoint,omitempty"`
-	LifecycleTiming      *LifecycleTimingResult        `json:"lifecycle_timing,omitempty"`
-	Worktree             *WorktreeLifecycleResult      `json:"worktree,omitempty"`
-	RunStatus            *RunStatusResult              `json:"run_status,omitempty"`
+	AIReportSecondOpinion *AIReportSecondOpinionResult  `json:"ai_report_second_opinion,omitempty"`
+	SchemaVersion         int                           `json:"schema_version"`
+	Command               string                        `json:"command"`
+	Outcome               CommandOutcome                `json:"outcome"`
+	RepositoryRoot        string                        `json:"repository_root"`
+	Findings              []CommandFinding              `json:"findings"`
+	Changes               []RecordedChange              `json:"changes"`
+	SkippedWork           []SkippedWork                 `json:"skipped_work"`
+	AvailableCommands     []string                      `json:"available_commands,omitempty"`
+	Selected              []SelectionRecord             `json:"selected"`
+	Excluded              []SelectionExclusion          `json:"excluded"`
+	SelectionSummary      SelectionSummary              `json:"selection_summary"`
+	Rollback              RollbackResult                `json:"rollback"`
+	ProtocolOutput        *string                       `json:"protocol_output,omitempty"`
+	AuditMetrics          *AuditMetricsResult           `json:"audit_metrics,omitempty"`
+	GateDeferral          *GateDeferralResult           `json:"gate_deferral,omitempty"`
+	GateEvidence          *GateEvidenceResult           `json:"gate_evidence,omitempty"`
+	FocusedTest           *FocusedTestResult            `json:"focused_test,omitempty"`
+	HeavyVerification     *HeavyVerificationPlan        `json:"heavy_verification,omitempty"`
+	HeavyVerificationRun  *HeavyVerificationRun         `json:"heavy_verification_run,omitempty"`
+	AlreadyGreenRepair    *AlreadyGreenRepairValidation `json:"already_green_repair,omitempty"`
+	Finalization          *FinalizationResult           `json:"finalization,omitempty"`
+	Finalizations         []FinalizationResult          `json:"finalizations"`
+	Advance               *AdvanceLifecycleResult       `json:"advance,omitempty"`
+	QueueAdvance          *QueueAdvanceResult           `json:"queue_advance,omitempty"`
+	Recovery              *RecoveryResult               `json:"recovery,omitempty"`
+	Checkpoint            *CheckpointResult             `json:"checkpoint,omitempty"`
+	LifecycleTiming       *LifecycleTimingResult        `json:"lifecycle_timing,omitempty"`
+	Worktree              *WorktreeLifecycleResult      `json:"worktree,omitempty"`
+	RunStatus             *RunStatusResult              `json:"run_status,omitempty"`
 	// ExactTextOutput preserves compatibility-shaped stdout without polluting
 	// JSON with an opaque duplicate. It must be derived from the same typed
 	// observation carried by the result.
@@ -872,6 +900,20 @@ func NormalizeResult(result CommandResult) CommandResult {
 	}
 	if result.Rollback.Errors == nil {
 		result.Rollback.Errors = []string{}
+	}
+	if result.AIReportSecondOpinion != nil {
+		if result.AIReportSecondOpinion.BackendRuns == nil {
+			result.AIReportSecondOpinion.BackendRuns = []AIReportSecondOpinionRun{}
+		}
+		for i := range result.AIReportSecondOpinion.BackendRuns {
+			row := &result.AIReportSecondOpinion.BackendRuns[i]
+			if row.JudgeFindings == nil {
+				row.JudgeFindings = []AIReportSecondOpinionFinding{}
+			}
+			if row.OutsidePaths == nil {
+				row.OutsidePaths = []string{}
+			}
+		}
 	}
 	if result.AuditMetrics != nil {
 		metrics := result.AuditMetrics

@@ -6,6 +6,8 @@ script_dir="${BASH_SOURCE[0]%/*}"
 [[ "$script_dir" != "${BASH_SOURCE[0]}" ]] || script_dir=.
 script_dir="$(cd "$script_dir" && pwd -P)"
 module_dir="$script_dir/do-work-cli"
+# The cache executable is relocatable; templates belong to the installed suite.
+export DO_WORK_AI_REPORT_SECOND_OPINION_PROMPT="$script_dir/../../do-work-toolbox/docs/ai-report-second-opinion-prompt.md"
 minimum_go_version="1.24.0"
 # Where prebuilt binaries live when no usable Go toolchain is on PATH. Point it at a
 # mirror (any URL curl reads, file:// included) on hosts that cannot reach GitHub.

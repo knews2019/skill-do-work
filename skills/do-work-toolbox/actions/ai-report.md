@@ -1,6 +1,6 @@
 # AI Report Action
 
-> **Part of the do-work-toolbox skill.** Creates the canonical detailed stakeholder HTML for one completed UR or REQ; its `--kind proposal|root-cause` forms present open work as a decision brief instead. It adapts its evidence to visual UI work, backend work, refactors, infrastructure, and other non-visual changes while preserving a timestamped, self-contained `ai-reports/` bundle. User-facing walkthrough: [`docs/ai-report-guide.md`](../docs/ai-report-guide.md).
+> **Part of the do-work-toolbox skill.** Creates the canonical detailed stakeholder HTML for one completed UR or REQ; its `ai-report second-opinion` form asks another model to clarify an existing bundle, completing the report workflow in this package, and its `--kind proposal|root-cause` forms present open work as a decision brief instead. It adapts its evidence to visual UI work, backend work, refactors, infrastructure, and other non-visual changes while preserving a timestamped, self-contained `ai-reports/` bundle. User-facing walkthrough: [`docs/ai-report-guide.md`](../docs/ai-report-guide.md).
 
 `ai-report` is the only action that produces detailed stakeholder-facing HTML. The narrow open-questions digest for an outside stakeholder is not a detailed report — that is `stakeholder-report.md`, a non-routed file invoked by core. Cross-project portfolio presentation belongs to `present-work`; an animated walkthrough belongs to the separate present-video action.
 
@@ -18,6 +18,7 @@
 - The user wants a detailed presentation of one completed UR or REQ.
 - The work may be visual, backend, refactoring, infrastructure, or another evidence-bearing completed change.
 - A stakeholder needs the verdict, shipped behavior, value, key files and commits, and verification in one HTML report.
+- The user asks for `ai-report second-opinion`, "generate a second opinion", "Codex, generate a second opinion", or "generate second opinions from all models"; use the second-opinion form.
 - The user wants an existing report updated (a new revision, a table of contents, a cleaner style); use the revise form.
 - The user wants a proposal, an options comparison or a root-cause brief about open work; use `--kind proposal` or `--kind root-cause`.
 
@@ -29,7 +30,7 @@
 
 ## Input
 
-`$ARGUMENTS` is `UR-NNN`, `REQ-NNN`, `most recent`, or blank; the `judge`, `index` and `find` forms below create no report, the `revise` form below writes a new revision of an existing report, and the `--kind` form below writes a decision brief about open work. One report invocation covers one UR or one REQ (a `--kind` brief covers one topic, REQ or UR); a revise covers one existing bundle; blank is the explicit `most recent` form.
+`$ARGUMENTS` is `UR-NNN`, `REQ-NNN`, `most recent`, or blank; the `second-opinion` form below writes a sibling page in an existing bundle; the `judge`, `index` and `find` forms below create no report, the `revise` form below writes a new revision of an existing report, and the `--kind` form below writes a decision brief about open work. One report invocation covers one UR or one REQ (a `--kind` brief covers one topic, REQ or UR); a revise covers one existing bundle; blank is the explicit `most recent` form.
 
 `judge <bundle-dir>` runs only the Step 7 render check on an existing report bundle and reports its verdict; it creates no report.
 
@@ -57,7 +58,25 @@
 6. **Regenerate the catalog** with the catalog command above, so the prior bundle's `superseded_by` names the new bundle. If it refuses, keep the new bundle, report the refusal and its fix (move the hand-made file aside, then run `ai-report index`), and still end with the path line from **Output Format**.
 7. **Do not commit.** Committing stays the user's or the run's decision.
 
+## Second-opinion form
+
+Dispatch `second-opinion` before Steps 1–8. Load the [prompt-injection](../../do-work/crew-members/prompt-injection.md) and [anti-slop](../../do-work/crew-members/anti-slop.md) crews before reading the report. This form uses the shipped [clarity-editor prompt](../docs/ai-report-second-opinion-prompt.md) and delegates all execution and publication to the canonical CLI.
+
+- **Session:** `ai-report second-opinion [<bundle-dir>|latest]` (also “generate a second opinion”). Pass your own CLI and known active model as `--backend <own-cli> --model <own-slug>`. If you cannot determine your active model, stop and explain that limitation. A CLI's configured default is not proof of this session's model.
+- **Targeted:** `ai-report second-opinion --backend <cli> [--model <slug>] [<bundle-dir>|latest]` (also “Codex, generate a second opinion”). Pass only that backend/model. Missing or unresolved selections never substitute.
+- **Batch:** `ai-report second-opinion --all [<bundle-dir>|latest]` (also “generate second opinions from all models”). Pass `--all --exclude <own-cli>`. The command visits codex, gemini and agy sequentially, records excluded/missing/failed backends, and continues.
+
+Invoke `<skill-root>/../do-work/tools/do-work-cli.sh --repo-root <project-root> --format json ai-report-second-opinion` with the selected tokenized arguments. `<skill-root>` here is the toolbox package root. Only a plain terminal without an active agent omits both `--backend` and `--all`: it selects the first installed codex, gemini or agy once and never retries on a different backend. Explicit `claude` is supported; it is not part of the batch set. Read [AGY usage](../docs/prime-agy-usage.md) before a Gemini or AGY invocation.
+
+The bundle defaults to `latest`, resolved from the fresh in-memory catalog order and current revision chain without writing the catalog. It must be a physical direct child of `ai-reports/` with a regular `index.html`. Start with no Git changes outside that bundle. Native backend metadata resolves the model before generation and verifies it again afterward; a short read-only probe may incur a model turn. Codex uses its workspace-write sandbox with the bundle as cwd. Other engines rely on preservation and Git-status checks; invocation authorizes this bounded report generation.
+
+Read the typed `ai_report_second_opinion.runs` summary even when the command exits nonzero. Each published page is `index-<cli>-<actual-model>[-N].html`, paired with `<cli>-<actual-model>[-N]-reply.md`; existing files are never overwritten. New assets use `<cli>-<actual-model>-`. The model never touches the original or existing assets. Only the launcher inserts per-filename marker banners after the opening body tag, and only after preservation, outside-bundle Git status and render judge `pass`. A judge `fail`, `skipped` or `error` remains explicit and leaves the original untouched by the launcher. Failed backend violations are reported, never silently reverted.
+
+Finish with each page/reply path, backend/model and judge verdict, then quote each reply's 3–5 clarity changes, corrections and open questions. Report missing or failed runs too. Stop here; do not enter the ordinary report-creation steps. Re-inserting an existing filename's banner is idempotent; a fresh generation allocates a numeric suffix and therefore gets a new banner.
+
 ## Steps
+
+The steps and checklist below apply to ordinary creation/revision. The second-opinion form completes through its own dispatcher above.
 
 ### Step 1: Resolve and Read the Completed Work
 
@@ -138,7 +157,7 @@ Use one coherent responsive layout with full-width wrapping bands, readable pros
 
 Apply every current principle from `../../do-work/crew-members/anti-slop.md`; do not rely on a copied principle count. Verify each claim against the provenance ledger, lead with the verdict, compress repetition, disclose synthetic media, and remove any visual that only decorates.
 
-Confirm that the invocation creates only the report bundle, plus the regenerated catalog for the revise form. It must not create a Markdown client brief, a separate `.single.html` explainer, a video, Remotion/MP4 output, a `--with-video` path, or any automatic video behavior. It also does not publish, host, or search for distribution targets; the catalog forms and the revise form above are the only exceptions to searching, and they search only existing report bundles.
+Confirm that the invocation creates only the report bundle, plus the regenerated catalog for the revise form. It must not create a Markdown client brief, a separate `.single.html` explainer, a video, Remotion/MP4 output, a `--with-video` path, or any automatic video behavior. It also does not publish, host, or search for distribution targets; the catalog, revise and second-opinion forms above are the only exceptions to searching, and they search only existing report bundles.
 
 ### Step 7: Render and Judge
 
@@ -159,6 +178,8 @@ Confirm `index.html` exists, the last `judge.json` verdict is `pass` (or `skippe
 Print a compact summary containing the report path, target and verdict, evidence mode, evidence used, recorded issues, and light/dark render status. For a `--kind` report, the summary names the kind and the recommended option or change in place of the verdict and evidence mode.
 
 ## Output Format
+
+For second-opinion, use its per-backend output above. The remaining format applies to ordinary report creation and revision.
 
 A fresh self-contained folder at `ai-reports/yyyy-mm-dd_hhmm_<slug>/` containing `index.html`, plus `screenshots/` when authentic captures are used and `generated/` when generated visuals succeed. All local assets use relative references. The timestamped folder is the only stakeholder artifact this action publishes. Every invocation that writes a bundle ends its output with one line holding the bundle's `index.html` path relative to the project root and its `file://` absolute link, as the last line; the render check still serves over HTTP, and the `file://` link is only for the user to open.
 

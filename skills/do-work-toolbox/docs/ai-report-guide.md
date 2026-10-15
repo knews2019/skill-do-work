@@ -6,7 +6,7 @@ Cross-project portfolio presentation belongs to `present-work`. An animated walk
 
 ## What It Produces
 
-Every report-writing invocation creates a fresh timestamped bundle under `ai-reports/`:
+Report creation and revision create a fresh timestamped bundle under `ai-reports/`:
 
 ```text
 ai-reports/
@@ -16,9 +16,9 @@ ai-reports/
     generated/     # only when generated visuals succeed
 ```
 
-The HTML uses relative paths for local media, so the folder travels as one unit. Existing output paths are never overwritten; a same-name run receives a numeric suffix. Prior reports and other completed-work artifacts remain unchanged.
+The HTML uses relative paths for local media, so the folder travels as one unit. Existing output paths are never overwritten; a same-name run receives a numeric suffix. Prior reports remain unchanged, except for the launcher-owned links added by the second-opinion form below.
 
-This action produces only the report bundle (a revise also regenerates the report catalog). It does not create a Markdown client brief, a separate `.single.html` explainer, video, Remotion/MP4 output, a `--with-video` variant, publishing, hosting, or automatic video behavior.
+This action produces only report-bundle artifacts (a revise also regenerates the report catalog). It does not create a Markdown client brief, a separate `.single.html` explainer, video, Remotion/MP4 output, a `--with-video` variant, publishing, hosting, or automatic video behavior.
 
 ## Two Evidence Modes
 
@@ -69,6 +69,9 @@ do-work-toolbox ai-report                 Most recent successful archived work
 do-work-toolbox ai-report most recent     Same, explicitly
 do-work-toolbox ai-report index           Catalog every report bundle under ai-reports/
 do-work-toolbox ai-report find <topic>    List report bundles on a topic, newest first
+do-work-toolbox ai-report second-opinion [<dir>|latest]  Clarify with the active session model
+do-work-toolbox ai-report second-opinion --backend codex [--model <slug>] [<dir>|latest]
+do-work-toolbox ai-report second-opinion --all [<dir>|latest]  All installed non-calling backends
 do-work-toolbox ai-report judge <dir>     Render-check an existing report bundle
 do-work-toolbox ai-report revise <dir|latest> [what changed]  New revision of a report; the old one is kept
 do-work-toolbox ai-report --kind proposal <topic|REQ-NNN|UR-NNN>    Decision brief with priced options
@@ -87,7 +90,7 @@ The evidence sweep reads requirements, implementation summaries, reviews, tests,
 
 `ai-report index` lists every directory under `ai-reports/` as a report bundle, whatever its folder naming style; loose files beside the bundles are skipped. It writes `ai-reports/catalog.json` and a static `ai-reports/index.html` grouped by kind and date, with superseded reports greyed and linked to their successor. `ai-report find <topic>` searches the same bundles and writes nothing.
 
-- The catalog is derived: every run regenerates it from the bundles, so it is never hand-edited and the bundles stay immutable.
+- The catalog is derived: every run regenerates it from the bundles, so it is never hand-edited and catalog generation never edits the bundles.
 - A `catalog.json` or `index.html` that this command did not write is refused, never overwritten. Move it aside by hand, then rerun.
 - From each bundle's HTML entry it reads three optional meta tags: `ai-report-kind`, `ai-report-supersedes` (the folder of the report it replaces) and `ai-report-verdict`.
 
@@ -98,3 +101,13 @@ The evidence sweep reads requirements, implementation summaries, reviews, tests,
 ## Proposal and Root-Cause Reports
 
 `--kind proposal` and `--kind root-cause` write a decision-first brief about work that is not finished: a free topic, an open REQ or UR, or, for `root-cause`, a failed or cancelled REQ. Nothing in it is presented as shipped. A proposal opens with the decision, then two to four priced options, a recommendation, an evidence ledger, limits, open questions and one capture line per option; a root-cause report replaces the decision and options with what happened, why and what to change. The options always include the smallest-change option, such as deleting the mechanism or doing nothing extra, even when nobody asked for it. Every mockup is labelled "MOCKUP — proposal" and kept in `generated/`, apart from real screenshots. The capture lines are printed for you to run; the action never runs them.
+
+## A Second Opinion
+
+`ai-report second-opinion` gives an existing report to a clarity editor. It checks claims against the repository, simplifies the explanation, and keeps corrections and open questions visible. It writes a sibling `index-<cli>-<actual-model>.html` plus `<cli>-<actual-model>-reply.md`. Repeated generation adds matching numeric suffixes to the page and reply. New assets carry the backend/model prefix.
+
+Inside an agent session the caller passes its own CLI and known active model. If that identity is unknown, the action stops. `--backend codex|gemini|agy|claude` targets exactly that backend, optionally with `--model`; it never substitutes. `--all` visits installed codex, gemini and agy sequentially, excluding the caller through `--exclude <own-cli>`, and reports each missing or failed run. A plain terminal without a backend selects the first installed codex, gemini or agy once.
+
+The default `latest` uses the freshly rebuilt catalog order and current revision chain without changing the catalog files. Git must show no changes outside the selected bundle, including pre-existing changes. Native backend metadata verifies model identity; default resolution can require a short read-only model turn. Each new page starts with a link to `index.html`. The original and existing assets are protected by preservation checks. After the new page passes the render judge, the launcher inserts a small marker-wrapped link immediately after the original's opening body tag. A failed, skipped or errored check adds no banner. Re-inserting a banner for the same filename changes nothing; a new generation gets a new suffix and banner.
+
+The reply lists page/reply paths, actual models, all judge verdicts, clarity changes, corrections and open questions. The [action](../actions/ai-report.md#second-opinion-form) owns the command contract and the [prompt](ai-report-second-opinion-prompt.md) contains the complete editorial rules. Standalone binaries need `DO_WORK_AI_REPORT_SECOND_OPINION_PROMPT` set to that trusted installed prompt; the suite launcher sets it automatically.
