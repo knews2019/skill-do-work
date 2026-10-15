@@ -59,7 +59,7 @@ case "$prompt" in
  ` + extra + `
  ;;
 esac
-printf 'File: %s\n' "${output:-}"
+printf 'File: %s/%s\n' "$PWD" "${output:-}"
 printf 'Clarity changes\n- Clear flow\nCorrections: none\nOpen questions: none\n'
 `
 	if err := os.WriteFile(filepath.Join(os.Getenv("PATH"), "codex"), []byte(script), 0755); err != nil {
@@ -107,7 +107,7 @@ func TestSecondOpinionNativeModelCollisionAndSkippedJudge(t *testing.T) {
 			t.Fatalf("row=%v", row)
 		}
 		reply, _ := os.ReadFile(filepath.Join(bundle, "codex-actual-model-1"+suffix+"-reply.md"))
-		if !strings.Contains(string(reply), "index-codex-actual-model-1"+suffix+".html") || strings.Contains(string(reply), "staging-") {
+		if !strings.Contains(string(reply), "index-codex-actual-model-1"+suffix+".html") || strings.Contains(string(reply), "staging-") || strings.Contains(string(reply), bundle) {
 			t.Fatalf("saved reply points to deleted stage: %s", reply)
 		}
 		for _, name := range []string{"index-codex-actual-model-1" + suffix + ".html", "codex-actual-model-1" + suffix + "-reply.md"} {

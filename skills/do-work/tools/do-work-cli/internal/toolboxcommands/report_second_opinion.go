@@ -448,7 +448,7 @@ func secondOpinionRun(ctx context.Context, repository, bundle, executable, templ
 	}
 	row.Page = filepath.ToSlash(filepath.Join(relative, pageName))
 	// The backend knows the reserved stage name; the saved reply names its published page.
-	reply = strings.ReplaceAll(reply, stageName, pageName)
+	reply = strings.NewReplacer("file://"+filepath.ToSlash(filepath.Join(bundle, stageName)), pageName, filepath.Join(bundle, stageName), pageName, filepath.ToSlash(filepath.Join(bundle, stageName)), pageName, stageName, pageName).Replace(reply)
 	if err := publish(replyName, []byte(reply)); err != nil {
 		fail(err)
 		return
