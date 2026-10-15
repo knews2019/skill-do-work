@@ -1,7 +1,7 @@
 ---
 id: REQ-698
 title: 'ai-report second-opinion: a second model rebuilds a report bundle as index-<cli>-<model-slug>.html (session, targeted and batch modes)'
-status: pending
+status: claimed
 created_at: 2026-10-15T11:02:38Z
 user_request: UR-156
 domain: backend
@@ -24,6 +24,7 @@ estimate:
     - 16 acceptance criteria
     - browser evidence
     - cross-route regression gates
+claimed_at: 2026-10-15T11:42:48Z
 ---
 # ai-report second-opinion: A Second Model Rebuilds a Report Bundle
 ## What
