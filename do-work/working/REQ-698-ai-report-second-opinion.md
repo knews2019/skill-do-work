@@ -28,6 +28,7 @@ claimed_at: 2026-10-15T11:42:48Z
 route: C
 planning_at: 2026-10-15T11:46:56Z
 dispatch_at: 2026-10-15T11:53:14Z
+builder_handback_at: 2026-10-15T12:44:02Z
 ---
 # ai-report second-opinion: A Second Model Rebuilds a Report Bundle
 ## What
