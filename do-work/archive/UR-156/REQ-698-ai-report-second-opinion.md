@@ -1,7 +1,7 @@
 ---
 id: REQ-698
 title: 'ai-report second-opinion: a second model rebuilds a report bundle as index-<cli>-<model-slug>.html (session, targeted and batch modes)'
-status: claimed
+status: completed
 created_at: 2026-10-15T11:02:38Z
 user_request: UR-156
 domain: backend
@@ -11,7 +11,7 @@ tdd: true
 maintenance: false
 impact: impact-user-visible
 effort_estimate: effort-substantive
-write_set: ["skills/do-work-toolbox/actions/ai-report.md", "skills/do-work-toolbox/SKILL.md", "skills/do-work-toolbox/docs/ai-report-guide.md", "skills/do-work-toolbox/docs/ai-report-second-opinion-prompt.md", "skills/do-work/tools/do-work-cli/internal/toolboxcommands/commands.go", "skills/do-work/tools/do-work-cli/internal/toolboxcommands/report_second_opinion.go", "skills/do-work/tools/do-work-cli/internal/toolboxcommands/report_second_opinion_test.go", "ai-reports/2026-10-09_1916_REQ-632-activity-correlation-determinism/index.html", "ai-reports/2026-10-09_1916_REQ-632-activity-correlation-determinism/index-*.html", "ai-reports/2026-10-09_1916_REQ-632-activity-correlation-determinism/*-reply.md", "skills/do-work/tools/do-work-cli/internal/toolboxcommands/commands_test.go", "skills/do-work/tools/do-work-cli/internal/resultmodel/result_model.go", "skills/do-work/tools/do-work-cli/internal/resultmodel/result_model_test.go", "skills/do-work/tools/do-work-cli.sh", "_dev/tests/do-work-cli-launcher-behavior.sh", "skills/do-work-toolbox/actions/ai-report-reference.md", "ai-reports/2026-10-09_1916_REQ-632-activity-correlation-determinism/codex-*", "ai-reports/2026-10-09_1916_REQ-632-activity-correlation-determinism/gemini-*", "ai-reports/2026-10-09_1916_REQ-632-activity-correlation-determinism/agy-*", "ai-reports/2026-10-09_1916_REQ-632-activity-correlation-determinism/claude-*", "ai-reports/2026-10-09_1916_REQ-632-activity-correlation-determinism/claude-claude-opus-5-5-reply.md", "ai-reports/2026-10-09_1916_REQ-632-activity-correlation-determinism/codex-gpt-6-astra-reply.md", "ai-reports/2026-10-09_1916_REQ-632-activity-correlation-determinism/index-claude-claude-opus-5-5.html", "ai-reports/2026-10-09_1916_REQ-632-activity-correlation-determinism/index-codex-gpt-6-astra.html"]
+write_set: ["skills/do-work-toolbox/actions/ai-report.md", "skills/do-work-toolbox/SKILL.md", "skills/do-work-toolbox/docs/ai-report-guide.md", "skills/do-work-toolbox/docs/ai-report-second-opinion-prompt.md", "skills/do-work/tools/do-work-cli/internal/toolboxcommands/commands.go", "skills/do-work/tools/do-work-cli/internal/toolboxcommands/report_second_opinion.go", "skills/do-work/tools/do-work-cli/internal/toolboxcommands/report_second_opinion_test.go", "ai-reports/2026-10-09_1916_REQ-632-activity-correlation-determinism/index.html", "ai-reports/2026-10-09_1916_REQ-632-activity-correlation-determinism/index-*.html", "ai-reports/2026-10-09_1916_REQ-632-activity-correlation-determinism/*-reply.md", "skills/do-work/tools/do-work-cli/internal/toolboxcommands/commands_test.go", "skills/do-work/tools/do-work-cli/internal/resultmodel/result_model.go", "skills/do-work/tools/do-work-cli/internal/resultmodel/result_model_test.go", "skills/do-work/tools/do-work-cli.sh", "_dev/tests/do-work-cli-launcher-behavior.sh", "skills/do-work-toolbox/actions/ai-report-reference.md", "ai-reports/2026-10-09_1916_REQ-632-activity-correlation-determinism/codex-*", "ai-reports/2026-10-09_1916_REQ-632-activity-correlation-determinism/gemini-*", "ai-reports/2026-10-09_1916_REQ-632-activity-correlation-determinism/agy-*", "ai-reports/2026-10-09_1916_REQ-632-activity-correlation-determinism/claude-*", "ai-reports/2026-10-09_1916_REQ-632-activity-correlation-determinism/claude-claude-opus-5-5-reply.md", "ai-reports/2026-10-09_1916_REQ-632-activity-correlation-determinism/codex-gpt-6-astra-reply.md", "ai-reports/2026-10-09_1916_REQ-632-activity-correlation-determinism/index-claude-claude-opus-5-5.html", "ai-reports/2026-10-09_1916_REQ-632-activity-correlation-determinism/index-codex-gpt-6-astra.html", "skills/do-work/tools/do-work-cli/prime-do-work-cli.md", "skills/do-work/tools/do-work-cli/lessons-do-work-cli.md", "do-work/lessons-index.md"]
 estimate:
   p50_active_minutes: 75
   confidence: low
@@ -31,6 +31,15 @@ dispatch_at: 2026-10-15T11:53:14Z
 builder_handback_at: 2026-10-15T12:44:02Z
 integration_at: 2026-10-15T12:45:19Z
 review_at: 2026-10-15T13:01:16Z
+remediation_at: 2026-10-15T13:08:52Z
+re_review_at: 2026-10-15T13:16:34Z
+commit: 31e7fcdfd8fc7a934a5ca3f13202e66a9f8c3200
+kb_status: pending
+kb_entry: ''
+heavy_verified_at: 2026-10-15T13:27:56Z
+heavy_verified_revision: 31e7fcdfd8fc7a934a5ca3f13202e66a9f8c3200
+completed_at: 2026-10-15T13:28:14Z
+release_at: 2026-10-15T13:28:14Z
 ---
 # ai-report second-opinion: A Second Model Rebuilds a Report Bundle
 ## What
@@ -79,7 +88,7 @@ See `do-work/user-requests/UR-156/input.md` for complete verbatim input, includi
 
 **Route:** C — multiple backend protocols, guarded bundle writes, render judging, and action/documentation integration require a coordinated plan.
 
-<!-- D-XX counter: D-10 used. Next decision: D-11. -->
+<!-- D-XX counter: D-12 used. Next decision: D-13. -->
 
 ## Plan
 
@@ -137,6 +146,8 @@ For live proof on `ai-reports/2026-10-09_1916_REQ-632-activity-correlation-deter
 - D-09 — DECIDE & STATE: Backlink validation accepts reordered anchor attributes, unquoted hrefs and harmless inline formatting, but rejects duplicate/wrong hrefs, misleading href text inside other attributes, wrong labels and backlinks following main content. A focused regression proved the old parser too strict; the original AGY candidate was not retained, so its failure cannot be confidently attributed to model noncompliance.
 
 - **D-10 — DECIDE & STATE:** Add the four concrete generated artifact paths to Scope and write_set as expansions of the predeclared globs. The scope comparator is literal; this records existing authorization without broadening it.
+
+- **D-12 — DECIDE & STATE:** Extend the parent-owned completion scope to the CLI lesson satellite, its generalized prime trap and lessons index. The confirmed recurrence of reaped-by-its-own-parent requires a prime amendment under general.md; native model protocol evidence is a new targeted lesson. Defer actual lesson writes until the finalization plan establishes the archive target.
 
 ## Exploration
 
@@ -209,6 +220,10 @@ Read fully: all five prime_files (action-files, shell-commands, releases, do-wor
 - `ai-reports/2026-10-09_1916_REQ-632-activity-correlation-determinism/index-claude-claude-opus-5-5.html` — exact expansion of the predeclared live-artifact glob.
 - `ai-reports/2026-10-09_1916_REQ-632-activity-correlation-determinism/index-codex-gpt-6-astra.html` — exact expansion of the predeclared live-artifact glob.
 
+- `skills/do-work/tools/do-work-cli/prime-do-work-cli.md` — parent-owned post-review lesson recurrence update.
+- `skills/do-work/tools/do-work-cli/lessons-do-work-cli.md` — parent-owned post-review lesson recurrence update.
+- `do-work/lessons-index.md` — parent-owned post-review lesson recurrence update.
+
 **Files I will NOT touch:** Other report bundles, catalog output, unrelated CLI commands, consumer repositories, release/lifecycle metadata (orchestrator-owned).
 
 **Acceptance criteria (restated from REQ):**
@@ -238,6 +253,8 @@ Read fully: all five prime_files (action-files, shell-commands, releases, do-wor
 ## Implementation Summary
 
 **Files changed:**
+- `skills/do-work/tools/do-work-cli/prime-do-work-cli.md` (modified; parent-owned recurring process-lifetime trap)
+- `skills/do-work/tools/do-work-cli/lessons-do-work-cli.md` (modified; parent-owned native identity and process-lifetime lessons)
 - `_dev/tests/do-work-cli-launcher-behavior.sh` (modified)
 - `ai-reports/2026-10-09_1916_REQ-632-activity-correlation-determinism/claude-claude-opus-5-5-reply.md` (new)
 - `ai-reports/2026-10-09_1916_REQ-632-activity-correlation-determinism/codex-gpt-6-astra-reply.md` (new)
@@ -257,9 +274,9 @@ Read fully: all five prime_files (action-files, shell-commands, releases, do-wor
 - `skills/do-work/tools/do-work-cli/internal/toolboxcommands/report_second_opinion.go` (new)
 - `skills/do-work/tools/do-work-cli/internal/toolboxcommands/report_second_opinion_test.go` (new)
 
-**What was done:** Added the shipped second-opinion action and Go command with explicit native model verification, serial batch results, strict bundle preservation, unique page/reply publication and pass-only original banners. Published Codex and pinned Claude proofs; the Codex source-map links received a disclosed verifier correction and separate post-edit judge. The original differs only by two banners; existing evidence files are unchanged.
+**What was done:** Added the shipped second-opinion action and Go command with explicit native model verification, serial batch results, strict bundle preservation, supervised process-group completion, unique page/reply publication and pass-only original banners. Published Codex and pinned Claude proofs; the Codex source-map links received a disclosed verifier correction and separate post-edit judge. The original differs only by two banners; existing evidence files are unchanged.
 
-**Integration:** Captured first base `3b593d22`; canonical merge `d0106c31`. Builder commits `406ff3c4`, `9fa76500`, `2f5cd87a`, `69a2a998`; no integration seams or do-work edits on builder branch.
+**Integration:** Captured first base `3b593d22`; initial merge `d0106c31`, final remediation merge `31e7fcdf`. Builder commits `406ff3c4`, `9fa76500`, `2f5cd87a`, `69a2a998`, `2abd7939`; no integration seams or do-work edits on builder branch.
 
 ## Discovered Tasks
 
@@ -310,41 +327,6 @@ This active chat's exact model identity is unavailable, and it is a Codex sessio
 - Final byte comparison against61ca1e9c proves original `index.html` differs only by exactly two marker-wrapped banners; all three pre-existing evidence files are byte-identical. Reply file links resolve within the bundle and contain no worktree/staging path. Evidence: `/private/tmp/req698-evidence/artifact-invariants.json` (also includes final artifact SHA256s).
 - Fresh invocations intentionally use numeric suffixes and get distinct banners. Per-filename banner idempotency is covered by focused tests; no second expensive fresh run was misrepresented as “already present.” Parent D-01 resolved that request contradiction.
 
-## Qualification
-
-**Result:** Pass for substantive implementation at `3b593d22..d0106c31`. The canonical request/path-bound qualify record is satisfied; P-A-U and diff hygiene passed. Read source, wiring, prompt/action/docs and live artifact diff: registered handler → trusted launcher template → native adapters → preservation checks → exclusive page/reply publication → shared judge → original banner. Code and deterministic tests cover all modes and both generation identity checks.
-
-**Findings judged:** Three static unreferenced-file warnings are legitimate generated reply artifacts and a Go test file discovered by the test harness. Scope comparison compares literal strings: its four undeclared artifact paths are contained by the previously declared `index-*.html` / `*-reply.md` globs, not scope expansion. The six untouched glob entries are file-class allowances; no Gemini/AGY output was published and no extra assets were needed. No outside-scope implementation path was introduced. The final live AGY retry was separately authorized and verified prompt noncompliance; actual Claude-session execution remains unproven.
-
-**Acceptance trace:** Router, guide and prompt preserve the four forms and full editorial constraints; handler/typed-result/launcher wiring is present. Baseline RED and later GREEN prove the new command and equivalent-backlink bug. Fake backends cover default selection, excluded/missing/failing batch members, actual identity mismatch, collisions, dirty paths, old-asset changes, rename sources, symlinks, missing backlinks, all judge states and per-file banners. Live Codex and pinned Claude output exists and opens; original diff is banners only. Review must retain session and batch limitations.
-
-*Qualified by work action*
-
-## Testing
-
-**Tests run:** Canonical `bash _dev/tests/maintainer-verify.sh` through `run-timed-command`: exit 0 in 124 seconds on merged source. Board: 427 tests in 36 seconds, slowest file 18.02s. CLI: 935 tests in 62 seconds, slowest file 20.53s. Both satisfy the per-file <30s budget. The gate includes contract, shipped references, shell checks, Go vet and uncached tests. No failing canonical run required a retry.
-
-**Focused merged probe:** `go -C skills/do-work/tools/do-work-cli test ./internal/toolboxcommands ./internal/resultmodel -run 'TestAIReport|TestSecondOpinion|TestHandlersRegister' -count=1` passed under the 30-second probe limit. `advance` returned request/path-bound satisfied `run-blocked-check` and `green-gate` records. Only judged unused-glob scope warnings remain. Evidence: `/private/tmp/req698-evidence/merged-test-gates.json` and `merged-maintainer.log`. Initial gate-call input errors ran no tests; corrected to the supported probe-file form.
-
-**Red-green validation:** Initial fake-backend tests failed because the handler was absent, then passed after implementation. The equivalent-backlink test failed three valid examples before the parser fix and passed afterwards. See Builder Evidence for exact commands/logs; final builder race checks and vet passed after that fix. Captured session proof was adapted to explicit pinned Claude because the current chat is Codex and its exact model is unavailable; no session identity was invented.
-
-**New tests added:** Native metadata, generation model switch, mode selection, unique filenames/replies, outside dirt/rename, preserved existing assets, symlinks, semantic backlink, judge states, banner placement/idempotency, serial batch, cancellation and required backend argv.
-
-**Existing tests updated:** Handler registration/count; typed result serialization; source/installed launcher prompt discovery. These are intentional new-command wiring contracts.
-
-**Live verification:** Codex gpt-6-astra and pinned Claude claude-opus-5-5 both returned judge pass and banner inserted, outside paths empty. Codex's disclosed source-map amendment separately passed wide/phone light/dark render checks. Parent browser interactions passed on both pages. Batch excluded actual caller Codex; Gemini failed exit55 before judge and AGY failed the original backlink validator before judge. That validator had a proven false-rejection case and is fixed. User explicitly authorized one AGY retry after two automatic approval-review rejections; the retry completed with native SUCCESS but was refused because navigation preceded its opening backlink; no page/reply/banner was published, judge not-run, outside paths empty. Native output and candidate were retained for this run. No all-backend live success or actual Claude-session success is claimed.
-
-**Heavy verification plan:**
-- Range: `3b593d22..d0106c31`. All six lanes selected because report HTML paths have uncertain classification.
-- queue-kanban-javascript: `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane queue-kanban-javascript` — coverage is uncertain for: ai-reports/2026-10-09_1916_REQ-632-activity-correlation-determinism/index-claude-claude-opus-5-5.html, ai-reports/2026-10-09_1916_REQ-632-activity-correlation-determinism/index-codex-gpt-6-astra.html, ai-reports/2026-10-09_1916_REQ-632-activity-correlation-determinism/index.html
-- queue-kanban-browser: `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane queue-kanban-browser` — coverage is uncertain for: ai-reports/2026-10-09_1916_REQ-632-activity-correlation-determinism/index-claude-claude-opus-5-5.html, ai-reports/2026-10-09_1916_REQ-632-activity-correlation-determinism/index-codex-gpt-6-astra.html, ai-reports/2026-10-09_1916_REQ-632-activity-correlation-determinism/index.html
-- do-work-cli-integrations: `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane do-work-cli-integrations` — coverage is uncertain for: ai-reports/2026-10-09_1916_REQ-632-activity-correlation-determinism/index-claude-claude-opus-5-5.html, ai-reports/2026-10-09_1916_REQ-632-activity-correlation-determinism/index-codex-gpt-6-astra.html, ai-reports/2026-10-09_1916_REQ-632-activity-correlation-determinism/index.html
-- staged-skills: `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane staged-skills` — coverage is uncertain for: ai-reports/2026-10-09_1916_REQ-632-activity-correlation-determinism/index-claude-claude-opus-5-5.html, ai-reports/2026-10-09_1916_REQ-632-activity-correlation-determinism/index-codex-gpt-6-astra.html, ai-reports/2026-10-09_1916_REQ-632-activity-correlation-determinism/index.html
-- updater: `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane updater` — coverage is uncertain for: ai-reports/2026-10-09_1916_REQ-632-activity-correlation-determinism/index-claude-claude-opus-5-5.html, ai-reports/2026-10-09_1916_REQ-632-activity-correlation-determinism/index-codex-gpt-6-astra.html, ai-reports/2026-10-09_1916_REQ-632-activity-correlation-determinism/index.html
-- installer: `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane installer` — coverage is uncertain for: ai-reports/2026-10-09_1916_REQ-632-activity-correlation-determinism/index-claude-claude-opus-5-5.html, ai-reports/2026-10-09_1916_REQ-632-activity-correlation-determinism/index-codex-gpt-6-astra.html, ai-reports/2026-10-09_1916_REQ-632-activity-correlation-determinism/index.html
-
-*Verified by work action*
-
 ## Authorized AGY Verification
 
 Trusted authorization relayed by parent: user answered **“Allow this one Antigravity verification run”** to **“May I rerun Antigravity (model gemini-3.8-flash-low) once to verify the backlink fix, sending the tracked REQ-632 report bundle and relevant repository source to that model?”**
@@ -365,7 +347,13 @@ Evidence retained:
 All eight pre-existing bundle files are byte-identical before/after the run, including the original with its two existing banners. Git status remains completely clean; no candidate, reply, asset or new banner was published. No new commit was needed; final HEAD remains69a2a998. No source changes and no second model retry were made. This completes the explicitly authorized single verification attempt.
 
 
-## Review
+## Remediation
+
+The first independent review found a confirmed delayed-write race (F1). Although its policy mapping was Partial/report-only, the orchestrator chose to repair this current-request defect before finalization. Diagnosis confirmed: command.Wait reaped the backend leader before group ownership was checked, so a redirected background child survived and wrote after capture returned success. The overlay probe at `/private/tmp/req698-review/review_probe_test.go` failed in 0.66s. One remediation cycle is assigned with debugging guidance, the existing reaped-by-its-own-parent lesson, and the exiting-leader regression as closure evidence. No further external model calls are authorized or planned.
+
+### First independent review record
+
+### Review before remediation
 
 **Overall: 80.625%** | 2026-10-15T12:58:20Z
 
@@ -391,6 +379,155 @@ All eight pre-existing bundle files are byte-identical before/after the run, inc
 *Reviewed by review-work action*
 
 
-## Remediation
 
-The first independent review found a confirmed delayed-write race (F1). Although its policy mapping was Partial/report-only, the orchestrator chose to repair this current-request defect before finalization. Diagnosis confirmed: command.Wait reaped the backend leader before group ownership was checked, so a redirected background child survived and wrote after capture returned success. The overlay probe at `/private/tmp/req698-review/review_probe_test.go` failed in 0.66s. One remediation cycle is assigned with debugging guidance, the existing reaped-by-its-own-parent lesson, and the exiting-leader regression as closure evidence. No further external model calls are authorized or planned.
+### Remediation handback
+
+
+Remediation commit: `2abd7939ac52c9813616909e388cfedfb8b78b6a` on the retained builder branch, based on `69a2a998`. Exactly two files changed: `skills/do-work/tools/do-work-cli/internal/toolboxcommands/report_second_opinion.go` and `report_second_opinion_test.go`. Parent owns the re-review, merged gate, lesson/prime update, lifecycle and release. No external model calls occurred in this remediation.
+
+Read the complete `REQ-698-review.md` before production patching; reread `skills/do-work/crew-members/debugging.md`, the whole CLI prime and the exact `reaped-by-its-own-parent` satellite entry, including its `ESRCH` trap. Parent reserved D-12 for its lesson/prime update.
+
+**D-11 — DECIDE & STATE:** Keep a small POSIX-shell supervisor as the isolated group owner until the existing `ownedprocess.TerminateGroup` cleanup completes. Backend executable and arguments remain positional (`"$@"`), never interpolated/evaluated as shell code. The supervisor waits for the backend, writes its exact exit status to a private inherited pipe, closes that pipe and waits on parent-owned stdin. The backend closes fd3 and receives `/dev/null` stdin, so it cannot inherit either completion/control channel. Parent status parsing is bounded to32bytes and rejects malformed/noncanonical statuses. Cleanup still proves ownership through the shared helper, runs before `Cmd.Wait`, retains cleanup errors, and then reaps the supervisor/drains captured output. No unchecked numeric process-group signal or shared ownedprocess change was introduced. Windows remains fail-closed before process start.
+
+### Structured diagnosis and evidence
+- Observation: independent review probe returned success, then the redirected child wrote `late-write`300ms later.
+- Hypothesis: `Cmd.Wait` reaped the isolated backend leader before `TerminateGroup` could prove its PGID; its ESRCH fallback missed live descendants. Inherited stdout/stderr instead kept `Cmd.Wait` blocked while children could still write.
+- Prediction: a redirected child will write after successful capture; an inherited-output child will delay capture until it closes the pipes.
+- RED confirmed both: `remediation-red.log` reports `capture returned while a descendant could still write` in both variants and inherited-pipe elapsed919.212041ms. Test command: `go -C skills/do-work/tools/do-work-cli test ./internal/toolboxcommands -run 'TestSecondOpinionCapture(DrainsExitedLeaderChildren|PreservesBackendStatusAndChannels)$' -count=1`, exit1.
+- Root cause confirmed; one production approach was implemented. Initial strengthened cancellation fixture asserted no write even during cleanup and failed. Measurement showed its `late` file already existed at capture return (killing its waited-for sleep resumes the shell's next statement during teardown). The corrected assertion compares the snapshot at capture return with the later state; it verifies the promised post-return boundary. Parent explicitly agreed this distinction. The successful-leader cases continue to require that the delayed write never occurs at all.
+- Focused GREEN: `go -C skills/do-work/tools/do-work-cli test ./internal/toolboxcommands -run 'TestSecondOpinionCapture' -count=1 -v`, pass3.137s, `remediation-green.log`. Covers redirected/inherited-pipe children, cancellation with no post-return write, exact stdout/stderr and literal argv, truthful status0/7, closed backend stdin and closed status fd3.
+- Reviewer's unchanged original probe GREEN: `go -C skills/do-work/tools/do-work-cli test -overlay /private/tmp/req698-evidence/remediation-review-overlay.json ./internal/toolboxcommands -run '^TestReviewSecondOpinionLeaderExitLeavesWriter$' -count=1`, pass2.047s, `remediation-review-green.log`. Overlay only points the retained reviewer test into this worktree.
+- Final race packages: `go -C skills/do-work/tools/do-work-cli test -race ./internal/toolboxcommands ./internal/resultmodel`, pass toolbox15.804s/resultmodel cached, `remediation-race.log`. This includes native adapter/metadata contracts and all existing scoped command tests after the runner change.
+- `go -C skills/do-work/tools/do-work-cli vet ./...`: exit0, `remediation-vet.log`.
+- `GOOS=windows GOARCH=amd64 go -C skills/do-work/tools/do-work-cli test -c ./internal/toolboxcommands -o /private/tmp/req698-evidence/remediation-toolbox-windows.test.exe`: exit0, `remediation-windows.log`.
+- gofmt and `git diff --check` clean; reviewed both changed files and119insertions/14deletions. Worktree clean after commit. Live artifact bytes untouched.
+
+### Lifetime limits and lesson handoff
+The supervisor is our child and is reaped by our `Cmd.Wait`. Backend descendants are terminated through the existing bottom-up shared group boundary. Descendants orphaned by a backend that exits itself can be proved stopped, but their eventual reap belongs to init; this patch does not claim to reap another process's child. A deliberate `setsid` escape remains outside group ownership and is not signalled, as the governing lesson already states. The reviewed in-group late-writer and inherited-pipe defects are covered by the new behavioral regressions.
+
+Proposed parent lesson wording: **Symptom:** success returned before a redirected child wrote, while inherited-output children delayed completion. **Root cause:** backend completion was conflated with ownership-lifetime completion, and reaping the sole group leader erased PGID proof. **Fix:** a supervisor retains isolated ownership, reports backend status separately and stays alive until proven bottom-up cleanup; only then wait/reap and publish. **Discovery:** reviewer minimal delayed-write probe plus differential real-child RED/GREEN tests. Parent owns updating the existing generalized prime trap/satellite/index rather than adding duplicate lesson machinery.
+
+## Qualification
+
+**Result:** Pass for substantive implementation at `3b593d22..31e7fcdf`. The canonical request/path-bound qualify record is satisfied; P-A-U and diff hygiene passed. Read source, wiring, prompt/action/docs and live artifact diff: registered handler → trusted launcher template → native adapters → preservation checks → exclusive page/reply publication → shared judge → original banner. Code and deterministic tests cover all modes and both generation identity checks.
+
+**Findings judged:** Three static unreferenced-file warnings are legitimate generated reply artifacts and a Go test file discovered by the test harness. Scope comparison compares literal strings: its four undeclared artifact paths are contained by the previously declared `index-*.html` / `*-reply.md` globs, not scope expansion. The six untouched glob entries are file-class allowances; no Gemini/AGY output was published and no extra assets were needed. No outside-scope implementation path was introduced. The final live AGY retry was separately authorized and verified prompt noncompliance; actual Claude-session execution remains unproven.
+
+**Acceptance trace:** Router, guide and prompt preserve the four forms and full editorial constraints; handler/typed-result/launcher wiring is present. Baseline RED and later GREEN prove the new command and equivalent-backlink bug. Fake backends cover default selection, excluded/missing/failing batch members, actual identity mismatch, collisions, dirty paths, old-asset changes, rename sources, symlinks, missing backlinks, all judge states and per-file banners. Live Codex and pinned Claude output exists and opens; original diff is banners only. Review must retain session and batch limitations.
+
+*Qualified by work action*
+
+
+**Remediation qualification:** Canonical qualify remains satisfied on the cumulative range; no new project file or new scope error. The owner evidence commit between merges is do-work metadata, explicitly excluded from implementation judgment. The two-file runner change preserves a live supervisor until proven group teardown; reviewed argv isolation, closed channels, exact backend status, bounded status parsing, errors and final Wait. Existing group limitations (setsid escapees and init-owned orphan reaping) are stated. Reviewer delayed-write and inherited-pipe RED cases pass after the fix.
+
+## Testing
+
+**Tests run:** Canonical `bash _dev/tests/maintainer-verify.sh` through `run-timed-command`: exit 0 in 119 seconds on merged source. Board: 427 tests in 37 seconds, slowest file 17.86s. CLI: 937 tests in 56 seconds, slowest file 18.49s. Both satisfy the per-file <30s budget. The gate includes contract, shipped references, shell checks, Go vet and uncached tests. No failing canonical run required a retry.
+
+**Focused merged probe:** `go -C skills/do-work/tools/do-work-cli test ./internal/toolboxcommands ./internal/resultmodel -run 'TestAIReport|TestSecondOpinion|TestHandlersRegister' -count=1` passed under the 30-second probe limit. `advance` returned request/path-bound satisfied `run-blocked-check` and `green-gate` records. Only judged unused-glob scope warnings remain. Evidence: `/private/tmp/req698-evidence/remediated-test-gates.json` and `remediated-maintainer.log`. Initial gate-call input errors ran no tests; corrected to the supported probe-file form.
+
+**Red-green validation:** Initial fake-backend tests failed because the handler was absent, then passed after implementation. The equivalent-backlink test failed three valid examples before the parser fix and passed afterwards. See Builder Evidence for exact commands/logs; final builder race checks and vet passed after that fix. Captured session proof was adapted to explicit pinned Claude because the current chat is Codex and its exact model is unavailable; no session identity was invented.
+
+**New tests added:** Native metadata, generation model switch, mode selection, unique filenames/replies, outside dirt/rename, preserved existing assets, symlinks, semantic backlink, judge states, banner placement/idempotency, serial batch, cancellation and required backend argv.
+
+**Existing tests updated:** Handler registration/count; typed result serialization; source/installed launcher prompt discovery. These are intentional new-command wiring contracts.
+
+**Live verification:** Codex gpt-6-astra and pinned Claude claude-opus-5-5 both returned judge pass and banner inserted, outside paths empty. Codex's disclosed source-map amendment separately passed wide/phone light/dark render checks. Parent browser interactions passed on both pages. Batch excluded actual caller Codex; Gemini failed exit55 before judge and AGY failed the original backlink validator before judge. That validator had a proven false-rejection case and is fixed. User explicitly authorized one AGY retry after two automatic approval-review rejections; the retry completed with native SUCCESS but was refused because navigation preceded its opening backlink; no page/reply/banner was published, judge not-run, outside paths empty. Native output and candidate were retained for this run. No all-backend live success or actual Claude-session success is claimed.
+
+**Heavy verification plan:**
+- Range: `3b593d22..31e7fcdf`. All six lanes selected because report HTML paths have uncertain classification.
+- queue-kanban-javascript: `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane queue-kanban-javascript` — coverage is uncertain for: ai-reports/2026-10-09_1916_REQ-632-activity-correlation-determinism/index-claude-claude-opus-5-5.html, ai-reports/2026-10-09_1916_REQ-632-activity-correlation-determinism/index-codex-gpt-6-astra.html, ai-reports/2026-10-09_1916_REQ-632-activity-correlation-determinism/index.html
+- queue-kanban-browser: `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane queue-kanban-browser` — coverage is uncertain for: ai-reports/2026-10-09_1916_REQ-632-activity-correlation-determinism/index-claude-claude-opus-5-5.html, ai-reports/2026-10-09_1916_REQ-632-activity-correlation-determinism/index-codex-gpt-6-astra.html, ai-reports/2026-10-09_1916_REQ-632-activity-correlation-determinism/index.html
+- do-work-cli-integrations: `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane do-work-cli-integrations` — coverage is uncertain for: ai-reports/2026-10-09_1916_REQ-632-activity-correlation-determinism/index-claude-claude-opus-5-5.html, ai-reports/2026-10-09_1916_REQ-632-activity-correlation-determinism/index-codex-gpt-6-astra.html, ai-reports/2026-10-09_1916_REQ-632-activity-correlation-determinism/index.html
+- staged-skills: `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane staged-skills` — coverage is uncertain for: ai-reports/2026-10-09_1916_REQ-632-activity-correlation-determinism/index-claude-claude-opus-5-5.html, ai-reports/2026-10-09_1916_REQ-632-activity-correlation-determinism/index-codex-gpt-6-astra.html, ai-reports/2026-10-09_1916_REQ-632-activity-correlation-determinism/index.html
+- updater: `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane updater` — coverage is uncertain for: ai-reports/2026-10-09_1916_REQ-632-activity-correlation-determinism/index-claude-claude-opus-5-5.html, ai-reports/2026-10-09_1916_REQ-632-activity-correlation-determinism/index-codex-gpt-6-astra.html, ai-reports/2026-10-09_1916_REQ-632-activity-correlation-determinism/index.html
+- installer: `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane installer` — coverage is uncertain for: ai-reports/2026-10-09_1916_REQ-632-activity-correlation-determinism/index-claude-claude-opus-5-5.html, ai-reports/2026-10-09_1916_REQ-632-activity-correlation-determinism/index-codex-gpt-6-astra.html, ai-reports/2026-10-09_1916_REQ-632-activity-correlation-determinism/index.html
+
+*Verified by work action*
+
+
+**Post-review closure verification:** Cumulative range `3b593d22..31e7fcdf`. Final canonical gate exit 0/119s and focused probe satisfied; no error findings. Runner RED cases for exited leaders with redirected and inherited output passed after the supervisor fix; the original independent reviewer overlay passed unchanged. Builder race tests passed in 15.804s, vet and Windows compile passed. Later evidence supersedes the pre-remediation green for runtime claims. Parent-owned lesson/prime/index scope is deliberately deferred to finalization and is an expected declared-not-touched warning.
+
+## Lessons Learned
+
+**What worked:**
+- Probe installed native protocols before writing fake adapters, and verify actual identity again on the generation result. Isolated clean checkouts made strict outside-bundle proof meaningful.
+- Independent review's minimal delayed-write probe exposed a lifecycle defect missed by cancellation tests; the unchanged reviewer probe passed after remediation.
+
+**What didn't:**
+- The assumed Codex JSON model header does not exist in this installation; the native text startup envelope supplies it. Attribute-order-sensitive backlink validation rejected equivalent HTML and needed a semantic regression.
+- Waiting/reaping the backend leader before cleanup erased process-group ownership proof. A live supervisor now separates backend exit from group lifetime, retains proof through cleanup, then permits Wait/publication. Redirected-child and inherited-pipe RED/GREEN tests pin the boundary.
+
+**Worth knowing:** A configured remote and local commit do not prove source links are published; use repository paths when uncertain. Keep model claims, launcher judge results and verifier edits distinct. Group cleanup proves in-group descendants stopped, not that init has reaped orphans; deliberate setsid escapees remain outside that group guarantee.
+
+## Orientation
+
+[MAP CHANGED] The toolbox can now request a model-specific second opinion on an existing report through a new CLI execution path. It preserves prior bundle files, reports native model and render evidence, and links only passing pages from the original. Two verified example pages are included; Gemini availability, actual-session execution and successful AGY output remain explicit live-proof limits. The five touched-area prime references were spot-checked for stale paths; none became stale. The existing CLI process-lifetime trap is being amended for the observed recurrence.
+
+
+## Review
+
+**Overall: 86.4375%** | 2026-10-15T13:13:51Z
+
+| Dimension | Score |
+|-----------|-------|
+| Requirements | 93.75% |
+| Code Quality | 96% |
+| Test Adequacy | 96% |
+| Scope | 100% |
+| Risk | Low |
+| Acceptance | Partial |
+
+**Important findings (each with its recorded impact token — this is the durable audit record the judgment mandates):**
+- F2: Requested live acceptance remains incomplete: prior targeted Codex and pinned Claude passed, actual-session proof is absent, Gemini failed exit 55, and the authorized AGY retry correctly refused a backlink following navigation with judge not-run and no publication. No later model run established broader acceptance. — impact-user-visible → report only
+
+**Minor findings:** None.
+**Resolved findings:** F1 closed by `2abd7939`, merged at `31e7fcdf`: supervisor retains group ownership through descendant teardown; unchanged independent delayed-writer overlay passes on merged main (exit 0, 1.082 seconds), with inherited-pipe/status/cancellation regressions and final canonical gate passing.
+**Acceptance:** Partial — local and merged integration pass after remediation; prior live Codex/pinned-Claude success and batch/AGY refusal evidence retained; actual-session/full-batch live success incomplete; consumer deployment unassessed.
+**Restatement sweep:** redefined report publication within existing bundles, original immutability's launcher-banner exception, second-opinion modes/default/exclusion, backend/model-derived filename/reply suffixes and typed result evidence; sole-member wave-end sweep refreshed for owned-process completion semantics, no stale operative restatements found.
+**Suggested testing:** (1) With separately authorized working credentials and known actual session identity, verify session invocation and remaining Gemini/AGY publication; no further external calls are authorized by this review. (2) After deployment, exercise the installed command in a clean consumer bundle to check trusted prompt discovery, relative links and banner-only changes. Consumer deployment remains unassessed. Both are report only.
+**Follow-ups created:** None (1 finding report only).
+
+*Reviewed by review-work action; re-reviewed after the single remediation cycle against cumulative range 3b593d22..31e7fcdf*
+
+
+## Heavy Verification Plan
+
+Base: `3b593d22993d38da80024346b4af12b80626dd09`
+Target: `31e7fcdfd8fc7a934a5ca3f13202e66a9f8c3200`
+
+- queue-kanban-javascript: `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane queue-kanban-javascript` — coverage is uncertain for: ai-reports/2026-10-09_1916_REQ-632-activity-correlation-determinism/index-claude-claude-opus-5-5.html, ai-reports/2026-10-09_1916_REQ-632-activity-correlation-determinism/index-codex-gpt-6-astra.html, ai-reports/2026-10-09_1916_REQ-632-activity-correlation-determinism/index.html
+- queue-kanban-browser: `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane queue-kanban-browser` — coverage is uncertain for: ai-reports/2026-10-09_1916_REQ-632-activity-correlation-determinism/index-claude-claude-opus-5-5.html, ai-reports/2026-10-09_1916_REQ-632-activity-correlation-determinism/index-codex-gpt-6-astra.html, ai-reports/2026-10-09_1916_REQ-632-activity-correlation-determinism/index.html
+- do-work-cli-integrations: `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane do-work-cli-integrations` — coverage is uncertain for: ai-reports/2026-10-09_1916_REQ-632-activity-correlation-determinism/index-claude-claude-opus-5-5.html, ai-reports/2026-10-09_1916_REQ-632-activity-correlation-determinism/index-codex-gpt-6-astra.html, ai-reports/2026-10-09_1916_REQ-632-activity-correlation-determinism/index.html
+- staged-skills: `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane staged-skills` — coverage is uncertain for: ai-reports/2026-10-09_1916_REQ-632-activity-correlation-determinism/index-claude-claude-opus-5-5.html, ai-reports/2026-10-09_1916_REQ-632-activity-correlation-determinism/index-codex-gpt-6-astra.html, ai-reports/2026-10-09_1916_REQ-632-activity-correlation-determinism/index.html
+- updater: `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane updater` — coverage is uncertain for: ai-reports/2026-10-09_1916_REQ-632-activity-correlation-determinism/index-claude-claude-opus-5-5.html, ai-reports/2026-10-09_1916_REQ-632-activity-correlation-determinism/index-codex-gpt-6-astra.html, ai-reports/2026-10-09_1916_REQ-632-activity-correlation-determinism/index.html
+- installer: `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane installer` — coverage is uncertain for: ai-reports/2026-10-09_1916_REQ-632-activity-correlation-determinism/index-claude-claude-opus-5-5.html, ai-reports/2026-10-09_1916_REQ-632-activity-correlation-determinism/index-codex-gpt-6-astra.html, ai-reports/2026-10-09_1916_REQ-632-activity-correlation-determinism/index.html
+
+## Timing
+
+Observed 2026-10-15T11:43:46Z to 2026-10-15T13:10:54Z: 1h 27m 08s total, 1h 05m 24s attributed across 5 events, 21m 44s unattributed.
+
+| Category | Elapsed | Events |
+| --- | --- | --- |
+| builder-work | 59m 15s | 2 |
+| verification-gate | 6m 09s | 3 |
+
+Slowest stage: builder-work / implementation, 50m 50s, outcome success.
+Slowest command: verification-gate / baseline-maintainer, 2m 06s, exit 0, bash (2 argv tokens).
+
+## Heavy Verification Result
+
+Target and execution revision: `31e7fcdfd8fc7a934a5ca3f13202e66a9f8c3200`. All six selected lanes passed, each executed in this drain; none reused. The first browser attempt explicitly skipped because Chrome was not on PATH. Retried only that lane with `QUEUE_KANBAN_BROWSER=/Applications/Google Chrome.app/Contents/MacOS/Google Chrome`; 39 browser tests passed.
+
+- `queue-kanban-javascript`: exit 0, 8 seconds, disposition `executed` (fingerprint_mismatch); not skipped.
+- `queue-kanban-browser`: exit 0, 89 seconds, disposition `executed` (fingerprint_uncertain); not skipped.
+- `do-work-cli-integrations`: exit 0, 77 seconds, disposition `executed` (fingerprint_mismatch); not skipped.
+- `staged-skills`: exit 0, 36 seconds, disposition `executed` (fingerprint_mismatch); not skipped.
+- `updater`: exit 0, 68 seconds, disposition `executed` (fingerprint_mismatch); not skipped.
+- `installer`: exit 0, 31 seconds, disposition `executed` (fingerprint_mismatch); not skipped.
+
+Evidence: `/private/tmp/req698-evidence/heavy-result.json` and `heavy-browser-result.json`; stderr logs retain command output. Heavy lanes have no per-file 30-second budget.
+
+## Completion Lessons Promotion
+
+D-12 completed after the canonical finalization preview confirmed the exact archive postimage. Amended the existing reaped-by-its-own-parent prime trap, appended two linked satellite lessons and refreshed its exact family/size index. Canonical repository links are used because installed packages omit do-work/archive. The optional KB inbox handoff remains pending; no inbox file was written.

@@ -10,6 +10,13 @@ For the complete release history, read this file and the archives below from new
 - [0.50.0 through 0.64.1](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-13-up-to-v0.64.1.md)
 - [0.1.0 through 0.49.0](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-07-up-to-v0.49.0.md)
 
+## 0.306.0 — Second Opinions for Existing AI Reports (2026-10-15)
+
+Ask another model to check and clarify an existing AI report, keeping its version beside the original. Session, targeted, and sequential batch forms report the actual model, saved reply, and render verdict for every backend.
+
+- Existing bundle files are checked for changes, new pages and replies receive unique names, and only a passing render judge permits the launcher to add a link to the original.
+- The action stops when the active session model is unknown; targeted runs never substitute another backend or model.
+
 ## 0.305.119 — Board Keeps Tickets That Move During a Read (2026-10-11)
 
 A request being claimed or archived stays visible when it moves between the board’s directory walk and file read. The board retries the full read once for a vanished REQ or UR, preventing false missing-dependency warnings and checkpoint findings.
