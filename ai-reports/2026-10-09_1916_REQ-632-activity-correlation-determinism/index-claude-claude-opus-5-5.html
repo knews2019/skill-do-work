@@ -1,0 +1,695 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Board activity correlation: a clearer second opinion on the REQ-632 report</title>
+<style>
+:root {
+  --bg: #f7f5ef; --surface: #fffdf8; --text: #24231f; --muted: #5a564d;
+  --accent: #1f5fbf; --rule: #d9d4c7; --code-bg: #efece3;
+  --keep: #1f5fbf; --gone: #c27a12; --ok: #1d7a4a; --warn: #9a5a00;
+  --gone-bg: #fbf1e2; --keep-bg: #e8effa;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #15171a; --surface: #1d2024; --text: #e9e6df; --muted: #aaa597;
+    --accent: #8ab8ff; --rule: #383c43; --code-bg: #262a30;
+    --keep: #7fb0ff; --gone: #e6a446; --ok: #5fcf92; --warn: #f0b45a;
+    --gone-bg: #2c2418; --keep-bg: #1b2636;
+  }
+}
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; scroll-behavior: smooth; }
+body { margin: 0; background: var(--bg); color: var(--text);
+  font: 17px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+a { color: var(--accent); }
+code { font: 14.5px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace; background: var(--code-bg);
+  padding: 1px 5px; border-radius: 4px; overflow-wrap: anywhere; }
+pre { font: 13.5px/1.55 ui-monospace, SFMono-Regular, Menlo, monospace; background: var(--code-bg);
+  padding: 12px 14px; border-radius: 6px; overflow-x: auto; }
+h1, h2, h3 { font-family: "Iowan Old Style", Palatino, Georgia, serif; line-height: 1.2; font-weight: 600; }
+h1 { font-size: clamp(28px, 3.6vw, 40px); margin: 8px 0 12px; }
+h2 { font-size: 28px; margin: 0 0 14px; }
+h3 { font-size: 20px; margin: 22px 0 8px; }
+p { margin: 0 0 12px; }
+.layout { display: grid; grid-template-columns: 230px minmax(0, 1fr); gap: 40px;
+  padding: 0 clamp(16px, 3vw, 48px) 80px; max-width: 1400px; margin: 0 auto; }
+nav.toc { position: sticky; top: 0; align-self: start; max-height: 100vh; overflow-y: auto; padding: 24px 0; font-size: 15px; }
+nav.toc ol { list-style: none; margin: 0; padding: 0; }
+nav.toc li a { display: block; padding: 5px 10px; border-left: 3px solid transparent; color: var(--muted); text-decoration: none; }
+nav.toc li a:hover, nav.toc li a:focus { color: var(--text); }
+nav.toc li a.active { color: var(--text); border-left-color: var(--accent); font-weight: 600; }
+nav.toc .toc-title { font: 600 12px ui-monospace, Menlo, monospace; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin: 0 0 8px 13px; }
+@media (max-width: 900px) {
+  .layout { grid-template-columns: 1fr; gap: 0; }
+  nav.toc { position: static; max-height: none; border-bottom: 1px solid var(--rule); }
+  nav.toc ol { columns: 2; }
+}
+main { min-width: 0; }
+.backlink { margin: 20px 0 0; font-size: 15px; color: var(--muted); }
+header { padding: 12px 0 20px; border-bottom: 1px solid var(--rule); }
+.kicker { font: 600 13px/1.4 ui-monospace, Menlo, monospace; letter-spacing: .05em; text-transform: uppercase; color: var(--muted); }
+section { padding: 36px 0; border-bottom: 1px solid var(--rule); scroll-margin-top: 8px; }
+.measure { max-width: 74ch; }
+.banner { border: 2px solid var(--gone); background: var(--gone-bg); border-radius: 8px; padding: 14px 18px; margin: 18px 0 0; max-width: 80ch; }
+.banner strong { color: var(--text); }
+.grid { display: grid; gap: 16px; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); }
+.card { background: var(--surface); border: 1px solid var(--rule); border-radius: 8px; padding: 16px 18px; min-width: 0; }
+.card h3 { margin-top: 0; }
+.card dl { margin: 0; display: grid; grid-template-columns: 82px 1fr; gap: 4px 10px; font-size: 15.5px; }
+.card dt { color: var(--muted); font-weight: 600; }
+.card dd { margin: 0; min-width: 0; }
+.card.removed { border-style: dashed; border-color: var(--gone); background: var(--gone-bg); }
+.pill { display: inline-block; font: 600 12px/1 ui-monospace, Menlo, monospace; padding: 4px 8px; border-radius: 99px; border: 1.5px solid currentColor; white-space: nowrap; }
+.pill.ok { color: var(--ok); } .pill.gone { color: var(--gone); } .pill.warn { color: var(--warn); }
+.table-wrap { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-size: 15.5px; }
+th, td { text-align: left; vertical-align: top; padding: 8px 12px 8px 0; border-bottom: 1px solid var(--rule); }
+th { font: 600 12.5px/1.4 ui-monospace, Menlo, monospace; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+td.num { font-variant-numeric: tabular-nums; white-space: nowrap; }
+details { background: var(--surface); border: 1px solid var(--rule); border-radius: 8px; padding: 10px 16px; margin: 12px 0; }
+details > summary { cursor: pointer; font-weight: 600; }
+details[open] > summary { margin-bottom: 8px; }
+ol.steps { counter-reset: step; list-style: none; padding: 0; margin: 0; max-width: 80ch; }
+ol.steps > li { counter-increment: step; position: relative; padding: 0 0 16px 48px; }
+ol.steps > li::before { content: counter(step); position: absolute; left: 0; top: 0; width: 32px; height: 32px; border-radius: 50%;
+  background: var(--accent); color: var(--bg); font-weight: 700; display: flex; align-items: center; justify-content: center; }
+.note { color: var(--muted); font-size: 15px; }
+/* Diagram */
+.diagram-wrap { display: grid; grid-template-columns: minmax(0, 3fr) minmax(240px, 1fr); gap: 20px; align-items: start; }
+@media (max-width: 1100px) { .diagram-wrap { grid-template-columns: 1fr; } }
+svg.diagram { width: 100%; height: auto; display: block; }
+.diagram text { fill: var(--text); font: 15px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+.diagram .small { fill: var(--muted); font: 12.5px ui-monospace, Menlo, monospace; }
+.diagram .node rect { fill: var(--surface); stroke: var(--keep); stroke-width: 2; }
+.diagram .node.removed rect { stroke: var(--gone); stroke-dasharray: 7 5; fill: var(--gone-bg); }
+.diagram .node.removed text { fill: var(--muted); }
+.diagram .node { cursor: pointer; outline: none; }
+.diagram .node:hover rect, .diagram .node:focus rect, .diagram .node.selected rect { stroke-width: 4; }
+.diagram .edge { stroke: var(--muted); stroke-width: 1.6; fill: none; }
+.diagram .edge.dead { stroke: var(--gone); stroke-dasharray: 5 5; }
+.diagram .head { fill: var(--muted); }
+.diagram .head-dead { fill: var(--gone); }
+#node-detail { position: sticky; top: 12px; }
+#node-detail h3 { margin-top: 0; }
+/* Tooltips for terms */
+.term { border-bottom: 1.5px dotted var(--muted); cursor: help; position: relative; }
+.term:focus { outline: 2px solid var(--accent); outline-offset: 2px; }
+.js .term[data-tip]:hover::after, .js .term[data-tip]:focus::after {
+  content: attr(data-tip); position: absolute; left: 0; top: 1.6em; z-index: 20; width: max-content; max-width: 320px;
+  background: var(--text); color: var(--bg); font-size: 14px; line-height: 1.45; padding: 8px 10px; border-radius: 6px; font-weight: 400; white-space: normal; }
+/* Tabs */
+.tablist { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 -1px; }
+.tablist button { font: inherit; font-size: 15px; padding: 8px 14px; border: 1px solid var(--rule); border-bottom: none; border-radius: 8px 8px 0 0;
+  background: var(--bg); color: var(--muted); cursor: pointer; }
+.tablist button[aria-selected="true"] { background: var(--surface); color: var(--text); font-weight: 600; }
+.tabpanel { background: var(--surface); border: 1px solid var(--rule); border-radius: 0 8px 8px 8px; padding: 16px 18px; }
+.no-js .tablist { display: none; }
+.no-js .tabpanel { border-radius: 8px; margin-bottom: 12px; }
+.no-js .tabpanel[hidden] { display: block; }
+.no-js-only { display: none; }
+.no-js .no-js-only { display: block; }
+.no-js .js-only { display: none; }
+/* Timeline */
+.timeline { list-style: none; margin: 0; padding: 0 0 0 22px; border-left: 3px solid var(--rule); max-width: 80ch; }
+.timeline li { position: relative; padding: 0 0 16px 12px; }
+.timeline li::before { content: ""; position: absolute; left: -31px; top: 6px; width: 14px; height: 14px; border-radius: 50%; background: var(--keep); border: 3px solid var(--bg); }
+.timeline li.gone::before { background: var(--gone); }
+.timeline time { font: 600 13px ui-monospace, Menlo, monospace; color: var(--muted); display: block; }
+/* Charts */
+.charts { display: grid; gap: 20px; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); }
+svg.chart { width: 100%; height: auto; display: block; }
+.chart text { fill: var(--text); font: 13px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+.chart .axis { stroke: var(--rule); stroke-width: 1; }
+.chart .muted { fill: var(--muted); }
+.chart .bar { fill: var(--keep); }
+.chart .bar.gone { fill: var(--gone); }
+.chart .bar:hover { opacity: .8; }
+.legend { display: flex; gap: 16px; flex-wrap: wrap; font-size: 14px; margin: 6px 0 0; }
+.swatch { display: inline-block; width: 12px; height: 12px; border-radius: 2px; vertical-align: -1px; margin-right: 6px; }
+footer { padding: 28px 0 0; color: var(--muted); font-size: 14px; }
+</style>
+</head>
+<body class="no-js">
+<p class="backlink" style="padding: 0 clamp(16px, 3vw, 48px); max-width: 1400px; margin: 20px auto 0;">Original report: <a href="index.html">index.html</a></p>
+
+<div class="layout">
+<nav class="toc" aria-label="Table of contents">
+  <p class="toc-title">On this page</p>
+  <ol>
+    <li><a href="#tldr">TL;DR</a></li>
+    <li><a href="#big-picture">The big picture</a></li>
+    <li><a href="#components">Components</a></li>
+    <li><a href="#how">How it works</a></li>
+    <li><a href="#decisions">Decisions and trade-offs</a></li>
+    <li><a href="#timeline">Timeline</a></li>
+    <li><a href="#status">Status, risks, open questions</a></li>
+    <li><a href="#corrections">Corrections</a></li>
+    <li><a href="#glossary">Glossary</a></li>
+    <li><a href="#sources">Source map</a></li>
+  </ol>
+</nav>
+
+<main>
+<header>
+  <div class="kicker">Second opinion · the board's activity correlation (REQ-632) · checked against the repository on 2026-10-15</div>
+  <h1>How the board decides when a request was last worked on</h1>
+  <p class="measure">This page rewrites the original report for clarity and brings it up to date. The original was written on 2026-10-09 to help the maintainer make one decision. That decision has since been made and shipped, so parts of the original now describe code that no longer exists.</p>
+  <div class="banner" role="note">
+    <strong>The main change since the original report:</strong> the original asked whether to keep or delete the "merge-range" code. On 2026-10-10 the maintainer deleted it without building the commit-stamping tool the report paired with deletion (release 0.305.88, commit <code>4cc2fb20</code>). See <a href="#decisions">Decisions</a> and <a href="#corrections">Corrections</a>.
+  </div>
+</header>
+
+<section id="tldr">
+  <h2>TL;DR</h2>
+  <div class="measure">
+    <p>The do-work <span class="term" tabindex="0" data-tip="The Kanban-style web page (the queue-kanban Go tool) that shows every request as a card in a column.">board</span> shows each in-progress request card with a ticking "last activity" line. Each finished request's detail drawer gets a "Largest gap between events" row. Together they replaced a badge that guessed "assumed pause" from total duration alone.</p>
+    <p>The board combines two kinds of evidence: the timestamps the request file records about itself, and the git commits linked to that request. A commit is linked only if it touches the request's file or its subject carries a <code>[REQ-NNN]</code> tag. A live builder branch's latest commit also counts.</p>
+    <p>The feature has shipped and works. The extra code that credited untagged commits through merges was deleted on 2026-10-10. Correct crediting now depends on agents following a written commit-tagging rule, and nothing enforces it.</p>
+  </div>
+</section>
+
+<section id="big-picture">
+  <h2>The big picture</h2>
+  <p class="measure">Three inputs feed one matching rule. The matches are merged per request and turned into the card and drawer lines. The dashed box is the part that was removed. <span class="js-only">Click or focus any box to see details and file paths.</span></p>
+  <div class="diagram-wrap">
+    <svg class="diagram" viewBox="0 0 1000 440" role="img" aria-labelledby="dg-title dg-desc">
+      <title id="dg-title">Data flow of the board's activity correlation</title>
+      <desc id="dg-desc">Three inputs on the left: lifecycle stamps from the request file, one windowed git log over HEAD, and the tip dates of builder branches that own their tip. The git log feeds the attribution rule, which credits a commit by a touched request path or a bracketed REQ token. A dashed box, the merge-range expansion, is marked as removed in release 0.305.88. The attribution rule also feeds the request-commits subcommand. Stamps, credited commits and owned tips flow into a per-request union clipped to the work window, which becomes the board payload, which drives the card's last-activity line and the drawer's largest-gap row.</desc>
+      <defs>
+        <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="head" d="M0,0 L10,5 L0,10 z"/></marker>
+        <marker id="arr-dead" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="head-dead" d="M0,0 L10,5 L0,10 z"/></marker>
+      </defs>
+
+      <!-- edges first so boxes sit on top -->
+      <path class="edge" d="M250,65 C290,65 290,100 330,100 L615,100 C640,100 640,140 650,150" marker-end="url(#arr)"/>
+      <path class="edge" d="M250,170 L320,165" marker-end="url(#arr)"/>
+      <path class="edge dead" d="M250,190 L320,282" marker-end="url(#arr-dead)"/>
+      <path class="edge" d="M135,320 L135,410 L620,410 L620,195 L650,195" marker-end="url(#arr)"/>
+      <path class="edge" d="M580,165 L650,165" marker-end="url(#arr)"/>
+      <path class="edge" d="M450,120 L450,82" marker-end="url(#arr)"/>
+      <path class="edge" d="M810,210 L810,246" marker-end="url(#arr)"/>
+      <path class="edge" d="M810,306 L810,336" marker-end="url(#arr)"/>
+
+      <g class="node" data-node="stamps" tabindex="0" role="button" aria-label="Lifecycle stamps: details">
+        <rect x="20" y="30" width="230" height="70" rx="6"/>
+        <text x="34" y="58">Lifecycle stamps</text>
+        <text class="small" x="34" y="80">REQ frontmatter</text>
+      </g>
+      <g class="node" data-node="gitlog" tabindex="0" role="button" aria-label="Windowed git log: details">
+        <rect x="20" y="135" width="230" height="70" rx="6"/>
+        <text x="34" y="163">One git log over HEAD</text>
+        <text class="small" x="34" y="185">hash · date · subject · paths</text>
+      </g>
+      <g class="node" data-node="tips" tabindex="0" role="button" aria-label="Owned branch tips: details">
+        <rect x="20" y="250" width="230" height="70" rx="6"/>
+        <text x="34" y="278">Owned builder-branch tips</text>
+        <text class="small" x="34" y="300">for-each-ref --no-merged</text>
+      </g>
+
+      <g class="node" data-node="reqcommits" tabindex="0" role="button" aria-label="request-commits subcommand: details">
+        <rect x="320" y="20" width="260" height="62" rx="6"/>
+        <text x="334" y="46">request-commits subcommand</text>
+        <text class="small" x="334" y="68">used by do-work trace</text>
+      </g>
+      <g class="node" data-node="rule" tabindex="0" role="button" aria-label="Attribution rule: details">
+        <rect x="320" y="120" width="260" height="90" rx="6"/>
+        <text x="334" y="148">Attribution rule</text>
+        <text class="small" x="334" y="172">touched REQ path, or</text>
+        <text class="small" x="334" y="192">[REQ-NNN] in subject</text>
+      </g>
+      <g class="node removed" data-node="removed" tabindex="0" role="button" aria-label="Removed merge-range expansion: details">
+        <rect x="320" y="250" width="260" height="80" rx="6"/>
+        <text x="334" y="276">Merge-range expansion</text>
+        <text class="small" x="334" y="298">^1..^2 walk + REQ-646 guard</text>
+        <text class="small" x="334" y="318">REMOVED in 0.305.88</text>
+      </g>
+
+      <g class="node" data-node="union" tabindex="0" role="button" aria-label="Per-request union and work window: details">
+        <rect x="650" y="120" width="320" height="90" rx="6"/>
+        <text x="664" y="148">Per-REQ union, sorted</text>
+        <text class="small" x="664" y="172">clipped to claim → completion</text>
+        <text class="small" x="664" y="192">phase label per event</text>
+      </g>
+      <g class="node" data-node="payload" tabindex="0" role="button" aria-label="Board payload: details">
+        <rect x="650" y="246" width="320" height="60" rx="6"/>
+        <text x="664" y="272">Board payload</text>
+        <text class="small" x="664" y="292">requestActivity map</text>
+      </g>
+      <g class="node" data-node="ui" tabindex="0" role="button" aria-label="Card and drawer: details">
+        <rect x="650" y="336" width="320" height="80" rx="6"/>
+        <text x="664" y="364">Card: last activity · phase</text>
+        <text x="664" y="394">Drawer: Largest gap between events</text>
+      </g>
+    </svg>
+    <div id="node-detail" class="card" aria-live="polite">
+      <h3>Pick a box</h3>
+      <p class="note">Each box in the diagram matches a card in <a href="#components">Components</a>. Selecting one shows a summary and its file path here.</p>
+    </div>
+  </div>
+  <p class="note">The diagram is drawn by hand from the code at <code>HEAD</code> (<code>9fa76500</code>, 2026-10-15). Solid blue outline: current code. Dashed orange outline: deleted code, shown for context.</p>
+</section>
+
+<section id="components">
+  <h2>Components</h2>
+  <p class="measure">Production code lives in <code>skills/do-work-board/tools/queue-kanban/</code>. Paths below are relative to that folder unless they start with <code>skills/</code> or <code>do-work/</code>. Line numbers are at <code>HEAD</code>.</p>
+  <div class="grid">
+    <article class="card" id="c-stamps">
+      <h3>Lifecycle stamps <span class="pill ok">shipped</span></h3>
+      <dl>
+        <dt>Does</dt><dd>Reads the timestamps a request file records as it moves through phases, such as <code>claimed_at</code>, <code>dispatch_at</code> and <code>completed_at</code>.</dd>
+        <dt>In</dt><dd>The request file's <span class="term" tabindex="0" data-tip="The YAML block at the top of a REQ markdown file holding id, status and timestamps.">frontmatter</span>.</dd>
+        <dt>Out</dt><dd>Stamp events, each tagged with the phase it opens.</dd>
+        <dt>Where</dt><dd><code>activity_correlation.go:225-232</code>, via <code>lifecycleTimestampFields</code> in <code>model.go</code>.</dd>
+      </dl>
+    </article>
+    <article class="card" id="c-gitlog">
+      <h3>Windowed git log <span class="pill ok">shipped</span></h3>
+      <dl>
+        <dt>Does</dt><dd>Runs one <code>git log --since=… --format=%H%x00%cI%x00%s --name-only</code> over HEAD. It does not use <code>--all</code> or a pathspec.</dd>
+        <dt>In</dt><dd>Repository history since the window start: 7 days back, or the oldest claim among tracked cards if that is older.</dd>
+        <dt>Out</dt><dd>Commits with hash, commit date, subject and touched paths.</dd>
+        <dt>Where</dt><dd>Call at <code>activity_correlation.go:160-161</code>; parser <code>:77-105</code>; window <code>:280-285</code>; 7-day default <code>main.go:105</code>.</dd>
+      </dl>
+    </article>
+    <article class="card" id="c-rule">
+      <h3>Attribution rule <span class="pill ok">shipped</span></h3>
+      <dl>
+        <dt>Does</dt><dd>Credits a commit to a request if the commit touches that request's file or run artifact, or if its subject contains <code>[REQ-NNN]</code>. Nothing else counts.</dd>
+        <dt>In</dt><dd>One parsed commit.</dd>
+        <dt>Out</dt><dd>The set of request ids that commit belongs to.</dd>
+        <dt>Where</dt><dd><code>requestIdsCreditedByCommit</code>, <code>activity_correlation.go:130-141</code>; path pattern <code>:60</code>; tag pattern <code>:64</code>.</dd>
+      </dl>
+    </article>
+    <article class="card" id="c-tips">
+      <h3>Owned builder-branch tips <span class="pill ok">shipped</span></h3>
+      <dl>
+        <dt>Does</dt><dd>Gets the latest commit date of each <code>worktree-agent-REQ-NNN-*</code> branch that the integration branch does not already contain. This shows a builder's work before it is merged.</dd>
+        <dt>In</dt><dd>One <code>git for-each-ref --no-merged=&lt;integration ref&gt;</code>.</dd>
+        <dt>Out</dt><dd><code>ownedTipInstantsById</code>: request id → tip dates.</dd>
+        <dt>Where</dt><dd><code>readWorktreeAgentGitState</code>, <code>verify.go:1478-1503</code>. The verify probes use the same read.</dd>
+      </dl>
+    </article>
+    <article class="card" id="c-union">
+      <h3>Union and work window <span class="pill ok">shipped</span></h3>
+      <dl>
+        <dt>Does</dt><dd>Merges stamps, credited commits and owned tips for one request. It keeps only events inside the work window, sorts them and gives each one a phase.</dd>
+        <dt>In</dt><dd>The three event streams above.</dd>
+        <dt>Out</dt><dd>The newest event, for claimed requests only, and the largest gap between consecutive events.</dd>
+        <dt>Where</dt><dd><code>collectRequestActivity</code> <code>:158-196</code>; <code>requestActivityEvents</code> <code>:203-254</code>.</dd>
+      </dl>
+    </article>
+    <article class="card" id="c-payload">
+      <h3>Payload and callers <span class="pill ok">shipped</span></h3>
+      <dl>
+        <dt>Does</dt><dd>Selects the claimed and recently done cards, runs the collector, and writes <code>requestActivity</code> into the board data.</dd>
+        <dt>In</dt><dd>The board and the shared worktree/branch read.</dd>
+        <dt>Out</dt><dd>JSON fields <code>lastActivityAt</code>, <code>lastActivityKind</code>, <code>lastActivityPhase</code>, <code>largestActivityGap</code>.</dd>
+        <dt>Where</dt><dd><code>attachRequestActivity</code> <code>:275-308</code>; both callers go through <code>attachVerifyFindingsAndRequestActivity</code>, <code>generate.go:682</code>, which is called from <code>generate.go:506</code> (static file) and <code>serve.go:173</code> (live server, every response).</dd>
+      </dl>
+    </article>
+    <article class="card" id="c-ui">
+      <h3>Card and drawer <span class="pill ok">shipped</span></h3>
+      <dl>
+        <dt>Does</dt><dd>Shows a ticking "last activity" line on claimed cards and a "Largest gap between events" row in the detail drawer.</dd>
+        <dt>In</dt><dd>The payload fields above.</dd>
+        <dt>Out</dt><dd>What the reader sees.</dd>
+        <dt>Where</dt><dd><code>web/board-cards.js:395</code>; <code>web/board-detail.js:491</code>.</dd>
+      </dl>
+    </article>
+    <article class="card" id="c-reqcommits">
+      <h3>request-commits subcommand <span class="pill ok">added after the report</span></h3>
+      <dl>
+        <dt>Does</dt><dd>Lists every commit in full history that the board would credit to a named request. The <code>do-work trace</code> action reads it.</dd>
+        <dt>In</dt><dd>One or more <code>REQ-NNN</code> arguments.</dd>
+        <dt>Out</dt><dd>Tab-separated rows, one per request and commit.</dd>
+        <dt>Where</dt><dd><code>request_commits.go</code>; added by REQ-691 (commit <code>e8e4e9c8</code>), which pulled the attribution rule into its own function so both share it.</dd>
+      </dl>
+    </article>
+    <article class="card removed" id="c-removed">
+      <h3>Merge-range expansion <span class="pill gone">deleted 0.305.88</span></h3>
+      <dl>
+        <dt>Did</dt><dd>When a two-parent merge was credited, it also credited every commit between the merge's first and second parent. This rescued builder commits that had no tag.</dd>
+        <dt>Parts</dt><dd>The <code>%P</code> parent-hash field, an in-memory ancestry walk (<code>loggedAncestry</code>), and the REQ-646 snapshot guard.</dd>
+        <dt>Why gone</dt><dd>It credited nothing new in the 7 days measured, and it had already caused one bug (REQ-646). Commit <code>4cc2fb20</code>.</dd>
+        <dt>Was at</dt><dd><code>activity_correlation.go:139-163</code> and <code>:174-190</code> at <code>2eb14357</code>.</dd>
+      </dl>
+    </article>
+  </div>
+</section>
+
+<section id="how">
+  <h2>How it works</h2>
+  <p class="measure">These steps run once for each board page the live server serves, and once for each static generate.</p>
+  <ol class="steps">
+    <li><strong>Read worktrees and branches once.</strong> <code>readWorktreeAgentGitState</code> runs <code>worktree list</code>, <code>branch --list</code>, <code>rev-parse --abbrev-ref HEAD</code> and one <code>for-each-ref --no-merged</code>. The verify probes reuse this result instead of running git again.</li>
+    <li><strong>Pick the cards and the window.</strong> Only claimed and recently done cards are tracked. The log window starts 7 days back, or at the oldest claim among those cards if that is older (<code>activity_correlation.go:276-285</code>).</li>
+    <li><strong>Run one git log.</strong> It returns each commit's hash, date, subject and touched paths. If git fails, the stamps are still used (<code>:157</code> comment, <code>:162-164</code>).</li>
+    <li><strong>Credit each commit.</strong> A commit counts toward a request if it touches that request's file or run artifact, or if its subject has <code>[REQ-NNN]</code>.</li>
+    <li><strong>Add live branch tips.</strong> Each owned builder-branch tip date is added as one more commit event for its request.</li>
+    <li><strong>Merge, clip and sort per request.</strong> Only events between <code>claimed_at</code> and the later of <code>completed_at</code> and <code>release_at</code> count. An open request's window runs to now. When a stamp and a commit share a timestamp, the stamp sorts first.</li>
+    <li><strong>Report.</strong> A claimed card gets its newest event and that event's phase. Any card with at least two events gets the largest gap and the phases on each side of it.</li>
+  </ol>
+  <details>
+    <summary>Worked example: why the old badge was wrong (from UR-135)</summary>
+    <p>In UR-135 (the maintainer's design brief), a consumer-project request, REQ-2248, took 4h 21m from claim to completion. The old badge would label that a pause. Its stamps showed the largest gap between phases was about 67 minutes, and "Nothing was paused" (<code>do-work/archive/UR-135/input.md</code>, the "Evidence from one real REQ" section).</p>
+    <p>Searching only for <code>[REQ-2248]</code> in commit messages showed a false 2h53m gap. During that gap, seven commits with other prefixes touched the request file. That is why touched paths are the main signal and the tag is secondary.</p>
+  </details>
+  <details>
+    <summary>Git commands per refresh: 5, however many branches exist</summary>
+    <p>The original report counted five commands on a canned runner with 0, 1 and 4 branches (<a href="evidence/git-call-count.txt">evidence/git-call-count.txt</a>). A detached repo-root checkout adds one <code>rev-parse HEAD</code>. Three of the five are needed by the verify probes anyway, so the feature itself adds two: the <code>for-each-ref</code> and the <code>git log</code>.</p>
+    <p>That count came from base <code>2eb14357</code>. At <code>HEAD</code> the sequence of calls is unchanged (<code>verify.go:1478-1503</code>, <code>activity_correlation.go:160</code>), and <code>TestServedResponseListsWorktreesAndBranchesOnce</code> (<code>activity_correlation_test.go:287</code>) still pins that the count does not grow. I did not rerun the count.</p>
+  </details>
+</section>
+
+<section id="decisions">
+  <h2>Decisions and trade-offs</h2>
+  <h3>Smaller design choices</h3>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Choice</th><th>Why</th><th>Source</th></tr></thead>
+    <tbody>
+      <tr><td>Read git on every response, not file modification times</td><td>A commit changes <code>.git/</code>, not <code>do-work/</code>, and builder commits land in other worktrees, so file <span class="term" tabindex="0" data-tip="Modification time: the timestamp a filesystem keeps for when a file was last written.">mtime</span> never changes. This is the REQ-284 lesson.</td><td><code>activity_correlation.go:19-22</code></td></tr>
+      <tr><td>No <span class="term" tabindex="0" data-tip="A path filter on git log (e.g. -- do-work/) that limits output to commits touching those paths.">pathspec</span> on the git log</td><td>A pathspec hides merge commits. Since 0.305.88, a hand-back merge's tag is the only way a merge gets credited.</td><td><code>lessons-do-kanban.md:15</code></td></tr>
+      <tr><td>Count only branch tips the branch owns</td><td>A new builder branch points at the commit it was cut from, which is not that request's work (REQ-636, 0.305.71). The 0.305.89 lesson update explains why this still holds: a merged tip is older than the tagged merge that brought it in, so it would add no event.</td><td><code>verify.go:1468-1471</code>, <code>lessons-do-kanban.md:15</code> and <code>:24</code></td></tr>
+      <tr><td>Queue wait before a claim is not idle time</td><td>The window starts at <code>claimed_at</code>.</td><td><code>activity_correlation.go:198-202</code></td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>The decision the original report was written for</h3>
+  <p class="measure">The maintainer's concern was "I don't want to build scaffold around not-deterministic behaviour" (<code>do-work/archive/UR-143/REQ-651-…md</code>, Why). The report offered two options. A third one shipped.</p>
+  <div class="tabs" data-tabs>
+    <div class="tablist" role="tablist" aria-label="Decision options">
+      <button role="tab" id="t-chosen" aria-controls="p-chosen" aria-selected="true">What shipped (option 3)</button>
+      <button role="tab" id="t-opt1" aria-controls="p-opt1" aria-selected="false">Report option 1</button>
+      <button role="tab" id="t-opt2" aria-controls="p-opt2" aria-selected="false">Report option 2</button>
+      <button role="tab" id="t-compare" aria-controls="p-compare" aria-selected="false">Side by side</button>
+    </div>
+    <div class="tabpanel" role="tabpanel" id="p-chosen" aria-labelledby="t-chosen">
+      <p class="no-js-only"><strong>What shipped (option 3)</strong></p>
+      <p><strong>Delete the scaffold and write no stamp code.</strong> The commit message gives the reason: "A stamp cannot be deterministic without owning the commit (a hook in every consumer repo, or a wrapper any agent can bypass), so it would only move the non-determinism down a layer."</p>
+      <p>Instead, the tagging rule was written into the per-request branch contract, covering both builder commits and the hand-back merge (<code>skills/do-work/actions/fan-out-reference.md:39</code>, step 3 at <code>:80</code>). That file says plainly: "The prose rule is the whole mechanism; no hook or wrapper stamps it."</p>
+      <p class="note">Sources: commit <code>4cc2fb20</code> (0.305.88) and commit <code>7676a183</code> (0.305.89); <code>CHANGELOG.md:290-300</code>.</p>
+    </div>
+    <div class="tabpanel" role="tabpanel" id="p-opt1" aria-labelledby="t-opt1" hidden>
+      <p class="no-js-only"><strong>Report option 1</strong></p>
+      <p><strong>Stamp the tag, then delete.</strong> A CLI or commit hook would add <code>[REQ-NNN]</code> to every builder commit, taking the id from the branch name. Then the merge-range code would be deleted. The report estimated 54 production lines and 92 test lines removed, but the size of the stamp code was unknown.</p>
+    </div>
+    <div class="tabpanel" role="tabpanel" id="p-opt2" aria-labelledby="t-opt2" hidden>
+      <p class="no-js-only"><strong>Report option 2</strong></p>
+      <p><strong>Keep the current code.</strong> Untagged builder commits would keep getting credit through the merge that brought them in, in any repository. No new code would be needed.</p>
+    </div>
+    <div class="tabpanel" role="tabpanel" id="p-compare" aria-labelledby="t-compare" hidden>
+      <p class="no-js-only"><strong>Side by side</strong></p>
+      <div class="table-wrap"><table>
+        <thead><tr><th></th><th>Option 1</th><th>Option 2</th><th>Shipped</th></tr></thead>
+        <tbody>
+          <tr><td>Merge-range code</td><td>deleted</td><td>kept</td><td>deleted</td></tr>
+          <tr><td>New stamp hook/CLI</td><td>yes, size unknown</td><td>no</td><td>no</td></tr>
+          <tr><td>Production lines</td><td class="num">303 (estimate)</td><td class="num">357</td><td class="num">299, now 308</td></tr>
+          <tr><td>Test lines</td><td class="num">337 (estimate)</td><td class="num">429</td><td class="num">337</td></tr>
+          <tr><td>Untagged, path-free builder commit</td><td>tag added by stamp</td><td>credited via merge</td><td>visible on live branch tip; dropped after merge</td></tr>
+        </tbody>
+      </table></div>
+    </div>
+  </div>
+
+  <h3>What the shipped choice gives up</h3>
+  <p class="measure">A claimed card loses nothing, because a live builder's work shows up through its owned branch tip. After merge, a builder commit with neither a tag nor a request-file change no longer appears in the finished request's largest-gap line. The lessons file calls this "the honest consequence of the missing prefix" (<code>lessons-do-kanban.md:15</code>).</p>
+
+  <div class="charts" style="margin-top: 16px">
+    <figure class="card" style="margin:0">
+      <figcaption><strong>Size of <code>activity_correlation.go</code> in lines</strong></figcaption>
+      <svg class="chart" viewBox="0 0 360 200" role="img" aria-label="Production lines: 357 before the deletion, 299 after release 0.305.88, 308 at HEAD after REQ-691.">
+        <line class="axis" x1="40" y1="160" x2="350" y2="160"/>
+        <g><title>Before deletion (2eb14357): 357 lines</title><rect class="bar gone" x="60" y="17" width="64" height="143" rx="4"/></g>
+        <g><title>After 0.305.88 (4cc2fb20): 299 lines</title><rect class="bar" x="160" y="40" width="64" height="120" rx="4"/></g>
+        <g><title>HEAD after REQ-691: 308 lines</title><rect class="bar" x="260" y="37" width="64" height="123" rx="4"/></g>
+        <text x="92" y="12" text-anchor="middle">357</text>
+        <text x="192" y="34" text-anchor="middle">299</text>
+        <text x="292" y="31" text-anchor="middle">308</text>
+        <text class="muted" x="92" y="178" text-anchor="middle">before</text>
+        <text class="muted" x="192" y="178" text-anchor="middle">0.305.88</text>
+        <text class="muted" x="292" y="178" text-anchor="middle">today</text>
+        <text class="muted" x="92" y="194" text-anchor="middle">2eb14357</text>
+        <text class="muted" x="192" y="194" text-anchor="middle">4cc2fb20</text>
+        <text class="muted" x="292" y="194" text-anchor="middle">HEAD</text>
+      </svg>
+      <p class="note">The rise from 299 to 308 is REQ-691 moving the rule into <code>requestIdsCreditedByCommit</code> and adding its doc comment. The test file went 429 → 337 and is still 337. Counted with <code>git show &lt;rev&gt;:… | wc -l</code>.</p>
+    </figure>
+    <figure class="card" style="margin:0">
+      <figcaption><strong>Builder commits behind tagged merges, by whether they credit themselves</strong></figcaption>
+      <svg class="chart" viewBox="0 0 360 170" role="img" aria-label="Last 7 days: 44 commits, all 44 carried their own tag. Last 60 days: 250 commits, 216 credited themselves, 34 had neither a tag nor a request path.">
+        <text x="0" y="40">7 days</text>
+        <g><title>7 days: 44 of 44 credit themselves</title><rect class="bar" x="70" y="24" width="280" height="24" rx="4"/></g>
+        <text class="muted" x="70" y="66">44 of 44 credit themselves</text>
+        <text x="0" y="110">60 days</text>
+        <g><title>60 days: 216 of 250 credit themselves</title><rect class="bar" x="70" y="94" width="240" height="24" rx="4"/></g>
+        <g><title>60 days: 34 of 250 only the range walk credited</title><rect class="bar gone" x="312" y="94" width="38" height="24" rx="4"/></g>
+        <text class="muted" x="70" y="136">216 credit themselves · 34 only via range</text>
+        <text class="muted" x="70" y="156">newest of the 34: 2026-09-06</text>
+      </svg>
+      <div class="legend" aria-hidden="true"><span><span class="swatch" style="background:var(--keep)"></span>has own tag or request path</span><span><span class="swatch" style="background:var(--gone)"></span>only the deleted range walk credited it</span></div>
+      <p class="note">Each bar is 100% of its window. From <a href="evidence/prefix-coverage.txt">evidence/prefix-coverage.txt</a> (measured 2026-10-09). 13 of the 34 look like <code>[work run] REQ-594 step N</code>: the id is there but not in brackets, so the rule ignores it.</p>
+    </figure>
+  </div>
+</section>
+
+<section id="timeline">
+  <h2>Timeline</h2>
+  <ol class="timeline">
+    <li><time>2026-10-05 · 0.305.67</time><strong>REQ-632 ships.</strong> Cards show last activity; the "assumed pause" badge is removed. Recorded commit <code>47c2620e</code>.</li>
+    <li><time>2026-10-07 · 0.305.71</time><strong>REQ-636:</strong> only branch-owned tips count, and one shared git read serves both activity and verify.</li>
+    <li><time>2026-10-08 · 0.305.80</time><strong>REQ-646:</strong> fixes a bug where a builder's merge of main credited main's commits to its request.</li>
+    <li><time>2026-10-09</time><strong>REQ-651 writes the original report</strong> at base <code>2eb14357</code>, laying out the keep-or-delete decision.</li>
+    <li class="gone"><time>2026-10-10 · 0.305.88</time><strong>Merge-range code deleted</strong> without stamp code (<code>4cc2fb20</code>).</li>
+    <li><time>2026-10-10 · 0.305.89</time><strong>Tagging rule moved</strong> to the branch contract and extended to the hand-back merge (<code>7676a183</code>).</li>
+    <li><time>2026-10-10</time><strong>REQ-691</strong> extracts the rule into <code>requestIdsCreditedByCommit</code> and adds <code>request-commits</code> (<code>e8e4e9c8</code>).</li>
+  </ol>
+  <p class="note">Dates and versions come from <code>CHANGELOG.md</code> headings (lines 290, 298, 363, 443, 475), the REQ frontmatter, and commit dates.</p>
+</section>
+
+<section id="status">
+  <h2>Status, risks and open questions</h2>
+  <div class="grid">
+    <div class="card"><h3>Feature <span class="pill ok">shipped</span></h3><p>Live since 0.305.67. Repository version today: 0.305.119 (<code>VERSION</code>).</p></div>
+    <div class="card"><h3>Scaffold <span class="pill gone">deleted</span></h3><p>The decision is closed. Commits are credited only by touched path, <code>[REQ-NNN]</code> tag, or owned branch tip.</p></div>
+    <div class="card"><h3>Tagging rule <span class="pill warn">prose only</span></h3><p>Written in <code>fan-out-reference.md:39</code>. No hook or wrapper enforces it.</p></div>
+  </div>
+
+  <h3>Risks</h3>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Risk</th><th>Evidence</th></tr></thead>
+    <tbody>
+      <tr><td>Agents skip the tag, so finished requests show gaps that are too large.</td><td>Over 60 days, 34 of 250 builder commits had no bracketed tag and no request path. The newest was 2026-09-06, before the rule was formalized (<a href="evidence/prefix-coverage.txt">prefix-coverage.txt</a>).</td></tr>
+      <tr><td>Consumer repositories use other merge styles.</td><td>UR-135's consumer repo merged builders as untagged <code>Integrate …</code> commits (<code>input.md</code>, Evidence section).</td></tr>
+      <tr><td>Another tool's branch names are not read.</td><td>UR-135 names a second branch shape, <code>req-nnnn-*</code>. The tip read only matches <code>refs/heads/worktree-agent-*</code> (<code>verify.go:1486-1487</code>).</td></tr>
+      <tr><td>One abandoned claim widens every log read.</td><td>The window reaches back to the oldest tracked claim (<code>activity_correlation.go:281-285</code>). The original report carried this over from the REQ-632 review.</td></tr>
+      <tr><td>A finished request with no <code>completed_at</code> gets a window that runs to now.</td><td><code>activity_correlation.go:210-219</code>: the window end changes only when <code>completed_at</code> parses.</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>Cost</h3>
+  <div class="charts">
+    <figure class="card" style="margin:0">
+      <figcaption><strong>Windowed <code>git log</code> time on this repo, ms (2026-10-09)</strong></figcaption>
+      <svg class="chart" viewBox="0 0 360 230" role="img" aria-label="7-day window, 212 commits: runs of 166, 47, 44, 45 milliseconds. 60-day window, 2931 commits: runs of 253, 158, 161, 152 milliseconds. The first run of each is cold.">
+        <text x="0" y="16">7 days · 212 commits</text>
+        <g><title>run 1 (cold): 166 ms</title><rect class="bar gone" x="70" y="24" width="133" height="14" rx="3"/></g><text class="muted" x="0" y="35">cold</text><text x="208" y="35">166</text>
+        <g><title>run 2: 47 ms</title><rect class="bar" x="70" y="42" width="38" height="14" rx="3"/></g><text x="113" y="53">47</text>
+        <g><title>run 3: 44 ms</title><rect class="bar" x="70" y="60" width="35" height="14" rx="3"/></g><text x="110" y="71">44</text>
+        <g><title>run 4: 45 ms</title><rect class="bar" x="70" y="78" width="36" height="14" rx="3"/></g><text x="111" y="89">45</text>
+        <text x="0" y="122">60 days · 2,931 commits</text>
+        <g><title>run 1 (cold): 253 ms</title><rect class="bar gone" x="70" y="130" width="202" height="14" rx="3"/></g><text class="muted" x="0" y="141">cold</text><text x="277" y="141">253</text>
+        <g><title>run 2: 158 ms</title><rect class="bar" x="70" y="148" width="126" height="14" rx="3"/></g><text x="201" y="159">158</text>
+        <g><title>run 3: 161 ms</title><rect class="bar" x="70" y="166" width="129" height="14" rx="3"/></g><text x="204" y="177">161</text>
+        <g><title>run 4: 152 ms</title><rect class="bar" x="70" y="184" width="122" height="14" rx="3"/></g><text x="197" y="195">152</text>
+        <line class="axis" x1="70" y1="20" x2="70" y2="202"/>
+        <text class="muted" x="70" y="222">bar length ∝ ms · machine load ≈ 10</text>
+      </svg>
+      <p class="note">From <a href="evidence/git-log-timing.txt">evidence/git-log-timing.txt</a>. The timed format still had <code>%P</code>; the current one drops it. I did not rerun this, so the numbers are an upper-end reading from a busy machine.</p>
+    </figure>
+    <details style="margin:0">
+      <summary>Earlier measurements recorded during REQ-632</summary>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Where recorded</th><th>Window</th><th>Result</th></tr></thead>
+        <tbody>
+          <tr><td>REQ-632 Builder Guidance</td><td>7 days, 72 commits</td><td class="num">50–90 ms</td></tr>
+          <tr><td>REQ-632 exploration</td><td>7 days, 74 commits, 8 merges</td><td class="num">≈30 ms warm</td></tr>
+          <tr><td>REQ-632 builder, whole <code>/board-data.js</code></td><td>response time</td><td class="num">105–129 → 148–157 ms</td></tr>
+          <tr><td>REQ-632 review</td><td>60 days, 2,901 commits</td><td class="num">≈0.2 s git + 39 ms Go</td></tr>
+        </tbody>
+      </table></div>
+      <p class="note">Carried over from the original report's cost table. I did not re-read each cited line.</p>
+    </details>
+  </div>
+
+  <h3>Open questions</h3>
+  <ul class="measure">
+    <li><strong>Is the tagging rule followed now?</strong> The 34 untagged commits all predate the rule's formal wording in 0.305.88/89. I found no measurement made since then.</li>
+    <li><strong>Do consumer repositories follow it?</strong> UR-135's consumer repository did not at the time. Nothing in this repository shows a later check.</li>
+    <li><strong>Does verify really use only three of the four shared reads?</strong> The original report says so. I did not recheck it.</li>
+  </ul>
+</section>
+
+<section id="corrections">
+  <h2>Corrections to the original report</h2>
+  <p class="measure">Most of the original was accurate at its base <code>2eb14357</code>. I checked its line references for <code>activity_correlation.go</code> against that revision, and they match. The corrections below come from changes made after it was written.</p>
+  <div class="table-wrap"><table>
+    <thead><tr><th>#</th><th>Original said</th><th>Actually true now</th><th>Proof</th></tr></thead>
+    <tbody>
+      <tr><td>1</td><td>The keep-or-delete decision is open; "this report does not recommend either option."</td><td>Decided on 2026-10-10: the scaffold was deleted <em>without</em> stamp code. Neither listed option was chosen.</td><td>Commit <code>4cc2fb20</code>; <code>CHANGELOG.md:298</code>; <code>activity_correlation.go:107-115</code></td></tr>
+      <tr><td>2</td><td>"If a two-parent merge is credited, every commit between its first and second parent is credited too."</td><td>No longer true. A commit is credited only by touched path or <code>[REQ-NNN]</code> tag. Live owned branch tips are added separately.</td><td><code>activity_correlation.go:126-141</code></td></tr>
+      <tr><td>3</td><td>The git log format is <code>%H%x00%cI%x00%P%x00%s</code>.</td><td>It is <code>%H%x00%cI%x00%s</code>, with no parent hashes.</td><td><code>activity_correlation.go:160-161</code></td></tr>
+      <tr><td>4</td><td>Option 1 deletes 54 production lines and keeps 303.</td><td>The deletion removed 58 net lines (357 → 299). The commit history notes the extra 4 were the attribution loop the ranges left behind. The file is 308 lines today. The test estimate (keep 337) matched.</td><td>Commit <code>7676a183</code> message; <code>lessons-do-kanban.md:15</code>; line counts via <code>git show</code></td></tr>
+      <tr><td>5</td><td>The prefix format lives in <code>skills/do-work/actions/commit.md:126</code>.</td><td>That template line still exists. The binding rule now lives in the branch contract, covers the hand-back merge too, and states that no hook enforces it.</td><td><code>skills/do-work/actions/fan-out-reference.md:39</code>, <code>:80</code></td></tr>
+      <tr><td>6</td><td>"The 11 activity tests pass."</td><td>The same <code>-run</code> pattern now selects 9 test functions, because the two range-expansion tests were deleted. I counted these from source and did not run them.</td><td><code>activity_correlation_test.go</code> at <code>HEAD</code> vs <code>2eb14357</code>; commit <code>4cc2fb20</code></td></tr>
+      <tr><td>7</td><td>Shared read at <code>verify.go:1397-1442</code> / <code>:1425-1439</code>; callers at <code>serve.go:160-174</code>, <code>generate.go:679-686</code>.</td><td>The code has moved. <code>readWorktreeAgentGitState</code> is at <code>verify.go:1478-1503</code>. <code>attachVerifyFindingsAndRequestActivity</code> is at <code>generate.go:682</code>, called from <code>serve.go:173</code> and <code>generate.go:506</code>.</td><td><code>git grep</code> at <code>HEAD</code></td></tr>
+      <tr><td>8</td><td>Drawer shows "the largest idle gap".</td><td>This paraphrase is fine. The row's actual label is "Largest gap between events".</td><td><code>web/board-detail.js:491</code></td></tr>
+    </tbody>
+  </table></div>
+  <details>
+    <summary>Claims I could not verify</summary>
+    <ul>
+      <li>The timing numbers and the five-call count were taken on 2026-10-09 and not rerun. Their evidence files are in this folder.</li>
+      <li>"Verify consumes only three" of the shared reads.</li>
+      <li>The footer's claim that the original was rendered in Playwright at three sizes.</li>
+      <li>The REQ-632 line citations in the cost table (lines 71, 116, 224, 256 of the archived REQ).</li>
+    </ul>
+  </details>
+</section>
+
+<section id="glossary">
+  <h2>Glossary</h2>
+  <div class="table-wrap"><table>
+    <tbody>
+      <tr><td><strong>REQ / UR</strong></td><td>A request (one unit of queued work, file <code>REQ-NNN-*.md</code>) and a user request (the original ask that one or more REQs come from, folder <code>UR-NNN/</code>).</td></tr>
+      <tr><td><strong>Claimed</strong></td><td>A request an agent has picked up and is working on now. Only claimed cards show "last activity".</td></tr>
+      <tr><td><strong>Lifecycle stamp</strong></td><td>A timestamp in a request's frontmatter recording when it entered a phase, such as <code>claimed_at</code> or <code>review_at</code>. Stamps are only ever added, never edited.</td></tr>
+      <tr><td><strong>Builder</strong></td><td>A sub-agent that implements one request on its own git branch and worktree.</td></tr>
+      <tr><td><strong>Worktree</strong></td><td>A second working folder attached to the same git repository, so a builder can work without touching the main checkout.</td></tr>
+      <tr><td><strong>Hand-back merge</strong></td><td>The merge commit that brings a builder's branch into the integration branch. Its subject should be <code>[REQ-NNN] merge builder branch …</code>.</td></tr>
+      <tr><td><strong>Integration branch / ref</strong></td><td>The branch builders merge into, which is the repo-root checkout's branch (usually <code>main</code>).</td></tr>
+      <tr><td><strong>Owned tip</strong></td><td>A builder branch's newest commit, but only if the integration branch does not already contain it.</td></tr>
+      <tr><td><strong><code>^1..^2</code> range</strong></td><td>For a merge commit: the commits reachable from its second parent but not its first. In other words, what the merge brought in.</td></tr>
+      <tr><td><strong>Scaffold</strong></td><td>The maintainer's word for code that exists only to cope with agents not doing something reliably.</td></tr>
+      <tr><td><strong>Deterministic</strong></td><td>Fully fixed by recorded facts, such as git history and frontmatter, rather than by how an agent happened to write a message.</td></tr>
+      <tr><td><strong>Verify probes</strong></td><td>The board's checks for leftover worktrees and branches. They share the git read with this feature.</td></tr>
+      <tr><td><strong>mtime, pathspec</strong></td><td>File modification time; a path filter on a git command. Hover the underlined terms above for short versions.</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section id="sources">
+  <h2>Source map</h2>
+  <h3>Original report sections</h3>
+  <ul>
+    <li><a href="index.html#verdict">Verdict</a> → <a href="#tldr">TL;DR</a>, <a href="#corrections">Corrections 1</a></li>
+    <li><a href="index.html#shipped">What shipped / Problem and change</a> → <a href="#components">Components</a>, <a href="#how">How it works</a></li>
+    <li><a href="index.html#how">How it works</a> → <a href="#big-picture">Big picture</a>, <a href="#how">How it works</a></li>
+    <li><a href="index.html#value">Value delivered</a> → <a href="#tldr">TL;DR</a></li>
+    <li><a href="index.html#evidence">Evidence</a> (two-part table, call count, cost) → <a href="#components">Components</a>, <a href="#status">Status</a></li>
+    <li><a href="index.html#files">Key files and commits</a> → <a href="#timeline">Timeline</a>, <a href="#corrections">Corrections 7</a></li>
+    <li><a href="index.html#lessons">Lessons and open questions</a> → <a href="#status">Risks</a></li>
+    <li><a href="index.html#decision">The decision</a> → <a href="#decisions">Decisions</a></li>
+    <li>Evidence files: <a href="evidence/git-call-count.txt">git-call-count.txt</a>, <a href="evidence/git-log-timing.txt">git-log-timing.txt</a>, <a href="evidence/prefix-coverage.txt">prefix-coverage.txt</a></li>
+  </ul>
+  <h3>Repository files and commits</h3>
+  <p class="note">No portable link is available: this review did not check whether the remote is reachable, and the cited commits may not be pushed. Paths are relative to the repository root.</p>
+  <ul>
+    <li><code>skills/do-work-board/tools/queue-kanban/activity_correlation.go</code> (at <code>HEAD</code> and <code>2eb14357</code>)</li>
+    <li><code>skills/do-work-board/tools/queue-kanban/activity_correlation_test.go</code></li>
+    <li><code>skills/do-work-board/tools/queue-kanban/verify.go</code> (<code>readWorktreeAgentGitState</code>)</li>
+    <li><code>skills/do-work-board/tools/queue-kanban/generate.go</code>, <code>serve.go</code>, <code>main.go</code></li>
+    <li><code>skills/do-work-board/tools/queue-kanban/request_commits.go</code></li>
+    <li><code>skills/do-work-board/tools/queue-kanban/web/board-cards.js</code>, <code>web/board-detail.js</code></li>
+    <li><code>skills/do-work-board/tools/queue-kanban/lessons-do-kanban.md</code> (lines 15, 24)</li>
+    <li><code>skills/do-work/actions/fan-out-reference.md</code> (lines 39, 80); <code>skills/do-work/actions/commit.md</code> (line 126)</li>
+    <li><code>do-work/archive/UR-135/input.md</code>; <code>do-work/archive/UR-135/REQ-632-board-cards-last-correlated-activity.md</code></li>
+    <li><code>do-work/archive/UR-143/REQ-651-ai-report-on-board-activity-correlation-determinism.md</code></li>
+    <li><code>CHANGELOG.md</code> (lines 290–300, 363, 443, 475); <code>VERSION</code></li>
+    <li>Commits: <code>47c2620e</code> (REQ-632), <code>2eb14357</code> (report base), <code>4cc2fb20</code> (0.305.88), <code>7676a183</code> (0.305.89), <code>e8e4e9c8</code> (REQ-691)</li>
+  </ul>
+</section>
+
+<footer>
+  AI-drafted second opinion by Claude Opus 5.5, 2026-10-15. Every claim traces to the original report, its evidence files, or the repository at <code>HEAD</code> <code>9fa76500</code>. Nothing was run except read-only git queries.
+</footer>
+</main>
+</div>
+
+<script>
+(function () {
+  document.body.classList.remove("no-js");
+  document.body.classList.add("js");
+
+  // Diagram: click/focus a box to show its summary.
+  var details = {
+    stamps: ["Lifecycle stamps", "Phase timestamps from the request's frontmatter (claimed_at, dispatch_at, completed_at …). Each opens a phase label.", "activity_correlation.go:225-232 · model.go lifecycleTimestampFields", "c-stamps"],
+    gitlog: ["One git log over HEAD", "git log --since=<window> --format=%H%x00%cI%x00%s --name-only. No --all, no pathspec. Window: 7 days or the oldest tracked claim.", "activity_correlation.go:160-161, parser :77-105", "c-gitlog"],
+    tips: ["Owned builder-branch tips", "Tip dates of worktree-agent-* branches not already in the integration branch, from one for-each-ref --no-merged. Shared with the verify probes.", "verify.go:1478-1503", "c-tips"],
+    rule: ["Attribution rule", "A commit belongs to a REQ if it touches that REQ's file or run artifact, or its subject has [REQ-NNN]. Nothing else.", "activity_correlation.go:130-141 (requestIdsCreditedByCommit)", "c-rule"],
+    reqcommits: ["request-commits", "Read-only subcommand listing every commit the board credits to a REQ; the do-work trace action reads it. Reuses the attribution rule.", "request_commits.go (REQ-691, e8e4e9c8)", "c-reqcommits"],
+    removed: ["Merge-range expansion (removed)", "Used to credit every commit inside a credited merge's ^1..^2 range, plus an ancestry walk and the REQ-646 guard. Deleted in 0.305.88.", "was activity_correlation.go:139-163, :174-190 at 2eb14357 · commit 4cc2fb20", "c-removed"],
+    union: ["Per-REQ union", "Stamps + credited commits + owned tips, clipped to claimed_at … completed_at/release_at (or now), sorted, phase-labelled.", "activity_correlation.go:158-254", "c-union"],
+    payload: ["Board payload", "requestActivity map with lastActivityAt/Kind/Phase and largestActivityGap, for claimed and recently done cards.", "activity_correlation.go:275-308 · generate.go:682 · serve.go:173", "c-payload"],
+    ui: ["Card and drawer", "Claimed cards show a ticking 'last activity · phase' line; the drawer shows 'Largest gap between events'.", "web/board-cards.js:395 · web/board-detail.js:491", "c-ui"]
+  };
+  var panel = document.getElementById("node-detail");
+  function show(node) {
+    var key = node.getAttribute("data-node"), d = details[key];
+    if (!d) return;
+    document.querySelectorAll(".diagram .node.selected").forEach(function (n) { n.classList.remove("selected"); });
+    node.classList.add("selected");
+    panel.innerHTML = "";
+    var h = document.createElement("h3"); h.textContent = d[0];
+    var p = document.createElement("p"); p.textContent = d[1];
+    var c = document.createElement("p"); var code = document.createElement("code"); code.textContent = d[2]; c.appendChild(code);
+    var a = document.createElement("a"); a.href = "#" + d[3]; a.textContent = "Open the component card →";
+    panel.append(h, p, c, a);
+  }
+  document.querySelectorAll(".diagram .node").forEach(function (node) {
+    node.addEventListener("click", function () { show(node); });
+    node.addEventListener("focus", function () { show(node); });
+    node.addEventListener("keydown", function (e) { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); show(node); } });
+  });
+
+  // Tabs.
+  document.querySelectorAll("[data-tabs]").forEach(function (box) {
+    var tabs = Array.prototype.slice.call(box.querySelectorAll('[role="tab"]'));
+    function select(tab) {
+      tabs.forEach(function (t) {
+        var on = t === tab;
+        t.setAttribute("aria-selected", on ? "true" : "false");
+        t.tabIndex = on ? 0 : -1;
+        document.getElementById(t.getAttribute("aria-controls")).hidden = !on;
+      });
+    }
+    tabs.forEach(function (t, i) {
+      t.addEventListener("click", function () { select(t); });
+      t.addEventListener("keydown", function (e) {
+        var next = e.key === "ArrowRight" ? tabs[(i + 1) % tabs.length] : e.key === "ArrowLeft" ? tabs[(i - 1 + tabs.length) % tabs.length] : null;
+        if (next) { select(next); next.focus(); }
+      });
+    });
+    select(tabs[0]);
+  });
+
+  // Highlight the current section in the sticky table of contents.
+  var links = {};
+  document.querySelectorAll("nav.toc a").forEach(function (a) { links[a.getAttribute("href").slice(1)] = a; });
+  if ("IntersectionObserver" in window) {
+    var observer = new IntersectionObserver(function (entries) {
+      entries.forEach(function (entry) {
+        if (entry.isIntersecting && links[entry.target.id]) {
+          Object.keys(links).forEach(function (k) { links[k].classList.remove("active"); });
+          links[entry.target.id].classList.add("active");
+        }
+      });
+    }, { rootMargin: "-20% 0px -70% 0px" });
+    document.querySelectorAll("main section[id]").forEach(function (s) { observer.observe(s); });
+  }
+})();
+</script>
+</body>
+</html>
