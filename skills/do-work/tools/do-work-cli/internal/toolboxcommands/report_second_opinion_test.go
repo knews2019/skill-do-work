@@ -361,7 +361,7 @@ func TestSecondOpinionCapturedRunnerCancellation(t *testing.T) {
 	t.Cleanup(func() { reportImageGracePeriod = oldGrace })
 	done := make(chan secondOpinionCaptured, 1)
 	go func() {
-		done <- secondOpinionCapture(ctx, directory, "/bin/sh", "-c", "printf ready > ready; trap '' TERM; /bin/sleep 30 & wait")
+		done <- secondOpinionCapture(ctx, directory, "/bin/sh", "-c", "trap '' TERM; (printf ready > ready; /bin/sleep 0.3; printf late > cancel-late; /bin/sleep 30) & wait")
 	}()
 	deadline := time.Now().Add(2 * time.Second)
 	for {
@@ -382,6 +382,15 @@ func TestSecondOpinionCapturedRunnerCancellation(t *testing.T) {
 		}
 	case <-time.After(3 * time.Second):
 		t.Fatal("capture cancellation did not reap process group")
+	}
+	// Killing a waited-for sleep can resume its parent's next statement during
+	// teardown. The boundary is no further writes after capture returns.
+	before, beforeErr := os.ReadFile(filepath.Join(directory, "cancel-late"))
+	t.Logf("at capture return: data=%q error=%v", before, beforeErr)
+	time.Sleep(650 * time.Millisecond)
+	after, afterErr := os.ReadFile(filepath.Join(directory, "cancel-late"))
+	if string(before) != string(after) || os.IsNotExist(beforeErr) != os.IsNotExist(afterErr) {
+		t.Fatal("cancelled descendant wrote after capture returned")
 	}
 }
 
@@ -440,6 +449,43 @@ func TestSecondOpinionBacklinkAllowsSemanticAttributeAndInlineVariants(t *testin
 	} {
 		if err := secondOpinionBacklink([]byte(`<html><body>` + markup + `</body></html>`)); err == nil {
 			t.Errorf("accepted invalid opening %s", markup)
+		}
+	}
+}
+
+func TestSecondOpinionCaptureDrainsExitedLeaderChildren(t *testing.T) {
+	oldGrace := reportImageGracePeriod
+	reportImageGracePeriod = 20 * time.Millisecond
+	t.Cleanup(func() { reportImageGracePeriod = oldGrace })
+	for _, redirect := range []string{` >/dev/null 2>&1`, ``} {
+		t.Run(redirect, func(t *testing.T) {
+			directory := t.TempDir()
+			ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+			defer cancel()
+			started := time.Now()
+			captured := secondOpinionCapture(ctx, directory, "/bin/sh", "-c", `(/bin/sleep 0.3; printf late > late-write; /bin/sleep 0.6)`+redirect+` &`)
+			if captured.err != nil {
+				t.Fatalf("capture: %v", captured.err)
+			}
+			if elapsed := time.Since(started); elapsed > 600*time.Millisecond {
+				t.Errorf("inherited pipes delayed capture: %v", elapsed)
+			}
+			time.Sleep(650 * time.Millisecond)
+			if _, err := os.Stat(filepath.Join(directory, "late-write")); err == nil {
+				t.Fatal("capture returned while a descendant could still write")
+			}
+		})
+	}
+}
+
+func TestSecondOpinionCapturePreservesBackendStatusAndChannels(t *testing.T) {
+	for _, status := range []string{"0", "7"} {
+		captured := secondOpinionCapture(context.Background(), t.TempDir(), "/bin/sh", "-c", `printf '%s' "$1"; printf warning >&2; if read value; then exit 99; fi; if (printf forged >&3) 2>/dev/null; then exit 98; fi; exit "$2"`, "backend", `literal $() ' argument`, status)
+		if captured.stdout != `literal $() ' argument` || captured.stderr != "warning" {
+			t.Fatalf("capture=%+v", captured)
+		}
+		if status == "0" && captured.err != nil || status == "7" && (captured.err == nil || !strings.Contains(captured.err.Error(), "7")) {
+			t.Fatalf("status=%s capture=%+v", status, captured)
 		}
 	}
 }

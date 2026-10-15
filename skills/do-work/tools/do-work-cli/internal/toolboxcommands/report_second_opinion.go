@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"html"
+	"io"
 	"io/fs"
 	"os"
 	"os/exec"
@@ -561,36 +562,94 @@ func (buffer *secondOpinionBuffer) Write(data []byte) (int, error) {
 	_, _ = buffer.Buffer.Write(data)
 	return length, nil
 }
+
+// The supervisor owns the isolated group until cleanup, even if the backend
+// exits before its children. Reaping the backend as the group leader would lose
+// Getpgid ownership proof (ESRCH does not mean the descendants have stopped).
+// Keep arguments positional; neither prompts nor executable paths are shell code.
+const secondOpinionSupervisor = `"$@" </dev/null 3>&- &
+backend_pid=$!
+wait "$backend_pid"
+backend_status=$?
+printf '%s\n' "$backend_status" >&3
+exec 3>&-
+IFS= read -r release
+exit "$backend_status"
+`
+
 func secondOpinionCapture(ctx context.Context, directory, executable string, args ...string) secondOpinionCaptured {
 	bounded, cancel := context.WithTimeout(ctx, 16*time.Minute)
 	defer cancel()
-	command := exec.Command(executable, args...)
-	command.Dir = directory
-	var stdout, stderr secondOpinionBuffer
-	command.Stdout = &stdout
-	command.Stderr = &stderr
 	if err := bounded.Err(); err != nil {
 		return secondOpinionCaptured{err: err}
 	}
+	command := exec.Command("/bin/sh", append([]string{"-c", secondOpinionSupervisor, "second-opinion-supervisor", executable}, args...)...)
+	command.Dir = directory
 	if err := configureOwnedProcess(command); err != nil {
 		return secondOpinionCaptured{err: err}
 	}
+	statusRead, statusWrite, err := os.Pipe()
+	if err != nil {
+		return secondOpinionCaptured{err: err}
+	}
+	defer statusRead.Close()
+	defer statusWrite.Close()
+	holdRead, holdWrite, err := os.Pipe()
+	if err != nil {
+		return secondOpinionCaptured{err: err}
+	}
+	defer holdRead.Close()
+	defer holdWrite.Close()
+	// Only the supervisor sees these channels. The backend gets closed stdin
+	// and closes fd 3 before exec, so its output cannot forge completion status.
+	command.Stdin = holdRead
+	command.ExtraFiles = []*os.File{statusWrite}
+	var stdout, stderr secondOpinionBuffer
+	command.Stdout = &stdout
+	command.Stderr = &stderr
 	if err := command.Start(); err != nil {
 		return secondOpinionCaptured{err: err}
 	}
+	_ = statusWrite.Close()
+	_ = holdRead.Close()
 	done := make(chan error, 1)
-	go func() { done <- command.Wait() }()
-	var err error
+	go func() {
+		data, readErr := io.ReadAll(io.LimitReader(statusRead, 32))
+		if readErr != nil {
+			done <- fmt.Errorf("backend completion channel: %w", readErr)
+			return
+		}
+		text := string(data)
+		status, parseErr := strconv.Atoi(strings.TrimSuffix(text, "\n"))
+		if parseErr != nil || status < 0 || status > 255 || text != strconv.Itoa(status)+"\n" {
+			done <- errors.New("invalid backend completion status")
+			return
+		}
+		if status != 0 {
+			done <- fmt.Errorf("exit status %d", status)
+			return
+		}
+		done <- nil
+	}()
 	select {
 	case err = <-done:
-		// A successful leader can leave tool children behind. Drain that owned group too.
-		if cleanupErr := ownedprocess.TerminateGroup(command.Process.Pid, reportImageGracePeriod); cleanupErr != nil && !errors.Is(cleanupErr, os.ErrProcessDone) && err == nil {
-			err = cleanupErr
-		}
 	case <-bounded.Done():
-		_ = ownedprocess.TerminateGroup(command.Process.Pid, reportImageGracePeriod)
-		<-done
 		err = bounded.Err()
+	}
+	// Do not Wait before this proof-bound cleanup: the supervisor must retain
+	// its PID/group identity while descendants are terminated bottom-up.
+	cleanupErr := ownedprocess.TerminateGroup(command.Process.Pid, reportImageGracePeriod)
+	_ = statusRead.Close()
+	_ = holdWrite.Close()
+	waitErr := command.Wait()
+	if cleanupErr != nil && !errors.Is(cleanupErr, os.ErrProcessDone) {
+		err = errors.Join(err, cleanupErr)
+	}
+	// The supervisor is intentionally signalled; its exit status is not the
+	// backend's. Still retain a pipe-copy or other non-exit Wait failure.
+	var exitErr *exec.ExitError
+	if waitErr != nil && !errors.As(waitErr, &exitErr) {
+		err = errors.Join(err, waitErr)
 	}
 	if stdout.truncated || stderr.truncated {
 		err = errors.New("backend output exceeded capture limit")
