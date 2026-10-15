@@ -9,28 +9,30 @@ import (
 )
 
 const (
-	CommandNote             = "do-work-note"
-	CommandArchitecture     = "architecture-report-preflight"
-	CommandAIReportIndex    = "ai-report-index"
-	CommandReportImage      = "generate-report-image"
-	CommandReportImageBatch = "generate-report-image-batch"
-	CommandPortfolio        = "publish-portfolio-summary"
-	CommandLast30Days       = "install-last30days"
-	CommandAuditMetrics     = "audit-metrics"
-	CommandAIReportJudge    = "ai-report-judge"
+	CommandNote                  = "do-work-note"
+	CommandArchitecture          = "architecture-report-preflight"
+	CommandAIReportIndex         = "ai-report-index"
+	CommandReportImage           = "generate-report-image"
+	CommandReportImageBatch      = "generate-report-image-batch"
+	CommandPortfolio             = "publish-portfolio-summary"
+	CommandLast30Days            = "install-last30days"
+	CommandAuditMetrics          = "audit-metrics"
+	CommandAIReportJudge         = "ai-report-judge"
+	CommandAIReportSecondOpinion = "ai-report-second-opinion"
 )
 
 func Handlers() map[string]commandruntime.CommandHandler {
 	return map[string]commandruntime.CommandHandler{
-		CommandNote:             handleNote,
-		CommandArchitecture:     handleArchitecture,
-		CommandAIReportIndex:    handleAIReportIndex,
-		CommandReportImage:      handleReportImage,
-		CommandReportImageBatch: handleReportImageBatch,
-		CommandPortfolio:        handlePortfolio,
-		CommandLast30Days:       handleLast30Days,
-		CommandAuditMetrics:     handleAuditMetrics,
-		CommandAIReportJudge:    handleAIReportJudge,
+		CommandNote:                  handleNote,
+		CommandArchitecture:          handleArchitecture,
+		CommandAIReportIndex:         handleAIReportIndex,
+		CommandReportImage:           handleReportImage,
+		CommandReportImageBatch:      handleReportImageBatch,
+		CommandPortfolio:             handlePortfolio,
+		CommandLast30Days:            handleLast30Days,
+		CommandAuditMetrics:          handleAuditMetrics,
+		CommandAIReportJudge:         handleAIReportJudge,
+		CommandAIReportSecondOpinion: handleAIReportSecondOpinion,
 	}
 }
 

@@ -751,3 +751,28 @@ func TestExactTextAndAuditJSONShareOneResult(t *testing.T) {
 		t.Fatalf("json=%s err=%v", renderedJSON, err)
 	}
 }
+
+func TestSecondOpinionJSONKeepsEveryBackendAndJudgeEvidence(t *testing.T) {
+	text := "codex: ran; gemini: skipped; agy: failed\n"
+	result := CommandResult{Outcome: OutcomeFindings, ExactTextOutput: &text, AIReportSecondOpinion: &AIReportSecondOpinionResult{Bundle: "ai-reports/example", Mode: "batch", Runs: []AIReportSecondOpinionRun{
+		{Backend: "codex", ActualModel: "native", State: "ran", Page: "index-codex-native.html", Reply: "codex-native-reply.md", JudgeVerdict: "pass", BannerState: "inserted"},
+		{Backend: "gemini", State: "skipped", Reason: "not installed"},
+		{Backend: "agy", State: "failed", JudgeVerdict: "error", JudgeFindings: []AIReportSecondOpinionFinding{{Kind: "render-error", Detail: "engine exited"}}, OutsidePaths: []string{"outside.txt"}},
+	}}}
+	encoded, err := RenderResult(result, FormatJSON)
+	var decoded CommandResult
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := json.Unmarshal(encoded, &decoded); err != nil {
+		t.Fatal(err)
+	}
+	runs := decoded.AIReportSecondOpinion.Runs
+	if len(runs) != 3 || runs[0].Page != "index-codex-native.html" || runs[1].Reason != "not installed" || runs[2].JudgeFindings[0].Detail != "engine exited" || runs[2].OutsidePaths[0] != "outside.txt" || runs[0].JudgeFindings == nil || runs[0].OutsidePaths == nil {
+		t.Fatalf("lost typed evidence: %s", encoded)
+	}
+	rendered, err := RenderResult(result, FormatText)
+	if err != nil || string(rendered) != text {
+		t.Fatalf("text=%q err=%v", rendered, err)
+	}
+}

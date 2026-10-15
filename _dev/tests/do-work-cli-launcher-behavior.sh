@@ -48,6 +48,10 @@ if [ "${1:-}" = tool ] && [ "${2:-}" = -C ] && [ "${4:-}" = -n ] && [ "$#" -eq 5
   mkdir -p "$FAKE_GO_CACHE"
   cat > "$FAKE_GO_CACHE/$5" <<'CACHED_TOOL'
 #!/usr/bin/env bash
+if [ "${1:-}" = --fixture-prompt-path ]; then
+  printf '%s\n' "$DO_WORK_AI_REPORT_SECOND_OPINION_PROMPT"
+  exit 0
+fi
 printf 'ran'
 printf ' <%s>' "$@"
 printf '\n'
@@ -237,5 +241,20 @@ if [ "$cwd_output" != 'ran <pwd-probe>' ]; then
   echo "FAIL: launcher altered the tool invocation: $cwd_output" >&2
   exit 1
 fi
+
+
+# The trusted prompt travels with the suite in source and installed topologies,
+# independently of the cached executable and the caller's working directory.
+for topology in source installed; do
+  if [ "$topology" = source ]; then suite_path="$fixture_root/source/skills"; else suite_path="$fixture_root/consumer/.claude/skills"; fi
+  mkdir -p "$suite_path/do-work/tools/do-work-cli" "$suite_path/do-work-toolbox/docs"
+  cp "$source_launcher" "$suite_path/do-work/tools/do-work-cli.sh"
+  printf 'trusted prompt\n' > "$suite_path/do-work-toolbox/docs/ai-report-second-opinion-prompt.md"
+  prompt_path="$(PATH="$fixture_root/fake-bin:$PATH" FAKE_GO_LOG="$fake_log" FAKE_GO_CACHE="$fixture_root/cache" bash "$suite_path/do-work/tools/do-work-cli.sh" --fixture-prompt-path)"
+  if [ "$(cat "$prompt_path")" != 'trusted prompt' ]; then
+    echo "FAIL: $topology launcher did not select its sibling prompt" >&2
+    exit 1
+  fi
+done
 
 echo "do-work-cli launcher behavior tests passed"
