@@ -115,11 +115,11 @@ See `do-work/archive/UR-005/REQ-042-auth-fix.md` for the full REQ — plan, expl
 
 Print a three-block message:
 
-1. **What:** one-line statement of what is being offered ("Promote this REQ's lessons into the knowledge base at `<kb>/raw/inbox/`?").
+1. **What:** name the completed work and explain the optional offer before asking: "I prepared new lessons from completing REQ-NNN: <short title>. Would you like to add them to the knowledge-base inbox at `<kb>/raw/inbox/` for future reference? This offer is about lessons from this work, not an existing KB backlog. Saving or processing them is optional and is not required to use the feature or result." Do not imply the inbox is empty or has a backlog unless separately checked.
 2. **Prepared source document:** a fenced code block containing the assembled Markdown from Step 2.
 3. **Ask:** three options, phrased generically so the harness's ask-user prompt can surface them:
    - **a) Drop now** — write the file to `<kb>/raw/inbox/REQ-NNN-<slug>.md`. The user can run `do-work-knowledge bkb triage` next to sort it into `raw/capture/notes/` and `do-work-knowledge bkb ingest` to compile it into the wiki.
-   - **b) Save for later** — record `kb_status: pending` and move on. Nothing is written to the KB. The user can re-run the handoff later.
+   - **b) Save for later** — keep the lessons in the REQ, record `kb_status: pending` and move on. Nothing is written to the KB or queued for ingestion. The user can re-run the handoff later.
    - **c) Skip** — record `kb_status: declined` (active user refusal, terminal) and do not offer again. `skipped` is reserved for the silent auto-skip path at the top of this file, which never prompts the user.
 
 Use your environment's ask-user prompt. If the harness has no blocking prompt available and the action is running unattended from the work orchestrator, default to (b) `Save for later` — never auto-write to the KB without consent.
@@ -157,7 +157,7 @@ Use `declined` when the user actively refused; use `skipped` when you auto-skipp
 
 Print a one-line confirmation:
 - `Promoted to <kb>/raw/inbox/<filename>. Run \`do-work-knowledge bkb triage\` to sort it, then \`do-work-knowledge bkb ingest\` to compile it into the wiki.` for `promoted`
-- `Handoff pending — run the handoff again later or drop the content manually into <kb>/raw/inbox/.` for `pending`
+- `New lessons remain in the REQ; nothing was added to the KB inbox or ingestion queue. The optional handoff is pending.` for `pending`
 - `Skipped KB handoff.` for `skipped` or `declined`
 
 Then return. The caller (work.md's Lessons-Capture Phase or review-work.md's Self-Validation & Lessons Learned step) resumes its own flow.
@@ -195,6 +195,7 @@ Then return. The caller (work.md's Lessons-Capture Phase or review-work.md's Sel
 
 - [ ] KB location resolved (or `kb_status: pending` set with a pointer to `bkb init`).
 - [ ] Source document assembled with real values in `title`, `what`, `solution_summary`, plus at least one Lessons bullet.
+- [ ] The prompt identifies new lessons from the completed work, distinguishes the offer from an existing KB backlog, and says it is optional for using the feature or result.
 - [ ] User was asked before writing; unattended orchestration defaulted to `pending`.
 - [ ] REQ frontmatter now has `kb_status` set to exactly one of `promoted | pending | declined | skipped`.
 - [ ] If `promoted`, `kb_entry` points to a file that exists under `<kb>/raw/inbox/` (or has already moved to `capture/` or `processed/`).
