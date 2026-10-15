@@ -689,29 +689,29 @@ type RunLocalFile struct {
 
 // AIReportSecondOpinionResult keeps every backend disposition in JSON and text.
 type AIReportSecondOpinionResult struct {
-	Bundle string                     `json:"bundle"`
-	Mode   string                     `json:"mode"`
-	Runs   []AIReportSecondOpinionRun `json:"runs"`
+	BundlePath     string                     `json:"bundle"`
+	InvocationMode string                     `json:"mode"`
+	BackendRuns    []AIReportSecondOpinionRun `json:"runs"`
 }
 type AIReportSecondOpinionRun struct {
-	Backend        string                         `json:"backend"`
+	BackendName    string                         `json:"backend"`
 	RequestedModel string                         `json:"requested_model"`
 	ActualModel    string                         `json:"actual_model"`
-	State          string                         `json:"state"`
-	Page           string                         `json:"page"`
-	Reply          string                         `json:"reply"`
+	RunState       string                         `json:"state"`
+	PagePath       string                         `json:"page"`
+	ReplyPath      string                         `json:"reply"`
 	JudgeVerdict   string                         `json:"judge_verdict"`
 	JudgeFindings  []AIReportSecondOpinionFinding `json:"judge_findings"`
 	BannerState    string                         `json:"banner_state"`
-	Reason         string                         `json:"reason"`
+	FailureReason  string                         `json:"reason"`
 	OutsidePaths   []string                       `json:"outside_paths"`
 }
 type AIReportSecondOpinionFinding struct {
-	Kind     string `json:"kind"`
-	Viewport string `json:"viewport,omitempty"`
-	Scheme   string `json:"scheme,omitempty"`
-	Target   string `json:"target,omitempty"`
-	Detail   string `json:"detail,omitempty"`
+	FindingKind   string `json:"kind"`
+	ViewportName  string `json:"viewport,omitempty"`
+	ColorScheme   string `json:"scheme,omitempty"`
+	TargetPath    string `json:"target,omitempty"`
+	FindingDetail string `json:"detail,omitempty"`
 }
 
 type CommandResult struct {
@@ -902,11 +902,11 @@ func NormalizeResult(result CommandResult) CommandResult {
 		result.Rollback.Errors = []string{}
 	}
 	if result.AIReportSecondOpinion != nil {
-		if result.AIReportSecondOpinion.Runs == nil {
-			result.AIReportSecondOpinion.Runs = []AIReportSecondOpinionRun{}
+		if result.AIReportSecondOpinion.BackendRuns == nil {
+			result.AIReportSecondOpinion.BackendRuns = []AIReportSecondOpinionRun{}
 		}
-		for i := range result.AIReportSecondOpinion.Runs {
-			row := &result.AIReportSecondOpinion.Runs[i]
+		for i := range result.AIReportSecondOpinion.BackendRuns {
+			row := &result.AIReportSecondOpinion.BackendRuns[i]
 			if row.JudgeFindings == nil {
 				row.JudgeFindings = []AIReportSecondOpinionFinding{}
 			}

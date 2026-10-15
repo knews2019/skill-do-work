@@ -204,7 +204,7 @@ func TestSecondOpinionJudgeVerdictsGateOriginal(t *testing.T) {
 			before, _ := os.ReadFile(filepath.Join(bundle, "index.html"))
 			previous := secondOpinionJudge
 			secondOpinionJudge = func(string, []byte) (string, []resultmodel.AIReportSecondOpinionFinding) {
-				return verdict, []resultmodel.AIReportSecondOpinionFinding{{Kind: "test-finding", Detail: "observable evidence"}}
+				return verdict, []resultmodel.AIReportSecondOpinionFinding{{FindingKind: "test-finding", FindingDetail: "observable evidence"}}
 			}
 			t.Cleanup(func() { secondOpinionJudge = previous })
 			result := secondOpinionInvoke(t, repo, "--backend", "codex")
@@ -418,5 +418,28 @@ func TestSecondOpinionFreshGenerationModelMismatchRefusesPublication(t *testing.
 	files, _ := os.ReadDir(bundle)
 	if rows[0]["state"] != "failed" || rows[0]["actual_model"] != "different-model" || len(files) != 1 {
 		t.Fatalf("model switch published: %v files=%v", rows, files)
+	}
+}
+
+func TestSecondOpinionBacklinkAllowsSemanticAttributeAndInlineVariants(t *testing.T) {
+	for _, markup := range []string{
+		`<p>Original report: <a class="original" href="index.html">index.html</a></p>`,
+		`<div><strong>Original report:</strong> <a title="Original" href='index.html'><code>index.html</code></a></div>`,
+		`<p>Original report: <a data-note="href='other.html'" href=index.html>index.html</a></p>`,
+	} {
+		if err := secondOpinionBacklink([]byte(`<html><body>` + markup + `<h1>Report</h1></body></html>`)); err != nil {
+			t.Errorf("valid opening %s: %v", markup, err)
+		}
+	}
+	for _, markup := range []string{
+		`<p>Original report: <a title="href='index.html'" href="other.html">index.html</a></p>`,
+		`<p>Original report: <a href="other.html" href="index.html">index.html</a></p>`,
+		`<h1>Report</h1><p>Original report: <a href="index.html">index.html</a></p>`,
+		`<p>Original report: <a href="index.html">wrong.html</a></p>`,
+		`<p>Original report: <a href="<span>index.html</span>">index.html</a></p>`,
+	} {
+		if err := secondOpinionBacklink([]byte(`<html><body>` + markup + `</body></html>`)); err == nil {
+			t.Errorf("accepted invalid opening %s", markup)
+		}
 	}
 }

@@ -48,13 +48,13 @@ func handleAIReportSecondOpinion(execution commandruntime.ExecutionContext, args
 	}
 	ctx, stop, signalStatus := mutationSignalContext()
 	defer stop()
-	payload := &resultmodel.AIReportSecondOpinionResult{Bundle: bundle, Mode: "targeted", Runs: []resultmodel.AIReportSecondOpinionRun{}}
+	payload := &resultmodel.AIReportSecondOpinionResult{BundlePath: bundle, InvocationMode: "targeted", BackendRuns: []resultmodel.AIReportSecondOpinionRun{}}
 	backends := []string{options.backend}
 	if options.all {
-		payload.Mode = "batch"
+		payload.InvocationMode = "batch"
 		backends = []string{"codex", "gemini", "agy"}
 	} else if options.backend == "" {
-		payload.Mode = "terminal"
+		payload.InvocationMode = "terminal"
 		backends = nil
 		for _, name := range []string{"codex", "gemini", "agy"} {
 			if _, err := exec.LookPath(name); err == nil {
@@ -69,23 +69,23 @@ func handleAIReportSecondOpinion(execution commandruntime.ExecutionContext, args
 	result := resultmodel.CommandResult{Outcome: resultmodel.OutcomeSuccess, AIReportSecondOpinion: payload}
 	var summary strings.Builder
 	for _, backend := range backends {
-		row := resultmodel.AIReportSecondOpinionRun{Backend: backend, RequestedModel: options.model, State: "failed", JudgeVerdict: "not-run", BannerState: "not-inserted", JudgeFindings: []resultmodel.AIReportSecondOpinionFinding{}, OutsidePaths: []string{}}
+		row := resultmodel.AIReportSecondOpinionRun{BackendName: backend, RequestedModel: options.model, RunState: "failed", JudgeVerdict: "not-run", BannerState: "not-inserted", JudgeFindings: []resultmodel.AIReportSecondOpinionFinding{}, OutsidePaths: []string{}}
 		if backend == options.exclude {
-			row.State = "excluded"
-			row.Reason = "excluded calling backend"
+			row.RunState = "excluded"
+			row.FailureReason = "excluded calling backend"
 		} else if executable, lookupErr := exec.LookPath(backend); lookupErr != nil {
-			row.State = "skipped"
-			row.Reason = "backend is not installed"
+			row.RunState = "skipped"
+			row.FailureReason = "backend is not installed"
 		} else {
 			secondOpinionRun(ctx, execution.RepositoryRoot, bundle, executable, string(template), &row, &result)
 		}
-		payload.Runs = append(payload.Runs, row)
-		fmt.Fprintf(&summary, "%s: %s; model=%s; page=%s; reply=%s; judge=%s; banner=%s", row.Backend, row.State, row.ActualModel, row.Page, row.Reply, row.JudgeVerdict, row.BannerState)
-		if row.Reason != "" {
-			fmt.Fprintf(&summary, "; %s", row.Reason)
+		payload.BackendRuns = append(payload.BackendRuns, row)
+		fmt.Fprintf(&summary, "%s: %s; model=%s; page=%s; reply=%s; judge=%s; banner=%s", row.BackendName, row.RunState, row.ActualModel, row.PagePath, row.ReplyPath, row.JudgeVerdict, row.BannerState)
+		if row.FailureReason != "" {
+			fmt.Fprintf(&summary, "; %s", row.FailureReason)
 		}
 		summary.WriteByte('\n')
-		if row.State != "ran" && row.State != "excluded" || row.State == "ran" && row.JudgeVerdict != "pass" {
+		if row.RunState != "ran" && row.RunState != "excluded" || row.RunState == "ran" && row.JudgeVerdict != "pass" {
 			severity := resultmodel.SeverityWarning
 			if !options.all {
 				severity = resultmodel.SeverityError
@@ -93,7 +93,7 @@ func handleAIReportSecondOpinion(execution commandruntime.ExecutionContext, args
 			} else {
 				result.Outcome = resultmodel.OutcomeFindings
 			}
-			result.Findings = append(result.Findings, toolboxFinding(CommandAIReportSecondOpinion, "AI-REPORT-SECOND-OPINION-"+strings.ToUpper(row.State), severity, row.OutsidePaths, backend+": "+row.Reason, resultmodel.FixabilityManual, "this backend did not produce a render-verified linked second opinion"))
+			result.Findings = append(result.Findings, toolboxFinding(CommandAIReportSecondOpinion, "AI-REPORT-SECOND-OPINION-"+strings.ToUpper(row.RunState), severity, row.OutsidePaths, backend+": "+row.FailureReason, resultmodel.FixabilityManual, "this backend did not produce a render-verified linked second opinion"))
 		}
 		if ctx.Err() != nil {
 			break
@@ -303,7 +303,7 @@ func secondOpinionOutside(repository, bundle string) ([]string, error) {
 }
 
 func secondOpinionRun(ctx context.Context, repository, bundle, executable, template string, row *resultmodel.AIReportSecondOpinionRun, result *resultmodel.CommandResult) {
-	fail := func(err error) { row.Reason = err.Error() }
+	fail := func(err error) { row.FailureReason = err.Error() }
 	checkOutside := func() error {
 		paths, err := secondOpinionOutside(repository, bundle)
 		row.OutsidePaths = paths
@@ -328,7 +328,7 @@ func secondOpinionRun(ctx context.Context, repository, bundle, executable, templ
 	probeContext, stopProbe := context.WithTimeout(ctx, 90*time.Second)
 	defer stopProbe()
 	model := row.RequestedModel
-	if row.Backend == "agy" && model == "" {
+	if row.BackendName == "agy" && model == "" {
 		capture := secondOpinionCapture(probeContext, bundle, executable, "models")
 		if err := checkOutside(); err != nil {
 			fail(err)
@@ -349,7 +349,7 @@ func secondOpinionRun(ctx context.Context, repository, bundle, executable, templ
 		}
 	}
 	probePrompt := "Reply OK only. Do not use tools or modify any files."
-	argv := secondOpinionArgv(row.Backend, model, probePrompt, true)
+	argv := secondOpinionArgv(row.BackendName, model, probePrompt, true)
 	capture := secondOpinionCapture(probeContext, bundle, executable, argv...)
 	if err := checkOutside(); err != nil {
 		fail(err)
@@ -359,7 +359,7 @@ func secondOpinionRun(ctx context.Context, repository, bundle, executable, templ
 		fail(err)
 		return
 	}
-	resolved, _, err := secondOpinionMetadata(row.Backend, capture)
+	resolved, _, err := secondOpinionMetadata(row.BackendName, capture)
 	if err != nil {
 		fail(err)
 		return
@@ -375,7 +375,7 @@ func secondOpinionRun(ctx context.Context, repository, bundle, executable, templ
 	}
 	row.ActualModel = resolved
 	stopProbe()
-	prefix := row.Backend + "-" + resolved + "-"
+	prefix := row.BackendName + "-" + resolved + "-"
 	bundleRoot, err := os.OpenRoot(bundle)
 	if err != nil {
 		fail(err)
@@ -396,7 +396,7 @@ func secondOpinionRun(ctx context.Context, repository, bundle, executable, templ
 		fail(errors.New("unresolved prompt placeholder"))
 		return
 	}
-	capture = secondOpinionCapture(ctx, bundle, executable, secondOpinionArgv(row.Backend, resolved, prompt, false)...)
+	capture = secondOpinionCapture(ctx, bundle, executable, secondOpinionArgv(row.BackendName, resolved, prompt, false)...)
 	if err := checkOutside(); err != nil {
 		fail(err)
 		return
@@ -405,7 +405,7 @@ func secondOpinionRun(ctx context.Context, repository, bundle, executable, templ
 		fail(err)
 		return
 	}
-	actual, reply, err := secondOpinionMetadata(row.Backend, capture)
+	actual, reply, err := secondOpinionMetadata(row.BackendName, capture)
 	if err != nil {
 		fail(err)
 		return
@@ -428,7 +428,7 @@ func secondOpinionRun(ctx context.Context, repository, bundle, executable, templ
 		fail(err)
 		return
 	}
-	pageName, replyName, err := secondOpinionNames(bundle, row.Backend, actual)
+	pageName, replyName, err := secondOpinionNames(bundle, row.BackendName, actual)
 	if err != nil {
 		fail(err)
 		return
@@ -446,43 +446,43 @@ func secondOpinionRun(ctx context.Context, repository, bundle, executable, templ
 		fail(err)
 		return
 	}
-	row.Page = filepath.ToSlash(filepath.Join(relative, pageName))
+	row.PagePath = filepath.ToSlash(filepath.Join(relative, pageName))
 	// The backend knows the reserved stage name; the saved reply names its published page.
 	reply = strings.NewReplacer("file://"+filepath.ToSlash(filepath.Join(bundle, stageName)), pageName, filepath.Join(bundle, stageName), pageName, filepath.ToSlash(filepath.Join(bundle, stageName)), pageName, stageName, pageName).Replace(reply)
 	if err := publish(replyName, []byte(reply)); err != nil {
 		fail(err)
 		return
 	}
-	row.Reply = filepath.ToSlash(filepath.Join(relative, replyName))
+	row.ReplyPath = filepath.ToSlash(filepath.Join(relative, replyName))
 	verdict, findings := secondOpinionJudge(bundle, page)
 	row.JudgeVerdict = verdict
 	row.JudgeFindings = findings
-	row.State = "ran"
+	row.RunState = "ran"
 	if verdict != "pass" {
-		row.Reason = "render judge " + verdict + "; original left unchanged"
+		row.FailureReason = "render judge " + verdict + "; original left unchanged"
 		return
 	}
 	if err := checkOutside(); err != nil {
-		row.State = "failed"
+		row.RunState = "failed"
 		fail(err)
 		return
 	}
 	original := before["index.html"]
 	current, err := os.Lstat(filepath.Join(bundle, "index.html"))
 	if err != nil || !os.SameFile(original.info, current) || current.Mode() != original.info.Mode() {
-		row.State = "failed"
+		row.RunState = "failed"
 		fail(errors.New("original identity changed before banner publication"))
 		return
 	}
 	originalNow, err := os.ReadFile(filepath.Join(bundle, "index.html"))
 	if err != nil || !bytes.Equal(originalNow, original.data) {
-		row.State = "failed"
+		row.RunState = "failed"
 		fail(errors.New("original bytes changed before banner publication"))
 		return
 	}
 	updated, inserted, err := secondOpinionBanner(original.data, pageName)
 	if err != nil {
-		row.State = "failed"
+		row.RunState = "failed"
 		fail(err)
 		return
 	}
@@ -492,7 +492,7 @@ func secondOpinionRun(ctx context.Context, repository, bundle, executable, templ
 	}
 	originalPath := filepath.ToSlash(filepath.Join(relative, "index.html"))
 	if err := rootedPublishFile(repository, originalPath, updated, original.info.Mode(), true); err != nil {
-		row.State = "failed"
+		row.RunState = "failed"
 		fail(err)
 		return
 	}
@@ -850,9 +850,42 @@ func secondOpinionBacklink(page []byte) error {
 		return errors.New("new page has no body")
 	}
 	opening := strings.TrimSpace(string(visible[body[1]:]))
-	link := regexp.MustCompile(`(?is)^(?:<(?:p|div|aside|nav|header)\b[^>]*>\s*)*Original report:\s*<a\s+href=["']index\.html["'][^>]*>index\.html</a>`)
-	if !link.MatchString(opening) {
-		return errors.New("new page must open its body with Original report: index.html linking to index.html")
+	// Harmless inline formatting and attribute order do not change the backlink.
+	attributes := `(?:[^'"<>]|"[^"]*"|'[^']*')*`
+	inline := regexp.MustCompile(`(?is)^</?(?:span|strong|b|em|i|small|code)\b`)
+	tags := regexp.MustCompile(`(?is)</?[a-z][a-z0-9]*\b` + attributes + `>`)
+	opening = tags.ReplaceAllStringFunc(opening, func(tag string) string {
+		if inline.MatchString(tag) {
+			return ""
+		}
+		return tag
+	})
+	link := regexp.MustCompile(`(?is)^(?:<(?:p|div|aside|nav|header)\b` + attributes + `>\s*)*Original report:\s*<a\b(` + attributes + `)>(.*?)</a\s*>`)
+	match := link.FindStringSubmatch(opening)
+	invalid := errors.New("new page must open its body with Original report: index.html linking to index.html")
+	if match == nil || strings.TrimSpace(html.UnescapeString(match[2])) != "index.html" {
+		return invalid
+	}
+	// Parse whole attributes so an href-looking string inside title/data is not a link.
+	attribute := regexp.MustCompile(`^\s+([^\s=/>]+)(?:\s*=\s*("[^"]*"|'[^']*'|[^\s"'<>=` + "`" + `]+))?`)
+	remainder := match[1]
+	hrefCount := 0
+	for strings.TrimSpace(remainder) != "" {
+		parts := attribute.FindStringSubmatch(remainder)
+		if parts == nil {
+			return invalid
+		}
+		remainder = remainder[len(parts[0]):]
+		if strings.EqualFold(parts[1], "href") {
+			hrefCount++
+			value := strings.Trim(parts[2], "\"'")
+			if html.UnescapeString(value) != "index.html" {
+				return invalid
+			}
+		}
+	}
+	if hrefCount != 1 {
+		return invalid
 	}
 	return nil
 }
@@ -890,11 +923,11 @@ func secondOpinionBanner(original []byte, pageName string) ([]byte, bool, error)
 func secondOpinionRender(bundle string, page []byte) (string, []resultmodel.AIReportSecondOpinionFinding) {
 	findings := []resultmodel.AIReportSecondOpinionFinding{}
 	fail := func(err error) (string, []resultmodel.AIReportSecondOpinionFinding) {
-		return "error", append(findings, resultmodel.AIReportSecondOpinionFinding{Kind: judgeCodeError, Detail: err.Error()})
+		return "error", append(findings, resultmodel.AIReportSecondOpinionFinding{FindingKind: judgeCodeError, FindingDetail: err.Error()})
 	}
 	browser := discoverJudgeBrowser()
 	if browser == "" {
-		return "skipped", append(findings, resultmodel.AIReportSecondOpinionFinding{Kind: judgeCodeSkipped, Detail: "no browser engine found"})
+		return "skipped", append(findings, resultmodel.AIReportSecondOpinionFinding{FindingKind: judgeCodeSkipped, FindingDetail: "no browser engine found"})
 	}
 	scratch, err := os.MkdirTemp("", "ai-report-second-opinion-judge-")
 	if err != nil {
@@ -942,7 +975,7 @@ func secondOpinionRender(bundle string, page []byte) (string, []resultmodel.AIRe
 		if finding.Status != 0 {
 			detail = fmt.Sprintf("HTTP %d: %s", finding.Status, detail)
 		}
-		findings = append(findings, resultmodel.AIReportSecondOpinionFinding{Kind: finding.Kind, Viewport: finding.Viewport, Scheme: finding.Scheme, Target: finding.Target, Detail: detail})
+		findings = append(findings, resultmodel.AIReportSecondOpinionFinding{FindingKind: finding.Kind, ViewportName: finding.Viewport, ColorScheme: finding.Scheme, TargetPath: finding.Target, FindingDetail: detail})
 	}
 	if err != nil {
 		return fail(err)
