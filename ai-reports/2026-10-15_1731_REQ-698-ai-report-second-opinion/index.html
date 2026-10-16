@@ -1,0 +1,623 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="ai-report-verdict" content="completed-with-live-limits">
+  <title>REQ-698 — ai-report second-opinion (UR-156 / migrated from UR-061)</title>
+  <style>
+    :root {
+      --bg: #f8fafc;
+      --surface: #ffffff;
+      --surface-alt: #f1f5f9;
+      --border: #cbd5e1;
+      --text: #0f172a;
+      --muted: #475569;
+      --accent: #2563eb;
+      --accent-soft: #dbeafe;
+      --ramp-1: #eff6ff;
+      --ramp-2: #dbeafe;
+      --ramp-3: #bfdbfe;
+      --ramp-4: #93c5fd;
+      --ramp-5: #60a5fa;
+      --ramp-6: #3b82f6;
+      --ramp-stroke: #1d4ed8;
+      --status-pass-bg: #dcfce7;
+      --status-pass-fg: #166534;
+      --status-warn-bg: #fef3c7;
+      --status-warn-fg: #92400e;
+      --status-fail-bg: #fee2e2;
+      --status-fail-fg: #991b1b;
+      --font-display: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+      --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #0b1120;
+        --surface: #111827;
+        --surface-alt: #1e293b;
+        --border: #334155;
+        --text: #f1f5f9;
+        --muted: #94a3b8;
+        --accent: #60a5fa;
+        --accent-soft: #1e3a8a;
+        --ramp-1: #172554;
+        --ramp-2: #1e3a8a;
+        --ramp-3: #1e40af;
+        --ramp-4: #1d4ed8;
+        --ramp-5: #2563eb;
+        --ramp-6: #3b82f6;
+        --ramp-stroke: #93c5fd;
+        --status-pass-bg: #064e3b;
+        --status-pass-fg: #a7f3d0;
+        --status-warn-bg: #78350f;
+        --status-warn-fg: #fde68a;
+        --status-fail-bg: #7f1d1d;
+        --status-fail-fg: #fecaca;
+      }
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font-sans);
+      font-size: 16px;
+      line-height: 1.6;
+    }
+
+    .page {
+      width: 100%;
+      padding: 0 clamp(20px, 2.6vw, 60px) 96px;
+    }
+
+    header.hero {
+      padding: 44px 0 32px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .kicker {
+      font-family: var(--font-mono);
+      font-size: 13px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--accent);
+      margin-bottom: 8px;
+    }
+
+    h1 {
+      font-family: var(--font-display);
+      font-size: clamp(28px, 3vw, 40px);
+      line-height: 1.2;
+      margin: 0 0 16px;
+    }
+
+    h2 {
+      font-family: var(--font-display);
+      font-size: clamp(24px, 2.2vw, 30px);
+      line-height: 1.25;
+      margin: 0 0 16px;
+    }
+
+    h3 {
+      font-size: 18px;
+      line-height: 1.35;
+      margin: 0 0 10px;
+    }
+
+    p {
+      margin: 0 0 14px;
+    }
+
+    .measure {
+      max-width: 74ch;
+    }
+
+    section.band {
+      padding: 40px 0;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 28px;
+      align-items: stretch;
+    }
+
+    .col-half {
+      flex: 1 1 460px;
+      min-width: 0;
+    }
+
+    .col-third {
+      flex: 1 1 300px;
+      min-width: 0;
+    }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 22px 24px;
+    }
+
+    .verdict-banner {
+      background: var(--surface);
+      border: 2px solid var(--accent);
+      border-radius: 10px;
+      padding: 20px 24px;
+      margin-top: 18px;
+    }
+
+    .badge {
+      display: inline-block;
+      font-family: var(--font-mono);
+      font-size: 12px;
+      padding: 3px 8px;
+      border-radius: 6px;
+      font-weight: 600;
+      vertical-align: middle;
+    }
+
+    .badge-pass {
+      background: var(--status-pass-bg);
+      color: var(--status-pass-fg);
+    }
+
+    .badge-warn {
+      background: var(--status-warn-bg);
+      color: var(--status-warn-fg);
+    }
+
+    .badge-fail {
+      background: var(--status-fail-bg);
+      color: var(--status-fail-fg);
+    }
+
+    .badge-neutral {
+      background: var(--surface-alt);
+      color: var(--muted);
+      border: 1px solid var(--border);
+    }
+
+    code, pre {
+      font-family: var(--font-mono);
+      font-size: 13.5px;
+    }
+
+    code {
+      background: var(--surface-alt);
+      padding: 2px 6px;
+      border-radius: 4px;
+      overflow-wrap: anywhere;
+    }
+
+    pre {
+      background: var(--surface-alt);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 14px 16px;
+      overflow-x: auto;
+      margin: 10px 0 0;
+    }
+
+    .diagram-frame {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 20px;
+      margin-bottom: 24px;
+    }
+
+    .diagram-caption {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      margin-top: 12px;
+      font-size: 14px;
+      color: var(--muted);
+    }
+
+    svg.flow-svg {
+      width: 100%;
+      height: auto;
+      display: block;
+    }
+
+    .table-wrap {
+      width: 100%;
+      overflow-x: auto;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 15px;
+    }
+
+    th, td {
+      text-align: left;
+      vertical-align: top;
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    th {
+      font-family: var(--font-mono);
+      font-size: 12.5px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--muted);
+      background: var(--surface-alt);
+    }
+
+    ul.compact-list {
+      margin: 0;
+      padding-left: 20px;
+    }
+
+    ul.compact-list li {
+      margin-bottom: 10px;
+    }
+
+    footer {
+      padding-top: 28px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+<!-- second-opinion-banner:index-agy-gemini-4-argon-high.html -->
+<aside aria-label="Second opinion">A second-opinion version is available: <a href="index-agy-gemini-4-argon-high.html">Read the second opinion</a>.</aside>
+<!-- /second-opinion-banner -->
+
+  <div class="page">
+    <header class="hero">
+      <div class="kicker">REQ-698 · UR-156 (Migrated from Consumer UR-061 / REQ-287) · Released in v0.306.0</div>
+      <h1>ai-report second-opinion: Guarded Multi-Model Report Rebuilds</h1>
+      <div class="verdict-banner">
+        <p class="measure">
+          <span class="badge badge-pass">COMPLETED · MERGED 31e7fcdf · RELEASED 3645f3a1</span>
+          <span class="badge badge-warn">REVIEW 86.44% · LIVE BATCH PARTIAL</span>
+        </p>
+        <p class="measure">
+          <strong>Verdict &amp; What Shipped:</strong> <code>do-work-toolbox ai-report second-opinion</code> is shipped and verified across all 6 heavy verification lanes and 937 CLI tests. It hands an existing <code>ai-reports/&lt;bundle&gt;/index.html</code> to a clarity-editor model in <strong>session</strong>, <strong>targeted</strong>, or <strong>batch</strong> mode, verifies the actual model from native CLI metadata, fences writes to a reserved staging file, runs the headless browser render judge in-process, and inserts an idempotent marker-wrapped banner into <code>index.html</code> only when every guard and render check passes.
+        </p>
+        <p class="measure" style="margin-bottom:0;">
+          <strong>Value &amp; Qualification:</strong> Readers get a simpler, fact-checked sibling report (<code>index-&lt;cli&gt;-&lt;model&gt;.html</code>) plus an explicit corrections/questions ledger (<code>&lt;cli&gt;-&lt;model&gt;-reply.md</code>) without risking silent edits to the original report. Live Codex (<code>gpt-6-astra</code>) and pinned Claude (<code>claude-opus-5-5</code>) runs passed; live Gemini (<code>exit 55 UNSUPPORTED_CLIENT</code>) and Antigravity (<code>gemini-3.8-flash-low</code> candidate put a <code>&lt;nav&gt;</code> sidebar before the required opening backlink) remain documented live-environment limits (Finding <code>F2</code>).
+        </p>
+      </div>
+    </header>
+
+    <!-- 1. LEAD DIAGRAM: HOW A RUN FLOWS -->
+    <section class="band" id="how-it-works">
+      <h2>1. How a Run Flows: Trigger → Backend → Staging File → Guards → Judge → Banner</h2>
+      <div class="diagram-frame">
+        <svg class="flow-svg" viewBox="0 0 1160 270" role="img" aria-labelledby="flow-title flow-desc">
+          <title id="flow-title">Six-stage execution flow of ai-report-second-opinion</title>
+          <desc id="flow-desc">Ordered pipeline from 1. Trigger and Mode Dispatch, to 2. Backend Probe and Supervised Run, to 3. Reserved Staging File, to 4. Git and Bundle Guards, to 5. Scratch Render Judge, to 6. Pass-Gated Banner in index.html.</desc>
+          <defs>
+            <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+              <path d="M 0 1 L 8 5 L 0 9 z" fill="var(--ramp-stroke)" />
+            </marker>
+          </defs>
+
+          <!-- Stage 1 -->
+          <rect x="12" y="24" width="172" height="156" rx="10" fill="var(--surface)" stroke="var(--ramp-stroke)" stroke-width="2" />
+          <rect x="24" y="38" width="18" height="18" rx="4" fill="var(--ramp-1)" stroke="var(--ramp-stroke)" stroke-width="1.5" />
+          <text x="50" y="52" fill="var(--text)" font-family="ui-monospace, monospace" font-size="12" font-weight="700">1. TRIGGER</text>
+          <text x="24" y="78" fill="var(--text)" font-family="sans-serif" font-size="13" font-weight="600">Action &amp; CLI</text>
+          <text x="24" y="98" fill="var(--muted)" font-family="sans-serif" font-size="12">• Session / Targeted</text>
+          <text x="24" y="116" fill="var(--muted)" font-family="sans-serif" font-size="12">• Batch (--all --exclude)</text>
+          <text x="24" y="134" fill="var(--muted)" font-family="sans-serif" font-size="12">• In-memory latest</text>
+          <text x="24" y="152" fill="var(--muted)" font-family="sans-serif" font-size="12">• Pre-run git &amp; byte</text>
+          <text x="24" y="168" fill="var(--muted)" font-family="sans-serif" font-size="12">  snapshot of bundle</text>
+
+          <line x1="184" y1="102" x2="204" y2="102" stroke="var(--ramp-stroke)" stroke-width="2" marker-end="url(#arrow)" />
+
+          <!-- Stage 2 -->
+          <rect x="206" y="24" width="172" height="156" rx="10" fill="var(--surface)" stroke="var(--ramp-stroke)" stroke-width="2" />
+          <rect x="218" y="38" width="18" height="18" rx="4" fill="var(--ramp-2)" stroke="var(--ramp-stroke)" stroke-width="1.5" />
+          <text x="244" y="52" fill="var(--text)" font-family="ui-monospace, monospace" font-size="12" font-weight="700">2. BACKEND</text>
+          <text x="218" y="78" fill="var(--text)" font-family="sans-serif" font-size="13" font-weight="600">Probe &amp; Supervisor</text>
+          <text x="218" y="98" fill="var(--muted)" font-family="sans-serif" font-size="12">• 90s read-only probe</text>
+          <text x="218" y="116" fill="var(--muted)" font-family="sans-serif" font-size="12">  resolves model slug</text>
+          <text x="218" y="134" fill="var(--muted)" font-family="sans-serif" font-size="12">• POSIX supervisor holds</text>
+          <text x="218" y="152" fill="var(--muted)" font-family="sans-serif" font-size="12">  PGID until children</text>
+          <text x="218" y="168" fill="var(--muted)" font-family="sans-serif" font-size="12">  stop (no substitute)</text>
+
+          <line x1="378" y1="102" x2="398" y2="102" stroke="var(--ramp-stroke)" stroke-width="2" marker-end="url(#arrow)" />
+
+          <!-- Stage 3 -->
+          <rect x="400" y="24" width="172" height="156" rx="10" fill="var(--surface)" stroke="var(--ramp-stroke)" stroke-width="2" />
+          <rect x="412" y="38" width="18" height="18" rx="4" fill="var(--ramp-3)" stroke="var(--ramp-stroke)" stroke-width="1.5" />
+          <text x="438" y="52" fill="var(--text)" font-family="ui-monospace, monospace" font-size="12" font-weight="700">3. STAGING FILE</text>
+          <text x="412" y="78" fill="var(--text)" font-family="sans-serif" font-size="13" font-weight="600">Reserved Leaf</text>
+          <text x="412" y="98" fill="var(--muted)" font-family="sans-serif" font-size="12">• Launcher creates</text>
+          <text x="412" y="116" fill="var(--muted)" font-family="sans-serif" font-size="12">  .&lt;prefix&gt;staging-*.html</text>
+          <text x="412" y="134" fill="var(--muted)" font-family="sans-serif" font-size="12">• Model fills staging</text>
+          <text x="412" y="152" fill="var(--muted)" font-family="sans-serif" font-size="12">  file + prefixed assets</text>
+          <text x="412" y="168" fill="var(--muted)" font-family="sans-serif" font-size="12">• Deferred stage cleanup</text>
+
+          <line x1="572" y1="102" x2="592" y2="102" stroke="var(--ramp-stroke)" stroke-width="2" marker-end="url(#arrow)" />
+
+          <!-- Stage 4 -->
+          <rect x="594" y="24" width="172" height="156" rx="10" fill="var(--surface)" stroke="var(--ramp-stroke)" stroke-width="2" />
+          <rect x="606" y="38" width="18" height="18" rx="4" fill="var(--ramp-4)" stroke="var(--ramp-stroke)" stroke-width="1.5" />
+          <text x="632" y="52" fill="var(--text)" font-family="ui-monospace, monospace" font-size="12" font-weight="700">4. GUARDS</text>
+          <text x="606" y="78" fill="var(--text)" font-family="sans-serif" font-size="13" font-weight="600">Verify &amp; Publish</text>
+          <text x="606" y="98" fill="var(--muted)" font-family="sans-serif" font-size="12">• Outside git dirt = 0</text>
+          <text x="606" y="116" fill="var(--muted)" font-family="sans-serif" font-size="12">• Prior bytes/inodes</text>
+          <text x="606" y="134" fill="var(--muted)" font-family="sans-serif" font-size="12">  unchanged; model match</text>
+          <text x="606" y="152" fill="var(--muted)" font-family="sans-serif" font-size="12">• Opening backlink check</text>
+          <text x="606" y="168" fill="var(--muted)" font-family="sans-serif" font-size="12">• Publish page &amp; reply</text>
+
+          <line x1="766" y1="102" x2="786" y2="102" stroke="var(--ramp-stroke)" stroke-width="2" marker-end="url(#arrow)" />
+
+          <!-- Stage 5 -->
+          <rect x="788" y="24" width="172" height="156" rx="10" fill="var(--surface)" stroke="var(--ramp-stroke)" stroke-width="2" />
+          <rect x="800" y="38" width="18" height="18" rx="4" fill="var(--ramp-5)" stroke="var(--ramp-stroke)" stroke-width="1.5" />
+          <text x="826" y="52" fill="var(--text)" font-family="ui-monospace, monospace" font-size="12" font-weight="700">5. JUDGE</text>
+          <text x="800" y="78" fill="var(--text)" font-family="sans-serif" font-size="13" font-weight="600">Scratch Render</text>
+          <text x="800" y="98" fill="var(--muted)" font-family="sans-serif" font-size="12">• Copy bundle to temp</text>
+          <text x="800" y="116" fill="var(--muted)" font-family="sans-serif" font-size="12">  with candidate as index</text>
+          <text x="800" y="134" fill="var(--muted)" font-family="sans-serif" font-size="12">• Run judgeRender at</text>
+          <text x="800" y="152" fill="var(--muted)" font-family="sans-serif" font-size="12">  1440 &amp; 390 light/dark</text>
+          <text x="800" y="168" fill="var(--muted)" font-family="sans-serif" font-size="12">• Remove temp scratch</text>
+
+          <line x1="960" y1="102" x2="980" y2="102" stroke="var(--ramp-stroke)" stroke-width="2" marker-end="url(#arrow)" />
+
+          <!-- Stage 6 -->
+          <rect x="982" y="24" width="166" height="156" rx="10" fill="var(--surface)" stroke="var(--ramp-stroke)" stroke-width="2" />
+          <rect x="994" y="38" width="18" height="18" rx="4" fill="var(--ramp-6)" stroke="var(--ramp-stroke)" stroke-width="1.5" />
+          <text x="1020" y="52" fill="var(--text)" font-family="ui-monospace, monospace" font-size="12" font-weight="700">6. BANNER</text>
+          <text x="994" y="78" fill="var(--text)" font-family="sans-serif" font-size="13" font-weight="600">Pass-Only Link</text>
+          <text x="994" y="98" fill="var(--muted)" font-family="sans-serif" font-size="12">• Re-verify index.html</text>
+          <text x="994" y="116" fill="var(--muted)" font-family="sans-serif" font-size="12">  bytes &amp; outside git</text>
+          <text x="994" y="134" fill="var(--muted)" font-family="sans-serif" font-size="12">• Insert marker block</text>
+          <text x="994" y="152" fill="var(--muted)" font-family="sans-serif" font-size="12">  right after &lt;body&gt;</text>
+          <text x="994" y="168" fill="var(--muted)" font-family="sans-serif" font-size="12">• Idempotent per file</text>
+
+          <!-- Refusal / Short-circuit track below -->
+          <rect x="12" y="202" width="1136" height="48" rx="8" fill="var(--surface-alt)" stroke="var(--border)" stroke-width="1.5" />
+          <text x="28" y="231" fill="var(--text)" font-family="ui-monospace, monospace" font-size="12.5" font-weight="700">FAIL-CLOSED GATE:</text>
+          <text x="176" y="231" fill="var(--muted)" font-family="sans-serif" font-size="12.5">Any mismatch in stages 2–4 aborts before publication; a judge fail, skipped, or error in stage 5 skips stage 6 and leaves index.html untouched.</text>
+        </svg>
+        <div class="diagram-caption">
+          <span>Pipeline implemented in <code>skills/do-work/tools/do-work-cli/internal/toolboxcommands/report_second_opinion.go</code>.</span>
+          <span class="badge badge-neutral">Hand-authored SVG architecture diagram</span>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="col-half card">
+          <h3>Problem &amp; Architectural Shift</h3>
+          <p>AI-generated technical reports can become dense or drift from repository code. Asking a second model to rewrite a report ad hoc risked overwriting <code>index.html</code>, inventing model names, leaving stray files outside the bundle, or shipping broken layouts.</p>
+          <p style="margin-bottom:0;"><code>REQ-698</code> moves all mechanical enforcement into the Go subcommand <code>ai-report-second-opinion</code> while keeping editorial rules in the shipped prompt template <code>ai-report-second-opinion-prompt.md</code>.</p>
+        </div>
+        <div class="col-half card">
+          <h3>Key Guardrails in the Flow</h3>
+          <p><strong>Two-stage native model verification:</strong> A 90-second read-only probe resolves the exact model slug before the prompt is filled (so the <code>&lt;cli&gt;-&lt;model&gt;-</code> asset prefix is real), and the generation output's native envelope must report the identical model.</p>
+          <p style="margin-bottom:0;"><strong>Process-group supervisor (F1 remediation <code>2abd7939</code>):</strong> A POSIX shell supervisor stays alive as the process-group leader until <code>ownedprocess.TerminateGroup</code> stops all descendants, preventing background child processes from writing after capture returns.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- 2. CHANGED FILES: THE FEATURE VS PLUMBING -->
+    <section class="band" id="changed-files">
+      <h2>2. Changed Files: "The Feature" vs. "Plumbing That Came Along"</h2>
+      <p class="measure">Commits inspected via canonical merge-aware diff: builder commits <code>406ff3c4</code>, <code>9fa76500</code>, <code>2f5cd87a</code>, <code>69a2a998</code>, and remediation <code>2abd7939</code>; merges <code>d0106c31</code> and <code>31e7fcdf</code>; release commit <code>3645f3a1</code>.</p>
+
+      <div class="row">
+        <div class="col-half card">
+          <h3>The Feature (6 files)</h3>
+          <ul class="compact-list">
+            <li><code>skills/do-work/tools/do-work-cli/internal/toolboxcommands/report_second_opinion.go</code> (new) — Implements the <code>ai-report-second-opinion</code> CLI subcommand, native backend adapters, process-group supervisor, staging file, bundle/git guards, in-process render judge call, and banner injector.</li>
+            <li><code>skills/do-work-toolbox/docs/ai-report-second-opinion-prompt.md</code> (new) — Ships the clarity-editor prompt with <code>{{BUNDLE_PATH}}</code>, <code>{{REPOSITORY_ROOT}}</code>, <code>{{OUTPUT_FILE}}</code>, <code>{{ASSET_PREFIX}}</code>, and <code>{{BACKLINK_REQUIREMENT}}</code> placeholders plus the Tailwind/Mermaid-only CDN rule.</li>
+            <li><code>skills/do-work-toolbox/actions/ai-report.md</code> — Adds the <code>## Second-opinion form</code> dispatcher (session, targeted, and batch modes) ahead of Steps 1–8 and exempts sibling pages and launcher banners from single-file immutability rules.</li>
+            <li><code>skills/do-work-toolbox/SKILL.md</code> — Adds <code>ai-report second-opinion</code> and <code>generate a second opinion</code> to the skill description and routing table so any AI coder routes the phrase to <code>ai-report.md</code>.</li>
+            <li><code>skills/do-work-toolbox/docs/ai-report-guide.md</code> — Documents the new command forms, mode rules, guardrails, and banner behavior in the user-facing walkthrough.</li>
+            <li><code>skills/do-work/tools/do-work-cli/internal/toolboxcommands/report_second_opinion_test.go</code> (new) — Pins mode selection, no-substitution refusal, native metadata parsing, collision suffixes, outside-bundle dirt, asset preservation, backlinks, judge states, banner idempotency, and child-process draining.</li>
+          </ul>
+        </div>
+
+        <div class="col-half card">
+          <h3>Plumbing That Came Along (14 paths / groups)</h3>
+          <ul class="compact-list">
+            <li><code>skills/do-work/tools/do-work-cli/internal/toolboxcommands/commands.go</code> — Registers <code>CommandAIReportSecondOpinion</code> in the toolbox handler map so the CLI binary dispatches the subcommand.</li>
+            <li><code>skills/do-work/tools/do-work-cli/internal/toolboxcommands/commands_test.go</code> — Increments the canonical registered toolbox command count assertion from 9 to 10 so registration tests pass.</li>
+            <li><code>skills/do-work/tools/do-work-cli/internal/resultmodel/result_model.go</code> — Adds the typed <code>AIReportSecondOpinionResult</code> struct to <code>CommandResult</code> because <code>ExactTextOutput</code> is excluded from <code>--format json</code> output.</li>
+            <li><code>skills/do-work/tools/do-work-cli/internal/resultmodel/result_model_test.go</code> — Verifies that JSON and text rendering share the same <code>AIReportSecondOpinionResult</code> observation without dropping empty slices.</li>
+            <li><code>skills/do-work/tools/do-work-cli.sh</code> — Exports <code>DO_WORK_AI_REPORT_SECOND_OPINION_PROMPT</code> from <code>script_dir</code> because cached/prebuilt Go binaries run outside the suite folder and cannot find the prompt relative to their own binary path.</li>
+            <li><code>_dev/tests/do-work-cli-launcher-behavior.sh</code> — Asserts that <code>do-work-cli.sh</code> locates the shipped prompt template in both repository-source and installed <code>.claude/skills/</code> layouts.</li>
+            <li><code>skills/do-work-toolbox/actions/ai-report-reference.md</code> — Adds a one-paragraph note at the end of the shared reference clarifying that <code>second-opinion</code> writes into an existing bundle instead of creating a new timestamped folder.</li>
+            <li><code>ai-reports/2026-10-09_1916_REQ-632-activity-correlation-determinism/*</code> (5 files) — Adds the live proof outputs (<code>index-codex-gpt-6-astra.html</code>, <code>codex-gpt-6-astra-reply.md</code>, <code>index-claude-claude-opus-5-5.html</code>, <code>claude-claude-opus-5-5-reply.md</code>) and the two pass-gated banners in <code>index.html</code> required by the REQ's Red-Green proof.</li>
+            <li><code>skills/do-work/tools/do-work-cli/prime-do-work-cli.md</code>, <code>lessons-do-work-cli.md</code>, &amp; <code>do-work/lessons-index.md</code> — Records the recurring <code>reaped-by-its-own-parent</code> supervisor trap and the new <code>native-backend-identity</code> lesson during post-review finalization (<code>D-12</code>).</li>
+            <li><code>VERSION</code>, <code>CHANGELOG.md</code>, <code>skills/do-work/VERSION</code>, <code>skills/do-work/CHANGELOG.md</code>, <code>skills/do-work/actions/version.md</code>, &amp; <code>do-work/archive/UR-156/*</code> — Bumps the suite release to <code>0.306.0</code> and archives <code>UR-156</code> / <code>REQ-698</code> per <code>prime-releases.md</code>.</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- 3. BUILT VS ASKED IN UR-061 -->
+    <section class="band" id="ur-061-comparison">
+      <h2>3. What Was Built (REQ-698) vs. What You Asked For in UR-061</h2>
+      <p class="measure">Your original request started in consumer repository <code>iwr2-imprint-wright</code> as <code>UR-061</code> / <code>REQ-287</code> (captured verbatim in <code>do-work/archive/UR-156/input.md</code> when migrated upstream). Every core behavior — the trigger phrase, the three modes, the 8 editorial rules, the <code>index-&lt;cli&gt;-&lt;model&gt;.html</code> naming, and the safety checks — shipped as requested, with <strong>7 concrete differences</strong> driven by the upstream migration and suite invariants:</p>
+
+      <div class="table-wrap card">
+        <table>
+          <thead>
+            <tr>
+              <th>Area</th>
+              <th>Asked in Consumer UR-061 (REQ-287)</th>
+              <th>Built Upstream in REQ-698 (UR-156)</th>
+              <th>Why It Changed</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>1. Skill location</strong></td>
+              <td>Standalone project skill <code>.claude/skills/ai-report-second-opinion/</code> linked from <code>make-ai-report-with-screenshot</code>.</td>
+              <td>Built-in form on <code>skills/do-work-toolbox/actions/ai-report.md</code> + prompt in <code>skills/do-work-toolbox/docs/</code>.</td>
+              <td>Per your migration instruction, moving it into <code>do-work-toolbox</code> ships it to all consumer repos via <code>just run-do-work-update</code>.</td>
+            </tr>
+            <tr>
+              <td><strong>2. Launcher engine</strong></td>
+              <td>Bash script <code>scripts/run_second_opinion.sh</code> shelling out to CLIs and <code>do-work-cli.sh ai-report-judge</code>.</td>
+              <td>Compiled Go subcommand <code>ai-report-second-opinion</code> in <code>report_second_opinion.go</code> calling <code>judgeRender</code> in-process.</td>
+              <td>Matches the suite's "programs beat prose for anything mechanical" rule and reuses the existing Go catalog walker, atomic file publisher, and process-group teardown.</td>
+            </tr>
+            <tr>
+              <td><strong>3. Staging &amp; reply collisions</strong></td>
+              <td>Prompt gave the model the final <code>index-&lt;cli&gt;-&lt;slug&gt;.html</code> name directly; reply file collision behavior was unspecified.</td>
+              <td>Model writes to a hidden <code>.&lt;prefix&gt;staging-*.html</code> file; launcher publishes paired <code>index-&lt;cli&gt;-&lt;slug&gt;[-N].html</code> and <code>&lt;cli&gt;-&lt;slug&gt;[-N]-reply.md</code> and rewrites staging paths in the reply (<code>D-06</code>, <code>D-08</code>).</td>
+              <td>Prevents partial/failed runs from leaving a half-written final page and ensures repeat runs never overwrite an earlier <code>-reply.md</code>.</td>
+            </tr>
+            <tr>
+              <td><strong>4. Model resolution</strong></td>
+              <td>Read model slug after the run (early notes assumed a <code>codex exec --json</code> header).</td>
+              <td>Runs a 90s read-only native probe first so the asset prefix is known up front, then verifies the generation envelope matches; parses Codex's native stderr header (<code>D-05</code>).</td>
+              <td><code>codex exec --json</code> does not emit model identity on this installation; probing first avoids giving the model an unverified asset prefix.</td>
+            </tr>
+            <tr>
+              <td><strong>5. Mutual-link placement</strong></td>
+              <td>Update 1 asked to pick either a banner inside <code>index.html</code> OR a link on the catalog page <code>ai-reports/index.html</code>.</td>
+              <td>Chose the marker-wrapped <code>&lt;aside&gt;</code> banner after <code>&lt;body&gt;</code> in <code>index.html</code> and resolves <code>latest</code> in-memory without writing <code>ai-reports/catalog.json</code> (<code>D-02</code>).</td>
+              <td>Writing <code>ai-reports/index.html</code> would dirty a path outside the target bundle and trip the strict outside-bundle <code>git status</code> guard.</td>
+            </tr>
+            <tr>
+              <td><strong>6. Rerun idempotency</strong></td>
+              <td>Asked both for numeric collision suffixes on existing files and for a second run to report banners as "already present" with no change.</td>
+              <td>Banner insertion is idempotent per filename, while a fresh CLI run allocates <code>-2</code> and adds a banner for the new file (<code>D-01</code>).</td>
+              <td>Reconciles the two rules without silently skipping a requested generation or overwriting the first page.</td>
+            </tr>
+            <tr>
+              <td><strong>7. Live test target &amp; proof</strong></td>
+              <td>Test on consumer bundle <code>2026-10-11_0935_imprintwright-onboarding/</code> from a Claude Code session plus full batch.</td>
+              <td>Tested on upstream <code>2026-10-09_1916_REQ-632-activity-correlation-determinism/</code> with targeted Codex (pass), pinned Claude (pass), and batch/retry diagnostics for Gemini and AGY.</td>
+              <td>Builder ran inside a Codex session (where live Claude session identity was unavailable), Gemini failed with local exit 55 (<code>UNSUPPORTED_CLIENT</code>), and AGY's candidate put a <code>&lt;nav&gt;</code> before the required opening backlink.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- 4. EVIDENCE, VERIFICATION & LESSONS -->
+    <section class="band" id="evidence-and-verification">
+      <h2>4. Evidence, Verification &amp; Lessons</h2>
+      <p class="measure"><strong>Non-visual evidence mode:</strong> UI captures were not expected for this work. Verification rests on deterministic fake-backend state-machine tests, process-group race probes, in-process headless Chrome render checks, and live CLI runs against the <code>REQ-632</code> report bundle.</p>
+
+      <div class="row">
+        <div class="col-half card">
+          <h3>Live Proof &amp; Test Receipts</h3>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Run / Gate</th>
+                  <th>Observed Result</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Targeted <code>--backend codex</code></td>
+                  <td><span class="badge badge-pass">PASS</span> Model <code>gpt-6-astra</code>; published page + reply; judge <code>pass</code>; banner inserted.</td>
+                </tr>
+                <tr>
+                  <td>Pinned <code>--backend claude --model claude-opus-5-5</code></td>
+                  <td><span class="badge badge-pass">PASS</span> Model <code>claude-opus-5-5</code>; published page + reply; judge <code>pass</code>; banner inserted.</td>
+                </tr>
+                <tr>
+                  <td>Batch <code>--all --exclude codex</code> (Gemini)</td>
+                  <td><span class="badge badge-fail">EXIT 55</span> Failed native result (<code>UNSUPPORTED_CLIENT</code>); judge not-run; original untouched.</td>
+                </tr>
+                <tr>
+                  <td>Authorized single retry <code>--backend agy</code></td>
+                  <td><span class="badge badge-fail">REFUSED</span> Model <code>gemini-3.8-flash-low</code>; candidate put <code>&lt;nav&gt;</code> sidebar before opening backlink; nothing published.</td>
+                </tr>
+                <tr>
+                  <td>Maintainer &amp; Heavy Gates (6 lanes)</td>
+                  <td><span class="badge badge-pass">PASS</span> 937 CLI tests (56s), 427 board tests (37s), 39 browser tests (89s), race + Windows compile exit 0.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="col-half card">
+          <h3>Verify It Yourself</h3>
+          <p><strong>Run in REQ-698 verification (recorded pass):</strong></p>
+          <pre><code>go -C skills/do-work/tools/do-work-cli test -race ./internal/toolboxcommands ./internal/resultmodel -run 'TestAIReport|TestSecondOpinion|TestHandlersRegister' -count=1</code></pre>
+          <p style="margin-top:12px;"><strong>Run to inspect the merge-aware implementation &amp; remediation diffs:</strong></p>
+          <pre><code>skills/do-work/scripts/show-commit-diff.sh d0106c31
+skills/do-work/scripts/show-commit-diff.sh 31e7fcdf</code></pre>
+          <p style="margin-top:12px; margin-bottom:0;"><strong>Instruction (unrun in this report session — invokes live Codex):</strong></p>
+          <pre><code>skills/do-work/tools/do-work-cli.sh --repo-root . --format json ai-report-second-opinion --backend codex ai-reports/2026-10-09_1916_REQ-632-activity-correlation-determinism</code></pre>
+        </div>
+      </div>
+
+      <div class="row" style="margin-top:28px;">
+        <div class="col-half card">
+          <h3>Lessons Learned</h3>
+          <ul class="compact-list">
+            <li><strong>Native identity over requested flags (<code>native-backend-identity</code>):</strong> CLI flags and exit code 0 do not prove which model ran; Codex needed stderr startup-header parsing while Claude, Gemini, and AGY exposed structured JSON usage/init fields.</li>
+            <li><strong>Separate backend exit from group lifetime (<code>reaped-by-its-own-parent</code>):</strong> Calling <code>Cmd.Wait</code> on the backend leader before group teardown erased PGID ownership proof and let a redirected child write 300ms after return; keeping a lightweight POSIX supervisor alive until <code>TerminateGroup</code> finishes closed the race.</li>
+          </ul>
+        </div>
+        <div class="col-half card">
+          <h3>Open Questions &amp; Recorded Limitations</h3>
+          <ul class="compact-list">
+            <li><strong>Gemini CLI auth (<code>UNSUPPORTED_CLIENT</code>):</strong> Local Gemini CLI exited 55 during batch testing; needs working local Gemini authentication before live Gemini output can be observed.</li>
+            <li><strong>AGY opening backlink compliance:</strong> <code>gemini-3.8-flash-low</code> placed its <code>Report Navigation</code> sidebar ahead of the required body-opening backlink paragraph; the validator rightly refused publication.</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- 5. WHAT YOU NEED TO DO NEXT -->
+    <section class="band" id="next-steps" style="border-bottom:none; padding-bottom:10px;">
+      <h2>5. What You Need to Do Next (Commit, Publish Upstream, Risks)</h2>
+      <div class="row">
+        <div class="col-third card">
+          <h3>A1 · Commit State</h3>
+          <p><strong>Code is already committed and released.</strong> <code>REQ-698</code> shipped in <code>3645f3a1</code> (<code>v0.306.0</code>) and <code>HEAD</code> is at <code>fc234cf0</code> (<code>v0.306.1</code>).</p>
+          <p style="margin-bottom:0;">Only this new report bundle (<code>ai-reports/2026-10-15_1731_REQ-698-ai-report-second-opinion/</code>) is untracked, because <code>ai-report</code> leaves committing to you. Commit it if you want the report checked into Git.</p>
+        </div>
+
+        <div class="col-third card">
+          <h3>A2 · Publish Upstream &amp; Update Consumer</h3>
+          <p>Local <code>main</code> is <strong>15 commits ahead of <code>origin/main</code></strong>. To ship this feature to <code>iwr2-imprint-wright</code>:</p>
+          <pre><code># 1. In skill-do-work2 (upstream):
+git push origin main
+
+# 2. In iwr2-imprint-wright (consumer):
+just run-do-work-update</code></pre>
+        </div>
+
+        <div class="col-third card">
+          <h3>R1–R3 · Risks to Keep in Mind</h3>
+          <ul class="compact-list">
+            <li><strong>R1 (Non-Codex write fence):</strong> Only <code>codex</code> runs in a write-fenced OS sandbox (<code>-s workspace-write</code>). <code>gemini</code>, <code>agy</code>, and <code>claude</code> rely on post-run byte/git detection, which refuses banner publication on violation but does not auto-revert changes.</li>
+            <li><strong>R2 (Session model visibility):</strong> Session mode stops if the calling agent cannot determine its own exact model slug; use <code>--backend &lt;cli&gt;</code> when running from a harness that hides the active model ID.</li>
+            <li><strong>R3 (Strict opening backlink):</strong> Models that wrap the page in a sidebar before the opening <code>Original report: index.html</code> paragraph (as AGY did) will be refused until they place the backlink first in <code>&lt;body&gt;</code>.</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <footer>
+      Report bundle: <code>ai-reports/2026-10-15_1731_REQ-698-ai-report-second-opinion/index.html</code> · Target: <code>REQ-698</code> (<code>UR-156</code>, migrated from <code>UR-061</code>) · Render check: verified via <code>ai-report-judge</code> at 1440×1000 and 390×844 in light and dark themes.
+    </footer>
+  </div>
+</body>
+</html>
