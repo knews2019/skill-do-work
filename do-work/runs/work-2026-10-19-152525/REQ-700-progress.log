@@ -36,3 +36,7 @@
 2026-10-19T17:16:44Z finalize-start advance --finalization-manifest (release 0.306.3 -> 0.306.4, closes UR-158)
 2026-10-19T17:16:45Z finalize-end exit 2
 2026-10-19T17:16:59Z finalize-start advance --finalization-manifest (release 0.306.3 -> 0.306.4, closes UR-158)
+2026-10-19T17:17:02Z finalize-end exit 0
+2026-10-19T17:17:02Z contract-regressions-start bash _dev/tests/contract-regressions.sh
+2026-10-19T17:17:27Z contract-regressions-end exit 0
+2026-10-19T17:17:59Z integrate-done release 0.306.4, finalization 4a6573e4, UR-158 closed, report written
