@@ -104,7 +104,7 @@ The evidence sweep reads requirements, implementation summaries, reviews, tests,
 
 ## A Second Opinion
 
-`ai-report second-opinion` gives an existing report to a clarity editor. It checks claims against the repository, simplifies the explanation, and keeps corrections and open questions visible. It writes a sibling `index-<cli>-<actual-model>.html` plus `<cli>-<actual-model>-reply.md`. Repeated generation adds matching numeric suffixes to the page and reply. New assets carry the backend/model prefix.
+`ai-report second-opinion` gives an existing report to a clarity editor. It checks claims against the repository, simplifies the explanation, and keeps corrections and open questions visible. It writes a sibling `index-<cli>-<actual-model>.html` plus `<cli>-<actual-model>-reply.md`. Repeated generation adds matching numeric suffixes to the page and reply. If the backend's reported model cannot be verified after the page is written, the page is kept under a name ending in `-unverified` instead of being discarded, with no banner on the original. New assets carry the backend/model prefix.
 
 Inside an agent session the caller passes its own CLI and known active model. If that identity is unknown, the action stops. `--backend codex|gemini|agy|claude` targets exactly that backend, optionally with `--model`; it never substitutes. `--all` visits installed codex, gemini and agy sequentially, excluding the caller through `--exclude <own-cli>`, and reports each missing or failed run. A plain terminal without a backend selects the first installed codex, gemini or agy once.
 

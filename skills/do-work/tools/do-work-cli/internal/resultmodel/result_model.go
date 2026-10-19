@@ -697,6 +697,7 @@ type AIReportSecondOpinionRun struct {
 	BackendName    string                         `json:"backend"`
 	RequestedModel string                         `json:"requested_model"`
 	ActualModel    string                         `json:"actual_model"`
+	SeenModels     []string                       `json:"seen_models"`
 	RunState       string                         `json:"state"`
 	PagePath       string                         `json:"page"`
 	ReplyPath      string                         `json:"reply"`
