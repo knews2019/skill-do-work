@@ -10,6 +10,16 @@ For the complete release history, read this file and the archives below from new
 - [0.50.0 through 0.64.1](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-13-up-to-v0.64.1.md)
 - [0.1.0 through 0.49.0](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-07-up-to-v0.49.0.md)
 
+## 0.306.2 — ai-report Commits the Bundle as the Project's Rules Say (2026-10-19)
+
+A report written by `ai-report` now reaches the deployed site when the project expects it to: the revise form no longer forbids committing, and both forms follow the project's own commit instructions.
+
+- `ai-report` Step 8 states the commit rule once: inside a `do-work run` the run commits; invoked directly, commit the new bundle by exact path when the project's instructions ask for completed increments to be committed, otherwise print the exact commit command. Never stage anything outside the bundle, never push.
+- The revise form applies that rule at its step 7, after the catalog regenerates, and commits `ai-reports/catalog.json` and `ai-reports/index.html` with the bundle. Its "Do not commit" step is gone.
+- The summary names the commit hash or the exact commit command.
+- The render check reports one expected `AI-REPORT-JUDGE-BROKEN-LINK` finding per `href` into the prior bundle (an anchor link counts separately); the five sentences that said "one" now say so, matching the judge.
+- The toolbox guide says the same.
+
 ## 0.306.1 — KB Handoff Explains Its Optional Lessons Offer (2026-10-15)
 
 The KB handoff now identifies new lessons from the completed work and makes clear that saving them is optional for using the feature or result.
