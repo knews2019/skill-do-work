@@ -10,6 +10,16 @@ For the complete release history, read this file and the archives below from new
 - [0.50.0 through 0.64.1](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-13-up-to-v0.64.1.md)
 - [0.1.0 through 0.49.0](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-07-up-to-v0.49.0.md)
 
+## 0.306.5 — Second-Opinion Launcher Shows Progress While Codex, Gemini or AGY Runs (2026-10-19)
+
+A foreign-backend second opinion no longer sits silent for up to 16 minutes. While the backend runs, the launcher prints heartbeats and the backend's own output on stderr, so a working backend can be told apart from a stuck one. stdout still carries only the typed JSON.
+
+- Every 30 seconds while a backend subprocess (probe or generation) or the render judge runs, stderr gets `[second-opinion] <cli> <phase> running <elapsed>, page <N bytes|not written yet>`. A page size that stops growing is the stall signal.
+- Every line the backend writes is mirrored to stderr as it arrives, prefixed `[<cli> stdout] ` or `[<cli> stderr] `. The in-memory capture still receives every byte for model identity and the reply.
+- The 16 MB capture cap now works. The capture buffer embedded `bytes.Buffer`, so `io.Copy` used its `ReadFrom` and skipped the capping `Write`. A runaway backend was buffered without limit, and "backend output exceeded capture limit" never fired. A test now pins the cap.
+- The process supervisor is unchanged: closed stdin, the fd 3 completion status, group termination before reaping, and the 16-minute bound.
+- `ai-report.md` § Second-opinion form and the toolbox guide each say where the progress appears.
+
 ## 0.306.4 — Second Opinion From the Session Model Runs Where the User Can Watch It (2026-10-19)
 
 When an agent asks for a second opinion from its own model, the CLI no longer runs that agent's CLI as a hidden subprocess that sits silent for minutes. The editorial pass runs in the session, or in a background subagent or workflow the agent starts, and the CLI keeps every launcher guarantee around it.
