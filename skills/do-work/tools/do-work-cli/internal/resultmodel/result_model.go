@@ -706,6 +706,12 @@ type AIReportSecondOpinionRun struct {
 	BannerState    string                         `json:"banner_state"`
 	FailureReason  string                         `json:"reason"`
 	OutsidePaths   []string                       `json:"outside_paths"`
+	// Session-form fields: prepare fills the staging paths, prefix and prompt for the agent; both phases record how the model was known.
+	StagingPage   string `json:"staging_page,omitempty"`
+	StagingReply  string `json:"staging_reply,omitempty"`
+	AssetPrefix   string `json:"asset_prefix,omitempty"`
+	PromptText    string `json:"prompt,omitempty"`
+	ModelEvidence string `json:"model_evidence,omitempty"`
 }
 type AIReportSecondOpinionFinding struct {
 	FindingKind   string `json:"kind"`
