@@ -8,5 +8,5 @@ Hand-back emphasis note: none
 
 | REQ | Builder | Operative name | Handback file | Status | Dispatch instant | Takeover→finalization min | Full gates | Stall restarts |
 |-----|---------|----------------|---------------|--------|------------------|---------------------------|------------|----------------|
-| REQ-701 | builder-701 (background agent, Route A, worktree) | worktree-agent-REQ-701-keep-finished-page-unverified-model | do-work/runs/work-2026-10-19-152525/REQ-701-handback.md | dispatched | 2026-10-19T15:35:45Z | — | — | — |
+| REQ-701 | builder-701 (background agent, Route A, worktree) | worktree-agent-REQ-701-keep-finished-page-unverified-model | do-work/runs/work-2026-10-19-152525/REQ-701-handback.md | handback landed 86617f8e (1 commit, 5 files); integrator-701 started | 2026-10-19T15:35:45Z | — | — | — |
 | REQ-700 | (pre-dispatch running) | (set by pre-dispatch) | do-work/runs/work-2026-10-19-152525/REQ-700-handback.md | claimed 2026-10-19T15:25:12Z; builder waits for REQ-701's release | — | — | — | — |

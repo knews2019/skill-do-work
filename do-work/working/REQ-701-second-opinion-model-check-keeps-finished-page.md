@@ -22,6 +22,8 @@ estimate:
     - 4-file write set
     - 4 acceptance criteria
 claimed_at: 2026-10-19T15:25:12Z
+dispatch_at: 2026-10-19T15:35:45Z
+builder_handback_at: 2026-10-19T15:43:39Z
 ---
 # A Failed Second-Opinion Model Check Keeps The Finished Page And Reports It; A Subagent Model Never Makes The Backend Model Ambiguous
 ## What
