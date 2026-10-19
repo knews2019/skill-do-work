@@ -1,7 +1,7 @@
 ---
 id: REQ-702
 title: 'Foreign-backend second-opinion launcher shows live progress and streams the backend output while it runs'
-status: pending
+status: claimed
 created_at: 2026-10-19T18:20:06Z
 user_request: UR-159
 domain: general
@@ -12,6 +12,7 @@ impact: impact-user-visible
 effort_estimate: effort-substantive
 related: [REQ-700]
 write_set: ["skills/do-work/tools/do-work-cli/internal/toolboxcommands/report_second_opinion.go", "skills/do-work/tools/do-work-cli/internal/toolboxcommands/report_second_opinion_test.go", "skills/do-work-toolbox/actions/ai-report.md", "skills/do-work-toolbox/docs/ai-report-guide.md"]
+claimed_at: 2026-10-19T18:57:19Z
 ---
 # Foreign-Backend Second-Opinion Launcher Shows Live Progress And Streams The Backend Output While It Runs
 ## What
