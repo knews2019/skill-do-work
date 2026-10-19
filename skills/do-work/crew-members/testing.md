@@ -48,7 +48,7 @@ Synthetic load is an experiment, not a routine extra test. Name the timing-sensi
 When the REQ has `tdd: true`:
 
 1. **Red:** Write a test that captures the expected behavior. Run it. Verify it fails for the right reason (not a syntax error or import failure — the assertion itself must fail).
-2. **Green:** Write the minimum code to make the test pass. No more.
+2. **Green:** Write the code that makes the test pass.
 3. **Refactor:** Clean up the implementation without changing behavior. Tests must still pass.
 
 **Evidence:** After the Green step, record the test output showing the transition from red to green. This is the Red-Green Proof referenced in the REQ.

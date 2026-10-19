@@ -13,11 +13,11 @@
 
 - No behavior changes unless explicitly intentional and documented
 - All existing tests still pass after refactoring
-- Measurable improvement — fewer lines, better performance, clearer API, reduced duplication, or improved readability
+- Measurable improvement — better performance, clearer API, reduced duplication, or improved readability
 - No new dependencies introduced unless the refactor specifically requires them
 - Call sites updated — no broken imports, no dangling references
 - Clean imports — removed unused imports, no circular dependencies introduced
-- Guardrails in `crew-members/coding-guardrails.md` apply during implementation (think before coding, simplicity first, surgical changes, goal-driven execution, naming for reach — that file is authoritative for the current set)
+- Guardrails in `crew-members/coding-guardrails.md` apply during implementation (think before coding, quality floor, surgical changes, goal-driven execution, naming for reach — that file is authoritative for the current set)
 
 ## Implementation Checklist
 

@@ -10,6 +10,14 @@ For the complete release history, read this file and the archives below from new
 - [0.50.0 through 0.64.1](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-13-up-to-v0.64.1.md)
 - [0.1.0 through 0.49.0](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-07-up-to-v0.49.0.md)
 
+## 0.306.5 — Builds Keep Safety, Tests, and a Skip List (2026-10-19)
+
+A builder is no longer told to make the smallest change. That cut made diffs cheaper, not better, and it stripped vague requests.
+
+- The always-loaded quality floor keeps data-integrity checks, safety checks, and error handling, leaves a test for new behavior, and writes deliberate skips into the REQ and the completion hand-back.
+- When a request does not name the behavior, the surface, and the done-check, the builder covers the expected nice-to-haves or flags the gap.
+- Specs, review, and the parallel-agent lenses no longer assign a minimal-code reading. "Follow YAGNI" is a declined nudge.
+
 ## 0.306.4 — Second Opinion From the Session Model Runs Where the User Can Watch It (2026-10-19)
 
 When an agent asks for a second opinion from its own model, the CLI no longer runs that agent's CLI as a hidden subprocess that sits silent for minutes. The editorial pass runs in the session, or in a background subagent or workflow the agent starts, and the CLI keeps every launcher guarantee around it.

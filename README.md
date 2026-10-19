@@ -181,7 +181,7 @@ Yes. They're plain markdown with frontmatter. You can change priority, edit requ
 
 ### Do I need to remind it to write lessons, keep working, commit often, or not block when I'm AFK?
 
-Mostly no — those are already built in. `do-work run` appends a `## Lessons Learned` section per REQ, logs out-of-scope finds to `## Discovered Tasks`, commits each finished REQ atomically, loads the YAGNI guardrail on every build, and never blocks on ambiguity (it records a best-judgment decision and files a `pending-answers` follow-up you review later via `do-work clarify`). The two things you *can't* get just by asking — an unbounded "loop until the queue is empty" runner and a backgrounded commit — are deliberately not the default. See the [Standing Preferences](skills/do-work/docs/standing-preferences.md) reference for the full map of common nudges → where each already lives.
+Mostly no — those are already built in. `do-work run` appends a `## Lessons Learned` section per REQ, logs out-of-scope finds to `## Discovered Tasks`, commits each finished REQ atomically, loads the quality floor on every build (safety checks, tests, named skips; a vague REQ is not cut down to the words on the page), and never blocks on ambiguity (it records a best-judgment decision and files a `pending-answers` follow-up you review later via `do-work clarify`). An unbounded "loop until the queue is empty" runner, a backgrounded commit, and a minimal-code cut are deliberately not the default. See the [Standing Preferences](skills/do-work/docs/standing-preferences.md) reference for the full map of common nudges → where each already lives.
 
 ## Token efficiency
 

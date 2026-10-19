@@ -1,10 +1,11 @@
 # Coding Guardrails Crew Member
 
-<!-- JIT_CONTEXT: This file is always loaded during implementation (Step 6) alongside general.md, regardless of domain. Guardrails 1-4 are behavioral, adapted from Andrej Karpathy's observations on LLM coding pitfalls (via forrestchang/andrej-karpathy-skills); guardrail 5 (Naming for Reach) is the skill's own and is the canonical home for naming rules. These rules shape *how* code is written at every step; they are orthogonal to the workflow machinery. -->
+<!-- JIT_CONTEXT: This file is always loaded during implementation (Step 6) alongside general.md, regardless of domain. Guardrails 1, 3, and 4 are behavioral, adapted from Andrej Karpathy's observations on LLM coding pitfalls (via forrestchang/andrej-karpathy-skills). Guardrail 2 is the quality floor. Guardrail 5 (Naming for Reach) is the skill's own and is the canonical home for naming rules. These rules shape *how* code is written at every step; they are orthogonal to the workflow machinery. -->
 
-> Guardrails 1-4 are behavioral, adapted from Andrej Karpathy's observations on LLM coding
-> pitfalls — models make silent assumptions, overcomplicate, and drift beyond
-> scope. Original source: [forrestchang/andrej-karpathy-skills](https://github.com/forrestchang/andrej-karpathy-skills).
+> Guardrails 1, 3, and 4 are behavioral, adapted from Andrej Karpathy's observations on LLM coding
+> pitfalls — models make silent assumptions and drift beyond
+> scope. Guardrail 2 is the quality floor.
+> Original source: [forrestchang/andrej-karpathy-skills](https://github.com/forrestchang/andrej-karpathy-skills).
 > Guardrail 5 is the skill's own. These five principles prioritize caution over velocity. Do-work's complexity
 > triage already sends simple REQs straight to implementation — so apply
 > judgment, not ceremony.
@@ -17,7 +18,7 @@ Before implementing:
 
 - State your assumptions explicitly. If uncertain, ask.
 - If multiple interpretations exist, present them — don't pick silently.
-- If a simpler approach exists, say so. Push back when warranted.
+- If more than one approach fits, name them. Push back when an approach misses the REQ's intent.
 - If something is unclear, stop. Name what's confusing. Ask.
 
 In do-work terms: open questions get marked `- [~]` with best-judgment reasoning
@@ -46,26 +47,19 @@ system's shape earns a short paragraph and a "why this matters." Most Step 3.5 *
 questions are ESCALATE (they're ambiguity by definition); most Step 6 *technical* choices
 are DECIDE & STATE.
 
-## 2. Simplicity First
+## 2. Quality Floor
 
-**Follow YAGNI — "You Aren't Gonna Need It."** Don't build functionality, abstractions, or
-configurability on the theory it might be useful later. Speculated future need is the opposite of
-minimum code. This is the canonical statement of the principle; other files point here.
+**Keep the checks and the tests.** This is the canonical statement; other files point here.
 
-**Minimum code that solves the problem. Nothing speculative.**
+**Never cut safety.** Do not remove data-integrity checks, safety checks, or error handling to shorten the change.
 
-- No features beyond what was asked.
-- No abstractions for single-use code.
-- No "flexibility" or "configurability" that wasn't requested.
-- No error handling for impossible scenarios.
-- If you write 200 lines and it could be 50, rewrite it.
+**Leave tests behind.** New behavior gets a test, in the project's existing test setup, that fails without the behavior and passes with it. A change that keeps existing behavior keeps the tests that already lock it.
 
-Ask: "Would a senior engineer say this is overcomplicated?" If yes, simplify.
+**Say what you skipped.** Name each thing you deliberately left out, one line each, in the builder hand-back under `Deliberately skipped`. The orchestrator copies that list into `## Implementation Summary` and the completion hand-back. Omit the list when nothing was skipped. A test or safety check does not belong on that list.
 
-**Simplify ≠ strip.** If removing something would need to be restored next week,
-it wasn't complexity — it was foundation. The test isn't "fewest lines"; it's
-"fewest lines *that still hold up under the REQ's real requirements*." When in
-doubt, keep it and note the decision.
+**Underspecified REQs keep expected behavior.** When the REQ does not name the behavior, the surface, and how to tell it is done, cover the nice-to-haves a reader of the ask would expect, or flag the gap through the decide-vs-escalate gate (§1). That coverage is the work, not adjacent cleanup (§3). Shipping only the words on the page is the failure.
+
+**Earned defense.** Before adding long-lived defensive surface — a guard, fallback, retry, validation layer, rule, or warning apparatus — ask: **what earned this, and is the fix still cheaper than the surface it added?** Name the concrete incident or replay case, the surface that will remain, and the regression test that keeps it live. If none exists, or direct repair, deletion, narrowing, or simplification covers the risk more cheaply, do not add the defense; those cheaper remedies do not need to earn themselves.
 
 ## 3. Surgical Changes
 
@@ -146,7 +140,6 @@ this doesn't get renamed — you just don't add more.
 **Success indicators** — observable behaviors that show the principles are landing:
 
 - Clarifying questions appear *before* code starts, not after
-- Diffs stay small and focused on the REQ
 - Neighboring files stay untouched unless the REQ requires them
 - You talk in verification terms ("here's what turns GREEN") rather than "I implemented it"
 - New exported names, files, and columns read as two words; short names are confined to

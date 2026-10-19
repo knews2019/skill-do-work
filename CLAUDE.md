@@ -15,7 +15,7 @@ I love to build. I focus on building complex things as simply as possible, and I
 
 ## Coding Preferences
 
-- Keep things simple. Channel YAGNI energy unless told otherwise.
+- Keep things simple. Do not teach YAGNI or "build only what was asked" in the shipped skill; the builder rule is `skills/do-work/crew-members/coding-guardrails.md` § Quality Floor.
 - Typesafety is useful — take advantage of it.
 - Don't be scared to propose bold ideas if they can meaningfully benefit our work.
 - Be careful with destructive actions that are not explicitly requested.

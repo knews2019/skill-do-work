@@ -141,10 +141,10 @@ Origin: the REQ-035–040 batch reviewed at 86–98%, yet every top defect a lat
 
 **Directive Alignment Check (if an approach directive was assigned)**
 
-If the REQ's Implementation Summary notes an assigned approach directive (e.g., "Directive: Simplicity-First"):
+If the REQ's Implementation Summary notes an assigned approach directive (e.g., "Directive: Clarity-First"):
 
-1. **Was the directive applied?** Check whether the implementation reflects the assigned lens. A Simplicity-First directive should produce minimal, readable code. A Correctness-First directive should show thorough edge case handling.
-2. **Did the lens create blind spots?** Each lens has natural trade-offs. Simplicity-First may skip important error handling. Performance-First may sacrifice readability. Note any blind spots that need follow-up.
+1. **Was the directive applied?** Check whether the implementation reflects the assigned lens. A Clarity-First directive should be readable on one pass. A Correctness-First directive should show thorough edge case handling.
+2. **Did the lens create blind spots?** Each lens has natural trade-offs. Performance-First may sacrifice readability. Note any blind spots that need follow-up. A lens is not a reason to drop a test, a data check, or error handling.
 3. **Report in findings:** If the directive was effectively applied, note it as a positive finding. If the directive was ignored or created significant blind spots, flag it as a Minor finding.
 
 The directive check is informational — it does not affect the overall score. Its purpose is to track whether approach diversity produces better outcomes over time.

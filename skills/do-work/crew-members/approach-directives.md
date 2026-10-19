@@ -12,18 +12,16 @@
 Assign one directive per sub-agent. Do not repeat directives within the same
 wave or parallel batch.
 
-> ⚠ **Extensibility-First (#4) and Simplicity-First (#2) are opposing trade-offs.**
-> Extensibility-First deliberately permits speculative structure; Simplicity-First enforces YAGNI
-> (see `crew-members/coding-guardrails.md` § Simplicity First). Assign Extensibility-First only when the REQ
-> requires future-proofing (plugin surface, public API, framework); otherwise default to
-> Simplicity-First — don't future-proof what the REQ didn't ask for.
+> ⚠ **Extensibility-First (#4) is not a default.** It permits speculative structure.
+> Assign it only when the REQ requires future-proofing (plugin surface, public API, framework).
+> The quality floor (`crew-members/coding-guardrails.md` § Quality Floor) holds no matter which lens is assigned.
 
 ### Implementation Lenses
 
 1. **Correctness-First**: Prioritize exhaustive edge case handling, defensive
    coding, and comprehensive validation. Ask "what could go wrong?" at every step.
-2. **Simplicity-First**: Prioritize the most minimal, readable implementation.
-   Fewer lines, fewer abstractions, fewer dependencies. Ask "can this be simpler?"
+2. **Clarity-First**: Prioritize code a later reader can follow on one pass.
+   Ask "can someone else trace this?"
 3. **Performance-First**: Prioritize efficient algorithms, minimal allocations,
    and fast paths. Profile-aware choices. Ask "what's the hot path?"
 4. **Extensibility-First**: Prioritize clean interfaces, separation of concerns,
@@ -41,7 +39,7 @@ wave or parallel batch.
 
 - **Single agent**: No directive needed (agent uses its own judgment).
 - **2 agents on related REQs**: Assign contrasting directives
-  (e.g., Simplicity-First + Correctness-First).
+  (e.g., Clarity-First + Correctness-First).
 - **3+ agents in a wave**: Assign diverse directives — avoid clustering
   similar lenses (e.g., don't pair Performance-First with Resilience-First
   in the same wave if a creativity lens is available).

@@ -32,8 +32,8 @@ Active for the duration of a maintenance pass — from the moment removal or nar
 ## Boundaries
 
 - **Complementary to `coding-guardrails.md`, never in conflict.** coding-guardrails § 3 "Surgical Changes" says *don't* delete adjacent or pre-existing dead code **while implementing a feature** — there, removal is scope creep. This file governs the opposite window: a deliberate maintenance pass where removal IS the assigned task. Implementation-time = leave it alone; maintenance-time = removal is the point. If you can't tell which window you're in, you're implementing — default to coding-guardrails.
-- **Points at YAGNI, doesn't restate it.** coding-guardrails § 2 "Simplicity First" is the canonical YAGNI home (don't add speculative code). This file is its maintenance-time twin: don't add speculative *instructions*. Read them together.
-- **Subtraction is not vandalism.** coding-guardrails' "Simplify ≠ strip" still holds: if removing something would have to be restored next week, it was foundation, not bloat. Delete what causes the drift, not what holds the thing up. When in doubt, narrow rather than delete — and record the call.
+- **Does not restate the quality floor.** coding-guardrails § 2 "Quality Floor" is the canonical home for safety, tests, named skips, and vague REQs. This file is the maintenance-time rule for instructions: don't add a speculative instruction. Read them together.
+- **Subtraction is not vandalism.** If removing an instruction would have to be restored next week, it was foundation, not drift. Delete what causes the drift, not what holds the thing up. When in doubt, narrow rather than delete — and record the call.
 - **Loaded alongside other crew rules**, not instead of them — general, coding-guardrails, anti-slop, and domain rules still apply.
 
 ## What this looks like in practice

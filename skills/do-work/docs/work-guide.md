@@ -48,7 +48,7 @@ As the request moves through the pipeline, sections are appended:
 - `## Plan` — implementation plan (Route C)
 - `## Exploration` — key files, patterns, gotchas (Routes B & C)
 - `## Scope` — declared files to touch and acceptance criteria (Routes B & C)
-- `## Implementation Summary` — manifest of files changed (mandatory)
+- `## Implementation Summary` — files changed, plus deliberate skips when the builder named any (mandatory)
 - `## Testing` — test results, red-green validation
 - `## Review` — scores, findings, acceptance result
 - `## Decisions` — numbered implementation choices (D-01, D-02...)
