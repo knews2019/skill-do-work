@@ -1,7 +1,7 @@
 ---
 id: REQ-701
 title: 'A failed second-opinion model check keeps the finished page and reports it; a subagent model never makes the backend model ambiguous'
-status: pending
+status: claimed
 created_at: 2026-10-19T14:43:26Z
 user_request: UR-158
 domain: general
@@ -12,6 +12,7 @@ impact: impact-user-visible
 effort_estimate: effort-mechanical
 related: [REQ-700]
 batch: UR-158
+claimed_at: 2026-10-19T15:25:12Z
 ---
 # A Failed Second-Opinion Model Check Keeps The Finished Page And Reports It; A Subagent Model Never Makes The Backend Model Ambiguous
 ## What
