@@ -1,7 +1,7 @@
 ---
 id: REQ-700
 title: 'Second opinion from the session model runs as a visible in-session prompt, not a hidden shell subprocess'
-status: pending
+status: claimed
 created_at: 2026-10-19T14:43:26Z
 user_request: UR-158
 domain: general
@@ -10,6 +10,7 @@ tdd: true
 maintenance: false
 impact: impact-user-visible
 effort_estimate: effort-substantive
+claimed_at: 2026-10-19T15:25:12Z
 ---
 # Second Opinion From The Session Model Runs As A Visible In-Session Prompt, Not A Hidden Shell Subprocess
 ## What
