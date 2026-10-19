@@ -438,6 +438,11 @@ func secondOpinionRun(ctx context.Context, repository, bundle, executable, templ
 		fail(err)
 		return
 	}
+	if unverified && len(page) == 0 {
+		// Nothing finished to keep: an empty staging page is a plain failure, and the deferred cleanup removes it.
+		fail(fmt.Errorf("backend wrote no page; actual model unverified: requested %s; seen %s", resolved, strings.Join(row.SeenModels, ", ")))
+		return
+	}
 	if !unverified {
 		if err := secondOpinionBacklink(page); err != nil {
 			fail(err)

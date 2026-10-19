@@ -496,6 +496,29 @@ func TestSecondOpinionSubagentModelIsNotAmbiguous(t *testing.T) {
 	}
 }
 
+func TestSecondOpinionUnverifiedModelWithoutPageFails(t *testing.T) {
+	repo, bundle := secondOpinionFixture(t)
+	probe := `{"type":"result","subtype":"success","is_error":false,"modelUsage":{"claude-fable-5-1":{}},"result":"OK"}`
+	generation := `{"type":"result","subtype":"success","is_error":false,"modelUsage":{"claude-opus-5-5":{},"claude-haiku-5-5":{}},"result":"No page was written."}`
+	secondOpinionFakeClaude(t, probe, generation)
+	// The backend answers with an unverifiable model and never writes the page: nothing finished exists to keep.
+	backendPath := filepath.Join(os.Getenv("PATH"), "claude")
+	script, _ := os.ReadFile(backendPath)
+	changed := strings.Replace(string(script), ` printf '<html><body><p>Original report: <a href="index.html">index.html</a></p><h1>Clear</h1></body></html>' > "$output"`+"\n", "", 1)
+	if changed == string(script) {
+		t.Fatal("fake claude script did not drop its page write")
+	}
+	os.WriteFile(backendPath, []byte(changed), 0755)
+	row := secondOpinionRows(t, secondOpinionInvoke(t, repo, "--backend", "claude", "--model", "claude-fable-5-1"))[0]
+	if row["state"] != "failed" || !strings.Contains(row["reason"].(string), "backend wrote no page") {
+		t.Fatalf("empty page not refused as a plain failure: %v", row)
+	}
+	files, _ := os.ReadDir(bundle)
+	if len(files) != 1 || files[0].Name() != "index.html" {
+		t.Fatalf("empty page published or staging left behind: %v", files)
+	}
+}
+
 func TestSecondOpinionUnverifiedModelKeepsFinishedPage(t *testing.T) {
 	repo, bundle := secondOpinionFixture(t)
 	probe := `{"type":"result","subtype":"success","is_error":false,"modelUsage":{"claude-fable-5-1":{}},"result":"OK"}`
