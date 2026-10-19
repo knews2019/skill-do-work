@@ -10,6 +10,17 @@ For the complete release history, read this file and the archives below from new
 - [0.50.0 through 0.64.1](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-13-up-to-v0.64.1.md)
 - [0.1.0 through 0.49.0](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-07-up-to-v0.49.0.md)
 
+## 0.306.4 — Second Opinion From the Session Model Runs Where the User Can Watch It (2026-10-19)
+
+When an agent asks for a second opinion from its own model, the CLI no longer runs that agent's CLI as a hidden subprocess that sits silent for minutes. The editorial pass runs in the session, or in a background subagent or workflow the agent starts, and the CLI keeps every launcher guarantee around it.
+
+- `ai-report-second-opinion --prepare --backend <cli> --model <slug> [<bundle-dir>|latest]` checks the bundle and outside-bundle Git status, reserves the dotfile staging page and the asset prefix, and returns one `runs[]` row with `state: prepared`, `staging_page`, `staging_reply`, `asset_prefix` and the filled `prompt` (`{{OUTPUT_FILE}}` is the absolute staging path). It never looks up or runs a backend.
+- `ai-report-second-opinion --finalize <staging-page>` reads the prepare record, re-checks outside-bundle Git status and preservation, requires the backlink and a non-blank reply, publishes `index-<cli>-<model>[-N].html` with `<cli>-<model>[-N]-reply.md`, runs the render judge and inserts the pass-gated banner, exactly as the launcher path does. Only a never-written staging page is removed; any other refusal keeps the page and names it.
+- The prepare record is a `<stem>.json` sidecar beside the staging page holding mode and sha256 digests of every bundle file, never bytes, so preservation is proven across the process boundary.
+- Session rows carry `model_evidence: session-declared` (the model the session declared, never CLI-verified); launcher rows carry `model_evidence: native`.
+- The launcher path for codex, gemini, agy, and for `claude` when another agent targets it, is unchanged; its publication tail is now shared with finalize, and a reply-publish failure after the page publish now keeps the staging page instead of removing it.
+- The action's § Second-opinion form and the toolbox guide describe the prepare, do-the-prompt, finalize sequence, with the page and the final reply written to the two reserved paths in every variant; the prompt template is unchanged.
+
 ## 0.306.3 — Second-Opinion Page Survives a Failed Model Check (2026-10-19)
 
 A finished second-opinion page is no longer deleted because the backend's model could not be confirmed afterwards, and a subagent's model in Claude's usage map no longer counts as ambiguity. A 12-minute generation that an Explore subagent made look ambiguous is the case this fixes.
