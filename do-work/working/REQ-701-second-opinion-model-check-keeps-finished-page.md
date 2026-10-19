@@ -12,6 +12,15 @@ impact: impact-user-visible
 effort_estimate: effort-mechanical
 related: [REQ-700]
 batch: UR-158
+route: A
+estimate:
+  p50_active_minutes: 15
+  confidence: medium
+  calculated_at: 2026-10-19T15:29:09Z
+  basis:
+    - Route A
+    - 4-file write set
+    - 4 acceptance criteria
 claimed_at: 2026-10-19T15:25:12Z
 ---
 # A Failed Second-Opinion Model Check Keeps The Finished Page And Reports It; A Subagent Model Never Makes The Backend Model Ambiguous
@@ -42,3 +51,19 @@ A 12-minute generation was discarded because the editor used an Opus-based Explo
 - [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
 - [ ] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
 *Source: [Image #3] <- see additional feedback*
+
+---
+
+## Triage
+
+**Route: A** - Simple
+
+**Reasoning:** Bug fix with a clear reproduction: the REQ names the file (`report_second_opinion.go`), the two defects (`secondOpinionRun`'s deferred `Remove(stageName)` and `secondOpinionMetadata`'s `len(models) != 1` rule for `claude`), and the two test fakes to lock it. Nothing to discover; the existing `secondOpinionFakeJSON` fake and `secondOpinionRows` helper cover the test shape.
+
+**Planning:** Not required
+
+## Plan
+
+**Planning not required** - Route A: Direct implementation
+
+*Skipped by work action*
