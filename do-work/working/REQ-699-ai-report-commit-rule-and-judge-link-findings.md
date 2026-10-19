@@ -1,7 +1,7 @@
 ---
 id: REQ-699
 title: 'ai-report: commit the bundle as the project rules say, and expect one judge link finding per href'
-status: pending
+status: claimed
 created_at: 2026-10-19T14:29:39Z
 user_request: UR-157
 domain: general
@@ -12,6 +12,7 @@ maintenance: true
 impact: impact-user-visible
 effort_estimate: effort-mechanical
 write_set: ["skills/do-work-toolbox/actions/ai-report.md", "skills/do-work-toolbox/docs/ai-report-guide.md"]
+claimed_at: 2026-10-19T14:32:39Z
 ---
 # ai-report: Commit the Bundle as the Project Rules Say, and Expect One Judge Link Finding per href
 ## What
