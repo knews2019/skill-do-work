@@ -18,6 +18,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/commandruntime"
@@ -35,6 +36,50 @@ var secondOpinionStagePattern = regexp.MustCompile(`^\.[A-Za-z0-9][A-Za-z0-9._-]
 // errSecondOpinionModelUnverified marks native evidence that names no single backend model; a finished page is then published under an unverified name instead of being discarded.
 var errSecondOpinionModelUnverified = errors.New("actual model is absent or ambiguous")
 var secondOpinionJudge = secondOpinionRender
+
+// secondOpinionProgressSink receives the launcher's live progress while a backend or the judge runs: heartbeats and the
+// backend's mirrored output lines. stdout stays the typed result only; tests replace the sink and shorten the interval.
+var secondOpinionProgressSink io.Writer = os.Stderr
+var secondOpinionHeartbeatInterval = 30 * time.Second
+
+// secondOpinionProgressMutex keeps whole lines whole: the heartbeat and both output copiers share the sink.
+var secondOpinionProgressMutex sync.Mutex
+
+// secondOpinionProgress names what a heartbeat reports; pagePath stays empty until a staging page exists.
+type secondOpinionProgress struct {
+	phase, backend, pagePath string
+}
+
+func secondOpinionProgressLine(line string) {
+	secondOpinionProgressMutex.Lock()
+	defer secondOpinionProgressMutex.Unlock()
+	_, _ = io.WriteString(secondOpinionProgressSink, line)
+}
+
+// secondOpinionHeartbeat reports elapsed time, phase, backend and page size every interval until the returned stop
+// runs. A stalled backend shows as heartbeats whose page size no longer changes. stop returns after the ticker exits.
+func secondOpinionHeartbeat(progress secondOpinionProgress) (stop func()) {
+	started := time.Now()
+	stopped, finished := make(chan struct{}), make(chan struct{})
+	go func() {
+		defer close(finished)
+		ticker := time.NewTicker(secondOpinionHeartbeatInterval)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-stopped:
+				return
+			case <-ticker.C:
+				page := "not written yet"
+				if info, err := os.Stat(progress.pagePath); progress.pagePath != "" && err == nil && info.Size() > 0 {
+					page = fmt.Sprintf("%d bytes", info.Size())
+				}
+				secondOpinionProgressLine(fmt.Sprintf("[second-opinion] %s %s running %s, page %s\n", progress.backend, progress.phase, time.Since(started).Round(time.Second), page))
+			}
+		}
+	}()
+	return func() { close(stopped); <-finished }
+}
 
 // secondOpinionBacklinkRequirement fills {{BACKLINK_REQUIREMENT}} for both the exec path and the session prepare.
 const secondOpinionBacklinkRequirement = `Open the body with <p>Original report: <a href="index.html">index.html</a></p>, before the main content. Never modify index.html.`
@@ -527,7 +572,7 @@ func secondOpinionRun(ctx context.Context, repository, bundle, executable, templ
 	defer stopProbe()
 	model := row.RequestedModel
 	if row.BackendName == "agy" && model == "" {
-		capture := secondOpinionCapture(probeContext, bundle, executable, "models")
+		capture := secondOpinionCapture(probeContext, secondOpinionProgress{phase: "probe", backend: row.BackendName}, bundle, executable, "models")
 		if err := checkOutside(); err != nil {
 			fail(err)
 			return
@@ -548,7 +593,7 @@ func secondOpinionRun(ctx context.Context, repository, bundle, executable, templ
 	}
 	probePrompt := "Reply OK only. Do not use tools or modify any files."
 	argv := secondOpinionArgv(row.BackendName, model, probePrompt, true)
-	capture := secondOpinionCapture(probeContext, bundle, executable, argv...)
+	capture := secondOpinionCapture(probeContext, secondOpinionProgress{phase: "probe", backend: row.BackendName}, bundle, executable, argv...)
 	if err := checkOutside(); err != nil {
 		fail(err)
 		return
@@ -605,7 +650,7 @@ func secondOpinionRun(ctx context.Context, repository, bundle, executable, templ
 		fail(errors.New("unresolved prompt placeholder"))
 		return
 	}
-	capture = secondOpinionCapture(ctx, bundle, executable, secondOpinionArgv(row.BackendName, resolved, prompt, false)...)
+	capture = secondOpinionCapture(ctx, secondOpinionProgress{phase: "generation", backend: row.BackendName, pagePath: filepath.Join(bundle, stageName)}, bundle, executable, secondOpinionArgv(row.BackendName, resolved, prompt, false)...)
 	if err := checkOutside(); err != nil {
 		fail(err)
 		return
@@ -696,7 +741,9 @@ func secondOpinionPublication(repository, bundle, stageName string, page []byte,
 		row.RunState = "unverified"
 		return
 	}
+	stopHeartbeat := secondOpinionHeartbeat(secondOpinionProgress{phase: "judge", backend: row.BackendName, pagePath: filepath.Join(bundle, pageName)})
 	verdict, findings := secondOpinionJudge(bundle, page)
+	stopHeartbeat()
 	row.JudgeVerdict = verdict
 	row.JudgeFindings = findings
 	row.RunState = "ran"
@@ -787,20 +834,55 @@ type secondOpinionCaptured struct {
 	stdout, stderr string
 	err            error
 }
+
+// secondOpinionBuffer captures up to 16 MB of one backend stream and mirrors every line to the progress sink as it
+// arrives, past the cap too: pending holds at most one unfinished line of up to 64 KiB, so the mirror cannot grow memory.
+// captured is a named field, never embedded: an embedded bytes.Buffer promotes ReadFrom, io.Copy prefers it, and
+// neither the cap nor the mirror in Write would ever run.
 type secondOpinionBuffer struct {
-	bytes.Buffer
-	truncated bool
+	captured     bytes.Buffer
+	truncated    bool
+	mirrorPrefix string
+	pending      []byte
 }
 
 func (buffer *secondOpinionBuffer) Write(data []byte) (int, error) {
 	length := len(data)
-	remaining := 16*1024*1024 - buffer.Len()
+	buffer.pending = append(buffer.pending, data...)
+	for {
+		index := bytes.IndexByte(buffer.pending, '\n')
+		if index < 0 && len(buffer.pending) < 64*1024 {
+			break
+		}
+		if index < 0 {
+			index = len(buffer.pending) - 1
+		}
+		buffer.mirrorLine(buffer.pending[:index+1])
+		buffer.pending = buffer.pending[:copy(buffer.pending, buffer.pending[index+1:])]
+	}
+	remaining := 16*1024*1024 - buffer.captured.Len()
 	if len(data) > remaining {
 		data = data[:remaining]
 		buffer.truncated = true
 	}
-	_, _ = buffer.Buffer.Write(data)
+	_, _ = buffer.captured.Write(data)
 	return length, nil
+}
+
+func (buffer *secondOpinionBuffer) mirrorLine(line []byte) {
+	text := buffer.mirrorPrefix + string(line)
+	if !strings.HasSuffix(text, "\n") {
+		text += "\n"
+	}
+	secondOpinionProgressLine(text)
+}
+
+// flushMirror prints a last line the backend left without a newline; call it only after Wait joined the copiers.
+func (buffer *secondOpinionBuffer) flushMirror() {
+	if len(buffer.pending) > 0 {
+		buffer.mirrorLine(buffer.pending)
+		buffer.pending = nil
+	}
 }
 
 // The supervisor owns the isolated group until cleanup, even if the backend
@@ -817,7 +899,7 @@ IFS= read -r release
 exit "$backend_status"
 `
 
-func secondOpinionCapture(ctx context.Context, directory, executable string, args ...string) secondOpinionCaptured {
+func secondOpinionCapture(ctx context.Context, progress secondOpinionProgress, directory, executable string, args ...string) secondOpinionCaptured {
 	bounded, cancel := context.WithTimeout(ctx, 16*time.Minute)
 	defer cancel()
 	if err := bounded.Err(); err != nil {
@@ -844,12 +926,16 @@ func secondOpinionCapture(ctx context.Context, directory, executable string, arg
 	// and closes fd 3 before exec, so its output cannot forge completion status.
 	command.Stdin = holdRead
 	command.ExtraFiles = []*os.File{statusWrite}
-	var stdout, stderr secondOpinionBuffer
+	// Non-file writers make exec copy both pipes through goroutines that Wait joins, so each buffer has one writer.
+	stdout := secondOpinionBuffer{mirrorPrefix: "[" + progress.backend + " stdout] "}
+	stderr := secondOpinionBuffer{mirrorPrefix: "[" + progress.backend + " stderr] "}
 	command.Stdout = &stdout
 	command.Stderr = &stderr
 	if err := command.Start(); err != nil {
 		return secondOpinionCaptured{err: err}
 	}
+	stopHeartbeat := secondOpinionHeartbeat(progress)
+	defer stopHeartbeat()
 	_ = statusWrite.Close()
 	_ = holdRead.Close()
 	done := make(chan error, 1)
@@ -882,6 +968,8 @@ func secondOpinionCapture(ctx context.Context, directory, executable string, arg
 	_ = statusRead.Close()
 	_ = holdWrite.Close()
 	waitErr := command.Wait()
+	stdout.flushMirror()
+	stderr.flushMirror()
 	if cleanupErr != nil && !errors.Is(cleanupErr, os.ErrProcessDone) {
 		err = errors.Join(err, cleanupErr)
 	}
@@ -894,7 +982,7 @@ func secondOpinionCapture(ctx context.Context, directory, executable string, arg
 	if stdout.truncated || stderr.truncated {
 		err = errors.New("backend output exceeded capture limit")
 	}
-	return secondOpinionCaptured{stdout: stdout.String(), stderr: stderr.String(), err: err}
+	return secondOpinionCaptured{stdout: stdout.captured.String(), stderr: stderr.captured.String(), err: err}
 }
 
 func secondOpinionMetadata(backend, expected string, capture secondOpinionCaptured) (model, reply string, seen []string, err error) {
