@@ -96,7 +96,7 @@ The evidence sweep reads requirements, implementation summaries, reviews, tests,
 
 ## Revising a Report
 
-`ai-report revise <dir|latest> [what changed]` never edits the old report. It writes a new sibling report with the same name plus `-rev<N>`, which opens with a "rev-N (date)" block listing what changed and what is still to do, and names the old report's folder in an `ai-report-supersedes` meta tag. `latest` picks the newest report in the catalog, and the catalog is regenerated afterwards, so the old report shows "superseded by" the new one. A long report gets a table of contents near the top. The last output line is the new report's path and a `file://` link to open it; committing is left to you.
+`ai-report revise <dir|latest> [what changed]` never edits the old report. It writes a new sibling report with the same name plus `-rev<N>`, which opens with a "rev-N (date)" block listing what changed and what is still to do, and names the old report's folder in an `ai-report-supersedes` meta tag. `latest` picks the newest report in the catalog, and the catalog is regenerated afterwards, so the old report shows "superseded by" the new one. A long report gets a table of contents near the top. The last output line is the new report's path and a `file://` link to open it. The new report and the regenerated catalog are committed when your project's instructions ask for completed work to be committed; otherwise the summary prints the exact commit command for you. Nothing is ever pushed.
 
 ## Proposal and Root-Cause Reports
 
