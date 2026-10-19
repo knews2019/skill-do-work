@@ -5,10 +5,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -375,7 +377,7 @@ func TestSecondOpinionCapturedRunnerCancellation(t *testing.T) {
 	t.Cleanup(func() { reportImageGracePeriod = oldGrace })
 	done := make(chan secondOpinionCaptured, 1)
 	go func() {
-		done <- secondOpinionCapture(ctx, directory, "/bin/sh", "-c", "trap '' TERM; (printf ready > ready; /bin/sleep 0.3; printf late > cancel-late; /bin/sleep 30) & wait")
+		done <- secondOpinionCapture(ctx, secondOpinionProgress{}, directory, "/bin/sh", "-c", "trap '' TERM; (printf ready > ready; /bin/sleep 0.3; printf late > cancel-late; /bin/sleep 30) & wait")
 	}()
 	deadline := time.Now().Add(2 * time.Second)
 	for {
@@ -727,7 +729,7 @@ func TestSecondOpinionCaptureDrainsExitedLeaderChildren(t *testing.T) {
 			ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 			defer cancel()
 			started := time.Now()
-			captured := secondOpinionCapture(ctx, directory, "/bin/sh", "-c", `(/bin/sleep 0.3; printf late > late-write; /bin/sleep 0.6)`+redirect+` &`)
+			captured := secondOpinionCapture(ctx, secondOpinionProgress{}, directory, "/bin/sh", "-c", `(/bin/sleep 0.3; printf late > late-write; /bin/sleep 0.6)`+redirect+` &`)
 			if captured.err != nil {
 				t.Fatalf("capture: %v", captured.err)
 			}
@@ -742,9 +744,76 @@ func TestSecondOpinionCaptureDrainsExitedLeaderChildren(t *testing.T) {
 	}
 }
 
+// progressRecorder is a test progress sink that writes markerPath once it has seen every wanted fragment.
+type progressRecorder struct {
+	mutex      sync.Mutex
+	text       strings.Builder
+	wanted     []string
+	markerPath string
+}
+
+func (recorder *progressRecorder) Write(data []byte) (int, error) {
+	recorder.mutex.Lock()
+	defer recorder.mutex.Unlock()
+	recorder.text.Write(data)
+	for _, fragment := range recorder.wanted {
+		if !strings.Contains(recorder.text.String(), fragment) {
+			return len(data), nil
+		}
+	}
+	return len(data), os.WriteFile(recorder.markerPath, nil, 0644)
+}
+
+func (recorder *progressRecorder) String() string {
+	recorder.mutex.Lock()
+	defer recorder.mutex.Unlock()
+	return recorder.text.String()
+}
+
+// Pins the silent pane: the launcher buffered all backend output until exit, so a working backend and a stalled
+// one looked the same. The fake backend holds until the test has seen its line and a heartbeat on the sink.
+func TestSecondOpinionCaptureStreamsProgressWhileBackendRuns(t *testing.T) {
+	repo, _ := secondOpinionFixture(t)
+	markerPath := filepath.Join(t.TempDir(), "progress-seen")
+	recorder := &progressRecorder{wanted: []string{"[codex stderr] drafting\n", "codex generation", " bytes"}, markerPath: markerPath}
+	previousSink, previousInterval := secondOpinionProgressSink, secondOpinionHeartbeatInterval
+	secondOpinionProgressSink, secondOpinionHeartbeatInterval = recorder, 20*time.Millisecond
+	t.Cleanup(func() { secondOpinionProgressSink, secondOpinionHeartbeatInterval = previousSink, previousInterval })
+	// The page is written before this runs, so a generation heartbeat can report its size; the wait is bounded at 4s.
+	secondOpinionFakeCodex(t, `printf 'drafting\n' >&2
+ waited=0
+ while [ ! -e '`+markerPath+`' ] && [ "$waited" -lt 200 ]; do /bin/sleep 0.02; waited=$((waited+1)); done
+ printf 'tail without newline' >&2`)
+	row := secondOpinionRows(t, secondOpinionInvoke(t, repo, "--backend", "codex"))[0]
+	if row["actual_model"] != "actual-model-1" || row["page"] == nil {
+		t.Fatalf("row=%v", row)
+	}
+	if _, err := os.Stat(markerPath); err != nil {
+		t.Fatalf("backend exited before its line and a heartbeat reached the sink: %q", recorder.String())
+	}
+	progress := recorder.String()
+	for _, fragment := range []string{"[codex stdout] Clarity changes\n", "[codex stderr] tail without newline\n"} {
+		if !strings.Contains(progress, fragment) {
+			t.Fatalf("progress lacks %q: %q", fragment, progress)
+		}
+	}
+}
+
+// Pins the dead cap: with bytes.Buffer embedded, io.Copy used its promoted ReadFrom, so a runaway backend was
+// buffered without limit and without the truncation error (and the live mirror in Write never ran either).
+func TestSecondOpinionCaptureCapsBackendOutput(t *testing.T) {
+	previousSink := secondOpinionProgressSink
+	secondOpinionProgressSink = io.Discard
+	t.Cleanup(func() { secondOpinionProgressSink = previousSink })
+	captured := secondOpinionCapture(context.Background(), secondOpinionProgress{}, t.TempDir(), "/usr/bin/head", "-c", "16777300", "/dev/zero")
+	if len(captured.stdout) != 16*1024*1024 || captured.err == nil {
+		t.Fatalf("captured %d bytes, err=%v", len(captured.stdout), captured.err)
+	}
+}
+
 func TestSecondOpinionCapturePreservesBackendStatusAndChannels(t *testing.T) {
 	for _, status := range []string{"0", "7"} {
-		captured := secondOpinionCapture(context.Background(), t.TempDir(), "/bin/sh", "-c", `printf '%s' "$1"; printf warning >&2; if read value; then exit 99; fi; if (printf forged >&3) 2>/dev/null; then exit 98; fi; exit "$2"`, "backend", `literal $() ' argument`, status)
+		captured := secondOpinionCapture(context.Background(), secondOpinionProgress{}, t.TempDir(), "/bin/sh", "-c", `printf '%s' "$1"; printf warning >&2; if read value; then exit 99; fi; if (printf forged >&3) 2>/dev/null; then exit 98; fi; exit "$2"`, "backend", `literal $() ' argument`, status)
 		if captured.stdout != `literal $() ' argument` || captured.stderr != "warning" {
 			t.Fatalf("capture=%+v", captured)
 		}
