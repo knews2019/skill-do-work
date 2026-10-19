@@ -26,6 +26,9 @@ import (
 const secondOpinionUsage = "ai-report-second-opinion [--backend codex|gemini|agy|claude [--model <slug>] | --all --exclude <own-cli>] [<bundle-dir>|latest]"
 
 var secondOpinionModelPattern = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._-]*$`)
+
+// errSecondOpinionModelUnverified marks native evidence that names no single backend model; a finished page is then published under an unverified name instead of being discarded.
+var errSecondOpinionModelUnverified = errors.New("actual model is absent or ambiguous")
 var secondOpinionJudge = secondOpinionRender
 
 type secondOpinionOptions struct {
@@ -70,7 +73,7 @@ func handleAIReportSecondOpinion(execution commandruntime.ExecutionContext, args
 	result := resultmodel.CommandResult{Outcome: resultmodel.OutcomeSuccess, AIReportSecondOpinion: payload}
 	var summary strings.Builder
 	for _, backend := range backends {
-		row := resultmodel.AIReportSecondOpinionRun{BackendName: backend, RequestedModel: options.model, RunState: "failed", JudgeVerdict: "not-run", BannerState: "not-inserted", JudgeFindings: []resultmodel.AIReportSecondOpinionFinding{}, OutsidePaths: []string{}}
+		row := resultmodel.AIReportSecondOpinionRun{BackendName: backend, RequestedModel: options.model, RunState: "failed", JudgeVerdict: "not-run", BannerState: "not-inserted", JudgeFindings: []resultmodel.AIReportSecondOpinionFinding{}, OutsidePaths: []string{}, SeenModels: []string{}}
 		if backend == options.exclude {
 			row.RunState = "excluded"
 			row.FailureReason = "excluded calling backend"
@@ -360,7 +363,7 @@ func secondOpinionRun(ctx context.Context, repository, bundle, executable, templ
 		fail(err)
 		return
 	}
-	resolved, _, err := secondOpinionMetadata(row.BackendName, capture)
+	resolved, _, _, err := secondOpinionMetadata(row.BackendName, model, capture)
 	if err != nil {
 		fail(err)
 		return
@@ -390,8 +393,20 @@ func secondOpinionRun(ctx context.Context, repository, bundle, executable, templ
 	}
 	stageName := filepath.Base(stage.Name())
 	stage.Close()
-	// Only this unpredictable staging leaf is disposable; generated artifacts stay visible on refusal.
-	defer func() { _ = bundleRoot.Remove(stageName) }()
+	relative, _ := filepath.Rel(repository, bundle)
+	stagePublished := false
+	// The staging leaf is removed only once its bytes were published to a sibling page, or when the backend never wrote it. A finished page is never deleted on refusal; the failure reason names where it was kept.
+	defer func() {
+		info, statErr := bundleRoot.Stat(stageName)
+		if statErr != nil {
+			return
+		}
+		if stagePublished || info.Size() == 0 {
+			_ = bundleRoot.Remove(stageName)
+			return
+		}
+		row.FailureReason += "; staged page kept at " + filepath.ToSlash(filepath.Join(relative, stageName))
+	}()
 	prompt := strings.NewReplacer("{{REPOSITORY_ROOT}}", repository, "{{BUNDLE_PATH}}", bundle, "{{OUTPUT_FILE}}", stageName, "{{ASSET_PREFIX}}", prefix, "{{BACKLINK_REQUIREMENT}}", `Open the body with <p>Original report: <a href="index.html">index.html</a></p>, before the main content. Never modify index.html.`).Replace(template)
 	if strings.Contains(prompt, "{{") {
 		fail(errors.New("unresolved prompt placeholder"))
@@ -406,17 +421,15 @@ func secondOpinionRun(ctx context.Context, repository, bundle, executable, templ
 		fail(err)
 		return
 	}
-	actual, reply, err := secondOpinionMetadata(row.BackendName, capture)
-	if err != nil {
+	actual, reply, seen, err := secondOpinionMetadata(row.BackendName, resolved, capture)
+	row.SeenModels = append([]string{}, seen...)
+	if err != nil && !errors.Is(err, errSecondOpinionModelUnverified) {
 		fail(err)
 		return
 	}
+	unverified := err != nil || actual != resolved
 	row.ActualModel = actual
-	if actual != resolved {
-		fail(fmt.Errorf("generation ran model %s instead of %s; substitution refused", actual, resolved))
-		return
-	}
-	if strings.TrimSpace(reply) == "" {
+	if !unverified && strings.TrimSpace(reply) == "" {
 		fail(errors.New("backend returned no final editorial reply"))
 		return
 	}
@@ -425,16 +438,24 @@ func secondOpinionRun(ctx context.Context, repository, bundle, executable, templ
 		fail(err)
 		return
 	}
-	if err := secondOpinionBacklink(page); err != nil {
-		fail(err)
-		return
+	if !unverified {
+		if err := secondOpinionBacklink(page); err != nil {
+			fail(err)
+			return
+		}
 	}
-	pageName, replyName, err := secondOpinionNames(bundle, row.BackendName, actual)
+	publishedModel := actual
+	if unverified {
+		// The finished page is kept under a name that says the model was not confirmed; no banner, no judge.
+		publishedModel = resolved + "-unverified"
+		row.ActualModel = ""
+		row.FailureReason = fmt.Sprintf("actual model unverified: requested %s; seen %s", resolved, strings.Join(row.SeenModels, ", "))
+	}
+	pageName, replyName, err := secondOpinionNames(bundle, row.BackendName, publishedModel)
 	if err != nil {
 		fail(err)
 		return
 	}
-	relative, _ := filepath.Rel(repository, bundle)
 	publish := func(name string, data []byte) error {
 		path := filepath.ToSlash(filepath.Join(relative, name))
 		if err := rootedPublishFile(repository, path, data, 0644, false); err != nil {
@@ -448,6 +469,7 @@ func secondOpinionRun(ctx context.Context, repository, bundle, executable, templ
 		return
 	}
 	row.PagePath = filepath.ToSlash(filepath.Join(relative, pageName))
+	stagePublished = true
 	// The backend knows the reserved stage name; the saved reply names its published page.
 	reply = strings.NewReplacer("file://"+filepath.ToSlash(filepath.Join(bundle, stageName)), pageName, filepath.Join(bundle, stageName), pageName, filepath.ToSlash(filepath.Join(bundle, stageName)), pageName, stageName, pageName).Replace(reply)
 	if err := publish(replyName, []byte(reply)); err != nil {
@@ -455,6 +477,10 @@ func secondOpinionRun(ctx context.Context, repository, bundle, executable, templ
 		return
 	}
 	row.ReplyPath = filepath.ToSlash(filepath.Join(relative, replyName))
+	if unverified {
+		row.RunState = "unverified"
+		return
+	}
 	verdict, findings := secondOpinionJudge(bundle, page)
 	row.JudgeVerdict = verdict
 	row.JudgeFindings = findings
@@ -657,11 +683,10 @@ func secondOpinionCapture(ctx context.Context, directory, executable string, arg
 	return secondOpinionCaptured{stdout: stdout.String(), stderr: stderr.String(), err: err}
 }
 
-func secondOpinionMetadata(backend string, capture secondOpinionCaptured) (string, string, error) {
+func secondOpinionMetadata(backend, expected string, capture secondOpinionCaptured) (model, reply string, seen []string, err error) {
 	if capture.err != nil {
-		return "", "", fmt.Errorf("backend failed: %w; %s", capture.err, secondOpinionErrorDetail(backend, capture))
+		return "", "", nil, fmt.Errorf("backend failed: %w; %s", capture.err, secondOpinionErrorDetail(backend, capture))
 	}
-	var model, reply string
 	switch backend {
 	case "codex":
 		// Only the native startup envelope, before the prompt/tools/answer, is authority.
@@ -691,7 +716,7 @@ func secondOpinionMetadata(backend string, capture secondOpinionCaptured) (strin
 			}
 		}
 		if fields["workdir"] == "" || fields["provider"] == "" || fields["session id"] == "" {
-			return "", "", errors.New("Codex native startup model metadata unavailable")
+			return "", "", nil, errors.New("Codex native startup model metadata unavailable")
 		}
 		model = fields["model"]
 		reply = capture.stdout
@@ -709,30 +734,37 @@ func secondOpinionMetadata(backend string, capture secondOpinionCaptured) (strin
 			ModelUsage map[string]json.RawMessage `json:"modelUsage"`
 		}
 		if err := json.Unmarshal([]byte(capture.stdout), &envelope); err != nil {
-			return "", "", fmt.Errorf("invalid %s native JSON: %w", backend, err)
+			return "", "", nil, fmt.Errorf("invalid %s native JSON: %w", backend, err)
 		}
 		if envelope.IsError || len(envelope.Error) > 0 && string(envelope.Error) != "null" {
-			return "", "", errors.New("backend native result reports an error")
+			return "", "", nil, errors.New("backend native result reports an error")
 		}
 		models := envelope.Stats.Models
 		reply = envelope.Response
 		if backend == "claude" {
 			if envelope.Type != "result" || envelope.Subtype != "success" {
-				return "", "", errors.New("Claude terminal success result missing")
+				return "", "", nil, errors.New("Claude terminal success result missing")
 			}
 			models = envelope.ModelUsage
 			reply = envelope.Result
 		}
-		if len(models) != 1 {
-			return "", "", fmt.Errorf("%s actual model is absent or ambiguous (%d models)", backend, len(models))
-		}
 		for name := range models {
-			model = name
+			seen = append(seen, name)
+		}
+		sort.Strings(seen)
+		// The requested model wins when the evidence lists it: a subagent's model beside it is recorded, not ambiguity.
+		if _, ok := models[expected]; expected != "" && ok {
+			model = expected
+		} else if len(seen) == 1 {
+			model = seen[0]
+		} else {
+			// The reply and the seen set travel with this error on purpose: the caller publishes a finished page unverified.
+			return "", reply, seen, fmt.Errorf("%s %w (%d models)", backend, errSecondOpinionModelUnverified, len(models))
 		}
 	case "agy":
 		stderrLower := strings.ToLower(capture.stderr)
 		if strings.Contains(stderrLower, "print timeout") || strings.Contains(stderrLower, "timed out") || strings.Contains(stderrLower, "truncated") {
-			return "", "", errors.New("AGY reported incomplete output on stderr")
+			return "", "", nil, errors.New("AGY reported incomplete output on stderr")
 		}
 		// /model is a zero-turn native command, not model-authored text.
 		var selection struct {
@@ -771,32 +803,35 @@ func secondOpinionMetadata(backend string, capture secondOpinionCaptured) (strin
 				} `json:"result"`
 			}
 			if err := json.Unmarshal([]byte(line), &event); err != nil {
-				return "", "", errors.New("invalid AGY event stream")
+				return "", "", nil, errors.New("invalid AGY event stream")
 			}
 			switch event.Event {
 			case "init":
 				if seenInit || event.Init.CWD == "" || event.Init.PermissionMode == "" {
-					return "", "", errors.New("invalid AGY init metadata")
+					return "", "", nil, errors.New("invalid AGY init metadata")
 				}
 				seenInit = true
 				model = event.Init.Model
 				conversation = event.ConversationID
 			case "result":
 				if seenResult || !seenInit || event.Result.Status != "SUCCESS" || event.Result.ConversationID != conversation || len(event.Result.DeniedActions) > 0 {
-					return "", "", fmt.Errorf("AGY terminal result incomplete or unsuccessful: %s %s", event.Result.Status, event.Result.Error)
+					return "", "", nil, fmt.Errorf("AGY terminal result incomplete or unsuccessful: %s %s", event.Result.Status, event.Result.Error)
 				}
 				seenResult = true
 				reply = event.Result.Response
 			}
 		}
 		if !seenInit || !seenResult {
-			return "", "", errors.New("AGY requires native init and terminal SUCCESS")
+			return "", "", nil, errors.New("AGY requires native init and terminal SUCCESS")
 		}
 	}
-	if !secondOpinionModelPattern.MatchString(model) {
-		return "", "", errors.New("actual model is absent or is not a filename-safe native slug")
+	if seen == nil && model != "" {
+		seen = []string{model}
 	}
-	return model, reply, nil
+	if !secondOpinionModelPattern.MatchString(model) {
+		return "", "", nil, errors.New("actual model is absent or is not a filename-safe native slug")
+	}
+	return model, reply, seen, nil
 }
 
 func secondOpinionErrorDetail(backend string, capture secondOpinionCaptured) string {

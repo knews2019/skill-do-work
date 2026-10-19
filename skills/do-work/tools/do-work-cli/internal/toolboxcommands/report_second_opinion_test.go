@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -300,7 +301,7 @@ func TestSecondOpinionRejectsUnverifiedIdentityAndInvalidAGYCompletion(t *testin
 		{"agy", "{\"event\":\"init\",\"conversation_id\":\"x\",\"init\":{\"model\":\"native\",\"cwd\":\"/tmp\",\"permission_mode\":\"auto\"}}\n{\"event\":\"result\",\"result\":{\"conversation_id\":\"x\",\"status\":\"ERROR\"}}", ""},
 	}
 	for _, test := range cases {
-		if _, _, err := secondOpinionMetadata(test.backend, secondOpinionCaptured{stdout: test.stdout, stderr: test.stderr}); err == nil {
+		if _, _, _, err := secondOpinionMetadata(test.backend, "", secondOpinionCaptured{stdout: test.stdout, stderr: test.stderr}); err == nil {
 			t.Fatalf("unverified identity accepted: %+v", test)
 		}
 	}
@@ -315,6 +316,19 @@ func TestSecondOpinionPreservesAssetsAndRejectsUnprefixedSymlinkAndMissingBackli
 			rows := secondOpinionRows(t, secondOpinionInvoke(t, repo, "--backend", "codex"))
 			if rows[0]["state"] != "failed" {
 				t.Fatalf("unsafe backend accepted: %v", rows)
+			}
+			if strings.Contains(extra, "Missing original link") {
+				// The backend finished the page; a backlink refusal keeps the bytes and names them.
+				staged, _ := filepath.Glob(filepath.Join(bundle, ".codex-actual-model-1-staging-*.html"))
+				if len(staged) != 1 {
+					t.Fatalf("staged page not kept: %v", staged)
+				}
+				if info, err := os.Stat(staged[0]); err != nil || info.Size() == 0 {
+					t.Fatalf("kept staged page is empty: %v %v", info, err)
+				}
+				if !strings.Contains(rows[0]["reason"].(string), "staged page kept at") {
+					t.Fatalf("reason does not name the kept page: %v", rows[0]["reason"])
+				}
 			}
 		})
 	}
@@ -413,7 +427,7 @@ func TestSecondOpinionBackendCommandSafetyContract(t *testing.T) {
 	}
 }
 
-func TestSecondOpinionFreshGenerationModelMismatchRefusesPublication(t *testing.T) {
+func TestSecondOpinionFreshGenerationModelMismatchPublishesUnverified(t *testing.T) {
 	repo, bundle := secondOpinionFixture(t)
 	secondOpinionFakeCodex(t, "")
 	backendPath := filepath.Join(os.Getenv("PATH"), "codex")
@@ -424,9 +438,101 @@ func TestSecondOpinionFreshGenerationModelMismatchRefusesPublication(t *testing.
 	changed = strings.Replace(changed, "\"$PWD\" >&2", "\"$PWD\" \"$actual\" >&2", 1)
 	os.WriteFile(backendPath, []byte(changed), 0755)
 	rows := secondOpinionRows(t, secondOpinionInvoke(t, repo, "--backend", "codex"))
+	if rows[0]["state"] != "unverified" || rows[0]["actual_model"] != "" || fmt.Sprint(rows[0]["seen_models"]) != "[different-model]" {
+		t.Fatalf("model switch not published as unverified: %v", rows)
+	}
 	files, _ := os.ReadDir(bundle)
-	if rows[0]["state"] != "failed" || rows[0]["actual_model"] != "different-model" || len(files) != 1 {
-		t.Fatalf("model switch published: %v files=%v", rows, files)
+	names := []string{}
+	for _, file := range files {
+		names = append(names, file.Name())
+	}
+	if fmt.Sprint(names) != "[codex-actual-model-1-unverified-reply.md index-codex-actual-model-1-unverified.html index.html]" {
+		t.Fatalf("unverified pair missing or staging left behind: %v", names)
+	}
+	original, _ := os.ReadFile(filepath.Join(bundle, "index.html"))
+	if strings.Contains(string(original), "second-opinion-banner:") {
+		t.Fatal("unverified run inserted banner")
+	}
+}
+
+// secondOpinionFakeClaude prints one envelope for the probe turn and another after writing the page.
+func secondOpinionFakeClaude(t *testing.T, probeEnvelope, generationEnvelope string) {
+	t.Helper()
+	script := `#!/bin/sh
+prompt=
+while [ "$#" -gt 0 ]; do
+ case "$1" in -p) prompt=$2; shift 2;; *) shift;; esac
+done
+case "$prompt" in *'Output: '*)
+ output=${prompt#*'Output: '}; output=${output%%'
+'*}
+ printf '<html><body><p>Original report: <a href="index.html">index.html</a></p><h1>Clear</h1></body></html>' > "$output"
+ printf '%s\n' '` + generationEnvelope + `'
+ ;;
+*) printf '%s\n' '` + probeEnvelope + `' ;;
+esac
+`
+	if err := os.WriteFile(filepath.Join(os.Getenv("PATH"), "claude"), []byte(script), 0755); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestSecondOpinionSubagentModelIsNotAmbiguous(t *testing.T) {
+	repo, bundle := secondOpinionFixture(t)
+	envelope := `{"type":"result","subtype":"success","is_error":false,"modelUsage":{"claude-fable-5-1":{},"claude-opus-5-5":{}},"result":"Clarity: simpler. Corrections: none. Open questions: none."}`
+	secondOpinionFakeClaude(t, envelope, envelope)
+	row := secondOpinionRows(t, secondOpinionInvoke(t, repo, "--backend", "claude", "--model", "claude-fable-5-1"))[0]
+	if row["state"] != "ran" || row["actual_model"] != "claude-fable-5-1" || row["page"] != "ai-reports/2026-10-15_1200-example/index-claude-claude-fable-5-1.html" || fmt.Sprint(row["seen_models"]) != "[claude-fable-5-1 claude-opus-5-5]" {
+		t.Fatalf("subagent model treated as ambiguity: %v", row)
+	}
+	if _, err := os.Stat(filepath.Join(bundle, "index-claude-claude-fable-5-1.html")); err != nil {
+		t.Fatal(err)
+	}
+	files, _ := os.ReadDir(bundle)
+	for _, file := range files {
+		if strings.HasPrefix(file.Name(), ".") {
+			t.Fatalf("staging page left after publication: %s", file.Name())
+		}
+	}
+}
+
+func TestSecondOpinionUnverifiedModelKeepsFinishedPage(t *testing.T) {
+	repo, bundle := secondOpinionFixture(t)
+	probe := `{"type":"result","subtype":"success","is_error":false,"modelUsage":{"claude-fable-5-1":{}},"result":"OK"}`
+	generation := `{"type":"result","subtype":"success","is_error":false,"modelUsage":{"claude-opus-5-5":{},"claude-haiku-5-5":{}},"result":"Clarity: simpler. Corrections: none. Open questions: none."}`
+	secondOpinionFakeClaude(t, probe, generation)
+	original, _ := os.ReadFile(filepath.Join(bundle, "index.html"))
+	result := secondOpinionInvoke(t, repo, "--backend", "claude", "--model", "claude-fable-5-1")
+	row := secondOpinionRows(t, result)[0]
+	if row["state"] != "unverified" || row["actual_model"] != "" || fmt.Sprint(row["seen_models"]) != "[claude-haiku-5-5 claude-opus-5-5]" || row["banner_state"] != "not-inserted" || row["judge_verdict"] != "not-run" {
+		t.Fatalf("unverified model did not keep the finished page: %v", row)
+	}
+	page, err := os.ReadFile(filepath.Join(bundle, "index-claude-claude-fable-5-1-unverified.html"))
+	if err != nil || !strings.Contains(string(page), "<h1>Clear</h1>") {
+		t.Fatalf("finished page bytes not kept: %q %v", page, err)
+	}
+	reply, err := os.ReadFile(filepath.Join(bundle, "claude-claude-fable-5-1-unverified-reply.md"))
+	if err != nil || !strings.Contains(string(reply), "Clarity: simpler.") || strings.Contains(string(reply), "staging-") {
+		t.Fatalf("reply not kept beside the page: %q %v", reply, err)
+	}
+	after, _ := os.ReadFile(filepath.Join(bundle, "index.html"))
+	if string(after) != string(original) {
+		t.Fatal("unverified run changed the original")
+	}
+	files, _ := os.ReadDir(bundle)
+	for _, file := range files {
+		if strings.HasPrefix(file.Name(), ".") {
+			t.Fatalf("staging page left after publication: %s", file.Name())
+		}
+	}
+	if result.Outcome == resultmodel.OutcomeSuccess || len(result.Findings) != 1 || result.Findings[0].Code != "AI-REPORT-SECOND-OPINION-UNVERIFIED" {
+		t.Fatalf("typed finding missing: outcome=%v findings=%+v", result.Outcome, result.Findings)
+	}
+	evidence := strings.Join(result.Findings[0].Evidence, "\n")
+	for _, model := range []string{"claude-fable-5-1", "claude-opus-5-5", "claude-haiku-5-5"} {
+		if !strings.Contains(evidence, model) {
+			t.Fatalf("finding evidence omits %s: %s", model, evidence)
+		}
 	}
 }
 
