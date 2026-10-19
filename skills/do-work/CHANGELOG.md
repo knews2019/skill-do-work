@@ -10,6 +10,15 @@ For the complete release history, read this file and the archives below from new
 - [0.50.0 through 0.64.1](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-13-up-to-v0.64.1.md)
 - [0.1.0 through 0.49.0](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-07-up-to-v0.49.0.md)
 
+## 0.306.3 — Second-Opinion Page Survives a Failed Model Check (2026-10-19)
+
+A finished second-opinion page is no longer deleted because the backend's model could not be confirmed afterwards, and a subagent's model in Claude's usage map no longer counts as ambiguity. A 12-minute generation that an Explore subagent made look ambiguous is the case this fixes.
+
+- `ai-report second-opinion` keeps the staged page on every refusal after the backend wrote it; the failure reason names the kept file. Only an empty staging file, or one already published, is removed.
+- When the model cannot be verified after the page is written, the page and reply are published as `index-<cli>-<model>-unverified[-N].html` and `<cli>-<model>-unverified[-N]-reply.md`, run state `unverified`, no banner, no judge, with the typed finding `AI-REPORT-SECOND-OPINION-UNVERIFIED` naming the requested model and every model seen. An unverifiable model with no page written stays a plain failure.
+- For `claude` and `gemini`, the requested model wins when the native usage map lists it; extra entries land in the new `seen_models` row field.
+- The action file and the toolbox guide describe the unverified name.
+
 ## 0.306.2 — ai-report Commits the Bundle as the Project's Rules Say (2026-10-19)
 
 A report written by `ai-report` now reaches the deployed site when the project expects it to: the revise form no longer forbids committing, and both forms follow the project's own commit instructions.
