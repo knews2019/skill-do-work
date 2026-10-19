@@ -13,6 +13,17 @@ effort_estimate: effort-substantive
 related: [REQ-700]
 write_set: ["skills/do-work/tools/do-work-cli/internal/toolboxcommands/report_second_opinion.go", "skills/do-work/tools/do-work-cli/internal/toolboxcommands/report_second_opinion_test.go", "skills/do-work-toolbox/actions/ai-report.md", "skills/do-work-toolbox/docs/ai-report-guide.md"]
 claimed_at: 2026-10-19T18:57:19Z
+route: A
+estimate:
+  p50_active_minutes: 15
+  confidence: medium
+  calculated_at: 2026-10-19T18:57:48Z
+  basis:
+    - Route A
+    - 4-file write set
+    - 2 subsystems involved
+    - 5 acceptance criteria
+dispatch_at: 2026-10-19T18:59:08Z
 ---
 # Foreign-Backend Second-Opinion Launcher Shows Live Progress And Streams The Backend Output While It Runs
 ## What
@@ -46,3 +57,17 @@ Certainty: high on the outcome (heartbeat plus live mirror on stderr, JSON stdou
 - [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
 - [ ] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
 *Source: progress feedback for the foreign-backend second-opinion launcher path*
+
+## Triage
+
+**Route: A** - Simple
+
+**Reasoning:** The REQ names the exact function (`secondOpinionCapture`), file, and test file, and its Context section already holds the exploration: wire the backend pipes into a tee with a stderr sink and add a heartbeat ticker. The mechanism choice is small and local to one Go file plus two one-sentence doc edits.
+
+**Planning:** Not required
+
+## Plan
+
+**Planning not required** - Route A: Direct implementation
+
+*Skipped by work action*
