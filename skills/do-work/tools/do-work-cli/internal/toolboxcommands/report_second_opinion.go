@@ -3,6 +3,7 @@ package toolboxcommands
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -13,6 +14,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -23,17 +25,23 @@ import (
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/resultmodel"
 )
 
-const secondOpinionUsage = "ai-report-second-opinion [--backend codex|gemini|agy|claude [--model <slug>] | --all --exclude <own-cli>] [<bundle-dir>|latest]"
+const secondOpinionUsage = "ai-report-second-opinion [--backend codex|gemini|agy|claude [--model <slug>] | --all --exclude <own-cli> | --prepare --backend <cli> --model <slug>] [<bundle-dir>|latest] | --finalize <staging-page>"
 
 var secondOpinionModelPattern = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._-]*$`)
+
+// secondOpinionStagePattern is the shape of a launcher-reserved staging page name, so --finalize only ever publishes a page prepare created.
+var secondOpinionStagePattern = regexp.MustCompile(`^\.[A-Za-z0-9][A-Za-z0-9._-]*-staging-[0-9]+\.html$`)
 
 // errSecondOpinionModelUnverified marks native evidence that names no single backend model; a finished page is then published under an unverified name instead of being discarded.
 var errSecondOpinionModelUnverified = errors.New("actual model is absent or ambiguous")
 var secondOpinionJudge = secondOpinionRender
 
+// secondOpinionBacklinkRequirement fills {{BACKLINK_REQUIREMENT}} for both the exec path and the session prepare.
+const secondOpinionBacklinkRequirement = `Open the body with <p>Original report: <a href="index.html">index.html</a></p>, before the main content. Never modify index.html.`
+
 type secondOpinionOptions struct {
-	backend, model, exclude, bundle string
-	all                             bool
+	backend, model, exclude, bundle, finalize string
+	all, prepare                              bool
 }
 
 func handleAIReportSecondOpinion(execution commandruntime.ExecutionContext, args []string) resultmodel.CommandResult {
@@ -41,20 +49,37 @@ func handleAIReportSecondOpinion(execution commandruntime.ExecutionContext, args
 	if err != nil {
 		return usageResult(CommandAIReportSecondOpinion, err.Error()+"; "+secondOpinionUsage)
 	}
-	bundle, err := secondOpinionBundle(execution.RepositoryRoot, options.bundle)
-	if err != nil {
-		return usageResult(CommandAIReportSecondOpinion, err.Error())
-	}
-	templatePath := os.Getenv("DO_WORK_AI_REPORT_SECOND_OPINION_PROMPT")
-	template, err := os.ReadFile(templatePath)
-	if err != nil {
-		return usageResult(CommandAIReportSecondOpinion, "use the suite's do-work-cli.sh launcher, or set DO_WORK_AI_REPORT_SECOND_OPINION_PROMPT to its trusted shipped template: "+err.Error())
+	var bundle, stageName string
+	var template []byte
+	if options.finalize != "" {
+		// The staging page names its bundle; the current-revision chain must not redirect finalize to a newer bundle.
+		stagePath := judgeAbsolutePath(execution.RepositoryRoot, options.finalize)
+		bundle, err = secondOpinionBundle(execution.RepositoryRoot, filepath.Dir(stagePath))
+		if err == nil && bundle != filepath.Dir(stagePath) {
+			err = errors.New("staging page must sit in a current report bundle")
+		}
+		if err != nil {
+			return usageResult(CommandAIReportSecondOpinion, err.Error())
+		}
+		stageName = filepath.Base(stagePath)
+	} else {
+		bundle, err = secondOpinionBundle(execution.RepositoryRoot, options.bundle)
+		if err != nil {
+			return usageResult(CommandAIReportSecondOpinion, err.Error())
+		}
+		templatePath := os.Getenv("DO_WORK_AI_REPORT_SECOND_OPINION_PROMPT")
+		template, err = os.ReadFile(templatePath)
+		if err != nil {
+			return usageResult(CommandAIReportSecondOpinion, "use the suite's do-work-cli.sh launcher, or set DO_WORK_AI_REPORT_SECOND_OPINION_PROMPT to its trusted shipped template: "+err.Error())
+		}
 	}
 	ctx, stop, signalStatus := mutationSignalContext()
 	defer stop()
 	payload := &resultmodel.AIReportSecondOpinionResult{BundlePath: bundle, InvocationMode: "targeted", BackendRuns: []resultmodel.AIReportSecondOpinionRun{}}
 	backends := []string{options.backend}
-	if options.all {
+	if options.prepare || options.finalize != "" {
+		payload.InvocationMode = "session"
+	} else if options.all {
 		payload.InvocationMode = "batch"
 		backends = []string{"codex", "gemini", "agy"}
 	} else if options.backend == "" {
@@ -74,14 +99,24 @@ func handleAIReportSecondOpinion(execution commandruntime.ExecutionContext, args
 	var summary strings.Builder
 	for _, backend := range backends {
 		row := resultmodel.AIReportSecondOpinionRun{BackendName: backend, RequestedModel: options.model, RunState: "failed", JudgeVerdict: "not-run", BannerState: "not-inserted", JudgeFindings: []resultmodel.AIReportSecondOpinionFinding{}, OutsidePaths: []string{}, SeenModels: []string{}}
-		if backend == options.exclude {
+		switch {
+		case options.finalize != "":
+			secondOpinionFinalize(execution.RepositoryRoot, bundle, stageName, &row, &result)
+		case options.prepare:
+			// The session is the backend: its declared model is recorded as such, never probed through a subprocess.
+			row.ActualModel = options.model
+			row.ModelEvidence = "session-declared"
+			secondOpinionPrepare(execution.RepositoryRoot, bundle, string(template), &row)
+		case backend == options.exclude:
 			row.RunState = "excluded"
 			row.FailureReason = "excluded calling backend"
-		} else if executable, lookupErr := exec.LookPath(backend); lookupErr != nil {
-			row.RunState = "skipped"
-			row.FailureReason = "backend is not installed"
-		} else {
-			secondOpinionRun(ctx, execution.RepositoryRoot, bundle, executable, string(template), &row, &result)
+		default:
+			if executable, lookupErr := exec.LookPath(backend); lookupErr != nil {
+				row.RunState = "skipped"
+				row.FailureReason = "backend is not installed"
+			} else {
+				secondOpinionRun(ctx, execution.RepositoryRoot, bundle, executable, string(template), &row, &result)
+			}
 		}
 		payload.BackendRuns = append(payload.BackendRuns, row)
 		fmt.Fprintf(&summary, "%s: %s; model=%s; page=%s; reply=%s; judge=%s; banner=%s", row.BackendName, row.RunState, row.ActualModel, row.PagePath, row.ReplyPath, row.JudgeVerdict, row.BannerState)
@@ -89,7 +124,7 @@ func handleAIReportSecondOpinion(execution commandruntime.ExecutionContext, args
 			fmt.Fprintf(&summary, "; %s", row.FailureReason)
 		}
 		summary.WriteByte('\n')
-		if row.RunState != "ran" && row.RunState != "excluded" || row.RunState == "ran" && row.JudgeVerdict != "pass" {
+		if row.RunState != "ran" && row.RunState != "excluded" && row.RunState != "prepared" || row.RunState == "ran" && row.JudgeVerdict != "pass" {
 			severity := resultmodel.SeverityWarning
 			if !options.all {
 				severity = resultmodel.SeverityError
@@ -97,7 +132,7 @@ func handleAIReportSecondOpinion(execution commandruntime.ExecutionContext, args
 			} else {
 				result.Outcome = resultmodel.OutcomeFindings
 			}
-			result.Findings = append(result.Findings, toolboxFinding(CommandAIReportSecondOpinion, "AI-REPORT-SECOND-OPINION-"+strings.ToUpper(row.RunState), severity, row.OutsidePaths, backend+": "+row.FailureReason, resultmodel.FixabilityManual, "this backend did not produce a render-verified linked second opinion"))
+			result.Findings = append(result.Findings, toolboxFinding(CommandAIReportSecondOpinion, "AI-REPORT-SECOND-OPINION-"+strings.ToUpper(row.RunState), severity, row.OutsidePaths, row.BackendName+": "+row.FailureReason, resultmodel.FixabilityManual, "this backend did not produce a render-verified linked second opinion"))
 		}
 		if ctx.Err() != nil {
 			break
@@ -127,6 +162,10 @@ func secondOpinionParse(args []string) (secondOpinionOptions, error) {
 			options.exclude, err = optionValue(args, &i, "--exclude")
 		case argument == "--all":
 			options.all = true
+		case argument == "--prepare":
+			options.prepare = true
+		case argument == "--finalize" || strings.HasPrefix(argument, "--finalize="):
+			options.finalize, err = optionValue(args, &i, "--finalize")
 		case strings.HasPrefix(argument, "-") || bundleSeen:
 			err = fmt.Errorf("unexpected argument %q", argument)
 		default:
@@ -148,6 +187,12 @@ func secondOpinionParse(args []string) (secondOpinionOptions, error) {
 	}
 	if options.model != "" && !secondOpinionModelPattern.MatchString(options.model) {
 		return options, errors.New("model must be a filename-safe native slug")
+	}
+	if options.prepare && (options.backend == "" || options.model == "" || options.all || options.exclude != "") {
+		return options, errors.New("--prepare requires --backend and --model and cannot batch")
+	}
+	if options.finalize != "" && (bundleSeen || options.backend != "" || options.model != "" || options.all || options.exclude != "" || options.prepare) {
+		return options, errors.New("--finalize takes only the staging page path")
 	}
 	return options, nil
 }
@@ -208,9 +253,32 @@ func secondOpinionBundle(repository, selection string) (string, error) {
 	return bundle, nil
 }
 
+// secondOpinionFile is one bundle entry. info and data are live when the snapshot was taken in this process; a snapshot rebuilt from a prepare record carries only mode and digest.
 type secondOpinionFile struct {
-	info os.FileInfo
-	data []byte
+	info   os.FileInfo
+	data   []byte
+	mode   fs.FileMode
+	digest string
+}
+
+// secondOpinionRecord is the prepare sidecar: the before-snapshot as digests, never bytes, so finalize can prove preservation in a later process.
+type secondOpinionRecord struct {
+	Backend string                         `json:"backend"`
+	Model   string                         `json:"model"`
+	Prefix  string                         `json:"prefix"`
+	Files   map[string]secondOpinionDigest `json:"files"`
+}
+type secondOpinionDigest struct {
+	Mode   uint32 `json:"mode"`
+	SHA256 string `json:"sha256"`
+}
+
+func secondOpinionDigests(before map[string]secondOpinionFile) map[string]secondOpinionDigest {
+	digests := map[string]secondOpinionDigest{}
+	for name, item := range before {
+		digests[name] = secondOpinionDigest{Mode: uint32(item.mode), SHA256: item.digest}
+	}
+	return digests
 }
 
 func secondOpinionSnapshot(bundle string) (map[string]secondOpinionFile, error) {
@@ -230,34 +298,42 @@ func secondOpinionSnapshot(bundle string) (map[string]secondOpinionFile, error) 
 		if !info.Mode().IsRegular() && !info.IsDir() {
 			return fmt.Errorf("bundle contains a link or special file: %s", relative)
 		}
-		item := secondOpinionFile{info: info}
+		item := secondOpinionFile{info: info, mode: info.Mode()}
 		if info.Mode().IsRegular() {
 			item.data, err = os.ReadFile(name)
 			if err != nil {
 				return err
 			}
+			item.digest = fmt.Sprintf("%x", sha256.Sum256(item.data))
 		}
 		files[relative] = item
 		return nil
 	})
 	return files, err
 }
-func secondOpinionPreserved(bundle string, before map[string]secondOpinionFile, stage, prefix string) error {
+
+// secondOpinionPreserved proves every pre-existing bundle path is untouched and every new one is an allowed staging
+// name or a prefixed regular root file. A live before-entry is held to mode, bytes and inode identity; an entry rebuilt
+// from a prepare record (no info) is held to mode and digest, which is all that survives the process boundary.
+func secondOpinionPreserved(bundle string, before map[string]secondOpinionFile, allowed []string, prefix string) error {
 	after, err := secondOpinionSnapshot(bundle)
 	if err != nil {
 		return err
 	}
 	for name, old := range before {
 		current, ok := after[name]
-		if !ok || old.info.Mode() != current.info.Mode() || !bytes.Equal(old.data, current.data) || !os.SameFile(old.info, current.info) {
+		changed := !ok
+		if ok && old.info != nil {
+			changed = old.info.Mode() != current.info.Mode() || !bytes.Equal(old.data, current.data) || !os.SameFile(old.info, current.info)
+		} else if ok {
+			changed = old.mode != current.mode || old.digest != current.digest
+		}
+		if changed {
 			return fmt.Errorf("backend changed existing bundle path: %s", name)
 		}
 	}
 	for name, current := range after {
-		if _, ok := before[name]; ok {
-			continue
-		}
-		if name == stage {
+		if _, ok := before[name]; ok || slices.Contains(allowed, name) {
 			continue
 		}
 		if prefix == "" || filepath.Dir(name) != "." || !strings.HasPrefix(name, prefix) || !current.info.Mode().IsRegular() {
@@ -306,19 +382,137 @@ func secondOpinionOutside(repository, bundle string) ([]string, error) {
 	return outside, nil
 }
 
+// secondOpinionOutsideCheck records the Git status outside the bundle on the row and refuses any dirt there.
+func secondOpinionOutsideCheck(repository, bundle string, row *resultmodel.AIReportSecondOpinionRun) error {
+	paths, err := secondOpinionOutside(repository, bundle)
+	row.OutsidePaths = paths
+	if err != nil {
+		return err
+	}
+	if len(paths) > 0 {
+		return fmt.Errorf("outside-bundle changes: %s", strings.Join(paths, ", "))
+	}
+	return nil
+}
+
+// secondOpinionPrepare is the session form's first phase: it reserves the staging page, records the bundle's
+// digests beside it, and hands the filled prompt back so the editorial pass runs in the agent's own session
+// instead of a hidden subprocess of its CLI. Nothing here executes a backend.
+func secondOpinionPrepare(repository, bundle, template string, row *resultmodel.AIReportSecondOpinionRun) {
+	fail := func(err error) { row.FailureReason = err.Error() }
+	if err := secondOpinionOutsideCheck(repository, bundle, row); err != nil {
+		fail(err)
+		return
+	}
+	before, err := secondOpinionSnapshot(bundle)
+	if err != nil {
+		fail(err)
+		return
+	}
+	prefix := row.BackendName + "-" + row.RequestedModel + "-"
+	stage, err := os.CreateTemp(bundle, "."+prefix+"staging-*.html")
+	if err != nil {
+		fail(err)
+		return
+	}
+	stage.Close()
+	stagePath := stage.Name()
+	stem := strings.TrimSuffix(stagePath, ".html")
+	defer func() {
+		// A prepare that failed after reserving its files leaves nothing behind: no agent has written to them yet.
+		if row.RunState != "prepared" {
+			_ = os.Remove(stagePath)
+			_ = os.Remove(stem + ".json")
+		}
+	}()
+	record, err := json.Marshal(secondOpinionRecord{Backend: row.BackendName, Model: row.RequestedModel, Prefix: prefix, Files: secondOpinionDigests(before)})
+	if err == nil {
+		err = os.WriteFile(stem+".json", record, 0600)
+	}
+	if err != nil {
+		fail(err)
+		return
+	}
+	// The agent's cwd is the repository, not the bundle, so the output path is absolute here.
+	prompt := strings.NewReplacer("{{REPOSITORY_ROOT}}", repository, "{{BUNDLE_PATH}}", bundle, "{{OUTPUT_FILE}}", stagePath, "{{ASSET_PREFIX}}", prefix, "{{BACKLINK_REQUIREMENT}}", secondOpinionBacklinkRequirement).Replace(template)
+	if strings.Contains(prompt, "{{") {
+		fail(errors.New("unresolved prompt placeholder"))
+		return
+	}
+	row.StagingPage = stagePath
+	row.StagingReply = stem + "-reply.md"
+	row.AssetPrefix = prefix
+	row.PromptText = prompt
+	row.RunState = "prepared"
+}
+
+// secondOpinionFinalize is the session form's second phase: it re-checks the bundle against the prepare record and
+// publishes the page the agent wrote through the shared launcher tail. Only a never-written staging page is removed;
+// every other refusal keeps the page and reply stage on disk and names them.
+func secondOpinionFinalize(repository, bundle, stageName string, row *resultmodel.AIReportSecondOpinionRun, result *resultmodel.CommandResult) {
+	fail := func(err error) { row.FailureReason = err.Error() }
+	if !secondOpinionStagePattern.MatchString(stageName) {
+		fail(errors.New("not a launcher-reserved staging page"))
+		return
+	}
+	stem := strings.TrimSuffix(stageName, ".html")
+	sidecar, replyStage := stem+".json", stem+"-reply.md"
+	relative, _ := filepath.Rel(repository, bundle)
+	defer func() {
+		if info, err := os.Lstat(filepath.Join(bundle, stageName)); err == nil && info.Size() > 0 {
+			row.FailureReason += "; staged page kept at " + filepath.ToSlash(filepath.Join(relative, stageName))
+		}
+	}()
+	data, err := os.ReadFile(filepath.Join(bundle, sidecar))
+	if err != nil {
+		fail(errors.New("no prepare record for this staging page"))
+		return
+	}
+	var record secondOpinionRecord
+	if err := json.Unmarshal(data, &record); err != nil {
+		fail(fmt.Errorf("prepare record unreadable: %w", err))
+		return
+	}
+	row.BackendName, row.RequestedModel, row.ActualModel, row.ModelEvidence = record.Backend, record.Model, record.Model, "session-declared"
+	if err := secondOpinionOutsideCheck(repository, bundle, row); err != nil {
+		fail(err)
+		return
+	}
+	if info, err := os.Lstat(filepath.Join(bundle, stageName)); err != nil || info.Size() == 0 {
+		// Nothing was written: the reserved names go back, and nothing is published.
+		if bundleRoot, err := os.OpenRoot(bundle); err == nil {
+			for _, leaf := range []string{stageName, sidecar, replyStage} {
+				_ = bundleRoot.Remove(leaf)
+			}
+			bundleRoot.Close()
+		}
+		fail(errors.New("staging page was not written"))
+		return
+	}
+	recorded := map[string]secondOpinionFile{}
+	for name, digest := range record.Files {
+		recorded[name] = secondOpinionFile{mode: fs.FileMode(digest.Mode), digest: digest.SHA256}
+	}
+	if err := secondOpinionPreserved(bundle, recorded, []string{stageName, sidecar, replyStage}, record.Prefix); err != nil {
+		fail(err)
+		return
+	}
+	reply, err := os.ReadFile(filepath.Join(bundle, replyStage))
+	if err != nil || strings.TrimSpace(string(reply)) == "" {
+		fail(errors.New("no final editorial reply"))
+		return
+	}
+	after, err := secondOpinionSnapshot(bundle)
+	if err != nil {
+		fail(err)
+		return
+	}
+	secondOpinionPublication(repository, bundle, stageName, after[stageName].data, string(reply), after["index.html"], []string{stageName, sidecar, replyStage}, "", row, result)
+}
+
 func secondOpinionRun(ctx context.Context, repository, bundle, executable, template string, row *resultmodel.AIReportSecondOpinionRun, result *resultmodel.CommandResult) {
 	fail := func(err error) { row.FailureReason = err.Error() }
-	checkOutside := func() error {
-		paths, err := secondOpinionOutside(repository, bundle)
-		row.OutsidePaths = paths
-		if err != nil {
-			return err
-		}
-		if len(paths) > 0 {
-			return fmt.Errorf("outside-bundle changes: %s", strings.Join(paths, ", "))
-		}
-		return nil
-	}
+	checkOutside := func() error { return secondOpinionOutsideCheck(repository, bundle, row) }
 	if err := checkOutside(); err != nil {
 		fail(err)
 		return
@@ -338,7 +532,7 @@ func secondOpinionRun(ctx context.Context, repository, bundle, executable, templ
 			fail(err)
 			return
 		}
-		if err := secondOpinionPreserved(bundle, before, "", ""); err != nil {
+		if err := secondOpinionPreserved(bundle, before, nil, ""); err != nil {
 			fail(err)
 			return
 		}
@@ -359,7 +553,7 @@ func secondOpinionRun(ctx context.Context, repository, bundle, executable, templ
 		fail(err)
 		return
 	}
-	if err := secondOpinionPreserved(bundle, before, "", ""); err != nil {
+	if err := secondOpinionPreserved(bundle, before, nil, ""); err != nil {
 		fail(err)
 		return
 	}
@@ -394,20 +588,19 @@ func secondOpinionRun(ctx context.Context, repository, bundle, executable, templ
 	stageName := filepath.Base(stage.Name())
 	stage.Close()
 	relative, _ := filepath.Rel(repository, bundle)
-	stagePublished := false
-	// The staging leaf is removed only once its bytes were published to a sibling page, or when the backend never wrote it. A finished page is never deleted on refusal; the failure reason names where it was kept.
+	// Publication removes the staging leaf itself; what is left here is a page the backend never wrote, which goes, or a finished page a refusal kept, which is named.
 	defer func() {
 		info, statErr := bundleRoot.Stat(stageName)
 		if statErr != nil {
 			return
 		}
-		if stagePublished || info.Size() == 0 {
+		if info.Size() == 0 {
 			_ = bundleRoot.Remove(stageName)
 			return
 		}
 		row.FailureReason += "; staged page kept at " + filepath.ToSlash(filepath.Join(relative, stageName))
 	}()
-	prompt := strings.NewReplacer("{{REPOSITORY_ROOT}}", repository, "{{BUNDLE_PATH}}", bundle, "{{OUTPUT_FILE}}", stageName, "{{ASSET_PREFIX}}", prefix, "{{BACKLINK_REQUIREMENT}}", `Open the body with <p>Original report: <a href="index.html">index.html</a></p>, before the main content. Never modify index.html.`).Replace(template)
+	prompt := strings.NewReplacer("{{REPOSITORY_ROOT}}", repository, "{{BUNDLE_PATH}}", bundle, "{{OUTPUT_FILE}}", stageName, "{{ASSET_PREFIX}}", prefix, "{{BACKLINK_REQUIREMENT}}", secondOpinionBacklinkRequirement).Replace(template)
 	if strings.Contains(prompt, "{{") {
 		fail(errors.New("unresolved prompt placeholder"))
 		return
@@ -417,7 +610,7 @@ func secondOpinionRun(ctx context.Context, repository, bundle, executable, templ
 		fail(err)
 		return
 	}
-	if err := secondOpinionPreserved(bundle, before, stageName, prefix); err != nil {
+	if err := secondOpinionPreserved(bundle, before, []string{stageName}, prefix); err != nil {
 		fail(err)
 		return
 	}
@@ -429,6 +622,7 @@ func secondOpinionRun(ctx context.Context, repository, bundle, executable, templ
 	}
 	unverified := err != nil || actual != resolved
 	row.ActualModel = actual
+	row.ModelEvidence = "native"
 	if !unverified && strings.TrimSpace(reply) == "" {
 		fail(errors.New("backend returned no final editorial reply"))
 		return
@@ -443,18 +637,28 @@ func secondOpinionRun(ctx context.Context, repository, bundle, executable, templ
 		fail(fmt.Errorf("backend wrote no page; actual model unverified: requested %s; seen %s", resolved, strings.Join(row.SeenModels, ", ")))
 		return
 	}
-	if !unverified {
-		if err := secondOpinionBacklink(page); err != nil {
-			fail(err)
-			return
-		}
-	}
-	publishedModel := actual
+	unverifiedModel := ""
 	if unverified {
-		// The finished page is kept under a name that says the model was not confirmed; no banner, no judge.
-		publishedModel = resolved + "-unverified"
+		unverifiedModel = resolved
+	}
+	secondOpinionPublication(repository, bundle, stageName, page, reply, before["index.html"], []string{stageName}, unverifiedModel, row, result)
+}
+
+// secondOpinionPublication is the launcher tail shared by the exec path and the session finalize: backlink, sibling
+// names, page and reply publication, removal of the staging leaves, the render judge, and the pass-gated banner.
+// unverifiedModel is the requested model whose identity the native evidence did not confirm (empty when verified):
+// the finished page is then kept under an -unverified name with no judge and no banner, never deleted.
+func secondOpinionPublication(repository, bundle, stageName string, page []byte, reply string, original secondOpinionFile, stageLeaves []string, unverifiedModel string, row *resultmodel.AIReportSecondOpinionRun, result *resultmodel.CommandResult) {
+	fail := func(err error) { row.FailureReason = err.Error() }
+	relative, _ := filepath.Rel(repository, bundle)
+	publishedModel := row.ActualModel
+	if unverifiedModel != "" {
+		publishedModel = unverifiedModel + "-unverified"
 		row.ActualModel = ""
-		row.FailureReason = fmt.Sprintf("actual model unverified: requested %s; seen %s", resolved, strings.Join(row.SeenModels, ", "))
+		row.FailureReason = fmt.Sprintf("actual model unverified: requested %s; seen %s", unverifiedModel, strings.Join(row.SeenModels, ", "))
+	} else if err := secondOpinionBacklink(page); err != nil {
+		fail(err)
+		return
 	}
 	pageName, replyName, err := secondOpinionNames(bundle, row.BackendName, publishedModel)
 	if err != nil {
@@ -474,15 +678,21 @@ func secondOpinionRun(ctx context.Context, repository, bundle, executable, templ
 		return
 	}
 	row.PagePath = filepath.ToSlash(filepath.Join(relative, pageName))
-	stagePublished = true
-	// The backend knows the reserved stage name; the saved reply names its published page.
+	// The editor knows the reserved stage name; the saved reply names its published page.
 	reply = strings.NewReplacer("file://"+filepath.ToSlash(filepath.Join(bundle, stageName)), pageName, filepath.Join(bundle, stageName), pageName, filepath.ToSlash(filepath.Join(bundle, stageName)), pageName, stageName, pageName).Replace(reply)
 	if err := publish(replyName, []byte(reply)); err != nil {
 		fail(err)
 		return
 	}
 	row.ReplyPath = filepath.ToSlash(filepath.Join(relative, replyName))
-	if unverified {
+	// Both sibling files exist now, so the staging leaves have been published and can go.
+	if bundleRoot, err := os.OpenRoot(bundle); err == nil {
+		for _, leaf := range stageLeaves {
+			_ = bundleRoot.Remove(leaf)
+		}
+		bundleRoot.Close()
+	}
+	if unverifiedModel != "" {
 		row.RunState = "unverified"
 		return
 	}
@@ -494,12 +704,11 @@ func secondOpinionRun(ctx context.Context, repository, bundle, executable, templ
 		row.FailureReason = "render judge " + verdict + "; original left unchanged"
 		return
 	}
-	if err := checkOutside(); err != nil {
+	if err := secondOpinionOutsideCheck(repository, bundle, row); err != nil {
 		row.RunState = "failed"
 		fail(err)
 		return
 	}
-	original := before["index.html"]
 	current, err := os.Lstat(filepath.Join(bundle, "index.html"))
 	if err != nil || !os.SameFile(original.info, current) || current.Mode() != original.info.Mode() {
 		row.RunState = "failed"

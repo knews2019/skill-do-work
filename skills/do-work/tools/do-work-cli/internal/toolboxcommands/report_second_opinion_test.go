@@ -559,6 +559,141 @@ func TestSecondOpinionUnverifiedModelKeepsFinishedPage(t *testing.T) {
 	}
 }
 
+// secondOpinionFakeLogger installs a backend on the fixture PATH that only records its argv; the log file proves whether the launcher ever ran it.
+func secondOpinionFakeLogger(t *testing.T, backend string) string {
+	t.Helper()
+	logPath := filepath.Join(t.TempDir(), backend+"-invocations.log")
+	script := "#!/bin/sh\nprintf '%s\\n' \"$@\" >> '" + logPath + "'\n"
+	if err := os.WriteFile(filepath.Join(os.Getenv("PATH"), backend), []byte(script), 0755); err != nil {
+		t.Fatal(err)
+	}
+	return logPath
+}
+
+func TestSecondOpinionSessionPrepareNeverExecsOwnBackend(t *testing.T) {
+	repo, bundle := secondOpinionFixture(t)
+	logPath := secondOpinionFakeLogger(t, "claude")
+	result := secondOpinionInvoke(t, repo, "--prepare", "--backend", "claude", "--model", "claude-fable-5-1")
+	row := secondOpinionRows(t, result)[0]
+	if _, err := os.Stat(logPath); !os.IsNotExist(err) {
+		t.Fatalf("the session's own backend was executed: %v", err)
+	}
+	if row["state"] != "prepared" || row["model_evidence"] != "session-declared" || row["asset_prefix"] != "claude-claude-fable-5-1-" || result.Outcome != resultmodel.OutcomeSuccess {
+		t.Fatalf("row=%v outcome=%v", row, result.Outcome)
+	}
+	stage, _ := row["staging_page"].(string)
+	if filepath.Dir(stage) != bundle || !strings.HasPrefix(filepath.Base(stage), ".") {
+		t.Fatalf("staging page is not a dotfile inside the bundle: %q", stage)
+	}
+	if info, err := os.Stat(stage); err != nil || !info.Mode().IsRegular() {
+		t.Fatalf("staging page not reserved: %v", err)
+	}
+	stem := strings.TrimSuffix(stage, ".html")
+	if _, err := os.Stat(stem + ".json"); err != nil {
+		t.Fatalf("prepare record missing: %v", err)
+	}
+	if row["staging_reply"] != stem+"-reply.md" {
+		t.Fatalf("reply stage not derived from the page stage: %v", row["staging_reply"])
+	}
+	prompt, _ := row["prompt"].(string)
+	if !strings.Contains(prompt, "Output: "+stage+"\n") || !strings.Contains(prompt, "Original report:") || strings.Contains(prompt, "{{") {
+		t.Fatalf("prompt not filled for the session: %q", prompt)
+	}
+}
+
+func TestSecondOpinionSessionFinalizePublishesAgentWrittenPage(t *testing.T) {
+	// prepare reserves the staging page for the session; the test then plays the agent and writes the page and reply.
+	prepare := func(t *testing.T) (repo, bundle, stage, logPath string) {
+		repo, bundle = secondOpinionFixture(t)
+		logPath = secondOpinionFakeLogger(t, "claude")
+		row := secondOpinionRows(t, secondOpinionInvoke(t, repo, "--prepare", "--backend", "claude", "--model", "claude-fable-5-1"))[0]
+		if row["state"] != "prepared" {
+			t.Fatalf("prepare failed: %v", row)
+		}
+		stage, _ = row["staging_page"].(string)
+		return repo, bundle, stage, logPath
+	}
+	writePage := func(t *testing.T, bundle, stage string) {
+		if err := os.WriteFile(stage, []byte(`<html><body><p>Original report: <a href="index.html">index.html</a></p><h1>Clear</h1><img src="claude-claude-fable-5-1-chart.svg"></body></html>`), 0644); err != nil {
+			t.Fatal(err)
+		}
+		os.WriteFile(filepath.Join(bundle, "claude-claude-fable-5-1-chart.svg"), []byte("<svg/>"), 0644)
+		os.WriteFile(strings.TrimSuffix(stage, ".html")+"-reply.md", []byte("Page: "+stage+" ("+filepath.Base(stage)+")\nClarity: simpler. Corrections: none. Open questions: none.\n"), 0644)
+	}
+	t.Run("publishes", func(t *testing.T) {
+		repo, bundle, stage, logPath := prepare(t)
+		writePage(t, bundle, stage)
+		result := secondOpinionInvoke(t, repo, "--finalize", stage)
+		row := secondOpinionRows(t, result)[0]
+		if row["state"] != "ran" || row["backend"] != "claude" || row["model_evidence"] != "session-declared" || row["actual_model"] != "claude-fable-5-1" || row["judge_verdict"] != "skipped" || row["banner_state"] != "not-inserted" {
+			t.Fatalf("agent-written page not published: %v", row)
+		}
+		if row["page"] != "ai-reports/2026-10-15_1200-example/index-claude-claude-fable-5-1.html" || row["reply"] != "ai-reports/2026-10-15_1200-example/claude-claude-fable-5-1-reply.md" {
+			t.Fatalf("published names: %v", row)
+		}
+		reply, err := os.ReadFile(filepath.Join(bundle, "claude-claude-fable-5-1-reply.md"))
+		if err != nil || !strings.Contains(string(reply), "index-claude-claude-fable-5-1.html") || strings.Contains(string(reply), "staging-") {
+			t.Fatalf("reply not rewritten to the published page: %q %v", reply, err)
+		}
+		for _, name := range []string{stage, strings.TrimSuffix(stage, ".html") + ".json", strings.TrimSuffix(stage, ".html") + "-reply.md"} {
+			if _, err := os.Stat(name); !os.IsNotExist(err) {
+				t.Fatalf("staging leaf left behind: %s", name)
+			}
+		}
+		if _, err := os.Stat(logPath); !os.IsNotExist(err) {
+			t.Fatal("finalize executed the session's own backend")
+		}
+	})
+	t.Run("judge pass inserts banner", func(t *testing.T) {
+		repo, bundle, stage, _ := prepare(t)
+		writePage(t, bundle, stage)
+		before, _ := os.ReadFile(filepath.Join(bundle, "index.html"))
+		previous := secondOpinionJudge
+		secondOpinionJudge = func(string, []byte) (string, []resultmodel.AIReportSecondOpinionFinding) {
+			return "pass", []resultmodel.AIReportSecondOpinionFinding{}
+		}
+		t.Cleanup(func() { secondOpinionJudge = previous })
+		result := secondOpinionInvoke(t, repo, "--finalize", stage)
+		row := secondOpinionRows(t, result)[0]
+		if row["state"] != "ran" || row["banner_state"] != "inserted" || result.Outcome != resultmodel.OutcomeSuccess {
+			t.Fatalf("pass did not link: %v", row)
+		}
+		expected, _, _ := secondOpinionBanner(before, "index-claude-claude-fable-5-1.html")
+		after, _ := os.ReadFile(filepath.Join(bundle, "index.html"))
+		if string(after) != string(expected) {
+			t.Fatalf("original changed beyond the banner: %s", after)
+		}
+	})
+	t.Run("original modified keeps stage", func(t *testing.T) {
+		repo, bundle, stage, _ := prepare(t)
+		writePage(t, bundle, stage)
+		os.WriteFile(filepath.Join(bundle, "index.html"), []byte("<html><body><h1>Edited</h1></body></html>"), 0644)
+		row := secondOpinionRows(t, secondOpinionInvoke(t, repo, "--finalize", stage))[0]
+		if row["state"] != "failed" || !strings.Contains(fmt.Sprint(row["reason"]), "staged page kept at") {
+			t.Fatalf("modified original accepted: %v", row)
+		}
+		if info, err := os.Stat(stage); err != nil || info.Size() == 0 {
+			t.Fatalf("finished staging page deleted: %v", err)
+		}
+		original, _ := os.ReadFile(filepath.Join(bundle, "index.html"))
+		if strings.Contains(string(original), "second-opinion-banner:") {
+			t.Fatal("failed finalize inserted banner")
+		}
+	})
+	t.Run("never written cleans up", func(t *testing.T) {
+		repo, _, stage, _ := prepare(t)
+		row := secondOpinionRows(t, secondOpinionInvoke(t, repo, "--finalize", stage))[0]
+		if row["state"] != "failed" || !strings.Contains(fmt.Sprint(row["reason"]), "staging page was not written") {
+			t.Fatalf("empty stage accepted: %v", row)
+		}
+		for _, name := range []string{stage, strings.TrimSuffix(stage, ".html") + ".json"} {
+			if _, err := os.Stat(name); !os.IsNotExist(err) {
+				t.Fatalf("never-written stage not cleaned up: %s", name)
+			}
+		}
+	})
+}
+
 func TestSecondOpinionBacklinkAllowsSemanticAttributeAndInlineVariants(t *testing.T) {
 	for _, markup := range []string{
 		`<p>Original report: <a class="original" href="index.html">index.html</a></p>`,
