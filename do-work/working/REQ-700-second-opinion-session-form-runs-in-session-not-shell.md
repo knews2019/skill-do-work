@@ -11,6 +11,19 @@ maintenance: false
 impact: impact-user-visible
 effort_estimate: effort-substantive
 claimed_at: 2026-10-19T15:25:12Z
+route: C
+write_set: ["skills/do-work/tools/do-work-cli/internal/toolboxcommands/report_second_opinion.go", "skills/do-work/tools/do-work-cli/internal/toolboxcommands/report_second_opinion_test.go", "skills/do-work/tools/do-work-cli/internal/resultmodel/result_model.go", "skills/do-work-toolbox/actions/ai-report.md", "skills/do-work-toolbox/docs/ai-report-guide.md", "CHANGELOG.md", "skills/do-work/CHANGELOG.md", "VERSION", "skills/do-work/VERSION", "skills/do-work/actions/version.md", "skills/do-work/tools/do-work-cli/lessons-do-work-cli.md", "do-work/lessons-index.md"]
+planning_at: 2026-10-19T15:39:22Z
+estimate:
+  p50_active_minutes: 35
+  confidence: medium
+  calculated_at: 2026-10-19T15:34:40Z
+  basis:
+    - Route C
+    - 6-file write set
+    - 2 subsystems involved
+    - 8 acceptance criteria
+dispatch_at: 2026-10-19T16:34:20Z
 ---
 # Second Opinion From The Session Model Runs As A Visible In-Session Prompt, Not A Hidden Shell Subprocess
 ## What
@@ -47,3 +60,119 @@ Certainty: high on the outcome (no hidden shell for the session's own model, pro
 - [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
 - [ ] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
 *Source: [Image #1] <- let's update the second opinion so we have a feedback, this should have just triggered a normal prompt inside the ai-coder that way I can see the progress, alternatively it's fine to start a background subagent, or a workflow, but not a shell like this*
+
+---
+
+## Triage
+
+**Route: C** - Complex
+
+**Reasoning:** The outcome is fixed (no hidden shell for the session's own model) but the Builder Guidance leaves the mechanism open, and the change crosses the CLI argument contract, the typed result model, the shipped prompt contract, the action prose, the user guide and the Go tests. The pre-dispatch agent decides the mechanism before the builder starts so the brief carries one decided design.
+
+**Planning:** Required
+
+<!-- D-XX counter: none used. Next decision: D-01. -->
+*No `## Open Questions` section exists; Step 3.5 skipped.*
+
+## Plan
+
+**Decided mechanism (pre-dispatch, do not reopen):** two phases on the existing `ai-report-second-opinion` subcommand. `--prepare --backend <cli> --model <slug> [<bundle-dir>|latest]` resolves the bundle, reads the template, refuses outside-bundle Git dirt, snapshots the bundle, creates the dotfile staging page exactly as `secondOpinionRun` does today, writes a sidecar `<stem>.json` next to it (backend, model, prefix, and the before-snapshot as mode + sha256 digests, never bytes), fills the prompt with `{{OUTPUT_FILE}}` set to the staging page's absolute path, and prints one `runs[]` row with `state: prepared`, `staging_page`, `staging_reply` (`<stem>-reply.md`), `asset_prefix`, `prompt`, and `model_evidence: session-declared`. It never calls `exec.LookPath`, `secondOpinionCapture`, `secondOpinionArgv` or `secondOpinionMetadata`. `--finalize <staging-page-path>` (the exact `staging_page` value; no positional bundle, no backend flags) derives the bundle from the path, loads the sidecar, and runs: outside-bundle Git status; never-written stage (missing or 0 bytes) → failed and the stage, sidecar and reply stage are removed (the only deletion case); preservation against the sidecar digests with the stage, reply stage and sidecar as the allowed new names plus prefixed regular files; blank reply stage → failed, files kept; backlink; `secondOpinionNames`; publish page and reply (reply rewritten from the stage path forms to the published page name); remove the three staging leaves; render judge; banner only on `pass` with the identity and byte checks against a snapshot taken at finalize start. Result `mode` is `session` for both phases. The prompt template is unchanged. The `claude` exec branch stays for other agents that target `--backend claude`.
+
+### Files to modify
+- `skills/do-work/tools/do-work-cli/internal/toolboxcommands/report_second_opinion.go` (modify): parser, handler branch, `secondOpinionPrepare`, `secondOpinionFinalize`, extracted `secondOpinionPublication`, generalized `secondOpinionPreserved`.
+- `skills/do-work/tools/do-work-cli/internal/toolboxcommands/report_second_opinion_test.go` (modify): two new tests plus a `secondOpinionFakeLogger` helper.
+- `skills/do-work/tools/do-work-cli/internal/resultmodel/result_model.go` (modify): five `omitempty` string fields on `AIReportSecondOpinionRun`; the nil-slice normalizer is unchanged.
+- `skills/do-work-toolbox/actions/ai-report.md` (modify): § Second-opinion form Session and Targeted bullets plus the model-evidence sentence.
+- `skills/do-work-toolbox/docs/ai-report-guide.md` (modify): one paragraph in § A Second Opinion.
+- CHANGELOG, VERSION, mirror: integrator only; the builder proposes the entry text.
+
+### Order of changes
+1. **RED: prepare test.** Add `secondOpinionFakeLogger(t, "claude") string` (writes a `#!/bin/sh` script into `os.Getenv("PATH")` that appends `"$@"` to a log file and returns the log path) and `TestSecondOpinionSessionPrepareNeverExecsOwnBackend`. At base it fails at `secondOpinionRows` ("missing typed backend summary") because `secondOpinionParse` returns `unexpected argument "--prepare"`.
+2. **GREEN: result model, parser, prepare.** `result_model.go`: add `StagingPage`, `StagingReply`, `AssetPrefix`, `PromptText`, `ModelEvidence` (JSON `staging_page`, `staging_reply`, `asset_prefix`, `prompt`, `model_evidence`, all omitempty) after `OutsidePaths`. `secondOpinionOptions` gains `prepare bool`, `finalize string`; `secondOpinionParse` adds `case argument == "--prepare"` and `--finalize`/`--finalize=` through `optionValue`; validation: `prepare` requires `backend` and `model` and forbids `all`/`exclude`; `finalize` forbids a positional bundle, `backend`, `model`, `all`, `exclude`, `prepare`. `secondOpinionUsage` becomes `ai-report-second-opinion [--backend codex|gemini|agy|claude [--model <slug>] | --all --exclude <own-cli> | --prepare --backend <cli> --model <slug>] [<bundle-dir>|latest] | --finalize <staging-page>`. `handleAIReportSecondOpinion`: when `prepare`, set `payload.InvocationMode = "session"`, build one row (`RequestedModel = ActualModel = model`, `ModelEvidence = "session-declared"`), call `secondOpinionPrepare(repository, bundle, template, &row)`; add `prepared` to the state exemption in the finding loop (`row.RunState != "ran" && != "excluded" && != "prepared"`) or prepare reports a failure. New `secondOpinionPrepare`: outside check (lift the `checkOutside` closure to `secondOpinionOutsideCheck(repository, bundle, row) error` shared by prepare, finalize and run), `secondOpinionSnapshot`, prefix, `os.CreateTemp(bundle, "."+prefix+"staging-*.html")`, sidecar `<stem>.json` from a `secondOpinionRecord{Backend, Model, Prefix string; Files map[string]secondOpinionDigest{Mode uint32; SHA256 string}}` built by `secondOpinionDigests(before)`, the same `strings.NewReplacer` with the absolute stage path for `{{OUTPUT_FILE}}`, the `{{` check, then the row fields and `RunState = "prepared"`. Set `row.ModelEvidence = "native"` in `secondOpinionRun` where `row.ActualModel` is assigned after generation. Test 1 goes GREEN.
+3. **Refactor under green (no new test).** `secondOpinionFile` gains `mode fs.FileMode` and `digest string`; `secondOpinionSnapshot` fills them (sha256 of data for regular files, empty for directories). `secondOpinionPreserved(bundle, before, allowed []string, prefix)`: when `old.info != nil` keep today's mode, bytes and `os.SameFile` check; otherwise compare `mode` and `digest`; new paths pass if in `allowed` or a prefixed regular root file. Callers in `secondOpinionRun`: `nil, ""` for the probes, `[]string{stageName}, prefix` for generation. Extract the tail of `secondOpinionRun` from "read page" to banner publication into `secondOpinionPublication(repository, bundle, stageName string, page []byte, reply string, original secondOpinionFile, stageLeaves []string, <REQ-701 mismatch input>, row, result)`. It carries REQ-701's landed behavior (unverified-name publication, no deletion of a finished page); after both publishes succeed it removes `stageLeaves` through `os.OpenRoot(bundle)`, so REQ-701's post-publication stage removal moves into it and only the never-written cleanup stays in `secondOpinionRun`. Run the package tests; every test named below stays green.
+4. **RED then GREEN: finalize.** Write `TestSecondOpinionSessionFinalizePublishesAgentWrittenPage` with four subtests (publishes; judge pass inserts banner; original modified keeps stage; never written cleans up). RED: `--finalize` unknown. Then the handler branch: `absolute := judgeAbsolutePath(repository, options.finalize)`; `bundle, err := secondOpinionBundle(repository, filepath.Dir(absolute))` and require the returned bundle to equal `filepath.Dir(absolute)` (the supersession chain-follow would otherwise jump to a newer revision); no template read. `secondOpinionFinalize(repository, bundle, stageName, row, result)`: validate `stageName` against `secondOpinionStagePattern` (`^\.[A-Za-z0-9][A-Za-z0-9._-]*-staging-[0-9]+\.html$`), load the sidecar (missing → "no prepare record for this staging page"), fill the row from it, then the decided order: outside check; stage missing or 0 bytes → "staging page was not written" plus removal of stage, sidecar and reply stage; `secondOpinionPreserved(bundle, recorded, []string{stage, sidecar, replyStage}, prefix)` where `recorded` is the sidecar turned into `secondOpinionFile{mode, digest}` entries; reply stage missing or blank → "no final editorial reply"; `after := secondOpinionSnapshot(bundle)`; `secondOpinionPublication(..., after["index.html"], []string{stage, replyStage, sidecar}, none, ...)`.
+5. **Prose and changelog proposal.** `ai-report.md` § Second-opinion form: rewrite the Session bullet (and the Targeted bullet when the target is the agent's own CLI) to the prepare → do the prompt (own turns, or one background subagent or workflow told to write the FINAL REPLY to `staging_reply`) → finalize sequence; say `model_evidence: session-declared` is never CLI-verified; qualify "Native backend metadata resolves the model" to launcher-run backends. `ai-report-guide.md`: one plain-words paragraph. Propose a changelog entry with a descriptive title (the integrator bumps the version).
+
+### Architectural decisions
+- Same subcommand, one boolean flag and one valued flag; no new command, file, or result-level type.
+- The sidecar holds digests, never bytes; `secondOpinionPreserved` compares digests only when `info == nil`, keeping the exec path's `os.SameFile` proof.
+- One shared tail `secondOpinionPublication` serves exec and finalize; REQ-701's unverified branch lives there and finalize passes "none".
+- Session rows record `model_evidence: session-declared`; exec rows record `native`.
+- Deletion only when the stage was never written; every other failure keeps files on disk (REQ-701's rule).
+- `secondOpinionArgv` and `secondOpinionMetadata` keep their `claude` branches.
+
+### Testing approach
+- Focused: `go test -count=1 ./internal/toolboxcommands -run 'TestSecondOpinionSessionPrepareNeverExecsOwnBackend|TestSecondOpinionSessionFinalizePublishesAgentWrittenPage'` from the module root `skills/do-work/tools/do-work-cli`.
+- Package: `go test -count=1 ./internal/toolboxcommands ./internal/resultmodel`; `gofmt -l ./internal`; `go vet ./internal/...`.
+- Must stay green: `TestSecondOpinionNativeModelCollisionAndSkippedJudge`, `TestSecondOpinionTargetNeverSubstitutes`, `TestSecondOpinionOutsideDirtAndOriginalMutationRefuse`, `TestSecondOpinionBatchIncludesMissingAndExcluded`, `TestSecondOpinionJudgeVerdictsGateOriginal`, `TestSecondOpinionAllNativeAdaptersAndSerialFailureContinuation`, `TestSecondOpinionPreservesAssetsAndRejectsUnprefixedSymlinkAndMissingBacklink`, `TestSecondOpinionFreshGenerationModelMismatchRefusesPublication` (as REQ-701 reshaped it), `TestSecondOpinionBackendCommandSafetyContract`, REQ-701's two new tests, `TestHandlersRegisterCanonicalToolboxCommands` (exactly 10 handlers, so flags, not a new command), and `resultmodel.TestSecondOpinionJSONKeepsEveryBackendAndJudgeEvidence`.
+
+### Risks
+- The nil-`info` branch of `secondOpinionPreserved`: a wrong default could skip the `os.SameFile` check for exec runs or dereference nil; the `original` and `asset.css` subtests catch a weakened check.
+- Extracted tail ordering: `RunState = "ran"` is set after the judge and reset to `failed` on later errors; `JudgeVerdictsGateOriginal` (all four verdicts) and `NativeModelCollisionAndSkippedJudge` (reply rewrite, `-2` suffix) catch drift.
+- Stage removal moving into the helper: `terminal selects once` counts bundle files and `FreshGenerationModelMismatch` checks on-disk state.
+- `prepared` must be exempt from the finding loop, or prepare returns `failure`; test 1 asserts success.
+- `secondOpinionBundle` follows supersession; finalize guards that the resolved bundle is the stage's own directory.
+
+### Consumer field contract (per `runs[]` row)
+- Identity: `backend`, `requested_model`, `actual_model` (equal for session rows).
+- Provenance: `model_evidence` (`session-declared` | `native`), `asset_prefix`.
+- State: `state` (`prepared` | `ran` | `failed` | `skipped` | `excluded`), `reason`, `outside_paths`.
+- Prepare outputs: `staging_page` (absolute), `staging_reply` (absolute), `prompt` (filled text); `page` and `reply` empty; `judge_verdict: not-run`, `banner_state: not-inserted`.
+- Finalize outputs: `page`, `reply` (repo-relative), `judge_verdict`, `judge_findings`, `banner_state` (`inserted` | `already-present` | `not-inserted`); staging fields empty. Result `mode` is `session` for both.
+
+*Generated by Plan agent (constrained to the pre-dispatch agent's decided mechanism)*
+
+### Plan validation (pre-dispatch)
+- Requirement coverage: no hidden subprocess and visible work → tasks 1, 2, 5; every launcher guarantee kept in-session → tasks 3, 4; foreign backends unchanged → task 3 and the decisions; prose, guide, CLI, tests, changelog → task 5 plus the integrator's release. No uncovered requirement.
+- Orphan tasks: none. `secondOpinionOutsideCheck` and `secondOpinionFakeLogger` are support for named tasks.
+- Scope sanity: **Plan has 5 tasks — quality degrades past 3.** Not split: tasks 1 to 4 are one serialized Go slice in a file REQ-701 also edits, and task 5 is prose that must ship with it.
+- Correction: the Plan agent's "then `_dev/tests/maintainer-verify.sh`" is struck. The builder never runs the repository gate; the integrator does.
+- Consumer field contract: present above; the action prose reads exactly those fields.
+
+## Exploration
+
+Read directly by the pre-dispatch agent (every file below in full unless a range is given) plus one Explore agent sweep for restatements of the contract.
+
+**Where the hidden shell comes from.** `handleAIReportSecondOpinion` in `skills/do-work/tools/do-work-cli/internal/toolboxcommands/report_second_opinion.go` looks the backend up with `exec.LookPath` and calls `secondOpinionRun`, which runs two subprocesses through `secondOpinionCapture` (a `/bin/sh -c` supervisor, 16-minute bound): a read-only identity probe (`secondOpinionArgv(..., true)`) and the generation (`secondOpinionArgv(..., false)`, for `claude`: `-p <prompt> --output-format json --model <slug> --permission-mode acceptEdits`). Nothing is printed until the process exits, which is the 10-minute silent shell in the screenshot. The agent's cwd is the repository; the subprocess cwd is the bundle, which is why `{{OUTPUT_FILE}}` is a bare basename today.
+
+**What the launcher guarantees and where.** In `secondOpinionRun`: `secondOpinionOutside` (git status outside the bundle, before and after), `secondOpinionSnapshot` + `secondOpinionPreserved` (existing paths unchanged by mode, bytes and `os.SameFile`; new paths only the stage or prefixed regular root files), `secondOpinionBacklink`, `secondOpinionNames` (collision suffix), `rootedPublishFile` for page and reply (the reply's stage-path forms are rewritten to the published page name), `secondOpinionJudge` (a package var over `secondOpinionRender`, stubbed by tests), then the banner only after a pass with identity and byte checks on `index.html` and `secondOpinionBanner`. The stage leaf is `os.CreateTemp(bundle, "."+prefix+"staging-*.html")` (dotfile, digit suffix). The in-session design keeps every one of these by splitting the function at the generation call: everything before it is the prepare phase, everything after it is the finalize phase, and the before-snapshot crosses the process boundary as digests in a sidecar file.
+
+**Model identity.** `secondOpinionMetadata` reads the model from the backend envelope (for `claude`, `modelUsage`). REQ-701 (keep the finished page when the model check fails; requested model wins when present) lands on main before this builder starts. In-session there is no envelope, so the row records the declared model with a new `model_evidence` field (`session-declared` versus `native`), never a verified claim.
+
+**Result model.** `AIReportSecondOpinionRun` in `internal/resultmodel/result_model.go` (fields `backend`, `requested_model`, `actual_model`, `state`, `page`, `reply`, `judge_verdict`, `judge_findings`, `banner_state`, `reason`, `outside_paths`); the normalizer near line 904 only fills nil slices, and `TestSecondOpinionJSONKeepsEveryBackendAndJudgeEvidence` round-trips without a golden string, so `omitempty` string fields are safe. `ExactTextOutput` is `json:"-"`, so under `--format json` the filled prompt must be a JSON field, not text output. `TestHandlersRegisterCanonicalToolboxCommands` pins exactly 10 handlers: flags, not a new command. No Go code outside `report_second_opinion.go` calls the `secondOpinion*` helpers. No `--prepare` or `--finalize` flag exists anywhere in the module; boolean flags are matched as literal strings in `secondOpinionParse` (`--all`) and valued flags go through `optionValue`.
+
+**Prose sites.** `skills/do-work-toolbox/actions/ai-report.md` § Second-opinion form (the Session, Targeted and Batch bullets, the invoke paragraph, the guarantees paragraph, the finish paragraph) and `skills/do-work-toolbox/docs/ai-report-guide.md` § A Second Opinion (three paragraphs). The template `docs/ai-report-second-opinion-prompt.md` needs no change: its placeholders are filled the same way and the reply destination is stated by the action, not the template. Restatements elsewhere (Explore sweep): `actions/ai-report-reference.md:148` ("only the launcher may add a pass-gated banner") stays true because finalize is the launcher's phase and the agent never inserts the banner, and it links `ai-report.md#second-opinion-form`, so that heading must keep its text; `SKILL.md:3,24` are trigger words only; `help.md` has no second-opinion line; the 0.306.0 changelog entry is history and is not edited; `lessons-do-work-cli.md:5,7` stay true for the exec backends.
+
+**Contract scripts that read the touched files** (each runs alone with `bash <path>`): `_dev/tests/action-shell-blocks.sh` (lints every shell fence in `skills/**/*.md` with the quiet-grep scanner, so a new `--prepare`/`--finalize` fence is checked), `_dev/tests/prescribed-shell-canonicalization.sh` (`ai-report.md` must keep its pointer to `../../do-work/docs/prescribed-shell-primitives.md`), `_dev/tests/shipped-package-reference-contract.sh` (links and heading anchors, including `#second-opinion-form`), `_dev/tests/audit-lockins.sh` (bans manual-fallback sentences in actions). No size, line-budget or description-trigger test covers `ai-report.md` or the guide.
+
+**Required-lessons consult (re-run at claim):** the three matching satellites are still `slugged: partial` and over the 2000-token budget, so the capture-time `## Required Lessons — Dropped for Budget` section stands unchanged. The pre-dispatch agent read the two `native-backend-identity` and `reaped-by-its-own-parent` bullets in `lessons-do-work-cli.md` directly: they explain why the exec path verifies identity from the envelope and why `secondOpinionCapture` keeps its supervisor; both stay as they are.
+
+*Generated by the pre-dispatch agent's direct reading plus an Explore agent sweep*
+
+## Scope
+
+**Files I will touch:**
+- `skills/do-work/tools/do-work-cli/internal/toolboxcommands/report_second_opinion.go` (modify) — prepare and finalize phases, parser, extracted publication tail, digest-aware preservation
+- `skills/do-work/tools/do-work-cli/internal/toolboxcommands/report_second_opinion_test.go` (modify) — the two session-form tests and the fake-logger helper
+- `skills/do-work/tools/do-work-cli/internal/resultmodel/result_model.go` (modify) — five omitempty string fields on the run row
+- `skills/do-work-toolbox/actions/ai-report.md` (modify) — § Second-opinion form: the in-session sequence
+- `skills/do-work-toolbox/docs/ai-report-guide.md` (modify) — § A Second Opinion: one paragraph
+- `CHANGELOG.md` (modify, integrator's release) — the entry
+- `skills/do-work/CHANGELOG.md` (modify, integrator's release) — the byte-identical mirror
+- `VERSION` (modify, integrator's release) — the version bump
+- `skills/do-work/VERSION` (modify, integrator's release) — the version mirror
+- `skills/do-work/actions/version.md` (modify, integrator's release) — the Current version line
+- `skills/do-work/tools/do-work-cli/lessons-do-work-cli.md` (modify, integrator, only if the hand-back proposes a lesson) — one lesson bullet
+- `do-work/lessons-index.md` (modify, integrator, only with the lesson) — token refresh for that satellite
+
+**Files I will NOT touch:** `skills/do-work-toolbox/docs/ai-report-second-opinion-prompt.md` (placeholders unchanged), `skills/do-work-toolbox/actions/ai-report-reference.md` (its banner sentence stays true), `skills/do-work-toolbox/SKILL.md` and `actions/help.md` (trigger words unchanged), `skills/do-work/tools/do-work-cli.sh` (the template export stays), `commands.go` and `commands_test.go` (no new command), the `secondOpinionCapture` supervisor and the codex, gemini and agy adapters.
+
+**Acceptance criteria (restated from REQ):**
+- [ ] The Session form, and a targeted run whose backend is the agent's own CLI, never launch a subprocess of that CLI: a fake executable on PATH records zero invocations across prepare and finalize.
+- [ ] Prepare prints the filled prompt, the reserved staging page path, the reserved reply path and the asset prefix, so the editorial work runs in the agent's own turns or in a background subagent or workflow it dispatches.
+- [ ] Finalize keeps every launcher guarantee: original `index.html` and existing assets unchanged (digest check), new files only under the reserved staging names and asset prefix, outside-bundle Git status clean, backlink present, page published as `index-<cli>-<model>[-N].html` with `<cli>-<model>[-N]-reply.md`, render judge run, banner inserted only after preservation, Git status and judge `pass`.
+- [ ] A finished staging page is never deleted by finalize; only a never-written (empty) stage is cleaned up together with its sidecar and reply stage.
+- [ ] The in-session model is recorded as session-declared (`model_evidence: session-declared`), never as CLI-verified; exec rows say `native`.
+- [ ] The final reply in the action lists page and reply paths, backend and model, judge verdict, and the 3 to 5 clarity changes, corrections and open questions.
+- [ ] Foreign backends (codex, gemini, agy) keep the single-call launcher path; their existing tests stay green.
+- [ ] `actions/ai-report.md` § Second-opinion form and `docs/ai-report-guide.md` § A Second Opinion describe the in-session sequence; the CLI, its tests and the changelog ship as one release per the releases prime.
