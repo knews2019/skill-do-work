@@ -24,6 +24,7 @@ estimate:
     - 2 subsystems involved
     - 8 acceptance criteria
 dispatch_at: 2026-10-19T16:34:20Z
+builder_handback_at: 2026-10-19T16:49:40Z
 ---
 # Second Opinion From The Session Model Runs As A Visible In-Session Prompt, Not A Hidden Shell Subprocess
 ## What
@@ -176,3 +177,11 @@ Read directly by the pre-dispatch agent (every file below in full unless a range
 - [ ] The final reply in the action lists page and reply paths, backend and model, judge verdict, and the 3 to 5 clarity changes, corrections and open questions.
 - [ ] Foreign backends (codex, gemini, agy) keep the single-call launcher path; their existing tests stay green.
 - [ ] `actions/ai-report.md` § Second-opinion form and `docs/ai-report-guide.md` § A Second Opinion describe the in-session sequence; the CLI, its tests and the changelog ship as one release per the releases prime.
+
+## Pre-Flight
+
+**Git:** ✓ clean at 5f237933 (main after REQ-701's release 0.306.3), the builder's base commit; nothing outside `do-work/` was dirty when the coordinator recorded pre-flight
+**Tests baseline:** ✓ `bash do-work/runs/work-2026-10-19-152525/REQ-700-preflight-probe.sh` exit 0, launched (13 named `toolboxcommands` tests including the four REQ-701 tests and the handler-count pin, plus `TestSecondOpinionJSONKeepsEveryBackendAndJudgeEvidence`; `do-work/working/baseline.json`). Repository gate `DO_WORK_FAST_STAGE_REUSE=off bash _dev/tests/maintainer-verify.sh` at 5f237933: run 1 exit 1 (board per-file budget at 1-minute load 10 plus a `TestBlockedProbeRunsFromSelectedRepositoryRoot` launch flake), run 2 exit 0 in 130 s under the one-retry rule; green-gate record `reported_direct_zero_exit` at revision 5f237933
+**Dependencies:** ✓ Go toolchain and ShellCheck present (the gate and contract scripts ran)
+
+*Checked by the coordinator before dispatch (2026-10-19T16:28:55Z to 16:33:34Z); recorded here by the integrator from the run's progress log, `baseline.json` and the green-gate record*
