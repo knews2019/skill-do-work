@@ -145,4 +145,4 @@ Applies only when `ai-report.md` runs with `--kind proposal` or `--kind root-cau
 
 **What stays the same.** Steps 6 to 8 of `ai-report.md` (claim review, render and judge, verify and print) apply unchanged. Steps 3 and 4 apply to whatever evidence the brief uses, with real captures of the current state in `screenshots/`. The Step 2 evidence-mode table, the non-visual mode's fixed "UI captures were not expected" sentence and the Step 5 default narrative do not.
 
-The second-opinion form in [ai-report.md](ai-report.md#second-opinion-form) instead adds a model-named sibling page and reply inside its input bundle. Existing assets remain unchanged; only the launcher may add a pass-gated banner to the original. Its prefixed new assets stay beside the sibling page.
+The second-opinion form in [ai-report.md](ai-report.md#second-opinion-form) instead adds a model-named sibling page and reply inside its input bundle. Existing assets remain unchanged; only the launcher may add a pass-gated banner or iteration list to the original. Its prefixed new assets stay beside the sibling page.

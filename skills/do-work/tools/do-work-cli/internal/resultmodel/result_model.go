@@ -716,6 +716,9 @@ type AIReportSecondOpinionRun struct {
 	Preset          string `json:"preset,omitempty"`
 	PresetFile      string `json:"preset_file,omitempty"`
 	EditorDirection string `json:"editor_direction,omitempty"`
+	// Tree fields: the allocated iteration id (set at publish) and the repository-relative base page; absent on a plain run.
+	TreeID   string `json:"tree_id,omitempty"`
+	BasePage string `json:"base_page,omitempty"`
 }
 type AIReportSecondOpinionFinding struct {
 	FindingKind   string `json:"kind"`

@@ -2,6 +2,7 @@ package toolboxcommands
 
 import (
 	"bytes"
+	"cmp"
 	"context"
 	"crypto/sha256"
 	"encoding/json"
@@ -26,7 +27,7 @@ import (
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/resultmodel"
 )
 
-const secondOpinionUsage = "ai-report-second-opinion [--backend codex|gemini|agy|claude [--model <slug>] | --all --exclude <own-cli> | --prepare --backend <cli> --model <slug>] [--preset <name>] [--editor-direction <text>] [<bundle-dir>|latest] | --finalize <staging-page>"
+const secondOpinionUsage = "ai-report-second-opinion [--backend codex|gemini|agy|claude [--model <slug>] | --all --exclude <own-cli> | --prepare --backend <cli> --model <slug>] [--preset <name>] [--editor-direction <text>] [<bundle-dir>|<page.html>|latest] | --finalize <staging-page>"
 
 // secondOpinionPresetsFolder is the folder name for presets, both in a report bundle and beside the shipped prompt.
 const secondOpinionPresetsFolder = "second-opinion-presets"
@@ -35,6 +36,10 @@ var secondOpinionModelPattern = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._-]*$
 
 // secondOpinionStagePattern is the shape of a launcher-reserved staging page name, so --finalize only ever publishes a page prepare created.
 var secondOpinionStagePattern = regexp.MustCompile(`^\.[A-Za-z0-9][A-Za-z0-9._-]*-staging-[0-9]+\.html$`)
+
+// secondOpinionTreePagePattern is the whole basename of an iteration-tree page; capture 1 is its tree id. Parent, depth
+// and order come from these names only. `c` followed by a letter (codex, claude) cannot extend the id.
+var secondOpinionTreePagePattern = regexp.MustCompile(`^index-(v1(?:c[0-9]{2})+)-[A-Za-z0-9][A-Za-z0-9._-]*\.html$`)
 
 // errSecondOpinionModelUnverified marks native evidence that names no single backend model; a finished page is then published under an unverified name instead of being discarded.
 var errSecondOpinionModelUnverified = errors.New("actual model is absent or ambiguous")
@@ -87,19 +92,38 @@ func secondOpinionHeartbeat(progress secondOpinionProgress) (stop func()) {
 // secondOpinionBacklinkRequirement fills {{BACKLINK_REQUIREMENT}} for both the exec path and the session prepare.
 const secondOpinionBacklinkRequirement = `Open the body with <p>Original report: <a href="index.html">index.html</a></p>, before the main content. Never modify index.html.`
 
+// secondOpinionChangeListRequirement fills {{CHANGE_LIST_REQUIREMENT}} on a tree run; a plain run gets "None for this pass.".
+const secondOpinionChangeListRequirement = `Right after the backlink, add a list titled "Changed in this iteration". Each item names one change you made to the base page and links to #rev-<n> (rev-1, rev-2 and so on). Give each changed section the matching id="rev-<n>" and a visible "changed" badge. Every link must resolve to a section on this page, because the launcher checks it.`
+
+// secondOpinionChangeListKind is the judge finding kind for a change list whose #rev-* links do not resolve.
+const secondOpinionChangeListKind = "AI-REPORT-SECOND-OPINION-CHANGE-LIST"
+
 type secondOpinionOptions struct {
 	backend, model, exclude, bundle, finalize string
 	preset, editorDirection                   string
 	all, prepare                              bool
 }
 
-// secondOpinionDirection is what the person directing this pass asked for: a named preset, free text, or both. It
-// travels in the prepare record to finalize; the zero value is a plain run.
+// secondOpinionDirection is what the person directing this pass asked for: a named preset, free text, or both, and the
+// base page to rewrite. It travels in the prepare record to finalize; the zero value is a plain run.
 type secondOpinionDirection struct {
 	Preset          string `json:"preset,omitempty"`
 	PresetFile      string `json:"preset_file,omitempty"`
 	PresetText      string `json:"preset_text,omitempty"`
 	EditorDirection string `json:"editor_direction,omitempty"`
+	// Base is the bare filename of a tree page to build on; empty means index.html.
+	Base string `json:"base,omitempty"`
+}
+
+// parentTreeID is the tree id the new page hangs under: empty on a plain run, v1 for index.html, else the base's id.
+func (direction secondOpinionDirection) parentTreeID() string {
+	if match := secondOpinionTreePagePattern.FindStringSubmatch(direction.Base); match != nil {
+		return match[1]
+	}
+	if direction.filenameSlot() != "" {
+		return "v1"
+	}
+	return ""
 }
 
 // combinedText is the direction the editor receives: the preset text, a blank line, then the free text.
@@ -144,7 +168,22 @@ func handleAIReportSecondOpinion(execution commandruntime.ExecutionContext, args
 		}
 		stageName = filepath.Base(stagePath)
 	} else {
-		bundle, err = secondOpinionBundle(execution.RepositoryRoot, options.bundle)
+		if strings.HasSuffix(options.bundle, ".html") {
+			// A page target names both the bundle and the base page; like --finalize, it is never moved to a successor bundle.
+			pagePath := judgeAbsolutePath(execution.RepositoryRoot, options.bundle)
+			bundle, err = secondOpinionBundle(execution.RepositoryRoot, filepath.Dir(pagePath))
+			if err == nil && bundle != filepath.Dir(pagePath) {
+				err = errors.New("base page must sit in a current report bundle")
+			}
+			if info, statErr := os.Lstat(pagePath); err == nil && (statErr != nil || !info.Mode().IsRegular() || filepath.Base(pagePath) != "index.html" && !secondOpinionTreePagePattern.MatchString(filepath.Base(pagePath))) {
+				err = errors.New("base page must be index.html or a tree page (index-v1c...html) in the bundle")
+			}
+			if filepath.Base(pagePath) != "index.html" {
+				direction.Base = filepath.Base(pagePath)
+			}
+		} else {
+			bundle, err = secondOpinionBundle(execution.RepositoryRoot, options.bundle)
+		}
 		if err != nil {
 			return usageResult(CommandAIReportSecondOpinion, err.Error())
 		}
@@ -213,9 +252,14 @@ func handleAIReportSecondOpinion(execution commandruntime.ExecutionContext, args
 		}
 	}
 	result := resultmodel.CommandResult{Outcome: resultmodel.OutcomeSuccess, AIReportSecondOpinion: payload}
+	basePage := ""
+	if direction.parentTreeID() != "" {
+		relative, _ := filepath.Rel(execution.RepositoryRoot, bundle)
+		basePage = filepath.ToSlash(filepath.Join(relative, cmp.Or(direction.Base, "index.html")))
+	}
 	var summary strings.Builder
 	for _, backend := range backends {
-		row := resultmodel.AIReportSecondOpinionRun{BackendName: backend, RequestedModel: options.model, RunState: "failed", JudgeVerdict: "not-run", BannerState: "not-inserted", JudgeFindings: []resultmodel.AIReportSecondOpinionFinding{}, OutsidePaths: []string{}, SeenModels: []string{}, Preset: direction.Preset, PresetFile: direction.PresetFile, EditorDirection: direction.EditorDirection}
+		row := resultmodel.AIReportSecondOpinionRun{BackendName: backend, RequestedModel: options.model, RunState: "failed", JudgeVerdict: "not-run", BannerState: "not-inserted", JudgeFindings: []resultmodel.AIReportSecondOpinionFinding{}, OutsidePaths: []string{}, SeenModels: []string{}, Preset: direction.Preset, PresetFile: direction.PresetFile, EditorDirection: direction.EditorDirection, BasePage: basePage}
 		switch {
 		case options.finalize != "":
 			secondOpinionFinalize(execution.RepositoryRoot, bundle, stageName, &row, &result)
@@ -607,6 +651,9 @@ func secondOpinionFinalize(repository, bundle, stageName string, row *resultmode
 	}
 	row.BackendName, row.RequestedModel, row.ActualModel, row.ModelEvidence = record.Backend, record.Model, record.Model, "session-declared"
 	row.Preset, row.PresetFile, row.EditorDirection = record.Direction.Preset, record.Direction.PresetFile, record.Direction.EditorDirection
+	if record.Direction.parentTreeID() != "" {
+		row.BasePage = filepath.ToSlash(filepath.Join(relative, cmp.Or(record.Direction.Base, "index.html")))
+	}
 	if err := secondOpinionOutsideCheck(repository, bundle, row); err != nil {
 		fail(err)
 		return
@@ -778,16 +825,16 @@ func secondOpinionRun(ctx context.Context, repository, bundle, executable, templ
 	secondOpinionPublication(repository, bundle, stageName, page, reply, before["index.html"], []string{stageName}, unverifiedModel, direction, row, result)
 }
 
-// secondOpinionPublication is the launcher tail shared by the exec path and the session finalize: backlink, direction
-// marks, sibling names, page and reply publication, removal of the staging leaves, the render judge, and the pass-gated
-// banner.
+// secondOpinionPublication is the launcher tail shared by the exec path and the session finalize: backlink, sibling
+// names, direction and tree marks, page and reply publication, removal of the staging leaves, the render judge, the
+// change-list check on a tree page, and the pass-gated banner (plain run) or iteration list (tree run).
 // unverifiedModel is the requested model whose identity the native evidence did not confirm (empty when verified):
 // the finished page is then kept under an -unverified name with no judge and no banner, never deleted.
 func secondOpinionPublication(repository, bundle, stageName string, page []byte, reply string, original secondOpinionFile, stageLeaves []string, unverifiedModel string, direction secondOpinionDirection, row *resultmodel.AIReportSecondOpinionRun, result *resultmodel.CommandResult) {
 	fail := func(err error) { row.FailureReason = err.Error() }
 	relative, _ := filepath.Rel(repository, bundle)
 	// Strip launcher marks an editor copied from another page first: a header block ahead of the backlink fails its check.
-	page = secondOpinionDecorate(page, secondOpinionDirection{})
+	page = secondOpinionDecorate(page, secondOpinionDirection{}, secondOpinionTreeMarks{})
 	publishedModel := row.ActualModel
 	if unverifiedModel != "" {
 		publishedModel = unverifiedModel + "-unverified"
@@ -804,13 +851,13 @@ func secondOpinionPublication(repository, bundle, stageName string, page []byte,
 			variation += "-" + slug
 		}
 	}
-	// The judge and the reader see the same decorated bytes.
-	page = secondOpinionDecorate(page, direction)
-	pageName, replyName, err := secondOpinionNames(bundle, row.BackendName, publishedModel, variation)
+	pageName, replyName, treeID, err := secondOpinionNames(bundle, row.BackendName, publishedModel, variation, direction.parentTreeID())
 	if err != nil {
 		fail(err)
 		return
 	}
+	// The judge and the reader see the same decorated bytes; the header needs the id, so decoration follows naming.
+	page = secondOpinionDecorate(page, direction, secondOpinionTreeMarks{treeID: treeID, modelLabel: row.BackendName + " " + publishedModel, publishDate: time.Now().UTC().Format(time.DateOnly)})
 	publish := func(name string, data []byte) error {
 		path := filepath.ToSlash(filepath.Join(relative, name))
 		if err := rootedPublishFile(repository, path, data, 0644, false); err != nil {
@@ -824,6 +871,7 @@ func secondOpinionPublication(repository, bundle, stageName string, page []byte,
 		return
 	}
 	row.PagePath = filepath.ToSlash(filepath.Join(relative, pageName))
+	row.TreeID = treeID
 	// The editor knows the reserved stage name; the saved reply names its published page.
 	reply = strings.NewReplacer("file://"+filepath.ToSlash(filepath.Join(bundle, stageName)), pageName, filepath.Join(bundle, stageName), pageName, filepath.ToSlash(filepath.Join(bundle, stageName)), pageName, stageName, pageName).Replace(reply)
 	if err := publish(replyName, []byte(reply)); err != nil {
@@ -845,6 +893,15 @@ func secondOpinionPublication(repository, bundle, stageName string, page []byte,
 	stopHeartbeat := secondOpinionHeartbeat(secondOpinionProgress{phase: "judge", backend: row.BackendName, pagePath: filepath.Join(bundle, pageName)})
 	verdict, findings := secondOpinionJudge(bundle, page)
 	stopHeartbeat()
+	if treeID != "" {
+		// A change-list link with no target is a judge finding: the page stays published, index.html stays untouched.
+		if changeFindings := secondOpinionChangeList(page); len(changeFindings) > 0 {
+			findings = append(findings, changeFindings...)
+			if verdict == "pass" || verdict == "skipped" {
+				verdict = "fail"
+			}
+		}
+	}
 	row.JudgeVerdict = verdict
 	row.JudgeFindings = findings
 	row.RunState = "ran"
@@ -869,7 +926,16 @@ func secondOpinionPublication(repository, bundle, stageName string, page []byte,
 		fail(errors.New("original bytes changed before banner publication"))
 		return
 	}
-	updated, inserted, err := secondOpinionBanner(original.data, pageName)
+	var updated []byte
+	var inserted bool
+	detail := "second-opinion banner only"
+	if treeID != "" {
+		// A tree page is linked from the one iteration list, never from a per-filename banner.
+		updated, err = secondOpinionTreeList(bundle, original.data)
+		inserted, detail = !bytes.Equal(updated, original.data), "second-opinion iteration list only"
+	} else {
+		updated, inserted, err = secondOpinionBanner(original.data, pageName)
+	}
 	if err != nil {
 		row.RunState = "failed"
 		fail(err)
@@ -886,11 +952,12 @@ func secondOpinionPublication(repository, bundle, stageName string, page []byte,
 		return
 	}
 	row.BannerState = "inserted"
-	result.Changes = append(result.Changes, resultmodel.RecordedChange{Path: originalPath, Kind: "modified", Detail: "second-opinion banner only"})
+	result.Changes = append(result.Changes, resultmodel.RecordedChange{Path: originalPath, Kind: "modified", Detail: detail})
 }
 
 // secondOpinionPrompt fills the shipped template for one run. A directed run refuses a template without
-// {{EDITOR_DIRECTION}}, which would drop the direction silently; a plain run with such a template still works.
+// {{EDITOR_DIRECTION}}, which would drop the direction silently, and a tree run one without {{BASE_PAGE}} or
+// {{CHANGE_LIST_REQUIREMENT}}; a plain run with such a template still works.
 func secondOpinionPrompt(template, repository, bundle, outputFile, prefix string, direction secondOpinionDirection) (string, error) {
 	text := direction.combinedText()
 	if text != "" && !strings.Contains(template, "{{EDITOR_DIRECTION}}") {
@@ -899,7 +966,14 @@ func secondOpinionPrompt(template, repository, bundle, outputFile, prefix string
 	if text == "" {
 		text = "None."
 	}
-	prompt := strings.NewReplacer("{{REPOSITORY_ROOT}}", repository, "{{BUNDLE_PATH}}", bundle, "{{OUTPUT_FILE}}", outputFile, "{{ASSET_PREFIX}}", prefix, "{{BACKLINK_REQUIREMENT}}", secondOpinionBacklinkRequirement, "{{EDITOR_DIRECTION}}", text).Replace(template)
+	basePage, changeList := "index.html", "None for this pass."
+	if direction.parentTreeID() != "" {
+		if !strings.Contains(template, "{{BASE_PAGE}}") || !strings.Contains(template, "{{CHANGE_LIST_REQUIREMENT}}") {
+			return "", errors.New("prompt template has no {{BASE_PAGE}} or {{CHANGE_LIST_REQUIREMENT}} placeholder for the iteration")
+		}
+		basePage, changeList = cmp.Or(direction.Base, "index.html"), secondOpinionChangeListRequirement
+	}
+	prompt := strings.NewReplacer("{{REPOSITORY_ROOT}}", repository, "{{BUNDLE_PATH}}", bundle, "{{OUTPUT_FILE}}", outputFile, "{{ASSET_PREFIX}}", prefix, "{{BACKLINK_REQUIREMENT}}", secondOpinionBacklinkRequirement, "{{EDITOR_DIRECTION}}", text, "{{BASE_PAGE}}", basePage, "{{CHANGE_LIST_REQUIREMENT}}", changeList).Replace(template)
 	if strings.Contains(prompt, "{{") {
 		return "", errors.New("unresolved prompt placeholder")
 	}
@@ -1337,19 +1411,42 @@ func secondOpinionFlashModel(catalog string) (string, error) {
 	return best[1], nil
 }
 
-// secondOpinionNames is the one builder of published second-opinion names: index-<stem>[-N].html and
-// <stem>[-N]-reply.md, where the stem is <backend>-<model>[-<variation>] and variation is empty on a plain run.
-func secondOpinionNames(bundle, backend, model, variation string) (string, string, error) {
+// secondOpinionNames is the one builder of published second-opinion names, where the stem is
+// <backend>-<model>[-<variation>] and variation is empty on a plain run. A plain run (empty parentID) gets
+// index-<stem>[-N].html and <stem>[-N]-reply.md. A tree run gets index-<id>-<stem>.html and <id>-<stem>-reply.md, where
+// id is parentID + cNN and NN is one above the highest number any tree page name uses directly under the parent, so a
+// deleted page's number is never reused while its children remain. It also returns the id (empty on a plain run).
+func secondOpinionNames(bundle, backend, model, variation, parentID string) (string, string, string, error) {
 	stem := backend + "-" + model
 	if variation != "" {
 		stem += "-" + variation
 	}
-	for number := 1; ; number++ {
-		suffix := ""
+	number := 1
+	if parentID != "" {
+		entries, err := os.ReadDir(bundle)
+		if err != nil {
+			return "", "", "", err
+		}
+		for _, entry := range entries {
+			if match := secondOpinionTreePagePattern.FindStringSubmatch(entry.Name()); match != nil && strings.HasPrefix(match[1], parentID+"c") {
+				used, _ := strconv.Atoi(match[1][len(parentID)+1 : len(parentID)+3])
+				number = max(number, used+1)
+			}
+		}
+	}
+	for ; ; number++ {
+		treeID, suffix := "", ""
 		if number > 1 {
 			suffix = "-" + strconv.Itoa(number)
 		}
 		page, reply := "index-"+stem+suffix+".html", stem+suffix+"-reply.md"
+		if parentID != "" {
+			if number > 99 {
+				return "", "", "", fmt.Errorf("no free two-digit child id under %s", parentID)
+			}
+			treeID = fmt.Sprintf("%sc%02d", parentID, number)
+			page, reply = "index-"+treeID+"-"+stem+".html", treeID+"-"+stem+"-reply.md"
+		}
 		free := true
 		for _, name := range []string{page, reply} {
 			_, err := os.Lstat(filepath.Join(bundle, name))
@@ -1358,11 +1455,11 @@ func secondOpinionNames(bundle, backend, model, variation string) (string, strin
 				break
 			}
 			if !os.IsNotExist(err) {
-				return "", "", err
+				return "", "", "", err
 			}
 		}
 		if free {
-			return page, reply, nil
+			return page, reply, treeID, nil
 		}
 	}
 }
@@ -1459,15 +1556,9 @@ func secondOpinionBanner(original []byte, pageName string) ([]byte, bool, error)
 	return updated, true, nil
 }
 
-// secondOpinionDecorate first removes every launcher header block and direction meta already on the page, then, on a
-// directed run, adds the two metas before the first real </head> and a header block right after the opening body
-// tag showing the slot and the full direction. Decorating twice gives the same bytes, and a plain direction only
-// strips. Tags and markers count only on the masked surface, so text inside a script, style or comment never matches.
-func secondOpinionDecorate(page []byte, direction secondOpinionDirection) []byte {
-	const headerStart, headerEnd = "<!-- second-opinion-header -->", "<!-- /second-opinion-header -->"
-	insert := func(data []byte, at int, text string) []byte {
-		return append(append(append([]byte(nil), data[:at]...), text...), data[at:]...)
-	}
+// secondOpinionStripBlocks removes every launcher block between the start and end marker comments. Markers count only
+// as real comments on the raw-text-masked surface, so a marker inside a script, style or textarea string never matches.
+func secondOpinionStripBlocks(page []byte, startMarker, endMarker string) []byte {
 	comment := regexp.MustCompile(`(?s)<!--.*?-->`)
 	for {
 		commentSurface := append([]byte(nil), page...)
@@ -1479,40 +1570,133 @@ func secondOpinionDecorate(page []byte, direction secondOpinionDirection) []byte
 		start, end := -1, -1
 		for _, span := range comment.FindAllIndex(commentSurface, -1) {
 			text := string(commentSurface[span[0]:span[1]])
-			if start < 0 && text == headerStart {
+			if start < 0 && text == startMarker {
 				start = span[0]
-			} else if start >= 0 && text == headerEnd {
+			} else if start >= 0 && text == endMarker {
 				end = span[1]
 				break
 			}
 		}
 		if end < 0 {
-			break
+			return page
 		}
 		page = append(append([]byte(nil), page[:start]...), page[end:]...)
 	}
-	metaTag := regexp.MustCompile(`(?is)<meta\s+name="ai-report-second-opinion-(?:preset|direction)"(?:[^'"<>]|"[^"]*"|'[^']*')*>`)
-	spans := metaTag.FindAllIndex(secondOpinionVisibleHTML(page), -1)
+}
+
+// secondOpinionTreeMarks are the tree fields of one published page: its id plus two display values. An empty id means
+// a plain run with no tree marks.
+type secondOpinionTreeMarks struct {
+	treeID, modelLabel, publishDate string
+}
+
+// secondOpinionDecorate first removes every launcher header block, copied iteration list and ai-report-second-opinion-*
+// meta already on the page, then adds the direction and tree metas before the first real </head> and a header block
+// right after the opening body tag: the tree id with a link to the parent page, then the slot and the full direction.
+// Decorating twice gives the same bytes, and a plain direction with no tree marks only strips. Tags and markers count
+// only on the masked surface, so text inside a script, style or comment never matches.
+func secondOpinionDecorate(page []byte, direction secondOpinionDirection, tree secondOpinionTreeMarks) []byte {
+	const headerStart, headerEnd = "<!-- second-opinion-header -->", "<!-- /second-opinion-header -->"
+	insert := func(data []byte, at int, text string) []byte {
+		return append(append(append([]byte(nil), data[:at]...), text...), data[at:]...)
+	}
+	page = secondOpinionStripBlocks(page, headerStart, headerEnd)
+	page = secondOpinionStripBlocks(page, secondOpinionTreeStart, secondOpinionTreeEnd)
+	// Either attribute order counts: the iteration list reads metas first-wins, so a copied one must never survive.
+	spans := reportMetaTag.FindAllIndex(secondOpinionVisibleHTML(page), -1)
 	for i := len(spans) - 1; i >= 0; i-- {
-		page = append(append([]byte(nil), page[:spans[i][0]]...), page[spans[i][1]:]...)
+		for _, attribute := range reportMetaAttribute.FindAllSubmatch(page[spans[i][0]:spans[i][1]], -1) {
+			if strings.EqualFold(string(attribute[1]), "name") && strings.HasPrefix(strings.ToLower(strings.TrimSpace(string(attribute[2])+string(attribute[3]))), "ai-report-second-opinion-") {
+				page = append(append([]byte(nil), page[:spans[i][0]]...), page[spans[i][1]:]...)
+				break
+			}
+		}
 	}
 	slot := direction.filenameSlot()
-	if slot == "" {
+	if slot == "" && tree.treeID == "" {
 		return page
 	}
 	text := html.EscapeString(direction.combinedText())
-	metas := `<meta name="ai-report-second-opinion-preset" content="` + html.EscapeString(slot) + `"><meta name="ai-report-second-opinion-direction" content="` + text + `">`
+	metas, paragraphs := "", ""
+	if slot != "" {
+		metas = `<meta name="ai-report-second-opinion-preset" content="` + html.EscapeString(slot) + `"><meta name="ai-report-second-opinion-direction" content="` + text + `">`
+	}
+	if tree.treeID != "" {
+		parent := html.EscapeString(cmp.Or(direction.Base, "index.html"))
+		metas += `<meta name="ai-report-second-opinion-id" content="` + html.EscapeString(tree.treeID) + `"><meta name="ai-report-second-opinion-base" content="` + parent + `"><meta name="ai-report-second-opinion-model" content="` + html.EscapeString(tree.modelLabel) + `"><meta name="ai-report-second-opinion-date" content="` + html.EscapeString(tree.publishDate) + `">`
+		paragraphs = `<p><strong>Iteration ` + html.EscapeString(tree.treeID) + `</strong>, built on <a href="` + parent + `">` + parent + `</a></p>`
+	}
+	if slot != "" {
+		paragraphs += `<p><strong>Second-opinion preset:</strong> ` + html.EscapeString(slot) + `</p><p style="white-space:pre-line"><strong>Direction:</strong> ` + text + `</p>`
+	}
 	if head := regexp.MustCompile(`(?i)</head\s*>`).FindIndex(secondOpinionVisibleHTML(page)); head != nil {
 		page = insert(page, head[0], metas)
 		metas = ""
 	}
 	// overflow-wrap keeps one long direction token from failing the judge's horizontal-overflow check.
-	block := headerStart + metas + `<aside aria-label="Second-opinion direction" style="overflow-wrap:anywhere"><p><strong>Second-opinion preset:</strong> ` + html.EscapeString(slot) + `</p><p style="white-space:pre-line"><strong>Direction:</strong> ` + text + `</p></aside>` + headerEnd
+	block := headerStart + metas + `<aside aria-label="Second-opinion direction" style="overflow-wrap:anywhere">` + paragraphs + `</aside>` + headerEnd
 	at := 0
 	if body := secondOpinionBodyTag.FindIndex(secondOpinionVisibleHTML(page)); body != nil {
 		at = body[1]
 	}
 	return insert(page, at, block)
+}
+
+const secondOpinionTreeStart, secondOpinionTreeEnd = "<!-- second-opinion-tree -->", "<!-- /second-opinion-tree -->"
+
+// secondOpinionTreeList rebuilds the one iteration list on index.html from the bundle's tree page names, right after
+// the opening body tag. A byte sort of the names is pre-order, because "-" sorts before "c". Every tree page on disk is
+// listed, judge-failed and unverified ones too, so no child is orphaned; preset, model and date are display metas.
+func secondOpinionTreeList(bundle string, original []byte) ([]byte, error) {
+	updated := secondOpinionStripBlocks(original, secondOpinionTreeStart, secondOpinionTreeEnd)
+	body := secondOpinionBodyTag.FindIndex(secondOpinionVisibleHTML(updated))
+	if body == nil {
+		return nil, errors.New("original has no opening body tag")
+	}
+	entries, err := os.ReadDir(bundle)
+	if err != nil {
+		return nil, err
+	}
+	var items strings.Builder
+	for _, entry := range entries {
+		match := secondOpinionTreePagePattern.FindStringSubmatch(entry.Name())
+		if match == nil || !entry.Type().IsRegular() {
+			continue
+		}
+		data, err := os.ReadFile(filepath.Join(bundle, entry.Name()))
+		if err != nil {
+			return nil, err
+		}
+		metas := readReportMetas(secondOpinionVisibleHTML(data))
+		preset := cmp.Or(metas["ai-report-second-opinion-preset"], "plain")
+		depth := (len(match[1]) - len("v1")) / len("c01")
+		fmt.Fprintf(&items, "<li style=\"margin-left:%gem\"><a href=\"%s\">%s</a> · %s · %s · %s</li>\n", float64(depth-1)*1.5, html.EscapeString(entry.Name()), html.EscapeString(match[1]), html.EscapeString(preset), html.EscapeString(metas["ai-report-second-opinion-model"]), html.EscapeString(metas["ai-report-second-opinion-date"]))
+	}
+	// No whitespace outside the markers, so removing the old block and inserting a fresh one never accumulates bytes.
+	block := secondOpinionTreeStart + "\n<nav aria-label=\"Second-opinion iterations\"><p><strong>Second-opinion iterations</strong> (tree id · preset · model · date)</p>\n<ul>\n" + items.String() + "</ul></nav>\n" + secondOpinionTreeEnd
+	return append(append(append([]byte(nil), updated[:body[1]]...), block...), updated[body[1]:]...), nil
+}
+
+// secondOpinionChangeList checks a tree page's "Changed in this iteration" list on the visible surface: it needs at
+// least one #rev-* link, and every such link needs a real id="rev-*" attribute (whitespace before id, so data-id does
+// not count). Each failure is one judge finding.
+func secondOpinionChangeList(page []byte) []resultmodel.AIReportSecondOpinionFinding {
+	visible := secondOpinionVisibleHTML(page)
+	targets := map[string]bool{}
+	for _, match := range regexp.MustCompile(`(?i)\sid\s*=\s*["']?(rev-[^"'\s>]*)`).FindAllSubmatch(visible, -1) {
+		targets[string(match[1])] = true
+	}
+	links := regexp.MustCompile(`(?i)\shref\s*=\s*["']?#(rev-[^"'\s>]*)`).FindAllSubmatch(visible, -1)
+	if len(links) == 0 {
+		return []resultmodel.AIReportSecondOpinionFinding{{FindingKind: secondOpinionChangeListKind, FindingDetail: "no \"Changed in this iteration\" link to a #rev-* section"}}
+	}
+	findings := []resultmodel.AIReportSecondOpinionFinding{}
+	for _, link := range links {
+		if !targets[string(link[1])] {
+			findings = append(findings, resultmodel.AIReportSecondOpinionFinding{FindingKind: secondOpinionChangeListKind, TargetPath: "#" + string(link[1]), FindingDetail: "change-list link has no matching id on the page"})
+		}
+	}
+	return findings
 }
 
 func secondOpinionRender(bundle string, page []byte) (string, []resultmodel.AIReportSecondOpinionFinding) {
