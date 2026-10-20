@@ -1,23 +1,6 @@
 ```
-do-work run, coordinator shape: this session coordinates only; background agents run the queue.
-Builders run in parallel git worktrees, one per REQ, up to capacity. Integrators run one at a time
-(merge, gate, review, release). Follow skills/do-work/actions/fan-out-reference.md, section
-"Delegated integration — the coordinator shape".
-
-1. Five REQs are already claimed in do-work/working/ by the previous session. They have no sections,
-   branches or worktrees yet. Continue each claim first; each call is read-only and names the next phase:
-   advance REQ-655
-   advance REQ-657
-   advance REQ-658
-   advance REQ-659
-   advance REQ-660
-   Build all five in parallel worktrees. Integrate them one at a time, in this order:
-   REQ-660, REQ-659, REQ-658, REQ-655, REQ-657.
-2. Before step 3, check do-work/queue/. REQ-654, 661, 667, 668, 669, 670 and 674 must no longer be
-   `pending`: session skill-do-work2-b1 is cancelling and recapturing them as fewer, smaller REQs.
-   If any of them is still `pending`, do not run step 3. Stop and tell the user.
-3. do-work run --fan-out 4
-
+hand REQ-704 to an integrator (it enters with advance REQ-704)
+do-work run --coordinate --fan-out 1
 These commands are sufficient; everything below them is context.
 ```
 
@@ -25,36 +8,27 @@ These commands are sufficient; everything below them is context.
 
 ## Reference
 
-Written 2026-10-10T12:57Z by the session that claimed the UR-144 to UR-149 batch, then handed off before any build started.
+**Run:** `do-work run UR-160 --coordinate`, run dir `do-work/runs/work-2026-10-20-200259/` (manifest, `PREDISPATCH-GUIDE.md`, `INTEGRATOR-GUIDE.md`, per-REQ briefs, probes, hand-backs, progress logs). UR-160 = directed second opinions (presets, free-text direction, linked iteration tree), decisions D1-D10 in `do-work/user-requests/UR-160/input.md`; D2 (shared project preset folder) is superseded by REQ-705's answer.
 
-**What happened**
+**Done this session:**
+- REQ-703 (second opinions accept a named preset and a free-text editor direction): released 0.306.6, `a6c00290`, archived flat at `do-work/archive/REQ-703-second-opinion-preset-and-editor-direction.md`.
+- REQ-705 (user presets live only inside the report bundle; the user's answer to the builder-decided confirm question): released 0.306.7, `ae016e17`, archived flat at `do-work/archive/REQ-705-confirm-uncommitted-preset-refusal.md`.
 
-- At 12:52Z this session ran `recover` (clean) and `advance --fan-out 12`. That claimed twelve REQs, in commits 9d844aaf through 6a28ed59.
-- The maintainer then chose the aggressive queue simplification in session skill-do-work2-b1. That session asked for seven claims back. All seven went back to the queue with `recover --take-over`, one commit each: REQ-654 2b109946, REQ-661 ba3975ef, REQ-667 87565a26, REQ-668 bcdb86c0, REQ-669 49a93977, REQ-670 49b76c10, REQ-674 61e02428.
-- No workflow, builder, worktree, branch, run directory or REQ section was created. The empty run directory `do-work/runs/work-2026-10-10-125225/` was deleted before the requeue.
+**In flight: REQ-704 (second opinions build a linked iteration tree on any base page)**, claimed in `do-work/working/REQ-704-second-opinion-linked-iteration-tree.md`.
+- Merged: yes. Builder tip `50555523`, merge `92443689`, merge range `87614289..92443689` (keep `87614289` as `<pre>` on any re-merge).
+- Written: Triage, Plan (D-01..D-13), Exploration, Scope, Pre-Flight, Implementation Summary, Decisions, Discovered Tasks, Qualification; stamps `dispatch_at`, `builder_handback_at`, `integration_at`.
+- `recover`: `RECOVERY-TAKEOVER-AVAILABLE` (claim preserved). `advance REQ-704` reports phase `test-gate`.
+- Remains, in order: repository gate at `92443689` (the first run was stopped mid-way by the coordinator at the user's handoff request; result unknown), the advance test gate with `REQ-704-probe.sh`, `## Testing`, review with the wave-end Restatement Sweep over REQ-703 and REQ-705, Lessons/Orientation, heavy plan and drain, link sweep, UR-160 closure finalization (next patch after 0.306.7), worktree cleanup. Then the coordinator runs `advance --checkpoint`.
+- Uncommitted files: none (survey: both checkouts clean). The integrator brief is `do-work/runs/work-2026-10-20-200259/REQ-704-integrate.md`, with the shared guide beside it.
 
-**Claims left in `do-work/working/`** (claimed by this checkout, no sections, nothing merged or uncommitted)
+**Worktrees:**
+- `/Users/t2/Desktop/e1-experimental-repos/skill-do-work2` (main, `9c297ea4` + this handoff commit): integration checkout.
+- `/Users/t2/Desktop/e1-experimental-repos/skill-do-work2-worktrees/worktree-agent-REQ-704-second-opinion-linked-iteration-tree` at `50555523`: **ACTIVE**. Merged and clean, but REQ-704 is still in `do-work/working/`; review fixes go on this branch. Remove it only through the integrator's cleanup after finalization.
 
-- REQ-655: `ai-report index` and `find` build a catalog of report bundles. Go under `internal/toolboxcommands/`, plus toolbox ai-report docs.
-- REQ-657: `ai-report judge` runs the render check as a bundled command. Toolbox `scripts/judge.mjs`, plus ai-report docs.
-- REQ-658: `finalize --auto-manifest` builds the mechanical manifest fields. Go under `internal/finalization/`, plus work.md and work-reference.md.
-- REQ-659: `frontmatter set` and `req append-section`. Go `corehelpers/commands.go`, the board's `frontmatter_cli.go`, plus work.md and work-reference.md.
-- REQ-660: `worktree new/status/merge/cleanup`. A new Go command, plus fan-out-reference.md.
+**Parallelism:** one member left, so `--fan-out 1`. The queue is otherwise empty; no gate edits were needed.
 
-**Parallelism**
-
-- Safe to build all five at once: no `depends_on` edges between them.
-- Shared prose: 655 and 657 both edit `skills/do-work-toolbox/actions/ai-report.md`, `help.md`, `SKILL.md` and `docs/ai-report-guide.md`. 658 and 659 both edit `work.md` and `work-reference.md`. 658, 659 and 660 all add bullets to `lessons-do-work-cli.md`. These are merge seams for the serial integrators, not reasons to serialize the builds, so no queue gate was added.
-- Integration order (step 1): the three tool REQs 660, 659 and 658 first. They feed the later coordinator REQs being recaptured. 655 and 657 follow, and 657 merges last of the ai-report pair.
-- REQ-656 (ai-report revise) currently `depends_on: [REQ-655]`. Session b1 plans to drop that edge. If the edge is still there, 656 waits for 655 to archive.
-
-**Worktree verdicts**
-
-- `/Users/t2/Desktop/e1-experimental-repos/skill-do-work2` (main): ACTIVE, the shared checkout, clean at 61e02428.
-- `/private/tmp/do-work-portable-workflows` (branch `codex/portable-workflow-actions`, 7676a183, clean): FOREIGN, another tool's work. Leave it as it is.
-
-**Heads-up for the first ten minutes**
-
-- Session skill-do-work2-b1 is live in this same checkout. It will commit cancels and new captures under `do-work/`. Commit by exact path only, and re-read the highest REQ/UR id before writing one. (Next session.)
-- The recaptured REQs will have new ids. Old REQ-662 to 666 and 671 to 673 may be cancelled, or folded into them. Trust the queue on disk, not this list. (Next session.)
-- Integrators must wait for a quiet machine (1-minute load under 5, no running `maintainer-verify.sh`) inside one Bash sleep loop, never by ending their turn. (Next session's integrator briefs.)
+**Heads-up for the first ten minutes:**
+- REQ-704 integrator: no `full-gate.lock` is left (the coordinator removed the stopped integrator's lock). Rerun the full gate from the start.
+- REQ-704 integrator: closing UR-160 moves REQ-703 and REQ-705 into `do-work/archive/UR-160/`; re-point the REQ-703 lesson link in `skills/do-work/tools/do-work-cli/lessons-do-work-cli.md` and refresh `do-work/lessons-index.md` (`git grep -n "archive/REQ-70[345]" -- ':!do-work/'`). The integrate brief lists the commit paths.
+- REQ-704 integrator: `report_second_opinion_test.go` ran 27.2 s against the 30 s per-file budget in REQ-705's gate; REQ-704's new tests are in `report_second_opinion_tree_test.go` (2.5 s). A budget red under load is rerun once.
+- Coordinator: the old 2026-10-10 handoff in this file (UR-144) is replaced; its REQs were finished long ago.
