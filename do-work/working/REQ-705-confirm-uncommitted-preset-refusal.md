@@ -28,6 +28,7 @@ estimate:
     - 2 subsystems involved
     - 7 acceptance criteria
 dispatch_at: 2026-10-20T21:31:30Z
+builder_handback_at: 2026-10-20T21:35:28Z
 ---
 
 # Confirm: A Second Opinion Refuses To Run While A Project Preset File Is Uncommitted
