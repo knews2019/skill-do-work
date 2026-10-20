@@ -30,6 +30,7 @@ estimate:
 planning_at: 2026-10-20T21:28:43Z
 dispatch_at: 2026-10-20T22:00:40Z
 builder_handback_at: 2026-10-20T22:12:40Z
+integration_at: 2026-10-20T22:13:00Z
 ---
 # Second Opinions Build A Linked Iteration Tree On Any Base Page
 ## What
@@ -68,9 +69,34 @@ D4-D10 are user-confirmed and firm, including two-digit children and the tree li
 - `skills/do-work/tools/do-work-cli/lessons-do-work-cli.md` — 22858 tokens, `slugged: partial` so no targeted form; matches exact filesystem-basename authority and native backend identity. Read its `exact-basename-authority` and `writer-anchored-marker-position` bullets if budget allows.
 - `_dev/primes/lessons-action-files.md` — 8398 tokens, `slugged: partial`; matches the action-file and downstream-reader changes.
 ## AI Execution State (P-A-U Loop)
-- [ ] **[PLAN]:** (Agent: Read listed `prime_files` and agent rules. Write brief technical approach here. Do not write code yet.)
-- [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
-- [ ] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
+- [x] **[PLAN]:** Follow D-01 to D-13 as decided. Read: builder brief incl. coordinator note, REQ-704 (all sections), REQ-703 hand-back seams, general.md, coding-guardrails.md, shared-principles.md, testing.md, backend.md, communication-style.md, prime-do-work-cli.md (Traps), prime-action-files.md, prime-releases.md not re-read beyond the brief (release is the integrator's), lessons-releases.md (whole), and the five lesson families below. Write the three new tests first in a new file (D-13) against base code, run RED, then implement in one Go file plus the row fields, then prose. No lesson contradicted the plan; `exact-basename-authority` drives the whole-basename tree pattern, `writer-anchored-marker-position` drives stripping the copied header, tree block and every `ai-report-second-opinion-*` meta (either attribute order) on the masked surface before the backlink check.
+- [x] **[APPLY]:** Implemented as planned, scope limited to the write boundary. One plan change during APPLY: I first added a finalize-time check that the prepare record's `base` is a tree page name, then removed it (the record is launcher-written, and a bad value only yields a plain-run page with no tree marks; not earned defense).
+- [x] **[UNIFY]:** `git diff --stat 94f52975 HEAD`:
+
+  ```
+   .../do-work-toolbox/actions/ai-report-reference.md |   2 +-
+   skills/do-work-toolbox/actions/ai-report.md        |  12 +-
+   skills/do-work-toolbox/docs/ai-report-guide.md     |  10 +-
+   .../docs/ai-report-second-opinion-prompt.md        |   6 +-
+   .../internal/resultmodel/result_model.go           |   3 +
+   .../toolboxcommands/report_second_opinion.go       | 266 +++++++++++++++++----
+   .../toolboxcommands/report_second_opinion_test.go  |  18 +-
+   .../report_second_opinion_tree_test.go             | 215 +++++++++++++++++
+   8 files changed, 468 insertions(+), 64 deletions(-)
+  ```
+
+  Checks (load average 1.65 / 2.24 / 3.38 at the end):
+
+  | Check | Exit | Wall |
+  |---|---|---|
+  | `bash .../REQ-704-probe.sh` from worktree root | 0 | 3.3 s |
+  | `gofmt -l skills/do-work/tools/do-work-cli/internal` | 0, no output | <1 s |
+  | `go vet -C skills/do-work/tools/do-work-cli ./internal/toolboxcommands ./internal/resultmodel` | 0 | ~2 s |
+  | `git diff --check` (tree and `94f52975..HEAD`) | 0 | <1 s |
+  | `go test -count=1 -run 'SecondOpinion' ./internal/toolboxcommands` | 0 (ok 16.9 s) | 17.3 s |
+  | `go test -count=1 -run TestSecondOpinionJSONKeepsEveryBackendAndJudgeEvidence ./internal/resultmodel` | 0 | 0.4 s |
+
+  Files checked by reading the diff: all eight above. No debug artifacts; a temporary view test (`zz_scratch_view_test.go`) used to eyeball the rendered `index.html` and child page was deleted before commit and never staged.
 ## Full Context
 See `do-work/user-requests/UR-160/input.md` for complete verbatim input.
 
@@ -86,7 +112,7 @@ See `do-work/user-requests/UR-160/input.md` for complete verbatim input.
 
 *No `## Open Questions` section exists; Step 3.5 has nothing to resolve. The builder-latitude points (marker names, list layout, badge style) and the CHANGE LIST precedence the coordinator asked about are decided in `## Plan` → Decisions as D-01 onwards.*
 
-<!-- D-XX counter: last used D-13. Next decision: D-14. -->
+<!-- D-XX counter: last used D-20. Next decision: D-21. -->
 
 ## Plan
 
@@ -214,3 +240,55 @@ Read directly by the pre-dispatch agent at main `11780ac0`: `report_second_opini
 **Dependencies:** ✓ Go toolchain and ShellCheck present (the gate ran)
 
 *Checked by the coordinator before dispatch (2026-10-20T21:56:42Z to 2026-10-20T22:00:22Z)*
+
+## Implementation Summary
+
+**Files changed:**
+- `skills/do-work/tools/do-work-cli/internal/toolboxcommands/report_second_opinion.go` (modified)
+- `skills/do-work/tools/do-work-cli/internal/toolboxcommands/report_second_opinion_test.go` (modified)
+- `skills/do-work/tools/do-work-cli/internal/toolboxcommands/report_second_opinion_tree_test.go` (created)
+- `skills/do-work/tools/do-work-cli/internal/resultmodel/result_model.go` (modified)
+- `skills/do-work-toolbox/docs/ai-report-second-opinion-prompt.md` (modified)
+- `skills/do-work-toolbox/actions/ai-report.md` (modified)
+- `skills/do-work-toolbox/docs/ai-report-guide.md` (modified)
+- `skills/do-work-toolbox/actions/ai-report-reference.md` (modified)
+
+**What was done:** `ai-report second-opinion` now accepts a page path as its target (`index.html` or a tree page `index-v1c...html` in a current bundle), and the base page rides `secondOpinionDirection.Base` through the prepare record. Every directed run and every run on a tree page is a tree run: `secondOpinionNames` allocates the child id (`v1c01`, `v1c01c01`, ...) from the bundle's tree page names at publish time and puts it in both names; decoration (now after naming) adds the parent-link paragraph and the `-id`, `-base`, `-model`, `-date` metas and strips every copied `ai-report-second-opinion-*` meta in either attribute order and any copied tree block. A tree run's prompt fills `{{BASE_PAGE}}` and `{{CHANGE_LIST_REQUIREMENT}}`; after the judge, `secondOpinionChangeList` turns unresolved `#rev-*` links (or none at all) into `AI-REPORT-SECOND-OPINION-CHANGE-LIST` findings that fail the verdict; on `pass`, `secondOpinionTreeList` rebuilds one marked iteration list on `index.html` in pre-order instead of the per-filename banner. Rows gain `tree_id` and `base_page`. A plain run is unchanged. REQ-703's directed-name pins gained their tree ids (D-12); the three new tests live in the new tree test file (D-13). The prompt, `ai-report.md`, the guide and `ai-report-reference.md` describe the page target, the ask-on-unclear-base rule, tree names and the iteration list.
+
+## Decisions
+
+(from the builder hand-back)
+
+- **D-14** (DECIDE & STATE): change-list constant wording: `Right after the backlink, add a list titled "Changed in this iteration". Each item names one change you made to the base page and links to #rev-<n> (rev-1, rev-2 and so on). Give each changed section the matching id="rev-<n>" and a visible "changed" badge. Every link must resolve to a section on this page, because the launcher checks it.`
+- **D-15** (DECIDE & STATE): prompt INPUT wording: `The page to rewrite is {{BASE_PAGE}}. Read it and every asset it references before you start, and read index.html too when it is a different page. index.html and the repository are the sources of fact. A page to rewrite other than index.html is an earlier iteration that opens with a "Changed in this iteration" list: read that list first, so you know what the last pass changed.` On a plain run this reads "rewrite index.html, read it and its assets", the same meaning as before.
+- **D-16** (DECIDE & STATE): tree-list layout on `index.html`: `<!-- second-opinion-tree -->` + `<nav aria-label="Second-opinion iterations">` with a title line `Second-opinion iterations (tree id · preset · model · date)` and one `<li style="margin-left:<1.5 × (depth-1)>em">` per tree page: `<a href="<page>"><id></a> · <preset or plain> · <model> · <date>`, then `<!-- /second-opinion-tree -->`. No whitespace outside the markers, so rebuilding never accumulates bytes. Depth comes from the id length.
+- **D-17** (DECIDE & STATE): parent header paragraph `<p><strong>Iteration <id></strong>, built on <a href="<parent>"><parent></a></p>`, placed first inside REQ-703's existing `<aside aria-label="Second-opinion direction">`; the aria-label is kept unchanged even when a tree page has no direction (session finalize on a base page with no flags), to avoid churn in REQ-703's block.
+- **D-18** (DECIDE & STATE): the model meta is `<backend> <publishedModel>`, so an unverified tree page shows `codex gpt-5-unverified`; the date is the UTC publish date (`time.DateOnly`).
+- **D-19** (DECIDE & STATE): `parentTreeID` derives the parent from `Base` by the tree pattern; a `Base` that does not match (only possible through an edited prepare record) falls back to the plain/`v1` rule. I removed a finalize-time validation of the record's `base` I had first added: not earned (see APPLY).
+- **D-20** (DECIDE & STATE): in the tree list, `banner_state` is `inserted` when the rebuilt bytes differ from the original, else `already-present`; the change detail reads `second-opinion iteration list only`.
+
+## Discovered Tasks
+
+(from the builder hand-back)
+
+- `reportMetaAttribute` in `report_index.go` matches `\bname`, so a `data-name="..."` attribute is read as `name` by `readReportMetas` (and by the widened second-opinion meta strip, where the effect is only that such a tag is also stripped). impact-negligible → report only
+- `lessons-do-work-cli.md:95` (REQ-703 bullet) links the flat path `do-work/archive/REQ-703-second-opinion-preset-and-editor-direction.md`; closing UR-160 moves it under `do-work/archive/UR-160/`. This is the one such link in `skills/` (grep `blob/main/do-work/archive/REQ-70[0-9]`); the integrator's sweep, as the brief says. impact-minor → report only
+## Qualification
+
+**Gate records:** `advance --diff-range 87614289..92443689` → `qualify` satisfied (no debug artifact, no output-primitive finding, P-A-U boxes ticked). `scope-drift` reported six `SCOPE-DECLARED-NOT-TOUCHED` warnings: `CHANGELOG.md`, `VERSION`, `skills/do-work/CHANGELOG.md`, `skills/do-work/VERSION`, `skills/do-work/actions/version.md`, `skills/do-work/tools/do-work-cli/lessons-do-work-cli.md`. All six are release and lesson files the integrator writes at finalization, so they are expected, not drift. No touched-but-undeclared path.
+
+**Requirement trace (read against `git diff 87614289..92443689` and the merged files):**
+- D4 base selection: a positional ending in `.html` resolves its directory through the unchanged `secondOpinionBundle`, must equal it (`base page must sit in a current report bundle`), and must be a regular `index.html` or a name matching `secondOpinionTreePagePattern`; a non-index page sets `direction.Base`. Bundle and base resolve before the preset lookup, so the bundle preset still resolves (the tree-target test asserts `preset_file` is the bundle's `visual.md` when the target is the `v1c01` page). The old non-tree name `index-codex-actual-model-1.html` and a missing `index-v1c09-...` are refused. Prose: `ai-report.md` (trigger bullet, three forms, target paragraph with clear-questions and "the environment's ask-user prompt", best guess first plus free text) and the guide's command lines.
+- D5 editor input: the prompt INPUT names `{{BASE_PAGE}}`, keeps `index.html` and the repository as fact sources, and tells the editor to read the base's "Changed in this iteration" list; a tree run's prompt carries `Base: <v1c01 page>` (tested).
+- D6 tree ids: `secondOpinionNames` takes the parent id, scans the bundle for tree names under `<parent>c`, takes one above the highest two-digit number (descendants count), bumps on a taken page or reply name, and fails above 99; names are `index-<id>-<stem>.html` and `<id>-<stem>-reply.md`. Tested: `v1c01`, `v1c02` on `index.html`, `v1c01c01` on the `v1c01` page, `v1c01c02` from a session finalize on the same base (the id is allocated at finalize, not prepare).
+- Which runs get an id: `parentTreeID` returns the base's id, else `v1` when there is a preset or direction slot, else empty; a plain run keeps `index-codex-actual-model-1.html`, no tree row fields, prompt `Base: index.html` / `Change list: None for this pass.` (tested).
+- D8 change marks: `secondOpinionChangeListRequirement` fills the prompt on tree runs; `secondOpinionChangeList` runs after the judge on the visible surface, one finding for no `#rev-*` link at all and one per link without a real `id` (a `data-id` look-alike does not count), and turns `pass`/`skipped` into `fail`; the page and reply stay, `index.html` is unchanged (tested for `#rev-2` and for no list).
+- D9 walk-through: on judge `pass` a tree run calls `secondOpinionTreeList`, which strips any real old block and inserts one fresh block after the body tag, listing every regular tree page from `os.ReadDir` (byte order = pre-order) with id, preset (or `plain`), model and date metas. The header gains `Iteration <id>, built on <parent link>`; metas gain `-id`, `-base`, `-model`, `-date`. Tree pages get no per-filename banner; a later plain run keeps its banner and leaves the tree block unchanged; a marker in a script string survives (tested).
+- D10 old pages: the tree pattern requires `v1(c[0-9]{2})+` right after `index-`, so `index-claude-claude-opus-5-5.html` and the other two never match, are never listed, and are refused as bases.
+- Preservation: the existing preserved-file check and the original identity and bytes checks are unchanged; only the marked block on `index.html` is rewritten.
+- Row fields: `TreeID` and `BasePage`, both omitempty; `base_page` is set on prepare, run and finalize rows of tree runs.
+- Docs: `ai-report.md`, the guide, the prompt and `ai-report-reference.md:148` match the code; the `## Second-opinion form` heading is unchanged.
+
+**Scope comparison:** declared 15 paths; touched 8 project paths, all declared; the 7 untouched are the release files, the lessons satellite and `do-work/lessons-index.md`, written at finalization. `report_index.go`, `report_judge.go`, `SKILL.md`, the adapters and the three existing second-opinion pages under `ai-reports/` are untouched.
+
+**Judgment:** the change follows D-01 to D-13 and the hand-back's D-14 to D-20 (468 insertions, 64 deletions over 8 files, 215 of them the new test file). The builder's RED evidence names the REQ's stated RED failure. Qualified.
