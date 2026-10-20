@@ -1,0 +1,14 @@
+# REQ-705 integration report (user second-opinion presets live only inside the report bundle)
+
+- Released 0.306.7, "Your Second-Opinion Presets Live in the Report Bundle". Archived at do-work/archive/REQ-705-confirm-uncommitted-preset-refusal.md (flat path, UR-160 stays open). Finalization commit ae016e17, phase cleanup_complete, no blocked paths or reason codes.
+- Merges: pre bac2288b (after the `[REQ-705] run artifacts` commit). First merge d8cb783f (builder 31868b40). Review fix e206c552 on the builder branch, re-merged as 5cbf1f10 (the recorded `commit:`).
+- RED: the builder could not re-run RED after its test tidy. I ran the final test file against the pre-change code in a scratch detached checkout at bac2288b. It failed at case (a) with `unknown preset "mine"; presets found: bold, visual`, the same failure the builder recorded. GREEN at both merges.
+- Gate: run 1 at d8cb783f exit 0, 127 s, load 3.99. Run 2 at 5cbf1f10 exit 0, 135 s, load 2.24, recorded with record-green-gate. The probe passed at both. contract-regressions.sh passed after finalization.
+- Review: Approve, 96%, Acceptance Pass. I fixed F2 (impact-user-visible): the guide now says a new revision does not carry a bundle preset over, and that a run on a superseded report uses its current revision. The same reviewer checked the delta and confirmed it closes F2. F1 (impact-user-visible, an old shared folder now shows as an undated bundle) is covered by the CHANGELOG migration bullet. Report only. F3 and F4 are impact-negligible, report only. Anti-bloat: none.
+- For REQ-704's reviewer (F3): do-work/user-requests/UR-160/input.md:16,22 still describe the shared project preset folder. REQ-705's answer replaces UR-160 D2 there. The UR was left unedited.
+- Heavy lanes at 5cbf1f10, all executed and exit 0: do-work-cli-integrations 68 s, staged-skills 36 s, updater 66 s, installer 31 s.
+- Timing events: builder-work, handback-merge, verification-gate x3 (gate, gate after the fix, heavy drain), review. All folded into ## Timing. The review event also counts the F2 fix and the re-gate, because the recorder times up to the moment it is called.
+- Lesson: none. The builder proposed none. No lessons satellite or lessons-index change.
+- Report-only discovered task (builder, impact-user-visible): a consumer's `ai-reports/second-opinion-presets/` from 0.306.6 now shows in index/find. The CHANGELOG bullet tells them to move the presets and delete the folder.
+- Note: report_second_opinion_test.go took 27.21 s in gate run 2. The per-file budget is 30 s.
+- Left dirty under ROOT: REQ-705-progress.log and this report (both untracked, run scratch). The builder worktree and branch are removed. The drain checkout is removed and pruned. My scratch RED checkout was removed with `git worktree remove --force` because it held one copied test file.
