@@ -31,7 +31,7 @@ func secondOpinionFixture(t *testing.T) (string, string) {
 	toolboxTestGit(t, repository, "add", ".")
 	toolboxTestGit(t, repository, "commit", "-qm", "fixture")
 	template := filepath.Join(t.TempDir(), "prompt.md")
-	os.WriteFile(template, []byte("Output: {{OUTPUT_FILE}}\nPrefix: {{ASSET_PREFIX}}\nRepository: {{REPOSITORY_ROOT}}\nBundle: {{BUNDLE_PATH}}\n{{BACKLINK_REQUIREMENT}}\n"), 0644)
+	os.WriteFile(template, []byte("Output: {{OUTPUT_FILE}}\nPrefix: {{ASSET_PREFIX}}\nRepository: {{REPOSITORY_ROOT}}\nBundle: {{BUNDLE_PATH}}\n{{BACKLINK_REQUIREMENT}}\nDirection: {{EDITOR_DIRECTION}}\n"), 0644)
 	t.Setenv("DO_WORK_AI_REPORT_SECOND_OPINION_PROMPT", template)
 	bin := t.TempDir()
 	gitPath, err := exec.LookPath("git")
@@ -820,5 +820,121 @@ func TestSecondOpinionCapturePreservesBackendStatusAndChannels(t *testing.T) {
 		if status == "0" && captured.err != nil || status == "7" && (captured.err == nil || !strings.Contains(captured.err.Error(), "7")) {
 			t.Fatalf("status=%s capture=%+v", status, captured)
 		}
+	}
+}
+
+// secondOpinionFixturePresets writes bold.md and visual.md beside the fixture template, where the launcher looks for
+// shipped presets, so tests never read the real shipped files.
+func secondOpinionFixturePresets(t *testing.T) string {
+	t.Helper()
+	folder := filepath.Join(filepath.Dir(os.Getenv("DO_WORK_AI_REPORT_SECOND_OPINION_PROMPT")), "second-opinion-presets")
+	if err := os.MkdirAll(folder, 0755); err != nil {
+		t.Fatal(err)
+	}
+	for name, text := range map[string]string{"bold": "Shipped bold: add motion.\n", "visual": "Shipped visual: diagrams first.\n"} {
+		if err := os.WriteFile(filepath.Join(folder, name+".md"), []byte(text), 0644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	return folder
+}
+
+// Pins: a preset that never reaches the prompt, a project preset that does not shadow the shipped one, an unknown name
+// that hides what exists, and direction text that would trip the placeholder check or ride along on --finalize.
+func TestSecondOpinionPresetResolutionAndArgumentRules(t *testing.T) {
+	repo, _ := secondOpinionFixture(t)
+	shipped := secondOpinionFixturePresets(t)
+	session := []string{"--prepare", "--backend", "claude", "--model", "claude-fable-5-1"}
+	row := secondOpinionRows(t, secondOpinionInvoke(t, repo, append(session, "--preset", "bold")...))[0]
+	prompt, _ := row["prompt"].(string)
+	if row["state"] != "prepared" || row["preset"] != "bold" || row["preset_file"] != filepath.Join(shipped, "bold.md") || !strings.Contains(prompt, "Direction: Shipped bold: add motion.\n") || strings.Contains(prompt, "{{") {
+		t.Fatalf("shipped preset not applied: %v", row)
+	}
+	project := filepath.Join(repo, "ai-reports", "second-opinion-presets")
+	os.MkdirAll(project, 0755)
+	os.WriteFile(filepath.Join(project, "bold.md"), []byte("Project bold: go further.\n"), 0644)
+	toolboxTestGit(t, repo, "add", ".")
+	toolboxTestGit(t, repo, "commit", "-qm", "project preset")
+	row = secondOpinionRows(t, secondOpinionInvoke(t, repo, append(session, "--preset=bold")...))[0]
+	prompt, _ = row["prompt"].(string)
+	if row["state"] != "prepared" || row["preset_file"] != "ai-reports/second-opinion-presets/bold.md" || !strings.Contains(prompt, "Direction: Project bold: go further.\n") {
+		t.Fatalf("project preset did not win: %v", row)
+	}
+	refused := map[string][]string{
+		`unknown preset "missing"; presets found: bold, visual`: append(session, "--preset", "missing"),
+		"--editor-direction must not be empty":                  append(session, "--editor-direction", " "),
+		"--editor-direction must not contain {{":                append(session, "--editor-direction", "keep {{OUTPUT_FILE}}"),
+		"--finalize takes only the staging page path":           {"--finalize", "ai-reports/2026-10-15_1200-example/.x-staging-1.html", "--preset", "bold"},
+	}
+	for want, args := range refused {
+		result := secondOpinionInvoke(t, repo, args...)
+		if result.Outcome != resultmodel.OutcomeFailure || len(result.Findings) == 0 || !strings.Contains(strings.Join(result.Findings[0].Evidence, " "), want) {
+			t.Errorf("%v: want refusal %q, got %+v", args, want, result.Findings)
+		}
+	}
+}
+
+// Pins: a direction that never reaches the editor, a directed page published under the plain name or without its
+// visible marks, a session finalize that forgets the prepared direction, a plain run that gains marks, and a second
+// decoration that stacks a second header.
+func TestSecondOpinionDirectedRunNamesAndMarksPage(t *testing.T) {
+	repo, bundle := secondOpinionFixture(t)
+	shipped := secondOpinionFixturePresets(t)
+	promptLog := filepath.Join(t.TempDir(), "prompt.txt")
+	// The fake editor proposes a slug only when its prompt carries a direction, so the plain case still proves the plain name.
+	secondOpinionFakeCodex(t, `printf '%s' "$prompt" > '`+promptLog+`'
+ case "$prompt" in *'Direction: None.'*) ;; *) printf 'Variation slug: Add A Timeline!\n' ;; esac`)
+	page := func(name string) string {
+		data, err := os.ReadFile(filepath.Join(bundle, name))
+		if err != nil {
+			t.Fatalf("%s not published: %v", name, err)
+		}
+		return string(data)
+	}
+	row := secondOpinionRows(t, secondOpinionInvoke(t, repo, "--backend", "codex", "--preset", "bold", "--editor-direction", "add a timeline"))[0]
+	prompt, _ := os.ReadFile(promptLog)
+	if !strings.Contains(string(prompt), "Direction: Shipped bold: add motion.\n\nadd a timeline\n") {
+		t.Fatalf("prompt lacks preset-then-free-text direction: %s", prompt)
+	}
+	if row["page"] != "ai-reports/2026-10-15_1200-example/index-codex-actual-model-1-bold-add-a-timeline.html" || row["reply"] != "ai-reports/2026-10-15_1200-example/codex-actual-model-1-bold-add-a-timeline-reply.md" {
+		t.Fatalf("directed names: %v", row)
+	}
+	if row["preset"] != "bold" || row["preset_file"] != filepath.Join(shipped, "bold.md") || row["editor_direction"] != "add a timeline" {
+		t.Fatalf("row lacks direction provenance: %v", row)
+	}
+	directed := page("index-codex-actual-model-1-bold-add-a-timeline.html")
+	for _, mark := range []string{`<meta name="ai-report-second-opinion-preset" content="bold">`, `<meta name="ai-report-second-opinion-direction" content="Shipped bold: add motion.`, "<!-- second-opinion-header -->", "<!-- /second-opinion-header -->", "add a timeline"} {
+		if !strings.Contains(directed, mark) {
+			t.Fatalf("directed page lacks %q: %s", mark, directed)
+		}
+	}
+	row = secondOpinionRows(t, secondOpinionInvoke(t, repo, "--backend", "codex", "--editor-direction", "add a timeline"))[0]
+	if row["page"] != "ai-reports/2026-10-15_1200-example/index-codex-actual-model-1-custom-add-a-timeline.html" || row["preset"] != nil {
+		t.Fatalf("free-text-only run: %v", row)
+	}
+	row = secondOpinionRows(t, secondOpinionInvoke(t, repo, "--backend", "codex"))[0]
+	plain := page("index-codex-actual-model-1.html")
+	if row["page"] != "ai-reports/2026-10-15_1200-example/index-codex-actual-model-1.html" || strings.Contains(plain, "second-opinion-header") || strings.Contains(plain, "ai-report-second-opinion-preset") || row["preset"] != nil || row["editor_direction"] != nil {
+		t.Fatalf("plain run changed: %v %s", row, plain)
+	}
+	row = secondOpinionRows(t, secondOpinionInvoke(t, repo, "--prepare", "--backend", "claude", "--model", "claude-fable-5-1", "--preset", "bold"))[0]
+	stage, _ := row["staging_page"].(string)
+	os.WriteFile(stage, []byte(`<html><body><p>Original report: <a href="index.html">index.html</a></p><h1>Bold</h1></body></html>`), 0644)
+	os.WriteFile(strings.TrimSuffix(stage, ".html")+"-reply.md", []byte("Clarity: bolder.\n- Variation slug: Motion Pass\n"), 0644)
+	row = secondOpinionRows(t, secondOpinionInvoke(t, repo, "--finalize", stage))[0]
+	if row["state"] != "ran" || row["page"] != "ai-reports/2026-10-15_1200-example/index-claude-claude-fable-5-1-bold-motion-pass.html" || row["preset"] != "bold" || row["preset_file"] != filepath.Join(shipped, "bold.md") {
+		t.Fatalf("finalize lost the prepared direction: %v", row)
+	}
+	direction := secondOpinionDirection{Preset: "bold", PresetText: "Go <further> & \"faster\"", EditorDirection: "add a timeline"}
+	withHead := []byte(`<html><head><title>T</title><script>const fake = "<!-- second-opinion-header --></head>";</script></head><body class="x"><p>Original report: <a href="index.html">index.html</a></p></body></html>`)
+	once := secondOpinionDecorate(withHead, direction)
+	if twice := secondOpinionDecorate(once, direction); string(twice) != string(once) {
+		t.Fatalf("decoration not idempotent:\n%s\n%s", once, twice)
+	}
+	if !strings.Contains(string(once), `const fake = "<!-- second-opinion-header --></head>";</script><meta name="ai-report-second-opinion-preset" content="bold"><meta name="ai-report-second-opinion-direction" content="Go &lt;further&gt; &amp; &#34;faster&#34;`) {
+		t.Fatalf("metas not before the real </head>, or not escaped: %s", once)
+	}
+	if string(secondOpinionDecorate(once, secondOpinionDirection{})) != string(withHead) {
+		t.Fatalf("plain decoration did not strip the launcher marks: %s", secondOpinionDecorate(once, secondOpinionDirection{}))
 	}
 }

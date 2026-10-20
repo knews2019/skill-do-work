@@ -712,6 +712,10 @@ type AIReportSecondOpinionRun struct {
 	AssetPrefix   string `json:"asset_prefix,omitempty"`
 	PromptText    string `json:"prompt,omitempty"`
 	ModelEvidence string `json:"model_evidence,omitempty"`
+	// Direction fields: the --preset name, the preset file actually used, and the --editor-direction free text; absent on a plain run.
+	Preset          string `json:"preset,omitempty"`
+	PresetFile      string `json:"preset_file,omitempty"`
+	EditorDirection string `json:"editor_direction,omitempty"`
 }
 type AIReportSecondOpinionFinding struct {
 	FindingKind   string `json:"kind"`
