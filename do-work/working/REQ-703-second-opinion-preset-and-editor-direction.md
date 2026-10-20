@@ -1,7 +1,7 @@
 ---
 id: REQ-703
 title: 'Second opinions accept a named preset and a free-text editor direction'
-status: pending
+status: claimed
 created_at: 2026-10-20T19:59:08Z
 user_request: UR-160
 addendum_to: REQ-698
@@ -15,6 +15,7 @@ effort_estimate: effort-substantive
 related: [REQ-704]
 batch: UR-160
 write_set: ["skills/do-work-toolbox/docs/ai-report-second-opinion-prompt.md", "skills/do-work-toolbox/docs/second-opinion-presets/bold.md", "skills/do-work-toolbox/docs/second-opinion-presets/visual.md", "skills/do-work/tools/do-work-cli/internal/toolboxcommands/report_second_opinion.go", "skills/do-work/tools/do-work-cli/internal/toolboxcommands/report_second_opinion_test.go", "skills/do-work/tools/do-work-cli/internal/resultmodel/result_model.go", "skills/do-work/tools/do-work-cli.sh", "skills/do-work-toolbox/actions/ai-report.md", "skills/do-work-toolbox/docs/ai-report-guide.md", "skills/do-work-toolbox/SKILL.md"]
+claimed_at: 2026-10-20T20:02:31Z
 ---
 # Second Opinions Accept A Named Preset And A Free-Text Editor Direction
 ## What
