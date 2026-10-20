@@ -28,6 +28,9 @@ import (
 
 const secondOpinionUsage = "ai-report-second-opinion [--backend codex|gemini|agy|claude [--model <slug>] | --all --exclude <own-cli> | --prepare --backend <cli> --model <slug>] [--preset <name>] [--editor-direction <text>] [<bundle-dir>|latest] | --finalize <staging-page>"
 
+// secondOpinionPresetsFolder is the folder name for presets, both in a report bundle and beside the shipped prompt.
+const secondOpinionPresetsFolder = "second-opinion-presets"
+
 var secondOpinionModelPattern = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._-]*$`)
 
 // secondOpinionStagePattern is the shape of a launcher-reserved staging page name, so --finalize only ever publishes a page prepare created.
@@ -151,8 +154,8 @@ func handleAIReportSecondOpinion(execution commandruntime.ExecutionContext, args
 			return usageResult(CommandAIReportSecondOpinion, "use the suite's do-work-cli.sh launcher, or set DO_WORK_AI_REPORT_SECOND_OPINION_PROMPT to its trusted shipped template: "+err.Error())
 		}
 		if options.preset != "" {
-			// A project preset wins over the shipped one of the same name, which sits beside the trusted prompt.
-			folders := []string{filepath.Join(execution.RepositoryRoot, reportsFolder, secondOpinionPresetsFolder), filepath.Join(filepath.Dir(templatePath), secondOpinionPresetsFolder)}
+			// A preset in the report bundle wins over the shipped one of the same name, which sits beside the trusted prompt.
+			folders := []string{filepath.Join(bundle, secondOpinionPresetsFolder), filepath.Join(filepath.Dir(templatePath), secondOpinionPresetsFolder)}
 			for _, folder := range folders {
 				candidate := filepath.Join(folder, options.preset+".md")
 				if info, err := os.Lstat(candidate); err == nil {

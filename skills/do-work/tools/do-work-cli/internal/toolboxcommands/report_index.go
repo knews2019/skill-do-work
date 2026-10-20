@@ -25,9 +25,6 @@ const (
 	reportsFolder        = "ai-reports"
 	reportCatalogFile    = reportsFolder + "/catalog.json"
 	reportIndexPageFile  = reportsFolder + "/index.html"
-	// secondOpinionPresetsFolder holds second-opinion presets, shipped beside the prompt and per project under
-	// ai-reports/; the project folder is not a report, so the catalog walk skips it.
-	secondOpinionPresetsFolder = "second-opinion-presets"
 )
 
 // Entry files in pick order; after these come the first .html, then the first .md, by name.
@@ -80,8 +77,7 @@ func handleAIReportIndex(ctx commandruntime.ExecutionContext, args []string) res
 }
 
 // reportIndexWalk treats every directory directly under ai-reports/ whose name does not start with
-// "." as a bundle, whatever its naming style, except the second-opinion presets folder. Loose files
-// and symbolic links are never bundles.
+// "." as a bundle, whatever its naming style. Loose files and symbolic links are never bundles.
 func reportIndexWalk(repositoryRoot string) (bundles []reportBundle, present bool, err error) {
 	entries, err := os.ReadDir(filepath.Join(repositoryRoot, reportsFolder))
 	if os.IsNotExist(err) {
@@ -91,7 +87,7 @@ func reportIndexWalk(repositoryRoot string) (bundles []reportBundle, present boo
 		return nil, true, err
 	}
 	for _, entry := range entries {
-		if entry.IsDir() && !strings.HasPrefix(entry.Name(), ".") && entry.Name() != secondOpinionPresetsFolder {
+		if entry.IsDir() && !strings.HasPrefix(entry.Name(), ".") {
 			bundles = append(bundles, readReportBundle(repositoryRoot, entry.Name()))
 		}
 	}
