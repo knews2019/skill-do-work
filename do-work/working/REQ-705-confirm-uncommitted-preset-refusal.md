@@ -27,6 +27,7 @@ estimate:
     - 13-file write set
     - 2 subsystems involved
     - 7 acceptance criteria
+dispatch_at: 2026-10-20T21:31:30Z
 ---
 
 # Confirm: A Second Opinion Refuses To Run While A Project Preset File Is Uncommitted
