@@ -1,12 +1,13 @@
 ---
 id: REQ-705
 title: 'Confirm: a second opinion refuses to run while a project preset file is uncommitted'
-status: pending
+status: claimed
 created_at: 2026-10-20T20:47:28Z
 user_request: UR-160
 addendum_to: REQ-703
 builder_decided: true
 status_changed_at: 2026-10-20T21:19:07Z
+claimed_at: 2026-10-20T21:19:46Z
 ---
 
 # Confirm: A Second Opinion Refuses To Run While A Project Preset File Is Uncommitted
