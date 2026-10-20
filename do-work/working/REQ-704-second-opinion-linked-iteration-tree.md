@@ -28,6 +28,8 @@ estimate:
     - 3 subsystems involved
     - 10 acceptance criteria
 planning_at: 2026-10-20T21:28:43Z
+dispatch_at: 2026-10-20T22:00:40Z
+builder_handback_at: 2026-10-20T22:12:40Z
 ---
 # Second Opinions Build A Linked Iteration Tree On Any Base Page
 ## What
