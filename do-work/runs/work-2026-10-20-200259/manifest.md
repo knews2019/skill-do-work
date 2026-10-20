@@ -8,5 +8,6 @@ Hand-back emphasis note: none
 
 | REQ | Builder | Operative name | Handback file | Status | Dispatch instant | Takeover-to-finalization min | Full gates | Stall restarts |
 |-----|---------|----------------|---------------|--------|------------------|------------------------------|------------|----------------|
-| REQ-703 | builder-703 (background agent, Route C, worktree) | worktree-agent-REQ-703-second-opinion-presets-and-direction | do-work/runs/work-2026-10-20-200259/REQ-703-handback.md | dispatched from c6afcead; pre-flight green (gate 130 s) | 2026-10-20T20:17:40Z | | | |
-| REQ-704 | (waits on REQ-703) | | do-work/runs/work-2026-10-20-200259/REQ-704-handback.md | queued; dependency-deferred | | | | |
+| REQ-703 | builder-703 (background agent, Route C, worktree) | worktree-agent-REQ-703-second-opinion-presets-and-direction | do-work/runs/work-2026-10-20-200259/REQ-703-handback.md | handback f06e82e0; merge dd3639bf, review-fix re-merge 1d68e403; gate green x2; review 93% Approve; heavy 4 lanes green; released 0.306.6 (a6c00290) | 2026-10-20T20:17:40Z | 25 | 2 | 0 |
+| REQ-705 | (pending pre-dispatch) | | do-work/runs/work-2026-10-20-200259/REQ-705-handback.md | answered by the user 2026-10-20 (presets only inside the bundle); runs before REQ-704 | | | | |
+| REQ-704 | (waits on REQ-705 build) | | do-work/runs/work-2026-10-20-200259/REQ-704-handback.md | queued; dependency-deferred | | | | |

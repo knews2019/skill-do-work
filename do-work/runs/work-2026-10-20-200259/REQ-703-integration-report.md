@@ -1,0 +1,12 @@
+# REQ-703 integration report (second opinions accept a named preset and a free-text editor direction)
+
+- Released 0.306.6, "Second Opinions Accept Presets and Your Own Direction". Archived at do-work/archive/REQ-703-second-opinion-preset-and-editor-direction.md (flat path, UR-160 stays open). Finalization commit a6c00290, phase cleanup_complete, no blocked paths or reason codes.
+- Merges: pre f03fbc11. First merge dd3639bf (builder f06e82e0). Review fix ec21d6ee on the builder branch, re-merged as 1d68e403 (the recorded `commit:`).
+- Gate: run 1 at dd3639bf exit 0, 132 s, load 4.92. Run 2 at 1d68e403 exit 0, 143 s, load 4.36, recorded with record-green-gate. The probe passed at both merges. contract-regressions.sh passed after finalization.
+- Review: Approve, 93%, Acceptance Pass (implementation and integration stages). I fixed F1 (impact-user-visible): the prompt said a direction overrides "everything except BOUNDARY", which also covered the launcher-checked BACKLINK, OUTPUT and FINAL REPLY. It now names all four (D-17), and the guide matches. I fixed F2 (stale guide line on the catalog walk). F3 to F10 are impact-negligible, report only. Anti-bloat: 6 items not named in the REQ, all kept.
+- Heavy lanes at 1d68e403, all executed and exit 0: do-work-cli-integrations 70 s, staged-skills 36 s, updater 66 s, installer 26 s.
+- Timing events: builder-work, handback-merge, verification-gate x3 (gate, gate after the fix, heavy drain), review. All folded into ## Timing.
+- Lesson: writer-anchored-marker-position bullet in skills/do-work/tools/do-work-cli/lessons-do-work-cli.md, linked to the flat archive path. lessons-index row now 22858 tokens. The REQ-704 integrator must re-point this link to archive/UR-160/ when UR-160 closes.
+- D-04 (ESCALATE, an uncommitted project preset is refused) became pending-answers follow-up REQ-705 (do-work/queue/REQ-705-confirm-uncommitted-preset-refusal.md, user_request UR-160). The fold-first scan found no existing home. Warning for the coordinator: REQ-705 is a UR-160 member, so it may block REQ-704's planned UR_CLOSES=1 until it is answered or moved.
+- Report-only discovered task (builder): `optionValue` (commands.go:87) reads `--x ''` as "not given" for every valued flag, so `--backend ''`, `--model ''` and `--finalize ''` give no usage error. Restamped impact-negligible.
+- Left dirty under ROOT: only this untracked report file. The builder worktree and branch are removed, and the drain checkout is removed and pruned.
