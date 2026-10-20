@@ -8,5 +8,5 @@ Hand-back emphasis note: none
 
 | REQ | Builder | Operative name | Handback file | Status | Dispatch instant | Takeover-to-finalization min | Full gates | Stall restarts |
 |-----|---------|----------------|---------------|--------|------------------|------------------------------|------------|----------------|
-| REQ-703 | (pending pre-dispatch) | (from brief) | do-work/runs/work-2026-10-20-200259/REQ-703-handback.md | claimed a8c0cf11; pre-dispatch | | | | |
+| REQ-703 | builder-703 (background agent, Route C, worktree) | worktree-agent-REQ-703-second-opinion-presets-and-direction | do-work/runs/work-2026-10-20-200259/REQ-703-handback.md | dispatched from c6afcead; pre-flight green (gate 130 s) | 2026-10-20T20:17:40Z | | | |
 | REQ-704 | (waits on REQ-703) | | do-work/runs/work-2026-10-20-200259/REQ-704-handback.md | queued; dependency-deferred | | | | |

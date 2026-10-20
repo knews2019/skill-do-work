@@ -27,6 +27,8 @@ estimate:
     - 3 subsystems involved
     - 9 acceptance criteria
 planning_at: 2026-10-20T20:10:46Z
+dispatch_at: 2026-10-20T20:17:40Z
+builder_handback_at: 2026-10-20T20:27:29Z
 ---
 # Second Opinions Accept A Named Preset And A Free-Text Editor Direction
 ## What
