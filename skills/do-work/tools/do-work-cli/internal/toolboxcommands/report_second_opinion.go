@@ -26,7 +26,7 @@ import (
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/resultmodel"
 )
 
-const secondOpinionUsage = "ai-report-second-opinion [--backend codex|gemini|agy|claude [--model <slug>] | --all --exclude <own-cli> | --prepare --backend <cli> --model <slug>] [<bundle-dir>|latest] | --finalize <staging-page>"
+const secondOpinionUsage = "ai-report-second-opinion [--backend codex|gemini|agy|claude [--model <slug>] | --all --exclude <own-cli> | --prepare --backend <cli> --model <slug>] [--preset <name>] [--editor-direction <text>] [<bundle-dir>|latest] | --finalize <staging-page>"
 
 var secondOpinionModelPattern = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._-]*$`)
 
@@ -86,7 +86,39 @@ const secondOpinionBacklinkRequirement = `Open the body with <p>Original report:
 
 type secondOpinionOptions struct {
 	backend, model, exclude, bundle, finalize string
+	preset, editorDirection                   string
 	all, prepare                              bool
+}
+
+// secondOpinionDirection is what the person directing this pass asked for: a named preset, free text, or both. It
+// travels in the prepare record to finalize; the zero value is a plain run.
+type secondOpinionDirection struct {
+	Preset          string `json:"preset,omitempty"`
+	PresetFile      string `json:"preset_file,omitempty"`
+	PresetText      string `json:"preset_text,omitempty"`
+	EditorDirection string `json:"editor_direction,omitempty"`
+}
+
+// combinedText is the direction the editor receives: the preset text, a blank line, then the free text.
+func (direction secondOpinionDirection) combinedText() string {
+	parts := []string{}
+	for _, part := range []string{direction.PresetText, direction.EditorDirection} {
+		if part != "" {
+			parts = append(parts, part)
+		}
+	}
+	return strings.Join(parts, "\n\n")
+}
+
+// filenameSlot names the variation in the published filename: the preset, or custom for free text only.
+func (direction secondOpinionDirection) filenameSlot() string {
+	if direction.Preset != "" {
+		return direction.Preset
+	}
+	if direction.EditorDirection != "" {
+		return "custom"
+	}
+	return ""
 }
 
 func handleAIReportSecondOpinion(execution commandruntime.ExecutionContext, args []string) resultmodel.CommandResult {
@@ -96,6 +128,7 @@ func handleAIReportSecondOpinion(execution commandruntime.ExecutionContext, args
 	}
 	var bundle, stageName string
 	var template []byte
+	direction := secondOpinionDirection{Preset: options.preset, EditorDirection: options.editorDirection}
 	if options.finalize != "" {
 		// The staging page names its bundle; the current-revision chain must not redirect finalize to a newer bundle.
 		stagePath := judgeAbsolutePath(execution.RepositoryRoot, options.finalize)
@@ -116,6 +149,42 @@ func handleAIReportSecondOpinion(execution commandruntime.ExecutionContext, args
 		template, err = os.ReadFile(templatePath)
 		if err != nil {
 			return usageResult(CommandAIReportSecondOpinion, "use the suite's do-work-cli.sh launcher, or set DO_WORK_AI_REPORT_SECOND_OPINION_PROMPT to its trusted shipped template: "+err.Error())
+		}
+		if options.preset != "" {
+			// A project preset wins over the shipped one of the same name, which sits beside the trusted prompt.
+			folders := []string{filepath.Join(execution.RepositoryRoot, reportsFolder, secondOpinionPresetsFolder), filepath.Join(filepath.Dir(templatePath), secondOpinionPresetsFolder)}
+			for _, folder := range folders {
+				candidate := filepath.Join(folder, options.preset+".md")
+				if info, err := os.Lstat(candidate); err == nil {
+					if !info.Mode().IsRegular() {
+						return usageResult(CommandAIReportSecondOpinion, "preset must be a regular file: "+candidate)
+					}
+					direction.PresetFile = candidate
+					break
+				}
+			}
+			if direction.PresetFile == "" {
+				found := []string{}
+				for _, folder := range folders {
+					matches, _ := filepath.Glob(filepath.Join(folder, "*.md"))
+					for _, match := range matches {
+						found = append(found, strings.TrimSuffix(filepath.Base(match), ".md"))
+					}
+				}
+				sort.Strings(found)
+				if found = slices.Compact(found); len(found) == 0 {
+					found = []string{"none"}
+				}
+				return usageResult(CommandAIReportSecondOpinion, fmt.Sprintf("unknown preset %q; presets found: %s", options.preset, strings.Join(found, ", ")))
+			}
+			data, err := os.ReadFile(direction.PresetFile)
+			direction.PresetText = strings.TrimSpace(string(data))
+			if err != nil || direction.PresetText == "" || strings.Contains(direction.PresetText, "{{") {
+				return usageResult(CommandAIReportSecondOpinion, "preset must be a readable, non-empty file without {{: "+direction.PresetFile)
+			}
+			if relative, err := filepath.Rel(execution.RepositoryRoot, direction.PresetFile); err == nil && relative != ".." && !strings.HasPrefix(relative, ".."+string(filepath.Separator)) {
+				direction.PresetFile = filepath.ToSlash(relative)
+			}
 		}
 	}
 	ctx, stop, signalStatus := mutationSignalContext()
@@ -143,7 +212,7 @@ func handleAIReportSecondOpinion(execution commandruntime.ExecutionContext, args
 	result := resultmodel.CommandResult{Outcome: resultmodel.OutcomeSuccess, AIReportSecondOpinion: payload}
 	var summary strings.Builder
 	for _, backend := range backends {
-		row := resultmodel.AIReportSecondOpinionRun{BackendName: backend, RequestedModel: options.model, RunState: "failed", JudgeVerdict: "not-run", BannerState: "not-inserted", JudgeFindings: []resultmodel.AIReportSecondOpinionFinding{}, OutsidePaths: []string{}, SeenModels: []string{}}
+		row := resultmodel.AIReportSecondOpinionRun{BackendName: backend, RequestedModel: options.model, RunState: "failed", JudgeVerdict: "not-run", BannerState: "not-inserted", JudgeFindings: []resultmodel.AIReportSecondOpinionFinding{}, OutsidePaths: []string{}, SeenModels: []string{}, Preset: direction.Preset, PresetFile: direction.PresetFile, EditorDirection: direction.EditorDirection}
 		switch {
 		case options.finalize != "":
 			secondOpinionFinalize(execution.RepositoryRoot, bundle, stageName, &row, &result)
@@ -151,7 +220,7 @@ func handleAIReportSecondOpinion(execution commandruntime.ExecutionContext, args
 			// The session is the backend: its declared model is recorded as such, never probed through a subprocess.
 			row.ActualModel = options.model
 			row.ModelEvidence = "session-declared"
-			secondOpinionPrepare(execution.RepositoryRoot, bundle, string(template), &row)
+			secondOpinionPrepare(execution.RepositoryRoot, bundle, string(template), direction, &row)
 		case backend == options.exclude:
 			row.RunState = "excluded"
 			row.FailureReason = "excluded calling backend"
@@ -160,7 +229,7 @@ func handleAIReportSecondOpinion(execution commandruntime.ExecutionContext, args
 				row.RunState = "skipped"
 				row.FailureReason = "backend is not installed"
 			} else {
-				secondOpinionRun(ctx, execution.RepositoryRoot, bundle, executable, string(template), &row, &result)
+				secondOpinionRun(ctx, execution.RepositoryRoot, bundle, executable, string(template), direction, &row, &result)
 			}
 		}
 		payload.BackendRuns = append(payload.BackendRuns, row)
@@ -211,6 +280,19 @@ func secondOpinionParse(args []string) (secondOpinionOptions, error) {
 			options.prepare = true
 		case argument == "--finalize" || strings.HasPrefix(argument, "--finalize="):
 			options.finalize, err = optionValue(args, &i, "--finalize")
+		case argument == "--preset" || strings.HasPrefix(argument, "--preset="):
+			options.preset, err = optionValue(args, &i, "--preset")
+			if err == nil && !regexp.MustCompile(`^[a-z0-9][a-z0-9-]*$`).MatchString(options.preset) {
+				err = errors.New("--preset must be a lowercase name of letters, digits and hyphens")
+			}
+		case argument == "--editor-direction" || strings.HasPrefix(argument, "--editor-direction="):
+			// optionValue returns "" for --editor-direction '', and {{ would trip the unresolved-placeholder check.
+			options.editorDirection, err = optionValue(args, &i, "--editor-direction")
+			if err == nil && strings.TrimSpace(options.editorDirection) == "" {
+				err = errors.New("--editor-direction must not be empty")
+			} else if err == nil && strings.Contains(options.editorDirection, "{{") {
+				err = errors.New("--editor-direction must not contain {{")
+			}
 		case strings.HasPrefix(argument, "-") || bundleSeen:
 			err = fmt.Errorf("unexpected argument %q", argument)
 		default:
@@ -236,7 +318,7 @@ func secondOpinionParse(args []string) (secondOpinionOptions, error) {
 	if options.prepare && (options.backend == "" || options.model == "" || options.all || options.exclude != "") {
 		return options, errors.New("--prepare requires --backend and --model and cannot batch")
 	}
-	if options.finalize != "" && (bundleSeen || options.backend != "" || options.model != "" || options.all || options.exclude != "" || options.prepare) {
+	if options.finalize != "" && (bundleSeen || options.backend != "" || options.model != "" || options.all || options.exclude != "" || options.prepare || options.preset != "" || options.editorDirection != "") {
 		return options, errors.New("--finalize takes only the staging page path")
 	}
 	return options, nil
@@ -312,6 +394,8 @@ type secondOpinionRecord struct {
 	Model   string                         `json:"model"`
 	Prefix  string                         `json:"prefix"`
 	Files   map[string]secondOpinionDigest `json:"files"`
+	// A record written before directions existed has no direction and finalizes as a plain run.
+	Direction secondOpinionDirection `json:"direction,omitzero"`
 }
 type secondOpinionDigest struct {
 	Mode   uint32 `json:"mode"`
@@ -443,7 +527,7 @@ func secondOpinionOutsideCheck(repository, bundle string, row *resultmodel.AIRep
 // secondOpinionPrepare is the session form's first phase: it reserves the staging page, records the bundle's
 // digests beside it, and hands the filled prompt back so the editorial pass runs in the agent's own session
 // instead of a hidden subprocess of its CLI. Nothing here executes a backend.
-func secondOpinionPrepare(repository, bundle, template string, row *resultmodel.AIReportSecondOpinionRun) {
+func secondOpinionPrepare(repository, bundle, template string, direction secondOpinionDirection, row *resultmodel.AIReportSecondOpinionRun) {
 	fail := func(err error) { row.FailureReason = err.Error() }
 	if err := secondOpinionOutsideCheck(repository, bundle, row); err != nil {
 		fail(err)
@@ -470,7 +554,7 @@ func secondOpinionPrepare(repository, bundle, template string, row *resultmodel.
 			_ = os.Remove(stem + ".json")
 		}
 	}()
-	record, err := json.Marshal(secondOpinionRecord{Backend: row.BackendName, Model: row.RequestedModel, Prefix: prefix, Files: secondOpinionDigests(before)})
+	record, err := json.Marshal(secondOpinionRecord{Backend: row.BackendName, Model: row.RequestedModel, Prefix: prefix, Files: secondOpinionDigests(before), Direction: direction})
 	if err == nil {
 		err = os.WriteFile(stem+".json", record, 0600)
 	}
@@ -479,9 +563,9 @@ func secondOpinionPrepare(repository, bundle, template string, row *resultmodel.
 		return
 	}
 	// The agent's cwd is the repository, not the bundle, so the output path is absolute here.
-	prompt := strings.NewReplacer("{{REPOSITORY_ROOT}}", repository, "{{BUNDLE_PATH}}", bundle, "{{OUTPUT_FILE}}", stagePath, "{{ASSET_PREFIX}}", prefix, "{{BACKLINK_REQUIREMENT}}", secondOpinionBacklinkRequirement).Replace(template)
-	if strings.Contains(prompt, "{{") {
-		fail(errors.New("unresolved prompt placeholder"))
+	prompt, err := secondOpinionPrompt(template, repository, bundle, stagePath, prefix, direction)
+	if err != nil {
+		fail(err)
 		return
 	}
 	row.StagingPage = stagePath
@@ -519,6 +603,7 @@ func secondOpinionFinalize(repository, bundle, stageName string, row *resultmode
 		return
 	}
 	row.BackendName, row.RequestedModel, row.ActualModel, row.ModelEvidence = record.Backend, record.Model, record.Model, "session-declared"
+	row.Preset, row.PresetFile, row.EditorDirection = record.Direction.Preset, record.Direction.PresetFile, record.Direction.EditorDirection
 	if err := secondOpinionOutsideCheck(repository, bundle, row); err != nil {
 		fail(err)
 		return
@@ -552,10 +637,10 @@ func secondOpinionFinalize(repository, bundle, stageName string, row *resultmode
 		fail(err)
 		return
 	}
-	secondOpinionPublication(repository, bundle, stageName, after[stageName].data, string(reply), after["index.html"], []string{stageName, sidecar, replyStage}, "", row, result)
+	secondOpinionPublication(repository, bundle, stageName, after[stageName].data, string(reply), after["index.html"], []string{stageName, sidecar, replyStage}, "", record.Direction, row, result)
 }
 
-func secondOpinionRun(ctx context.Context, repository, bundle, executable, template string, row *resultmodel.AIReportSecondOpinionRun, result *resultmodel.CommandResult) {
+func secondOpinionRun(ctx context.Context, repository, bundle, executable, template string, direction secondOpinionDirection, row *resultmodel.AIReportSecondOpinionRun, result *resultmodel.CommandResult) {
 	fail := func(err error) { row.FailureReason = err.Error() }
 	checkOutside := func() error { return secondOpinionOutsideCheck(repository, bundle, row) }
 	if err := checkOutside(); err != nil {
@@ -645,9 +730,10 @@ func secondOpinionRun(ctx context.Context, repository, bundle, executable, templ
 		}
 		row.FailureReason += "; staged page kept at " + filepath.ToSlash(filepath.Join(relative, stageName))
 	}()
-	prompt := strings.NewReplacer("{{REPOSITORY_ROOT}}", repository, "{{BUNDLE_PATH}}", bundle, "{{OUTPUT_FILE}}", stageName, "{{ASSET_PREFIX}}", prefix, "{{BACKLINK_REQUIREMENT}}", secondOpinionBacklinkRequirement).Replace(template)
-	if strings.Contains(prompt, "{{") {
-		fail(errors.New("unresolved prompt placeholder"))
+	// The backend's cwd is the bundle, so the output file is the bare stage name here.
+	prompt, err := secondOpinionPrompt(template, repository, bundle, stageName, prefix, direction)
+	if err != nil {
+		fail(err)
 		return
 	}
 	capture = secondOpinionCapture(ctx, secondOpinionProgress{phase: "generation", backend: row.BackendName, pagePath: filepath.Join(bundle, stageName)}, bundle, executable, secondOpinionArgv(row.BackendName, resolved, prompt, false)...)
@@ -686,16 +772,19 @@ func secondOpinionRun(ctx context.Context, repository, bundle, executable, templ
 	if unverified {
 		unverifiedModel = resolved
 	}
-	secondOpinionPublication(repository, bundle, stageName, page, reply, before["index.html"], []string{stageName}, unverifiedModel, row, result)
+	secondOpinionPublication(repository, bundle, stageName, page, reply, before["index.html"], []string{stageName}, unverifiedModel, direction, row, result)
 }
 
-// secondOpinionPublication is the launcher tail shared by the exec path and the session finalize: backlink, sibling
-// names, page and reply publication, removal of the staging leaves, the render judge, and the pass-gated banner.
+// secondOpinionPublication is the launcher tail shared by the exec path and the session finalize: backlink, direction
+// marks, sibling names, page and reply publication, removal of the staging leaves, the render judge, and the pass-gated
+// banner.
 // unverifiedModel is the requested model whose identity the native evidence did not confirm (empty when verified):
 // the finished page is then kept under an -unverified name with no judge and no banner, never deleted.
-func secondOpinionPublication(repository, bundle, stageName string, page []byte, reply string, original secondOpinionFile, stageLeaves []string, unverifiedModel string, row *resultmodel.AIReportSecondOpinionRun, result *resultmodel.CommandResult) {
+func secondOpinionPublication(repository, bundle, stageName string, page []byte, reply string, original secondOpinionFile, stageLeaves []string, unverifiedModel string, direction secondOpinionDirection, row *resultmodel.AIReportSecondOpinionRun, result *resultmodel.CommandResult) {
 	fail := func(err error) { row.FailureReason = err.Error() }
 	relative, _ := filepath.Rel(repository, bundle)
+	// Strip launcher marks an editor copied from another page first: a header block ahead of the backlink fails its check.
+	page = secondOpinionDecorate(page, secondOpinionDirection{})
 	publishedModel := row.ActualModel
 	if unverifiedModel != "" {
 		publishedModel = unverifiedModel + "-unverified"
@@ -705,7 +794,16 @@ func secondOpinionPublication(repository, bundle, stageName string, page []byte,
 		fail(err)
 		return
 	}
-	pageName, replyName, err := secondOpinionNames(bundle, row.BackendName, publishedModel)
+	// The editor's slug is read only on a directed run; a plain run keeps the plain names.
+	variation := direction.filenameSlot()
+	if variation != "" {
+		if slug := secondOpinionVariationSlug(reply); slug != "" {
+			variation += "-" + slug
+		}
+	}
+	// The judge and the reader see the same decorated bytes.
+	page = secondOpinionDecorate(page, direction)
+	pageName, replyName, err := secondOpinionNames(bundle, row.BackendName, publishedModel, variation)
 	if err != nil {
 		fail(err)
 		return
@@ -786,6 +884,43 @@ func secondOpinionPublication(repository, bundle, stageName string, page []byte,
 	}
 	row.BannerState = "inserted"
 	result.Changes = append(result.Changes, resultmodel.RecordedChange{Path: originalPath, Kind: "modified", Detail: "second-opinion banner only"})
+}
+
+// secondOpinionPrompt fills the shipped template for one run. A directed run refuses a template without
+// {{EDITOR_DIRECTION}}, which would drop the direction silently; a plain run with such a template still works.
+func secondOpinionPrompt(template, repository, bundle, outputFile, prefix string, direction secondOpinionDirection) (string, error) {
+	text := direction.combinedText()
+	if text != "" && !strings.Contains(template, "{{EDITOR_DIRECTION}}") {
+		return "", errors.New("prompt template has no {{EDITOR_DIRECTION}} placeholder for the direction")
+	}
+	if text == "" {
+		text = "None."
+	}
+	prompt := strings.NewReplacer("{{REPOSITORY_ROOT}}", repository, "{{BUNDLE_PATH}}", bundle, "{{OUTPUT_FILE}}", outputFile, "{{ASSET_PREFIX}}", prefix, "{{BACKLINK_REQUIREMENT}}", secondOpinionBacklinkRequirement, "{{EDITOR_DIRECTION}}", text).Replace(template)
+	if strings.Contains(prompt, "{{") {
+		return "", errors.New("unresolved prompt placeholder")
+	}
+	return prompt, nil
+}
+
+// secondOpinionVariationSlug cleans the editor's first "Variation slug:" reply line into at most 4 kebab words and
+// 40 characters. It is editor text, so it only ever becomes [a-z0-9-]; empty means no slug segment.
+func secondOpinionVariationSlug(reply string) string {
+	match := regexp.MustCompile(`(?im)^[ \t]*[-*]?[ \t]*variation slug:(.*)$`).FindStringSubmatch(reply)
+	if match == nil {
+		return ""
+	}
+	words := strings.FieldsFunc(strings.ToLower(match[1]), func(character rune) bool {
+		return (character < 'a' || character > 'z') && (character < '0' || character > '9')
+	})
+	if len(words) > 4 {
+		words = words[:4]
+	}
+	slug := strings.Join(words, "-")
+	if len(slug) > 40 {
+		slug = strings.TrimRight(slug[:40], "-")
+	}
+	return slug
 }
 
 func secondOpinionArgv(backend, model, prompt string, probe bool) []string {
@@ -1199,8 +1334,13 @@ func secondOpinionFlashModel(catalog string) (string, error) {
 	return best[1], nil
 }
 
-func secondOpinionNames(bundle, backend, model string) (string, string, error) {
+// secondOpinionNames is the one builder of published second-opinion names: index-<stem>[-N].html and
+// <stem>[-N]-reply.md, where the stem is <backend>-<model>[-<variation>] and variation is empty on a plain run.
+func secondOpinionNames(bundle, backend, model, variation string) (string, string, error) {
 	stem := backend + "-" + model
+	if variation != "" {
+		stem += "-" + variation
+	}
 	for number := 1; ; number++ {
 		suffix := ""
 		if number > 1 {
@@ -1314,6 +1454,62 @@ func secondOpinionBanner(original []byte, pageName string) ([]byte, bool, error)
 	updated = append(updated, []byte(banner)...)
 	updated = append(updated, original[body[1]:]...)
 	return updated, true, nil
+}
+
+// secondOpinionDecorate first removes every launcher header block and direction meta already on the page, then, on a
+// directed run, adds the two metas before the first real </head> and a header block right after the opening body
+// tag showing the slot and the full direction. Decorating twice gives the same bytes, and a plain direction only
+// strips. Tags and markers count only on the masked surface, so text inside a script, style or comment never matches.
+func secondOpinionDecorate(page []byte, direction secondOpinionDirection) []byte {
+	const headerStart, headerEnd = "<!-- second-opinion-header -->", "<!-- /second-opinion-header -->"
+	insert := func(data []byte, at int, text string) []byte {
+		return append(append(append([]byte(nil), data[:at]...), text...), data[at:]...)
+	}
+	comment := regexp.MustCompile(`(?s)<!--.*?-->`)
+	for {
+		commentSurface := append([]byte(nil), page...)
+		for _, span := range secondOpinionRawHTML.FindAllIndex(page, -1) {
+			for i := span[0]; i < span[1]; i++ {
+				commentSurface[i] = ' '
+			}
+		}
+		start, end := -1, -1
+		for _, span := range comment.FindAllIndex(commentSurface, -1) {
+			text := string(commentSurface[span[0]:span[1]])
+			if start < 0 && text == headerStart {
+				start = span[0]
+			} else if start >= 0 && text == headerEnd {
+				end = span[1]
+				break
+			}
+		}
+		if end < 0 {
+			break
+		}
+		page = append(append([]byte(nil), page[:start]...), page[end:]...)
+	}
+	metaTag := regexp.MustCompile(`(?is)<meta\s+name="ai-report-second-opinion-(?:preset|direction)"(?:[^'"<>]|"[^"]*"|'[^']*')*>`)
+	spans := metaTag.FindAllIndex(secondOpinionVisibleHTML(page), -1)
+	for i := len(spans) - 1; i >= 0; i-- {
+		page = append(append([]byte(nil), page[:spans[i][0]]...), page[spans[i][1]:]...)
+	}
+	slot := direction.filenameSlot()
+	if slot == "" {
+		return page
+	}
+	text := html.EscapeString(direction.combinedText())
+	metas := `<meta name="ai-report-second-opinion-preset" content="` + html.EscapeString(slot) + `"><meta name="ai-report-second-opinion-direction" content="` + text + `">`
+	if head := regexp.MustCompile(`(?i)</head\s*>`).FindIndex(secondOpinionVisibleHTML(page)); head != nil {
+		page = insert(page, head[0], metas)
+		metas = ""
+	}
+	// overflow-wrap keeps one long direction token from failing the judge's horizontal-overflow check.
+	block := headerStart + metas + `<aside aria-label="Second-opinion direction" style="overflow-wrap:anywhere"><p><strong>Second-opinion preset:</strong> ` + html.EscapeString(slot) + `</p><p style="white-space:pre-line"><strong>Direction:</strong> ` + text + `</p></aside>` + headerEnd
+	at := 0
+	if body := secondOpinionBodyTag.FindIndex(secondOpinionVisibleHTML(page)); body != nil {
+		at = body[1]
+	}
+	return insert(page, at, block)
 }
 
 func secondOpinionRender(bundle string, page []byte) (string, []resultmodel.AIReportSecondOpinionFinding) {

@@ -1,0 +1,1 @@
+Go further than a clarity pass. Add motion where it helps the reader follow a flow, such as diagrams that build step by step or sections that reveal as you scroll. Add more sections where the report leaves a part of the system unexplained. Be bold with layout and visuals, while every fact still comes from the report or the repository.

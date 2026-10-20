@@ -247,3 +247,28 @@ func TestAIReportIndexRefusesHandMadeCatalog(t *testing.T) {
 		t.Fatal("rerun on an unchanged tree is not byte-identical")
 	}
 }
+
+// Pins: the project preset folder for second opinions sits under ai-reports/ but is not a report; without the skip,
+// index, find, judge and latest list it as an undated bundle whose entry is its first .md file.
+func TestAIReportIndexSkipsSecondOpinionPresetsFolder(t *testing.T) {
+	root := t.TempDir()
+	for relative, content := range map[string]string{"2026-10-20_1200_report/index.html": "<title>Report</title>", "second-opinion-presets/bold.md": "Go further.\n"} {
+		path := filepath.Join(root, "ai-reports", filepath.FromSlash(relative))
+		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if result := runReportIndex(t, root); result.Outcome != resultmodel.OutcomeSuccess {
+		t.Fatalf("index outcome=%s findings=%+v", result.Outcome, result.Findings)
+	}
+	paths := []string{}
+	for _, bundle := range readReportCatalog(t, root).Bundles {
+		paths = append(paths, bundle.Path)
+	}
+	if !reflect.DeepEqual(paths, []string{"ai-reports/2026-10-20_1200_report"}) {
+		t.Fatalf("catalog bundles=%v, want only the report", paths)
+	}
+}

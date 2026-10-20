@@ -1,0 +1,1 @@
+Diagrams and charts first, prose second. Turn tables and lists into pictures where possible: flows into diagrams, comparisons into charts, timelines into visual timelines, and status lists into status cards. Keep prose short, and use it to explain what each picture shows.
