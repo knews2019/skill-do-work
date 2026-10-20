@@ -10,6 +10,15 @@ For the complete release history, read this file and the archives below from new
 - [0.50.0 through 0.64.1](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-13-up-to-v0.64.1.md)
 - [0.1.0 through 0.49.0](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-07-up-to-v0.49.0.md)
 
+## 0.306.7 — Your Second-Opinion Presets Live in the Report Bundle (2026-10-20)
+
+Your own second-opinion preset now sits inside the report it steers, so it needs no commit before a run, and the run reads nothing outside the bundle.
+
+- `--preset <name>` looks in `<bundle>/second-opinion-presets/<name>.md` first, then in the presets that ship with the toolbox. A bundle preset wins over a shipped preset of the same name, and `preset_file` names the bundle file.
+- The shared folder `ai-reports/second-opinion-presets/` is no longer read. A name found only there is an unknown preset, and the refusal lists the bundle and shipped presets it did find.
+- `ai-report index`, `find`, `judge` and `latest` no longer skip `ai-reports/second-opinion-presets/`. If you made that folder under 0.306.6, move each preset into the bundle you use it with and delete the folder.
+- A new revision does not carry a preset over, and a run on a superseded report uses its current revision: after `ai-report revise`, copy the preset into the new bundle.
+
 ## 0.306.6 — Second Opinions Accept Presets and Your Own Direction (2026-10-20)
 
 You can now steer a second opinion instead of always getting the one fixed clarity pass, and every directed page says what it was asked to do: in its file name, at the top of the page and in the result row.

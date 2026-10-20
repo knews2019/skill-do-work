@@ -1,7 +1,7 @@
 ---
 id: REQ-705
 title: 'Confirm: a second opinion refuses to run while a project preset file is uncommitted'
-status: claimed
+status: completed
 created_at: 2026-10-20T20:47:28Z
 user_request: UR-160
 addendum_to: REQ-703
@@ -29,6 +29,14 @@ estimate:
     - 7 acceptance criteria
 dispatch_at: 2026-10-20T21:31:30Z
 builder_handback_at: 2026-10-20T21:35:28Z
+integration_at: 2026-10-20T21:36:05Z
+review_at: 2026-10-20T21:49:36Z
+commit: 5cbf1f10f0a0ebc7c2d6eeabe385cff6a22abb41
+heavy_verified_at: 2026-10-20T21:54:03Z
+heavy_verified_revision: 5cbf1f10f0a0ebc7c2d6eeabe385cff6a22abb41
+kb_status: pending
+completed_at: 2026-10-20T21:55:30Z
+release_at: 2026-10-20T21:55:30Z
 ---
 
 # Confirm: A Second Opinion Refuses To Run While A Project Preset File Is Uncommitted
@@ -58,6 +66,11 @@ If you prefer the exemption: the outside-bundle check in `skills/do-work/tools/d
 > User, asked where their own presets should live (options: shared folder + commit first / also inside the bundle / only inside the bundle): "Only inside the bundle".
 > Reasoning: a preset kept inside the report bundle is never outside-bundle dirt, so the question disappears instead of needing a carve-out. Out of scope now: the shared project folder ai-reports/second-opinion-presets/ (drop its lookup and the catalog skip that only existed for it); shipped presets beside the prompt stay.
 > ```
+
+## AI Execution State (P-A-U Loop)
+- [x] **[PLAN]:** Follow brief steps 1-6 exactly. Write the new test first and prove RED, then change the lookup slice, remove the catalog skip, move the constant, delete the skip test and the project block, then the two prose sentences (from the builder hand-back).
+- [x] **[APPLY]:** As planned, inside the declared scope: the `folders` slice now starts at `<bundle>/second-opinion-presets`; the constant moved to `report_second_opinion.go`; the `reportIndexWalk` skip, its doc clause and its test are gone; the project-preset block left `TestSecondOpinionPresetResolutionAndArgumentRules`; guide :91, :107 and `ai-report.md` :73 edited. One test-only tidy after GREEN (each bundle preset written inside its loop); RED was not re-run after it, case (a) is unchanged (from the builder hand-back).
+- [x] **[UNIFY]:** `git diff 11780ac0 --stat`: 6 files changed, 40 insertions(+), 48 deletions(-); `gofmt -l skills/do-work/tools/do-work-cli/internal` empty; `go vet` on `./internal/toolboxcommands` exit 0; `git diff --check` exit 0; the REQ-705 probe exit 0; package selection `SecondOpinion|AIReportIndex|TestHandlersRegisterCanonicalToolboxCommands` 32 PASS, 0 FAIL, 0 SKIP. All six files read back in the diff (from the builder hand-back).
 
 ---
 
@@ -149,3 +162,143 @@ If you prefer the exemption: the outside-bundle check in `skills/do-work/tools/d
 **Dependencies:** ✓ Go toolchain and ShellCheck present (the gate ran)
 
 *Checked by the coordinator before dispatch (2026-10-20T21:27:51Z to 2026-10-20T21:30:37Z)*
+
+## Implementation Summary
+
+**Files changed:**
+- `skills/do-work/tools/do-work-cli/internal/toolboxcommands/report_second_opinion.go` (modified)
+- `skills/do-work/tools/do-work-cli/internal/toolboxcommands/report_second_opinion_test.go` (modified)
+- `skills/do-work/tools/do-work-cli/internal/toolboxcommands/report_index.go` (modified)
+- `skills/do-work/tools/do-work-cli/internal/toolboxcommands/report_index_test.go` (modified)
+- `skills/do-work-toolbox/docs/ai-report-guide.md` (modified)
+- `skills/do-work-toolbox/actions/ai-report.md` (modified)
+
+**What was done:** `--preset <name>` now looks in `<bundle>/second-opinion-presets/<name>.md`, then in the shipped presets; the shared `ai-reports/second-opinion-presets/` folder is no longer read, and the catalog walk no longer skips it. The folder constant moved to its only user, the catalog skip test was deleted, the project-preset block left the resolution test, and the new `TestSecondOpinionPresetResolvesFromBundleOnly` pins an uncommitted bundle preset, a bundle preset shadowing a shipped one, and a refused shared-folder preset. The guide and `ai-report.md` now say a user preset lives in the bundle and needs no commit.
+
+## Decisions
+
+(from the builder hand-back)
+
+- **D-08** (DECIDE & STATE): the new test loops over an ordered `[][2]string` (`mine`, then `bold`), not a map, so case (a) always runs first and the RED failure is deterministic.
+- **D-09** (DECIDE & STATE): the legacy case asserts the refusal through `result.Findings[0].Evidence`, the same shape as the refusal loop in `TestSecondOpinionPresetResolutionAndArgumentRules`. No new helper.
+
+## Discovered Tasks
+
+(from the builder hand-back)
+
+- **impact-user-visible** A consumer that already made `ai-reports/second-opinion-presets/` under 0.306.6 now sees it in the catalog, `index` and `find` as an undated bundle whose entry is its first `.md` file. `latest` is not affected, because undated bundles sort last. This is the intended result of D-04 (the skip is gone), but the CHANGELOG entry should tell those users to move their presets into a bundle and delete the old folder. → report only
+
+## Qualification
+
+**Gate records:** `advance --diff-range bac2288b..d8cb783f` → `qualify` satisfied (no debug artifact, no output-primitive finding, P-A-U boxes ticked). `scope-drift` reported six `SCOPE-DECLARED-NOT-TOUCHED` warnings: `CHANGELOG.md`, `VERSION`, `skills/do-work/CHANGELOG.md`, `skills/do-work/VERSION`, `skills/do-work/actions/version.md`, `skills/do-work/tools/do-work-cli/lessons-do-work-cli.md`. All six are release and lesson files the integrator writes at finalization, so they are expected, not drift. No touched-but-undeclared path.
+
+**Requirement trace (read against `git diff bac2288b..d8cb783f` and the merged files):**
+- Bundle first, then shipped; `preset_file` repository-relative: the `folders` slice in `handleAIReportSecondOpinion` is now `filepath.Join(bundle, secondOpinionPresetsFolder)`, then the shipped folder. `bundle` is resolved by `secondOpinionBundle` before the preset block (after `latest` and the supersession chain). The existing `filepath.Rel` step makes `preset_file` repository-relative. Pinned by case (a) `mine` and case (b) `bold` (the bundle file shadows the shipped one, and its text reaches the prompt).
+- Uncommitted bundle preset runs: the test writes both bundle presets without committing them and gets `state: prepared`. `secondOpinionOutside` counts only paths outside the bundle, so no exemption was needed.
+- Shared folder no longer read: case (c) commits `ai-reports/second-opinion-presets/legacy.md` and gets `unknown preset "legacy"`.
+- Unknown-name list is bundle plus shipped: the same refusal lists `bold, mine, visual`; the list code is unchanged and runs over the new folder slice.
+- Catalog skip and its test gone: the `reportIndexWalk` condition, its doc clause, and `TestAIReportIndexSkipsSecondOpinionPresetsFolder` are deleted; the constant moved to `report_second_opinion.go`, its only user.
+- Prose: guide :107's commit-first sentence is replaced by the bundle sentence; guide :91 no longer names the folder; `ai-report.md` :73 names `<bundle>/second-opinion-presets/<name>.md`, then the shipped presets. A `git grep` over `skills/`, `_dev/`, `docs/` and `suite/` (changelogs excluded) finds no other mention of the shared folder outside the new test.
+- Shipped-only and plain runs unchanged: the shipped case stays in `TestSecondOpinionPresetResolutionAndArgumentRules`; the repository gate below covers the rest.
+
+**RED re-check after the builder's test tidy:** the builder could not re-run RED after its tidy. I ran the final test file against the pre-change production code in a scratch detached checkout at `bac2288b`: `go test -run '^TestSecondOpinionPresetResolvesFromBundleOnly$' ./internal/toolboxcommands` failed at case (a) with `unknown preset "mine"; presets found: bold, visual`, the same failure the builder recorded. The same test passes at `d8cb783f`, and `REQ-705-probe.sh` exits 0 there.
+
+**Scope comparison:** declared 13 paths; touched 6 project paths, all declared; the 7 untouched are the release, lesson and lessons-index files owned by finalization. The files the Scope said it would not touch are untouched.
+
+**Judgment:** the change is substantive, small (40 insertions, 48 deletions) and matches D-01 to D-07 and the hand-back's D-08 and D-09. Qualified.
+
+## Testing
+
+**Tests run:** `DO_WORK_FAST_STAGE_REUSE=off bash _dev/tests/maintainer-verify.sh` at merge `d8cb783f` (run 1, started 2026-10-20T21:37:40Z at 1-minute load 3.99, wall 127 s); then `advance --gate-arg bash --gate-arg _dev/tests/maintainer-verify.sh --gate-exit-status 0 -- --probe-file do-work/runs/work-2026-10-20-200259/REQ-705-probe.sh` (green-gate satisfied; `run-blocked-check` satisfied, probe status 0: bundle-only preset lookup, catalog skip removal and shared-folder sweep checked). After the review fix (F2, one guide sentence, builder-branch commit `e206c552`, re-merged as `5cbf1f10` with the same `<pre>`): the same gate argv at `5cbf1f10` (run 2, started 2026-10-20T21:46:00Z at 1-minute load 2.24, wall 135 s) exit 0, recorded with `record-green-gate`; the probe exits 0 there.
+**Result:** ✓ All passing (repository gate exit 0 on the first run: do-work-cli 947 tests, queue-kanban 427 tests, every per-file budget under 30 s, run 2's slowest file `report_second_opinion_test.go` at 27.21 s; builder's package selection `SecondOpinion|AIReportIndex|TestHandlersRegisterCanonicalToolboxCommands` 32 top-level PASS, 0 FAIL, 0 SKIP)
+
+**Red-green validation:**
+- `TestSecondOpinionPresetResolvesFromBundleOnly` (`report_second_opinion_test.go`): ✗ before implementation (builder, at base `11780ac0`: case (a) refused with `unknown preset "mine"; presets found: bold, visual`; re-checked by the integrator with the final, tidied test file against the pre-change code at `bac2288b`: same failure) → ✓ after (builder at `31868b40`; integrator at merge `d8cb783f`, PASS 0.18 s). This is the `## Red-Green Proof` pair: RED case = an uncommitted `<bundle>/second-opinion-presets/mine.md`; GREEN cases (1) prepared with the bundle `preset_file`, (2) bundle `bold` wins over shipped `bold`, (3) a committed `ai-reports/second-opinion-presets/legacy.md` is refused with `presets found: bold, mine, visual`. GREEN case (4) (shipped-only and plain runs as in 0.306.6) is covered by the unchanged shipped case and the gate.
+
+**New tests added:**
+- `TestSecondOpinionPresetResolvesFromBundleOnly` in `skills/do-work/tools/do-work-cli/internal/toolboxcommands/report_second_opinion_test.go`
+
+**Existing tests updated (cross-REQ impact):**
+- `report_second_opinion_test.go` (from REQ-703): the project-preset block left `TestSecondOpinionPresetResolutionAndArgumentRules`, because the shared project folder is no longer read (the user's answer).
+- `report_index_test.go` (from REQ-703): `TestAIReportIndexSkipsSecondOpinionPresetsFolder` deleted with the skip it pinned (D-04).
+
+**Heavy verification plan:**
+- Range: bac2288b6beaf716889f60cad8228cb6adaaa04e..5cbf1f10f0a0ebc7c2d6eeabe385cff6a22abb41 (re-planned after the re-merge; the same four lanes as at `d8cb783f`)
+- do-work-cli-integrations: `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane do-work-cli-integrations` — the four `toolboxcommands` Go files matched subtree `skills/do-work/tools/do-work-cli`
+- staged-skills: `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane staged-skills` — all six changed files matched subtree `skills`
+- updater: `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane updater` — the four Go files matched subtree `skills/do-work/tools/do-work-cli`
+- installer: `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane installer` — the four Go files matched subtree `skills/do-work/tools/do-work-cli`
+
+*Verified by work action*
+
+## Review
+
+**Overall: 96%** | 2026-10-20T21:49:36Z
+
+| Dimension | Score |
+|-----------|-------|
+| Requirements | 100% |
+| Code Quality | 95% |
+| Test Adequacy | 90% |
+| Scope | 100% |
+| Risk | Low |
+| Acceptance | Pass |
+
+**Important findings (each with its recorded impact token — this is the durable audit record the judgment mandates):**
+None
+
+**Minor findings:**
+- F1 `report_index.go:90`: a 0.306.6 consumer's `ai-reports/second-opinion-presets/` now shows in index/find/catalog as an undated bundle; keep the builder's migration bullet in the patch-release CHANGELOG entry — impact-user-visible → report only
+- F2 `ai-report-guide.md:107` (behavior `report_second_opinion.go:158`): the guide does not say a revision does not carry a bundle preset, or that a superseded target searches the current revision (D-06), and the refusal does not name the folder searched; add "a revision does not carry it over; copy it into the new bundle" — impact-user-visible → fixed by the integrator in `e206c552` (guide :107 now says a new revision does not carry the preset over and a run on a superseded report uses its current revision), re-merged `5cbf1f10`, gate re-run green; delta re-review of `d8cb783f..5cbf1f10` by the same reviewer: the sentence is true and closes F2 (optional nit, not taken: "the new bundle" could say "the current revision's bundle" for a chain of more than one hop)
+- F3 `do-work/user-requests/UR-160/input.md:16,22`: the Summary row and D2 still state the shared project-folder lookup; leave the UR frozen and tell the REQ-704 reviewer that REQ-705's answer supersedes D2 — impact-negligible → report only
+- F4 (Nit) `report_second_opinion_test.go:873,877,885,886`: the new test ignores `os.MkdirAll`/`os.WriteFile` errors (same pattern as the removed block) — impact-negligible → report only
+
+**Anti-bloat:** none. No helper, option, file, constant or test that the REQ did not name (one D-05 test added, D-03 constant moved).
+**Acceptance:** Pass. Implementation and integration stages: focused `SecondOpinionPreset|AIReportIndex` run passed 6/6 at `d8cb783f`; the integrator's RED at `bac2288b` is recorded; the gate passed at `d8cb783f`.
+**Restatement sweep:** redefined: user preset location (bundle-only plus shipped), `preset_file` meaning, catalog walk no longer skips `second-opinion-presets/`. Grepped `skills/`, `docs/`, `_dev/`, `suite/`, READMEs and `do-work/`, with the 0.306.6 CHANGELOG entries and the archived REQ-703 left as history. One stale restatement found: UR-160 input.md:16,22 (F3). The shipped prose (guide :91, :107, `ai-report.md:73`), `result_model.go:715`, the shipped presets, the prompt, `SKILL.md`, the lessons file and REQ-704 agree with the new meaning.
+**Suggested testing:** 3 items
+**Follow-ups created:** None (F2 fixed; F1, F3, F4 report only. F1 is answered by the CHANGELOG migration bullet; F3 is passed to the coordinator for REQ-704's reviewer)
+
+*Reviewed by review-work action*
+
+## Heavy Verification Plan
+
+- Base revision: bac2288b6beaf716889f60cad8228cb6adaaa04e
+- Target revision: 5cbf1f10f0a0ebc7c2d6eeabe385cff6a22abb41
+- do-work-cli-integrations: `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane do-work-cli-integrations` — `report_index.go`, `report_index_test.go`, `report_second_opinion.go`, `report_second_opinion_test.go` matched subtree `skills/do-work/tools/do-work-cli`
+- staged-skills: `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane staged-skills` — all six changed files matched subtree `skills`
+- updater: `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane updater` — the four Go files matched subtree `skills/do-work/tools/do-work-cli`
+- installer: `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane installer` — the four Go files matched subtree `skills/do-work/tools/do-work-cli`
+
+## Heavy Verification Result
+
+- Target revision: 5cbf1f10f0a0ebc7c2d6eeabe385cff6a22abb41
+- Execution revision: 5cbf1f10f0a0ebc7c2d6eeabe385cff6a22abb41 (detached drain checkout, `QUEUE_KANBAN_BROWSER` set)
+- do-work-cli-integrations: executed, exit 0, 68 s
+- staged-skills: executed, exit 0, 36 s
+- updater: executed, exit 0, 66 s
+- installer: executed, exit 0, 31 s
+
+## Lessons Learned
+
+**What worked:** Answering the confirm question by moving the file instead of adding an exemption: a preset inside the bundle is never outside-bundle dirt, so the outside-bundle check stayed whole and the change deleted more lines (48) than it added (40). One lookup entry (`handleAIReportSecondOpinion`) covers the Session, Targeted and Batch forms, so one slice element changed every form.
+**What didn't:** The builder could not re-run RED after a test-only tidy because `git stash` and reverting production code were off limits. Copying the final test file into a scratch detached checkout at the pre-merge commit re-ran RED without touching any branch.
+**Worth knowing:** The lookup uses the bundle `secondOpinionBundle` resolved, after `latest` and the supersession chain, so a preset in a superseded revision is never seen; the guide now says to copy it into the new bundle. A bundle preset is a pre-existing bundle file, so preservation refuses an editor that edits it. `report_second_opinion_test.go` ran 27.21 s on gate run 2, close to the 30 s per-file budget; the next test added there may need the budget looked at.
+
+## Orientation
+
+Now your own second-opinion preset lives in the report bundle it steers (`<bundle>/second-opinion-presets/<name>.md`) and needs no commit; the shared `ai-reports/second-opinion-presets/` folder is gone. Lives in the do-work-cli toolbox commands (`prime-do-work-cli.md`, ai-report second opinion). Prime spot-check: `prime-do-work-cli.md` and `prime-releases.md` name no path this change removed.
+
+## Timing
+
+Observed 2026-10-20T21:31:30Z to 2026-10-20T21:54:03Z: 22m 33s total, 21m 52s attributed across 6 events, 41s unattributed.
+
+| Category | Elapsed | Events |
+| --- | --- | --- |
+| verification-gate | 9m 44s | 3 |
+| review | 7m 36s | 1 |
+| builder-work | 4m 02s | 1 |
+| handback-merge | 30s | 1 |
+
+Slowest stage: review / independent review, 7m 36s, outcome success.
+Slowest command: verification-gate / heavy drain, 3m 47s, exit 0, .
