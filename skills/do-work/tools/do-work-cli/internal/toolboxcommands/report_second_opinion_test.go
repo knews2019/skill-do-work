@@ -839,8 +839,8 @@ func secondOpinionFixturePresets(t *testing.T) string {
 	return folder
 }
 
-// Pins: a preset that never reaches the prompt, a project preset that does not shadow the shipped one, an unknown name
-// that hides what exists, and direction text that would trip the placeholder check or ride along on --finalize.
+// Pins: a preset that never reaches the prompt, an unknown name that hides what exists, and direction text that would
+// trip the placeholder check or ride along on --finalize.
 func TestSecondOpinionPresetResolutionAndArgumentRules(t *testing.T) {
 	repo, _ := secondOpinionFixture(t)
 	shipped := secondOpinionFixturePresets(t)
@@ -849,16 +849,6 @@ func TestSecondOpinionPresetResolutionAndArgumentRules(t *testing.T) {
 	prompt, _ := row["prompt"].(string)
 	if row["state"] != "prepared" || row["preset"] != "bold" || row["preset_file"] != filepath.Join(shipped, "bold.md") || !strings.Contains(prompt, "Direction: Shipped bold: add motion.\n") || strings.Contains(prompt, "{{") {
 		t.Fatalf("shipped preset not applied: %v", row)
-	}
-	project := filepath.Join(repo, "ai-reports", "second-opinion-presets")
-	os.MkdirAll(project, 0755)
-	os.WriteFile(filepath.Join(project, "bold.md"), []byte("Project bold: go further.\n"), 0644)
-	toolboxTestGit(t, repo, "add", ".")
-	toolboxTestGit(t, repo, "commit", "-qm", "project preset")
-	row = secondOpinionRows(t, secondOpinionInvoke(t, repo, append(session, "--preset=bold")...))[0]
-	prompt, _ = row["prompt"].(string)
-	if row["state"] != "prepared" || row["preset_file"] != "ai-reports/second-opinion-presets/bold.md" || !strings.Contains(prompt, "Direction: Project bold: go further.\n") {
-		t.Fatalf("project preset did not win: %v", row)
 	}
 	refused := map[string][]string{
 		`unknown preset "missing"; presets found: bold, visual`: append(session, "--preset", "missing"),
@@ -871,6 +861,34 @@ func TestSecondOpinionPresetResolutionAndArgumentRules(t *testing.T) {
 		if result.Outcome != resultmodel.OutcomeFailure || len(result.Findings) == 0 || !strings.Contains(strings.Join(result.Findings[0].Evidence, " "), want) {
 			t.Errorf("%v: want refusal %q, got %+v", args, want, result.Findings)
 		}
+	}
+}
+
+// Pins: a preset kept in the report bundle that is not found, and a leftover lookup that still reads the shared
+// ai-reports/second-opinion-presets/ folder outside the bundle.
+func TestSecondOpinionPresetResolvesFromBundleOnly(t *testing.T) {
+	repo, bundle := secondOpinionFixture(t)
+	secondOpinionFixturePresets(t)
+	own := filepath.Join(bundle, "second-opinion-presets")
+	os.MkdirAll(own, 0755)
+	session := []string{"--prepare", "--backend", "claude", "--model", "claude-fable-5-1"}
+	for _, preset := range [][2]string{{"mine", "Bundle mine: tell it as a story.\n"}, {"bold", "Bundle bold: go further.\n"}} {
+		name, text := preset[0], preset[1]
+		os.WriteFile(filepath.Join(own, name+".md"), []byte(text), 0644)
+		row := secondOpinionRows(t, secondOpinionInvoke(t, repo, append(session, "--preset", name)...))[0]
+		prompt, _ := row["prompt"].(string)
+		if row["state"] != "prepared" || row["preset_file"] != "ai-reports/2026-10-15_1200-example/second-opinion-presets/"+name+".md" || !strings.Contains(prompt, "Direction: "+text) {
+			t.Fatalf("uncommitted bundle preset %s not applied: %v", name, row)
+		}
+	}
+	legacy := filepath.Join(repo, "ai-reports", "second-opinion-presets")
+	os.MkdirAll(legacy, 0755)
+	os.WriteFile(filepath.Join(legacy, "legacy.md"), []byte("Legacy: shared folder.\n"), 0644)
+	toolboxTestGit(t, repo, "add", "ai-reports/second-opinion-presets")
+	toolboxTestGit(t, repo, "commit", "-qm", "legacy preset")
+	result := secondOpinionInvoke(t, repo, append(session, "--preset", "legacy")...)
+	if want := `unknown preset "legacy"; presets found: bold, mine, visual`; result.Outcome != resultmodel.OutcomeFailure || len(result.Findings) == 0 || !strings.Contains(strings.Join(result.Findings[0].Evidence, " "), want) {
+		t.Fatalf("shared folder preset still read: want refusal %q, got %+v", want, result.Findings)
 	}
 }
 
