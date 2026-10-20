@@ -15,7 +15,7 @@ effort_estimate: effort-substantive
 depends_on: [REQ-703]
 related: [REQ-703]
 batch: UR-160
-write_set: ["skills/do-work/tools/do-work-cli/internal/toolboxcommands/report_second_opinion.go", "skills/do-work/tools/do-work-cli/internal/toolboxcommands/report_second_opinion_test.go", "skills/do-work/tools/do-work-cli/internal/resultmodel/result_model.go", "skills/do-work-toolbox/docs/ai-report-second-opinion-prompt.md", "skills/do-work-toolbox/actions/ai-report.md", "skills/do-work-toolbox/docs/ai-report-guide.md", "skills/do-work-toolbox/actions/ai-report-reference.md", "CHANGELOG.md", "skills/do-work/CHANGELOG.md", "VERSION", "skills/do-work/VERSION", "skills/do-work/actions/version.md", "skills/do-work/tools/do-work-cli/lessons-do-work-cli.md", "do-work/lessons-index.md"]
+write_set: ["skills/do-work/tools/do-work-cli/internal/toolboxcommands/report_second_opinion.go", "skills/do-work/tools/do-work-cli/internal/toolboxcommands/report_second_opinion_test.go", "skills/do-work/tools/do-work-cli/internal/toolboxcommands/report_second_opinion_tree_test.go", "skills/do-work/tools/do-work-cli/internal/resultmodel/result_model.go", "skills/do-work-toolbox/docs/ai-report-second-opinion-prompt.md", "skills/do-work-toolbox/actions/ai-report.md", "skills/do-work-toolbox/docs/ai-report-guide.md", "skills/do-work-toolbox/actions/ai-report-reference.md", "CHANGELOG.md", "skills/do-work/CHANGELOG.md", "VERSION", "skills/do-work/VERSION", "skills/do-work/actions/version.md", "skills/do-work/tools/do-work-cli/lessons-do-work-cli.md", "do-work/lessons-index.md"]
 claimed_at: 2026-10-20T21:19:46Z
 route: C
 estimate:
@@ -84,7 +84,7 @@ See `do-work/user-requests/UR-160/input.md` for complete verbatim input.
 
 *No `## Open Questions` section exists; Step 3.5 has nothing to resolve. The builder-latitude points (marker names, list layout, badge style) and the CHANGE LIST precedence the coordinator asked about are decided in `## Plan` → Decisions as D-01 onwards.*
 
-<!-- D-XX counter: last used D-12. Next decision: D-13. -->
+<!-- D-XX counter: last used D-13. Next decision: D-14. -->
 
 ## Plan
 
@@ -103,6 +103,7 @@ See `do-work/user-requests/UR-160/input.md` for complete verbatim input.
 - **D-10** (DECIDE & STATE): result row. `AIReportSecondOpinionRun` gains `TreeID` (`json:"tree_id,omitempty"`, set at publish) and `BasePage` (`json:"base_page,omitempty"`, the repository-relative base path, set on every tree-run row including prepare). Plain rows are unchanged.
 - **D-11** (DECIDE & STATE): docs. `ai-report.md` § Second-opinion form: the three forms take `[<bundle-dir>|<page.html>|latest]`; the trigger bullet maps "second opinion on <page>.html" to the page path as the target; when it is unclear which page is the base, load `../../do-work/crew-members/clear-questions.md` and ask with the environment's ask-user prompt, best guess first plus a free-text entry (shipped files say "ask-user prompt", as `present-work.md:119` and `prime.md:70` do, never a tool name); one line on tree names, the parent header, the change list and the `index.html` list; the directed-name example gains its tree id; rows gain `tree_id` and `base_page`. `ai-report-guide.md` matches (command lines, § A Second Opinion). `ai-report-reference.md:148` says "a pass-gated banner" and becomes "a pass-gated banner or iteration list". The `## Second-opinion form` heading text stays (anchor `#second-opinion-form`). `SKILL.md` is not touched.
 - **D-12** (DECIDE & STATE): REQ-703's `TestSecondOpinionDirectedRunNamesAndMarksPage` pins directed names without a tree id. Every directed run is a tree run now (UR-160 D6), so its expected page and reply names gain `v1c01`, `v1c02`, `v1c03` in run order; every other assertion stays, and its `secondOpinionDecorate` unit calls pass empty tree marks. That is a contract change the REQ asks for, not a weakened test.
+- **D-13** (DECIDE & STATE, coordinator, 2026-10-20): the three new REQ-704 tests go in a new file `report_second_opinion_tree_test.go` (same package, same fixtures). Reason: `report_second_opinion_test.go` ran 27.2 s in REQ-705's last gate against the 30 s per-file budget, so three more fixture-heavy tests there would break the budget. Scope and `write_set` gain the new file.
 
 ### Files to modify
 - `skills/do-work/tools/do-work-cli/internal/toolboxcommands/report_second_opinion.go` (modify): usage string, target parse, base in the direction value, tree pattern, names, decoration, prompt fill, change-list check, tree list, row fields.
@@ -175,7 +176,8 @@ Read directly by the pre-dispatch agent at main `11780ac0`: `report_second_opini
 
 **Files I will touch:**
 - `skills/do-work/tools/do-work-cli/internal/toolboxcommands/report_second_opinion.go` (modify) — page target, base in the direction value, tree id grammar, child allocation in the name builder, tree marks and widened strip, prompt fill, change-list check, tree list on index.html, row fields
-- `skills/do-work/tools/do-work-cli/internal/toolboxcommands/report_second_opinion_test.go` (modify) — fixture placeholders, three new tests, REQ-703 directed-test name pins
+- `skills/do-work/tools/do-work-cli/internal/toolboxcommands/report_second_opinion_test.go` (modify) — fixture placeholders and REQ-703 directed-test name pins only (D-13)
+- `skills/do-work/tools/do-work-cli/internal/toolboxcommands/report_second_opinion_tree_test.go` (new) — the three new REQ-704 tests (D-13)
 - `skills/do-work/tools/do-work-cli/internal/resultmodel/result_model.go` (modify) — tree_id and base_page on the run row
 - `skills/do-work-toolbox/docs/ai-report-second-opinion-prompt.md` (modify) — base page input, change-list paragraph, direction exception list
 - `skills/do-work-toolbox/actions/ai-report.md` (modify) — page target, ask-on-unclear-base rule, tree names, row fields
@@ -202,3 +204,11 @@ Read directly by the pre-dispatch agent at main `11780ac0`: `report_second_opini
 - [ ] Earlier tree pages and the base are never rewritten; only the launcher block on `index.html` changes.
 - [ ] The result row gains `tree_id` and `base_page` (omitempty).
 - [ ] `ai-report.md` and `ai-report-guide.md` document the page target, the ask-on-unclear-base rule, tree names and the index list; the change ships as one release with a descriptive changelog title.
+
+## Pre-Flight
+
+**Git:** ✓ clean at 498ce429 (main after REQ-705's release 0.306.7 and the run-artifacts commit), the builder's base; only do-work/ run artifacts were dirty when the coordinator recorded pre-flight
+**Tests baseline:** ✓ `bash do-work/runs/work-2026-10-20-200259/REQ-704-preflight-probe.sh` exit 0, launched (`do-work/working/baseline.json`). Repository gate `DO_WORK_FAST_STAGE_REUSE=off bash _dev/tests/maintainer-verify.sh` at 498ce429: run 1 exit 0 in 121 s at 1-minute load 4.3; green-gate record satisfied at revision 498ce429
+**Dependencies:** ✓ Go toolchain and ShellCheck present (the gate ran)
+
+*Checked by the coordinator before dispatch (2026-10-20T21:56:42Z to 2026-10-20T22:00:22Z)*
