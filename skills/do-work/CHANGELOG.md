@@ -10,6 +10,16 @@ For the complete release history, read this file and the archives below from new
 - [0.50.0 through 0.64.1](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-13-up-to-v0.64.1.md)
 - [0.1.0 through 0.49.0](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-07-up-to-v0.49.0.md)
 
+## 0.306.6 — Second Opinions Accept Presets and Your Own Direction (2026-10-20)
+
+You can now steer a second opinion instead of always getting the one fixed clarity pass, and every directed page says what it was asked to do: in its file name, at the top of the page and in the result row.
+
+- `ai-report second-opinion` accepts `--preset <name>` and `--editor-direction '<text>'`, alone or together, in the session (`--prepare`), targeted and batch forms. Together means the preset text first, then your words. `--finalize` takes neither flag and reads them from the prepare record.
+- Two shipped presets: `bold` (add motion, add more sections, go further) and `visual` (diagrams and charts first). A committed `ai-reports/second-opinion-presets/<name>.md` wins over a shipped preset of the same name. An unknown name is refused with the list of presets found. A new project preset must be committed before a run, because the run refuses uncommitted changes outside the report bundle.
+- The prompt gains a DIRECTION paragraph: the direction overrides the editorial role, goal, rules and process, never the output file, the backlink, the file boundary or the final reply. It asks the editor for a `Variation slug:` line, and Rule 8 now asks to honor `prefers-reduced-motion`.
+- Directed pages are named `index-<cli>-<model>[-unverified]-<preset|custom>[-<slug>][-N].html` with a matching reply, carry `ai-report-second-opinion-preset` and `ai-report-second-opinion-direction` meta tags and a marker-wrapped header block, and result rows gain `preset`, `preset_file` and `editor_direction`.
+- Plain runs keep today's names and behavior. `ai-report index`, `find`, `judge` and `latest` skip the project presets folder.
+
 ## 0.306.5 — Second-Opinion Launcher Shows Progress While Codex, Gemini or AGY Runs (2026-10-19)
 
 A foreign-backend second opinion no longer sits silent for up to 16 minutes. While the backend runs, the launcher prints heartbeats and the backend's own output on stderr, so a working backend can be told apart from a stuck one. stdout still carries only the typed JSON.

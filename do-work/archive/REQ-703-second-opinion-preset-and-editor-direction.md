@@ -1,7 +1,7 @@
 ---
 id: REQ-703
 title: 'Second opinions accept a named preset and a free-text editor direction'
-status: claimed
+status: completed
 created_at: 2026-10-20T19:59:08Z
 user_request: UR-160
 addendum_to: REQ-698
@@ -29,6 +29,14 @@ estimate:
 planning_at: 2026-10-20T20:10:46Z
 dispatch_at: 2026-10-20T20:17:40Z
 builder_handback_at: 2026-10-20T20:27:29Z
+integration_at: 2026-10-20T20:27:48Z
+review_at: 2026-10-20T20:45:52Z
+kb_status: pending
+commit: 1d68e4032944df90f5d4098fd59dd2d7f44b7052
+heavy_verified_at: 2026-10-20T20:51:07Z
+heavy_verified_revision: 1d68e4032944df90f5d4098fd59dd2d7f44b7052
+completed_at: 2026-10-20T20:51:27Z
+release_at: 2026-10-20T20:51:27Z
 ---
 # Second Opinions Accept A Named Preset And A Free-Text Editor Direction
 ## What
@@ -71,9 +79,9 @@ Decisions D1-D3 and D7 are user-confirmed and firm. The exact prompt wording, ma
 - `skills/do-work/tools/do-work-cli/lessons-do-work-cli.md` — 22697 tokens, `slugged: partial` so no targeted form; matches native backend identity and the session-is-the-backend families. Read its `native-backend-identity` and `session-is-the-backend` bullets if budget allows.
 - `_dev/primes/lessons-action-files.md` — 8398 tokens, `slugged: partial`; matches the action-file and downstream-reader changes.
 ## AI Execution State (P-A-U Loop)
-- [ ] **[PLAN]:** (Agent: Read listed `prime_files` and agent rules. Write brief technical approach here. Do not write code yet.)
-- [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
-- [ ] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
+- [x] **[PLAN]:** Follow the brief's decided mechanism D-01 to D-09 exactly. RED first for the three named tests, then implement in one Go file plus the result row and the catalog skip, then the shipped text and prose. No lesson contradicted the plan: native-backend-identity (the unverified name gains the variation after `<model>-unverified`, nothing else changes), session-is-the-backend (the direction crosses prepare/finalize only in the record; finalize never re-reads the preset file), writer-anchored-marker-position (the header markers are read only as real comments on the masked surface; the editor's slug line is cleaned to `[a-z0-9-]`, never trusted).
+- [x] **[APPLY]:** As planned. Scope stayed inside the write boundary (11 paths, all listed in the brief).
+- [x] **[UNIFY]:** `git diff c6afcead --stat`: 11 files changed, 388 insertions(+), 38 deletions(-); `gofmt -l skills/do-work/tools/do-work-cli/internal` empty; `go vet` on `./internal/toolboxcommands ./internal/resultmodel` exit 0; the REQ-703 probe and the package selection `SecondOpinion|AIReportIndex|TestHandlersRegisterCanonicalToolboxCommands` exit 0; `git diff --cached --check` exit 0. Each changed file read back in the diff: no debug output, no leftover scratch, comments match the code (from the builder hand-back).
 ## Full Context
 See `do-work/user-requests/UR-160/input.md` for complete verbatim input.
 
@@ -219,3 +227,170 @@ Read directly by the pre-dispatch agent: `report_second_opinion.go` (all 1383 li
 **Dependencies:** ✓ Go toolchain and ShellCheck present (the gate ran)
 
 *Checked by the coordinator before dispatch (2026-10-20T20:14:34Z to 2026-10-20T20:17:25Z)*
+
+## Implementation Summary
+
+**Files changed:**
+- `skills/do-work/tools/do-work-cli/internal/toolboxcommands/report_second_opinion.go` (modified)
+- `skills/do-work/tools/do-work-cli/internal/toolboxcommands/report_second_opinion_test.go` (modified)
+- `skills/do-work/tools/do-work-cli/internal/toolboxcommands/report_index.go` (modified)
+- `skills/do-work/tools/do-work-cli/internal/toolboxcommands/report_index_test.go` (modified)
+- `skills/do-work/tools/do-work-cli/internal/resultmodel/result_model.go` (modified)
+- `skills/do-work-toolbox/docs/ai-report-second-opinion-prompt.md` (modified)
+- `skills/do-work-toolbox/docs/second-opinion-presets/bold.md` (new)
+- `skills/do-work-toolbox/docs/second-opinion-presets/visual.md` (new)
+- `skills/do-work-toolbox/actions/ai-report.md` (modified)
+- `skills/do-work-toolbox/docs/ai-report-guide.md` (modified)
+- `skills/do-work-toolbox/SKILL.md` (modified)
+
+**What was done:** `ai-report-second-opinion` now parses `--preset <name>` and `--editor-direction <text>` in the Session prepare, Targeted and Batch forms, resolves a preset from `ai-reports/second-opinion-presets/` before the shipped folder beside the prompt, carries the result in one `secondOpinionDirection` value through the prepare record, fills the prompt through one `secondOpinionPrompt` helper, names directed pages `index-<cli>-<model>[-unverified]-<preset|custom>[-<slug>][-N].html` in the one name builder, and decorates directed pages with two meta tags and a marker-wrapped header block (`secondOpinionDecorate`); result rows gain `preset`, `preset_file` and `editor_direction`, the catalog walk skips the presets folder, and the prompt, two shipped presets and three prose files document it. Builder commit `f06e82e0`, merged as `dd3639bf`; review fix `ec21d6ee` (prompt and guide wording, D-17) re-merged as `1d68e403`.
+
+## Decisions
+
+*(from the builder hand-back; D-01 to D-09 are in `## Plan` → Decisions)*
+
+- **D-10** (DECIDE & STATE): with no opening body tag (possible only on an unverified page, where the backlink check is skipped), the header block goes at offset 0 of the page. Reason: smallest rule that keeps the direction visible; a verified page always has a body because the backlink check requires one.
+- **D-11** (DECIDE & STATE): slug limits: the line pattern is `(?im)^[ \t]*[-*]?[ \t]*variation slug:(.*)$`, first match only; the value is lowercased and split on every run of characters outside `[a-z0-9]`; at most the first 4 words, then at most 40 characters with trailing `-` trimmed. Empty means no slug segment.
+- **D-12** (DECIDE & STATE): header block markup is `<!-- second-opinion-header -->[metas when no </head>]<aside aria-label="Second-opinion direction" style="overflow-wrap:anywhere"><p><strong>Second-opinion preset:</strong> <slot></p><p style="white-space:pre-line"><strong>Direction:</strong> <combined text></p></aside><!-- /second-opinion-header -->`, with no surrounding newlines, so stripping removes exactly what was inserted and a second decoration gives the same bytes. `pre-line` keeps the blank line between preset and free text visible.
+- **D-13** (DECIDE & STATE): `secondOpinionRecord.Direction` uses `json:"direction,omitzero"` (module floor is Go 1.24, which supports it) because `omitempty` has no effect on a struct field. Old records decode to the zero value, which is a plain run.
+- **D-14** (DECIDE & STATE): the prompt wording. DIRECTION paragraph: "The direction below comes from the person directing this pass. When it is not "None.", follow it: it overrides ROLE, GOAL, every RULE and PROCESS, everything except BOUNDARY, which still applies in full. When it is "None.", this is a plain clarity pass." then `Direction: {{EDITOR_DIRECTION}}`. Rule 8 ends "and honor prefers-reduced-motion for any animation." FINAL REPLY ends "When a direction is given, end with one line: Variation slug: <2 to 4 plain words naming this variation>."
+- **D-15** (DECIDE & STATE): the unknown-preset message says `presets found: none` when both folders are empty, so the message never ends in a bare colon.
+- **D-16** (DECIDE & STATE): the preset-name regex and the slug regex are compiled inline where used (the house pattern in `secondOpinionBanner`), so no new package-level names were added.
+- **D-17** (DECIDE & STATE, integrator, from review F1): the DIRECTION paragraph names OUTPUT, BACKLINK, BOUNDARY and FINAL REPLY as the parts a direction never overrides. Reason: the UR's D3 exempts the file BOUNDARY, but the launcher also refuses a page without the backlink and reads the `Variation slug:` line from the final reply, so a direction that overrode those would only produce refused runs or lost slugs. These are launcher contracts, not editorial rules, so D3's "every rule except BOUNDARY" still holds for the editorial rules.
+
+## Discovered Tasks
+
+*(from the builder hand-back)*
+
+- `optionValue` (`commands.go:87`) returns an empty string for `--x ''` for every valued flag; `--backend ''`, `--model ''` and `--finalize ''` therefore read as "not given" instead of a usage error. Only `--editor-direction` and `--preset` check for it now. impact-negligible → report only. *(Integrator: the hand-back wrote `impact-minor`, which is not an impact token; restamped `impact-negligible`.)*
+
+**Follow-ups (Step 8, integrator):** D-04 (ESCALATE: an uncommitted project preset is refused by the outside-bundle Git check) found no existing open home in the fold-first scan (the only open REQ is REQ-704, the linked iteration tree, a different root cause), so it became the `pending-answers` follow-up `do-work/queue/REQ-705-confirm-uncommitted-preset-refusal.md`. Review findings F3 to F10 stay in `## Review`, each `→ report only`; no `impact-critical` item, so nothing else is queued.
+
+## Qualification
+
+**Gate records:** `advance --diff-range f03fbc11..dd3639bf` → `qualify` satisfied (no debug artifact, no output-primitive finding, P-A-U boxes ticked). `scope-drift` reported six `SCOPE-DECLARED-NOT-TOUCHED` warnings: `CHANGELOG.md`, `skills/do-work/CHANGELOG.md`, `VERSION`, `skills/do-work/VERSION`, `skills/do-work/actions/version.md`, `skills/do-work/tools/do-work-cli/lessons-do-work-cli.md`. All six are the integrator's release and lesson files, written at finalization; they are expected, not drift. No touched-but-undeclared path.
+
+**Requirement trace (read against `git diff f03fbc11..dd3639bf` and the merged files):**
+- Flags in all three forms, preset first then free text, `--finalize` refuses both: `secondOpinionParse` adds both valued flags; the `--finalize` refusal names them; `combinedText` joins preset text, blank line, free text; prepare and run take the direction; finalize restores it from `secondOpinionRecord.Direction`. Pinned by `TestSecondOpinionPresetResolutionAndArgumentRules` (Session) and `TestSecondOpinionDirectedRunNamesAndMarksPage` (Targeted, Session finalize). Batch shares the same per-backend loop, so it gets the same direction value.
+- Shipped `bold`/`visual`, project file wins, unknown name lists presets, `preset_file`: lookup order project then `filepath.Dir(templatePath)/second-opinion-presets`; regular-file check; unknown-name message with sorted de-duplicated stems; repo-relative `preset_file` inside the repository. Test shows shadowing with a committed project file.
+- Prompt direction paragraph, "None.", Rule 8 reduced motion: prompt diff matches D-05/D-14; `secondOpinionPrompt` fills `None.` on a plain run and refuses a directed run on a template without the placeholder.
+- Empty / `{{` free text refused: parser checks both; test pins both messages.
+- Meta tags and marker-wrapped header block, idempotent: `secondOpinionDecorate`; test pins escaping, placement before the real `</head>` (not the one inside a script string), idempotence, and that a plain decoration strips back to the original bytes.
+- Directed names with `custom` and cleaned slug, reply on the same stem: `secondOpinionNames` gains `variation`; `secondOpinionVariationSlug`; test pins `-bold-add-a-timeline`, `-custom-add-a-timeline`, and the finalize name `-bold-motion-pass`.
+- Result row fields omitempty: three fields on `AIReportSecondOpinionRun`.
+- One prompt helper: both `strings.NewReplacer` fills replaced by `secondOpinionPrompt`.
+- Plain run unchanged; finished page never deleted; editor boundary unchanged; docs: plain case in the directed test proves the plain name and no marks; the unverified path and preservation checks are untouched; `ai-report.md`, `ai-report-guide.md`, `SKILL.md` document flags and the `second opinion preset` trigger. The release is written at finalization.
+
+**Scope comparison:** declared 18 paths; touched 11 project paths, all declared; the 7 untouched are the release, lesson and lessons-index files owned by finalization. `skills/do-work/tools/do-work-cli.sh` and the launcher test stay untouched (D-01).
+
+**Judgment:** the change is substantive and matches the Plan's D-01 to D-09 and the hand-back's D-10 to D-16. Qualified.
+
+## Testing
+
+**Tests run:** `DO_WORK_FAST_STAGE_REUSE=off bash _dev/tests/maintainer-verify.sh` at merge `dd3639bf` (run 1, started 2026-10-20T20:30:23Z at 1-minute load 4.92); then `advance --gate-arg bash --gate-arg _dev/tests/maintainer-verify.sh --gate-exit-status 0 -- --probe-file do-work/runs/work-2026-10-20-200259/REQ-703-probe.sh` (green-gate satisfied; the probe exited 0: shipped prompt placeholder, reduced-motion rule, `Variation slug:` line and both shipped presets checked, and the three named tests passed with no skip).
+**Result:** ✓ Gate exit 0 in 132 s, first run ("Maintainer verification passed."; do-work-cli fast tests 947 tests, slowest file 20.64 s, under the 30 s limit). Builder's package selection `SecondOpinion|AIReportIndex|TestHandlersRegisterCanonicalToolboxCommands`: 32 top-level PASS, 0 FAIL, 0 SKIP; `resultmodel.TestSecondOpinionJSONKeepsEveryBackendAndJudgeEvidence` PASS.
+
+**Repository gate after the review fix:** `DO_WORK_FAST_STAGE_REUSE=off bash _dev/tests/maintainer-verify.sh` at re-merge `1d68e403` (started 2026-10-20T20:42:23Z at 1-minute load 4.36): exit 0 in 143 s, first run; recorded with `record-green-gate --gate-exit-status 0 -- bash _dev/tests/maintainer-verify.sh` (recorded revision `1d68e403`, because `advance` had moved to the review phase). The probe `bash do-work/runs/work-2026-10-20-200259/REQ-703-probe.sh` exited 0 at `1d68e403`.
+
+**Red-green validation:** *(traces to `## Red-Green Proof`; RED observed by the builder at base `c6afcead`)*
+- `TestSecondOpinionPresetResolutionAndArgumentRules` (`report_second_opinion_test.go`): ✗ before → `unexpected argument "--preset"`, the REQ's captured RED → ✓ after (GREEN points 1 and 3: prepare row carries `preset`, `preset_file` and the preset text in `prompt`; a committed project `bold.md` shadows the shipped one).
+- `TestSecondOpinionDirectedRunNamesAndMarksPage` (`report_second_opinion_test.go`): ✗ before → does not compile at base (`undefined: secondOpinionDirection`); with the two unit-call blocks removed for the RED run, `unexpected argument "--preset"`; file restored byte-for-byte → ✓ after (GREEN points 2 and 4: preset then free text in the prompt, `index-codex-actual-model-1-bold-add-a-timeline.html`, metas and header block; the plain run still publishes `index-codex-actual-model-1.html`).
+- `TestAIReportIndexSkipsSecondOpinionPresetsFolder` (`report_index_test.go`): ✗ before → `catalog bundles=[ai-reports/2026-10-20_1200_report ai-reports/second-opinion-presets], want only the report` → ✓ after.
+
+**New tests added:**
+- `TestSecondOpinionPresetResolutionAndArgumentRules`, `TestSecondOpinionDirectedRunNamesAndMarksPage` (with helper `secondOpinionFixturePresets`), `TestAIReportIndexSkipsSecondOpinionPresetsFolder`.
+
+**Existing tests updated (cross-REQ impact):**
+- `report_second_opinion_test.go` (from REQ-698): `secondOpinionFixture`'s temp template gains `Direction: {{EDITOR_DIRECTION}}` so directed tests see the fill; plain-run tests are unchanged and green.
+
+**Heavy verification plan:**
+- Range: f03fbc112c636a8fcecc286c25cae842bdbf1f41..1d68e4032944df90f5d4098fd59dd2d7f44b7052 (re-planned at the re-merge; same four lanes as at `dd3639bf`)
+- do-work-cli-integrations: `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane do-work-cli-integrations` — Go files under `skills/do-work/tools/do-work-cli` changed
+- staged-skills: `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane staged-skills` — files under `skills` changed
+- updater: `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane updater` — Go files under `skills/do-work/tools/do-work-cli` changed
+- installer: `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane installer` — Go files under `skills/do-work/tools/do-work-cli` changed
+
+*Verified by work action*
+
+## Review
+
+**Overall: 93%** | 2026-10-20T20:45:52Z
+
+| Dimension | Score |
+|-----------|-------|
+| Requirements | 100% |
+| Code Quality | 88% |
+| Test Adequacy | 85% |
+| Scope | 100% |
+| Risk | Low |
+| Acceptance | Pass |
+
+**Important findings (each with its recorded impact token, the durable audit record the judgment mandates):**
+- F1: the prompt DIRECTION paragraph (`ai-report-second-opinion-prompt.md:17`) says "everything except BOUNDARY", so a direction may override OUTPUT, BACKLINK and FINAL REPLY. The launcher still enforces the backlink, so bold restructures can be refused. Fix: "except OUTPUT, BACKLINK and BOUNDARY". — impact-user-visible → report only
+
+**Minor findings:**
+- F2: stale `ai-report-guide.md:91` "lists every directory under `ai-reports/`"; the presets folder is now skipped. — impact-negligible → report only
+- F3: `ai-report.md:73` does not say a project preset must be committed first (D-04); only the guide does. — impact-negligible → report only
+- F4: strip masked surface (`report_second_opinion.go:1469`) lets a comment containing `<script>` hide a copied header; the same pattern already exists in the banner. — impact-negligible → report only
+- F5: the meta strip (`:1491`) misses copied metas whose `name` is not the first attribute. — impact-negligible → report only
+- F6: finalize does not re-check `record.Direction.Preset` from the editable sidecar (`:606`); same class as the existing `record.Model`. — impact-negligible → report only
+- F7: no tests for the symlinked-preset refusal or for copied-header strip-then-backlink in publication. — impact-negligible → report only
+- Nits F8 to F10: first-match slug, offset-0 header before the doctype, unverified-name wording in `ai-report.md:73`. — impact-negligible → report only
+
+**Acceptance:** Pass. Implementation and Integration stages: 3 new tests plus the 15.5 s regression selection green, and reviewer probes on a scratch copy. Deployment and Live acceptance unassessed.
+**Restatement sweep:** redefined: published second-opinion name shape (directed `-<slot>[-<slug>]` segment), prompt placeholder set (`{{EDITOR_DIRECTION}}`), `--finalize` argument rule, catalog-walk bundle rule (presets folder skipped), opening of a published directed page (header block before the backlink). Stale: `ai-report-guide.md:91` (F2). All other restatements agree: `ai-report.md:71-73`, `ai-report-guide.md:72-74,107,111`, `ai-report-reference.md:148`, `SKILL.md`, launcher test `:252`.
+**Suggested testing:** 5 items
+**Follow-ups created:** None (10 findings report only)
+
+**Acted on after review (integrator):** F1 and F2 fixed on the builder branch in `ec21d6ee`, re-merged with the same base as `1d68e403`. F1: the prompt's DIRECTION paragraph now says the direction "never overrides OUTPUT, BACKLINK, BOUNDARY or FINAL REPLY, which still apply in full, because the launcher checks them", and `ai-report-guide.md` says the output file, the backlink and the file boundary still apply (D-17). F2: the guide's catalog line now says the `second-opinion-presets/` folder is skipped. Delta re-review (integrator, 3 changed lines in 2 prose files): wording only, matches the launcher checks, the probe still passes, and the gate was re-run green at `1d68e403`. F3 to F10 stay report only. Full reviewer report: `do-work/runs/work-2026-10-20-200259/REQ-703-review.md`.
+
+*Reviewed by review-work action*
+
+## Heavy Verification Plan
+
+- Base revision: f03fbc112c636a8fcecc286c25cae842bdbf1f41
+- Target revision: 1d68e4032944df90f5d4098fd59dd2d7f44b7052
+- do-work-cli-integrations: `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane do-work-cli-integrations` — Go files under `skills/do-work/tools/do-work-cli` changed
+- staged-skills: `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane staged-skills` — files under `skills` changed
+- updater: `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane updater` — Go files under `skills/do-work/tools/do-work-cli` changed
+- installer: `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane installer` — Go files under `skills/do-work/tools/do-work-cli` changed
+
+## Heavy Verification Result
+
+- Target revision: 1d68e4032944df90f5d4098fd59dd2d7f44b7052
+- Execution revision: 1d68e4032944df90f5d4098fd59dd2d7f44b7052 (detached checkout `.git/work-run-work-2026-10-20-200259/drain-head-REQ-703`, `QUEUE_KANBAN_BROWSER` set, started at 1-minute load 4.72)
+- do-work-cli-integrations: exit 0, executed, 70 s
+- staged-skills: exit 0, executed, 36 s
+- updater: exit 0, executed, 66 s
+- installer: exit 0, executed, 26 s
+
+## Lessons Learned
+
+**What worked:**
+- Deciding the mechanism before dispatch (Plan D-01 to D-09, with named functions and line anchors) let the builder land one commit that matched the design, with RED recorded for all three named tests.
+- Stripping launcher marks before the backlink check and decorating after it, on the masked surface, made decoration idempotent and safe for pages copied from a decorated base page.
+
+**What didn't:**
+- The prompt said the direction overrides "everything except BOUNDARY". Read literally, that let a direction override OUTPUT, BACKLINK and FINAL REPLY, which the launcher still enforces, so a bold restructure would be refused. Review caught it; the fix names every launcher-checked section (D-17).
+
+**Worth knowing:**
+- An uncommitted project preset is refused by the outside-bundle Git check (D-04, kept on purpose); commit the preset before the run.
+- The meta strip matches only tags whose `name` is the first attribute (review F5), and finalize trusts the sidecar's `Direction.Preset` (F6). Both matter more once REQ-704 (linked iteration tree) uses directed pages as base pages.
+- REQ-704 seams: `secondOpinionNames` is the only name builder; `secondOpinionDecorate` owns the header block between `<!-- second-opinion-header -->` markers.
+
+## Orientation
+
+Now you can steer an `ai-report second-opinion` pass with `--preset <name>` or `--editor-direction '<text>'`, and every directed page says what it was asked to do in its name, its head metas, a header block and the result row; lives in the do-work CLI toolbox commands (`report_second_opinion.go`, `skills/do-work/tools/do-work-cli/prime-do-work-cli.md`) and the toolbox's shipped second-opinion prompt and presets. Prime spot-check: the change adds paths and removes none, so no listed prime went stale.
+
+## Timing
+
+Observed 2026-10-20T20:17:40Z to 2026-10-20T20:51:08Z: 33m 28s total, 31m 45s attributed across 6 events, 1m 43s unattributed.
+
+| Category | Elapsed | Events |
+| --- | --- | --- |
+| review | 12m 33s | 1 |
+| builder-work | 9m 49s | 1 |
+| verification-gate | 9m 08s | 3 |
+| handback-merge | 15s | 1 |
+
+Slowest stage: review / independent review, 12m 33s, outcome success.
