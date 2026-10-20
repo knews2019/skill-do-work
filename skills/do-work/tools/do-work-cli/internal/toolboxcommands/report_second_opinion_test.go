@@ -31,7 +31,7 @@ func secondOpinionFixture(t *testing.T) (string, string) {
 	toolboxTestGit(t, repository, "add", ".")
 	toolboxTestGit(t, repository, "commit", "-qm", "fixture")
 	template := filepath.Join(t.TempDir(), "prompt.md")
-	os.WriteFile(template, []byte("Output: {{OUTPUT_FILE}}\nPrefix: {{ASSET_PREFIX}}\nRepository: {{REPOSITORY_ROOT}}\nBundle: {{BUNDLE_PATH}}\n{{BACKLINK_REQUIREMENT}}\nDirection: {{EDITOR_DIRECTION}}\n"), 0644)
+	os.WriteFile(template, []byte("Output: {{OUTPUT_FILE}}\nPrefix: {{ASSET_PREFIX}}\nRepository: {{REPOSITORY_ROOT}}\nBundle: {{BUNDLE_PATH}}\n{{BACKLINK_REQUIREMENT}}\nDirection: {{EDITOR_DIRECTION}}\nBase: {{BASE_PAGE}}\nChange list: {{CHANGE_LIST_REQUIREMENT}}\n"), 0644)
 	t.Setenv("DO_WORK_AI_REPORT_SECOND_OPINION_PROMPT", template)
 	bin := t.TempDir()
 	gitPath, err := exec.LookPath("git")
@@ -914,20 +914,20 @@ func TestSecondOpinionDirectedRunNamesAndMarksPage(t *testing.T) {
 	if !strings.Contains(string(prompt), "Direction: Shipped bold: add motion.\n\nadd a timeline\n") {
 		t.Fatalf("prompt lacks preset-then-free-text direction: %s", prompt)
 	}
-	if row["page"] != "ai-reports/2026-10-15_1200-example/index-codex-actual-model-1-bold-add-a-timeline.html" || row["reply"] != "ai-reports/2026-10-15_1200-example/codex-actual-model-1-bold-add-a-timeline-reply.md" {
+	if row["page"] != "ai-reports/2026-10-15_1200-example/index-v1c01-codex-actual-model-1-bold-add-a-timeline.html" || row["reply"] != "ai-reports/2026-10-15_1200-example/v1c01-codex-actual-model-1-bold-add-a-timeline-reply.md" {
 		t.Fatalf("directed names: %v", row)
 	}
 	if row["preset"] != "bold" || row["preset_file"] != filepath.Join(shipped, "bold.md") || row["editor_direction"] != "add a timeline" {
 		t.Fatalf("row lacks direction provenance: %v", row)
 	}
-	directed := page("index-codex-actual-model-1-bold-add-a-timeline.html")
+	directed := page("index-v1c01-codex-actual-model-1-bold-add-a-timeline.html")
 	for _, mark := range []string{`<meta name="ai-report-second-opinion-preset" content="bold">`, `<meta name="ai-report-second-opinion-direction" content="Shipped bold: add motion.`, "<!-- second-opinion-header -->", "<!-- /second-opinion-header -->", "add a timeline"} {
 		if !strings.Contains(directed, mark) {
 			t.Fatalf("directed page lacks %q: %s", mark, directed)
 		}
 	}
 	row = secondOpinionRows(t, secondOpinionInvoke(t, repo, "--backend", "codex", "--editor-direction", "add a timeline"))[0]
-	if row["page"] != "ai-reports/2026-10-15_1200-example/index-codex-actual-model-1-custom-add-a-timeline.html" || row["preset"] != nil {
+	if row["page"] != "ai-reports/2026-10-15_1200-example/index-v1c02-codex-actual-model-1-custom-add-a-timeline.html" || row["preset"] != nil {
 		t.Fatalf("free-text-only run: %v", row)
 	}
 	row = secondOpinionRows(t, secondOpinionInvoke(t, repo, "--backend", "codex"))[0]
@@ -940,19 +940,19 @@ func TestSecondOpinionDirectedRunNamesAndMarksPage(t *testing.T) {
 	os.WriteFile(stage, []byte(`<html><body><p>Original report: <a href="index.html">index.html</a></p><h1>Bold</h1></body></html>`), 0644)
 	os.WriteFile(strings.TrimSuffix(stage, ".html")+"-reply.md", []byte("Clarity: bolder.\n- Variation slug: Motion Pass\n"), 0644)
 	row = secondOpinionRows(t, secondOpinionInvoke(t, repo, "--finalize", stage))[0]
-	if row["state"] != "ran" || row["page"] != "ai-reports/2026-10-15_1200-example/index-claude-claude-fable-5-1-bold-motion-pass.html" || row["preset"] != "bold" || row["preset_file"] != filepath.Join(shipped, "bold.md") {
+	if row["state"] != "ran" || row["page"] != "ai-reports/2026-10-15_1200-example/index-v1c03-claude-claude-fable-5-1-bold-motion-pass.html" || row["preset"] != "bold" || row["preset_file"] != filepath.Join(shipped, "bold.md") {
 		t.Fatalf("finalize lost the prepared direction: %v", row)
 	}
 	direction := secondOpinionDirection{Preset: "bold", PresetText: "Go <further> & \"faster\"", EditorDirection: "add a timeline"}
 	withHead := []byte(`<html><head><title>T</title><script>const fake = "<!-- second-opinion-header --></head>";</script></head><body class="x"><p>Original report: <a href="index.html">index.html</a></p></body></html>`)
-	once := secondOpinionDecorate(withHead, direction)
-	if twice := secondOpinionDecorate(once, direction); string(twice) != string(once) {
+	once := secondOpinionDecorate(withHead, direction, secondOpinionTreeMarks{})
+	if twice := secondOpinionDecorate(once, direction, secondOpinionTreeMarks{}); string(twice) != string(once) {
 		t.Fatalf("decoration not idempotent:\n%s\n%s", once, twice)
 	}
 	if !strings.Contains(string(once), `const fake = "<!-- second-opinion-header --></head>";</script><meta name="ai-report-second-opinion-preset" content="bold"><meta name="ai-report-second-opinion-direction" content="Go &lt;further&gt; &amp; &#34;faster&#34;`) {
 		t.Fatalf("metas not before the real </head>, or not escaped: %s", once)
 	}
-	if string(secondOpinionDecorate(once, secondOpinionDirection{})) != string(withHead) {
-		t.Fatalf("plain decoration did not strip the launcher marks: %s", secondOpinionDecorate(once, secondOpinionDirection{}))
+	if string(secondOpinionDecorate(once, secondOpinionDirection{}, secondOpinionTreeMarks{})) != string(withHead) {
+		t.Fatalf("plain decoration did not strip the launcher marks: %s", secondOpinionDecorate(once, secondOpinionDirection{}, secondOpinionTreeMarks{}))
 	}
 }
