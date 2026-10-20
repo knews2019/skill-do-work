@@ -1,7 +1,7 @@
 ---
 id: REQ-704
 title: 'Second opinions build a linked iteration tree on any base page'
-status: pending
+status: claimed
 created_at: 2026-10-20T19:59:08Z
 user_request: UR-160
 addendum_to: REQ-698
@@ -16,6 +16,7 @@ depends_on: [REQ-703]
 related: [REQ-703]
 batch: UR-160
 write_set: ["skills/do-work-toolbox/docs/ai-report-second-opinion-prompt.md", "skills/do-work/tools/do-work-cli/internal/toolboxcommands/report_second_opinion.go", "skills/do-work/tools/do-work-cli/internal/toolboxcommands/report_second_opinion_test.go", "skills/do-work/tools/do-work-cli/internal/resultmodel/result_model.go", "skills/do-work-toolbox/actions/ai-report.md", "skills/do-work-toolbox/docs/ai-report-guide.md"]
+claimed_at: 2026-10-20T21:19:46Z
 ---
 # Second Opinions Build A Linked Iteration Tree On Any Base Page
 ## What
