@@ -74,7 +74,7 @@ func TestCancelledCommitKillsTermDeafHookBeforeReturning(t *testing.T) {
 	var result TransactionResult
 	select {
 	case result = <-done:
-	case <-time.After(3 * time.Second):
+	case <-time.After(processEventTimeout):
 		t.Fatal("cancelled commit did not return")
 	}
 
@@ -152,7 +152,7 @@ func TestCancelledCommitThatLandsReportsCommittedRisk(t *testing.T) {
 	var result TransactionResult
 	select {
 	case result = <-done:
-	case <-time.After(3 * time.Second):
+	case <-time.After(processEventTimeout):
 		t.Fatal("cancelled commit did not return")
 	}
 
@@ -189,9 +189,16 @@ func TestCancelledCommitThatLandsReportsCommittedRisk(t *testing.T) {
 	}
 }
 
+// processEventTimeout bounds each wait for git to start the hook or for the
+// cancelled transaction to return. Both waits end as soon as the event happens,
+// so the bound only matters on a loaded machine: 3 s failed with "no process id
+// was recorded" in a parallel heavy lane. It stays under the hooks' 30 s sleep,
+// so a cancellation that never reaches them still fails here.
+const processEventTimeout = 15 * time.Second
+
 func awaitRecordedPID(t *testing.T, markerPath string) int {
 	t.Helper()
-	deadline := time.Now().Add(3 * time.Second)
+	deadline := time.Now().Add(processEventTimeout)
 	for time.Now().Before(deadline) {
 		contents, err := os.ReadFile(markerPath)
 		if err == nil {
