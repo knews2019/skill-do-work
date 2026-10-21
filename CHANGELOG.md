@@ -10,6 +10,17 @@ For the complete release history, read this file and the archives below from new
 - [0.50.0 through 0.64.1](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-13-up-to-v0.64.1.md)
 - [0.1.0 through 0.49.0](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-07-up-to-v0.49.0.md)
 
+## 0.306.8 — Second Opinions Build a Linked Iteration Tree (2026-10-21)
+
+You can now run a second opinion on top of an earlier one and walk through every iteration from the original report. Directed pages now carry a tree id in their names.
+
+- `ai-report second-opinion` accepts a page path as its target: `index.html` or a tree page such as `index-v1c01-codex-gpt-5-bold.html`. The page names both the bundle and the page the editor rewrites. Other pages, including the older second-opinion pages, are refused as a base.
+- Every directed run (`--preset` or `--editor-direction`) and every run on a tree page gets a tree id. `index.html` is `v1`, its passes are `v1c01`, `v1c02`, and a pass on `v1c01` is `v1c01c01`. The id is in both names (`index-v1c01-codex-gpt-5-bold.html`, `v1c01-codex-gpt-5-bold-reply.md`), so a byte-order listing (`LC_ALL=C ls`) shows the tree in order. Directed names from 0.306.6 change shape. Plain runs keep their old names.
+- Each tree page's header links its parent page, and its head carries `ai-report-second-opinion-id`, `-base`, `-model` and `-date` metas. Copied launcher metas are now stripped in either attribute order.
+- The editor must open a tree page with a "Changed in this iteration" list whose `#rev-<n>` links reach sections marked `changed`. A missing list or a link without its target is an `AI-REPORT-SECOND-OPINION-CHANGE-LIST` judge finding: the page is kept and `index.html` is not touched.
+- After judge `pass`, one launcher-owned iteration list on `index.html` shows every tree page (id, preset, model, date). Tree pages get this list instead of the per-filename banner.
+- Result rows gain `tree_id` and `base_page`.
+
 ## 0.306.7 — Your Second-Opinion Presets Live in the Report Bundle (2026-10-20)
 
 Your own second-opinion preset now sits inside the report it steers, so it needs no commit before a run, and the run reads nothing outside the bundle.

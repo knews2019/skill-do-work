@@ -1,7 +1,7 @@
 ---
 id: REQ-704
 title: 'Second opinions build a linked iteration tree on any base page'
-status: claimed
+status: completed
 created_at: 2026-10-20T19:59:08Z
 user_request: UR-160
 addendum_to: REQ-698
@@ -31,6 +31,13 @@ planning_at: 2026-10-20T21:28:43Z
 dispatch_at: 2026-10-20T22:00:40Z
 builder_handback_at: 2026-10-20T22:12:40Z
 integration_at: 2026-10-20T22:13:00Z
+review_at: 2026-10-21T10:51:43Z
+kb_status: pending
+commit: 30666c9d7363e19a46f9d776d3e31e4916634488
+heavy_verified_at: 2026-10-21T11:00:53Z
+heavy_verified_revision: 30666c9d7363e19a46f9d776d3e31e4916634488
+completed_at: 2026-10-21T11:01:16Z
+release_at: 2026-10-21T11:01:16Z
 ---
 # Second Opinions Build A Linked Iteration Tree On Any Base Page
 ## What
@@ -295,7 +302,7 @@ Read directly by the pre-dispatch agent at main `11780ac0`: `report_second_opini
 
 ## Testing
 
-**Tests run:** `DO_WORK_FAST_STAGE_REUSE=off bash _dev/tests/maintainer-verify.sh` in the main checkout at `c5a8aa8d` (code identical to merge `92443689`: the two commits after it touch only `do-work/`), run 1 of this session started 2026-10-21T10:34:54Z at 1-minute load 4.99 (the machine had just rebooted; waited for load under 5), wall 146 s, exit 0. An earlier run at `92443689` (started 2026-10-20T22:14:47Z) was stopped by the coordinator at the session handoff and has no result; it is not counted. Then `advance --gate-arg bash --gate-arg _dev/tests/maintainer-verify.sh --gate-exit-status 0 -- --probe-file do-work/runs/work-2026-10-20-200259/REQ-704-probe.sh`: green-gate satisfied, `run-blocked-check` satisfied (probe status 0: shipped prompt placeholders and DIRECTION exception list, action and guide prose, and the four named tests all `--- PASS`).
+**Tests run:** `DO_WORK_FAST_STAGE_REUSE=off bash _dev/tests/maintainer-verify.sh` in the main checkout at `c5a8aa8d` (code identical to merge `92443689`: the two commits after it touch only `do-work/`), run 1 of this session started 2026-10-21T10:34:54Z at 1-minute load 4.99 (the machine had just rebooted; waited for load under 5), wall 146 s, exit 0. An earlier run at `92443689` (started 2026-10-20T22:14:47Z) was stopped by the coordinator at the session handoff and has no result; it is not counted. Then `advance --gate-arg bash --gate-arg _dev/tests/maintainer-verify.sh --gate-exit-status 0 -- --probe-file do-work/runs/work-2026-10-20-200259/REQ-704-probe.sh`: green-gate satisfied, `run-blocked-check` satisfied (probe status 0: shipped prompt placeholders and DIRECTION exception list, action and guide prose, and the four named tests all `--- PASS`). After the review fix (F1, F2: four prose sentences, builder-branch commit `cd29e7f3`, re-merged as `30666c9d` with the same `<pre>` `87614289`): the same gate argv at `30666c9d` (run 2, started 2026-10-21T10:48:33Z at 1-minute load 4.94, wall 142 s) exit 0, recorded with `record-green-gate`; the probe exits 0 there.
 **Result:** ✓ All passing (do-work-cli 950 tests in 70 s, queue-kanban 427 tests in 46 s, every per-file budget under 30 s; slowest file `report_second_opinion_test.go` at 26.49 s, so the D-13 split into `report_second_opinion_tree_test.go` kept the budget)
 
 **Red-green validation (from the builder hand-back, tdd: true):**
@@ -311,10 +318,90 @@ Read directly by the pre-dispatch agent at main `11780ac0`: `report_second_opini
 - `report_second_opinion_test.go` (from REQ-703): `TestSecondOpinionDirectedRunNamesAndMarksPage` expected names gain `v1c01`, `v1c02`, `v1c03` (D-12, a contract change the REQ asks for); its `secondOpinionDecorate` unit calls pass empty tree marks; the fixture template gains `{{BASE_PAGE}}` and `{{CHANGE_LIST_REQUIREMENT}}` lines.
 
 **Heavy verification plan:**
-- Range: 8761428912ce0310eadb3b898808c2529ed618ba..924436891f0c7c3ebd9720dbfd2b4594c556b664
+- Range: 8761428912ce0310eadb3b898808c2529ed618ba..924436891f0c7c3ebd9720dbfd2b4594c556b664 (first plan). Re-planned after the re-merge for `8761428912ce0310eadb3b898808c2529ed618ba..30666c9d7363e19a46f9d776d3e31e4916634488`: the range now also holds `do-work/` run-artifact commits, and the uncovered `REQ-704-progress.log` makes the plan uncertain, so it selects all six lanes (adds `queue-kanban-javascript` and `queue-kanban-browser`); the drain runs all six. See `## Heavy Verification Plan`.
 - do-work-cli-integrations: `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane do-work-cli-integrations` — the four Go files matched subtree `skills/do-work/tools/do-work-cli`
 - staged-skills: `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane staged-skills` — all eight changed files matched subtree `skills`
 - updater: `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane updater` — the four Go files matched subtree `skills/do-work/tools/do-work-cli`
 - installer: `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane installer` — the four Go files matched subtree `skills/do-work/tools/do-work-cli`
 
 *Verified by work action*
+
+## Review
+
+**Overall: 95%** | 2026-10-21T10:51:43Z
+
+| Dimension | Score |
+|-----------|-------|
+| Requirements | 100% |
+| Code Quality | 92% |
+| Test Adequacy | 88% |
+| Scope | 100% |
+| Risk | Low |
+| Acceptance | Pass |
+
+**Important findings (each with its recorded impact token — this is the durable audit record the judgment mandates):**
+None
+
+**Minor findings:**
+- F1 `ai-report.md:73`, `ai-report-guide.md:107`: "a plain `ls` lists the tree in order" holds for byte order (macOS verified) but plausibly not under glibc `en_US.UTF-8`, which ignores `-`; say "a byte-order listing (`LC_ALL=C ls`)" — impact-user-visible → report only
+- F2 `ai-report.md:75`, `ai-report-guide.md:107,111`: plain-run-only sentences (numeric suffix, new banner, "direction header on a directed page") are left unqualified; a tree run gets a new id, no suffix, no banner, and a no-flag tree page also gets the header — impact-negligible → report only
+- F3 `lessons-do-work-cli.md:95`: the REQ-703 bullet still says the meta strip misses reordered copies, which REQ-704 D-06 fixed; the integrator could append "(fixed in REQ-704)" during the link sweep — impact-negligible → report only
+- F4 `report_second_opinion_tree_test.go`: no test pins the widened strip (copied content-first meta or tree block on a tree page) or the tree-run refusal of a template without the new placeholders (reviewer probe confirmed both); fixture writes ignore errors — impact-negligible → report only
+- F5 `report_second_opinion.go:1426`: two simultaneous publishes on one base with different stems can allocate the same `cNN` (ReadDir to page-write window; `--all` is sequential) — impact-negligible → report only
+- F6 (Nit) `report_second_opinion.go:1696`: repeated links to one missing anchor give duplicate findings — impact-negligible → report only
+- F7 (Nit) `report_second_opinion.go:258,655,974,1625`: `cmp.Or(direction.Base, "index.html")` repeated four times and `base_page` built twice; one method would hold it — impact-negligible → report only
+
+**Anti-bloat:** 8 unnamed additions, all keep: `secondOpinionTreeMarks`, `secondOpinionChangeList`, `secondOpinionTreeList`, `secondOpinionTreeStart`/`End`, test const `secondOpinionValidChangeList`, test helpers `secondOpinionFakeTreeEditor` and `secondOpinionStubJudgePass`, `cmp` import. The hand-back's list is complete but labels `secondOpinionTreeMarks` and `secondOpinionTreeList` as brief-named.
+**Acceptance:** Pass. Implementation and integration stages: the four named tests and `-run SecondOpinion` (toolboxcommands, resultmodel) passed at `c5a8aa8d`; scratch-copy probes confirmed strip, idempotence, allocation and template refusal; the builder's RED at `94f52975` is recorded; the gate passed at `c5a8aa8d`.
+**Restatement sweep:** redefined: published second-opinion names (directed and base-page runs carry a tree id, `index-v1c01-...`, no `-N`), positional target (accepts a page), `index.html` write (pass-gated banner on plain runs, iteration list on tree runs), prompt placeholder set (`{{BASE_PAGE}}`, `{{CHANGE_LIST_REQUIREMENT}}`) and the DIRECTION exception list (now with CHANGE LIST), run-row fields (`tree_id`, `base_page`), launcher meta set and strip (`-id`, `-base`, `-model`, `-date`; either attribute order). Inherited from REQ-703 (name shape, placeholder set, `--finalize` argument rule, catalog-walk rule, header before the backlink) and REQ-705 (bundle-only user presets, `preset_file` meaning, catalog walk no longer skips the presets folder). Grepped `skills/`, `docs/`, `_dev/`, `suite/` and READMEs, with CHANGELOG entries, `do-work/` records and `ai-reports/` pages left as history. Stale: `ai-report.md:73` and guide :107 `ls` claim (F1), `ai-report.md:75` and guide :107, :111 plain-run sentences (F2), `lessons-do-work-cli.md:95` (F3). Agreeing: the usage string, `ai-report.md:21,65-67,71,73`, guide :72-74, :107, :111 (tree parts), `ai-report-reference.md:148`, the prompt INPUT, CHANGE LIST and DIRECTION lines, `SKILL.md`, `result_model.go:719-721`, the shipped presets (no restatement), launcher test `_dev/tests/do-work-cli-launcher-behavior.sh:252` (an env check, not a fill). REQ-703 and REQ-705 both had a sweep line, so nothing is unread for the sweep.
+**Suggested testing:** 4 items
+**Follow-ups created:** None (7 findings report only)
+
+**Acted on:** F1 and F2 fixed by the integrator on the builder branch (`cd29e7f3`, four prose sentences in `ai-report.md` and `ai-report-guide.md`: the listing order is a byte-order listing such as `LC_ALL=C ls`, and the numeric-suffix and new-banner sentences now say plain run), re-merged with the same `<pre>` as `30666c9d`; the repository gate re-ran green there and the probe exits 0. Delta re-review by the integrator: the two-file diff `92443689..30666c9d -- skills/` changes only those sentences. F3 handled in the finalization link sweep (the REQ-703 bullet gains "fixed in REQ-704"). F4-F7 stay report only. Full report: `do-work/runs/work-2026-10-20-200259/REQ-704-review.md`.
+
+*Reviewed by review-work action*
+
+## Heavy Verification Plan
+
+- Base: `8761428912ce0310eadb3b898808c2529ed618ba`
+- Target: `30666c9d7363e19a46f9d776d3e31e4916634488`
+- queue-kanban-javascript: `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane queue-kanban-javascript` — plan uncertain: `do-work/runs/work-2026-10-20-200259/REQ-704-progress.log` is uncovered, so every lane is selected
+- queue-kanban-browser: `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane queue-kanban-browser` — plan uncertain: same uncovered run-artifact path
+- do-work-cli-integrations: `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane do-work-cli-integrations` — the four Go files matched subtree `skills/do-work/tools/do-work-cli`
+- staged-skills: `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane staged-skills` — the eight changed shipped files matched subtree `skills`
+- updater: `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane updater` — the four Go files matched subtree `skills/do-work/tools/do-work-cli`
+- installer: `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane installer` — the four Go files matched subtree `skills/do-work/tools/do-work-cli`
+
+## Heavy Verification Result
+
+- Target: `30666c9d7363e19a46f9d776d3e31e4916634488`; execution revision `30666c9d7363e19a46f9d776d3e31e4916634488` (detached checkout `.git/work-run-work-2026-10-20-200259/drain-head-REQ-704`, removed afterwards; `QUEUE_KANBAN_BROWSER` set to Chrome)
+- queue-kanban-javascript: executed, exit 0, 9 s
+- queue-kanban-browser: executed, exit 0, 101 s (a real run, no `HEAVY-RUN-LANE-SKIPPED`)
+- do-work-cli-integrations: run 1 executed, exit 1, 80 s at 1-minute load above 5 after a reboot: `TestCancelledCommitThatLandsReportsCommittedRisk` (`internal/gittransaction`, `no process id was recorded at .../hook.pid`, a timing-bound cancellation test outside this REQ's files); run 2 alone at load 4.19 executed, exit 0, 97 s
+- staged-skills: executed, exit 0, 45 s
+- updater: executed, exit 0, 75 s
+- installer: executed, exit 0, 31 s
+
+## Lessons Learned
+
+**What worked:** Deriving the whole tree from exact filenames (one pattern on the whole basename, `v1(c[0-9]{2})+`) kept tree state out of any file: byte order of the names is pre-order, so the iteration list is a sorted `os.ReadDir`, and the three old non-tree pages can never match. Moving decoration after naming let one name builder own the id. Splitting the new tests into `report_second_opinion_tree_test.go` (D-13) kept `report_second_opinion_test.go` at 26.49 s under the 30 s per-file budget.
+**What didn't:** The prose claim "a plain `ls` lists the tree in order" was true on macOS and plausibly false on Linux, where locale collation ignores `-`; the review caught it and the docs now say byte-order listing (`LC_ALL=C ls`). The first gate run was lost to a session handoff and had to be rerun from the start.
+**Worth knowing:** A launcher block the launcher rebuilds in place must carry no whitespace outside its markers, or each rebuild adds bytes. Every launcher mark an editor can copy from a base page (header, tree block, any `ai-report-second-opinion-*` meta in either attribute order) is stripped before the backlink check, because the tree list reads metas first-wins. Two publishes on one base at the same instant could allocate the same child id (review F5); `--all` runs backends one after another, so normal use is safe. Re-planning heavy lanes over a range that includes `do-work/` run-artifact commits makes the plan uncertain and selects every lane.
+
+## Orientation
+
+Now a second opinion can target any tree page, and each directed or tree run publishes `index-<tree-id>-...html` with a parent link, a checked "Changed in this iteration" list, and a pass-gated iteration list on the original `index.html`; tree state is the filenames plus metas only. Lives in the do-work-cli toolbox commands (`prime-do-work-cli.md`, ai-report second opinion in `report_second_opinion.go`). Prime spot-check: no prime file names a second-opinion path or function, so none is stale.
+
+## Timing
+
+Observed 2026-10-20T22:00:40Z to 2026-10-21T11:00:52Z: 13h 00m 12s total, 36m 11s attributed across 5 events, 12h 24m 01s unattributed.
+
+| Category | Elapsed | Events |
+| --- | --- | --- |
+| review | 12m 03s | 1 |
+| builder-work | 12m 00s | 1 |
+| verification-gate | 11m 52s | 2 |
+| handback-merge | 16s | 1 |
+
+Slowest stage: review / Route C review with wave-end restatement sweep, 12m 03s, outcome success.
+Slowest command: verification-gate / repository gate and advance test gate, 3m 26s, exit 0, .
