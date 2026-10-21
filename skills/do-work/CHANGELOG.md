@@ -10,6 +10,13 @@ For the complete release history, read this file and the archives below from new
 - [0.50.0 through 0.64.1](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-13-up-to-v0.64.1.md)
 - [0.1.0 through 0.49.0](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-07-up-to-v0.49.0.md)
 
+## 0.306.9 — Cancelled-Commit Tests No Longer Fail on a Busy Machine (2026-10-21)
+
+Only the tests changed. The two Git cancellation tests used to fail when many test suites ran at once, and now they pass.
+
+- `TestCancelledCommitThatLandsReportsCommittedRisk` and `TestCancelledCommitKillsTermDeafHookBeforeReturning` now wait up to 15 s, not 3 s, for git to start its pre-commit hook and for the cancelled call to return. The 3 s wait failed with "no process id was recorded" in the parallel `do-work-cli-integrations` heavy lane.
+- The 15 s limit stays under the hooks' 30 s sleep, so a cancellation that never reaches the hook still fails the test.
+
 ## 0.306.8 — Second Opinions Build a Linked Iteration Tree (2026-10-21)
 
 You can now run a second opinion on top of an earlier one and walk through every iteration from the original report. Directed pages now carry a tree id in their names.
