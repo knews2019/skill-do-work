@@ -292,3 +292,29 @@ Read directly by the pre-dispatch agent at main `11780ac0`: `report_second_opini
 **Scope comparison:** declared 15 paths; touched 8 project paths, all declared; the 7 untouched are the release files, the lessons satellite and `do-work/lessons-index.md`, written at finalization. `report_index.go`, `report_judge.go`, `SKILL.md`, the adapters and the three existing second-opinion pages under `ai-reports/` are untouched.
 
 **Judgment:** the change follows D-01 to D-13 and the hand-back's D-14 to D-20 (468 insertions, 64 deletions over 8 files, 215 of them the new test file). The builder's RED evidence names the REQ's stated RED failure. Qualified.
+
+## Testing
+
+**Tests run:** `DO_WORK_FAST_STAGE_REUSE=off bash _dev/tests/maintainer-verify.sh` in the main checkout at `c5a8aa8d` (code identical to merge `92443689`: the two commits after it touch only `do-work/`), run 1 of this session started 2026-10-21T10:34:54Z at 1-minute load 4.99 (the machine had just rebooted; waited for load under 5), wall 146 s, exit 0. An earlier run at `92443689` (started 2026-10-20T22:14:47Z) was stopped by the coordinator at the session handoff and has no result; it is not counted. Then `advance --gate-arg bash --gate-arg _dev/tests/maintainer-verify.sh --gate-exit-status 0 -- --probe-file do-work/runs/work-2026-10-20-200259/REQ-704-probe.sh`: green-gate satisfied, `run-blocked-check` satisfied (probe status 0: shipped prompt placeholders and DIRECTION exception list, action and guide prose, and the four named tests all `--- PASS`).
+**Result:** ✓ All passing (do-work-cli 950 tests in 70 s, queue-kanban 427 tests in 46 s, every per-file budget under 30 s; slowest file `report_second_opinion_test.go` at 26.49 s, so the D-13 split into `report_second_opinion_tree_test.go` kept the budget)
+
+**Red-green validation (from the builder hand-back, tdd: true):**
+- `TestSecondOpinionTreeListOnIndexFollowsTreeOrder` (`report_second_opinion_tree_test.go`): ✗ at base `94f52975`: `missing typed backend summary: ... "observed_evidence":["bundle must be a physical direct child of ai-reports"]` (a page target refused; the REQ's stated RED) → ✓ after, at the builder tip and at merge `92443689`.
+- `TestSecondOpinionTreeTargetsNamesAndParentHeader`: ✗ at base: `run on index.html, want v1c01: ... page:.../index-codex-actual-model-1-bold.html` (directed name without a tree id) → ✓ after.
+- `TestSecondOpinionChangeListTargetsAreChecked`: ✗ at base: `v1c01: change list not checked, want findings [#rev-2]: ... banner_state:inserted judge_findings:[] judge_verdict:pass` → ✓ after.
+- GREEN cases (1)-(6) of `## Red-Green Proof` map to these three tests plus the updated `TestSecondOpinionDirectedRunNamesAndMarksPage` (case 6, plain run keeps `index-<cli>-<model>.html`, is asserted in the tree-target test).
+
+**New tests added:**
+- `TestSecondOpinionTreeTargetsNamesAndParentHeader`, `TestSecondOpinionChangeListTargetsAreChecked`, `TestSecondOpinionTreeListOnIndexFollowsTreeOrder` in `skills/do-work/tools/do-work-cli/internal/toolboxcommands/report_second_opinion_tree_test.go` (new file, D-13)
+
+**Existing tests updated (cross-REQ impact):**
+- `report_second_opinion_test.go` (from REQ-703): `TestSecondOpinionDirectedRunNamesAndMarksPage` expected names gain `v1c01`, `v1c02`, `v1c03` (D-12, a contract change the REQ asks for); its `secondOpinionDecorate` unit calls pass empty tree marks; the fixture template gains `{{BASE_PAGE}}` and `{{CHANGE_LIST_REQUIREMENT}}` lines.
+
+**Heavy verification plan:**
+- Range: 8761428912ce0310eadb3b898808c2529ed618ba..924436891f0c7c3ebd9720dbfd2b4594c556b664
+- do-work-cli-integrations: `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane do-work-cli-integrations` — the four Go files matched subtree `skills/do-work/tools/do-work-cli`
+- staged-skills: `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane staged-skills` — all eight changed files matched subtree `skills`
+- updater: `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane updater` — the four Go files matched subtree `skills/do-work/tools/do-work-cli`
+- installer: `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane installer` — the four Go files matched subtree `skills/do-work/tools/do-work-cli`
+
+*Verified by work action*
