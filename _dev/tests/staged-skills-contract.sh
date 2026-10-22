@@ -42,6 +42,7 @@ core_files=(
   skills/do-work/actions/help.md
   skills/do-work/crew-members/coding-guardrails.md
   skills/do-work/crew-members/clear-questions.md
+  skills/do-work/crew-members/supply-chain.md
   skills/do-work/specs/bug-fix.md
   skills/do-work/specs/refactor.md
   skills/do-work/hooks/hooks.json
@@ -179,6 +180,7 @@ toolbox_files=(
   skills/do-work-toolbox/docs/present-work-guide.md
   skills/do-work-toolbox/docs/present-video-guide.md
   skills/do-work-toolbox/crew-members/ui-design.md
+  skills/do-work-toolbox/crew-members/supply-chain.md
 )
 
 for core_file in "${core_files[@]}"; do

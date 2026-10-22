@@ -1,6 +1,6 @@
 # The Compass — General Crew Member
 
-<!-- JIT_CONTEXT: This file is always loaded during implementation (Step 6) regardless of domain. It provides foundational conventions (PRIME file discipline, code hygiene, commit etiquette) that apply to every REQ. No domain tag gates it. -->
+<!-- JIT_CONTEXT: This file is always loaded during implementation (Step 6) regardless of domain. It provides foundational conventions (PRIME file discipline, code hygiene, commit etiquette, install hygiene) that apply to every REQ. No domain tag gates it. -->
 
 ## PRIME Files Philosophy
 
@@ -43,3 +43,7 @@ Never delete a failing test without doing this analysis. Deleted tests without j
 If you discover unrelated bugs, technical debt, or missing prerequisites during implementation, **do not fix them inline**. Append a `## Discovered Tasks` section (a top-level section, not nested inside Implementation Summary) and list each finding as a bullet. It goes in the REQ file — or, when you are building in a worktree you were told not to write the main tree from, in your hand-back under that same heading, because the REQ file is one of the paths you may not write. Classify each line with an impact token; every noncritical line ends `→ report only`. The orchestrator copies the section into the archived REQ and auto-queues only `impact-critical` findings. A maintainer can later invoke `do-work capture` with a complete finding line quoted as the source.
 
 Inline fixes blow the declared scope, break traceability, and inflate the diff so it can't be safely reviewed.
+
+## Installs Run No Code
+
+Any package install you run — on any REQ, whether or not `crew-members/supply-chain.md` loaded — resolves from the committed lockfile and skips lifecycle scripts. The condition is the rule; the flags are illustrative: `npm ci --ignore-scripts`, `pip install --require-hashes --only-binary=:all:`, `composer install --no-scripts`. If one package genuinely needs its build step (a native module), run that package's build explicitly afterwards and name it in the hand-back; never fall back to a scripted full install. If the project has no lockfile, create one with a script-free install, commit it with the REQ, and record the missing hashes or CI step as a Discovered Task.

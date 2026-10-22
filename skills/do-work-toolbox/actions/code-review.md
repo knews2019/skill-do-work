@@ -153,10 +153,12 @@ Check the scoped files for:
 | **Authentication/authorization** | Missing auth checks, inconsistent permission enforcement, privilege escalation paths |
 | **Data exposure** | Sensitive data in logs, error messages, API responses, or client bundles |
 | **Injection vectors** | SQL injection, command injection, XSS, path traversal, template injection |
-| **Dependency concerns** | Known vulnerable patterns, outdated security practices, missing CSRF/CORS protections |
+| **Dependency concerns** | Known vulnerable patterns, outdated security practices, missing CSRF/CORS protections; new dependencies without a stated reason, lockfiles without integrity hashes, install steps that run lifecycle scripts, runtime images carrying a shell or package manager |
 | **Secrets** | Hardcoded credentials, API keys, tokens — even if they look like placeholders |
 
 If `crew-members/security.md` exists, load it and apply the OWASP Top 10 checklist and framework-specific patterns to the scoped code. Classify findings using the same severity scale as the rest of this review (Critical / Important / Minor / Nit). Map security-specific levels: Critical → Critical, High → Important, Medium → Minor, Low → Nit.
+
+If `crew-members/supply-chain.md` exists and the scope includes a package manifest, lockfile, Dockerfile, or CI install step, load it and apply its Quality Checks table at the same severity scale.
 
 Only report findings relevant to the code in scope. Don't flag theoretical risks that don't apply.
 

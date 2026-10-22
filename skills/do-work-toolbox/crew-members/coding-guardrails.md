@@ -62,6 +62,12 @@ minimum code. This is the canonical statement of the principle; other files poin
 
 Ask: "Would a senior engineer say this is overcomplicated?" If yes, simplify.
 
+**Write before you import.** A dependency is code too — the largest kind. Before importing a
+package, estimate the part you actually need; 200 lines you wrote and can read beat 20,000 you
+imported and cannot. Review attention is the scarce resource. The dependency budget, install, and
+image rules live in `crew-members/supply-chain.md`, which loads when a REQ changes dependencies or
+creates a new service.
+
 **Simplify ≠ strip.** If removing something would need to be restored next week,
 it wasn't complexity — it was foundation. The test isn't "fewest lines"; it's
 "fewest lines *that still hold up under the REQ's real requirements*." When in

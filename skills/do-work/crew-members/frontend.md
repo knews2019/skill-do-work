@@ -6,6 +6,10 @@
 
 XSS sanitization, token storage, bundled secrets, and tabnabbing are owned by `crew-members/security.md` (see its Framework-Specific Patterns section) — don't restate them here.
 
+## Dependencies
+
+Hardened npm (hash-pinned lockfile, script-free installs, one framework, no plugin sprawl, distroless image) is owned by `crew-members/supply-chain.md` — it loads when the REQ changes dependencies or creates a new app. Don't restate its checklist here.
+
 ## Opinions
 
 - Animate only `transform` and `opacity` — these run on the compositor thread. Animating `width`, `height`, `top`, `left`, `margin`, or `padding` triggers layout recalculation.

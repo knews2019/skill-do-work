@@ -6,6 +6,10 @@
 
 Authentication, authorization, secrets handling, and rate limiting are owned by `crew-members/security.md` — it loads automatically when the surface touches those categories. Don't restate its checklist here.
 
+## Dependencies
+
+The dependency budget for a new service (Go by default: standard library plus a database driver), script-free installs, minimal images, and SBOMs are owned by `crew-members/supply-chain.md` — it loads when the REQ changes dependencies or creates a new service. Don't restate its checklist here.
+
 ## Opinions
 
 - **API versioning:** follow the project's existing convention (URL prefix, header-based, query param). If none exists and you're creating a new API surface, use URL prefix versioning (`/v1/`) and record the choice as a Decision (D-XX).

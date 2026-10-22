@@ -63,6 +63,8 @@ When implementing or reviewing security-sensitive code, verify against these cat
 | Pinned versions | Dependencies are pinned to specific versions — no floating ranges for security-critical packages |
 | Minimal surface | Only necessary dependencies are included. No unused packages expanding the attack surface |
 
+Dependency budgets, install-time execution, image minimality, and SBOMs are owned by `crew-members/supply-chain.md` — it loads when a REQ changes dependencies or creates a new service. Don't restate its checklist here.
+
 ### A07: Authentication Failures
 
 | Check | What to verify |

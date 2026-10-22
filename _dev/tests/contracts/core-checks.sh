@@ -802,7 +802,16 @@ import sys
 
 repo_root = Path(sys.argv[1])
 shared_path = "skills/do-work/crew-members/shared-principles.md"
-reader_steps = {"skills/do-work/actions/work.md": "6", "skills/do-work/actions/review-work.md": "2"}
+supply_path = "skills/do-work/crew-members/supply-chain.md"
+work_path = "skills/do-work/actions/work.md"
+# One row per crew-member load that an action rewrite must not silently drop:
+# (crew file, reader action, active step, line pattern inside that step).
+crew_loads = [
+    (shared_path, work_path, "6", r"^(?:[0-9]+[a-z]?\. )?(?:\*\*)?(?:Always load|Read)(?:\*\*)? `crew-members/shared-principles\.md`"),
+    (shared_path, "skills/do-work/actions/review-work.md", "2", r"^(?:[0-9]+[a-z]?\. )?(?:\*\*)?(?:Always load|Read)(?:\*\*)? `crew-members/shared-principles\.md`"),
+    (supply_path, work_path, "6", r"^(?:[0-9]+[a-z]?\. )?\*\*Conditionally load\*\* `crew-members/supply-chain\.md`"),
+    (supply_path, work_path, "4", r"Spawn a \*\*Plan agent\*\* with[^\n]*`crew-members/supply-chain\.md` when the REQ creates"),
+]
 source_files = {str(p.relative_to(repo_root)): p.read_text() for p in (repo_root / "skills").rglob("*.md")}
 
 def active_step(source_text, step_number):
@@ -829,12 +838,12 @@ def rationalization_rows(file_sources):
 
 def shared_contract_errors(file_sources, action_rows):
     errors = []
-    if not file_sources.get(shared_path, "").strip():
-        errors.append("shared principles file missing or empty")
-    for reader_path, step_number in reader_steps.items():
+    for crew_path, reader_path, step_number, pattern in crew_loads:
+        if not file_sources.get(crew_path, "").strip():
+            errors.append(crew_path + " missing or empty")
         step_text = active_step(file_sources.get(reader_path, ""), step_number)
-        if not re.search(r"^(?:[0-9]+[a-z]?\. )?(?:\*\*)?(?:Always load|Read)(?:\*\*)? `crew-members/shared-principles\.md`", step_text, re.M):
-            errors.append(reader_path + " active shared principles load missing")
+        if not re.search(pattern, step_text, re.M):
+            errors.append(reader_path + " Step " + step_number + " active load of " + crew_path + " missing")
     pair_count = sum(1 for index, first in enumerate(action_rows) for second in action_rows[index + 1:]
                      if first[0] != second[0] and max(difflib.SequenceMatcher(None, first[1], second[1]).ratio(),
                                                     difflib.SequenceMatcher(None, first[2], second[2]).ratio()) > 0.75)
@@ -850,22 +859,25 @@ if errors:
 
 # Mutate only the named seam. Intact prose elsewhere cannot satisfy a missing,
 # commented, negated, or displaced load in its active step.
-for reader_path in reader_steps:
+for crew_path, reader_path, step_number, pattern in crew_loads:
     reader_source = source_files[reader_path]
-    load_line = next(line for line in reader_source.splitlines() if "shared-principles.md`" in line)
-    for replacement in ("", "<!-- " + load_line + " -->", "Do not load `crew-members/shared-principles.md`."):
+    matched = re.search(pattern, active_step(reader_source, step_number), re.M).group()
+    load_line = next(line for line in reader_source.splitlines() if matched in line)
+    seam = reader_path + " Step " + step_number + " " + crew_path
+    for replacement in ("", "<!-- " + load_line + " -->", "Do not load `" + crew_path.split("skills/do-work/")[1] + "`."):
         mutant_sources = dict(source_files, **{reader_path: reader_source.replace(load_line, replacement, 1)})
-        assert shared_contract_errors(mutant_sources, []), "removed/disabled load survived: " + reader_path
+        assert shared_contract_errors(mutant_sources, []), "removed/disabled load survived: " + seam
     mutant_sources[reader_path] = reader_source.replace(load_line, "", 1) + "\n## Displaced load\n" + load_line
-    assert shared_contract_errors(mutant_sources, []), "displaced load survived: " + reader_path
-mutant_sources = dict(source_files)
-mutant_sources.pop(shared_path)
-assert shared_contract_errors(mutant_sources, []), "missing shared file survived"
+    assert shared_contract_errors(mutant_sources, []), "displaced load survived: " + seam
+for crew_path in {row[0] for row in crew_loads}:
+    mutant_sources = dict(source_files)
+    mutant_sources.pop(crew_path)
+    assert shared_contract_errors(mutant_sources, []), "missing crew file survived: " + crew_path
 fixture_row = '| "The queue needs a shortcut" | Keep its request boundary | Preserve the captured authorization |'
 fixture_sources = {"first.md": "## Common Rationalizations\n" + fixture_row,
                    "second.md": "## Common Rationalizations\n" + fixture_row}
 assert shared_contract_errors(source_files, rationalization_rows(fixture_sources)), "copied cross-file row survived"
-print("shared principles loads and mutations passed; near_identical_cross_file_pairs 0")
+print("crew-member loads (shared principles, supply chain) and mutations passed; near_identical_cross_file_pairs 0")
 PY_SHARED_PRINCIPLES
 then
   fail_count=$((fail_count + 1))
