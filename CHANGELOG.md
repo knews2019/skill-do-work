@@ -10,6 +10,18 @@ For the complete release history, read this file and the archives below from new
 - [0.50.0 through 0.64.1](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-13-up-to-v0.64.1.md)
 - [0.1.0 through 0.49.0](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-07-up-to-v0.49.0.md)
 
+## 0.307.0 — Supply-Chain Crew Member: Go-First Services, Script-Free Installs, Minimal Images (2026-10-23)
+
+A dependency is code that runs on every developer machine at install time and in every build. The skill now decides dependencies at planning time, defaults new services to Go, and never runs package scripts on install.
+
+- New `crew-members/supply-chain.md` loads at Route C planning, at implementation, and in `code-review` when a REQ creates a new service, app, package, or deployable, changes a dependency, or touches install, build, or image configuration. A plan written with it names the language, every direct dependency with its rejected alternative, the install method, the image base, and the SBOM step.
+- Write before you import: a part you can write and read in one sitting is written, not installed. Cryptography, TLS, parsers, and drivers stay. Existing PHP, Python, and Node apps get dependencies cut, not rewritten.
+- New HTTP + JSON + database services default to Go: standard library plus one driver, shipped as one static binary. A greenfield or polyglot project gets the choice recorded; a single-stack project in another language gets it escalated with value and risk.
+- Frontends keep npm, hardened: hash-pinned lockfile, script-free installs, one framework, no plugin sprawl, a few days' cooldown on new versions, distroless Node image.
+- `general.md` gains an always-on rule: every install the agent runs resolves from the lockfile and skips lifecycle scripts (`npm ci --ignore-scripts`, `pip install --require-hashes --only-binary=:all:`, and the like), on every REQ.
+- Runtime images are minimal (scratch or distroless, no shell or package manager), and every build that produces an image or binary emits an SBOM.
+- `coding-guardrails.md` § 2, `security.md` A06, `backend.md`, and `frontend.md` point at the new file; the toolbox copies carry the same edits.
+
 ## 0.306.9 — Cancelled-Commit Tests No Longer Fail on a Busy Machine (2026-10-21)
 
 Only the tests changed. The two Git cancellation tests used to fail when many test suites ran at once, and now they pass.
