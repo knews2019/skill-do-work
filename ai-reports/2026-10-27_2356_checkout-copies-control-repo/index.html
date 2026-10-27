@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="ai-report-verdict" content="proposal-not-built">
+  <title>Checkout Copies Control Repo</title>
+  <style>
+    :root {
+      --bg: #f8fafc; --surface: #ffffff; --surface-alt: #f1f5f9; --border: #cbd5e1;
+      --text: #0f172a; --muted: #475569; --accent: #2563eb;
+      --pass-bg: #dcfce7; --pass-fg: #166534; --warn-bg: #fef3c7; --warn-fg: #92400e; --fail-bg: #fee2e2; --fail-fg: #991b1b;
+      --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root:not([data-theme="light"]) {
+        --bg: #0b1120; --surface: #111827; --surface-alt: #1e293b; --border: #334155;
+        --text: #f1f5f9; --muted: #94a3b8; --accent: #60a5fa;
+        --pass-bg: #14532d; --pass-fg: #bbf7d0; --warn-bg: #78350f; --warn-fg: #fde68a; --fail-bg: #7f1d1d; --fail-fg: #fecaca;
+      }
+    }
+    :root[data-theme="dark"] {
+      --bg: #0b1120; --surface: #111827; --surface-alt: #1e293b; --border: #334155;
+      --text: #f1f5f9; --muted: #94a3b8; --accent: #60a5fa;
+      --pass-bg: #14532d; --pass-fg: #bbf7d0; --warn-bg: #78350f; --warn-fg: #fde68a; --fail-bg: #7f1d1d; --fail-fg: #fecaca;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--bg); color: var(--text); font-family: var(--font-sans); line-height: 1.55; }
+    main { max-width: 900px; margin: 0 auto; padding: 32px 16px 64px; }
+    h1 { font-size: 1.7rem; margin: 0 0 8px; }
+    h2 { font-size: 1.2rem; margin: 36px 0 12px; border-bottom: 1px solid var(--border); padding-bottom: 4px; }
+    p { margin: 0 0 12px; }
+    .verdict { background: var(--surface); border: 1px solid var(--border); border-left: 4px solid var(--accent); padding: 14px 18px; border-radius: 6px; margin: 16px 0 24px; }
+    .meta { color: var(--muted); font-size: 0.9rem; }
+    pre { background: var(--surface-alt); border: 1px solid var(--border); border-radius: 6px; padding: 14px; overflow-x: auto; font-family: var(--font-mono); font-size: 0.85rem; line-height: 1.45; }
+    code { font-family: var(--font-mono); font-size: 0.9em; background: var(--surface-alt); padding: 1px 4px; border-radius: 3px; }
+    table { width: 100%; border-collapse: collapse; margin: 8px 0 16px; font-size: 0.95rem; }
+    th, td { text-align: left; vertical-align: top; padding: 8px 10px; border: 1px solid var(--border); }
+    th { background: var(--surface-alt); }
+    .tag { display: inline-block; padding: 1px 8px; border-radius: 10px; font-size: 0.8rem; font-weight: 600; white-space: nowrap; }
+    .pass { background: var(--pass-bg); color: var(--pass-fg); }
+    .warn { background: var(--warn-bg); color: var(--warn-fg); }
+    .fail { background: var(--fail-bg); color: var(--fail-fg); }
+    ol li, ul li { margin-bottom: 6px; }
+    .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    @media (max-width: 700px) { .cols { grid-template-columns: 1fr; } }
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: 6px; padding: 12px 16px; }
+    .card h3 { margin: 0 0 8px; font-size: 1rem; }
+  </style>
+</head>
+<body>
+<main>
+  <h1>Checkout copies: a control repo with do-work on top</h1>
+  <p class="meta">Proposal report, 2026-10-27. Nothing is built yet. Written by Claude (Fable 5.1) from the do-work 0.307.0 sources and a read-only look at the target folders.</p>
+
+  <div class="verdict">
+    <p><strong>Verdict: workable, with one real cost.</strong> The parent folder becomes a small private git repo that owns do-work and the queue. The checkout copies sit inside it as ignored, fully independent clones. The team repo and every copy stay free of do-work files. The cost: the do-work loop cannot see code changes inside a copy, so code is committed with plain git inside the copy and the REQ only records the evidence. That turns do-work here into a planner, tracker, and log, not a builder that commits and releases your code.</p>
+  </div>
+
+  <h2>1. What the folder looks like</h2>
+<pre>/Users/t2/2code/etc-checkout-work-folders/        private git repo ("control repo")
+├── .git/                                         tracks only the lines below marked [tracked]
+├── .gitignore                       [tracked]    ignores etc-checkout-*/ and .DS_Store
+├── CLAUDE.md                        [tracked]    map of the folder + rules for sessions
+├── .claude/skills/do-work*/         [tracked]    the four do-work skills, installed from 0.307.0
+├── .claude/settings.json, justfile  [tracked]    do-work hooks and Just recipes
+├── do-work/                         [tracked]    the queue: URs, REQs, archive, changelog
+├── tools/new-copy.sh                [tracked]    clone + branch one new copy
+├── tools/copies-status.sh           [tracked]    branch, ahead/behind, dirty count per copy
+├── tools/sync-copies.sh             [tracked]    fetch all, fast-forward clean copies
+├── etc-checkout-kuki-2026-10-27_print_gift_bonus_list/   [ignored] standalone clone, own branch
+├── etc-checkout-kuki-2026-11-02_some_feature/            [ignored] standalone clone, own branch
+└── ...
+
+/Users/t2/2code/etc-checkout-main/                team repo, untouched: no do-work, no CLAUDE.md</pre>
+  <p>Each copy is a normal <code>git clone</code> with <code>origin</code> pointing at <code>git@github-work:thevirtuelabs/checkout.git</code>. No submodules, no worktrees, no shared <code>.git</code>. The control repo ignores them, so git never records them as gitlinks.</p>
+
+  <h2>2. How one task flows</h2>
+  <ol>
+    <li>You start Claude Code in the parent folder. It loads the control repo's <code>CLAUDE.md</code> and the do-work skill.</li>
+    <li>You capture a request. The UR and REQ files are written into <code>do-work/</code> in the control repo. The REQ names the target copy on a <code>Copy:</code> line, or asks for a new copy first.</li>
+    <li>The loop runs the REQ. The implementation step edits files and runs tests <em>inside the copy</em>, then commits there with plain git on the copy's own branch.</li>
+    <li>The REQ records the copy's commit hash and the test command as evidence. The control repo commit holds only REQ files plus the control repo's own changelog and version bump.</li>
+    <li>You push the copy's branch and open the pull request yourself. That is operator work and never a REQ.</li>
+  </ol>
+
+  <h2>3. Pros and cons</h2>
+  <div class="cols">
+    <div class="card">
+      <h3>Pros</h3>
+      <ul>
+        <li><span class="tag pass">clean</span> The team repo and every copy never see <code>do-work/</code>, <code>.claude/</code>, URs or REQs. Your pull requests carry only product code.</li>
+        <li><span class="tag pass">one queue</span> One place holds every task across all copies, with one changelog as the cross-copy work log.</li>
+        <li><span class="tag pass">one session</span> You run Claude Code once, in the parent folder, and reach every copy from there.</li>
+        <li><span class="tag pass">independent</span> Copies are plain clones. Deleting one, or breaking one, cannot damage another or the control repo.</li>
+        <li><span class="tag pass">visible</span> Sessions started inside a copy still read the parent <code>CLAUDE.md</code>, so the rules travel with you.</li>
+        <li><span class="tag pass">cheap</span> Setup is a <code>git init</code>, one install run, three short scripts, and one doc.</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>Cons</h3>
+      <ul>
+        <li><span class="tag fail">blind loop</span> do-work's diff, commit, and release steps only see the control repo. Code in a copy is invisible to them. Every REQ must state its evidence by hand (copy commit hash, test command). This is the main cost and it does not go away.</li>
+        <li><span class="tag fail">no fan-out</span> Parallel builders use git worktrees of the queue's repo. A worktree of the control repo contains no copies, so <code>run --fan-out</code> and <code>--coordinate</code> are useless here. Serial runs only.</li>
+        <li><span class="tag warn">unsupported shape</span> do-work's documented multi-checkout model is "queue inside the product repo, synced by git". This setup is outside that contract, so future skill updates may add checks that fight it (for example a rule that refuses a REQ with an empty project diff).</li>
+        <li><span class="tag warn">meaningless version</span> The release tail bumps a version and writes a changelog for the control repo on every finished REQ. Harmless, but the number means nothing.</li>
+        <li><span class="tag warn">two git contexts</span> Every command must be clear about which repo it runs in. A commit made in the wrong directory is the most likely daily mistake. The scripts and <code>CLAUDE.md</code> reduce this, they do not remove it.</li>
+        <li><span class="tag warn">disk</span> Each copy is a full clone. A local clone from <code>etc-checkout-main</code> shares object files through hardlinks, so the cost is mostly the working tree.</li>
+      </ul>
+    </div>
+  </div>
+
+  <h2>4. The alternatives that were rejected and why</h2>
+  <table>
+    <tr><th>Shape</th><th>Why not</th></tr>
+    <tr><td>do-work inside the team repo, copies sync the queue by git</td><td>This is the shape do-work supports best. Rejected because do-work files would reach the team's main branch through your pull requests. You confirmed the team repo must stay clean.</td></tr>
+    <tr><td>do-work inside each copy, ignored by git</td><td>Claiming and finishing a task are commits. With the queue ignored there is nothing to commit, so the loop breaks at the first claim.</td></tr>
+    <tr><td>No do-work; only CLAUDE.md and scripts in the parent folder</td><td>Simplest, but gives no task queue across copies. You said you want the skill available.</td></tr>
+    <tr><td>git worktrees instead of clones</td><td>Worktrees share one <code>.git</code> and one branch cannot be checked out twice. You asked for standalone copies.</td></tr>
+  </table>
+
+  <h2>5. What gets built</h2>
+  <table>
+    <tr><th>Item</th><th>Detail</th></tr>
+    <tr><td>Control repo</td><td><code>git init -b main</code> in the parent folder; <code>.gitignore</code> with <code>etc-checkout-*/</code>.</td></tr>
+    <tr><td><code>tools/new-copy.sh &lt;branch&gt; [base]</code></td><td>Local clone of <code>etc-checkout-main</code> into <code>etc-checkout-&lt;branch slug&gt;</code>, origin reset to the GitHub URL, fetch, then check out the branch (existing remote branch, else new from the default branch). Refuses if the directory exists.</td></tr>
+    <tr><td><code>tools/copies-status.sh</code></td><td>One line per copy: branch, ahead/behind origin, dirty file count, last commit subject.</td></tr>
+    <tr><td><code>tools/sync-copies.sh</code></td><td>Fetch in every copy, fast-forward only clean copies that are behind, report the rest. No rebase, no force.</td></tr>
+    <tr><td><code>CLAUDE.md</code></td><td>Folder map, naming rule, the scripts, the never-touch rule for the team repo and copies, the <code>Copy:</code> line convention, serial runs only.</td></tr>
+    <tr><td>do-work install</td><td>From a local archive of the 0.307.0 checkout, via <code>tools/install-do-work-suite.sh --project-root /Users/t2/2code/etc-checkout-work-folders</code>. Installer asks once.</td></tr>
+  </table>
+
+  <h2>6. How we check it works</h2>
+  <ul>
+    <li>Create a smoke copy on a throwaway branch. The control repo's <code>git status</code> stays clean. The copy has no <code>do-work/</code>, <code>.claude/</code>, or <code>CLAUDE.md</code>. <code>etc-checkout-main</code> is unchanged.</li>
+    <li>The status and sync scripts list the smoke copy correctly. Then the smoke copy is deleted.</li>
+    <li>The installed CLI reports version 0.307.0, and <code>/do-work help</code> routes in a session started in the parent folder.</li>
+  </ul>
+
+  <h2>7. Open point for you</h2>
+  <p>The "blind loop" con is the one to accept or not. If you want do-work to actually build, test, commit, and release code, this setup will not do that for code inside a copy. If you want it as the task queue, planner, and log across copies, with the code commits done by plain git in the copy, this setup fits. The plan assumes the second reading.</p>
+</main>
+</body>
+</html>
