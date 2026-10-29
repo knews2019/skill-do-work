@@ -5,7 +5,7 @@ import "testing"
 func TestHandlersRegisterCanonicalToolboxCommands(t *testing.T) {
 	handlers := Handlers()
 	for _, name := range []string{
-		CommandNote,
+		CommandNote, CommandPeriodicCheck,
 		CommandArchitecture,
 		CommandAIReportIndex,
 		CommandReportImage, CommandReportImageBatch, CommandPortfolio, CommandLast30Days, CommandAuditMetrics,
@@ -15,8 +15,8 @@ func TestHandlersRegisterCanonicalToolboxCommands(t *testing.T) {
 			t.Errorf("canonical command %q is not registered", name)
 		}
 	}
-	if len(handlers) != 10 {
-		t.Fatalf("registered %d toolbox commands, want 10", len(handlers))
+	if len(handlers) != 11 {
+		t.Fatalf("registered %d toolbox commands, want 11", len(handlers))
 	}
 }
 

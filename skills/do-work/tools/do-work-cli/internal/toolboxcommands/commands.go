@@ -24,6 +24,7 @@ const (
 func Handlers() map[string]commandruntime.CommandHandler {
 	return map[string]commandruntime.CommandHandler{
 		CommandNote:                  handleNote,
+		CommandPeriodicCheck:         handlePeriodicCheck,
 		CommandArchitecture:          handleArchitecture,
 		CommandAIReportIndex:         handleAIReportIndex,
 		CommandReportImage:           handleReportImage,

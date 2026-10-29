@@ -146,6 +146,7 @@ knowledge_files=(
 )
 
 toolbox_actions=(
+  periodic-check
   validate-feedback
   code-review
   maintainability-audit
@@ -176,6 +177,9 @@ toolbox_files=(
   skills/do-work-toolbox/actions/completed-work-presentation-reference.md
   skills/do-work-toolbox/actions/ai-report-reference.md
   skills/do-work-toolbox/actions/deep-explore-reference.md
+  skills/do-work-toolbox/docs/periodic-check-guide.md
+  skills/do-work-toolbox/docs/prime-periodic-check.example.md
+  skills/do-work-toolbox/shortcuts/periodic-check.md
   skills/do-work-toolbox/docs/code-review-guide.md
   skills/do-work-toolbox/docs/present-work-guide.md
   skills/do-work-toolbox/docs/present-video-guide.md

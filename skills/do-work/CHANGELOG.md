@@ -10,6 +10,14 @@ For the complete release history, read this file and the archives below from new
 - [0.50.0 through 0.64.1](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-13-up-to-v0.64.1.md)
 - [0.1.0 through 0.49.0](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-07-up-to-v0.49.0.md)
 
+## 0.308.0 — Periodic Checks with Portable History (2026-10-29)
+
+Run a project's recurring checks and see its last attempt, completed run, and clean result across synchronized checkouts.
+
+- Full, quick, and read-only status modes use a project-owned checklist; incomplete checks never imply clean coverage.
+- Optional repair capture reuses existing requests and links confirmed recurrences without running fixes.
+- Permanent per-run evidence, a security example, a slash-command adapter, and hosted-agent guidance share one workflow.
+
 ## 0.307.0 — Supply-Chain Crew Member: Go-First Services, Script-Free Installs, Minimal Images (2026-10-23)
 
 A dependency is code that runs on every developer machine at install time and in every build. The skill now decides dependencies at planning time, defaults new services to Go, and never runs package scripts on install.

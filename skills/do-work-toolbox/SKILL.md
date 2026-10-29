@@ -1,7 +1,7 @@
 ---
 name: do-work-toolbox
 description: ai-report second-opinion, generate a second opinion, second opinion preset. Optional reviews, discovery, presentation, reporting, repository utilities, and companion installers for the modular do-work suite
-argument-hint: "validate-feedback | code-review | maintainability-audit | architecture-report | ui-review | journey-qa | ai-report | present-work | present-video | slop-check | source-audit | release-check | quick-wins | scan-ideas | deep-explore | prime | inspect | note | stray-check | tidy-repo | tutorial | install | help"
+argument-hint: "periodic-check | validate-feedback | code-review | maintainability-audit | architecture-report | ui-review | journey-qa | ai-report | present-work | present-video | slop-check | source-audit | release-check | quick-wins | scan-ideas | deep-explore | prime | inspect | note | stray-check | tidy-repo | tutorial | install | help"
 ---
 
 # Do-Work Toolbox Skill
@@ -16,6 +16,7 @@ Before invoking AGY / Antigravity CLI, read [the AGY usage prime](./docs/prime-a
 |---|---|
 | empty, `help` | `./actions/help.md` |
 | `validate-feedback`, `triage feedback`, `review feedback` | `./actions/validate-feedback.md` |
+| `periodic-check`, `/periodic-check` | `./actions/periodic-check.md` |
 | `code-review`, `review codebase` | `./actions/code-review.md` |
 | `maintainability-audit`, `audit codebase`, `audit maintainability` | `./actions/maintainability-audit.md` |
 | `architecture-report`, `architecture overview`, `map the repo` | `./actions/architecture-report.md` |

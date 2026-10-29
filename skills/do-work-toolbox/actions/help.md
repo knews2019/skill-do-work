@@ -6,6 +6,7 @@
 do-work-toolbox — reviews, reports, discovery, and repository utilities
 
   validate-feedback [findings]   Validate external feedback; --capture [--run] captures the accepts
+  periodic-check [quick|status]  Project checks and portable history; optional --capture
   code-review [scope]            Standalone codebase review
   maintainability-audit [scope]  Measured maintainability audit with calibrated bands
   architecture-report            Dated immutable HTML architecture map with rendered diagrams

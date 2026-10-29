@@ -115,6 +115,8 @@ For repository comprehension, `do-work-toolbox architecture-report` writes a new
 
 For user journeys, `do-work-toolbox journey-qa <target> [--brief <path>]` reproduces a reported sequence in a browser, tries the combined transitions around it, and classifies each result as passed, product defect, test defect, or unresolved, without changing source.
 
+For recurring project checks, `do-work-toolbox periodic-check` runs the project-owned checklist and saves portable history. Use `quick` for its explicit subset, `status` for a read-only history view, and `--capture` for repair requests without executing them. See the [periodic-check guide](skills/do-work-toolbox/docs/periodic-check-guide.md) for the security example, optional `/periodic-check` shortcut, and hosted-agent setup.
+
 Common extension calls also include `do-work-board board`, `do-work-knowledge bkb`, `do-work-knowledge memory`, `do-work-toolbox code-review`, and `do-work-toolbox inspect`.
 
 To check that a report's citations say what it claims, `do-work-toolbox source-audit <report-or-url-list>` returns a claim-to-source table with one judgment per claim and never edits the report.
