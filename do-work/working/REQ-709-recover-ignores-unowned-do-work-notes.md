@@ -11,6 +11,17 @@ maintenance: false
 impact: impact-user-visible
 effort_estimate: effort-substantive
 claimed_at: 2026-11-02T19:46:07Z
+route: A
+estimate:
+  p50_active_minutes: 15
+  confidence: medium
+  calculated_at: 2026-11-02T19:49:44Z
+  basis:
+    - Route A
+    - 4-file write set
+    - 4 acceptance criteria
+dispatch_at: 2026-11-02T19:51:31Z
+builder_handback_at: 2026-11-02T20:01:32Z
 ---
 # Recover Ignores Loose do-work Files That No Request Record Can Own
 ## What
@@ -30,9 +41,29 @@ Seen twice on 2026-11-02. During the UR-161 run, `recover` refused on the untrac
 **GREEN when:** `recover` returns success, and `do-work commit` commits the note as a group with no owning request. A real unfinished request next to the note is still handled exactly as today.
 **Validation:** User confirmed.
 ## Required Lessons — Dropped for Budget
-- `skills/do-work/tools/do-work-cli/lessons-do-work-cli.md` as a whole satellite (23234 tokens per `do-work/lessons-index.md`, over the 2000 budget; `slugged: partial`, so no targeted form). Matching reason: its row covers semantic recovery completeness and condition-based classifiers; families `closed-enumeration-for-a-condition`, `observed-subset-is-not-semantic-completeness` match this work.
+- `skills/do-work/tools/do-work-cli/lessons-do-work-cli.md` as a whole satellite (23666 tokens per `do-work/lessons-index.md` at claim, over the 2000 budget; `slugged: partial`, so no targeted form). Matching reason: its row covers semantic recovery completeness and condition-based classifiers; families `closed-enumeration-for-a-condition`, `observed-subset-is-not-semantic-completeness` match this work.
 ## AI Execution State (P-A-U Loop)
 - [ ] **[PLAN]:** (Agent: Read listed `prime_files` and agent rules. Write brief technical approach here. Do not write code yet.)
 - [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
 - [ ] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
 *Source: "recover should not treat untracked do-work/inbox notes as unfinished finalization work, so do-work commit can commit them"*
+
+## Triage
+
+**Route: A** - Simple
+
+**Reasoning:** A bug fix with a clear reproduction that names the file: `recover` refuses `FINALIZATION-DISCOVERY-AMBIGUOUS` on an untracked `do-work/inbox/` note because `sharedFinalizationPath` in `finalization_discovery.go` reads every path under `do-work/` as shared finalization state. Reproduced at claim time with a temporary `do-work/inbox/` note in this repository (refused, the note named as the only blocked path; note deleted after). The fix is one predicate stated once in the finalization package plus focused tests.
+
+**Planning:** Not required
+
+**Open questions (Step 3.5):** none in the REQ. Three design calls are settled by orchestrator judgment and recorded as D-01 to D-03 in `## Decisions`: the lifecycle record files `do-work/CHECKPOINT.md` and `do-work/calibration-log.tsv` stay evidence; the rule lives in the finalization package, not the inventory chokepoint; every other file under `do-work/` outside the record locations (for example `lessons-index.md`, handoff notes) is covered by the same condition.
+
+**Test policy for this run (user decision, 2026-11-02):** focused tests only. The gate argv for every evidence step is `bash do-work/runs/work-2026-11-02-194601/REQ-709-gate.sh`; `_dev/tests/maintainer-verify.sh` and heavy lanes are not run.
+
+<!-- D-XX counter: none used. Next decision: D-01. -->
+
+## Plan
+
+**Planning not required** - Route A: Direct implementation
+
+*Skipped by work action*
