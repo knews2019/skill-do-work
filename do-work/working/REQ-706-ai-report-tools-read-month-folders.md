@@ -1,7 +1,7 @@
 ---
 id: REQ-706
 title: 'Addendum: ai-report tools read report bundles inside month folders'
-status: pending
+status: claimed
 created_at: 2026-11-02T16:55:00Z
 user_request: UR-161
 addendum_to: REQ-655
@@ -14,6 +14,7 @@ effort_estimate: effort-substantive
 related: [REQ-707, REQ-708]
 batch: ai-report-month-folders
 write_set: ["skills/do-work/tools/do-work-cli/internal/toolboxcommands/report_index.go", "skills/do-work/tools/do-work-cli/internal/toolboxcommands/report_index_test.go", "skills/do-work/tools/do-work-cli/internal/toolboxcommands/report_second_opinion.go", "skills/do-work/tools/do-work-cli/internal/toolboxcommands/report_second_opinion_test.go", "skills/do-work-toolbox/actions/ai-report.md", "skills/do-work-toolbox/docs/ai-report-guide.md"]
+claimed_at: 2026-11-02T17:05:09Z
 ---
 # Addendum: ai-report Tools Read Report Bundles Inside Month Folders
 ## What
