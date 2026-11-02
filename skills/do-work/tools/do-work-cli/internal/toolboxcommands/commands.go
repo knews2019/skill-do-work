@@ -19,6 +19,7 @@ const (
 	CommandAuditMetrics          = "audit-metrics"
 	CommandAIReportJudge         = "ai-report-judge"
 	CommandAIReportSecondOpinion = "ai-report-second-opinion"
+	CommandAIReportOrganize      = "ai-report-organize"
 )
 
 func Handlers() map[string]commandruntime.CommandHandler {
@@ -34,6 +35,7 @@ func Handlers() map[string]commandruntime.CommandHandler {
 		CommandAuditMetrics:          handleAuditMetrics,
 		CommandAIReportJudge:         handleAIReportJudge,
 		CommandAIReportSecondOpinion: handleAIReportSecondOpinion,
+		CommandAIReportOrganize:      handleAIReportOrganize,
 	}
 }
 
