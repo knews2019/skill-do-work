@@ -44,7 +44,16 @@ var (
 	reportMetaTag         = regexp.MustCompile(`(?is)<meta\b[^>]*>`)
 	reportMetaAttribute   = regexp.MustCompile(`(?is)\b(name|content)\s*=\s*(?:"([^"]*)"|'([^']*)')`)
 	reportMarkupTag       = regexp.MustCompile(`<[^>]*>`)
+	reportMonthPattern    = regexp.MustCompile(`^[0-9]{4}-(0[1-9]|1[0-2])(_1-report|_[0-9]+-reports)?$`)
 )
+
+// reportMonthFolder reports whether a direct child of ai-reports/ named name is a month folder: a
+// container that holds the bundles of one finished month, never a bundle itself. Its name is plain
+// YYYY-MM, YYYY-MM_1-report or YYYY-MM_<N>-reports; whether N matches the bundle count is not
+// checked here.
+func reportMonthFolder(name string) bool {
+	return reportMonthPattern.MatchString(name)
+}
 
 type reportCatalog struct {
 	Generator string         `json:"generator"`
@@ -77,7 +86,9 @@ func handleAIReportIndex(ctx commandruntime.ExecutionContext, args []string) res
 }
 
 // reportIndexWalk treats every directory directly under ai-reports/ whose name does not start with
-// "." as a bundle, whatever its naming style. Loose files and symbolic links are never bundles.
+// "." as a bundle, whatever its naming style, except a month folder (reportMonthFolder), whose own
+// such child directories are the bundles instead, one level deep only. Loose files and symbolic
+// links are never bundles at either level, so a symlinked month folder is skipped.
 func reportIndexWalk(repositoryRoot string) (bundles []reportBundle, present bool, err error) {
 	entries, err := os.ReadDir(filepath.Join(repositoryRoot, reportsFolder))
 	if os.IsNotExist(err) {
@@ -87,8 +98,21 @@ func reportIndexWalk(repositoryRoot string) (bundles []reportBundle, present boo
 		return nil, true, err
 	}
 	for _, entry := range entries {
-		if entry.IsDir() && !strings.HasPrefix(entry.Name(), ".") {
+		if !entry.IsDir() || strings.HasPrefix(entry.Name(), ".") {
+			continue
+		}
+		if !reportMonthFolder(entry.Name()) {
 			bundles = append(bundles, readReportBundle(repositoryRoot, entry.Name()))
+			continue
+		}
+		children, err := os.ReadDir(filepath.Join(repositoryRoot, reportsFolder, entry.Name()))
+		if err != nil {
+			return nil, true, err
+		}
+		for _, child := range children {
+			if child.IsDir() && !strings.HasPrefix(child.Name(), ".") {
+				bundles = append(bundles, readReportBundle(repositoryRoot, entry.Name()+"/"+child.Name()))
+			}
 		}
 	}
 	sort.SliceStable(bundles, func(i, j int) bool {
@@ -116,8 +140,11 @@ func reportIndexWalk(repositoryRoot string) (bundles []reportBundle, present boo
 	return bundles, true, nil
 }
 
-func readReportBundle(repositoryRoot, folder string) reportBundle {
-	bundle := reportBundle{Path: reportsFolder + "/" + folder, Title: folder, Kind: "unknown", LinkedIDs: []string{}}
+// readReportBundle reads the bundle at ai-reports/<relative>, where relative is <folder> or
+// <month folder>/<folder>. The date, kind, linked ids and default title come from <folder> alone.
+func readReportBundle(repositoryRoot, relative string) reportBundle {
+	folder := path.Base(relative)
+	bundle := reportBundle{Path: reportsFolder + "/" + relative, Title: folder, Kind: "unknown", LinkedIDs: []string{}}
 	if match := reportDatePattern.FindStringSubmatch(folder); match != nil {
 		bundle.Date = match[1]
 		if len(match[2]) >= 4 {
@@ -127,11 +154,11 @@ func readReportBundle(repositoryRoot, folder string) reportBundle {
 			bundle.Date += ":" + match[2][4:6]
 		}
 	}
-	entryName := pickReportEntry(filepath.Join(repositoryRoot, reportsFolder, folder))
+	entryName := pickReportEntry(filepath.Join(repositoryRoot, reportsFolder, relative))
 	metas := map[string]string{}
 	if entryName != "" {
 		bundle.Entry = bundle.Path + "/" + entryName
-		content, err := os.ReadFile(filepath.Join(repositoryRoot, reportsFolder, folder, entryName))
+		content, err := os.ReadFile(filepath.Join(repositoryRoot, reportsFolder, relative, entryName))
 		if err == nil {
 			title := ""
 			if strings.EqualFold(filepath.Ext(entryName), ".html") {

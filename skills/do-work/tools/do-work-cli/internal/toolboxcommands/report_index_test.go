@@ -247,3 +247,68 @@ func TestAIReportIndexRefusesHandMadeCatalog(t *testing.T) {
 		t.Fatal("rerun on an unchanged tree is not byte-identical")
 	}
 }
+
+// Pins: the walk read one level, so a month folder of finished reports was listed as one bundle of
+// kind unknown and the reports inside it were missing from the catalog, the page, find and the
+// supersedes chain; a loose file in a month folder or a symlinked month folder must stay out.
+func TestAIReportIndexReadsBundlesInsideMonthFolders(t *testing.T) {
+	for _, month := range []string{"2026-09_1-report", "2026-09"} {
+		t.Run(month, func(t *testing.T) {
+			root := t.TempDir()
+			nested := month + "/2026-09-27_2200_a"
+			writeReportFiles := func(files map[string]string) {
+				for relative, content := range files {
+					path := filepath.Join(root, "ai-reports", filepath.FromSlash(relative))
+					if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+						t.Fatal(err)
+					}
+					if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+						t.Fatal(err)
+					}
+				}
+			}
+			writeReportFiles(map[string]string{
+				nested + "/index.html":         "<title>Report A</title>",
+				"2026-11-01_0900_b/index.html": "<title>Report B</title>",
+				month + "/loose-notes.md":      "# Loose notes\n",
+			})
+			if err := os.Symlink(month, filepath.Join(root, "ai-reports", "2026-08_1-report")); err != nil {
+				t.Fatal(err)
+			}
+			if result := runReportIndex(t, root); result.Outcome != resultmodel.OutcomeSuccess {
+				t.Fatalf("index outcome=%s findings=%+v", result.Outcome, result.Findings)
+			}
+			paths := []string{}
+			for _, bundle := range readReportCatalog(t, root).Bundles {
+				paths = append(paths, bundle.Path)
+			}
+			if want := []string{"ai-reports/2026-11-01_0900_b", "ai-reports/" + nested}; !reflect.DeepEqual(paths, want) {
+				t.Fatalf("catalog paths=%v, want %v", paths, want)
+			}
+			page, err := os.ReadFile(filepath.Join(root, "ai-reports", "index.html"))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !strings.Contains(string(page), `href="`+nested+`/index.html"`) {
+				t.Fatalf("index.html does not link the nested bundle:\n%s", page)
+			}
+			if result := runReportIndex(t, root, "--find", "2026-09-27_2200_a"); result.ExactTextOutput == nil || *result.ExactTextOutput != "ai-reports/"+nested+"\tReport A\n" {
+				t.Fatalf("find on the nested folder name=%+v", result)
+			}
+			writeReportFiles(map[string]string{
+				"2026-11-02_1000_a-rev1/index.html": `<head><meta name="ai-report-supersedes" content="2026-09-27_2200_a"><title>Report A rev1</title></head>`,
+			})
+			if result := runReportIndex(t, root); result.Outcome != resultmodel.OutcomeSuccess {
+				t.Fatalf("index outcome=%s findings=%+v", result.Outcome, result.Findings)
+			}
+			bundles := map[string]reportBundle{}
+			for _, bundle := range readReportCatalog(t, root).Bundles {
+				bundles[bundle.Path] = bundle
+			}
+			older, newer := bundles["ai-reports/"+nested], bundles["ai-reports/2026-11-02_1000_a-rev1"]
+			if newer.Supersedes != "ai-reports/"+nested || older.SupersededBy != "ai-reports/2026-11-02_1000_a-rev1" {
+				t.Fatalf("supersedes across flat and nested: older=%+v newer=%+v", older, newer)
+			}
+		})
+	}
+}
