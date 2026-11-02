@@ -10,6 +10,15 @@ For the complete release history, read this file and the archives below from new
 - [0.50.0 through 0.64.1](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-13-up-to-v0.64.1.md)
 - [0.1.0 through 0.49.0](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-07-up-to-v0.49.0.md)
 
+## 0.309.0 — AI Reports Become Cause-and-Effect Presentations (2026-11-02)
+
+Every ai-report now explains its change the same way: the verdict in one line, then a colored chain of causes and effects, a diagram that lights up step by step, and the proof, with every detail folded below. A new kit ships the look, so reports are no longer styled one at a time.
+
+- New `docs/ai-report-kit/` in the toolbox: `presentation.css`, `presentation.js` and `skeleton.html`. Each report copies the two asset files into its bundle and starts `index.html` from the skeleton.
+- Report Design Rules now ask for three depths (one line, the story, folded details), one meaning per color (cause, problem, change, effect, proof), a receipt on every claim, and a plain definition on hover or tap for every technical word. Nothing moves until the reader clicks or presses a key, dimmed steps are never hidden, and D switches the report into deck mode.
+- The per-report palette and "one aesthetic direction" rules are gone. Tailwind leaves the CDN allowlist. Mermaid stays, for flows too large to step through.
+- `--kind proposal|root-cause` briefs use the same depths. `stakeholder-report` pastes the kit CSS inline and stays one file.
+
 ## 0.308.0 — Periodic Checks with Portable History (2026-10-29)
 
 Run a project's recurring checks and see its last attempt, completed run, and clean result across synchronized checkouts.
