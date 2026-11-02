@@ -10,4 +10,4 @@ Hand-back emphasis note: none
 
 | REQ | Builder | Operative name | Handback file | Status | Dispatch instant | Takeover-to-finalization min | Full gates | Stall restarts |
 |-----|---------|----------------|---------------|--------|------------------|------------------------------|------------|----------------|
-| REQ-706 | builder-706 (background agent, Route B, worktree) | worktree-agent-REQ-706-ai-report-tools-read-month-folders | do-work/runs/work-2026-11-02-170509/REQ-706-handback.md | handback c004cba0 | 2026-11-02T17:11:16Z | | 0 | 0 |
+| REQ-706 | builder-706 (background agent, Route B, worktree) | worktree-agent-REQ-706-ai-report-tools-read-month-folders | do-work/runs/work-2026-11-02-170509/REQ-706-handback.md | handback c004cba0; merge 3edfd2c9, review-fix re-merge ba902c63; focused gate green x2; review 95% Approve, re-check 97%; heavy lanes not run (user: focused tests only); release 0.309.1 | 2026-11-02T17:11:16Z | 55 | 0 | 1 |

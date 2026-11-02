@@ -4,9 +4,10 @@
 set -euo pipefail
 root="$(git rev-parse --show-toplevel)"
 cd "$root/skills/do-work/tools/do-work-cli"
-output="$(go test -count=1 -v -run '^(TestAIReportIndexReadsBundlesInsideMonthFolders|TestSecondOpinionBundleInsideMonthFolder)$' ./internal/toolboxcommands/ 2>&1)" || { printf '%s\n' "$output"; exit 1; }
+output="$(go test -count=1 -v -run '^(TestAIReportIndexReadsBundlesInsideMonthFolders|TestSecondOpinionBundleInsideMonthFolder|TestArchitectureScanFindsPriorReportInMonthFolder)$' ./internal/toolboxcommands/ 2>&1)" || { printf '%s\n' "$output"; exit 1; }
 grep -q -- '--- PASS: TestAIReportIndexReadsBundlesInsideMonthFolders' <<<"$output"
 grep -q -- '--- PASS: TestSecondOpinionBundleInsideMonthFolder' <<<"$output"
+grep -q -- '--- PASS: TestArchitectureScanFindsPriorReportInMonthFolder' <<<"$output"
 cd "$root"
 action="$(cat skills/do-work-toolbox/actions/ai-report.md)"
 if grep -q 'must be a directory directly under `ai-reports/`' <<<"$action"; then echo 'revise rule still demands a direct child'; exit 1; fi

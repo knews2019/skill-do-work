@@ -10,6 +10,15 @@ For the complete release history, read this file and the archives below from new
 - [0.50.0 through 0.64.1](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-13-up-to-v0.64.1.md)
 - [0.1.0 through 0.49.0](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-07-up-to-v0.49.0.md)
 
+## 0.309.1 — Report Tools Find Reports Filed in Month Folders (2026-11-02)
+
+A project with many reports can file each finished month in its own folder, and the report tools still find every report. Before this release the catalog listed such a folder as one broken report, and second-opinion refused every report inside it.
+
+- `ai-report index` and `find` read a month folder directly under `ai-reports/` (`YYYY-MM_N-reports`, `YYYY-MM_1-report`, or a plain `YYYY-MM`) as a container: each report inside it is listed with its full path, and the folder itself is never listed. A repository without month folders gets a byte-identical catalog.
+- `ai-report revise` accepts a report inside a month folder, a revision chain resolves between a filed report and a newer one, and new revisions are still written directly under `ai-reports/`.
+- `ai-report second-opinion` accepts a report inside a month folder, and `latest` can pick it. A month folder itself, or one reached through a symbolic link, is refused.
+- The architecture-report pre-flight finds the previous architecture report when it was filed in a month folder, so the next report keeps its "changed since the last report" baseline.
+
 ## 0.309.0 — AI Reports Become Cause-and-Effect Presentations (2026-11-02)
 
 Every ai-report now explains its change the same way: the verdict in one line, then a colored chain of causes and effects, a diagram that lights up step by step, and the proof, with every detail folded below. A new kit ships the look, so reports are no longer styled one at a time.
