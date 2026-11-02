@@ -10,6 +10,13 @@ For the complete release history, read this file and the archives below from new
 - [0.50.0 through 0.64.1](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-13-up-to-v0.64.1.md)
 - [0.1.0 through 0.49.0](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-07-up-to-v0.49.0.md)
 
+## 0.309.6 — Recover Leaves do-work Notes Alone So do-work commit Can Commit Them (2026-11-02)
+
+`do-work commit` can now commit an inbox note or a handoff note. Its first step, `recover`, used to refuse on any uncommitted file under `do-work/`, so the note blocked the very commit meant for it.
+
+- `recover` counts only the places where request records live as unfinished finalization work: the queue, working, archive and user-request folders, REQ reservation markers, run records, `CHECKPOINT.md` and `calibration-log.tsv`. Any other file under `do-work/` (an inbox note, a `HANDDOWN-*.md` note, `lessons-index.md`) is left in place for `do-work commit`.
+- Unfinished finalization work next to such a file still refuses or settles as before, and the refusal now names only the record file.
+
 ## 0.309.5 — Answers Follow Plain-English Sentence and Step Rules (2026-11-02)
 
 Answers are easier to read for a non-native reader: short sentences, one name per thing, and steps that warn before they act.
