@@ -44,13 +44,14 @@ var (
 	reportMetaTag         = regexp.MustCompile(`(?is)<meta\b[^>]*>`)
 	reportMetaAttribute   = regexp.MustCompile(`(?is)\b(name|content)\s*=\s*(?:"([^"]*)"|'([^']*)')`)
 	reportMarkupTag       = regexp.MustCompile(`<[^>]*>`)
-	reportMonthPattern    = regexp.MustCompile(`^[0-9]{4}-(0[1-9]|1[0-2])(_1-report|_[0-9]+-reports)?$`)
+	reportMonthPattern    = regexp.MustCompile(`^[0-9]{4}-(0[1-9]|1[0-2])(_[0-9]+-reports?)?$`)
 )
 
 // reportMonthFolder reports whether a direct child of ai-reports/ named name is a month folder: a
-// container that holds the bundles of one finished month, never a bundle itself. Its name is plain
-// YYYY-MM, YYYY-MM_1-report or YYYY-MM_<N>-reports; whether N matches the bundle count is not
-// checked here.
+// container that holds the bundles of one finished month, never a bundle itself. The canonical
+// names are YYYY-MM_<N>-reports and YYYY-MM_1-report; plain YYYY-MM and a hand-made
+// YYYY-MM_<N>-report or -reports with any N are read too. Whether N matches the bundle count is
+// not checked here.
 func reportMonthFolder(name string) bool {
 	return reportMonthPattern.MatchString(name)
 }

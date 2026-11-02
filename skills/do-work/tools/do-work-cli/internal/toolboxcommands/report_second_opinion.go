@@ -385,8 +385,10 @@ func secondOpinionBundle(repository, selection string) (string, error) {
 	bundle := judgeAbsolutePath(repository, selection)
 	relative, err := filepath.Rel(repository, bundle)
 	parent := filepath.Dir(relative)
+	// A month folder is a container, never a bundle, even when it holds an index.html.
+	flatBundle := parent == reportsFolder && !reportMonthFolder(filepath.Base(relative))
 	inMonthFolder := filepath.Dir(parent) == reportsFolder && reportMonthFolder(filepath.Base(parent))
-	if err != nil || parent != reportsFolder && !inMonthFolder || strings.HasPrefix(filepath.Base(relative), ".") {
+	if err != nil || !(flatBundle || inMonthFolder) || strings.HasPrefix(filepath.Base(relative), ".") {
 		return "", errors.New("bundle must be a physical report bundle directly under ai-reports or under a month folder")
 	}
 	if err := validateNoLinkedAncestors(repository, filepath.ToSlash(relative)+"/index.html", false); err != nil {

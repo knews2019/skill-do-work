@@ -359,7 +359,8 @@ func TestSecondOpinionLatestAndLinkedBundleRefusal(t *testing.T) {
 
 // Pins: second-opinion refused every report filed in a month folder as not a direct child of
 // ai-reports, so neither an explicit nested path nor latest could reach it; a symlinked month
-// folder must still be refused.
+// folder must still be refused, and the month folder itself is never a bundle, even with an
+// index.html.
 func TestSecondOpinionBundleInsideMonthFolder(t *testing.T) {
 	repo, _ := secondOpinionFixture(t)
 	nested := filepath.Join(repo, "ai-reports", "2026-09_3-reports", "2026-09-27_2200_a")
@@ -384,6 +385,12 @@ func TestSecondOpinionBundleInsideMonthFolder(t *testing.T) {
 	}
 	if chosen, err := secondOpinionBundle(repo, "latest"); err != nil || chosen != nested {
 		t.Fatalf("latest=%s err=%v, want %s", chosen, err, nested)
+	}
+	if err := os.WriteFile(filepath.Join(filepath.Dir(nested), "index.html"), []byte("<body>month</body>"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := secondOpinionBundle(repo, filepath.Dir(nested)); err == nil {
+		t.Fatal("the month folder itself accepted as a bundle")
 	}
 	linked := filepath.Join(repo, "ai-reports", "2026-08_1-report")
 	if err := os.Symlink(filepath.Dir(nested), linked); err != nil {
