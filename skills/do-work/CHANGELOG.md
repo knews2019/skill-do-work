@@ -10,6 +10,14 @@ For the complete release history, read this file and the archives below from new
 - [0.50.0 through 0.64.1](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-13-up-to-v0.64.1.md)
 - [0.1.0 through 0.49.0](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-07-up-to-v0.49.0.md)
 
+## 0.309.8 — Every AI Report Ends With a Suggested Different Layout (2026-11-02)
+
+The report kit is one way to tell a story, not a proven best one. Every new AI report now suggests one different layout for its own content, so styles beyond the kit get tried.
+
+- The kit skeleton closes with a "Try another layout" band: one layout unlike the kit, why it might fit this report better, and the `ai-report second-opinion --editor-direction` line that builds it as a new page in the same folder.
+- The `ai-report` summary prints the same suggestion and line.
+- Known limit: the line names the report folder as it was when the report was written, so it goes stale after `ai-report organize` moves that month.
+
 ## 0.309.7 — do-work commit Judges a recover Refusal Instead of Stopping (2026-11-02)
 
 `do-work commit` no longer stops when its safety check cannot tell who owns a changed file. It looks at each named file and commits your own leftover work.
