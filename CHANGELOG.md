@@ -10,6 +10,12 @@ For the complete release history, read this file and the archives below from new
 - [0.50.0 through 0.64.1](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-13-up-to-v0.64.1.md)
 - [0.1.0 through 0.49.0](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-07-up-to-v0.49.0.md)
 
+## 0.309.4 — Archive Rule Lets ai-report organize Repair Report Links (2026-11-02)
+
+The archive's no-edit rule now names the one change `ai-report organize` makes there: fixing a path to a report it moved. Before this, the rule and the command contradicted each other.
+
+- `actions/capture.md` § Immutability Rule gains a third exception, report link repair, beside review annotations and timestamp repair.
+
 ## 0.309.3 — Install, Update and New Reports Recommend Organizing Finished Months (2026-11-02)
 
 Each new month leaves last month's reports loose under `ai-reports/` until someone runs `ai-report organize`. The suite now says when that is due, and it never runs organize for you.
