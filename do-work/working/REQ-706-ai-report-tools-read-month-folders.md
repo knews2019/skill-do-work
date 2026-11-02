@@ -26,6 +26,8 @@ estimate:
     - 6-file write set
     - 2 subsystems involved
     - 6 acceptance criteria
+dispatch_at: 2026-11-02T17:11:16Z
+builder_handback_at: 2026-11-02T17:18:49Z
 ---
 # Addendum: ai-report Tools Read Report Bundles Inside Month Folders
 ## What
