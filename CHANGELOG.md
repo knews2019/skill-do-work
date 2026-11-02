@@ -10,6 +10,14 @@ For the complete release history, read this file and the archives below from new
 - [0.50.0 through 0.64.1](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-13-up-to-v0.64.1.md)
 - [0.1.0 through 0.49.0](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-07-up-to-v0.49.0.md)
 
+## 0.309.5 — Answers Follow Plain-English Sentence and Step Rules (2026-11-02)
+
+Answers are easier to read for a non-native reader: short sentences, one name per thing, and steps that warn before they act.
+
+- `crew-members/communication-style.md` adds about 20 words per sentence (a target), one idea per sentence, one word for one thing, a plain explanation for a technical term on first use, and numbered steps that start with a verb with warnings placed before their step.
+- "Answer first" and "the last line is read first" become one rule: answer first, next action last.
+- Code, commands, paths, error messages and quotes keep their exact form, and a requested creative or styled text follows the request.
+
 ## 0.309.4 — Archive Rule Lets ai-report organize Repair Report Links (2026-11-02)
 
 The archive's no-edit rule now names the one change `ai-report organize` makes there: fixing a path to a report it moved. Before this, the rule and the command contradicted each other.
