@@ -191,7 +191,12 @@ func TestAIReportOrganizeFilesFinishedMonthsAndKeepsLinksOpen(t *testing.T) {
 // June: POSIX rename would replace an empty directory silently, so no step may target an existing
 // path. Loose files, undated folders and symlinks stay and are listed. An uncommitted file whose
 // links would change must refuse the whole run and change nothing, because the action commits by
-// exact path and would otherwise sweep that unrelated edit into the organize commit.
+// exact path and would otherwise sweep that unrelated edit into the organize commit. A hand-made
+// catalog page must refuse before any move: the catalog is written last, and refusing there left
+// the moves uncommitted and a rerun printed nothing to commit. A current-month and a future-month
+// report with the same name must not both plan the same top-level path (the second move stopped
+// the run part way). A catalog page Git ignores must stay out of the commit paths, where
+// `git add -A` rejects the whole list.
 func TestAIReportOrganizeRecountsMonthFoldersAndRefusesUnsafeTargets(t *testing.T) {
 	freezeOrganizeClock(t)
 	repository := toolboxTestRepository(t)
@@ -200,6 +205,8 @@ func TestAIReportOrganizeRecountsMonthFoldersAndRefusesUnsafeTargets(t *testing.
 		"ai-reports/2026-08-20_1000_b/index.html":  "<h1>B</h1>",
 		"ai-reports/2026-07/c/index.html":          "<h1>C</h1>",
 		"ai-reports/2026-11/d/index.html":          "<h1>D</h1>",
+		"ai-reports/2026-12/d/index.html":          "<h1>D next month</h1>",
+		".gitignore":                               "ai-reports/index.html\n",
 		"ai-reports/2026-06-01_1000_e/index.html":  "<h1>E</h1>",
 		"ai-reports/2026-06_1-report":              "a file, not a month folder\n",
 		"ai-reports/notes.md":                      "# Loose notes\n",
@@ -225,6 +232,18 @@ func TestAIReportOrganizeRecountsMonthFoldersAndRefusesUnsafeTargets(t *testing.
 
 	toolboxTestGit(t, repository, "add", "docs/notes.md")
 	toolboxTestGit(t, repository, "commit", "-m", "notes")
+	writeOrganizeFiles(t, repository, map[string]string{"ai-reports/index.html": "<h1>My own index</h1>\n"})
+	before = snapshotOrganizeTree(t, repository)
+	if handMade := runReportOrganize(t, repository); handMade.Outcome != resultmodel.OutcomeRefused || len(handMade.Findings) != 1 ||
+		handMade.Findings[0].Code != "AI-REPORT-INDEX-HAND-MADE" {
+		t.Fatalf("a hand-made catalog page must refuse before any write: %+v", handMade)
+	}
+	if after := snapshotOrganizeTree(t, repository); !reflect.DeepEqual(before, after) {
+		t.Fatal("the hand-made catalog refusal changed the tree")
+	}
+	if err := os.Remove(filepath.Join(repository, "ai-reports", "index.html")); err != nil {
+		t.Fatal(err)
+	}
 	result := runReportOrganize(t, repository)
 	if result.Outcome != resultmodel.OutcomeSuccess || result.ExactTextOutput == nil {
 		t.Fatalf("organize: %+v", result)
@@ -239,6 +258,7 @@ func TestAIReportOrganizeRecountsMonthFoldersAndRefusesUnsafeTargets(t *testing.
 		"left ai-reports/linked (symbolic link)\n",
 		"left ai-reports/notes.md (loose file)\n",
 		"left ai-reports/undated-folder (no date prefix)\n",
+		"left ai-reports/d (another month's report moves here; month 2026-12 not organized)\n",
 	} {
 		if !strings.Contains(text, line) {
 			t.Errorf("output lacks %q:\n%s", line, text)
@@ -248,6 +268,7 @@ func TestAIReportOrganizeRecountsMonthFoldersAndRefusesUnsafeTargets(t *testing.
 		"ai-reports/2026-08_2-reports/a/index.html",
 		"ai-reports/2026-08_2-reports/2026-08-20_1000_b/index.html", "ai-reports/2026-07_1-report/c/index.html",
 		"ai-reports/d/index.html", "ai-reports/2026-06-01_1000_e/index.html", "ai-reports/undated-folder/index.html",
+		"ai-reports/2026-12/d/index.html",
 	} {
 		if _, err := os.Lstat(filepath.Join(repository, filepath.FromSlash(present))); err != nil {
 			t.Errorf("%s missing after organize: %v", present, err)
@@ -266,5 +287,9 @@ func TestAIReportOrganizeRecountsMonthFoldersAndRefusesUnsafeTargets(t *testing.
 	}
 	if got, want := after["docs/notes.md"], "See ai-reports/2026-08_2-reports/a/index.html and the folder ai-reports/2026-07_1-report/.\n"; got != want {
 		t.Errorf("docs/notes.md\n got %q\nwant %q", got, want)
+	}
+	if _, commitBlock, _ := strings.Cut(text, "commit paths:\n"); !strings.Contains("\n"+commitBlock, "\nai-reports/catalog.json\n") ||
+		strings.Contains("\n"+commitBlock, "\nai-reports/index.html\n") {
+		t.Errorf("commit paths must list the catalog and leave out the ignored catalog page:\n%s", commitBlock)
 	}
 }

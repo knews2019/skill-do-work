@@ -56,7 +56,7 @@
 ```
 
 1. Print the output. With `--dry-run` it lists the plan and writes nothing; stop here.
-2. A refused or failed result names its paths (uncommitted changes where organize would write, a hand-made catalog file, or a step that failed part way); report it and stop.
+2. A refused or failed result names its paths (uncommitted changes where organize would write, a hand-made catalog file, or a step that failed part way); report it and stop. A refusal writes nothing. A `findings` result means the reports moved but the catalog could not be written: commit as step 3 says, report the finding, and rerun the catalog command once its cause is fixed.
 3. Commit as Step 8 says, by exactly the paths under `commit paths:`: `git add -A -- <paths>`, then `git commit -m "Organize ai-reports by month" -- <paths>`. Report the hash, or print that command when the project leaves commits to the user.
 4. Never push.
 
