@@ -107,7 +107,7 @@ func handleInstallSuite(context commandruntime.ExecutionContext, arguments []str
 		Narration:           narration,
 		ConfirmationInput:   confirmationInput,
 	})
-	// A declined install leaves no toolbox to run organize with, so only a written install hints.
+	// A declined install wrote nothing, so this run did not install organize: only a written install hints.
 	if result.Outcome == resultmodel.OutcomeSuccess && !result.Cancelled && narration != nil {
 		if hint := toolboxcommands.ReportOrganizeHint(context.RepositoryRoot); hint != "" {
 			fmt.Fprintln(narration, hint)

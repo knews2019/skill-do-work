@@ -48,7 +48,7 @@ Inspect its four captures once and fix any finding in its `judge.json` — a lig
 
 ### Step 6: Print the Bundle Path and Return
 
-First run the organize check, which prints one line recommending `ai-report organize` while a finished month's reports are still loose, or nothing, and writes nothing. Print its line, if any, before the path line, because callers take the last line:
+First run the organize check, which prints one line recommending `ai-report organize` while organize has work to do (a finished month's reports still loose, or a month folder to recount or rename), or nothing, and writes nothing. Print its line, if any, before the path line, because callers take the last line:
 
 ```bash
 <skill-root>/../do-work/tools/do-work-cli.sh --repo-root <project-root> --format text ai-report-organize --check
@@ -59,6 +59,6 @@ Print `ai-reports/<slug>/index.html` and stop. **The caller writes the queue:** 
 ## Rules
 
 - Never edit the REQ or any queue file — the calling core action owns every queue write.
-- Never overwrite, merge into, or delete an existing bundle — every regeneration is a fresh sibling (Collision-Safe Publication).
+- Never overwrite, merge into, or delete an existing bundle — every regeneration is a new bundle directly under `ai-reports/` (Collision-Safe Publication).
 - Never copy REQ or UR prose into an image-generation prompt; generated images are not part of this report at all.
 - Render only what the REQ holds — a missing source REQ or an absent Value/Risk line is stated, never invented.
