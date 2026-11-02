@@ -264,6 +264,46 @@ func TestInstallNarrationNeverReachesStandardOutput(t *testing.T) {
 			t.Errorf("narration phrase %q leaked onto stdout:\n%s", narrationOnlyPhrase, standardOutput)
 		}
 	}
+	if strings.Contains(narration, "ai-report organize") {
+		t.Errorf("a project without ai-reports/ was told to organize it:\n%s", narration)
+	}
+}
+
+// Pins REQ-708: the suite install and every update tell a project whose finished month's
+// reports are still loose to run ai-report organize. It must print once per command: update
+// runs the install in-process, so a hint inside RunInstall would print twice on an update. It
+// must stay off stdout, where it would break the one JSON result the agent parses.
+func TestInstallAndUpdateRecommendOrganizeWhenReportsAreLoose(t *testing.T) {
+	const recommendation = "do-work-toolbox ai-report organize"
+	projectRoot := newProjectRepository(t)
+	// The update reads the real clock, so the loose report sits in a month that is over.
+	writeTestFile(t, filepath.Join(projectRoot, "ai-reports", "2026-09-27_2200_a", "index.html"), "<h1>A</h1>\n")
+
+	sourceRoot := newSuiteSourceTree(t, fixtureSuiteVersion)
+	exitCode, standardOutput, narration := runCommand(t, projectRoot, "json", "y\n",
+		CommandInstallSuite, "--archive", buildArchiveFromSourceTree(t, sourceRoot))
+	if exitCode != 0 {
+		t.Fatalf("install exit = %d\nstdout:\n%s\nnarration:\n%s", exitCode, standardOutput, narration)
+	}
+	if count := strings.Count(narration, recommendation); count != 1 {
+		t.Errorf("install narration names %q %d times, want 1:\n%s", recommendation, count, narration)
+	}
+	if strings.Contains(standardOutput, recommendation) {
+		t.Errorf("the recommendation leaked onto install stdout:\n%s", standardOutput)
+	}
+
+	_, upstreamURL := newUpstreamArchiveServer(t, "0.300.0")
+	exitCode, standardOutput, narration = runCommand(t, projectRoot, "json", "y\n", CommandUpdateSuite,
+		"--skill-root", filepath.Join(projectRoot, ".claude", "skills", "do-work"), "--upstream-url", upstreamURL)
+	if exitCode != 0 || !strings.Contains(narration, "Updated to v0.300.0") {
+		t.Fatalf("update exit = %d\nstdout:\n%s\nnarration:\n%s", exitCode, standardOutput, narration)
+	}
+	if count := strings.Count(narration, recommendation); count != 1 {
+		t.Errorf("update narration names %q %d times, want 1:\n%s", recommendation, count, narration)
+	}
+	if strings.Contains(standardOutput, recommendation) {
+		t.Errorf("the recommendation leaked onto update stdout:\n%s", standardOutput)
+	}
 }
 
 func TestBuiltInstallAndUpdateExit130WhenSignalsInterruptBlockedConfirmation(t *testing.T) {

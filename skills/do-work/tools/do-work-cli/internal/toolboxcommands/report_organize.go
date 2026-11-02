@@ -30,6 +30,22 @@ var (
 // A repository path mention ends at whitespace or at one of these bytes.
 const reportMentionStopBytes = "\"'`<>()[]{}|,;*:#?\\"
 
+// reportOrganizeHintLine is the one line suite install, update, `ai-report index` and every new
+// report print while organize has work to do. It recommends; nothing runs organize for the user.
+const reportOrganizeHintLine = "ai-reports/ needs organizing by month: run do-work-toolbox ai-report organize (add --dry-run to preview)."
+
+// ReportOrganizeHint returns reportOrganizeHintLine when organize would move, rename or remove
+// anything under repositoryRoot's ai-reports/, else "". It reads only ai-reports/ and writes
+// nothing. A check error (a symlinked ai-reports, say) returns "", so the hint never changes a
+// caller's outcome.
+func ReportOrganizeHint(repositoryRoot string) string {
+	plan, err := planReportOrganizeLayout(repositoryRoot, toolboxNow().Format("2006-01"))
+	if err != nil || !plan.hasWork() {
+		return ""
+	}
+	return reportOrganizeHintLine
+}
+
 // reportOrganizeStep is one mkdir, move, rename or remove. Paths are repository-relative slash
 // paths as they are when the step runs: steps run mkdirs, then moves, then renames, then removes.
 type reportOrganizeStep struct {
@@ -78,9 +94,17 @@ func (plan reportOrganizePlan) finalPath(relative string) string {
 }
 
 func handleAIReportOrganize(executionContext commandruntime.ExecutionContext, arguments []string) resultmodel.CommandResult {
+	// --check is the report writers' seam: the hint line or nothing, never a write.
+	if len(arguments) == 1 && arguments[0] == "--check" {
+		hint := ReportOrganizeHint(executionContext.RepositoryRoot)
+		if hint != "" {
+			hint += "\n"
+		}
+		return exactOutputResult(hint, nil)
+	}
 	dryRun := len(arguments) == 1 && arguments[0] == "--dry-run"
 	if len(arguments) > 0 && !dryRun {
-		return usageResult(CommandAIReportOrganize, "Usage: ai-report-organize [--dry-run]")
+		return usageResult(CommandAIReportOrganize, "Usage: ai-report-organize [--dry-run | --check]")
 	}
 	repositoryRoot := executionContext.RepositoryRoot
 	plan, err := planReportOrganizeLayout(repositoryRoot, toolboxNow().Format("2006-01"))

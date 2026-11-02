@@ -48,6 +48,12 @@ Inspect its four captures once and fix any finding in its `judge.json` — a lig
 
 ### Step 6: Print the Bundle Path and Return
 
+First run the organize check, which prints one line recommending `ai-report organize` while a finished month's reports are still loose, or nothing, and writes nothing. Print its line, if any, before the path line, because callers take the last line:
+
+```bash
+<skill-root>/../do-work/tools/do-work-cli.sh --repo-root <project-root> --format text ai-report-organize --check
+```
+
 Print `ai-reports/<slug>/index.html` and stop. **The caller writes the queue:** it puts this path into the REQ's `blocked_by:` and appends the `## Reports` history line. This file never edits a REQ — the toolbox never writes pipeline state.
 
 ## Rules
