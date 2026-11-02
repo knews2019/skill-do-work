@@ -77,7 +77,16 @@ type reportBundle struct {
 
 func handleAIReportIndex(ctx commandruntime.ExecutionContext, args []string) resultmodel.CommandResult {
 	if len(args) == 0 {
-		return reportIndexWrite(ctx.RepositoryRoot)
+		// The hint lives here, not in reportIndexWrite, so organize's own catalog step never prints it.
+		result := reportIndexWrite(ctx.RepositoryRoot)
+		if result.Outcome != resultmodel.OutcomeSuccess {
+			return result
+		}
+		if hint := ReportOrganizeHint(ctx.RepositoryRoot); hint != "" {
+			text := *result.ExactTextOutput + hint + "\n"
+			result.ExactTextOutput = &text
+		}
+		return result
 	}
 	if len(args) >= 2 && args[0] == "--find" {
 		if topic := strings.TrimSpace(strings.Join(args[1:], " ")); topic != "" {

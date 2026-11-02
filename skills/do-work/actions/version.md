@@ -47,7 +47,7 @@ All update discovery, review, confirmation, mutation, byte verification, and rec
    ```bash
    bash "<skill-root>/tools/do-work-cli.sh" --repo-root "$PROJECT_ROOT" --format json update-suite --skill-root "<skill-root>"
    ```
-4. Render the typed result. Do not download a second archive, perform a second diff, add another confirmation, or fall back to a direct `curl | tar` mutation. Missing, failed, or malformed canonical tooling stops actionably. Do not fall back to prose or a script.
+4. Render the typed result, and relay the engine's `ai-report organize` recommendation line when it prints one. Do not download a second archive, perform a second diff, add another confirmation, or fall back to a direct `curl | tar` mutation. Missing, failed, or malformed canonical tooling stops actionably. Do not fall back to prose or a script.
 
 The engine already tries two routes before giving up: the anonymous tarball over HTTP, then a shallow git clone repacked with `git archive`. Its failure message names the outcome of both. When it reports that neither route reached the host — a corporate proxy, a blocked domain, a rate limiter that outlasts the retries — the supported escape hatch is `DO_WORK_UPSTREAM_URL`, which points both the updater and the installer at a different archive URL for that invocation:
 

@@ -293,3 +293,54 @@ func TestAIReportOrganizeRecountsMonthFoldersAndRefusesUnsafeTargets(t *testing.
 		t.Errorf("commit paths must list the catalog and leave out the ignored catalog page:\n%s", commitBlock)
 	}
 }
+
+// Pins REQ-708: `ai-report index` and `--check`, which every new report runs, recommend organize
+// while a finished month's report is still loose, and only then. A hint that printed on an
+// organized tree would teach users to ignore it, and `--check` must print the catalog's exact
+// line and write nothing, because it runs after every report.
+func TestReportOrganizeHintPrintsOnlyWhenWorkRemains(t *testing.T) {
+	freezeOrganizeClock(t)
+	indexText := func(repository string) string {
+		t.Helper()
+		result := runReportIndex(t, repository)
+		if result.Outcome != resultmodel.OutcomeSuccess || result.ExactTextOutput == nil {
+			t.Fatalf("ai-report-index: %+v", result)
+		}
+		return *result.ExactTextOutput
+	}
+	runOrganizeCheck := func(repository string) string {
+		t.Helper()
+		result := runReportOrganize(t, repository, "--check")
+		if result.Outcome != resultmodel.OutcomeSuccess || result.ExactTextOutput == nil {
+			t.Errorf("ai-report-organize --check must succeed with text output: %+v", result)
+			return ""
+		}
+		return *result.ExactTextOutput
+	}
+
+	loose := t.TempDir()
+	writeOrganizeFiles(t, loose, map[string]string{"ai-reports/2026-09-27_2200_a/index.html": "<h1>A</h1>"})
+	before := snapshotOrganizeTree(t, loose)
+	hintLine := runOrganizeCheck(loose)
+	if strings.Count(hintLine, "\n") != 1 || !strings.HasSuffix(hintLine, "\n") || !strings.Contains(hintLine, "do-work-toolbox ai-report organize") {
+		t.Errorf("--check on a loose finished month must print one line naming do-work-toolbox ai-report organize, got %q", hintLine)
+	}
+	if after := snapshotOrganizeTree(t, loose); !reflect.DeepEqual(before, after) {
+		t.Errorf("--check wrote files:\nbefore %v\nafter  %v", before, after)
+	}
+	if catalogText := indexText(loose); !strings.Contains(catalogText, "do-work-toolbox ai-report organize") || !strings.HasSuffix(catalogText, hintLine) {
+		t.Errorf("ai-report-index output must end with the --check line %q:\n%s", hintLine, catalogText)
+	}
+
+	organized := t.TempDir()
+	writeOrganizeFiles(t, organized, map[string]string{
+		"ai-reports/2026-11-01_0900_current/index.html":            "<h1>Current</h1>",
+		"ai-reports/2026-09_1-report/2026-09-27_2200_a/index.html": "<h1>A</h1>",
+	})
+	if checkText := runOrganizeCheck(organized); checkText != "" {
+		t.Errorf("--check on an organized tree must print nothing, got %q", checkText)
+	}
+	if catalogText := indexText(organized); strings.Contains(catalogText, "ai-report organize") {
+		t.Errorf("ai-report-index recommended organize on an organized tree:\n%s", catalogText)
+	}
+}

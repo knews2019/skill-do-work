@@ -116,6 +116,12 @@ The canonical command implements that contract for this action's output shape: i
 
 Print at most eight lines, verdict first: the published HTML path, watermarked commit, prior HTML baseline or first report, `VERIFIED`/`INFERRED` counts, meaningful changes or none, deferred questions or limitations, visual verification performed, and one spot-check command for the weakest claim.
 
+Then run the organize check, which prints one line recommending `ai-report organize` while a finished month's reports are still loose, or nothing, and writes nothing. Print its line, if any, as the one allowed line beyond the eight:
+
+```bash
+<skill-root>/../do-work/tools/do-work-cli.sh --repo-root <project-root> --format text ai-report-organize --check
+```
+
 ## Output Format
 
 One new bundle directory at `ai-reports/<yyyy-mm-dd>_<hhmm>_architecture-report/` holding only `index.html`, with `-2`, `-3`, … on a same-minute re-run. All presentation assets are embedded; no Markdown companion is created and nothing existing is modified.

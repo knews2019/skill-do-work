@@ -13,6 +13,7 @@ import (
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/managedsection"
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/resultmodel"
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/suitemanifest"
+	"github.com/knews2019/skill-do-work/do-work-cli/internal/toolboxcommands"
 )
 
 // The five command names this package registers. They are the argv tokens, so they stay
@@ -106,6 +107,12 @@ func handleInstallSuite(context commandruntime.ExecutionContext, arguments []str
 		Narration:           narration,
 		ConfirmationInput:   confirmationInput,
 	})
+	// A declined install leaves no toolbox to run organize with, so only a written install hints.
+	if result.Outcome == resultmodel.OutcomeSuccess && !result.Cancelled && narration != nil {
+		if hint := toolboxcommands.ReportOrganizeHint(context.RepositoryRoot); hint != "" {
+			fmt.Fprintln(narration, hint)
+		}
+	}
 	return installResultToCommandResult(CommandInstallSuite, context.RepositoryRoot, result)
 }
 
@@ -172,6 +179,13 @@ func handleUpdateSuite(context commandruntime.ExecutionContext, arguments []stri
 		Narration:          narration,
 		ConfirmationInput:  confirmationInput,
 	})
+	// Every successful update hints (updated, already current or declined): the binary running
+	// it is the installed one, so the toolbox has organize either way.
+	if result.Outcome == resultmodel.OutcomeSuccess && narration != nil {
+		if hint := toolboxcommands.ReportOrganizeHint(context.RepositoryRoot); hint != "" {
+			fmt.Fprintln(narration, hint)
+		}
+	}
 	commandResult := resultmodel.CommandResult{
 		Command:        CommandUpdateSuite,
 		Outcome:        result.Outcome,
