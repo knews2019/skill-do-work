@@ -161,8 +161,9 @@ Write `ai-reports/<report-slug>/index.html` from the kit, following **Report Des
 6. **Key Files and Commits** (depth 3) — compact file roles, commit identifiers when recorded, and any current-code drift from the historical commit.
 7. **Verify It Yourself** (depth 3) — copy-pasteable recorded test, operational, and canonical commit-inspection commands, accurately labeled as run or unrun.
 8. **Lessons and Open Questions** (depth 3) — include when present; handle missing optional records under the shared evidence contract.
+9. **Try Another Layout** (after depth 3) — one layout suggestion for this content and the line that builds it, as **Report Design Rules** say.
 
-With `--kind`, write the template in **Proposal and Root-Cause Kinds** instead of this narrative.
+With `--kind`, write the template in **Proposal and Root-Cause Kinds** instead of this narrative, still ending with **Try Another Layout**.
 
 Copy the kit's `presentation.css` and `presentation.js` into the bundle beside `index.html`. Motion follows the reader-driven rule in **Report Design Rules**: nothing moves on a timer, and nothing is hidden from a reader with motion turned off.
 
@@ -190,7 +191,7 @@ Confirm `index.html` exists with no `FILL:` marker left in the bundle, the last 
 
 **Commit as the project's rules say.** Inside a `do-work run`, the run commits the bundle with its other output; do nothing here. Invoked directly, follow the project's own instructions on committing (its `CLAUDE.md` or similar): when they ask for completed increments to be committed, commit the new bundle by exact path in the same turn and report the hash; otherwise print that exact commit command. Never stage anything outside the bundle, and never push. For a revise, this commit waits until the revise form's step 7, after the catalog is regenerated, and takes the catalog pair with it.
 
-Print a compact summary containing the report path, target and verdict, evidence mode, evidence used, recorded issues, light/dark render status, and the commit hash, or, when the project leaves the commit to the user, the exact commit command (the bundle by exact path, plus the catalog pair for a revise); inside a run, the run commits. For a `--kind` report, the summary names the kind and the recommended option or change in place of the verdict and evidence mode.
+Print a compact summary containing the report path, target and verdict, evidence mode, evidence used, recorded issues, light/dark render status, the layout suggestion with its `ai-report second-opinion` line, and the commit hash, or, when the project leaves the commit to the user, the exact commit command (the bundle by exact path, plus the catalog pair for a revise); inside a run, the run commits. For a `--kind` report, the summary names the kind and the recommended option or change in place of the verdict and evidence mode.
 
 Then run the organize check. It prints one line recommending `ai-report organize` while organize has work to do (a finished month's reports still loose, or a month folder to recount or rename), or nothing, and writes nothing. Print its line, if any, just before the final bundle-path line from **Output Format**:
 
@@ -216,7 +217,7 @@ A fresh self-contained folder at `ai-reports/yyyy-mm-dd_hhmm_<slug>/` containing
 - [ ] Visual evidence uses authentic captures, SVG annotations, responsive before/after where available, and distinct synthetic provenance.
 - [ ] Non-visual evidence states UI captures were not expected and uses commit, current-code, architecture/data-flow, test, and operational receipts without fabricated screenshots.
 - [ ] Stakeholder narrative includes verdict, shipped change, problem/change, operation, qualitative value, files/commits, verification, and available lessons/questions (a revise of a report that is not a completed-work report keeps the prior report's section order instead, and a `--kind` report uses its own template).
-- [ ] Report is built from the kit (three depths, role colors, a receipt on every claim, glossary words, reader-driven motion, no `FILL:` marker), responsive, self-contained at the folder level, and render-judged with `ai-report-judge` at wide and phone widths in light and dark (verdict `pass`, or `skipped` or `error` and disclosed in the footer, or for a revise `fail` with only the expected prior-bundle link findings).
+- [ ] Report is built from the kit (three depths, role colors, a receipt on every claim, glossary words, reader-driven motion, a closing layout suggestion with its line, no `FILL:` marker), responsive, self-contained at the folder level, and render-judged with `ai-report-judge` at wide and phone widths in light and dark (verdict `pass`, or `skipped` or `error` and disclosed in the footer, or for a revise `fail` with only the expected prior-bundle link findings).
 - [ ] A `--kind` report follows **Proposal and Root-Cause Kinds**: decision first, smallest-change option priced, `<kind>` slug and meta tag, labelled mockups, capture lines printed and never run.
 - [ ] No brief, separate explainer, video, publishing, hosting, or search artifact was created (the catalog forms' and the revise form's `catalog.json` and `index.html` excepted).
 - [ ] A revise wrote a new `-rev<N>` bundle with the rev block and supersedes meta, regenerated the catalog, left the prior bundle byte-identical, and committed the bundle and the catalog pair or printed the commit command, as the project's rules say.

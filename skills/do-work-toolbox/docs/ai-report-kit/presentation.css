@@ -14,6 +14,7 @@
    - .chip is a receipt: file:line, commit, test or log line. Every claim carries one.
    - .term[data-def] is a glossary word: its definition shows on hover or focus (tap).
    - [data-stepper] is reader-driven stepping: inactive steps are dimmed, never hidden.
+   - #another-layout closes every report: one suggested layout unlike the kit and the line that builds it.
    - Motion always answers a reader action. prefers-reduced-motion turns transitions off. */
 
 :root {
@@ -359,6 +360,9 @@ svg .mono { font-family: var(--mono); }
 .depth-three details > *:not(summary) { min-width: 0; }
 .depth-three pre { margin: 10px 0 12px; }
 @media (max-width: 700px) { .files { grid-template-columns: minmax(0, 1fr); } .files dd { margin-bottom: 8px; } }
+
+/* The closing layout suggestion: its command wraps so the whole suggestion is readable, and still copies as one line. */
+#another-layout pre { white-space: pre-wrap; overflow-wrap: anywhere; }
 
 /* Depth 1 and the jump links. */
 .depth-one h1 { font-size: clamp(2rem, 4.4vw, 3.5rem); max-width: 22ch; margin-bottom: 16px; }

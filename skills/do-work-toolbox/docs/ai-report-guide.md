@@ -35,7 +35,7 @@ For non-visual work, the report explicitly says, “UI captures were not expecte
 
 ## Stakeholder Narrative
 
-Every report is a colorful cause-and-effect presentation at three depths. Depth 1 is the answer in one line. Depth 2 tells the story: a chain of cards where each one says why the next happened, a diagram that lights up step by step, and the proof. Depth 3 holds every detail, folded. Each color means one role on every page (cause, problem, change, effect, proof), every claim carries its source, technical words show a definition on hover or tap, and nothing moves until you click or press a key. Press D to show the report as slides. The look comes from the [presentation kit](ai-report-kit/) that every report copies.
+Every report is a colorful cause-and-effect presentation at three depths. Depth 1 is the answer in one line. Depth 2 tells the story: a chain of cards where each one says why the next happened, a diagram that lights up step by step, and the proof. Depth 3 holds every detail, folded. Each color means one role on every page (cause, problem, change, effect, proof), every claim carries its source, technical words show a definition on hover or tap, and nothing moves until you click or press a key. Press D to show the report as slides. The look comes from the [presentation kit](ai-report-kit/) that every report copies. The kit is one way to tell a story, so each report ends with one suggested layout that differs from it, chosen for that report's content, plus the `ai-report second-opinion` line that builds it as a new page in the same folder.
 
 The report leads with a concise verdict, then covers:
 

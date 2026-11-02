@@ -26,7 +26,7 @@
     <li class="role-effect">Effect</li>
     <li class="role-proof">Proof</li>
   </ul>
-  <nav class="jump" aria-label="Go deeper"><span>Go deeper:</span><a class="btn" href="#why">Why it happened</a><a class="btn" href="#how">Where in the code</a><a class="btn" href="#proof">The proof</a><a class="btn" href="#depth-3">Every detail</a></nav>
+  <nav class="jump" aria-label="Go deeper"><span>Go deeper:</span><a class="btn" href="#why">Why it happened</a><a class="btn" href="#how">Where in the code</a><a class="btn" href="#proof">The proof</a><a class="btn" href="#depth-3">Every detail</a><a class="btn" href="#another-layout">Another layout</a></nav>
 </header>
 
 <!-- Depth 2, part 1: the cause-and-effect chain. One .link per step of the story. Each card says why the
@@ -172,6 +172,16 @@
     <summary>Lessons and open questions</summary>
     <p>FILL: recorded lessons, then open questions coded Q1, Q2.</p>
   </details>
+</section>
+
+<!-- Another layout: this kit is one way to tell the story, not a proven best one. Suggest one layout unlike this
+     page, chosen for this report's content, and fill the line that builds it as a new page in this bundle. Write
+     the suggestion without a single quote, so the line stays one argument. -->
+<section class="band" id="another-layout" aria-labelledby="another-layout-heading">
+  <h2 id="another-layout-heading">Try another layout</h2>
+  <p class="measure">FILL: one layout unlike this page, and why it might tell this story better, in one or two sentences.</p>
+  <p class="note">To build it as a new page beside this one, give an agent this line:</p>
+<pre><code>ai-report second-opinion --editor-direction 'FILL: the suggestion as one instruction' ai-reports/FILL: this bundle folder</code></pre>
 </section>
 
 <footer class="band note measure">
