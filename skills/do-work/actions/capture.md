@@ -64,7 +64,9 @@ Files in `working/` and `archive/` are **immutable**. If someone wants to add to
 
 **Exception:** actions/review-work.md may append a `## Review` section to archived files — review annotations are post-work metadata, not content changes. See `actions/review-work.md`.
 
-**Exception (mechanical timestamp repair):** `scripts/audit-archive-timestamps.sh` may rewrite a detectably wrong `*_at` stamp in an archived REQ to the author time of the git commit that introduced it — a mechanical correction of recorded metadata sourced from git history, not a content change. It is never wired into any hook: the user invokes it deliberately as an audit, and the repaired files are committed through the normal flow. These are the only exceptions; neither is a precedent for editing archived content.
+**Exception (mechanical timestamp repair):** `scripts/audit-archive-timestamps.sh` may rewrite a detectably wrong `*_at` stamp in an archived REQ to the author time of the git commit that introduced it — a mechanical correction of recorded metadata sourced from git history, not a content change. It is never wired into any hook: the user invokes it deliberately as an audit, and the repaired files are committed through the normal flow.
+
+**Exception (report link repair):** `do-work-toolbox ai-report organize` may rewrite a path in an archived REQ or UR that points at a report it moved into, or renamed within, a month folder under `ai-reports/` — a mechanical link correction, not a content change. The user runs it deliberately, and its changes are committed through the normal flow. These are the only exceptions; none is a precedent for editing archived content.
 
 **Session-start stamp repair (queue/working, never archive):** the registered Go SessionStart hook owner mechanically corrects detectably wrong `*_at` stamps in `do-work/queue/` and `do-work/working/` at session start — the same metadata-correction class, not a content change. `scripts/repair-req-timestamps.sh` is only a compatibility launcher for the canonical command.
 
