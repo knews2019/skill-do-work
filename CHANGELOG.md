@@ -10,6 +10,13 @@ For the complete release history, read this file and the archives below from new
 - [0.50.0 through 0.64.1](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-13-up-to-v0.64.1.md)
 - [0.1.0 through 0.49.0](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-07-up-to-v0.49.0.md)
 
+## 0.309.7 — do-work commit Judges a recover Refusal Instead of Stopping (2026-11-02)
+
+`do-work commit` no longer stops when its safety check cannot tell who owns a changed file. It looks at each named file and commits your own leftover work.
+
+- `actions/commit.md` Step 1 applies the run's existing "Stuck Runs Hand Off to Judgment" rules to a `recover` refusal.
+- Shared request state whose owner is unclear stays uncommitted, and the report names the command that resolves it.
+
 ## 0.309.6 — Recover Leaves do-work Notes Alone So do-work commit Can Commit Them (2026-11-02)
 
 `do-work commit` can now commit an inbox note or a handoff note. Its first step, `recover`, used to refuse on any uncommitted file under `do-work/`, so the note blocked the very commit meant for it.
