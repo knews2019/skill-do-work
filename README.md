@@ -46,7 +46,7 @@ Paste this into an AI agent from the root of a repository that already has do-wo
 >
 > Run the installed `tools/do-work-cli.sh` with this repository's Git root passed through `--repo-root`, then `update-suite --skill-root <installed-core-root>`. Use that command as the only mutation path. Show me its complete managed-file diff and preserve its built-in confirmation before overwriting anything; do not answer the confirmation automatically.
 >
-> Do not modify the repository's `do-work/` queue, `kb/` data, application files, or unrelated configuration. When finished, verify the installed version and report the previous version, resulting version, and whether the update completed or was cancelled.
+> Do not modify the repository's `do-work/` queue, `kb/` data, application files, or unrelated configuration. When finished, verify the installed version and report the previous version, resulting version, and whether the update completed or was cancelled, and relay the `ai-report organize` recommendation line if the command prints one.
 
 This prompt updates only the repository where it is run, so you can paste it separately into each existing installation whenever its owner is ready.
 

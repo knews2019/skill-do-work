@@ -192,7 +192,7 @@ Confirm `index.html` exists with no `FILL:` marker left in the bundle, the last 
 
 Print a compact summary containing the report path, target and verdict, evidence mode, evidence used, recorded issues, light/dark render status, and the commit hash, or, when the project leaves the commit to the user, the exact commit command (the bundle by exact path, plus the catalog pair for a revise); inside a run, the run commits. For a `--kind` report, the summary names the kind and the recommended option or change in place of the verdict and evidence mode.
 
-Then run the organize check. It prints one line recommending `ai-report organize` while a finished month's reports are still loose, or nothing, and writes nothing. Print its line, if any, just before the final bundle-path line from **Output Format**:
+Then run the organize check. It prints one line recommending `ai-report organize` while organize has work to do (a finished month's reports still loose, or a month folder to recount or rename), or nothing, and writes nothing. Print its line, if any, just before the final bundle-path line from **Output Format**:
 
 ```bash
 <skill-root>/../do-work/tools/do-work-cli.sh --repo-root <project-root> --format text ai-report-organize --check

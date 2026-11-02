@@ -32,7 +32,7 @@ const reportMentionStopBytes = "\"'`<>()[]{}|,;*:#?\\"
 
 // reportOrganizeHintLine is the one line suite install, update, `ai-report index` and every new
 // report print while organize has work to do. It recommends; nothing runs organize for the user.
-const reportOrganizeHintLine = "ai-reports/ needs organizing by month: run do-work-toolbox ai-report organize (add --dry-run to preview)."
+const reportOrganizeHintLine = "Finished months in ai-reports/ need organizing: run do-work-toolbox ai-report organize (add --dry-run to preview)."
 
 // ReportOrganizeHint returns reportOrganizeHintLine when organize would move, rename or remove
 // anything under repositoryRoot's ai-reports/, else "". It reads only ai-reports/ and writes
