@@ -10,6 +10,16 @@ For the complete release history, read this file and the archives below from new
 - [0.50.0 through 0.64.1](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-13-up-to-v0.64.1.md)
 - [0.1.0 through 0.49.0](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-07-up-to-v0.49.0.md)
 
+## 0.309.3 — Install, Update and New Reports Recommend Organizing Finished Months (2026-11-02)
+
+Each new month leaves last month's reports loose under `ai-reports/` until someone runs `ai-report organize`. The suite now says when that is due, and it never runs organize for you.
+
+- While a finished month's reports are still loose (or a month folder's count is stale), suite install, `do-work update`, `ai-report index` and every new report (each ai-report form that writes a bundle, architecture-report, stakeholder-report) print one line: `Finished months in ai-reports/ need organizing: run do-work-toolbox ai-report organize (add --dry-run to preview).`
+- Nothing prints when there is nothing to organize. A failed check prints nothing and never changes a result or exit status.
+- Install and update print the line with their progress output on stderr, so the result on stdout is unchanged. Report writers print it just before their last line, so callers that read the bundle path from the last line still get it.
+- New `ai-report-organize --check` prints the line or nothing and writes nothing; the report actions call it.
+- Known limit: the first `do-work update` into this release prints nothing, because the older installed updater runs it. Later updates and every fresh install print.
+
 ## 0.309.2 — Report Organizer Files Finished Months Into Counted Folders and Fixes Every Link (2026-11-02)
 
 A busy `ai-reports/` folder becomes readable by month without breaking a link: `ai-report organize` files each finished month's reports into one folder whose name shows how many reports it holds, and fixes every link to a moved report.
