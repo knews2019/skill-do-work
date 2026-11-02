@@ -1,10 +1,12 @@
 package finalization
 
 import (
+	"reflect"
 	"strings"
 	"testing"
 
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/commandruntime"
+	"github.com/knews2019/skill-do-work/do-work-cli/internal/requeststate"
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/resultmodel"
 )
 
@@ -29,14 +31,52 @@ func TestRecoverFinalizationIgnoresNotesNoRequestRecordOwns(t *testing.T) {
 	})
 	t.Run("legacy tail recovers around an untracked inbox note", func(t *testing.T) {
 		repositoryRoot := newFinalizationRepository(t)
-		seedSemanticLegacyTail(t, repositoryRoot)
+		fixture := seedSemanticLegacyTail(t, repositoryRoot)
 		writeFinalizationFile(t, repositoryRoot, unownedInboxNotePath, "# Note\n")
 
 		result := handleRecoverFinalization(commandruntime.ExecutionContext{RepositoryRoot: repositoryRoot}, []string{"--discover"})
-		if result.Outcome != resultmodel.OutcomeSuccess || len(result.Finalizations) != 1 || result.Finalizations[0].Phase != string(PhaseCleanupComplete) {
-			t.Fatalf("an unowned note blocked legacy recovery: %#v", result)
+		assertSettledAroundNote(t, repositoryRoot, result, fixture.ownedPaths, unownedInboxNotePath, "??")
+	})
+	t.Run("sole-releaser legacy tail recovers around an untracked inbox note", func(t *testing.T) {
+		repositoryRoot := newFinalizationRepository(t)
+		seedSoleReleaserLegacyTail(t, repositoryRoot)
+		writeFinalizationFile(t, repositoryRoot, unownedInboxNotePath, "# Note\n")
+
+		result := handleRecoverFinalization(commandruntime.ExecutionContext{RepositoryRoot: repositoryRoot}, []string{"--discover", "--assume-sole-releaser"})
+		assertSettledAroundNote(t, repositoryRoot, result, []string{"do-work/CHECKPOINT.md", "do-work/calibration-log.tsv", "owned.txt"}, unownedInboxNotePath, "??")
+		attributedPaths := []string{}
+		for _, finding := range result.Findings {
+			if finding.Code == "FINALIZATION-SOLE-RELEASER-ATTRIBUTED" {
+				attributedPaths = finding.AffectedPaths
+			}
 		}
-		assertNoteLeftForCommit(t, repositoryRoot, result.Finalizations[0], unownedInboxNotePath, "??")
+		if want := []string{"do-work/CHECKPOINT.md", "do-work/calibration-log.tsv"}; !reflect.DeepEqual(attributedPaths, want) {
+			t.Fatalf("attributed paths = %v, want %v", attributedPaths, want)
+		}
+	})
+	t.Run("claim-only topology stays a claim beside an untracked inbox note", func(t *testing.T) {
+		repositoryRoot := newFinalizationRepository(t)
+		writeFinalizationFile(t, repositoryRoot, "do-work/queue/REQ-699.md", "---\nid: REQ-699\ntitle: Claim-only fixture\nstatus: pending\n---\n")
+		writeFinalizationFile(t, repositoryRoot, "do-work/CHECKPOINT.md", "# Session Checkpoint\n\n## In Progress (interrupted)\n")
+		runFinalizationGit(t, repositoryRoot, "add", ".")
+		runFinalizationGit(t, repositoryRoot, "commit", "-qm", "claim-only fixture")
+		claim := requeststate.Handlers()["claim"](commandruntime.ExecutionContext{RepositoryRoot: repositoryRoot}, []string{
+			"REQ-699", "--request-path", "do-work/queue/REQ-699.md", "--provenance", "explicit-req", "--writer", "host:/repo", "--at", "2026-09-02T01:00:00Z",
+		})
+		if claim.Outcome != resultmodel.OutcomeSuccess {
+			t.Fatalf("claim fixture = %#v", claim)
+		}
+		writeFinalizationFile(t, repositoryRoot, unownedInboxNotePath, "# Note\n")
+		claimedBefore := readFinalizationFile(t, repositoryRoot, "do-work/working/REQ-699.md")
+
+		result := handleRecoverFinalization(commandruntime.ExecutionContext{RepositoryRoot: repositoryRoot}, []string{"--discover"})
+		if result.Outcome != resultmodel.OutcomeSuccess || len(result.Finalizations) != 0 || len(result.Findings) != 1 || result.Findings[0].Code != "FINALIZATION-NONE" {
+			t.Fatalf("a note turned a claim-only topology into a refusal: %#v", result)
+		}
+		if got := readFinalizationFile(t, repositoryRoot, "do-work/working/REQ-699.md"); got != claimedBefore {
+			t.Fatalf("discovery changed the claim:\n%s", got)
+		}
+		assertNoteUntouched(t, repositoryRoot, unownedInboxNotePath, "??")
 	})
 	t.Run("legacy tail recovers around a modified tracked handoff note its summary names", func(t *testing.T) {
 		repositoryRoot := newFinalizationRepository(t)
@@ -52,10 +92,7 @@ func TestRecoverFinalizationIgnoresNotesNoRequestRecordOwns(t *testing.T) {
 		writeFinalizationFile(t, repositoryRoot, handoffPath, "# Handoff\n\nResume here.\n")
 
 		result := handleRecoverFinalization(commandruntime.ExecutionContext{RepositoryRoot: repositoryRoot}, []string{"--discover"})
-		if result.Outcome != resultmodel.OutcomeSuccess || len(result.Finalizations) != 1 || result.Finalizations[0].Phase != string(PhaseCleanupComplete) {
-			t.Fatalf("a tracked handoff note blocked legacy recovery: %#v", result)
-		}
-		assertNoteLeftForCommit(t, repositoryRoot, result.Finalizations[0], handoffPath, " M")
+		assertSettledAroundNote(t, repositoryRoot, result, []string{"req-750.txt"}, handoffPath, " M")
 	})
 }
 
@@ -98,15 +135,24 @@ func TestRecoverFinalizationStillRefusesRecordStateNextToANote(t *testing.T) {
 	}
 }
 
-// assertNoteLeftForCommit checks that recovery neither committed nor changed a
-// note, so the porcelain status it had before recovery is still its status.
-func assertNoteLeftForCommit(t *testing.T, repositoryRoot string, record resultmodel.FinalizationResult, notePath, wantStatus string) {
+// assertSettledAroundNote checks that recovery settled exactly one legacy tail
+// with exactly the commit paths it settles without the note, and left the note
+// for `do-work commit`.
+func assertSettledAroundNote(t *testing.T, repositoryRoot string, result resultmodel.CommandResult, wantCommitPaths []string, notePath, wantStatus string) {
 	t.Helper()
-	for _, path := range record.CommitPaths {
-		if path == notePath {
-			t.Fatalf("recovery associated the note with %s: %v", record.RequestID, record.CommitPaths)
-		}
+	if result.Outcome != resultmodel.OutcomeSuccess || len(result.Finalizations) != 1 || result.Finalizations[0].Phase != string(PhaseCleanupComplete) {
+		t.Fatalf("a note blocked legacy recovery: %#v", result)
 	}
+	if record := result.Finalizations[0]; !reflect.DeepEqual(record.CommitPaths, wantCommitPaths) {
+		t.Fatalf("commit paths = %v, want %v", record.CommitPaths, wantCommitPaths)
+	}
+	assertNoteUntouched(t, repositoryRoot, notePath, wantStatus)
+}
+
+// assertNoteUntouched checks that recovery neither committed nor changed a
+// note, so the porcelain status it had before recovery is still its status.
+func assertNoteUntouched(t *testing.T, repositoryRoot, notePath, wantStatus string) {
+	t.Helper()
 	status := runFinalizationGit(t, repositoryRoot, "status", "--porcelain", "--untracked-files=all", "--", notePath)
 	if strings.TrimRight(status, "\n") != wantStatus+" "+notePath {
 		t.Fatalf("recovery touched or committed the note: %q", status)
