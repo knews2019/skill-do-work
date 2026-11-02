@@ -1,7 +1,7 @@
 ---
 id: REQ-708
 title: 'Install, update and new reports recommend ai-report organize when finished months are still loose'
-status: pending
+status: claimed
 created_at: 2026-11-02T16:55:00Z
 user_request: UR-161
 domain: backend
@@ -14,6 +14,7 @@ related: [REQ-706, REQ-707]
 batch: ai-report-month-folders
 depends_on: [REQ-707]
 required_lessons: ["skills/do-work/tools/lessons-do-work-update.md"]
+claimed_at: 2026-11-02T18:40:42Z
 ---
 # Install, Update and New Reports Recommend ai-report Organize When Finished Months Are Still Loose
 ## What
