@@ -92,13 +92,21 @@ The evidence sweep reads requirements, implementation summaries, reviews, tests,
 
 ## Report Catalog
 
-The current month's reports sit directly under `ai-reports/`. A finished month's reports may sit in a month folder: a folder directly under `ai-reports/` named `YYYY-MM_N-reports` (`YYYY-MM_1-report` for one report), or a plain `YYYY-MM`. The catalog, find, revise and second-opinion read both places. New reports are always written directly under `ai-reports/`.
+The current month's reports sit directly under `ai-reports/`. A finished month's reports may sit in a month folder, and `ai-report organize` puts them there: a folder directly under `ai-reports/` named `YYYY-MM_N-reports` (`YYYY-MM_1-report` for one report), or a plain `YYYY-MM`. The catalog, find, revise and second-opinion read both places. New reports are always written directly under `ai-reports/`.
 
 `ai-report index` lists every report bundle, whatever its folder naming style: each directory directly under `ai-reports/` and each directory inside a month folder. A month folder is only a container, never a bundle; loose files beside the bundles are skipped. It writes `ai-reports/catalog.json` and a static `ai-reports/index.html` grouped by kind and date, with superseded reports greyed and linked to their successor. `ai-report find <topic>` searches the same bundles and writes nothing.
 
 - The catalog is derived: every run regenerates it from the bundles, so it is never hand-edited and catalog generation never edits the bundles.
 - A `catalog.json` or `index.html` that this command did not write is refused, never overwritten. Move it aside by hand, then rerun.
 - From each bundle's HTML entry it reads three optional meta tags: `ai-report-kind`, `ai-report-supersedes` (the folder of the report it replaces) and `ai-report-verdict`.
+
+## Organizing Reports by Month
+
+`ai-report organize` moves every report of a finished month into one month folder, `ai-reports/YYYY-MM_N-reports/` (`YYYY-MM_1-report` for one report), where N is the number of reports in that month. The current month's reports stay directly under `ai-reports/`, because the count is final only when the month is over. Every run recounts: a month folder with a wrong count, or a plain `YYYY-MM` folder, is renamed to the counted name, and a month folder for the current month is emptied back to the top level. A second run on an organized folder changes nothing. Folders without a date in their name, loose files and symbolic links stay where they are and are listed.
+
+Every link to a moved report is fixed, so a link that opened before still opens: path mentions such as `ai-reports/<report>/index.html` in any text file Git lists (requests, docs, history, GitHub `blob/main/` links), relative links between reports, and the regenerated catalog. A link that was already broken is left alone. Not covered: binary and Git-ignored files, symbolic links to a report, CSS `url()`, `srcset` and links built by scripts, percent-encoded paths, Markdown reference links, relative paths in plain prose, links to a current-month folder that organize removed, and copies outside this checkout (other clones, branches, pull requests, bookmarks). Path mentions are matched by name, so a mention of another repository's report with the same name is rewritten too.
+
+`ai-report organize --dry-run` prints the whole plan (moves, renames, and every file whose links change) and writes nothing. Organize refuses and changes nothing when a report it would move, or a file whose links it would fix, has uncommitted changes: commit or restore them first. If a run stops part way, it lists what it already changed; commit or restore that with Git, then run it again. Nothing runs organize automatically. The result is committed by exact paths when your project's instructions ask for completed work to be committed; otherwise the summary prints the exact commit command. Nothing is pushed.
 
 ## Revising a Report
 

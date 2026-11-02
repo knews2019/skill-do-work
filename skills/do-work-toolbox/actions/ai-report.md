@@ -31,7 +31,7 @@
 
 ## Input
 
-`$ARGUMENTS` is `UR-NNN`, `REQ-NNN`, `most recent`, or blank; the `second-opinion` form below writes a sibling page in an existing bundle; the `judge`, `index` and `find` forms below create no report, the `revise` form below writes a new revision of an existing report, and the `--kind` form below writes a decision brief about open work. One report invocation covers one UR or one REQ (a `--kind` brief covers one topic, REQ or UR); a revise covers one existing bundle; blank is the explicit `most recent` form.
+`$ARGUMENTS` is `UR-NNN`, `REQ-NNN`, `most recent`, or blank; the `second-opinion` form below writes a sibling page in an existing bundle; the `judge`, `index`, `find` and `organize` forms below create no report (`organize` moves existing reports into month folders), the `revise` form below writes a new revision of an existing report, and the `--kind` form below writes a decision brief about open work. One report invocation covers one UR or one REQ (a `--kind` brief covers one topic, REQ or UR); a revise covers one existing bundle; blank is the explicit `most recent` form.
 
 `judge <bundle-dir>` runs only the Step 7 render check on an existing report bundle and reports its verdict; it creates no report.
 
@@ -46,6 +46,19 @@
 ```
 
 `ai-report find <topic>` and "is there a report on <topic>" run the same command with `--find <topic>` appended. It prints matching bundle paths newest first, superseded bundles included, and writes nothing. Print the result, then stop: Steps 1 to 8 do not apply. A `refused` result names a hand-made `catalog.json` or `index.html`; report it and do not move it.
+
+### Organize form
+
+`ai-report organize [--dry-run]` moves every report of a finished month into `ai-reports/YYYY-MM_N-reports/` (`YYYY-MM_1-report` for one report), where N counts that month's reports; the current month's reports stay directly under `ai-reports/`. Every run recounts, so a stale count or a plain `YYYY-MM` folder is renamed and a second run changes nothing. It rewrites every link to a moved report and regenerates the catalog. Organize is the only command that moves reports or rewrites links, and nothing runs it automatically. Steps 1 to 8 do not apply.
+
+```bash
+<skill-root>/../do-work/tools/do-work-cli.sh --repo-root <project-root> --format text ai-report-organize [--dry-run]
+```
+
+1. Print the output. With `--dry-run` it lists the plan and writes nothing; stop here.
+2. A refused or failed result names its paths (uncommitted changes where organize would write, a hand-made catalog file, or a step that failed part way); report it and stop.
+3. Commit as Step 8 says, by exactly the paths under `commit paths:`: `git add -A -- <paths>`, then `git commit -m "Organize ai-reports by month" -- <paths>`. Report the hash, or print that command when the project leaves commits to the user.
+4. Never push.
 
 ### Revise form
 
