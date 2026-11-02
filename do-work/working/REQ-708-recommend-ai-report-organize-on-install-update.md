@@ -26,6 +26,8 @@ estimate:
     - 10-file write set
     - 3 subsystems involved
     - 6 acceptance criteria
+dispatch_at: 2026-11-02T18:44:55Z
+builder_handback_at: 2026-11-02T18:53:40Z
 ---
 # Install, Update and New Reports Recommend ai-report Organize When Finished Months Are Still Loose
 ## What
