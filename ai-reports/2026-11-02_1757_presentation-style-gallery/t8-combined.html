@@ -1,0 +1,717 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>T8 The combination: the 16 MB limit that never ran</title>
+<link rel="stylesheet" href="gallery.css">
+<style>
+/* T8 is assembled from the T1 chain, T2 diagram, T4 terminal notes and T6 details. Their page styles follow, then T8's own. */
+  .verdict { font: 800 clamp(1.5rem, 2.8vw, 2.3rem)/1.25 var(--display); max-width: 34ch; margin: 0 0 14px; }
+  .chain-head { display: flex; flex-wrap: wrap; gap: 8px 24px; align-items: baseline; }
+  .chain-head h2 { margin: 0; }
+  .chain { display: flex; flex-wrap: wrap; gap: 22px 0; align-items: stretch; }
+  .link { display: flex; align-items: center; flex: 1 1 310px; min-width: 0; }
+  .link .node { flex: 1 1 auto; min-width: 0; align-self: stretch; cursor: pointer; }
+  .link .node h3 { font-size: 1.15rem; }
+  .step-number {
+    float: right; font: 800 .95rem var(--display); color: var(--muted);
+    border: 2px solid var(--line); border-radius: 999px; padding: 0 9px; margin-left: 8px;
+  }
+
+  /* Joint: the connector word and the pipe that carries the story into the next card. */
+  .joint { flex: 0 0 auto; display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 0 14px 0 6px; }
+  .joint .word { font: 700 .9rem var(--display); color: var(--muted); white-space: nowrap; }
+  .joint .pipe { flex: none; width: 46px; height: 14px; }
+  .joint .pipe::before {
+    content: ""; position: absolute; top: 2px; left: 2px; width: 10px; height: 10px; border-radius: 50%;
+    background: var(--surface); box-shadow: 0 0 0 2px var(--to); opacity: 0;
+  }
+
+  .after-note { display: flex; flex-wrap: wrap; gap: 28px; }
+  .after-note > div { flex: 1 1 320px; min-width: 0; }
+
+  /* Narrow screens: one column, pipes turn vertical and point down. */
+  @media (max-width: 700px) {
+    .link { flex: 1 1 100%; flex-direction: column; align-items: stretch; }
+    .joint { flex-direction: row; justify-content: center; gap: 10px; padding: 0 0 10px; }
+    .joint .pipe { width: 14px; height: 34px; background: linear-gradient(180deg, var(--from), var(--to)); }
+    .joint .pipe::after {
+      right: auto; left: 50%; top: auto; bottom: -9px; translate: -50% 0;
+      border: 11px solid transparent; border-top-color: var(--to); border-bottom: 0;
+    }
+  }
+
+  /* A reader click on a step sends one packet through the pipe into that card. */
+  @media (prefers-reduced-motion: no-preference) {
+    .joint.is-lit .pipe::before { animation: packet-across .7s ease-out 1 both; }
+    @keyframes packet-across { from { left: 2px; opacity: 1; } to { left: calc(100% - 12px); opacity: 0; } }
+    @media (max-width: 700px) {
+      .joint.is-lit .pipe::before { animation-name: packet-down; }
+      @keyframes packet-down { from { top: 2px; opacity: 1; } to { top: calc(100% - 12px); opacity: 0; } }
+    }
+  }
+  .flow { display: flex; flex-wrap: wrap; gap: 28px; align-items: flex-start; }
+  .diagram {
+    flex: 3 1 560px; min-width: 0; position: sticky; top: 16px;
+    background: var(--surface); border: 2px solid var(--line); border-radius: 20px; padding: 16px;
+  }
+  .diagram svg { display: block; width: 100%; height: auto; max-height: calc(100svh - 72px); }
+  @media (max-width: 960px) { .diagram { position: static; } }
+
+  .steps { flex: 2 1 320px; min-width: 0; list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 18px; }
+  .stepper-on .steps .node { cursor: pointer; }
+  .num {
+    display: inline-grid; place-items: center; width: 1.7em; height: 1.7em; margin-right: .3em;
+    border-radius: 50%; border: 2px solid var(--role); font-size: .9em;
+    background: color-mix(in srgb, var(--role) 22%, var(--surface));
+  }
+
+  [data-stepper]:focus { outline: none; }
+  [data-stepper]:focus-visible { outline: 3px dashed var(--change); outline-offset: 8px; border-radius: 12px; }
+  [data-stepper]:not(.stepper-on) .step-controls { display: none; }
+
+  /* Diagram parts. Color means a role: cause for the question, problem for the old path,
+     effect for the new path, proof for the test. Mechanism stays neutral. */
+  .diagram .box { fill: var(--surface); stroke: var(--muted); stroke-width: 2.5; }
+  .diagram .wire { fill: none; stroke: var(--muted); stroke-width: 3.5; stroke-linecap: round; }
+  .diagram .dashed { stroke-dasharray: 6 6; }
+  .diagram .cause .box { stroke: var(--cause); fill: color-mix(in srgb, var(--cause) 14%, var(--surface)); }
+  .diagram .problem .box { stroke: var(--problem); fill: color-mix(in srgb, var(--problem) 10%, var(--surface)); }
+  .diagram .problem .wire { stroke: var(--problem); }
+  .diagram .effect .box { stroke: var(--effect); fill: color-mix(in srgb, var(--effect) 10%, var(--surface)); }
+  .diagram .effect .wire { stroke: var(--effect); }
+  .diagram .proof .box { stroke: var(--proof); fill: color-mix(in srgb, var(--proof) 10%, var(--surface)); }
+  .diagram .proof .wire { stroke: var(--proof); }
+  .diagram .is-lit .box { stroke-width: 4.5; }
+  .diagram .label { font-size: 18px; font-weight: 700; }
+  .diagram .label-sm { font-size: 16px; font-weight: 700; }
+  .diagram .small { font-size: 15px; fill: var(--muted); }
+  .diagram .mono { font-size: 16px; font-weight: 700; }
+  .m-muted { fill: var(--muted); }
+  .m-problem { fill: var(--problem); }
+  .m-effect { fill: var(--effect); }
+  .m-proof { fill: var(--proof); }
+
+  /* One draw of the wires each time a step lights them. Only after a reader action. */
+  @media (prefers-reduced-motion: no-preference) {
+    .stepper-on .is-lit .wire:not(.dashed) { stroke-dasharray: 300; animation: t2-draw .7s ease-out both; }
+    @keyframes t2-draw { from { stroke-dashoffset: 300; } to { stroke-dashoffset: 0; } }
+  }
+
+  .screen { flex: 3 1 560px; min-width: 0; }
+  .notes { flex: 2 1 300px; min-width: 0; list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 16px; }
+  .notes .node { cursor: pointer; }
+  .note-head { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-bottom: 6px; }
+  .note-head h3 { margin: 0; }
+  .note-head .tag { margin: 0; }
+
+  /* The terminal is always dark, so it uses the bright role colors in both schemes. */
+  .terminal .role-problem { --role: #ff6b88; }
+  .terminal .role-cause { --role: #ffc14d; }
+  .terminal .role-change { --role: #a891ff; }
+  .terminal .role-effect { --role: #34d6b9; }
+  .terminal .role-proof { --role: #63a6ff; }
+
+  .replay pre { padding-left: 48px; max-width: 100%; }
+  .replay pre .line { position: relative; display: inline-block; min-width: 100%; border-radius: 4px; }
+  .replay pre .seg { border-radius: 4px; padding: 1px 2px; }
+  .replay pre .line > .badge { position: absolute; left: -38px; top: 50%; translate: 0 -50%; }
+
+  .badge {
+    display: inline-grid; place-items: center; width: 1.7em; height: 1.7em; flex: 0 0 auto;
+    border-radius: 50%; font: 800 .8rem/1 var(--display);
+  }
+  .terminal .badge { background: var(--role); color: #141a2e; margin-right: 4px; }
+  .notes .badge { background: color-mix(in srgb, var(--role) 22%, var(--surface)); border: 2px solid var(--role); color: var(--ink); font-size: .95rem; }
+
+  /* Stepping: lines are never dimmed. The lit line gets a role-colored marker instead. */
+  .replay.stepper-on pre [data-at]:not(.is-lit) { opacity: 1; }
+  .replay pre [data-at].is-lit { background: color-mix(in srgb, var(--role) 30%, transparent); box-shadow: inset 3px 0 0 var(--role); }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .replay pre [data-at] { transition: background-color .3s ease, box-shadow .3s ease; }
+    .replay[data-touched] pre .is-lit .badge { animation: badge-pop .45s ease; }
+    @keyframes badge-pop { 0% { scale: 1; } 40% { scale: 1.35; } 100% { scale: 1; } }
+  }
+
+  .source-details { margin-top: 18px; }
+  .source-details pre { padding-left: 18px; }
+
+  /* From T6: depth markers, diff colors, file list. */
+  .depth-marker { display: flex; align-items: center; gap: 10px; margin: 0 0 16px; font-weight: 700; color: var(--muted); }
+  .gauge { display: inline-flex; gap: 4px; }
+  .gauge i { display: block; width: 26px; height: 10px; border-radius: 5px; background: var(--line); }
+  .gauge i.on { background: var(--change); }
+  .diff .del { color: var(--problem); }
+  .diff .add { color: var(--effect); }
+  .files { display: grid; grid-template-columns: minmax(0, max-content) minmax(0, 1fr); gap: 8px 18px; margin: 0 0 14px; }
+  .files dt { font-family: var(--mono); font-size: .85rem; overflow-wrap: anywhere; }
+  .files dd { margin: 0; }
+  .ran { font-weight: 700; color: var(--effect); }
+  .depth-three details > *:not(summary) { min-width: 0; }
+  .depth-three pre { margin: 10px 0 12px; }
+  @media (max-width: 700px) { .files { grid-template-columns: minmax(0, 1fr); } .files dd { margin-bottom: 8px; } }
+
+  /* T8's own parts. */
+  .depth-one h1 { font-size: clamp(2rem, 4.4vw, 3.5rem); max-width: 22ch; margin-bottom: 16px; }
+  .depth-one .sub { font-size: 1.15rem; }
+  .jump { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-top: 22px; }
+  .jump span { font-weight: 700; color: var(--muted); margin-right: 4px; }
+  a.btn { text-decoration: none; display: inline-block; }
+  .deck-toggle[aria-pressed="true"] { background: var(--change); border-color: var(--change); color: #fff; }
+  @media (prefers-color-scheme: dark) { .deck-toggle[aria-pressed="true"] { color: #0f1426; } }
+  .why-parts { display: flex; flex-wrap: wrap; gap: 18px; list-style: none; padding: 0; margin: 0; }
+  .why-parts li { flex: 1 1 260px; min-width: 0; background: var(--surface); border: 2px solid var(--line); border-radius: 14px; padding: 14px 16px; }
+  .why-parts li b { display: block; font-family: var(--display); margin-bottom: 4px; }
+  .why-parts li.left-out { border-style: dashed; }
+
+  /* Deck mode: every band becomes one slide. Off by default, so the page is a normal page without a script. */
+  html.deck { scroll-snap-type: y proximity; }
+  html.deck .page > .band { min-height: 100svh; scroll-snap-align: start; display: flex; flex-direction: column; justify-content: center; }
+  html.deck .page > .band + .band { border-top: 0; }
+  html.deck body { font-size: 19px; }
+  .deck-hint {
+    position: fixed; right: 18px; bottom: 18px; z-index: 30; display: none;
+    background: var(--ink); color: var(--paper); border-radius: 999px; padding: 8px 16px; font: 700 .9rem var(--display);
+  }
+  html.deck .deck-hint { display: block; }
+</style>
+</head>
+<body>
+<nav class="topbar"><a href="index.html">Gallery</a><strong>T8 The combination</strong><span class="spacer"></span><button class="btn deck-toggle" type="button" id="deck-toggle" aria-pressed="false">Deck mode (D)</button><a href="t7-comic-strip.html">Previous: T7</a> <a href="t1-cause-chain.html">Next: T1 Cause-and-effect chain</a></nav>
+<div class="page">
+
+<header class="band depth-one" id="depth-1">
+  <p class="depth-marker"><span class="gauge" aria-hidden="true"><i class="on"></i><i></i><i></i></span>Depth 1 of 3: one line</p>
+  <h1>The 16 MB output limit works now. Before release 0.306.5, it never ran.</h1>
+  <p class="sub measure">Since 2026-10-19, the second-opinion <span class="term" data-term="launcher">launcher</span> stops a <span class="term" data-term="backend">backend</span>'s output at 16 MB and reports "backend output exceeded capture limit". Before, Go skipped the method that held the limit. A test now fails if that comes back.</p>
+  <p><span class="chip">release 0.306.5 (83146e48)</span><span class="chip">fix aa61c81a (REQ-702)</span><span class="chip">report_second_opinion_test.go:804</span></p>
+  <ul class="legend" aria-label="Color key">
+    <li class="role-cause">Cause</li>
+    <li class="role-problem">Problem</li>
+    <li class="role-change">Change</li>
+    <li class="role-effect">Effect</li>
+    <li class="role-proof">Proof</li>
+  </ul>
+  <nav class="jump" aria-label="Go deeper"><span>Go deeper:</span><a class="btn" href="#depth-2">Why it happened</a><a class="btn" href="#how">Where in the code</a><a class="btn" href="#proof">The proof</a><a class="btn" href="#depth-3">Every detail</a></nav>
+</header>
+
+<section class="band" id="depth-2" data-stepper aria-labelledby="chain-heading">
+  <p class="depth-marker"><span class="gauge" aria-hidden="true"><i class="on"></i><i class="on"></i><i></i></span>Depth 2 of 3: why it happened</p>
+  <div class="chain-head">
+    <h2 id="chain-heading">Why it happened: follow the bytes</h2>
+    <p class="note">Click a card, use the buttons, or press the arrow keys. Each card says why the next one happened.</p>
+  </div>
+  <div class="step-controls">
+    <button class="btn" type="button" data-step-prev>Previous link</button>
+    <button class="btn primary" type="button" data-step-next>Next link</button>
+    <span class="step-label" data-step-label aria-live="polite">Step 1 of 7</span>
+  </div>
+
+  <div class="chain">
+
+    <div class="link">
+      <article class="node role-cause" data-step>
+        <span class="step-number">1</span>
+        <span class="tag">Cause</span>
+        <h3>The limit lives in Write</h3>
+        <p>The <span class="term" data-term="launcher">launcher</span> keeps each <span class="term" data-term="backend">backend</span>'s output in a <span class="term" data-term="buffer">buffer</span>. Our own <span class="term" data-term="write">Write</span> method on that buffer checks the 16 MB <span class="term" data-term="cap">cap</span> and cuts any extra bytes.</p>
+        <span class="chip">report_second_opinion.go:1061</span><span class="chip">report_second_opinion.go:1075-1079</span>
+      </article>
+    </div>
+
+    <div class="link">
+      <div class="joint" data-at="2" aria-hidden="true"><span class="word">but</span><span class="pipe" style="--from: var(--cause); --to: var(--cause)"></span></div>
+      <article class="node role-cause" data-step>
+        <span class="step-number">2</span>
+        <span class="tag">Cause</span>
+        <h3>The old buffer embedded bytes.Buffer</h3>
+        <p>Before the fix, the struct held <code>bytes.Buffer</code> with no field name. This is <span class="term" data-term="embedding">embedding</span>. It gives the struct every bytes.Buffer method, including <span class="term" data-term="readfrom">ReadFrom</span>.</p>
+        <span class="chip">aa61c81a: old struct line "bytes.Buffer"</span>
+      </article>
+    </div>
+
+    <div class="link">
+      <div class="joint" data-at="3" aria-hidden="true"><span class="word">so</span><span class="pipe" style="--from: var(--cause); --to: var(--problem)"></span></div>
+      <article class="node role-problem" data-step>
+        <span class="step-number">3</span>
+        <span class="tag">Problem</span>
+        <h3>io.Copy takes the side door</h3>
+        <p>The launcher gives the buffers to os/exec as stdout and stderr. os/exec copies the <span class="term" data-term="pipe">pipe</span> with <span class="term" data-term="iocopy">io.Copy</span>. io.Copy prefers ReadFrom when the writer has one. So bytes.Buffer.ReadFrom pulls in the whole stream, and our Write is skipped.</p>
+        <span class="chip">report_second_opinion.go:1141-1145</span><span class="chip">aa61c81a commit message</span>
+      </article>
+    </div>
+
+    <div class="link">
+      <div class="joint" data-at="4" aria-hidden="true"><span class="word">which means</span><span class="pipe" style="--from: var(--problem); --to: var(--problem)"></span></div>
+      <article class="node role-problem" data-step>
+        <span class="step-number">4</span>
+        <span class="tag">Problem</span>
+        <h3>No limit and no error</h3>
+        <p>A backend that prints too much fills memory without limit. The <span class="term" data-term="truncated">truncated</span> flag stays false, so the error "backend output exceeded capture limit" can never fire. A copy of the old buffer kept 16,777,300 bytes with truncated=false.</p>
+        <span class="chip">report_second_opinion.go:1194-1195</span><span class="chip">changelog 0.306.5</span><span class="chip">reproduction run 2026-11-02 (not project code)</span>
+      </article>
+    </div>
+
+    <div class="link">
+      <div class="joint" data-at="5" aria-hidden="true"><span class="word">fix:</span><span class="pipe" style="--from: var(--problem); --to: var(--change)"></span></div>
+      <article class="node role-change" data-step>
+        <span class="step-number">5</span>
+        <span class="tag">Change</span>
+        <h3>Give the buffer a name</h3>
+        <p>The field became <code>captured bytes.Buffer</code>. A <span class="term" data-term="namedfield">named field</span> keeps its methods to itself, so the buffer has no ReadFrom. Every byte now goes through Write.</p>
+        <span class="chip">report_second_opinion.go:1055</span><span class="chip">aa61c81a</span>
+      </article>
+    </div>
+
+    <div class="link">
+      <div class="joint" data-at="6" aria-hidden="true"><span class="word">now</span><span class="pipe" style="--from: var(--change); --to: var(--effect)"></span></div>
+      <article class="node role-effect" data-step>
+        <span class="step-number">6</span>
+        <span class="tag">Effect</span>
+        <h3>The limit works</h3>
+        <p>Output stops at 16,777,216 bytes. truncated becomes true, and the launcher reports "backend output exceeded capture limit". The new progress mirror also lives in Write, so it now sees every line too.</p>
+        <span class="chip">report_second_opinion.go:1075-1080</span><span class="chip">report_second_opinion.go:1194-1195</span><span class="chip">reproduction run 2026-11-02</span><span class="chip">aa61c81a commit message</span>
+      </article>
+    </div>
+
+    <div class="link">
+      <div class="joint" data-at="7" aria-hidden="true"><span class="word">proof:</span><span class="pipe" style="--from: var(--effect); --to: var(--proof)"></span></div>
+      <article class="node role-proof" data-step>
+        <span class="step-number">7</span>
+        <span class="tag">Proof</span>
+        <h3>A test pins it</h3>
+        <p>TestSecondOpinionCaptureCapsBackendOutput sends 16,777,300 bytes from /dev/zero. It expects exactly 16 MiB kept and an error back. This <span class="term" data-term="pin">pin</span> passed on 2026-11-02 in 0.11 s.</p>
+        <span class="chip">report_second_opinion_test.go:804</span><span class="chip">go test run 2026-11-02: PASS</span>
+      </article>
+    </div>
+
+  </div>
+</section>
+
+<section class="band" id="how" data-stepper tabindex="0" aria-labelledby="how-heading">
+  <p class="depth-marker"><span class="gauge" aria-hidden="true"><i class="on"></i><i class="on"></i><i></i></span>Depth 2 of 3: where in the code</p>
+  <h2 id="how-heading">Where in the code: the path of one byte</h2>
+  <p class="measure">The left path is the old behavior, before release 0.306.5. The right path is the behavior since then. Each step lights the part of the diagram it talks about.</p>
+  <div class="step-controls">
+    <button class="btn" type="button" data-step-prev>Previous step</button>
+    <button class="btn primary" type="button" data-step-next>Next step</button>
+    <span class="step-label" data-step-label>Step 1 of 7</span>
+    <span class="note">You can also click a step or press the arrow keys.</span>
+  </div>
+
+  <div class="flow">
+    <figure class="diagram" style="margin:0">
+      <svg viewBox="0 0 520 640" role="img" aria-labelledby="t2-diagram-title">
+        <title id="t2-diagram-title">Flow of backend output: the backend writes into a pipe, io.Copy asks whether the buffer has ReadFrom. Before 0.306.5 the answer was yes and every byte was kept with no limit. Since 0.306.5 the answer is no, so Write keeps at most 16 MB, sets truncated, and the launcher reports an error. A test pins the new path.</title>
+        <defs>
+          <marker id="t2-arrow-muted" viewBox="0 0 10 10" refX="9" refY="5" markerUnits="userSpaceOnUse" markerWidth="12" markerHeight="12" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="m-muted"/></marker>
+          <marker id="t2-arrow-problem" viewBox="0 0 10 10" refX="9" refY="5" markerUnits="userSpaceOnUse" markerWidth="12" markerHeight="12" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="m-problem"/></marker>
+          <marker id="t2-arrow-effect" viewBox="0 0 10 10" refX="9" refY="5" markerUnits="userSpaceOnUse" markerWidth="12" markerHeight="12" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="m-effect"/></marker>
+          <marker id="t2-arrow-proof" viewBox="0 0 10 10" refX="9" refY="5" markerUnits="userSpaceOnUse" markerWidth="12" markerHeight="12" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="m-proof"/></marker>
+        </defs>
+
+        <g data-at="1">
+          <rect class="box" x="130" y="10" width="260" height="66" rx="14"/>
+          <text class="label" x="260" y="38" text-anchor="middle">Backend program</text>
+          <text class="small" x="260" y="62" text-anchor="middle">codex, gemini or agy</text>
+        </g>
+
+        <g data-at="1 2">
+          <path class="wire" d="M260 76 V106" marker-end="url(#t2-arrow-muted)"/>
+          <text class="small" x="272" y="98">pipe</text>
+        </g>
+
+        <g data-at="2 3">
+          <rect class="box" x="170" y="112" width="180" height="50" rx="12"/>
+          <text class="mono" x="260" y="143" text-anchor="middle">io.Copy</text>
+        </g>
+
+        <g class="cause" data-at="3">
+          <path class="wire" d="M260 162 V178" marker-end="url(#t2-arrow-muted)"/>
+          <polygon class="box" points="260,182 370,230 260,278 150,230"/>
+          <text class="label" x="260" y="236" text-anchor="middle">Has ReadFrom?</text>
+        </g>
+
+        <g class="problem" data-at="4">
+          <path class="wire" d="M150 230 H130 V296" marker-end="url(#t2-arrow-problem)"/>
+          <text class="label-sm" x="122" y="258" text-anchor="end">Yes</text>
+          <text class="small" x="122" y="280" text-anchor="end">before 0.306.5</text>
+          <rect class="box" x="15" y="300" width="230" height="56" rx="12"/>
+          <text class="mono" x="130" y="334" text-anchor="middle">bytes.Buffer.ReadFrom</text>
+          <path class="wire" d="M130 356 V380" marker-end="url(#t2-arrow-problem)"/>
+          <rect class="box" x="15" y="384" width="230" height="72" rx="12"/>
+          <text class="label-sm" x="130" y="414" text-anchor="middle">All bytes kept</text>
+          <text class="label-sm" x="130" y="440" text-anchor="middle">No limit, no error</text>
+        </g>
+
+        <g class="effect" data-at="5 7">
+          <path class="wire" d="M370 230 H390 V296" marker-end="url(#t2-arrow-effect)"/>
+          <text class="label-sm" x="398" y="258">No</text>
+          <text class="small" x="398" y="280">since 0.306.5</text>
+          <rect class="box" x="275" y="300" width="230" height="56" rx="12"/>
+          <text class="label" x="390" y="334" text-anchor="middle">Our Write method</text>
+          <path class="wire" d="M390 356 V376" marker-end="url(#t2-arrow-effect)"/>
+          <rect class="box" x="275" y="380" width="230" height="56" rx="12"/>
+          <text class="label" x="390" y="414" text-anchor="middle">Keep at most 16 MB</text>
+        </g>
+
+        <g class="effect" data-at="6 7">
+          <path class="wire" d="M390 436 V456" marker-end="url(#t2-arrow-effect)"/>
+          <rect class="box" x="275" y="460" width="230" height="56" rx="12"/>
+          <text class="mono" x="390" y="494" text-anchor="middle">truncated = true</text>
+          <path class="wire" d="M390 516 V536" marker-end="url(#t2-arrow-effect)"/>
+          <rect class="box" x="275" y="540" width="230" height="88" rx="12"/>
+          <text class="label-sm" x="390" y="576" text-anchor="middle">Error: backend output</text>
+          <text class="label-sm" x="390" y="602" text-anchor="middle">exceeded capture limit</text>
+        </g>
+
+        <g class="proof" data-at="7">
+          <rect class="box" x="15" y="540" width="230" height="88" rx="12"/>
+          <text class="label-sm" x="130" y="568" text-anchor="middle">Test pins this path</text>
+          <text class="small" x="130" y="592" text-anchor="middle">sends 16,777,300 bytes</text>
+          <text class="small" x="130" y="614" text-anchor="middle">expects 16 MiB + error</text>
+          <path class="wire dashed" d="M245 584 H269" marker-end="url(#t2-arrow-proof)"/>
+        </g>
+      </svg>
+    </figure>
+
+    <ol class="steps">
+      <li class="node role-cause" data-step>
+        <span class="tag">Cause</span>
+        <h3><span class="num">1</span>The backend prints its answer</h3>
+        <p>The <span class="term" data-term="launcher">launcher</span> starts a backend program, for example codex. Everything the backend prints goes to its stdout and stderr, and the launcher collects both in a buffer.</p>
+        <span class="chip">report_second_opinion.go:1142-1145</span>
+      </li>
+      <li class="node role-cause" data-step>
+        <span class="tag">Cause</span>
+        <h3><span class="num">2</span>Go opens a pipe and runs io.Copy</h3>
+        <p>The buffer is not a file. So Go's os/exec package opens a <span class="term" data-term="pipe">pipe</span> and starts <span class="term" data-term="iocopy">io.Copy</span> to move the bytes from the pipe into the buffer.</p>
+        <span class="chip">report_second_opinion.go:1141</span>
+      </li>
+      <li class="node role-cause" data-step>
+        <span class="tag">Cause</span>
+        <h3><span class="num">3</span>io.Copy asks one question</h3>
+        <p>Before it copies, io.Copy checks the buffer: does it have a <span class="term" data-term="readfrom">ReadFrom</span> method? If yes, io.Copy hands the whole stream to ReadFrom and never calls <span class="term" data-term="write">Write</span>.</p>
+        <span class="chip">aa61c81a commit message</span>
+      </li>
+      <li class="node role-problem" data-step>
+        <span class="tag">Problem</span>
+        <h3><span class="num">4</span>Before 0.306.5: yes, so ReadFrom</h3>
+        <p>The old buffer used <span class="term" data-term="embedding">embedding</span> for bytes.Buffer, so it had a <span class="term" data-term="promoted">promoted</span> ReadFrom. ReadFrom kept every byte. The 16 MB check in Write never ran. A reproduction kept 16,777,300 bytes and reported truncated=false.</p>
+        <span class="chip">aa61c81a (old struct)</span><span class="chip">reproduction run, 2026-11-02</span>
+      </li>
+      <li class="node role-change" data-step>
+        <span class="tag">Change</span>
+        <h3><span class="num">5</span>Since 0.306.5: no, so Write</h3>
+        <p>The buffer now holds a <span class="term" data-term="namedfield">named field</span>, <code>captured bytes.Buffer</code>. The buffer type has no ReadFrom, so io.Copy calls Write. Write keeps at most 16 MB.</p>
+        <span class="chip">report_second_opinion.go:1054-1059</span><span class="chip">report_second_opinion.go:1075</span>
+      </li>
+      <li class="node role-effect" data-step>
+        <span class="tag">Effect</span>
+        <h3><span class="num">6</span>The error fires</h3>
+        <p>Write cuts the extra bytes and sets the <span class="term" data-term="truncated">truncated</span> flag. When the backend is done, the launcher turns that flag into the error "backend output exceeded capture limit".</p>
+        <span class="chip">report_second_opinion.go:1076-1078</span><span class="chip">report_second_opinion.go:1194-1195</span>
+      </li>
+      <li class="node role-proof" data-step>
+        <span class="tag">Proof</span>
+        <h3><span class="num">7</span>A test pins it</h3>
+        <p>TestSecondOpinionCaptureCapsBackendOutput sends 16,777,300 bytes and expects exactly 16,777,216 bytes plus an error. It is a <span class="term" data-term="pin">pin</span>: it fails if the old path comes back. It passed on 2026-11-02 in 0.11 s.</p>
+        <span class="chip">report_second_opinion_test.go:804</span><span class="chip">go test run, 2026-11-02</span>
+      </li>
+    </ol>
+  </div>
+</section>
+
+<section class="band replay" id="proof" data-stepper aria-labelledby="repro-heading">
+  <p class="depth-marker"><span class="gauge" aria-hidden="true"><i class="on"></i><i class="on"></i><i></i></span>Depth 2 of 3: the proof</p>
+  <h2 id="repro-heading">The proof, part 1: the old and new shape side by side</h2>
+  <p class="measure">This is a short Go program written for this gallery that copies the old and new buffer shapes, not project code. Both shapes use the same Write with the same 16 MB limit. Each one receives the output of <code>head -c 16777300 /dev/zero</code>, the same command the real test uses.</p>
+  <div class="step-controls"><button class="btn" type="button" data-step-prev>Previous note</button><button class="btn primary" type="button" data-step-next>Next note</button><span class="step-label" data-step-label></span></div>
+  <div class="row">
+    <div class="screen">
+<pre class="terminal"><span class="dim"># main.go and go.mod in a scratch folder outside the repository, 2026-11-02</span>
+<span class="prompt">$</span> go run .
+old (embedded):  <span class="seg role-cause" data-at="1"><span class="badge" aria-hidden="true">1</span>io.ReaderFrom=true</span>  <span class="seg role-problem" data-at="2"><span class="badge" aria-hidden="true">2</span>captured=16777300 bytes  truncated=false</span>
+<span class="line role-effect" data-at="3"><span class="badge" aria-hidden="true">3</span>new (named):     io.ReaderFrom=false captured=16777216 bytes  truncated=true</span></pre>
+      <details class="source-details">
+        <summary>Show the program</summary>
+<pre>// Reproduction of the 0.306.5 capture-cap bug: same Write as the old secondOpinionBuffer, two struct shapes.
+package main
+
+import (
+    "bytes"
+    "fmt"
+    "io"
+    "os/exec"
+)
+
+const limit = 16 * 1024 * 1024
+
+// embeddedBuffer is the old shape: bytes.Buffer is embedded, so its ReadFrom method is promoted.
+type embeddedBuffer struct {
+    bytes.Buffer
+    truncated bool
+}
+
+func (buffer *embeddedBuffer) Write(data []byte) (int, error) {
+    length := len(data)
+    if remaining := limit - buffer.Len(); len(data) &gt; remaining {
+        data, buffer.truncated = data[:remaining], true
+    }
+    _, _ = buffer.Buffer.Write(data)
+    return length, nil
+}
+
+// namedBuffer is the fixed shape: the bytes.Buffer is a named field, so Write is the only way in.
+type namedBuffer struct {
+    captured  bytes.Buffer
+    truncated bool
+}
+
+func (buffer *namedBuffer) Write(data []byte) (int, error) {
+    length := len(data)
+    if remaining := limit - buffer.captured.Len(); len(data) &gt; remaining {
+        data, buffer.truncated = data[:remaining], true
+    }
+    _, _ = buffer.captured.Write(data)
+    return length, nil
+}
+
+func main() {
+    old := &amp;embeddedBuffer{}
+    command := exec.Command("/usr/bin/head", "-c", "16777300", "/dev/zero")
+    command.Stdout = old
+    _ = command.Run()
+    _, hasReadFrom := any(old).(io.ReaderFrom)
+    fmt.Printf("old (embedded):  io.ReaderFrom=%v  captured=%d bytes  truncated=%v\n", hasReadFrom, old.Len(), old.truncated)
+
+    fixed := &amp;namedBuffer{}
+    command = exec.Command("/usr/bin/head", "-c", "16777300", "/dev/zero")
+    command.Stdout = fixed
+    _ = command.Run()
+    _, hasReadFrom = any(fixed).(io.ReaderFrom)
+    fmt.Printf("new (named):     io.ReaderFrom=%v captured=%d bytes  truncated=%v\n", hasReadFrom, fixed.captured.Len(), fixed.truncated)
+}</pre>
+      </details>
+    </div>
+    <ol class="notes">
+      <li class="node role-cause" data-step>
+        <div class="note-head"><span class="badge">1</span><h3>The old shape has ReadFrom</h3><span class="tag">Cause</span></div>
+        <p><code>io.ReaderFrom=true</code> means Go sees a ReadFrom method on the old buffer. When Go copies the backend's output, it uses that method and skips Write.</p>
+        <span class="chip">scratch program, 2026-11-02</span>
+      </li>
+      <li class="node role-problem" data-step>
+        <div class="note-head"><span class="badge">2</span><h3>84 bytes past the limit, no flag</h3><span class="tag">Problem</span></div>
+        <p>It kept 16,777,300 bytes. The limit is 16,777,216. The truncated flag stayed false, and that flag is the only thing that turns into the error "backend output exceeded capture limit".</p>
+        <span class="chip">report_second_opinion.go:1194-1195</span>
+      </li>
+      <li class="node role-effect" data-step>
+        <div class="note-head"><span class="badge">3</span><h3>The new shape stops at the limit</h3><span class="tag">Effect</span></div>
+        <p>No ReadFrom, so every byte went through Write. It kept exactly 16,777,216 bytes and set truncated to true.</p>
+        <span class="chip">report_second_opinion.go:1075-1078</span>
+      </li>
+    </ol>
+  </div>
+</section>
+
+<section class="band replay" data-stepper aria-labelledby="test-heading">
+  <h2 id="test-heading">The proof, part 2: the test that pins it</h2>
+  <p class="measure">The real test, run on 2026-11-02 against the current code.</p>
+  <div class="step-controls"><button class="btn" type="button" data-step-prev>Previous note</button><button class="btn primary" type="button" data-step-next>Next note</button><span class="step-label" data-step-label></span></div>
+  <div class="row">
+    <div class="screen">
+<pre class="terminal"><span class="prompt">$</span> cd skills/do-work/tools/do-work-cli
+<span class="prompt">$</span> go test ./internal/toolboxcommands/ -run 'TestSecondOpinionCaptureCapsBackendOutput' -count=1 -v
+<span class="line role-proof" data-at="1"><span class="badge" aria-hidden="true">1</span>=== RUN   TestSecondOpinionCaptureCapsBackendOutput</span>
+<span class="line role-proof good" data-at="2"><span class="badge" aria-hidden="true">2</span>--- PASS: TestSecondOpinionCaptureCapsBackendOutput (0.11s)</span>
+<span class="good">PASS</span>
+ok      github.com/knews2019/skill-do-work/do-work-cli/internal/toolboxcommands 0.597s</pre>
+    </div>
+    <ol class="notes">
+      <li class="node role-proof" data-step>
+        <div class="note-head"><span class="badge">1</span><h3>What the test does</h3><span class="tag">Proof</span></div>
+        <p>It runs <code>head -c 16777300 /dev/zero</code> as the backend, so the output is 84 bytes over the limit. It fails unless exactly 16,777,216 bytes come back and the capture returns an error.</p>
+        <span class="chip">report_second_opinion_test.go:804</span>
+      </li>
+      <li class="node role-proof" data-step>
+        <div class="note-head"><span class="badge">2</span><h3>It passes</h3><span class="tag">Proof</span></div>
+        <p>PASS in 0.11 seconds. If someone embeds bytes.Buffer again, the old shape keeps all 16,777,300 bytes with no error, and this test fails.</p>
+        <span class="chip">go test run, 2026-11-02</span>
+      </li>
+    </ol>
+  </div>
+</section>
+
+<section class="band depth-three" id="depth-3" aria-labelledby="depth-3-heading">
+  <p class="depth-marker"><span class="gauge" aria-hidden="true"><i class="on"></i><i class="on"></i><i class="on"></i></span>Depth 3 of 3: every detail, folded</p>
+  <h2 id="depth-3-heading">The details</h2>
+  <p class="step-controls"><button class="btn" type="button" id="open-all">Open all details</button></p>
+  <details>
+    <summary>The code before and after</summary>
+    <p class="measure">The struct and the end of Write, from the fix commit. The two new fields at the bottom of the struct belong to the progress feature in the same commit.</p>
+<pre class="diff"><code> type secondOpinionBuffer struct {
+<span class="del">-	bytes.Buffer</span>
+<span class="del">-	truncated bool</span>
+<span class="add">+	captured     bytes.Buffer</span>
+<span class="add">+	truncated    bool</span>
+<span class="add">+	mirrorPrefix string</span>
+<span class="add">+	pending      []byte</span>
+ }
+
+<span class="del">-	remaining := 16*1024*1024 - buffer.Len()</span>
+<span class="add">+	remaining := 16*1024*1024 - buffer.captured.Len()</span>
+ 	if len(data) &gt; remaining {
+ 		data = data[:remaining]
+ 		buffer.truncated = true
+ 	}
+<span class="del">-	_, _ = buffer.Buffer.Write(data)</span>
+<span class="add">+	_, _ = buffer.captured.Write(data)</span></code></pre>
+    <span class="chip">aa61c81a</span><span class="chip">report_second_opinion.go:1054-1059</span><span class="chip">report_second_opinion.go:1075-1080</span>
+  </details>
+
+  <details>
+    <summary>Why io.Copy skips Write</summary>
+    <div class="measure">
+      <p>The <span class="term" data-term="launcher">launcher</span> sets the two buffers as the command's stdout and stderr. They are not files, so os/exec makes a <span class="term" data-term="pipe">pipe</span> and copies it with <span class="term" data-term="iocopy">io.Copy</span>.</p>
+      <p>io.Copy checks whether the writer has a <span class="term" data-term="readfrom">ReadFrom</span> method. If it does, io.Copy calls ReadFrom and never calls <span class="term" data-term="write">Write</span>.</p>
+      <p>The old buffer used <span class="term" data-term="embedding">embedding</span>, so ReadFrom was a <span class="term" data-term="promoted">promoted</span> method on it. bytes.Buffer.ReadFrom knows nothing about our 16 MB <span class="term" data-term="cap">cap</span>. The fixed buffer keeps bytes.Buffer in a <span class="term" data-term="namedfield">named field</span>, so ReadFrom stays on the field and the buffer has only Write.</p>
+    </div>
+    <p class="note">The code now explains this itself, above the struct:</p>
+<pre><code>// captured is a named field, never embedded: an embedded bytes.Buffer promotes ReadFrom, io.Copy prefers it, and
+// neither the cap nor the mirror in Write would ever run.</code></pre>
+    <span class="chip">report_second_opinion.go:1052-1053</span><span class="chip">report_second_opinion.go:1141-1145</span>
+    <p class="note">A short Go program written for this gallery copies the old and new buffer shapes and feeds each one 16,777,300 bytes. It is not project code. Output from 2026-11-02:</p>
+<pre class="terminal"><code><span class="bad">old (embedded):  io.ReaderFrom=true  captured=16777300 bytes  truncated=false</span>
+<span class="good">new (named):     io.ReaderFrom=false captured=16777216 bytes  truncated=true</span></code></pre>
+  </details>
+
+  <details>
+    <summary>The test that pins it</summary>
+    <p class="measure"><code>head -c 16777300 /dev/zero</code> prints 84 bytes more than 16 MiB. The test fails if the launcher keeps any other number of bytes than 16,777,216, or if no error comes back. This is the <span class="term" data-term="pin">pin</span> for this bug.</p>
+<pre><code>func TestSecondOpinionCaptureCapsBackendOutput(t *testing.T) {
+	previousSink := secondOpinionProgressSink
+	secondOpinionProgressSink = io.Discard
+	t.Cleanup(func() { secondOpinionProgressSink = previousSink })
+	captured := secondOpinionCapture(context.Background(), secondOpinionProgress{}, t.TempDir(), "/usr/bin/head", "-c", "16777300", "/dev/zero")
+	if len(captured.stdout) != 16*1024*1024 || captured.err == nil {
+		t.Fatalf("captured %d bytes, err=%v", len(captured.stdout), captured.err)
+	}
+}</code></pre>
+    <span class="chip">report_second_opinion_test.go:804-812</span>
+    <p class="note">Run on 2026-11-02:</p>
+<pre class="terminal"><code><span class="dim">=== RUN   TestSecondOpinionCaptureCapsBackendOutput</span>
+<span class="good">--- PASS: TestSecondOpinionCaptureCapsBackendOutput (0.11s)</span>
+<span class="good">PASS</span>
+ok  	github.com/knews2019/skill-do-work/do-work-cli/internal/toolboxcommands	0.597s</code></pre>
+  </details>
+
+  <details>
+    <summary>Files and commits</summary>
+    <dl class="files">
+      <dt>skills/do-work/tools/do-work-cli/internal/toolboxcommands/report_second_opinion.go</dt>
+      <dd>The buffer struct (1054-1059), Write with the cap (1061-1082), the stdout and stderr wiring (1144-1145), and the error (1194-1195).</dd>
+      <dt>skills/do-work/tools/do-work-cli/internal/toolboxcommands/report_second_opinion_test.go</dt>
+      <dd>TestSecondOpinionCaptureCapsBackendOutput (804).</dd>
+      <dt>aa61c81a</dt>
+      <dd>[REQ-702] stream second-opinion backend output and heartbeats to stderr. The fix is in this commit.</dd>
+      <dt>83146e48</dt>
+      <dd>[REQ-702] complete: release 0.306.5, Second-Opinion Launcher Shows Progress While Codex, Gemini or AGY Runs.</dd>
+    </dl>
+  </details>
+
+  <details>
+    <summary>Check it yourself</summary>
+    <p>Run the test that pins the limit. <span class="ran">Run on 2026-11-02 with go1.27.3 darwin/arm64: PASS.</span></p>
+<pre><code>cd skills/do-work/tools/do-work-cli
+go test ./internal/toolboxcommands/ -run 'TestSecondOpinionCaptureCapsBackendOutput' -count=1 -v</code></pre>
+    <p>Read the fix itself. <span class="ran">Used on 2026-11-02 to read the diff above.</span></p>
+<pre><code>git show aa61c81a -- skills/do-work/tools/do-work-cli/internal/toolboxcommands/report_second_opinion.go</code></pre>
+  </details>
+</section>
+
+<section class="band" id="why-combo" aria-labelledby="why-heading">
+  <h2 id="why-heading">Why these parts, in this order</h2>
+  <ul class="why-parts">
+    <li><b>One line first</b>A busy reader can stop after ten seconds and still know the verdict.</li>
+    <li class="role-cause"><b>Then the chain</b>It answers "why" in about a minute, one link at a time.</li>
+    <li><b>Then the diagram</b>It shows where in the code each link happens.</li>
+    <li><b>Then the terminal notes</b>Real output is the proof for work that has no screen.</li>
+    <li><b>Details folded last</b>Code, files and commands are there for the reader who wants to check.</li>
+    <li><b>Glossary everywhere, deck on demand</b>Underlined words explain themselves. Press D to show the page as slides on a call.</li>
+    <li class="left-out"><b>Left out: the comic strip</b>It is the most fun, but it tells the chain again with drawings. Keep it for incident stories and onboarding.</li>
+  </ul>
+</section>
+
+<footer class="band note measure">
+  <p>Evidence: commit aa61c81a (the fix), commit 83146e48 (release 0.306.5), <code>skills/do-work/tools/do-work-cli/internal/toolboxcommands/report_second_opinion.go</code> and its test file, read on 2026-11-02. The test run and the reproduction output were captured on 2026-11-02. The reproduction is a short Go program written for this gallery that copies the old and new buffer shapes. It is not project code. The diagram is hand-made SVG.</p>
+</footer>
+
+</div>
+<div class="deck-hint" aria-live="polite" id="deck-hint">Deck mode</div>
+<script src="gallery.js"></script>
+<script>
+  // From T4: the badge pop plays only after the reader has used a stepper.
+  for (const replay of document.querySelectorAll(".replay")) {
+    const touch = () => { replay.dataset.touched = ""; };
+    replay.addEventListener("click", touch);
+    replay.addEventListener("keydown", touch);
+  }
+
+  document.getElementById("open-all").addEventListener("click", (event) => {
+    const details = [...document.querySelectorAll("#depth-3 details")];
+    const open = !details.every((item) => item.open);
+    details.forEach((item) => { item.open = open; });
+    event.currentTarget.textContent = open ? "Fold all details" : "Open all details";
+  });
+
+  // Deck mode: each band is one slide. D or the button switches it, Escape leaves it.
+  const deckToggle = document.getElementById("deck-toggle");
+  const deckHint = document.getElementById("deck-hint");
+  const deckSlides = [...document.querySelectorAll(".page > .band")];
+  const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+  let headingTo = null;
+  window.addEventListener("scrollend", () => { headingTo = null; });
+
+  function currentSlideIndex() {
+    const middle = window.innerHeight / 2;
+    let index = 0;
+    deckSlides.forEach((slide, position) => { if (slide.getBoundingClientRect().top <= middle) index = position; });
+    return index;
+  }
+  function showHint() {
+    deckHint.textContent = `Slide ${currentSlideIndex() + 1} of ${deckSlides.length}. Arrow keys move. Press D to leave.`;
+  }
+  function setDeck(on) {
+    const anchor = deckSlides[currentSlideIndex()];
+    document.documentElement.classList.toggle("deck", on);
+    deckToggle.setAttribute("aria-pressed", String(on));
+    anchor.scrollIntoView({ block: "start" });
+    if (on) showHint();
+  }
+  function moveSlides(offset) {
+    const from = headingTo ?? currentSlideIndex();
+    headingTo = Math.min(Math.max(from + offset, 0), deckSlides.length - 1);
+    deckSlides[headingTo].scrollIntoView({ behavior: reduceMotion.matches ? "auto" : "smooth", block: "start" });
+  }
+
+  deckToggle.addEventListener("click", () => setDeck(!document.documentElement.classList.contains("deck")));
+  window.addEventListener("scroll", () => { if (document.documentElement.classList.contains("deck")) showHint(); }, { passive: true });
+  document.addEventListener("keydown", (event) => {
+    if (event.altKey || event.ctrlKey || event.metaKey || event.defaultPrevented) return;
+    if (event.target instanceof Element && event.target.closest("input, textarea, select, [contenteditable]")) return;
+    const deckOn = document.documentElement.classList.contains("deck");
+    if (event.key === "d" || event.key === "D") { setDeck(!deckOn); return; }
+    if (!deckOn) return;
+    if (event.key === "Escape") { setDeck(false); return; }
+    if (event.target instanceof Element && event.target.closest("button, summary")) return;
+    const forward = ["ArrowRight", "ArrowDown", "PageDown"].includes(event.key) || (event.key === " " && !event.shiftKey);
+    const backward = ["ArrowLeft", "ArrowUp", "PageUp"].includes(event.key) || (event.key === " " && event.shiftKey);
+    if (!forward && !backward) return;
+    event.preventDefault();
+    moveSlides(forward ? 1 : -1);
+  });
+</script>
+</body>
+</html>

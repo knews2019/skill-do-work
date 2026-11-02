@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="ai-report-kind" content="proposal">
+<title>Presentation style gallery: one bug, eight ways to explain it</title>
+<link rel="stylesheet" href="gallery.css">
+<style>
+  .hero { padding: 56px 0 36px; }
+  .hero h1 { max-width: 20ch; }
+  .story { counter-reset: link; list-style: none; padding: 0; margin: 0; display: flex; flex-wrap: wrap; gap: 14px; }
+  .story li {
+    flex: 1 1 230px; background: var(--surface); border-radius: 14px; padding: 14px 16px;
+    border: 2px solid color-mix(in srgb, var(--role) 45%, var(--line));
+    border-top-width: 7px; border-top-color: var(--role);
+  }
+  .story li b { display: block; font-family: var(--display); margin-bottom: 4px; }
+  .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 22px; }
+  .tile {
+    display: flex; flex-direction: column; gap: 10px;
+    background: var(--surface); border: 2px solid var(--line); border-radius: 20px; padding: 20px;
+    text-decoration: none; color: var(--ink);
+  }
+  .tile:hover, .tile:focus-visible { border-color: var(--change); outline: none; }
+  .tile svg { width: 100%; height: 92px; }
+  .tile h3 { margin: 0; }
+  .tile .code { font-family: var(--display); font-weight: 800; color: var(--change); }
+  .tile dl { margin: 0; display: grid; grid-template-columns: max-content 1fr; gap: 4px 12px; font-size: .95rem; }
+  .tile dt { font-weight: 700; }
+  .tile dd { margin: 0; color: var(--muted); }
+  .tile.featured { border-color: var(--change); background: color-mix(in srgb, var(--change) 7%, var(--surface)); }
+  .checks { display: flex; flex-wrap: wrap; gap: 18px; }
+  .checks > div { flex: 1 1 260px; }
+</style>
+</head>
+<body>
+<div class="page">
+
+<header class="hero">
+  <h1>One bug, told eight ways</h1>
+  <p class="lede measure">Every page in this folder tells the same true story from this repository. Only the way of telling it changes. Open a few, compare, and pick which ones become the default style for every ai-report.</p>
+  <ul class="legend" aria-label="Color key used on every page">
+    <li class="role-cause">Cause</li>
+    <li class="role-problem">Problem</li>
+    <li class="role-change">Change</li>
+    <li class="role-effect">Effect</li>
+    <li class="role-proof">Proof</li>
+  </ul>
+</header>
+
+<section class="band" aria-labelledby="story-heading">
+  <h2 id="story-heading">The story every page tells</h2>
+  <p class="measure">Release 0.306.5 (2026-10-19), from REQ-702 (the second-opinion launcher shows progress while a backend runs). The same change fixed a hidden bug: the 16 MB output limit had never worked.</p>
+  <ol class="story">
+    <li class="role-cause"><b>The limit lived in Write</b>The launcher's buffer has its own Write method that stops at 16 MB.<br><span class="chip">report_second_opinion.go:1075</span></li>
+    <li class="role-cause"><b>The buffer embedded bytes.Buffer</b>So it also got bytes.Buffer's ReadFrom method for free.<br><span class="chip">aa61c81a (old struct)</span></li>
+    <li class="role-problem"><b>io.Copy chose ReadFrom</b>Go's copy prefers ReadFrom. Write never ran, so the limit and its error never ran.</li>
+    <li class="role-change"><b>Fix: a named field</b>The buffer is now a field called captured. No ReadFrom, so every byte goes through Write.<br><span class="chip">report_second_opinion.go:1055</span></li>
+    <li class="role-effect"><b>The limit works</b>Output stops at 16,777,216 bytes and the run reports "backend output exceeded capture limit".</li>
+    <li class="role-proof"><b>A test pins it</b>It sends 16,777,300 bytes and expects exactly 16 MiB plus the error. It passes today.<br><span class="chip">report_second_opinion_test.go:804</span></li>
+  </ol>
+</section>
+
+<section class="band" aria-labelledby="pick-heading">
+  <h2 id="pick-heading">The eight pages</h2>
+  <div class="tiles">
+
+    <a class="tile" href="t1-cause-chain.html">
+      <svg viewBox="0 0 300 92" aria-hidden="true"><rect x="4" y="26" width="62" height="40" rx="10" fill="var(--cause)"/><rect x="80" y="40" width="22" height="12" rx="6" fill="var(--line)"/><rect x="116" y="26" width="62" height="40" rx="10" fill="var(--problem)"/><rect x="192" y="40" width="22" height="12" rx="6" fill="var(--line)"/><rect x="228" y="26" width="62" height="40" rx="10" fill="var(--effect)"/></svg>
+      <span class="code">T1</span><h3>Cause-and-effect chain</h3>
+      <dl><dt>What</dt><dd>One card per link: because, so, therefore. Pipes join them.</dd><dt>Best for</dt><dd>Bugs, incidents, any "why did this happen".</dd><dt>Watch for</dt><dd>Small changes give short, thin chains.</dd></dl>
+    </a>
+
+    <a class="tile" href="t2-stepped-diagram.html">
+      <svg viewBox="0 0 300 92" aria-hidden="true"><circle cx="30" cy="46" r="18" fill="var(--line)"/><circle cx="110" cy="46" r="18" fill="var(--change)"/><circle cx="190" cy="46" r="18" fill="var(--line)"/><path d="M48 46h44M128 46h44" stroke="var(--line)" stroke-width="6"/><rect x="226" y="14" width="68" height="14" rx="7" fill="var(--line)"/><rect x="226" y="38" width="68" height="14" rx="7" fill="var(--change)"/><rect x="226" y="62" width="68" height="14" rx="7" fill="var(--line)"/></svg>
+      <span class="code">T2</span><h3>Stepped diagram</h3>
+      <dl><dt>What</dt><dd>A diagram beside numbered steps. Each step lights one part.</dd><dt>Best for</dt><dd>Data flow, architecture, "how it works".</dd><dt>Watch for</dt><dd>The diagram must be true to the code.</dd></dl>
+    </a>
+
+    <a class="tile" href="t3-slide-deck.html">
+      <svg viewBox="0 0 300 92" aria-hidden="true"><rect x="40" y="8" width="220" height="68" rx="10" fill="none" stroke="var(--change)" stroke-width="5"/><circle cx="130" cy="86" r="4" fill="var(--change)"/><circle cx="145" cy="86" r="4" fill="var(--line)"/><circle cx="160" cy="86" r="4" fill="var(--line)"/><circle cx="175" cy="86" r="4" fill="var(--line)"/></svg>
+      <span class="code">T3</span><h3>Slide deck</h3>
+      <dl><dt>What</dt><dd>One idea per screen. Arrow keys or space move on.</dd><dt>Best for</dt><dd>Showing the report on a call.</dd><dt>Watch for</dt><dd>Long reports become many clicks.</dd></dl>
+    </a>
+
+    <a class="tile" href="t4-terminal-replay.html">
+      <svg viewBox="0 0 300 92" aria-hidden="true"><rect x="4" y="6" width="292" height="80" rx="10" fill="#141a2e"/><rect x="18" y="22" width="120" height="8" rx="4" fill="#7fd9c4"/><rect x="18" y="40" width="200" height="8" rx="4" fill="#ff8fa6"/><rect x="18" y="58" width="170" height="8" rx="4" fill="#6ff0cf"/><circle cx="262" cy="44" r="13" fill="var(--proof)"/></svg>
+      <span class="code">T4</span><h3>Annotated terminal replay</h3>
+      <dl><dt>What</dt><dd>Real command output with numbered notes on the lines that matter.</dd><dt>Best for</dt><dd>CLI and backend work, where screenshots do not exist.</dd><dt>Watch for</dt><dd>Needs real output, never invented.</dd></dl>
+    </a>
+
+    <a class="tile" href="t5-hover-glossary.html">
+      <svg viewBox="0 0 300 92" aria-hidden="true"><rect x="10" y="20" width="80" height="8" rx="4" fill="var(--line)"/><rect x="100" y="20" width="60" height="8" rx="4" fill="var(--change)"/><rect x="170" y="20" width="110" height="8" rx="4" fill="var(--line)"/><rect x="90" y="40" width="170" height="44" rx="10" fill="var(--ink)"/></svg>
+      <span class="code">T5</span><h3>Hover glossary</h3>
+      <dl><dt>What</dt><dd>Plain prose. Every technical word explains itself on hover or tap.</dd><dt>Best for</dt><dd>Readers new to the code or the project words.</dd><dt>Watch for</dt><dd>Too many underlined words become noise.</dd></dl>
+    </a>
+
+    <a class="tile" href="t6-three-depths.html">
+      <svg viewBox="0 0 300 92" aria-hidden="true"><rect x="10" y="8" width="280" height="18" rx="9" fill="var(--change)"/><rect x="10" y="34" width="200" height="22" rx="8" fill="color-mix(in srgb, var(--change) 45%, var(--line))"/><rect x="10" y="64" width="140" height="22" rx="8" fill="var(--line)"/></svg>
+      <span class="code">T6</span><h3>Three depths</h3>
+      <dl><dt>What</dt><dd>One sentence, then one screen, then the full details folded away.</dd><dt>Best for</dt><dd>Busy readers who may stop early.</dd><dt>Watch for</dt><dd>Hidden details are easy to miss.</dd></dl>
+    </a>
+
+    <a class="tile" href="t7-comic-strip.html">
+      <svg viewBox="0 0 300 92" aria-hidden="true"><rect x="4" y="6" width="90" height="80" rx="8" fill="none" stroke="var(--ink)" stroke-width="3"/><rect x="105" y="6" width="90" height="80" rx="8" fill="none" stroke="var(--ink)" stroke-width="3"/><rect x="206" y="6" width="90" height="80" rx="8" fill="none" stroke="var(--ink)" stroke-width="3"/><circle cx="40" cy="58" r="12" fill="var(--cause)"/><circle cx="150" cy="58" r="12" fill="var(--problem)"/><circle cx="252" cy="58" r="12" fill="var(--effect)"/><path d="M30 22h40v14H44l-8 6v-6h-6z" fill="var(--surface)" stroke="var(--ink)" stroke-width="2"/></svg>
+      <span class="code">T7</span><h3>Comic strip</h3>
+      <dl><dt>What</dt><dd>Six panels. The parts of the code are characters who talk.</dd><dt>Best for</dt><dd>Incident stories and onboarding. The most fun.</dd><dt>Watch for</dt><dd>Turns into decoration fast. Facts must stay exact.</dd></dl>
+    </a>
+
+    <a class="tile featured" href="t8-combined.html">
+      <svg viewBox="0 0 300 92" aria-hidden="true"><rect x="10" y="8" width="280" height="14" rx="7" fill="var(--change)"/><rect x="10" y="32" width="56" height="26" rx="8" fill="var(--cause)"/><rect x="74" y="32" width="56" height="26" rx="8" fill="var(--problem)"/><rect x="138" y="32" width="56" height="26" rx="8" fill="var(--change)"/><rect x="202" y="32" width="88" height="26" rx="8" fill="var(--effect)"/><rect x="10" y="66" width="140" height="20" rx="6" fill="#141a2e"/><rect x="160" y="66" width="130" height="20" rx="6" fill="var(--line)"/></svg>
+      <span class="code">T8</span><h3>The combination (my pick)</h3>
+      <dl><dt>What</dt><dd>One-line verdict, cause chain, stepped diagram, terminal proof, glossary, details folded. Press D for deck mode.</dd><dt>Best for</dt><dd>The new default for every ai-report.</dd><dt>Watch for</dt><dd>Longest page of the eight.</dd></dl>
+    </a>
+
+  </div>
+</section>
+
+<section class="band" aria-labelledby="compare-heading">
+  <h2 id="compare-heading">How to compare them</h2>
+  <div class="checks">
+    <div><h3>The 30-second test</h3><p>After 30 seconds on the page, can you say why the limit never ran, in one sentence?</p></div>
+    <div><h3>The proof test</h3><p>Pick any claim. Can you find the file, commit or test that backs it?</p></div>
+    <div><h3>The phone and no-motion test</h3><p>Does the page still read well on a narrow window and with reduced motion turned on in your system settings?</p></div>
+  </div>
+</section>
+
+<footer class="band note measure">
+  <p>Evidence: commit aa61c81a (the fix), commit 83146e48 (release 0.306.5), <code>skills/do-work/tools/do-work-cli/internal/toolboxcommands/report_second_opinion.go</code> and its test file, read on 2026-11-02. The test run and the reproduction output on the T4 and T8 pages were captured on 2026-11-02. The reproduction is a short Go program written for this gallery that copies the old and new buffer shapes. It is not project code. No AI-generated images are used. Drawings and diagrams are hand-made SVG.</p>
+</footer>
+
+</div>
+<script src="gallery.js"></script>
+</body>
+</html>

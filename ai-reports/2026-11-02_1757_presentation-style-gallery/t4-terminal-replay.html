@@ -1,0 +1,259 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>T4 Annotated terminal replay: the 16 MB limit that never ran</title>
+<link rel="stylesheet" href="gallery.css">
+<style>
+  .hero { padding: 48px 0 28px; }
+  .hero h1 { max-width: 22ch; }
+  .verdict { font-size: 1.15rem; }
+
+  .screen { flex: 3 1 560px; min-width: 0; }
+  .notes { flex: 2 1 300px; min-width: 0; list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 16px; }
+  .notes .node { cursor: pointer; }
+  .note-head { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-bottom: 6px; }
+  .note-head h3 { margin: 0; }
+  .note-head .tag { margin: 0; }
+
+  /* The terminal is always dark, so it uses the bright role colors in both schemes. */
+  .terminal .role-problem { --role: #ff6b88; }
+  .terminal .role-cause { --role: #ffc14d; }
+  .terminal .role-change { --role: #a891ff; }
+  .terminal .role-effect { --role: #34d6b9; }
+  .terminal .role-proof { --role: #63a6ff; }
+
+  .replay pre { padding-left: 48px; max-width: 100%; }
+  .replay pre .line { position: relative; display: inline-block; min-width: 100%; border-radius: 4px; }
+  .replay pre .seg { border-radius: 4px; padding: 1px 2px; }
+  .replay pre .line > .badge { position: absolute; left: -38px; top: 50%; translate: 0 -50%; }
+
+  .badge {
+    display: inline-grid; place-items: center; width: 1.7em; height: 1.7em; flex: 0 0 auto;
+    border-radius: 50%; font: 800 .8rem/1 var(--display);
+  }
+  .terminal .badge { background: var(--role); color: #141a2e; margin-right: 4px; }
+  .notes .badge { background: color-mix(in srgb, var(--role) 22%, var(--surface)); border: 2px solid var(--role); color: var(--ink); font-size: .95rem; }
+
+  /* Stepping: lines are never dimmed. The lit line gets a role-colored marker instead. */
+  .replay.stepper-on pre [data-at]:not(.is-lit) { opacity: 1; }
+  .replay pre [data-at].is-lit { background: color-mix(in srgb, var(--role) 30%, transparent); box-shadow: inset 3px 0 0 var(--role); }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .replay pre [data-at] { transition: background-color .3s ease, box-shadow .3s ease; }
+    .replay[data-touched] pre .is-lit .badge { animation: badge-pop .45s ease; }
+    @keyframes badge-pop { 0% { scale: 1; } 40% { scale: 1.35; } 100% { scale: 1; } }
+  }
+
+  .source-details { margin-top: 18px; }
+  .source-details pre { padding-left: 18px; }
+</style>
+</head>
+<body>
+<nav class="topbar"><a href="index.html">Gallery</a><strong>T4 Annotated terminal replay</strong><span class="spacer"></span><a href="t3-slide-deck.html">Previous: T3</a> <a href="t5-hover-glossary.html">Next: T5 Hover glossary</a></nav>
+<div class="page">
+
+<header class="hero">
+  <h1>Read the bug in the terminal</h1>
+  <p class="lede measure">Three real terminal outputs tell the story of the 16 MB limit that never ran. Click a note, or press Next note, to light up the line it talks about.</p>
+  <p class="verdict measure"><strong>Verdict:</strong> fixed in release 0.306.5 (2026-10-19). The second-opinion launcher now keeps at most 16 MB of a backend's output and reports the overflow. Before, the limit code existed but never ran.<br><span class="chip">83146e48 (release 0.306.5, REQ-702)</span><span class="chip">aa61c81a (the fix)</span></p>
+  <ul class="legend" aria-label="Color key">
+    <li class="role-cause">Cause</li>
+    <li class="role-problem">Problem</li>
+    <li class="role-change">Change</li>
+    <li class="role-effect">Effect</li>
+    <li class="role-proof">Proof</li>
+  </ul>
+</header>
+
+<section class="band replay" data-stepper aria-labelledby="commit-heading">
+  <h2 id="commit-heading">The fix commit</h2>
+  <p class="measure"><code>git show</code> prints the commit that fixed the bug. The message names the cause. The diff shows the change to the buffer type.</p>
+  <div class="step-controls"><button class="btn" type="button" data-step-prev>Previous note</button><button class="btn primary" type="button" data-step-next>Next note</button><span class="step-label" data-step-label></span></div>
+  <div class="row">
+    <div class="screen">
+<pre class="terminal"><span class="prompt">$</span> git show aa61c81a
+commit aa61c81a2ff1729e2eb53d0a5f6c88dd83b3c154
+Date:   Mon Oct 19 22:04:40 2026 +0300
+
+    [REQ-702] stream second-opinion backend output and heartbeats to stderr
+<span class="dim">    [… one paragraph about progress lines and heartbeats …]</span>
+
+<span class="line role-problem" data-at="1"><span class="badge" aria-hidden="true">1</span>    secondOpinionBuffer no longer embeds bytes.Buffer: the promoted ReadFrom let</span>
+<span class="line role-problem" data-at="1">    io.Copy bypass Write, so the 16 MB cap and its "exceeded capture limit" error</span>
+<span class="line role-problem" data-at="1">    never ran. The named field makes Write the only path for both the cap and the</span>
+<span class="line role-problem" data-at="1">    mirror; TestSecondOpinionCaptureCapsBackendOutput pins it.</span>
+<span class="dim">[… diff of report_second_opinion.go, earlier hunks …]</span>
+@@ -787,22 +834,57 @@ type secondOpinionCaptured struct {
+<span class="dim">[… 8 lines: the end of the previous type, a blank line and a 4-line comment …]</span>
+ type secondOpinionBuffer struct {
+<span class="line role-cause bad" data-at="2"><span class="badge" aria-hidden="true">2</span>-    bytes.Buffer</span>
+<span class="bad">-    truncated bool</span>
+<span class="line role-change good" data-at="3"><span class="badge" aria-hidden="true">3</span>+    captured     bytes.Buffer</span>
+<span class="good">+    truncated    bool</span>
+<span class="good">+    mirrorPrefix string</span>
+<span class="good">+    pending      []byte</span>
+ }</pre>
+      <p class="note">Excerpt. Lines marked […] are left out. Tabs are shown as spaces.</p>
+    </div>
+    <ol class="notes">
+      <li class="node role-problem" data-step>
+        <div class="note-head"><span class="badge">1</span><h3>The commit names the cause</h3><span class="tag">Problem</span></div>
+        <p>The ReadFrom method, promoted from bytes.Buffer, let io.Copy skip Write. The 16 MB limit and its error live in Write, so they never ran.</p>
+        <span class="chip">aa61c81a (commit message)</span>
+      </li>
+      <li class="node role-cause" data-step>
+        <div class="note-head"><span class="badge">2</span><h3>The embedded field</h3><span class="tag">Cause</span></div>
+        <p>This line has a type but no field name. Go calls that embedding. The struct gets every bytes.Buffer method for free, ReadFrom included.</p>
+        <span class="chip">aa61c81a (old struct)</span>
+      </li>
+      <li class="node role-change" data-step>
+        <div class="note-head"><span class="badge">3</span><h3>The named field</h3><span class="tag">Change</span></div>
+        <p>Now the buffer is a field called captured. Its methods stay on the field, so the struct has no ReadFrom. Write is the only way in.</p>
+        <span class="chip">report_second_opinion.go:1055</span>
+      </li>
+    </ol>
+  </div>
+</section>
+
+<section class="band replay" data-stepper aria-labelledby="repro-heading">
+  <h2 id="repro-heading">A side-by-side reproduction</h2>
+  <p class="measure">This is a short Go program written for this gallery that copies the old and new buffer shapes, not project code. Both shapes use the same Write with the same 16 MB limit. Each one receives the output of <code>head -c 16777300 /dev/zero</code>, the same command the real test uses.</p>
+  <div class="step-controls"><button class="btn" type="button" data-step-prev>Previous note</button><button class="btn primary" type="button" data-step-next>Next note</button><span class="step-label" data-step-label></span></div>
+  <div class="row">
+    <div class="screen">
+<pre class="terminal"><span class="dim"># main.go and go.mod in a scratch folder outside the repository, 2026-11-02</span>
+<span class="prompt">$</span> go run .
+old (embedded):  <span class="seg role-cause" data-at="1"><span class="badge" aria-hidden="true">4</span>io.ReaderFrom=true</span>  <span class="seg role-problem" data-at="2"><span class="badge" aria-hidden="true">5</span>captured=16777300 bytes  truncated=false</span>
+<span class="line role-effect" data-at="3"><span class="badge" aria-hidden="true">6</span>new (named):     io.ReaderFrom=false captured=16777216 bytes  truncated=true</span></pre>
+      <details class="source-details">
+        <summary>Show the program</summary>
+<pre>// Reproduction of the 0.306.5 capture-cap bug: same Write as the old secondOpinionBuffer, two struct shapes.
+package main
+
+import (
+    "bytes"
+    "fmt"
+    "io"
+    "os/exec"
+)
+
+const limit = 16 * 1024 * 1024
+
+// embeddedBuffer is the old shape: bytes.Buffer is embedded, so its ReadFrom method is promoted.
+type embeddedBuffer struct {
+    bytes.Buffer
+    truncated bool
+}
+
+func (buffer *embeddedBuffer) Write(data []byte) (int, error) {
+    length := len(data)
+    if remaining := limit - buffer.Len(); len(data) &gt; remaining {
+        data, buffer.truncated = data[:remaining], true
+    }
+    _, _ = buffer.Buffer.Write(data)
+    return length, nil
+}
+
+// namedBuffer is the fixed shape: the bytes.Buffer is a named field, so Write is the only way in.
+type namedBuffer struct {
+    captured  bytes.Buffer
+    truncated bool
+}
+
+func (buffer *namedBuffer) Write(data []byte) (int, error) {
+    length := len(data)
+    if remaining := limit - buffer.captured.Len(); len(data) &gt; remaining {
+        data, buffer.truncated = data[:remaining], true
+    }
+    _, _ = buffer.captured.Write(data)
+    return length, nil
+}
+
+func main() {
+    old := &amp;embeddedBuffer{}
+    command := exec.Command("/usr/bin/head", "-c", "16777300", "/dev/zero")
+    command.Stdout = old
+    _ = command.Run()
+    _, hasReadFrom := any(old).(io.ReaderFrom)
+    fmt.Printf("old (embedded):  io.ReaderFrom=%v  captured=%d bytes  truncated=%v\n", hasReadFrom, old.Len(), old.truncated)
+
+    fixed := &amp;namedBuffer{}
+    command = exec.Command("/usr/bin/head", "-c", "16777300", "/dev/zero")
+    command.Stdout = fixed
+    _ = command.Run()
+    _, hasReadFrom = any(fixed).(io.ReaderFrom)
+    fmt.Printf("new (named):     io.ReaderFrom=%v captured=%d bytes  truncated=%v\n", hasReadFrom, fixed.captured.Len(), fixed.truncated)
+}</pre>
+      </details>
+    </div>
+    <ol class="notes">
+      <li class="node role-cause" data-step>
+        <div class="note-head"><span class="badge">4</span><h3>The old shape has ReadFrom</h3><span class="tag">Cause</span></div>
+        <p><code>io.ReaderFrom=true</code> means Go sees a ReadFrom method on the old buffer. When Go copies the backend's output, it uses that method and skips Write.</p>
+        <span class="chip">scratch program, 2026-11-02</span>
+      </li>
+      <li class="node role-problem" data-step>
+        <div class="note-head"><span class="badge">5</span><h3>84 bytes past the limit, no flag</h3><span class="tag">Problem</span></div>
+        <p>It kept 16,777,300 bytes. The limit is 16,777,216. The truncated flag stayed false, and that flag is the only thing that turns into the error "backend output exceeded capture limit".</p>
+        <span class="chip">report_second_opinion.go:1194-1195</span>
+      </li>
+      <li class="node role-effect" data-step>
+        <div class="note-head"><span class="badge">6</span><h3>The new shape stops at the limit</h3><span class="tag">Effect</span></div>
+        <p>No ReadFrom, so every byte went through Write. It kept exactly 16,777,216 bytes and set truncated to true.</p>
+        <span class="chip">report_second_opinion.go:1075-1078</span>
+      </li>
+    </ol>
+  </div>
+</section>
+
+<section class="band replay" data-stepper aria-labelledby="test-heading">
+  <h2 id="test-heading">The test that pins it</h2>
+  <p class="measure">The real test, run on 2026-11-02 against the current code.</p>
+  <div class="step-controls"><button class="btn" type="button" data-step-prev>Previous note</button><button class="btn primary" type="button" data-step-next>Next note</button><span class="step-label" data-step-label></span></div>
+  <div class="row">
+    <div class="screen">
+<pre class="terminal"><span class="prompt">$</span> cd skills/do-work/tools/do-work-cli
+<span class="prompt">$</span> go test ./internal/toolboxcommands/ -run 'TestSecondOpinionCaptureCapsBackendOutput' -count=1 -v
+<span class="line role-proof" data-at="1"><span class="badge" aria-hidden="true">7</span>=== RUN   TestSecondOpinionCaptureCapsBackendOutput</span>
+<span class="line role-proof good" data-at="2"><span class="badge" aria-hidden="true">8</span>--- PASS: TestSecondOpinionCaptureCapsBackendOutput (0.11s)</span>
+<span class="good">PASS</span>
+ok      github.com/knews2019/skill-do-work/do-work-cli/internal/toolboxcommands 0.597s</pre>
+    </div>
+    <ol class="notes">
+      <li class="node role-proof" data-step>
+        <div class="note-head"><span class="badge">7</span><h3>What the test does</h3><span class="tag">Proof</span></div>
+        <p>It runs <code>head -c 16777300 /dev/zero</code> as the backend, so the output is 84 bytes over the limit. It fails unless exactly 16,777,216 bytes come back and the capture returns an error.</p>
+        <span class="chip">report_second_opinion_test.go:804</span>
+      </li>
+      <li class="node role-proof" data-step>
+        <div class="note-head"><span class="badge">8</span><h3>It passes</h3><span class="tag">Proof</span></div>
+        <p>PASS in 0.11 seconds. If someone embeds bytes.Buffer again, the old shape keeps all 16,777,300 bytes with no error, and this test fails.</p>
+        <span class="chip">go test run, 2026-11-02</span>
+      </li>
+    </ol>
+  </div>
+</section>
+
+<section class="band" aria-labelledby="why-heading">
+  <h2 id="why-heading">Why this style suits CLI and backend work</h2>
+  <p class="measure">When a change has no screen to capture, its real command output is the closest thing to a screenshot, and a numbered note on the exact line shows the reader where to look.</p>
+</section>
+
+<footer class="band note measure">
+  <p>Sources: commit aa61c81a and release commit 83146e48, <code>skills/do-work/tools/do-work-cli/internal/toolboxcommands/report_second_opinion.go</code> and <code>report_second_opinion_test.go</code>. The reproduction program is not project code. It was written and run on 2026-11-02 only for this gallery.</p>
+</footer>
+
+</div>
+<script src="gallery.js"></script>
+<script>
+  // The badge pop only plays after the reader has used a stepper, never on page load.
+  for (const replay of document.querySelectorAll(".replay")) {
+    const touch = () => { replay.dataset.touched = ""; };
+    replay.addEventListener("click", touch);
+    replay.addEventListener("keydown", touch);
+  }
+</script>
+</body>
+</html>

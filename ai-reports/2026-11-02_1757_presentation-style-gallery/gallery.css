@@ -1,0 +1,201 @@
+/* Presentation-style gallery: shared look for every technique page.
+
+   Component guide (pages use these; keep new pages on the same classes):
+   - Color means a role, everywhere: .role-cause (amber), .role-problem (pink-red), .role-change (violet),
+     .role-effect (teal), .role-proof (blue). A role class sets --role; components paint with var(--role).
+   - .page > .band (full-width section) > .row (flex-wrap) > children with style="flex: <grow> 1 <basis>".
+   - .measure caps running text at a readable width. Media and grids use the full width.
+   - .node is a story step (role-colored valve bar on top, .tag names the role). .pipe joins nodes.
+   - .chip is a receipt: file:line, commit, or test name. Every claim carries one.
+   - .term[data-term] is a glossary word; gallery.js fills its definition from GLOSSARY.
+   - [data-stepper] is reader-driven stepping: inactive steps are dimmed, never hidden.
+   - Motion is always answer-to-a-click. prefers-reduced-motion turns transitions off. */
+
+:root {
+  --paper: #f5f7ff;
+  --surface: #ffffff;
+  --ink: #18203a;
+  --muted: #56607f;
+  --line: #d6dcf0;
+  --code-bg: #eef1fb;
+  --problem: #e2335a;
+  --cause: #e08a00;
+  --change: #6a4cf0;
+  --effect: #0a9a84;
+  --proof: #1f6fe5;
+  --role: var(--proof);
+  --display: ui-rounded, "SF Pro Rounded", "Arial Rounded MT Bold", "Varela Round", system-ui, sans-serif;
+  --body: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  color-scheme: light dark;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --paper: #0f1426;
+    --surface: #182039;
+    --ink: #e8ecff;
+    --muted: #a3acd0;
+    --line: #2c3659;
+    --code-bg: #121a31;
+    --problem: #ff6b88;
+    --cause: #ffc14d;
+    --change: #a891ff;
+    --effect: #34d6b9;
+    --proof: #63a6ff;
+  }
+}
+
+.role-cause { --role: var(--cause); }
+.role-problem { --role: var(--problem); }
+.role-change { --role: var(--change); }
+.role-effect { --role: var(--effect); }
+.role-proof { --role: var(--proof); }
+
+* { box-sizing: border-box; }
+
+html { background: var(--paper); color: var(--ink); }
+
+body {
+  margin: 0;
+  font: 17px/1.6 var(--body);
+  overflow-wrap: break-word;
+  background:
+    radial-gradient(circle at 1px 1px, color-mix(in srgb, var(--line) 70%, transparent) 1px, transparent 0) 0 0 / 22px 22px,
+    var(--paper);
+}
+
+h1, h2, h3 { font-family: var(--display); line-height: 1.15; margin: 0 0 .5em; letter-spacing: -0.01em; }
+h1 { font-size: clamp(2rem, 4.2vw, 3.4rem); font-weight: 800; }
+h2 { font-size: clamp(1.5rem, 2.6vw, 2.2rem); font-weight: 800; }
+h3 { font-size: 1.25rem; font-weight: 750; }
+p { margin: 0 0 1em; }
+a { color: var(--proof); }
+code, kbd, pre { font-family: var(--mono); font-size: .9em; }
+code { background: var(--code-bg); padding: .1em .35em; border-radius: 6px; overflow-wrap: anywhere; }
+pre code { background: none; padding: 0; }
+
+.page { width: 100%; padding: 0 clamp(20px, 2.6vw, 60px) 96px; }
+.measure { max-width: 74ch; }
+.band { padding: 44px 0; }
+.band + .band { border-top: 2px dashed var(--line); }
+.row { display: flex; flex-wrap: wrap; gap: 28px; align-items: flex-start; }
+.lede { font-size: 1.2rem; color: var(--muted); }
+
+/* Top bar: back to the gallery, this page's code, neighbors. */
+.topbar {
+  display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: center;
+  padding: 16px clamp(20px, 2.6vw, 60px);
+  border-bottom: 2px solid var(--line);
+  background: color-mix(in srgb, var(--surface) 85%, transparent);
+  font-size: .95rem;
+}
+.topbar strong { font-family: var(--display); font-size: 1.05rem; }
+.topbar .spacer { flex: 1 1 auto; }
+
+/* Role legend: shown once per page so the colors can be read. */
+.legend { display: flex; flex-wrap: wrap; gap: 8px 16px; margin: 0; padding: 0; list-style: none; font-size: .95rem; }
+.legend li { display: flex; align-items: center; gap: 8px; }
+.legend li::before { content: ""; width: 14px; height: 14px; border-radius: 4px; background: var(--role); }
+
+/* Story step. The valve bar on top carries the role color. */
+.node {
+  position: relative;
+  background: var(--surface);
+  border: 2px solid color-mix(in srgb, var(--role) 45%, var(--line));
+  border-radius: 18px;
+  padding: 22px 20px 18px;
+  min-width: 0;
+  overflow-wrap: break-word;
+}
+.node::before {
+  content: ""; position: absolute; left: 18px; right: 18px; top: -2px; height: 7px;
+  border-radius: 0 0 8px 8px; background: var(--role);
+}
+.tag {
+  display: inline-block; font-weight: 700; font-size: .85rem;
+  color: var(--ink); background: color-mix(in srgb, var(--role) 22%, transparent);
+  border-radius: 999px; padding: 2px 12px; margin-bottom: 10px;
+}
+.node h3 { margin-bottom: .35em; }
+.node p:last-child { margin-bottom: 0; }
+
+/* Pipe between nodes: a thick role-colored segment with an arrow head. */
+.pipe {
+  flex: 0 0 34px; align-self: center; height: 14px; border-radius: 7px; position: relative;
+  background: linear-gradient(90deg, var(--from, var(--line)), var(--to, var(--line)));
+}
+.pipe::after {
+  content: ""; position: absolute; right: -9px; top: 50%; translate: 0 -50%;
+  border: 11px solid transparent; border-left-color: var(--to, var(--line)); border-right: 0;
+}
+
+/* Receipts. */
+.chip {
+  display: inline-block; font-family: var(--mono); font-size: .8rem; line-height: 1.4;
+  padding: 3px 10px; border-radius: 999px; margin: 4px 6px 0 0;
+  background: color-mix(in srgb, var(--proof) 12%, var(--surface));
+  border: 1px solid color-mix(in srgb, var(--proof) 35%, var(--line));
+  color: var(--ink); overflow-wrap: anywhere;
+}
+
+/* Glossary words: dotted underline, definition on hover or focus (tap). */
+.term { border-bottom: 2px dotted var(--change); cursor: help; position: relative; }
+.term:focus { outline: 2px solid var(--change); outline-offset: 2px; border-radius: 3px; }
+.term[data-def]:hover::after, .term[data-def]:focus::after {
+  content: attr(data-def);
+  position: absolute; z-index: 20; left: 0; top: calc(100% + 8px);
+  width: min(19rem, 72vw); padding: 10px 12px; border-radius: 12px;
+  background: var(--ink); color: var(--paper); font: 400 .9rem/1.45 var(--body);
+  box-shadow: 0 10px 30px color-mix(in srgb, var(--ink) 25%, transparent);
+}
+
+/* Buttons. */
+.btn {
+  font: 700 1rem var(--display); color: var(--ink); cursor: pointer;
+  background: var(--surface); border: 2px solid var(--line); border-radius: 12px; padding: 9px 16px;
+}
+.btn:hover { border-color: var(--change); }
+.btn:focus-visible { outline: 3px solid var(--change); outline-offset: 2px; }
+.btn.primary { background: var(--change); border-color: var(--change); color: #fff; }
+@media (prefers-color-scheme: dark) { .btn.primary { color: #0f1426; } }
+
+/* Reader-driven stepping: everything is visible until a script turns it on; then inactive steps dim. */
+.stepper-on [data-step] { transition: opacity .35s ease, transform .35s ease; }
+.stepper-on [data-step]:not(.is-active) { opacity: .42; }
+.stepper-on [data-step].is-active { transform: translateY(-3px); }
+.stepper-on [data-at] { transition: opacity .35s ease, stroke-width .35s ease; }
+.stepper-on [data-at]:not(.is-lit) { opacity: .3; }
+.step-controls { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin: 18px 0; }
+.step-label { color: var(--muted); font-weight: 600; }
+
+/* Code and terminal blocks. */
+pre {
+  margin: 0; padding: 16px 18px; border-radius: 10px; overflow-x: auto;
+  background: var(--code-bg); border: 1px solid var(--line); line-height: 1.5;
+}
+.terminal { background: #141a2e; color: #e3e8ff; border-color: #2c3659; }
+.terminal .prompt { color: #7fd9c4; }
+.terminal .bad { color: #ff8fa6; }
+.terminal .good { color: #6ff0cf; }
+.terminal .dim { color: #8d97bd; }
+
+details { background: var(--surface); border: 2px solid var(--line); border-radius: 14px; padding: 4px 18px; }
+details + details { margin-top: 12px; }
+summary { cursor: pointer; font: 750 1.1rem var(--display); padding: 12px 0; }
+details[open] summary { border-bottom: 2px dashed var(--line); margin-bottom: 12px; }
+
+.note { font-size: .92rem; color: var(--muted); }
+.synthetic { font-size: .85rem; color: var(--muted); font-style: italic; }
+
+svg text { font-family: var(--body); fill: var(--ink); }
+svg .mono { font-family: var(--mono); }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition: none !important; animation: none !important; scroll-behavior: auto !important; }
+}
+
+@media print {
+  .stepper-on [data-step], .stepper-on [data-at] { opacity: 1 !important; transform: none !important; }
+  .topbar, .step-controls { display: none; }
+}

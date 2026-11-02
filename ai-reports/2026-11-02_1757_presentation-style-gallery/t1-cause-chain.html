@@ -1,0 +1,178 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>T1 Cause-and-effect chain: the 16 MB limit that never ran</title>
+<link rel="stylesheet" href="gallery.css">
+<style>
+  .verdict { font: 800 clamp(1.5rem, 2.8vw, 2.3rem)/1.25 var(--display); max-width: 34ch; margin: 0 0 14px; }
+  .chain-head { display: flex; flex-wrap: wrap; gap: 8px 24px; align-items: baseline; }
+  .chain-head h2 { margin: 0; }
+  .chain { display: flex; flex-wrap: wrap; gap: 22px 0; align-items: stretch; }
+  .link { display: flex; align-items: center; flex: 1 1 310px; min-width: 0; }
+  .link .node { flex: 1 1 auto; min-width: 0; align-self: stretch; cursor: pointer; }
+  .link .node h3 { font-size: 1.15rem; }
+  .step-number {
+    float: right; font: 800 .95rem var(--display); color: var(--muted);
+    border: 2px solid var(--line); border-radius: 999px; padding: 0 9px; margin-left: 8px;
+  }
+
+  /* Joint: the connector word and the pipe that carries the story into the next card. */
+  .joint { flex: 0 0 auto; display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 0 14px 0 6px; }
+  .joint .word { font: 700 .9rem var(--display); color: var(--muted); white-space: nowrap; }
+  .joint .pipe { flex: none; width: 46px; height: 14px; }
+  .joint .pipe::before {
+    content: ""; position: absolute; top: 2px; left: 2px; width: 10px; height: 10px; border-radius: 50%;
+    background: var(--surface); box-shadow: 0 0 0 2px var(--to); opacity: 0;
+  }
+
+  .after-note { display: flex; flex-wrap: wrap; gap: 28px; }
+  .after-note > div { flex: 1 1 320px; min-width: 0; }
+
+  /* Narrow screens: one column, pipes turn vertical and point down. */
+  @media (max-width: 700px) {
+    .link { flex: 1 1 100%; flex-direction: column; align-items: stretch; }
+    .joint { flex-direction: row; justify-content: center; gap: 10px; padding: 0 0 10px; }
+    .joint .pipe { width: 14px; height: 34px; background: linear-gradient(180deg, var(--from), var(--to)); }
+    .joint .pipe::after {
+      right: auto; left: 50%; top: auto; bottom: -9px; translate: -50% 0;
+      border: 11px solid transparent; border-top-color: var(--to); border-bottom: 0;
+    }
+  }
+
+  /* A reader click on a step sends one packet through the pipe into that card. */
+  @media (prefers-reduced-motion: no-preference) {
+    .joint.is-lit .pipe::before { animation: packet-across .7s ease-out 1 both; }
+    @keyframes packet-across { from { left: 2px; opacity: 1; } to { left: calc(100% - 12px); opacity: 0; } }
+    @media (max-width: 700px) {
+      .joint.is-lit .pipe::before { animation-name: packet-down; }
+      @keyframes packet-down { from { top: 2px; opacity: 1; } to { top: calc(100% - 12px); opacity: 0; } }
+    }
+  }
+</style>
+</head>
+<body>
+<nav class="topbar"><a href="index.html">Gallery</a><strong>T1 Cause-and-effect chain</strong><span class="spacer"></span><a href="t8-combined.html">Previous: T8</a> <a href="t2-stepped-diagram.html">Next: T2 Stepped diagram</a></nav>
+<div class="page">
+
+<header class="band">
+  <p class="verdict">Release 0.306.5 made the second-opinion launcher's 16 MB output limit run for the first time, and a test now keeps it working.</p>
+  <p><span class="chip">release 0.306.5 (83146e48)</span><span class="chip">fix aa61c81a (REQ-702)</span><span class="chip">report_second_opinion_test.go:804</span></p>
+  <ul class="legend" aria-label="Color key">
+    <li class="role-cause">Cause</li>
+    <li class="role-problem">Problem</li>
+    <li class="role-change">Change</li>
+    <li class="role-effect">Effect</li>
+    <li class="role-proof">Proof</li>
+  </ul>
+</header>
+
+<section class="band" data-stepper aria-labelledby="chain-heading">
+  <div class="chain-head">
+    <h2 id="chain-heading">Follow the bytes</h2>
+    <p class="note">Click a card, use the buttons, or press the arrow keys. Each card says why the next one happened.</p>
+  </div>
+  <div class="step-controls">
+    <button class="btn" type="button" data-step-prev>Previous link</button>
+    <button class="btn primary" type="button" data-step-next>Next link</button>
+    <span class="step-label" data-step-label aria-live="polite">Step 1 of 7</span>
+  </div>
+
+  <div class="chain">
+
+    <div class="link">
+      <article class="node role-cause" data-step>
+        <span class="step-number">1</span>
+        <span class="tag">Cause</span>
+        <h3>The limit lives in Write</h3>
+        <p>The <span class="term" data-term="launcher">launcher</span> keeps each <span class="term" data-term="backend">backend</span>'s output in a <span class="term" data-term="buffer">buffer</span>. Our own <span class="term" data-term="write">Write</span> method on that buffer checks the 16 MB <span class="term" data-term="cap">cap</span> and cuts any extra bytes.</p>
+        <span class="chip">report_second_opinion.go:1061</span><span class="chip">report_second_opinion.go:1075-1079</span>
+      </article>
+    </div>
+
+    <div class="link">
+      <div class="joint" data-at="2" aria-hidden="true"><span class="word">but</span><span class="pipe" style="--from: var(--cause); --to: var(--cause)"></span></div>
+      <article class="node role-cause" data-step>
+        <span class="step-number">2</span>
+        <span class="tag">Cause</span>
+        <h3>The old buffer embedded bytes.Buffer</h3>
+        <p>Before the fix, the struct held <code>bytes.Buffer</code> with no field name. This is <span class="term" data-term="embedding">embedding</span>. It gives the struct every bytes.Buffer method, including <span class="term" data-term="readfrom">ReadFrom</span>.</p>
+        <span class="chip">aa61c81a: old struct line "bytes.Buffer"</span>
+      </article>
+    </div>
+
+    <div class="link">
+      <div class="joint" data-at="3" aria-hidden="true"><span class="word">so</span><span class="pipe" style="--from: var(--cause); --to: var(--problem)"></span></div>
+      <article class="node role-problem" data-step>
+        <span class="step-number">3</span>
+        <span class="tag">Problem</span>
+        <h3>io.Copy takes the side door</h3>
+        <p>The launcher gives the buffers to os/exec as stdout and stderr. os/exec copies the <span class="term" data-term="pipe">pipe</span> with <span class="term" data-term="iocopy">io.Copy</span>. io.Copy prefers ReadFrom when the writer has one. So bytes.Buffer.ReadFrom pulls in the whole stream, and our Write is skipped.</p>
+        <span class="chip">report_second_opinion.go:1141-1145</span><span class="chip">aa61c81a commit message</span>
+      </article>
+    </div>
+
+    <div class="link">
+      <div class="joint" data-at="4" aria-hidden="true"><span class="word">which means</span><span class="pipe" style="--from: var(--problem); --to: var(--problem)"></span></div>
+      <article class="node role-problem" data-step>
+        <span class="step-number">4</span>
+        <span class="tag">Problem</span>
+        <h3>No limit and no error</h3>
+        <p>A backend that prints too much fills memory without limit. The <span class="term" data-term="truncated">truncated</span> flag stays false, so the error "backend output exceeded capture limit" can never fire. A copy of the old buffer kept 16,777,300 bytes with truncated=false.</p>
+        <span class="chip">report_second_opinion.go:1194-1195</span><span class="chip">changelog 0.306.5</span><span class="chip">reproduction run 2026-11-02 (not project code)</span>
+      </article>
+    </div>
+
+    <div class="link">
+      <div class="joint" data-at="5" aria-hidden="true"><span class="word">fix:</span><span class="pipe" style="--from: var(--problem); --to: var(--change)"></span></div>
+      <article class="node role-change" data-step>
+        <span class="step-number">5</span>
+        <span class="tag">Change</span>
+        <h3>Give the buffer a name</h3>
+        <p>The field became <code>captured bytes.Buffer</code>. A <span class="term" data-term="namedfield">named field</span> keeps its methods to itself, so the buffer has no ReadFrom. Every byte now goes through Write.</p>
+        <span class="chip">report_second_opinion.go:1055</span><span class="chip">aa61c81a</span>
+      </article>
+    </div>
+
+    <div class="link">
+      <div class="joint" data-at="6" aria-hidden="true"><span class="word">now</span><span class="pipe" style="--from: var(--change); --to: var(--effect)"></span></div>
+      <article class="node role-effect" data-step>
+        <span class="step-number">6</span>
+        <span class="tag">Effect</span>
+        <h3>The limit works</h3>
+        <p>Output stops at 16,777,216 bytes. truncated becomes true, and the launcher reports "backend output exceeded capture limit". The new progress mirror also lives in Write, so it now sees every line too.</p>
+        <span class="chip">report_second_opinion.go:1075-1080</span><span class="chip">report_second_opinion.go:1194-1195</span><span class="chip">reproduction run 2026-11-02</span><span class="chip">aa61c81a commit message</span>
+      </article>
+    </div>
+
+    <div class="link">
+      <div class="joint" data-at="7" aria-hidden="true"><span class="word">proof:</span><span class="pipe" style="--from: var(--effect); --to: var(--proof)"></span></div>
+      <article class="node role-proof" data-step>
+        <span class="step-number">7</span>
+        <span class="tag">Proof</span>
+        <h3>A test pins it</h3>
+        <p>TestSecondOpinionCaptureCapsBackendOutput sends 16,777,300 bytes from /dev/zero. It expects exactly 16 MiB kept and an error back. This <span class="term" data-term="pin">pin</span> passed on 2026-11-02 in 0.11 s.</p>
+        <span class="chip">report_second_opinion_test.go:804</span><span class="chip">go test run 2026-11-02: PASS</span>
+      </article>
+    </div>
+
+  </div>
+</section>
+
+<section class="band" aria-labelledby="note-heading">
+  <h2 id="note-heading">What this style is good and bad at</h2>
+  <div class="after-note">
+    <div class="measure">
+      <p>It is good when the story has a real chain of causes, like a bug or an incident. Each card answers why the next card happened, and every link carries its receipt.</p>
+    </div>
+    <div class="measure">
+      <p>It is weak for a small change with only one cause, where the chain becomes two thin cards. It also does not show how the parts connect in space. T2, the stepped diagram, does that better.</p>
+    </div>
+  </div>
+</section>
+
+</div>
+<script src="gallery.js"></script>
+</body>
+</html>

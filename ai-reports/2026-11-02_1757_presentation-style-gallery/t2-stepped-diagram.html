@@ -1,0 +1,212 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>T2 Stepped diagram: how the 16 MB limit got skipped</title>
+<link rel="stylesheet" href="gallery.css">
+<style>
+  .flow { display: flex; flex-wrap: wrap; gap: 28px; align-items: flex-start; }
+  .diagram {
+    flex: 3 1 560px; min-width: 0; position: sticky; top: 16px;
+    background: var(--surface); border: 2px solid var(--line); border-radius: 20px; padding: 16px;
+  }
+  .diagram svg { display: block; width: 100%; height: auto; max-height: calc(100svh - 72px); }
+  @media (max-width: 960px) { .diagram { position: static; } }
+
+  .steps { flex: 2 1 320px; min-width: 0; list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 18px; }
+  .stepper-on .steps .node { cursor: pointer; }
+  .num {
+    display: inline-grid; place-items: center; width: 1.7em; height: 1.7em; margin-right: .3em;
+    border-radius: 50%; border: 2px solid var(--role); font-size: .9em;
+    background: color-mix(in srgb, var(--role) 22%, var(--surface));
+  }
+
+  [data-stepper]:focus { outline: none; }
+  [data-stepper]:focus-visible { outline: 3px dashed var(--change); outline-offset: 8px; border-radius: 12px; }
+  [data-stepper]:not(.stepper-on) .step-controls { display: none; }
+
+  /* Diagram parts. Color means a role: cause for the question, problem for the old path,
+     effect for the new path, proof for the test. Mechanism stays neutral. */
+  .diagram .box { fill: var(--surface); stroke: var(--muted); stroke-width: 2.5; }
+  .diagram .wire { fill: none; stroke: var(--muted); stroke-width: 3.5; stroke-linecap: round; }
+  .diagram .dashed { stroke-dasharray: 6 6; }
+  .diagram .cause .box { stroke: var(--cause); fill: color-mix(in srgb, var(--cause) 14%, var(--surface)); }
+  .diagram .problem .box { stroke: var(--problem); fill: color-mix(in srgb, var(--problem) 10%, var(--surface)); }
+  .diagram .problem .wire { stroke: var(--problem); }
+  .diagram .effect .box { stroke: var(--effect); fill: color-mix(in srgb, var(--effect) 10%, var(--surface)); }
+  .diagram .effect .wire { stroke: var(--effect); }
+  .diagram .proof .box { stroke: var(--proof); fill: color-mix(in srgb, var(--proof) 10%, var(--surface)); }
+  .diagram .proof .wire { stroke: var(--proof); }
+  .diagram .is-lit .box { stroke-width: 4.5; }
+  .diagram .label { font-size: 18px; font-weight: 700; }
+  .diagram .label-sm { font-size: 16px; font-weight: 700; }
+  .diagram .small { font-size: 15px; fill: var(--muted); }
+  .diagram .mono { font-size: 16px; font-weight: 700; }
+  .m-muted { fill: var(--muted); }
+  .m-problem { fill: var(--problem); }
+  .m-effect { fill: var(--effect); }
+  .m-proof { fill: var(--proof); }
+
+  /* One draw of the wires each time a step lights them. Only after a reader action. */
+  @media (prefers-reduced-motion: no-preference) {
+    .stepper-on .is-lit .wire:not(.dashed) { stroke-dasharray: 300; animation: t2-draw .7s ease-out both; }
+    @keyframes t2-draw { from { stroke-dashoffset: 300; } to { stroke-dashoffset: 0; } }
+  }
+</style>
+</head>
+<body>
+<nav class="topbar"><a href="index.html">Gallery</a><strong>T2 Stepped diagram</strong><span class="spacer"></span><a href="t1-cause-chain.html">Previous: T1</a> <a href="t3-slide-deck.html">Next: T3 Slide deck</a></nav>
+<div class="page">
+
+<header class="band">
+  <h1>How the 16 MB limit got skipped</h1>
+  <p class="lede measure">Follow the bytes from the <span class="term" data-term="backend">backend</span> to the <span class="term" data-term="buffer">buffer</span>. Each step lights the part of the diagram it talks about. The left path is the old behavior, before release 0.306.5. The right path is the behavior since then.</p>
+  <ul class="legend" aria-label="Color key">
+    <li class="role-cause">Cause</li>
+    <li class="role-problem">Problem</li>
+    <li class="role-change">Change</li>
+    <li class="role-effect">Effect</li>
+    <li class="role-proof">Proof</li>
+  </ul>
+</header>
+
+<section class="band" data-stepper tabindex="0" aria-label="Stepped diagram. Click a step or use the arrow keys.">
+  <div class="step-controls">
+    <button class="btn" type="button" data-step-prev>Previous step</button>
+    <button class="btn primary" type="button" data-step-next>Next step</button>
+    <span class="step-label" data-step-label>Step 1 of 7</span>
+    <span class="note">You can also click a step or press the arrow keys.</span>
+  </div>
+
+  <div class="flow">
+    <figure class="diagram" style="margin:0">
+      <svg viewBox="0 0 520 640" role="img" aria-labelledby="t2-diagram-title">
+        <title id="t2-diagram-title">Flow of backend output: the backend writes into a pipe, io.Copy asks whether the buffer has ReadFrom. Before 0.306.5 the answer was yes and every byte was kept with no limit. Since 0.306.5 the answer is no, so Write keeps at most 16 MB, sets truncated, and the launcher reports an error. A test pins the new path.</title>
+        <defs>
+          <marker id="t2-arrow-muted" viewBox="0 0 10 10" refX="9" refY="5" markerUnits="userSpaceOnUse" markerWidth="12" markerHeight="12" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="m-muted"/></marker>
+          <marker id="t2-arrow-problem" viewBox="0 0 10 10" refX="9" refY="5" markerUnits="userSpaceOnUse" markerWidth="12" markerHeight="12" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="m-problem"/></marker>
+          <marker id="t2-arrow-effect" viewBox="0 0 10 10" refX="9" refY="5" markerUnits="userSpaceOnUse" markerWidth="12" markerHeight="12" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="m-effect"/></marker>
+          <marker id="t2-arrow-proof" viewBox="0 0 10 10" refX="9" refY="5" markerUnits="userSpaceOnUse" markerWidth="12" markerHeight="12" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="m-proof"/></marker>
+        </defs>
+
+        <g data-at="1">
+          <rect class="box" x="130" y="10" width="260" height="66" rx="14"/>
+          <text class="label" x="260" y="38" text-anchor="middle">Backend program</text>
+          <text class="small" x="260" y="62" text-anchor="middle">codex, gemini or agy</text>
+        </g>
+
+        <g data-at="1 2">
+          <path class="wire" d="M260 76 V106" marker-end="url(#t2-arrow-muted)"/>
+          <text class="small" x="272" y="98">pipe</text>
+        </g>
+
+        <g data-at="2 3">
+          <rect class="box" x="170" y="112" width="180" height="50" rx="12"/>
+          <text class="mono" x="260" y="143" text-anchor="middle">io.Copy</text>
+        </g>
+
+        <g class="cause" data-at="3">
+          <path class="wire" d="M260 162 V178" marker-end="url(#t2-arrow-muted)"/>
+          <polygon class="box" points="260,182 370,230 260,278 150,230"/>
+          <text class="label" x="260" y="236" text-anchor="middle">Has ReadFrom?</text>
+        </g>
+
+        <g class="problem" data-at="4">
+          <path class="wire" d="M150 230 H130 V296" marker-end="url(#t2-arrow-problem)"/>
+          <text class="label-sm" x="122" y="258" text-anchor="end">Yes</text>
+          <text class="small" x="122" y="280" text-anchor="end">before 0.306.5</text>
+          <rect class="box" x="15" y="300" width="230" height="56" rx="12"/>
+          <text class="mono" x="130" y="334" text-anchor="middle">bytes.Buffer.ReadFrom</text>
+          <path class="wire" d="M130 356 V380" marker-end="url(#t2-arrow-problem)"/>
+          <rect class="box" x="15" y="384" width="230" height="72" rx="12"/>
+          <text class="label-sm" x="130" y="414" text-anchor="middle">All bytes kept</text>
+          <text class="label-sm" x="130" y="440" text-anchor="middle">No limit, no error</text>
+        </g>
+
+        <g class="effect" data-at="5 7">
+          <path class="wire" d="M370 230 H390 V296" marker-end="url(#t2-arrow-effect)"/>
+          <text class="label-sm" x="398" y="258">No</text>
+          <text class="small" x="398" y="280">since 0.306.5</text>
+          <rect class="box" x="275" y="300" width="230" height="56" rx="12"/>
+          <text class="label" x="390" y="334" text-anchor="middle">Our Write method</text>
+          <path class="wire" d="M390 356 V376" marker-end="url(#t2-arrow-effect)"/>
+          <rect class="box" x="275" y="380" width="230" height="56" rx="12"/>
+          <text class="label" x="390" y="414" text-anchor="middle">Keep at most 16 MB</text>
+        </g>
+
+        <g class="effect" data-at="6 7">
+          <path class="wire" d="M390 436 V456" marker-end="url(#t2-arrow-effect)"/>
+          <rect class="box" x="275" y="460" width="230" height="56" rx="12"/>
+          <text class="mono" x="390" y="494" text-anchor="middle">truncated = true</text>
+          <path class="wire" d="M390 516 V536" marker-end="url(#t2-arrow-effect)"/>
+          <rect class="box" x="275" y="540" width="230" height="88" rx="12"/>
+          <text class="label-sm" x="390" y="576" text-anchor="middle">Error: backend output</text>
+          <text class="label-sm" x="390" y="602" text-anchor="middle">exceeded capture limit</text>
+        </g>
+
+        <g class="proof" data-at="7">
+          <rect class="box" x="15" y="540" width="230" height="88" rx="12"/>
+          <text class="label-sm" x="130" y="568" text-anchor="middle">Test pins this path</text>
+          <text class="small" x="130" y="592" text-anchor="middle">sends 16,777,300 bytes</text>
+          <text class="small" x="130" y="614" text-anchor="middle">expects 16 MiB + error</text>
+          <path class="wire dashed" d="M245 584 H269" marker-end="url(#t2-arrow-proof)"/>
+        </g>
+      </svg>
+    </figure>
+
+    <ol class="steps">
+      <li class="node role-cause" data-step>
+        <span class="tag">Cause</span>
+        <h3><span class="num">1</span>The backend prints its answer</h3>
+        <p>The <span class="term" data-term="launcher">launcher</span> starts a backend program, for example codex. Everything the backend prints goes to its stdout and stderr, and the launcher collects both in a buffer.</p>
+        <span class="chip">report_second_opinion.go:1142-1145</span>
+      </li>
+      <li class="node role-cause" data-step>
+        <span class="tag">Cause</span>
+        <h3><span class="num">2</span>Go opens a pipe and runs io.Copy</h3>
+        <p>The buffer is not a file. So Go's os/exec package opens a <span class="term" data-term="pipe">pipe</span> and starts <span class="term" data-term="iocopy">io.Copy</span> to move the bytes from the pipe into the buffer.</p>
+        <span class="chip">report_second_opinion.go:1141</span>
+      </li>
+      <li class="node role-cause" data-step>
+        <span class="tag">Cause</span>
+        <h3><span class="num">3</span>io.Copy asks one question</h3>
+        <p>Before it copies, io.Copy checks the buffer: does it have a <span class="term" data-term="readfrom">ReadFrom</span> method? If yes, io.Copy hands the whole stream to ReadFrom and never calls <span class="term" data-term="write">Write</span>.</p>
+        <span class="chip">aa61c81a commit message</span>
+      </li>
+      <li class="node role-problem" data-step>
+        <span class="tag">Problem</span>
+        <h3><span class="num">4</span>Before 0.306.5: yes, so ReadFrom</h3>
+        <p>The old buffer used <span class="term" data-term="embedding">embedding</span> for bytes.Buffer, so it had a <span class="term" data-term="promoted">promoted</span> ReadFrom. ReadFrom kept every byte. The 16 MB check in Write never ran. A reproduction kept 16,777,300 bytes and reported truncated=false.</p>
+        <span class="chip">aa61c81a (old struct)</span><span class="chip">reproduction run, 2026-11-02</span>
+      </li>
+      <li class="node role-change" data-step>
+        <span class="tag">Change</span>
+        <h3><span class="num">5</span>Since 0.306.5: no, so Write</h3>
+        <p>The buffer now holds a <span class="term" data-term="namedfield">named field</span>, <code>captured bytes.Buffer</code>. The buffer type has no ReadFrom, so io.Copy calls Write. Write keeps at most 16 MB.</p>
+        <span class="chip">report_second_opinion.go:1054-1059</span><span class="chip">report_second_opinion.go:1075</span>
+      </li>
+      <li class="node role-effect" data-step>
+        <span class="tag">Effect</span>
+        <h3><span class="num">6</span>The error fires</h3>
+        <p>Write cuts the extra bytes and sets the <span class="term" data-term="truncated">truncated</span> flag. When the backend is done, the launcher turns that flag into the error "backend output exceeded capture limit".</p>
+        <span class="chip">report_second_opinion.go:1076-1078</span><span class="chip">report_second_opinion.go:1194-1195</span>
+      </li>
+      <li class="node role-proof" data-step>
+        <span class="tag">Proof</span>
+        <h3><span class="num">7</span>A test pins it</h3>
+        <p>TestSecondOpinionCaptureCapsBackendOutput sends 16,777,300 bytes and expects exactly 16,777,216 bytes plus an error. It is a <span class="term" data-term="pin">pin</span>: it fails if the old path comes back. It passed on 2026-11-02 in 0.11 s.</p>
+        <span class="chip">report_second_opinion_test.go:804</span><span class="chip">go test run, 2026-11-02</span>
+      </li>
+    </ol>
+  </div>
+</section>
+
+<footer class="band note measure">
+  <p>Evidence: commit aa61c81a (the fix, REQ-702), commit 83146e48 (release 0.306.5), and <code>skills/do-work/tools/do-work-cli/internal/toolboxcommands/report_second_opinion.go</code> with its test file, read on 2026-11-02. The reproduction is a short Go program written for this gallery that copies the old and new buffer shapes. It is not project code. The diagram is hand-made SVG.</p>
+</footer>
+
+</div>
+<script src="gallery.js"></script>
+</body>
+</html>

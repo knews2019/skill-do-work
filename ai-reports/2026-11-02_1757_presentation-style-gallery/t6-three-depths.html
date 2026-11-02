@@ -1,0 +1,222 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>T6 Three depths: the 16 MB limit that never ran</title>
+<link rel="stylesheet" href="gallery.css">
+<style>
+  /* Depth marker: a three-segment gauge that fills as the reader goes deeper. */
+  .depth-marker { display: flex; align-items: center; gap: 10px; margin: 0 0 16px; font-weight: 700; color: var(--muted); }
+  .gauge { display: inline-flex; gap: 4px; }
+  .gauge i { display: block; width: 26px; height: 10px; border-radius: 5px; background: var(--line); }
+  .gauge i.on { background: var(--change); }
+
+  .depth-one h1 { font-size: clamp(1.9rem, 4vw, 3.2rem); max-width: 26ch; margin-bottom: 18px; }
+
+  .mini { display: flex; flex-wrap: wrap; gap: 18px 0; align-items: stretch; margin: 8px 0 26px; }
+  .mini .link { display: flex; align-items: center; flex: 1 1 250px; min-width: 0; }
+  .mini .node { flex: 1 1 auto; min-width: 0; align-self: stretch; }
+  .mini .node p { margin-bottom: .4em; }
+  .joint { flex: 0 0 auto; display: flex; align-items: center; padding: 0 14px 0 4px; }
+  .joint .pipe { flex: none; width: 34px; height: 14px; }
+
+  .for-you { background: var(--surface); border: 2px solid var(--line); border-radius: 16px; padding: 18px 20px; }
+  .for-you h2 { font-size: 1.35rem; }
+  .depth-two .actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 22px; }
+  a.btn { text-decoration: none; display: inline-block; }
+
+  .depth-three details > *:not(summary) { min-width: 0; }
+  .depth-three pre { margin: 10px 0 12px; }
+  .diff .del { color: var(--problem); }
+  .diff .add { color: var(--effect); }
+  .files { display: grid; grid-template-columns: minmax(0, max-content) minmax(0, 1fr); gap: 8px 18px; margin: 0 0 14px; }
+  .files dt { font-family: var(--mono); font-size: .85rem; overflow-wrap: anywhere; }
+  .files dd { margin: 0; }
+  .ran { font-weight: 700; color: var(--effect); }
+
+  @media (max-width: 700px) {
+    .mini .link { flex: 1 1 100%; flex-direction: column; align-items: stretch; }
+    .joint { justify-content: center; padding: 0 0 10px; }
+    .joint .pipe { width: 14px; height: 30px; background: linear-gradient(180deg, var(--from), var(--to)); }
+    .joint .pipe::after {
+      right: auto; left: 50%; top: auto; bottom: -9px; translate: -50% 0;
+      border: 11px solid transparent; border-top-color: var(--to); border-bottom: 0;
+    }
+    .files { grid-template-columns: minmax(0, 1fr); }
+    .files dd { margin-bottom: 8px; }
+  }
+</style>
+</head>
+<body>
+<nav class="topbar"><a href="index.html">Gallery</a><strong>T6 Three depths</strong><span class="spacer"></span><a href="t5-hover-glossary.html">Previous: T5</a> <a href="t7-comic-strip.html">Next: T7 Comic strip</a></nav>
+<div class="page">
+
+<header class="band depth-one" id="depth-1">
+  <p class="depth-marker"><span class="gauge" aria-hidden="true"><i class="on"></i><i></i><i></i></span>Depth 1 of 3: the answer in one sentence</p>
+  <h1>Since release 0.306.5, the second-opinion launcher really stops a backend's output at 16 MB, which it never did before.</h1>
+  <p><span class="chip">release 0.306.5 (83146e48)</span><span class="chip">fix aa61c81a (REQ-702)</span><span class="chip">report_second_opinion_test.go:804</span></p>
+  <ul class="legend" aria-label="Color key">
+    <li class="role-cause">Cause</li>
+    <li class="role-problem">Problem</li>
+    <li class="role-change">Change</li>
+    <li class="role-effect">Effect</li>
+    <li class="role-proof">Proof</li>
+  </ul>
+</header>
+
+<section class="band depth-two" id="depth-2" aria-labelledby="depth-2-heading">
+  <p class="depth-marker"><span class="gauge" aria-hidden="true"><i class="on"></i><i class="on"></i><i></i></span>Depth 2 of 3: the whole story on one screen</p>
+  <h2 id="depth-2-heading">Why the limit never ran, and what changed</h2>
+
+  <div class="mini">
+    <div class="link">
+      <article class="node role-cause">
+        <span class="tag">Cause</span>
+        <p>The old buffer embedded bytes.Buffer, so it got a ReadFrom method for free.</p>
+        <span class="chip">aa61c81a (old struct)</span>
+      </article>
+    </div>
+    <div class="link">
+      <span class="joint" aria-hidden="true"><span class="pipe" style="--from: var(--cause); --to: var(--problem)"></span></span>
+      <article class="node role-problem">
+        <span class="tag">Problem</span>
+        <p>io.Copy used ReadFrom and skipped our Write, so the 16 MB check never ran.</p>
+        <span class="chip">aa61c81a commit message</span><span class="chip">reproduction 2026-11-02</span>
+      </article>
+    </div>
+    <div class="link">
+      <span class="joint" aria-hidden="true"><span class="pipe" style="--from: var(--problem); --to: var(--change)"></span></span>
+      <article class="node role-change">
+        <span class="tag">Change</span>
+        <p>The buffer is now a named field, captured. Write is the only way in.</p>
+        <span class="chip">report_second_opinion.go:1055</span>
+      </article>
+    </div>
+    <div class="link">
+      <span class="joint" aria-hidden="true"><span class="pipe" style="--from: var(--change); --to: var(--effect)"></span></span>
+      <article class="node role-effect">
+        <span class="tag">Effect</span>
+        <p>Output stops at 16 MB and the launcher reports the error.</p>
+        <span class="chip">report_second_opinion.go:1194-1195</span><span class="chip">test :804 PASS 2026-11-02</span>
+      </article>
+    </div>
+  </div>
+
+  <div class="for-you measure">
+    <h2>What changed for you</h2>
+    <p>If a backend (codex, gemini or agy) prints more than 16 MB, the launcher now cuts it and reports "backend output exceeded capture limit". Before, it kept every byte in memory with no error. Runs that stay under 16 MB behave as before.</p>
+    <span class="chip">report_second_opinion.go:1075-1080</span><span class="chip">report_second_opinion.go:1194-1195</span>
+  </div>
+
+  <div class="actions">
+    <a class="btn primary" href="#depth-3" id="go-deeper">Go deeper: open all details</a>
+  </div>
+</section>
+
+<section class="band depth-three" id="depth-3" aria-labelledby="depth-3-heading">
+  <p class="depth-marker"><span class="gauge" aria-hidden="true"><i class="on"></i><i class="on"></i><i class="on"></i></span>Depth 3 of 3: every detail, folded</p>
+  <h2 id="depth-3-heading">The details</h2>
+  <p class="step-controls"><button class="btn" type="button" id="fold-all">Fold all again</button></p>
+
+  <details>
+    <summary>The code before and after</summary>
+    <p class="measure">The struct and the end of Write, from the fix commit. The two new fields at the bottom of the struct belong to the progress feature in the same commit.</p>
+<pre class="diff"><code> type secondOpinionBuffer struct {
+<span class="del">-	bytes.Buffer</span>
+<span class="del">-	truncated bool</span>
+<span class="add">+	captured     bytes.Buffer</span>
+<span class="add">+	truncated    bool</span>
+<span class="add">+	mirrorPrefix string</span>
+<span class="add">+	pending      []byte</span>
+ }
+
+<span class="del">-	remaining := 16*1024*1024 - buffer.Len()</span>
+<span class="add">+	remaining := 16*1024*1024 - buffer.captured.Len()</span>
+ 	if len(data) &gt; remaining {
+ 		data = data[:remaining]
+ 		buffer.truncated = true
+ 	}
+<span class="del">-	_, _ = buffer.Buffer.Write(data)</span>
+<span class="add">+	_, _ = buffer.captured.Write(data)</span></code></pre>
+    <span class="chip">aa61c81a</span><span class="chip">report_second_opinion.go:1054-1059</span><span class="chip">report_second_opinion.go:1075-1080</span>
+  </details>
+
+  <details>
+    <summary>Why io.Copy skips Write</summary>
+    <div class="measure">
+      <p>The <span class="term" data-term="launcher">launcher</span> sets the two buffers as the command's stdout and stderr. They are not files, so os/exec makes a <span class="term" data-term="pipe">pipe</span> and copies it with <span class="term" data-term="iocopy">io.Copy</span>.</p>
+      <p>io.Copy checks whether the writer has a <span class="term" data-term="readfrom">ReadFrom</span> method. If it does, io.Copy calls ReadFrom and never calls <span class="term" data-term="write">Write</span>.</p>
+      <p>The old buffer used <span class="term" data-term="embedding">embedding</span>, so ReadFrom was a <span class="term" data-term="promoted">promoted</span> method on it. bytes.Buffer.ReadFrom knows nothing about our 16 MB <span class="term" data-term="cap">cap</span>. The fixed buffer keeps bytes.Buffer in a <span class="term" data-term="namedfield">named field</span>, so ReadFrom stays on the field and the buffer has only Write.</p>
+    </div>
+    <p class="note">The code now explains this itself, above the struct:</p>
+<pre><code>// captured is a named field, never embedded: an embedded bytes.Buffer promotes ReadFrom, io.Copy prefers it, and
+// neither the cap nor the mirror in Write would ever run.</code></pre>
+    <span class="chip">report_second_opinion.go:1052-1053</span><span class="chip">report_second_opinion.go:1141-1145</span>
+    <p class="note">A short Go program written for this gallery copies the old and new buffer shapes and feeds each one 16,777,300 bytes. It is not project code. Output from 2026-11-02:</p>
+<pre class="terminal"><code><span class="bad">old (embedded):  io.ReaderFrom=true  captured=16777300 bytes  truncated=false</span>
+<span class="good">new (named):     io.ReaderFrom=false captured=16777216 bytes  truncated=true</span></code></pre>
+  </details>
+
+  <details>
+    <summary>The test that pins it</summary>
+    <p class="measure"><code>head -c 16777300 /dev/zero</code> prints 84 bytes more than 16 MiB. The test fails if the launcher keeps any other number of bytes than 16,777,216, or if no error comes back. This is the <span class="term" data-term="pin">pin</span> for this bug.</p>
+<pre><code>func TestSecondOpinionCaptureCapsBackendOutput(t *testing.T) {
+	previousSink := secondOpinionProgressSink
+	secondOpinionProgressSink = io.Discard
+	t.Cleanup(func() { secondOpinionProgressSink = previousSink })
+	captured := secondOpinionCapture(context.Background(), secondOpinionProgress{}, t.TempDir(), "/usr/bin/head", "-c", "16777300", "/dev/zero")
+	if len(captured.stdout) != 16*1024*1024 || captured.err == nil {
+		t.Fatalf("captured %d bytes, err=%v", len(captured.stdout), captured.err)
+	}
+}</code></pre>
+    <span class="chip">report_second_opinion_test.go:804-812</span>
+    <p class="note">Run on 2026-11-02:</p>
+<pre class="terminal"><code><span class="dim">=== RUN   TestSecondOpinionCaptureCapsBackendOutput</span>
+<span class="good">--- PASS: TestSecondOpinionCaptureCapsBackendOutput (0.11s)</span>
+<span class="good">PASS</span>
+ok  	github.com/knews2019/skill-do-work/do-work-cli/internal/toolboxcommands	0.597s</code></pre>
+  </details>
+
+  <details>
+    <summary>Files and commits</summary>
+    <dl class="files">
+      <dt>skills/do-work/tools/do-work-cli/internal/toolboxcommands/report_second_opinion.go</dt>
+      <dd>The buffer struct (1054-1059), Write with the cap (1061-1082), the stdout and stderr wiring (1144-1145), and the error (1194-1195).</dd>
+      <dt>skills/do-work/tools/do-work-cli/internal/toolboxcommands/report_second_opinion_test.go</dt>
+      <dd>TestSecondOpinionCaptureCapsBackendOutput (804).</dd>
+      <dt>aa61c81a</dt>
+      <dd>[REQ-702] stream second-opinion backend output and heartbeats to stderr. The fix is in this commit.</dd>
+      <dt>83146e48</dt>
+      <dd>[REQ-702] complete: release 0.306.5, Second-Opinion Launcher Shows Progress While Codex, Gemini or AGY Runs.</dd>
+    </dl>
+  </details>
+
+  <details>
+    <summary>Check it yourself</summary>
+    <p>Run the test that pins the limit. <span class="ran">Run on 2026-11-02 with go1.27.3 darwin/arm64: PASS.</span></p>
+<pre><code>cd skills/do-work/tools/do-work-cli
+go test ./internal/toolboxcommands/ -run 'TestSecondOpinionCaptureCapsBackendOutput' -count=1 -v</code></pre>
+    <p>Read the fix itself. <span class="ran">Used on 2026-11-02 to read the diff above.</span></p>
+<pre><code>git show aa61c81a -- skills/do-work/tools/do-work-cli/internal/toolboxcommands/report_second_opinion.go</code></pre>
+  </details>
+</section>
+
+</div>
+<script src="gallery.js"></script>
+<script>
+  // Reader-triggered only: "Go deeper" opens every detail and moves to depth 3. Without a script the link still jumps there.
+  const depthThree = document.getElementById("depth-3");
+  const allDetails = () => depthThree.querySelectorAll("details");
+  document.getElementById("go-deeper").addEventListener("click", (event) => {
+    event.preventDefault();
+    allDetails().forEach((detail) => { detail.open = true; });
+    const calm = matchMedia("(prefers-reduced-motion: reduce)").matches;
+    depthThree.scrollIntoView({ behavior: calm ? "auto" : "smooth", block: "start" });
+  });
+  document.getElementById("fold-all").addEventListener("click", () => {
+    allDetails().forEach((detail) => { detail.open = false; });
+  });
+</script>
+</body>
+</html>

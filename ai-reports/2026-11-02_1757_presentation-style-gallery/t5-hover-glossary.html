@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>T5 Hover glossary: the 16 MB limit that never ran</title>
+<link rel="stylesheet" href="gallery.css">
+<style>
+  .hero { padding: 48px 0 20px; }
+  .hint { display: inline-block; font-weight: 600; color: var(--muted); margin: 6px 0 18px; }
+  .prose section { padding: 22px 0 6px; }
+  .prose h2 { font-size: clamp(1.3rem, 2vw, 1.7rem); margin: 0 0 .4em; }
+  .prose .tag { margin-bottom: 6px; }
+  .prose p { font-size: 1.08rem; }
+  .receipts { margin-top: -6px; }
+
+  .glossary { columns: 3 280px; column-gap: 32px; margin: 0; }
+  .glossary dt { font: 750 1.05rem var(--display); color: var(--change); break-after: avoid; margin-top: 2px; }
+  .glossary dd { margin: 2px 0 16px; break-before: avoid; break-inside: avoid; color: var(--ink); }
+</style>
+</head>
+<body>
+<nav class="topbar"><a href="index.html">Gallery</a><strong>T5 Hover glossary</strong><span class="spacer"></span><a href="t4-terminal-replay.html">Previous: T4</a> <a href="t6-three-depths.html">Next: T6 Three depths</a></nav>
+<div class="page">
+
+<header class="hero">
+  <h1>The 16 MB limit that never ran</h1>
+  <p class="hint">Hover or tap an underlined word to see what it means.</p>
+  <ul class="legend" aria-label="Color key">
+    <li class="role-cause">Cause</li>
+    <li class="role-problem">Problem</li>
+    <li class="role-change">Change</li>
+    <li class="role-effect">Effect</li>
+    <li class="role-proof">Proof</li>
+  </ul>
+</header>
+
+<article class="prose measure">
+
+  <section class="role-proof" aria-labelledby="verdict-heading">
+    <span class="tag">Proof</span>
+    <h2 id="verdict-heading">Verdict</h2>
+    <p>Fixed and pinned by a test in release 0.306.5 (2026-10-19). When a <span class="term" data-term="backend">backend</span> prints too much, the second-opinion <span class="term" data-term="launcher">launcher</span> now keeps the first 16 MB and reports "backend output exceeded capture limit". Before this release, the code for that <span class="term" data-term="cap">capture limit</span> existed, but it never ran.</p>
+    <p class="receipts"><span class="chip">83146e48 (release 0.306.5, REQ-702)</span><span class="chip">aa61c81a (the fix)</span></p>
+  </section>
+
+  <section class="role-problem" aria-labelledby="wrong-heading">
+    <span class="tag">Problem</span>
+    <h2 id="wrong-heading">What went wrong</h2>
+    <p>When the launcher starts a backend, the operating system gives it a <span class="term" data-term="pipe">pipe</span> for its output. The launcher collects that output in a <span class="term" data-term="buffer">buffer</span>, one for stdout and one for stderr. The buffer has its own <span class="term" data-term="write">Write</span> method, and Write holds the limit: it keeps at most 16,777,216 bytes and sets a <span class="term" data-term="truncated">truncated</span> flag when it cuts.</p>
+    <p class="receipts"><span class="chip">report_second_opinion.go:1061-1080</span><span class="chip">report_second_opinion.go:1144-1145</span></p>
+    <p>The old buffer used <span class="term" data-term="embedding">embedding</span>: it held Go's bytes.Buffer without a field name. That gave it a <span class="term" data-term="promoted">promoted</span> method called <span class="term" data-term="readfrom">ReadFrom</span>. Go moves the bytes from the pipe into the buffer with <span class="term" data-term="iocopy">io.Copy</span>, and io.Copy prefers ReadFrom when the destination has one. So io.Copy called ReadFrom, and our Write never ran. The limit never ran either. The truncated flag stayed false, and the error could never fire.</p>
+    <p class="receipts"><span class="chip">aa61c81a (old struct)</span><span class="chip">report_second_opinion.go:1141</span><span class="chip">report_second_opinion.go:1194-1195</span></p>
+  </section>
+
+  <section class="role-change" aria-labelledby="fix-heading">
+    <span class="tag">Change</span>
+    <h2 id="fix-heading">The fix</h2>
+    <p>The buffer now keeps bytes.Buffer in a <span class="term" data-term="namedfield">named field</span> called captured. A named field keeps its methods to itself, so the buffer has no ReadFrom. Every byte now goes through Write, and Write applies the limit. The same commit added a live progress mirror that copies each backend line to stderr, and that mirror lives in Write too.</p>
+    <p class="receipts"><span class="chip">report_second_opinion.go:1055</span><span class="chip">aa61c81a</span></p>
+  </section>
+
+  <section class="role-proof" aria-labelledby="proof-heading">
+    <span class="tag">Proof</span>
+    <h2 id="proof-heading">The proof</h2>
+    <p>A <span class="term" data-term="pin">pin test</span>, TestSecondOpinionCaptureCapsBackendOutput, sends 16,777,300 bytes through a real process. It expects exactly 16,777,216 bytes back plus an error. It passed on 2026-11-02 in 0.11 seconds.</p>
+    <p>A short Go program written for this gallery copies the old and new buffer shapes and shows the same thing side by side. It is not project code. The old shape kept 16,777,300 bytes with truncated=false. The new shape kept 16,777,216 bytes with truncated=true.</p>
+    <p class="receipts"><span class="chip">report_second_opinion_test.go:804</span><span class="chip">go test run, 2026-11-02</span><span class="chip">scratch program, 2026-11-02</span></p>
+  </section>
+
+  <section class="role-effect" aria-labelledby="you-heading">
+    <span class="tag">Effect</span>
+    <h2 id="you-heading">What changes for you</h2>
+    <p>Nothing to do. If a backend ever floods its output, a second-opinion run keeps only the first 16 MB of each stream and reports "backend output exceeded capture limit". Before the fix, the launcher kept everything in memory, with no limit.</p>
+    <p class="receipts"><span class="chip">report_second_opinion.go:1194-1195</span></p>
+  </section>
+
+</article>
+
+<section class="band" aria-labelledby="glossary-heading">
+  <h2 id="glossary-heading">Every word on this page, explained</h2>
+  <dl class="glossary">
+  <dt>backend</dt><dd>The other AI tool the launcher runs to write a second opinion: codex, gemini or agy.</dd>
+  <dt>launcher</dt><dd>The do-work-cli command that starts the backend, collects its output and checks the result.</dd>
+  <dt>pipe</dt><dd>A channel the operating system gives two programs: the backend writes into one end, the launcher reads from the other.</dd>
+  <dt>buffer</dt><dd>A piece of memory that collects bytes as they arrive. Here: secondOpinionBuffer, one for stdout and one for stderr.</dd>
+  <dt>Write</dt><dd>Our own method on the buffer. It checks the 16 MB limit, cuts extra bytes and marks the buffer as truncated.</dd>
+  <dt>capture limit</dt><dd>The most backend output the launcher keeps in memory: 16 MB (16,777,216 bytes). Anything past it should be cut and reported.</dd>
+  <dt>truncated</dt><dd>A flag set when output was cut at the limit. The launcher turns it into the error "backend output exceeded capture limit".</dd>
+  <dt>embedding</dt><dd>A Go feature: put a type inside a struct without giving it a field name. The struct then gets all of that type's methods for free.</dd>
+  <dt>promoted</dt><dd>A method the outer struct gets from an embedded type. You did not write it, but the struct has it.</dd>
+  <dt>ReadFrom</dt><dd>A method on bytes.Buffer that keeps reading a stream into memory until the stream ends. It does not know about our 16 MB limit.</dd>
+  <dt>io.Copy</dt><dd>Go's standard function that moves bytes from a reader to a writer. If the writer has ReadFrom, io.Copy hands it the whole stream and skips Write.</dd>
+  <dt>named field</dt><dd>A struct field with a name, like captured bytes.Buffer. Its methods stay on the field, so the struct does not get them.</dd>
+  <dt>pin test</dt><dd>A test that fails if this exact bug comes back. It names the failure it guards against.</dd>
+</dl>
+</section>
+
+<footer class="band note measure">
+  <p>Sources: commit aa61c81a and release commit 83146e48, <code>skills/do-work/tools/do-work-cli/internal/toolboxcommands/report_second_opinion.go</code> and <code>report_second_opinion_test.go</code>, read on 2026-11-02. The scratch program was written and run on 2026-11-02 only for this gallery.</p>
+</footer>
+
+</div>
+<script src="gallery.js"></script>
+</body>
+</html>
