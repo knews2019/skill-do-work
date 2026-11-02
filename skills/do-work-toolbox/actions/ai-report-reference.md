@@ -18,11 +18,11 @@ The action can illustrate sections with generated raster images (architecture di
 
 Neither raster CLI guarantees an exact pixel size — they pick a close 16:9, which is fine.
 
-**Shared style brief.** Write **one** style brief and prepend it to *every* image prompt so all generated images match each other and the report theme. Tie it to the report's CSS tokens (this repo's reports default to a light theme with a dark `prefers-color-scheme` variant, so prefer a **transparent or neutral background** that reads on either): blue (`#2563eb`) accent, flat line-art, 2px strokes, rounded nodes, labeled arrows for flow direction; no photorealism, no 3D, no stock-photo people. Hold it in a shell variable, e.g.:
+**Shared style brief.** Write **one** style brief and prepend it to *every* image prompt so all generated images match each other and the report theme. Tie it to the kit's colors (reports default to a light theme with a dark `prefers-color-scheme` variant, so prefer a **transparent or neutral background** that reads on either): violet (`#6a4cf0`) accent, the role colors only for their roles, flat line-art, 2px strokes, rounded nodes, labeled arrows for flow direction; no photorealism, no 3D, no stock-photo people. Hold it in a shell variable, e.g.:
 
 ```bash
 STYLE='Style: flat technical line-art diagram, transparent or neutral light background,
-blue (#2563eb) accent, 2px strokes, rounded rectangular nodes, labeled arrows for data flow,
+violet (#6a4cf0) accent, 2px strokes, rounded rectangular nodes, labeled arrows for data flow,
 clean sans-serif labels, no photorealism, no 3D, no stock-photo people, max ~10 short labels.'
 ```
 
@@ -62,33 +62,33 @@ Per-image diagnostics and the published path come from the typed result. A succe
 
 **Data-viz rules for every hand-authored SVG** (architecture graphs, timelines, rings, stage diagrams, stat tiles):
 
-- **Color by job.** Ordered data (rings, stages, tiers, severity ladders) takes a **single-hue ordinal ramp**, light→dark — never a handful of unrelated hues, which tells the eye the items are unrelated categories when they're actually a sequence. Identity (components, actors, series) takes fixed categorical hues. Status colors (good/warn/bad) are reserved for status and never reused as series colors.
-- **Text wears ink-colored tokens, never the series color.** Labels use the report's text color (`--text`/`--muted`); identity is carried by a small solid swatch beside the label, not by coloring the words — colored text fails contrast in at least one theme.
+- **Color by job.** Ordered data (rings, stages, tiers, severity ladders) takes a **single-hue ordinal ramp**, light→dark — never a handful of unrelated hues, which tells the eye the items are unrelated categories when they're actually a sequence. Identity (components, actors, series) takes fixed categorical hues. Status colors (good/warn/bad) are reserved for status and never reused as series colors. The kit's five role colors keep their roles inside a diagram too.
+- **Text wears ink-colored tokens, never the series color.** Labels use the kit's text colors (`--ink`/`--muted`); identity is carried by a small solid swatch beside the label, not by coloring the words — colored text fails contrast in at least one theme.
 - **Labels never collide or clip.** On timelines and dense diagrams, stagger labels into above/below lanes; use `text-anchor="start"`/`"end"` so each label leans *away* from its neighbors and the canvas edges; shorten strings rather than letting them touch. A center-anchored label near a canvas edge always clips.
 - **Stat tiles:** label in sentence case + value in sans-serif semibold with proportional figures at ~40px + optional mono sub-line. `tabular-nums` belongs in table columns only, not tiles.
 
 ## Report Design Rules (Step 5)
 
-- Single `index.html` inside the report folder; images linked from `screenshots/` and/or `generated/` beside it when those evidence types are used. Zero build steps. No npm installs.
-- External CDN allowed only for: Tailwind CSS, Mermaid.js. Everything else inline.
-- Light theme by default; dark via `@media (prefers-color-scheme: dark)`.
-- CSS custom properties at `:root` for `--bg`, `--surface`, `--text`, `--accent`, `--muted`. Light: white/slate-50 bg, slate-800 text, blue-600 accent. Dark: slate-900 bg, slate-100 text, blue-400 accent. These values are the fallback palette, not a mandate — restyle them to the chosen aesthetic direction (next rule), keeping the light/dark pair.
-- **Commit to one coherent aesthetic direction per report** instead of the default generic look — e.g. "engineering dossier": serif display headlines + mono kickers/labels + warm-paper neutrals. The CDN allowlist stays Tailwind + Mermaid only — **no font CDNs** — so distinctive typography comes from characterful system stacks (`Iowan Old Style, Palatino, Georgia, serif` for display; `ui-monospace` for kickers/code). One direction, carried through every section; not a different flourish per section.
-- Large readable type: body 16px min, headings 24–40px.
-- Generous whitespace: section padding ≥ 40px.
-- **Full-bleed layout — the arrangement fills the width, not a fixed column and not stretched pixels.** The page is edge-to-edge with breathing room, never a centered reading column: `.page { width: 100%; padding: 0 clamp(20px, 2.6vw, 60px) 96px; }` (no `max-width` cap on the page). Keep *running text* readable with a per-element cap (`.measure { max-width: 74ch }` on ledes/verdicts/prose) — but media, grids, and cards use the full width. A fixed `max-width: 940px`/`1600px` on the container is the bug that leaves big empty gutters on a wide monitor; do not do it.
-- **Responsive via `flex-wrap` + `flex-basis` — side-by-side on wide, stacked when narrow.** Lay the report out as horizontal editorial *bands* (`.row { display:flex; flex-wrap:wrap; gap:28px }`), each child given a `flex: <grow> 1 <basis>` so unequal blocks size to their natural width and **wrap to stacked** when the viewport gets narrow — no manual media queries needed for the common cases. This is the primary responsive tool; reach for `grid` with `repeat(auto-fit, minmax(...))` only when you truly want equal columns.
-- **Minimize scrolling by arranging horizontally — intuitive, not crammed.** Scrolling is friction; a wide monitor is spare horizontal space. Put related information side by side so more is visible per screen: prefer a **side-by-side before/after** (both states visible at once) over a click-toggle that hides half the evidence and forces interaction; sit an explanation *beside* its diagram; flow the reference blocks (files-changed table, verify commands, small setting crop) into **one wrapping card row** instead of four stacked full-width sections. The goal is an intuitive at-a-glance layout, not maximum density.
-- **Images at native max-resolution — never upscaled.** The *layout* fills the width; the *image* does not stretch. Cap each screenshot frame at the capture's native pixel width and center it (`.shot { max-width: 1280px; margin: 0 auto }`), with `.shot img { width: 100%; height: auto }` so the image fills the frame but never grows past native (no blur, no dead gutter). Put the overlay `<svg>` on the frame with a `viewBox` and `inset: 0` so callouts stay pixel-aligned to the image at any column width.
-- Before/after: prefer **side-by-side** on wide screens (see above). A CSS-only/vanilla-JS toggle is a fallback for when the two frames genuinely cannot fit side by side — never a framework.
+Every report is a colorful cause-and-effect presentation at three depths. The look ships as a kit in [`../docs/ai-report-kit/`](../docs/ai-report-kit/): `presentation.css`, `presentation.js` and `skeleton.html`, whose comments show every component in place.
+
+- **Start from the kit.** Copy `presentation.css` and `presentation.js` into the bundle beside `index.html`, and start `index.html` from `skeleton.html`. Use the kit's components and do not restyle them per report; page-only CSS goes in one `<style>` block. Before the render check, search the bundle for `FILL:`: no marker may remain. Zero build steps, no npm installs, no font CDNs. The only allowed CDN is Mermaid.js, for a diagram too large to step through.
+- **Three depths, in order.** Depth 1 is the answer in one line: the verdict as the headline, two or three sentences on what shipped and what changes for the reader, receipts, the color legend and the jump links. Depth 2 tells the story: why it happened (the cause-and-effect chain), where in the code (the stepped diagram) and the proof. Depth 3 is every detail, folded in `<details>`. A reader who stops after depth 1 still knows the verdict.
+- **Cause and effect.** Each chain card says why the next one happened, and its joint word says how (so, but, which means, fix, now). A card that does not lead to the next one does not belong in the chain.
+- **Color means a role, on every page and in every diagram.** Amber is a cause, pink-red a problem, violet a change, teal an effect, blue a proof. Never use a role color for decoration or for another meaning.
+- **Every claim carries a receipt:** a `.chip` with the file:line, commit, test or log line that proves it, next to the claim.
+- **Glossary words explain themselves.** On first use, every project or technical word is a `.term` whose `data-def` gives a plain definition.
+- **Motion answers the reader, never a timer.** Steppers, the badge pop and deck mode move only after a click or a key. Inactive steps dim and never hide, so a reader with motion turned off and the full-page render check both see everything. Page-only animation sits inside `@media (prefers-reduced-motion: no-preference)`.
+- **The page fills the width; running text does not.** Lay related blocks side by side in wrapping `.row` bands, each child `flex: <grow> 1 <basis>`, so a wide screen shows more at once and a narrow one stacks. Running text keeps the `.measure` width. Never cap the page with a fixed `max-width`.
+- **Images at native resolution, never upscaled.** Put each screenshot in a `.shot` frame, which stops at the capture's native width; an overlay `<svg>` uses the capture's real `viewBox` so callouts stay aligned.
+- Before/after: prefer **side-by-side** in one `.row`, so both states are visible at once. A CSS-only/vanilla-JS toggle is a fallback for when the two frames genuinely cannot fit side by side — never a framework.
 - Mermaid theme: `base` (works in both light and dark via CSS overrides).
 - No emoji in headers or body unless the REQ itself uses them.
 - No marketing language ("game-changing", "powerful", "seamless"). Factual only.
 - No unearned bullet lists. If it flows as prose, write prose.
-- **All images (screenshots, user-supplied, AI-generated):** linked by **relative path** from the report folder (`<img src="screenshots/after.png">`, `<img src="generated/01-arch.png">`). **Never base64-inline** — it bloats the HTML, wrecks diffs, and hides the assets. The report is self-contained as a **folder**: `index.html` + `screenshots/` (+ `generated/`) travel together.
-- **Click-to-full-res screenshots:** wrap each screenshot `<img>` in an anchor to its own file (`<a href="screenshots/after.png" target="_blank" rel="noopener">`) so a click opens the capture at native resolution; give any overlay `<svg>` `pointer-events:none` so it does not swallow the click.
+- **All images (screenshots, user-supplied, AI-generated):** linked by **relative path** from the report folder (`<img src="screenshots/after.png">`, `<img src="generated/01-arch.png">`). **Never base64-inline** — it bloats the HTML, wrecks diffs, and hides the assets. The report is self-contained as a **folder**: `index.html`, the two kit files, `screenshots/` (+ `generated/`) travel together.
+- **Click-to-full-res screenshots:** wrap each screenshot `<img>` in an anchor to its own file (`<a href="screenshots/after.png" target="_blank" rel="noopener">`) so a click opens the capture at native resolution; the kit gives the overlay `<svg>` `pointer-events:none` so it does not swallow the click.
 - **Disclose generated images:** each carries a small visible caption/badge reading "AI-generated" (or "AI-generated diagram"). Never style a synthetic image to look like a captured screenshot.
-- **Table of contents for long reports:** a report with more than six top-level sections or about 1,500 words of body text (both approximate) gets a table of contents near the top: a `<nav>` of in-page anchor links to each top-level section's `id`, working without a script.
+- **The depth-1 jump links are the table of contents.** A report with more top-level sections than the skeleton adds a jump link for each; the links work without a script.
 
 ## Before/After Toggle Reference Implementation (Step 4)
 
@@ -117,7 +117,7 @@ document.querySelectorAll('input[name="view"]').forEach(radio => {
 
 ## Output Format Template (Step 8)
 
-For creation/revision, a self-contained folder at `ai-reports/yyyy-mm-dd_hhmm_<slug>/` containing `index.html`, a `screenshots/` folder when authentic PNG/JPG captures are used, and a `generated/` folder when generated images were produced successfully. A non-visual report needs neither image folder when diagrams are inline. The HTML references every local image via relative `src`, and Step 8 prints a compact stdout summary.
+For creation/revision, a self-contained folder at `ai-reports/yyyy-mm-dd_hhmm_<slug>/` containing `index.html`, the kit's `presentation.css` and `presentation.js`, a `screenshots/` folder when authentic PNG/JPG captures are used, and a `generated/` folder when generated images were produced successfully. A non-visual report needs neither image folder when diagrams are inline. The HTML references every local image via relative `src`, and Step 8 prints a compact stdout summary.
 
 ## Proposal and Root-Cause Kinds
 
@@ -136,6 +136,8 @@ Applies only when `ai-report.md` runs with `--kind proposal` or `--kind root-cau
 7. **Capture lines**: one per option, as described below.
 
 **`root-cause` template.** **What happened**, **Why** and **What to change** replace Decision, Options and Recommendation. The evidence ledger, limits, open questions and capture lines follow as in `proposal`. When What to change offers more than one change, the smallest-change option is on that list too, priced like the others.
+
+**Depths.** Both kinds use the kit and its three depths. Depth 1 is the Decision (for `root-cause`, What happened). Depth 2 is Options and Recommendation (for `root-cause`, Why, told as the cause-and-effect chain, and What to change). The evidence ledger, limits, open questions and capture lines are depth 3.
 
 **Bundle path and head.** `<report-slug>` is `yyyy-mm-dd_hhmm_<kind>-<topic>`. For an id target, `<topic>` is the id plus a short kebab summary (`proposal-REQ-NNN-retry-policy`); for a free topic it is a short kebab form of the topic text (`proposal-backup-options`). The `<head>` of `index.html` carries `<meta name="ai-report-kind" content="<kind>">`. Collision-Safe Publication applies unchanged.
 

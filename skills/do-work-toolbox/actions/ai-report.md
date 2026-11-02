@@ -7,6 +7,7 @@
 ## Philosophy
 
 - **Evidence before decoration.** Use the strongest authentic evidence the work produced, then explain it for a stakeholder.
+- **Cause and effect, at three depths.** One line for the busy reader, the story for the curious one, and every detail folded for the one who checks.
 - **One report shape, two evidence modes.** Visual work leads with real captures; non-visual work leads with architecture, code, commit, test, and operational evidence.
 - **Self-contained timestamped bundle.** The report and its local assets travel together under `ai-reports/<report-slug>/`.
 - **Rendered output is the artifact.** When browser automation is available, inspect full-page light and dark renders; source review is not visual QA.
@@ -133,25 +134,24 @@ For visual evidence, copy each real capture into `screenshots/` with a descripti
 
 Show an authentic before/after pair side by side in a wrapping row by default. Use the optional toggle in **Before/After Toggle Reference Implementation** only when the frames genuinely cannot fit side by side and interaction improves comparison.
 
-For either evidence mode, use Mermaid, hand-authored SVG, or a successfully generated image for architecture and data flow. Derive diagram content from actual implementation and current-code evidence. Follow **SVG Data-Viz Rules** in `ai-report-reference.md`; keep synthetic output visibly labeled and physically separate from screenshots.
+For either evidence mode, draw architecture and data flow as the kit's stepped diagram: a hand-authored SVG whose parts light up step by step. Use Mermaid or a successfully generated image only when the flow is too large to step through. Derive diagram content from actual implementation and current-code evidence. Follow **SVG Data-Viz Rules** in `ai-report-reference.md`; keep synthetic output visibly labeled and physically separate from screenshots.
 
 ### Step 5: Write the Detailed HTML
 
-Write `ai-reports/<report-slug>/index.html` using **Report Design Rules** in `ai-report-reference.md`. Required narrative, in this order:
+Write `ai-reports/<report-slug>/index.html` from the kit, following **Report Design Rules** in `ai-report-reference.md`. The narrative fills the kit's three depths, in this order:
 
-1. **Verdict** — what shipped, whether verification supports it, and any recorded completed-with-issues qualification.
-2. **What Shipped** — concise delivered behavior.
-3. **Problem and Change** — the prior problem and the implemented change, without inventing a visual before state.
-4. **How It Works** — an evidence-derived flow or architecture explanation.
-5. **Value Delivered** — qualitative stakeholder value only; no fabricated metrics.
-6. **Evidence** — visual or non-visual receipts appropriate to the selected mode, including the required no-UI-captures statement in non-visual mode.
-7. **Key Files and Commits** — compact file roles, commit identifiers when recorded, and any current-code drift from the historical commit.
-8. **Verify It Yourself** — copy-pasteable recorded test, operational, and canonical commit-inspection commands, accurately labeled as run or unrun.
-9. **Lessons and Open Questions** — include when present; handle missing optional records under the shared evidence contract.
+1. **Verdict** (depth 1) — the headline: what shipped, whether verification supports it, and any recorded completed-with-issues qualification.
+2. **What Shipped and Value Delivered** (depth 1) — concise delivered behavior and qualitative stakeholder value; no fabricated metrics.
+3. **Why It Happened** (depth 2) — the prior problem and the implemented change as the cause-and-effect chain, without inventing a visual before state.
+4. **Where in the Code** (depth 2) — an evidence-derived flow or architecture explanation as the stepped diagram.
+5. **The Proof** (depth 2) — visual or non-visual receipts appropriate to the selected mode: screenshots for visual mode; for non-visual mode, the required no-UI-captures statement and real command output as the terminal replay.
+6. **Key Files and Commits** (depth 3) — compact file roles, commit identifiers when recorded, and any current-code drift from the historical commit.
+7. **Verify It Yourself** (depth 3) — copy-pasteable recorded test, operational, and canonical commit-inspection commands, accurately labeled as run or unrun.
+8. **Lessons and Open Questions** (depth 3) — include when present; handle missing optional records under the shared evidence contract.
 
 With `--kind`, write the template in **Proposal and Root-Cause Kinds** instead of this narrative.
 
-Use one coherent responsive layout with full-width wrapping bands, readable prose measures, and native-resolution image caps. Add interaction only when it improves comparison or comprehension; static HTML is the default.
+Copy the kit's `presentation.css` and `presentation.js` into the bundle beside `index.html`. Motion follows the reader-driven rule in **Report Design Rules**: nothing moves on a timer, and nothing is hidden from a reader with motion turned off.
 
 ### Step 6: Review the Claims and Artifact Boundaries
 
@@ -173,7 +173,7 @@ Judge width usage, table shape, diagram informativeness, emphasis hierarchy, lig
 
 ### Step 8: Verify and Report the Result
 
-Confirm `index.html` exists, the last `judge.json` verdict is `pass` (or `skipped` or `error` and disclosed in the footer, or for a revise `fail` whose only findings are the expected links to the prior bundle), screenshots open at full resolution, synthetic assets are disclosed, and the final bundle satisfies the shared **Collision-Safe Publication** section. Remove the judge output directory and its captures.
+Confirm `index.html` exists with no `FILL:` marker left in the bundle, the last `judge.json` verdict is `pass` (or `skipped` or `error` and disclosed in the footer, or for a revise `fail` whose only findings are the expected links to the prior bundle), screenshots open at full resolution, synthetic assets are disclosed, and the final bundle satisfies the shared **Collision-Safe Publication** section. Remove the judge output directory and its captures.
 
 **Commit as the project's rules say.** Inside a `do-work run`, the run commits the bundle with its other output; do nothing here. Invoked directly, follow the project's own instructions on committing (its `CLAUDE.md` or similar): when they ask for completed increments to be committed, commit the new bundle by exact path in the same turn and report the hash; otherwise print that exact commit command. Never stage anything outside the bundle, and never push. For a revise, this commit waits until the revise form's step 7, after the catalog is regenerated, and takes the catalog pair with it.
 
@@ -183,13 +183,13 @@ Print a compact summary containing the report path, target and verdict, evidence
 
 For second-opinion, use its per-backend output above. The remaining format applies to ordinary report creation and revision.
 
-A fresh self-contained folder at `ai-reports/yyyy-mm-dd_hhmm_<slug>/` containing `index.html`, plus `screenshots/` when authentic captures are used and `generated/` when generated visuals succeed. All local assets use relative references. The timestamped folder is the only stakeholder artifact this action publishes. Every invocation that writes a bundle ends its output with one line holding the bundle's `index.html` path relative to the project root and its `file://` absolute link, as the last line; the render check still serves over HTTP, and the `file://` link is only for the user to open.
+A fresh self-contained folder at `ai-reports/yyyy-mm-dd_hhmm_<slug>/` containing `index.html` with the kit's `presentation.css` and `presentation.js`, plus `screenshots/` when authentic captures are used and `generated/` when generated visuals succeed. All local assets use relative references. The timestamped folder is the only stakeholder artifact this action publishes. Every invocation that writes a bundle ends its output with one line holding the bundle's `index.html` path relative to the project root and its `file://` absolute link, as the last line; the render check still serves over HTTP, and the `file://` link is only for the user to open.
 
 ## Rules
 
 - Screenshots are authentic evidence; generated images and diagrams are explanation. Never blur their provenance.
 - Browser and image generation tooling are optional. Missing optional tooling changes the evidence presentation, not whether a valid report can be produced.
-- Tailwind CSS and Mermaid.js are the only allowed CDN dependencies; everything else is inline or co-located.
+- Mermaid.js is the only allowed CDN dependency; everything else is inline or co-located.
 
 ## Verification Checklist
 
@@ -197,7 +197,7 @@ A fresh self-contained folder at `ai-reports/yyyy-mm-dd_hhmm_<slug>/` containing
 - [ ] Visual evidence uses authentic captures, SVG annotations, responsive before/after where available, and distinct synthetic provenance.
 - [ ] Non-visual evidence states UI captures were not expected and uses commit, current-code, architecture/data-flow, test, and operational receipts without fabricated screenshots.
 - [ ] Stakeholder narrative includes verdict, shipped change, problem/change, operation, qualitative value, files/commits, verification, and available lessons/questions (a revise of a report that is not a completed-work report keeps the prior report's section order instead, and a `--kind` report uses its own template).
-- [ ] Report is responsive, self-contained at the folder level, and render-judged with `ai-report-judge` at wide and phone widths in light and dark (verdict `pass`, or `skipped` or `error` and disclosed in the footer, or for a revise `fail` with only the expected prior-bundle link findings).
+- [ ] Report is built from the kit (three depths, role colors, a receipt on every claim, glossary words, reader-driven motion, no `FILL:` marker), responsive, self-contained at the folder level, and render-judged with `ai-report-judge` at wide and phone widths in light and dark (verdict `pass`, or `skipped` or `error` and disclosed in the footer, or for a revise `fail` with only the expected prior-bundle link findings).
 - [ ] A `--kind` report follows **Proposal and Root-Cause Kinds**: decision first, smallest-change option priced, `<kind>` slug and meta tag, labelled mockups, capture lines printed and never run.
 - [ ] No brief, separate explainer, video, publishing, hosting, or search artifact was created (the catalog forms' and the revise form's `catalog.json` and `index.html` excepted).
 - [ ] A revise wrote a new `-rev<N>` sibling with the rev block and supersedes meta, regenerated the catalog, left the prior bundle byte-identical, and committed the bundle and the catalog pair or printed the commit command, as the project's rules say.

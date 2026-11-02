@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FILL: report title</title>
+<link rel="stylesheet" href="presentation.css">
+<!-- Page-only CSS, if any, goes in one <style> block here. Do not restyle the kit. -->
+</head>
+<body>
+<!-- Start every report from this file. Replace every FILL: marker, repeat a component as often as the
+     story needs, and delete a component the report does not use. No FILL: marker may remain. -->
+<nav class="topbar"><strong>FILL: report title</strong><span class="spacer"></span><button class="btn deck-toggle" type="button" id="deck-toggle" aria-pressed="false">Deck mode (D)</button></nav>
+<div class="page">
+
+<!-- Depth 1: the answer in one line. A reader who stops here knows the verdict. -->
+<header class="band depth-one" id="depth-1">
+  <p class="depth-marker"><span class="gauge" aria-hidden="true"><i class="on"></i><i></i><i></i></span>Depth 1 of 3: one line</p>
+  <h1>FILL: the verdict in one sentence</h1>
+  <p class="sub measure">FILL: what shipped and what changes for the reader, in two or three plain sentences. Wrap each project or technical word, on first use, as <span class="term" data-def="FILL: a plain definition">a glossary word</span>.</p>
+  <p><span class="chip">FILL: release or commit</span><span class="chip">FILL: test or file:line</span></p>
+  <ul class="legend" aria-label="Color key">
+    <li class="role-cause">Cause</li>
+    <li class="role-problem">Problem</li>
+    <li class="role-change">Change</li>
+    <li class="role-effect">Effect</li>
+    <li class="role-proof">Proof</li>
+  </ul>
+  <nav class="jump" aria-label="Go deeper"><span>Go deeper:</span><a class="btn" href="#why">Why it happened</a><a class="btn" href="#how">Where in the code</a><a class="btn" href="#proof">The proof</a><a class="btn" href="#depth-3">Every detail</a></nav>
+</header>
+
+<!-- Depth 2, part 1: the cause-and-effect chain. One .link per step of the story. Each card says why the
+     next one happened. The first link has no joint. A joint's --from and --to are the neighbors' role colors. -->
+<section class="band" id="why" data-stepper aria-labelledby="why-heading">
+  <p class="depth-marker"><span class="gauge" aria-hidden="true"><i class="on"></i><i class="on"></i><i></i></span>Depth 2 of 3: why it happened</p>
+  <div class="chain-head">
+    <h2 id="why-heading">FILL: why it happened, as a short headline</h2>
+    <p class="note">Click a card, use the buttons, or press the arrow keys. Each card says why the next one happened.</p>
+  </div>
+  <div class="step-controls">
+    <button class="btn" type="button" data-step-prev>Previous link</button>
+    <button class="btn primary" type="button" data-step-next>Next link</button>
+    <span class="step-label" data-step-label aria-live="polite"></span>
+  </div>
+  <div class="chain">
+    <div class="link">
+      <article class="node role-cause" data-step>
+        <span class="step-number">1</span>
+        <span class="tag">Cause</span>
+        <h3>FILL: link headline</h3>
+        <p>FILL: one or two sentences.</p>
+        <span class="chip">FILL: receipt</span>
+      </article>
+    </div>
+    <div class="link">
+      <div class="joint" data-at="2" aria-hidden="true"><span class="word">so</span><span class="pipe" style="--from: var(--cause); --to: var(--problem)"></span></div>
+      <article class="node role-problem" data-step>
+        <span class="step-number">2</span>
+        <span class="tag">Problem</span>
+        <h3>FILL: link headline</h3>
+        <p>FILL: one or two sentences.</p>
+        <span class="chip">FILL: receipt</span>
+      </article>
+    </div>
+  </div>
+</section>
+
+<!-- Depth 2, part 2: the stepped diagram. A hand-made SVG of the real flow, built from the code. Each step lights
+     the SVG parts whose data-at lists its number. Group classes cause, problem, change, effect and proof color a
+     part by role. Mechanism stays neutral. -->
+<section class="band" id="how" data-stepper tabindex="0" aria-labelledby="how-heading">
+  <p class="depth-marker"><span class="gauge" aria-hidden="true"><i class="on"></i><i class="on"></i><i></i></span>Depth 2 of 3: where in the code</p>
+  <h2 id="how-heading">FILL: where in the code, as a short headline</h2>
+  <div class="step-controls">
+    <button class="btn" type="button" data-step-prev>Previous step</button>
+    <button class="btn primary" type="button" data-step-next>Next step</button>
+    <span class="step-label" data-step-label aria-live="polite"></span>
+  </div>
+  <div class="flow">
+    <figure class="diagram" style="margin:0">
+      <svg viewBox="0 0 520 300" role="img" aria-labelledby="how-diagram-title">
+        <title id="how-diagram-title">FILL: one sentence that describes the whole diagram</title>
+        <defs>
+          <marker id="arrow-muted" viewBox="0 0 10 10" refX="9" refY="5" markerUnits="userSpaceOnUse" markerWidth="12" markerHeight="12" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="m-muted"/></marker>
+        </defs>
+        <g data-at="1">
+          <rect class="box" x="130" y="10" width="260" height="66" rx="14"/>
+          <text class="label" x="260" y="48" text-anchor="middle">FILL: part</text>
+        </g>
+        <g data-at="1 2">
+          <path class="wire" d="M260 76 V136" marker-end="url(#arrow-muted)"/>
+        </g>
+        <g class="effect" data-at="2">
+          <rect class="box" x="130" y="140" width="260" height="66" rx="14"/>
+          <text class="label" x="260" y="178" text-anchor="middle">FILL: part</text>
+        </g>
+      </svg>
+    </figure>
+    <ol class="steps">
+      <li class="node role-cause" data-step>
+        <span class="tag">Cause</span>
+        <h3><span class="num">1</span>FILL: step headline</h3>
+        <p>FILL: what happens at this step.</p>
+        <span class="chip">FILL: file:line</span>
+      </li>
+      <li class="node role-effect" data-step>
+        <span class="tag">Effect</span>
+        <h3><span class="num">2</span>FILL: step headline</h3>
+        <p>FILL: what happens at this step.</p>
+        <span class="chip">FILL: file:line</span>
+      </li>
+    </ol>
+  </div>
+</section>
+
+<!-- Depth 2, part 3: the proof. Visual work: real screenshots in .shot frames, before and after side by side in one
+     .row, each linked to its full-resolution file. Non-visual work: keep the sentence below and use the terminal
+     replay: real command output, a .badge on each line that matters, and one note per badge. -->
+<section class="band replay" id="proof" data-stepper aria-labelledby="proof-heading">
+  <p class="depth-marker"><span class="gauge" aria-hidden="true"><i class="on"></i><i class="on"></i><i></i></span>Depth 2 of 3: the proof</p>
+  <h2 id="proof-heading">FILL: the proof, as a short headline</h2>
+  <p class="measure">UI captures were not expected for this work.</p>
+  <div class="step-controls">
+    <button class="btn" type="button" data-step-prev>Previous note</button>
+    <button class="btn primary" type="button" data-step-next>Next note</button>
+    <span class="step-label" data-step-label aria-live="polite"></span>
+  </div>
+  <div class="row">
+    <div class="screen" style="flex: 3 1 560px">
+<pre class="terminal"><span class="prompt">$</span> FILL: the exact command that was run
+<span class="line role-proof" data-at="1"><span class="badge" aria-hidden="true">1</span>FILL: the output line that matters</span></pre>
+      <p class="note">FILL: when and where this ran.</p>
+    </div>
+    <ol class="notes" style="flex: 2 1 300px">
+      <li class="node role-proof" data-step>
+        <div class="note-head"><span class="badge">1</span><h3>FILL: what this line proves</h3><span class="tag">Proof</span></div>
+        <p>FILL: one or two sentences.</p>
+        <span class="chip">FILL: receipt</span>
+      </li>
+    </ol>
+  </div>
+  <!-- Visual work uses this in place of the terminal row:
+  <div class="row">
+    <figure class="shot" style="flex: 1 1 520px; margin: 0">
+      <a href="screenshots/before.png" target="_blank" rel="noopener"><img src="screenshots/before.png" alt="FILL: what the capture shows"></a>
+      <figcaption>Before. FILL: capture provenance.</figcaption>
+    </figure>
+    <figure class="shot" style="flex: 1 1 520px; margin: 0">
+      <a href="screenshots/after.png" target="_blank" rel="noopener"><img src="screenshots/after.png" alt="FILL: what the capture shows"></a>
+      <figcaption>After. FILL: capture provenance.</figcaption>
+    </figure>
+  </div> -->
+</section>
+
+<!-- Depth 3: every detail, folded. Readers who want to check open these. -->
+<section class="band depth-three" id="depth-3" aria-labelledby="depth-3-heading">
+  <p class="depth-marker"><span class="gauge" aria-hidden="true"><i class="on"></i><i class="on"></i><i class="on"></i></span>Depth 3 of 3: every detail, folded</p>
+  <h2 id="depth-3-heading">The details</h2>
+  <p class="step-controls"><button class="btn" type="button" id="open-all">Open all details</button></p>
+  <details>
+    <summary>Key files and commits</summary>
+    <dl class="files">
+      <dt>FILL: path/to/file</dt><dd>FILL: its role in this change</dd>
+    </dl>
+  </details>
+  <details>
+    <summary>Check it yourself</summary>
+    <p>FILL: what the command shows. <span class="ran">FILL: Run on yyyy-mm-dd: PASS, or Not run.</span></p>
+<pre><code>FILL: copy-pasteable command</code></pre>
+  </details>
+  <details>
+    <summary>Lessons and open questions</summary>
+    <p>FILL: recorded lessons, then open questions coded Q1, Q2.</p>
+  </details>
+</section>
+
+<footer class="band note measure">
+  <p>FILL: evidence sources and the date they were read. Disclose every synthetic image or diagram. State the render-check result when it was not a pass.</p>
+</footer>
+
+</div>
+<div class="deck-hint" aria-live="polite" id="deck-hint">Deck mode</div>
+<script src="presentation.js"></script>
+</body>
+</html>

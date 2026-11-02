@@ -1,0 +1,381 @@
+/* ai-report presentation kit: the look of every ai-report. Copy this file and presentation.js into the
+   report bundle beside index.html, and start index.html from skeleton.html. Do not restyle per report.
+
+   Components (skeleton.html shows each one in place):
+   - Color means a role, everywhere: .role-cause (amber), .role-problem (pink-red), .role-change (violet),
+     .role-effect (teal), .role-proof (blue). A role class sets --role; components paint with var(--role).
+   - .page > .band (full-width section) > .row (flex-wrap) > children with style="flex: <grow> 1 <basis>".
+   - .measure caps running text at a readable width. Media and grids use the full width.
+   - .depth-marker + .gauge say which of the three depths a section belongs to.
+   - .chain > .link > (.joint + .node): the cause-and-effect chain. .node is one link, .tag names its role.
+   - .flow > .diagram (inline SVG, parts carry data-at) + .steps: the stepped diagram.
+   - .replay > .screen (pre.terminal, lines carry data-at and a .badge) + .notes: the annotated terminal replay.
+   - .shot: a screenshot frame capped at native width, with an optional overlay SVG.
+   - .chip is a receipt: file:line, commit, test or log line. Every claim carries one.
+   - .term[data-def] is a glossary word: its definition shows on hover or focus (tap).
+   - [data-stepper] is reader-driven stepping: inactive steps are dimmed, never hidden.
+   - Motion always answers a reader action. prefers-reduced-motion turns transitions off. */
+
+:root {
+  --paper: #f5f7ff;
+  --surface: #ffffff;
+  --ink: #18203a;
+  --muted: #56607f;
+  --line: #d6dcf0;
+  --code-bg: #eef1fb;
+  --problem: #e2335a;
+  --cause: #e08a00;
+  --change: #6a4cf0;
+  --effect: #0a9a84;
+  --proof: #1f6fe5;
+  --role: var(--proof);
+  --display: ui-rounded, "SF Pro Rounded", "Arial Rounded MT Bold", "Varela Round", system-ui, sans-serif;
+  --body: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  color-scheme: light dark;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --paper: #0f1426;
+    --surface: #182039;
+    --ink: #e8ecff;
+    --muted: #a3acd0;
+    --line: #2c3659;
+    --code-bg: #121a31;
+    --problem: #ff6b88;
+    --cause: #ffc14d;
+    --change: #a891ff;
+    --effect: #34d6b9;
+    --proof: #63a6ff;
+  }
+}
+
+.role-cause { --role: var(--cause); }
+.role-problem { --role: var(--problem); }
+.role-change { --role: var(--change); }
+.role-effect { --role: var(--effect); }
+.role-proof { --role: var(--proof); }
+
+* { box-sizing: border-box; }
+
+html { background: var(--paper); color: var(--ink); }
+
+body {
+  margin: 0;
+  font: 17px/1.6 var(--body);
+  overflow-wrap: break-word;
+  background:
+    radial-gradient(circle at 1px 1px, color-mix(in srgb, var(--line) 70%, transparent) 1px, transparent 0) 0 0 / 22px 22px,
+    var(--paper);
+}
+
+h1, h2, h3 { font-family: var(--display); line-height: 1.15; margin: 0 0 .5em; letter-spacing: -0.01em; }
+h1 { font-size: clamp(2rem, 4.2vw, 3.4rem); font-weight: 800; }
+h2 { font-size: clamp(1.5rem, 2.6vw, 2.2rem); font-weight: 800; }
+h3 { font-size: 1.25rem; font-weight: 750; }
+p { margin: 0 0 1em; }
+a { color: var(--proof); }
+code, kbd, pre { font-family: var(--mono); font-size: .9em; }
+code { background: var(--code-bg); padding: .1em .35em; border-radius: 6px; overflow-wrap: anywhere; }
+pre code { background: none; padding: 0; }
+
+.page { width: 100%; padding: 0 clamp(20px, 2.6vw, 60px) 96px; }
+.measure { max-width: 74ch; }
+.band { padding: 44px 0; }
+.band + .band { border-top: 2px dashed var(--line); }
+.row { display: flex; flex-wrap: wrap; gap: 28px; align-items: flex-start; }
+.lede { font-size: 1.2rem; color: var(--muted); }
+
+/* Top bar: report title and the deck-mode switch. */
+.topbar {
+  display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: center;
+  padding: 16px clamp(20px, 2.6vw, 60px);
+  border-bottom: 2px solid var(--line);
+  background: color-mix(in srgb, var(--surface) 85%, transparent);
+  font-size: .95rem;
+}
+.topbar strong { font-family: var(--display); font-size: 1.05rem; }
+.topbar .spacer { flex: 1 1 auto; }
+
+/* Role legend: shown once per page so the colors can be read. */
+.legend { display: flex; flex-wrap: wrap; gap: 8px 16px; margin: 0; padding: 0; list-style: none; font-size: .95rem; }
+.legend li { display: flex; align-items: center; gap: 8px; }
+.legend li::before { content: ""; width: 14px; height: 14px; border-radius: 4px; background: var(--role); }
+
+/* Story step. The valve bar on top carries the role color. */
+.node {
+  position: relative;
+  background: var(--surface);
+  border: 2px solid color-mix(in srgb, var(--role) 45%, var(--line));
+  border-radius: 18px;
+  padding: 22px 20px 18px;
+  min-width: 0;
+  overflow-wrap: break-word;
+}
+.node::before {
+  content: ""; position: absolute; left: 18px; right: 18px; top: -2px; height: 7px;
+  border-radius: 0 0 8px 8px; background: var(--role);
+}
+.tag {
+  display: inline-block; font-weight: 700; font-size: .85rem;
+  color: var(--ink); background: color-mix(in srgb, var(--role) 22%, transparent);
+  border-radius: 999px; padding: 2px 12px; margin-bottom: 10px;
+}
+.node h3 { margin-bottom: .35em; }
+.node p:last-child { margin-bottom: 0; }
+
+/* Pipe between nodes: a thick role-colored segment with an arrow head. */
+.pipe {
+  flex: 0 0 34px; align-self: center; height: 14px; border-radius: 7px; position: relative;
+  background: linear-gradient(90deg, var(--from, var(--line)), var(--to, var(--line)));
+}
+.pipe::after {
+  content: ""; position: absolute; right: -9px; top: 50%; translate: 0 -50%;
+  border: 11px solid transparent; border-left-color: var(--to, var(--line)); border-right: 0;
+}
+
+/* Receipts. */
+.chip {
+  display: inline-block; font-family: var(--mono); font-size: .8rem; line-height: 1.4;
+  padding: 3px 10px; border-radius: 999px; margin: 4px 6px 0 0;
+  background: color-mix(in srgb, var(--proof) 12%, var(--surface));
+  border: 1px solid color-mix(in srgb, var(--proof) 35%, var(--line));
+  color: var(--ink); overflow-wrap: anywhere;
+}
+
+/* Glossary words: dotted underline, definition on hover or focus (tap). */
+.term { border-bottom: 2px dotted var(--change); cursor: help; position: relative; }
+.term:focus { outline: 2px solid var(--change); outline-offset: 2px; border-radius: 3px; }
+.term[data-def]:hover::after, .term[data-def]:focus::after {
+  content: attr(data-def);
+  position: absolute; z-index: 20; left: 0; top: calc(100% + 8px);
+  width: min(19rem, 72vw); padding: 10px 12px; border-radius: 12px;
+  background: var(--ink); color: var(--paper); font: 400 .9rem/1.45 var(--body);
+  box-shadow: 0 10px 30px color-mix(in srgb, var(--ink) 25%, transparent);
+}
+
+/* Buttons. */
+.btn {
+  font: 700 1rem var(--display); color: var(--ink); cursor: pointer;
+  background: var(--surface); border: 2px solid var(--line); border-radius: 12px; padding: 9px 16px;
+}
+.btn:hover { border-color: var(--change); }
+.btn:focus-visible { outline: 3px solid var(--change); outline-offset: 2px; }
+.btn.primary { background: var(--change); border-color: var(--change); color: #fff; }
+@media (prefers-color-scheme: dark) { .btn.primary { color: #0f1426; } }
+
+/* Reader-driven stepping: everything is visible until a script turns it on; then inactive steps dim. */
+.stepper-on [data-step] { transition: opacity .35s ease, transform .35s ease; }
+.stepper-on [data-step]:not(.is-active) { opacity: .42; }
+.stepper-on [data-step].is-active { transform: translateY(-3px); }
+.stepper-on [data-at] { transition: opacity .35s ease, stroke-width .35s ease; }
+.stepper-on [data-at]:not(.is-lit) { opacity: .3; }
+.step-controls { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin: 18px 0; }
+.step-label { color: var(--muted); font-weight: 600; }
+
+/* Screenshot frame: fills the column up to the capture's native width, never past it. */
+.shot { position: relative; max-width: 1280px; margin: 0 auto; }
+.shot img { display: block; width: 100%; height: auto; border-radius: 10px; border: 1px solid var(--line); }
+.shot svg { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.shot figcaption { font-size: .9rem; color: var(--muted); margin-top: 6px; }
+
+/* Code and terminal blocks. */
+pre {
+  margin: 0; padding: 16px 18px; border-radius: 10px; overflow-x: auto;
+  background: var(--code-bg); border: 1px solid var(--line); line-height: 1.5;
+}
+.terminal { background: #141a2e; color: #e3e8ff; border-color: #2c3659; }
+.terminal .prompt { color: #7fd9c4; }
+.terminal .bad { color: #ff8fa6; }
+.terminal .good { color: #6ff0cf; }
+.terminal .dim { color: #8d97bd; }
+
+details { background: var(--surface); border: 2px solid var(--line); border-radius: 14px; padding: 4px 18px; }
+details + details { margin-top: 12px; }
+summary { cursor: pointer; font: 750 1.1rem var(--display); padding: 12px 0; }
+details[open] summary { border-bottom: 2px dashed var(--line); margin-bottom: 12px; }
+
+.note { font-size: .92rem; color: var(--muted); }
+.synthetic { font-size: .85rem; color: var(--muted); font-style: italic; }
+
+svg text { font-family: var(--body); fill: var(--ink); }
+svg .mono { font-family: var(--mono); }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition: none !important; animation: none !important; scroll-behavior: auto !important; }
+}
+
+@media print {
+  .stepper-on [data-step], .stepper-on [data-at] { opacity: 1 !important; transform: none !important; }
+  .topbar, .step-controls { display: none; }
+}
+
+/* ---- Page components (chain, stepped diagram, terminal replay, depths, deck). ---- */
+.chain-head { display: flex; flex-wrap: wrap; gap: 8px 24px; align-items: baseline; }
+.chain-head h2 { margin: 0; }
+.chain { display: flex; flex-wrap: wrap; gap: 22px 0; align-items: stretch; }
+.link { display: flex; align-items: center; flex: 1 1 310px; min-width: 0; }
+.link .node { flex: 1 1 auto; min-width: 0; align-self: stretch; cursor: pointer; }
+.link .node h3 { font-size: 1.15rem; }
+.step-number {
+  float: right; font: 800 .95rem var(--display); color: var(--muted);
+  border: 2px solid var(--line); border-radius: 999px; padding: 0 9px; margin-left: 8px;
+}
+
+/* Joint: the connector word and the pipe that carries the story into the next card. */
+.joint { flex: 0 0 auto; display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 0 14px 0 6px; }
+.joint .word { font: 700 .9rem var(--display); color: var(--muted); white-space: nowrap; }
+.joint .pipe { flex: none; width: 46px; height: 14px; }
+.joint .pipe::before {
+  content: ""; position: absolute; top: 2px; left: 2px; width: 10px; height: 10px; border-radius: 50%;
+  background: var(--surface); box-shadow: 0 0 0 2px var(--to); opacity: 0;
+}
+
+/* Chain on narrow screens: one column, pipes turn vertical and point down. */
+@media (max-width: 700px) {
+  .link { flex: 1 1 100%; flex-direction: column; align-items: stretch; }
+  .joint { flex-direction: row; justify-content: center; gap: 10px; padding: 0 0 10px; }
+  .joint .pipe { width: 14px; height: 34px; background: linear-gradient(180deg, var(--from), var(--to)); }
+  .joint .pipe::after {
+    right: auto; left: 50%; top: auto; bottom: -9px; translate: -50% 0;
+    border: 11px solid transparent; border-top-color: var(--to); border-bottom: 0;
+  }
+}
+
+/* A reader click on a step sends one packet through the pipe into that card. */
+@media (prefers-reduced-motion: no-preference) {
+  .joint.is-lit .pipe::before { animation: packet-across .7s ease-out 1 both; }
+  @keyframes packet-across { from { left: 2px; opacity: 1; } to { left: calc(100% - 12px); opacity: 0; } }
+  @media (max-width: 700px) {
+    .joint.is-lit .pipe::before { animation-name: packet-down; }
+    @keyframes packet-down { from { top: 2px; opacity: 1; } to { top: calc(100% - 12px); opacity: 0; } }
+  }
+}
+
+/* Stepped diagram. */
+.flow { display: flex; flex-wrap: wrap; gap: 28px; align-items: flex-start; }
+.diagram {
+  flex: 3 1 560px; min-width: 0; position: sticky; top: 16px;
+  background: var(--surface); border: 2px solid var(--line); border-radius: 20px; padding: 16px;
+}
+.diagram svg { display: block; width: 100%; height: auto; max-height: calc(100svh - 72px); }
+@media (max-width: 960px) { .diagram { position: static; } }
+
+.steps { flex: 2 1 320px; min-width: 0; list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 18px; }
+.stepper-on .steps .node { cursor: pointer; }
+.num {
+  display: inline-grid; place-items: center; width: 1.7em; height: 1.7em; margin-right: .3em;
+  border-radius: 50%; border: 2px solid var(--role); font-size: .9em;
+  background: color-mix(in srgb, var(--role) 22%, var(--surface));
+}
+
+[data-stepper]:focus { outline: none; }
+[data-stepper]:focus-visible { outline: 3px dashed var(--change); outline-offset: 8px; border-radius: 12px; }
+[data-stepper]:not(.stepper-on) .step-controls { display: none; }
+
+/* Diagram parts. Color means a role: cause for the question, problem for the old path,
+   effect for the new path, proof for the test. Mechanism stays neutral. */
+.diagram .box { fill: var(--surface); stroke: var(--muted); stroke-width: 2.5; }
+.diagram .wire { fill: none; stroke: var(--muted); stroke-width: 3.5; stroke-linecap: round; }
+.diagram .dashed { stroke-dasharray: 6 6; }
+.diagram .cause .box { stroke: var(--cause); fill: color-mix(in srgb, var(--cause) 14%, var(--surface)); }
+.diagram .problem .box { stroke: var(--problem); fill: color-mix(in srgb, var(--problem) 10%, var(--surface)); }
+.diagram .problem .wire { stroke: var(--problem); }
+.diagram .effect .box { stroke: var(--effect); fill: color-mix(in srgb, var(--effect) 10%, var(--surface)); }
+.diagram .effect .wire { stroke: var(--effect); }
+.diagram .proof .box { stroke: var(--proof); fill: color-mix(in srgb, var(--proof) 10%, var(--surface)); }
+.diagram .proof .wire { stroke: var(--proof); }
+.diagram .change .box { stroke: var(--change); fill: color-mix(in srgb, var(--change) 10%, var(--surface)); }
+.diagram .change .wire { stroke: var(--change); }
+.diagram .is-lit .box { stroke-width: 4.5; }
+.diagram .label { font-size: 18px; font-weight: 700; }
+.diagram .label-sm { font-size: 16px; font-weight: 700; }
+.diagram .small { font-size: 15px; fill: var(--muted); }
+.diagram .mono { font-size: 16px; font-weight: 700; }
+.m-muted { fill: var(--muted); }
+.m-problem { fill: var(--problem); }
+.m-effect { fill: var(--effect); }
+.m-proof { fill: var(--proof); }
+.m-cause { fill: var(--cause); }
+.m-change { fill: var(--change); }
+
+/* One draw of the wires each time a step lights them. Only after a reader action. */
+@media (prefers-reduced-motion: no-preference) {
+  .stepper-on .is-lit .wire:not(.dashed) { stroke-dasharray: 300; animation: wire-draw .7s ease-out both; }
+  @keyframes wire-draw { from { stroke-dashoffset: 300; } to { stroke-dashoffset: 0; } }
+}
+
+.screen { flex: 3 1 560px; min-width: 0; }
+.notes { flex: 2 1 300px; min-width: 0; list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 16px; }
+.notes .node { cursor: pointer; }
+.note-head { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-bottom: 6px; }
+.note-head h3 { margin: 0; }
+.note-head .tag { margin: 0; }
+
+/* The terminal is always dark, so it uses the bright role colors in both schemes. */
+.terminal .role-problem { --role: #ff6b88; }
+.terminal .role-cause { --role: #ffc14d; }
+.terminal .role-change { --role: #a891ff; }
+.terminal .role-effect { --role: #34d6b9; }
+.terminal .role-proof { --role: #63a6ff; }
+
+.replay pre { padding-left: 48px; max-width: 100%; }
+.replay pre .line { position: relative; display: inline-block; min-width: 100%; border-radius: 4px; }
+.replay pre .seg { border-radius: 4px; padding: 1px 2px; }
+.replay pre .line > .badge { position: absolute; left: -38px; top: 50%; translate: 0 -50%; }
+
+.badge {
+  display: inline-grid; place-items: center; width: 1.7em; height: 1.7em; flex: 0 0 auto;
+  border-radius: 50%; font: 800 .8rem/1 var(--display);
+}
+.terminal .badge { background: var(--role); color: #141a2e; margin-right: 4px; }
+.notes .badge { background: color-mix(in srgb, var(--role) 22%, var(--surface)); border: 2px solid var(--role); color: var(--ink); font-size: .95rem; }
+
+/* Stepping: lines are never dimmed. The lit line gets a role-colored marker instead. */
+.replay.stepper-on pre [data-at]:not(.is-lit) { opacity: 1; }
+.replay pre [data-at].is-lit { background: color-mix(in srgb, var(--role) 30%, transparent); box-shadow: inset 3px 0 0 var(--role); }
+
+@media (prefers-reduced-motion: no-preference) {
+  .replay pre [data-at] { transition: background-color .3s ease, box-shadow .3s ease; }
+  .replay[data-touched] pre .is-lit .badge { animation: badge-pop .45s ease; }
+  @keyframes badge-pop { 0% { scale: 1; } 40% { scale: 1.35; } 100% { scale: 1; } }
+}
+
+.source-details { margin-top: 18px; }
+.source-details pre { padding-left: 18px; }
+
+/* Depth markers, diff colors, file list. */
+.depth-marker { display: flex; align-items: center; gap: 10px; margin: 0 0 16px; font-weight: 700; color: var(--muted); }
+.gauge { display: inline-flex; gap: 4px; }
+.gauge i { display: block; width: 26px; height: 10px; border-radius: 5px; background: var(--line); }
+.gauge i.on { background: var(--change); }
+.diff .del { color: var(--problem); }
+.diff .add { color: var(--effect); }
+.files { display: grid; grid-template-columns: minmax(0, max-content) minmax(0, 1fr); gap: 8px 18px; margin: 0 0 14px; }
+.files dt { font-family: var(--mono); font-size: .85rem; overflow-wrap: anywhere; }
+.files dd { margin: 0; }
+.ran { font-weight: 700; color: var(--effect); }
+.depth-three details > *:not(summary) { min-width: 0; }
+.depth-three pre { margin: 10px 0 12px; }
+@media (max-width: 700px) { .files { grid-template-columns: minmax(0, 1fr); } .files dd { margin-bottom: 8px; } }
+
+/* Depth 1 and the jump links. */
+.depth-one h1 { font-size: clamp(2rem, 4.4vw, 3.5rem); max-width: 22ch; margin-bottom: 16px; }
+.depth-one .sub { font-size: 1.15rem; }
+.jump { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-top: 22px; }
+.jump span { font-weight: 700; color: var(--muted); margin-right: 4px; }
+a.btn { text-decoration: none; display: inline-block; }
+.deck-toggle[aria-pressed="true"] { background: var(--change); border-color: var(--change); color: #fff; }
+@media (prefers-color-scheme: dark) { .deck-toggle[aria-pressed="true"] { color: #0f1426; } }
+
+/* Deck mode: every band becomes one slide. Off by default, so the page is a normal page without a script. */
+html.deck { scroll-snap-type: y proximity; }
+html.deck .page > .band { min-height: 100svh; scroll-snap-align: start; display: flex; flex-direction: column; justify-content: center; }
+html.deck .page > .band + .band { border-top: 0; }
+html.deck body { font-size: 19px; }
+.deck-hint {
+  position: fixed; right: 18px; bottom: 18px; z-index: 30; display: none;
+  background: var(--ink); color: var(--paper); border-radius: 999px; padding: 8px 16px; font: 700 .9rem var(--display);
+}
+html.deck .deck-hint { display: block; }

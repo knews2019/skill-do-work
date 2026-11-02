@@ -176,6 +176,9 @@ toolbox_files=(
   skills/do-work-toolbox/actions/help.md
   skills/do-work-toolbox/actions/completed-work-presentation-reference.md
   skills/do-work-toolbox/actions/ai-report-reference.md
+  skills/do-work-toolbox/docs/ai-report-kit/presentation.css
+  skills/do-work-toolbox/docs/ai-report-kit/presentation.js
+  skills/do-work-toolbox/docs/ai-report-kit/skeleton.html
   skills/do-work-toolbox/actions/deep-explore-reference.md
   skills/do-work-toolbox/docs/periodic-check-guide.md
   skills/do-work-toolbox/docs/prime-periodic-check.example.md

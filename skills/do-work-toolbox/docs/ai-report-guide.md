@@ -12,6 +12,8 @@ Report creation and revision create a fresh timestamped bundle under `ai-reports
 ai-reports/
   2026-06-02_1430_UR-007-add-user-avatar/
     index.html
+    presentation.css   # copied from the kit
+    presentation.js    # copied from the kit
     screenshots/   # only when authentic captures are used
     generated/     # only when generated visuals succeed
 ```
@@ -33,6 +35,8 @@ For non-visual work, the report explicitly says, “UI captures were not expecte
 
 ## Stakeholder Narrative
 
+Every report is a colorful cause-and-effect presentation at three depths. Depth 1 is the answer in one line. Depth 2 tells the story: a chain of cards where each one says why the next happened, a diagram that lights up step by step, and the proof. Depth 3 holds every detail, folded. Each color means one role on every page (cause, problem, change, effect, proof), every claim carries its source, technical words show a definition on hover or tap, and nothing moves until you click or press a key. Press D to show the report as slides. The look comes from the [presentation kit](ai-report-kit/) that every report copies.
+
 The report leads with a concise verdict, then covers:
 
 - what shipped;
@@ -50,7 +54,7 @@ An archived target whose normalized status is `completed-with-issues` is eligibl
 
 When authentic before and after captures exist, the report shows them side by side in a wrapping row so both states remain visible. A toggle is optional only when it materially improves comparison. Screenshots open at full resolution and use SVG overlays for callouts; the original files are never drawn on.
 
-The page is responsive and full-width, while running prose stays at a readable measure. Screenshots stop at native resolution rather than stretching. Light and dark themes share one coherent visual direction.
+The page is responsive and full-width, while running prose stays at a readable measure. Screenshots stop at native resolution rather than stretching. Light and dark themes use the same kit colors.
 
 The action render-checks the bundle with the `ai-report-judge` command. It serves the bundle on a free local port, captures full-page renders at a wide (1440x1000) and a phone (390x844) width in light and dark, fails on horizontal overflow and on any same-origin link or image that does not load, and writes the four captures plus a `judge.json` verdict to a directory outside the bundle. The action judges the rendered pixels, fixes defects, and reruns until the verdict is `pass`. When no browser engine is found the verdict is `skipped`, never `pass`: the report still ships, with a footer stating that the layout was not render-verified. For a revised report, the link back to the old report is the one expected finding, because the check serves only the new folder.
 

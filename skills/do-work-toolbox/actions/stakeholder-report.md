@@ -24,7 +24,7 @@ Read the REQ's `## Questions` section. For each open (`- [ ]`) entry, pull one l
 
 ### Step 4: Write `index.html`
 
-Follow **Report Design Rules** in `ai-report-reference.md` (single file, inline CSS, light and dark, one coherent aesthetic direction; no images and no CDN are expected here at all) and keep `../../do-work/crew-members/anti-slop.md` active. Read and apply [Outgoing drafts](../../do-work/crew-members/communication-style.md#outgoing-drafts) to the outgoing questions and surrounding requests. Sections, in order:
+Follow **Report Design Rules** in `ai-report-reference.md` for wording, color roles and glossary words, but stay a single file: paste the kit's `../docs/ai-report-kit/presentation.css` into one `<style>` block, with no script, no images and no CDN and keep `../../do-work/crew-members/anti-slop.md` active. Read and apply [Outgoing drafts](../../do-work/crew-members/communication-style.md#outgoing-drafts) to the outgoing questions and surrounding requests. Sections, in order:
 
 1. **Header** — addressed to the person by name, with the project, the date, and the one-line ask: *Could you reply with the question number, e.g. "Q3: use the amber palette"?*
 2. **Irreversible items** — when any open entry carries `Irreversible:`, a prominently flagged block ("These assumptions are expensive to undo. Could you confirm these first?"), each such question rendered in full here. Omit the block when none.
