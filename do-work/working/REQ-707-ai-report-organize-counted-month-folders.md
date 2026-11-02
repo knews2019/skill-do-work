@@ -27,6 +27,8 @@ estimate:
     - 2 subsystems involved
     - 10 acceptance criteria
 planning_at: 2026-11-02T17:55:56Z
+dispatch_at: 2026-11-02T17:58:32Z
+builder_handback_at: 2026-11-02T18:17:03Z
 ---
 # ai-report Organize Files Finished Months Into Counted Month Folders and Fixes Every Link
 ## What
