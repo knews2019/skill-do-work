@@ -1,7 +1,7 @@
 ---
 id: REQ-709
 title: 'recover ignores loose do-work files that no request record can own, so do-work commit can commit inbox notes'
-status: pending
+status: claimed
 created_at: 2026-11-02T19:41:34Z
 user_request: UR-162
 domain: backend
@@ -10,6 +10,7 @@ tdd: true
 maintenance: false
 impact: impact-user-visible
 effort_estimate: effort-substantive
+claimed_at: 2026-11-02T19:46:07Z
 ---
 # Recover Ignores Loose do-work Files That No Request Record Can Own
 ## What
