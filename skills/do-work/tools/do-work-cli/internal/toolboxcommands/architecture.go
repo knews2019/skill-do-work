@@ -65,11 +65,28 @@ func architectureScan(ctx commandruntime.ExecutionContext, reports string) resul
 	} else if readDirectoryError != nil {
 		return architectureFailure("reports directory is unreadable: " + readDirectoryError.Error())
 	}
+	// As in the catalog walk, a month folder holds filed reports one level down; symlinks are never followed.
+	folders := []string{}
 	for _, entry := range entries {
 		if !entry.IsDir() {
 			continue
 		}
-		match := architectureName.FindStringSubmatch(entry.Name())
+		if !reportMonthFolder(entry.Name()) {
+			folders = append(folders, entry.Name())
+			continue
+		}
+		children, readMonthError := os.ReadDir(filepath.Join(rootReports, entry.Name()))
+		if readMonthError != nil {
+			return architectureFailure("reports directory is unreadable: " + readMonthError.Error())
+		}
+		for _, child := range children {
+			if child.IsDir() {
+				folders = append(folders, filepath.Join(entry.Name(), child.Name()))
+			}
+		}
+	}
+	for _, folder := range folders {
+		match := architectureName.FindStringSubmatch(filepath.Base(folder))
 		if match == nil {
 			continue
 		}
@@ -77,12 +94,12 @@ func architectureScan(ctx commandruntime.ExecutionContext, reports string) resul
 		if match[2] != "" {
 			sequence, _ = strconv.Atoi(match[2])
 		}
-		index := filepath.Join(rootReports, entry.Name(), "index.html")
+		index := filepath.Join(rootReports, folder, "index.html")
 		info, statErr := os.Stat(index)
 		if statErr != nil || !info.Mode().IsRegular() || info.Size() == 0 {
 			continue
 		}
-		priors = append(priors, prior{fmt.Sprintf("%s %012d", match[1], sequence), index, filepath.ToSlash(filepath.Join(reports, entry.Name(), "index.html"))})
+		priors = append(priors, prior{fmt.Sprintf("%s %012d", match[1], sequence), index, filepath.ToSlash(filepath.Join(reports, folder, "index.html"))})
 	}
 	sort.Slice(priors, func(i, j int) bool { return priors[i].key > priors[j].key })
 	priorPath, priorHash, resolves := "", "", "n/a"

@@ -46,6 +46,26 @@ func TestRemediationArchitectureAbsoluteScanAndReadDirFailure(t *testing.T) {
 	}
 }
 
+// Pins: the pre-flight read only direct children of the reports folder, so a prior architecture
+// report filed in a month folder was missed and prior_report named an older flat report instead.
+func TestArchitectureScanFindsPriorReportInMonthFolder(t *testing.T) {
+	repository := toolboxTestRepository(t)
+	for _, bundle := range []string{"ai-reports/2026-10_1-report/2026-10-01_0900_architecture-report", "ai-reports/2026-09-01_0900_architecture-report"} {
+		if err := os.MkdirAll(filepath.Join(repository, bundle), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(repository, bundle, "index.html"), []byte("<html>report</html>\n"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	toolboxTestGit(t, repository, "add", ".")
+	toolboxTestGit(t, repository, "commit", "-m", "reports")
+	result := architectureScan(commandruntime.ExecutionContext{RepositoryRoot: repository}, "ai-reports")
+	if result.Outcome != resultmodel.OutcomeSuccess || result.ExactTextOutput == nil || !strings.Contains(*result.ExactTextOutput, "prior_report=ai-reports/2026-10_1-report/2026-10-01_0900_architecture-report/index.html\n") {
+		t.Fatalf("scan=%+v", result)
+	}
+}
+
 func TestRemediationArchitectureFailedClaimRemainsOccupied(t *testing.T) {
 	repository := toolboxTestRepository(t)
 	draft := filepath.Join(repository, "draft.html")

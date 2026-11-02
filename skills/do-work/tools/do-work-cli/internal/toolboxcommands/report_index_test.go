@@ -252,7 +252,8 @@ func TestAIReportIndexRefusesHandMadeCatalog(t *testing.T) {
 // kind unknown and the reports inside it were missing from the catalog, the page, find and the
 // supersedes chain; a loose file in a month folder or a symlinked month folder must stay out.
 func TestAIReportIndexReadsBundlesInsideMonthFolders(t *testing.T) {
-	for _, month := range []string{"2026-09_1-report", "2026-09"} {
+	// 2026-09_2-report is a hand-made name whose count and plural do not match: still a month folder.
+	for _, month := range []string{"2026-09_1-report", "2026-09", "2026-09_2-report"} {
 		t.Run(month, func(t *testing.T) {
 			root := t.TempDir()
 			nested := month + "/2026-09-27_2200_a"
