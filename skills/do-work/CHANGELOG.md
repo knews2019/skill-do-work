@@ -10,6 +10,16 @@ For the complete release history, read this file and the archives below from new
 - [0.50.0 through 0.64.1](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-13-up-to-v0.64.1.md)
 - [0.1.0 through 0.49.0](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-07-up-to-v0.49.0.md)
 
+## 0.309.2 — Report Organizer Files Finished Months Into Counted Folders and Fixes Every Link (2026-11-02)
+
+A busy `ai-reports/` folder becomes readable by month without breaking a link: `ai-report organize` files each finished month's reports into one folder whose name shows how many reports it holds, and fixes every link to a moved report.
+
+- New `do-work-toolbox ai-report organize [--dry-run]`, backed by the do-work-cli verb `ai-report-organize`. Finished months move into `ai-reports/YYYY-MM_N-reports/` (`YYYY-MM_1-report` for one report). The current month stays directly under `ai-reports/`, and report writers are unchanged.
+- Every run recounts: a stale count or a plain `YYYY-MM` folder is renamed, and a current-month folder is emptied back to the top. A second run changes nothing. Undated folders, loose files and symbolic links stay and are listed.
+- Links: `ai-reports/<report>/...` mentions in every text file Git lists (requests, docs, history, GitHub `blob/main/` and `file://` links) and relative `href`, `src` and Markdown links between reports are rewritten, so a link that opened before still opens. A link that was already broken, or still opens, keeps its bytes. The catalog is regenerated.
+- Safety: `--dry-run` prints the whole plan and writes nothing. Organize refuses when a path it would move or rewrite has uncommitted changes, never renames onto an existing path (that month is skipped and listed), and prints the exact `commit paths:` the action commits. Nothing is pushed, and nothing runs organize automatically.
+- Not covered: binary and Git-ignored files, symbolic links to a report, CSS `url()`, `srcset`, script-built links, percent-encoded paths, Markdown reference links, relative paths in plain prose, and copies outside this checkout. A mention of another repository's report with the same name is rewritten too.
+
 ## 0.309.1 — Report Tools Find Reports Filed in Month Folders (2026-11-02)
 
 A project with many reports can file each finished month in its own folder, and the report tools still find every report. Before this release the catalog listed such a folder as one broken report, and second-opinion refused every report inside it.
