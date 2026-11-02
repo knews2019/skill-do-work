@@ -10,8 +10,37 @@ import (
 	"testing"
 
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/commandruntime"
+	"github.com/knews2019/skill-do-work/do-work-cli/internal/corehelpers"
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/resultmodel"
 )
+
+// Pins the 2026-11-02 UR-161 run refusal: recover, the do-work commit preflight, refused FINALIZATION-DISCOVERY-AMBIGUOUS on the untracked note do-work/inbox/2026-10-28_...md, so commit could never commit it.
+func TestRecoverLeavesAnUntrackedInboxNoteForCommit(t *testing.T) {
+	notePath := "do-work/inbox/2026-10-28_do-work-upstream-suggestion-month-folder-report-layer.md"
+	repositoryRoot := t.TempDir()
+	writeAdvanceFile(t, repositoryRoot, "do-work/CHECKPOINT.md", "# Session Checkpoint\n\n## In Progress (interrupted)\n")
+	runAdvanceGit(t, repositoryRoot, "init", "-q")
+	runAdvanceGit(t, repositoryRoot, "config", "user.name", "Note Recovery Test")
+	runAdvanceGit(t, repositoryRoot, "config", "user.email", "note@example.invalid")
+	runAdvanceGit(t, repositoryRoot, "add", ".")
+	runAdvanceGit(t, repositoryRoot, "commit", "-qm", "fixture")
+	writeAdvanceFile(t, repositoryRoot, notePath, "# Upstream suggestion\n")
+
+	recovered := handleRecover(commandruntime.ExecutionContext{RepositoryRoot: repositoryRoot}, nil)
+	if recovered.Outcome != resultmodel.OutcomeSuccess || recovered.Recovery == nil || !recovered.Recovery.FinalizationPassed || len(recovered.Finalizations) != 0 {
+		t.Fatalf("recover refused on a note no request record owns: %#v", recovered)
+	}
+	// do-work commit groups what this inventory lists; the note must still be
+	// there as an ordinary addition for it to commit.
+	rows, err := corehelpers.ReadProtectedInventory(repositoryRoot)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := []corehelpers.ProtectedInventoryRow{{Classification: "A", Path: notePath}}
+	if !reflect.DeepEqual(rows, want) {
+		t.Fatalf("protected inventory = %#v, want %#v", rows, want)
+	}
+}
 
 func TestRecoverPublicCommandRunsFinalizationThenRecoversEveryClaim(t *testing.T) {
 	repositoryRoot := t.TempDir()
