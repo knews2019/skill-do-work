@@ -68,7 +68,7 @@ For path-only image or asset discovery from a commit, follow the canonical [Comm
 
 ## Collision-Safe Publication
 
-Before creating any output directory or file, derive the complete final path and test whether it already exists. Existing artifacts are immutable: never delete, truncate, merge into, rename, migrate, or overwrite them.
+Before creating any output directory or file, derive the complete final path and test whether it already exists. Existing artifacts are immutable: never delete, truncate, merge into, rename, migrate, or overwrite them. The one exception is `ai-report organize`, the only command that moves report bundles into month folders and rewrites links to them.
 
 If the preferred path exists, choose a fresh sibling by appending the first available numeric suffix (`-2`, `-3`, and so on), then use that one path consistently for the whole artifact. Create directories only after the collision check. A failed or partial run never grants permission to reuse an existing path; report the partial path so the user can inspect it.
 

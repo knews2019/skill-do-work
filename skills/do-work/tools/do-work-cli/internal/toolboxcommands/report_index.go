@@ -18,7 +18,8 @@ import (
 )
 
 // The catalog is derived: every run rebuilds it from the bundles, so it never needs hand edits and
-// never breaks the rule that published bundles are immutable.
+// never breaks the rule that published bundles are immutable (ai-report-organize is the one
+// exception: it moves bundles into month folders and rewrites links to them).
 const (
 	reportIndexGenerator = "do-work-cli ai-report-index"
 	reportIndexMarker    = `<meta name="generator" content="` + reportIndexGenerator + `">`
@@ -269,47 +270,56 @@ func reportIndexWrite(repositoryRoot string) resultmodel.CommandResult {
 	if !present {
 		return exactOutputResult(reportsFolder+"/ does not exist; nothing to index\n", nil)
 	}
+	if findings := reportCatalogHandMadeFindings(repositoryRoot, CommandAIReportIndex); len(findings) > 0 {
+		return resultmodel.CommandResult{Outcome: resultmodel.OutcomeRefused, Findings: findings}
+	}
 	outputs := []struct {
-		relative, marker string
-		data             []byte
-		existed          bool
+		relative string
+		data     []byte
 	}{
-		{relative: reportCatalogFile, marker: `"generator": "` + reportIndexGenerator + `"`, data: renderReportCatalog(bundles)},
-		{relative: reportIndexPageFile, marker: reportIndexMarker, data: renderReportIndexPage(bundles)},
-	}
-	refused := resultmodel.CommandResult{Outcome: resultmodel.OutcomeRefused}
-	for index := range outputs {
-		output := &outputs[index]
-		info, err := os.Lstat(filepath.Join(repositoryRoot, filepath.FromSlash(output.relative)))
-		if os.IsNotExist(err) {
-			continue
-		}
-		output.existed = true
-		existing := []byte{}
-		if err == nil && info.Mode().IsRegular() {
-			existing, _ = os.ReadFile(filepath.Join(repositoryRoot, filepath.FromSlash(output.relative)))
-		}
-		if !bytes.Contains(existing, []byte(output.marker)) {
-			refused.Findings = append(refused.Findings, toolboxFinding(CommandAIReportIndex, "AI-REPORT-INDEX-HAND-MADE", resultmodel.SeverityError,
-				[]string{output.relative}, output.relative+" was not written by ai-report-index (no generator marker); move it aside by hand, then rerun",
-				resultmodel.FixabilityManual, "a hand-made catalog file is never overwritten"))
-		}
-	}
-	if len(refused.Findings) > 0 {
-		return refused
+		{relative: reportCatalogFile, data: renderReportCatalog(bundles)},
+		{relative: reportIndexPageFile, data: renderReportIndexPage(bundles)},
 	}
 	changes := []resultmodel.RecordedChange{}
 	for _, output := range outputs {
-		if err := rootedPublishFile(repositoryRoot, output.relative, output.data, 0o644, output.existed); err != nil {
+		_, err := os.Lstat(filepath.Join(repositoryRoot, filepath.FromSlash(output.relative)))
+		existed := !os.IsNotExist(err)
+		if err := rootedPublishFile(repositoryRoot, output.relative, output.data, 0o644, existed); err != nil {
 			return reportIndexFailure(output.relative, err)
 		}
 		kind := "created"
-		if output.existed {
+		if existed {
 			kind = "modified"
 		}
 		changes = append(changes, resultmodel.RecordedChange{Path: output.relative, Kind: kind, Detail: "regenerated derived report catalog"})
 	}
 	return exactOutputResult(fmt.Sprintf("%s: %d bundles\n%s\n", reportCatalogFile, len(bundles), reportIndexPageFile), changes)
+}
+
+// reportCatalogHandMadeFindings refuses each catalog file that exists without the generator marker
+// ai-report-index writes: a hand-made catalog is never overwritten. ai-report-organize asks the
+// same question before it moves anything, because it regenerates the catalog last.
+func reportCatalogHandMadeFindings(repositoryRoot, command string) []resultmodel.CommandFinding {
+	var findings []resultmodel.CommandFinding
+	for _, output := range []struct{ relative, marker string }{
+		{reportCatalogFile, `"generator": "` + reportIndexGenerator + `"`},
+		{reportIndexPageFile, reportIndexMarker},
+	} {
+		info, err := os.Lstat(filepath.Join(repositoryRoot, filepath.FromSlash(output.relative)))
+		if os.IsNotExist(err) {
+			continue
+		}
+		existing := []byte{}
+		if err == nil && info.Mode().IsRegular() {
+			existing, _ = os.ReadFile(filepath.Join(repositoryRoot, filepath.FromSlash(output.relative)))
+		}
+		if !bytes.Contains(existing, []byte(output.marker)) {
+			findings = append(findings, toolboxFinding(command, "AI-REPORT-INDEX-HAND-MADE", resultmodel.SeverityError,
+				[]string{output.relative}, output.relative+" was not written by ai-report-index (no generator marker); move it aside by hand, then rerun",
+				resultmodel.FixabilityManual, "a hand-made catalog file is never overwritten"))
+		}
+	}
+	return findings
 }
 
 func reportIndexFailure(relative string, err error) resultmodel.CommandResult {

@@ -99,6 +99,10 @@ func handleAIReportOrganize(executionContext commandruntime.ExecutionContext, ar
 		text := "nothing to organize\n" + leftLines
 		return resultmodel.CommandResult{Outcome: resultmodel.OutcomeSuccess, SkippedWork: skippedWork, ExactTextOutput: &text}
 	}
+	// The catalog is regenerated last, so a hand-made one must refuse before the first write.
+	if findings := reportCatalogHandMadeFindings(repositoryRoot, CommandAIReportOrganize); len(findings) > 0 {
+		return resultmodel.CommandResult{Outcome: resultmodel.OutcomeRefused, Findings: findings}
+	}
 	if err := planReportOrganizeLinks(repositoryRoot, &plan); err != nil {
 		return reportOrganizeFailure(nil, err)
 	}
@@ -142,13 +146,26 @@ func handleAIReportOrganize(executionContext commandruntime.ExecutionContext, ar
 	commitPaths := append([]string(nil), plan.CommitPaths...)
 	if catalog := reportIndexWrite(repositoryRoot); catalog.Outcome == resultmodel.OutcomeSuccess {
 		output.WriteString(*catalog.ExactTextOutput)
+		changes = append(changes, catalog.Changes...)
+		// The same rule as CommitPaths: a catalog file Git ignores would make `git add -A` reject
+		// the whole list, so only the files Git would take are listed.
+		arguments := []string{"ls-files", "-z", "--cached", "--others", "--exclude-standard", "--"}
 		for _, change := range catalog.Changes {
-			changes = append(changes, change)
-			commitPaths = append(commitPaths, change.Path)
+			arguments = append(arguments, change.Path)
+		}
+		listed, err := auditGit(repositoryRoot, arguments...)
+		if err != nil {
+			return reportOrganizeFailure(changes, err)
+		}
+		for _, catalogPath := range strings.Split(listed, "\x00") {
+			if catalogPath != "" {
+				commitPaths = append(commitPaths, catalogPath)
+			}
 		}
 	} else {
-		// The moves stay: the catalog refusal names the hand-made file to move aside before
-		// `ai-report index` runs again.
+		// A hand-made catalog was refused before any write, so this is a write failure after the
+		// moves. They stay, and their commit paths are still printed; `ai-report index` reruns
+		// the catalog once the cause is fixed.
 		result.Outcome, result.Findings = resultmodel.OutcomeFindings, catalog.Findings
 	}
 	output.WriteString("commit paths:\n")
@@ -244,7 +261,7 @@ func planReportOrganizeLayout(repositoryRoot, currentMonth string) (reportOrgani
 	sort.Strings(months)
 
 	var mkdirs, moves, renames, removes []reportOrganizeStep
-	keepers, skippedMonths, moving := map[string]bool{}, map[string]bool{}, map[string]bool{}
+	keepers, skippedMonths, moving, plannedTargets := map[string]bool{}, map[string]bool{}, map[string]bool{}, map[string]bool{}
 	for _, month := range months {
 		bundles := bundlesByMonth[month]
 		finished := month < currentMonth
@@ -298,6 +315,11 @@ func planReportOrganizeLayout(repositoryRoot, currentMonth string) (reportOrgani
 				blocker, reason = to, "already exists"
 				break
 			}
+			if plannedTargets[to] {
+				// Two months' folders can hold the same undated name; the later month waits.
+				blocker, reason = to, "another month's report moves here"
+				break
+			}
 			monthMoves = append(monthMoves, reportOrganizeStep{Action: "move", From: from, To: to})
 		}
 		if blocker != "" {
@@ -312,7 +334,7 @@ func planReportOrganizeLayout(repositoryRoot, currentMonth string) (reportOrgani
 			mkdirs = append(mkdirs, reportOrganizeStep{Action: "mkdir", To: reportsFolder + "/" + target})
 		}
 		for _, move := range monthMoves {
-			moving[move.From] = true
+			moving[move.From], plannedTargets[move.To] = true, true
 		}
 		moves = append(moves, monthMoves...)
 		if keeper != "" && keeper != target {
