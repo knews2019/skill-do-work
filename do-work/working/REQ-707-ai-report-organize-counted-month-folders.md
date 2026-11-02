@@ -1,7 +1,7 @@
 ---
 id: REQ-707
 title: 'ai-report organize files finished months into counted month folders and fixes every link'
-status: pending
+status: claimed
 created_at: 2026-11-02T16:55:00Z
 user_request: UR-161
 domain: backend
@@ -13,6 +13,7 @@ effort_estimate: effort-substantive
 related: [REQ-706, REQ-708]
 batch: ai-report-month-folders
 depends_on: [REQ-706]
+claimed_at: 2026-11-02T17:55:27Z
 ---
 # ai-report Organize Files Finished Months Into Counted Month Folders and Fixes Every Link
 ## What
