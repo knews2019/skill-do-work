@@ -132,9 +132,16 @@ func discoverFinalizationJournals(repositoryRoot string, assumeSoleReleaser bool
 		if row.Classification == "X" || row.Classification == "XD" {
 			continue
 		}
-		dirty[row.Path] = true
+		// A note no request record can own is not evidence. Each side of a
+		// rename is judged alone, so a move out of a record folder still leaves
+		// its record-side path as evidence.
+		if !unownedDoWorkNote(row.Path) {
+			dirty[row.Path] = true
+		}
 		if row.Origin != "" {
-			dirty[row.Origin] = true
+			if !unownedDoWorkNote(row.Origin) {
+				dirty[row.Origin] = true
+			}
 			origins[row.Path] = row.Origin
 			destinations[row.Origin] = row.Path
 		}
@@ -1459,8 +1466,34 @@ func singleInsertion(before, after []byte) ([]byte, bool) {
 	return after[heading:insertedEnd], true
 }
 
+// sharedFinalizationPath reports whether a path lies where request records
+// live, the only part of do-work/ that can be finalization evidence: the queue,
+// working, archive and user-request folders, REQ reservation markers, run
+// records, and the two lifecycle record files every finalization writes
+// (CHECKPOINT.md claim records, calibration-log.tsv rows). Every other path
+// under do-work/ (an inbox note, a handoff note, an index) has no request
+// owner, so recovery neither refuses on it nor associates it with a request,
+// and `do-work commit` stays free to commit it as an ordinary change.
 func sharedFinalizationPath(path string) bool {
-	return path == "do-work" || strings.HasPrefix(path, "do-work/")
+	if path == "do-work" {
+		return true
+	}
+	relative, underDoWork := strings.CutPrefix(path, "do-work/")
+	if !underDoWork {
+		return false
+	}
+	location, _, _ := strings.Cut(relative, "/")
+	switch location {
+	case "queue", "working", "archive", "user-requests", ".req-reservations", "runs", "CHECKPOINT.md", "calibration-log.tsv":
+		return true
+	}
+	return false
+}
+
+// unownedDoWorkNote reports a path under do-work/ that is not a request-record
+// location, which discovery leaves out of its evidence entirely.
+func unownedDoWorkNote(path string) bool {
+	return strings.HasPrefix(path, "do-work/") && !sharedFinalizationPath(path)
 }
 
 func ambiguousSharedRemainder(dirty map[string]bool) []string {
