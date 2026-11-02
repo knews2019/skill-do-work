@@ -357,6 +357,43 @@ func TestSecondOpinionLatestAndLinkedBundleRefusal(t *testing.T) {
 	}
 }
 
+// Pins: second-opinion refused every report filed in a month folder as not a direct child of
+// ai-reports, so neither an explicit nested path nor latest could reach it; a symlinked month
+// folder must still be refused.
+func TestSecondOpinionBundleInsideMonthFolder(t *testing.T) {
+	repo, _ := secondOpinionFixture(t)
+	nested := filepath.Join(repo, "ai-reports", "2026-09_3-reports", "2026-09-27_2200_a")
+	older := filepath.Join(repo, "ai-reports", "2026-08-30_0900_older")
+	for _, folder := range []string{filepath.Dir(nested), older} {
+		if err := os.MkdirAll(folder, 0755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := os.WriteFile(filepath.Join(older, "index.html"), []byte("<body>older</body>"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	toolboxTestGit(t, repo, "mv", "ai-reports/2026-10-15_1200-example", "ai-reports/2026-09_3-reports/2026-09-27_2200_a")
+	toolboxTestGit(t, repo, "add", ".")
+	toolboxTestGit(t, repo, "commit", "-qm", "file the report in its month folder")
+	result := secondOpinionInvoke(t, repo, "--prepare", "--backend", "claude", "--model", "claude-fable-5-1", "ai-reports/2026-09_3-reports/2026-09-27_2200_a")
+	if result.Outcome != resultmodel.OutcomeSuccess {
+		t.Fatalf("nested bundle refused: %+v", result)
+	}
+	if row := secondOpinionRows(t, result)[0]; row["state"] != "prepared" {
+		t.Fatalf("row=%v", row)
+	}
+	if chosen, err := secondOpinionBundle(repo, "latest"); err != nil || chosen != nested {
+		t.Fatalf("latest=%s err=%v, want %s", chosen, err, nested)
+	}
+	linked := filepath.Join(repo, "ai-reports", "2026-08_1-report")
+	if err := os.Symlink(filepath.Dir(nested), linked); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := secondOpinionBundle(repo, filepath.Join(linked, "2026-09-27_2200_a")); err == nil {
+		t.Fatal("bundle behind a symlinked month folder accepted")
+	}
+}
+
 func TestSecondOpinionOutsideRenameIncludesBothSides(t *testing.T) {
 	repo, bundle := secondOpinionFixture(t)
 	os.WriteFile(filepath.Join(repo, "outside.txt"), []byte("tracked"), 0644)
