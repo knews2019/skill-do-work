@@ -22,7 +22,7 @@ The approved order is R2 → R1 → R3, encoded in `depends_on`; the R3 edge pre
 The latest report retains these three proposals. R4 remains held pending the gate decision. R5/R6 were withdrawn and remain in report history, with no new backlog entries. Release batching, CLI deletion, in-flight reconciliation, and recipe-card imports remain outside this batch. The gate and release-policy choices do not block these three requests.
 
 ## Source and Assets
-- Adopted report: `ai-reports/2026-09-09_0013_do-work-improvement-review-rev-v2/index.html` (SHA-256 `9dcd17027123c5400ab80c29a60cb8370bd7af99706ec203813f38d7b45cb25a`).
+- Adopted report: `ai-reports/2026-09_18-reports/2026-09-09_0013_do-work-improvement-review-rev-v2/index.html` (SHA-256 `9dcd17027123c5400ab80c29a60cb8370bd7af99706ec203813f38d7b45cb25a`).
 - Exact approved prompts and decision context: `do-work/user-requests/UR-130/assets/rev-v2-approved-scope.md`.
 - Backlog snapshot identifying the 19 captured items: `do-work/user-requests/UR-130/assets/prose-backlog-at-capture.md`.
 - Repository revision at capture: `f0e0e224f194cb5542b19e4a459ad8131f6e8aaf`.

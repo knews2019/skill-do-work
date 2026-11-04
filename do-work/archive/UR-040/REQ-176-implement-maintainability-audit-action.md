@@ -37,7 +37,7 @@ No existing action covers this: code-review is qualitative and single-run, quick
 
 ## Context
 
-The draft spec is preserved verbatim in `do-work/user-requests/UR-040/input.md`. The full validation triage — what's confirmed, all corrections and seams with evidence — is `ai-reports/2026-08-13_2200_maintainability-audit-spec-validation/index.html` (committed on this branch). The builder starts from the verbatim spec and applies every requirement below; where they conflict, the requirements below win (they encode the validation and the user's decisions).
+The draft spec is preserved verbatim in `do-work/user-requests/UR-040/input.md`. The full validation triage — what's confirmed, all corrections and seams with evidence — is `ai-reports/2026-08_18-reports/2026-08-13_2200_maintainability-audit-spec-validation/index.html` (committed on this branch). The builder starts from the verbatim spec and applies every requirement below; where they conflict, the requirements below win (they encode the validation and the user's decisions).
 
 ## Detailed Requirements
 
@@ -96,7 +96,7 @@ Certainty: Firm on requirements 1–17 (validated + user-decided); Exploratory o
 
 ## Full Context
 
-See `do-work/user-requests/UR-040/input.md` for complete verbatim input and `ai-reports/2026-08-13_2200_maintainability-audit-spec-validation/index.html` for the validation evidence behind every requirement.
+See `do-work/user-requests/UR-040/input.md` for complete verbatim input and `ai-reports/2026-08_18-reports/2026-08-13_2200_maintainability-audit-spec-validation/index.html` for the validation evidence behind every requirement.
 
 ---
 *Source: UR-040 — pasted maintainability-audit spec, validated via do-work-toolbox validate-feedback*

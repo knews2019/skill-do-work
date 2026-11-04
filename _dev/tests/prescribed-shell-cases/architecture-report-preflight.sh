@@ -178,7 +178,7 @@ legacy_repo="$fixture_root/legacy"
 fixture_repo_init "$legacy_repo"
 printf 'seed\n' > "$legacy_repo/README.md"
 fixture_repo_commit_all "$legacy_repo" base
-legacy_bundle="$legacy_repo/ai-reports/2026-08-26_1709_architecture-report"
+legacy_bundle="$legacy_repo/ai-reports/2026-08_18-reports/2026-08-26_1709_architecture-report"
 mkdir -p "$legacy_bundle"
 printf 'verified-at: 0123456 · legacy Markdown\n' > "$legacy_bundle/architecture-report.md"
 legacy_record="$(cd "$legacy_repo" && "$preflight_script" --scan ai-reports)" \

@@ -65,7 +65,7 @@ Route A | e86b314d merged as b9e04c02 (range 09c5ddf7..b9e04c02)
 - [x] C6. Stdout rows unchanged — verified (`REQ-503<TAB>good-file.txt`, no extra rows)
 - [x] UR D2 deviation: warning also visible under `--format json` — verified
 
-**Restatement Sweep.** The diff redefines the associate exit contract. Grep for `PARSE-FAILED`, "unmatched backtick", and associate near "exit 2" across the repository (excluding `do-work/`): no stale restatement remains. `skills/do-work/CHANGELOG.md:390` is a dated history line. The "unmatched backtick" hits in `checks.go`, `finalization_discovery.go`, `qualify.sh`, and the scope-drift probe belong to the strict parsers the REQ keeps. `ai-reports/2026-09-06_2113_do-work-cli-guide/index.html` embeds source at a fixed past commit and is export-ignored. prescribed-shell-primitives.md line 47 (stdout rows, exit 2 on quarantine resolution failure) still agrees.
+**Restatement Sweep.** The diff redefines the associate exit contract. Grep for `PARSE-FAILED`, "unmatched backtick", and associate near "exit 2" across the repository (excluding `do-work/`): no stale restatement remains. `skills/do-work/CHANGELOG.md:390` is a dated history line. The "unmatched backtick" hits in `checks.go`, `finalization_discovery.go`, `qualify.sh`, and the scope-drift probe belong to the strict parsers the REQ keeps. `ai-reports/2026-09_18-reports/2026-09-06_2113_do-work-cli-guide/index.html` embeds source at a fixed past commit and is export-ignored. prescribed-shell-primitives.md line 47 (stdout rows, exit 2 on quarantine resolution failure) still agrees.
 
 ### Acceptance Testing
 

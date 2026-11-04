@@ -55,7 +55,7 @@ From the user, verbatim: *"that way I can identify if there is an overtime respo
 
 ## Context
 
-The chart already exists and is render-judged in light and dark at `ai-reports/2026-08-17_1401_UR-048-estimator-calibration-and-anomaly-surfacing/index.html` (section 8, commit `6e79932`). **That is the reference implementation, not a suggestion to re-derive.** It resolved several decisions the hard way; port them rather than rediscovering them:
+The chart already exists and is render-judged in light and dark at `ai-reports/2026-08_18-reports/2026-08-17_1401_UR-048-estimator-calibration-and-anomaly-surfacing/index.html` (section 8, commit `6e79932`). **That is the reference implementation, not a suggestion to re-derive.** It resolved several decisions the hard way; port them rather than rediscovering them:
 
 - The three panels are separate on a shared x-axis precisely because a single overlaid plot would need two y-scales. Never a dual axis.
 - Panel A needs an overflow lane above a scale break: REQ-064's 10h 55m span otherwise squashes the 90% of samples that sit under 35 minutes.

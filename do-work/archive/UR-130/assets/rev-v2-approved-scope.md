@@ -1,6 +1,6 @@
 # Approved rev-v2 capture scope
 
-Source report: `ai-reports/2026-09-09_0013_do-work-improvement-review-rev-v2/index.html`
+Source report: `ai-reports/2026-09_18-reports/2026-09-09_0013_do-work-improvement-review-rev-v2/index.html`
 Report SHA-256: `9dcd17027123c5400ab80c29a60cb8370bd7af99706ec203813f38d7b45cb25a`
 Repository revision at capture: `f0e0e224f194cb5542b19e4a459ad8131f6e8aaf`
 Captured at: 2026-09-08T21:49:05Z

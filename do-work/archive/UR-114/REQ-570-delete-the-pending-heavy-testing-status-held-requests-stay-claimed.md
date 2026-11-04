@@ -88,7 +88,7 @@ A green heavy answer flips the request from `pending-heavy-testing` to plain `pe
 - The review resume is `matchingHeavyReviewPhase` and `ResumePhase` in `internal/nextselection/next_selection.go` (line 322 onward).
 - Other readers of the value in the core skill: `advance_commands.go` line 110 (skip case), `checkpoint_commands.go` line 131 (queue_state counts), `result_model.go`, `schema_normalization.go` (canonical enum), `actions/cleanup.md` (active-status lists), `actions/roadmap.md` (Needs clarification bucket), `actions/restart-with-parallel-handoff.md` (clarify hint), `actions/work-reference.md` (schema), `prime-do-work-cli.md`. Find them by search, not by this list.
 - The board (`skills/do-work-board`) also reads the value; that is REQ-571, which depends on this one.
-- Finding and proposal: `ai-reports/2026-09-03_2145_do-work-velocity-and-pending-queue-speed/index.html` section 03, lessons L24 and L25.
+- Finding and proposal: `ai-reports/2026-09_18-reports/2026-09-03_2145_do-work-velocity-and-pending-queue-speed/index.html` section 03, lessons L24 and L25.
 
 ## Detailed Requirements
 

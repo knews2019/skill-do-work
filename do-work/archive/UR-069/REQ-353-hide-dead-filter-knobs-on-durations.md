@@ -90,7 +90,7 @@ excludes Durations.
 **Validation:** User confirmed (bundled invocation).
 
 ---
-*Source: prompt A6, `ai-reports/2026-08-23_2200_durations-panel-improvement-proposal/index.html` (finding F6).*
+*Source: prompt A6, `ai-reports/2026-08_18-reports/2026-08-23_2200_durations-panel-improvement-proposal/index.html` (finding F6).*
 
 ## Triage
 

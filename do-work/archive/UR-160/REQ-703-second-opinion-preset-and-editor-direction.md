@@ -71,7 +71,7 @@ None. REQ-704 (linked iteration tree) depends on this REQ.
 ## Builder Guidance
 Decisions D1-D3 and D7 are user-confirmed and firm. The exact prompt wording, marker names and slug length limit are builder latitude. Keep it simple: no new state file; everything travels in the prepare record, the prompt, meta tags and the result row.
 ## Red-Green Proof
-**RED prompt/case:** `do-work-cli.sh --repo-root . --format json ai-report-second-opinion --prepare --backend claude --model claude-opus-5-5 --preset bold ai-reports/2026-10-15_1731_REQ-698-ai-report-second-opinion` is refused with "unexpected argument \"--preset\"".
+**RED prompt/case:** `do-work-cli.sh --repo-root . --format json ai-report-second-opinion --prepare --backend claude --model claude-opus-5-5 --preset bold ai-reports/2026-10_3-reports/2026-10-15_1731_REQ-698-ai-report-second-opinion` is refused with "unexpected argument \"--preset\"".
 **Why RED now:** `secondOpinionParse` knows only `--backend`, `--model`, `--exclude`, `--all`, `--prepare` and `--finalize`, and the prompt has no direction placeholder.
 **GREEN when:** (1) the prepare row's `prompt` contains the bold preset text and the row carries `preset: bold` and `preset_file`; (2) a fake-backend Targeted run with `--preset bold --editor-direction 'add a timeline'` receives both texts in its prompt and publishes `index-<cli>-<model>-bold-<slug>.html` with the preset/direction meta tags and header block; (3) a project `ai-reports/second-opinion-presets/bold.md` shadows the shipped one and `preset_file` names it; (4) a run with no flags still publishes `index-<cli>-<model>.html`.
 **Validation:** User confirmed (proof split across the two chained REQs at the user's choice).

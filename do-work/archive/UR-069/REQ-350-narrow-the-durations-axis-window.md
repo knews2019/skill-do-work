@@ -98,7 +98,7 @@ the active window and its sample count.
 **Validation:** User confirmed (bundled invocation).
 
 ---
-*Source: prompt A3, `ai-reports/2026-08-23_2200_durations-panel-improvement-proposal/index.html` (finding F3).*
+*Source: prompt A3, `ai-reports/2026-08_18-reports/2026-08-23_2200_durations-panel-improvement-proposal/index.html` (finding F3).*
 
 ## Triage
 

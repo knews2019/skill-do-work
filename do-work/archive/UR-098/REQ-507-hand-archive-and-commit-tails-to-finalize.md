@@ -60,7 +60,7 @@ Step 8 (66 lines) and Step 9 (21 lines) reduce to: mint follow-ups by Fold-First
 REQ-498 made the tail a journaled CLI transaction; the prose still walks the pre-498 sequence.
 
 ## Context
-Analysis: `ai-reports/2026-09-02_1651_orchestrator-simplification-analysis/index.html` (commit 1ddd7c70). Measured at 721c2fb4: `work.md` 850 lines and 20 steps; about 55% of step lines are mechanics; `_dev/tests/contract-regressions.sh` holds 220 references into the two work files and pins sentences with mutation-tested predicates, which is why earlier moves into Go left prose behind.
+Analysis: `ai-reports/2026-09_18-reports/2026-09-02_1651_orchestrator-simplification-analysis/index.html` (commit 1ddd7c70). Measured at 721c2fb4: `work.md` 850 lines and 20 steps; about 55% of step lines are mechanics; `_dev/tests/contract-regressions.sh` holds 220 references into the two work files and pins sentences with mutation-tested predicates, which is why earlier moves into Go left prose behind.
 
 ## Detailed Requirements
 - Fold-First minting, sweep consolidation and impact stamping stay prose (judgment).

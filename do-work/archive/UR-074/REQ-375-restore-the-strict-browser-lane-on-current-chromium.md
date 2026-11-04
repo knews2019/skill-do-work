@@ -85,7 +85,7 @@ The clarification session independently reproduced the focused probe's guard fai
 
 ## Reports
 
-- [2026-08-27] [Timeline panning, not card dragging — AI report for the REQ-375 decision](../../../ai-reports/2026-08-27_1428_req-341-timeline-drag-evidence/index.html). Presents completed REQ-341's test, its origin, current screenshots, raw browser-test results, and verification limits. At publication, REQ-375 remained `pending-answers`; the confirmed deprecation decision above now resolves that hold. Date obtained under the Timestamp rule's date-only paragraph in `skills/do-work/actions/work-reference.md`.
+- [2026-08-27] [Timeline panning, not card dragging — AI report for the REQ-375 decision](../../../ai-reports/2026-08_18-reports/2026-08-27_1428_req-341-timeline-drag-evidence/index.html). Presents completed REQ-341's test, its origin, current screenshots, raw browser-test results, and verification limits. At publication, REQ-375 remained `pending-answers`; the confirmed deprecation decision above now resolves that hold. Date obtained under the Timestamp rule's date-only paragraph in `skills/do-work/actions/work-reference.md`.
 
 ## Triage
 

@@ -104,7 +104,7 @@ ceiling and overflow lane are unchanged, and the hover still names the mark the 
 **Validation:** User confirmed (bundled invocation).
 
 ---
-*Source: prompt A4, `ai-reports/2026-08-23_2200_durations-panel-improvement-proposal/index.html` (finding F4).*
+*Source: prompt A4, `ai-reports/2026-08_18-reports/2026-08-23_2200_durations-panel-improvement-proposal/index.html` (finding F4).*
 
 ## Triage
 

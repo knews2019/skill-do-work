@@ -42,7 +42,7 @@ release_at: 2026-09-05T18:57:15Z
 
 ## What
 
-REQ-588 (the M1 rows, release 0.303.2) made each finding a chip, a detail line and a remedy line; the user's verdict was that it is not visually nice and huge. Replace the strip's rendering with mock-up M4 from `ai-reports/2026-09-05_1800_REQ-588-verify-findings-slim-band-gallery/`: a slim band that is one line when closed and one row per finding when open, with each remedy behind its row's chevron. The mock-up page `mockups/m4-closed.html` (and `m4-open.html`, `m4-open-remedy.html`) is the specification: its `<style>` block is the CSS to ship and its markup is the structure to render.
+REQ-588 (the M1 rows, release 0.303.2) made each finding a chip, a detail line and a remedy line; the user's verdict was that it is not visually nice and huge. Replace the strip's rendering with mock-up M4 from `ai-reports/2026-09_18-reports/2026-09-05_1800_REQ-588-verify-findings-slim-band-gallery/`: a slim band that is one line when closed and one row per finding when open, with each remedy behind its row's chevron. The mock-up page `mockups/m4-closed.html` (and `m4-open.html`, `m4-open-remedy.html`) is the specification: its `<style>` block is the CSS to ship and its markup is the structure to render.
 
 ## Prior Implementation
 
@@ -75,7 +75,7 @@ The user's words: "neither of these is visually nice and they are huge". A remed
 
 ## Assets
 
-- `ai-reports/2026-09-05_1800_REQ-588-verify-findings-slim-band-gallery/` (committed at 2a795ba0): the approved M4 pages and their captures. Screenshot 3 (not saved; the attachment cache expires) showed that gallery's M4 section: the live frame closed, then State 1 closed and State 2 open in light and dark.
+- `ai-reports/2026-09_18-reports/2026-09-05_1800_REQ-588-verify-findings-slim-band-gallery/` (committed at 2a795ba0): the approved M4 pages and their captures. Screenshot 3 (not saved; the attachment cache expires) showed that gallery's M4 section: the live frame closed, then State 1 closed and State 2 open in light and dark.
 
 ## Required Lessons — Dropped for Budget
 

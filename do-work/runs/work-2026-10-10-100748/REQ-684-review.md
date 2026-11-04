@@ -46,7 +46,7 @@ Redefined element: the evidence text of `QUALIFY-SUMMARY-MISSING` (old text "Imp
 - `grep -rn "missing or empty"` over `skills/`, `_dev/` and `README.md` (CHANGELOG and `do-work/archive` excluded) found only `_dev/tests/contracts/core-checks.sh:833` ("shared principles file missing or empty"), which is a different check. No match for the old qualify text.
 - `grep -rn QUALIFY-SUMMARY-MISSING` outside the archive found code only: `checks.go:297`, the two new tests, and `commands.go:398`. That line maps the code to a `sed` inspection command and does not depend on the evidence text. No action, crew-member, lessons satellite or doc describes when the code fires.
 - Doc phrasings with "no/missing Implementation Summary" (`skills/do-work/actions/forensics.md:102`, `skills/do-work/docs/forensics-guide.md:14`, `skills/do-work-toolbox/actions/completed-work-presentation-reference.md:43`) belong to other checks (hollow completions, archive records), not qualify.
-- The old text is still in historical and third-party records only: the UR-152 input, the upstream report in the inbox, this run's brief and hand-back, and a source snapshot inside `ai-reports/2026-09-06_2113_do-work-cli-guide/index.html` pinned to an old commit. None of these restates the current contract.
+- The old text is still in historical and third-party records only: the UR-152 input, the upstream report in the inbox, this run's brief and hand-back, and a source snapshot inside `ai-reports/2026-09_18-reports/2026-09-06_2113_do-work-cli-guide/index.html` pinned to an old commit. None of these restates the current contract.
 - Result: no stale restatement.
 
 ### Scores (on the record, not the headline)

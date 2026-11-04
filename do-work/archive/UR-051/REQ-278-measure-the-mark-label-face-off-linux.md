@@ -67,6 +67,6 @@ Escalated by REQ-265's builder as D-05 and assessed by its independent review, w
 - **The finding survives this cancellation.** `--font-sans` ending in the open `sans-serif` generic
   leaves both the vertical pitch and the horizontal per-character width model unbounded. The
   successor work is chosen from the solutions report at
-  `ai-reports/2026-08-19_1345_durations-label-face-robustness/index.html`, and gets captured as its
+  `ai-reports/2026-08_18-reports/2026-08-19_1345_durations-label-face-robustness/index.html`, and gets captured as its
   own REQ once the user picks a direction.
 - **Decided by:** user, via `do-work clarify`

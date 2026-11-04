@@ -5,7 +5,7 @@
 - Commit: 5ac41434bbf884ff16e32808cc5d3077147858f4 (one commit). Base: 2eb14357.
 
 ## File manifest
-- `ai-reports/2026-10-09_1916_REQ-632-activity-correlation-determinism/` (new)
+- `ai-reports/2026-10_3-reports/2026-10-09_1916_REQ-632-activity-correlation-determinism/` (new)
   - `index.html`: the report.
   - `evidence/git-call-count.txt`: output and source of a throwaway test that counted git commands per served response, run in a scratch copy of the package.
   - `evidence/git-log-timing.txt`: windowed `git log` timings on this repo for 7 and 60 days.
@@ -20,7 +20,7 @@
 
 ## Red-green evidence
 - RED: no bundle existed. `ls ai-reports/ | grep -i REQ-632` printed nothing before this commit, and the question had no written answer.
-- GREEN: the bundle is `ai-reports/2026-10-09_1916_REQ-632-activity-correlation-determinism/index.html`. It has two titled parts, "Deterministic git structure" with 5 rows and "Scaffold around agent behaviour" with 6 rows. Each row names the file and line range, what it reads, and its origin: the REQ-284 lesson, UR-135, REQ-632, REQ-636 or REQ-646.
+- GREEN: the bundle is `ai-reports/2026-10_3-reports/2026-10-09_1916_REQ-632-activity-correlation-determinism/index.html`. It has two titled parts, "Deterministic git structure" with 5 rows and "Scaffold around agent behaviour" with 6 rows. Each row names the file and line range, what it reads, and its origin: the REQ-284 lesson, UR-135, REQ-632, REQ-636 or REQ-646.
   - Git calls: five per refresh, the same with 0, 1 or 4 builder branches, counted by execution. A detached checkout adds a sixth.
   - Cost: the report cites REQ-632's archived lines 71, 116, 224 and 256, and adds today's timings. A 7-day window took 44–47 ms warm and a 60-day window took 152–161 ms warm.
   - Decision: option 1 (stamp the prefix, then delete) keeps 303 production lines and 337 test lines, plus stamp code that is not written yet. Option 2 (keep) keeps 357 and 429. The report recommends neither.

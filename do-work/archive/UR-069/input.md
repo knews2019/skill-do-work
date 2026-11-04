@@ -10,7 +10,7 @@ word_count: 1657
 
 ## Summary
 
-An in-repo design proposal (`ai-reports/2026-08-23_2200_durations-panel-improvement-proposal/index.html`, written 2026-08-23, nothing shipped) records eight findings against the board's Durations view and offers eight capture-request prompts plus one bundled invocation. The user chose the bundled form — one UR, its changes sliced into REQs — and answered four questions during capture, two of which changed the proposal's shape.
+An in-repo design proposal (`ai-reports/2026-08_18-reports/2026-08-23_2200_durations-panel-improvement-proposal/index.html`, written 2026-08-23, nothing shipped) records eight findings against the board's Durations view and offers eight capture-request prompts plus one bundled invocation. The user chose the bundled form — one UR, its changes sliced into REQs — and answered four questions during capture, two of which changed the proposal's shape.
 
 The view's core problem is that it is the only board view that drops the REQ to UR link: its payload sample carries `id`, `route`, `completionTime`, `dayKey`, `wallMinutes` and nothing else, though the client already holds the join at `boardData.requests[id].userRequestId`. Behind that sit two structural problems measured on this repository's own archive (305 samples, 29 active days, 66 URs): two thirds of the axis is idle calendar, and 55 percent of the marks sit in the bottom quarter of panel A's linear 0-60 scale.
 
@@ -60,7 +60,7 @@ Decided by capture, from the report's own reasoning, without asking:
 
 ## Full Verbatim Input
 
-read ai-reports/2026-08-23_2200_durations-panel-improvement-proposal/index.html
+read ai-reports/2026-08_18-reports/2026-08-23_2200_durations-panel-improvement-proposal/index.html
 ask your questions
 then do-work capture-request
 and do-work verify-requests
@@ -91,7 +91,7 @@ do-work capture-request: Improve the board's Durations view so it answers UR-lev
 
 ### Source
 
-Full proposal, including the eight findings with file references, the two mockups, the cost/risk table and the four open questions: `ai-reports/2026-08-23_2200_durations-panel-improvement-proposal/index.html`. Two authentic captures in that bundle's `screenshots/`.
+Full proposal, including the eight findings with file references, the two mockups, the cost/risk table and the four open questions: `ai-reports/2026-08_18-reports/2026-08-23_2200_durations-panel-improvement-proposal/index.html`. Two authentic captures in that bundle's `screenshots/`.
 
 ---
 *Captured: 2026-08-23T22:37:52Z*

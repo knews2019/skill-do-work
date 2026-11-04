@@ -149,7 +149,7 @@ list is still one Tab stop.
 **Validation:** User adjusted — the user replaced prompt A2's panel D with this during capture.
 
 ---
-*Source: capture answer to the report's open question Q1, replacing prompt A2 (finding F2), `ai-reports/2026-08-23_2200_durations-panel-improvement-proposal/index.html`.*
+*Source: capture answer to the report's open question Q1, replacing prompt A2 (finding F2), `ai-reports/2026-08_18-reports/2026-08-23_2200_durations-panel-improvement-proposal/index.html`.*
 
 ## Triage
 

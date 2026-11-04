@@ -988,7 +988,7 @@
                   <td><strong>Live Proof Bundle (REQ-632)</strong></td>
                   <td class="num">5</td>
                   <td>
-                    <code>ai-reports/2026-10-09_1916_REQ-632-activity-correlation-determinism/index.html</code><br>
+                    <code>ai-reports/2026-10_3-reports/2026-10-09_1916_REQ-632-activity-correlation-determinism/index.html</code><br>
                     <code>.../index-codex-gpt-6-astra.html</code> (new)<br>
                     <code>.../codex-gpt-6-astra-reply.md</code> (new)<br>
                     <code>.../index-claude-claude-opus-5-5.html</code> (new)<br>
@@ -1251,7 +1251,7 @@
     <section class="band" id="status-risks">
       <h2>5. Status, Verification Data, Risks &amp; Open Questions</h2>
       <p class="measure">
-        <strong>Non-visual evidence mode:</strong> UI captures were not expected for this work. Verification rests on 937 CLI unit/integration tests, 427 board tests, 39 browser tests, 6 heavy verification lanes, and live runs against <code>ai-reports/2026-10-09_1916_REQ-632-activity-correlation-determinism</code>.
+        <strong>Non-visual evidence mode:</strong> UI captures were not expected for this work. Verification rests on 937 CLI unit/integration tests, 427 board tests, 39 browser tests, 6 heavy verification lanes, and live runs against <code>ai-reports/2026-10_3-reports/2026-10-09_1916_REQ-632-activity-correlation-determinism</code>.
       </p>
 
       <div class="row">
@@ -1395,7 +1395,7 @@ just run-do-work-update</code></pre>
 skills/do-work/scripts/show-commit-diff.sh 31e7fcdf
 git show --stat 3645f3a1</code></pre>
           <p style="margin-top: 12px; margin-bottom: 0;"><strong>3. Run a targeted second opinion on the REQ-632 bundle (invokes live Codex):</strong></p>
-          <pre><code>skills/do-work/tools/do-work-cli.sh --repo-root . --format json ai-report-second-opinion --backend codex ai-reports/2026-10-09_1916_REQ-632-activity-correlation-determinism</code></pre>
+          <pre><code>skills/do-work/tools/do-work-cli.sh --repo-root . --format json ai-report-second-opinion --backend codex ai-reports/2026-10_3-reports/2026-10-09_1916_REQ-632-activity-correlation-determinism</code></pre>
         </div>
       </details>
     </section>
@@ -1434,7 +1434,7 @@ git show --stat 3645f3a1</code></pre>
               <td class="num"><strong>C3</strong></td>
               <td>Sections 2 and 4 present <code>index-codex-gpt-6-astra.html</code> and <code>codex-gpt-6-astra-reply.md</code> as direct, unmodified model outputs from the targeted Codex run.</td>
               <td>After Codex generated its page, the verifier performed an authorized post-run edit (commit <code>9fa76500</code>, Decision <code>D-08</code>) that removed <strong>22 source-map hyperlinks pointing to unpushed local commit <code>406ff3c4</code></strong>, normalized the worktree staging path in the reply, appended a verifier disclosure note, and re-ran <code>ai-report-judge</code>.</td>
-              <td><code>do-work/archive/UR-156/REQ-698-ai-report-second-opinion.md:145, 277, 321-323</code> &amp; <code>ai-reports/2026-10-09_1916_REQ-632-activity-correlation-determinism/codex-gpt-6-astra-reply.md:19</code></td>
+              <td><code>do-work/archive/UR-156/REQ-698-ai-report-second-opinion.md:145, 277, 321-323</code> &amp; <code>ai-reports/2026-10_3-reports/2026-10-09_1916_REQ-632-activity-correlation-determinism/codex-gpt-6-astra-reply.md:19</code></td>
             </tr>
             <tr>
               <td class="num"><strong>C4</strong></td>
@@ -1598,7 +1598,7 @@ git show --stat 3645f3a1</code></pre>
                   <td>Lines 1–534 / 1–88 · Full UR-061 migration input, D-01..D-12 decisions, review &amp; live logs.</td>
                 </tr>
                 <tr>
-                  <td><code>ai-reports/2026-10-09_1916_REQ-632-activity-correlation-determinism/*</code></td>
+                  <td><code>ai-reports/2026-10_3-reports/2026-10-09_1916_REQ-632-activity-correlation-determinism/*</code></td>
                   <td><code>index.html:86-93</code>, <code>codex-gpt-6-astra-reply.md</code>, <code>claude-claude-opus-5-5-reply.md</code>.</td>
                 </tr>
                 <tr>

@@ -10,7 +10,7 @@ word_count: 500
 
 ## Summary
 
-`bash _dev/tests/maintainer-verify.sh` takes about 6.5 minutes and the work pipeline runs it twice per REQ, so 167 REQ commits in 14 days cost on the order of 36 hours of gate time. The analysis report at `ai-reports/2026-09-03_0010_maintainer-verify-gate-cost-analysis/index.html` measured every stage: about 40% of one run is the same work repeated (the board's JavaScript probes run three times, the 14 aggregate sub-suites run one after another, no board test uses `t.Parallel`). These six REQs run the full gate once per REQ, add a path-scoped fast lane, remove the repeated work, and log every run.
+`bash _dev/tests/maintainer-verify.sh` takes about 6.5 minutes and the work pipeline runs it twice per REQ, so 167 REQ commits in 14 days cost on the order of 36 hours of gate time. The analysis report at `ai-reports/2026-09_18-reports/2026-09-03_0010_maintainer-verify-gate-cost-analysis/index.html` measured every stage: about 40% of one run is the same work repeated (the board's JavaScript probes run three times, the 14 aggregate sub-suites run one after another, no board test uses `t.Parallel`). These six REQs run the full gate once per REQ, add a path-scoped fast lane, remove the repeated work, and log every run.
 
 Message 3 (update the report with plain-terms contents, timings, and technology) was done directly in the same session and minted no REQ.
 
@@ -58,7 +58,7 @@ Message 3 (update the report with plain-terms contents, timings, and technology)
 > ok, do-work capture-request to optimize it
 > 
 > [maintainer, message 3]
-> also update ai-reports/2026-09-03_0010_maintainer-verify-gate-cost-analysis/index.html and show me what the test contains, how much time it takes, also tell me in plain terms what it does test and why it exists.
+> also update ai-reports/2026-09_18-reports/2026-09-03_0010_maintainer-verify-gate-cost-analysis/index.html and show me what the test contains, how much time it takes, also tell me in plain terms what it does test and why it exists.
 > 
 > I also want to know the underlying technology as well.
 > 

@@ -43,7 +43,7 @@ release_at: 2026-09-05T17:36:24Z
 
 ## What
 
-REQ-579 (render verify findings and skipped probes as compact rows in one list) replaced the finding cards with rows, but each row now renders as one long grey paragraph: the detail sentence, an arrow and the remedy sentence flow together and wrap under the chip, with one orphaned word on the second line. The subject heading, the chip and the row text also sit at three unrelated sizes and weights. Change the row layout so each finding reads as one warning line with its remedy visibly separated, using the layout the user picks from the mock-up report in `ai-reports/2026-09-05_1445_REQ-588-verify-findings-row-mockups/`.
+REQ-579 (render verify findings and skipped probes as compact rows in one list) replaced the finding cards with rows, but each row now renders as one long grey paragraph: the detail sentence, an arrow and the remedy sentence flow together and wrap under the chip, with one orphaned word on the second line. The subject heading, the chip and the row text also sit at three unrelated sizes and weights. Change the row layout so each finding reads as one warning line with its remedy visibly separated, using the layout the user picks from the mock-up report in `ai-reports/2026-09_18-reports/2026-09-05_1445_REQ-588-verify-findings-row-mockups/`.
 
 ## Prior Implementation
 
@@ -69,7 +69,7 @@ The user's words: "verify findings styling is broken". The strip exists to be sc
 
 ## Open Questions
 
-- [x] Which row layout from the mock-up report should ship? → M1, remedy on its own line under the detail, chip and text on a two-column grid, subject headings kept. Picked from the mock-up report ai-reports/2026-09-05_1445_REQ-588-verify-findings-row-mockups/ over M2 (subject as a row-label column) and M3 (remedy behind a toggle); both stay out of scope.
+- [x] Which row layout from the mock-up report should ship? → M1, remedy on its own line under the detail, chip and text on a two-column grid, subject headings kept. Picked from the mock-up report ai-reports/2026-09_18-reports/2026-09-05_1445_REQ-588-verify-findings-row-mockups/ over M2 (subject as a row-label column) and M3 (remedy behind a toggle); both stay out of scope.
   Recommended: M1 (remedy on its own line under the detail, chip and text on a two-column grid) — the smallest change that fixes all three defects, and it keeps REQ-579's subject heading and row order untouched.
   Also: M2 (subject as a row label in a leading column, chips aligned in one column, remedy under the detail) — the most scannable, costs a small renderer change; M3 (one-line rows, remedy revealed by a per-row toggle) — the smallest strip, costs a click to read what to do.
 
@@ -93,7 +93,7 @@ The user's words: "verify findings styling is broken". The strip exists to be sc
 
 ## Answer Notes
 
-- 2026-09-05 - [ ] Which row layout from the mock-up report should ship?: M1, remedy on its own line under the detail, chip and text on a two-column grid, subject headings kept. Picked from the mock-up report ai-reports/2026-09-05_1445_REQ-588-verify-findings-row-mockups/ over M2 (subject as a row-label column) and M3 (remedy behind a toggle); both stay out of scope.
+- 2026-09-05 - [ ] Which row layout from the mock-up report should ship?: M1, remedy on its own line under the detail, chip and text on a two-column grid, subject headings kept. Picked from the mock-up report ai-reports/2026-09_18-reports/2026-09-05_1445_REQ-588-verify-findings-row-mockups/ over M2 (subject as a row-label column) and M3 (remedy behind a toggle); both stay out of scope.
 > ```
 > M1 remedy under detail (Recommended)
 > ```

@@ -4,7 +4,7 @@
 Route A | 5e996eed..bd4d754c (builder 5ac41434, integrator citation fix 7a04e2ec)
 
 ### What's built
-- One new bundle `ai-reports/2026-10-09_1916_REQ-632-activity-correlation-determinism/` (index.html plus three evidence files). It separates the deterministic git reads from the scaffold that exists because a builder commit may lack its `[REQ-NNN]` prefix. It counts five git calls per refresh, cites the measured cost, and ends with the stamp-then-delete versus keep decision, with no recommendation.
+- One new bundle `ai-reports/2026-10_3-reports/2026-10-09_1916_REQ-632-activity-correlation-determinism/` (index.html plus three evidence files). It separates the deterministic git reads from the scaffold that exists because a builder commit may lack its `[REQ-NNN]` prefix. It counts five git calls per refresh, cites the measured cost, and ends with the stamp-then-delete versus keep decision, with no recommendation.
 
 ### Decisions / risks for you
 - None. The report changes no code. The decision it supports belongs to the maintainer.
@@ -15,7 +15,7 @@ Route A | 5e996eed..bd4d754c (builder 5ac41434, integrator citation fix 7a04e2ec
 - None.
 
 **Minor:**
-- F1. `ai-reports/2026-10-09_1916_REQ-632-activity-correlation-determinism/index.html:325` says "Thirteen have the shape `[work run] REQ-NNN step N`". `evidence/prefix-coverage.txt` lists 12 commits with that shape (all REQ-594 steps). The 13th `[work run]` commit, cfcf63e4, reads `[work run] REQ-554 remediation: …` and has no "step". The line should read: "Twelve have the shape `[work run] REQ-NNN step N`, and one more starts with `[work run] REQ-NNN`, each with the id present but not bracketed." — impact-negligible → report only
+- F1. `ai-reports/2026-10_3-reports/2026-10-09_1916_REQ-632-activity-correlation-determinism/index.html:325` says "Thirteen have the shape `[work run] REQ-NNN step N`". `evidence/prefix-coverage.txt` lists 12 commits with that shape (all REQ-594 steps). The 13th `[work run]` commit, cfcf63e4, reads `[work run] REQ-554 remediation: …` and has no "step". The line should read: "Twelve have the shape `[work run] REQ-NNN step N`, and one more starts with `[work run] REQ-NNN`, each with the id present but not bracketed." — impact-negligible → report only
 
 **Nit:**
 - F2. D-01 deletes `activity_correlation.go:111-113` (part of the doc comment for `correlateCommitsToRequests`). Line 110 would then end mid-sentence ("or membership in"). A real deletion would rewrite line 110 instead, so the 54-line count does not change. — impact-negligible → report only

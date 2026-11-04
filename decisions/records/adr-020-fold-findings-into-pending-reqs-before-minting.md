@@ -5,7 +5,7 @@ status: accepted
 topic_cluster: workflow-orchestration
 decided: 2026-08-20
 sources:
-  - ai-reports/2026-08-20_1131_remaining-work-and-the-req-treadmill/index.html
+  - ai-reports/2026-08_18-reports/2026-08-20_1131_remaining-work-and-the-req-treadmill/index.html
   - do-work/user-requests/UR-060/input.md
   - do-work/archive/UR-060/REQ-294-make-captures-impact-guard-symmetric.md
   - do-work/archive/UR-060/REQ-297-report-skipped-negligible-reqs-in-targeted-mode.md
@@ -66,4 +66,4 @@ The unit of queue growth changes from one file per facet to one checklist line p
 - [actions/review-work.md](../../skills/do-work/actions/review-work.md) — Step 10 Sweep consolidation, Restatement Sweep routing
 - [actions/work-reference.md](../../skills/do-work/actions/work-reference.md) — schema `sweep`/`sweep_key`/`impact` rows, Discovered Tasks Classification
 - [actions/capture.md](../../skills/do-work/actions/capture.md) — symmetric impact guard, fold-first duplicate check
-- `ai-reports/2026-08-20_1131_remaining-work-and-the-req-treadmill/index.html` — the measurements this decision answers
+- `ai-reports/2026-08_18-reports/2026-08-20_1131_remaining-work-and-the-req-treadmill/index.html` — the measurements this decision answers

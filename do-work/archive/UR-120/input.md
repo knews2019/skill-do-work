@@ -8,7 +8,7 @@ word_count: 34
 
 ## Summary
 
-The Activity view of the queue board scrolls twice: the transitions table has its own scroll box, and the board area around it scrolls too. The user sent a screenshot of the live board showing both scrollbars, asked for an existing REQ that covers it, and, finding none, for one to be made. The second message asked for mockups before implementation; those live in `ai-reports/2026-09-05_1520_activity-view-double-scroll-mockups/` and are not a queue request.
+The Activity view of the queue board scrolls twice: the transitions table has its own scroll box, and the board area around it scrolls too. The user sent a screenshot of the live board showing both scrollbars, asked for an existing REQ that covers it, and, finding none, for one to be made. The second message asked for mockups before implementation; those live in `ai-reports/2026-09_18-reports/2026-09-05_1520_activity-view-double-scroll-mockups/` and are not a queue request.
 
 ## Full Verbatim Input
 

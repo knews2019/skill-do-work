@@ -441,7 +441,7 @@
             <li><code>skills/do-work/tools/do-work-cli.sh</code> — Exports <code>DO_WORK_AI_REPORT_SECOND_OPINION_PROMPT</code> from <code>script_dir</code> because cached/prebuilt Go binaries run outside the suite folder and cannot find the prompt relative to their own binary path.</li>
             <li><code>_dev/tests/do-work-cli-launcher-behavior.sh</code> — Asserts that <code>do-work-cli.sh</code> locates the shipped prompt template in both repository-source and installed <code>.claude/skills/</code> layouts.</li>
             <li><code>skills/do-work-toolbox/actions/ai-report-reference.md</code> — Adds a one-paragraph note at the end of the shared reference clarifying that <code>second-opinion</code> writes into an existing bundle instead of creating a new timestamped folder.</li>
-            <li><code>ai-reports/2026-10-09_1916_REQ-632-activity-correlation-determinism/*</code> (5 files) — Adds the live proof outputs (<code>index-codex-gpt-6-astra.html</code>, <code>codex-gpt-6-astra-reply.md</code>, <code>index-claude-claude-opus-5-5.html</code>, <code>claude-claude-opus-5-5-reply.md</code>) and the two pass-gated banners in <code>index.html</code> required by the REQ's Red-Green proof.</li>
+            <li><code>ai-reports/2026-10_3-reports/2026-10-09_1916_REQ-632-activity-correlation-determinism/*</code> (5 files) — Adds the live proof outputs (<code>index-codex-gpt-6-astra.html</code>, <code>codex-gpt-6-astra-reply.md</code>, <code>index-claude-claude-opus-5-5.html</code>, <code>claude-claude-opus-5-5-reply.md</code>) and the two pass-gated banners in <code>index.html</code> required by the REQ's Red-Green proof.</li>
             <li><code>skills/do-work/tools/do-work-cli/prime-do-work-cli.md</code>, <code>lessons-do-work-cli.md</code>, &amp; <code>do-work/lessons-index.md</code> — Records the recurring <code>reaped-by-its-own-parent</code> supervisor trap and the new <code>native-backend-identity</code> lesson during post-review finalization (<code>D-12</code>).</li>
             <li><code>VERSION</code>, <code>CHANGELOG.md</code>, <code>skills/do-work/VERSION</code>, <code>skills/do-work/CHANGELOG.md</code>, <code>skills/do-work/actions/version.md</code>, &amp; <code>do-work/archive/UR-156/*</code> — Bumps the suite release to <code>0.306.0</code> and archives <code>UR-156</code> / <code>REQ-698</code> per <code>prime-releases.md</code>.</li>
           </ul>
@@ -562,7 +562,7 @@
           <pre><code>skills/do-work/scripts/show-commit-diff.sh d0106c31
 skills/do-work/scripts/show-commit-diff.sh 31e7fcdf</code></pre>
           <p style="margin-top:12px; margin-bottom:0;"><strong>Instruction (unrun in this report session — invokes live Codex):</strong></p>
-          <pre><code>skills/do-work/tools/do-work-cli.sh --repo-root . --format json ai-report-second-opinion --backend codex ai-reports/2026-10-09_1916_REQ-632-activity-correlation-determinism</code></pre>
+          <pre><code>skills/do-work/tools/do-work-cli.sh --repo-root . --format json ai-report-second-opinion --backend codex ai-reports/2026-10_3-reports/2026-10-09_1916_REQ-632-activity-correlation-determinism</code></pre>
         </div>
       </div>
 
@@ -591,7 +591,7 @@ skills/do-work/scripts/show-commit-diff.sh 31e7fcdf</code></pre>
         <div class="col-third card">
           <h3>A1 · Commit State</h3>
           <p><strong>Code is already committed and released.</strong> <code>REQ-698</code> shipped in <code>3645f3a1</code> (<code>v0.306.0</code>) and <code>HEAD</code> is at <code>fc234cf0</code> (<code>v0.306.1</code>).</p>
-          <p style="margin-bottom:0;">Only this new report bundle (<code>ai-reports/2026-10-15_1731_REQ-698-ai-report-second-opinion/</code>) is untracked, because <code>ai-report</code> leaves committing to you. Commit it if you want the report checked into Git.</p>
+          <p style="margin-bottom:0;">Only this new report bundle (<code>ai-reports/2026-10_3-reports/2026-10-15_1731_REQ-698-ai-report-second-opinion/</code>) is untracked, because <code>ai-report</code> leaves committing to you. Commit it if you want the report checked into Git.</p>
         </div>
 
         <div class="col-third card">
@@ -616,7 +616,7 @@ just run-do-work-update</code></pre>
     </section>
 
     <footer>
-      Report bundle: <code>ai-reports/2026-10-15_1731_REQ-698-ai-report-second-opinion/index.html</code> · Target: <code>REQ-698</code> (<code>UR-156</code>, migrated from <code>UR-061</code>) · Render check: verified via <code>ai-report-judge</code> at 1440×1000 and 390×844 in light and dark themes.
+      Report bundle: <code>ai-reports/2026-10_3-reports/2026-10-15_1731_REQ-698-ai-report-second-opinion/index.html</code> · Target: <code>REQ-698</code> (<code>UR-156</code>, migrated from <code>UR-061</code>) · Render check: verified via <code>ai-report-judge</code> at 1440×1000 and 390×844 in light and dark themes.
     </footer>
   </div>
 </body>

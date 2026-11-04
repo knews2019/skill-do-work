@@ -51,7 +51,7 @@ The Activity view scrolls twice. The transitions table sits in `.activity-table-
 
 ## Context
 
-Three mockups, each a scrollable page built from the board's stylesheet and the real Activity rows, plus the cause and a side-by-side table, are in `ai-reports/2026-09-05_1520_activity-view-double-scroll-mockups/index.html` (serve the repo over HTTP to open it; the iframes do not load from `file://`). The CSS under each mockup is the whole change for that variant.
+Three mockups, each a scrollable page built from the board's stylesheet and the real Activity rows, plus the cause and a side-by-side table, are in `ai-reports/2026-09_18-reports/2026-09-05_1520_activity-view-double-scroll-mockups/index.html` (serve the repo over HTTP to open it; the iframes do not load from `file://`). The CSS under each mockup is the whole change for that variant.
 
 - M1, one page scroll: `.activity-table-scroll { max-height: none; overflow: visible; }`; the `thead` keeps its sticky rule and now sticks to the top of `.board-main`. The board's 24 px top padding is scrollable content, so rows would show through above the stuck header; move that padding onto the summary line for this view (scoped, so other views keep it).
 - M2, table fills the viewport: `.board-main` stops scrolling on this view and the table takes the remaining height as the only scroller. Gives Activity a scroll model no other view has.

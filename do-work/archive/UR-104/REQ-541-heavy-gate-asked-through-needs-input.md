@@ -75,7 +75,7 @@ Add one queue status, `pending-heavy-testing`, in the `pending-answers` family: 
 
 ## Addendum (2026-09-03)
 
-User added (2026-09-03 21:29 and 21:34 local, in the test-budget session; 22:05 local, "update the batch REQs per A1-A3 via queued addenda" referring to the velocity report at `ai-reports/2026-09-03_2145_do-work-velocity-and-pending-queue-speed/`, item A3):
+User added (2026-09-03 21:29 and 21:34 local, in the test-budget session; 22:05 local, "update the batch REQs per A1-A3 via queued addenda" referring to the velocity report at `ai-reports/2026-09_18-reports/2026-09-03_2145_do-work-velocity-and-pending-queue-speed/`, item A3):
 
 > ```
 > each test file should finish under 30 seconds (use the 80% value 20% effort principle until this is obtained)

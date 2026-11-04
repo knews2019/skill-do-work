@@ -67,7 +67,7 @@ Add `do-work-cli advance REQ-NNN`: for the REQ's route, report the current lifec
 Every later move in this chain deletes prose by pointing at `advance`. Landing it read-only first means it changes no behavior, so it needs no prose deletion and every other REQ can depend on it.
 
 ## Context
-Analysis: `ai-reports/2026-09-02_1651_orchestrator-simplification-analysis/index.html` (commit 1ddd7c70). Measured at 721c2fb4: `work.md` 850 lines and 20 steps; about 55% of step lines are mechanics; `_dev/tests/contract-regressions.sh` holds 220 references into the two work files and pins sentences with mutation-tested predicates, which is why earlier moves into Go left prose behind.
+Analysis: `ai-reports/2026-09_18-reports/2026-09-02_1651_orchestrator-simplification-analysis/index.html` (commit 1ddd7c70). Measured at 721c2fb4: `work.md` 850 lines and 20 steps; about 55% of step lines are mechanics; `_dev/tests/contract-regressions.sh` holds 220 references into the two work files and pins sentences with mutation-tested predicates, which is why earlier moves into Go left prose behind.
 
 ## Detailed Requirements
 - Phases per route (A, B, C) derived from the current `work.md` step order; the report's step table is the source, with mechanical phases CLI-driven and judgment phases reported as "agent judgment: <what>".

@@ -34,7 +34,7 @@ Capture all nine areas of the selected test-efficiency report as separate work i
 - All nine areas have distinct roots from current pending work; no fold targets were changed.
 
 ## Source Provenance
-- Original report: ai-reports/2026-09-06_1606_test-efficiency-improvement-proposal/index.html
+- Original report: ai-reports/2026-09_18-reports/2026-09-06_1606_test-efficiency-improvement-proposal/index.html
 - Source SHA-256: e0d4cc3198ecc98a69525c5cc1e179e28f179e05192c5b58af6baa7d85e7a946
 - Exact report bundle copied under do-work/user-requests/UR-128/assets/; its source excerpts and diagnostic images remain available.
 - The following nine prompts are extracted verbatim from the displayed HTML pre elements; surrounding report context is preserved in the copied source.

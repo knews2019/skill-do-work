@@ -11,7 +11,7 @@ word_count: 9
 ## Summary
 
 The user read the solutions report at
-`ai-reports/2026-08-19_1345_durations-label-face-robustness/index.html` and chose **O2** —
+`ai-reports/2026-08_18-reports/2026-08-19_1345_durations-label-face-robustness/index.html` and chose **O2** —
 the option the report itself recommended against on cost grounds — and answered the
 objection directly by asking for the browser tests that O2 needs. The report's argument
 against O2 was never that it is wrong; it was that it puts a browser in a test path that

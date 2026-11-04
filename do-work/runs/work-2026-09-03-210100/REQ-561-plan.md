@@ -213,7 +213,7 @@ skills/do-work-board/tools/queue-kanban/web/board.css
 
 ### Queue stamp from the latest velocity report
 
-Immediately before stamping, re-read `ai-reports/2026-09-03_2145_do-work-velocity-and-pending-queue-speed/index.html` and resolve each named REQ's current location/status. Edit only capture-editable files still under `do-work/queue/`; never edit `do-work/working/`, a foreign claim, or an already terminal record. Stage explicit paths, never `do-work/queue/` as a directory.
+Immediately before stamping, re-read `ai-reports/2026-09_18-reports/2026-09-03_2145_do-work-velocity-and-pending-queue-speed/index.html` and resolve each named REQ's current location/status. Edit only capture-editable files still under `do-work/queue/`; never edit `do-work/working/`, a foreign claim, or an already terminal record. Stage explicit paths, never `do-work/queue/` as a directory.
 
 At plan time the report/current tree resolve to these pending files for `priority: now` (REQ-502 is currently claimed in its own lane and is intentionally absent):
 

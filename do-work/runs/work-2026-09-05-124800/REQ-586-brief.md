@@ -147,7 +147,7 @@ Depends on REQ-585 (give the Activity view one scroll surface): both edit the Ac
 
 ## Assets
 
-- `do-work/user-requests/UR-121/assets/REQ-586-screenshot-1-top-bar-wrapped.png`: the top bar of the M1 mockup (`ai-reports/2026-09-05_1520_activity-view-double-scroll-mockups/mockups/m1-one-page-scroll.html`) in a narrow frame. Left, the identity block on four lines: "do-work/", "queue", "skill-do-work2", "Generated 2026-09-05" and "12:17 UTC" on a fifth. Right, the controls on two rows: the filter pill (Filter id or title, All domains, All statuses) above, the view pill (Board, Calendar, Durations, Timeline, Activity selected, Testing) and the Touched-in pill (6h, 24h selected, 48h, 7d) below. The mockup copies the shipped top bar rules, so the real board wraps the same way at the width where its three groups stop fitting on one row.
+- `do-work/user-requests/UR-121/assets/REQ-586-screenshot-1-top-bar-wrapped.png`: the top bar of the M1 mockup (`ai-reports/2026-09_18-reports/2026-09-05_1520_activity-view-double-scroll-mockups/mockups/m1-one-page-scroll.html`) in a narrow frame. Left, the identity block on four lines: "do-work/", "queue", "skill-do-work2", "Generated 2026-09-05" and "12:17 UTC" on a fifth. Right, the controls on two rows: the filter pill (Filter id or title, All domains, All statuses) above, the view pill (Board, Calendar, Durations, Timeline, Activity selected, Testing) and the Touched-in pill (6h, 24h selected, 48h, 7d) below. The mockup copies the shipped top bar rules, so the real board wraps the same way at the width where its three groups stop fitting on one row.
 
 ## Full Context
 See `do-work/user-requests/UR-121/input.md` for complete verbatim input.

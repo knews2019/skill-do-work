@@ -89,7 +89,7 @@ See `do-work/user-requests/UR-104/input.md` for complete verbatim input.
 
 ## Addendum (2026-09-03)
 
-User added (2026-09-03 21:29 local, in the test-budget session; 22:05 local, "update the batch REQs per A1-A3 via queued addenda" referring to the velocity report at `ai-reports/2026-09-03_2145_do-work-velocity-and-pending-queue-speed/`, item A2):
+User added (2026-09-03 21:29 local, in the test-budget session; 22:05 local, "update the batch REQs per A1-A3 via queued addenda" referring to the velocity report at `ai-reports/2026-09_18-reports/2026-09-03_2145_do-work-velocity-and-pending-queue-speed/`, item A2):
 
 > ```
 > each test file should finish under 30 seconds (use the 80% value 20% effort principle until this is obtained)

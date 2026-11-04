@@ -54,7 +54,7 @@ One crew member becomes the loading point for shared principles currently spread
 The audit found zero near-identical cross-file row pairs, so duplication is not the reason for this change. One loading point makes the shared principles available consistently during implementation and review while action-specific guidance stays with its action.
 
 ## Context
-Analysis: `ai-reports/2026-09-02_1651_orchestrator-simplification-analysis/index.html` (commit 1ddd7c70). Measured at 721c2fb4: `work.md` 850 lines and 20 steps; about 55% of step lines are mechanics; `_dev/tests/contract-regressions.sh` holds 220 references into the two work files and pins sentences with mutation-tested predicates, which is why earlier moves into Go left prose behind.
+Analysis: `ai-reports/2026-09_18-reports/2026-09-02_1651_orchestrator-simplification-analysis/index.html` (commit 1ddd7c70). Measured at 721c2fb4: `work.md` 850 lines and 20 steps; about 55% of step lines are mechanics; `_dev/tests/contract-regressions.sh` holds 220 references into the two work files and pins sentences with mutation-tested predicates, which is why earlier moves into Go left prose behind.
 
 ## Detailed Requirements
 - One crew member with the union of rows, deduplicated, each keyed on the condition it guards.

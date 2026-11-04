@@ -117,7 +117,7 @@ midpoint ticks; and the summary sentence's exclusion-rule wording is unchanged.
 **Validation:** User confirmed (bundled invocation).
 
 ---
-*Source: prompt A7, `ai-reports/2026-08-23_2200_durations-panel-improvement-proposal/index.html` (finding F7).*
+*Source: prompt A7, `ai-reports/2026-08_18-reports/2026-08-23_2200_durations-panel-improvement-proposal/index.html` (finding F7).*
 
 ## Triage
 

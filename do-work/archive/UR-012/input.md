@@ -17,7 +17,7 @@ The pipeline should assume exclusive repository use and delete the machinery tha
 unsupported concurrent actors.
 
 The design is specified in a report the user edited:
-`ai-reports/2026-08-01_1231_lock-simplification-analysis/index.html`
+`ai-reports/2026-08_18-reports/2026-08-01_1231_lock-simplification-analysis/index.html`
 
 ## Extracted Requests
 
@@ -35,7 +35,7 @@ The design is specified in a report the user edited:
 ## Full Verbatim Input
 
 plan changed a bit, read it again and
-capture it as a REQ file:///Users/t2/Desktop/e1-experimental-repos/skill-do-work2/ai-reports/2026-08-01_1231_lock-simplification-analysis/index.html
+capture it as a REQ file:///Users/t2/Desktop/e1-experimental-repos/skill-do-work2/ai-reports/2026-08_18-reports/2026-08-01_1231_lock-simplification-analysis/index.html
 
 ### Referenced design document (user-edited), verbatim content
 

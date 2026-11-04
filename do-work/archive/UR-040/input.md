@@ -10,7 +10,7 @@ word_count: 2419
 
 ## Summary
 
-The user pasted a draft spec for a new "Codebase Maintainability Audit" capability into `do-work validate-feedback`, asking to (1) ground the spec in the current state of the repo, (2) clarify anything incorrect or improvable, and (3) capture requests so the skill can be implemented properly. The validation ran as a full triage (8 read-only verification agents against commit `b1fad27`); the results — 8 confirmed claim clusters, 9 corrections, 7 design seams, 4 decisions — are recorded in `ai-reports/2026-08-13_2200_maintainability-audit-spec-validation/index.html`, which is part of this UR's context.
+The user pasted a draft spec for a new "Codebase Maintainability Audit" capability into `do-work validate-feedback`, asking to (1) ground the spec in the current state of the repo, (2) clarify anything incorrect or improvable, and (3) capture requests so the skill can be implemented properly. The validation ran as a full triage (8 read-only verification agents against commit `b1fad27`); the results — 8 confirmed claim clusters, 9 corrections, 7 design seams, 4 decisions — are recorded in `ai-reports/2026-08_18-reports/2026-08-13_2200_maintainability-audit-spec-validation/index.html`, which is part of this UR's context.
 
 Decisions made during capture:
 - Audit reports and waivers live in `do-work/audits/` (user's explicit choice).
@@ -163,7 +163,7 @@ Verbatim follow-ups during capture:
 
 "another thing, since you also have a go tool, consider building tools for the audit, that will also output mechanicanically some flagged folders, files, etc... for the MVP it does not have too be too complex, but basically whatever we can script would be good to have it as script not as LLM call, becuase those are cheaper and more robust"
 
-"also create some reqs as well already and cross link into the ai-reports/2026-08-13_2200_maintainability-audit-spec-validation/index.html"
+"also create some reqs as well already and cross link into the ai-reports/2026-08_18-reports/2026-08-13_2200_maintainability-audit-spec-validation/index.html"
 
 ---
 *Captured: 2026-08-13T22:35:10Z*

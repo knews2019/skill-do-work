@@ -31,7 +31,7 @@ Resolved with the user during capture (three questions, all answered with the re
 ## Design Source
 
 The chart already exists and was render-judged in light and dark at
-`ai-reports/2026-08-17_1401_UR-048-estimator-calibration-and-anomaly-surfacing/index.html`
+`ai-reports/2026-08_18-reports/2026-08-17_1401_UR-048-estimator-calibration-and-anomaly-surfacing/index.html`
 (section 8, commit `6e79932`). It is the reference implementation: same three panels,
 same shared axis, same validated route ramp, same outlier handling. The board port
 should reuse those decisions rather than re-derive them.
@@ -45,7 +45,7 @@ Renumbered to UR-050; the other batch was left untouched. REQ-219 was reserved t
 
 ## Full Verbatim Input
 
-add a duration chart to the ai-reports/2026-08-17_1401_UR-048-estimator-calibration-and-anomaly-surfacing/index.html because that way I can identify if there is an overtime response time degradation, outliers, how often are these reqs executed
+add a duration chart to the ai-reports/2026-08_18-reports/2026-08-17_1401_UR-048-estimator-calibration-and-anomaly-surfacing/index.html because that way I can identify if there is an overtime response time degradation, outliers, how often are these reqs executed
 
 and also add capture-request prompt to have such chart added to the go served kanban board
 

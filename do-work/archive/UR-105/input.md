@@ -10,7 +10,7 @@ word_count: 19
 
 ## Summary
 
-The maintainer asked to capture "the requests": the eleven paste-ready `capture-request:` lines in `do-work/audits/audit-2026-09-03.md` §Plan (audited commit dc8a64e3, report committed at 83594c5e), handed back by the audit session moments earlier. Ten become REQs below in the plan's order (pure deletions, then consolidations, then behaviour-preserving refactors); the eleventh is an addendum to queued REQ-509 and is recorded under Folded Requests. The second half of the input (update the velocity report where speed is involved) was carried out in the capturing session, not queued: the audit's one runtime speed item (REQ-552, the archive walked twice per `audit-archive-timestamps` run) and the gate-guard observation (the launcher-thinness ratchet deleted in 0.266.9, re-homed by REQ-551) were appended to `ai-reports/2026-09-03_2145_do-work-velocity-and-pending-queue-speed/index.html` as lesson L14 and a handoff paragraph.
+The maintainer asked to capture "the requests": the eleven paste-ready `capture-request:` lines in `do-work/audits/audit-2026-09-03.md` §Plan (audited commit dc8a64e3, report committed at 83594c5e), handed back by the audit session moments earlier. Ten become REQs below in the plan's order (pure deletions, then consolidations, then behaviour-preserving refactors); the eleventh is an addendum to queued REQ-509 and is recorded under Folded Requests. The second half of the input (update the velocity report where speed is involved) was carried out in the capturing session, not queued: the audit's one runtime speed item (REQ-552, the archive walked twice per `audit-archive-timestamps` run) and the gate-guard observation (the launcher-thinness ratchet deleted in 0.266.9, re-homed by REQ-551) were appended to `ai-reports/2026-09_18-reports/2026-09-03_2145_do-work-velocity-and-pending-queue-speed/index.html` as lesson L14 and a handoff paragraph.
 
 ## Extracted Requests
 
@@ -41,7 +41,7 @@ The maintainer asked to capture "the requests": the eleven paste-ready `capture-
 ## Full Verbatim Input
 
 > ```
-> capture the requests and if there is anything that is related to speed improvement also update this report ai-reports/2026-09-03_2145_do-work-velocity-and-pending-queue-speed/index.html.
+> capture the requests and if there is anything that is related to speed improvement also update this report ai-reports/2026-09_18-reports/2026-09-03_2145_do-work-velocity-and-pending-queue-speed/index.html.
 > ```
 
 ---

@@ -26,7 +26,7 @@ The attached screenshot shows the queue-kanban board's Durations view for the pr
 
 ## Clarifications Answered During Capture
 
-1. **Which design should the fix implement?** → The maintainer chose **Alternative 2 — top-N extremes in the text band** from the five-option proposal report at `ai-reports/2026-08-18_1000_durations-lane-legibility-alternatives/` (commit 0f8e349): marks keep the lane's top strip, both label rows move below a divider with leader ticks (the captured REQ-231 spacing fix), **and** label selection changes from left-to-right first-fit to top-N-by-magnitude, so every drawn label is one of the band's longest spans.
+1. **Which design should the fix implement?** → The maintainer chose **Alternative 2 — top-N extremes in the text band** from the five-option proposal report at `ai-reports/2026-08_18-reports/2026-08-18_1000_durations-lane-legibility-alternatives/` (commit 0f8e349): marks keep the lane's top strip, both label rows move below a divider with leader ticks (the captured REQ-231 spacing fix), **and** label selection changes from left-to-right first-fit to top-N-by-magnitude, so every drawn label is one of the band's longest spans.
 2. **New REQ or existing?** → Existing: queued REQ-231 (`addendum_to: REQ-226`) already captured the spacing half of this defect. This UR is recorded as an addendum to it rather than as a duplicate REQ; the Alternative-2 selection rule is the scope it adds.
 
 ## Assets

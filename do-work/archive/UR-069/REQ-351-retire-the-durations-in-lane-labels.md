@@ -128,7 +128,7 @@ place text in the SVG are gone, each named in the hand-back.
 **Validation:** User confirmed — explicit yes to the reversal during capture.
 
 ---
-*Source: prompt A5, `ai-reports/2026-08-23_2200_durations-panel-improvement-proposal/index.html` (finding F5).*
+*Source: prompt A5, `ai-reports/2026-08_18-reports/2026-08-23_2200_durations-panel-improvement-proposal/index.html` (finding F5).*
 
 ## Triage
 

@@ -131,7 +131,7 @@ cost line is answered and the recommendation no longer applies. Do not relitigat
 the plan step.
 
 Full argument, both options, and the live measurements:
-`ai-reports/2026-08-19_1345_durations-label-face-robustness/index.html`.
+`ai-reports/2026-08_18-reports/2026-08-19_1345_durations-label-face-robustness/index.html`.
 
 ---
 

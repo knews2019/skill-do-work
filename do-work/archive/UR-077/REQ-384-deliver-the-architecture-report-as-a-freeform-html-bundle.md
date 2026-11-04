@@ -65,7 +65,7 @@ Captured after an interactive session that resolved the design decisions below; 
 - **Bells and whistles.** Rendered diagrams (drawn, not fenced code), a clickable section navigation, and a considered visual design are the floor, not the ceiling.
 - **Verification discipline survives.** Claims stay labeled `VERIFIED` (anchored) or `INFERRED` (basis stated); anchors render as links to the file and line on GitHub; verification still runs against a committed tree, and the run stays unattended.
 - **Authored delta, not byte-diff.** Each report opens with a "changed since last report" section written by reading the previous HTML report. The carry-forward byte-identical rule and the diff-two-reports contract are removed, not reworded.
-- **Prior-report lookup ignores markdown bundles.** The existing `ai-reports/2026-08-26_1709_architecture-report/` markdown bundle stays as committed history and is never a prior baseline for an HTML run.
+- **Prior-report lookup ignores markdown bundles.** The existing `ai-reports/2026-08_18-reports/2026-08-26_1709_architecture-report/` markdown bundle stays as committed history and is never a prior baseline for an HTML run.
 - **Immutability survives.** Dated bundles are never edited, deleted, or regenerated; a new run is a new bundle.
 - **Capability only.** This REQ lands the changed action, helper, and tests. It does not run the action — the first HTML report is produced by a later invocation.
 

@@ -29,7 +29,7 @@ Resolved interactively during capture, via two rounds of structured questions:
 - **Treatment: redesigned, not faithful.** The HTML is free to reorganize and tell the story visually rather than mirroring a fixed section list.
 - **No markdown file at all, and freeform.** User's words on the proof question: "yes, but note that I don't want the markdown file at all, and the HTML file needs to be freeform in the sense that as models evolve, I keep getting a better architecture view into it."
 - **Delta survives as authored prose.** Byte-identical carry-forward cannot survive freeform re-authoring; the user chose an authored "changed since last report" opening section, written by reading the previous report, over dropping change tracking entirely.
-- **The existing markdown bundle stays.** `ai-reports/2026-08-26_1709_architecture-report/` is kept as committed history; future runs ignore markdown bundles when looking for a prior report.
+- **The existing markdown bundle stays.** `ai-reports/2026-08_18-reports/2026-08-26_1709_architecture-report/` is kept as committed history; future runs ignore markdown bundles when looking for a prior report.
 
 ---
 *Captured: 2026-08-26T17:56:52Z*

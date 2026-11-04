@@ -70,7 +70,7 @@ Discovered during REQ-059's adversarial review. See `do-work/archive/UR-008/REQ-
 
 ## Pre-Flight
 
-**Git:** ⚠ 1 uncommitted untracked file (`ai-reports/2026-07-29_1937_UR-007-008-deep-review-batch/index.html` — prior batch's ai-report, unrelated; explicit-file staging keeps it out of this REQ's commit)
+**Git:** ⚠ 1 uncommitted untracked file (`ai-reports/2026-07_4-reports/2026-07-29_1937_UR-007-008-deep-review-batch/index.html` — prior batch's ai-report, unrelated; explicit-file staging keeps it out of this REQ's commit)
 **Tests baseline:** ✓ Passing (`bash _dev/tests/contract-regressions.sh`; baseline recorded in `do-work/working/baseline.json`)
 **Dependencies:** ✓ N/A (markdown + shell; no package install surface)
 

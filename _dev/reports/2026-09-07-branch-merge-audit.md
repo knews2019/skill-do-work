@@ -30,7 +30,7 @@ Initial main: `57e6431e`. Initial checkout: `do-work-queue-drain-gemini` at `6b2
 
 The two restored fixes ship together as 0.305.34. Historical version/changelog conflicts retain current metadata. The final merge records both old branch tips while applying their still-missing behavior at the current paths.
 
-During verification, an external process committed the pending two-parent integration as `68bc8c5e`, then rewrote local history for a cleanup. Main is now `0d721e1b` and the gemini branch is `afb025dc`. Comparing the tested integration tree with the rewritten main shows only one HTML report differs: `ai-reports/2026-09-06_2113_do-work-cli-guide/index.html`. All source, release metadata, and test files are identical. The rewritten history is preserved.
+During verification, an external process committed the pending two-parent integration as `68bc8c5e`, then rewrote local history for a cleanup. Main is now `0d721e1b` and the gemini branch is `afb025dc`. Comparing the tested integration tree with the rewritten main shows only one HTML report differs: `ai-reports/2026-09_18-reports/2026-09-06_2113_do-work-cli-guide/index.html`. All source, release metadata, and test files are identical. The rewritten history is preserved.
 
 That process also created `backup-main-before-secret-scrub` at `68bc8c5e`. This newly created backup is deliberately excluded: merging it would make the pre-cleanup history reachable again. All other current local and remote branch tips are ancestors of rewritten main.
 

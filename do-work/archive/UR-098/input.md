@@ -10,7 +10,7 @@ word_count: 95
 
 ## Summary
 
-Move every mechanical step of the run action into the Go CLI behind one lifecycle command, `advance`, and rewrite `work.md` as principles keyed on conditions. Each move is one REQ that carries a four-part write set: the owning CLI command, the deleted prose, the deleted sentence-predicates in the contract suite, and a new behavior test. The analysis and the per-step classification are in `ai-reports/2026-09-02_1651_orchestrator-simplification-analysis/index.html` (commit 1ddd7c70).
+Move every mechanical step of the run action into the Go CLI behind one lifecycle command, `advance`, and rewrite `work.md` as principles keyed on conditions. Each move is one REQ that carries a four-part write set: the owning CLI command, the deleted prose, the deleted sentence-predicates in the contract suite, and a new behavior test. The analysis and the per-step classification are in `ai-reports/2026-09_18-reports/2026-09-02_1651_orchestrator-simplification-analysis/index.html` (commit 1ddd7c70).
 
 The chain runs after the recovery work: its root waits on REQ-489, REQ-498, REQ-499, REQ-500, REQ-501 and REQ-502.
 

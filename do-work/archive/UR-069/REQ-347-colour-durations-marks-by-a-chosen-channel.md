@@ -100,7 +100,7 @@ palette's capacity is both implemented and stated in the legend.
 **Validation:** User confirmed (capture answer Q4: lane plus colour-by toggle).
 
 ---
-*Source: capture answer to the report's open question Q3, `ai-reports/2026-08-23_2200_durations-panel-improvement-proposal/index.html`.*
+*Source: capture answer to the report's open question Q3, `ai-reports/2026-08_18-reports/2026-08-23_2200_durations-panel-improvement-proposal/index.html`.*
 
 ## Triage
 

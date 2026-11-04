@@ -115,7 +115,7 @@ count of the URs that found no row.
 **Validation:** User confirmed (bundled invocation, capture answer Q4).
 
 ---
-*Source: prompt A1, `ai-reports/2026-08-23_2200_durations-panel-improvement-proposal/index.html` (finding F1).*
+*Source: prompt A1, `ai-reports/2026-08_18-reports/2026-08-23_2200_durations-panel-improvement-proposal/index.html` (finding F1).*
 
 ---
 

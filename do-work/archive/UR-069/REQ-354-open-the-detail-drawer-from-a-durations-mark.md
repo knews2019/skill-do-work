@@ -114,7 +114,7 @@ and the hover readout is unchanged.
 **Validation:** User confirmed (bundled invocation).
 
 ---
-*Source: prompt A8, `ai-reports/2026-08-23_2200_durations-panel-improvement-proposal/index.html` (finding F8).*
+*Source: prompt A8, `ai-reports/2026-08_18-reports/2026-08-23_2200_durations-panel-improvement-proposal/index.html` (finding F8).*
 
 ## Triage
 

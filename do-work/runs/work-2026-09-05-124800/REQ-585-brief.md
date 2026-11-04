@@ -35,7 +35,7 @@ Also read every path in the REQ's `prime_files` (`_dev/primes/prime-kanban-board
 
 ## What to build (the decided layout: M1)
 
-The orchestrator resolved the REQ's open question as **D-01: M1, one page scroll with the column header stuck to the board's top edge**. The mockup of exactly this is `ai-reports/2026-09-05_1520_activity-view-double-scroll-mockups/mockups/m1-one-page-scroll.html` (serve the repo root over HTTP to open it); its `<style>` block is the whole proposed diff:
+The orchestrator resolved the REQ's open question as **D-01: M1, one page scroll with the column header stuck to the board's top edge**. The mockup of exactly this is `ai-reports/2026-09_18-reports/2026-09-05_1520_activity-view-double-scroll-mockups/mockups/m1-one-page-scroll.html` (serve the repo root over HTTP to open it); its `<style>` block is the whole proposed diff:
 
 ```css
 .activity-table-scroll { max-height: none; overflow: visible; }
@@ -124,7 +124,7 @@ The Activity view scrolls twice. The transitions table sits in `.activity-table-
 
 ## Context
 
-Three mockups, each a scrollable page built from the board's stylesheet and the real Activity rows, plus the cause and a side-by-side table, are in `ai-reports/2026-09-05_1520_activity-view-double-scroll-mockups/index.html` (serve the repo over HTTP to open it; the iframes do not load from `file://`). The CSS under each mockup is the whole change for that variant.
+Three mockups, each a scrollable page built from the board's stylesheet and the real Activity rows, plus the cause and a side-by-side table, are in `ai-reports/2026-09_18-reports/2026-09-05_1520_activity-view-double-scroll-mockups/index.html` (serve the repo over HTTP to open it; the iframes do not load from `file://`). The CSS under each mockup is the whole change for that variant.
 
 - M1, one page scroll: `.activity-table-scroll { max-height: none; overflow: visible; }`; the `thead` keeps its sticky rule and now sticks to the top of `.board-main`. The board's 24 px top padding is scrollable content, so rows would show through above the stuck header; move that padding onto the summary line for this view (scoped, so other views keep it).
 - M2, table fills the viewport: `.board-main` stops scrolling on this view and the table takes the remaining height as the only scroller. Gives Activity a scroll model no other view has.
