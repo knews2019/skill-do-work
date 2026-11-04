@@ -1,0 +1,947 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="ai-report-kind" content="proposal">
+<title>AI-Evaluation-Loop — Side-by-Side Decision Matrix &amp; Implementation Plan</title>
+<style>
+:root {
+  color-scheme: light dark;
+  --bg: #f4f6fb;
+  --surface: #ffffff;
+  --surface-alt: #eef2fa;
+  --ink: #172038;
+  --muted: #525d7a;
+  --line: #d4dcef;
+  --accent: #0c6b58;
+  --accent-soft: #e0f5ef;
+  --accent-border: #7fd4c0;
+  --change: #5b3fd6;
+  --change-soft: #ede9fe;
+  --warn: #b85d00;
+  --warn-soft: #fff3e0;
+  --danger: #c92a49;
+  --link: #1957b8;
+  --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --display: ui-rounded, "SF Pro Rounded", system-ui, -apple-system, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0e1424;
+    --surface: #172038;
+    --surface-alt: #1e2946;
+    --ink: #e9edff;
+    --muted: #a3aed0;
+    --line: #2d385c;
+    --accent: #5fe3c3;
+    --accent-soft: #143532;
+    --accent-border: #2b7a69;
+    --change: #b39dff;
+    --change-soft: #282054;
+    --warn: #ffc061;
+    --warn-soft: #3a2a14;
+    --danger: #ff7a93;
+    --link: #7ab3ff;
+  }
+}
+*, *::before, *::after { box-sizing: border-box; }
+html { scroll-padding-top: 4.5rem; background: var(--bg); color: var(--ink); }
+body {
+  margin: 0;
+  font: 16.5px/1.6 var(--sans);
+  overflow-wrap: break-word;
+  background: var(--bg);
+  color: var(--ink);
+}
+a { color: var(--link); text-underline-offset: 0.16em; }
+a:focus-visible, button:focus-visible, summary:focus-visible, [tabindex]:focus-visible {
+  outline: 3px solid var(--change);
+  outline-offset: 2px;
+}
+h1, h2, h3, h4 {
+  font-family: var(--display);
+  line-height: 1.18;
+  letter-spacing: -0.015em;
+  margin: 0 0 0.55em;
+  overflow-wrap: anywhere;
+}
+h1 { font-size: clamp(1.9rem, 4vw, 3.1rem); font-weight: 800; }
+h2 { font-size: clamp(1.4rem, 2.5vw, 2rem); font-weight: 800; }
+h3 { font-size: 1.12rem; font-weight: 750; }
+p { margin: 0 0 0.9em; }
+code, pre { font-family: var(--mono); font-size: 0.88em; }
+code {
+  background: var(--surface-alt);
+  padding: 0.12em 0.38em;
+  border-radius: 5px;
+  overflow-wrap: anywhere;
+}
+pre {
+  margin: 0.5rem 0 1rem;
+  padding: 0.9rem 1rem;
+  background: var(--surface-alt);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  overflow-x: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+pre code { background: none; padding: 0; }
+.wrap {
+  width: min(1180px, calc(100% - 2rem));
+  margin: 0 auto;
+}
+.backlink {
+  padding: 1rem 0 0;
+  margin: 0;
+  font-size: 0.92rem;
+  color: var(--muted);
+}
+.change-box {
+  margin: 0.85rem 0 0;
+  padding: 1rem 1.2rem;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-left: 5px solid var(--change);
+  border-radius: 10px;
+}
+.change-box h2 {
+  font-size: 1.02rem;
+  margin: 0 0 0.45rem;
+}
+.change-box ul {
+  margin: 0;
+  padding-left: 1.25rem;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr));
+  gap: 0.35rem 1.5rem;
+}
+.hero {
+  padding: 2rem 0 1.75rem;
+}
+.eyebrow {
+  display: inline-block;
+  font-size: 0.78rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--accent);
+  margin-bottom: 0.4rem;
+}
+.lede {
+  font-size: clamp(1.05rem, 1.5vw, 1.22rem);
+  max-width: 74ch;
+  color: var(--ink);
+}
+.status-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 1rem 0;
+}
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.28rem 0.75rem;
+  border-radius: 999px;
+  font-size: 0.83rem;
+  font-weight: 700;
+  background: var(--surface);
+  border: 1px solid var(--line);
+}
+.pill.rec {
+  background: var(--accent-soft);
+  border-color: var(--accent-border);
+  color: var(--accent);
+}
+.rev-banner {
+  margin-top: 1rem;
+  padding: 0.95rem 1.15rem;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  font-size: 0.92rem;
+}
+.rev-banner p:last-child { margin-bottom: 0; }
+.sticky-nav {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: color-mix(in srgb, var(--bg) 92%, transparent);
+  backdrop-filter: blur(8px);
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+}
+.sticky-nav .wrap {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 1.1rem;
+  align-items: center;
+  padding: 0.6rem 0;
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+.sticky-nav a { text-decoration: none; }
+.sticky-nav a:hover { text-decoration: underline; }
+.section {
+  padding: 2.5rem 0;
+  border-bottom: 1px solid var(--line);
+}
+.section-intro {
+  max-width: 76ch;
+  color: var(--muted);
+}
+.badge {
+  display: inline-block;
+  vertical-align: middle;
+  margin-left: 0.4rem;
+  padding: 0.14rem 0.55rem;
+  border-radius: 999px;
+  background: var(--change-soft);
+  color: var(--change);
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.term {
+  border-bottom: 1.5px dotted var(--change);
+  cursor: help;
+}
+.filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  align-items: center;
+  margin: 1rem 0 0.85rem;
+}
+.filter-bar span {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--muted);
+  margin-right: 0.25rem;
+}
+.btn {
+  font: 700 0.86rem var(--sans);
+  color: var(--ink);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 0.4rem 0.8rem;
+  cursor: pointer;
+}
+.btn:hover { border-color: var(--change); }
+.btn[aria-pressed="true"] {
+  background: var(--change-soft);
+  border-color: var(--change);
+  color: var(--change);
+}
+.matrix-wrap {
+  max-width: 100%;
+  overflow-x: auto;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+}
+table.matrix {
+  width: 100%;
+  min-width: 760px;
+  border-collapse: collapse;
+  table-layout: fixed;
+  text-align: left;
+}
+.matrix th, .matrix td {
+  padding: 0.9rem 1rem;
+  vertical-align: top;
+  border-bottom: 1px solid var(--line);
+  border-right: 1px solid var(--line);
+  font-size: 0.93rem;
+}
+.matrix tr:last-child > * { border-bottom: 0; }
+.matrix tr > *:last-child { border-right: 0; }
+.matrix thead th {
+  background: var(--surface-alt);
+  font-size: 0.96rem;
+}
+.matrix thead th:first-child { width: 17%; }
+.matrix thead th.col-rec, .matrix tbody td.col-rec {
+  background: color-mix(in srgb, var(--accent-soft) 55%, var(--surface));
+}
+.matrix th[scope="row"] {
+  font-weight: 750;
+  background: color-mix(in srgb, var(--surface-alt) 45%, var(--surface));
+}
+.opt-tag {
+  display: inline-block;
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 0.12rem 0.45rem;
+  border-radius: 5px;
+  background: var(--surface-alt);
+  color: var(--muted);
+  margin-bottom: 0.25rem;
+}
+.opt-tag.rec {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+.matrix tr[hidden] { display: none; }
+.matrix-foot {
+  font-size: 0.87rem;
+  color: var(--muted);
+  margin-top: 0.65rem;
+}
+.diagram-card {
+  margin: 1.25rem 0 1.5rem;
+  padding: 1.1rem;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+}
+.diagram-card figcaption {
+  font-size: 0.86rem;
+  color: var(--muted);
+  margin-top: 0.55rem;
+}
+.diagram-card svg {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  height: auto;
+}
+.steps-list {
+  list-style: none;
+  padding: 0;
+  margin: 1.25rem 0 0;
+  display: grid;
+  gap: 1rem;
+}
+.step-card {
+  display: grid;
+  grid-template-columns: 3.1rem 1fr;
+  gap: 1rem;
+  padding: 1.15rem 1.25rem;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+}
+.step-num {
+  display: inline-grid;
+  place-items: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 10px;
+  background: var(--accent-soft);
+  border: 1px solid var(--accent-border);
+  color: var(--accent);
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: 1rem;
+}
+.step-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-top: 0.5rem;
+}
+.chip {
+  display: inline-block;
+  font-family: var(--mono);
+  font-size: 0.78rem;
+  padding: 0.15rem 0.55rem;
+  border-radius: 999px;
+  background: var(--surface-alt);
+  border: 1px solid var(--line);
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+.grid-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr));
+  gap: 1rem;
+  margin-top: 1rem;
+}
+.card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 1.1rem 1.2rem;
+}
+.card p:last-child { margin-bottom: 0; }
+.callout {
+  margin-top: 1.2rem;
+  padding: 1rem 1.15rem;
+  background: var(--warn-soft);
+  border: 1px solid color-mix(in srgb, var(--warn) 40%, var(--line));
+  border-radius: 10px;
+}
+.callout p:last-child { margin-bottom: 0; }
+details {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 0 1.15rem;
+  margin: 0.7rem 0;
+}
+summary {
+  cursor: pointer;
+  font-family: var(--display);
+  font-weight: 750;
+  font-size: 1.02rem;
+  padding: 0.9rem 0;
+}
+details[open] > summary {
+  border-bottom: 1px dashed var(--line);
+  margin-bottom: 0.9rem;
+}
+.bar-compare {
+  margin: 0.85rem 0;
+  padding: 0.85rem 1rem;
+  background: var(--surface-alt);
+  border-radius: 8px;
+}
+.bar-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin: 0.45rem 0;
+  font-size: 0.88rem;
+}
+.bar-row > strong { width: 5.5rem; flex-shrink: 0; }
+.bar-track {
+  flex: 1;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  overflow: hidden;
+}
+.bar-fill {
+  height: 1.6rem;
+  background: var(--accent);
+  color: var(--bg);
+  font-weight: 800;
+  padding: 0.1rem 0.6rem;
+  display: flex;
+  align-items: center;
+}
+dl.kv {
+  display: grid;
+  grid-template-columns: minmax(0, max-content) minmax(0, 1fr);
+  gap: 0.45rem 1rem;
+  margin: 0.5rem 0 1rem;
+}
+dl.kv dt { font-family: var(--mono); font-size: 0.84rem; font-weight: 700; }
+dl.kv dd { margin: 0; font-size: 0.92rem; }
+footer {
+  padding: 2rem 0 3rem;
+  font-size: 0.88rem;
+  color: var(--muted);
+}
+@media (max-width: 640px) {
+  .wrap { width: calc(100% - 1.5rem); }
+  .step-card { grid-template-columns: 1fr; gap: 0.5rem; }
+  dl.kv { grid-template-columns: 1fr; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
+}
+</style>
+<meta name="ai-report-second-opinion-preset" content="custom"><meta name="ai-report-second-opinion-direction" content="Use a side-by-side decision matrix, then implementation steps, with source details folded"><meta name="ai-report-second-opinion-id" content="v1c02"><meta name="ai-report-second-opinion-base" content="index.html"><meta name="ai-report-second-opinion-model" content="agy gemini-4-argon-high"><meta name="ai-report-second-opinion-date" content="2026-11-04"></head>
+<body><!-- second-opinion-header --><aside aria-label="Second-opinion direction" style="overflow-wrap:anywhere"><p><strong>Iteration v1c02</strong>, built on <a href="index.html">index.html</a></p><p><strong>Second-opinion preset:</strong> custom</p><p style="white-space:pre-line"><strong>Direction:</strong> Use a side-by-side decision matrix, then implementation steps, with source details folded</p></aside><!-- /second-opinion-header -->
+<div class="wrap">
+  <p class="backlink">Original report: <a href="index.html">index.html</a></p>
+  <nav class="change-box" aria-labelledby="change-list-heading">
+    <h2 id="change-list-heading">Changed in this iteration</h2>
+    <ul>
+      <li><a href="#rev-1">Consolidate options O1, O2, and O3 into a filterable side-by-side decision matrix</a></li>
+      <li><a href="#rev-2">Translate the O2 recommendation and REQ-710 into five ordered implementation steps with a control-flow diagram</a></li>
+      <li><a href="#rev-3">Group open lifecycle decisions, builder boundaries, and advisory Jester rules</a></li>
+      <li><a href="#rev-4">Fold upstream tstack comparisons, secondary opportunities, line-number corrections, glossary, and source map</a></li>
+    </ul>
+  </nav>
+
+  <header class="hero">
+    <span class="eyebrow">Decision Brief · Proposal Second Opinion · 4 November 2026</span>
+    <h1>Adopt O2: Add optional AI-Evaluation-Loop modes while keeping ordinary runs unchanged.</h1>
+    <p class="lede">
+      An <span class="term" title="A bounded review-fix-recheck loop that tracks findings across rounds and approves only the current diff.">AI-Evaluation-Loop</span> reviews a change, fixes verified findings, and rechecks until approved or the round cap is reached. Use one reviewer for focused opt-in work, reserve the three-provider council for high-stakes changes, and offer an optional non-blocking <strong>Jester</strong> advisory pass on the latest Gemini.
+    </p>
+    <div class="status-bar" aria-label="Proposal status">
+      <span class="pill rec">Recommended: Option O2</span>
+      <span class="pill">Captured as <code>REQ-710</code> under <code>UR-163</code> (<code>status: pending</code>)</span>
+      <span class="pill">Proposal only — no workflow executed or implemented yet</span>
+    </div>
+    <div class="rev-banner">
+      <p><strong>Revision context (<code>rev-1</code>, 2026-11-04):</strong> Supersedes bundle <code>2026-11-04_1524_proposal-tstack-review-workflows</code>. Adopts the user-confirmed name <strong>AI-Evaluation-Loop</strong>, records <code>REQ-710</code> (Add optional AI-Evaluation-Loop modes), and incorporates the optional advisory Jester clarification from <code>UR-163</code>.</p>
+    </div>
+  </header>
+</div>
+
+<nav class="sticky-nav" aria-label="Section navigation">
+  <div class="wrap">
+    <a href="#rev-1">1. Decision Matrix</a>
+    <a href="#rev-2">2. Implementation Steps</a>
+    <a href="#rev-3">3. Open Decisions &amp; Jester Policy</a>
+    <a href="#rev-4">4. Folded Sources &amp; Corrections</a>
+  </div>
+</nav>
+
+<main class="wrap">
+  <section class="section" id="rev-1">
+    <h2>1. Side-by-Side Decision Matrix <span class="badge">changed</span></h2>
+    <p class="section-intro">
+      Compare the three review policies across seven operational dimensions. Effort and cost rows reflect engineering judgments from the source analysis, not measured runtime benchmarks or token billing.
+    </p>
+
+    <div class="filter-bar" role="toolbar" aria-label="Filter decision matrix rows">
+      <span>Show rows:</span>
+      <button type="button" class="btn" data-filter="all" aria-pressed="true">All dimensions (7)</button>
+      <button type="button" class="btn" data-filter="policy" aria-pressed="false">Scope &amp; Reviewers (3)</button>
+      <button type="button" class="btn" data-filter="safety" aria-pressed="false">Stopping &amp; Failure Rules (2)</button>
+      <button type="button" class="btn" data-filter="cost" aria-pressed="false">Cost &amp; Queue State (2)</button>
+    </div>
+
+    <div class="matrix-wrap" role="region" aria-label="Side-by-side comparison of O1, O2, and O3" tabindex="0">
+      <table class="matrix">
+        <thead>
+          <tr>
+            <th scope="col">Decision Dimension</th>
+            <th scope="col">
+              <span class="opt-tag">Option O1</span><br>
+              Keep Current Review
+            </th>
+            <th scope="col" class="col-rec">
+              <span class="opt-tag rec">Option O2 · Recommended</span><br>
+              Optional AI-Evaluation-Loop
+            </th>
+            <th scope="col">
+              <span class="opt-tag">Option O3</span><br>
+              Mandatory Council Everywhere
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr data-cat="policy">
+            <th scope="row">Activation &amp; Default Run Impact</th>
+            <td>Runs automatically at Step 7 of every <code>do-work run</code>. No opt-in mode exists.</td>
+            <td class="col-rec"><strong>Explicit opt-in only.</strong> Ordinary <code>do-work run</code> invocations keep their exact current behavior.</td>
+            <td>Replaces the default review gate on every change, including small routine tasks.</td>
+          </tr>
+          <tr data-cat="policy">
+            <th scope="row">Reviewer Selection &amp; Identity</th>
+            <td>Single <code>review-work</code> pass in the active harness; no multi-provider diversity requirement.</td>
+            <td class="col-rec"><strong>1 reviewer</strong> by default in the opt-in loop, or <strong>3 distinct providers</strong> when council is chosen, plus optional advisory <strong>Jester</strong> (latest Gemini). Records harness-verified model IDs; never guesses or silently substitutes.</td>
+            <td>3 distinct providers at high effort launched in parallel on every request; missing providers reported rather than substituted.</td>
+          </tr>
+          <tr data-cat="policy">
+            <th scope="row">Findings Ledger &amp; Diff Binding</th>
+            <td>Appends <code>## Review</code> (and <code>## Remediation</code> if needed) to the REQ. Evaluates the current diff or worktree merge range.</td>
+            <td class="col-rec">Cross-round <strong>finding ledger</strong> with stable IDs, severity (<code>blocker</code> / <code>should</code> / <code>nit</code>), evidence, and disposition. Approval binds strictly to the current behavior diff and invalidates if code changes afterward.</td>
+            <td>Collects parallel reviews and per-reviewer round scores; upstream <code>council</code> defines no structured cross-round ledger or numerical pass cutoff.</td>
+          </tr>
+          <tr data-cat="safety">
+            <th scope="row">Round Cap &amp; Stopping Conditions</th>
+            <td>1 review pass + at most <strong>1 remediation attempt</strong> before terminal status is assigned.</td>
+            <td class="col-rec">Bounded round limit (proposal recommends <strong>3 rounds</strong> default, extendable to <strong>5</strong> for consequential open issues; <code>REQ-710</code> leaves the exact number to the builder). Stops early when clean or when only nits remain.</td>
+            <td>Upstream <code>council</code> repeats fresh reviews until all three reviewers are satisfied, with <strong>no stated round cap or deadlock rule</strong>.</td>
+          </tr>
+          <tr data-cat="safety">
+            <th scope="row">Unresolved, Disputed, or Failed Review</th>
+            <td>If still failing after 1 remediation, archives as <code>completed-with-issues</code>. If the review agent itself fails, <code>work.md</code> skips review and continues to archive.</td>
+            <td class="col-rec">Reaching the round cap, persistent dispute (after 2 replies), missing required provider, or review timeout remains <strong>explicitly unresolved</strong>. Never inherits the failed-reviewer skip fallback and never averages scores into approval.</td>
+            <td>Unanimity requirement across three models can stall routine work on subjective disputes or induce review-driven scope creep.</td>
+          </tr>
+          <tr data-cat="cost">
+            <th scope="row">Implementation &amp; Runtime Cost</th>
+            <td><strong>Zero implementation cost.</strong> 1 review call (2 if remediated).</td>
+            <td class="col-rec"><strong>Medium build effort</strong> (<code>effort-substantive</code> in <code>REQ-710</code>). Runtime: 1 call/round (single reviewer) or 3 parallel calls/round (council), plus 1 non-blocking call when Jester is enabled.</td>
+            <td><strong>High recurring runtime cost:</strong> 3 parallel high-effort calls per round on every change, plus budget/deadlock machinery that must be invented first.</td>
+          </tr>
+          <tr data-cat="cost">
+            <th scope="row">Current Repository Status</th>
+            <td>Shipped today in <code>skills/do-work/actions/work.md</code> and <code>skills/do-work/actions/review-work.md</code>.</td>
+            <td class="col-rec">Captured as <strong><code>REQ-710</code></strong> under <strong><code>UR-163</code></strong> (<code>status: pending</code> in <code>do-work/queue/</code>).</td>
+            <td>Not captured; rejected as a mandatory default.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="matrix-foot">
+      <strong>Horizontal scroll note:</strong> On narrow screens, swipe the table horizontally to inspect all three options side by side. See <a href="index.html#options">original options</a> and <a href="index.html#recommendation">original recommendation</a>.
+    </p>
+  </section>
+
+  <section class="section" id="rev-2">
+    <h2>2. Implementation Steps for Option O2 (<code>REQ-710</code>) <span class="badge">changed</span></h2>
+    <p class="section-intro">
+      Build Option O2 in five slices that reuse <code>review-work.md</code> and <code>validate-feedback.md</code> before introducing new storage or schedulers. The diagram below contrasts the untouched default run against the opt-in evaluation loop.
+    </p>
+
+    <figure class="diagram-card">
+      <svg viewBox="0 0 920 310" role="img" aria-labelledby="loop-svg-title loop-svg-desc">
+        <title id="loop-svg-title">Control flow comparing ordinary Step 7 review and the opt-in AI-Evaluation-Loop</title>
+        <desc id="loop-svg-desc">Top lane shows ordinary Step 7: one review, at most one remediation, then archive as completed or completed-with-issues. Bottom lane shows opt-in AI-Evaluation-Loop: freeze scope and diff, run 1 reviewer or 3-provider council with optional Jester, verify claims, update finding ledger across up to N rounds, and exit either as current-diff approved or explicit unresolved outcome.</desc>
+        <defs>
+          <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+            <path d="M 0 1 L 9 5 L 0 9 z" fill="currentColor"/>
+          </marker>
+        </defs>
+        <!-- Lane 1: Ordinary Run -->
+        <rect x="12" y="16" width="896" height="108" rx="12" fill="var(--surface-alt)" stroke="var(--line)" stroke-width="1.5"/>
+        <text x="28" y="40" font-size="13" font-weight="800" fill="var(--muted)">DEFAULT PATH — ORDINARY DO-WORK RUN (UNCHANGED)</text>
+
+        <rect x="28" y="54" width="175" height="54" rx="8" fill="var(--surface)" stroke="var(--line)" stroke-width="1.5"/>
+        <text x="40" y="76" font-size="13" font-weight="700" fill="var(--ink)">Step 6.5 Qualify &amp; Test</text>
+        <text x="40" y="95" font-size="11.5" fill="var(--muted)">Diff + fast tests + gate</text>
+
+        <line x1="203" y1="81" x2="238" y2="81" stroke="var(--muted)" stroke-width="2" marker-end="url(#arrow)"/>
+
+        <rect x="242" y="54" width="190" height="54" rx="8" fill="var(--surface)" stroke="var(--line)" stroke-width="1.5"/>
+        <text x="254" y="76" font-size="13" font-weight="700" fill="var(--ink)">Step 7: review-work</text>
+        <text x="254" y="95" font-size="11.5" fill="var(--muted)">1 review (agent fail = skip)</text>
+
+        <line x1="432" y1="81" x2="467" y2="81" stroke="var(--muted)" stroke-width="2" marker-end="url(#arrow)"/>
+
+        <rect x="471" y="54" width="185" height="54" rx="8" fill="var(--surface)" stroke="var(--line)" stroke-width="1.5"/>
+        <text x="483" y="76" font-size="13" font-weight="700" fill="var(--ink)">Fail? 1 Remediation</text>
+        <text x="483" y="95" font-size="11.5" fill="var(--muted)">Return to Step 6 once</text>
+
+        <line x1="656" y1="81" x2="691" y2="81" stroke="var(--muted)" stroke-width="2" marker-end="url(#arrow)"/>
+
+        <rect x="695" y="54" width="195" height="54" rx="8" fill="var(--surface)" stroke="var(--line)" stroke-width="1.5"/>
+        <text x="707" y="76" font-size="13" font-weight="700" fill="var(--ink)">Archive REQ</text>
+        <text x="707" y="95" font-size="11.5" fill="var(--muted)">completed / with-issues</text>
+
+        <!-- Lane 2: Opt-in AI-Evaluation-Loop -->
+        <rect x="12" y="142" width="896" height="152" rx="12" fill="var(--accent-soft)" stroke="var(--accent-border)" stroke-width="1.5"/>
+        <text x="28" y="166" font-size="13" font-weight="800" fill="var(--accent)">OPT-IN PATH — AI-EVALUATION-LOOP (PROPOSED IN O2 / CAPTURED AS REQ-710)</text>
+
+        <rect x="28" y="182" width="168" height="64" rx="8" fill="var(--surface)" stroke="var(--accent-border)" stroke-width="1.5"/>
+        <text x="40" y="205" font-size="13" font-weight="700" fill="var(--ink)">1. Freeze Scope</text>
+        <text x="40" y="223" font-size="11.5" fill="var(--muted)">Pin base + current diff</text>
+        <text x="40" y="238" font-size="11.5" fill="var(--muted)">Run covering checks</text>
+
+        <line x1="196" y1="214" x2="226" y2="214" stroke="var(--accent)" stroke-width="2" marker-end="url(#arrow)"/>
+
+        <rect x="230" y="182" width="212" height="64" rx="8" fill="var(--surface)" stroke="var(--accent-border)" stroke-width="1.5"/>
+        <text x="242" y="205" font-size="13" font-weight="700" fill="var(--ink)">2. Dispatch Round (1..N)</text>
+        <text x="242" y="223" font-size="11.5" fill="var(--muted)">1 reviewer OR 3-provider council</text>
+        <text x="242" y="238" font-size="11.5" fill="var(--muted)">+ optional non-blocking Jester</text>
+
+        <line x1="442" y1="214" x2="472" y2="214" stroke="var(--accent)" stroke-width="2" marker-end="url(#arrow)"/>
+
+        <rect x="476" y="182" width="202" height="64" rx="8" fill="var(--surface)" stroke="var(--accent-border)" stroke-width="1.5"/>
+        <text x="488" y="205" font-size="13" font-weight="700" fill="var(--ink)">3. Verify &amp; Update Ledger</text>
+        <text x="488" y="223" font-size="11.5" fill="var(--muted)">Stable IDs, fix or push back</text>
+        <text x="488" y="238" font-size="11.5" fill="var(--muted)">Recheck changed diff while &lt; N</text>
+
+        <line x1="678" y1="200" x2="712" y2="195" stroke="var(--accent)" stroke-width="2" marker-end="url(#arrow)"/>
+        <line x1="678" y1="228" x2="712" y2="245" stroke="var(--warn)" stroke-width="2" marker-end="url(#arrow)"/>
+
+        <rect x="716" y="172" width="176" height="44" rx="8" fill="var(--surface)" stroke="var(--accent-border)" stroke-width="1.5"/>
+        <text x="728" y="192" font-size="12.5" font-weight="700" fill="var(--accent)">Approved (Current Diff)</text>
+        <text x="728" y="208" font-size="11" fill="var(--muted)">Clean or nits only → Archive</text>
+
+        <rect x="716" y="226" width="176" height="52" rx="8" fill="var(--surface)" stroke="var(--warn)" stroke-width="1.5"/>
+        <text x="728" y="246" font-size="12.5" font-weight="700" fill="var(--warn)">Explicit Unresolved</text>
+        <text x="728" y="262" font-size="11" fill="var(--muted)">Cap hit / dispute / missing</text>
+        <text x="728" y="274" font-size="11" fill="var(--muted)">Never silent approval</text>
+      </svg>
+      <figcaption>
+        <strong>Synthetic architecture diagram:</strong> Derived from <code>skills/do-work/actions/work.md</code> Step 7 and <code>do-work/queue/REQ-710-add-optional-bounded-review-modes.md</code>.
+      </figcaption>
+    </figure>
+
+    <ol class="steps-list">
+      <li class="step-card">
+        <span class="step-num">01</span>
+        <div>
+          <h3>Define the opt-in invocation contract and freeze the reviewed diff</h3>
+          <p>
+            Keep ordinary <code>do-work run</code> executions on their existing single-review path unless an AI-Evaluation-Loop mode is explicitly requested. Before launching a review round, freeze the request scope, base commit, and current diff (including untracked files when applicable) and run covering checks first. Document the user-facing selection syntax and model availability requirements in the installed skill documentation.
+          </p>
+          <div class="step-meta">
+            <span class="chip">Target: <code>skills/do-work/actions/work.md</code></span>
+            <span class="chip">Spec: <code>REQ-710</code> Detailed Requirements 1, 7, 9</span>
+          </div>
+        </div>
+      </li>
+      <li class="step-card">
+        <span class="step-num">02</span>
+        <div>
+          <h3>Extend the <code>## Review</code> section with a cross-round finding ledger and verified identities</h3>
+          <p>
+            Reuse <code>skills/do-work/actions/review-work.md</code> and the adversarial claim verification from <code>skills/do-work-toolbox/actions/validate-feedback.md</code>. Record each round’s reviewed revision, actual provider and model identities from harness evidence (never guessed or silently substituted), and stable finding IDs with severity (<code>blocker</code>, <code>should</code>, <code>nit</code>), evidence, disposition, and remaining concerns.
+          </p>
+          <div class="step-meta">
+            <span class="chip">Target: <code>skills/do-work/actions/review-work.md</code></span>
+            <span class="chip">Target: <code>skills/do-work-toolbox/actions/validate-feedback.md</code></span>
+          </div>
+        </div>
+      </li>
+      <li class="step-card">
+        <span class="step-num">03</span>
+        <div>
+          <h3>Implement the single-reviewer loop first with explicit stopping rules</h3>
+          <p>
+            Ship the one-reviewer loop before multi-provider council. The proposal recommends a default cap of <strong>3 rounds</strong> (extendable to <strong>5 rounds</strong> for consequential supported issues), while <code>REQ-710</code> leaves the exact numerical cap to the builder. Later rounds recheck changed code and open findings. Stop early when clean or only nits remain; invalidate prior approval if any meaningful code change lands after the reviewed diff.
+          </p>
+          <div class="step-meta">
+            <span class="chip">Upstream pattern: <code>tstack/skills/sol-loop/SKILL.md</code></span>
+            <span class="chip">Smallest first slice</span>
+          </div>
+        </div>
+      </li>
+      <li class="step-card">
+        <span class="step-num">04</span>
+        <div>
+          <h3>Add the three-provider council mode and optional Jester advisory reviewer</h3>
+          <p>
+            Once the single-reviewer loop works, allow selecting three distinct providers in parallel through the harness. Give every reviewer the same frozen scope and evidence before exposing other reviewers’ findings, and apply a whole-round budget. Offer the optional <strong>Jester</strong> advisory reviewer (defaulting to the latest available Gemini via the harness, such as Gemini 4 Argon) on the same serious brief: never wait on a slow or failed Jester, exclude its numerical score from acceptance or PR grades, and act on its findings only when verified against the code.
+          </p>
+          <div class="step-meta">
+            <span class="chip">Upstream pattern: <code>tstack/skills/council/SKILL.md</code></span>
+            <span class="chip">Clarification: <code>UR-163</code> / <code>REQ-710</code></span>
+          </div>
+        </div>
+      </li>
+      <li class="step-card">
+        <span class="step-num">05</span>
+        <div>
+          <h3>Connect explicit unresolved outcomes to the lifecycle and verify RED/GREEN cases</h3>
+          <p>
+            Ensure that hitting the round cap, a persistent dispute after two replies, a missing required provider, or a required-review timeout ends as an <strong>explicit unresolved outcome</strong>—never falling back to <code>work.md</code>’s ordinary "Review work agent fails → Skip review, continue to archive" rule and never averaging reviewer scores into approval. Verify with the <code>REQ-710</code> acceptance cases: (a) open material finding hits round cap → unresolved, (b) post-approval edit invalidates approval, (c) clean review approves early, and (d) ordinary run remains unchanged.
+          </p>
+          <div class="step-meta">
+            <span class="chip">Target: <code>skills/do-work/actions/work.md</code> Step 7 &amp; Error Handling</span>
+            <span class="chip">Proof: <code>REQ-710</code> Red-Green Proof</span>
+          </div>
+        </div>
+      </li>
+    </ol>
+
+    <div class="callout">
+      <p>
+        <strong>Critical lifecycle boundary:</strong> In ordinary runs today, <code>skills/do-work/actions/work.md</code> (line 521) skips review and continues to archive if the review agent fails. An opt-in consensus or bounded-loop mode must never inherit that fallback as approval.
+      </p>
+    </div>
+  </section>
+
+  <section class="section" id="rev-3">
+    <h2>3. Open Decisions &amp; Advisory Reviewer Contract <span class="badge">changed</span></h2>
+    <p class="section-intro">
+      <code>REQ-710</code> locks the core invariants (opt-in only, finding ledger, verified model identity, current-diff approval, truthful unresolved state, and optional Gemini Jester) while leaving three integration choices open.
+    </p>
+
+    <div class="grid-cards">
+      <article class="card">
+        <h3>Q1 · Unresolved Lifecycle Handoff</h3>
+        <p><strong>Question:</strong> Should an unresolved opt-in review hold the claimed request in place, or record a dedicated unresolved review outcome and hand back?</p>
+        <p><strong>Report recommendation:</strong> Hold only the opted-in request so unrelated queued requests keep moving ("One broken pipe doesn't stop the rest of the factory").</p>
+      </article>
+      <article class="card">
+        <h3>Q2 · Provider Selection Environments</h3>
+        <p><strong>Question:</strong> Which harnesses and CLIs must support multi-provider council dispatch first?</p>
+        <p><strong>Report recommendation:</strong> Use available harness capabilities, record actual resolved models, and report missing named providers rather than silently substituting or breaking platform independence.</p>
+      </article>
+      <article class="card">
+        <h3>Q3 · Scope Boundary &amp; Non-Goals</h3>
+        <p><strong>Boundary:</strong> Pull-request creation, PR comment posting, watcher daemons, and merge permissions are explicitly outside <code>REQ-710</code>.</p>
+        <p><strong>Builder latitude:</strong> Invocation flags, ledger storage format inside <code>## Review</code>, and exact numerical round limits are builder-decided in <code>REQ-710</code>.</p>
+      </article>
+      <article class="card">
+        <h3>Jester · Optional Advisory Reviewer</h3>
+        <p><strong>Role:</strong> Optional fourth/sidecar voice defaulting to the latest available Gemini resolved by the harness (e.g., Gemini 4 Argon; not a hardcoded model ID).</p>
+        <p><strong>Rules:</strong> Receives the same serious brief without being told to act funny or that it is advisory. Its score never blocks or approves and is omitted from PR council grades. Verified defect evidence still counts; slow or failed Jester runs never delay the loop.</p>
+      </article>
+    </div>
+  </section>
+
+  <section class="section" id="rev-4">
+    <h2>4. Source Details, Corrections &amp; Evidence Map (Folded) <span class="badge">changed</span></h2>
+    <p class="section-intro">
+      All upstream workflow details, secondary <code>tstack</code> opportunities, repository verification corrections, glossary definitions, and source paths are folded below.
+    </p>
+    <div class="filter-bar">
+      <button type="button" class="btn" id="toggle-details" aria-expanded="false">Expand all folded source details (5)</button>
+    </div>
+
+    <details>
+      <summary>Upstream workflow comparison: <code>sol-loop</code> vs. <code>council</code> and review call ratio</summary>
+      <p>
+        The original report inspected <code>t3dotgg/tstack</code> at commit <code>1085050f3baed1ac724caa4a8166145fb2ac88af</code> (28 October 2026). Despite similar summaries, the two upstream skills have different stopping mechanics:
+      </p>
+      <ul>
+        <li><strong><code>sol-loop</code> (one reviewer, bounded):</strong> Freezes scope and base (including untracked files), runs covering checks, and dispatches GPT Sol with stable finding IDs and <code>blocker</code> / <code>should</code> / <code>nit</code> severities. The parent verifies claims, applies minimal fixes, or pushes back with evidence. Defaults to <strong>3 rounds</strong> (extendable to <strong>5</strong> for named high-risk cases while supported issues remain, or when requested). Stops when only nits remain, when a dispute persists after two replies, or when the budget is exhausted. Approval must cover the current behavior diff. Prohibits nested reviewers and in-flight edits during review.</li>
+        <li><strong><code>council</code> (three parallel providers, unbounded upstream):</strong> Fixes known issues and runs checks first, resolves three strong models from distinct providers at high effort, and runs parallel read-only reviews. Missing providers are reported rather than substituted. Records per-reviewer round scores ("no score" when absent) with no numerical pass threshold, no round cap, and no deadlock rule.</li>
+        <li><strong>Local adaptations added by this proposal:</strong> Keeping council reviewers blind to each other’s findings until initial reviews return, capping council rounds, budgeting the whole round, and adding the non-blocking Jester advisory pass are local <code>do-work</code> additions, not upstream <code>tstack</code> behavior.</li>
+      </ul>
+      <div class="bar-compare" role="group" aria-label="Documented review calls per full round">
+        <div class="bar-row">
+          <strong>Sol-loop</strong>
+          <div class="bar-track"><div class="bar-fill" style="width: 33.33%;">1 call / round</div></div>
+        </div>
+        <div class="bar-row">
+          <strong>Council</strong>
+          <div class="bar-track"><div class="bar-fill" style="width: 100%;">3 parallel calls / round</div></div>
+        </div>
+      </div>
+      <p>
+        See <a href="index.html#workflows">original Council / Sol section</a>. Three parallel calls do not imply 3× wall-clock latency or superior accuracy; neither cost nor quality was benchmarked.
+      </p>
+    </details>
+
+    <details>
+      <summary>Other <code>tstack</code> opportunities evaluated (outside <code>REQ-710</code>)</summary>
+      <p>
+        All nine skills in <code>t3dotgg/tstack</code> were read in the original report. Beyond <code>sol-loop</code> and <code>council</code>, four ideas were ranked for future consideration and three were rated low-priority or already covered (<a href="index.html#opportunities">original opportunities section</a>):
+      </p>
+      <ol>
+        <li><strong>Revalidate intent before reviving stale work (<code>modernize</code>):</strong> Separates <code>MODERNIZE</code>, <code>REWORK</code>, and <code>CLOSE</code>, checks conceptual conflicts, and compares commit series with <code>git range-diff</code>. Complements <code>skills/do-work/actions/work-reference.md</code> ("Saved-range resume proof", lines 357–361) by asking whether another change already solved the user need. (Medium effort.)</li>
+        <li><strong>Separate merge-readiness from merge permission (<code>full-stop</code> vs. <code>full-send</code>):</strong> <code>full-stop</code> runs the same readiness gates as <code>full-send</code> (proof, Sol review, PR creation) but stops with the PR open instead of merging. Fits an optional PR delivery action without expanding what default <code>do-work run</code> authorizes. (Medium effort.)</li>
+        <li><strong>Single-owner PR monitoring (<code>babysit-pr</code> and <code>scripts/pr-wait</code>):</strong> Uses a host watcher in T3 or a stateful <code>pr-wait</code> script (with locking, saved state, and retry logic around line 207) elsewhere, owned solely by the parent and removed at handoff. (Medium-to-high effort due to environment differences.)</li>
+        <li><strong>Preserve contributor credit during takeover (<code>takeover</code>):</strong> Retains original commits and author/co-author credit while verifying handoff claims against actual code. Complements existing resume verification in <code>work-reference.md</code>. (Small effort.)</li>
+        <li><strong>Lower priority / already covered locally (<code>file-pr</code>, <code>leaving-pr-comments</code>):</strong> Leading PR descriptions with the user’s problem, recording verified model/harness identity, and labeling agent-authored PR comments are useful if an optional PR action is built, whereas direct behavior proof, evidence-based pushback (<code>validate-feedback.md</code>), scope discipline, and minimal fixes already exist in <code>do-work</code>.</li>
+      </ol>
+    </details>
+
+    <details>
+      <summary>Corrections to the original report &amp; verification limits</summary>
+      <p>
+        Checking the original report (<a href="index.html"><code>index.html</code></a>) against the current repository revealed minor line-number drift in three <code>skills/do-work/actions/work.md</code> citations while confirming all underlying behavioral claims:
+      </p>
+      <ul>
+        <li>
+          <strong>Correction 1 — <code>work.md:350</code> citation for Step 7 review and remediation:</strong>
+          The original report cites <code>work.md:350</code> for review dispatch, scoring, one remediation attempt, and <code>completed-with-issues</code>. In the current repository’s <code>skills/do-work/actions/work.md</code>, line 350 is the <em>Already-green repository-gate repair exception</em> at the end of Step 6.5; <code>### Step 7: Review</code> starts at <strong>line 354</strong>, and the verdict routing, single remediation attempt, and <code>completed-with-issues</code> rules are at <strong>lines 366–379</strong>.
+        </li>
+        <li>
+          <strong>Correction 2 — <code>work.md:519</code> citation for the failed-reviewer fallback:</strong>
+          The original report cites <code>work.md:519</code> for the rule that skips a failed reviewer and continues toward archive. In the current <code>skills/do-work/actions/work.md</code> Error Handling table, line 519 covers repeated focused-test or repository-gate failures; <code>Review: Acceptance = Fail</code> is at <strong>line 520</strong>, and <code>Review work agent fails | Skip review, note it in the REQ file, continue to archive — review failure is not a gate</code> is at <strong>line 521</strong>.
+        </li>
+        <li>
+          <strong>Correction 3 — <code>work.md:462</code> citation for commit/delivery boundary:</strong>
+          In opportunity 2 ("Separate ready-to-merge from permission to merge"), the original report cites <code>work.md:462</code>. Line 462 is Step 8 item 3 (<code>Terminal judgment</code>); <code>### Step 9: Commit Phase (Git repos only)</code> begins at <strong>line 465</strong>.
+        </li>
+        <li>
+          <strong>Verified exact matches in the repository:</strong>
+          <code>skills/do-work-toolbox/actions/validate-feedback.md</code> (Step 2 at line 48; claim verification and earned-defense surface pricing at lines 66–85), <code>skills/do-work/actions/work-reference.md</code> (<code>### Saved-range resume proof</code> at lines 357–361), <code>skills/do-work/actions/review-work.md</code> (orchestrated and standalone review contract), <code>do-work/queue/REQ-710-add-optional-bounded-review-modes.md</code>, and <code>do-work/user-requests/UR-163/input.md</code> all match the report’s descriptions.
+        </li>
+        <li>
+          <strong>Unverified external items:</strong>
+          Upstream <code>t3dotgg/tstack</code> files at commit <code>1085050f3baed1ac724caa4a8166145fb2ac88af</code> were not re-fetched over the network during this pass (external network services are outside the second-opinion boundary). No council, Sol-loop, or PR watcher workflow was executed; latency, cost, and accuracy remain unmeasured.
+        </li>
+      </ul>
+    </details>
+
+    <details>
+      <summary>Glossary of terms</summary>
+      <dl class="kv">
+        <dt>AI-Evaluation-Loop</dt>
+        <dd>User-confirmed name for the opt-in review-fix-recheck workflow captured in <code>REQ-710</code>. Runs up to a bounded number of rounds, tracks findings in a ledger, and approves only the current diff.</dd>
+        <dt>Sol-loop</dt>
+        <dd>Upstream <code>tstack</code> skill using one reviewer, stable finding IDs, and a 3-round default cap (5 for high-risk cases) with explicit stop conditions.</dd>
+        <dt>Council</dt>
+        <dd>Multi-provider review mode dispatching three distinct model providers in parallel at high effort.</dd>
+        <dt>Jester</dt>
+        <dd>Optional non-blocking advisory reviewer in <code>REQ-710</code>, defaulting to the latest available Gemini resolved by the harness (e.g., Gemini 4 Argon). Its score never counts toward approval or PR grades, but verified defect evidence is acted on.</dd>
+        <dt>Finding ledger</dt>
+        <dd>Structured record inside <code>## Review</code> tracking each finding’s stable ID, severity (<code>blocker</code>, <code>should</code>, <code>nit</code>), evidence, disposition, and open status across rounds.</dd>
+        <dt>completed-with-issues</dt>
+        <dd>Terminal status in ordinary <code>do-work run</code> when a request still fails review after its single remediation attempt.</dd>
+        <dt>Saved-range resume proof</dt>
+        <dd>Recovery check in <code>work-reference.md</code> (line 357) that reuses an already-merged builder commit range only if protected paths have not drifted, while still rerunning qualification, tests, gate, and review.</dd>
+      </dl>
+    </details>
+
+    <details>
+      <summary>Source map &amp; reference capture lines</summary>
+      <p>
+        <strong>Original bundle sections:</strong>
+        <a href="index.html#decision">Verdict &amp; rev-1 note</a> ·
+        <a href="index.html#options">Options O1–O3</a> ·
+        <a href="index.html#recommendation">Recommendation &amp; Jester</a> ·
+        <a href="index.html#workflows">Council / Sol-loop</a> ·
+        <a href="index.html#opportunities">Other opportunities</a> ·
+        <a href="index.html#details">Evidence ledger &amp; limits</a> ·
+        <a href="index.html#another-layout">Layout prompt</a>.
+      </p>
+      <p>
+        <strong>Repository files inspected (portable links unavailable because remote reachability cannot be verified without external network access):</strong>
+      </p>
+      <ul>
+        <li><code>do-work/queue/REQ-710-add-optional-bounded-review-modes.md</code> — Captured pending request for Option O2, including Detailed Requirements, Red-Green Proof, and Builder Guidance.</li>
+        <li><code>do-work/user-requests/UR-163/input.md</code> — Original user capture and 2026-11-04 Jester advisory reviewer clarification.</li>
+        <li><code>skills/do-work/actions/work.md</code> — Step 6.5 Qualification/Testing (lines 332–352), Step 7 Review (lines 354–387), Step 9 Commit Phase (lines 465–469), and Error Handling table (lines 509–524).</li>
+        <li><code>skills/do-work/actions/review-work.md</code> — Orchestrated and standalone review workflow (lines 1–140).</li>
+        <li><code>skills/do-work-toolbox/actions/validate-feedback.md</code> — External feedback parsing, decision-store lookup, adversarial verification, and earned-defense surface pricing (lines 48–90).</li>
+        <li><code>skills/do-work/actions/work-reference.md</code> — Saved-range resume proof (lines 357–361).</li>
+        <li><code>ai-reports/2026-11-04_1524_proposal-tstack-review-workflows/index.html</code> — Prior bundle revision superseded by <code>rev-1</code>.</li>
+      </ul>
+      <p><strong>Reference capture commands from the original proposal (Option O2 is already captured as <code>REQ-710</code> — do not re-capture):</strong></p>
+      <pre><code># O1 (Adopt no new review mode)
+do-work capture-request: Use the existing review and validate-feedback actions; adopt no new review mode.
+
+# O2 (Already captured as REQ-710 — retained for reference only)
+do-work capture-request: Add optional AI-Evaluation-Loop modes to do-work, preserving the default loop and using a finding ledger, verified model identities, current-diff approval, and explicit unresolved outcomes.
+
+# O3 (Mandatory council evaluation)
+do-work capture-request: Evaluate mandatory three-provider council review for every change, with explicit budgets and failure handling before any rollout.</code></pre>
+    </details>
+  </section>
+</main>
+
+<footer class="wrap">
+  <p>
+    Second-opinion clarity pass on <code>ai-reports/2026-11-04_1747_proposal-tstack-review-workflows-rev1/index.html</code> (which supersedes <code>2026-11-04_1524_proposal-tstack-review-workflows</code>). Grounded in the original report and verified against local repository files at <code>/Users/t2/Desktop/e1-experimental-repos/skill-do-work2</code>.
+  </p>
+</footer>
+
+<script>
+(() => {
+  const filterBtns = document.querySelectorAll("[data-filter]");
+  const rows = document.querySelectorAll(".matrix tbody tr[data-cat]");
+  for (const btn of filterBtns) {
+    btn.addEventListener("click", () => {
+      const target = btn.getAttribute("data-filter");
+      for (const b of filterBtns) {
+        b.setAttribute("aria-pressed", String(b === btn));
+      }
+      for (const row of rows) {
+        row.hidden = target !== "all" && row.getAttribute("data-cat") !== target;
+      }
+    });
+  }
+
+  const toggleBtn = document.getElementById("toggle-details");
+  const detailsList = [...document.querySelectorAll("#rev-4 details")];
+  if (toggleBtn && detailsList.length > 0) {
+    const syncLabel = () => {
+      const allOpen = detailsList.every((d) => d.open);
+      toggleBtn.setAttribute("aria-expanded", String(allOpen));
+      toggleBtn.textContent = allOpen
+        ? `Fold all source details (${detailsList.length})`
+        : `Expand all folded source details (${detailsList.length})`;
+    };
+    toggleBtn.addEventListener("click", () => {
+      const nextState = !detailsList.every((d) => d.open);
+      for (const d of detailsList) d.open = nextState;
+      syncLabel();
+    });
+    for (const d of detailsList) {
+      d.addEventListener("toggle", syncLabel);
+    }
+  }
+})();
+</script>
+</body>
+</html>
