@@ -2,6 +2,17 @@
   "generator": "do-work-cli ai-report-index",
   "bundles": [
     {
+      "path": "ai-reports/2026-11-04_1747_proposal-tstack-review-workflows-rev1",
+      "entry": "ai-reports/2026-11-04_1747_proposal-tstack-review-workflows-rev1/index.html",
+      "title": "AI-Evaluation-Loop — tstack opportunities for do-work",
+      "date": "2026-11-04T17:47",
+      "kind": "proposal",
+      "linked_ids": [],
+      "verdict": "",
+      "supersedes": "ai-reports/2026-11-04_1524_proposal-tstack-review-workflows",
+      "superseded_by": ""
+    },
+    {
       "path": "ai-reports/2026-11-04_1524_proposal-tstack-review-workflows",
       "entry": "ai-reports/2026-11-04_1524_proposal-tstack-review-workflows/index.html",
       "title": "Tstack review workflows — opportunities for do-work",
@@ -10,7 +21,7 @@
       "linked_ids": [],
       "verdict": "",
       "supersedes": "",
-      "superseded_by": ""
+      "superseded_by": "ai-reports/2026-11-04_1747_proposal-tstack-review-workflows-rev1"
     },
     {
       "path": "ai-reports/2026-11-02_1757_presentation-style-gallery",
