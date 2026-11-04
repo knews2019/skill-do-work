@@ -1,6 +1,6 @@
 ---
 id: REQ-710
-title: 'Add optional AI review loops'
+title: 'Add optional AI-Evaluation-Loop modes'
 status: pending
 created_at: 2026-11-04T15:54:52Z
 user_request: UR-163
@@ -11,10 +11,10 @@ effort_estimate: effort-substantive
 tdd: false
 maintenance: false
 ---
-# Add Optional AI Review Loops
+# Add Optional AI-Evaluation-Loop Modes
 
 ## What
-Add optional AI review loops to do-work while preserving the existing default workflow. A review loop means reviewing a change, fixing accepted findings, and reviewing the updated change again, with a maximum number of review rounds. Track findings across rounds, verify model identities, tie approval to the current change, and report unresolved outcomes honestly.
+Add optional AI-Evaluation-Loop modes to do-work while preserving the existing default workflow. An AI-Evaluation-Loop reviews a change, fixes accepted findings, and repeats until approved or the round limit is reached. Track findings across rounds, verify model identities, tie approval to the current change, and report unresolved outcomes honestly.
 
 ## Detailed Requirements
 - Support the one-reviewer Sol-loop and three-provider council choices discussed in the report as optional modes. Ordinary runs without an explicit selection keep their current behavior.
@@ -29,8 +29,8 @@ Add optional AI review loops to do-work while preserving the existing default wo
 Reuse the existing review and feedback contracts where useful. Keep fixes within the requested scope and avoid review-driven scope growth. No mandatory council for all changes, new PR merge permissions, automatic upstream installation, or unrelated report opportunities belong to this request.
 
 ## Red-Green Proof
-**RED prompt/case:** Select an AI review loop for a small change. Have the reviewer leave a material finding open until the round limit is reached; also check that approval of an earlier diff cannot approve a subsequent behavior change. Compare an ordinary run without the option.
-**Why RED now:** The inspected work.md Step 7 defines ordinary review plus one remediation and permits continuation after reviewer failure; it does not define these optional review loops and their approval contract.
+**RED prompt/case:** Select an AI-Evaluation-Loop mode for a small change. Have the reviewer leave a material finding open until the round limit is reached; also check that approval of an earlier diff cannot approve a subsequent behavior change. Compare an ordinary run without the option.
+**Why RED now:** The inspected work.md Step 7 defines ordinary review plus one remediation and permits continuation after reviewer failure; it does not define these optional AI-Evaluation-Loop modes and their approval contract.
 **GREEN when:** The opted-in mode records findings and verified identities, ends unresolved at the round limit, and requires approval covering the current behavior diff. A clean review can approve before reaching the limit. The ordinary run retains its previous behavior. The installed usage instructions reproduce mode selection and explain these outcomes.
 **Validation:** User confirmed on 2026-11-04.
 
@@ -46,7 +46,7 @@ Source proposal: ai-reports/2026-11-04_1524_proposal-tstack-review-workflows/ind
 
 The earlier conversation identified missing post-install usage guidance; include it with the feature. The report's suggested three-round default and lifecycle hold strategy are recommendations for the builder to evaluate, not additional fixed user requirements.
 
-Terminology clarified on 2026-11-04: call the feature "optional AI review loops" in user-facing documentation. One round is one complete review pass; a fresh review after fixes starts another round. The request requires a round limit but does not yet fix its numerical value or specify elapsed-time, token, or monetary limits. Reviewer findings and approval are evaluations; this request does not prescribe a separate numerical grading system or a passing score for the new modes.
+Terminology confirmed by the user on 2026-11-04: use the exact name "AI-Evaluation-Loop" in user-facing documentation. One round is one complete review pass; a fresh review after fixes starts another round. The request requires a round limit but does not yet fix its numerical value or specify elapsed-time, token, or monetary limits. Reviewer findings and approval are evaluations; this request does not prescribe a separate numerical grading system or a passing score for the new modes.
 
 Fold-first scan: no pending or pending-answers REQ exists in the queue; no eligible request shares this root cause.
 
