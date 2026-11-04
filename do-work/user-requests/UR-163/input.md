@@ -29,3 +29,12 @@ User clarification:
 > ```
 > the jester is an optional advisory reviewer (latest gemini, like gemini 4 argon) is the default on it
 > ```
+
+## Clarification — Stopping Policy (2026-11-04)
+
+REQ-710 (AI-Evaluation-Loop modes) uses five total review rounds, stopping earlier after two consecutive rounds without meaningful, evidence-supported improvement. Preserve a recoverable checkpoint and report unmet requirements when stopping. The five-count limit covers all rounds, not five stalled rounds.
+
+User response:
+> ```
+> Record five total rounds, with early stopping after two stalled rounds (Recommended)
+> ```
