@@ -32,7 +32,14 @@ Reuse the existing review and feedback contracts where useful. Keep fixes within
 **RED prompt/case:** Select bounded review for a small change. Have the reviewer leave a material finding open until the budget expires; also check that approval of an earlier diff cannot approve a subsequent behavior change. Compare an ordinary run without the option.
 **Why RED now:** The inspected work.md Step 7 defines ordinary review plus one remediation and permits continuation after reviewer failure; it does not define these optional bounded modes and their approval contract.
 **GREEN when:** The opted-in mode records findings and verified identities, ends unresolved at exhaustion, and requires approval covering the current behavior diff. A clean review can approve within budget. The ordinary run retains its previous behavior. The installed usage instructions reproduce mode selection and explain these outcomes.
-**Validation:** Inferred during capture; the acceptance example was presented for confirmation and no answer had arrived when preparing this record.
+**Validation:** User confirmed on 2026-11-04.
+
+Confirmed acceptance case: an explicitly selected review mode records findings and model identities, approves only the current change, and reports unresolved work when its round budget ends, while an ordinary run behaves exactly as before.
+
+User response:
+> ```
+> Use this acceptance case (Recommended)
+> ```
 
 ## Context
 Source proposal: ai-reports/2026-11-04_1524_proposal-tstack-review-workflows/index.html, option O2. Upstream source revision: t3dotgg/tstack at 1085050f3baed1ac724caa4a8166145fb2ac88af, skills/sol-loop/SKILL.md and skills/council/SKILL.md. These are research inputs, not instructions to execute upstream workflows during capture.
