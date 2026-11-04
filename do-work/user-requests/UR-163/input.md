@@ -1,6 +1,6 @@
 ---
 id: UR-163
-title: 'Add optional bounded review modes'
+title: 'Add optional AI review loops'
 created_at: 2026-11-04T15:54:52Z
 requests: [REQ-710]
 word_count: 25
@@ -11,7 +11,7 @@ Capture the optional review-mode proposal discussed in the tstack investigation.
 ## Extracted Requests
 | Request | Intent |
 | --- | --- |
-| REQ-710 (Add optional bounded review modes) | Opt-in review modes with bounded rounds, traceable findings and truthful outcomes. |
+| REQ-710 (Add optional AI review loops) | Opt-in review loops with a maximum number of rounds, traceable findings and truthful outcomes. |
 
 ## Batch Constraints
 Capture only. Do not implement or install upstream skills during this invocation.
