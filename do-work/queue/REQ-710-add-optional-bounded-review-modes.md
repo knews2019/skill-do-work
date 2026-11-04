@@ -18,7 +18,9 @@ Add optional AI-Evaluation-Loop modes to do-work while preserving the existing d
 
 ## Detailed Requirements
 - Support the one-reviewer Sol-loop and three-provider council choices discussed in the report as optional modes. Ordinary runs without an explicit selection keep their current behavior.
-- Set a maximum number of review rounds and document stopping conditions. Reaching the round limit, persistent disagreement, unavailable reviewers, failed reviews and missing replies must not count as approval.
+- Offer the jester as an optional advisory reviewer alongside the selected mode. When enabled, its default model is the latest available Gemini resolved through the harness; Gemini 4 Argon is the user's example, not a permanently pinned model ID. Record the actual model used.
+- Give the jester the same serious review brief and evidence without instructing it to act funny or revealing its advisory role in that brief. Its numerical scores never count toward acceptance or council grades in a PR description. Validate useful findings against the reviewed version before acting; a confirmed defect matters because of its evidence, not the advisory score. Do not wait on an unavailable, failed or slow jester; report its absence without treating it as approval or as a missing required council member.
+- Set a maximum number of review rounds and document stopping conditions. Reaching the round limit, persistent disagreement, unavailable required reviewers, failed required reviews and missing required replies must not count as approval.
 - Keep a finding ledger across rounds with stable identifiers, severity, evidence, disposition and remaining concerns. Rechecks cover changed behavior and open findings; preserve evidence-based disagreement and declined findings.
 - Record actual provider/model identities from available harness evidence. Do not guess identities or silently substitute a different model/provider for an explicitly selected one.
 - Approve only the current behavior diff, with no unresolved material findings. A meaningful change after review invalidates that approval until rechecked.
@@ -31,7 +33,7 @@ Reuse the existing review and feedback contracts where useful. Keep fixes within
 ## Red-Green Proof
 **RED prompt/case:** Select an AI-Evaluation-Loop mode for a small change. Have the reviewer leave a material finding open until the round limit is reached; also check that approval of an earlier diff cannot approve a subsequent behavior change. Compare an ordinary run without the option.
 **Why RED now:** The inspected work.md Step 7 defines ordinary review plus one remediation and permits continuation after reviewer failure; it does not define these optional AI-Evaluation-Loop modes and their approval contract.
-**GREEN when:** The opted-in mode records findings and verified identities, ends unresolved at the round limit, and requires approval covering the current behavior diff. A clean review can approve before reaching the limit. The ordinary run retains its previous behavior. The installed usage instructions reproduce mode selection and explain these outcomes.
+**GREEN when:** The opted-in mode records findings and verified identities, ends unresolved at the round limit, and requires approval covering the current behavior diff. A clean review can approve before reaching the limit. The ordinary run retains its previous behavior. The installed usage instructions reproduce mode selection and explain these outcomes. With the optional jester enabled, record the resolved Gemini identity and show that its score cannot change acceptance; a missing advisory response does not hold the loop, while a verified material finding is handled on its evidence.
 **Validation:** User confirmed on 2026-11-04.
 
 Confirmed acceptance case: an explicitly selected review mode records findings and model identities, approves only the current change, and reports unresolved work when its round limit is reached, while an ordinary run behaves exactly as before.
@@ -51,7 +53,7 @@ Terminology confirmed by the user on 2026-11-04: use the exact name "AI-Evaluati
 Fold-first scan: no pending or pending-answers REQ exists in the queue; no eligible request shares this root cause.
 
 ## Builder Guidance
-Firm: explicit opt-in, unchanged defaults, a findings ledger, verified identity, current-diff approval, and truthful unresolved outcomes. Builder chooses invocation syntax, storage shape, numerical round limits and the smallest compatible lifecycle integration. This is workflow behavior; no existing runnable automated assertion for the proposed modes was identified during capture, so tdd is false. Provide repeatable scenario evidence, and focused tests for deterministic code if introduced.
+Firm: explicit opt-in, unchanged defaults, a findings ledger, verified identity, current-diff approval, truthful unresolved outcomes, and an optional advisory jester defaulting to the latest available Gemini. Builder chooses invocation syntax, storage shape, numerical round limits and the smallest compatible lifecycle integration. This is workflow behavior; no existing runnable automated assertion for the proposed modes was identified during capture, so tdd is false. Provide repeatable scenario evidence, and focused tests for deterministic code if introduced.
 
 ## Required Lessons — Dropped for Budget
 - `_dev/primes/lessons-action-files.md`: 8398 tokens; matches action routing and status contracts. Index coverage is partial, so targeted entries are ineligible; exceeds the 2000-token budget.

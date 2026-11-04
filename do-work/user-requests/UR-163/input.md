@@ -20,3 +20,12 @@ Capture only. Do not implement or install upstream skills during this invocation
 > ```
 > Add optional bounded review modes to do-work, preserving the default loop and using a finding ledger, verified model identities, current-diff approval, and explicit unresolved outcomes.
 > ```
+
+## Clarification — Optional Advisory Reviewer (2026-11-04)
+
+The jester is optional. When enabled, its default model is the latest available Gemini; the named version is an example rather than a fixed model ID. This extends REQ-710 (Add optional AI-Evaluation-Loop modes).
+
+User clarification:
+> ```
+> the jester is an optional advisory reviewer (latest gemini, like gemini 4 argon) is the default on it
+> ```
