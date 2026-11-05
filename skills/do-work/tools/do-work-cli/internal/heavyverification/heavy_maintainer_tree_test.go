@@ -65,6 +65,10 @@ func TestShippedLanesCoverRuntimeHelpersAndRefuseOpaqueBrowser(t *testing.T) {
 
 func newRuntimeEvidenceRepository(t *testing.T) string {
 	t.Helper()
+	// Start from a deterministic Go baseline; tests apply deliberate overrides below.
+	t.Setenv("GOENV", "off")
+	t.Setenv("GOFLAGS", "")
+	t.Setenv("GOWORK", "off")
 	root := newLaneEvidenceRepository(t)
 	manifest, helper := shippedRuntimeFiles(t)
 	var fixtureManifest laneManifest
