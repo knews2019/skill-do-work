@@ -49,6 +49,9 @@ estimate:
 tdd: false
 maintenance: false
 claimed_at: 2026-11-05T16:27:47Z
+gate_deferred: 'true'
+depends_on: [REQ-711]
+status_changed_at: 2026-11-05T16:47:55Z
 ---
 # Add Optional AI-Evaluation-Loop Modes
 
@@ -131,15 +134,15 @@ Plan agent read the relevant action and CLI consumers. Validation: every require
 ## Scope
 
 **Files I will touch:**
-- skills/do-work/SKILL.md
-- skills/do-work/actions/work.md
-- skills/do-work/actions/ai-evaluation-loop-reference.md (new)
-- skills/do-work/actions/review-work.md
-- skills/do-work/actions/work-reference.md
-- skills/do-work/actions/help.md
-- skills/do-work/docs/work-guide.md
+- `skills/do-work/SKILL.md` (modify)
+- `skills/do-work/actions/work.md` (modify)
+- `skills/do-work/actions/ai-evaluation-loop-reference.md` (new)
+- `skills/do-work/actions/review-work.md` (modify)
+- `skills/do-work/actions/work-reference.md` (modify)
+- `skills/do-work/actions/help.md` (modify)
+- `skills/do-work/docs/work-guide.md` (modify)
 
-- skills/do-work/docs/review-work-guide.md
+- `skills/do-work/docs/review-work-guide.md` (modify)
 
 **Acceptance criteria:** Explicit opt-in only; ordinary behavior unchanged; Sol and three-provider council identities verified; optional latest-available Gemini advisory remains non-voting and nonblocking; findings ledger with stable IDs and evidence; approval covers exact current candidate; five total rounds and two consecutive stalled rounds without resets from fixes/recovery; recoverable checkpoint; explicit unresolved outcome at limits or required reviewer failure; actual installed usage instructions. Repeatable scenario evidence covers the confirmed RED/GREEN cases. Finalizer-owned release metadata is separate from builder scope.
 
@@ -152,3 +155,14 @@ Required-lessons consult: lessons-index.md matches action-files (8398 tokens) an
 ## Decisions
 
 **D-01 — DECIDE & STATE:** Keep selected review policy in action prose and durable REQ body evidence, consuming options before the CLI. Reuse completed-with-issues for an unresolved selected-loop result, explicitly not approval. Existing dependency readiness remains unchanged; changing dependency semantics is outside this request. No automatic upstream install or new statuses.
+
+## Repository Gate Deferral
+
+- **Gate command (argv JSON):** ["bash","_dev/tests/maintainer-verify.sh"]
+- **Direct exit status:** 1
+- **Diagnostic fingerprint:** 14816037a6fd3188551b9a540c8b7fbb01470e6bdfd681f43fa1931d3c4c6e97
+- **Repair dependency:** REQ-711
+- **Diagnostic evidence:** "baseline revision 40e9e4f6ee0f9ed19404d1515e7750f3a453a398"
+- **Diagnostic evidence:** "canonical gate exited 1 twice before implementation"
+- **Diagnostic evidence:** "TestShippedRuntimeEvidenceTracksEffectiveGoSettingsAndBinaryBytes: default runtime must have a determinable fingerprint (GOOS, GOARCH, CGO_ENABLED, DO_WORK_TEST_DO_WORK_CLI_BINARY)"
+- **Diagnostic evidence:** "TestShippedGitIsolationPreservesGenericLaneInheritance: shipped runtime probe did not isolate host Git configuration"

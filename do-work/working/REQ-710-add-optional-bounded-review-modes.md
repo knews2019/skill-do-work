@@ -120,15 +120,15 @@ Plan agent read the relevant action and CLI consumers. Validation: every require
 ## Scope
 
 **Files I will touch:**
-- skills/do-work/SKILL.md
-- skills/do-work/actions/work.md
-- skills/do-work/actions/ai-evaluation-loop-reference.md (new)
-- skills/do-work/actions/review-work.md
-- skills/do-work/actions/work-reference.md
-- skills/do-work/actions/help.md
-- skills/do-work/docs/work-guide.md
+- `skills/do-work/SKILL.md` (modify)
+- `skills/do-work/actions/work.md` (modify)
+- `skills/do-work/actions/ai-evaluation-loop-reference.md` (new)
+- `skills/do-work/actions/review-work.md` (modify)
+- `skills/do-work/actions/work-reference.md` (modify)
+- `skills/do-work/actions/help.md` (modify)
+- `skills/do-work/docs/work-guide.md` (modify)
 
-- skills/do-work/docs/review-work-guide.md
+- `skills/do-work/docs/review-work-guide.md` (modify)
 
 **Acceptance criteria:** Explicit opt-in only; ordinary behavior unchanged; Sol and three-provider council identities verified; optional latest-available Gemini advisory remains non-voting and nonblocking; findings ledger with stable IDs and evidence; approval covers exact current candidate; five total rounds and two consecutive stalled rounds without resets from fixes/recovery; recoverable checkpoint; explicit unresolved outcome at limits or required reviewer failure; actual installed usage instructions. Repeatable scenario evidence covers the confirmed RED/GREEN cases. Finalizer-owned release metadata is separate from builder scope.
 
