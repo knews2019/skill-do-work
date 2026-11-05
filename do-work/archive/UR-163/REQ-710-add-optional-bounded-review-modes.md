@@ -1,11 +1,17 @@
 ---
 id: REQ-710
 title: 'Add optional AI-Evaluation-Loop modes'
-status: claimed
+status: completed
+heavy_verified_at: 2026-11-05T17:23:36Z
+heavy_verified_revision: 74b3de5a5bd90968441dfd5c47f8d73a0baf3653
+kb_status: pending
+kb_entry: ""
 created_at: 2026-11-04T15:54:52Z
 user_request: UR-163
 domain: general
 route: C
+re_review_at: 2026-11-05T17:19:43Z
+commit: 74b3de5a5bd90968441dfd5c47f8d73a0baf3653
 review_at: 2026-11-05T17:16:40Z
 remediation_at: 2026-11-05T17:16:40Z
 builder_handback_at: 2026-11-05T17:10:07Z
@@ -43,6 +49,8 @@ gate_deferred: 'true'
 depends_on: [REQ-711]
 status_changed_at: 2026-11-05T16:47:55Z
 dispatch_at: 2026-11-05T16:52:22Z
+completed_at: 2026-11-05T17:23:53Z
+release_at: 2026-11-05T17:23:53Z
 ---
 # Add Optional AI-Evaluation-Loop Modes
 
@@ -170,7 +178,7 @@ Required-lessons consult: lessons-index.md matches action-files (8398 tokens) an
 - `skills/do-work/docs/work-guide.md` (modified)
 - `skills/do-work/docs/review-work-guide.md` (modified)
 
-**What was done:** Added opt-in Sol/council selection and optional Gemini advisory review through the skill action, with a durable ledger/counters, version-specific approval, five/two stopping, recoverable checkpoints and honest unresolved lifecycle results. Wired the reference into work/review and installed help/guides while qualifying ordinary fallbacks. No CLI helper/schema or upstream install. Builder ad4ef86bb15d6d101a5abe02d4bb386668a4a186 merged as a7502c5a4fa6fa2717aa7fbc3889c55fff26cd7e; evidence range 2fc8b1ab5cf63c7a5e883636dac270b8459b1c05..a7502c5a4fa6fa2717aa7fbc3889c55fff26cd7e.
+**What was done:** Added opt-in Sol/council selection and optional Gemini advisory review through the skill action, with a durable ledger/counters, version-specific approval, five/two stopping, recoverable checkpoints and honest unresolved lifecycle results. Wired the reference into work/review and installed help/guides while qualifying ordinary fallbacks. No CLI helper/schema or upstream install. Builder ad4ef86bb15d6d101a5abe02d4bb386668a4a186 initially merged as a7502c5a4fa6fa2717aa7fbc3889c55fff26cd7e, remediated by 0fadcd9a and merged as 74b3de5a5bd90968441dfd5c47f8d73a0baf3653; final evidence range 2fc8b1ab5cf63c7a5e883636dac270b8459b1c05..74b3de5a5bd90968441dfd5c47f8d73a0baf3653.
 
 Handback: do-work/runs/2026-11-05-req710/REQ-710-handback.md. Its S1–S12 are explicitly simulated instruction walkthroughs, not live model execution. All lesson/crew paths required by the brief were read; none missing. Builder decisions D1–D5 in that handback implement the existing D-01 scope decision without new scope or questions.
 
@@ -178,4 +186,60 @@ Handback: do-work/runs/2026-11-05-req710/REQ-710-handback.md. Its S1–S12 are e
 
 Initial independent review found one Important, impact-user-visible issue: Step 4 returned accepted fixes to Step 6, whose landed-handback rule would consume the earlier merged build and fail on an empty merge. Acceptance Fail (Requirements 90, Code Quality 85, Test Adequacy 75, Scope 100; capped overall 50). Parent confirmed by following the companion, work Step 6 and fan-out merge rule.
 
-One remediation attempt adds durable active attempt IDs, distinct handback paths and verified integration receipts before re-entering Step 6. Recovery resumes the same invocation/attempt and skips already integrated source; new fixes retain original review base, ledger and counters. Parent implemented the small fix on the existing isolated feature branch, commit 0fadcd9a. No scope expansion. Re-review and integrated gates pending.
+One remediation attempt adds durable active attempt IDs, distinct handback paths and verified integration receipts before re-entering Step 6. Recovery resumes the same invocation/attempt and skips already integrated source; new fixes retain original review base, ledger and counters. Parent implemented the small fix on the existing isolated feature branch, commit 0fadcd9a. No scope expansion. Re-review approved at 95%; the integrated fast gate and all selected heavy lanes passed.
+
+## Qualification
+
+Initial and remediated eight-path scope matches implementation. Parent read the actual diff and traced all requirements through action routing, selected review, recovery, ledger/candidate/checkpoint and installed usage. Original merge a7502c5a passed the direct full gate (exit 0, 137s); remediation adds active-attempt recovery to work and companion. Current cumulative evidence range: 2fc8b1ab5cf63c7a5e883636dac270b8459b1c05..74b3de5a5bd90968441dfd5c47f8d73a0baf3653. No deterministic runtime logic or schema introduced; simulation plus independent instruction review is appropriate for tdd:false.
+
+## Testing
+
+**Scenario evidence:** Builder S1–S12 plus parent S13–S16 cover opt-in/default behavior, missing/verified identities, ledger disagreement, current-candidate invalidation, five/two stops, checkpoint protection, advisory policy, recovery and accepted-fix handback attempts. These are instruction walkthroughs, not live provider execution.
+**Focused checks:** Builder package-reference and contract suites passed; integrated package-reference probe passed through advance. Cumulative diff hygiene and scope/qualification records satisfied.
+**Repository gate:** bash _dev/tests/maintainer-verify.sh passed directly, exit 0, 118s at 74b3de5a5bd90968441dfd5c47f8d73a0baf3653. 427 board and 971 CLI tests; test-file budget checks passed.
+**Heavy lanes:** staged-skills selected for this feature; union drain also includes the prerequisite's CLI integration, updater and installer lanes.
+**Limitations:** No live provider discovery/identity, council/Sol execution, advisory timing, real checkpoint restoration or installed-agent execution.
+
+## Review
+
+**Overall: 95%** | REQ-710 independent re-review
+
+| Dimension | Score |
+|---|---|
+| Requirements | 100% |
+| Code Quality | 95% |
+| Test Adequacy | 85% |
+| Scope | 100% |
+| Risk | Low |
+| Acceptance | Pass |
+
+**Important findings:** Initial attempt/handback routing defect fixed and independently rechecked. No remaining actionable findings.
+**Minor findings:** None.
+**Acceptance:** Pass — implementation-level instruction walkthroughs and integration contracts, not live model execution. Parent full gate and all selected heavy lanes passed.
+**Restatement sweep:** selected/ordinary decisions, option ownership, recovery retention, cumulative merge ranges, lifecycle/dependency semantics and installed guidance agree. Source ancestry/receipt handles interrupted integration.
+**Suggested testing:** selected heavy lanes.
+**Follow-ups created:** None.
+
+## Lessons Learned
+
+**What worked:** Keeping the selected mode in a companion preserved the ordinary workflow and existing lifecycle writer.
+**What didn't:** Initial simulations assumed a fresh fix builder; tracing the actual landed-handback rule exposed reuse of an already merged attempt.
+**Worth knowing:** New fix attempts need distinct durable handbacks; recovery must reuse the active attempt and verify its integration receipt. Original review base, finding ledger and round counters survive both paths. Existing action lessons already cover alternate-reader closure; no duplicate satellite entry.
+
+## Orientation
+
+[MAP CHANGED] The core work action now offers optional AI-Evaluation-Loop modes: Sol or a three-provider council, with optional Gemini advisory feedback. It records findings and real model identities, limits review to five rounds with a two-stall stop, preserves checkpoints, and reports unresolved work honestly. Ordinary runs retain their existing behavior.
+
+## Heavy Verification Plan
+
+- Base revision: 2fc8b1ab5cf63c7a5e883636dac270b8459b1c05
+- Target revision: 74b3de5a5bd90968441dfd5c47f8d73a0baf3653
+- staged-skills: ["env", "GIT_CONFIG_NOSYSTEM=1", "GIT_CONFIG_GLOBAL=/dev/null", "bash", "_dev/tests/maintainer-verify.sh", "--heavy-lane", "staged-skills"] — skills/do-work/SKILL.md matched subtree skills; skills/do-work/actions/ai-evaluation-loop-reference.md matched subtree skills; skills/do-work/actions/help.md matched subtree skills; skills/do-work/actions/review-work.md matched subtree skills; skills/do-work/actions/work-reference.md matched subtree skills; skills/do-work/actions/work.md matched subtree skills; skills/do-work/docs/review-work-guide.md matched subtree skills; skills/do-work/docs/work-guide.md matched subtree skills
+
+## Heavy Verification Result
+
+- Target revision: 74b3de5a5bd90968441dfd5c47f8d73a0baf3653
+- Execution revision: 74b3de5a5bd90968441dfd5c47f8d73a0baf3653
+- staged-skills: exit 0, not skipped, executed, 34s (fingerprint_uncertain).
+
+All selected lanes passed. The fast gate and independent review also passed; no open completion requirement. KB lessons remain in this REQ; optional promotion is pending.

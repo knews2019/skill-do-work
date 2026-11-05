@@ -10,6 +10,15 @@ For the complete release history, read this file and the archives below from new
 - [0.50.0 through 0.64.1](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-13-up-to-v0.64.1.md)
 - [0.1.0 through 0.49.0](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-07-up-to-v0.49.0.md)
 
+## 0.310.0 — Optional AI-Evaluation-Loop Modes (2026-11-05)
+
+Choose Sol or a three-provider council to review a change through the AI-Evaluation-Loop. Ordinary runs keep their existing review behavior.
+
+- Record findings and verified model identities; approval covers the current change only.
+- Stop after five total rounds or two consecutive stalled rounds, preserve a recoverable checkpoint, and report unresolved work explicitly.
+- Add an optional Gemini advisory reviewer with `--jester`; its score never counts toward approval.
+- Installed help includes invocation examples, recovery behavior and review evidence requirements.
+
 ## 0.309.8 — Every AI Report Ends With a Suggested Different Layout (2026-11-02)
 
 The report kit is one way to tell a story, not a proven best one. Every new AI report now suggests one different layout for its own content, so styles beyond the kit get tried.
