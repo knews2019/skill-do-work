@@ -1,7 +1,7 @@
 ---
 id: REQ-710
 title: 'Add optional AI-Evaluation-Loop modes'
-status: claimed
+status: pending
 created_at: 2026-11-04T15:54:52Z
 user_request: UR-163
 domain: general
@@ -35,6 +35,8 @@ estimate:
 tdd: false
 maintenance: false
 claimed_at: 2026-11-05T16:27:47Z
+gate_deferred: 'true'
+depends_on: [REQ-711]
 ---
 # Add Optional AI-Evaluation-Loop Modes
 
@@ -138,3 +140,14 @@ Required-lessons consult: lessons-index.md matches action-files (8398 tokens) an
 ## Decisions
 
 **D-01 — DECIDE & STATE:** Keep selected review policy in action prose and durable REQ body evidence, consuming options before the CLI. Reuse completed-with-issues for an unresolved selected-loop result, explicitly not approval. Existing dependency readiness remains unchanged; changing dependency semantics is outside this request. No automatic upstream install or new statuses.
+
+## Repository Gate Deferral
+
+- **Gate command (argv JSON):** ["bash","_dev/tests/maintainer-verify.sh"]
+- **Direct exit status:** 1
+- **Diagnostic fingerprint:** 14816037a6fd3188551b9a540c8b7fbb01470e6bdfd681f43fa1931d3c4c6e97
+- **Repair dependency:** REQ-711
+- **Diagnostic evidence:** "baseline revision 40e9e4f6ee0f9ed19404d1515e7750f3a453a398"
+- **Diagnostic evidence:** "canonical gate exited 1 twice before implementation"
+- **Diagnostic evidence:** "TestShippedRuntimeEvidenceTracksEffectiveGoSettingsAndBinaryBytes: default runtime must have a determinable fingerprint (GOOS, GOARCH, CGO_ENABLED, DO_WORK_TEST_DO_WORK_CLI_BINARY)"
+- **Diagnostic evidence:** "TestShippedGitIsolationPreservesGenericLaneInheritance: shipped runtime probe did not isolate host Git configuration"
