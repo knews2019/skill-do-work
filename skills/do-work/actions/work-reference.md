@@ -10,6 +10,12 @@ The per-REQ pipeline is `actions/work.md`'s numbered steps; this section is the 
 
 - **Who owns what.** The orchestrator owns judgment and every authored `##` section. Canonical commands own the deterministic mutations: `advance` (selection, claim, mechanical evidence gates, checkpoint, finalization hand-off), `defer-gate` (repository-gate deferral), and the finalization engine (archive, release, commit, provenance, verification, cleanup).
 
+## Selected AI-Evaluation-Loop
+
+`actions/ai-evaluation-loop-reference.md` owns opt-in review selection, verified identities, the current candidate, finding ledger, five-total-round/two-stall limits, recoverable checkpoint and decision. Read it when `work.md` selects the mode or finds a persisted selection. The parent keeps these notes in a separate top-level `## AI-Evaluation-Loop` body section before dispatch and updates it after results; recovery must retain it independently of disposable Review/Testing sections. No CLI option or frontmatter schema is added.
+
+Selected evaluation can be unresolved / not approved while its lifecycle result is `completed-with-issues`. That existing terminal-success still satisfies dependencies and UR completion. It is never evidence of consensus. Any progress, hand-back or completion summary for selected work must carry the explicit evaluation result and remaining concerns alongside lifecycle status, not infer approval from a score or archive membership.
+
 ## Execution Model — Claim Anywhere, One Releaser
 
 **Any checkout may capture and claim.** A queue can be shared by however many checkouts a user points at it — a spawned worktree, a second local workspace, a clone, a cloud sandbox — and each of them may write REQ files, claim them, and build. Claims and captures reach the other checkouts the way everything else does: by ordinary git sync, with no lock, no lease, and nothing to acquire. The canonical claim transaction commits its queue-to-working move plus checkpoint entry immediately, in every mode, so a successful claim has one durable footprint before implementation begins. This narrows duplicate work to checkouts that have not synced; it does not add coordination or arbitration, and any collision still surfaces when branches meet (**Cross-checkout collisions are merge artifacts**, below).
@@ -308,6 +314,8 @@ The same judgment applies to any later typed refusal whose evidence is dirt or a
 ## Crash Recovery (Step 1)
 
 Run the canonical `recover` command before selection. Its ordered typed result settles finalization first, then classifies every working claim from structural checkpoint evidence; plain recovery preserves claims and its takeover finding's next step is the read-only `advance REQ-NNN`, which continues the claim. Explicit `--take-over REQ-NNN` or `--assume-sole-authority` authorizes the canonical reset for every claim except one this run set aside, whose claim recovery preserves so the exclusion holds. The reset requeues the claim and strips its orchestrator sections, so use it only for a claim no live session owns, never to resume a handoff. Follow the result, never infer ownership from prose or interpolate a writer label into shell source.
+
+After recovery, reload any top-level `## AI-Evaluation-Loop` record before dispatch or finalization. Preserve its mode, counters, ledger and checkpoint references even when generated sections were stripped. Revalidate candidate identity and required review evidence under `actions/ai-evaluation-loop-reference.md`; recovery never grants a fresh round budget or approval.
 
 Keep the exact `## In Progress (interrupted)` heading as the claim-evidence boundary. Explicit authority removes every same-request entry atomically, including multiple writer labels and unlabelled legacy records, while unrelated entries and project dirt remain byte-identical.
 

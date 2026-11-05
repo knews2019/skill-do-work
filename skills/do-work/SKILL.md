@@ -1,7 +1,7 @@
 ---
 name: do-work
 description: Core request capture, queue orchestration, verification, review, and maintenance for the modular do-work suite
-argument-hint: "capture-request: <task> | run [REQ|UR] [--fan-out [N]] [--coordinate] | run-with-recovery [REQ|UR] | run-simple-reqs | verify-requests [REQ|UR|--against source] | review-work [REQ|UR] | clarify | stakeholder-answers [REQ] | abandon [REQ|UR] | cleanup | commit | forensics | status [REQ] [--watch] | roadmap | trace <url|image|text|UR-NNN> | handoff | version | update | recap | help"
+argument-hint: "capture-request: <task> | run [REQ|UR] [--fan-out [N]] [--coordinate] [--review-mode sol-loop|council [--jester]] | run-with-recovery [REQ|UR] | run-simple-reqs | verify-requests [REQ|UR|--against source] | review-work [REQ|UR] | clarify | stakeholder-answers [REQ] | abandon [REQ|UR] | cleanup | commit | forensics | status [REQ] [--watch] | roadmap | trace <url|image|text|UR-NNN> | handoff | version | update | recap | help"
 ---
 
 # Do-Work Core Skill
@@ -56,6 +56,8 @@ An unknown single word is ambiguous: ask whether the user wants it captured or m
 Read the selected action file completely and pass through the user's arguments. If subagents are available, the action may be dispatched to one with the action file and complete target context; otherwise execute it inline. `work` and `cleanup` may run in the background when the harness supports that.
 
 For a screenshot-bearing capture, the subagent cannot see images from the main conversation. Before dispatching, create the staging parent, then allocate one exclusive directory for this dispatch with `mkdir -p do-work/user-requests/.pending-assets` followed by `screenshot_dispatch_directory="$(mktemp -d do-work/user-requests/.pending-assets/capture.XXXXXX)"`; stop if allocation fails. Save each screenshot to `$screenshot_dispatch_directory/screenshot-{n}.png`, write a text description of it, and include its exact path and description in the subagent prompt. [`actions/capture.md`](./actions/capture.md) Step 4 owns cleanup: it installs each exact byte-verified unique copy at its permanent REQ-named path without overwriting an existing asset, removes each staged file only after successful installation, preserves and reports the staged source on capture failure, and best-effort removes the exclusive dispatch directory when empty.
+
+`run --review-mode sol-loop|council [--jester]` opts into the AI-Evaluation-Loop in [`actions/ai-evaluation-loop-reference.md`](./actions/ai-evaluation-loop-reference.md). The work action consumes these options before CLI selection; ordinary run and standalone review stay unchanged.
 
 Per-command `help` reads the selected action and returns a compact usage summary without executing it.
 

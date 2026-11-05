@@ -32,6 +32,8 @@ A post-work quality gate with three jobs: (1) confirm the implementation matches
 
 Both modes follow the same workflow. Step 4 owns their diff-acquisition procedure.
 
+**Caller-owned evidence-only review:** When the orchestrator requests this form for an AI-Evaluation-Loop, return evidence without writes. Use the caller's frozen candidate manifest and bytes (including staged, unstaged and untracked implementation), not a convenient HEAD-only diff. Return that candidate ID, findings, actual checks and limitations, and your explicit approve/request-changes verdict. Do not edit source, append REQ sections, create follow-ups, update lessons or commit. Steps 9, 9.5 and 10 and **Append to REQ File** produce proposed content/routing for the parent to validate and write. Return self-validation findings before your final verdict. Score bands below are observations only in this form: approve only with required acceptance evidence and no supported material unresolved finding. The parent applies `actions/ai-evaluation-loop-reference.md`; an individual verdict is not the loop outcome. In this form, Steps 1–4 use the supplied REQ/UR extracts and candidate snapshot; do not read the parent's private control notes or role assignments. Load the shared-principles crew as usual. Standalone and ordinary orchestrated reviews keep their existing behavior.
+
 ## Steps
 
 ### Step 1: Find the Target
@@ -220,6 +222,8 @@ Only include categories that are relevant to this specific change. A copy change
 
 ### Scoring Guidelines
 
+For caller-owned evidence-only review, these scores do not grant approval or override a material finding.
+
 **Computing the overall score:** Average the percentage dimensions — Requirements, Code Quality, Test Adequacy (skip if N/A), and Scope Discipline. Then apply qualitative modifiers: Risk = Critical caps the overall at 60% max; Acceptance = Fail caps at 50% max; Acceptance = Partial applies a 10-point penalty.
 
 **90-100%**: Ship-ready. Clean implementation, good tests, on-spec, acceptance passes.
@@ -297,7 +301,7 @@ Route [A/B/C] | [commit hash or "uncommitted"]
 - [critical REQ entries only, or `None (N findings report only)` when every finding is noncritical]
 ```
 
-**Verdict mapping** (keep consistent with the score bands above and the work.md Step 7 gate): **Approve** = Acceptance Pass *and* Overall ≥ 75%. **Approve with follow-ups** = Acceptance Partial *or* Overall 50–74% (only critical findings auto-queue; the label also covers report-only findings). **Request changes** = Acceptance Fail *or* Overall < 50%. The percentage still appears (under **Scores**) so the Step 7 gate and commit-message format read it unchanged — it just stops leading.
+**Ordinary verdict mapping** (caller-owned evidence-only review uses the current-candidate/material-finding rule above; otherwise keep consistent with the score bands above and the work.md Step 7 gate): **Approve** = Acceptance Pass *and* Overall ≥ 75%. **Approve with follow-ups** = Acceptance Partial *or* Overall 50–74% (only critical findings auto-queue; the label also covers report-only findings). **Request changes** = Acceptance Fail *or* Overall < 50%. The percentage still appears (under **Scores**) so the Step 7 gate and commit-message format read it unchanged — it just stops leading.
 
 ### Step 9.5: Self-Validation & Lessons Learned
 
@@ -389,7 +393,7 @@ Critical follow-up REQs go in `do-work/queue/` and are reported prominently as `
 
 ### Append to REQ File
 
-After generating the report, append a Review section to the REQ file — its `<timestamp>` is the current UTC instant (Timestamp rule, `actions/work-reference.md`):
+After generating the report, append a Review section to the REQ file (in caller-owned evidence-only form, return it to the parent without writing) — its `<timestamp>` is the current UTC instant (Timestamp rule, `actions/work-reference.md`):
 
 ```markdown
 ## Review
@@ -417,6 +421,8 @@ After generating the report, append a Review section to the REQ file — its `<t
 
 *Reviewed by review-work action*
 ```
+
+For a selected AI-Evaluation-Loop, the parent adds the explicit loop result, candidate identity, counters, required verdicts and remaining concerns from `actions/ai-evaluation-loop-reference.md` alongside this block. Per-review scores never override that result.
 
 In standalone mode, this is an exception to the archive immutability rule — review annotations are post-work metadata, not content changes.
 
@@ -465,7 +471,7 @@ Match effort to complexity:
 
 - Don't re-implement — you're reviewing, not building
 - Don't review a critical follow-up more strictly than the original work merely because it came from review; apply the same rubric and leave every new noncritical result in the report
-- Don't block on minor issues — report them but keep moving
+- Don't block on minor issues in ordinary review — report them but keep moving. In caller-owned evidence-only review, any supported material defect still prevents approval regardless of its severity label or impact-routing token
 - Don't invent requirements — review against what the REQ says, not what you think it should say
 - Don't penalize the absence of things the project doesn't have (no test infrastructure = don't fail on test adequacy)
 - Don't turn acceptance testing into a full QA cycle — it's a smoke test, not an exhaustive regression suite

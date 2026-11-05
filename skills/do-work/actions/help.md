@@ -9,6 +9,8 @@ do-work — core request and queue orchestration
 
   do-work capture-request: <task>   Preserve intent as a UR and linked REQs
   do-work run [REQ|UR ...]          Build, test, review, archive, and commit ready work
+  do-work run [REQ|UR ...] --review-mode sol-loop|council [--jester]
+                                      Opt into AI-Evaluation-Loop review; jester is optional advisory
   do-work run-with-recovery [REQ|UR ...]
                                       Assert sole queue authority, recover interrupted work, then run
   do-work run-simple-reqs           Run only the mechanical REQs — lists them with an estimate first
@@ -45,6 +47,8 @@ Extensions installed beside core — run <package> help for usage on any of thes
 ```
 
 Deterministic operations also have flat, no-agent recipes. Run `just --list` for the live inventory and see `docs/command-line-guide.md`; examples include `just do-work-doctor`, `just do-work-next`, and canonical `just do-work-update`.
+
+For installed usage, see [AI-Evaluation-Loop choices](../docs/work-guide.md#optional-ai-evaluation-loop). Sol requires a verified GPT Sol reviewer; council requires three providers. The loop stops at approval, five total rounds, or two stalled rounds. Missing required reviews remain unresolved. `--jester` adds nonblocking Gemini advice and requires a selected mode. These are agent-action options, not CLI `advance` flags.
 
 ## Full cycle without persistent state
 

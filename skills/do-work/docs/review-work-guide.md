@@ -37,7 +37,7 @@ The result covers only the delivery stages the review actually checked: implemen
 
 ## Scoring
 
-Averages the percentage dimensions with qualitative modifiers:
+Ordinary review averages the percentage dimensions with qualitative modifiers. In a selected AI-Evaluation-Loop, scores are observations and never acceptance thresholds:
 
 | Range | Meaning |
 |-------|---------|
@@ -59,6 +59,18 @@ Every finding gets a recorded impact token (would anyone notice in real use? doe
 ## Output
 
 Structured report with scores table, requirements checklist, findings by severity, acceptance result, and suggested additional testing.
+
+## Optional AI-Evaluation-Loop during run
+
+Select it through `do-work run REQ-042 --review-mode sol-loop` or `do-work run UR-011 --review-mode council`; add `--jester` for optional Gemini advice. These action-owned flags are consumed before CLI `advance`. Standalone `review-work` keeps the ordinary scoring and write behavior above.
+
+In a selected loop, reviewers use caller-owned evidence-only review: independent read-only results, no REQ or follow-up writes. The parent validates findings, writes the durable ledger and Review, and owns the decision. Sol requires an actual verified GPT Sol invocation; council requires independent OpenAI, Anthropic and Google invocations with recorded model/identity evidence. A missing or failed required reviewer never approves.
+
+Approval needs the parent and every required reviewer on the same current candidate, including dirty and untracked implementation bytes, with no supported material finding unresolved. Later behavior changes invalidate it. The loop allows five total rounds and stops after two consecutive stalled rounds; only evidence-supported improvement resets stalls, never total rounds. A recoverable best checkpoint and counters survive recovery, and a restored candidate needs review within the remaining budget.
+
+The optional jester defaults to the latest available Gemini resolvable through the harness. It gets the same serious brief without being told its advisory role. Its scores never affect acceptance or council grades in PR descriptions, and a slow/missing reply never delays the loop. Validated material defects still enter the ledger on their evidence.
+
+The parent reports **AI-Evaluation-Loop: approved** or **AI-Evaluation-Loop: unresolved / not approved** with candidate, identities, round/stall counts, remaining issues and checkpoint location. Unresolved selected review uses `completed-with-issues` without calling it approval; this existing status still satisfies dependencies and UR completion. See [installed usage and availability requirements](./work-guide.md#optional-ai-evaluation-loop) and [the full contract](../actions/ai-evaluation-loop-reference.md).
 
 ## Usage
 
