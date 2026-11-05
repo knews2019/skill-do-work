@@ -3,6 +3,8 @@ id: REQ-711
 title: 'Repair runtime fingerprint baseline failures'
 status: claimed
 route: B
+builder_handback_at: 2026-11-05T16:42:44Z
+integration_at: 2026-11-05T16:42:44Z
 prime_files: [skills/do-work/tools/do-work-cli/prime-do-work-cli.md]
 write_set: [skills/do-work/tools/do-work-cli/internal/heavyverification/heavy_maintainer_tree_test.go]
 estimate:
@@ -23,6 +25,8 @@ sweep_key: runtime-fingerprint-baseline
 depends_on: []
 related: [REQ-710]
 claimed_at: 2026-11-05T16:35:25Z
+review_at: 2026-11-05T16:47:07Z
+commit: 2c3825997ffd303be982f91f304365b9fb808d20
 ---
 
 # Repair runtime fingerprint baseline failures
@@ -65,7 +69,7 @@ Required-lessons index consulted: CLI satellite (24067 tokens, partial coverage)
 ## Scope
 
 **Files I will touch:**
-- skills/do-work/tools/do-work-cli/internal/heavyverification/heavy_maintainer_tree_test.go
+- `skills/do-work/tools/do-work-cli/internal/heavyverification/heavy_maintainer_tree_test.go` (modify)
 
 **Acceptance criteria:** Existing named tests pass with hostile host Go settings; tests continue to exercise deliberate per-case setting changes; production refuses opaque flags/workspaces unchanged. Canonical gate must pass before REQ-710 resumes.
 
@@ -75,9 +79,67 @@ RED: Existing TestShippedRuntimeEvidenceTracksEffectiveGoSettingsAndBinaryBytes 
 
 ## AI Execution State (P-A-U Loop)
 - [x] **[PLAN]:** Isolate only fixture environment, preserving production fail-closed behavior.
-- [ ] **[APPLY]:** Implement the declared fixture correction.
-- [ ] **[UNIFY]:** Verify focused tests, diff and integrated canonical gate.
+- [x] **[APPLY]:** Implement the declared fixture correction.
+- [x] **[UNIFY]:** Builder checked gofmt, focused RED/GREEN, hostile GOENV replay and diff; orchestrator checked the four-line integrated diff. Canonical gate remains the next testing step.
 
 ## Pre-Build Evidence
 
 Canonical gate failed twice (exit 1, then 1) before implementation with intake fingerprint 14816037a6fd3188551b9a540c8b7fbb01470e6bdfd681f43fa1931d3c4c6e97. Focused advance preflight also failed twice (1, 1) with the same named tests. This repository_gate_repair has the exact expected red baseline and may implement under the repair exception; no recursive deferral.
+
+## Implementation Summary
+
+**Files changed:**
+- `skills/do-work/tools/do-work-cli/internal/heavyverification/heavy_maintainer_tree_test.go` (modified) — fixture sets GOENV=off, empty GOFLAGS and GOWORK=off before intentional per-case overrides.
+
+**What was done:** Isolated the runtime-evidence test fixture from host Go configuration. Production fail-closed fingerprinting is unchanged. Builder commit 3c6efd59ec172b8481cbca0ccdacc044573bd078 merged as 2c3825997ffd303be982f91f304365b9fb808d20; qualification range d7c13a8cab8eb115e735b7041243107dfbc94bbf..2c3825997ffd303be982f91f304365b9fb808d20.
+
+Builder handback: do-work/runs/2026-11-05-req711/REQ-711-handback.md. Existing tests reproduced RED before edit; all six relevant tests passed after edit with inherited host settings and temporary GOENV containing GOFLAGS=-trimpath. No persistent Go settings changed. No missing lesson paths reported.
+
+## Qualification
+
+Advance qualify and scope-drift records are satisfied for exact REQ/path and range d7c13a8cab8eb115e735b7041243107dfbc94bbf..2c3825997ffd303be982f91f304365b9fb808d20. Initial scope parser warning was missing Markdown backticks in the authored Scope, corrected without changing its declared path. Four-line fixture diff is substantive, matches requirements, and preserves production refusal and intentional per-case overrides.
+
+## Testing
+
+**Red-green validation:** Named runtime-identity and Git-isolation tests failed before edits (canonical baseline 1 then 1; focused preflight 1 then 1), passed after fixture isolation. Builder replay with hostile GOENV passed six tests in 4.362s. Integrated focused advance probe passed in 4.370s (exit 0, no timeout); reviewer independent subset passed in 5.305s. Production opaque-override tests remain green.
+**Repository gate:** bash _dev/tests/maintainer-verify.sh passed directly, exit 0, 119s on merge 2c3825997ffd303be982f91f304365b9fb808d20. Advance recorded matching request/path green gate evidence.
+**Heavy lanes selected:** do-work-cli-integrations, staged-skills, updater, installer; pending drain. No test expectation weakened; fixture host isolation is the intentional cross-test correction.
+
+## Review
+
+**Overall: 100%** | 2026-11-05T16:47:07Z
+
+| Dimension | Score |
+|---|---|
+| Requirements | 100% |
+| Code Quality | 100% |
+| Test Adequacy | 100% |
+| Scope | 100% |
+| Risk | None |
+| Acceptance | Pass |
+
+**Important findings:** None
+**Minor findings:** None
+**Acceptance:** Pass — implementation and targeted integration independently reviewed; parent also verified integrated canonical fast gate. Heavy lanes pending. No deployment stage applies to this export-ignored fixture.
+**Restatement sweep:** nothing redefined outside fixture setup.
+**Suggested testing:** selected heavy lanes.
+**Follow-ups created:** None
+
+## Lessons Learned
+
+**What worked:** Deterministic fixture-owned Go settings removed host contamination while retaining deliberate per-case overrides.
+**What didn't:** Assuming host defaults were fingerprintable conflated opaque Go configuration with Git isolation.
+**Worth knowing:** Keep production refusal of arbitrary flags; isolate test baselines instead. Existing CLI satellite already records host GOFLAGS behavior, so no duplicate lesson entry.
+
+## Orientation
+
+The runtime-evidence tests now pass independently of host Go configuration. This prerequisite clears the baseline failure that prevented building optional AI-Evaluation-Loop modes.
+
+## Heavy Verification Plan
+
+- Base revision: d7c13a8cab8eb115e735b7041243107dfbc94bbf
+- Target revision: 2c3825997ffd303be982f91f304365b9fb808d20
+- do-work-cli-integrations: ["env", "GIT_CONFIG_NOSYSTEM=1", "GIT_CONFIG_GLOBAL=/dev/null", "bash", "_dev/tests/maintainer-verify.sh", "--heavy-lane", "do-work-cli-integrations"] — skills/do-work/tools/do-work-cli/internal/heavyverification/heavy_maintainer_tree_test.go matched subtree skills/do-work/tools/do-work-cli
+- staged-skills: ["env", "GIT_CONFIG_NOSYSTEM=1", "GIT_CONFIG_GLOBAL=/dev/null", "bash", "_dev/tests/maintainer-verify.sh", "--heavy-lane", "staged-skills"] — skills/do-work/tools/do-work-cli/internal/heavyverification/heavy_maintainer_tree_test.go matched subtree skills
+- updater: ["env", "GIT_CONFIG_NOSYSTEM=1", "GIT_CONFIG_GLOBAL=/dev/null", "bash", "_dev/tests/maintainer-verify.sh", "--heavy-lane", "updater"] — skills/do-work/tools/do-work-cli/internal/heavyverification/heavy_maintainer_tree_test.go matched subtree skills/do-work/tools/do-work-cli
+- installer: ["env", "GIT_CONFIG_NOSYSTEM=1", "GIT_CONFIG_GLOBAL=/dev/null", "bash", "_dev/tests/maintainer-verify.sh", "--heavy-lane", "installer"] — skills/do-work/tools/do-work-cli/internal/heavyverification/heavy_maintainer_tree_test.go matched subtree skills/do-work/tools/do-work-cli
