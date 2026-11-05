@@ -38,6 +38,7 @@ claimed_at: 2026-11-05T16:27:47Z
 gate_deferred: 'true'
 depends_on: [REQ-711]
 status_changed_at: 2026-11-05T16:47:55Z
+dispatch_at: 2026-11-05T16:52:22Z
 ---
 # Add Optional AI-Evaluation-Loop Modes
 
