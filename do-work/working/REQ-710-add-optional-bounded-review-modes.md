@@ -1,7 +1,7 @@
 ---
 id: REQ-710
 title: 'Add optional AI-Evaluation-Loop modes'
-status: pending
+status: claimed
 created_at: 2026-11-04T15:54:52Z
 user_request: UR-163
 domain: general
@@ -23,6 +23,7 @@ estimate:
   calculated_at: 2026-11-04T19:23:16Z
 tdd: false
 maintenance: false
+claimed_at: 2026-11-05T16:27:47Z
 ---
 # Add Optional AI-Evaluation-Loop Modes
 
