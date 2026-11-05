@@ -6,6 +6,10 @@ created_at: 2026-11-04T15:54:52Z
 user_request: UR-163
 domain: general
 route: C
+review_at: 2026-11-05T17:16:40Z
+remediation_at: 2026-11-05T17:16:40Z
+builder_handback_at: 2026-11-05T17:10:07Z
+integration_at: 2026-11-05T17:10:07Z
 write_set:
   - skills/do-work/SKILL.md
   - skills/do-work/actions/work.md
@@ -90,9 +94,9 @@ Firm: explicit opt-in, unchanged defaults, a findings ledger, verified identity,
 - `skills/do-work/tools/do-work-cli/lessons-do-work-cli.md`: 24067 tokens; matches native backend identity and structured evidence. Index coverage is partial, so targeted entries are ineligible; exceeds the same budget.
 
 ## AI Execution State (P-A-U Loop)
-- [ ] **[PLAN]:** (Agent: Read listed `prime_files` and agent rules. Write brief technical approach here. Do not write code yet.)
-- [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
-- [ ] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
+- [x] **[PLAN]:** Validated three-task plan and eight-path scope; reuse existing lifecycle and companion prose.
+- [x] **[APPLY]:** Implemented the eight declared paths; parent merged isolated source commit.
+- [x] **[UNIFY]:** Builder reviewed all eight files, ran package references and contract checks, checked diff hygiene, and documented twelve simulated workflows. Parent owns integrated gate and independent review.
 
 ## Full Context
 See `do-work/user-requests/UR-163/input.md` for the verbatim input.
@@ -153,3 +157,25 @@ Required-lessons consult: lessons-index.md matches action-files (8398 tokens) an
 - **Diagnostic evidence:** "canonical gate exited 1 twice before implementation"
 - **Diagnostic evidence:** "TestShippedRuntimeEvidenceTracksEffectiveGoSettingsAndBinaryBytes: default runtime must have a determinable fingerprint (GOOS, GOARCH, CGO_ENABLED, DO_WORK_TEST_DO_WORK_CLI_BINARY)"
 - **Diagnostic evidence:** "TestShippedGitIsolationPreservesGenericLaneInheritance: shipped runtime probe did not isolate host Git configuration"
+
+## Implementation Summary
+
+**Files changed:**
+- `skills/do-work/SKILL.md` (modified)
+- `skills/do-work/actions/work.md` (modified)
+- `skills/do-work/actions/ai-evaluation-loop-reference.md` (new)
+- `skills/do-work/actions/review-work.md` (modified)
+- `skills/do-work/actions/work-reference.md` (modified)
+- `skills/do-work/actions/help.md` (modified)
+- `skills/do-work/docs/work-guide.md` (modified)
+- `skills/do-work/docs/review-work-guide.md` (modified)
+
+**What was done:** Added opt-in Sol/council selection and optional Gemini advisory review through the skill action, with a durable ledger/counters, version-specific approval, five/two stopping, recoverable checkpoints and honest unresolved lifecycle results. Wired the reference into work/review and installed help/guides while qualifying ordinary fallbacks. No CLI helper/schema or upstream install. Builder ad4ef86bb15d6d101a5abe02d4bb386668a4a186 merged as a7502c5a4fa6fa2717aa7fbc3889c55fff26cd7e; evidence range 2fc8b1ab5cf63c7a5e883636dac270b8459b1c05..a7502c5a4fa6fa2717aa7fbc3889c55fff26cd7e.
+
+Handback: do-work/runs/2026-11-05-req710/REQ-710-handback.md. Its S1–S12 are explicitly simulated instruction walkthroughs, not live model execution. All lesson/crew paths required by the brief were read; none missing. Builder decisions D1–D5 in that handback implement the existing D-01 scope decision without new scope or questions.
+
+## Remediation
+
+Initial independent review found one Important, impact-user-visible issue: Step 4 returned accepted fixes to Step 6, whose landed-handback rule would consume the earlier merged build and fail on an empty merge. Acceptance Fail (Requirements 90, Code Quality 85, Test Adequacy 75, Scope 100; capped overall 50). Parent confirmed by following the companion, work Step 6 and fan-out merge rule.
+
+One remediation attempt adds durable active attempt IDs, distinct handback paths and verified integration receipts before re-entering Step 6. Recovery resumes the same invocation/attempt and skips already integrated source; new fixes retain original review base, ledger and counters. Parent implemented the small fix on the existing isolated feature branch, commit 0fadcd9a. No scope expansion. Re-review and integrated gates pending.
