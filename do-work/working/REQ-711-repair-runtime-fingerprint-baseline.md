@@ -1,7 +1,7 @@
 ---
 id: REQ-711
 title: 'Repair runtime fingerprint baseline failures'
-status: pending
+status: claimed
 route: C
 created_at: 2026-11-05T16:34:59Z
 user_request: UR-163
@@ -15,6 +15,7 @@ sweep: 'true'
 sweep_key: runtime-fingerprint-baseline
 depends_on: []
 related: [REQ-710]
+claimed_at: 2026-11-05T16:35:25Z
 ---
 
 # Repair runtime fingerprint baseline failures
