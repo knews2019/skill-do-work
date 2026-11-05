@@ -57,13 +57,37 @@ As the request moves through the pipeline, sections are appended:
 
 ## Review gate
 
-After testing, a multi-dimensional review runs:
+Without an explicitly selected AI-Evaluation-Loop, a multi-dimensional review runs after testing:
 
 | Result | Action |
 |--------|--------|
 | Pass (75%+) | Archive as completed |
 | Partial (50-74%) | Archive; auto-queue only `impact-critical` findings and keep the rest in the report |
 | Fail (<50%) | One remediation attempt, then archive with issues |
+
+## Optional AI-Evaluation-Loop
+
+Ask your installed agent to run one of these commands:
+
+```text
+do-work run REQ-042 --review-mode sol-loop
+do-work run UR-011 --review-mode council
+do-work run REQ-042 --review-mode council --jester
+```
+
+These are skill-action options. The agent consumes them before calling CLI `advance`; do not pass them directly to that executable. They also compose with normal run selectors and dispatch flags. `--jester` requires `--review-mode`. With neither option and no persisted selection, the ordinary review above stays unchanged; standalone `do-work review-work` also stays unchanged.
+
+**Sol-loop** needs one independent OpenAI GPT Sol reviewer. **Council** needs three independent reviewers, one each from OpenAI, Anthropic and Google. Your harness must expose model discovery, dispatch and actual execution identity evidence. The parent records resolved provider/model IDs, effective settings and invocation evidence; it cannot guess identities, silently replace an explicitly selected model, or stand in for a missing required reviewer. Missing support produces unresolved / not approved. No upstream skill is installed automatically.
+
+**Optional jester** adds a separate advisory review using the latest available Gemini resolved through your harness. Gemini 4 Argon is an example, not a pinned identifier. It receives the same serious brief without an advisory-role label. Its scores never vote, block acceptance, or enter council grades in a PR description. An unavailable, failed or slow jester does not delay the loop; its absence is reported. A material defect it identifies matters only after the parent validates its evidence. It cannot replace Google's required council seat.
+
+The parent saves the selected mode, finding ledger, actual identities, candidate identity and counters in the REQ's `## AI-Evaluation-Loop` section. Reviewers return independent read-only findings. The parent validates each claim and makes only in-scope fixes. Rechecks cover changed behavior and open findings, preserving disagreement and declined findings with reasons.
+
+There are **at most five total rounds**, stopping earlier at approval or **two consecutive rounds without meaningful, evidence-supported improvement**. Fixes do not reset total rounds; verified improvement resets only the stall counter. A higher score is not improvement. Missing/failed required review, persistent material disagreement and either limit remain unresolved. Recovery retains selection and counters even when ordinary generated sections are reset.
+
+Approval requires the parent and every required reviewer to approve the exact current candidate with no supported material unresolved findings. Candidate identity includes relevant staged, unstaged and untracked bytes. A later behavior change invalidates approval. The parent retains a recoverable best verified checkpoint with its checks and remaining issues; restoring it preserves unrelated user changes and requires a fresh review within the remaining rounds. A checkpoint alone is never approval.
+
+The result says **AI-Evaluation-Loop: approved** or **AI-Evaluation-Loop: unresolved / not approved**, with the candidate, rounds/stalls, identities, remaining findings and checkpoint location. Unresolved selected review finalizes as `completed-with-issues` when existing gates permit. That is lifecycle terminal-success: it still unblocks `depends_on` and counts toward UR completion. It does not mean consensus approval or hold dependencies. Only critical remaining findings auto-queue; other findings remain in the report. See [the full loop contract](../actions/ai-evaluation-loop-reference.md).
 
 ## Open Questions
 
@@ -165,7 +189,7 @@ Use whichever feels natural. `continue` and `resume` read well after a break; `r
 ## Tips
 
 - **`continue` vs fresh `run`** — No functional difference. Both scan the queue and pick the next pending REQ. Use `continue` when you're resuming a session; use `run` when you're starting fresh. Neither continues a REQ still claimed in `do-work/working/`; see Context limits below.
-- **Failed items** — If a REQ fails review, the system tries one remediation pass. If it still fails, it archives with issues noted and auto-queues only critical findings. Noncritical findings stay in that report; promote one by running `do-work capture` with its complete finding line quoted as the source.
+- **Failed items** — A selected AI-Evaluation-Loop follows the limits and unresolved outcome above. In ordinary review, if a REQ fails review, the system tries one remediation pass. If it still fails, it archives with issues noted and auto-queues only critical findings. Noncritical findings stay in that report; promote one by running `do-work capture` with its complete finding line quoted as the source.
 - **Context limits** — Claims are recorded immediately and `advance --checkpoint` refreshes the exit state. Start a new session with `do-work run` for queued work, and continue each REQ still in `do-work/working/` with `advance REQ-NNN`; `do-work run` does not pick up working claims, and `recover --take-over` would reset them.
 - **One at a time** — The work action processes one REQ per loop iteration. This keeps commits atomic and reviews focused. Don't try to batch multiple REQs into one pass.
 
