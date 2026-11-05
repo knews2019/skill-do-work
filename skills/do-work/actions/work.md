@@ -283,6 +283,8 @@ For `gate_deferred: true` with paired `deferred_implementation_base` / `deferred
 
 **Overlapping parallel writers:** If implementation is manually split among concurrent agents whose declared file lists or globs overlap, give each overlapping writer its own worktree and branch before any write, then hand every branch back for serial reconciliation and merged-state verification (`crew-members/background-agents.md` → **Worktree isolation is a separate axis**; `actions/fan-out-reference.md` → **Worktree Dispatch Mode (Step 1)**). Read-only and declared-disjoint parallel work stays unisolated; `do-work run` uses one worktree per builder regardless of overlap.
 
+For a selected AI-Evaluation-Loop, first reconcile the active fix attempt and any integration receipt per `actions/ai-evaluation-loop-reference.md` Step 4. A consumed attempt proceeds to qualification/testing; a new accepted fix gets its own active handback path before the rule below is applied.
+
 **Landed hand-back — consume it, never re-dispatch.** When the hand-back file this REQ's run-manifest row names exists on disk, the build already happened: do not dispatch a builder, whatever the row's status says, and go straight to the **Hand-back merge** below. Any session that reaches this step applies it, an integrator or a post-crash session included (stamps and timing: `actions/fan-out-reference.md` → **Landed hand-back — consume it, never re-dispatch**).
 
 Spawn a **general-purpose agent** with the loaded rules, any files listed in the `prime_files` array, and context appropriate to the route:
