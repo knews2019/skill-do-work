@@ -1,7 +1,11 @@
 ---
 id: REQ-711
 title: 'Repair runtime fingerprint baseline failures'
-status: claimed
+status: completed
+heavy_verified_at: 2026-11-05T17:23:36Z
+heavy_verified_revision: 74b3de5a5bd90968441dfd5c47f8d73a0baf3653
+kb_status: pending
+kb_entry: ""
 route: B
 builder_handback_at: 2026-11-05T16:42:44Z
 integration_at: 2026-11-05T16:42:44Z
@@ -27,6 +31,7 @@ related: [REQ-710]
 claimed_at: 2026-11-05T16:35:25Z
 review_at: 2026-11-05T16:47:07Z
 commit: 2c3825997ffd303be982f91f304365b9fb808d20
+completed_at: 2026-11-05T17:23:37Z
 ---
 
 # Repair runtime fingerprint baseline failures
@@ -37,7 +42,7 @@ Repair the repository-gate failure recorded below so dependency-gated requests c
 
 ## Instances
 
-- [ ] repository gate: 14816037a6fd3188551b9a540c8b7fbb01470e6bdfd681f43fa1931d3c4c6e97 affecting REQ-710 (found by REQ-710 / UR-163)
+- [x] repository gate: 14816037a6fd3188551b9a540c8b7fbb01470e6bdfd681f43fa1931d3c4c6e97 affecting REQ-710 (found by REQ-710 / UR-163)
 
 ## Repository Gate Repair Intake
 
@@ -120,7 +125,7 @@ Advance qualify and scope-drift records are satisfied for exact REQ/path and ran
 
 **Important findings:** None
 **Minor findings:** None
-**Acceptance:** Pass — implementation and targeted integration independently reviewed; parent also verified integrated canonical fast gate. Heavy lanes pending. No deployment stage applies to this export-ignored fixture.
+**Acceptance:** Pass — implementation and targeted integration independently reviewed; parent also verified integrated canonical fast gate. Heavy lanes passed at the execution revision below. No deployment stage applies to this export-ignored fixture.
 **Restatement sweep:** nothing redefined outside fixture setup.
 **Suggested testing:** selected heavy lanes.
 **Follow-ups created:** None
@@ -143,3 +148,16 @@ The runtime-evidence tests now pass independently of host Go configuration. This
 - staged-skills: ["env", "GIT_CONFIG_NOSYSTEM=1", "GIT_CONFIG_GLOBAL=/dev/null", "bash", "_dev/tests/maintainer-verify.sh", "--heavy-lane", "staged-skills"] — skills/do-work/tools/do-work-cli/internal/heavyverification/heavy_maintainer_tree_test.go matched subtree skills
 - updater: ["env", "GIT_CONFIG_NOSYSTEM=1", "GIT_CONFIG_GLOBAL=/dev/null", "bash", "_dev/tests/maintainer-verify.sh", "--heavy-lane", "updater"] — skills/do-work/tools/do-work-cli/internal/heavyverification/heavy_maintainer_tree_test.go matched subtree skills/do-work/tools/do-work-cli
 - installer: ["env", "GIT_CONFIG_NOSYSTEM=1", "GIT_CONFIG_GLOBAL=/dev/null", "bash", "_dev/tests/maintainer-verify.sh", "--heavy-lane", "installer"] — skills/do-work/tools/do-work-cli/internal/heavyverification/heavy_maintainer_tree_test.go matched subtree skills/do-work/tools/do-work-cli
+
+## Heavy Verification Result
+
+- Target revision: 2c3825997ffd303be982f91f304365b9fb808d20
+- Execution revision: 74b3de5a5bd90968441dfd5c47f8d73a0baf3653
+- do-work-cli-integrations: exit 0, not skipped, executed, 62s (fingerprint_uncertain).
+- staged-skills: exit 0, not skipped, executed, 34s (fingerprint_uncertain).
+- updater: exit 0, not skipped, executed, 66s (fingerprint_uncertain).
+- installer: exit 0, not skipped, executed, 30s (fingerprint_uncertain).
+
+All selected lanes passed. The fast gate and independent review also passed; no open completion requirement. KB lessons remain in this REQ; optional promotion is pending.
+
+Release judgment: no separate release for this export-ignored test fixture. The source feature is released by REQ-710.
