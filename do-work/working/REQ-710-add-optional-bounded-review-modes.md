@@ -5,6 +5,17 @@ status: claimed
 created_at: 2026-11-04T15:54:52Z
 user_request: UR-163
 domain: general
+route: C
+write_set:
+  - skills/do-work/SKILL.md
+  - skills/do-work/actions/work.md
+  - skills/do-work/actions/ai-evaluation-loop-reference.md
+  - skills/do-work/actions/review-work.md
+  - skills/do-work/actions/work-reference.md
+  - skills/do-work/actions/help.md
+  - skills/do-work/docs/work-guide.md
+  - skills/do-work/docs/review-work-guide.md
+planning_at: 2026-11-05T16:31:00Z
 prime_files: [_dev/primes/prime-action-files.md]
 impact: impact-user-visible
 effort_estimate: effort-substantive
@@ -90,3 +101,40 @@ See `do-work/user-requests/UR-163/input.md` for the verbatim input.
 > ```
 > Record five total rounds, with early stopping after two stalled rounds (Recommended)
 > ```
+
+## Triage
+
+**Route: C** — Optional evaluation modes require coordinated routing, review evidence, stopping rules, lifecycle handoff and installed usage documentation. The ordinary default must remain unchanged. All user questions are resolved.
+
+## Plan
+
+1. Add action-owned `--review-mode sol-loop|council` and `--jester` selection plus a core companion reference. Strip options before canonical queue selection; preserve per-REQ selection, ledger, counters and version evidence durably.
+2. Integrate selected-loop review, five/two stopping, checkpoint and verified identities. Preserve ordinary review. Explicit unresolved results use existing completed-with-issues finalization, never consensus approval; existing dependency semantics remain unchanged.
+3. Document installed usage and verify scenario coverage, package links, contracts and canonical repository checks.
+
+Plan agent read the relevant action and CLI consumers. Validation: every requirement maps to these tasks; no orphan task. Existing CLI remains the sole lifecycle writer, using request_id/request_path, outcome and finalizations cleanup_complete fields. No new lifecycle schema or runtime helper is needed.
+
+## Scope
+
+**Files I will touch:**
+- skills/do-work/SKILL.md
+- skills/do-work/actions/work.md
+- skills/do-work/actions/ai-evaluation-loop-reference.md (new)
+- skills/do-work/actions/review-work.md
+- skills/do-work/actions/work-reference.md
+- skills/do-work/actions/help.md
+- skills/do-work/docs/work-guide.md
+
+- skills/do-work/docs/review-work-guide.md
+
+**Acceptance criteria:** Explicit opt-in only; ordinary behavior unchanged; Sol and three-provider council identities verified; optional latest-available Gemini advisory remains non-voting and nonblocking; findings ledger with stable IDs and evidence; approval covers exact current candidate; five total rounds and two consecutive stalled rounds without resets from fixes/recovery; recoverable checkpoint; explicit unresolved outcome at limits or required reviewer failure; actual installed usage instructions. Repeatable scenario evidence covers the confirmed RED/GREEN cases. Finalizer-owned release metadata is separate from builder scope.
+
+## Exploration
+
+Read-only Explore agent verified action-owned options must be consumed before canonical advance. Existing completed-with-issues finalization remains terminal-success for dependencies, so the result must explicitly say unresolved/not approved without promising dependency holds. Review-work has caller-owned writes and follow-up seams; user guides repeat ordinary thresholds and need an explicit selected-mode exception. Scope includes review-work-guide.md to close that existing reader. No runtime helper required.
+
+Required-lessons consult: lessons-index.md matches action-files (8398 tokens) and CLI (24067 tokens), both partial coverage and above the 2000-token projection. No required_lessons entries added. Touch-conditional action lessons remain required for builder reads.
+
+## Decisions
+
+**D-01 — DECIDE & STATE:** Keep selected review policy in action prose and durable REQ body evidence, consuming options before the CLI. Reuse completed-with-issues for an unresolved selected-loop result, explicitly not approval. Existing dependency readiness remains unchanged; changing dependency semantics is outside this request. No automatic upstream install or new statuses.
