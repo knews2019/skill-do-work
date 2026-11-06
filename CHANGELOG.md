@@ -10,6 +10,14 @@ For the complete release history, read this file and the archives below from new
 - [0.50.0 through 0.64.1](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-13-up-to-v0.64.1.md)
 - [0.1.0 through 0.49.0](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-07-up-to-v0.49.0.md)
 
+## 0.310.1 — phandoff Stops Agents at Once and Commits All Work (2026-11-06)
+
+Typing `phandoff` now stops the session fast. It no longer waits for a running subagent to finish.
+
+- The handoff first stops every agent this session started, without waiting for a reply.
+- Uncommitted work from this session is committed where it stands, builder edits as a WIP commit on their branch, so a fresh session can resume from any checkout.
+- A handoff no longer waits for a merge, review or green gate. Restartable now means every change is committed and every claim has a continue line.
+
 ## 0.310.0 — Optional AI-Evaluation-Loop Modes (2026-11-05)
 
 Choose Sol or a three-provider council to review a change through the AI-Evaluation-Loop. Ordinary runs keep their existing review behavior.
