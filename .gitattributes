@@ -14,8 +14,8 @@
 # — record-commit-hash.sh's size-floor/numstat checks, cleanup Pass 6 blanked-REQ recovery —
 # only work on tracked REQs). These two lines are therefore the ONLY thing keeping the
 # maintainer's queue and knowledge base out of consumer installs.
-# _dev/tests/staged-skills-contract.sh asserts the /docs/kb and /docs/decisions lines exist;
-# do not remove them. The dev dotfiles (.gitignore/.gitattributes) are export-ignore-only
+# _dev/tests/staged-skills-contract.sh asserts the /docs/kb, /docs/decisions and
+# /docs/changelog lines exist; do not remove them. The dev dotfiles (.gitignore/.gitattributes) are export-ignore-only
 # too, and a stale vendored copy leaks nothing (export-ignore is inert once the skill is a
 # subdirectory of a consumer's repo).
 #

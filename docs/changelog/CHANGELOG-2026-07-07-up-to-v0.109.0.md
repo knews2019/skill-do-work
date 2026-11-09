@@ -4,7 +4,7 @@ Do-work release notes for this range, verbatim. This file is tracked in git but 
 
 - **Older:** [`CHANGELOG-2026-04-13-up-to-v0.64.1.md`](./CHANGELOG-2026-04-13-up-to-v0.64.1.md) — 0.50.0 through 0.64.1
 - **Newer:** [`CHANGELOG-2026-07-13-up-to-v0.121.0.md`](./CHANGELOG-2026-07-13-up-to-v0.121.0.md) — 0.110.0 through 0.121.0
-- **Current:** [`CHANGELOG.md`](./CHANGELOG.md)
+- **Current:** [`CHANGELOG.md`](../../CHANGELOG.md)
 
 ---
 
