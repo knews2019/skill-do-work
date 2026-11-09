@@ -123,7 +123,7 @@ To check that a report's citations say what it claims, `do-work-toolbox source-a
 
 To check that intended content reached its consumer, `do-work-toolbox release-check <target> [--brief <path>]` traces it from source to package to serving environment to consumer-visible behavior, reports implementation, integration, deployment and live acceptance separately with evidence, and returns a ready, not ready or unknown verdict without deploying or repairing anything.
 
-For repository layout, `do-work-toolbox folder-structure [path]` compares the tree with a target layout (repository level, plus `src/` for a web application) and sorts each gap into a `tidy-repo` move, a code-refactor REQ, or a framework or project exception, without moving anything. `do-work-toolbox tidy-repo` then designs its moves toward the same target.
+For repository layout, `do-work-toolbox folder-structure` checks the tree against one target layout: `cmd/` for every script the justfile runs, `src/<role>-<tech>/` per app (for example `src/be-golang/`), `data/<app>/` for everything apps store, and all docs under `docs/`. It sorts each gap into a `tidy-repo` move, a REQ, or an exception, and moves nothing. The mechanical half is `do-work-cli folder-structure-check`, which exits 1 on any gap so a project can run it in CI.
 
 ### Deterministic commands without an agent
 

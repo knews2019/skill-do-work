@@ -36,6 +36,7 @@ func Handlers() map[string]commandruntime.CommandHandler {
 		CommandAIReportJudge:         handleAIReportJudge,
 		CommandAIReportSecondOpinion: handleAIReportSecondOpinion,
 		CommandAIReportOrganize:      handleAIReportOrganize,
+		CommandFolderStructureCheck:  handleFolderStructureCheck,
 	}
 }
 
