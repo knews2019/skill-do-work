@@ -1,7 +1,7 @@
 ---
 id: REQ-715
 title: '[impact-negligible] Move the dated changelog archives to docs/changelog/'
-status: pending
+status: claimed
 created_at: 2026-11-09T21:47:36Z
 user_request: UR-167
 domain: general
@@ -12,6 +12,7 @@ impact: impact-negligible
 effort_estimate: effort-substantive
 depends_on: [REQ-714]
 required_lessons: [_dev/primes/lessons-releases.md]
+claimed_at: 2026-11-09T23:09:15Z
 ---
 # [impact-negligible] Move the dated changelog archives to docs/changelog/
 ## What
