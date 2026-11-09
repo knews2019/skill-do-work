@@ -1,6 +1,6 @@
 # Changelog Archive — 0.50.0 through 0.64.1 (2026-04-07 – 2026-04-13)
 
-Do-work release notes for this range, verbatim. This file is tracked in git but excluded from the distribution tarball, so a tarball install browses it on [GitHub](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-13-up-to-v0.64.1.md).
+Do-work release notes for this range, verbatim. This file is tracked in git but excluded from the distribution tarball, so a tarball install browses it on [GitHub](https://github.com/knews2019/skill-do-work/blob/main/docs/changelog/CHANGELOG-2026-04-13-up-to-v0.64.1.md).
 
 - **Older:** [`CHANGELOG-2026-04-07-up-to-v0.49.0.md`](./CHANGELOG-2026-04-07-up-to-v0.49.0.md) — 0.1.0 through 0.49.0
 - **Newer:** [`CHANGELOG-2026-07-07-up-to-v0.109.0.md`](./CHANGELOG-2026-07-07-up-to-v0.109.0.md) — 0.65.0 through 0.109.0
