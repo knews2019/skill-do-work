@@ -1,24 +1,24 @@
 # Folder-Structure Action
 
-> **Part of the do-work-toolbox skill.** Holds the target folder layout for a repository, runs the read-only `folder-structure-check` command against it, and sorts every gap into a tidy-repo move, a REQ, or a justified exception. It lives in the toolbox because it completes `actions/tidy-repo.md`: tidy-repo moves files safely but needs a target to design toward, and this action owns that target. The mechanical check is a do-work-cli command so a project can also run it from CI.
+> **Part of the do-work-toolbox skill.** Audits a repository against the target folder layout: it runs the read-only `folder-structure-check` command, talks each gap through with the user, and ends with paste-ready `do-work capture-request:` prompts that align the repository. It lives in the toolbox beside `actions/tidy-repo.md`, which designs its moves toward the same Target Layout; core routes `do-work audit-current-folder-structure` here so every installed repository can call it. The mechanical check is a do-work-cli command so a project can also run it from CI.
 
-**Read-only.** It moves, renames and edits nothing. The only write it can lead to is a core capture or a tidy-repo plan, and only after the user picks one.
+**Read-only.** It moves, renames and edits nothing. The only write it can lead to is a core capture, and only for the prompts the user picks.
 
 ## When to Use
 
 **Use when:**
-- User says "folder-structure", "ideal structure", "project layout", or asks how this repository should be organized.
-- Before a tidy-repo pass, to agree on the target first.
-- A new project needs its layout set up, or a project wants the layout check in CI.
+- User says "audit-current-folder-structure", "folder-structure", "ideal structure", "project layout", or asks how this repository should be organized.
+- The repository should be brought in line with the layout through the queue.
+- A project wants the layout check in CI.
 
 **Do NOT use when:**
-- The user wants non-code files moved now → `actions/tidy-repo.md` (it loads this action's Target Layout itself).
+- The user wants non-code files moved now, in this session → `actions/tidy-repo.md` (it loads this action's Target Layout itself).
 - The problem is junk, backups or build output → `actions/stray-check.md`.
 - The problem is do-work's own bookkeeping → `../../do-work/actions/cleanup.md`.
 
 ## Input
 
-Usage: `do-work-toolbox folder-structure`. It takes no arguments and always checks the whole repository.
+Usage: `do-work audit-current-folder-structure` or `do-work-toolbox folder-structure`. It takes no arguments and always audits the whole repository.
 
 ## Target Layout
 
@@ -73,32 +73,39 @@ Pass `--allow` for each root entry Step 1 found to be required there. The comman
 
 The check cannot judge `<project-root>/docs/` subfolder names. Compare `<project-root>/docs/` against rule 7 and the tree yourself; for example, `<project-root>/docs/specs/` or a root `design/spec/` both become `<project-root>/docs/spec/`.
 
-### Step 3: Sort Every Gap
+### Step 3: Read the Queue
 
-Put each gap in exactly one class:
+List the open REQs in `do-work/queue/` and `do-work/working/`. A REQ that already covers a gap (for example one that tidies a folder the check flagged) makes that gap **already queued**. Name the REQ and leave the gap out of the new prompts, so the queue never holds the same move twice.
 
-- **tidy-repo**: a move of non-code files (docs, reports, stray root files) where no program reads the old path.
-- **REQ**: anything that changes code or how code runs: moving or renaming a code root (`node-source/` → `src/fe-node/`), a database path, a `.gitignore` change for `data/`, or justfile logic moved into `cmd/`. These need tests, so they run through the work pipeline.
-- **exception**: a gap that Step 1 or a framework explains. Name the rule or the framework.
+### Step 4: Talk It Through
 
-For a REQ gap, count the files that reference the old path. That count is its churn. Drop a gap whose benefit is only cosmetic next to its churn, and list it under Not worth it.
+Print the report in the Output Format, then settle every remaining gap with the user. Load `crew-members/clear-questions.md` and ask through the environment's ask-user prompt, up to four gaps per question, recommended option first. Each gap gets exactly one decision:
 
-### Step 4: Report
+- **align**: it becomes part of a capture prompt.
+- **exception**: it stays, for a reason the user names (a tool requires the file there, a framework owns the folder). Record the reason; an exception for a root entry becomes an `--allow` entry in the CI prompt.
+- **later**: it stays for now, with no prompt.
 
-Print the report in the Output Format. Write no file.
+Give each gap its churn when you ask: the number of files that reference the old path. Recommend **later** when the benefit is only cosmetic next to the churn. Keep asking until every gap has a decision. With no gaps, report that and stop.
 
-### Step 5: Offer the Next Step
+### Step 5: Write the Capture Prompts
 
-Ask through the environment's ask-user prompt, with the recommended option first, and offer only options the report has gaps for:
+Write one `do-work capture-request:` prompt per coherent change, never one per file. Illustrative groupings: one code root moved into `src/<role>-<tech>/`; all justfile logic moved into `cmd/`; every database path moved under `data/<app>/` together with the `.gitignore` change; all doc folder renames. Order the prompts so a prompt that moves a folder comes before any prompt that edits files inside it, and say in the later prompt that it depends on the earlier one.
 
-- **Plan the tidy-repo moves**: run `actions/tidy-repo.md` in `plan` mode on the tidy-repo gaps.
-- **Capture the REQ gaps**: one `do-work capture-request:` for the whole set, with the report's table as its scope.
-- **Wire the check into CI**: suggest a one-line `layout-check` justfile recipe that calls `cmd/layout-check.sh`, which runs the Step 2 command with the project's `--allow` entries. This writes project files, so it goes into the REQ.
-- **Stop**: keep the report only.
+Each prompt stands alone, because the REQ is built later by a session that never saw this audit. It names:
 
-With no gaps, report that and stop.
+1. the current paths and the target paths;
+2. the layout rule it applies, quoted from the Target Layout;
+3. what must keep working: the references to rewrite (code imports, configs, scripts, CI, doc links) and the tests to run;
+4. how to verify: the gaps this prompt closes no longer appear in `folder-structure-check`, and the test suite passes at its baseline;
+5. for moves of non-code files, that the build follows `actions/tidy-repo.md` (map references before moving, `git mv`, explicit rewrites).
+
+When the user chose to wire the check into CI, add one more prompt: a one-line `layout-check` justfile recipe that calls `cmd/layout-check.sh`, which runs the Step 2 command with the recorded `--allow` entries, plus the CI step that runs it.
+
+Print the prompts as paste-ready blocks, then ask: **Capture them now** (run core capture once per prompt, in the printed order) or **I will paste them myself**. Capture only after that answer.
 
 ## Output Format
+
+The report printed at the start of Step 4:
 
 ```markdown
 # Folder Structure: <repository name>
@@ -108,24 +115,26 @@ With no gaps, report that and stop.
 
 ## Gaps
 
-| # | Path now | Target | Class | Churn | Reason |
-|---|----------|--------|-------|-------|--------|
-| 1 | `node-source/` | `src/fe-node/` | REQ | 31 references | code root at the root; package.json belongs in its app folder |
-| 2 | `<project-root>/docs/specs/` | `<project-root>/docs/spec/` | tidy-repo | 0 | spec folder name |
+| # | Path now | Target | Churn | Proposed decision | Reason |
+|---|----------|--------|-------|-------------------|--------|
+| G1 | `node-source/` | `src/fe-node/` | 31 references | align | code root at the root; package.json belongs in its app folder |
+| G2 | `skills-lock.json` | root | 0 | exception | the skills installer writes it there |
 
-## Exceptions
+## Already queued
 
-- `skills-lock.json` stays at the root: the skills installer writes it there.
-
-## Not worth it
-
-- <gap, and why its churn outweighs its value>
+- <gap> → <REQ id and title>
 
 ## Inbox
 
 - <each file in <project-root>/docs/inbox/, or "empty">
 ```
 
+The prompts printed in Step 5, one block each:
+
+```text
+do-work capture-request: Move the Node app from node-source/ to src/fe-node/ (layout rule: each app lives in src/<role>-<tech>/ and keeps its package.json inside it). Rewrite every reference to node-source/ in the justfile, CI config, scripts, docs and tests. Verify: folder-structure-check no longer reports node-source/, and the test suite passes at its baseline.
+```
+
 ## Rules
 
-- REQ gaps go to a REQ, never to tidy-repo. Tidy-repo's own Do NOT list sends code-structure work to capture, so handing it a code move makes it refuse halfway.
+- The audit ends in capture prompts, never in moves. A move made in the audit session skips the work pipeline's tests and review.

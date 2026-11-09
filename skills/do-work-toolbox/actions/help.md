@@ -30,7 +30,7 @@ do-work-toolbox — reviews, reports, discovery, and repository utilities
   inspect [REQ|UR]               Explain uncommitted changes
   note <text>                    Append a dated roadmap hint
   stray-check [path]             Find orphaned or junk files
-  folder-structure               Check the layout against the target; sort the gaps
+  folder-structure               Audit the layout with you; write capture-request prompts
   tidy-repo [path]               Plan and execute safe repository reorganization
   tutorial [mode]                Learn the suite through guided recipes
   install <target>               ui-design | bowser | last30days | ideation-adhd

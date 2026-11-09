@@ -34,6 +34,7 @@ Check these patterns in order; first match wins.
 | `run`, `go`, `start`, `work`, `begin`, `process`, `execute`, `build`, `continue`, `resume` | `./actions/work.md` |
 | `check for updates`, `check for update`, `is there a newer version` | `./actions/version.md` |
 | `validate-feedback`, `triage feedback` | `../do-work-toolbox/actions/validate-feedback.md` |
+| `audit-current-folder-structure`, `audit folder structure` | `../do-work-toolbox/actions/folder-structure.md` |
 | `verify`, `verify-requests`, `check`, `review requests` | `./actions/verify-requests.md` |
 | `review`, `review-work`, `review code`, `audit implementation` | `./actions/review-work.md` |
 | `stakeholder-answers`, `stakeholder reply`, `stakeholder answers` | `./actions/stakeholder-answers.md` |

@@ -35,7 +35,7 @@ Before invoking AGY / Antigravity CLI, read [the AGY usage prime](./docs/prime-a
 | `inspect`, `explain changes`, `what changed` | `./actions/inspect.md` |
 | `note`, `note add`, `add note` | `./actions/note.md` |
 | `stray-check`, `stray files`, `orphans`, `junk` | `./actions/stray-check.md` |
-| `folder-structure`, `ideal structure`, `project layout` | `./actions/folder-structure.md` |
+| `folder-structure`, `audit-current-folder-structure`, `ideal structure`, `project layout` | `./actions/folder-structure.md` |
 | `tidy-repo`, `reorg`, `restructure`, `declutter` | `./actions/tidy-repo.md` |
 | `tutorial`, `learn`, `getting started` | `./actions/tutorial.md` |
 | `install`, `install-`, `setup` | `./actions/install.md` |
