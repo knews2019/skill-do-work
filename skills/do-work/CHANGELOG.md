@@ -10,6 +10,13 @@ For the complete release history, read this file and the archives below from new
 - [0.50.0 through 0.64.1](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-13-up-to-v0.64.1.md)
 - [0.1.0 through 0.49.0](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-07-up-to-v0.49.0.md)
 
+## 0.314.1 — Layout Check Sees Recipes with Default Parameter Values (2026-11-09)
+
+`folder-structure-check` now counts the body lines of every justfile recipe. Before, a recipe whose parameters had default values, such as `run-kanban $port="8090":`, was skipped, so its logic was never reported.
+
+- The check reuses the justfile scanner the suite already ships for its managed recipe block, so quoted, triple-quoted and backtick defaults are read correctly.
+- In a repository that installed the suite, the check now also reports the suite's own `run-kanban` recipe. A later release moves that logic into a script.
+
 ## 0.314.0 — Audit the Folder Structure from Core and Get Capture Prompts (2026-11-09)
 
 `do-work audit-current-folder-structure` now works in every repository that runs the suite update. It audits the folder layout with you and ends with ready `do-work capture-request:` prompts.
