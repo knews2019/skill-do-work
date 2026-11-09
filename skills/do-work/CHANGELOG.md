@@ -10,6 +10,14 @@ For the complete release history, read this file and the archives below from new
 - [0.50.0 through 0.64.1](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-13-up-to-v0.64.1.md)
 - [0.1.0 through 0.49.0](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-07-up-to-v0.49.0.md)
 
+## 0.311.0 — AI Reports Suggest a Teaching Method for a Second Opinion (2026-11-09)
+
+Every AI report now also names the one teaching method that would best help you understand or present its subject, with a ready command that builds that version as a new page.
+
+- Ten teaching presets ship for `ai-report second-opinion --preset <name>`: `eli5`, `80-20`, `sticky-notes`, `feynman`, `mindmap`, `quizme`, `visual-studyguide`, `first-principles`, `socrates` and `schematics`.
+- The report's closing band keeps its layout suggestion and adds the method, why it fits, and its command. The presets are a starting menu: when a better method fits, the command uses `--editor-direction` instead.
+- A test loads every shipped preset through the real launcher, so a missing or broken preset fails the build.
+
 ## 0.310.1 — phandoff Stops Agents at Once and Commits All Work (2026-11-06)
 
 Typing `phandoff` now stops the session fast. It no longer waits for a running subagent to finish.
