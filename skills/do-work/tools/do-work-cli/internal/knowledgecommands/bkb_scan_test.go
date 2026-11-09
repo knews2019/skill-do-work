@@ -175,6 +175,85 @@ func TestBKBScanPreservesAbsoluteAndParentRelativeTargets(t *testing.T) {
 	}
 }
 
+// Pins the default order with no --kb: docs/kb first, then a root kb/ or
+// knowledge-base/ that already is a knowledge base (with the one-line move),
+// and docs/kb wins with a warning when both exist. Before this, status and
+// lint looked only at the root folders and reported a docs/kb as not found.
+func TestBKBScanDefaultLocationOrder(t *testing.T) {
+	tests := []struct {
+		name          string
+		knowledgeBase []string
+		arguments     []string
+		location      string
+		noticeCode    string
+		severity      resultmodel.FindingSeverity
+		evidence      []string
+	}{
+		{"docs only", []string{"docs/kb"}, nil, "docs/kb", "", "", nil},
+		{"legacy kb only", []string{"kb"}, nil, "kb", "BKB-LEGACY-LOCATION", resultmodel.SeverityInfo, []string{"mkdir -p docs && git mv kb docs/kb"}},
+		{"legacy knowledge-base only", []string{"knowledge-base"}, nil, "knowledge-base", "BKB-LEGACY-LOCATION", resultmodel.SeverityInfo, []string{"mkdir -p docs && git mv knowledge-base docs/kb"}},
+		{"both", []string{"docs/kb", "kb"}, nil, "docs/kb", "BKB-DUPLICATE-LOCATION", resultmodel.SeverityWarning, []string{"docs/kb", "kb"}},
+		{"both with explicit legacy", []string{"docs/kb", "kb"}, []string{"--kb", "kb"}, "kb", "", "", nil},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			root := t.TempDir()
+			for _, relative := range test.knowledgeBase {
+				writeFixture(t, root, relative+"/wiki/_master_index.md", "# Master\n\nTotal articles: 0 | Topic clusters: 0\n")
+				writeFixture(t, root, relative+"/wiki/log.md", "# Log\n")
+				if err := os.MkdirAll(filepath.Join(root, filepath.FromSlash(relative), "raw", "inbox"), 0o755); err != nil {
+					t.Fatal(err)
+				}
+			}
+			before := treeDigest(t, root)
+			context := commandruntime.ExecutionContext{RepositoryRoot: root}
+			status := handleBKBStatus(context, test.arguments)
+			if evidence := findingEvidence(status, "BKB-STATUS"); !strings.Contains(evidence, "location="+test.location+" ") {
+				t.Fatalf("status location: want %s, got %+v", test.location, status.Findings)
+			}
+			lint := handleBKBLint(context, test.arguments)
+			if lint.Outcome == resultmodel.OutcomeFailure {
+				t.Fatalf("lint failed: %+v", lint.Findings)
+			}
+			for name, result := range map[string]resultmodel.CommandResult{"status": status, "lint": lint} {
+				for _, code := range []string{"BKB-LEGACY-LOCATION", "BKB-DUPLICATE-LOCATION"} {
+					if resultHasFindingCode(result, code) != (code == test.noticeCode) {
+						t.Fatalf("%s: finding %s present=%v, want notice %q: %+v", name, code, resultHasFindingCode(result, code), test.noticeCode, result.Findings)
+					}
+				}
+				if test.noticeCode == "" {
+					continue
+				}
+				for _, finding := range result.Findings {
+					if finding.Code != test.noticeCode {
+						continue
+					}
+					if finding.Severity != test.severity {
+						t.Fatalf("%s: %s severity = %s, want %s", name, finding.Code, finding.Severity, test.severity)
+					}
+					for _, want := range test.evidence {
+						if !strings.Contains(strings.Join(finding.Evidence, "\n"), want) {
+							t.Fatalf("%s: %s evidence %q lacks %q", name, finding.Code, finding.Evidence, want)
+						}
+					}
+				}
+			}
+			if after := treeDigest(t, root); after != before {
+				t.Fatal("default-location scans changed bytes")
+			}
+		})
+	}
+}
+
+func findingEvidence(result resultmodel.CommandResult, code string) string {
+	for _, finding := range result.Findings {
+		if finding.Code == code {
+			return strings.Join(finding.Evidence, "\n")
+		}
+	}
+	return ""
+}
+
 func writeFixture(t *testing.T, root, relative, content string) {
 	t.Helper()
 	path := filepath.Join(root, filepath.FromSlash(relative))
