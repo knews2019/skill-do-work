@@ -1,7 +1,7 @@
 ---
 id: REQ-714
 title: 'Suite writes its knowledge base and ADR log under docs/'
-status: pending
+status: claimed
 created_at: 2026-11-09T21:47:36Z
 user_request: UR-166
 domain: general
@@ -10,6 +10,7 @@ tdd: true
 maintenance: false
 impact: impact-user-visible
 effort_estimate: effort-substantive
+claimed_at: 2026-11-09T22:05:41Z
 ---
 # Suite writes its knowledge base and ADR log under docs/
 ## What
