@@ -3,7 +3,7 @@
 The earliest do-work release notes, verbatim. This file is tracked in git but excluded from the distribution tarball, so a tarball install browses it on [GitHub](https://github.com/knews2019/skill-do-work/blob/main/docs/changelog/CHANGELOG-2026-04-07-up-to-v0.49.0.md).
 
 - **Newer:** [`CHANGELOG-2026-04-13-up-to-v0.64.1.md`](./CHANGELOG-2026-04-13-up-to-v0.64.1.md) — 0.50.0 through 0.64.1
-- **Current:** [`CHANGELOG.md`](./CHANGELOG.md)
+- **Current:** [`CHANGELOG.md`](../../CHANGELOG.md)
 
 ---
 
