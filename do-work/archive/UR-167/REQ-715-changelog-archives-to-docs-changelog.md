@@ -1,7 +1,7 @@
 ---
 id: REQ-715
 title: '[impact-negligible] Move the dated changelog archives to docs/changelog/'
-status: claimed
+status: completed
 created_at: 2026-11-09T21:47:36Z
 user_request: UR-167
 domain: general
@@ -26,6 +26,12 @@ route: B
 dispatch_at: 2026-11-09T23:13:02Z
 builder_handback_at: 2026-11-09T23:14:43Z
 integration_at: 2026-11-09T23:14:44Z
+review_at: 2026-11-09T23:32:39Z
+kb_status: pending
+commit: 1a000d08baa4c836f7f378bca03a0165232eebb8
+heavy_verified_at: 2026-11-09T23:38:11Z
+heavy_verified_revision: 1a000d08baa4c836f7f378bca03a0165232eebb8
+completed_at: 2026-11-09T23:39:06Z
 ---
 # [impact-negligible] Move the dated changelog archives to docs/changelog/
 ## What
@@ -151,3 +157,92 @@ The five archive files are moved from the repository root with git mv; the only 
 **Live flow:** at the merge, `folder-structure-check` reports no archive, and `git archive` of the merge lists no `docs/` path and no dated archive file.
 
 *Qualified by work action*
+
+## Testing
+
+**Tests run:** `bash do-work/runs/2026-11-09-layout-queue/REQ-715-probe.sh` (the shipped reference contract, which checks the changelog mirror and the canonical links), then `bash _dev/tests/maintainer-verify.sh` from a detached checkout at each merge revision.
+**Result:** ✓ Focused probe green. Repository gate exit 0 at the first merge f2ccb2a7 (gate wall 130s) and exit 0 at the final merge 1a000d08 (gate wall 141s). Both Go stages reported EXECUTING, not REUSED. The green-gate record was written at 01acc3c1, which differs from 1a000d08 only under `do-work/`.
+
+**Regression evidence (non-behavioral move, no red-green pair):**
+- `folder-structure-check` at 1a000d08 reports no dated archive at the root.
+- `git archive` of 1a000d08 lists no `docs/` path and no dated archive file.
+- Every header link in the five archives resolves from `docs/changelog/` (review acceptance), and the two live changelogs are byte-identical.
+
+**Existing tests updated (cross-REQ impact):**
+- `_dev/tests/staged-skills-contract.sh` (from REQ-714, the knowledge base and ADR log under docs/): the legacy `docs` scan excludes `docs/changelog`, and the export-ignore assertion covers the third folder.
+
+**Heavy verification plan:**
+- Range: 2b48f7db5b50602c6743a5e58e0c56c88c2a9d85..1a000d08baa4c836f7f378bca03a0165232eebb8
+- All six lanes are selected because coverage is uncertain for `.gitattributes`.
+- queue-kanban-javascript queue-kanban-browser do-work-cli-integrations staged-skills updater installer: `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane queue-kanban-javascript queue-kanban-browser do-work-cli-integrations staged-skills updater installer`
+
+*Verified by work action*
+
+## Review
+
+**Overall: 96%** | 2026-11-09T23:32:39Z
+
+| Dimension | Score |
+|-----------|-------|
+| Requirements | 100% |
+| Code Quality | 95% |
+| Test Adequacy | 90% |
+| Scope | 100% |
+| Risk | Low |
+| Acceptance | Pass |
+
+**Important findings (each with its recorded impact token — this is the durable audit record the judgment mandates):**
+- F1 (fixed in ab39e61c, re-checked at 1a000d08): the **Current** navigation link in all five moved archives pointed at `./CHANGELOG.md`, which does not exist in `docs/changelog/`. It now points at `../../CHANGELOG.md`, which resolves to the root live changelog. No `(./CHANGELOG.md)` link is left under `docs/changelog/`. — impact-user-visible → report only
+
+**Minor findings:**
+- F2 (fixed in ab39e61c): the `.gitattributes` comment on the staged-skills contract named two of the three asserted lines. It now names `/docs/kb`, `/docs/decisions` and `/docs/changelog`. — impact-negligible → report only
+- F3 (still open, no change needed before release): the REQ's GREEN and acceptance criterion 4 name a `release --dry-run` that still parses the live changelog, and no run of it is recorded. The substitute evidence holds at 1a000d08: the last archive link line plus a blank line occurs exactly once in `CHANGELOG.md`, and the Go release code matches changelog files by base name and byte equality, never by root location. The finalization release covers the dry run itself. — impact-negligible → report only
+- F4 (not a defect, no change needed): `/docs/changelog  export-ignore` sets the attribute on the folder path only, so `git check-attr` on a file inside the folder prints `unspecified` while the folder path prints `set`. The existing `/docs/kb` line behaves the same, and `git archive` drops the whole folder. The contract's folder-path assertion is the right form. — impact-negligible → report only
+- F5 (new, nit, zero weight): the rewritten `.gitattributes` comment line 18 is about 118 characters wide, where the rest of that comment block wraps near 95. — impact-negligible → report only
+
+**Acceptance:** Pass — Implementation and integration stages exercised on the merged tree 1a000d08 for the cumulative range `2b48f7db..1a000d08`: five renames plus four modified files, all in the declared write set; every link in the header block of the five archives resolves from `docs/changelog/` (each own GitHub URL names its own tracked path, each Older and Newer link names a tracked sibling, each Current link resolves to the root `CHANGELOG.md`), and no other header text assumes the root location; the two live changelogs are byte-identical and untouched by the fix; `git archive` of the merge holds no `docs/` path and no dated archive; `folder-structure-check` reports no archive; `shipped-package-reference-contract.sh` exit 0. Decision D-02 (links inside old release entries stay verbatim) is sound.
+**Restatement sweep:** redefined the location of the dated changelog archives (repository root to `docs/changelog/`) and the export-ignore rule form (root glob `/CHANGELOG-20*.md` to folder `/docs/changelog`). Swept `_dev/`, `.github/`, `README.md`, `CLAUDE.md`, the primes and `skills/`: no instruction or code names the root location, and `skills/do-work-toolbox/actions/folder-structure.md` line 43 already states `docs/changelog/`. The two stale restatements found in the first pass (F1, F2) are fixed; none is left.
+**Suggested testing:** 3 items
+- Integration, unassessed: the release dry run named by the REQ. The finalization release against the edited header covers it (F3).
+- Integration, run by the orchestrator: `_dev/tests/staged-skills-contract.sh` and the repository gate on the merged tree.
+- Live acceptance, unassessed: once the commit is on GitHub, open one archive and follow its GitHub, Older, Newer and Current links, and one header link from the live changelog.
+**Follow-ups created:** None (5 findings report only)
+
+*Reviewed by review-work action*
+
+## Heavy Verification Plan
+
+- Base revision: 2b48f7db5b50602c6743a5e58e0c56c88c2a9d85
+- Target revision: 1a000d08baa4c836f7f378bca03a0165232eebb8
+- queue-kanban-javascript queue-kanban-browser do-work-cli-integrations staged-skills updater installer: `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane queue-kanban-javascript queue-kanban-browser do-work-cli-integrations staged-skills updater installer` — coverage is uncertain for `.gitattributes`
+
+## Heavy Verification Result
+
+- Target revision: 1a000d08baa4c836f7f378bca03a0165232eebb8
+- Execution revision: 1a000d08baa4c836f7f378bca03a0165232eebb8 (detached checkout)
+- queue-kanban-javascript: exit 0, 7s, executed
+- queue-kanban-browser: exit 0, 86s, executed (real browser, not skipped)
+- do-work-cli-integrations: exit 0, 77s, executed
+- staged-skills: exit 0, 39s, executed
+- updater: exit 0, 71s, executed
+- installer: exit 0, 32s, executed
+
+## Lessons Learned
+
+**What worked:** `git mv` of all five archives in one commit with the reference edits, so `git archive` never shipped a half-moved state. The REQ's reference count (15 live references in 9 files) was a usable checklist once history files were left out.
+**What didn't:** The first link sweep searched only for the five archive names, so it found every link *to* a moved file and missed the link *from* each moved file to the live changelog. All five archives shipped a broken `Current` link until review finding F1.
+**Worth knowing:** A file move breaks two sets of links: links that name the file, and relative links inside the file. Sweep both. The export-ignore rule is now the folder `/docs/changelog`, so a future archive cut into that folder is excluded with no edit. `git check-attr` on a file inside the folder prints `unspecified`; the folder path prints `set`, and `git archive` drops the folder.
+
+## Orientation
+
+Now the five dated changelog archives live in `docs/changelog/`, and the next archive cut lands there; this is release bookkeeping covered by `_dev/primes/prime-releases.md`. A leaf change: the repository root holds only the live `CHANGELOG.md`, and the distributed archive still excludes the history. Prime staleness check: `prime-releases.md` names no archive location, so it is not stale.
+
+## Timing
+
+Observed 2026-11-09T23:13:02Z to 2026-11-09T23:14:43Z: 1m 41s total, 1m 41s attributed across 1 events, 0s unattributed.
+
+| Category | Elapsed | Events |
+| --- | --- | --- |
+| builder-work | 1m 41s | 1 |
+
+Slowest stage: builder-work / orchestrator as builder, one commit, 1m 41s, outcome success.
