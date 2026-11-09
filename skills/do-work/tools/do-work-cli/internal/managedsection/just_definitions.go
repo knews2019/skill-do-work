@@ -53,6 +53,13 @@ func JustDefinitionNames(data []byte) map[string]struct{} {
 	return definitionNames
 }
 
+// JustLineDefinitionName is justDefinitionName for a caller outside this package that walks a
+// justfile line by line (folder-structure-check counts each recipe's body lines). It returns ""
+// for a line that defines nothing.
+func JustLineDefinitionName(line string) string {
+	return string(justDefinitionName([]byte(line)))
+}
+
 // justDefinitionName returns the recipe or alias name a definition source declares, or nil
 // when the source is a comment, a body line, an assignment, or an unterminated header.
 func justDefinitionName(line []byte) []byte {
