@@ -59,9 +59,9 @@ do-work temporarily carries two memory engines — accepted bloat, bounded by th
 
 ## References
 
-- [actions/memory.md](../../actions/memory.md) — the dispatcher
-- [actions/memory-reference.md](../../actions/memory-reference.md) — schemas, ledger contract, recall shell
-- [actions/memory-value.md](../../actions/memory-value.md) — the auditor
-- [actions/bkb.md](../../actions/bkb.md) — the incumbent engine + its instrumentation
-- [actions/install.md](../../actions/install.md) — the memory-module install target
+- [actions/memory.md](../../../actions/memory.md) — the dispatcher
+- [actions/memory-reference.md](../../../actions/memory-reference.md) — schemas, ledger contract, recall shell
+- [actions/memory-value.md](../../../actions/memory-value.md) — the auditor
+- [actions/bkb.md](../../../actions/bkb.md) — the incumbent engine + its instrumentation
+- [actions/install.md](../../../actions/install.md) — the memory-module install target
 - [[adr-010-use-typed-relationships-retrieval-memory-and-agent-crew-in-bkb]] — why bkb is synthesis-first memory

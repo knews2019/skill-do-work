@@ -67,7 +67,7 @@ The trade-off is extra orchestration complexity. The continuation loop needs car
 
 ## References
 
-- [CHANGELOG.md](../../CHANGELOG.md) — `0.56.0 The Clean Sweep`, `0.56.1 The Safety Net`, `0.56.2 The Tight Scope`
-- [actions/work.md](../../actions/work.md)
-- [actions/review-work.md](../../actions/review-work.md)
+- [CHANGELOG.md](../../../CHANGELOG.md) — `0.56.0 The Clean Sweep`, `0.56.1 The Safety Net`, `0.56.2 The Tight Scope`
+- [actions/work.md](../../../actions/work.md)
+- [actions/review-work.md](../../../actions/review-work.md)
 - [[adr-019-four-skill-suite-contract]] — superseding modular-suite contract

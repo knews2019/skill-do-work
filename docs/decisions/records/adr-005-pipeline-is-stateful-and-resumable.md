@@ -61,6 +61,6 @@ The trade-off is more state-management discipline. `pipeline.json` must reflect 
 
 ## References
 
-- [CHANGELOG.md](../../CHANGELOG.md) — `0.51.5 The Full Send`
-- [README.md](../../README.md) — current stateless full-cycle prompt
+- [CHANGELOG.md](../../../CHANGELOG.md) — `0.51.5 The Full Send`
+- [README.md](../../../README.md) — current stateless full-cycle prompt
 - [[adr-019-four-skill-suite-contract]] — superseding modular-suite contract

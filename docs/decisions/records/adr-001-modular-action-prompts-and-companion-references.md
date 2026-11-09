@@ -60,9 +60,9 @@ The trade-off is indirection. Readers sometimes need to open two files instead o
 
 ## References
 
-- [CHANGELOG.md](../../CHANGELOG.md) — `0.49.0 The Architect`, `0.61.1 The Lean Cut`, `0.64.1 The Companion Split`
-- [CLAUDE.md](../../CLAUDE.md) — project structure and action-file conventions
-- [actions/work.md](../../actions/work.md) and [actions/work-reference.md](../../actions/work-reference.md) (split into a companion, re-inlined after trimming, then split again on 2026-06-01 — REQ-001)
+- [CHANGELOG.md](../../../CHANGELOG.md) — `0.49.0 The Architect`, `0.61.1 The Lean Cut`, `0.64.1 The Companion Split`
+- [CLAUDE.md](../../../CLAUDE.md) — project structure and action-file conventions
+- [actions/work.md](../../../actions/work.md) and [actions/work-reference.md](../../../actions/work-reference.md) (split into a companion, re-inlined after trimming, then split again on 2026-06-01 — REQ-001)
 - ADR-005 through ADR-008 preserve the former pipeline action/reference history; both runtime files were retired by REQ-145.
-- [actions/ai-report.md](../../actions/ai-report.md) and [actions/ai-report-reference.md](../../actions/ai-report-reference.md), [actions/capture.md](../../actions/capture.md) and [actions/capture-reference.md](../../actions/capture-reference.md) (both split 2026-07-27 — REQ-029, REQ-031)
-- [actions/bkb.md](../../actions/bkb.md) and [actions/bkb-reference.md](../../actions/bkb-reference.md)
+- [actions/ai-report.md](../../../actions/ai-report.md) and [actions/ai-report-reference.md](../../../actions/ai-report-reference.md), [actions/capture.md](../../../actions/capture.md) and [actions/capture-reference.md](../../../actions/capture-reference.md) (both split 2026-07-27 — REQ-029, REQ-031)
+- [actions/bkb.md](../../../actions/bkb.md) and [actions/bkb-reference.md](../../../actions/bkb-reference.md)

@@ -62,8 +62,8 @@ The unit of queue growth changes from one file per facet to one checklist line p
 
 ## References
 
-- [actions/capture-reference.md](../../skills/do-work/actions/capture-reference.md) — Fold-First Rule (canonical home)
-- [actions/review-work.md](../../skills/do-work/actions/review-work.md) — Step 10 Sweep consolidation, Restatement Sweep routing
-- [actions/work-reference.md](../../skills/do-work/actions/work-reference.md) — schema `sweep`/`sweep_key`/`impact` rows, Discovered Tasks Classification
-- [actions/capture.md](../../skills/do-work/actions/capture.md) — symmetric impact guard, fold-first duplicate check
+- [actions/capture-reference.md](../../../skills/do-work/actions/capture-reference.md) — Fold-First Rule (canonical home)
+- [actions/review-work.md](../../../skills/do-work/actions/review-work.md) — Step 10 Sweep consolidation, Restatement Sweep routing
+- [actions/work-reference.md](../../../skills/do-work/actions/work-reference.md) — schema `sweep`/`sweep_key`/`impact` rows, Discovered Tasks Classification
+- [actions/capture.md](../../../skills/do-work/actions/capture.md) — symmetric impact guard, fold-first duplicate check
 - `ai-reports/2026-08_18-reports/2026-08-20_1131_remaining-work-and-the-req-treadmill/index.html` — the measurements this decision answers

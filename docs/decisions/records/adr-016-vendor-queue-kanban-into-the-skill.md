@@ -69,9 +69,9 @@ The tool was independently versioned through 1.1.0 before being vendored in. Pre
 
 ## References
 
-- [tools/queue-kanban/](../../tools/queue-kanban/) — the vendored Go module (parser in `model.go`/`walk.go`, `//go:embed web/` frontend)
-- [actions/board.md](../../actions/board.md) — the `do-work board` action
-- [actions/version.md](../../actions/version.md) — update-path shipped-paths + binary diff exclusion
-- [actions/work-reference.md](../../actions/work-reference.md) — the Schema Read Contract the parser must stay in lock-step with
-- [CLAUDE.md](../../CLAUDE.md) — "Shipped Tooling (`tools/`)" conventions
+- [tools/queue-kanban/](../../../tools/queue-kanban/) — the vendored Go module (parser in `model.go`/`walk.go`, `//go:embed web/` frontend)
+- [actions/board.md](../../../actions/board.md) — the `do-work board` action
+- [actions/version.md](../../../actions/version.md) — update-path shipped-paths + binary diff exclusion
+- [actions/work-reference.md](../../../actions/work-reference.md) — the Schema Read Contract the parser must stay in lock-step with
+- [CLAUDE.md](../../../CLAUDE.md) — "Shipped Tooling (`tools/`)" conventions
 - [[adr-013-harden-the-vendored-skill-distribution-model]] — the tarball/export-ignore distribution model this extends

@@ -74,8 +74,8 @@ fi
 # Finding 8: dead-path-pointers-in-records (REQ-549)
 # Topic-index `sources:` lists and the primes are read as live routing, so a token that
 # matches no tracked file costs every reader a search. Dated records keep their citations
-# as written and are not scanned: decisions/records/, decisions/audits/,
-# decisions/imported-specs/ and decisions/log.md cite the tree as it was.
+# as written and are not scanned: docs/decisions/records/, docs/decisions/audits/,
+# docs/decisions/imported-specs/ and docs/decisions/log.md cite the tree as it was.
 tracked_file_list="$(cd "$repo_root" && git ls-files)"
 
 report_token_if_dead() {
@@ -102,8 +102,15 @@ report_token_if_dead() {
   printf '%s\t%s\n' "$candidate_token" "${citing_file#"$repo_root/"}"
 }
 
+# A glob that matches nothing skips the scan and reads as "no dead tokens": moving the
+# ADR folder under docs/ (REQ-714) would have done exactly that.
+if ! compgen -G "$repo_root/docs/decisions/topics/*.md" > /dev/null; then
+  printf 'FAIL: no topic index under docs/decisions/topics; the dead-path scan did not run\n' >&2
+  failure_count=$((failure_count + 1))
+fi
+
 dead_routing_tokens="$(
-  for index_file in "$repo_root"/decisions/topics/*.md; do
+  for index_file in "$repo_root"/docs/decisions/topics/*.md; do
     [ -e "$index_file" ] || continue
     awk '/^sources:/ { in_sources = 1; next }
          /^[a-z_]+:/ { in_sources = 0 }

@@ -4,8 +4,8 @@ type: progress-log
 status: reference
 sources:
   - CHANGELOG.md
-  - decisions/_master_index.md
-  - decisions/log.md
+  - docs/decisions/_master_index.md
+  - docs/decisions/log.md
 related:
   - page: _master_index
     rel: depends-on
@@ -26,7 +26,7 @@ confidence: high
 
 ## Completed Scope
 
-- Built `decisions/_master_index.md`, `decisions/log.md`, four topic indexes, and ten ADR files under `decisions/records/`.
+- Built `docs/decisions/_master_index.md`, `docs/decisions/log.md`, four topic indexes, and ten ADR files under `docs/decisions/records/`.
 - Mined only `CHANGELOG.md` entries that looked load-bearing and still in force after cross-checking current files.
 - Grouped the ADRs into four topic clusters: skill architecture, workflow orchestration, pipeline deliverables, and knowledge base.
 

@@ -59,9 +59,9 @@ The cost is template upkeep. Specs must stay aligned with the real workflow, and
 
 ## References
 
-- [CHANGELOG.md](../../CHANGELOG.md) — `0.59.0 The Quality Blueprint`
-- [CLAUDE.md](../../CLAUDE.md) — `specs/` project-structure entry
-- [README.md](../../README.md) — spec-loading note
-- [actions/capture.md](../../actions/capture.md) — `suggested_spec` hinting
-- [actions/work.md](../../actions/work.md) — spec-loading steps
-- [specs/README.md](../../specs/README.md)
+- [CHANGELOG.md](../../../CHANGELOG.md) — `0.59.0 The Quality Blueprint`
+- [CLAUDE.md](../../../CLAUDE.md) — `specs/` project-structure entry
+- [README.md](../../../README.md) — spec-loading note
+- [actions/capture.md](../../../actions/capture.md) — `suggested_spec` hinting
+- [actions/work.md](../../../actions/work.md) — spec-loading steps
+- [specs/README.md](../../../specs/README.md)

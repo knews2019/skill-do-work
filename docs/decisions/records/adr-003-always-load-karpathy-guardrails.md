@@ -59,8 +59,8 @@ The trade-off is more governance material to keep calibrated. The review pass ha
 
 ## References
 
-- [CHANGELOG.md](../../CHANGELOG.md) — `0.62.0 The Karpathy Nod`, `0.62.1 The Senior Engineer Test`
-- [CLAUDE.md](../../CLAUDE.md) — always-loaded crew-member rules
-- [crew-members/karpathy.md](../../crew-members/karpathy.md)
-- [actions/work.md](../../actions/work.md)
-- [actions/review-work.md](../../actions/review-work.md)
+- [CHANGELOG.md](../../../CHANGELOG.md) — `0.62.0 The Karpathy Nod`, `0.62.1 The Senior Engineer Test`
+- [CLAUDE.md](../../../CLAUDE.md) — always-loaded crew-member rules
+- [crew-members/karpathy.md](../../../crew-members/karpathy.md)
+- [actions/work.md](../../../actions/work.md)
+- [actions/review-work.md](../../../actions/review-work.md)

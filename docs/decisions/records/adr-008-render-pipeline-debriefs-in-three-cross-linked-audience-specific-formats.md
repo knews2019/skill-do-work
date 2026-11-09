@@ -63,6 +63,6 @@ The trade-off is a larger reporting surface area. Template parity, sibling-link 
 
 ## References
 
-- [CHANGELOG.md](../../CHANGELOG.md) — `0.63.2 The Triple Render`, `0.64.0 The Cross-Linked Set`, `0.64.1 The Companion Split`
-- [skills/do-work-toolbox/actions/present-work.md](../../skills/do-work-toolbox/actions/present-work.md)
+- [CHANGELOG.md](../../../CHANGELOG.md) — `0.63.2 The Triple Render`, `0.64.0 The Cross-Linked Set`, `0.64.1 The Companion Split`
+- [skills/do-work-toolbox/actions/present-work.md](../../../skills/do-work-toolbox/actions/present-work.md)
 - [[adr-019-four-skill-suite-contract]] — superseding modular-suite contract

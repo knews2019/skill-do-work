@@ -64,7 +64,7 @@ The cost is one additional public verb and its routing/help surface. That cost i
 
 ## References
 
-- [run-with-recovery.md](../../skills/do-work/actions/run-with-recovery.md) — the deliberate authority verb
-- [work-reference.md](../../skills/do-work/actions/work-reference.md) — Execution Model and Crash Recovery semantics
-- [work.md](../../skills/do-work/actions/work.md) — the unchanged work pipeline that receives the handoff
+- [run-with-recovery.md](../../../skills/do-work/actions/run-with-recovery.md) — the deliberate authority verb
+- [work-reference.md](../../../skills/do-work/actions/work-reference.md) — Execution Model and Crash Recovery semantics
+- [work.md](../../../skills/do-work/actions/work.md) — the unchanged work pipeline that receives the handoff
 - [adr-018-regrain-session-ownership-to-claim-anywhere-one-releaser.md](./adr-018-regrain-session-ownership-to-claim-anywhere-one-releaser.md) — the default shared-queue ownership model this decision extends

@@ -64,7 +64,7 @@ The cost is more completion work per pipeline run. The orchestration step must c
 
 ## References
 
-- [CHANGELOG.md](../../CHANGELOG.md) — `0.63.0 The Closing Act`, `0.63.1 The Debrief`
-- [skills/do-work-toolbox/actions/present-work.md](../../skills/do-work-toolbox/actions/present-work.md)
-- [README.md](../../README.md) — current stateless full-cycle prompt
+- [CHANGELOG.md](../../../CHANGELOG.md) — `0.63.0 The Closing Act`, `0.63.1 The Debrief`
+- [skills/do-work-toolbox/actions/present-work.md](../../../skills/do-work-toolbox/actions/present-work.md)
+- [README.md](../../../README.md) — current stateless full-cycle prompt
 - [[adr-019-four-skill-suite-contract]] — superseding modular-suite contract

@@ -73,11 +73,11 @@ The trade-off is a small amount of new documentation surface (one ADR plus its i
 
 ## References
 
-- [CHANGELOG.md](../../CHANGELOG.md) — `0.98.0 The Delete Key`
+- [CHANGELOG.md](../../../CHANGELOG.md) — `0.98.0 The Delete Key`
 - commit `ecbe59f` — removed `prompts/ultracode-fable-workflow.md`, added the contract test
-- [_dev/tests/contract-regressions.sh](../../_dev/tests/contract-regressions.sh)
-- [crew-members/maintenance.md](../../crew-members/maintenance.md)
-- [crew-members/background-agents.md](../../crew-members/background-agents.md)
-- [crew-members/karpathy.md](../../crew-members/karpathy.md)
-- [actions/work.md](../../actions/work.md)
-- [SKILL.md](../../SKILL.md)
+- [_dev/tests/contract-regressions.sh](../../../_dev/tests/contract-regressions.sh)
+- [crew-members/maintenance.md](../../../crew-members/maintenance.md)
+- [crew-members/background-agents.md](../../../crew-members/background-agents.md)
+- [crew-members/karpathy.md](../../../crew-members/karpathy.md)
+- [actions/work.md](../../../actions/work.md)
+- [SKILL.md](../../../SKILL.md)

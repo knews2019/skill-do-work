@@ -82,15 +82,15 @@ Two ratchets were tightened rather than loosened while doing this. The retired w
 
 ## References
 
-- [actions/work-reference.md](../../actions/work-reference.md) — Execution Model — Claim Anywhere, One Releaser; Worktree Dispatch Mode (builder-tree widening, Auto-wave, claim-conflict resolution); Crash Recovery; In-Progress Record; the `assigned_to` schema line
-- [actions/work.md](../../actions/work.md) — Step 1's assigned-elsewhere skip and auto-wave set selection, Step 2's clear-on-claim, Step 10's recompute, the `--fan-out` flag
-- [docs/work-guide.md](../../docs/work-guide.md) — "Several checkouts against one queue", the user-facing walkthrough
-- [tools/queue-kanban/model.go](../../tools/queue-kanban/model.go) — the display-only `assigned_to` parse, in lock-step with the Schema Read Contract
-- [tools/queue-kanban/verify.go](../../tools/queue-kanban/verify.go) — the two new probes
-- [do-work/archive/UR-012/REQ-069-exclusive-session-model-removes-concurrency-machinery.md](../../do-work/archive/UR-012/REQ-069-exclusive-session-model-removes-concurrency-machinery.md) — the decision this partially reverses, and the only prior record of it
-- [do-work/archive/UR-018/input.md](../../do-work/archive/UR-018/input.md) — the verbatim user decisions
-- [do-work/archive/UR-018/assets/approved-plan.md](../../do-work/archive/UR-018/assets/approved-plan.md) — the approved plan, including the do-not-build list
-- [do-work/archive/UR-018/REQ-095-two-clone-acceptance-run.md](../../do-work/archive/UR-018/REQ-095-two-clone-acceptance-run.md) — the poisoning repro and the cross-checkout conflict evidence
-- [do-work/archive/UR-018/REQ-100-live-wave-acceptance-run.md](../../do-work/archive/UR-018/REQ-100-live-wave-acceptance-run.md) — the measured wall-clock concurrency run
+- [actions/work-reference.md](../../../actions/work-reference.md) — Execution Model — Claim Anywhere, One Releaser; Worktree Dispatch Mode (builder-tree widening, Auto-wave, claim-conflict resolution); Crash Recovery; In-Progress Record; the `assigned_to` schema line
+- [actions/work.md](../../../actions/work.md) — Step 1's assigned-elsewhere skip and auto-wave set selection, Step 2's clear-on-claim, Step 10's recompute, the `--fan-out` flag
+- [docs/work-guide.md](../../../docs/work-guide.md) — "Several checkouts against one queue", the user-facing walkthrough
+- [tools/queue-kanban/model.go](../../../tools/queue-kanban/model.go) — the display-only `assigned_to` parse, in lock-step with the Schema Read Contract
+- [tools/queue-kanban/verify.go](../../../tools/queue-kanban/verify.go) — the two new probes
+- [do-work/archive/UR-012/REQ-069-exclusive-session-model-removes-concurrency-machinery.md](../../../do-work/archive/UR-012/REQ-069-exclusive-session-model-removes-concurrency-machinery.md) — the decision this partially reverses, and the only prior record of it
+- [do-work/archive/UR-018/input.md](../../../do-work/archive/UR-018/input.md) — the verbatim user decisions
+- [do-work/archive/UR-018/assets/approved-plan.md](../../../do-work/archive/UR-018/assets/approved-plan.md) — the approved plan, including the do-not-build list
+- [do-work/archive/UR-018/REQ-095-two-clone-acceptance-run.md](../../../do-work/archive/UR-018/REQ-095-two-clone-acceptance-run.md) — the poisoning repro and the cross-checkout conflict evidence
+- [do-work/archive/UR-018/REQ-100-live-wave-acceptance-run.md](../../../do-work/archive/UR-018/REQ-100-live-wave-acceptance-run.md) — the measured wall-clock concurrency run
 - [[adr-005-pipeline-is-stateful-and-resumable]] — the resumability model whose checkpoint this builds on
 - [[adr-016-vendor-queue-kanban-into-the-skill]] — why the board's parser and the schema it tracks live in one repo, which is what let `assigned_to` and its parse land together

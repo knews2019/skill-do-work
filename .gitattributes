@@ -9,16 +9,17 @@
 # corrupt anything, but they're shipped clutter. Both fetch routes honor export-ignore;
 # a worktree copy would not, which is why the git fallback repacks with `git archive`.
 #
-# /do-work and /kb are LOAD-BEARING, not housekeeping. This repo tracks both (they are the
+# /do-work and /docs/kb are LOAD-BEARING, not housekeeping. This repo tracks both (they are the
 # same Trail of Intent the skill tells consumers to commit, and the tracked-path-only guards
 # — record-commit-hash.sh's size-floor/numstat checks, cleanup Pass 6 blanked-REQ recovery —
 # only work on tracked REQs). These two lines are therefore the ONLY thing keeping the
 # maintainer's queue and knowledge base out of consumer installs.
-# _dev/tests/contract-regressions.sh asserts both lines exist; do not remove them. The dev
-# dotfiles (.gitignore/.gitattributes) are export-ignore-only too, and a stale vendored copy
-# leaks nothing (export-ignore is inert once the skill is a subdirectory of a consumer's repo).
+# _dev/tests/staged-skills-contract.sh asserts the /docs/kb and /docs/decisions lines exist;
+# do not remove them. The dev dotfiles (.gitignore/.gitattributes) are export-ignore-only
+# too, and a stale vendored copy leaks nothing (export-ignore is inert once the skill is a
+# subdirectory of a consumer's repo).
 #
-# decisions/ holds the maintainer's own ADRs about this skill — design history, never
+# docs/decisions/ holds the maintainer's own ADRs about this skill — design history, never
 # loaded at runtime by any action — so consumers don't need it. The dev dotfiles
 # (.gitignore/.gitattributes) are repo-maintenance plumbing that's meaningless once the
 # skill is a subdirectory of someone else's repo. All are excluded for a clean install.
@@ -41,13 +42,13 @@
 # are deleted by the update flow (actions/version.md Step 5) instead. Shipped files
 # must never cite these two files — see _dev/primes/prime-action-files.md → Cross-Referencing.
 /do-work         export-ignore
-/kb              export-ignore
+/docs/kb         export-ignore
 /CHANGELOG-20*.md export-ignore
 /ai-reports      export-ignore
 /.vscode         export-ignore
 /.github         export-ignore
 /_dev            export-ignore
-/decisions       export-ignore
+/docs/decisions  export-ignore
 /.gitignore      export-ignore
 /.gitattributes  export-ignore
 /CLAUDE.md       export-ignore
