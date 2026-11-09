@@ -50,18 +50,18 @@ Read the most recent `audit-*.md` report in `do-work/audits/` and `do-work/audit
 
 ```bash
 <core-skill-root>/tools/do-work-cli.sh --repo-root <project-root> audit-metrics inventory \
-       --exclude-path do-work/ --exclude-path docs/kb/ --exclude-path ai-reports/ \
+       --exclude-path do-work/ --exclude-path docs/kb/ --exclude-path kb/ --exclude-path ai-reports/ \
   && <core-skill-root>/tools/do-work-cli.sh --repo-root <project-root> audit-metrics folders \
-       --exclude-path do-work/ --exclude-path docs/kb/ --exclude-path ai-reports/ \
+       --exclude-path do-work/ --exclude-path docs/kb/ --exclude-path kb/ --exclude-path ai-reports/ \
   && <core-skill-root>/tools/do-work-cli.sh --repo-root <project-root> audit-metrics churn \
-       --exclude-path do-work/ --exclude-path docs/kb/ --exclude-path ai-reports/
+       --exclude-path do-work/ --exclude-path docs/kb/ --exclude-path kb/ --exclude-path ai-reports/
 ```
 
    The typed results are the sole deterministic inventory/folder/churn evidence. Missing, failed, or malformed canonical tooling stops actionably; do not fall back to manual shell measurements or the standalone audit-metrics binary. The exclude prefixes shown are the do-work defaults from the reference's § Default EXCLUDE — extend them with anything obviously vendored or generated before invoking the command.
 
 2. **Derive the toolchain from what the inventory found.** Size and churn are covered by the canonical command. For the rest: `lizard` (function length + CCN, most languages) and `jscpd` (duplication) where they earn their place, then language-native additions where a language is a meaningful share of the repo (shell → `shellcheck`; Python → `ruff`, `radon`; Go → `gocyclo`, `go vet`; JS/TS → an eslint complexity rule; prose-heavy → per-file word counts, which `inventory` already measures). Check what is installed; prepare an install plan for the gaps — exact commands, user-local only, expected versions. **Proposed at the gate, not executed now.**
 
-3. **The project's self-description — the do-work record first.** In a do-work repo the richest grounding sources are its own artifacts: the `prime-*.md` files (architecture, conventions, known traps), the UR archive — completed URs are the project's requirements history — recent REQs in `do-work/queue/` and `do-work/archive/`, and every `## Lessons Learned` section you encounter (a lesson is a pre-emption waiting to happen). A missing `do-work/queue/` directory simply means an empty queue. Then the generic layer: README, the project's own instruction files, `<project-root>/docs/decisions/`, changelog head. Documented conventions, lessons, and deliberate choices constrain what may count as a finding in Step 5.
+3. **The project's self-description — the do-work record first.** In a do-work repo the richest grounding sources are its own artifacts: the `prime-*.md` files (architecture, conventions, known traps), the UR archive — completed URs are the project's requirements history — recent REQs in `do-work/queue/` and `do-work/archive/`, and every `## Lessons Learned` section you encounter (a lesson is a pre-emption waiting to happen). A missing `do-work/queue/` directory simply means an empty queue. Then the generic layer: README, the project's own instruction files, `<project-root>/docs/decisions/` (or a root `decisions/` in a project that has not moved it), changelog head. Documented conventions, lessons, and deliberate choices constrain what may count as a finding in Step 5.
 
 4. **Condense into a Current-State Picture, one screen:** what the project is, stack and proportions, toolchain (present / to-install), measured distributions, documented conventions findings must respect, where recent change concentrates, what prior audits covered — and anything that surprised you, because surprises are where the user's context beats yours.
 
@@ -80,14 +80,14 @@ Run the toolchain under the agreed config. **The tool output is the number** —
 ```bash
 # Re-run with the agreed config — bands come ONLY from flags; equal to a threshold is not flagged.
 <core-skill-root>/tools/do-work-cli.sh --repo-root <project-root> audit-metrics inventory \
-       --exclude-path do-work/ --exclude-path docs/kb/ --exclude-path ai-reports/ \
+       --exclude-path do-work/ --exclude-path docs/kb/ --exclude-path kb/ --exclude-path ai-reports/ \
        --watch-lines <agreed-watch-lines> --flag-lines <agreed-flag-lines> \
        --watch-words <agreed-watch-words> --flag-words <agreed-flag-words> \
   && <core-skill-root>/tools/do-work-cli.sh --repo-root <project-root> audit-metrics folders \
-       --exclude-path do-work/ --exclude-path docs/kb/ --exclude-path ai-reports/ \
+       --exclude-path do-work/ --exclude-path docs/kb/ --exclude-path kb/ --exclude-path ai-reports/ \
        --watch-files <agreed-watch-files> --flag-files <agreed-flag-files> \
   && <core-skill-root>/tools/do-work-cli.sh --repo-root <project-root> audit-metrics hotspots \
-       --exclude-path do-work/ --exclude-path docs/kb/ --exclude-path ai-reports/ \
+       --exclude-path do-work/ --exclude-path docs/kb/ --exclude-path kb/ --exclude-path ai-reports/ \
        --exclude-path <ceremony-file-prefix> \
        --since-window '<agreed-churn-window>' --top-count <agreed-hotspot-count>
 ```
@@ -154,7 +154,7 @@ The persistent report at `do-work/audits/audit-YYYY-MM-DD.md`, plus a short term
 - A number in the report with no pasted command output behind it.
 - Band flags passed during Step 2 grounding — calibration happened without the user.
 - Per-instance findings instead of root-cause classes, or more classes than FINDINGS_MAX.
-- A finding that contradicts a `<project-root>/docs/decisions/` record or a `## Lessons Learned` entry without a `Challenges-decision:` field.
+- A finding that contradicts a decision record or a `## Lessons Learned` entry without a `Challenges-decision:` field.
 - A lock-in limit proposed at the aspirational band instead of the current worst observed value.
 - A waived class re-flagged, or a delta table against a config the prior run never recorded.
 - Any write outside `do-work/audits/`, any install inside the repo tree, or the audit running capture or the validator itself.

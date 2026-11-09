@@ -52,12 +52,12 @@ Before executing a sub-command, read the relevant agent file(s) from `<kb>/agent
 Before executing any sub-command, find the KB root, called `<kb>` below. This section is the one canonical statement of the order. The `bkb-init`, `bkb-status` and `bkb-lint-structure` commands apply the same order themselves when they get no `--kb`, so pass `--kb <path>` to them only when the user supplied a path.
 
 1. An explicit `--kb <path>` in `$ARGUMENTS` — use that path as written.
-2. `<project-root>/docs/kb/`, when that directory exists. This is the default, and where `init` creates a new knowledge base.
-3. A `kb/` directory at the project root, then a `knowledge-base/` directory there, when it already holds `raw/` and `wiki/`. This was the default before the knowledge base moved under `docs/`, so an existing project keeps working. The commands report `BKB-LEGACY-LOCATION`, an info finding that carries the one-line move into `<project-root>/docs/kb/`; pass that hint on to the user and do not move the folder yourself.
+2. `<project-root>/docs/kb/`, when it holds `raw/` and `wiki/`. This is the default.
+3. A `kb/` directory at the project root, then a `knowledge-base/` directory there, when it already holds `raw/` and `wiki/`. This was the default before the knowledge base moved under `docs/`, so an existing project keeps working; a `<project-root>/docs/kb/` folder that is not a knowledge base (empty, or holding other files) does not hide it. `init` also fills in place a root folder that so far holds only one of `raw/` and `wiki/`. The commands report `BKB-LEGACY-LOCATION`, an info finding that carries the one-line move into `<project-root>/docs/kb/`; pass that hint on to the user and do not move the folder yourself.
 4. The project root itself or a parent directory (up to 2 levels up) that contains both `raw/` and `wiki/`.
-5. If not found, and the sub-command is not `init`, tell the user: "No knowledge base found. Run `do-work-knowledge bkb init` to create one."
+5. If not found, and the sub-command is not `init`, tell the user: "No knowledge base found. Run `do-work-knowledge bkb init` to create one." `init` then creates `<project-root>/docs/kb/`.
 
-When `<project-root>/docs/kb/` and a root `kb/` both exist, the `docs` one wins and the commands report the warning `BKB-DUPLICATE-LOCATION`, which names both. Show it to the user: they decide which folder is the real one.
+When `<project-root>/docs/kb/` and a root `kb/` are both knowledge bases, the `docs` one wins and the commands report the warning `BKB-DUPLICATE-LOCATION`, which names both. Show it to the user: they decide which folder is the real one.
 
 A usage ledger (`usage-ledger.jsonl`) rides at the KB root next to `raw/` and `wiki/`; it is written by the query/ingest steps below and read by `actions/memory-value.md` for the ADR-017 engine comparison.
 

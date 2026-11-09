@@ -47,7 +47,7 @@ Plus **at most three focused domain questions** ("which area hurts most when you
 For any repo running do-work, default-exclude:
 
 - `do-work/` — the do-work record (queue, working, archive, user-requests) **including `do-work/audits/` — the audit must not measure its own output**
-- `<project-root>/docs/kb/` — knowledge stores (a project that still keeps its knowledge base in a root `kb/` excludes that prefix instead)
+- `<project-root>/docs/kb/` and a root `kb/` — knowledge stores; the commands exclude both prefixes, because an older project still keeps its knowledge base at the root
 - `ai-reports/` — generated report output
 - Changelog archives (e.g. `CHANGELOG.md` and any mirrored copies) — release history, not living code
 - The generic layer: vendored code, generated files, migrations, lockfiles

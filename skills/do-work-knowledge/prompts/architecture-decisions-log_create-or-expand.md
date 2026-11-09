@@ -44,13 +44,13 @@ You are maintaining an Architecture Decision Record (ADR) log at `<project-root>
 
 Resolve `<adr-root>` first. The order mirrors the one `actions/bkb.md` → "Locating the Knowledge Base" uses for the knowledge base:
 
-1. `<project-root>/docs/decisions/`, when that directory exists.
-2. A `decisions/` directory at the project root that already holds `_master_index.md`. This was the location before the log moved under `docs/`. Keep using it for this run, and tell the user the one-line move below. Do not move it yourself.
+1. `<project-root>/docs/decisions/`, when it holds `_master_index.md`. A folder of that name without the index file is not this log (hand-written ADRs often live there).
+2. A `decisions/` directory at the project root that holds `_master_index.md`. This was the location before the log moved under `docs/`. Keep using it for this run and do not move it yourself. Tell the user the one-line move below. If a `<project-root>/docs/decisions/` folder without the index already exists, say instead that the two folders need a manual merge, because the command would nest the log inside that folder.
 
    ```bash
    mkdir -p docs && git mv decisions docs/decisions
    ```
-3. Otherwise `<project-root>/docs/decisions/`, which Phase 2 creates.
+3. Otherwise `<project-root>/docs/decisions/`, which Phase 2 creates. Files already in that folder stay as they are.
 
 Never scaffold a second log beside an existing one. If both locations hold a log, use the one under `docs/` and tell the user that both exist.
 
@@ -128,7 +128,7 @@ Most recent decisions on top.
 _(populated as ADRs are written)_
 ```
 
-Commit with `docs(adr): scaffold decisions/ log` and push (unless `--no-push`). Tick BATCH 1 in `_progress.md` before committing.
+Commit with `docs(adr): scaffold the decisions log` and push (unless `--no-push`). Tick BATCH 1 in `_progress.md` before committing.
 
 ### Phase 3 — Mining (BATCH 2)
 

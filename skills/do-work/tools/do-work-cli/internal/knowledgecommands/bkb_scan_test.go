@@ -177,23 +177,27 @@ func TestBKBScanPreservesAbsoluteAndParentRelativeTargets(t *testing.T) {
 
 // Pins the default order with no --kb: docs/kb first, then a root kb/ or
 // knowledge-base/ that already is a knowledge base (with the one-line move),
-// and docs/kb wins with a warning when both exist. Before this, status and
-// lint looked only at the root folders and reported a docs/kb as not found.
+// and docs/kb wins with a warning when both are knowledge bases. Before this,
+// status and lint looked only at the root folders and reported a docs/kb as
+// not found. A docs/kb folder that is not a knowledge base must not hide a
+// real root kb/: that reported "not found" and let init write a second scaffold.
 func TestBKBScanDefaultLocationOrder(t *testing.T) {
 	tests := []struct {
 		name          string
 		knowledgeBase []string
+		plainFolders  []string
 		arguments     []string
 		location      string
 		noticeCode    string
 		severity      resultmodel.FindingSeverity
 		evidence      []string
 	}{
-		{"docs only", []string{"docs/kb"}, nil, "docs/kb", "", "", nil},
-		{"legacy kb only", []string{"kb"}, nil, "kb", "BKB-LEGACY-LOCATION", resultmodel.SeverityInfo, []string{"mkdir -p docs && git mv kb docs/kb"}},
-		{"legacy knowledge-base only", []string{"knowledge-base"}, nil, "knowledge-base", "BKB-LEGACY-LOCATION", resultmodel.SeverityInfo, []string{"mkdir -p docs && git mv knowledge-base docs/kb"}},
-		{"both", []string{"docs/kb", "kb"}, nil, "docs/kb", "BKB-DUPLICATE-LOCATION", resultmodel.SeverityWarning, []string{"docs/kb", "kb"}},
-		{"both with explicit legacy", []string{"docs/kb", "kb"}, []string{"--kb", "kb"}, "kb", "", "", nil},
+		{"docs only", []string{"docs/kb"}, nil, nil, "docs/kb", "", "", nil},
+		{"legacy kb only", []string{"kb"}, nil, nil, "kb", "BKB-LEGACY-LOCATION", resultmodel.SeverityInfo, []string{"mkdir -p docs && git mv kb docs/kb"}},
+		{"legacy knowledge-base only", []string{"knowledge-base"}, nil, nil, "knowledge-base", "BKB-LEGACY-LOCATION", resultmodel.SeverityInfo, []string{"mkdir -p docs && git mv knowledge-base docs/kb"}},
+		{"both", []string{"docs/kb", "kb"}, nil, nil, "docs/kb", "BKB-DUPLICATE-LOCATION", resultmodel.SeverityWarning, []string{"docs/kb", "kb"}},
+		{"both with explicit legacy", []string{"docs/kb", "kb"}, nil, []string{"--kb", "kb"}, "kb", "", "", nil},
+		{"docs folder that is not a knowledge base beside legacy kb", []string{"kb"}, []string{"docs/kb"}, nil, "kb", "BKB-LEGACY-LOCATION", resultmodel.SeverityInfo, []string{"git mv kb docs/kb", "docs/kb/ exists and is not a knowledge base"}},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
@@ -204,6 +208,9 @@ func TestBKBScanDefaultLocationOrder(t *testing.T) {
 				if err := os.MkdirAll(filepath.Join(root, filepath.FromSlash(relative), "raw", "inbox"), 0o755); err != nil {
 					t.Fatal(err)
 				}
+			}
+			for _, relative := range test.plainFolders {
+				writeFixture(t, root, relative+"/faq.md", "# Not a knowledge base\n")
 			}
 			before := treeDigest(t, root)
 			context := commandruntime.ExecutionContext{RepositoryRoot: root}
@@ -237,6 +244,16 @@ func TestBKBScanDefaultLocationOrder(t *testing.T) {
 						}
 					}
 				}
+			}
+			// memory-audit reads the same default order through locateKnowledgeBase.
+			audit := handleMemoryAudit(context, append([]string{"--engine", "bkb"}, test.arguments...))
+			for _, finding := range audit.Findings {
+				if finding.Code == "MEMORY-AUDIT-BKB" && (finding.Severity != resultmodel.SeverityInfo || len(finding.AffectedPaths) != 1 || finding.AffectedPaths[0] != test.location) {
+					t.Fatalf("memory-audit did not find the knowledge base at %s: %+v", test.location, finding)
+				}
+			}
+			if !resultHasFindingCode(audit, "MEMORY-AUDIT-BKB") {
+				t.Fatalf("memory-audit reported no bkb finding: %+v", audit.Findings)
 			}
 			if after := treeDigest(t, root); after != before {
 				t.Fatal("default-location scans changed bytes")
