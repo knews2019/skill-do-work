@@ -113,3 +113,62 @@ Mutation checks on the two new assertions: with the `/docs/kb` line removed from
 ## Addendum (orchestrator, before the merge)
 
 - D-12 resolved: `skills/do-work/actions/version.md` line 60 now says the update does not mutate "the knowledge base" (commit 00eac450 on the branch). The brief's ban on that file was about the version line the finalizer writes, not this sentence.
+
+## Addendum (review fixes)
+
+Started from `00eac450` (the orchestrator's `version.md` commit). New tip `a61ef3ef`. Worktree clean. No `git add -A`, nothing pushed or merged, nothing under `do-work/`.
+
+### Commits
+
+1. `06841482` [REQ-714] review RED: a docs/kb that is not a knowledge base must not hide a root kb/
+2. `828144e7` [REQ-714] review fix F1, F4: docs/kb wins only when it is a knowledge base
+3. `a61ef3ef` [REQ-714] review fix F2, F3, F6, F7: prose keeps legacy root folders working
+
+Commit 2 was amended once before anything else was built on it: the first version of the `bkb.md` sentence held a bare `docs/kb` token that failed the shipped reference contract.
+
+### Files changed (all modified)
+
+- `skills/do-work/tools/do-work-cli/internal/knowledgecommands/bkb_scan.go`, `bkb_scan_test.go`, `bkb_init_test.go`
+- `skills/do-work-knowledge/actions/bkb.md`
+- `skills/do-work-knowledge/prompts/architecture-decisions-log_create-or-expand.md`
+- `skills/do-work-toolbox/actions/maintainability-audit.md`, `maintainability-audit-reference.md`, `architecture-report.md`, `validate-feedback.md`
+- `README.md`
+
+### Red-green evidence for F1
+
+New tests: the case "docs folder that is not a knowledge base beside legacy kb" in `TestBKBScanDefaultLocationOrder`, and `TestBKBInitWithoutTargetIgnoresDocsFolderThatIsNotAKnowledgeBase`. For F4: `TestBKBInitWithoutTargetFillsPartialLegacyRootFolderInPlace`.
+
+RED at `06841482`:
+
+```
+--- FAIL: TestBKBInitWithoutTargetIgnoresDocsFolderThatIsNotAKnowledgeBase
+    bkb_init_test.go:528: fill-gaps planned "docs/kb/raw/_inbox_queue.md" outside the existing kb/
+--- FAIL: TestBKBInitWithoutTargetFillsPartialLegacyRootFolderInPlace
+    bkb_init_test.go:554: bare init planned "docs/kb/raw/_inbox_queue.md" beside the partial root kb/
+--- FAIL: TestBKBScanDefaultLocationOrder/docs_folder_that_is_not_a_knowledge_base_beside_legacy_kb
+    bkb_scan_test.go:219: status location: want kb, got [BKB-NOT-FOUND ... checked docs/kb, kb, knowledge-base]
+```
+
+GREEN at `828144e7`: all five init tests and all six table cases PASS; the whole package is `ok`. Full outputs: `red-review.txt` and `green-review.txt` beside this file.
+
+### Per finding
+
+- F1 fixed. With no `--kb`, `docs/kb` is used when it holds `raw/` and `wiki/`, or when no legacy root folder exists. Otherwise the legacy folder is used with `BKB-LEGACY-LOCATION`. `BKB-DUPLICATE-LOCATION` is reported only when both are knowledge bases. `bkb.md` § Locating the Knowledge Base, steps 2, 3 and 5 and the closing sentence, state the new rule. Two additions: when the legacy folder is in use and a `docs/kb` folder that is not a knowledge base exists, the hint says to remove that folder first, because `git mv kb docs/kb` would nest the knowledge base inside it. `bkb-status` no longer adds a notice to a `BKB-NOT-FOUND` result; the case that needed it is gone.
+- F2 fixed. Rule 1 of the ADR prompt reads "when it holds `_master_index.md`". Rule 2 keeps the root log also beside a docs folder without the index, and says to announce a manual merge instead of the move command in that case.
+- F3 fixed. `audit-metrics --exclude-path` is repeatable (the parser appends; a prefix that matches nothing is harmless, tried on this repository). The six command blocks pass `--exclude-path docs/kb/ --exclude-path kb/`, and the reference line says so. `architecture-report.md:63`, `validate-feedback.md:72` and `maintainability-audit.md:64` name a root `decisions/` as the fallback; the two red-flag lines (`validate-feedback.md:184`, `maintainability-audit.md:157`) say "decision record" with no path.
+- F4 fixed. The resolver also accepts a root `kb/` or `knowledge-base/` that holds only `raw/` or only `wiki/`, when no complete legacy folder exists. A bare `bkb-init` fills it in place. `bkb-status` on such a folder still reports not found with `next: bkb-init --kb kb`, as the old CLI did. A complete legacy folder is preferred over a partial one.
+- F5 partly done. The F1 case is in the table. The table also runs `memory-audit --engine bkb` in every case, so the default order is pinned for a second command, including the `docs/kb` branch. Left: no default-location test for `dream-scan` or `interview-ingest` (each needs its own fixture, more than a few lines), and no test that a failed init removes a `docs` parent it created.
+- F6 fixed. `README.md` lines 33, 37 and 49 name both `docs/kb/` and a root `kb/`.
+- F7 fixed for the commit subject (`docs(adr): scaffold the decisions log`). The single-word names were left alone as instructed. The one new field is `defaultOccupied`.
+
+### Verification (at `a61ef3ef`)
+
+- `gofmt -l ./internal/knowledgecommands`: no output. `go vet ./internal/knowledgecommands/`: clean. `go test -count=1 ./internal/knowledgecommands/`: ok.
+- `bash _dev/tests/shipped-package-reference-contract.sh`: PASS.
+- `bash _dev/tests/contract-regressions.sh`: exit 0.
+- `DO_WORK_MAINTAINER_TIER=heavy bash _dev/tests/staged-skills-contract.sh`: PASS, exit 0.
+- `bash _dev/tests/audit-lockins.sh`: passed, exit 0.
+- By hand with the built CLI: an empty `docs/kb` beside a real `kb/` gives `refused` + `BKB-INIT-EXISTS` + the hint, and `docs/kb` stays empty; a root `kb/raw/inbox` only gives `bkb-init: success` in `kb/` and no `docs` folder.
+- `maintainer-verify.sh` was not run, as instructed.
+
+Decision D-05 in the first hand-back is superseded by the F1 rule above.
