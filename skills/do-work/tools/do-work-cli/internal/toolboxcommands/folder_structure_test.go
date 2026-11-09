@@ -40,7 +40,7 @@ func TestFolderStructureCheckPassesTheTargetLayout(t *testing.T) {
 		".gitignore":           "data/*\n!data/README.md\nnode_modules/\ndo-work/deliverables/\n",
 		"README.md":            "readme",
 		"CHANGELOG.md":         "changes",
-		"justfile":             "port := \"8080\"\nset shell := [\"bash\", \"-c\"]\n\n# deploy to the server\ndeploy:\n    bash cmd/deploy.sh\n",
+		"justfile":             "port := \"8080\"\nurl:=\"http://localhost\"\nset shell := [\"bash\", \"-c\"]\n\n# deploy to the server\ndeploy:\n    bash cmd/deploy.sh\n\n[positional-arguments]\nserve $port=\"8090\" *args:\n    bash cmd/serve.sh \"$@\"\n",
 		"cmd/deploy.sh":        "echo deploy",
 		"src/be-golang/go.mod": "module example",
 		"src/be-golang/internal/store/fixture.db": sqliteFixture,
@@ -64,6 +64,8 @@ func TestFolderStructureCheckPassesTheTargetLayout(t *testing.T) {
 // Each gap class the action relies on: g1w-style root clutter (node-source/), a src/ folder that
 // misses the <role>-<tech> form, a runtime database written inside the backend (gitignored, so
 // only a content walk finds it), data/ committed to Git, and a justfile recipe holding logic.
+// The run-kanban recipe pins REQ-713: its parameters carry default values, and the check used to
+// stop at the "=" and skip the recipe, so its three body lines were never counted.
 func TestFolderStructureCheckReportsEachGapClass(t *testing.T) {
 	repository := toolboxTestRepository(t)
 	writeOrganizeFiles(t, repository, map[string]string{
@@ -76,7 +78,7 @@ func TestFolderStructureCheckReportsEachGapClass(t *testing.T) {
 		"src/be-golang/go.mod":          "module example",
 		"src/be-golang/player.sqlite":   sqliteFixture,
 		"data/seed.json":                "{}",
-		"justfile":                      "test:\n    cd src/be-golang\n    go test ./...\n\nlint:\n    bash cmd/lint.sh\n",
+		"justfile":                      "test:\n    cd src/be-golang\n    go test ./...\n\nlint:\n    bash cmd/lint.sh\n\n# default values, one holding a colon, must not hide the recipe (run-kanban in the suite's own justfile)\nrun-kanban $port=\"8090\" url='http://localhost' +rest: lint\n    echo \"$port\"\n    echo \"$url\"\n    bash cmd/serve.sh\n",
 		"docs/inbox/idea.md":            "idea",
 	})
 	toolboxTestGit(t, repository, "add", "-A")
@@ -86,6 +88,7 @@ func TestFolderStructureCheckReportsEachGapClass(t *testing.T) {
 	want := []string{
 		"FOLDER-STRUCTURE-DATA-NOT-IGNORED data/seed.json",
 		"FOLDER-STRUCTURE-DATA-OUTSIDE src/be-golang/player.sqlite",
+		"FOLDER-STRUCTURE-JUST-LOGIC justfile: run-kanban",
 		"FOLDER-STRUCTURE-JUST-LOGIC justfile: test",
 		"FOLDER-STRUCTURE-ROOT-ENTRY node-source/",
 		"FOLDER-STRUCTURE-ROOT-ENTRY skills-lock.json",
