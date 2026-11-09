@@ -1,7 +1,7 @@
 ---
 id: REQ-717
 title: 'Suite-managed justfile recipes call a script in one line'
-status: pending
+status: claimed
 created_at: 2026-11-09T21:47:36Z
 user_request: UR-169
 domain: general
@@ -11,6 +11,7 @@ maintenance: false
 impact: impact-user-visible
 effort_estimate: effort-substantive
 depends_on: [REQ-713]
+claimed_at: 2026-11-09T23:39:43Z
 ---
 # Suite-managed justfile recipes call a script in one line
 ## What
