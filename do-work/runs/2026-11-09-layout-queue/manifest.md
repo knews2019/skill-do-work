@@ -10,4 +10,4 @@ Hand-back emphasis note: none
 | REQ | Builder | Operative name | Handback file | Status | Dispatch instant |
 |-----|---------|----------------|---------------|--------|------------------|
 | REQ-713 | orchestrator as builder (Route A, worktree) | worktree-agent-REQ-713-folder-structure-check-default-param-recipes | do-work/runs/2026-11-09-layout-queue/REQ-713-handback.md | merge 218404ff, review-fix re-merge 013ea54e; gate green x2 (125s, 122s); review 92% then re-check 96%; four heavy lanes executed green; released 0.314.1, UR-165 closed | 2026-11-09T21:52:25Z |
-| REQ-714 | builder agent (Route C, worktree) | worktree-agent-REQ-714-suite-writes-kb-and-decisions-under-docs | do-work/runs/2026-11-09-layout-queue/REQ-714-handback.md | dispatched | 2026-11-09T22:20:14Z |
+| REQ-714 | builder agent (Route C, worktree) | worktree-agent-REQ-714-suite-writes-kb-and-decisions-under-docs | do-work/runs/2026-11-09-layout-queue/REQ-714-handback.md | handback 00eac450; merge fae09f99, review-fix re-merge 409a3e58; gate green x2 (142s, 146s); review 89% then re-check 95%; six heavy lanes executed green | 2026-11-09T22:20:14Z |

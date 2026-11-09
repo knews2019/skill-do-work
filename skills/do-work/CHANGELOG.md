@@ -10,6 +10,15 @@ For the complete release history, read this file and the archives below from new
 - [0.50.0 through 0.64.1](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-13-up-to-v0.64.1.md)
 - [0.1.0 through 0.49.0](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-07-up-to-v0.49.0.md)
 
+## 0.315.0 — Knowledge Base and Decision Log Live Under docs/ (2026-11-09)
+
+The suite now keeps its knowledge base in `docs/kb/` and its decision (ADR) log in `docs/decisions/`, so an installed repository has two fewer root folders.
+
+- A new knowledge base is created in `docs/kb/`. The knowledge commands (`bkb-init`, `bkb-status`, `bkb-lint-structure`, `dream-scan`, the interview and memory commands) look there first when you give no `--kb`.
+- An existing root `kb/` or `decisions/` keeps working. The commands use it and print the one-line move: `mkdir -p docs && git mv kb docs/kb`. A warning names both folders when both hold a knowledge base. An explicit `--kb` is always taken as written.
+- `just bkb-init`, `just bkb-status` and `just bkb-lint-structure` now pass their arguments straight to the command, so `just bkb-init --fill-gaps` works.
+- The ADR-log prompt follows the same order: `docs/decisions/` first, a root `decisions/` log if you already have one.
+
 ## 0.314.1 — Layout Check Sees Recipes with Default Parameter Values (2026-11-09)
 
 `folder-structure-check` now counts the body lines of every justfile recipe. Before, a recipe whose parameters had default values, such as `run-kanban $port="8090":`, was skipped, so its logic was never reported.
