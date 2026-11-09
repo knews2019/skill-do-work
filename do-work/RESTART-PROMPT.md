@@ -41,7 +41,7 @@ No hold needed a new queue field: the only ordering constraints were the two `de
   5. `worktree cleanup REQ-715`.
 - **Release for REQ-715 may be refused.** The drafted entry is `do-work/runs/2026-11-09-layout-queue/REQ-715-entry.md` (0.315.1, patch). The only shipped file in the range is `skills/do-work/CHANGELOG.md` (header links), which the finalizer may count as release metadata and answer `RELEASE-WITHOUT-SHIPPED-CHANGE`. If so, finalize with `NO_RELEASE=1` in `make-manifests.py`; the next release (REQ-716 or REQ-717) carries the header-link change.
 - **Uncommitted files at handoff, by name, now held by the handoff commit:** `do-work/working/REQ-715-changelog-archives-to-docs-changelog.md`, `do-work/working/baseline.json`, `do-work/CHECKPOINT.md`, `do-work/runs/2026-11-09-layout-queue/REQ-715-review.md`, `do-work/runs/2026-11-09-layout-queue/REQ-715-entry.md`, and the nine files under `do-work/runs/2026-11-09-layout-queue/helpers/`.
-- **Recover result for the claim:** `recover` reported `FINALIZATION-NONE` and `RECOVERY-NONE` at the last queue boundary; bare `advance REQ-715` reports phase `test-gate`, missing the `Testing` section. Continue command: `advance REQ-715`.
+- **Recover result for the claim:** after the session checkpoint, `recover` reports `FINALIZATION-NONE` and `RECOVERY-TAKEOVER-AVAILABLE` for this claim (same writer: host `t2s-Virtual-Machine.local`, this checkout). Do not take it over; a takeover resets the claim and strips its sections. Bare `advance REQ-715` reports phase `test-gate`, missing the `Testing` section. Continue command: `advance REQ-715`.
 
 ### Worktrees
 
@@ -78,5 +78,5 @@ The run manifest is `do-work/runs/2026-11-09-layout-queue/manifest.md`. Add REQ-
 - **Next session:** the scope-drift gate compares the `## Scope` bullets with the `## Implementation Summary` bullets. Describe a folder move in a plain sentence in both sections, not as bullets (REQ-714 moved 544 files this way).
 - **Next session:** `frontmatter set REQ-NNN write_set "[...]"` writes the list as a quoted string. Edit the line by hand or insert it with a script.
 - **Next session:** `do-work/working/baseline.json` is rewritten by each Route B or C pre-flight and is not committed by finalization. Commit it by exact path before the next `recover`, or `recover` refuses.
-- **Maintainer:** `main` is about 6 commits ahead of GitHub (releases 0.312.0 to 0.315.0 are not pushed). Other repositories get `do-work audit-current-folder-structure` and the `docs/kb` default only after `git push origin main`.
+- **Maintainer:** the remote `main` is at 2ed0be64, so releases up to 0.315.0 (the audit command and the `docs/kb` default) are already on GitHub. Local `main` is 8 commits ahead: the REQ-715 work and this handoff. Other repositories get REQ-715 to REQ-717 only after the next `git push origin main`.
 - **Maintainer:** review findings left as report only are listed in each archived REQ's `## Review` and `## Discovered Tasks` (for example the justfile body-line count still misreads a header continued with a backslash).
