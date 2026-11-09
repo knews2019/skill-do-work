@@ -502,3 +502,56 @@ func TestBKBInitWithoutTargetKeepsLegacyRootKnowledgeBase(t *testing.T) {
 		}
 	}
 }
+
+// Pins review finding F1: a docs/kb folder that is not a knowledge base (empty,
+// or holding unrelated files) hid a real root kb/, so a bare bkb-init returned
+// success and wrote a second scaffold under docs/.
+func TestBKBInitWithoutTargetIgnoresDocsFolderThatIsNotAKnowledgeBase(t *testing.T) {
+	root := t.TempDir()
+	runGitFixture(t, root, "init")
+	runGitFixture(t, root, "config", "user.email", "fixture@example.invalid")
+	runGitFixture(t, root, "config", "user.name", "Fixture")
+	writeFixture(t, root, "kb/wiki/overview.md", "mine\n")
+	writeFixture(t, root, "docs/kb/faq.md", "not a knowledge base\n")
+	if err := os.MkdirAll(filepath.Join(root, "kb", "raw"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	runGitFixture(t, root, "add", "kb/wiki/overview.md", "docs/kb/faq.md")
+	runGitFixture(t, root, "commit", "-m", "baseline")
+
+	dryRun := handleBKBInit(commandruntime.ExecutionContext{RepositoryRoot: root}, []string{"--fill-gaps", "--dry-run"})
+	if dryRun.Outcome != resultmodel.OutcomeSuccess || len(dryRun.Changes) == 0 {
+		t.Fatalf("fill-gaps dry-run = %s: %+v", dryRun.Outcome, dryRun.Findings)
+	}
+	for _, change := range dryRun.Changes {
+		if !strings.HasPrefix(change.Path, "kb/") {
+			t.Fatalf("fill-gaps planned %q outside the existing kb/", change.Path)
+		}
+	}
+	bare := handleBKBInit(commandruntime.ExecutionContext{RepositoryRoot: root}, nil)
+	if bare.Outcome != resultmodel.OutcomeRefused || !resultHasFindingCode(bare, "BKB-INIT-EXISTS") {
+		t.Fatalf("bare init beside a real kb/ = %s: %+v", bare.Outcome, bare.Findings)
+	}
+	entries, err := os.ReadDir(filepath.Join(root, "docs", "kb"))
+	if err != nil || len(entries) != 1 || entries[0].Name() != "faq.md" {
+		t.Fatalf("init wrote into docs/kb beside the real kb/: %v %v", entries, err)
+	}
+}
+
+// Pins review finding F4: a root kb/ that holds raw/ but no wiki/ yet was
+// filled in place by a bare bkb-init before the default moved; the new default
+// must not create docs/kb beside it.
+func TestBKBInitWithoutTargetFillsPartialLegacyRootFolderInPlace(t *testing.T) {
+	root := t.TempDir()
+	runGitFixture(t, root, "init")
+	writeFixture(t, root, "kb/raw/inbox/note.md", "note\n")
+	dryRun := handleBKBInit(commandruntime.ExecutionContext{RepositoryRoot: root}, []string{"--dry-run"})
+	if dryRun.Outcome != resultmodel.OutcomeSuccess || len(dryRun.Changes) == 0 {
+		t.Fatalf("dry-run = %s: %+v", dryRun.Outcome, dryRun.Findings)
+	}
+	for _, change := range dryRun.Changes {
+		if !strings.HasPrefix(change.Path, "kb/") {
+			t.Fatalf("bare init planned %q beside the partial root kb/", change.Path)
+		}
+	}
+}
