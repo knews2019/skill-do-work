@@ -4,11 +4,11 @@ What's new, what's better, what's different. Recent release entries are here, mo
 
 For the complete release history, read this file and the archives below from newest to oldest. Archives are tracked in git and excluded from the distribution tarball; these GitHub links also work from an installed copy.
 
-- [0.121.1 through 0.303.6](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-09-05-up-to-v0.303.6.md)
-- [0.110.0 through 0.121.0](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-07-13-up-to-v0.121.0.md)
-- [0.65.0 through 0.109.0](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-07-07-up-to-v0.109.0.md)
-- [0.50.0 through 0.64.1](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-13-up-to-v0.64.1.md)
-- [0.1.0 through 0.49.0](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-07-up-to-v0.49.0.md)
+- [0.121.1 through 0.303.6](https://github.com/knews2019/skill-do-work/blob/main/docs/changelog/CHANGELOG-2026-09-05-up-to-v0.303.6.md)
+- [0.110.0 through 0.121.0](https://github.com/knews2019/skill-do-work/blob/main/docs/changelog/CHANGELOG-2026-07-13-up-to-v0.121.0.md)
+- [0.65.0 through 0.109.0](https://github.com/knews2019/skill-do-work/blob/main/docs/changelog/CHANGELOG-2026-07-07-up-to-v0.109.0.md)
+- [0.50.0 through 0.64.1](https://github.com/knews2019/skill-do-work/blob/main/docs/changelog/CHANGELOG-2026-04-13-up-to-v0.64.1.md)
+- [0.1.0 through 0.49.0](https://github.com/knews2019/skill-do-work/blob/main/docs/changelog/CHANGELOG-2026-04-07-up-to-v0.49.0.md)
 
 ## 0.315.0 — Knowledge Base and Decision Log Live Under docs/ (2026-11-09)
 
