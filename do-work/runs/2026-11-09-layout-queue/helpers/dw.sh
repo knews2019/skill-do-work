@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # dw <args...>: run do-work-cli in JSON mode against the main repo; print a compact view and save raw output.
 root=/Users/t2/Desktop/e1-experimental-repos/skill-do-work2
-out="$(dirname "$0")/last.json"
+# Raw output goes outside the repository: an untracked file in the run directory makes recover refuse.
+out="${TMPDIR:-/tmp}/dw-last.json"
 bash "$root/skills/do-work/tools/do-work-cli.sh" --repo-root "$root" --format json "$@" > "$out" 2> "$out.err"
 status=$?
 echo "exit=$status"
