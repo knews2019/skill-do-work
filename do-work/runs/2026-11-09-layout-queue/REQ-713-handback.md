@@ -23,3 +23,11 @@ Branch `worktree-agent-REQ-713-folder-structure-check-default-param-recipes`: RE
 
 ## Lessons read
 - No `required_lessons` entry on this REQ. The matching satellite `skills/do-work/tools/do-work-cli/lessons-do-work-cli.md` was dropped for budget at capture (24067 tokens).
+
+## Addendum (review F1)
+
+The reviewer found that `internal/managedsection/just_definitions.go` already ships `justDefinitionName`, a state machine over Just's five literal forms. The first fix duplicated a weaker version of it. Third commit on the branch: `JustLineDefinitionName` (an exported one-line wrapper) is added there, and `folder_structure.go` calls it. The new `justRecipeName`, `justLeadingName` and the `justDirective` list are deleted; the scanner already returns nothing for `set`, `export`, `import` and `mod` lines and for assignments. An `alias` line returns the alias name, which has no body lines and so can never be a gap.
+
+- Files: `skills/do-work/tools/do-work-cli/internal/managedsection/just_definitions.go` (modified), `skills/do-work/tools/do-work-cli/internal/toolboxcommands/folder_structure.go` (modified).
+- D-02 (DECIDE & STATE): Reuse over a second scanner, although the REQ names only `folder_structure.go`. One scanner means one place to fix Just syntax.
+- Evidence: `gofmt -l` and `go vet` clean on both packages; `go test -run FolderStructure ./internal/toolboxcommands/` ok.
