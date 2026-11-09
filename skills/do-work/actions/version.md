@@ -57,7 +57,7 @@ bash "<skill-root>/tools/do-work-cli.sh" --repo-root "$PROJECT_ROOT" update-suit
 
 Relay that suggestion when the engine reports a total fetch failure. Editing a vendored file is never the answer.
 
-The installed manifest validator approves all four modules first, then the updater delegates that same downloaded archive to its installed full-suite installer. The installer owns the reviewed confirmation, refreshes the managed Just section, composes core hook settings, verifies every installed byte, and restores every changed managed path on failure. The update does not mutate `do-work/`, `kb/`, application files, bytes outside the marked Just section, unrelated settings entries, or any other project configuration.
+The installed manifest validator approves all four modules first, then the updater delegates that same downloaded archive to its installed full-suite installer. The installer owns the reviewed confirmation, refreshes the managed Just section, composes core hook settings, verifies every installed byte, and restores every changed managed path on failure. The update does not mutate `do-work/`, the knowledge base, application files, bytes outside the marked Just section, unrelated settings entries, or any other project configuration.
 
 ## Responding to Recap Requests
 
