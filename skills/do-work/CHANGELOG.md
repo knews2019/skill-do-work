@@ -10,6 +10,14 @@ For the complete release history, read this file and the archives below from new
 - [0.50.0 through 0.64.1](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-13-up-to-v0.64.1.md)
 - [0.1.0 through 0.49.0](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-07-up-to-v0.49.0.md)
 
+## 0.313.0 — One Folder Layout with a CI-Ready Layout Check (2026-11-09)
+
+`do-work-toolbox folder-structure` now holds one concrete layout instead of generic web-app advice, and a new command checks a repository against it.
+
+- The layout: `cmd/` for every script the justfile runs, `src/<role>-<tech>/` per app (for example `src/be-golang/` and `src/fe-node/`), `data/<app>/` for everything apps store, all docs under `docs/` with `docs/spec/` and `docs/inbox/`, and `tests/` only for tests that span apps.
+- `do-work-cli folder-structure-check` reports root clutter, misnamed app folders, SQLite files outside `data/`, committable files in `data/`, justfile recipes that hold logic, and unsorted inbox files. It exits 1 on any gap, so a project can run it in CI. `--allow` keeps a root file a tool requires.
+- The action sorts each gap into a `tidy-repo` move, a REQ for anything that changes code, or an exception.
+
 ## 0.312.0 — Folder-Structure Action Describes a Target Layout (2026-11-09)
 
 `do-work-toolbox folder-structure [path]` describes how a repository should be laid out and lists where it differs today. It moves nothing.
