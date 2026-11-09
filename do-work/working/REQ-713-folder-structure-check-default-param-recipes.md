@@ -1,7 +1,7 @@
 ---
 id: REQ-713
 title: 'folder-structure-check sees justfile recipes with default parameter values'
-status: pending
+status: claimed
 created_at: 2026-11-09T21:47:36Z
 user_request: UR-165
 domain: backend
@@ -10,6 +10,7 @@ tdd: true
 maintenance: false
 impact: impact-user-visible
 effort_estimate: effort-mechanical
+claimed_at: 2026-11-09T21:51:56Z
 ---
 # folder-structure-check sees justfile recipes with default parameter values
 ## What
