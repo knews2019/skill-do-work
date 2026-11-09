@@ -10,6 +10,14 @@ For the complete release history, read this file and the archives below from new
 - [0.50.0 through 0.64.1](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-13-up-to-v0.64.1.md)
 - [0.1.0 through 0.49.0](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-07-up-to-v0.49.0.md)
 
+## 0.312.0 — Folder-Structure Action Describes a Target Layout (2026-11-09)
+
+`do-work-toolbox folder-structure [path]` describes how a repository should be laid out and lists where it differs today. It moves nothing.
+
+- The target covers the repository level (root, `docs/`, `scripts/`, reports, `apps/` and `packages/` for several deployables) and, for a web application, `src/` grouped by feature: `features/`, `shared/` and `config/` beside the framework's own folders.
+- Each gap is sorted into a repo-level move for `tidy-repo`, an in-code move captured as one REQ so import rewrites run with tests, or an exception that a framework or project rule explains.
+- `tidy-repo` now drafts its target from this layout instead of inventing one each run.
+
 ## 0.311.0 — AI Reports Suggest a Teaching Method for a Second Opinion (2026-11-09)
 
 Every AI report now also names the one teaching method that would best help you understand or present its subject, with a ready command that builds that version as a new page.
