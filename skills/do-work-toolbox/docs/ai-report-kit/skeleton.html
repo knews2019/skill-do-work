@@ -26,7 +26,7 @@
     <li class="role-effect">Effect</li>
     <li class="role-proof">Proof</li>
   </ul>
-  <nav class="jump" aria-label="Go deeper"><span>Go deeper:</span><a class="btn" href="#why">Why it happened</a><a class="btn" href="#how">Where in the code</a><a class="btn" href="#proof">The proof</a><a class="btn" href="#depth-3">Every detail</a><a class="btn" href="#another-layout">Another layout</a></nav>
+  <nav class="jump" aria-label="Go deeper"><span>Go deeper:</span><a class="btn" href="#why">Why it happened</a><a class="btn" href="#how">Where in the code</a><a class="btn" href="#proof">The proof</a><a class="btn" href="#depth-3">Every detail</a><a class="btn" href="#another-layout">Another layout or method</a></nav>
 </header>
 
 <!-- Depth 2, part 1: the cause-and-effect chain. One .link per step of the story. Each card says why the
@@ -174,14 +174,20 @@
   </details>
 </section>
 
-<!-- Another layout: this kit is one way to tell the story, not a proven best one. Suggest one layout unlike this
-     page, chosen for this report's content, and fill the line that builds it as a new page in this bundle. Write
-     the suggestion without a single quote, so the line stays one argument. -->
+<!-- Another layout or teaching method: this kit is one way to tell the story, not a proven best one. Suggest one
+     layout unlike this page, chosen for this report's content, and one teaching method chosen for this subject and
+     its reader: the method that would best help the reader understand the subject or deliver it to others. The
+     shipped second-opinion presets are a starting menu, not a closed list: when a better method fits, name it and
+     build its line with editor-direction instead of preset. Fill each line that builds a suggestion as a new page
+     in this bundle, and write each suggestion without a single quote, so each line stays one argument. -->
 <section class="band" id="another-layout" aria-labelledby="another-layout-heading">
-  <h2 id="another-layout-heading">Try another layout</h2>
+  <h2 id="another-layout-heading">Try another layout or teaching method</h2>
   <p class="measure">FILL: one layout unlike this page, and why it might tell this story better, in one or two sentences.</p>
   <p class="note">To build it as a new page beside this one, give an agent this line:</p>
 <pre><code>ai-report second-opinion --editor-direction 'FILL: the suggestion as one instruction' ai-reports/FILL: this bundle folder</code></pre>
+  <p class="measure">FILL: the one teaching method that would best help a reader understand or deliver this subject, and why it fits, in one or two sentences.</p>
+  <p class="note">To build that as a new page too, give an agent this line:</p>
+<pre><code>ai-report second-opinion FILL: --preset and a shipped preset name, or --editor-direction and the method as one instruction in single quotes ai-reports/FILL: this bundle folder</code></pre>
 </section>
 
 <footer class="band note measure">
