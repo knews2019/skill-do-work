@@ -564,6 +564,14 @@ func handleBKBInit(executionContext commandruntime.ExecutionContext, arguments [
 	if err != nil {
 		return usageResult(CommandBKBInit, err)
 	}
+	location := resolveKnowledgeBaseLocation(executionContext.RepositoryRoot, options.target)
+	options.target = location.relative
+	result := initializeKnowledgeBase(executionContext, options)
+	result.Findings = append(result.Findings, location.notices(CommandBKBInit)...)
+	return result
+}
+
+func initializeKnowledgeBase(executionContext commandruntime.ExecutionContext, options bkbOptions) resultmodel.CommandResult {
 	targetPath, err := ensureSafeTarget(executionContext.RepositoryRoot, options.target)
 	if err != nil {
 		return resultmodel.CommandResult{Outcome: resultmodel.OutcomeRefused, Findings: []resultmodel.CommandFinding{knowledgeFinding(CommandBKBInit, "BKB-INIT-UNSAFE-TARGET", resultmodel.SeverityError, []string{options.target}, err.Error(), resultmodel.FixabilityRefused, "a symlink or unsafe target component prevents confined publication")}}
@@ -673,11 +681,22 @@ func initializeInRepository(gitRoot, targetPath string, options bkbOptions, now 
 }
 
 func scaffoldRootDirectories(prefix string) []string {
-	paths := make([]string, 0, len(scaffoldDirectorySuffixes()))
+	paths := targetAncestors(prefix)
 	for _, suffix := range scaffoldDirectorySuffixes() {
 		paths = append(paths, cleanRootPath(filepath.Join(prefix, suffix)))
 	}
 	return paths
+}
+
+// targetAncestors lists the folders between the writer root and a nested
+// target, nearest first: "docs" for "docs/kb", nothing for "kb". The default
+// target is nested, so its parent may not exist yet and must be created first.
+func targetAncestors(targetRelative string) []string {
+	ancestors := []string{}
+	for ancestor := cleanRootPath(filepath.Dir(cleanRootPath(targetRelative))); ancestor != "." && ancestor != cleanRootPath(filepath.Dir(ancestor)); ancestor = cleanRootPath(filepath.Dir(ancestor)) {
+		ancestors = append(ancestors, ancestor)
+	}
+	return ancestors
 }
 
 func applyRootedScaffold(writer *rootedScaffoldWriter, prefix string, missingDirectories, missingFiles []string, now time.Time) error {
@@ -892,6 +911,13 @@ func missingDirectoryInventory(targetPath, targetRelative string) []string {
 		}
 		if _, err := os.Lstat(absolutePath); os.IsNotExist(err) {
 			missing = append(missing, relative)
+		}
+	}
+	ancestorPath := targetPath
+	for _, ancestor := range targetAncestors(targetRelative) {
+		ancestorPath = filepath.Dir(ancestorPath)
+		if _, err := os.Lstat(ancestorPath); os.IsNotExist(err) {
+			missing = append(missing, ancestor)
 		}
 	}
 	sort.Slice(missing, func(i, j int) bool {

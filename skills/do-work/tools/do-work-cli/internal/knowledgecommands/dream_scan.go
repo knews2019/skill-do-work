@@ -32,6 +32,7 @@ func handleDreamScan(executionContext commandruntime.ExecutionContext, arguments
 	if err != nil {
 		return usageResult(CommandDreamScan, err)
 	}
+	options.target = resolveKnowledgeBaseLocation(executionContext.RepositoryRoot, options.target).relative
 	target, err := ensureSafeTarget(executionContext.RepositoryRoot, options.target)
 	if err != nil {
 		return scanFailure(CommandDreamScan, options.target, err)

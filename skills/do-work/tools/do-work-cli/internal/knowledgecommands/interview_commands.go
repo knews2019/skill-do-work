@@ -49,7 +49,7 @@ type interviewLayer struct{ ID, Title string }
 var rootedCreateTestHook func(repositoryRoot, relative string)
 
 func parseInterviewOptions(arguments []string, mutable bool) (interviewOptions, error) {
-	options := interviewOptions{kb: "kb"}
+	options := interviewOptions{}
 	seen := map[string]bool{}
 	singleton := func(name string) error {
 		if seen[name] {
@@ -393,11 +393,11 @@ func handleInterviewIngest(executionContext commandruntime.ExecutionContext, arg
 	}
 	kbAbsolute, kbRelative, locateError := locateKnowledgeBase(executionContext.RepositoryRoot, options.kb)
 	if locateError != nil {
-		return interviewFindingResult(CommandInterviewIngest, "INTERVIEW-INGEST-KB-MISSING", resultmodel.SeverityWarning, options.kb, locateError.Error(), resultmodel.OutcomeRefused)
+		return interviewFindingResult(CommandInterviewIngest, "INTERVIEW-INGEST-KB-MISSING", resultmodel.SeverityWarning, kbRelative, locateError.Error(), resultmodel.OutcomeRefused)
 	}
 	physicalRepositoryRoot, physicalRootError := physicalPath(filepath.Clean(executionContext.RepositoryRoot))
 	if physicalRootError != nil || !pathInside(physicalRepositoryRoot, kbAbsolute) {
-		return interviewFailure(CommandInterviewIngest, "INTERVIEW-INGEST-KB-OUTSIDE-REPOSITORY", options.kb, errors.New("mutating ingest target must be inside the repository"))
+		return interviewFailure(CommandInterviewIngest, "INTERVIEW-INGEST-KB-OUTSIDE-REPOSITORY", kbRelative, errors.New("mutating ingest target must be inside the repository"))
 	}
 	exportsRoot := filepath.Join(executionContext.RepositoryRoot, "do-work", "interview", options.template, "exports")
 	exportEntries, readError := os.ReadDir(exportsRoot)
@@ -1374,7 +1374,7 @@ func retargetInterviewResult(result resultmodel.CommandResult, options interview
 			finding.NextArgv = appendFindingOption(finding.NextArgv, "--template", options.template)
 			finding.VerificationArgv = appendFindingOption(finding.VerificationArgv, "--template", options.template)
 		}
-		if options.kb != "" && options.kb != "kb" && len(finding.NextArgv) > 1 && finding.NextArgv[1] == CommandInterviewIngest {
+		if options.kb != "" && len(finding.NextArgv) > 1 && finding.NextArgv[1] == CommandInterviewIngest {
 			finding.NextArgv = appendFindingOption(finding.NextArgv, "--kb", options.kb)
 			finding.VerificationArgv = appendFindingOption(finding.VerificationArgv, "--kb", options.kb)
 			finding.NextJustRecipe += " --kb " + quoteRecipeArgument(options.kb)

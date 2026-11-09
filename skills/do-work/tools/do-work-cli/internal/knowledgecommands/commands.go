@@ -66,7 +66,7 @@ func Handlers() map[string]commandruntime.CommandHandler {
 }
 
 func parseBKBOptions(arguments []string, mutable bool) (bkbOptions, error) {
-	options := bkbOptions{target: "kb"}
+	options := bkbOptions{}
 	seenTarget := false
 	for index := 0; index < len(arguments); index++ {
 		argument := arguments[index]
@@ -96,10 +96,13 @@ func parseBKBOptions(arguments []string, mutable bool) (bkbOptions, error) {
 	if options.dryRun && options.commit {
 		return options, fmt.Errorf("--dry-run and --commit cannot be combined")
 	}
-	if strings.TrimSpace(options.target) == "" {
-		return options, fmt.Errorf("target path must not be empty")
+	// An empty target means "not supplied": resolveKnowledgeBaseLocation picks it.
+	if seenTarget {
+		if strings.TrimSpace(options.target) == "" {
+			return options, fmt.Errorf("target path must not be empty")
+		}
+		options.target = filepath.Clean(options.target)
 	}
-	options.target = filepath.Clean(options.target)
 	return options, nil
 }
 
