@@ -1,7 +1,7 @@
 ---
 id: REQ-716
 title: 'Move the root installer scripts from tools/ to cmd/'
-status: pending
+status: claimed
 created_at: 2026-11-09T21:47:36Z
 user_request: UR-168
 domain: general
@@ -11,6 +11,7 @@ maintenance: false
 impact: impact-user-visible
 effort_estimate: effort-substantive
 required_lessons: [skills/do-work/tools/lessons-do-work-update.md]
+claimed_at: 2026-11-09T23:39:42Z
 ---
 # Move the root installer scripts from tools/ to cmd/
 ## What
