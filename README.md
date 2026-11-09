@@ -123,6 +123,8 @@ To check that a report's citations say what it claims, `do-work-toolbox source-a
 
 To check that intended content reached its consumer, `do-work-toolbox release-check <target> [--brief <path>]` traces it from source to package to serving environment to consumer-visible behavior, reports implementation, integration, deployment and live acceptance separately with evidence, and returns a ready, not ready or unknown verdict without deploying or repairing anything.
 
+For repository layout, `do-work-toolbox folder-structure [path]` compares the tree with a target layout (repository level, plus `src/` for a web application) and sorts each gap into a `tidy-repo` move, a code-refactor REQ, or a framework or project exception, without moving anything. `do-work-toolbox tidy-repo` then designs its moves toward the same target.
+
 ### Deterministic commands without an agent
 
 Fresh installs expose the deterministic core, knowledge, and toolbox command platform as flat Just recipes. Run `just --list` for the live inventory, then invoke a recipe directly, such as `just do-work-doctor`, `just memory-status`, or `just audit-metrics inventory`. Natural-language actions remain the judgment and consent layer; their mechanical phases call the same canonical CLI and stop with its actionable result when tooling is missing, fails, or returns malformed output. See the [Command-Line Guide](skills/do-work/docs/command-line-guide.md).

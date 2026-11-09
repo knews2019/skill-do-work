@@ -43,7 +43,8 @@ Extensions installed beside core — run <package> help for usage on any of thes
                      present-video · slop-check · source-audit · journey-qa · release-check
                      periodic-check
                      quick-wins · scan-ideas · deep-explore · prime · inspect
-                     note · stray-check · tidy-repo · tutorial · install
+                     note · stray-check · folder-structure · tidy-repo
+                     tutorial · install
 ```
 
 Deterministic operations also have flat, no-agent recipes. Run `just --list` for the live inventory and see `docs/command-line-guide.md`; examples include `just do-work-doctor`, `just do-work-next`, and canonical `just do-work-update`.

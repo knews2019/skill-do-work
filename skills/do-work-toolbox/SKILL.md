@@ -1,7 +1,7 @@
 ---
 name: do-work-toolbox
 description: ai-report second-opinion, generate a second opinion, second opinion preset. Optional reviews, discovery, presentation, reporting, repository utilities, and companion installers for the modular do-work suite
-argument-hint: "periodic-check | validate-feedback | code-review | maintainability-audit | architecture-report | ui-review | journey-qa | ai-report | present-work | present-video | slop-check | source-audit | release-check | quick-wins | scan-ideas | deep-explore | prime | inspect | note | stray-check | tidy-repo | tutorial | install | help"
+argument-hint: "periodic-check | validate-feedback | code-review | maintainability-audit | architecture-report | ui-review | journey-qa | ai-report | present-work | present-video | slop-check | source-audit | release-check | quick-wins | scan-ideas | deep-explore | prime | inspect | note | stray-check | folder-structure | tidy-repo | tutorial | install | help"
 ---
 
 # Do-Work Toolbox Skill
@@ -35,6 +35,7 @@ Before invoking AGY / Antigravity CLI, read [the AGY usage prime](./docs/prime-a
 | `inspect`, `explain changes`, `what changed` | `./actions/inspect.md` |
 | `note`, `note add`, `add note` | `./actions/note.md` |
 | `stray-check`, `stray files`, `orphans`, `junk` | `./actions/stray-check.md` |
+| `folder-structure`, `ideal structure`, `project layout` | `./actions/folder-structure.md` |
 | `tidy-repo`, `reorg`, `restructure`, `declutter` | `./actions/tidy-repo.md` |
 | `tutorial`, `learn`, `getting started` | `./actions/tutorial.md` |
 | `install`, `install-`, `setup` | `./actions/install.md` |

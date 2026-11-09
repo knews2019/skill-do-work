@@ -166,6 +166,7 @@ toolbox_actions=(
   inspect
   note
   stray-check
+  folder-structure
   tidy-repo
   tutorial
   install

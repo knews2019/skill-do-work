@@ -13,6 +13,7 @@ Map references → design target → present plan → *(user approves)* → `git
 
 **Do NOT use when:**
 - The problem is junk — temp/backup files, committed build artifacts, should-be-gitignored files → use `actions/stray-check.md` (deletes pollution; this action relocates legitimate files)
+- The user wants the target layout described or the gaps listed without moving anything → use `actions/folder-structure.md`
 - The clutter is do-work's own bookkeeping — loose REQs, misplaced `do-work/` directories → use `../../do-work/actions/cleanup.md`
 - The user wants code-structure refactoring (splitting modules, moving source between packages, renaming symbols) → capture as a REQ via `do-work capture-request:` — import-rewriting churn belongs in the work pipeline with tests, not a layout pass
 
@@ -48,7 +49,7 @@ Map references → design target → present plan → *(user approves)* → `git
    - **Generated one-off reports** → the repo's report-output folder (e.g. `ai-reports/`). If a skill or tool auto-writes to a folder, that folder is a **fold-target** — merge strays into it, never move it. The `do-work/` tree itself is always a fixed point: never relocate or restructure it here.
    - **Historical records** (task-queue archives, old REQ/UR files, dated reports): relocate the folder **as a whole** if needed, but NEVER edit the contents — they are point-in-time records; stale paths inside them are correct history (`ai-report organize` is the one exception: it rewrites `ai-reports/` paths in them when it moves reports).
 3. Treat folder size as a signal, not a quota: aim for ≤ ~10 conceptual entries per folder and review folders around ~25. Fold a single-file folder only when that improves ownership or discovery. Do NOT churn big code folders (`lib/`, `src/`, `tests/`) just to hit a number — moving code rewrites imports repo-wide for little presentational gain; flag it in the plan as an optional follow-up instead.
-4. Draft the target layout and a numbered move list. Give every destination a reason grounded in ownership, discoverability, or an existing convention; exclude moves whose benefit is merely cosmetic relative to their reference churn.
+4. Draft the target layout from `actions/folder-structure.md` § Target Layout, after the repo's own rules from Step 1.3, then a numbered move list. Give every destination a reason grounded in ownership, discoverability, or an existing convention; exclude moves whose benefit is merely cosmetic relative to their reference churn.
 
 ### Step 3: Reference Mapping (before any move)
 
