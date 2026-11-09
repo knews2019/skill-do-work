@@ -10,6 +10,13 @@ For the complete release history, read this file and the archives below from new
 - [0.50.0 through 0.64.1](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-13-up-to-v0.64.1.md)
 - [0.1.0 through 0.49.0](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-07-up-to-v0.49.0.md)
 
+## 0.314.0 — Audit the Folder Structure from Core and Get Capture Prompts (2026-11-09)
+
+`do-work audit-current-folder-structure` now works in every repository that runs the suite update. It audits the folder layout with you and ends with ready `do-work capture-request:` prompts.
+
+- The audit runs the layout check, skips gaps an open REQ already covers, and asks you about each remaining gap: align it, keep it as an exception, or leave it for later.
+- It then writes one standalone capture prompt per change, in a safe order, with the paths, the layout rule, the references to rewrite and how to verify. It captures them only when you say so.
+
 ## 0.313.0 — One Folder Layout with a CI-Ready Layout Check (2026-11-09)
 
 `do-work-toolbox folder-structure` now holds one concrete layout instead of generic web-app advice, and a new command checks a repository against it.
