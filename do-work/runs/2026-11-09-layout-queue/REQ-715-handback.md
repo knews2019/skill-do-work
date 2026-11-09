@@ -25,3 +25,9 @@ Branch `worktree-agent-REQ-715-changelog-archives-to-docs-changelog`, one commit
 
 ## Lessons read
 - `_dev/primes/lessons-releases.md` (whole satellite, the REQ's required lesson): applied `canonical-link-outlives-its-target` (the header links of both live changelogs and each archive's own link moved in the same commit as the files).
+
+## Addendum (review F1, F2)
+
+- F1: each archive's `**Current:**` link pointed at `./CHANGELOG.md`, which does not exist in `docs/changelog/`. It now points at `../../CHANGELOG.md`. The first sweep searched only for the dated archive names and missed it.
+- F2: the `.gitattributes` comment names all three lines the staged-skills contract asserts.
+- Second commit on the branch; the reference contract exits 0.
