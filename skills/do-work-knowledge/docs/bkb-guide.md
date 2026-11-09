@@ -6,7 +6,7 @@ Aliases: `bkb`, `kb`, `build knowledge base`, `knowledge base`.
 
 ## Folder structure
 
-After `do-work-knowledge bkb init`, the KB looks like this:
+After `do-work-knowledge bkb init`, the KB lives at `<project-root>/docs/kb/` and looks like this:
 
 ```
 kb/
@@ -162,7 +162,7 @@ Any article is reachable in two hops from the master index.
 
 ## The Crew
 
-Eight built-in agents define the roles the LLM adopts during each operation. Agent files live in `kb/agents/` and are read before each sub-command. Users can extend the crew with custom agents via `bkb crew create`.
+Eight built-in agents define the roles the LLM adopts during each operation. Agent files live in the KB's `agents/` folder and are read before each sub-command. Users can extend the crew with custom agents via `bkb crew create`.
 
 | # | Agent | Role | Active during |
 |---|-------|------|---------------|
@@ -240,7 +240,7 @@ When ingesting audio/video with companion transcripts, the Compiler applies extr
 
 ```
 do-work-knowledge bkb init                  # one-time setup
-# drop files into kb/raw/inbox/
+# drop files into <project-root>/docs/kb/raw/inbox/
 do-work-knowledge bkb triage                # sort them
 do-work-knowledge bkb ingest                # compile into wiki
 do-work-knowledge bkb query [question]      # ask the wiki anything

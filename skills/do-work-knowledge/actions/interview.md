@@ -2,7 +2,7 @@
 
 > **Part of the do-work skill.** Generalized interview framework. Runs prescriptive templates that elicit tacit knowledge through structured multi-layer conversations and produce agent-ready operating artifacts. User-facing walkthrough: [`docs/interview-guide.md`](../docs/interview-guide.md).
 
-The action loads templates from `<skill-root>/interviews/<name>.md`, runs a checkpoint-gated interview layer by layer, and produces artifacts the user can hand to an agent or feed into `bkb` as queryable knowledge. Session state persists at `./do-work/interview/<template>/session.json` and resumes across sessions per ADR-005. Heavy content — template format, canonical entry contract, session schema, **Session-Load Protocol**, export schemas, re-run mode specs — lives in the companion `actions/interview-reference.md` per ADR-001. The `ingest` sub-command produces files that land in `kb/raw/inbox/` in the format `bkb triage && bkb ingest` expects, per ADR-002.
+The action loads templates from `<skill-root>/interviews/<name>.md`, runs a checkpoint-gated interview layer by layer, and produces artifacts the user can hand to an agent or feed into `bkb` as queryable knowledge. Session state persists at `./do-work/interview/<template>/session.json` and resumes across sessions per ADR-005. Heavy content — template format, canonical entry contract, session schema, **Session-Load Protocol**, export schemas, re-run mode specs — lives in the companion `actions/interview-reference.md` per ADR-001. The `ingest` sub-command produces files that land in the knowledge base's `raw/inbox/` in the format `bkb triage && bkb ingest` expects, per ADR-002.
 
 ## When to Use
 
@@ -40,7 +40,7 @@ The action loads templates from `<skill-root>/interviews/<name>.md`, runs a chec
 | `<template> status` | Show session progress — layers approved, layer pending, last activity | Interviewer |
 | `<template> review` | Run the contradiction pass across all approved layers | Interviewer + Reviewer |
 | `<template> export` | Generate the template's declared export artifacts | Interviewer + Editor |
-| `<template> ingest` | Copy exports into `kb/raw/inbox/` with frontmatter suitable for `bkb triage && bkb ingest` | Librarian |
+| `<template> ingest` | Copy exports into the knowledge base's `raw/inbox/` with frontmatter suitable for `bkb triage && bkb ingest` | Librarian |
 | `<template> reset` | Archive the current run as a version and start fresh (requires confirmation) | Architect |
 | `<template> versions` | List archived runs for the template | Architect |
 | (none) | Show help menu | (any) |
@@ -68,7 +68,7 @@ After locating an existing `session.json`, every sub-command that reads it (`<te
 
 ## Canonical Deterministic Delegation
 
-Six subcommands are mechanically owned by `do-work-cli`: `interview-list`, `interview-status`, `interview-export`, `interview-ingest`, `interview-reset`, and `interview-versions`. Resolve the core launcher, invoke the matching command with global `--repo-root` and `--format json`, pass `--knowledge-root <skill-root>` plus `--template <template>` where applicable, and consume its typed findings/changes. `ingest` also passes the chosen `--kb`; reset passes `--confirm` only after the user confirms. A missing command, non-success exit, or malformed JSON stops that operation actionably. **Never reproduce the mechanical steps below as a prose fallback.** They remain the format and judgment contract used to interpret results. The bare interactive interview and `review` stay action-owned because they elicit, confirm, and resolve semantic content.
+Six subcommands are mechanically owned by `do-work-cli`: `interview-list`, `interview-status`, `interview-export`, `interview-ingest`, `interview-reset`, and `interview-versions`. Resolve the core launcher, invoke the matching command with global `--repo-root` and `--format json`, pass `--knowledge-root <skill-root>` plus `--template <template>` where applicable, and consume its typed findings/changes. `ingest` also passes `--kb <path>` when the user supplied one; reset passes `--confirm` only after the user confirms. A missing command, non-success exit, or malformed JSON stops that operation actionably. **Never reproduce the mechanical steps below as a prose fallback.** They remain the format and judgment contract used to interpret results. The bare interactive interview and `review` stay action-owned because they elicit, confirm, and resolve semantic content.
 
 ---
 
@@ -291,36 +291,36 @@ After semantic review is complete, delegate publication to `do-work-cli --format
 
 ## Sub-Command: `<template> ingest`
 
-Delegate the complete copy/queue transaction to `do-work-cli --format json interview-ingest --knowledge-root <skill-root> --template <template> --kb <kb-root>` (plus `--dry-run` or `--commit` when requested). The mapping below is a compatibility contract only.
+Delegate the complete copy/queue transaction to `do-work-cli --format json interview-ingest --knowledge-root <skill-root> --template <template>` (plus `--kb <path>` when the user supplied one, and `--dry-run` or `--commit` when requested). With no `--kb` the command finds the knowledge base in the order of `actions/bkb.md` → "Locating the Knowledge Base" (default `<project-root>/docs/kb/`); `<kb-root>` below is the root it found. The mapping below is a compatibility contract only.
 
 ### Preconditions
 
 - Run the **Session-Load Protocol** in **persist** mode before reading the session for layer-summary generation — even though ingest reads `exports/` directly for export files, the layer summaries are built from `session.json` and must use the current shape.
 - `./do-work/interview/<template>/exports/` exists and is non-empty. If not, stop with: "No exports found. Run `do-work-knowledge interview <template> export` first."
-- `<repo-root>/kb/` exists. If not, stop with: "No knowledge base found. Run `do-work-knowledge bkb init` first."
+- The knowledge base `<kb-root>` exists. If not, stop with: "No knowledge base found. Run `do-work-knowledge bkb init` first."
 
 ### Steps
 
 Follow the Ingest File Mapping section in `actions/interview-reference.md`. Two file classes are written per run — one per export plus one per layer — plus a manifest row in the inbox queue.
 
-1. **Export files.** For each file in `./do-work/interview/<template>/exports/`, write a companion file to `<repo-root>/kb/raw/inbox/<template>-<export-name>.md`. Body is the full export content. For `.json` exports, include the JSON as a fenced code block inside the markdown body. Frontmatter follows the reference's export file shape (`type: source-summary`, `sources:` list, `confidence: high`).
+1. **Export files.** For each file in `./do-work/interview/<template>/exports/`, write a companion file to `<kb-root>/raw/inbox/<template>-<export-name>.md`. Body is the full export content. For `.json` exports, include the JSON as a fenced code block inside the markdown body. Frontmatter follows the reference's export file shape (`type: source-summary`, `sources:` list, `confidence: high`).
 
-2. **Layer summary files.** For every layer in the session, write a summary file to `kb/raw/inbox/<template>-<layer-id>.md`. Body lists each entry's `title` and `summary` under the layer heading. Frontmatter follows the reference's layer summary shape (`type: concept`, `sources:` points to `session.json`, `related:` points to the template's USER wiki page, `confidence` derived from majority `source_confidence` in the layer).
+2. **Layer summary files.** For every layer in the session, write a summary file to `<kb-root>/raw/inbox/<template>-<layer-id>.md`. Body lists each entry's `title` and `summary` under the layer heading. Frontmatter follows the reference's layer summary shape (`type: concept`, `sources:` points to `session.json`, `related:` points to the template's USER wiki page, `confidence` derived from majority `source_confidence` in the layer).
 
-3. **Inbox manifest.** Append one row to `<repo-root>/kb/raw/_inbox_queue.md` for each file added, marked `ready`, with `topic_hint: <template.topic_cluster>` and `priority: normal`.
+3. **Inbox manifest.** Append one row to `<kb-root>/raw/_inbox_queue.md` for each file added, marked `ready`, with `topic_hint: <template.topic_cluster>` and `priority: normal`.
 
-4. **Collisions.** If any target filename already exists in `kb/raw/inbox/` or `kb/raw/capture/`, prefix the new file with the current time (`HHMMSS-<filename>`) per BKB's collision rule.
+4. **Collisions.** If any target filename already exists in `<kb-root>/raw/inbox/` or `<kb-root>/raw/capture/`, prefix the new file with the current time (`HHMMSS-<filename>`) per BKB's collision rule.
 
 5. Report:
    ```
-   Ingested <N> files into kb/raw/inbox/ (<E> exports + <L> layer summaries):
+   Ingested <N> files into <kb-root>/raw/inbox/ (<E> exports + <L> layer summaries):
      <template>-USER.md
      <template>-SOUL.md
      ...
      <template>-<layer-id>.md
      ...
 
-   Queued in kb/raw/_inbox_queue.md: <N> rows.
+   Queued in <kb-root>/raw/_inbox_queue.md: <N> rows.
    Next: do-work-knowledge bkb triage && do-work-knowledge bkb ingest
    ```
 
@@ -379,7 +379,7 @@ Every sub-command returns terminal output (never writes silently). In-chat, the 
 - `./do-work/interview/<template>/exports/<filename>` — export artifacts (overwritten on re-export).
 - `./do-work/interview/<template>/versions/v<N>-<date>/` — immutable archives (written by `fresh`, `version`, `reset`).
 - `./do-work/interview/<template>/CHANGELOG.md` — append-only activity log (one entry per approval, review, export, archive).
-- `<repo-root>/kb/raw/inbox/<template>-*.md` — BKB-ready files (written by `ingest`).
+- `<kb-root>/raw/inbox/<template>-*.md` — BKB-ready files (written by `ingest`).
 
 ---
 
@@ -430,7 +430,7 @@ Every sub-command returns terminal output (never writes silently). In-chat, the 
 - [ ] Every `status` value is `active`, `stale`, or `aspirational`.
 - [ ] CHANGELOG has one `layer approved:` line per approved layer, in the order approvals occurred.
 - [ ] Export files exist in `./do-work/interview/<template>/exports/` for every declared export, and their content matches the schema in `actions/interview-reference.md`.
-- [ ] Ingest output lands in `kb/raw/inbox/` with filenames of the form `<template>-<export-basename>.md` and `<template>-<layer-id>.md`.
+- [ ] Ingest output lands in `<kb-root>/raw/inbox/` with filenames of the form `<template>-<export-basename>.md` and `<template>-<layer-id>.md`.
 - [ ] Versions directories follow the `v<N>-<YYYY-MM-DD>/` naming convention and `<N>` is monotonically increasing.
 - [ ] No checkpoint file was written to `session.json` without an explicit user approval recorded in the CHANGELOG.
 
@@ -443,7 +443,7 @@ Every sub-command returns terminal output (never writes silently). In-chat, the 
 - **`export` invoked with unapproved layers** → list which layers are missing approval.
 - **`export` invoked before review** → tell the user to run `review` first.
 - **`ingest` invoked without completed exports** → tell the user to run `export` first.
-- **`ingest` invoked without `kb/`** → tell the user to run `do-work-knowledge bkb init` first.
+- **`ingest` invoked without a knowledge base** → tell the user to run `do-work-knowledge bkb init` first.
 - **`reset` without confirmation** → require explicit `--confirm` flag or an interactive "yes" before archiving.
 - **Checkpoint revision cycle exceeds 5 rounds on one layer** → pause and ask the user directly: "We've gone five rounds on this layer. Do you want to skip ahead, take a break, or keep refining?" Do not loop indefinitely.
 

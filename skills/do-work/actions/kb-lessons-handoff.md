@@ -1,6 +1,6 @@
 # KB Lessons Handoff
 
-> **Part of the do-work core skill.** Reusable handoff instructions called by actions/work.md's Lessons-Capture Phase and actions/review-work.md's Self-Validation & Lessons Learned step. Offers to promote a REQ's `## Lessons Learned` into the project's knowledge base by dropping a source file into `kb/raw/inbox/` for the sibling `do-work-knowledge` skill's next `bkb triage` + `bkb ingest` cycle.
+> **Part of the do-work core skill.** Reusable handoff instructions called by actions/work.md's Lessons-Capture Phase and actions/review-work.md's Self-Validation & Lessons Learned step. Offers to promote a REQ's `## Lessons Learned` into the project's knowledge base by dropping a source file into the knowledge base's `raw/inbox/` (under `<project-root>/docs/kb/` by default) for the sibling `do-work-knowledge` skill's next `bkb triage` + `bkb ingest` cycle.
 
 This file is not a standalone action — it is loaded by other actions as a reference. If you reached this file directly, you probably want actions/review-work.md instead.
 
@@ -9,7 +9,7 @@ This file is not a standalone action — it is loaded by other actions as a refe
 - **Suite-local dependency.** The handoff writes into the KB system owned by the installed sibling `do-work-knowledge` skill (see `../../do-work-knowledge/actions/bkb.md`). It never imports knowledge logic into core.
 - **One-way and terminal per REQ.** The handoff runs once per REQ, after lessons are captured. Downstream processing (triage, ingest, wiki compilation) is `../../do-work-knowledge/actions/bkb.md`'s job, not this handoff's.
 - **User pilots the drop.** do-work prepares a structured source document and asks before writing. That keeps the handoff consistent across harnesses — any agent that can read/write files can run it.
-- **Graceful degradation.** If the project has no `kb/` directory yet, the handoff records the lessons as `pending` on the REQ and points the user at `do-work-knowledge bkb init`. It never blocks archival.
+- **Graceful degradation.** If the project has no knowledge base yet, the handoff records the lessons as `pending` on the REQ and points the user at `do-work-knowledge bkb init`. It never blocks archival.
 
 ## When to run this
 
@@ -28,17 +28,13 @@ Skip silently (set `kb_status: skipped`) when:
 
 ### Step 1: Locate the KB
 
-Search, in order:
-
-1. `kb/` in the current working directory (the common case).
-2. `knowledge-base/` in the current working directory.
-3. Any ancestor directory (up to 3 levels up) containing both `raw/` and `wiki/` subdirectories.
+Search in the order of `../../do-work-knowledge/actions/bkb.md` → "Locating the Knowledge Base", which is the one canonical statement: `<project-root>/docs/kb/` first (the default), then a root `kb/` or `knowledge-base/` that an older project still uses, then the parent-directory search. This handoff takes no `--kb` flag.
 
 If none is found, set `kb_status: pending` on the REQ, print:
 
 ```
 No knowledge base found. The REQ's Lessons Learned are captured in the REQ but not promoted — kb_status: pending is recorded.
-To promote: run `do-work-knowledge bkb init`, then re-run this handoff (e.g. `do-work review-work REQ-NNN`) to drop the lesson into kb/raw/inbox/, then `do-work-knowledge bkb triage` to sort it and `do-work-knowledge bkb ingest` to compile it into the wiki.
+To promote: run `do-work-knowledge bkb init`, then re-run this handoff (e.g. `do-work review-work REQ-NNN`) to drop the lesson into the knowledge base's raw/inbox/, then `do-work-knowledge bkb triage` to sort it and `do-work-knowledge bkb ingest` to compile it into the wiki.
 ```
 
 …and return. Do not auto-init the KB — that is the user's call.
@@ -169,13 +165,13 @@ Then return. The caller (work.md's Lessons-Capture Phase or review-work.md's Sel
 - Never write anywhere in the KB other than `raw/inbox/`. Triage and ingest are `../../do-work-knowledge/actions/bkb.md`'s responsibilities — this handoff stops at the drop.
 - Never modify fields on the REQ other than `kb_status` and `kb_entry`.
 - Never block the rest of actions/work.md on this handoff. If the user ignores the prompt or the interaction times out, default to `pending` and continue.
-- Never auto-init the KB. If no `kb/` exists, point the user at `do-work-knowledge bkb init` and set `kb_status: pending`.
+- Never auto-init the KB. If no knowledge base exists, point the user at `do-work-knowledge bkb init` and set `kb_status: pending`.
 
 ## Common Rationalizations
 
 | If you're thinking... | STOP. Instead... | Because... |
 |---|---|---|
-| "No `kb/` exists, so I'll just create one and drop the file" | Set `kb_status: pending` and point the user at `do-work-knowledge bkb init` | Silently initializing a KB the user didn't ask for pollutes their project. `bkb init` is a deliberate step. |
+| "No knowledge base exists, so I'll just create one and drop the file" | Set `kb_status: pending` and point the user at `do-work-knowledge bkb init` | Silently initializing a KB the user didn't ask for pollutes their project. `bkb init` is a deliberate step. |
 | "The Lessons section is empty but I'll invent content from the diff" | Set `kb_status: skipped` and skip | Fabricated lessons pollute the KB. Compound value comes from real friction, not filler. |
 | "Let me also run triage and ingest for the user" | Stop at the drop | `bkb triage` and `bkb ingest` are their own actions with their own agent crews. Chaining them from this handoff hides important Reviewer confidence checks. |
 | "The REQ already has `kb_status: declined` but this time the lessons are better" | Leave it alone | User already chose. They can drop a file into `raw/inbox/` manually if they change their mind. |

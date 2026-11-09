@@ -56,7 +56,7 @@ do-work-knowledge bkb query "when do I escalate dependency delays?"
 do-work-knowledge bkb query "what's my deep-work window on Tuesdays?"
 ```
 
-The `ingest` sub-command writes files to `kb/raw/inbox/` with the `topic_cluster` from the template's frontmatter (default `operating-model`), so BKB groups them in the right cluster on ingest.
+The `ingest` sub-command writes files to the knowledge base's `raw/inbox/` (under `<project-root>/docs/kb/` by default) with the `topic_cluster` from the template's frontmatter (default `operating-model`), so BKB groups them in the right cluster on ingest.
 
 ## Context separation — multiple operating models
 

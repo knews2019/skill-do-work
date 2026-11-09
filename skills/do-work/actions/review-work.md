@@ -331,7 +331,7 @@ After presenting the review report, perform a self-validation pass — no human 
 
    Only record lessons relevant to that prime file's scope. In **orchestrated mode**, actions/work.md's Lessons-Capture Phase handles these updates.
 
-5. **Offer knowledge-base handoff (Standalone mode only).** If the REQ now has a non-empty `## Lessons Learned` section, follow `actions/kb-lessons-handoff.md` to offer dropping a structured source document into `kb/raw/inbox/` so the next `bkb triage` + `bkb ingest` cycle compiles the lessons into the wiki. Update the REQ's `kb_status` and (if promoted) `kb_entry` frontmatter based on the outcome. The handoff asks before writing, degrades to `pending` if no `kb/` exists, and never blocks archival. In **orchestrated mode**, actions/work.md's Lessons-Capture Phase runs the handoff instead.
+5. **Offer knowledge-base handoff (Standalone mode only).** If the REQ now has a non-empty `## Lessons Learned` section, follow `actions/kb-lessons-handoff.md` to offer dropping a structured source document into the knowledge base's `raw/inbox/` (under `<project-root>/docs/kb/` by default) so the next `bkb triage` + `bkb ingest` cycle compiles the lessons into the wiki. Update the REQ's `kb_status` and (if promoted) `kb_entry` frontmatter based on the outcome. The handoff asks before writing, degrades to `pending` if no knowledge base exists, and never blocks archival. In **orchestrated mode**, actions/work.md's Lessons-Capture Phase runs the handoff instead.
 
 Self-validation runs in **both modes**. Lesson capture, prime file updates, and the knowledge-base handoff are **standalone-only** to avoid duplication with actions/work.md.
 

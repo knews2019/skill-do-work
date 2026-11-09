@@ -1058,8 +1058,14 @@ for source in sorted(skill_root.rglob("*.md")):
                     "docs/handoffs/",
                     "docs/lessons-learned/",
                     "docs/specs/",
+                    # The consumer's knowledge base and ADR log. Prose writes them as
+                    # <project-root>/docs/..., which this pattern never sees; these two
+                    # cover the spellings that cannot carry that prefix: a literal command
+                    # argument (--exclude-path docs/kb/, git mv decisions docs/decisions).
+                    "docs/kb/",
+                    "docs/decisions/",
                 )
-            ) or reference == "docs/worklog.md":
+            ) or reference in {"docs/worklog.md", "docs/decisions"}:
                 continue
             if reference.startswith("../"):
                 target = (skill_root / reference).resolve()

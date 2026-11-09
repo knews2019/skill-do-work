@@ -1,6 +1,6 @@
 # Memory Value Action
 
-> **Part of the do-work-knowledge skill.** Engine-agnostic value auditor for the parallel-memory experiment: scans the current repo for evidence that each memory engine — `actions/bkb.md`'s `kb/` and `actions/memory.md`'s `memory/` — is actually used and providing value, then renders a head-to-head verdict. Loaded lazily by `do-work-knowledge memory audit` (alias `memory value`); it has no routing row of its own.
+> **Part of the do-work-knowledge skill.** Engine-agnostic value auditor for the parallel-memory experiment: scans the current repo for evidence that each memory engine — `actions/bkb.md`'s knowledge base and `actions/memory.md`'s `memory/` — is actually used and providing value, then renders a head-to-head verdict. Loaded lazily by `do-work-knowledge memory audit` (alias `memory value`); it has no routing row of its own.
 
 **Strictly read-only.** This action never modifies, moves, or deletes anything — not even ledger appends. It reads files and git history, and it reports. Retiring an engine is a human decision made on this report, executed later as a normal maintenance pass.
 
@@ -22,11 +22,11 @@
 
 ## Checks
 
-Each check is an independent probe; run all that apply to the engines in scope. An engine whose store cannot be located short-circuits to **Absent** (run no further probes for it) — but for bkb, "cannot be located" means the full locating procedure below came up empty, never just "no `kb/` at the project root".
+Each check is an independent probe; run all that apply to the engines in scope. An engine whose store cannot be located short-circuits to **Absent** (run no further probes for it) — but for bkb, "cannot be located" means the full locating procedure below came up empty, never just "no knowledge base at the default location".
 
 ### bkb engine
 
-**Locate the KB first** using `actions/bkb.md` → "Locating the Knowledge Base" — honor `--kb <path>`, then `kb/`, then `knowledge-base/`, then the parent-directory search, exactly as that section prescribes (it is the canonical procedure; do not re-derive it here). Call the result `<kb-root>`; only if that procedure finds nothing is the engine **Absent**. All probes below run against `<kb-root>` (shown as `kb/`-style paths for readability):
+**Locate the KB first** using `actions/bkb.md` → "Locating the Knowledge Base" — follow the order exactly as that section prescribes (it is the canonical procedure, default `<project-root>/docs/kb/`; do not re-derive it here). Call the result `<kb-root>`; only if that procedure finds nothing is the engine **Absent**. All probes below run against `<kb-root>`:
 
 - **Existence & shape:** `find <kb-root>/wiki -name '*.md' 2>/dev/null | wc -l` wiki pages; `<kb-root>/raw/` inbox size.
 - **Git activity:** `git log --oneline -- <kb-root>/ | wc -l` total commits; `git log -1 --format=%ci -- <kb-root>/` last-touched; `git log --format=%an -- <kb-root>/ | sort -u` distinct authors (human-touch signal). (A `<kb-root>` outside the project's git repo reports "no git history" — probe the ledger and log activity instead.)
@@ -51,16 +51,16 @@ From the engine's `usage-ledger.jsonl` (tolerate absence — report "no ledger")
 
 ### Fairness rule (mandatory)
 
-bkb predates instrumentation: **absence of ledger evidence is not absence of value.** For bkb's pre-ledger window, weight `git log -- kb/` and `kb/wiki/log.md` history as the usage record, and say explicitly in the report which window each conclusion draws on. Conversely, don't credit the memory engine's `inject`/`capture` volume as value — those are automatic; only retrieval and citation count.
+bkb predates instrumentation: **absence of ledger evidence is not absence of value.** For bkb's pre-ledger window, weight `git log -- <kb-root>/` and `<kb-root>/wiki/log.md` history as the usage record, and say explicitly in the report which window each conclusion draws on. Conversely, don't credit the memory engine's `inject`/`capture` volume as value — those are automatic; only retrieval and citation count.
 
-The two ledgers also differ in durability, and the report must say so: `kb/usage-ledger.jsonl` is committed and travels with the repo, while `memory/usage-ledger.jsonl` is machine-local (git-excluded by `setup-memory`, so verbatim captures stay out of version control). A memory-engine count is therefore **this machine's** usage, not the team's — on a fresh clone or a second workstation it reads as zero from history that exists elsewhere. State the ledger's own age (`memory/usage-ledger.jsonl` mtime and first-line date) next to any memory-side count, and never read a thin memory ledger as disuse without checking whether the ledger itself is simply new here.
+The two ledgers also differ in durability, and the report must say so: `<kb-root>/usage-ledger.jsonl` is committed and travels with the repo, while `memory/usage-ledger.jsonl` is machine-local (git-excluded by `setup-memory`, so verbatim captures stay out of version control). A memory-engine count is therefore **this machine's** usage, not the team's — on a fresh clone or a second workstation it reads as zero from history that exists elsewhere. State the ledger's own age (`memory/usage-ledger.jsonl` mtime and first-line date) next to any memory-side count, and never read a thin memory ledger as disuse without checking whether the ledger itself is simply new here.
 
 ## Output Format
 
 ```
 # Memory Engine Value Audit — <date>
 
-## bkb (kb/)          → <Active | Idle | Stale | Absent>
+## bkb (<kb-root>/)   → <Active | Idle | Stale | Absent>
 <probe results, 1 line each>
 
 ## memory (memory/)   → <Active | Idle | Stale | Absent>
@@ -93,7 +93,7 @@ Classification rubric: **Active** = ≥3 non-automatic events (excluding `inject
 
 - The audit left `git status --porcelain` non-clean.
 - A verdict that crowns a winner on `inject`/`capture`/`write` volume.
-- bkb classified Stale/Absent purely from a missing ledger while `git log -- kb/` shows recent commits.
+- bkb classified Stale/Absent purely from a missing ledger while `git log -- <kb-root>/` shows recent commits.
 
 ## Verification Checklist
 

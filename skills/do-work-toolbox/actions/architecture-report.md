@@ -60,7 +60,7 @@ Read these sources from the captured commit in this order, because each layer ex
 
 1. `CLAUDE.md` / `AGENTS.md` / `README.md` — the maintainer's own statement of what this repository is.
 2. Prime files, semantic indexes, and any `docs/` map — the per-subsystem detail those files exist to hold.
-3. Decision records (ADRs, `decisions/`) and every `## Lessons` or `## Lessons Learned` section — where the invariants and contractual absences live.
+3. Decision records (ADRs, `<project-root>/docs/decisions/`) and every `## Lessons` or `## Lessons Learned` section — where the invariants and contractual absences live.
 4. The changelog head — what moved most recently.
 5. Code — as verification, not discovery. Confirm each recorded claim at a real `path:line` in that commit.
 

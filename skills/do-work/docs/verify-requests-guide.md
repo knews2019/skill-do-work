@@ -60,7 +60,7 @@ An explicit scan always shows its queue-file/word estimate and proceeds. When `d
 do-work verify-requests          # most recent UR
 do-work verify UR-003            # specific UR
 do-work check REQ-018            # specific REQ (finds its UR)
-do-work verify-requests --against decisions/records/adr-005-pipeline-is-stateful-and-resumable.md
+do-work verify-requests --against docs/decisions/records/adr-005-pipeline-is-stateful-and-resumable.md
 do-work verify-requests --against REQ-025 --against REQ-031
 ```
 

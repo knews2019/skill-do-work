@@ -67,10 +67,10 @@ A concise, honest summary keyed to each phase. The real audit trail is `git diff
 do-work-knowledge dream                       Resolve default memory dir, run the full four phases
 do-work-knowledge dream ./memory              Run on a specific dir
 do-work-knowledge dream --dry-run             Build the worklist, print preview, exit without writing
-do-work-knowledge dream --dry-run ./kb/wiki   Both — preview the bkb wiki without touching it
+do-work-knowledge dream --dry-run ./docs/kb/wiki   Both — preview the bkb wiki without touching it
 do-work-knowledge consolidate memory           Natural-language route to dream
 do-work-knowledge clean up wiki                Same — dream wins over other knowledge-maintenance verbs
-do-work-knowledge dream ./kb/wiki               Run on a specific bkb wiki directory
+do-work-knowledge dream ./docs/kb/wiki          Run on a specific bkb wiki directory
 ```
 
 ## Key rules

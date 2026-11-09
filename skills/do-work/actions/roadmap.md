@@ -110,8 +110,8 @@ For each REQ in `do-work/archive/`:
   - **Promoted, awaiting triage** — match found under `<kb>/raw/inbox/` and **not** in capture or processed. Suggested next step: `do-work-knowledge bkb triage` then `do-work-knowledge bkb ingest`.
   - **Promoted, awaiting ingest** — match found under `<kb>/raw/capture/<type>/` and **not** in processed. Triage already ran. Suggested next step: `do-work-knowledge bkb ingest`.
   - **Promoted, processed** — match found under `<kb>/raw/processed/<date>/`. Terminal for roadmap purposes; report alongside the REQ but do not surface as actionable. Wins over earlier-pipeline matches.
-  - **Promoted, file not found** — `kb_entry` matches no path in any of the three branches (neither the exact filename nor a `HHMMSS-` prefixed variant). Surface as a data inconsistency (the file may have been deleted or `kb/` may have moved); do not silently treat as awaiting triage.
-  - **Pending** — `kb_status: pending`. No file was staged (handoff was deferred or no `kb/` existed). Needs the handoff to be re-run via `do-work review REQ-NNN`, possibly after `do-work-knowledge bkb init`.
+  - **Promoted, file not found** — `kb_entry` matches no path in any of the three branches (neither the exact filename nor a `HHMMSS-` prefixed variant). Surface as a data inconsistency (the file may have been deleted or the knowledge base may have moved); do not silently treat as awaiting triage.
+  - **Pending** — `kb_status: pending`. No file was staged (handoff was deferred or no knowledge base existed). Needs the handoff to be re-run via `do-work review REQ-NNN`, possibly after `do-work-knowledge bkb init`.
 
   If `<kb>/` itself doesn't exist in the project, skip the location check and report all `promoted` REQs together with a single line noting the missing KB root.
 - Record `tdd` posture per REQ so completed work shows whether tests went in test-first.
@@ -219,10 +219,10 @@ REQs with `kb_status: promoted` whose `kb_entry` filename matches no file under 
 
 ## Lessons Pending (Awaiting Handoff)
 
-REQs whose Lessons Learned were captured but never staged — either the user chose "save for later", or no `kb/` existed at handoff time. **Nothing is in the inbox**, so `bkb triage` has nothing to find.
+REQs whose Lessons Learned were captured but never staged — either the user chose "save for later", or no knowledge base existed at handoff time. **Nothing is in the inbox**, so `bkb triage` has nothing to find.
 
 - REQ-NNN — kb_status: pending, kb_entry: none
-  Suggested next step: re-run the handoff via `do-work review REQ-NNN` (run `do-work-knowledge bkb init` first if no `kb/` directory exists).
+  Suggested next step: re-run the handoff via `do-work review REQ-NNN` (run `do-work-knowledge bkb init` first if no knowledge base exists).
 
 ## Suggested Next Steps
 
@@ -233,7 +233,7 @@ REQs whose Lessons Learned were captured but never staged — either the user ch
 5. Run `do-work-knowledge bkb triage` then `do-work-knowledge bkb ingest` for the N lessons in Awaiting Triage.
 6. Run `do-work-knowledge bkb ingest` for the N lessons in Awaiting Ingest.
 7. Investigate the N File Not Found lessons — restage from the REQ or clear `kb_status` if the file was intentionally removed.
-8. Re-run the handoff via `do-work review REQ-NNN` for the N pending-handoff lessons (run `do-work-knowledge bkb init` first if no `kb/` directory exists).
+8. Re-run the handoff via `do-work review REQ-NNN` for the N pending-handoff lessons (run `do-work-knowledge bkb init` first if no knowledge base exists).
 ```
 
 The Suggested Next Steps list is **filtered** — emit only the items whose corresponding section had at least one entry. The numbering in the rendered report stays compact (1, 2, 3 … without gaps); the template above shows the canonical line per category.
