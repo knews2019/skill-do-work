@@ -43,7 +43,7 @@ func handleBKBStatus(executionContext commandruntime.ExecutionContext, arguments
 		finding.NextArgv = []string{"do-work-cli", CommandBKBInit, "--kb", relative}
 		finding.NextJustRecipe = CommandBKBInit + " " + quoteRecipeArgument(relative)
 		finding.VerificationArgv = []string{"do-work-cli", "--format", "json", CommandBKBStatus, "--kb", relative}
-		return resultmodel.CommandResult{Outcome: resultmodel.OutcomeFindings, Findings: append([]resultmodel.CommandFinding{finding}, location.notices(CommandBKBStatus)...)}
+		return resultmodel.CommandResult{Outcome: resultmodel.OutcomeFindings, Findings: []resultmodel.CommandFinding{finding}}
 	}
 	pages, scanError := loadKnowledgePages(target, relative)
 	if scanError != nil {
@@ -451,49 +451,80 @@ const defaultKnowledgeBase = "docs/kb"
 var legacyKnowledgeBases = []string{"kb", "knowledge-base"}
 
 // knowledgeBaseLocation is the repository-relative knowledge base one command
-// run uses. legacy names a root legacy folder that is a knowledge base when the
-// default order met one: equal to relative when that folder was chosen, and
-// different when docs/kb won over it.
+// run uses. legacy names a root legacy folder the default order met: equal to
+// relative when that folder was chosen, and different when docs/kb won over it
+// (both are knowledge bases). defaultOccupied marks a chosen legacy folder whose
+// move target, docs/kb, already exists as something that is not a knowledge base.
 type knowledgeBaseLocation struct {
-	relative string
-	legacy   string
+	relative        string
+	legacy          string
+	defaultOccupied bool
 }
 
 // resolveKnowledgeBaseLocation applies the one location order every knowledge
 // command shares. A supplied path is taken literally. With none: docs/kb when
-// that directory exists, else a legacy root folder that already is a knowledge
-// base, else docs/kb (to create or to report as missing).
+// it is a knowledge base, else a legacy root folder that is one (or that holds
+// raw/ or wiki/ and so was filled in place by the old default), else docs/kb
+// (to create or to report as missing). A docs/kb folder that is not a
+// knowledge base never hides a legacy one.
 func resolveKnowledgeBaseLocation(root, requested string) knowledgeBaseLocation {
 	if requested != "" {
 		return knowledgeBaseLocation{relative: requested}
 	}
-	legacy := ""
+	completeLegacy, partialLegacy := "", ""
 	for _, candidate := range legacyKnowledgeBases {
-		if isKnowledgeBase(filepath.Join(root, candidate)) {
-			legacy = candidate
+		path := filepath.Join(root, candidate)
+		if isKnowledgeBase(path) {
+			completeLegacy = candidate
 			break
 		}
+		if partialLegacy == "" && holdsKnowledgeBaseFolder(path) {
+			partialLegacy = candidate
+		}
 	}
-	info, err := os.Stat(filepath.Join(root, filepath.FromSlash(defaultKnowledgeBase)))
-	if legacy == "" || (err == nil && info.IsDir()) {
-		return knowledgeBaseLocation{relative: defaultKnowledgeBase, legacy: legacy}
+	defaultPath := filepath.Join(root, filepath.FromSlash(defaultKnowledgeBase))
+	if isKnowledgeBase(defaultPath) {
+		return knowledgeBaseLocation{relative: defaultKnowledgeBase, legacy: completeLegacy}
 	}
-	return knowledgeBaseLocation{relative: legacy, legacy: legacy}
+	legacy := completeLegacy
+	if legacy == "" {
+		legacy = partialLegacy
+	}
+	if legacy == "" {
+		return knowledgeBaseLocation{relative: defaultKnowledgeBase}
+	}
+	_, statError := os.Lstat(defaultPath)
+	return knowledgeBaseLocation{relative: legacy, legacy: legacy, defaultOccupied: statError == nil}
+}
+
+// holdsKnowledgeBaseFolder reports a folder that has raw/ or wiki/ but is not
+// yet a complete knowledge base.
+func holdsKnowledgeBaseFolder(path string) bool {
+	for _, name := range []string{"raw", "wiki"} {
+		if info, err := os.Stat(filepath.Join(path, name)); err == nil && info.IsDir() {
+			return true
+		}
+	}
+	return false
 }
 
 // notices tells the user when the default order met a legacy root folder: the
-// one-line move when that folder is in use, a warning when docs/kb hides it.
+// one-line move when that folder is in use, a warning when docs/kb and the
+// legacy folder are both knowledge bases.
 func (location knowledgeBaseLocation) notices(commandName string) []resultmodel.CommandFinding {
 	if location.legacy == "" {
 		return nil
 	}
 	if location.relative == location.legacy {
-		evidence := fmt.Sprintf("knowledge base found at the earlier default %s/; the default is now %s/. Move it with: mkdir -p docs && git mv %s %s", location.legacy, defaultKnowledgeBase, location.legacy, defaultKnowledgeBase)
+		evidence := fmt.Sprintf("using %s/, the earlier default location; the default is now %s/. Move it with: mkdir -p docs && git mv %s %s", location.legacy, defaultKnowledgeBase, location.legacy, defaultKnowledgeBase)
+		if location.defaultOccupied {
+			evidence = fmt.Sprintf("using %s/, the earlier default location; the default is now %s/, but %s/ exists and is not a knowledge base. Remove that folder first (move its files elsewhere), then: mkdir -p docs && git mv %s %s", location.legacy, defaultKnowledgeBase, defaultKnowledgeBase, location.legacy, defaultKnowledgeBase)
+		}
 		finding := knowledgeFinding(commandName, "BKB-LEGACY-LOCATION", resultmodel.SeverityInfo, nil, evidence, resultmodel.FixabilityManual, "moving the folder is the user's decision")
 		finding.AffectedPaths = []string{location.legacy}
 		return []resultmodel.CommandFinding{finding}
 	}
-	evidence := fmt.Sprintf("both %s/ and %s/ exist; %s/ is used. Merge %s/ into it, or pass --kb %s to keep using the old folder", location.relative, location.legacy, location.relative, location.legacy, location.legacy)
+	evidence := fmt.Sprintf("both %s/ and %s/ are knowledge bases; %s/ is used. Merge %s/ into it, or pass --kb %s to keep using the old folder", location.relative, location.legacy, location.relative, location.legacy, location.legacy)
 	finding := knowledgeFinding(commandName, "BKB-DUPLICATE-LOCATION", resultmodel.SeverityWarning, nil, evidence, resultmodel.FixabilityManual, "which folder holds the real knowledge base is the user's decision")
 	finding.AffectedPaths = []string{location.relative, location.legacy}
 	return []resultmodel.CommandFinding{finding}
