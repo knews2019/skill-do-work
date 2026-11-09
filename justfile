@@ -71,15 +71,17 @@ run-do-work-update *args:
 # Initialize or fill gaps in a BKB scaffold through the canonical Go command
 [positional-arguments]
 bkb-init *args:
-    kb="${1:-kb}"; if [ "$#" -gt 0 ]; then shift; fi; project_root="{{justfile_directory()}}"; skill_root="$project_root/.claude/skills/do-work"; [ -f "$skill_root/SKILL.md" ] || skill_root="$project_root/skills/do-work"; bash "$skill_root/tools/do-work-cli.sh" --repo-root "$project_root" bkb-init --kb "$kb" "$@"
+    project_root="{{justfile_directory()}}"; skill_root="$project_root/.claude/skills/do-work"; [ -f "$skill_root/SKILL.md" ] || skill_root="$project_root/skills/do-work"; bash "$skill_root/tools/do-work-cli.sh" --repo-root "$project_root" bkb-init "$@"
 
 # Read a deterministic BKB status snapshot
-bkb-status kb="kb":
-    project_root="{{justfile_directory()}}"; skill_root="$project_root/.claude/skills/do-work"; [ -f "$skill_root/SKILL.md" ] || skill_root="$project_root/skills/do-work"; bash "$skill_root/tools/do-work-cli.sh" --repo-root "$project_root" bkb-status --kb {{quote(kb)}}
+[positional-arguments]
+bkb-status *args:
+    project_root="{{justfile_directory()}}"; skill_root="$project_root/.claude/skills/do-work"; [ -f "$skill_root/SKILL.md" ] || skill_root="$project_root/skills/do-work"; bash "$skill_root/tools/do-work-cli.sh" --repo-root "$project_root" bkb-status "$@"
 
 # Run deterministic BKB structural lint without semantic edits
-bkb-lint-structure kb="kb":
-    project_root="{{justfile_directory()}}"; skill_root="$project_root/.claude/skills/do-work"; [ -f "$skill_root/SKILL.md" ] || skill_root="$project_root/skills/do-work"; bash "$skill_root/tools/do-work-cli.sh" --repo-root "$project_root" bkb-lint-structure --kb {{quote(kb)}}
+[positional-arguments]
+bkb-lint-structure *args:
+    project_root="{{justfile_directory()}}"; skill_root="$project_root/.claude/skills/do-work"; [ -f "$skill_root/SKILL.md" ] || skill_root="$project_root/skills/do-work"; bash "$skill_root/tools/do-work-cli.sh" --repo-root "$project_root" bkb-lint-structure "$@"
 
 # Run Dream's seven read-only deterministic scans
 dream-scan path="memory":

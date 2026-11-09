@@ -83,7 +83,7 @@ Three defects surfaced in code review after the initial commit were accepted and
 ## References
 
 - [decisions/imported-specs/2026-04-12_close-gaps-in-interview.md](../imported-specs/2026-04-12_close-gaps-in-interview.md) — v2 spec this ADR implements
-- [actions/interview.md](../../actions/interview.md) — action (draft checkpoint step, ingest sub-command update)
-- [actions/interview-reference.md](../../actions/interview-reference.md) — reference (Export Schemas trim, update mode rewrite, Mid-layer recovery, Ingest File Mapping)
-- [interviews/work-operating-model.md](../../interviews/work-operating-model.md) — template (Export Templates section added)
-- [crew-members/interviewer.md](../../crew-members/interviewer.md) — persona (unchanged; audit confirmed placement)
+- [actions/interview.md](../../../actions/interview.md) — action (draft checkpoint step, ingest sub-command update)
+- [actions/interview-reference.md](../../../actions/interview-reference.md) — reference (Export Schemas trim, update mode rewrite, Mid-layer recovery, Ingest File Mapping)
+- [interviews/work-operating-model.md](../../../interviews/work-operating-model.md) — template (Export Templates section added)
+- [crew-members/interviewer.md](../../../crew-members/interviewer.md) — persona (unchanged; audit confirmed placement)

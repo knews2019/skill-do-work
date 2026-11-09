@@ -107,7 +107,7 @@ The cap is the design, not an obstacle: it forces the standing memory to stay hi
 
 ## Usage-Ledger Contract (canonical — both engines)
 
-Files: `memory/usage-ledger.jsonl` (memory engine) and `usage-ledger.jsonl` at the KB root (bkb — canonically `kb/usage-ledger.jsonl`; the root is resolved per `actions/bkb.md`'s "Locating the Knowledge Base"). Append-only, one JSON object per line, no trailing commas, UTC timestamps. Writers: `actions/memory.md`, `actions/bkb.md` (query step 8b, ingest step 7b), and the core CLI's `memory-session-start` / `memory-stop-capture` Go commands under `internal/hookcommands` — plus any future surface that reads from or writes to either engine (the trigger condition is "an engine event occurred", not membership in this list). The retained `.sh` hook paths are launch-only compatibility surfaces.
+Files: `memory/usage-ledger.jsonl` (memory engine) and `usage-ledger.jsonl` at the KB root (bkb — by default `<project-root>/docs/kb/usage-ledger.jsonl`; the root is resolved per `actions/bkb.md`'s "Locating the Knowledge Base"). Append-only, one JSON object per line, no trailing commas, UTC timestamps. Writers: `actions/memory.md`, `actions/bkb.md` (query step 8b, ingest step 7b), and the core CLI's `memory-session-start` / `memory-stop-capture` Go commands under `internal/hookcommands` — plus any future surface that reads from or writes to either engine (the trigger condition is "an engine event occurred", not membership in this list). The retained `.sh` hook paths are launch-only compatibility surfaces.
 
 ```json
 {"ts":"2026-07-22T18:04:11Z","engine":"memory","event":"recall","query":"dark mode decision","hits":3,"source":"actions/memory.md","note":""}

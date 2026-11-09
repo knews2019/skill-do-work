@@ -65,7 +65,7 @@ The trade-off is structural overhead. The BKB requires schema discipline, log up
 
 ## References
 
-- [CHANGELOG.md](../../CHANGELOG.md) — `0.43.0 The Knowledge Forge`, `0.43.1 The Clean Handoff`, `0.43.2 The Gap Closer`, `0.43.4 The Guard Dog`, `0.43.5 The Final Polish`
-- [actions/build-knowledge-base.md](../../actions/build-knowledge-base.md)
-- [actions/bkb-reference.md](../../actions/bkb-reference.md)
-- [docs/bkb-guide.md](../../docs/bkb-guide.md)
+- [CHANGELOG.md](../../../CHANGELOG.md) — `0.43.0 The Knowledge Forge`, `0.43.1 The Clean Handoff`, `0.43.2 The Gap Closer`, `0.43.4 The Guard Dog`, `0.43.5 The Final Polish`
+- [actions/build-knowledge-base.md](../../../actions/build-knowledge-base.md)
+- [actions/bkb-reference.md](../../../actions/bkb-reference.md)
+- [docs/bkb-guide.md](../../../docs/bkb-guide.md)

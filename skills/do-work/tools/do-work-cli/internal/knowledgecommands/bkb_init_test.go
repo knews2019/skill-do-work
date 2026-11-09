@@ -431,3 +431,74 @@ func TestBKBInitOutsideInvocationRepositoryPreservesTargetAndRepository(t *testi
 		})
 	}
 }
+
+// Pins the layout gap this default caused: with no --kb, bkb-init wrote a
+// root kb/ folder that folder-structure-check reports as a stray root entry.
+func TestBKBInitWithoutTargetCreatesDocsKnowledgeBase(t *testing.T) {
+	root := t.TempDir()
+	runGitFixture(t, root, "init")
+	dryRun := handleBKBInit(commandruntime.ExecutionContext{RepositoryRoot: root}, []string{"--dry-run"})
+	if dryRun.Outcome != resultmodel.OutcomeSuccess || len(dryRun.Changes) != len(scaffoldFiles) {
+		t.Fatalf("dry-run = %s, %d changes: %+v", dryRun.Outcome, len(dryRun.Changes), dryRun.Findings)
+	}
+	for _, change := range dryRun.Changes {
+		if !strings.HasPrefix(change.Path, "docs/kb/") {
+			t.Fatalf("default dry-run planned %q outside docs/kb/", change.Path)
+		}
+	}
+	created := handleBKBInit(commandruntime.ExecutionContext{RepositoryRoot: root}, nil)
+	if created.Outcome != resultmodel.OutcomeSuccess {
+		t.Fatalf("create = %s: %+v", created.Outcome, created.Findings)
+	}
+	if !isKnowledgeBase(filepath.Join(root, "docs", "kb")) {
+		t.Fatal("default init did not create docs/kb")
+	}
+	if _, err := os.Lstat(filepath.Join(root, "kb")); !os.IsNotExist(err) {
+		t.Fatal("default init created a root kb/ folder")
+	}
+}
+
+// Pins the consumer regression the new default could cause: a repository that
+// already keeps its knowledge base in a root kb/ must be filled in place and
+// told the one-line move, never given a second, empty scaffold under docs/.
+func TestBKBInitWithoutTargetKeepsLegacyRootKnowledgeBase(t *testing.T) {
+	root := t.TempDir()
+	runGitFixture(t, root, "init")
+	runGitFixture(t, root, "config", "user.email", "fixture@example.invalid")
+	runGitFixture(t, root, "config", "user.name", "Fixture")
+	writeFixture(t, root, "kb/wiki/overview.md", "mine\n")
+	if err := os.MkdirAll(filepath.Join(root, "kb", "raw"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	runGitFixture(t, root, "add", "kb/wiki/overview.md")
+	runGitFixture(t, root, "commit", "-m", "baseline")
+
+	refusal := handleBKBInit(commandruntime.ExecutionContext{RepositoryRoot: root}, nil)
+	if refusal.Outcome != resultmodel.OutcomeRefused || !resultHasFindingCode(refusal, "BKB-INIT-EXISTS") {
+		t.Fatalf("plain init over a legacy kb/ = %s: %+v", refusal.Outcome, refusal.Findings)
+	}
+	dryRun := handleBKBInit(commandruntime.ExecutionContext{RepositoryRoot: root}, []string{"--fill-gaps", "--dry-run"})
+	if dryRun.Outcome != resultmodel.OutcomeSuccess || len(dryRun.Changes) == 0 {
+		t.Fatalf("fill-gaps dry-run = %s: %+v", dryRun.Outcome, dryRun.Findings)
+	}
+	for _, change := range dryRun.Changes {
+		if !strings.HasPrefix(change.Path, "kb/") {
+			t.Fatalf("fill-gaps planned %q outside the existing kb/", change.Path)
+		}
+	}
+	filled := handleBKBInit(commandruntime.ExecutionContext{RepositoryRoot: root}, []string{"--fill-gaps"})
+	if filled.Outcome != resultmodel.OutcomeSuccess {
+		t.Fatalf("fill-gaps = %s: %+v", filled.Outcome, filled.Findings)
+	}
+	if _, err := os.Lstat(filepath.Join(root, "docs")); !os.IsNotExist(err) {
+		t.Fatal("init created a second scaffold under docs/ beside the existing kb/")
+	}
+	if data, _ := os.ReadFile(filepath.Join(root, "kb", "wiki", "overview.md")); string(data) != "mine\n" {
+		t.Fatalf("fill-gaps changed existing content: %q", data)
+	}
+	for name, result := range map[string]resultmodel.CommandResult{"refusal": refusal, "dry-run": dryRun, "fill-gaps": filled} {
+		if hint := findingEvidence(result, "BKB-LEGACY-LOCATION"); !strings.Contains(hint, "git mv kb docs/kb") {
+			t.Fatalf("%s does not carry the one-line move: %+v", name, result.Findings)
+		}
+	}
+}

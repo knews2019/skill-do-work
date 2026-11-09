@@ -30,11 +30,11 @@ One reviewed archive installs four required sibling skills at one shared version
 - `.claude/skills/do-work-knowledge/` — BKB, memory, dreams, interviews, and prompts
 - `.claude/skills/do-work-toolbox/` — audits, reports, presentation, and repository utilities
 
-The installer validates all four modules before the first managed write, asks once, verifies every installed byte before reporting success, and restores every changed managed module/configuration path after failure. It creates or refreshes the sentinel-owned Just section, links the always-on communication-style crew member from a managed section in the project's `CLAUDE.md` (creating the file when absent, touching nothing outside the markers), enables core hooks, leaves memory capture disabled on fresh installs, and preserves existing optional knowledge hooks. Project `do-work/`, `kb/`, application files, and unrelated Just/settings bytes stay outside the managed plan.
+The installer validates all four modules before the first managed write, asks once, verifies every installed byte before reporting success, and restores every changed managed module/configuration path after failure. It creates or refreshes the sentinel-owned Just section, links the always-on communication-style crew member from a managed section in the project's `CLAUDE.md` (creating the file when absent, touching nothing outside the markers), enables core hooks, leaves memory capture disabled on fresh installs, and preserves existing optional knowledge hooks. Project `do-work/`, `docs/kb/`, application files, and unrelated Just/settings bytes stay outside the managed plan.
 
 Claude Code can invoke the four skill names directly. In Codex or Gemini, point the agent at the appropriate sibling `SKILL.md` once per session, or add those pointers to the project's agent instructions. Commit all four `.claude/skills/do-work*` directories so each repository carries its suite.
 
-**Updating:** `do-work update`, canonical `just do-work-update`, and compatibility `just run-do-work-update` call the same installed `update-suite` command, which needs the same Go 1.24.0 or newer (or prebuilt binary) prerequisite as the install. They review one archive, reconcile all four module trees plus the managed Just/settings surfaces behind one confirmation, and either verify the complete resulting suite or recover every managed path. Never delete the repository-root `do-work/` queue or `kb/`; no update entry point manages them.
+**Updating:** `do-work update`, canonical `just do-work-update`, and compatibility `just run-do-work-update` call the same installed `update-suite` command, which needs the same Go 1.24.0 or newer (or prebuilt binary) prerequisite as the install. They review one archive, reconcile all four module trees plus the managed Just/settings surfaces behind one confirmation, and either verify the complete resulting suite or recover every managed path. Never delete the project's `do-work/` queue or its knowledge base (`docs/kb/`); no update entry point manages them.
 
 ### Upgrade an existing installation with an AI agent
 
@@ -46,7 +46,7 @@ Paste this into an AI agent from the root of a repository that already has do-wo
 >
 > Run the installed `tools/do-work-cli.sh` with this repository's Git root passed through `--repo-root`, then `update-suite --skill-root <installed-core-root>`. Use that command as the only mutation path. Show me its complete managed-file diff and preserve its built-in confirmation before overwriting anything; do not answer the confirmation automatically.
 >
-> Do not modify the repository's `do-work/` queue, `kb/` data, application files, or unrelated configuration. When finished, verify the installed version and report the previous version, resulting version, and whether the update completed or was cancelled, and relay the `ai-report organize` recommendation line if the command prints one.
+> Do not modify the repository's `do-work/` queue, `docs/kb/` data, application files, or unrelated configuration. When finished, verify the installed version and report the previous version, resulting version, and whether the update completed or was cancelled, and relay the `ai-report organize` recommendation line if the command prints one.
 
 This prompt updates only the repository where it is run, so you can paste it separately into each existing installation whenever its owner is ready.
 

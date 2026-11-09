@@ -21,7 +21,7 @@ A template declares the layers, per-layer prompts, canonical entry contract exte
 | `name` | string | Template id — must match the filename (minus `.md`) |
 | `description` | string (block scalar) | What the interview elicits and produces |
 | `version` | semver string | Template version — bump when layer shape changes |
-| `topic_cluster` | string | Copied verbatim into the `topic_cluster:` frontmatter of every file the `ingest` sub-command writes to `kb/raw/inbox/` |
+| `topic_cluster` | string | Copied verbatim into the `topic_cluster:` frontmatter of every file the `ingest` sub-command writes to the knowledge base's `raw/inbox/` |
 | `layers` | list of `{id, title, order}` | Layers in declared order — determines interview sequence |
 | `exports` | list of `{path, kind}` | Artifacts produced by the `export` sub-command |
 
@@ -117,7 +117,7 @@ Four independent status fields live in session state. They do not share a lifecy
 | Session | `status` | `in_progress`, `complete` | `in_progress` on session start. Flips to `complete` on the final layer's approval write. Only terminal state. Cleared back to `in_progress` only by `reset` (which starts a new session). |
 | Layer | `approved` | `false`, `true` | `false` on session start. Flips to `true` when the user explicitly approves the layer's checkpoint. Re-approval on `update` re-runs refreshes `approved_at` and each entry's `last_validated_at`. |
 | Entry | `status` | `active`, `stale`, `aspirational` | User-set during the interview. `active` = currently true. `stale` = was true, may no longer hold. `aspirational` = user wants this pattern but it's not yet real. Updated on `update` re-runs when the user reconfirms or relabels an entry. |
-| Export freshness | `session.json.last_exported_at` field | ISO 8601 timestamp or `null` | Written by the `export` sub-command on successful run. Read by the next `export` run to surface staleness (session modified after last export). `null` on a fresh session. Reset back to `null` by `fresh`, `version`, or `reset` (all of which write a new empty `session.json`). The stamp deliberately lives on `session.json` and **not** inside `exports/` — the `ingest` sub-command iterates every file in `exports/`, so a sidecar stamp there would land in `kb/raw/inbox/` as a bogus document. |
+| Export freshness | `session.json.last_exported_at` field | ISO 8601 timestamp or `null` | Written by the `export` sub-command on successful run. Read by the next `export` run to surface staleness (session modified after last export). `null` on a fresh session. Reset back to `null` by `fresh`, `version`, or `reset` (all of which write a new empty `session.json`). The stamp deliberately lives on `session.json` and **not** inside `exports/` — the `ingest` sub-command iterates every file in `exports/`, so a sidecar stamp there would land in the knowledge base's `raw/inbox/` as a bogus document. |
 
 **There is no `superseded` state anywhere.** Prior runs are not marked superseded — they are archived as immutable `versions/v<N>-<date>/` directories. Comparison against a prior version uses the archived `session.json`, not a flag on the current one.
 
@@ -373,7 +373,7 @@ The action writes draft checkpoints after the interview has produced candidate e
 
 ## Ingest File Mapping
 
-When `do-work-knowledge interview <template> ingest` runs, it produces files in `<repo-root>/kb/raw/inbox/` (sibling writes — do not overwrite). Two file classes are written per run: one file per export and one summary file per layer.
+When `do-work-knowledge interview <template> ingest` runs, it produces files in `<kb-root>/raw/inbox/` (sibling writes — do not overwrite), where `<kb-root>` is the knowledge base the command found (`<project-root>/docs/kb/` by default). Two file classes are written per run: one file per export and one summary file per layer.
 
 ### 1. One file per export
 
@@ -416,12 +416,12 @@ This gives BKB one wiki page per layer alongside the full exports.
 
 ### 3. Inbox manifest
 
-Append one row to `kb/raw/_inbox_queue.md` for each file added. Each row is marked `ready`, with `topic_hint: {{template.topic_cluster}}` and `priority: normal`.
+Append one row to `<kb-root>/raw/_inbox_queue.md` for each file added. Each row is marked `ready`, with `topic_hint: {{template.topic_cluster}}` and `priority: normal`.
 
 ### Totals and collisions
 
-For the `work-operating-model` template: 5 exports + 5 layer summaries = **10 files** per `ingest` run. If any target filename already exists in `kb/raw/inbox/` or `kb/raw/capture/` (previous ingest of the same template), prefix the new file with the current time (`HHMMSS-<filename>`) per BKB's collision rule.
+For the `work-operating-model` template: 5 exports + 5 layer summaries = **10 files** per `ingest` run. If any target filename already exists in `<kb-root>/raw/inbox/` or `<kb-root>/raw/capture/` (previous ingest of the same template), prefix the new file with the current time (`HHMMSS-<filename>`) per BKB's collision rule.
 
 ### Preconditions
 
-If `kb/` does not exist when `ingest` is invoked, the action tells the user to run `do-work-knowledge bkb init` first and stops without writing. `confidence: high` on export files reflects that the source is the user's own approved operating model, not a third-party claim.
+If no knowledge base is found when `ingest` is invoked, the action tells the user to run `do-work-knowledge bkb init` first and stops without writing. `confidence: high` on export files reflects that the source is the user's own approved operating model, not a third-party claim.

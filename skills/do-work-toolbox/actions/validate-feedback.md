@@ -69,7 +69,7 @@ Before judging, load whatever design-decision record the project keeps so you ca
 
 - `prime-*.md` files in or around the cited paths (architecture, conventions, known bugs, lessons).
 - `CLAUDE.md` / `AGENTS.md` (project instructions and standing conventions).
-- `decisions/` (ADRs, imported specs, decision log).
+- `<project-root>/docs/decisions/` (ADRs, imported specs, decision log).
 
 **Feedback that contradicts a documented decision is a push-back signal — and the decision is your evidence.** (Example: a finding that flags a naming convention the project documents on purpose should be pushed back with a pointer to that documentation, not accepted.)
 
@@ -181,7 +181,7 @@ With `--capture`, the combined report from Step 8 replaces the `To act on the ac
 
 - A verdict with no `file:line`, commit, or decision cited as evidence.
 - Every finding accepted (or every one pushed back) — suggests the code wasn't actually read.
-- A remedy proposed for an "Accept" that contradicts a `prime-*.md`/`CLAUDE.md`/`decisions/` decision (should have been a push-back).
+- A remedy proposed for an "Accept" that contradicts a `prime-*.md`/`CLAUDE.md`/`<project-root>/docs/decisions/` decision (should have been a push-back).
 - A pasted finding silently missing from the report.
 - The action created or edited files without `--capture` (without the flag it must be read-only).
 

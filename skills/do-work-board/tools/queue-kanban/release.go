@@ -80,7 +80,7 @@ func resolveVersionFilePath(repoRoot string, versionFileOverride string) string 
 // theirs. That is reported as NOT APPLICABLE rather than skipped: a skipped probe is an
 // unverified invariant someone should act on, and there is nothing here to act on.
 // Deliberately NOT a walk up to a vendored suite root — see the REQ-282 constraint and
-// decisions/records/adr-019-four-skill-suite-contract.md, which already assigns install
+// docs/decisions/records/adr-019-four-skill-suite-contract.md, which already assigns install
 // integrity to the updater.
 func resolveReleaseProbeVersionFilePath(repoRoot string) (versionFilePath string, isSuiteCheckout bool) {
 	for _, relativePath := range []string{defaultVersionFileRelativePath, suiteVersionFileRelativePath} {

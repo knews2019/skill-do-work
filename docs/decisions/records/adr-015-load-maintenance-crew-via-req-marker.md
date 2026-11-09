@@ -60,9 +60,9 @@ A deliberate maintenance pass captured through the pipeline now actually loads t
 
 ## References
 
-- [crew-members/maintenance.md](../../crew-members/maintenance.md) — the discipline + its JIT_CONTEXT trigger
-- [actions/work.md](../../actions/work.md) — Step 6 conditional load (bullet 5a)
-- [actions/work-reference.md](../../actions/work-reference.md) — Schema Read Contract `maintenance` row
-- [actions/capture.md](../../actions/capture.md) — marker emission rule
-- [actions/quick-wins.md](../../actions/quick-wins.md) — tightened removal-findings rule
+- [crew-members/maintenance.md](../../../crew-members/maintenance.md) — the discipline + its JIT_CONTEXT trigger
+- [actions/work.md](../../../actions/work.md) — Step 6 conditional load (bullet 5a)
+- [actions/work-reference.md](../../../actions/work-reference.md) — Schema Read Contract `maintenance` row
+- [actions/capture.md](../../../actions/capture.md) — marker emission rule
+- [actions/quick-wins.md](../../../actions/quick-wins.md) — tightened removal-findings rule
 - `do-work/archive/UR-002/REQ-014-delete-before-you-add-rule.md` — D-01 and the tracked loader gap this ADR closes

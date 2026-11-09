@@ -62,10 +62,10 @@ The validator becomes security-sensitive distribution code. New manifest fields,
 
 ## References
 
-- [VERSION](../../VERSION) — canonical suite version
-- [suite/modules.tsv](../../suite/modules.tsv) — exact four-module mapping
-- [tools/validate-suite-manifest.sh](../../tools/validate-suite-manifest.sh) — shared validator
-- [do-work/user-requests/UR-031/input.md](../../do-work/user-requests/UR-031/input.md) — confirmed rollout and ownership decisions
+- [VERSION](../../../VERSION) — canonical suite version
+- [suite/modules.tsv](../../../suite/modules.tsv) — exact four-module mapping
+- [tools/validate-suite-manifest.sh](../../../tools/validate-suite-manifest.sh) — shared validator
+- [do-work/user-requests/UR-031/input.md](../../../do-work/user-requests/UR-031/input.md) — confirmed rollout and ownership decisions
 - [[adr-013-harden-the-vendored-skill-distribution-model]] — existing whole-tree archive and update safeguards
 - [[adr-016-vendor-queue-kanban-into-the-skill]] — current board ownership and distribution history
 

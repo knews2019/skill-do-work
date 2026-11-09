@@ -1,6 +1,6 @@
 # Architecture Decisions Log: Create or Expand
 
-> Create or update a project-wide Architecture Decision Record log at `decisions/`, modeled on the BKB wiki pattern. Layered source mining (implementation-history → lessons-learned → code). Idempotent via REQ/UR keys. Resumable, supersession-aware, pre-flight-checked.
+> Create or update a project-wide Architecture Decision Record log at `<project-root>/docs/decisions/`, modeled on the BKB wiki pattern. Layered source mining (implementation-history → lessons-learned → code). Idempotent via REQ/UR keys. Resumable, supersession-aware, pre-flight-checked.
 
 **Aliases:** `adr`, `adr-log`, `decisions`, `architecture-decisions`
 
@@ -19,7 +19,7 @@
 
 ## Instructions for the executing agent
 
-You are maintaining an Architecture Decision Record (ADR) log at `decisions/` in the current repo, modeled on the BKB wiki pattern (see `actions/bkb.md`). This prompt is **idempotent and resumable**: it detects existing state and picks up where a prior run left off, keyed on REQ/UR IDs so the same decision is never captured twice.
+You are maintaining an Architecture Decision Record (ADR) log at `<project-root>/docs/decisions/` in the current repo (`<adr-root>` below; Phase 1 resolves it), modeled on the BKB wiki pattern (see `actions/bkb.md`). This prompt is **idempotent and resumable**: it detects existing state and picks up where a prior run left off, keyed on REQ/UR IDs so the same decision is never captured twice.
 
 ### Sources to mine (priority order)
 
@@ -42,20 +42,32 @@ You are maintaining an Architecture Decision Record (ADR) log at `decisions/` in
 
 ### Phase 1 — State detection
 
-Check for `decisions/_master_index.md`:
+Resolve `<adr-root>` first. The order mirrors the one `actions/bkb.md` → "Locating the Knowledge Base" uses for the knowledge base:
+
+1. `<project-root>/docs/decisions/`, when that directory exists.
+2. A `decisions/` directory at the project root that already holds `_master_index.md`. This was the location before the log moved under `docs/`. Keep using it for this run, and tell the user the one-line move below. Do not move it yourself.
+
+   ```bash
+   mkdir -p docs && git mv decisions docs/decisions
+   ```
+3. Otherwise `<project-root>/docs/decisions/`, which Phase 2 creates.
+
+Never scaffold a second log beside an existing one. If both locations hold a log, use the one under `docs/` and tell the user that both exist.
+
+Check for `<adr-root>/_master_index.md`:
 
 - **Absent → CREATE mode.** Proceed to Phase 2 (scaffolding).
-- **Present → UPDATE mode.** Read `decisions/_progress.md` for the next ADR number and the list of deferred candidates. Skip Phase 2 entirely. Do NOT re-scaffold `_master_index.md`, `_progress.md`, `log.md`, or any `topics/_index_*.md`.
-- **Present but `_progress.md` missing** → RESUME mode. Reconstruct state by scanning `decisions/records/adr-*.md` for the highest existing number and every `req:`/`ur:` already referenced; then treat the run as UPDATE mode.
+- **Present → UPDATE mode.** Read `<adr-root>/_progress.md` for the next ADR number and the list of deferred candidates. Skip Phase 2 entirely. Do NOT re-scaffold `_master_index.md`, `_progress.md`, `log.md`, or any `topics/_index_*.md`.
+- **Present but `_progress.md` missing** → RESUME mode. Reconstruct state by scanning `<adr-root>/records/adr-*.md` for the highest existing number and every `req:`/`ur:` already referenced; then treat the run as UPDATE mode.
 
-Report the detected mode to the user before doing any writes.
+Report the resolved `<adr-root>` and the detected mode to the user before doing any writes.
 
 ### Phase 2 — Scaffolding (CREATE mode only, BATCH 1)
 
 Create:
 
 ```
-decisions/
+<adr-root>/
 ├── _master_index.md           # wiki entry point: clusters, ADR index, legend
 ├── _progress.md               # resume state: next ADR number, deferred list, completed inventory
 ├── log.md                     # chronological timeline, newest first
@@ -122,7 +134,7 @@ Commit with `docs(adr): scaffold decisions/ log` and push (unless `--no-push`). 
 
 Walk the sources in priority order. For each UR/REQ:
 
-**Skip if**: a `req:` or `ur:` field in any existing `decisions/records/adr-*.md` already references this ID (or, for CHANGELOG fallback, any `sources:` entry already cites the version).
+**Skip if**: a `req:` or `ur:` field in any existing `<adr-root>/records/adr-*.md` already references this ID (or, for CHANGELOG fallback, any `sources:` entry already cites the version).
 
 **ADR selection criteria** — write an ADR only if ALL of these hold:
 
@@ -140,12 +152,12 @@ Write the shortlist to `_progress.md` under `## Deferred candidates` as a table:
 For each batch of N ADRs (default `--batch-size` = 3):
 
 1. Allocate sequential numbers starting at `_progress.md.next_adr_number`, zero-padded to 3 digits. Never reuse a number.
-2. Write each ADR to `decisions/records/adr-NNN-<kebab-slug>.md` using the template below.
+2. Write each ADR to `<adr-root>/records/adr-NNN-<kebab-slug>.md` using the template below.
 3. Run supersession updates (Phase 4b) for any ADR in this batch that replaces an existing one — both sides must be edited in the same commit.
-4. Update `decisions/topics/_index_<cluster>.md` for every cluster touched (create if new, see Topic cluster rules below).
-5. Update `decisions/_master_index.md`: new ADRs added under their cluster AND under "All ADRs".
-6. Prepend entries to `decisions/log.md` (newest first): `YYYY-MM-DD — [[adr-NNN-slug]] — <one-line summary>`.
-7. Update `decisions/_progress.md`: bump `next_adr_number`, append completed inventory, remove written candidates from the deferred list.
+4. Update `<adr-root>/topics/_index_<cluster>.md` for every cluster touched (create if new, see Topic cluster rules below).
+5. Update `<adr-root>/_master_index.md`: new ADRs added under their cluster AND under "All ADRs".
+6. Prepend entries to `<adr-root>/log.md` (newest first): `YYYY-MM-DD — [[adr-NNN-slug]] — <one-line summary>`.
+7. Update `<adr-root>/_progress.md`: bump `next_adr_number`, append completed inventory, remove written candidates from the deferred list.
 8. Commit: `docs(adr): add ADR-NNN through ADR-NNN — <short description>` and push.
 
 **ADR file template:**
@@ -223,7 +235,7 @@ When a new ADR supersedes an existing one:
 
 ### Topic cluster rules
 
-- Each cluster has a first-class wiki page at `decisions/topics/_index_<cluster-slug>.md` with a short description and a list of its ADRs.
+- Each cluster has a first-class wiki page at `<adr-root>/topics/_index_<cluster-slug>.md` with a short description and a list of its ADRs.
 - Assign new ADRs to the most relevant existing cluster. Create a new `_index_<cluster>.md` only when the theme genuinely doesn't fit any existing cluster or when 2+ pending ADRs share a new theme.
 - New clusters must be added to `_master_index.md` under "Topic clusters" in the same commit that introduces them.
 - Cluster slugs are **stable** — once you commit to `build-system`, don't later rename to `build`. Migrations are expensive.
@@ -232,7 +244,7 @@ When a new ADR supersedes an existing one:
 
 1. Re-read `_master_index.md`: verify every ADR is listed exactly once under exactly one cluster, and every cluster index is linked.
 2. Re-read `log.md`: verify entries are date-sorted, newest first.
-3. Audit wiki-links: grep all `[[…]]` references in `decisions/` and verify every target exists. Report broken links — do not silently drop them.
+3. Audit wiki-links: grep all `[[…]]` references in `<adr-root>/` and verify every target exists. Report broken links — do not silently drop them.
 4. Flip `_progress.md` → `status: complete`; add `completed_at: <ISO-8601>`.
 5. Commit `docs(adr): finalize index + log` and push.
 
@@ -299,7 +311,7 @@ Scan `implementation-history.md` (or the fallback source) and count UR sections 
 - `log.md` is not date-sorted
 - `_progress.md.status: complete` but deferred candidates remain
 - Two ADRs with overlapping `req:`/`ur:` IDs — idempotency failure
-- A commit batch includes files outside `decisions/` — ADR batches must be surgical
+- A commit batch includes files outside `<adr-root>/` — ADR batches must be surgical
 - A new cluster was created without updating `_master_index.md` in the same commit
 
 ### Verification checklist

@@ -68,6 +68,17 @@ for cutover_export_path in VERSION suite skills; do
   fi
 done
 
+# The maintainer's own knowledge base and ADR log live under /docs (REQ-714). Their two
+# export-ignore lines are the only thing keeping those files out of every consumer install,
+# and a root docs/ that ships would also read as the retired legacy runtime below.
+for maintainer_docs_path in docs/kb docs/decisions; do
+  if ! maintainer_docs_attribute_line="$(git -C "$repo_root" check-attr export-ignore -- "$maintainer_docs_path")"; then
+    fail "could not read the export-ignore attribute for /$maintainer_docs_path"
+  elif ! grep -q 'export-ignore: set' <<<"$maintainer_docs_attribute_line"; then
+    fail "the archive must not export the maintainer's /$maintainer_docs_path"
+  fi
+done
+
 legacy_runtime_paths=(
   SKILL.md
   next-steps.md
@@ -93,7 +104,8 @@ for legacy_runtime_path in "${legacy_runtime_paths[@]}"; do
   elif [ -d "$repo_root/$legacy_runtime_path" ]; then
     legacy_leftover_path=''
     if ! legacy_leftover_path="$(find "$repo_root/$legacy_runtime_path" -type f \
-      ! -path "$repo_root/tools/queue-kanban/queue-kanban" -print -quit)"; then
+      ! -path "$repo_root/tools/queue-kanban/queue-kanban" \
+      ! -path "$repo_root/docs/kb/*" ! -path "$repo_root/docs/decisions/*" -print -quit)"; then
       fail "could not scan $legacy_runtime_path for leftover files"
     fi
     if [ -n "$legacy_leftover_path" ]; then
@@ -1058,8 +1070,14 @@ for source in sorted(skill_root.rglob("*.md")):
                     "docs/handoffs/",
                     "docs/lessons-learned/",
                     "docs/specs/",
+                    # The consumer's knowledge base and ADR log. Prose writes them as
+                    # <project-root>/docs/..., which this pattern never sees; these two
+                    # cover the spellings that cannot carry that prefix: a literal command
+                    # argument (--exclude-path docs/kb/, git mv decisions docs/decisions).
+                    "docs/kb/",
+                    "docs/decisions/",
                 )
-            ) or reference == "docs/worklog.md":
+            ) or reference in {"docs/worklog.md", "docs/decisions"}:
                 continue
             if reference.startswith("../"):
                 target = (skill_root / reference).resolve()

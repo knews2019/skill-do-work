@@ -34,6 +34,7 @@ Usage: `do-work audit-current-folder-structure` or `do-work-toolbox folder-struc
   docs/
     spec/           all specs
     inbox/          unsorted files waiting to be moved to their own folder
+    kb/  decisions/ the knowledge base and the ADR log, as the do-work-knowledge skill writes them
     prime-files/  lessons-learned/  handoffs/  run-prompts/  changelog/  how-*.md
   tests/e2e/        tests that span apps only
   ai-reports/  do-work/   as the do-work suite writes them

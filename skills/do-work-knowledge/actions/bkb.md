@@ -13,7 +13,7 @@ The core idea: instead of re-deriving knowledge from scratch on every query (RAG
 - Querying the wiki for synthesized answers (`query`) — prefer the compiled wiki over re-reading raw sources.
 
 **Do NOT use when:**
-- There's no `kb/` directory AND the user hasn't asked to `init` — stop and ask.
+- No knowledge base is found (see Locating the Knowledge Base) AND the user hasn't asked to `init` — stop and ask.
 - See `SKILL.md` routing table for sibling action selection.
 
 ## Sub-Commands
@@ -22,7 +22,7 @@ The `bkb` command accepts a sub-command as its first argument. If no sub-command
 
 | Sub-command | What it does | Crew |
 |---|---|---|
-| `init [path]` | Initialize a new knowledge base at the given path (default: `./kb`) | Architect |
+| `init [path]` | Initialize a new knowledge base at the given path (default: `<project-root>/docs/kb/`) | Architect |
 | `triage` | Sort inbox items into capture subdirectories, update the queue | Sorter |
 | `ingest [target]` | Compile source(s) into wiki pages (all ready, specific file, or path) | Compiler → Connector → Reviewer |
 | `query [question]` | Search the wiki and synthesize an answer | Seeker |
@@ -49,13 +49,15 @@ Before executing a sub-command, read the relevant agent file(s) from `<kb>/agent
 
 ## Locating the Knowledge Base
 
-Before executing any sub-command (except `init`), find the KB root:
+Before executing any sub-command, find the KB root, called `<kb>` below. This section is the one canonical statement of the order. The `bkb-init`, `bkb-status` and `bkb-lint-structure` commands apply the same order themselves when they get no `--kb`, so pass `--kb <path>` to them only when the user supplied a path.
 
-1. Check if `$ARGUMENTS` includes an explicit `--kb <path>` flag — use that path.
-2. Look for a `kb/` directory in the current working directory.
-3. Look for a `knowledge-base/` directory in the current working directory.
-4. Search parent directories (up to 3 levels) for a directory containing both `raw/` and `wiki/` subdirectories.
-5. If not found, tell the user: "No knowledge base found. Run `do-work-knowledge bkb init` to create one."
+1. An explicit `--kb <path>` in `$ARGUMENTS` — use that path as written.
+2. `<project-root>/docs/kb/`, when that directory exists. This is the default, and where `init` creates a new knowledge base.
+3. A `kb/` directory at the project root, then a `knowledge-base/` directory there, when it already holds `raw/` and `wiki/`. This was the default before the knowledge base moved under `docs/`, so an existing project keeps working. The commands report `BKB-LEGACY-LOCATION`, an info finding that carries the one-line move into `<project-root>/docs/kb/`; pass that hint on to the user and do not move the folder yourself.
+4. The project root itself or a parent directory (up to 2 levels up) that contains both `raw/` and `wiki/`.
+5. If not found, and the sub-command is not `init`, tell the user: "No knowledge base found. Run `do-work-knowledge bkb init` to create one."
+
+When `<project-root>/docs/kb/` and a root `kb/` both exist, the `docs` one wins and the commands report the warning `BKB-DUPLICATE-LOCATION`, which names both. Show it to the user: they decide which folder is the real one.
 
 A usage ledger (`usage-ledger.jsonl`) rides at the KB root next to `raw/` and `wiki/`; it is written by the query/ingest steps below and read by `actions/memory-value.md` for the ADR-017 engine comparison.
 
@@ -63,12 +65,12 @@ A usage ledger (`usage-ledger.jsonl`) rides at the KB root next to `raw/` and `w
 
 ## Sub-Command: `init [path]`
 
-Create the full KB directory structure at the specified path (default: `./kb`).
+Create the full KB directory structure at the specified path (default: `<project-root>/docs/kb/`).
 
 ### Steps
 
-1. Resolve `<path>` from the argument, defaulting to `kb`.
-2. Invoke the installed core launcher with `--repo-root <project-root> bkb-init --kb <path>`. Forward `--fill-gaps`, `--dry-run`, and `--commit` when supplied.
+1. Take `<path>` from the argument when the user gave one.
+2. Invoke the installed core launcher with `--repo-root <project-root> bkb-init`, adding `--kb <path>` only when the user gave a path. With no path the command applies the order in Locating the Knowledge Base: it creates `<project-root>/docs/kb/`, and a project that already has a root `kb/` gets that folder reported or filled in place, never a second scaffold. Forward `--fill-gaps`, `--dry-run`, and `--commit` when supplied.
 3. Render the canonical result. Its typed changes and skipped work are the complete scaffold report.
 4. If the launcher is missing or the command fails, stop with its actionable finding. Do not recreate the scaffold from prose or mutate any KB path as a fallback.
 
@@ -325,7 +327,7 @@ Health check the wiki for consistency and accuracy.
 
 ### Checks
 
-1. Invoke the installed core launcher with `--repo-root <project-root> --format json bkb-lint-structure --kb <kb>` exactly once. Treat its typed findings as canonical for orphans, index integrity, broken links, ingestion-day coverage, required frontmatter and enum shape, malformed quoted top-level scalars, relationship density/targets/enums/reciprocity, and mechanical agent-query staleness. Project each finding into the combined report without rescanning those categories.
+1. Invoke the installed core launcher with `--repo-root <project-root> --format json bkb-lint-structure` (plus `--kb <path>` when the user supplied one) exactly once. Treat its typed findings as canonical for orphans, index integrity, broken links, ingestion-day coverage, required frontmatter and enum shape, malformed quoted top-level scalars, relationship density/targets/enums/reciprocity, and mechanical agent-query staleness. Project each finding into the combined report without rescanning those categories.
 2. If the launcher is missing or the command fails, stop with its actionable finding. Do not fall back to free-form structural scanning and do not write the lint report or log entry.
 3. Apply the active Librarian, Reviewer, Connector, and Editor judgment to the retained semantic checks only: contradictions, missing-concept design, superseded or stale claims, confidence/source-quality fit, editorial thinness/navigation, reciprocity and garden work, and the repair choice for every structural finding.
 
@@ -415,7 +417,7 @@ Quick snapshot of the KB state.
 
 ### Steps
 
-1. Invoke the installed core launcher with `--repo-root <project-root> bkb-status --kb <kb>`.
+1. Invoke the installed core launcher with `--repo-root <project-root> bkb-status` (plus `--kb <path>` when the user supplied one).
 2. Render its canonical location, counts, activity dates, agent count, and maintenance warnings.
 3. If the launcher is missing or the command fails, stop with its actionable finding. Do not reconstruct a status snapshot from a second scan.
 
@@ -586,7 +588,7 @@ When invoked with no sub-command or with `help`:
 do-work-knowledge bkb — LLM Knowledge Base builder
 
   Setup:
-    do-work-knowledge bkb init              Initialize a new knowledge base in ./kb
+    do-work-knowledge bkb init              Initialize a new knowledge base in ./docs/kb
     do-work-knowledge bkb init ~/research   Initialize at a custom path
 
   Daily workflow:
@@ -611,7 +613,7 @@ do-work-knowledge bkb — LLM Knowledge Base builder
     do-work-knowledge bkb crew remove <name> Remove a custom agent
 
   Typical flow:
-    1. Drop files into kb/raw/inbox/
+    1. Drop files into ./docs/kb/raw/inbox/
     2. do-work-knowledge bkb triage
     3. do-work-knowledge bkb ingest
     4. do-work-knowledge bkb query "what are the tradeoffs of X vs Y?"

@@ -36,13 +36,14 @@ func handleBKBStatus(executionContext commandruntime.ExecutionContext, arguments
 	if err != nil {
 		return usageResult(CommandBKBStatus, err)
 	}
+	location := resolveKnowledgeBaseLocation(executionContext.RepositoryRoot, options.target)
 	target, relative, err := locateKnowledgeBase(executionContext.RepositoryRoot, options.target)
 	if err != nil {
-		finding := knowledgeFinding(CommandBKBStatus, "BKB-NOT-FOUND", resultmodel.SeverityWarning, []string{options.target}, err.Error(), resultmodel.FixabilityAutomatic, "initialize a knowledge base or supply its repository-relative path")
-		finding.NextArgv = []string{"do-work-cli", CommandBKBInit, "--kb", options.target}
-		finding.NextJustRecipe = CommandBKBInit + " " + quoteRecipeArgument(options.target)
-		finding.VerificationArgv = []string{"do-work-cli", "--format", "json", CommandBKBStatus, "--kb", options.target}
-		return resultmodel.CommandResult{Outcome: resultmodel.OutcomeFindings, Findings: []resultmodel.CommandFinding{finding}}
+		finding := knowledgeFinding(CommandBKBStatus, "BKB-NOT-FOUND", resultmodel.SeverityWarning, []string{relative}, err.Error(), resultmodel.FixabilityAutomatic, "initialize a knowledge base or supply its repository-relative path")
+		finding.NextArgv = []string{"do-work-cli", CommandBKBInit, "--kb", relative}
+		finding.NextJustRecipe = CommandBKBInit + " " + quoteRecipeArgument(relative)
+		finding.VerificationArgv = []string{"do-work-cli", "--format", "json", CommandBKBStatus, "--kb", relative}
+		return resultmodel.CommandResult{Outcome: resultmodel.OutcomeFindings, Findings: append([]resultmodel.CommandFinding{finding}, location.notices(CommandBKBStatus)...)}
 	}
 	pages, scanError := loadKnowledgePages(target, relative)
 	if scanError != nil {
@@ -81,6 +82,7 @@ func handleBKBStatus(executionContext commandruntime.ExecutionContext, arguments
 			findings = append(findings, scanFinding(CommandBKBStatus, relative, "BKB-"+strings.ToUpper(maintenance.name)+"-OVERDUE", resultmodel.SeverityWarning, []string{filepath.ToSlash(filepath.Join(relative, "wiki/log.md"))}, observed, resultmodel.FixabilityManual, "maintenance scheduling and edits remain action-owned"))
 		}
 	}
+	findings = append(findings, location.notices(CommandBKBStatus)...)
 	sortFindings(findings)
 	outcome := resultmodel.OutcomeSuccess
 	for _, finding := range findings {
@@ -96,20 +98,28 @@ func handleBKBLint(executionContext commandruntime.ExecutionContext, arguments [
 	if err != nil {
 		return usageResult(CommandBKBLintStructure, err)
 	}
+	location := resolveKnowledgeBaseLocation(executionContext.RepositoryRoot, options.target)
 	target, relative, err := locateKnowledgeBase(executionContext.RepositoryRoot, options.target)
 	if err != nil {
-		return scanFailure(CommandBKBLintStructure, options.target, err)
+		return scanFailure(CommandBKBLintStructure, relative, err)
 	}
 	pages, scanError := loadKnowledgePages(target, relative)
 	if scanError != nil {
 		return scanFailure(CommandBKBLintStructure, relative, scanError)
 	}
 	findings := lintKnowledgeBase(target, relative, pages)
-	sortFindings(findings)
 	if len(findings) == 0 {
-		return resultmodel.CommandResult{Outcome: resultmodel.OutcomeSuccess, Findings: []resultmodel.CommandFinding{scanFinding(CommandBKBLintStructure, relative, "BKB-STRUCTURE-CLEAN", resultmodel.SeverityInfo, nil, "all deterministic structural checks passed", resultmodel.FixabilityManual, "semantic lint remains action-owned")}}
+		findings = append(findings, scanFinding(CommandBKBLintStructure, relative, "BKB-STRUCTURE-CLEAN", resultmodel.SeverityInfo, nil, "all deterministic structural checks passed", resultmodel.FixabilityManual, "semantic lint remains action-owned"))
 	}
-	return resultmodel.CommandResult{Outcome: resultmodel.OutcomeFindings, Findings: findings}
+	findings = append(findings, location.notices(CommandBKBLintStructure)...)
+	sortFindings(findings)
+	outcome := resultmodel.OutcomeSuccess
+	for _, finding := range findings {
+		if finding.Severity != resultmodel.SeverityInfo {
+			outcome = resultmodel.OutcomeFindings
+		}
+	}
+	return resultmodel.CommandResult{Outcome: outcome, Findings: findings}
 }
 
 func lintKnowledgeBase(target, relative string, pages []knowledgePage) []resultmodel.CommandFinding {
@@ -433,19 +443,76 @@ func firstHeading(body, fallback string) string {
 	return fallback
 }
 
-func locateKnowledgeBase(root, requested string) (string, string, error) {
-	candidates := []string{requested}
-	if requested == "kb" {
-		candidates = append(candidates, "knowledge-base")
+// defaultKnowledgeBase is where a knowledge base lives when no path is
+// supplied. legacyKnowledgeBases are the earlier root-folder defaults: they are
+// still found, so an existing consumer never gets a second, empty scaffold.
+const defaultKnowledgeBase = "docs/kb"
+
+var legacyKnowledgeBases = []string{"kb", "knowledge-base"}
+
+// knowledgeBaseLocation is the repository-relative knowledge base one command
+// run uses. legacy names a root legacy folder that is a knowledge base when the
+// default order met one: equal to relative when that folder was chosen, and
+// different when docs/kb won over it.
+type knowledgeBaseLocation struct {
+	relative string
+	legacy   string
+}
+
+// resolveKnowledgeBaseLocation applies the one location order every knowledge
+// command shares. A supplied path is taken literally. With none: docs/kb when
+// that directory exists, else a legacy root folder that already is a knowledge
+// base, else docs/kb (to create or to report as missing).
+func resolveKnowledgeBaseLocation(root, requested string) knowledgeBaseLocation {
+	if requested != "" {
+		return knowledgeBaseLocation{relative: requested}
 	}
-	for _, candidate := range candidates {
-		path, err := ensureSafeTarget(root, candidate)
-		if err != nil {
-			return "", candidate, err
+	legacy := ""
+	for _, candidate := range legacyKnowledgeBases {
+		if isKnowledgeBase(filepath.Join(root, candidate)) {
+			legacy = candidate
+			break
 		}
-		if isKnowledgeBase(path) {
-			return path, filepath.ToSlash(candidate), nil
-		}
+	}
+	info, err := os.Stat(filepath.Join(root, filepath.FromSlash(defaultKnowledgeBase)))
+	if legacy == "" || (err == nil && info.IsDir()) {
+		return knowledgeBaseLocation{relative: defaultKnowledgeBase, legacy: legacy}
+	}
+	return knowledgeBaseLocation{relative: legacy, legacy: legacy}
+}
+
+// notices tells the user when the default order met a legacy root folder: the
+// one-line move when that folder is in use, a warning when docs/kb hides it.
+func (location knowledgeBaseLocation) notices(commandName string) []resultmodel.CommandFinding {
+	if location.legacy == "" {
+		return nil
+	}
+	if location.relative == location.legacy {
+		evidence := fmt.Sprintf("knowledge base found at the earlier default %s/; the default is now %s/. Move it with: mkdir -p docs && git mv %s %s", location.legacy, defaultKnowledgeBase, location.legacy, defaultKnowledgeBase)
+		finding := knowledgeFinding(commandName, "BKB-LEGACY-LOCATION", resultmodel.SeverityInfo, nil, evidence, resultmodel.FixabilityManual, "moving the folder is the user's decision")
+		finding.AffectedPaths = []string{location.legacy}
+		return []resultmodel.CommandFinding{finding}
+	}
+	evidence := fmt.Sprintf("both %s/ and %s/ exist; %s/ is used. Merge %s/ into it, or pass --kb %s to keep using the old folder", location.relative, location.legacy, location.relative, location.legacy, location.legacy)
+	finding := knowledgeFinding(commandName, "BKB-DUPLICATE-LOCATION", resultmodel.SeverityWarning, nil, evidence, resultmodel.FixabilityManual, "which folder holds the real knowledge base is the user's decision")
+	finding.AffectedPaths = []string{location.relative, location.legacy}
+	return []resultmodel.CommandFinding{finding}
+}
+
+// locateKnowledgeBase finds the knowledge base to read. An empty request means
+// the default order. On failure the second value is the path that was expected.
+func locateKnowledgeBase(root, requested string) (string, string, error) {
+	checked := requested
+	if requested == "" {
+		requested = resolveKnowledgeBaseLocation(root, "").relative
+		checked = strings.Join(append([]string{defaultKnowledgeBase}, legacyKnowledgeBases...), ", ")
+	}
+	path, err := ensureSafeTarget(root, requested)
+	if err != nil {
+		return "", requested, err
+	}
+	if isKnowledgeBase(path) {
+		return path, filepath.ToSlash(requested), nil
 	}
 	current, _ := filepath.Abs(root)
 	for depth := 0; depth < 3; depth++ {
@@ -455,7 +522,7 @@ func locateKnowledgeBase(root, requested string) (string, string, error) {
 		}
 		current = filepath.Dir(current)
 	}
-	return "", requested, fmt.Errorf("no knowledge base found; checked %s", strings.Join(candidates, ", "))
+	return "", requested, fmt.Errorf("no knowledge base found; checked %s", checked)
 }
 
 func scanFinding(commandName, target, code string, severity resultmodel.FindingSeverity, affected []string, evidence string, fixability resultmodel.FindingFixability, stopReason string) resultmodel.CommandFinding {

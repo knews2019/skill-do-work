@@ -61,8 +61,8 @@ The cost is more metadata and more operational surface area. Typed relationships
 
 ## References
 
-- [CHANGELOG.md](../../CHANGELOG.md) — `0.45.0 The Second Brain`, `0.46.0 The Agent Crew`, `0.47.0 The Full Crew`
-- [actions/build-knowledge-base.md](../../actions/build-knowledge-base.md)
-- [actions/bkb-reference.md](../../actions/bkb-reference.md)
-- [docs/bkb-guide.md](../../docs/bkb-guide.md)
-- [SKILL.md](../../SKILL.md) — BKB help and sub-command surface
+- [CHANGELOG.md](../../../CHANGELOG.md) — `0.45.0 The Second Brain`, `0.46.0 The Agent Crew`, `0.47.0 The Full Crew`
+- [actions/build-knowledge-base.md](../../../actions/build-knowledge-base.md)
+- [actions/bkb-reference.md](../../../actions/bkb-reference.md)
+- [docs/bkb-guide.md](../../../docs/bkb-guide.md)
+- [SKILL.md](../../../SKILL.md) — BKB help and sub-command surface

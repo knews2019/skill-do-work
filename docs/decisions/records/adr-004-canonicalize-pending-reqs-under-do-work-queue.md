@@ -58,9 +58,9 @@ The cost is migration baggage. Some actions still mention the old root path as a
 
 ## References
 
-- [CHANGELOG.md](../../CHANGELOG.md) — `0.60.3 The Paved Path`, `0.60.5 The Honest Mirror`
-- [CLAUDE.md](../../CLAUDE.md) — Queue Path Convention
-- [actions/capture.md](../../actions/capture.md)
-- [actions/work.md](../../actions/work.md)
-- [actions/cleanup.md](../../actions/cleanup.md)
-- [docs/work-guide.md](../../docs/work-guide.md)
+- [CHANGELOG.md](../../../CHANGELOG.md) — `0.60.3 The Paved Path`, `0.60.5 The Honest Mirror`
+- [CLAUDE.md](../../../CLAUDE.md) — Queue Path Convention
+- [actions/capture.md](../../../actions/capture.md)
+- [actions/work.md](../../../actions/work.md)
+- [actions/cleanup.md](../../../actions/cleanup.md)
+- [docs/work-guide.md](../../../docs/work-guide.md)

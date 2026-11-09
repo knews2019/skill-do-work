@@ -4,8 +4,8 @@ type: master-index
 status: reference
 sources:
   - CHANGELOG.md
-  - decisions/topics/
-  - decisions/records/
+  - docs/decisions/topics/
+  - docs/decisions/records/
 related:
   - page: _index_skill-architecture
     rel: complements
@@ -35,4 +35,4 @@ Read this first. This ADR log captures every load-bearing, still-in-force decisi
 
 - [Timeline log](./log.md) — append-only timeline of the historical decisions plus this ADR bootstrap pass.
 - [Progress tracker](./_progress.md) — resumable notes, scope decisions, and next ADR number.
-- ADR pages live under [`decisions/records/`](./records/).
+- ADR pages live under [`docs/decisions/records/`](./records/).

@@ -60,9 +60,9 @@ The cost is a new surface area to maintain: the canonical entry contract, sessio
 
 ## References
 
-- [CHANGELOG.md](../../CHANGELOG.md) — `0.67.0 The Open Ear`
-- [actions/interview.md](../../actions/interview.md)
-- [actions/interview-reference.md](../../actions/interview-reference.md)
-- [interviews/work-operating-model.md](../../interviews/work-operating-model.md)
-- [crew-members/interviewer.md](../../crew-members/interviewer.md)
-- [docs/interview-guide.md](../../docs/interview-guide.md)
+- [CHANGELOG.md](../../../CHANGELOG.md) — `0.67.0 The Open Ear`
+- [actions/interview.md](../../../actions/interview.md)
+- [actions/interview-reference.md](../../../actions/interview-reference.md)
+- [interviews/work-operating-model.md](../../../interviews/work-operating-model.md)
+- [crew-members/interviewer.md](../../../crew-members/interviewer.md)
+- [docs/interview-guide.md](../../../docs/interview-guide.md)

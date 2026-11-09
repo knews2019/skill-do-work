@@ -56,7 +56,7 @@ REQ-307, the repository's own standing sweep, is archived `completed`: its two i
 
 ## References
 
-- [actions/capture-reference.md](../../skills/do-work/actions/capture-reference.md) — Fold-First Rule, destination 3 (canonical home)
-- [actions/work.md](../../skills/do-work/actions/work.md) — Step 1's queue status summary line
-- [tools/checks/record-commit-hash.sh](../../skills/do-work/tools/checks/record-commit-hash.sh) — the guard the deleted write bypassed
+- [actions/capture-reference.md](../../../skills/do-work/actions/capture-reference.md) — Fold-First Rule, destination 3 (canonical home)
+- [actions/work.md](../../../skills/do-work/actions/work.md) — Step 1's queue status summary line
+- [tools/checks/record-commit-hash.sh](../../../skills/do-work/tools/checks/record-commit-hash.sh) — the guard the deleted write bypassed
 - [adr-020-fold-findings-into-pending-reqs-before-minting.md](./adr-020-fold-findings-into-pending-reqs-before-minting.md) — the rule this refines

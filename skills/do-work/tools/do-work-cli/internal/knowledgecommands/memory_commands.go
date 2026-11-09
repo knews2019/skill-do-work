@@ -178,7 +178,7 @@ type memoryStoreFile struct {
 }
 
 func parseMemoryOptions(arguments []string, mutable bool) (memoryOptions, error) {
-	options := memoryOptions{memoryRoot: "memory", engine: "both", kb: "kb"}
+	options := memoryOptions{memoryRoot: "memory", engine: "both"}
 	payload := []string{}
 	seen := map[string]bool{}
 	singleton := func(name string) error {
@@ -811,7 +811,7 @@ func handleMemoryAudit(executionContext commandruntime.ExecutionContext, argumen
 	if options.engine == "both" || options.engine == "bkb" {
 		kbAbsolute, kbRelative, locateError := locateKnowledgeBase(executionContext.RepositoryRoot, options.kb)
 		if locateError != nil {
-			findings = append(findings, memoryFinding(CommandMemoryAudit, "MEMORY-AUDIT-BKB", resultmodel.SeverityWarning, options.kb, "bkb classification=Absent", resultmodel.FixabilityManual, "the user decides whether setup is warranted"))
+			findings = append(findings, memoryFinding(CommandMemoryAudit, "MEMORY-AUDIT-BKB", resultmodel.SeverityWarning, kbRelative, "bkb classification=Absent", resultmodel.FixabilityManual, "the user decides whether setup is warranted"))
 		} else {
 			classification, evidence := auditBKBEngine(executionContext.RepositoryRoot, kbAbsolute, kbRelative)
 			findings = append(findings, memoryFinding(CommandMemoryAudit, "MEMORY-AUDIT-BKB", resultmodel.SeverityInfo, kbRelative, "bkb classification="+classification+" "+evidence+"; missing pre-ledger events are not evidence of disuse", resultmodel.FixabilityManual, "the action owns the comparative recommendation"))

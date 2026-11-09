@@ -12,7 +12,7 @@ The four phases run in order. Phases 1–2 are strictly read-only reconnaissance
 - Memory has drifted: contradictions, stale relative dates ("yesterday"), broken `[[wiki-links]]`, near-duplicate pages, or an index bloated past budget.
 - After a burst of capture/ingest work — best run between bursts, not mid-task.
 - User says "dream", "consolidate my memory", "clean up the wiki", "lint and merge my notes", "memory cleanup".
-- The target is a bkb wiki (`kb/wiki/`) that has accumulated multiple `bkb lint` warnings over several sessions and the user wants a single aggressive pass.
+- The target is a bkb wiki (`<project-root>/docs/kb/wiki/`) that has accumulated multiple `bkb lint` warnings over several sessions and the user wants a single aggressive pass.
 
 **Do NOT use when:**
 - No memory directory exists — dream consolidates existing memory, never initializes it. Redirect to `do-work-knowledge bkb init` if a knowledge base is wanted.
@@ -36,6 +36,7 @@ The four phases run in order. Phases 1–2 are strictly read-only reconnaissance
 2. **Resolve the path.** If the cleaned `$ARGUMENTS` is non-empty, treat it as the target. Otherwise, try these in order — first hit wins:
    - `./memory/`
    - `./wiki/`
+   - `<project-root>/docs/kb/wiki/`
    - `./kb/wiki/`
    - `./knowledge-base/wiki/`
 
@@ -43,7 +44,7 @@ The four phases run in order. Phases 1–2 are strictly read-only reconnaissance
    ```
    No memory directory found.
 
-   I checked: ./memory, ./wiki, ./kb/wiki, ./knowledge-base/wiki.
+   I checked: ./memory, ./wiki, ./docs/kb/wiki, ./kb/wiki, ./knowledge-base/wiki.
 
    Dream consolidates an existing plain-text memory store — it does not create one.
    If you want to start a knowledge base, run: do-work-knowledge bkb init
