@@ -1,7 +1,7 @@
 ---
 id: REQ-712
 title: 'Closing second-opinion suggestion picks the best learning method for the subject'
-status: pending
+status: claimed
 created_at: 2026-11-09T12:02:46Z
 user_request: UR-164
 domain: general
@@ -22,6 +22,7 @@ estimate:
     - 6 acceptance criteria
     - cross-route regression gates
 write_set: [skills/do-work-toolbox/docs/second-opinion-presets/*.md, skills/do-work-toolbox/docs/ai-report-kit/skeleton.html, skills/do-work-toolbox/actions/ai-report-reference.md, skills/do-work-toolbox/actions/ai-report.md, skills/do-work-toolbox/docs/ai-report-guide.md, skills/do-work/tools/do-work-cli/internal/toolboxcommands/report_second_opinion_test.go]
+claimed_at: 2026-11-09T12:07:52Z
 ---
 # Closing Second-Opinion Suggestion Picks the Best Learning Method for the Subject
 ## What
