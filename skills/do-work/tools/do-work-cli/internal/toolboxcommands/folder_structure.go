@@ -191,7 +191,37 @@ func isSQLiteFile(path string) bool {
 	return read == len(sqliteHeader) && bytes.Equal(header, sqliteHeader)
 }
 
-var justRecipeHeader = regexp.MustCompile(`^@?([A-Za-z_][A-Za-z0-9_-]*)[^:=]*:([^=]|$)`)
+var justLeadingName = regexp.MustCompile(`^@?([A-Za-z_][A-Za-z0-9_-]*)`)
+
+// justRecipeName returns the recipe name when an unindented justfile line is a recipe header, and
+// "" otherwise. A header is a name, optional parameters, then a ":" that is not ":=". The scan
+// skips quoted text, because a parameter default may hold "=" or ":" (run-kanban $port="8090":,
+// url='http://localhost'); stopping at the first "=" used to hide such recipes. A line whose first
+// unquoted colon is ":=" is a variable assignment.
+func justRecipeName(line string) string {
+	match := justLeadingName.FindStringSubmatch(line)
+	if match == nil || justDirective(match[1]) {
+		return ""
+	}
+	rest := line[len(match[0]):]
+	var quote rune
+	for index, character := range rest {
+		switch {
+		case quote != 0:
+			if character == quote {
+				quote = 0
+			}
+		case character == '"' || character == '\'' || character == '`':
+			quote = character
+		case character == ':':
+			if strings.HasPrefix(rest[index+1:], "=") {
+				return ""
+			}
+			return match[1]
+		}
+	}
+	return ""
+}
 
 // justfileLogicGaps flags a recipe whose body has more than one command line. Logic belongs in
 // cmd/<name>.sh and the recipe calls it in one line.
@@ -222,9 +252,7 @@ func justfileLogicGaps(root string) []folderStructureGap {
 				continue
 			}
 			flush()
-			if match := justRecipeHeader.FindStringSubmatch(line); match != nil && !justDirective(match[1]) {
-				recipe = match[1]
-			}
+			recipe = justRecipeName(line)
 		}
 		flush()
 		return gaps
