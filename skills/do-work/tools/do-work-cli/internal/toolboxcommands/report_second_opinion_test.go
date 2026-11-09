@@ -1000,3 +1000,40 @@ func TestSecondOpinionDirectedRunNamesAndMarksPage(t *testing.T) {
 		t.Fatalf("plain decoration did not strip the launcher marks: %s", secondOpinionDecorate(once, secondOpinionDirection{}, secondOpinionTreeMarks{}))
 	}
 }
+
+// Pins: a learning-method preset the user curated (UR-164) that does not ship, and a shipped preset file that the
+// launcher cannot load. The fixture tests above fake the shipped folder, so without this no test reads the real files.
+// The toolbox is a required sibling package, so this path exists in an installed copy too.
+func TestSecondOpinionShippedPresetsLoadFromTheToolbox(t *testing.T) {
+	repo, _ := secondOpinionFixture(t)
+	shippedPrompt, err := filepath.Abs(filepath.Join("..", "..", "..", "..", "..", "do-work-toolbox", "docs", "ai-report-second-opinion-prompt.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("DO_WORK_AI_REPORT_SECOND_OPINION_PROMPT", shippedPrompt)
+	shippedFolder := filepath.Join(filepath.Dir(shippedPrompt), "second-opinion-presets")
+	entries, err := os.ReadDir(shippedFolder)
+	if err != nil {
+		t.Fatal(err)
+	}
+	shippedNames := map[string]bool{}
+	for _, entry := range entries {
+		if name, isPreset := strings.CutSuffix(entry.Name(), ".md"); isPreset {
+			shippedNames[name] = true
+		}
+	}
+	// The curated menu is the requirement itself, so it is named here; any other shipped file is still loaded below.
+	for _, method := range []string{"eli5", "80-20", "sticky-notes", "feynman", "mindmap", "quizme", "visual-studyguide", "first-principles", "socrates", "schematics"} {
+		if !shippedNames[method] {
+			t.Errorf("learning-method preset %q does not ship in %s", method, shippedFolder)
+		}
+	}
+	session := []string{"--prepare", "--backend", "claude", "--model", "claude-fable-5-1"}
+	for name := range shippedNames {
+		row := secondOpinionRows(t, secondOpinionInvoke(t, repo, append(session, "--preset", name)...))[0]
+		prompt, _ := row["prompt"].(string)
+		if row["state"] != "prepared" || row["preset"] != name || row["preset_file"] != filepath.Join(shippedFolder, name+".md") || strings.Contains(prompt, "{{") || strings.Contains(prompt, "Direction: None.") {
+			t.Errorf("shipped preset %q did not load: %v", name, row)
+		}
+	}
+}
