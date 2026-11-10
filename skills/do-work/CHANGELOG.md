@@ -10,6 +10,13 @@ For the complete release history, read this file and the archives below from new
 - [0.50.0 through 0.64.1](https://github.com/knews2019/skill-do-work/blob/main/docs/changelog/CHANGELOG-2026-04-13-up-to-v0.64.1.md)
 - [0.1.0 through 0.49.0](https://github.com/knews2019/skill-do-work/blob/main/docs/changelog/CHANGELOG-2026-04-07-up-to-v0.49.0.md)
 
+## 0.315.4 — Installed Instructions Ask for Emojis (2026-11-11)
+
+The always-on Communication Style block the installer writes into a project's agent instructions now says "Use emojis when you talk with me."
+
+- The communication-style crew member no longer lists emoji under Patterns to Avoid, so the two files agree.
+- The next install or update rewrites the managed block in an installed project.
+
 ## 0.315.3 — Work Procedures Load by Phase (2026-11-10)
 
 Work now loads planning, exploration, implementation, testing, review and finalization procedures when their phase applies. Shared rules and recovery routing remain in the work entry point.
