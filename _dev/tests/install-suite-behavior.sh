@@ -7,7 +7,7 @@ if [ "${DO_WORK_MAINTAINER_TIER:-}" != heavy ]; then
 fi
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-installer="$repo_root/tools/install-do-work-suite.sh"
+installer="$repo_root/skills/do-work/tools/install-do-work-suite.sh"
 fail_count=0
 workdir="$(mktemp -d "${TMPDIR:-/tmp}/do-work-suite-install-test.XXXXXX")"
 trap 'rm -rf "$workdir"' EXIT
@@ -117,7 +117,7 @@ assert_four_modules() {
 }
 
 if [ ! -x "$installer" ]; then
-  printf 'FAIL: tools/install-do-work-suite.sh is missing or not executable.\n' >&2
+  printf 'FAIL: skills/do-work/tools/install-do-work-suite.sh is missing or not executable.\n' >&2
   exit 1
 fi
 
@@ -164,14 +164,10 @@ done
 
 archive_parent="$workdir/archive-source"
 archive_root="$archive_parent/skill-do-work-main"
-mkdir -p "$archive_root/tools"
+mkdir -p "$archive_root"
 cp "$repo_root/VERSION" "$archive_root/VERSION"
 cp -R "$repo_root/suite" "$archive_root/suite"
 cp -R "$repo_root/skills" "$archive_root/skills"
-cp "$installer" "$archive_root/tools/install-do-work-suite.sh"
-cp "$repo_root/tools/validate-suite-manifest.sh" "$archive_root/tools/validate-suite-manifest.sh"
-cp "$repo_root/tools/replace-text-section.sh" "$archive_root/tools/replace-text-section.sh"
-chmod +x "$archive_root/tools/"*.sh
 archive_file="$workdir/do-work-suite.tar.gz"
 tar czf "$archive_file" -C "$archive_parent" skill-do-work-main
 

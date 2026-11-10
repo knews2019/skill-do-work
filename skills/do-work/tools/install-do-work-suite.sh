@@ -25,7 +25,7 @@ print_bootstrap_command() {
   mv "$archive_file.download" "$archive_file"
   mkdir -p "$bootstrap_tmp/source"
   tar xzf "$archive_file" -C "$bootstrap_tmp/source" --strip-components=1
-  bash "$bootstrap_tmp/source/tools/install-do-work-suite.sh" --project-root "$project_root" --archive "$archive_file"
+  bash "$bootstrap_tmp/source/skills/do-work/tools/install-do-work-suite.sh" --project-root "$project_root" --archive "$archive_file"
 )
 BOOTSTRAP
 }
@@ -59,9 +59,7 @@ done
 [ -n "$project_root" ] || fail '--project-root is required'
 
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
-# The preamble ships beside these launchers and inside the staged package; probe both.
 preamble_path="$script_dir/do-work-cli-preamble.sh"
-[ -f "$preamble_path" ] || preamble_path="$script_dir/../skills/do-work/tools/do-work-cli-preamble.sh"
 [ -f "$preamble_path" ] || fail 'do-work-cli-preamble.sh is missing beside the installer'
 # shellcheck source-path=SCRIPTDIR source=do-work-cli-preamble.sh
 . "$preamble_path"

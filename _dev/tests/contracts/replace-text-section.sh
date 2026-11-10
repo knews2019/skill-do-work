@@ -6,9 +6,9 @@ fail_count=0
 # Managed Just sections are a byte-preserving ownership boundary, not a prose convention.
 # Exercise the real utility across replacement, append, creation, malformed
 # markers, filename variants, spaces, modes, idempotence, and Just parsing.
-replace_section_tool="$repo_root/tools/replace-text-section.sh"
+replace_section_tool="$repo_root/skills/do-work/tools/replace-text-section.sh"
 if [ ! -x "$replace_section_tool" ]; then
-  printf 'FAIL: tools/replace-text-section.sh is missing or not executable — managed recipe ownership has no implementation.\n' >&2
+  printf 'FAIL: skills/do-work/tools/replace-text-section.sh is missing or not executable — managed recipe ownership has no implementation.\n' >&2
   fail_count=$((fail_count + 1))
 else
   section_workdir="$(mktemp -d)"

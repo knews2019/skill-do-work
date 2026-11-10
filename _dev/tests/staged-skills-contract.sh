@@ -90,10 +90,7 @@ legacy_runtime_paths=(
   interviews
   prompts
   specs
-  tools/checks
-  tools/do-work-update.sh
-  tools/queue-kanban
-  tools/prime-do-work-update.md
+  tools
 )
 # `find … -print -quit | grep -q .` reported find's own failure as "no leftover files": under
 # pipefail a find that prints a leftover path and then exits non-zero on an unreadable
@@ -114,15 +111,6 @@ for legacy_runtime_path in "${legacy_runtime_paths[@]}"; do
       fail "legacy root runtime must be retired at modular cutover: $legacy_runtime_path ($legacy_leftover_path)"
     fi
   fi
-done
-
-for retained_bootstrap_tool in \
-  tools/do-work-cli-preamble.sh \
-  tools/install-do-work-suite.sh \
-  tools/validate-suite-manifest.sh \
-  tools/replace-text-section.sh
-do
-  require_file "$retained_bootstrap_tool"
 done
 
 board_files=(
@@ -857,19 +845,6 @@ if [ -z "$board_help_contract" ]; then
 elif ! grep -Fq "$board_help_contract" "$repo_root/skills/do-work/actions/help.md"; then
   fail "core help must mirror the board command and modes: $board_help_contract"
 fi
-
-# Derive the mirrored set from what is actually on disk: any canonical tools/*.sh
-# that is also staged must match byte-for-byte. A hand-maintained list here went
-# stale the moment a fourth mirrored tool shipped (REQ-217).
-for canonical_tool_path in "$repo_root"/tools/*.sh; do
-  [ -f "$canonical_tool_path" ] || continue
-  mirrored_tool_name="${canonical_tool_path##*/}"
-  staged_tool_path="$repo_root/skills/do-work/tools/$mirrored_tool_name"
-  if [ -f "$staged_tool_path" ] \
-    && ! cmp -s "$canonical_tool_path" "$staged_tool_path"; then
-    fail "staged core $mirrored_tool_name must be byte-identical to canonical $mirrored_tool_name"
-  fi
-done
 
 for board_file in "${board_files[@]}"; do
   require_file "$board_file"

@@ -19,7 +19,7 @@ Run this exact command from the root of the Git repository where you want the su
   mv "$archive_file.download" "$archive_file"
   mkdir -p "$bootstrap_tmp/source"
   tar xzf "$archive_file" -C "$bootstrap_tmp/source" --strip-components=1
-  bash "$bootstrap_tmp/source/tools/install-do-work-suite.sh" --project-root "$project_root" --archive "$archive_file"
+  bash "$bootstrap_tmp/source/skills/do-work/tools/install-do-work-suite.sh" --project-root "$project_root" --archive "$archive_file"
 )
 ```
 

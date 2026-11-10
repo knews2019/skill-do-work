@@ -3,7 +3,7 @@
 set -uo pipefail
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-validator="$repo_root/tools/validate-suite-manifest.sh"
+validator="$repo_root/skills/do-work/tools/validate-suite-manifest.sh"
 fixture_root="$(mktemp -d)"
 fail_count=0
 
@@ -76,7 +76,7 @@ expect_fail() {
 }
 
 if [ ! -f "$validator" ]; then
-  printf 'FAIL: tools/validate-suite-manifest.sh is missing.\n' >&2
+  printf 'FAIL: skills/do-work/tools/validate-suite-manifest.sh is missing.\n' >&2
   exit 1
 fi
 

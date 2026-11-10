@@ -50,7 +50,6 @@ func TestReleaseRefusedWhenTheImplementationShipsNothing(t *testing.T) {
 		{"release metadata alone is not a shipped change", []string{"skills/do-work/VERSION", "skills/do-work/CHANGELOG.md"}, true},
 		{"a shipped action file", []string{"_dev/tests/some-probe.sh", "skills/do-work/actions/work.md"}, false},
 		{"the suite declaration", []string{"suite/modules.tsv"}, false},
-		{"the installer tools", []string{"tools/install-do-work-suite.sh"}, false},
 		// The failure this pins: REQ-625 changed only the board package, which is
 		// declared but carries no VERSION, and the guard refused the release.
 		{"a declared module without its own VERSION", []string{"skills/do-work-board/tools/queue-kanban/verify.go"}, false},

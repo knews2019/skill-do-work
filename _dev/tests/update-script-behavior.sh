@@ -11,10 +11,10 @@ repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 # shellcheck source=_dev/tests/fixture-repo.sh
 source "$repo_root/_dev/tests/fixture-repo.sh"
 update_script="$repo_root/skills/do-work/tools/do-work-update.sh"
-manifest_validator="$repo_root/tools/validate-suite-manifest.sh"
-suite_installer="$repo_root/tools/install-do-work-suite.sh"
-section_replacer="$repo_root/tools/replace-text-section.sh"
-upstream_fetcher_source="$repo_root/tools/fetch-upstream-archive.sh"
+manifest_validator="$repo_root/skills/do-work/tools/validate-suite-manifest.sh"
+suite_installer="$repo_root/skills/do-work/tools/install-do-work-suite.sh"
+section_replacer="$repo_root/skills/do-work/tools/replace-text-section.sh"
+upstream_fetcher_source="$repo_root/skills/do-work/tools/fetch-upstream-archive.sh"
 do_work_cli_launcher="$repo_root/skills/do-work/tools/do-work-cli.sh"
 do_work_cli_module="$repo_root/skills/do-work/tools/do-work-cli"
 fail_count=0
@@ -198,14 +198,9 @@ build_suite_install() {
 
 build_suite_tree() {
   local tree_root="$1" module_name module_path
-  mkdir -p "$tree_root/suite" "$tree_root/tools" "$tree_root/skills"
+  mkdir -p "$tree_root/suite" "$tree_root/skills"
   printf '0.0.2\n' > "$tree_root/VERSION"
   cp "$repo_root/suite/modules.tsv" "$tree_root/suite/modules.tsv"
-  cp "$manifest_validator" "$tree_root/tools/validate-suite-manifest.sh"
-  cp "$suite_installer" "$tree_root/tools/install-do-work-suite.sh"
-  cp "$section_replacer" "$tree_root/tools/replace-text-section.sh"
-  cp "$upstream_fetcher_source" "$tree_root/tools/fetch-upstream-archive.sh"
-  chmod +x "$tree_root/tools/"*.sh
   for module_name in do-work do-work-board do-work-knowledge do-work-toolbox; do
     module_path="$tree_root/skills/$module_name"
     mkdir -p "$module_path"
@@ -416,8 +411,8 @@ archive_installer_marker="$fixture_root/archive-installer-ran"
 build_suite_tree "$hostile_installer_tree"
 printf '%s\n' '#!/usr/bin/env bash' \
   ': > "$ARCHIVE_INSTALLER_MARKER"' \
-  'exit 91' > "$hostile_installer_tree/tools/install-do-work-suite.sh"
-chmod +x "$hostile_installer_tree/tools/install-do-work-suite.sh"
+  'exit 91' > "$hostile_installer_tree/skills/do-work/tools/install-do-work-suite.sh"
+chmod +x "$hostile_installer_tree/skills/do-work/tools/install-do-work-suite.sh"
 printf '%s\n' '#!/usr/bin/env bash' \
   ': > "$ARCHIVE_INSTALLER_MARKER"' \
   'exit 92' > "$hostile_installer_tree/skills/do-work/tools/replace-text-section.sh"
@@ -455,8 +450,8 @@ for unsafe_case in malformed traversal; do
   else
     printf 'source\tdestination\n../escape\t.claude/skills/do-work\n' \
       > "$unsafe_tree/suite/modules.tsv"
-    printf '#!/usr/bin/env bash\nexit 0\n' > "$unsafe_tree/tools/validate-suite-manifest.sh"
-    chmod +x "$unsafe_tree/tools/validate-suite-manifest.sh"
+    printf '#!/usr/bin/env bash\nexit 0\n' > "$unsafe_tree/skills/do-work/tools/validate-suite-manifest.sh"
+    chmod +x "$unsafe_tree/skills/do-work/tools/validate-suite-manifest.sh"
   fi
   archive_suite_tree "$unsafe_tree" "$unsafe_tarball"
   unsafe_project="$fixture_root/$unsafe_case-project"
@@ -557,9 +552,9 @@ fi
 # The reported incident was a sustained 429 across ~2 minutes: retry alone does not
 # close it, and `git clone` was the only probe that succeeded. These three cases pin
 # the fallback, the export-ignore guarantee, and the preserved-target failure path.
-archive_fetcher="$repo_root/tools/fetch-upstream-archive.sh"
+archive_fetcher="$repo_root/skills/do-work/tools/fetch-upstream-archive.sh"
 if [ ! -x "$archive_fetcher" ]; then
-  record_failure 'upstream fetcher: tools/fetch-upstream-archive.sh must exist and be executable'
+  record_failure 'upstream fetcher: skills/do-work/tools/fetch-upstream-archive.sh must exist and be executable'
 else
   fetch_root="$fixture_root/upstream-fetch"
   mkdir -p "$fetch_root"
@@ -789,7 +784,7 @@ fi
 # The public shell entry points must still exist as launchers over the command.
 for suite_launcher in \
   "$repo_root/skills/do-work/tools/do-work-update.sh" \
-  "$repo_root/tools/install-do-work-suite.sh"; do
+  "$repo_root/skills/do-work/tools/install-do-work-suite.sh"; do
   if ! grep -q 'do-work-cli' "$suite_launcher"; then
     record_failure "upstream fetcher: ${suite_launcher##*/} no longer delegates to do-work-cli"
   fi
