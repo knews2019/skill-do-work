@@ -24,6 +24,8 @@ required_lessons: [skills/do-work/tools/lessons-do-work-update.md]
 claimed_at: 2026-11-09T23:39:43Z
 route: B
 write_set: [skills/do-work-board/tools/run-kanban.sh, skills/do-work-board/tools/kanban-static.sh, skills/do-work-board/justfile.template, justfile, skills/do-work-board/SKILL.md, _dev/tests/contracts/queue-kanban.sh, _dev/tests/staged-skills-contract.sh, skills/do-work/tools/do-work-cli/internal/toolboxcommands/folder_structure_test.go]
+dispatch_at: 2026-11-10T00:35:00Z
+builder_handback_at: 2026-11-10T00:43:51Z
 ---
 # Suite-managed justfile recipes call a script in one line
 ## What
