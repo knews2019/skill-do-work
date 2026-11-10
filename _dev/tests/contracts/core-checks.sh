@@ -751,8 +751,9 @@ fi
 
 # Finalization tail prose keeps action judgment while advance and the existing
 # finalizer own every deterministic archive/release/commit mutation.
-work_step_eight="$(awk '/^### Step 8:/{capture=1} /^### Step 9:/{capture=0} capture' "$work_action")"
-work_step_nine="$(awk '/^### Step 9:/{capture=1} /^### Step 10:/{capture=0} capture' "$work_action")"
+work_finalization="$core_root/actions/work-finalization-reference.md"
+work_step_eight="$(awk '/^### Step 8:/{capture=1} /^### Step 9:/{capture=0} capture' "$work_finalization")"
+work_step_nine="$(awk '/^### Step 9:/{capture=1} /^### Step 10:/{capture=0} capture' "$work_finalization")"
 reference_changelog="$(awk '/^## Changelog Entry Procedure \(Step 9\)/{capture=1} /^## Commit & Metadata-Commit Procedure \(Step 9\)/{capture=0} capture' "$work_reference")"
 reference_commit="$(awk '/^## Commit & Metadata-Commit Procedure \(Step 9\)/{capture=1} /^## Progress Reporting Example/{capture=0} capture' "$work_reference")"
 for judgment_token in 'Fold-First follow-ups' 'Sweep consolidation and impact stamping' 'Terminal judgment' 'Release and lesson judgment' 'author exactly one strict manifest'; do
@@ -803,21 +804,21 @@ import sys
 repo_root = Path(sys.argv[1])
 shared_path = "skills/do-work/crew-members/shared-principles.md"
 supply_path = "skills/do-work/crew-members/supply-chain.md"
-work_path = "skills/do-work/actions/work.md"
+work_path = "skills/do-work/actions/work-implementation-reference.md"
 # One row per crew-member load that an action rewrite must not silently drop:
 # (crew file, reader action, active step, line pattern inside that step).
 crew_loads = [
     (shared_path, work_path, "6", r"^(?:[0-9]+[a-z]?\. )?(?:\*\*)?(?:Always load|Read)(?:\*\*)? `crew-members/shared-principles\.md`"),
     (shared_path, "skills/do-work/actions/review-work.md", "2", r"^(?:[0-9]+[a-z]?\. )?(?:\*\*)?(?:Always load|Read)(?:\*\*)? `crew-members/shared-principles\.md`"),
     (supply_path, work_path, "6", r"^(?:[0-9]+[a-z]?\. )?\*\*Conditionally load\*\* `crew-members/supply-chain\.md`"),
-    (supply_path, work_path, "4", r"Spawn a \*\*Plan agent\*\* with[^\n]*`crew-members/supply-chain\.md` when the REQ creates"),
+    (supply_path, "skills/do-work/actions/work-planning-reference.md", "4", r"Spawn a \*\*Plan agent\*\* with[^\n]*`crew-members/supply-chain\.md` when the REQ creates"),
 ]
 source_files = {str(p.relative_to(repo_root)): p.read_text() for p in (repo_root / "skills").rglob("*.md")}
 
 def active_step(source_text, step_number):
     source_text = re.sub(r"<!--.*?-->", "", source_text, flags=re.S)
     source_text = re.sub(r"^(`{3,}|~{3,}).*?^\1[^\n]*$", "", source_text, flags=re.M | re.S)
-    match = re.search(r"^### Step " + step_number + r":.*?(?=^### |\Z)", source_text, re.M | re.S)
+    match = re.search(r"^### Step " + step_number + r":.*?(?=^#{1,3} |\Z)", source_text, re.M | re.S)
     return match.group() if match else ""
 
 def rationalization_rows(file_sources):

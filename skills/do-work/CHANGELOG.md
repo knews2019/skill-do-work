@@ -10,6 +10,13 @@ For the complete release history, read this file and the archives below from new
 - [0.50.0 through 0.64.1](https://github.com/knews2019/skill-do-work/blob/main/docs/changelog/CHANGELOG-2026-04-13-up-to-v0.64.1.md)
 - [0.1.0 through 0.49.0](https://github.com/knews2019/skill-do-work/blob/main/docs/changelog/CHANGELOG-2026-04-07-up-to-v0.49.0.md)
 
+## 0.315.3 — Work Procedures Load by Phase (2026-11-10)
+
+Work now loads planning, exploration, implementation, testing, review and finalization procedures when their phase applies. Shared rules and recovery routing remain in the work entry point.
+
+- Preserve existing checks, lesson discovery and reference contracts in adjacent phase companions.
+- Assess instruction reading in UTF-8 bytes as well as lines, with reproducible simple-fix, complex-change and review-only walkthroughs.
+
 ## 0.315.2 — Bootstrap Runs the Packaged Installer; Root tools/ Copies Removed (2026-11-10)
 
 The README install block now runs the installer from `skills/do-work/tools/` inside the downloaded archive, and the five duplicate scripts in this repository's root `tools/` folder are gone.

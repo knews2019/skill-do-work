@@ -43,12 +43,12 @@ require_action_phrase() {
 # Every entry point into the loop reads the same per-record contract, so serial
 # `run` and the sole-authority verb cannot drift into different stop rules.
 if [ -n "$set_aside_code" ]; then
-  for recovery_action in work.md work-reference.md run-with-recovery.md; do
+  for recovery_action in work-selection-reference.md work-reference.md run-with-recovery.md; do
     require_action_phrase "$recovery_action" "$set_aside_code" \
       'which reason code marks a REQ the run set aside'
   done
 fi
-require_action_phrase work.md 'never as one pass/fail gate for the run' \
+require_action_phrase work-selection-reference.md 'never as one pass/fail gate for the run' \
   'that a refused record excludes its own REQ rather than stopping the loop'
 require_action_phrase work-reference.md 'one record at a time' \
   'that finalization records are read per REQ'

@@ -31,7 +31,7 @@
 - Detect the languages in use by checking for project markers (`package.json`, `Cargo.toml`, `go.mod`, `requirements.txt`, `Gemfile`, `composer.json`, `pom.xml`, `*.csproj`, etc.) and scanning file extensions
 - Glob for source files matching the detected languages — adapt the extensions to what's actually in the repo (e.g., `*.go` for Go, `*.rs` for Rust, `*.java` for Java, `*.rb` for Ruby, `*.sh` for shell, `*.js,*.ts,*.jsx,*.tsx` for JS/TS, `*.py` for Python, etc.)
 - **Skip vendored/generated files**: ignore `node_modules/`, `vendor/`, `dist/`, `build/`, `.next/`, `__pycache__/`, `*.min.js`, `*.min.css`, `*.bundle.*`, `*.generated.*`, lock files, and similar
-- Build a file list with approximate line counts
+- Build a file list with approximate line counts. For instruction files, also report UTF-8 bytes (for example, `wc -c`) and the conditional read set for each assessed task. Count each loaded file or explicitly selected section once per context, state the boundaries, and compare the same task before/after. If estimating tokens, name the tokenizer or approximation; line counts alone do not measure reading volume. Do not infer time, cost, or quality improvements from size.
 - Note the primary language(s) and frameworks in use
 
 ### Step 3: Identify Refactoring Candidates

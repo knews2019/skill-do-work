@@ -318,6 +318,7 @@ debug_rule_mention_pin=3
 debug_rule_marker_pattern='console\.log|debug artifacts?|\b(debug''ger|TO''DO|FIX''ME)\b'
 debug_rule_scanned_files=(
   "$repo_root/skills/do-work/actions/work.md"
+  "$repo_root"/skills/do-work/actions/work-*-reference.md
   "$repo_root/skills/do-work/actions/review-work.md"
   "$repo_root/skills/do-work/actions/work-reference.md"
 )

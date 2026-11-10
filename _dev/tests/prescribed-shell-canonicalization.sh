@@ -89,7 +89,7 @@ for core_site in \
   skills/do-work/actions/commit.md \
   skills/do-work/actions/capture.md \
   skills/do-work/actions/review-work.md \
-  skills/do-work/actions/work.md \
+  skills/do-work/actions/work-implementation-reference.md \
   skills/do-work/actions/work-reference.md \
   skills/do-work/crew-members/background-agents.md
 do
