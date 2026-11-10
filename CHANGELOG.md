@@ -10,6 +10,14 @@ For the complete release history, read this file and the archives below from new
 - [0.50.0 through 0.64.1](https://github.com/knews2019/skill-do-work/blob/main/docs/changelog/CHANGELOG-2026-04-13-up-to-v0.64.1.md)
 - [0.1.0 through 0.49.0](https://github.com/knews2019/skill-do-work/blob/main/docs/changelog/CHANGELOG-2026-04-07-up-to-v0.49.0.md)
 
+## 0.315.1 — Board Recipes Call Shipped Scripts in One Line (2026-11-10)
+
+The `run-kanban` and `kanban-static` recipes are now one-line calls to scripts shipped with the board, so the suite's own recipes no longer show up as `FOLDER-STRUCTURE-JUST-LOGIC` gaps in `folder-structure-check`.
+
+- The logic moved unchanged into `.claude/skills/do-work-board/tools/run-kanban.sh` and `kanban-static.sh`: the same port check, the same stop of a stale board on the port, the same messages. `do-work update` rewrites the managed recipe block and installs the scripts in the same step.
+- `just` now prints the one-line script call when a recipe starts, in place of the long inline shell.
+- This repository's dated changelog archives moved to `docs/changelog/`; the archive links at the top of this file point there. Installed copies never held the archives.
+
 ## 0.315.0 — Knowledge Base and Decision Log Live Under docs/ (2026-11-09)
 
 The suite now keeps its knowledge base in `docs/kb/` and its decision (ADR) log in `docs/decisions/`, so an installed repository has two fewer root folders.
