@@ -927,10 +927,14 @@ fi
 
 if [ -f "$repo_root/skills/do-work-board/justfile.template" ]; then
   board_template="${STAGED_SKILLS_BOARD_TEMPLATE:-$repo_root/skills/do-work-board/justfile.template}"
-  board_recipe_count="$(grep -cF '.claude/skills/do-work-board/tools/queue-kanban' "$board_template" || true)"
+  # Four board recipes reach the board tools: run-kanban-cli and kanban-summary call queue-kanban,
+  # run-kanban and kanban-static call the shipped scripts that hold their logic.
+  board_recipe_count="$(grep -cF '.claude/skills/do-work-board/tools/' "$board_template" || true)"
   if [ "$board_recipe_count" -ne 4 ]; then
-    fail "board Just template must use the do-work-board queue-kanban path in exactly four board recipes (found $board_recipe_count)"
+    fail "board Just template must use the do-work-board tools path in exactly four board recipes (found $board_recipe_count)"
   fi
+  require_file skills/do-work-board/tools/run-kanban.sh
+  require_file skills/do-work-board/tools/kanban-static.sh
   if ! python3 - "$board_template" <<'PY'
 import pathlib
 import re
@@ -980,14 +984,16 @@ PY
     || [ "$(grep -cF '# <<< do-work:recipes <<<' "$board_template")" -ne 1 ]; then
     fail 'board Just template must contain exactly one managed do-work:recipes section'
   fi
+  # The safety strings live in the script the run-kanban recipe calls, so read that file.
+  run_kanban_script="$repo_root/skills/do-work-board/tools/run-kanban.sh"
   for board_recipe_contract in \
     '[ "$wait_count" -lt 320 ]' \
     'remaining_listener_pid=' \
     'listener_executable_name=' \
     'serve --open'
   do
-    if ! grep -Fq "$board_recipe_contract" "$board_template"; then
-      fail "board Just template lost safety/launch contract: $board_recipe_contract"
+    if ! grep -Fq "$board_recipe_contract" "$run_kanban_script" 2>/dev/null; then
+      fail "board run-kanban script lost safety/launch contract: $board_recipe_contract"
     fi
   done
 fi

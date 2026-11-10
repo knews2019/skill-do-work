@@ -1,6 +1,8 @@
 package toolboxcommands
 
 import (
+	"os"
+	"path/filepath"
 	"reflect"
 	"sort"
 	"testing"
@@ -115,5 +117,24 @@ func TestFolderStructureCheckReportsEachGapClass(t *testing.T) {
 		if key == "FOLDER-STRUCTURE-ROOT-ENTRY skills-lock.json" || key == "FOLDER-STRUCTURE-ROOT-ENTRY node-source/" {
 			t.Fatalf("--allow did not clear %s", key)
 		}
+	}
+}
+
+// The suite installs this template as every consumer's managed justfile block, and the check only
+// ever reads a repository's root justfile, so nothing else would see a consumer-side gap. Pins the
+// failure where every consumer's folder-structure-check reported FOLDER-STRUCTURE-JUST-LOGIC for
+// the suite's own run-kanban and kanban-static recipes.
+func TestShippedBoardTemplateRecipesHoldNoLogic(t *testing.T) {
+	shippedTemplatePath := filepath.Join("..", "..", "..", "..", "..", "do-work-board", "justfile.template")
+	shippedTemplate, err := os.ReadFile(shippedTemplatePath)
+	if err != nil {
+		t.Fatalf("read shipped board template: %v", err)
+	}
+	consumerRoot := t.TempDir()
+	if err := os.WriteFile(filepath.Join(consumerRoot, "justfile"), shippedTemplate, 0o644); err != nil {
+		t.Fatalf("write consumer justfile: %v", err)
+	}
+	if gaps := justfileLogicGaps(consumerRoot); len(gaps) != 0 {
+		t.Fatalf("shipped board template recipes hold logic: %v", gaps)
 	}
 }
