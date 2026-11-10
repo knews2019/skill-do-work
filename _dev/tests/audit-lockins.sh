@@ -57,10 +57,12 @@ if [ -n "$callerless_shims" ]; then
   done <<< "$callerless_shims"
 fi
 
-# Shipped shell delegating check (REQ-551 companion)
+# Shipped shell delegating check (REQ-551 companion). A shipped .sh calls one of the suite's Go
+# tools: do-work-cli, or the board's own queue-kanban binary (REQ-717: the run-kanban and
+# kanban-static recipe scripts build and run ./queue-kanban).
 non_delegating="$(
   find "$repo_root/skills" "$repo_root/tools" -name '*.sh' | while read -r f; do
-    rg -q do-work-cli "$f" || echo "NON-DELEGATING: $f"
+    rg -q -e do-work-cli -e '\./queue-kanban ' "$f" || echo "NON-DELEGATING: $f"
   done
 )"
 if [ -n "$non_delegating" ]; then

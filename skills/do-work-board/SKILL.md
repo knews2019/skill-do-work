@@ -23,5 +23,6 @@ Pass `serve`, `static`, `summary`, `cli`, `verify`, `--port N`, and `--out DIR` 
 - Reviews, inspection, and other repository utilities live under sibling `../do-work-toolbox/`.
 - The full-suite installer owns reconciliation of `justfile.template`; this package owns the template bytes.
 - `tools/queue-kanban/` is the only board implementation in this package and must build from its own Go module.
+- `tools/run-kanban.sh` and `tools/kanban-static.sh` hold the logic of the managed `run-kanban` and `kanban-static` recipes, which call them in one line.
 
 Read the selected action completely before running it. Serve mode is a long-running process and may be backgrounded when the harness supports it; all other modes run in the foreground.
