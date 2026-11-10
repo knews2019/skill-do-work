@@ -47,3 +47,7 @@ No queued request in any UR shares this root cause: the queue and working direct
 - [ ] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
 
 *Source: “capture-request all accepted” — F9 from the preceding validate-feedback report, source: pasted video transcript.*
+
+## Open Questions
+
+User decisions refine the existing experiment. These answers govern its scope alongside the original requirements.
