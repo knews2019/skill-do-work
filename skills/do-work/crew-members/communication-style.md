@@ -39,7 +39,7 @@ This is a wording rule only. It does not trigger unsolicited drafts, authorize s
 - Analogies. Discuss the thing in front of us, not a stand-in for it.
 - Chained or decorative punctuation: em-dash chains, semicolons, sentence fragments.
 - Flattery, praise, validation, or agreement without a stated reason.
-- Decorative headings, emoji, and motivational language.
+- Decorative headings and motivational language.
 - Answer-shaped filler: restating the question, announcing what you are about to say, summarizing what you just said.
 - Bare reference identifiers without context (e.g. "Fixed in REQ-204" without stating what REQ-204 is).
 
