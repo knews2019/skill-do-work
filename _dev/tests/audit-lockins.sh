@@ -45,7 +45,7 @@ callerless_shims="$(
   for f in "$repo_root"/skills/do-work-toolbox/scripts/*.sh; do
     [ -e "$f" ] || continue
     b=$(basename "$f")
-    n=$(rg -l --fixed-strings "$b" "$repo_root/skills" "$repo_root/tools" "$repo_root/suite" "$repo_root/README.md" "$repo_root/CLAUDE.md" "$repo_root/_dev/primes" --glob '!*CHANGELOG*' | grep -v "/$b$" | wc -l | tr -d ' ')
+    n=$(rg -l --fixed-strings "$b" "$repo_root/skills" "$repo_root/suite" "$repo_root/README.md" "$repo_root/CLAUDE.md" "$repo_root/_dev/primes" --glob '!*CHANGELOG*' | grep -v "/$b$" | wc -l | tr -d ' ')
     [ "$n" -eq 0 ] && echo "$f"
   done
 )"
@@ -61,7 +61,7 @@ fi
 # tools: do-work-cli, or the board's own queue-kanban binary (REQ-717: the run-kanban and
 # kanban-static recipe scripts build and run ./queue-kanban).
 non_delegating="$(
-  find "$repo_root/skills" "$repo_root/tools" -name '*.sh' | while read -r f; do
+  find "$repo_root/skills" -name '*.sh' | while read -r f; do
     rg -q -e do-work-cli -e '\./queue-kanban ' "$f" || echo "NON-DELEGATING: $f"
   done
 )"
@@ -140,19 +140,18 @@ if [ -n "$dead_routing_tokens" ]; then
 fi
 
 # Finding 2: cli-launcher-preamble-copied (REQ-553)
-# The two exempt paths are named in full, not by trailing path shape: a third copy at
+# The exempt path is named in full, not by trailing path shape: a second copy at
 # skills/do-work-toolbox/tools/do-work-cli-preamble.sh is exactly the hand-rolled preamble
 # this pins at zero, and a suffix filter would read it as the exempt file.
 hand_rolled_preambles="$(
   rg -l --glob '*.sh' 'for cli_candidate in|^launcher_arguments=\(--format text\)$' \
-    "$repo_root/skills" "$repo_root/tools" 2>/dev/null \
-    | grep -vxF -e "$repo_root/tools/do-work-cli-preamble.sh" \
-                -e "$repo_root/skills/do-work/tools/do-work-cli-preamble.sh"
+    "$repo_root/skills" 2>/dev/null \
+    | grep -vxF -e "$repo_root/skills/do-work/tools/do-work-cli-preamble.sh"
 )"
 if [ -n "$hand_rolled_preambles" ]; then
   while IFS= read -r f; do
     [ -z "$f" ] && continue
-    printf 'FAIL: hand-rolled do-work-cli launcher preamble outside the preamble pair: %s\n' "$f" >&2
+    printf 'FAIL: hand-rolled do-work-cli launcher preamble outside the shared preamble: %s\n' "$f" >&2
     failure_count=$((failure_count + 1))
   done <<< "$hand_rolled_preambles"
 fi

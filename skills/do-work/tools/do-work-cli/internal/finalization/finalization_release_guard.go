@@ -22,9 +22,9 @@ import (
 // What ships is keyed on the declaration, not on a list: every module source
 // suite/modules.tsv names, whether or not that module carries its own VERSION (the
 // board, knowledge and toolbox packages install by the same route as the core and
-// ride its version), plus the declaration's own directory and the installer tools
-// that consume it. A repository that declares no versioned module is a consumer
-// project, whose releases are its own package's business, and is not guarded.
+// ride its version), plus the declaration's own directory. A repository that declares
+// no versioned module is a consumer project, whose releases are its own package's
+// business, and is not guarded.
 func releaseShippedChangeError(repositoryRoot string, manifest Manifest) error {
 	tracked, err := enumerateTrackedReleasePaths(repositoryRoot)
 	if err != nil {
@@ -42,10 +42,8 @@ func releaseShippedChangeError(repositoryRoot string, manifest Manifest) error {
 		return nil
 	}
 	roots := shippedSources
-	for _, root := range []string{"suite", "tools"} {
-		if !slices.Contains(roots, root) {
-			roots = append(roots, root)
-		}
+	if !slices.Contains(roots, "suite") {
+		roots = append(roots, "suite")
 	}
 	sort.Strings(roots)
 
