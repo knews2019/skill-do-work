@@ -10,6 +10,7 @@ tdd: false
 maintenance: false
 impact: impact-user-visible
 effort_estimate: effort-substantive
+status_changed_at: 2026-11-10T23:23:24Z
 ---
 # Reproduce Instruction Retention Across Compaction
 
@@ -51,3 +52,27 @@ No queued request in any UR shares this root cause: the queue and working direct
 ## Open Questions
 
 User decisions refine the existing experiment. These answers govern its scope alongside the original requirements.
+- [x] **F5** — How should the experiment handle potentially lost procedure and crew instructions? → Test the current behavior first (recommended): record which files are re-read and which rules survive; propose a fix only if evidence shows a failure.
+- [x] **F6** — Should instruction-restoration hooks be investigated or implemented? → Drop the hook approach: keep the workflow dependent on explicit file loading and durable request records.
+- [x] **F7** — Should the compaction experiment cover Claude Code? → Include Claude Code (recommended): test our actual skill and referenced files across compaction, recording the installed version.
+- [x] **F8** — Should the compaction experiment test skill restoration in the actual Codex setup? → Include the actual Codex setup (recommended): record the harness and model, then test skill-body and referenced-file retention.
+
+
+## Answer Notes
+
+- 2026-11-10 F5: Test the current behavior first (recommended): record which files are re-read and which rules survive; propose a fix only if evidence shows a failure.
+> ```
+> Test the current behavior first (recommended): record which files are re-read and which rules survive; propose a fix only if evidence shows a failure.
+> ```
+- 2026-11-10 F6: Drop the hook approach: keep the workflow dependent on explicit file loading and durable request records.
+> ```
+> Drop the hook approach: keep the workflow dependent on explicit file loading and durable request records.
+> ```
+- 2026-11-10 F7: Include Claude Code (recommended): test our actual skill and referenced files across compaction, recording the installed version.
+> ```
+> Include Claude Code (recommended): test our actual skill and referenced files across compaction, recording the installed version.
+> ```
+- 2026-11-10 F8: Include the actual Codex setup (recommended): record the harness and model, then test skill-body and referenced-file retention.
+> ```
+> Include the actual Codex setup (recommended): record the harness and model, then test skill-body and referenced-file retention.
+> ```
