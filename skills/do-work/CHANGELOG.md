@@ -10,6 +10,14 @@ For the complete release history, read this file and the archives below from new
 - [0.50.0 through 0.64.1](https://github.com/knews2019/skill-do-work/blob/main/docs/changelog/CHANGELOG-2026-04-13-up-to-v0.64.1.md)
 - [0.1.0 through 0.49.0](https://github.com/knews2019/skill-do-work/blob/main/docs/changelog/CHANGELOG-2026-04-07-up-to-v0.49.0.md)
 
+## 0.315.2 — Bootstrap Runs the Packaged Installer; Root tools/ Copies Removed (2026-11-10)
+
+The README install block now runs the installer from `skills/do-work/tools/` inside the downloaded archive, and the five duplicate scripts in this repository's root `tools/` folder are gone.
+
+- `install-do-work-suite.sh --print-bootstrap-command` prints the new `source/skills/do-work/tools/` path.
+- Updates from older versions are unaffected: an installed updater never runs a script from the downloaded archive.
+- A saved copy of the old README block stops with "No such file or directory" before it writes anything. Copy the current README block.
+
 ## 0.315.1 — Board Recipes Call Shipped Scripts in One Line (2026-11-10)
 
 The `run-kanban` and `kanban-static` recipes are now one-line calls to scripts shipped with the board, so the suite's own recipes no longer show up as `FOLDER-STRUCTURE-JUST-LOGIC` gaps in `folder-structure-check`.
