@@ -24,6 +24,7 @@ write_set: [skills/do-work/tools/install-do-work-suite.sh, README.md, skills/do-
 claimed_at: 2026-11-09T23:39:42Z
 route: B
 dispatch_at: 2026-11-10T00:58:12Z
+builder_handback_at: 2026-11-10T01:05:04Z
 ---
 # Move the root installer scripts from tools/ to cmd/
 ## What
