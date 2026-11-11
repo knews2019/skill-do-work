@@ -1,4 +1,0 @@
-[REQ-718] archive compaction investigation with Codex capability blocker
-
-Preserve live Claude compaction and actual Codex/T3 baseline evidence.
-Actual Codex/T3 compaction proof remains untested; classify environment failure.

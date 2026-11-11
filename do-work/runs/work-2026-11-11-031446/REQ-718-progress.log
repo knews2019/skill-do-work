@@ -1,7 +1,0 @@
-2026-11-11T01:16:09.179244+00:00 starting canonical pre-build gate
-2026-11-11T01:18:56.489588+00:00 canonical pre-build gate passed exit 0; dispatching two isolated workers
-2026-11-11T01:25:04.506694+00:00 both handbacks landed; beginning serial integration
-2026-11-11T01:25:58.842322+00:00 starting one serial final canonical gate on integrated artifacts
-2026-11-11T01:29:09.396698+00:00 final gate first exit 1 in existing strict browser timeout; required same-argv retry launched under same lock
-Final canonical retry exit 0; lock removed; preparing failed/environment finalization.
-Step 9 cleanup_complete; failed/environment; both clean merged worktrees removed; final report saved; no Step 10.
