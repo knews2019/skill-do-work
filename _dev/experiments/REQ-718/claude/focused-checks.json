@@ -1,0 +1,62 @@
+{
+  "python_syntax": "PASS",
+  "full_read_results": [
+    {
+      "file": "skills/do-work/SKILL.md",
+      "numbered_lines": 71,
+      "tool_result_row": 4,
+      "full_content_matches": true
+    },
+    {
+      "file": "skills/do-work/actions/work.md",
+      "numbered_lines": 219,
+      "tool_result_row": 6,
+      "full_content_matches": true
+    },
+    {
+      "file": "skills/do-work/actions/work-implementation-reference.md",
+      "numbered_lines": 76,
+      "tool_result_row": 8,
+      "full_content_matches": true
+    },
+    {
+      "file": "skills/do-work/crew-members/general.md",
+      "numbered_lines": 52,
+      "tool_result_row": 10,
+      "full_content_matches": true
+    },
+    {
+      "file": "skills/do-work/crew-members/coding-guardrails.md",
+      "numbered_lines": 162,
+      "tool_result_row": 12,
+      "full_content_matches": true
+    },
+    {
+      "file": "skills/do-work/crew-members/shared-principles.md",
+      "numbered_lines": 17,
+      "tool_result_row": 14,
+      "full_content_matches": true
+    },
+    {
+      "file": "skills/do-work/crew-members/communication-style.md",
+      "numbered_lines": 94,
+      "tool_result_row": 16,
+      "full_content_matches": true
+    },
+    {
+      "file": "skills/do-work/crew-members/testing.md",
+      "numbered_lines": 62,
+      "tool_result_row": 18,
+      "full_content_matches": true
+    }
+  ],
+  "manual_compact_boundary": "PASS",
+  "baseline_function": "sumInvoiceAmounts",
+  "continuation_function": "sumShipmentWeights",
+  "continuation_read_calls": 0,
+  "summary_retains_naming_rule": true,
+  "source_fingerprints": "PASS",
+  "unrelated_metadata_removed": "PASS",
+  "cli_exit_code": 0,
+  "process_reaped": true
+}
