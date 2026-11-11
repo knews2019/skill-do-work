@@ -1,0 +1,395 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Work procedures load by phase (0.315.3)</title>
+<link rel="stylesheet" href="presentation.css">
+<style>
+/* Page-only: the numbers table in depth 3. */
+.table-wrap { overflow-x: auto; margin: 10px 0 14px; }
+.numbers { border-collapse: collapse; width: 100%; min-width: 560px; font-size: .95rem; }
+.numbers th, .numbers td { padding: 8px 12px; border-bottom: 1px solid var(--line); text-align: right; font-variant-numeric: tabular-nums; }
+.numbers th:first-child, .numbers td:first-child { text-align: left; }
+.numbers thead th { border-bottom: 2px solid var(--line); color: var(--muted); font-weight: 700; }
+/* Page-only: on a narrow screen the diagram keeps a readable size and scrolls sideways inside its frame. */
+.swipe-hint { display: none; }
+@media (max-width: 700px) {
+  .diagram-scroll { overflow-x: auto; }
+  .diagram-scroll svg { min-width: 580px; max-height: none; }
+  .swipe-hint { display: block; margin: 8px 0 0; }
+}
+</style>
+</head>
+<body>
+<nav class="topbar"><strong>Work procedures load by phase (0.315.3)</strong><span class="spacer"></span><button class="btn deck-toggle" type="button" id="deck-toggle" aria-pressed="false">Deck mode (D)</button></nav>
+<div class="page">
+
+<header class="band depth-one" id="depth-1">
+  <p class="depth-marker"><span class="gauge" aria-hidden="true"><i class="on"></i><i></i><i></i></span>Depth 1 of 3: one line</p>
+  <h1>Work procedures now load one phase at a time, and no check was lost.</h1>
+  <p class="sub measure">Version 0.315.3 split the single instruction file of the <span class="term" data-def="The do-work instruction file that tells an agent how to build the tasks waiting in the queue.">work action</span> into a short <span class="term" data-def="The file an agent always reads first and in full. Here it is work.md.">entry point</span> and eight <span class="term" data-def="One of eight work-*-reference.md files. Each holds the procedure for one phase of a work run.">phase files</span>. An agent now reads a phase file only when that phase starts. The entry point fell from 94,224 to 23,645 bytes, and a simple fix reads 12,693 fewer bytes of procedure text.</p>
+  <p class="sub measure">One limit: the largest reference file, <code>work-reference.md</code>, was not split and is outside these counts.</p>
+  <p><span class="chip">release 0.315.3</span><span class="chip">commit 22f82fed</span><span class="chip">skills/do-work/actions/work.md:19</span><span class="chip">replay exit 0, 2026-11-11</span></p>
+  <ul class="legend" aria-label="Color key">
+    <li class="role-cause">Cause</li>
+    <li class="role-problem">Problem</li>
+    <li class="role-change">Change</li>
+    <li class="role-effect">Effect</li>
+    <li class="role-proof">Proof</li>
+  </ul>
+  <nav class="jump" aria-label="Go deeper"><span>Go deeper:</span><a class="btn" href="#why">Why it happened</a><a class="btn" href="#how">Where in the code</a><a class="btn" href="#proof">The proof</a><a class="btn" href="#depth-3">Every detail</a><a class="btn" href="#another-layout">Another layout or method</a></nav>
+</header>
+
+<section class="band" id="why" data-stepper aria-labelledby="why-heading">
+  <p class="depth-marker"><span class="gauge" aria-hidden="true"><i class="on"></i><i class="on"></i><i></i></span>Depth 2 of 3: why it happened</p>
+  <div class="chain-head">
+    <h2 id="why-heading">One file made every run read every phase</h2>
+    <p class="note">Click a card, use the buttons, or press the arrow keys. Each card says why the next one happened.</p>
+  </div>
+  <div class="step-controls">
+    <button class="btn" type="button" data-step-prev>Previous link</button>
+    <button class="btn primary" type="button" data-step-next>Next link</button>
+    <span class="step-label" data-step-label aria-live="polite"></span>
+  </div>
+  <div class="chain">
+    <div class="link">
+      <article class="node role-cause" data-step>
+        <span class="step-number">1</span>
+        <span class="tag">Cause</span>
+        <h3>One file held every procedure</h3>
+        <p>Before this change, <code>work.md</code> held every step of a work run in one file of 603 lines and 94,224 bytes.</p>
+        <span class="chip">afbc8be3:skills/do-work/actions/work.md</span>
+      </article>
+    </div>
+    <div class="link">
+      <div class="joint" data-at="2" aria-hidden="true"><span class="word">so</span><span class="pipe" style="--from: var(--cause); --to: var(--problem)"></span></div>
+      <article class="node role-problem" data-step>
+        <span class="step-number">2</span>
+        <span class="tag">Problem</span>
+        <h3>Every run read every phase</h3>
+        <p>An agent had to read the whole file before any phase began. A simple fix on <span class="term" data-def="The path for a simple request: the agent builds directly, with no planning and no exploration.">Route A</span> still read the planning and exploration procedures it never used.</p>
+        <span class="chip">_dev/reports/work-phase-loading.md:5</span>
+      </article>
+    </div>
+    <div class="link">
+      <div class="joint" data-at="3" aria-hidden="true"><span class="word">fix</span><span class="pipe" style="--from: var(--problem); --to: var(--change)"></span></div>
+      <article class="node role-change" data-step>
+        <span class="step-number">3</span>
+        <span class="tag">Change</span>
+        <h3>Procedures moved into eight phase files</h3>
+        <p>Each phase procedure moved, without rewording, into its own file beside <code>work.md</code>. The entry point keeps the shared rules, the error table and one pointer per phase.</p>
+        <span class="chip">commit 22f82fed</span><span class="chip">work.md:19</span>
+      </article>
+    </div>
+    <div class="link">
+      <div class="joint" data-at="4" aria-hidden="true"><span class="word">and</span><span class="pipe" style="--from: var(--change); --to: var(--change)"></span></div>
+      <article class="node role-change" data-step>
+        <span class="step-number">4</span>
+        <span class="tag">Change</span>
+        <h3>The repeated checklist was deleted</h3>
+        <p>The old file also held a 21-row checklist that repeated the numbered steps. It was removed, not moved, because the phase pointers now do its job.</p>
+        <span class="chip">work.md:25</span><span class="chip">_dev/tests/instruction-reading-volume.py:52</span>
+      </article>
+    </div>
+    <div class="link">
+      <div class="joint" data-at="5" aria-hidden="true"><span class="word">which means</span><span class="pipe" style="--from: var(--change); --to: var(--effect)"></span></div>
+      <article class="node role-effect" data-step>
+        <span class="step-number">5</span>
+        <span class="tag">Effect</span>
+        <h3>A simple fix skips three phase files</h3>
+        <p>The entry point is now 23,645 bytes. A simple fix no longer loads planning, exploration or heavy testing, so it reads 12,693 fewer bytes. A complex change reads 433 bytes more.</p>
+        <span class="chip">script output, 2026-11-11</span>
+      </article>
+    </div>
+    <div class="link">
+      <div class="joint" data-at="6" aria-hidden="true"><span class="word">now</span><span class="pipe" style="--from: var(--effect); --to: var(--proof)"></span></div>
+      <article class="node role-proof" data-step>
+        <span class="step-number">6</span>
+        <span class="tag">Proof</span>
+        <h3>Every procedure line is still there</h3>
+        <p>A <span class="term" data-def="A script check that every non-blank line of the old file still exists in one of the new files.">preservation replay</span> finds every old procedure line in a work file. The <span class="term" data-def="Repository tests that check the instruction files still contain the rules they must contain.">contract tests</span> now read the phase files.</p>
+        <span class="chip">replay exit 0, 2026-11-11</span><span class="chip">_dev/tests/contracts/core-checks.sh:754</span>
+      </article>
+    </div>
+  </div>
+</section>
+
+<section class="band" id="how" data-stepper tabindex="0" aria-labelledby="how-heading">
+  <p class="depth-marker"><span class="gauge" aria-hidden="true"><i class="on"></i><i class="on"></i><i></i></span>Depth 2 of 3: where in the code</p>
+  <h2 id="how-heading">What an agent reads now, and when</h2>
+  <div class="step-controls">
+    <button class="btn" type="button" data-step-prev>Previous step</button>
+    <button class="btn primary" type="button" data-step-next>Next step</button>
+    <span class="step-label" data-step-label aria-live="polite"></span>
+  </div>
+  <div class="flow">
+    <figure class="diagram" style="margin:0">
+      <div class="diagram-scroll">
+      <svg viewBox="0 0 640 496" role="img" aria-labelledby="how-diagram-title">
+        <title id="how-diagram-title">The router sends a run to work.md. Before the change one work.md held everything. Now work.md points to five phase files read on every run and three read only when needed. work-reference.md and review-work.md did not change.</title>
+        <defs>
+          <marker id="arrow-muted" viewBox="0 0 10 10" refX="9" refY="5" markerUnits="userSpaceOnUse" markerWidth="12" markerHeight="12" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="m-muted"/></marker>
+          <marker id="arrow-problem" viewBox="0 0 10 10" refX="9" refY="5" markerUnits="userSpaceOnUse" markerWidth="12" markerHeight="12" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="m-problem"/></marker>
+          <marker id="arrow-change" viewBox="0 0 10 10" refX="9" refY="5" markerUnits="userSpaceOnUse" markerWidth="12" markerHeight="12" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="m-change"/></marker>
+          <marker id="arrow-effect" viewBox="0 0 10 10" refX="9" refY="5" markerUnits="userSpaceOnUse" markerWidth="12" markerHeight="12" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="m-effect"/></marker>
+          <marker id="arrow-proof" viewBox="0 0 10 10" refX="9" refY="5" markerUnits="userSpaceOnUse" markerWidth="12" markerHeight="12" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="m-proof"/></marker>
+        </defs>
+
+        <!-- Row 1: old file, router, review-only entry. -->
+        <g class="problem" data-at="1">
+          <rect class="box" x="20" y="12" width="200" height="60" rx="14"/>
+          <text class="label-sm" x="120" y="38" text-anchor="middle">work.md before</text>
+          <text class="small" x="120" y="60" text-anchor="middle">94,224 bytes, one file</text>
+          <path class="wire dashed" d="M250 42 H226" marker-end="url(#arrow-problem)"/>
+        </g>
+        <g data-at="1 2 5">
+          <rect class="box" x="250" y="12" width="140" height="60" rx="14"/>
+          <text class="label-sm" x="320" y="38" text-anchor="middle">SKILL.md</text>
+          <text class="small" x="320" y="60" text-anchor="middle">router</text>
+        </g>
+        <g class="proof" data-at="5">
+          <path class="wire" d="M390 42 H414" marker-end="url(#arrow-proof)"/>
+          <rect class="box" x="420" y="12" width="200" height="60" rx="14"/>
+          <text class="label-sm" x="520" y="38" text-anchor="middle">review-work.md</text>
+          <text class="small" x="520" y="60" text-anchor="middle">45,315 bytes, unchanged</text>
+        </g>
+
+        <!-- Row 2: the new entry point. -->
+        <g class="change" data-at="2 3 4">
+          <path class="wire" d="M320 72 V102" marker-end="url(#arrow-change)"/>
+          <rect class="box" x="20" y="108" width="600" height="64" rx="14"/>
+          <text class="label" x="320" y="135" text-anchor="middle">work.md now: the entry point</text>
+          <text class="small" x="320" y="158" text-anchor="middle">23,645 bytes: shared rules, error table, one pointer per phase</text>
+        </g>
+
+        <!-- Row 3, left: phase files read on every run. -->
+        <g class="effect" data-at="3">
+          <path class="wire" d="M40 172 V212" marker-end="url(#arrow-effect)"/>
+          <text class="small" x="56" y="198">on every run</text>
+          <rect class="box" x="20" y="218" width="270" height="44" rx="12"/>
+          <text class="label-sm" x="34" y="246">selection</text>
+          <text class="small" x="276" y="246" text-anchor="end">17,666 bytes</text>
+          <rect class="box" x="20" y="270" width="270" height="44" rx="12"/>
+          <text class="label-sm" x="34" y="298">implementation</text>
+          <text class="small" x="276" y="298" text-anchor="end">16,413 bytes</text>
+          <rect class="box" x="20" y="322" width="270" height="44" rx="12"/>
+          <text class="label-sm" x="34" y="350">testing</text>
+          <text class="small" x="276" y="350" text-anchor="end">6,547 bytes</text>
+          <rect class="box" x="20" y="374" width="270" height="44" rx="12"/>
+          <text class="label-sm" x="34" y="402">review</text>
+          <text class="small" x="276" y="402" text-anchor="end">11,561 bytes</text>
+          <rect class="box" x="20" y="426" width="270" height="44" rx="12"/>
+          <text class="label-sm" x="34" y="454">finalization</text>
+          <text class="small" x="276" y="454" text-anchor="end">5,699 bytes</text>
+        </g>
+
+        <!-- Row 3, right: phase files read only when the phase applies. Dashed outline = conditional. -->
+        <g class="effect" data-at="4">
+          <path class="wire dashed" d="M370 172 V212" marker-end="url(#arrow-effect)"/>
+          <text class="small" x="386" y="198">only when the phase applies</text>
+          <rect class="box dashed" x="350" y="218" width="270" height="56" rx="12"/>
+          <text class="label-sm" x="364" y="242">planning</text>
+          <text class="small" x="606" y="242" text-anchor="end">2,914 bytes</text>
+          <text class="small" x="364" y="263">Route C only</text>
+          <rect class="box dashed" x="350" y="282" width="270" height="56" rx="12"/>
+          <text class="label-sm" x="364" y="306">exploration</text>
+          <text class="small" x="606" y="306" text-anchor="end">5,645 bytes</text>
+          <text class="small" x="364" y="327">Routes B and C</text>
+          <rect class="box dashed" x="350" y="346" width="270" height="56" rx="12"/>
+          <text class="label-sm" x="364" y="370">heavy-testing</text>
+          <text class="small" x="606" y="370" text-anchor="end">4,567 bytes</text>
+          <text class="small" x="364" y="391">when heavy lanes are selected</text>
+        </g>
+
+        <!-- The shared reference: unchanged, read by named section. -->
+        <g class="proof" data-at="5">
+          <path class="wire dashed" d="M290 240 H320 M290 292 H320 M290 344 H320 M290 396 H320 M290 448 H320 M320 240 V448"/>
+          <path class="wire dashed" d="M320 448 H344" marker-end="url(#arrow-proof)"/>
+          <rect class="box" x="350" y="420" width="270" height="62" rx="12"/>
+          <text class="label-sm" x="485" y="446" text-anchor="middle">work-reference.md</text>
+          <text class="small" x="485" y="468" text-anchor="middle">119,671 bytes, unchanged</text>
+        </g>
+      </svg>
+      </div>
+      <p class="note swipe-hint">Swipe the diagram sideways to see all of it.</p>
+      <figcaption class="synthetic">Hand-made diagram, drawn from the files named in the steps. Byte counts measured with <code>wc -c</code> on 2026-11-11.</figcaption>
+    </figure>
+    <ol class="steps">
+      <li class="node role-problem" data-step>
+        <span class="tag">Problem</span>
+        <h3><span class="num">1</span>Before: one file for the whole run</h3>
+        <p>The router sent every <code>run</code> to one <code>work.md</code> of 94,224 bytes. The agent read all of it first.</p>
+        <span class="chip">skills/do-work/SKILL.md:34</span><span class="chip">afbc8be3:skills/do-work/actions/work.md</span>
+      </li>
+      <li class="node role-change" data-step>
+        <span class="tag">Change</span>
+        <h3><span class="num">2</span>Now: a short entry point</h3>
+        <p>The agent still reads <code>work.md</code> in full. It now holds only what every phase shares: the rules, the lessons step, the error table and the phase pointers.</p>
+        <span class="chip">work.md:19</span><span class="chip">work.md:78</span><span class="chip">work.md:132</span>
+      </li>
+      <li class="node role-effect" data-step>
+        <span class="tag">Effect</span>
+        <h3><span class="num">3</span>Five phase files load on every run</h3>
+        <p>Selection, implementation, testing, review and finalization each load when the run reaches them. Together they are 57,886 bytes.</p>
+        <span class="chip">work.md:49</span><span class="chip">work.md:94</span><span class="chip">work.md:102</span><span class="chip">work.md:106</span><span class="chip">work.md:118</span>
+      </li>
+      <li class="node role-effect" data-step>
+        <span class="tag">Effect</span>
+        <h3><span class="num">4</span>Three phase files load only when needed</h3>
+        <p>Planning loads for <span class="term" data-def="The path for a complex request: the agent plans, explores, then builds.">Route C</span>. Exploration loads for Routes B and C. Heavy testing loads when <span class="term" data-def="Slow test suites that run only when a change needs them.">heavy lanes</span> were selected. A simple fix skips all three: 13,126 bytes.</p>
+        <span class="chip">work.md:76</span><span class="chip">work.md:86</span><span class="chip">work.md:114</span>
+      </li>
+      <li class="node role-proof" data-step>
+        <span class="tag">Proof</span>
+        <h3><span class="num">5</span>Two files did not change</h3>
+        <p>The shared reference <code>work-reference.md</code> is still read by named section. A review-only run still goes from the router to <code>review-work.md</code> and never opens <code>work.md</code>. The commit left both files byte-identical.</p>
+        <span class="chip">work.md:23</span><span class="chip">skills/do-work/SKILL.md:39</span><span class="chip">git diff afbc8be3 22f82fed: empty</span>
+      </li>
+    </ol>
+  </div>
+</section>
+
+<section class="band replay" id="proof" data-stepper aria-labelledby="proof-heading">
+  <p class="depth-marker"><span class="gauge" aria-hidden="true"><i class="on"></i><i class="on"></i><i></i></span>Depth 2 of 3: the proof</p>
+  <h2 id="proof-heading">The measurement runs again and gives the same numbers</h2>
+  <p class="measure">UI captures were not expected for this work.</p>
+  <div class="step-controls">
+    <button class="btn" type="button" data-step-prev>Previous note</button>
+    <button class="btn primary" type="button" data-step-next>Next note</button>
+    <span class="step-label" data-step-label aria-live="polite"></span>
+  </div>
+  <div class="row">
+    <div class="screen" style="flex: 3 1 560px">
+<pre class="terminal"><span class="prompt">$</span> python3 _dev/tests/instruction-reading-volume.py
+<span class="dim">| Walkthrough | Before lines | After lines | Before bytes | After bytes |
+|---|---:|---:|---:|---:|</span>
+<span class="line role-effect" data-at="1"><span class="badge" aria-hidden="true">1</span>| Simple fix | 1186 | 1134 | 145974 | 133281 |</span>
+<span class="line role-problem" data-at="2"><span class="badge" aria-hidden="true">2</span>| Complex change | 1186 | 1237 | 145974 | 146407 |</span>
+<span class="line role-proof" data-at="3"><span class="badge" aria-hidden="true">3</span>| Review only | 583 | 583 | 51750 | 51750 |</span>
+
+<span class="line role-effect" data-at="4"><span class="badge" aria-hidden="true">4</span>Entry point (lines, bytes): (603, 94224) → (218, 23645)</span>
+<span class="line role-proof" data-at="5"><span class="badge" aria-hidden="true">5</span>Preservation replay: all original non-checklist procedure lines accounted for.</span></pre>
+      <p class="note">Run for this report on 2026-11-11 in the repository root, exit code 0. The script compares revision <code>afbc8be3</code> with the files on disk.</p>
+    </div>
+    <ol class="notes" style="flex: 2 1 300px">
+      <li class="node role-effect" data-step>
+        <div class="note-head"><span class="badge">1</span><h3>A simple fix reads less</h3><span class="tag">Effect</span></div>
+        <p>12,693 fewer bytes, which is 8.7% of the measured files. The saving is the three skipped phase files minus the 433 bytes the split itself added.</p>
+        <span class="chip">145974 → 133281</span>
+      </li>
+      <li class="node role-problem" data-step>
+        <div class="note-head"><span class="badge">2</span><h3>A complex change reads slightly more</h3><span class="tag">Problem</span></div>
+        <p>It loads all eight phase files, so it saves nothing and pays the 433 bytes the split added.</p>
+        <span class="chip">145974 → 146407</span>
+      </li>
+      <li class="node role-proof" data-step>
+        <div class="note-head"><span class="badge">3</span><h3>Review-only is untouched</h3><span class="tag">Proof</span></div>
+        <p>It reads the router and <code>review-work.md</code> before and after: 51,750 bytes both times.</p>
+        <span class="chip">51750 → 51750</span>
+      </li>
+      <li class="node role-effect" data-step>
+        <div class="note-head"><span class="badge">4</span><h3>The entry point is 75% smaller</h3><span class="tag">Effect</span></div>
+        <p>This is what every run reads before it knows which phases it needs.</p>
+        <span class="chip">94224 → 23645</span>
+      </li>
+      <li class="node role-proof" data-step>
+        <div class="note-head"><span class="badge">5</span><h3>No procedure line was lost</h3><span class="tag">Proof</span></div>
+        <p>The script fails if any non-blank line of the old file is missing from the new files. It skips the deleted checklist, two repeated rules and the old skip-note wording. For the checklist, a sample of 12 of its duties was found in the phase files on 2026-11-11.</p>
+        <span class="chip">_dev/tests/instruction-reading-volume.py:60</span>
+      </li>
+    </ol>
+  </div>
+  <p class="measure" style="margin-top: 22px">Two limits on this proof. The counts cover the router, <code>work.md</code>, the phase files and <code>review-work.md</code> only. The full repository gate is recorded as passing on 2026-11-10 and was not run again for this report.</p>
+  <p><span class="chip">_dev/reports/work-phase-loading.md:18</span><span class="chip">_dev/reports/work-phase-loading.md:131</span></p>
+</section>
+
+<section class="band depth-three" id="depth-3" aria-labelledby="depth-3-heading">
+  <p class="depth-marker"><span class="gauge" aria-hidden="true"><i class="on"></i><i class="on"></i><i class="on"></i></span>Depth 3 of 3: every detail, folded</p>
+  <h2 id="depth-3-heading">The details</h2>
+  <p class="step-controls"><button class="btn" type="button" id="open-all">Open all details</button></p>
+  <details>
+    <summary>The numbers, with the change for each</summary>
+    <div class="table-wrap">
+      <table class="numbers">
+        <thead><tr><th>What an agent reads</th><th>Bytes before</th><th>Bytes after</th><th>Change</th><th>Lines before</th><th>Lines after</th></tr></thead>
+        <tbody>
+          <tr><td>Entry point alone</td><td>94,224</td><td>23,645</td><td>-70,579 (-74.9%)</td><td>603</td><td>218</td></tr>
+          <tr><td>Simple fix</td><td>145,974</td><td>133,281</td><td>-12,693 (-8.7%)</td><td>1,186</td><td>1,134</td></tr>
+          <tr><td>Complex change</td><td>145,974</td><td>146,407</td><td>+433 (+0.3%)</td><td>1,186</td><td>1,237</td></tr>
+          <tr><td>Review only</td><td>51,750</td><td>51,750</td><td>0</td><td>583</td><td>583</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>Each row counts the router, <code>review-work.md</code> and, for the two build rows, <code>work.md</code> plus the phase files that row loads. Every file is counted once. The complex change grows 4.3% in lines and 0.3% in bytes, so the two units disagree. The commit added a rule to report bytes as well, because line counts alone do not measure reading volume.</p>
+    <p><span class="chip">_dev/tests/instruction-reading-volume.py:30</span><span class="chip">skills/do-work-toolbox/actions/quick-wins.md:34</span></p>
+  </details>
+  <details>
+    <summary>Key files and commits</summary>
+    <dl class="files">
+      <dt>22f82fed</dt><dd>The commit: 21 files, 688 lines added, 419 removed. Its parent is <code>afbc8be3</code>. The local record of <code>origin/main</code> points at it.</dd>
+      <dt>skills/do-work/actions/work.md</dt><dd>The entry point. Keeps shared rules, the lessons step, the error table and one pointer per phase.</dd>
+      <dt>skills/do-work/actions/work-selection-reference.md</dt><dd>Steps 1 to 3.5: input checks, recovery, claiming a task, choosing the route, open questions.</dd>
+      <dt>skills/do-work/actions/work-planning-reference.md</dt><dd>Step 4: planning, for Route C only.</dd>
+      <dt>skills/do-work/actions/work-exploration-reference.md</dt><dd>Step 5 exploration, Step 5.5 scope and the pre-build evidence check, for Routes B and C.</dd>
+      <dt>skills/do-work/actions/work-implementation-reference.md</dt><dd>Steps 6 and 6.25: which rule files to load, the build itself, the file list of what changed.</dd>
+      <dt>skills/do-work/actions/work-testing-reference.md</dt><dd>Qualification and testing judgment.</dd>
+      <dt>skills/do-work/actions/work-review-reference.md</dt><dd>Steps 7 and 7.5: review and lesson capture.</dd>
+      <dt>skills/do-work/actions/work-heavy-testing-reference.md</dt><dd>Step 7.7: holding a task for slow tests and running them at the end.</dd>
+      <dt>skills/do-work/actions/work-finalization-reference.md</dt><dd>Steps 8 to 10: final status, commit, then the next task or exit.</dd>
+      <dt>_dev/tests/instruction-reading-volume.py</dt><dd>The measurement and the preservation replay. Maintainer-side, not shipped to users.</dd>
+      <dt>_dev/reports/work-phase-loading.md</dt><dd>The validation report written with the commit. Maintainer-side, not shipped.</dd>
+      <dt>_dev/tests/contracts/core-checks.sh</dt><dd>Contract tests, changed to read the finalization, implementation and planning phase files.</dd>
+      <dt>_dev/tests/contracts/recovery-set-aside.sh</dt><dd>Recovery contract test, changed to read the selection phase file.</dd>
+      <dt>_dev/tests/audit-lockins.sh, _dev/tests/prescribed-shell-canonicalization.sh</dt><dd>Two scans. The first now also reads every phase file. The second now reads the implementation phase file in place of <code>work.md</code>.</dd>
+      <dt>skills/do-work-toolbox/actions/quick-wins.md</dt><dd>One new sentence at line 34: report instruction size in bytes, not only lines.</dd>
+      <dt>CHANGELOG.md, VERSION, skills/do-work/CHANGELOG.md, skills/do-work/VERSION, skills/do-work/actions/version.md</dt><dd>The 0.315.3 release entry and version numbers.</dd>
+    </dl>
+    <p>No drift: on 2026-11-11 the entry point, the phase files, the two unchanged files, the script and the validation report are identical to their state in the commit.</p>
+    <p><span class="chip">git diff --stat 22f82fed HEAD: empty for these paths</span></p>
+  </details>
+  <details>
+    <summary>Check it yourself</summary>
+    <p>Reproduce the table and the preservation replay. <span class="ran">Run on 2026-11-11: PASS, exit 0.</span></p>
+<pre><code>python3 _dev/tests/instruction-reading-volume.py</code></pre>
+    <p>Read the commit through the repository's own commit viewer. <span class="ran">Run on 2026-11-11: success, 21 files.</span></p>
+<pre><code>skills/do-work/scripts/show-commit-diff.sh 22f82fed</code></pre>
+    <p>Confirm the two files the commit did not touch. <span class="ran">Run on 2026-11-11: no output, so both are unchanged.</span></p>
+<pre><code>git diff --stat afbc8be3 22f82fed -- skills/do-work/actions/review-work.md skills/do-work/actions/work-reference.md</code></pre>
+    <p>Measure the entry point and each phase file. <span class="ran">Run on 2026-11-11: sizes match the diagram.</span></p>
+<pre><code>wc -c skills/do-work/actions/work.md skills/do-work/actions/work-*-reference.md</code></pre>
+    <p>Run the full repository gate. <span class="ran">Not run for this report.</span> The validation report records exit 0 on 2026-11-10.</p>
+<pre><code>bash _dev/tests/maintainer-verify.sh</code></pre>
+  </details>
+  <details>
+    <summary>Lessons and open questions</summary>
+    <p>No lessons record exists. The change went in as a direct commit, with no queued task and no user request file behind it, so there is no review record or lessons section to quote.</p>
+    <p>Three open questions come from a check of the commit on 2026-11-11, in the session that wrote this report.</p>
+    <p><strong>Q1. Should the size limit for <span class="term" data-def="A short index file, named prime-*.md, that an agent reads before it changes one area of a project.">prime files</span> also count bytes?</strong> The commit added a byte rule for one audit action. The prime size check still counts lines only. One prime passes that check at 45 lines while holding 10,551 bytes.</p>
+    <p><span class="chip">skills/do-work-toolbox/actions/prime.md:216</span><span class="chip">_dev/primes/prime-kanban-board.md: 45 lines, 10,551 bytes</span></p>
+    <p><strong>Q2. Should the measurement include <code>work-reference.md</code>?</strong> It is 119,671 bytes and outside the counts. The selection phase file sends even a simple fix to two of its sections, which total 52,760 bytes. Counted that way, the simple-fix saving is at most about 6%, not 8.7%.</p>
+    <p><span class="chip">skills/do-work/actions/work-selection-reference.md:53</span><span class="chip">work-reference.md:63 (35,527 bytes)</span><span class="chip">work-reference.md:229 (17,233 bytes)</span></p>
+    <p><strong>Q3. Should the replay script stay?</strong> It is fixed to revision <code>afbc8be3</code> and no test suite runs it. It proves the split as of the commit and will fail on the first later rewording of an old line.</p>
+    <p><span class="chip">_dev/tests/instruction-reading-volume.py:11</span></p>
+  </details>
+</section>
+
+<section class="band" id="another-layout" aria-labelledby="another-layout-heading">
+  <h2 id="another-layout-heading">Try another layout or teaching method</h2>
+  <p class="measure">A reading ledger could tell this story in one look. It is one wide grid: a row for each instruction file, a column for each kind of run, a filled cell where the file is read and a byte total under each column. This page spreads that comparison over a chain, a diagram and a terminal.</p>
+  <p class="note">To build it as a new page beside this one, give an agent this line:</p>
+<pre><code>ai-report second-opinion --editor-direction 'Rebuild this report as one reading ledger: a wide grid with one row per instruction file and one column per kind of run, a filled cell where the file is read, a byte total under each column, and the before grid stacked above the after grid' ai-reports/2026-11-11_1411_commit-22f82fed-work-procedures-load-by-phase</code></pre>
+  <p class="measure">First principles would best help a reader judge the open questions. It starts from the one fixed fact, that an agent pays for every byte it must read, and shows which parts of the split follow from that fact and which were choices, such as leaving the shared reference whole.</p>
+  <p class="note">To build that as a new page too, give an agent this line:</p>
+<pre><code>ai-report second-opinion --preset first-principles ai-reports/2026-11-11_1411_commit-22f82fed-work-procedures-load-by-phase</code></pre>
+</section>
+
+<footer class="band note measure">
+  <p>Sources, all read on 2026-11-11: commit 22f82fed through <code>show-commit-diff.sh</code>, the current files it changed, the validation report <code>_dev/reports/work-phase-loading.md</code>, the 0.315.3 changelog entry, and the commands listed under Check it yourself. This change has no queued task or user request file, so the report is built from the commit and those records instead of an archive entry. The diagram is hand-made, not a capture. No image on this page is generated.</p>
+</footer>
+
+</div>
+<div class="deck-hint" aria-live="polite" id="deck-hint">Deck mode</div>
+<script src="presentation.js"></script>
+</body>
+</html>
