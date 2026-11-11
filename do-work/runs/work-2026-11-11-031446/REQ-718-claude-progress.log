@@ -1,0 +1,6 @@
+2026-11-11T01:20:24.780979+00:00 Starting bounded Claude read-only probe; each turn <=150s, total <=360s.
+2026-11-11T01:20:24.804614+00:00 Sent baseline prompt.
+2026-11-11T01:20:35.699785+00:00 Sent compact prompt.
+2026-11-11T01:21:17.500495+00:00 Sent continuation prompt.
+2026-11-11T01:21:20.093133+00:00 Probe ended: {"argv": ["claude", "--safe-mode", "--setting-sources", "", "--strict-mcp-config", "--tools", "Read", "--allowedTools", "Read", "--permission-mode", "dontAsk", "--no-session-persistence", "--input-format", "stream-json", "--output-format", "stream-json", "--verbose", "--max-budget-usd", "3", "-p"], "cwd": "/Users/t2/.t3/worktrees/skill-do-work2/t3-491e3e50", "started_at": "2026-11-11T01:20:24.781316+00:00", "cli_version": "2.1.322 (Claude Code)", "process_exit_code": 0, "elapsed_seconds": 55.288, "observed_compact_boundary": true, "completed_turns": [{"phase": "baseline", "is_error": false, "subtype": "success"}, {"phase": "compact", "is_error": false, "subtype": "success"}, {"phase": "continuation", "is_error": false, "subtype": "success"}], "process_reaped": true}
+2026-11-11T01:24:33.764012+00:00 Handback written; committed 993c3befca2af4eeae8aad2fdba386ab7d16438a; clean worktree; Claude live compaction observed; no capability blocker.

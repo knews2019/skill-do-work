@@ -1,0 +1,96 @@
+maintainer-verify: checking Go go1.26.1 or newer
+maintainer-verify: checking ShellCheck 0.11.0 or newer
+maintainer-verify: ShellCheck warning-level lint (207 tracked files)
+maintainer-verify: gofmt formatting check (345 tracked files)
+maintainer-verify: aggregate contract suite
+finding ASSOCIATION-UNOWNED [warning]: no active or terminal request claims this path
+  paths: phantom-file.txt
+crew-member loads (shared principles, supply chain) and mutations passed; near_identical_cross_file_pairs 0
+core-checks contract probes passed.
+test-file duration: _dev/tests/contracts/core-checks.sh 4s (limit <30s)
+queue-kanban contract probes passed.
+test-file duration: _dev/tests/contracts/queue-kanban.sh 1s (limit <30s)
+replace-section: success
+repository: /Users/t2/Desktop/e1-experimental-repos/skill-do-work2
+change /var/folders/2w/kw8sv6rd1z15yjykl787ryph0000gn/T/tmp.2ytH0tO44U/project with spaces/Justfile [modified]: managed section written from /var/folders/2w/kw8sv6rd1z15yjykl787ryph0000gn/T/tmp.2ytH0tO44U/managed-section.just
+rollback: not_needed
+replace-section: success
+repository: /Users/t2/Desktop/e1-experimental-repos/skill-do-work2
+rollback: not_needed
+replace-section: success
+repository: /Users/t2/Desktop/e1-experimental-repos/skill-do-work2
+change /var/folders/2w/kw8sv6rd1z15yjykl787ryph0000gn/T/tmp.2ytH0tO44U/absent project/.justfile [created]: managed section written from /var/folders/2w/kw8sv6rd1z15yjykl787ryph0000gn/T/tmp.2ytH0tO44U/managed-section.just
+rollback: not_needed
+replace-section: success
+repository: /Users/t2/Desktop/e1-experimental-repos/skill-do-work2
+change /var/folders/2w/kw8sv6rd1z15yjykl787ryph0000gn/T/tmp.2ytH0tO44U/variants/justfile [modified]: managed section written from /var/folders/2w/kw8sv6rd1z15yjykl787ryph0000gn/T/tmp.2ytH0tO44U/managed-section.just
+rollback: not_needed
+replace-section: success
+repository: /Users/t2/Desktop/e1-experimental-repos/skill-do-work2
+change /var/folders/2w/kw8sv6rd1z15yjykl787ryph0000gn/T/tmp.2ytH0tO44U/variants/Justfile [modified]: managed section written from /var/folders/2w/kw8sv6rd1z15yjykl787ryph0000gn/T/tmp.2ytH0tO44U/managed-section.just
+rollback: not_needed
+replace-section: success
+repository: /Users/t2/Desktop/e1-experimental-repos/skill-do-work2
+change /var/folders/2w/kw8sv6rd1z15yjykl787ryph0000gn/T/tmp.2ytH0tO44U/variants/.justfile [modified]: managed section written from /var/folders/2w/kw8sv6rd1z15yjykl787ryph0000gn/T/tmp.2ytH0tO44U/managed-section.just
+rollback: not_needed
+replace-section: success
+repository: /Users/t2/Desktop/e1-experimental-repos/skill-do-work2
+change /var/folders/2w/kw8sv6rd1z15yjykl787ryph0000gn/T/tmp.2ytH0tO44U/raw-multiline-string.just [modified]: managed section written from /var/folders/2w/kw8sv6rd1z15yjykl787ryph0000gn/T/tmp.2ytH0tO44U/reserved-section.just
+rollback: not_needed
+replace-section: success
+repository: /Users/t2/Desktop/e1-experimental-repos/skill-do-work2
+change /var/folders/2w/kw8sv6rd1z15yjykl787ryph0000gn/T/tmp.2ytH0tO44U/cooked-multiline-string-crlf.just [modified]: managed section written from /var/folders/2w/kw8sv6rd1z15yjykl787ryph0000gn/T/tmp.2ytH0tO44U/reserved-section.just
+rollback: not_needed
+replace-section: success
+repository: /Users/t2/Desktop/e1-experimental-repos/skill-do-work2
+change /var/folders/2w/kw8sv6rd1z15yjykl787ryph0000gn/T/tmp.2ytH0tO44U/ordinary-and-command-multiline-literals.just [modified]: managed section written from /var/folders/2w/kw8sv6rd1z15yjykl787ryph0000gn/T/tmp.2ytH0tO44U/reserved-section.just
+rollback: not_needed
+replace-section: success
+repository: /Users/t2/Desktop/e1-experimental-repos/skill-do-work2
+change /var/folders/2w/kw8sv6rd1z15yjykl787ryph0000gn/T/tmp.2ytH0tO44U/ordinary-backtick-multiline-command.just [modified]: managed section written from /var/folders/2w/kw8sv6rd1z15yjykl787ryph0000gn/T/tmp.2ytH0tO44U/reserved-section.just
+rollback: not_needed
+replace-section: success
+repository: /Users/t2/Desktop/e1-experimental-repos/skill-do-work2
+rollback: not_needed
+replace-text-section contract probes passed.
+test-file duration: _dev/tests/contracts/replace-text-section.sh 8s (limit <30s)
+recovery set-aside contract probes passed.
+test-file duration: _dev/tests/contracts/recovery-set-aside.sh 0s (limit <30s)
+SKIP: staged skills, updater, and installer probes require maintainer-verify.sh --heavy.
+Suite manifest contract probes passed.
+test-file duration: suite-manifest-contract.sh 5s (limit <30s)
+shipped package reference contract: PASS
+test-file duration: shipped-package-reference-contract.sh 5s (limit <30s)
+Shell-block lint passed: 88 fenced blocks and 35 shipped shell files; ShellCheck enabled.
+test-file duration: action-shell-blocks.sh 6s (limit <30s)
+SessionStart hook behavior probes passed.
+test-file duration: session-start-hook-behavior.sh 8s (limit <30s)
+Prescribed shell primitive canonicalization checks passed.
+test-file duration: prescribed-shell-canonicalization.sh 4s (limit <30s)
+Defensive-surface exact deletion regressions passed.
+test-file duration: defensive-surface-audit.sh 0s (limit <30s)
+Audit lock-in regressions passed.
+test-file duration: audit-lockins.sh 4s (limit <30s)
+do-work-cli launcher behavior tests passed
+test-file duration: do-work-cli-launcher-behavior.sh 3s (limit <30s)
+p50 estimator suite: all probes passed.
+test-file duration: p50-estimator-determinism.sh 4s (limit <30s)
+select-simple-reqs suite: all probes passed.
+test-file duration: select-simple-reqs-behavior.sh 3s (limit <30s)
+Go test budget behavior probes passed.
+test-file duration: run-go-tests-with-budget-behavior.sh 5s (limit <30s)
+Fast-stage evidence reuse probes passed.
+test-file duration: fast-stage-reuse-behavior.sh 11s (limit <30s)
+quiet-grep pipeline audit passed (207 tracked shell files, 19 must-flag and 7 must-not-flag shapes).
+test-file duration: quiet-grep-pipeline-audit.sh 2s (limit <30s)
+Contract regression checks passed.
+maintainer-verify: queue-kanban go vet
+maintainer-verify: queue-kanban uncached tests
+maintainer-verify: stage queue-kanban-fast-tests: EXECUTING (fingerprint_uncertain)
+go-test budget: module=/Users/t2/Desktop/e1-experimental-repos/skill-do-work2/skills/do-work-board/tools/queue-kanban wall=44s tests=427 slowest-file=strict_behavior_regression_test.go:21.54s limit=<30s
+maintainer-verify: do-work-cli go vet
+maintainer-verify: do-work-cli uncached tests
+maintainer-verify: stage do-work-cli-fast-tests: EXECUTING (fingerprint_uncertain)
+go-test budget: module=/Users/t2/Desktop/e1-experimental-repos/skill-do-work2/skills/do-work/tools/do-work-cli wall=67s tests=980 slowest-file=internal/finalization/finalization_recovery_test.go:20.68s limit=<30s
+maintainer-verify: gate wall 144s
+Maintainer verification passed.

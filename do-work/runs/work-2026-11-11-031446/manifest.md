@@ -1,6 +1,6 @@
 # Coordinated work run
 
-Status: in-progress
+Status: consumed
 Concurrency: 3 worker slots; source implementation in tool-managed worktrees; serial integration
 Main coordinator: parent session
 Selected wave: REQ-718 (compaction instruction retention)
@@ -20,3 +20,5 @@ Claude operative: t3/execute-claude-slice-work; /Users/t2/.t3/worktrees/skill-do
 Codex operative: t3/execute-codex-brief; /Users/t2/.t3/worktrees/skill-do-work2/t3-d6e60aeb; HEAD b19b6f693e7f0f2aa694cac87f28c1acbfc4ae05.
 
 Execution lead finished Step 9: failed/environment, archive do-work/archive/REQ-718-compaction-instruction-retention.md, finalization af781caf0cc5d239dd74f44805524cec843af6be. Both worker checkouts/branches removed without force after cleanup_complete. Canonical final retry exit 0. Coordinator owns Step 10 and run consumption.
+
+Coordinator consumed all handbacks. Durable experiment reports delivered; replay repair merged as b02547a7bdcd1053357067a6076a6b633b7341e2 and offline checks pass. No active workers or remaining worker worktrees. Queue selector empty; checkpoint refreshed. Combined experiment remains failed/environment for untested actual Codex/T3 compaction.

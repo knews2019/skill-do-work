@@ -1,0 +1,1670 @@
+maintainer-verify: checking Go go1.26.1 or newer
+maintainer-verify: checking ShellCheck 0.11.0 or newer
+maintainer-verify: ShellCheck warning-level lint (207 tracked files)
+maintainer-verify: gofmt formatting check (345 tracked files)
+maintainer-verify: aggregate contract suite
+finding ASSOCIATION-UNOWNED [warning]: no active or terminal request claims this path
+  paths: phantom-file.txt
+crew-member loads (shared principles, supply chain) and mutations passed; near_identical_cross_file_pairs 0
+core-checks contract probes passed.
+test-file duration: _dev/tests/contracts/core-checks.sh 11s (limit <30s)
+queue-kanban contract probes passed.
+test-file duration: _dev/tests/contracts/queue-kanban.sh 0s (limit <30s)
+replace-section: success
+repository: /Users/t2/Desktop/e1-experimental-repos/skill-do-work2
+change /var/folders/2w/kw8sv6rd1z15yjykl787ryph0000gn/T/tmp.jwl81SRWlk/project with spaces/Justfile [modified]: managed section written from /var/folders/2w/kw8sv6rd1z15yjykl787ryph0000gn/T/tmp.jwl81SRWlk/managed-section.just
+rollback: not_needed
+replace-section: success
+repository: /Users/t2/Desktop/e1-experimental-repos/skill-do-work2
+rollback: not_needed
+replace-section: success
+repository: /Users/t2/Desktop/e1-experimental-repos/skill-do-work2
+change /var/folders/2w/kw8sv6rd1z15yjykl787ryph0000gn/T/tmp.jwl81SRWlk/absent project/.justfile [created]: managed section written from /var/folders/2w/kw8sv6rd1z15yjykl787ryph0000gn/T/tmp.jwl81SRWlk/managed-section.just
+rollback: not_needed
+replace-section: success
+repository: /Users/t2/Desktop/e1-experimental-repos/skill-do-work2
+change /var/folders/2w/kw8sv6rd1z15yjykl787ryph0000gn/T/tmp.jwl81SRWlk/variants/justfile [modified]: managed section written from /var/folders/2w/kw8sv6rd1z15yjykl787ryph0000gn/T/tmp.jwl81SRWlk/managed-section.just
+rollback: not_needed
+replace-section: success
+repository: /Users/t2/Desktop/e1-experimental-repos/skill-do-work2
+change /var/folders/2w/kw8sv6rd1z15yjykl787ryph0000gn/T/tmp.jwl81SRWlk/variants/Justfile [modified]: managed section written from /var/folders/2w/kw8sv6rd1z15yjykl787ryph0000gn/T/tmp.jwl81SRWlk/managed-section.just
+rollback: not_needed
+replace-section: success
+repository: /Users/t2/Desktop/e1-experimental-repos/skill-do-work2
+change /var/folders/2w/kw8sv6rd1z15yjykl787ryph0000gn/T/tmp.jwl81SRWlk/variants/.justfile [modified]: managed section written from /var/folders/2w/kw8sv6rd1z15yjykl787ryph0000gn/T/tmp.jwl81SRWlk/managed-section.just
+rollback: not_needed
+replace-section: success
+repository: /Users/t2/Desktop/e1-experimental-repos/skill-do-work2
+change /var/folders/2w/kw8sv6rd1z15yjykl787ryph0000gn/T/tmp.jwl81SRWlk/raw-multiline-string.just [modified]: managed section written from /var/folders/2w/kw8sv6rd1z15yjykl787ryph0000gn/T/tmp.jwl81SRWlk/reserved-section.just
+rollback: not_needed
+replace-section: success
+repository: /Users/t2/Desktop/e1-experimental-repos/skill-do-work2
+change /var/folders/2w/kw8sv6rd1z15yjykl787ryph0000gn/T/tmp.jwl81SRWlk/cooked-multiline-string-crlf.just [modified]: managed section written from /var/folders/2w/kw8sv6rd1z15yjykl787ryph0000gn/T/tmp.jwl81SRWlk/reserved-section.just
+rollback: not_needed
+replace-section: success
+repository: /Users/t2/Desktop/e1-experimental-repos/skill-do-work2
+change /var/folders/2w/kw8sv6rd1z15yjykl787ryph0000gn/T/tmp.jwl81SRWlk/ordinary-and-command-multiline-literals.just [modified]: managed section written from /var/folders/2w/kw8sv6rd1z15yjykl787ryph0000gn/T/tmp.jwl81SRWlk/reserved-section.just
+rollback: not_needed
+replace-section: success
+repository: /Users/t2/Desktop/e1-experimental-repos/skill-do-work2
+change /var/folders/2w/kw8sv6rd1z15yjykl787ryph0000gn/T/tmp.jwl81SRWlk/ordinary-backtick-multiline-command.just [modified]: managed section written from /var/folders/2w/kw8sv6rd1z15yjykl787ryph0000gn/T/tmp.jwl81SRWlk/reserved-section.just
+rollback: not_needed
+replace-section: success
+repository: /Users/t2/Desktop/e1-experimental-repos/skill-do-work2
+rollback: not_needed
+replace-text-section contract probes passed.
+test-file duration: _dev/tests/contracts/replace-text-section.sh 15s (limit <30s)
+recovery set-aside contract probes passed.
+test-file duration: _dev/tests/contracts/recovery-set-aside.sh 0s (limit <30s)
+SKIP: staged skills, updater, and installer probes require maintainer-verify.sh --heavy.
+Suite manifest contract probes passed.
+test-file duration: suite-manifest-contract.sh 8s (limit <30s)
+shipped package reference contract: PASS
+test-file duration: shipped-package-reference-contract.sh 9s (limit <30s)
+Shell-block lint passed: 88 fenced blocks and 35 shipped shell files; ShellCheck enabled.
+test-file duration: action-shell-blocks.sh 10s (limit <30s)
+SessionStart hook behavior probes passed.
+test-file duration: session-start-hook-behavior.sh 11s (limit <30s)
+Prescribed shell primitive canonicalization checks passed.
+test-file duration: prescribed-shell-canonicalization.sh 4s (limit <30s)
+Defensive-surface exact deletion regressions passed.
+test-file duration: defensive-surface-audit.sh 0s (limit <30s)
+Audit lock-in regressions passed.
+test-file duration: audit-lockins.sh 6s (limit <30s)
+do-work-cli launcher behavior tests passed
+test-file duration: do-work-cli-launcher-behavior.sh 4s (limit <30s)
+p50 estimator suite: all probes passed.
+test-file duration: p50-estimator-determinism.sh 6s (limit <30s)
+select-simple-reqs suite: all probes passed.
+test-file duration: select-simple-reqs-behavior.sh 4s (limit <30s)
+Go test budget behavior probes passed.
+test-file duration: run-go-tests-with-budget-behavior.sh 7s (limit <30s)
+Fast-stage evidence reuse probes passed.
+test-file duration: fast-stage-reuse-behavior.sh 17s (limit <30s)
+quiet-grep pipeline audit passed (207 tracked shell files, 19 must-flag and 7 must-not-flag shapes).
+test-file duration: quiet-grep-pipeline-audit.sh 3s (limit <30s)
+Contract regression checks passed.
+maintainer-verify: queue-kanban go vet
+maintainer-verify: queue-kanban uncached tests
+maintainer-verify: stage queue-kanban-fast-tests: EXECUTING (fingerprint_uncertain)
+=== RUN   TestRequestActivityAttributesACommitThatTouchesTheRequestFileWithoutAPrefix
+--- PASS: TestRequestActivityAttributesACommitThatTouchesTheRequestFileWithoutAPrefix (0.00s)
+=== RUN   TestRequestActivityAttributesEveryPrefixTokenInASubject
+--- PASS: TestRequestActivityAttributesEveryPrefixTokenInASubject (0.00s)
+=== RUN   TestRequestActivityCountsALiveWorktreeAgentBranchTip
+--- PASS: TestRequestActivityCountsALiveWorktreeAgentBranchTip (0.00s)
+=== RUN   TestRequestActivityLargestGapUnitesCommitsWithStamps
+--- PASS: TestRequestActivityLargestGapUnitesCommitsWithStamps (0.00s)
+=== RUN   TestGeneratedPayloadCarriesTheLargestActivityGap
+--- PASS: TestGeneratedPayloadCarriesTheLargestActivityGap (0.01s)
+=== RUN   TestServeReadsRequestActivityOnEveryResponse
+--- PASS: TestServeReadsRequestActivityOnEveryResponse (0.04s)
+=== RUN   TestServedActivityIgnoresABranchTipTheBranchDoesNotOwn
+--- PASS: TestServedActivityIgnoresABranchTipTheBranchDoesNotOwn (0.03s)
+=== RUN   TestServedResponseListsWorktreesAndBranchesOnce
+--- PASS: TestServedResponseListsWorktreesAndBranchesOnce (0.10s)
+=== RUN   TestRequestPathPatternMatchesOnlyRequestFilesAndRunArtifacts
+--- PASS: TestRequestPathPatternMatchesOnlyRequestFilesAndRunArtifacts (0.00s)
+=== RUN   TestBuildActivityRowsEmitsOneRowPerLifecycleStamp
+--- PASS: TestBuildActivityRowsEmitsOneRowPerLifecycleStamp (0.00s)
+=== RUN   TestBuildActivityRowsOrdersByNewestStampAndNamesTheTransition
+--- PASS: TestBuildActivityRowsOrdersByNewestStampAndNamesTheTransition (0.00s)
+=== RUN   TestBuildActivityRowsOrdersOneTicketsStampsNewestFirst
+--- PASS: TestBuildActivityRowsOrdersOneTicketsStampsNewestFirst (0.00s)
+=== RUN   TestBuildActivityRowsStraddlesTheWindowBoundary
+--- PASS: TestBuildActivityRowsStraddlesTheWindowBoundary (0.00s)
+=== RUN   TestBuildActivityRowsSkipsTicketsWithNoParseableStamp
+--- PASS: TestBuildActivityRowsSkipsTicketsWithNoParseableStamp (0.00s)
+=== RUN   TestBuildActivityRowsBreaksStampTiesDeterministically
+--- PASS: TestBuildActivityRowsBreaksStampTiesDeterministically (0.00s)
+=== RUN   TestLifecycleTimestampFieldsIsTheOneListBothReadersUse
+--- PASS: TestLifecycleTimestampFieldsIsTheOneListBothReadersUse (0.00s)
+=== RUN   TestActivityDoesNotLabelPendingRecoveryAsLaterCompletion
+--- PASS: TestActivityDoesNotLabelPendingRecoveryAsLaterCompletion (0.00s)
+=== RUN   TestNextRequestNumber
+=== RUN   TestNextRequestNumber/highest_id_is_REQ-070_in_the_queue
+--- PASS: TestNextRequestNumber/highest_id_is_REQ-070_in_the_queue (0.00s)
+=== RUN   TestNextRequestNumber/empty_tree_starts_at_1
+--- PASS: TestNextRequestNumber/empty_tree_starts_at_1 (0.00s)
+=== RUN   TestNextRequestNumber/a_gap_in_the_sequence_is_tolerated,_never_filled
+--- PASS: TestNextRequestNumber/a_gap_in_the_sequence_is_tolerated,_never_filled (0.00s)
+=== RUN   TestNextRequestNumber/the_max_spans_queue,_working,_and_nested_archive_UR_folders
+--- PASS: TestNextRequestNumber/the_max_spans_queue,_working,_and_nested_archive_UR_folders (0.00s)
+=== RUN   TestNextRequestNumber/zero-padding_width_does_not_cap_the_number
+--- PASS: TestNextRequestNumber/zero-padding_width_does_not_cap_the_number (0.00s)
+=== RUN   TestNextRequestNumber/pruned_subtrees_do_not_contribute
+--- PASS: TestNextRequestNumber/pruned_subtrees_do_not_contribute (0.00s)
+--- PASS: TestNextRequestNumber (0.01s)
+=== RUN   TestNextRequestNumberHonorsFrontmatterIdAboveFilename
+--- PASS: TestNextRequestNumberHonorsFrontmatterIdAboveFilename (0.00s)
+=== RUN   TestNextRequestNumberReservesNumberForTheNextCall
+--- PASS: TestNextRequestNumberReservesNumberForTheNextCall (0.00s)
+=== RUN   TestRequestReservationFileNameUsesStoredRequestIDSpelling
+--- PASS: TestRequestReservationFileNameUsesStoredRequestIDSpelling (0.00s)
+=== RUN   TestNextRequestNumberConcurrentProcessesReserveDistinctNumbers
+--- PASS: TestNextRequestNumberConcurrentProcessesReserveDistinctNumbers (0.06s)
+=== RUN   TestNextRequestNumberProcessHelper
+--- PASS: TestNextRequestNumberProcessHelper (0.00s)
+=== RUN   TestNextRequestNumberAdvancesPastExistingReservation
+=== RUN   TestNextRequestNumberAdvancesPastExistingReservation/REQ-088
+--- PASS: TestNextRequestNumberAdvancesPastExistingReservation/REQ-088 (0.00s)
+=== RUN   TestNextRequestNumberAdvancesPastExistingReservation/REQ-000088
+--- PASS: TestNextRequestNumberAdvancesPastExistingReservation/REQ-000088 (0.00s)
+--- PASS: TestNextRequestNumberAdvancesPastExistingReservation (0.00s)
+=== RUN   TestNextRequestNumberIgnoresReservationLikeSuffixJunk
+--- PASS: TestNextRequestNumberIgnoresReservationLikeSuffixJunk (0.00s)
+=== RUN   TestNextRequestNumberRejectsSymlinkedReservationDirectory
+--- PASS: TestNextRequestNumberRejectsSymlinkedReservationDirectory (0.00s)
+=== RUN   TestNextRequestNumberRejectsDoWorkRootOutsideRepository
+--- PASS: TestNextRequestNumberRejectsDoWorkRootOutsideRepository (0.00s)
+=== RUN   TestNextRequestNumberLeavesTheQueueUntouched
+--- PASS: TestNextRequestNumberLeavesTheQueueUntouched (0.00s)
+=== RUN   TestWriteFileAtomicallyPreservesCompleteMode
+=== RUN   TestWriteFileAtomicallyPreservesCompleteMode/ordinary
+--- PASS: TestWriteFileAtomicallyPreservesCompleteMode/ordinary (0.04s)
+=== RUN   TestWriteFileAtomicallyPreservesCompleteMode/setuid
+--- PASS: TestWriteFileAtomicallyPreservesCompleteMode/setuid (0.01s)
+=== RUN   TestWriteFileAtomicallyPreservesCompleteMode/setgid
+--- PASS: TestWriteFileAtomicallyPreservesCompleteMode/setgid (0.01s)
+=== RUN   TestWriteFileAtomicallyPreservesCompleteMode/sticky
+--- PASS: TestWriteFileAtomicallyPreservesCompleteMode/sticky (0.02s)
+--- PASS: TestWriteFileAtomicallyPreservesCompleteMode (0.07s)
+=== RUN   TestLiveTreeExcludesMirrorAndDeliverables
+--- PASS: TestLiveTreeExcludesMirrorAndDeliverables (0.07s)
+=== RUN   TestLiveTreeArchiveShapeClassifierInvariant
+--- PASS: TestLiveTreeArchiveShapeClassifierInvariant (0.06s)
+=== RUN   TestLiveTreeStatusNormalization
+--- PASS: TestLiveTreeStatusNormalization (0.06s)
+=== RUN   TestLiveTreeColumnBucketingMatchesStatus
+--- PASS: TestLiveTreeColumnBucketingMatchesStatus (0.06s)
+=== RUN   TestLiveTreeUserRequestLinkage
+--- PASS: TestLiveTreeUserRequestLinkage (0.06s)
+=== RUN   TestLiveTreeCompletionTimeConsistent
+--- PASS: TestLiveTreeCompletionTimeConsistent (0.06s)
+=== RUN   TestLiveTreeCalendarCoversEveryRequest
+--- PASS: TestLiveTreeCalendarCoversEveryRequest (0.06s)
+=== RUN   TestLiveGitCommitDateLookupBestEffort
+--- PASS: TestLiveGitCommitDateLookupBestEffort (0.05s)
+=== RUN   TestSyntheticParsesBothArchiveShapes
+--- PASS: TestSyntheticParsesBothArchiveShapes (0.00s)
+=== RUN   TestSyntheticUserRequestLinkage
+--- PASS: TestSyntheticUserRequestLinkage (0.00s)
+=== RUN   TestSyntheticColumnBucketing
+--- PASS: TestSyntheticColumnBucketing (0.00s)
+=== RUN   TestSyntheticLegacyCompleteNormalized
+--- PASS: TestSyntheticLegacyCompleteNormalized (0.00s)
+=== RUN   TestSyntheticUnrecognizedStatusFlagged
+--- PASS: TestSyntheticUnrecognizedStatusFlagged (0.00s)
+=== RUN   TestSyntheticStrayRequestFlagged
+--- PASS: TestSyntheticStrayRequestFlagged (0.00s)
+=== RUN   TestSyntheticCountsAndCalendar
+--- PASS: TestSyntheticCountsAndCalendar (0.00s)
+=== RUN   TestCalendarDatesClaimsAndFailuresFromTheirOwnStamps
+--- PASS: TestCalendarDatesClaimsAndFailuresFromTheirOwnStamps (0.00s)
+=== RUN   TestCalendarDayKeySentinelsMatchTheShippedClient
+--- PASS: TestCalendarDayKeySentinelsMatchTheShippedClient (0.00s)
+=== RUN   TestGeneratedMentionsPreserveRestatingHeadingRoundTrip
+=== RUN   TestGeneratedMentionsPreserveRestatingHeadingRoundTrip/option_immediately_after_heading
+--- PASS: TestGeneratedMentionsPreserveRestatingHeadingRoundTrip/option_immediately_after_heading (0.00s)
+=== RUN   TestGeneratedMentionsPreserveRestatingHeadingRoundTrip/option_after_setext_heading
+--- PASS: TestGeneratedMentionsPreserveRestatingHeadingRoundTrip/option_after_setext_heading (0.00s)
+=== RUN   TestGeneratedMentionsPreserveRestatingHeadingRoundTrip/option_after_heading_blank
+--- PASS: TestGeneratedMentionsPreserveRestatingHeadingRoundTrip/option_after_heading_blank (0.00s)
+=== RUN   TestGeneratedMentionsPreserveRestatingHeadingRoundTrip/option_after_heading_spaces
+--- PASS: TestGeneratedMentionsPreserveRestatingHeadingRoundTrip/option_after_heading_spaces (0.00s)
+=== RUN   TestGeneratedMentionsPreserveRestatingHeadingRoundTrip/title_matches_processed_heading
+--- PASS: TestGeneratedMentionsPreserveRestatingHeadingRoundTrip/title_matches_processed_heading (0.00s)
+=== RUN   TestGeneratedMentionsPreserveRestatingHeadingRoundTrip/processed_heading_keeps_later_reference
+--- PASS: TestGeneratedMentionsPreserveRestatingHeadingRoundTrip/processed_heading_keeps_later_reference (0.00s)
+=== RUN   TestGeneratedMentionsPreserveRestatingHeadingRoundTrip/omitted_html_keeps_preprocessing_state
+--- PASS: TestGeneratedMentionsPreserveRestatingHeadingRoundTrip/omitted_html_keeps_preprocessing_state (0.00s)
+=== RUN   TestGeneratedMentionsPreserveRestatingHeadingRoundTrip/exact
+--- PASS: TestGeneratedMentionsPreserveRestatingHeadingRoundTrip/exact (0.00s)
+=== RUN   TestGeneratedMentionsPreserveRestatingHeadingRoundTrip/case_and_spacing
+--- PASS: TestGeneratedMentionsPreserveRestatingHeadingRoundTrip/case_and_spacing (0.00s)
+=== RUN   TestGeneratedMentionsPreserveRestatingHeadingRoundTrip/formatted_and_entity
+--- PASS: TestGeneratedMentionsPreserveRestatingHeadingRoundTrip/formatted_and_entity (0.00s)
+=== RUN   TestGeneratedMentionsPreserveRestatingHeadingRoundTrip/escaped_punctuation
+--- PASS: TestGeneratedMentionsPreserveRestatingHeadingRoundTrip/escaped_punctuation (0.00s)
+=== RUN   TestGeneratedMentionsPreserveRestatingHeadingRoundTrip/comment_prefix
+--- PASS: TestGeneratedMentionsPreserveRestatingHeadingRoundTrip/comment_prefix (0.00s)
+=== RUN   TestGeneratedMentionsPreserveRestatingHeadingRoundTrip/html_prefix_omitted
+--- PASS: TestGeneratedMentionsPreserveRestatingHeadingRoundTrip/html_prefix_omitted (0.00s)
+=== RUN   TestGeneratedMentionsPreserveRestatingHeadingRoundTrip/unicode_spaces
+--- PASS: TestGeneratedMentionsPreserveRestatingHeadingRoundTrip/unicode_spaces (0.00s)
+=== RUN   TestGeneratedMentionsPreserveRestatingHeadingRoundTrip/unicode_dotted_I
+--- PASS: TestGeneratedMentionsPreserveRestatingHeadingRoundTrip/unicode_dotted_I (0.00s)
+=== RUN   TestGeneratedMentionsPreserveRestatingHeadingRoundTrip/unicode_final_sigma
+--- PASS: TestGeneratedMentionsPreserveRestatingHeadingRoundTrip/unicode_final_sigma (0.00s)
+=== RUN   TestGeneratedMentionsPreserveRestatingHeadingRoundTrip/not_JavaScript_whitespace
+--- PASS: TestGeneratedMentionsPreserveRestatingHeadingRoundTrip/not_JavaScript_whitespace (0.00s)
+=== RUN   TestGeneratedMentionsPreserveRestatingHeadingRoundTrip/nonmatching
+--- PASS: TestGeneratedMentionsPreserveRestatingHeadingRoundTrip/nonmatching (0.00s)
+=== RUN   TestGeneratedMentionsPreserveRestatingHeadingRoundTrip/not_first_element
+--- PASS: TestGeneratedMentionsPreserveRestatingHeadingRoundTrip/not_first_element (0.00s)
+=== RUN   TestGeneratedMentionsPreserveRestatingHeadingRoundTrip/h2
+--- PASS: TestGeneratedMentionsPreserveRestatingHeadingRoundTrip/h2 (0.00s)
+=== RUN   TestGeneratedMentionsPreserveRestatingHeadingRoundTrip/nested_heading
+--- PASS: TestGeneratedMentionsPreserveRestatingHeadingRoundTrip/nested_heading (0.00s)
+--- PASS: TestGeneratedMentionsPreserveRestatingHeadingRoundTrip (0.00s)
+=== RUN   TestGeneratedCitationIndexIncludesResolvedBodyAndFrontmatterReferences
+--- PASS: TestGeneratedCitationIndexIncludesResolvedBodyAndFrontmatterReferences (0.00s)
+=== RUN   TestCollectDocumentTicketMentionsClassifiesEveryQuotedConstruct
+--- PASS: TestCollectDocumentTicketMentionsClassifiesEveryQuotedConstruct (0.00s)
+=== RUN   TestCollectDocumentTicketMentionsMeasuresOffsetsInUtf16CodeUnits
+--- PASS: TestCollectDocumentTicketMentionsMeasuresOffsetsInUtf16CodeUnits (0.00s)
+=== RUN   TestCollectDocumentTicketMentionsOffsetsCarryTheFrontmatterFence
+=== RUN   TestCollectDocumentTicketMentionsOffsetsCarryTheFrontmatterFence/lf_fence
+--- PASS: TestCollectDocumentTicketMentionsOffsetsCarryTheFrontmatterFence/lf_fence (0.00s)
+=== RUN   TestCollectDocumentTicketMentionsOffsetsCarryTheFrontmatterFence/crlf_fence
+--- PASS: TestCollectDocumentTicketMentionsOffsetsCarryTheFrontmatterFence/crlf_fence (0.00s)
+=== RUN   TestCollectDocumentTicketMentionsOffsetsCarryTheFrontmatterFence/no_fence_at_all
+--- PASS: TestCollectDocumentTicketMentionsOffsetsCarryTheFrontmatterFence/no_fence_at_all (0.00s)
+=== RUN   TestCollectDocumentTicketMentionsOffsetsCarryTheFrontmatterFence/unclosed_fence_is_all_body
+--- PASS: TestCollectDocumentTicketMentionsOffsetsCarryTheFrontmatterFence/unclosed_fence_is_all_body (0.00s)
+=== RUN   TestCollectDocumentTicketMentionsOffsetsCarryTheFrontmatterFence/non-ascii_inside_the_fence
+--- PASS: TestCollectDocumentTicketMentionsOffsetsCarryTheFrontmatterFence/non-ascii_inside_the_fence (0.00s)
+--- PASS: TestCollectDocumentTicketMentionsOffsetsCarryTheFrontmatterFence (0.00s)
+=== RUN   TestCollectDocumentTicketMentionsNeverTouchesTheFrontmatterFence
+--- PASS: TestCollectDocumentTicketMentionsNeverTouchesTheFrontmatterFence (0.00s)
+=== RUN   TestTicketMentionResolverNeverGuessesAnAmbiguousSegment
+--- PASS: TestTicketMentionResolverNeverGuessesAnAmbiguousSegment (0.00s)
+=== RUN   TestBuildGeneratedBoardMarkdownDataLocatesEveryTicketMention
+--- PASS: TestBuildGeneratedBoardMarkdownDataLocatesEveryTicketMention (1.56s)
+=== RUN   TestBuildGeneratedBoardMarkdownDataNeverOffersToAnnotateAFence
+--- PASS: TestBuildGeneratedBoardMarkdownDataNeverOffersToAnnotateAFence (1.42s)
+=== RUN   TestBodyTicketMentionPatternComposesTheOneFilePathDefinition
+--- PASS: TestBodyTicketMentionPatternComposesTheOneFilePathDefinition (0.00s)
+=== RUN   TestCollectDocumentTicketMentionsLeavesLinkSyntaxAlone
+--- PASS: TestCollectDocumentTicketMentionsLeavesLinkSyntaxAlone (0.00s)
+=== RUN   TestTextNodeSurfaceLetsALinkWinOverAnEnclosedCodeSpan
+--- PASS: TestTextNodeSurfaceLetsALinkWinOverAnEnclosedCodeSpan (0.00s)
+=== RUN   TestUtf16OffsetCursorAnswersBothDirections
+--- PASS: TestUtf16OffsetCursorAnswersBothDirections (0.00s)
+=== RUN   TestCollectDocumentTicketMentionsReadsTheOffsetCursorTwicePerMention
+--- PASS: TestCollectDocumentTicketMentionsReadsTheOffsetCursorTwicePerMention (0.00s)
+=== RUN   TestUtf16LengthMatchesWhatTheClientReceives
+=== RUN   TestUtf16LengthMatchesWhatTheClientReceives/ascii
+--- PASS: TestUtf16LengthMatchesWhatTheClientReceives/ascii (0.00s)
+=== RUN   TestUtf16LengthMatchesWhatTheClientReceives/em_dash
+--- PASS: TestUtf16LengthMatchesWhatTheClientReceives/em_dash (0.00s)
+=== RUN   TestUtf16LengthMatchesWhatTheClientReceives/astral_emoji
+--- PASS: TestUtf16LengthMatchesWhatTheClientReceives/astral_emoji (0.00s)
+=== RUN   TestUtf16LengthMatchesWhatTheClientReceives/combining_marks
+--- PASS: TestUtf16LengthMatchesWhatTheClientReceives/combining_marks (0.00s)
+=== RUN   TestUtf16LengthMatchesWhatTheClientReceives/line_and_paragraph_separators
+--- PASS: TestUtf16LengthMatchesWhatTheClientReceives/line_and_paragraph_separators (0.00s)
+=== RUN   TestUtf16LengthMatchesWhatTheClientReceives/byte_order_mark
+--- PASS: TestUtf16LengthMatchesWhatTheClientReceives/byte_order_mark (0.00s)
+=== RUN   TestUtf16LengthMatchesWhatTheClientReceives/invalid_utf-8
+--- PASS: TestUtf16LengthMatchesWhatTheClientReceives/invalid_utf-8 (0.00s)
+=== RUN   TestUtf16LengthMatchesWhatTheClientReceives/literal_replacement_character
+--- PASS: TestUtf16LengthMatchesWhatTheClientReceives/literal_replacement_character (0.00s)
+=== RUN   TestUtf16LengthMatchesWhatTheClientReceives/lone_surrogate_in_wtf-8
+--- PASS: TestUtf16LengthMatchesWhatTheClientReceives/lone_surrogate_in_wtf-8 (0.00s)
+=== RUN   TestUtf16LengthMatchesWhatTheClientReceives/nul_and_control_bytes
+--- PASS: TestUtf16LengthMatchesWhatTheClientReceives/nul_and_control_bytes (0.00s)
+--- PASS: TestUtf16LengthMatchesWhatTheClientReceives (0.00s)
+=== RUN   TestGeneratedBoardMarkdownFileShipsTheTicketMentionIndex
+--- PASS: TestGeneratedBoardMarkdownFileShipsTheTicketMentionIndex (2.50s)
+=== RUN   TestConsumerCheckoutRunsCitationFenceAndShippedPayloadInvariants
+--- PASS: TestConsumerCheckoutRunsCitationFenceAndShippedPayloadInvariants (0.07s)
+=== RUN   TestCompletionAnomaliesFlaggedInBoardModel
+--- PASS: TestCompletionAnomaliesFlaggedInBoardModel (0.00s)
+=== RUN   TestDatedButOldTicketIsNeitherAnomalyNorRecentlyDone
+--- PASS: TestDatedButOldTicketIsNeitherAnomalyNorRecentlyDone (0.00s)
+=== RUN   TestUnparseableCompletedAtStillFlaggedWhenGitRescuesTheDate
+--- PASS: TestUnparseableCompletedAtStillFlaggedWhenGitRescuesTheDate (0.00s)
+=== RUN   TestCompletionAnomaliesInGeneratedPayload
+--- PASS: TestCompletionAnomaliesInGeneratedPayload (0.00s)
+=== RUN   TestCompletionAnomaliesInSummaryOutput
+--- PASS: TestCompletionAnomaliesInSummaryOutput (0.00s)
+=== RUN   TestCleanSyntheticTreeHasNoCompletionAnomalies
+--- PASS: TestCleanSyntheticTreeHasNoCompletionAnomalies (0.00s)
+=== RUN   TestNegativeClaimedToCompletedSpanFlagged
+--- PASS: TestNegativeClaimedToCompletedSpanFlagged (0.00s)
+=== RUN   TestOrderedOrClaimlessSpansNotFlaggedByNegativeSpanCheck
+--- PASS: TestOrderedOrClaimlessSpansNotFlaggedByNegativeSpanCheck (0.00s)
+=== RUN   TestPendingSplitsOnDependencyReadiness
+--- PASS: TestPendingSplitsOnDependencyReadiness (0.02s)
+=== RUN   TestCancelledDependencyNeverSatisfiesGating
+--- PASS: TestCancelledDependencyNeverSatisfiesGating (0.00s)
+=== RUN   TestCompletedWithIssuesSatisfiesGating
+--- PASS: TestCompletedWithIssuesSatisfiesGating (0.00s)
+=== RUN   TestClaimedDependencyHoldingItsCommitSatisfiesGating
+--- PASS: TestClaimedDependencyHoldingItsCommitSatisfiesGating (0.00s)
+=== RUN   TestClaimedDependencyWithoutACommitBlocksGating
+--- PASS: TestClaimedDependencyWithoutACommitBlocksGating (0.00s)
+=== RUN   TestClaimedDependencyWithAWithdrawnCommitBlocksGating
+--- PASS: TestClaimedDependencyWithAWithdrawnCommitBlocksGating (0.00s)
+=== RUN   TestDanglingDependencyWarnsAndBlocks
+--- PASS: TestDanglingDependencyWarnsAndBlocks (0.00s)
+=== RUN   TestDependentsRecordTheReverseEdge
+--- PASS: TestDependentsRecordTheReverseEdge (0.00s)
+=== RUN   TestDependencyStateReachesGeneratedData
+--- PASS: TestDependencyStateReachesGeneratedData (0.00s)
+=== RUN   TestDiskSpaceProbeReportsLowFreeSpaceAtEachThreshold
+=== RUN   TestDiskSpaceProbeReportsLowFreeSpaceAtEachThreshold/2_GiB_free_is_critical
+--- PASS: TestDiskSpaceProbeReportsLowFreeSpaceAtEachThreshold/2_GiB_free_is_critical (0.00s)
+=== RUN   TestDiskSpaceProbeReportsLowFreeSpaceAtEachThreshold/9_GiB_free_is_a_warning
+--- PASS: TestDiskSpaceProbeReportsLowFreeSpaceAtEachThreshold/9_GiB_free_is_a_warning (0.00s)
+=== RUN   TestDiskSpaceProbeReportsLowFreeSpaceAtEachThreshold/20_GiB_free_is_clean
+--- PASS: TestDiskSpaceProbeReportsLowFreeSpaceAtEachThreshold/20_GiB_free_is_clean (0.00s)
+--- PASS: TestDiskSpaceProbeReportsLowFreeSpaceAtEachThreshold (0.00s)
+=== RUN   TestDiskSpaceProbeThresholdBoundariesAreStrict
+--- PASS: TestDiskSpaceProbeThresholdBoundariesAreStrict (0.00s)
+=== RUN   TestDiskSpaceProbeUnsupportedPlatformIsSkippedNotClean
+--- PASS: TestDiskSpaceProbeUnsupportedPlatformIsSkippedNotClean (0.00s)
+=== RUN   TestDiskSpaceProbeReachesTheVerifyReport
+--- PASS: TestDiskSpaceProbeReachesTheVerifyReport (0.14s)
+=== RUN   TestDiskSpaceProbeKeepsTheHealthyRepoRootReading
+--- PASS: TestDiskSpaceProbeKeepsTheHealthyRepoRootReading (0.00s)
+=== RUN   TestDiskSpaceProbeKeepsTheRepoRootSkipReason
+--- PASS: TestDiskSpaceProbeKeepsTheRepoRootSkipReason (0.00s)
+=== RUN   TestDiskSpaceLevelMatchesTheFindingThresholds
+--- PASS: TestDiskSpaceLevelMatchesTheFindingThresholds (0.00s)
+=== RUN   TestDiskSpaceProbeMeasuresOnlyTheRepoRoot
+--- PASS: TestDiskSpaceProbeMeasuresOnlyTheRepoRoot (0.25s)
+=== RUN   TestDurationsJavaScriptCommentsDateTheirMeasurements
+--- PASS: TestDurationsJavaScriptCommentsDateTheirMeasurements (0.00s)
+=== RUN   TestDurationAggregateAdmitsOnlyMeasurableCompletedRequests
+--- PASS: TestDurationAggregateAdmitsOnlyMeasurableCompletedRequests (0.00s)
+=== RUN   TestDurationDayMedianAppliesTheReadTimeOutlierRule
+--- PASS: TestDurationDayMedianAppliesTheReadTimeOutlierRule (0.00s)
+=== RUN   TestDurationAggregateKeepsReversedSpansRawAndOutOfMedians
+--- PASS: TestDurationAggregateKeepsReversedSpansRawAndOutOfMedians (0.00s)
+=== RUN   TestDurationDayWithOnlyExcludedSamplesHasNoMedian
+--- PASS: TestDurationDayWithOnlyExcludedSamplesHasNoMedian (0.00s)
+=== RUN   TestDurationDaysAreChronologicalAndOnlyActiveDaysAppear
+--- PASS: TestDurationDaysAreChronologicalAndOnlyActiveDaysAppear (0.00s)
+=== RUN   TestLiveArchiveDurationsMatchTheCalibratedFigures
+--- PASS: TestLiveArchiveDurationsMatchTheCalibratedFigures (0.07s)
+=== RUN   TestLiveArchiveCalibrationRunsInASuiteCheckoutAndSkipsElsewhere
+--- PASS: TestLiveArchiveCalibrationRunsInASuiteCheckoutAndSkipsElsewhere (0.00s)
+=== RUN   TestImplementationSpanVerdictReadsTheLargestStampGap
+--- PASS: TestImplementationSpanVerdictReadsTheLargestStampGap (0.00s)
+=== RUN   TestImplementationSpanMarksReversedStampsAndRefusesUnparseableOnes
+--- PASS: TestImplementationSpanMarksReversedStampsAndRefusesUnparseableOnes (0.00s)
+=== RUN   TestImplementationSpanOpensAtTheEarliestLifecycleStamp
+=== RUN   TestImplementationSpanOpensAtTheEarliestLifecycleStamp/a_claim_stamp_rewritten_after_the_phase_work_still_measures_the_phase_work
+--- PASS: TestImplementationSpanOpensAtTheEarliestLifecycleStamp/a_claim_stamp_rewritten_after_the_phase_work_still_measures_the_phase_work (0.00s)
+=== RUN   TestImplementationSpanOpensAtTheEarliestLifecycleStamp/an_earliest_claim_stamp_reads_exactly_as_it_did_before
+--- PASS: TestImplementationSpanOpensAtTheEarliestLifecycleStamp/an_earliest_claim_stamp_reads_exactly_as_it_did_before (0.00s)
+=== RUN   TestImplementationSpanOpensAtTheEarliestLifecycleStamp/an_unparseable_stamp_is_skipped_rather_than_fatal
+--- PASS: TestImplementationSpanOpensAtTheEarliestLifecycleStamp/an_unparseable_stamp_is_skipped_rather_than_fatal (0.00s)
+=== RUN   TestImplementationSpanOpensAtTheEarliestLifecycleStamp/a_completion_stamp_with_no_lifecycle_stamp_at_all_measures_nothing
+--- PASS: TestImplementationSpanOpensAtTheEarliestLifecycleStamp/a_completion_stamp_with_no_lifecycle_stamp_at_all_measures_nothing (0.00s)
+=== RUN   TestImplementationSpanOpensAtTheEarliestLifecycleStamp/created_at_never_opens_the_span
+--- PASS: TestImplementationSpanOpensAtTheEarliestLifecycleStamp/created_at_never_opens_the_span (0.00s)
+=== RUN   TestImplementationSpanOpensAtTheEarliestLifecycleStamp/the_non-pipeline_state_stamps_never_open_the_span
+--- PASS: TestImplementationSpanOpensAtTheEarliestLifecycleStamp/the_non-pipeline_state_stamps_never_open_the_span (0.00s)
+=== RUN   TestImplementationSpanOpensAtTheEarliestLifecycleStamp/a_reversed_pair_is_still_reversed_when_the_origin_is_not_the_claim
+--- PASS: TestImplementationSpanOpensAtTheEarliestLifecycleStamp/a_reversed_pair_is_still_reversed_when_the_origin_is_not_the_claim (0.00s)
+--- PASS: TestImplementationSpanOpensAtTheEarliestLifecycleStamp (0.00s)
+=== RUN   TestImplementationSpanOriginEligibilityCoversTheDeclaredSchema
+--- PASS: TestImplementationSpanOriginEligibilityCoversTheDeclaredSchema (0.00s)
+=== RUN   TestImplementationSpanAgreesWithTheDurationsAggregate
+--- PASS: TestImplementationSpanAgreesWithTheDurationsAggregate (0.00s)
+=== RUN   TestPhaseBreakdownUsesObservedPipelineOrderAndKeepsCalibrationSpan
+--- PASS: TestPhaseBreakdownUsesObservedPipelineOrderAndKeepsCalibrationSpan (0.00s)
+=== RUN   TestPhaseBreakdownOmitsSkippedMalformedAndHistoricalPhases
+--- PASS: TestPhaseBreakdownOmitsSkippedMalformedAndHistoricalPhases (0.00s)
+=== RUN   TestCollectRepoFileMentionsClassifiesExistence
+--- PASS: TestCollectRepoFileMentionsClassifiesExistence (0.00s)
+=== RUN   TestServeFileEndpointServesRepoFileReadOnly
+--- PASS: TestServeFileEndpointServesRepoFileReadOnly (0.06s)
+=== RUN   TestServeFileEndpointRedirectsHtmlToFolderPreview
+--- PASS: TestServeFileEndpointRedirectsHtmlToFolderPreview (0.00s)
+=== RUN   TestServeFileEndpointRendersPng
+--- PASS: TestServeFileEndpointRendersPng (0.00s)
+=== RUN   TestProductionServeFileEndpointUsesListenerAuthority
+--- PASS: TestProductionServeFileEndpointUsesListenerAuthority (0.00s)
+=== RUN   TestServeFileEndpointRejectsEscapesAndMissing
+--- PASS: TestServeFileEndpointRejectsEscapesAndMissing (0.00s)
+=== RUN   TestServeFileEndpointIsLoopbackOnly
+--- PASS: TestServeFileEndpointIsLoopbackOnly (0.00s)
+=== RUN   TestReadFrontmatterFieldReturnsRawValue
+--- PASS: TestReadFrontmatterFieldReturnsRawValue (0.00s)
+=== RUN   TestReadFrontmatterFieldRendersSequenceOneItemPerLine
+--- PASS: TestReadFrontmatterFieldRendersSequenceOneItemPerLine (0.00s)
+=== RUN   TestReadFrontmatterFieldReportsAbsentField
+--- PASS: TestReadFrontmatterFieldReportsAbsentField (0.00s)
+=== RUN   TestReadFrontmatterFieldErrorsOnFileWithoutFrontmatter
+--- PASS: TestReadFrontmatterFieldErrorsOnFileWithoutFrontmatter (0.00s)
+=== RUN   TestReadFrontmatterFieldRecoversDuplicateKey
+--- PASS: TestReadFrontmatterFieldRecoversDuplicateKey (0.00s)
+=== RUN   TestRunFrontmatterCommandGetPrintsValue
+--- PASS: TestRunFrontmatterCommandGetPrintsValue (0.00s)
+=== RUN   TestRunFrontmatterCommandGetPrintsListsWithoutGoFormatting
+=== RUN   TestRunFrontmatterCommandGetPrintsListsWithoutGoFormatting/flow_list
+--- PASS: TestRunFrontmatterCommandGetPrintsListsWithoutGoFormatting/flow_list (0.00s)
+=== RUN   TestRunFrontmatterCommandGetPrintsListsWithoutGoFormatting/block_list
+--- PASS: TestRunFrontmatterCommandGetPrintsListsWithoutGoFormatting/block_list (0.00s)
+=== RUN   TestRunFrontmatterCommandGetPrintsListsWithoutGoFormatting/singleton
+--- PASS: TestRunFrontmatterCommandGetPrintsListsWithoutGoFormatting/singleton (0.00s)
+=== RUN   TestRunFrontmatterCommandGetPrintsListsWithoutGoFormatting/empty_list
+--- PASS: TestRunFrontmatterCommandGetPrintsListsWithoutGoFormatting/empty_list (0.00s)
+--- PASS: TestRunFrontmatterCommandGetPrintsListsWithoutGoFormatting (0.00s)
+=== RUN   TestRunFrontmatterCommandNormalizeSeparatesValueFromWarning
+--- PASS: TestRunFrontmatterCommandNormalizeSeparatesValueFromWarning (0.00s)
+=== RUN   TestRunFrontmatterCommandNormalizeWarnsOnUnrecognizedValue
+--- PASS: TestRunFrontmatterCommandNormalizeWarnsOnUnrecognizedValue (0.00s)
+=== RUN   TestRunFrontmatterCommandNormalizeIsSilentOnFieldOutsideTheContract
+=== RUN   TestRunFrontmatterCommandNormalizeIsSilentOnFieldOutsideTheContract/created_at
+--- PASS: TestRunFrontmatterCommandNormalizeIsSilentOnFieldOutsideTheContract/created_at (0.00s)
+=== RUN   TestRunFrontmatterCommandNormalizeIsSilentOnFieldOutsideTheContract/title
+--- PASS: TestRunFrontmatterCommandNormalizeIsSilentOnFieldOutsideTheContract/title (0.00s)
+=== RUN   TestRunFrontmatterCommandNormalizeIsSilentOnFieldOutsideTheContract/id
+--- PASS: TestRunFrontmatterCommandNormalizeIsSilentOnFieldOutsideTheContract/id (0.00s)
+--- PASS: TestRunFrontmatterCommandNormalizeIsSilentOnFieldOutsideTheContract (0.00s)
+=== RUN   TestRunFrontmatterCommandNormalizeMatchesPlainGetOutsideTheContract
+--- PASS: TestRunFrontmatterCommandNormalizeMatchesPlainGetOutsideTheContract (0.00s)
+=== RUN   TestRunFrontmatterCommandInSetRejectsEveryNonStatusField
+=== RUN   TestRunFrontmatterCommandInSetRejectsEveryNonStatusField/created_at
+--- PASS: TestRunFrontmatterCommandInSetRejectsEveryNonStatusField/created_at (0.00s)
+=== RUN   TestRunFrontmatterCommandInSetRejectsEveryNonStatusField/domain
+--- PASS: TestRunFrontmatterCommandInSetRejectsEveryNonStatusField/domain (0.00s)
+=== RUN   TestRunFrontmatterCommandInSetRejectsEveryNonStatusField/route
+--- PASS: TestRunFrontmatterCommandInSetRejectsEveryNonStatusField/route (0.00s)
+=== RUN   TestRunFrontmatterCommandInSetRejectsEveryNonStatusField/testing_status
+--- PASS: TestRunFrontmatterCommandInSetRejectsEveryNonStatusField/testing_status (0.00s)
+--- PASS: TestRunFrontmatterCommandInSetRejectsEveryNonStatusField (0.00s)
+=== RUN   TestRunFrontmatterCommandInSetExitCodes
+--- PASS: TestRunFrontmatterCommandInSetExitCodes (0.01s)
+=== RUN   TestRunFrontmatterCommandAbsentFieldExitsNonZeroWithEmptyStdout
+--- PASS: TestRunFrontmatterCommandAbsentFieldExitsNonZeroWithEmptyStdout (0.00s)
+=== RUN   TestRunFrontmatterCommandRejectsUsageErrors
+--- PASS: TestRunFrontmatterCommandRejectsUsageErrors (0.00s)
+=== RUN   TestRunFrontmatterCommandWarnsOnUnrecognizedStatus
+--- PASS: TestRunFrontmatterCommandWarnsOnUnrecognizedStatus (0.00s)
+=== RUN   TestRunFrontmatterCommandInSetWarnsOnUnrecognizedStatus
+--- PASS: TestRunFrontmatterCommandInSetWarnsOnUnrecognizedStatus (0.00s)
+=== RUN   TestSplitFrontmatter
+=== RUN   TestSplitFrontmatter/standard_frontmatter_then_body
+--- PASS: TestSplitFrontmatter/standard_frontmatter_then_body (0.00s)
+=== RUN   TestSplitFrontmatter/no_frontmatter_at_all
+--- PASS: TestSplitFrontmatter/no_frontmatter_at_all (0.00s)
+=== RUN   TestSplitFrontmatter/opening_fence_but_no_closing_fence
+--- PASS: TestSplitFrontmatter/opening_fence_but_no_closing_fence (0.00s)
+=== RUN   TestSplitFrontmatter/empty_body_after_closing_fence
+--- PASS: TestSplitFrontmatter/empty_body_after_closing_fence (0.00s)
+=== RUN   TestSplitFrontmatter/crlf_body_stays_verbatim,_yaml_is_normalized
+--- PASS: TestSplitFrontmatter/crlf_body_stays_verbatim,_yaml_is_normalized (0.00s)
+--- PASS: TestSplitFrontmatter (0.00s)
+=== RUN   TestParseFrontmatterFieldsRecoversDuplicateKeys
+--- PASS: TestParseFrontmatterFieldsRecoversDuplicateKeys (0.00s)
+=== RUN   TestParseFrontmatterFieldsRecoversDuplicateBlockListKeys
+--- PASS: TestParseFrontmatterFieldsRecoversDuplicateBlockListKeys (0.00s)
+=== RUN   TestParseFrontmatterFieldsRecoversMalformedTitleLine
+=== RUN   TestParseFrontmatterFieldsRecoversMalformedTitleLine/quoted_prefix_then_trailing_text
+--- PASS: TestParseFrontmatterFieldsRecoversMalformedTitleLine/quoted_prefix_then_trailing_text (0.00s)
+=== RUN   TestParseFrontmatterFieldsRecoversMalformedTitleLine/bare_colon_inside_the_title_value
+--- PASS: TestParseFrontmatterFieldsRecoversMalformedTitleLine/bare_colon_inside_the_title_value (0.00s)
+=== RUN   TestParseFrontmatterFieldsRecoversMalformedTitleLine/block-list_depends_on_survives_lenient_recovery
+--- PASS: TestParseFrontmatterFieldsRecoversMalformedTitleLine/block-list_depends_on_survives_lenient_recovery (0.00s)
+--- PASS: TestParseFrontmatterFieldsRecoversMalformedTitleLine (0.00s)
+=== RUN   TestLenientFrontmatterFieldsBlockListShapes
+--- PASS: TestLenientFrontmatterFieldsBlockListShapes (0.00s)
+=== RUN   TestLenientFrontmatterFieldsBareKeyWithoutItemsStaysAbsent
+--- PASS: TestLenientFrontmatterFieldsBareKeyWithoutItemsStaysAbsent (0.00s)
+=== RUN   TestParseFrontmatterFieldsEmptyIsNotAnError
+--- PASS: TestParseFrontmatterFieldsEmptyIsNotAnError (0.00s)
+=== RUN   TestCoerceScalarToString
+=== RUN   TestCoerceScalarToString/nil
+--- PASS: TestCoerceScalarToString/nil (0.00s)
+=== RUN   TestCoerceScalarToString/string_trimmed
+--- PASS: TestCoerceScalarToString/string_trimmed (0.00s)
+=== RUN   TestCoerceScalarToString/int
+--- PASS: TestCoerceScalarToString/int (0.00s)
+=== RUN   TestCoerceScalarToString/float_whole
+--- PASS: TestCoerceScalarToString/float_whole (0.00s)
+=== RUN   TestCoerceScalarToString/bool
+--- PASS: TestCoerceScalarToString/bool (0.00s)
+--- PASS: TestCoerceScalarToString (0.00s)
+=== RUN   TestCoerceToStringList
+=== RUN   TestCoerceToStringList/nil
+--- PASS: TestCoerceToStringList/nil (0.00s)
+=== RUN   TestCoerceToStringList/sequence
+--- PASS: TestCoerceToStringList/sequence (0.00s)
+=== RUN   TestCoerceToStringList/sequence_drops_empties
+--- PASS: TestCoerceToStringList/sequence_drops_empties (0.00s)
+=== RUN   TestCoerceToStringList/bare_scalar_wraps
+--- PASS: TestCoerceToStringList/bare_scalar_wraps (0.00s)
+=== RUN   TestCoerceToStringList/empty_scalar
+--- PASS: TestCoerceToStringList/empty_scalar (0.00s)
+--- PASS: TestCoerceToStringList (0.00s)
+=== RUN   TestFrontmatterQuotingOfUserText
+=== RUN   TestFrontmatterQuotingOfUserText/required_form/double_quote,_colon_and_hash
+--- PASS: TestFrontmatterQuotingOfUserText/required_form/double_quote,_colon_and_hash (0.00s)
+=== RUN   TestFrontmatterQuotingOfUserText/required_form/bracketed_impact_tag_with_a_comma
+--- PASS: TestFrontmatterQuotingOfUserText/required_form/bracketed_impact_tag_with_a_comma (0.00s)
+=== RUN   TestFrontmatterQuotingOfUserText/required_form/apostrophe_doubled_inside_the_scalar
+--- PASS: TestFrontmatterQuotingOfUserText/required_form/apostrophe_doubled_inside_the_scalar (0.00s)
+=== RUN   TestFrontmatterQuotingOfUserText/required_form/a_supplied_shell_probe_with_a_hash_and_quotes
+--- PASS: TestFrontmatterQuotingOfUserText/required_form/a_supplied_shell_probe_with_a_hash_and_quotes (0.00s)
+=== RUN   TestFrontmatterQuotingOfUserText/forbidden_form/double-quoted_scalar,_typed_quote_then_hash
+--- PASS: TestFrontmatterQuotingOfUserText/forbidden_form/double-quoted_scalar,_typed_quote_then_hash (0.00s)
+=== RUN   TestFrontmatterQuotingOfUserText/forbidden_form/double-quoted_scalar,_typed_quote_mid-value
+--- PASS: TestFrontmatterQuotingOfUserText/forbidden_form/double-quoted_scalar,_typed_quote_mid-value (0.00s)
+=== RUN   TestFrontmatterQuotingOfUserText/forbidden_form/unquoted_scalar_with_a_bracketed_tag
+--- PASS: TestFrontmatterQuotingOfUserText/forbidden_form/unquoted_scalar_with_a_bracketed_tag (0.00s)
+--- PASS: TestFrontmatterQuotingOfUserText (0.00s)
+=== RUN   TestFrontmatterQuotingBlockScalarPreservesTerminalNewlines
+=== RUN   TestFrontmatterQuotingBlockScalarPreservesTerminalNewlines/no_terminal_LF_uses_strip
+--- PASS: TestFrontmatterQuotingBlockScalarPreservesTerminalNewlines/no_terminal_LF_uses_strip (0.00s)
+=== RUN   TestFrontmatterQuotingBlockScalarPreservesTerminalNewlines/one_terminal_LF_uses_clip
+--- PASS: TestFrontmatterQuotingBlockScalarPreservesTerminalNewlines/one_terminal_LF_uses_clip (0.00s)
+=== RUN   TestFrontmatterQuotingBlockScalarPreservesTerminalNewlines/multiple_terminal_LFs_use_keep
+--- PASS: TestFrontmatterQuotingBlockScalarPreservesTerminalNewlines/multiple_terminal_LFs_use_keep (0.00s)
+--- PASS: TestFrontmatterQuotingBlockScalarPreservesTerminalNewlines (0.00s)
+=== RUN   TestFrontmatterQuotingRejectsNonTextControlsBeforeComposition
+=== RUN   TestFrontmatterQuotingRejectsNonTextControlsBeforeComposition/CR_is_normalized
+--- PASS: TestFrontmatterQuotingRejectsNonTextControlsBeforeComposition/CR_is_normalized (0.00s)
+=== RUN   TestFrontmatterQuotingRejectsNonTextControlsBeforeComposition/NUL_is_invalid_YAML_text
+--- PASS: TestFrontmatterQuotingRejectsNonTextControlsBeforeComposition/NUL_is_invalid_YAML_text (0.00s)
+=== RUN   TestFrontmatterQuotingRejectsNonTextControlsBeforeComposition/DEL_is_invalid_YAML_text
+--- PASS: TestFrontmatterQuotingRejectsNonTextControlsBeforeComposition/DEL_is_invalid_YAML_text (0.00s)
+--- PASS: TestFrontmatterQuotingRejectsNonTextControlsBeforeComposition (0.00s)
+=== RUN   TestStrictFrontmatterReturnsTheNestedEstimateBlockAsAMap
+--- PASS: TestStrictFrontmatterReturnsTheNestedEstimateBlockAsAMap (0.00s)
+=== RUN   TestFutureTimestampFieldsFlaggedInBoardModel
+--- PASS: TestFutureTimestampFieldsFlaggedInBoardModel (0.00s)
+=== RUN   TestFutureTimestampWarningNamesFieldAndFix
+--- PASS: TestFutureTimestampWarningNamesFieldAndFix (0.00s)
+=== RUN   TestEmbeddedAuthoredJavaScriptInventory
+--- PASS: TestEmbeddedAuthoredJavaScriptInventory (0.00s)
+=== RUN   TestBoardJavaScriptAssemblyStructure
+--- PASS: TestBoardJavaScriptAssemblyStructure (0.01s)
+=== RUN   TestBoardJavaScriptAssemblerRejectsInvalidStructure
+=== RUN   TestBoardJavaScriptAssemblerRejectsInvalidStructure/missing_placeholder
+--- PASS: TestBoardJavaScriptAssemblerRejectsInvalidStructure/missing_placeholder (0.00s)
+=== RUN   TestBoardJavaScriptAssemblerRejectsInvalidStructure/duplicate_placeholder
+--- PASS: TestBoardJavaScriptAssemblerRejectsInvalidStructure/duplicate_placeholder (0.00s)
+=== RUN   TestBoardJavaScriptAssemblerRejectsInvalidStructure/duplicate_noncanonical_placeholder
+--- PASS: TestBoardJavaScriptAssemblerRejectsInvalidStructure/duplicate_noncanonical_placeholder (0.00s)
+=== RUN   TestBoardJavaScriptAssemblerRejectsInvalidStructure/lone_noncanonical_placeholder
+--- PASS: TestBoardJavaScriptAssemblerRejectsInvalidStructure/lone_noncanonical_placeholder (0.00s)
+=== RUN   TestBoardJavaScriptAssemblerRejectsInvalidStructure/missing_fragment
+--- PASS: TestBoardJavaScriptAssemblerRejectsInvalidStructure/missing_fragment (0.00s)
+=== RUN   TestBoardJavaScriptAssemblerRejectsInvalidStructure/noncanonical_fragment_ending
+--- PASS: TestBoardJavaScriptAssemblerRejectsInvalidStructure/noncanonical_fragment_ending (0.00s)
+=== RUN   TestBoardJavaScriptAssemblerRejectsInvalidStructure/double_fragment_ending
+--- PASS: TestBoardJavaScriptAssemblerRejectsInvalidStructure/double_fragment_ending (0.00s)
+--- PASS: TestBoardJavaScriptAssemblerRejectsInvalidStructure (0.00s)
+=== RUN   TestStrictProbeGuard
+=== RUN   TestStrictProbeGuard/strict_empty_lane_fails
+--- PASS: TestStrictProbeGuard/strict_empty_lane_fails (0.00s)
+=== RUN   TestStrictProbeGuard/ordinary_empty_lane_passes
+--- PASS: TestStrictProbeGuard/ordinary_empty_lane_passes (0.00s)
+=== RUN   TestStrictProbeGuard/executed_strict_lane_passes
+--- PASS: TestStrictProbeGuard/executed_strict_lane_passes (0.00s)
+=== RUN   TestStrictProbeGuard/existing_failure_stays_a_failure
+--- PASS: TestStrictProbeGuard/existing_failure_stays_a_failure (0.00s)
+--- PASS: TestStrictProbeGuard (0.00s)
+=== RUN   TestGenerateWritesSelfContainedIndex
+--- PASS: TestGenerateWritesSelfContainedIndex (2.32s)
+=== RUN   TestGenerateFirstPublicationAndSuccessfulReplacement
+--- PASS: TestGenerateFirstPublicationAndSuccessfulReplacement (0.13s)
+=== RUN   TestGenerateRefusesNonRegularOutputTargetsWithoutMutation
+=== RUN   TestGenerateRefusesNonRegularOutputTargetsWithoutMutation/directory
+--- PASS: TestGenerateRefusesNonRegularOutputTargetsWithoutMutation/directory (0.09s)
+=== RUN   TestGenerateRefusesNonRegularOutputTargetsWithoutMutation/symlink
+--- PASS: TestGenerateRefusesNonRegularOutputTargetsWithoutMutation/symlink (0.08s)
+=== RUN   TestGenerateRefusesNonRegularOutputTargetsWithoutMutation/special_file
+--- PASS: TestGenerateRefusesNonRegularOutputTargetsWithoutMutation/special_file (0.09s)
+--- PASS: TestGenerateRefusesNonRegularOutputTargetsWithoutMutation (0.25s)
+=== RUN   TestGeneratePublicationFailureRestoresThePreviousBundle
+--- PASS: TestGeneratePublicationFailureRestoresThePreviousBundle (0.15s)
+=== RUN   TestGenerateRendersColumnHeaders
+--- PASS: TestGenerateRendersColumnHeaders (0.00s)
+=== RUN   TestGenerateEmbedsLivePendingCards
+    generate_test.go:717: no pending REQs in the live tree; nothing to assert
+--- SKIP: TestGenerateEmbedsLivePendingCards (0.08s)
+=== RUN   TestGenerateEmitsBlockedFields
+--- PASS: TestGenerateEmitsBlockedFields (0.00s)
+=== RUN   TestGenerateIndexHtmlUnderSizeBudget
+--- PASS: TestGenerateIndexHtmlUnderSizeBudget (0.00s)
+=== RUN   TestGenerateHasCalendarAndUserRequestLensHooks
+--- PASS: TestGenerateHasCalendarAndUserRequestLensHooks (2.50s)
+=== RUN   TestGenerateEmbedsGoldmarkRenderedBody
+--- PASS: TestGenerateEmbedsGoldmarkRenderedBody (2.45s)
+=== RUN   TestGenerateSeparatesRawMarkdownForLazyCopy
+--- PASS: TestGenerateSeparatesRawMarkdownForLazyCopy (2.47s)
+=== RUN   TestBuildGeneratedBoardMarkdownDataKeepsExactSources
+--- PASS: TestBuildGeneratedBoardMarkdownDataKeepsExactSources (0.00s)
+=== RUN   TestStaticAndLiveCitationDataShareOneAnalysisAndRefreshTogether
+--- PASS: TestStaticAndLiveCitationDataShareOneAnalysisAndRefreshTogether (0.18s)
+=== RUN   TestBuildGeneratedBoardDataCarriesDomainAndRouteProvenance
+--- PASS: TestBuildGeneratedBoardDataCarriesDomainAndRouteProvenance (0.00s)
+=== RUN   TestDomainAndRouteProvenanceRenderAtFieldLevel
+--- PASS: TestDomainAndRouteProvenanceRenderAtFieldLevel (0.00s)
+=== RUN   TestBuildGeneratedBoardDataCarriesFailureDetails
+--- PASS: TestBuildGeneratedBoardDataCarriesFailureDetails (0.00s)
+=== RUN   TestFailureDetailsRenderInTheDrawer
+--- PASS: TestFailureDetailsRenderInTheDrawer (0.00s)
+=== RUN   TestDrawerDropsOnlyAMatchingLeadingHeading
+--- PASS: TestDrawerDropsOnlyAMatchingLeadingHeading (0.00s)
+=== RUN   TestTicketMentionResolverLivesOnlyInBoardCore
+--- PASS: TestTicketMentionResolverLivesOnlyInBoardCore (0.00s)
+=== RUN   TestDrawerTicketMentionsCarryTitlesAndAGlossary
+--- PASS: TestDrawerTicketMentionsCarryTitlesAndAGlossary (0.00s)
+=== RUN   TestClipboardAnnotationWiresEveryCopyHandler
+--- PASS: TestClipboardAnnotationWiresEveryCopyHandler (0.00s)
+=== RUN   TestClipboardCarriesNoMarkdownScanner
+--- PASS: TestClipboardCarriesNoMarkdownScanner (0.00s)
+=== RUN   TestBuildGeneratedBoardMarkdownDataRoundTripsTheWholeFile
+--- PASS: TestBuildGeneratedBoardMarkdownDataRoundTripsTheWholeFile (0.00s)
+=== RUN   TestBuildGeneratedBoardMarkdownDataHandlesAFenceLessFile
+--- PASS: TestBuildGeneratedBoardMarkdownDataHandlesAFenceLessFile (0.00s)
+=== RUN   TestBuildGeneratedBoardMarkdownDataOmitsSynthesizedUserRequests
+--- PASS: TestBuildGeneratedBoardMarkdownDataOmitsSynthesizedUserRequests (0.00s)
+=== RUN   TestRenderMarkdownBodyToHtmlHeadingsAndTaskLists
+--- PASS: TestRenderMarkdownBodyToHtmlHeadingsAndTaskLists (0.00s)
+=== RUN   TestRenderMarkdownQuestionOptionsKeepTheirOwnLines
+--- PASS: TestRenderMarkdownQuestionOptionsKeepTheirOwnLines (0.00s)
+=== RUN   TestRenderMarkdownInvalidBacktickInfoRemainsQuestionProse
+--- PASS: TestRenderMarkdownInvalidBacktickInfoRemainsQuestionProse (0.00s)
+=== RUN   TestRenderMarkdownLeavesValidCodeFencesVerbatim
+=== RUN   TestRenderMarkdownLeavesValidCodeFencesVerbatim/backtick_fence
+--- PASS: TestRenderMarkdownLeavesValidCodeFencesVerbatim/backtick_fence (0.00s)
+=== RUN   TestRenderMarkdownLeavesValidCodeFencesVerbatim/tilde_fence
+--- PASS: TestRenderMarkdownLeavesValidCodeFencesVerbatim/tilde_fence (0.00s)
+--- PASS: TestRenderMarkdownLeavesValidCodeFencesVerbatim (0.00s)
+=== RUN   TestRenderMarkdownEscapesRawHtml
+--- PASS: TestRenderMarkdownEscapesRawHtml (0.00s)
+=== RUN   TestEncodeBoardDataJsAssignmentPreservesRawHtml
+--- PASS: TestEncodeBoardDataJsAssignmentPreservesRawHtml (0.00s)
+=== RUN   TestEncodeBoardMarkdownJsAssignmentRoundTripsRawSource
+--- PASS: TestEncodeBoardMarkdownJsAssignmentRoundTripsRawSource (0.00s)
+=== RUN   TestRecentlyDoneWindowDefaultsTo24h
+--- PASS: TestRecentlyDoneWindowDefaultsTo24h (0.00s)
+=== RUN   TestGenerateInlinesWriteSetOverlapBadgeRenderPath
+--- PASS: TestGenerateInlinesWriteSetOverlapBadgeRenderPath (0.00s)
+=== RUN   TestGenerateInlinesSemanticStatusCardStyles
+=== RUN   TestGenerateInlinesSemanticStatusCardStyles/pending
+--- PASS: TestGenerateInlinesSemanticStatusCardStyles/pending (0.00s)
+=== RUN   TestGenerateInlinesSemanticStatusCardStyles/claimed
+--- PASS: TestGenerateInlinesSemanticStatusCardStyles/claimed (0.00s)
+=== RUN   TestGenerateInlinesSemanticStatusCardStyles/blocked_and_failed
+--- PASS: TestGenerateInlinesSemanticStatusCardStyles/blocked_and_failed (0.00s)
+=== RUN   TestGenerateInlinesSemanticStatusCardStyles/completed
+--- PASS: TestGenerateInlinesSemanticStatusCardStyles/completed (0.00s)
+=== RUN   TestGenerateInlinesSemanticStatusCardStyles/cancelled
+--- PASS: TestGenerateInlinesSemanticStatusCardStyles/cancelled (0.00s)
+=== RUN   TestGenerateInlinesSemanticStatusCardStyles/unrecognized
+--- PASS: TestGenerateInlinesSemanticStatusCardStyles/unrecognized (0.00s)
+--- PASS: TestGenerateInlinesSemanticStatusCardStyles (0.00s)
+=== RUN   TestGenerateOffersDurationsWindowControls
+--- PASS: TestGenerateOffersDurationsWindowControls (0.00s)
+=== RUN   TestGenerateCarriesAdjacentCompleteDurationsLongestSpansList
+--- PASS: TestGenerateCarriesAdjacentCompleteDurationsLongestSpansList (0.00s)
+=== RUN   TestUserRequestActivityToggleDocumentsWidenedRule
+--- PASS: TestUserRequestActivityToggleDocumentsWidenedRule (0.00s)
+=== RUN   TestGenerateDurationsHeadlineStatsUseASemanticDefinitionList
+--- PASS: TestGenerateDurationsHeadlineStatsUseASemanticDefinitionList (0.00s)
+=== RUN   TestTimelineRendererGroupsTheWindowedRowsByUserRequest
+--- PASS: TestTimelineRendererGroupsTheWindowedRowsByUserRequest (0.00s)
+=== RUN   TestTimelinePanelStatesItsKeyboardInteraction
+--- PASS: TestTimelinePanelStatesItsKeyboardInteraction (0.00s)
+=== RUN   TestGenerateOffersThreeLensButtons
+--- PASS: TestGenerateOffersThreeLensButtons (0.00s)
+=== RUN   TestGenerateGivesTimelineRowsTheBoardsFocusRing
+--- PASS: TestGenerateGivesTimelineRowsTheBoardsFocusRing (0.00s)
+=== RUN   TestGeneratedBoardDataCarriesVerifyFindingsWithoutTheOnesTheBoardAlreadyShows
+--- PASS: TestGeneratedBoardDataCarriesVerifyFindingsWithoutTheOnesTheBoardAlreadyShows (0.12s)
+=== RUN   TestGeneratedVerifyPayloadCarriesNoAbsolutePaths
+--- PASS: TestGeneratedVerifyPayloadCarriesNoAbsolutePaths (0.05s)
+=== RUN   TestGeneratedVerifyPayloadReducesTheDiskSpaceSkipReason
+--- PASS: TestGeneratedVerifyPayloadReducesTheDiskSpaceSkipReason (0.05s)
+=== RUN   TestReduceAbsolutePathsLeavesRelativePathsIntact
+=== RUN   TestReduceAbsolutePathsLeavesRelativePathsIntact/repo-root_path_becomes_relative_and_stays_whole
+--- PASS: TestReduceAbsolutePathsLeavesRelativePathsIntact/repo-root_path_becomes_relative_and_stays_whole (0.00s)
+=== RUN   TestReduceAbsolutePathsLeavesRelativePathsIntact/an_already-relative_path_is_untouched
+--- PASS: TestReduceAbsolutePathsLeavesRelativePathsIntact/an_already-relative_path_is_untouched (0.00s)
+=== RUN   TestReduceAbsolutePathsLeavesRelativePathsIntact/a_path_outside_the_repo_is_replaced_wholesale
+--- PASS: TestReduceAbsolutePathsLeavesRelativePathsIntact/a_path_outside_the_repo_is_replaced_wholesale (0.00s)
+=== RUN   TestReduceAbsolutePathsLeavesRelativePathsIntact/a_Windows_drive_path_with_backslashes_is_replaced
+--- PASS: TestReduceAbsolutePathsLeavesRelativePathsIntact/a_Windows_drive_path_with_backslashes_is_replaced (0.00s)
+=== RUN   TestReduceAbsolutePathsLeavesRelativePathsIntact/a_Windows_drive_path_with_forward_slashes_is_replaced
+--- PASS: TestReduceAbsolutePathsLeavesRelativePathsIntact/a_Windows_drive_path_with_forward_slashes_is_replaced (0.00s)
+--- PASS: TestReduceAbsolutePathsLeavesRelativePathsIntact (0.00s)
+=== RUN   TestMeasuredFaceConstantsNameTheirBuild
+--- PASS: TestMeasuredFaceConstantsNameTheirBuild (0.00s)
+=== RUN   TestGenerateInlinesImpactAndEffortChipRenderPath
+--- PASS: TestGenerateInlinesImpactAndEffortChipRenderPath (0.00s)
+=== RUN   TestGeneratedRequestCarriesTheDoneCardImplementationSpan
+--- PASS: TestGeneratedRequestCarriesTheDoneCardImplementationSpan (0.00s)
+=== RUN   TestGeneratedRequestCarriesObservedPhaseBreakdown
+--- PASS: TestGeneratedRequestCarriesObservedPhaseBreakdown (0.00s)
+=== RUN   TestGeneratedRequestCarriesTheNestedEstimateP50
+--- PASS: TestGeneratedRequestCarriesTheNestedEstimateP50 (0.01s)
+=== RUN   TestTimelineProjectionIgnoresTheSavedP50Estimate
+--- PASS: TestTimelineProjectionIgnoresTheSavedP50Estimate (0.00s)
+=== RUN   TestGeneratedBoardTicksThroughTheSharedFanOut
+--- PASS: TestGeneratedBoardTicksThroughTheSharedFanOut (0.00s)
+=== RUN   TestHtmlFolderPreviewServesAuthoredFolder
+--- PASS: TestHtmlFolderPreviewServesAuthoredFolder (0.01s)
+=== RUN   TestHtmlFolderPreviewGuards
+=== RUN   TestHtmlFolderPreviewGuards/folder_root_index
+--- PASS: TestHtmlFolderPreviewGuards/folder_root_index (0.00s)
+=== RUN   TestHtmlFolderPreviewGuards/head_is_allowed
+--- PASS: TestHtmlFolderPreviewGuards/head_is_allowed (0.00s)
+=== RUN   TestHtmlFolderPreviewGuards/directory_never_lists
+--- PASS: TestHtmlFolderPreviewGuards/directory_never_lists (0.00s)
+=== RUN   TestHtmlFolderPreviewGuards/post_is_refused
+--- PASS: TestHtmlFolderPreviewGuards/post_is_refused (0.00s)
+=== RUN   TestHtmlFolderPreviewGuards/LAN_peer_is_refused
+--- PASS: TestHtmlFolderPreviewGuards/LAN_peer_is_refused (0.00s)
+=== RUN   TestHtmlFolderPreviewGuards/lexical_traversal_is_refused
+--- PASS: TestHtmlFolderPreviewGuards/lexical_traversal_is_refused (0.00s)
+=== RUN   TestHtmlFolderPreviewGuards/symlink_traversal_is_refused
+--- PASS: TestHtmlFolderPreviewGuards/symlink_traversal_is_refused (0.00s)
+--- PASS: TestHtmlFolderPreviewGuards (0.00s)
+=== RUN   TestHtmlFolderPreviewShutdownClosesOrigins
+--- PASS: TestHtmlFolderPreviewShutdownClosesOrigins (0.00s)
+=== RUN   TestBoardClientKeepsOneWriterForTheOpenDrawerIdentity
+--- PASS: TestBoardClientKeepsOneWriterForTheOpenDrawerIdentity (0.00s)
+=== RUN   TestBuildBoardRecoversRequestMovedDuringRead
+--- PASS: TestBuildBoardRecoversRequestMovedDuringRead (0.00s)
+=== RUN   TestBuildBoardRecoversUserRequestArchivedDuringRead
+--- PASS: TestBuildBoardRecoversUserRequestArchivedDuringRead (0.00s)
+=== RUN   TestBuildBoardSkipsNonMissingReadErrorsWithoutRetry
+=== RUN   TestBuildBoardSkipsNonMissingReadErrorsWithoutRetry/request
+--- PASS: TestBuildBoardSkipsNonMissingReadErrorsWithoutRetry/request (0.00s)
+=== RUN   TestBuildBoardSkipsNonMissingReadErrorsWithoutRetry/user_request
+--- PASS: TestBuildBoardSkipsNonMissingReadErrorsWithoutRetry/user_request (0.00s)
+--- PASS: TestBuildBoardSkipsNonMissingReadErrorsWithoutRetry (0.00s)
+=== RUN   TestBuildBoardStopsAfterOneMissingFileRetry
+=== RUN   TestBuildBoardStopsAfterOneMissingFileRetry/request
+--- PASS: TestBuildBoardStopsAfterOneMissingFileRetry/request (0.00s)
+=== RUN   TestBuildBoardStopsAfterOneMissingFileRetry/user_request
+--- PASS: TestBuildBoardStopsAfterOneMissingFileRetry/user_request (0.00s)
+--- PASS: TestBuildBoardStopsAfterOneMissingFileRetry (0.00s)
+=== RUN   TestNormalizeStatus
+--- PASS: TestNormalizeStatus (0.00s)
+=== RUN   TestStatusClassifiers
+--- PASS: TestStatusClassifiers (0.00s)
+=== RUN   TestResolveCommitHashVariants
+=== RUN   TestResolveCommitHashVariants/canonical_commit
+--- PASS: TestResolveCommitHashVariants/canonical_commit (0.00s)
+=== RUN   TestResolveCommitHashVariants/commit_hash_variant
+--- PASS: TestResolveCommitHashVariants/commit_hash_variant (0.00s)
+=== RUN   TestResolveCommitHashVariants/green_commit_variant
+--- PASS: TestResolveCommitHashVariants/green_commit_variant (0.00s)
+=== RUN   TestResolveCommitHashVariants/commit_green_variant
+--- PASS: TestResolveCommitHashVariants/commit_green_variant (0.00s)
+=== RUN   TestResolveCommitHashVariants/impl_commit_variant
+--- PASS: TestResolveCommitHashVariants/impl_commit_variant (0.00s)
+=== RUN   TestResolveCommitHashVariants/canonical_wins_over_variant
+--- PASS: TestResolveCommitHashVariants/canonical_wins_over_variant (0.00s)
+=== RUN   TestResolveCommitHashVariants/none_present
+--- PASS: TestResolveCommitHashVariants/none_present (0.00s)
+--- PASS: TestResolveCommitHashVariants (0.00s)
+=== RUN   TestResolveDependsOnPrefersCanonical
+--- PASS: TestResolveDependsOnPrefersCanonical (0.00s)
+=== RUN   TestParseRequestTicketReadsOptionalPhaseTimestamps
+--- PASS: TestParseRequestTicketReadsOptionalPhaseTimestamps (0.00s)
+=== RUN   TestDeriveRequestIdFromFilename
+--- PASS: TestDeriveRequestIdFromFilename (0.00s)
+=== RUN   TestIdentifierLessNumericOrder
+--- PASS: TestIdentifierLessNumericOrder (0.00s)
+=== RUN   TestResolveCompletionTimeFallbackChain
+=== RUN   TestResolveCompletionTimeFallbackChain/frontmatter_completed_at_wins
+--- PASS: TestResolveCompletionTimeFallbackChain/frontmatter_completed_at_wins (0.00s)
+=== RUN   TestResolveCompletionTimeFallbackChain/git_committer_date_is_the_second_step
+--- PASS: TestResolveCompletionTimeFallbackChain/git_committer_date_is_the_second_step (0.00s)
+=== RUN   TestResolveCompletionTimeFallbackChain/file_mtime_is_NOT_a_fallback
+--- PASS: TestResolveCompletionTimeFallbackChain/file_mtime_is_NOT_a_fallback (0.00s)
+=== RUN   TestResolveCompletionTimeFallbackChain/unresolved_when_nothing_is_available
+--- PASS: TestResolveCompletionTimeFallbackChain/unresolved_when_nothing_is_available (0.00s)
+--- PASS: TestResolveCompletionTimeFallbackChain (0.00s)
+=== RUN   TestDedupeTicketsByRequestId
+--- PASS: TestDedupeTicketsByRequestId (0.00s)
+=== RUN   TestIsPlausibleCommitHashRejectsOptionShapedValues
+--- PASS: TestIsPlausibleCommitHashRejectsOptionShapedValues (0.00s)
+=== RUN   TestParseRequestTicketNormalizesAndResolves
+--- PASS: TestParseRequestTicketNormalizesAndResolves (0.00s)
+=== RUN   TestParseRequestTicketCrlfFileRoundTripsByteExactly
+--- PASS: TestParseRequestTicketCrlfFileRoundTripsByteExactly (0.00s)
+=== RUN   TestBucketColumns
+--- PASS: TestBucketColumns (0.00s)
+=== RUN   TestPendingGroupsSortByRequestPriority
+--- PASS: TestPendingGroupsSortByRequestPriority (0.00s)
+=== RUN   TestParseRequestTicketPriorityContract
+=== RUN   TestParseRequestTicketPriorityContract/absent
+--- PASS: TestParseRequestTicketPriorityContract/absent (0.00s)
+=== RUN   TestParseRequestTicketPriorityContract/now
+--- PASS: TestParseRequestTicketPriorityContract/now (0.00s)
+=== RUN   TestParseRequestTicketPriorityContract/next
+--- PASS: TestParseRequestTicketPriorityContract/next (0.00s)
+=== RUN   TestParseRequestTicketPriorityContract/later
+--- PASS: TestParseRequestTicketPriorityContract/later (0.00s)
+=== RUN   TestParseRequestTicketPriorityContract/invalid
+--- PASS: TestParseRequestTicketPriorityContract/invalid (0.00s)
+--- PASS: TestParseRequestTicketPriorityContract (0.00s)
+=== RUN   TestBlockedDependencyGateControlsColumnsAndInheritedCounts
+--- PASS: TestBlockedDependencyGateControlsColumnsAndInheritedCounts (0.00s)
+=== RUN   TestOnlyBareBlockedStatusUsesDependencyGate
+--- PASS: TestOnlyBareBlockedStatusUsesDependencyGate (0.00s)
+=== RUN   TestParseRequestTicketReadsBlockedFields
+--- PASS: TestParseRequestTicketReadsBlockedFields (0.00s)
+=== RUN   TestAnnotateWriteSetOverlapPairsContendingRequests
+--- PASS: TestAnnotateWriteSetOverlapPairsContendingRequests (0.00s)
+=== RUN   TestAnnotateWriteSetOverlapMatchesGlobsInBothDirections
+--- PASS: TestAnnotateWriteSetOverlapMatchesGlobsInBothDirections (0.00s)
+=== RUN   TestAnnotateWriteSetOverlapGlobStarNeverCrossesSlash
+--- PASS: TestAnnotateWriteSetOverlapGlobStarNeverCrossesSlash (0.00s)
+=== RUN   TestAnnotateWriteSetOverlapMalformedPatternMatchesNothing
+--- PASS: TestAnnotateWriteSetOverlapMalformedPatternMatchesNothing (0.00s)
+=== RUN   TestWriteSetOverlapNeverAffectsColumnPlacement
+--- PASS: TestWriteSetOverlapNeverAffectsColumnPlacement (0.00s)
+=== RUN   TestParseRequestTicketReadsAssignedToVerbatim
+--- PASS: TestParseRequestTicketReadsAssignedToVerbatim (0.00s)
+=== RUN   TestParseRequestTicketLeavesAssignedToEmptyWhenAbsent
+--- PASS: TestParseRequestTicketLeavesAssignedToEmptyWhenAbsent (0.00s)
+=== RUN   TestParseRequestTicketReadsSweepMarkersAndInstanceCounts
+--- PASS: TestParseRequestTicketReadsSweepMarkersAndInstanceCounts (0.00s)
+=== RUN   TestParseRequestTicketConsumesCanonicalRepositoryGateRepairSweep
+--- PASS: TestParseRequestTicketConsumesCanonicalRepositoryGateRepairSweep (0.00s)
+=== RUN   TestParseRequestTicketNonCanonicalSweepMarkerReadsFalse
+--- PASS: TestParseRequestTicketNonCanonicalSweepMarkerReadsFalse (0.00s)
+=== RUN   TestAssignedPendingRequestIsEarmarkedNotReady
+--- PASS: TestAssignedPendingRequestIsEarmarkedNotReady (0.00s)
+=== RUN   TestParseRequestTicketPreservesAssignedToCaseAndTrimsOnlyPadding
+--- PASS: TestParseRequestTicketPreservesAssignedToCaseAndTrimsOnlyPadding (0.00s)
+=== RUN   TestNormalizeSchemaFieldCoversContractAliases
+--- PASS: TestNormalizeSchemaFieldCoversContractAliases (0.00s)
+=== RUN   TestResolveSchemaFieldFallsBackWithoutSilentRemap
+--- PASS: TestResolveSchemaFieldFallsBackWithoutSilentRemap (0.00s)
+=== RUN   TestNormalizeSchemaFieldDispatchesStatusToItsOwnNormalizer
+--- PASS: TestNormalizeSchemaFieldDispatchesStatusToItsOwnNormalizer (0.00s)
+=== RUN   TestParseRequestTicketNormalizesDomain
+--- PASS: TestParseRequestTicketNormalizesDomain (0.00s)
+=== RUN   TestParseRequestTicketPreservesAbsentDomain
+--- PASS: TestParseRequestTicketPreservesAbsentDomain (0.00s)
+=== RUN   TestUnrecognizedDomainFlagsAndWarns
+--- PASS: TestUnrecognizedDomainFlagsAndWarns (0.00s)
+=== RUN   TestUnrecognizedRouteFlagsAndWarns
+--- PASS: TestUnrecognizedRouteFlagsAndWarns (0.00s)
+=== RUN   TestRecognizedRouteRaisesNoWarning
+--- PASS: TestRecognizedRouteRaisesNoWarning (0.00s)
+=== RUN   TestUnrecognizedEffortEstimateFlagsAndWarns
+--- PASS: TestUnrecognizedEffortEstimateFlagsAndWarns (0.00s)
+=== RUN   TestImpactFieldFollowsPresentValueOnlyContract
+--- PASS: TestImpactFieldFollowsPresentValueOnlyContract (0.00s)
+=== RUN   TestRecognizedEffortEstimateRaisesNoWarning
+--- PASS: TestRecognizedEffortEstimateRaisesNoWarning (0.00s)
+=== RUN   TestEffortEstimateNeverAffectsColumnPlacement
+--- PASS: TestEffortEstimateNeverAffectsColumnPlacement (0.00s)
+=== RUN   TestRecognizedDomainRaisesNoWarning
+--- PASS: TestRecognizedDomainRaisesNoWarning (0.00s)
+=== RUN   TestParseRequestTicketNormalizesRoute
+=== RUN   TestParseRequestTicketNormalizesRoute/lowercase_letter_uppercases
+--- PASS: TestParseRequestTicketNormalizesRoute/lowercase_letter_uppercases (0.00s)
+=== RUN   TestParseRequestTicketNormalizesRoute/canonical_letter_is_unchanged
+--- PASS: TestParseRequestTicketNormalizesRoute/canonical_letter_is_unchanged (0.00s)
+=== RUN   TestParseRequestTicketNormalizesRoute/padded_lowercase_letter_uppercases
+--- PASS: TestParseRequestTicketNormalizesRoute/padded_lowercase_letter_uppercases (0.00s)
+--- PASS: TestParseRequestTicketNormalizesRoute (0.01s)
+=== RUN   TestParseRequestTicketPreservesAbsentRoute
+--- PASS: TestParseRequestTicketPreservesAbsentRoute (0.00s)
+=== RUN   TestParseRequestTicketReportsUnrecognizedRouteUnchanged
+--- PASS: TestParseRequestTicketReportsUnrecognizedRouteUnchanged (0.00s)
+=== RUN   TestParseRequestTicketCarriesFailureDetails
+--- PASS: TestParseRequestTicketCarriesFailureDetails (0.00s)
+=== RUN   TestParseRequestTicketPreservesAbsentErrorType
+--- PASS: TestParseRequestTicketPreservesAbsentErrorType (0.00s)
+=== RUN   TestUnrecognizedErrorTypeFlagsAndWarns
+--- PASS: TestUnrecognizedErrorTypeFlagsAndWarns (0.00s)
+=== RUN   TestRequestTicketReadsNestedEstimateP50ActiveMinutes
+--- PASS: TestRequestTicketReadsNestedEstimateP50ActiveMinutes (0.00s)
+=== RUN   TestCoerceNestedScalarToFloatRejectsUnusableValues
+=== RUN   TestCoerceNestedScalarToFloatRejectsUnusableValues/integer,_the_shape_yaml.v3_decodes_75_into
+--- PASS: TestCoerceNestedScalarToFloatRejectsUnusableValues/integer,_the_shape_yaml.v3_decodes_75_into (0.00s)
+=== RUN   TestCoerceNestedScalarToFloatRejectsUnusableValues/float
+--- PASS: TestCoerceNestedScalarToFloatRejectsUnusableValues/float (0.00s)
+=== RUN   TestCoerceNestedScalarToFloatRejectsUnusableValues/nil_block
+--- PASS: TestCoerceNestedScalarToFloatRejectsUnusableValues/nil_block (0.00s)
+=== RUN   TestCoerceNestedScalarToFloatRejectsUnusableValues/scalar_where_a_map_belongs
+--- PASS: TestCoerceNestedScalarToFloatRejectsUnusableValues/scalar_where_a_map_belongs (0.00s)
+=== RUN   TestCoerceNestedScalarToFloatRejectsUnusableValues/map_without_the_key
+--- PASS: TestCoerceNestedScalarToFloatRejectsUnusableValues/map_without_the_key (0.00s)
+=== RUN   TestCoerceNestedScalarToFloatRejectsUnusableValues/non-numeric_value
+--- PASS: TestCoerceNestedScalarToFloatRejectsUnusableValues/non-numeric_value (0.00s)
+=== RUN   TestCoerceNestedScalarToFloatRejectsUnusableValues/negative_minutes
+--- PASS: TestCoerceNestedScalarToFloatRejectsUnusableValues/negative_minutes (0.00s)
+=== RUN   TestCoerceNestedScalarToFloatRejectsUnusableValues/zero_minutes,_below_the_schema_floor_of_5
+--- PASS: TestCoerceNestedScalarToFloatRejectsUnusableValues/zero_minutes,_below_the_schema_floor_of_5 (0.00s)
+--- PASS: TestCoerceNestedScalarToFloatRejectsUnusableValues (0.00s)
+=== RUN   TestParseQueueNoteLineShapes
+--- PASS: TestParseQueueNoteLineShapes (0.00s)
+=== RUN   TestLoadQueueNotesSkipsBoilerplateAndComments
+--- PASS: TestLoadQueueNotesSkipsBoilerplateAndComments (0.00s)
+=== RUN   TestStripHtmlCommentsShapes
+--- PASS: TestStripHtmlCommentsShapes (0.00s)
+=== RUN   TestLoadQueueNotesPreservesAppendOrder
+--- PASS: TestLoadQueueNotesPreservesAppendOrder (0.00s)
+=== RUN   TestLoadQueueNotesMissingFileIsNotAnError
+--- PASS: TestLoadQueueNotesMissingFileIsNotAnError (0.00s)
+=== RUN   TestEnumerateFindsOnlyTopLevelNotes
+--- PASS: TestEnumerateFindsOnlyTopLevelNotes (0.00s)
+=== RUN   TestBoardCarriesNotesIntoGeneratedData
+--- PASS: TestBoardCarriesNotesIntoGeneratedData (0.00s)
+=== RUN   TestNotesOmittedFromDataWhenAbsent
+--- PASS: TestNotesOmittedFromDataWhenAbsent (0.00s)
+=== RUN   TestServeFingerprintTracksNotesFile
+--- PASS: TestServeFingerprintTracksNotesFile (0.00s)
+=== RUN   TestOpenWorkCountsEveryNonTerminalTicketExactlyOnce
+--- PASS: TestOpenWorkCountsEveryNonTerminalTicketExactlyOnce (0.01s)
+=== RUN   TestOpenWorkDigestHeadlineCarriesTotalAndBreakdown
+--- PASS: TestOpenWorkDigestHeadlineCarriesTotalAndBreakdown (0.01s)
+=== RUN   TestOpenWorkDigestListsClaimedRequestsWithTitles
+--- PASS: TestOpenWorkDigestListsClaimedRequestsWithTitles (0.01s)
+=== RUN   TestOpenWorkDigestShowsNeedsInputStatusAndBlockedCondition
+--- PASS: TestOpenWorkDigestShowsNeedsInputStatusAndBlockedCondition (0.00s)
+=== RUN   TestOpenWorkDigestFlagsUnrecognizedStatusVerbatim
+--- PASS: TestOpenWorkDigestFlagsUnrecognizedStatusVerbatim (0.00s)
+=== RUN   TestOpenWorkDigestPrintsEmptySectionsExplicitly
+--- PASS: TestOpenWorkDigestPrintsEmptySectionsExplicitly (0.00s)
+=== RUN   TestOpenWorkDigestPointsAtSummaryForWarnings
+--- PASS: TestOpenWorkDigestPointsAtSummaryForWarnings (0.00s)
+=== RUN   TestOpenWorkJSONPlacesWaitingAndEarmarkedTicketsWithTheirReasons
+--- PASS: TestOpenWorkJSONPlacesWaitingAndEarmarkedTicketsWithTheirReasons (0.00s)
+=== RUN   TestSelectBrowserOpenCommandPerPlatform
+--- PASS: TestSelectBrowserOpenCommandPerPlatform (0.01s)
+=== RUN   TestSelectBrowserOpenCommandWindowsUsesUrlDllHandler
+--- PASS: TestSelectBrowserOpenCommandWindowsUsesUrlDllHandler (0.00s)
+=== RUN   TestBumpSemanticVersion
+=== RUN   TestBumpSemanticVersion/patch_on_0.163.3
+--- PASS: TestBumpSemanticVersion/patch_on_0.163.3 (0.00s)
+=== RUN   TestBumpSemanticVersion/minor_on_0.163.3_zeroes_the_patch
+--- PASS: TestBumpSemanticVersion/minor_on_0.163.3_zeroes_the_patch (0.00s)
+=== RUN   TestBumpSemanticVersion/major_on_0.163.3_zeroes_minor_and_patch
+--- PASS: TestBumpSemanticVersion/major_on_0.163.3_zeroes_minor_and_patch (0.00s)
+=== RUN   TestBumpSemanticVersion/patch_rolls_into_a_two-digit_patch
+--- PASS: TestBumpSemanticVersion/patch_rolls_into_a_two-digit_patch (0.00s)
+=== RUN   TestBumpSemanticVersion/minor_rolls_into_a_two-digit_minor
+--- PASS: TestBumpSemanticVersion/minor_rolls_into_a_two-digit_minor (0.00s)
+--- PASS: TestBumpSemanticVersion (0.00s)
+=== RUN   TestBumpSemanticVersionRejectsAnUnnamedBumpSize
+--- PASS: TestBumpSemanticVersionRejectsAnUnnamedBumpSize (0.00s)
+=== RUN   TestReadCurrentVersionAnchorsOnTheCurrentVersionPrefix
+--- PASS: TestReadCurrentVersionAnchorsOnTheCurrentVersionPrefix (0.00s)
+=== RUN   TestReadCurrentVersionErrorsWhenNoVersionLineExists
+--- PASS: TestReadCurrentVersionErrorsWhenNoVersionLineExists (0.00s)
+=== RUN   TestAllocateNextVersionWritesBackAndConfirms
+--- PASS: TestAllocateNextVersionWritesBackAndConfirms (0.02s)
+=== RUN   TestAllocateNextVersionAtomicallyReplacesAndPreservesMode
+--- PASS: TestAllocateNextVersionAtomicallyReplacesAndPreservesMode (0.01s)
+=== RUN   TestAllocateNextVersionRejectsSymlinkWithoutWriting
+--- PASS: TestAllocateNextVersionRejectsSymlinkWithoutWriting (0.00s)
+=== RUN   TestAllocateNextVersionWritesNothingElse
+--- PASS: TestAllocateNextVersionWritesNothingElse (0.01s)
+=== RUN   TestReadChangelogEntries
+--- PASS: TestReadChangelogEntries (0.00s)
+=== RUN   TestCompareSemanticVersions
+--- PASS: TestCompareSemanticVersions (0.00s)
+=== RUN   TestParseNextVersionArgumentsAcceptsFlagsOnEitherSideOfTheBumpSize
+--- PASS: TestParseNextVersionArgumentsAcceptsFlagsOnEitherSideOfTheBumpSize (0.00s)
+=== RUN   TestParseNextVersionArgumentsRejectsRatherThanIgnores
+--- PASS: TestParseNextVersionArgumentsRejectsRatherThanIgnores (0.00s)
+=== RUN   TestRejectLeftoverArgumentsIsTheSharedRule
+--- PASS: TestRejectLeftoverArgumentsIsTheSharedRule (0.00s)
+=== RUN   TestReleaseProbesRunInASuiteCheckoutAndAreNotApplicableElsewhere
+--- PASS: TestReleaseProbesRunInASuiteCheckoutAndAreNotApplicableElsewhere (0.00s)
+=== RUN   TestGenuineReleaseProbeSkipsStaySkipped
+=== RUN   TestGenuineReleaseProbeSkipsStaySkipped/a_resolved_version_file_with_no_version_line
+--- PASS: TestGenuineReleaseProbeSkipsStaySkipped/a_resolved_version_file_with_no_version_line (0.00s)
+=== RUN   TestGenuineReleaseProbeSkipsStaySkipped/a_changelog_with_no_house-format_entries
+--- PASS: TestGenuineReleaseProbeSkipsStaySkipped/a_changelog_with_no_house-format_entries (0.00s)
+--- PASS: TestGenuineReleaseProbeSkipsStaySkipped (0.00s)
+=== RUN   TestNextVersionResolutionIsUnchangedBySuiteFallback
+--- PASS: TestNextVersionResolutionIsUnchangedBySuiteFallback (0.00s)
+=== RUN   TestRequestCommitsListsOnlyCommitsTheBoardCredits
+--- PASS: TestRequestCommitsListsOnlyCommitsTheBoardCredits (0.00s)
+=== RUN   TestRequestCommitsRefusesAnArgumentThatIsNotARequestId
+--- PASS: TestRequestCommitsRefusesAnArgumentThatIsNotARequestId (0.00s)
+=== RUN   TestServeHandlerRootReturnsBoardHtml
+--- PASS: TestServeHandlerRootReturnsBoardHtml (0.00s)
+=== RUN   TestStaticAndLivePagesUseIdenticalAssembledClient
+--- PASS: TestStaticAndLivePagesUseIdenticalAssembledClient (0.10s)
+=== RUN   TestStaticAndLivePriorityPayloadsAgree
+--- PASS: TestStaticAndLivePriorityPayloadsAgree (0.12s)
+=== RUN   TestServeMtimeCacheInvalidatesOnStatusChange
+--- PASS: TestServeMtimeCacheInvalidatesOnStatusChange (0.20s)
+=== RUN   TestServeMtimeCacheRefreshesTimelineAgainstCurrentTime
+--- PASS: TestServeMtimeCacheRefreshesTimelineAgainstCurrentTime (0.00s)
+=== RUN   TestServeLazyMarkdownEndpointReturnsExactSources
+--- PASS: TestServeLazyMarkdownEndpointReturnsExactSources (0.00s)
+=== RUN   TestResolveServeListenAddressBindsLoopbackByDefault
+--- PASS: TestResolveServeListenAddressBindsLoopbackByDefault (0.00s)
+=== RUN   TestResolveServeListenAddressEnvVarBarePortBindsLoopback
+--- PASS: TestResolveServeListenAddressEnvVarBarePortBindsLoopback (0.00s)
+=== RUN   TestDescribeListenExposureWarnsOnEveryNonLoopbackBind
+--- PASS: TestDescribeListenExposureWarnsOnEveryNonLoopbackBind (0.00s)
+=== RUN   TestBindServeListenerAndAnnounceSkipsOpenerOnBindFailure
+--- PASS: TestBindServeListenerAndAnnounceSkipsOpenerOnBindFailure (0.00s)
+=== RUN   TestBindServeListenerAndAnnounceOpensAfterSuccessWhenRequested
+queue-kanban: live board at http://127.0.0.1:55080  (re-walks do-work/ per /board-data.js request)
+queue-kanban: serving do-work/ from /tmp/fixture-repo
+--- PASS: TestBindServeListenerAndAnnounceOpensAfterSuccessWhenRequested (0.00s)
+=== RUN   TestBindServeListenerAndAnnounceDefaultOffLeavesOpenerUntouched
+queue-kanban: live board at http://127.0.0.1:55081  (re-walks do-work/ per /board-data.js request)
+queue-kanban: serving do-work/ from /tmp/fixture-repo
+--- PASS: TestBindServeListenerAndAnnounceDefaultOffLeavesOpenerUntouched (0.00s)
+=== RUN   TestServeFingerprintTracksStrayRequestFiles
+--- PASS: TestServeFingerprintTracksStrayRequestFiles (0.00s)
+=== RUN   TestStatusChangedAtAndFileMtimeParsedIntoModel
+--- PASS: TestStatusChangedAtAndFileMtimeParsedIntoModel (0.00s)
+=== RUN   TestStatusChangedAtAndFileMtimeSurviveIntoPayload
+--- PASS: TestStatusChangedAtAndFileMtimeSurviveIntoPayload (0.00s)
+=== RUN   TestLegacyStrictEntryPointsRejectZeroProbes
+=== RUN   TestLegacyStrictEntryPointsRejectZeroProbes/JavaScript
+--- PASS: TestLegacyStrictEntryPointsRejectZeroProbes/JavaScript (2.26s)
+=== RUN   TestLegacyStrictEntryPointsRejectZeroProbes/browser
+    strict_behavior_regression_test.go:30: legacy browser entry point did not reject zero probes: error=exit status 1
+        --- FAIL: TestMaintainerStrictBrowserBehaviorLane (29.02s)
+            strict_behavior_test.go:18: strict behavior lane failed: exit status 2
+                === RUN   TestBrowserBehaviorActivityViewHasOneScrollSurface
+                    activity_scroll_browser_probe_test.go:88: no browser is available (set QUEUE_KANBAN_BROWSER to name one); skipping browser behavior probe
+                --- SKIP: TestBrowserBehaviorActivityViewHasOneScrollSurface (0.00s)
+                === RUN   TestBrowserBehaviorBlockedBadgeFitsItsCard
+                    blocked_badge_browser_probe_test.go:15: no browser is available (set QUEUE_KANBAN_BROWSER to name one); skipping browser behavior probe
+                --- SKIP: TestBrowserBehaviorBlockedBadgeFitsItsCard (0.00s)
+                === RUN   TestBrowserBehaviorMarkLabelTextExtent
+                    browser_probe_test.go:705: no browser is available (set QUEUE_KANBAN_BROWSER to name one); skipping browser behavior probe
+                --- SKIP: TestBrowserBehaviorMarkLabelTextExtent (0.00s)
+                === RUN   TestBrowserBehaviorDrawerTicketTitlesAndGlossary
+                2026/11/11 03:27:38 queue-kanban: git binary not found on PATH — commit-hash completion dating is disabled
+                === RUN   TestBrowserBehaviorDrawerTicketTitlesAndGlossary/light
+                    browser_probe_test.go:1027: no browser is available (set QUEUE_KANBAN_BROWSER to name one); skipping browser behavior probe
+                === RUN   TestBrowserBehaviorDrawerTicketTitlesAndGlossary/dark
+                    browser_probe_test.go:1027: no browser is available (set QUEUE_KANBAN_BROWSER to name one); skipping browser behavior probe
+                --- PASS: TestBrowserBehaviorDrawerTicketTitlesAndGlossary (0.01s)
+                    --- SKIP: TestBrowserBehaviorDrawerTicketTitlesAndGlossary/light (0.00s)
+                    --- SKIP: TestBrowserBehaviorDrawerTicketTitlesAndGlossary/dark (0.00s)
+                === RUN   TestBrowserBehaviorProbeResultKeepsLiteralText
+                    browser_probe_test.go:1189: no browser is available (set QUEUE_KANBAN_BROWSER to name one); skipping browser behavior probe
+                --- SKIP: TestBrowserBehaviorProbeResultKeepsLiteralText (0.00s)
+                === RUN   TestBrowserBehaviorRestatingHeadingsSurviveCopySaveRebuild
+                    citations_test.go:133: no browser is available (set QUEUE_KANBAN_BROWSER to name one); skipping browser behavior probe
+                --- SKIP: TestBrowserBehaviorRestatingHeadingsSurviveCopySaveRebuild (0.00s)
+                === RUN   TestBrowserBehaviorFenceInfoAndPathReferencesAgreeAcrossSurfaces
+                    citations_test.go:268: no browser is available (set QUEUE_KANBAN_BROWSER to name one); skipping browser behavior probe
+                --- SKIP: TestBrowserBehaviorFenceInfoAndPathReferencesAgreeAcrossSurfaces (0.00s)
+                === RUN   TestBrowserBehaviorBoardColumnCopyAll
+                    clipboard_browser_probe_test.go:268: no browser is available (set QUEUE_KANBAN_BROWSER to name one); skipping browser behavior probe
+                --- SKIP: TestBrowserBehaviorBoardColumnCopyAll (0.00s)
+                === RUN   TestBrowserBehaviorCompletionCompanionsKeepReadableContrast
+                    completion_contrast_browser_test.go:14: no browser is available (set QUEUE_KANBAN_BROWSER to name one); skipping browser behavior probe
+                --- SKIP: TestBrowserBehaviorCompletionCompanionsKeepReadableContrast (0.00s)
+                === RUN   TestBrowserBehaviorDurationsUserRequestLaneGeometry
+                    durations_browser_probe_test.go:275: no browser is available (set QUEUE_KANBAN_BROWSER to name one); skipping browser behavior probe
+                --- SKIP: TestBrowserBehaviorDurationsUserRequestLaneGeometry (0.00s)
+                === RUN   TestBrowserBehaviorDurationsMarksAreOneRovingTabStop
+                    durations_browser_probe_test.go:538: no browser is available (set QUEUE_KANBAN_BROWSER to name one); skipping browser behavior probe
+                --- SKIP: TestBrowserBehaviorDurationsMarksAreOneRovingTabStop (0.00s)
+                === RUN   TestBrowserBehaviorDurationsTrustedClickOpensJitteredMark
+                    durations_browser_probe_test.go:622: no browser is available (set QUEUE_KANBAN_BROWSER to name one); skipping browser behavior probe
+                --- SKIP: TestBrowserBehaviorDurationsTrustedClickOpensJitteredMark (0.00s)
+                === RUN   TestBrowserBehaviorDurationsHeadlineAndRollingSeries
+                === RUN   TestBrowserBehaviorDurationsHeadlineAndRollingSeries/320-light
+                    durations_browser_probe_test.go:958: no browser is available (set QUEUE_KANBAN_BROWSER to name one); skipping browser behavior probe
+                === RUN   TestBrowserBehaviorDurationsHeadlineAndRollingSeries/768-light
+                    durations_browser_probe_test.go:958: no browser is available (set QUEUE_KANBAN_BROWSER to name one); skipping browser behavior probe
+                === RUN   TestBrowserBehaviorDurationsHeadlineAndRollingSeries/1280-light
+                    durations_browser_probe_test.go:958: no browser is available (set QUEUE_KANBAN_BROWSER to name one); skipping browser behavior probe
+                === RUN   TestBrowserBehaviorDurationsHeadlineAndRollingSeries/1280-dark
+                    durations_browser_probe_test.go:958: no browser is available (set QUEUE_KANBAN_BROWSER to name one); skipping browser behavior probe
+                --- PASS: TestBrowserBehaviorDurationsHeadlineAndRollingSeries (0.01s)
+                    --- SKIP: TestBrowserBehaviorDurationsHeadlineAndRollingSeries/320-light (0.00s)
+                    --- SKIP: TestBrowserBehaviorDurationsHeadlineAndRollingSeries/768-light (0.00s)
+                    --- SKIP: TestBrowserBehaviorDurationsHeadlineAndRollingSeries/1280-light (0.00s)
+                    --- SKIP: TestBrowserBehaviorDurationsHeadlineAndRollingSeries/1280-dark (0.00s)
+                === RUN   TestBrowserBehaviorDurationsDensePanelASpreadStaysBoundedAndInteractive
+                === RUN   TestBrowserBehaviorDurationsDensePanelASpreadStaysBoundedAndInteractive/light-320
+                    durations_browser_probe_test.go:1239: no browser is available (set QUEUE_KANBAN_BROWSER to name one); skipping browser behavior probe
+                === RUN   TestBrowserBehaviorDurationsDensePanelASpreadStaysBoundedAndInteractive/dark-320
+                    durations_browser_probe_test.go:1239: no browser is available (set QUEUE_KANBAN_BROWSER to name one); skipping browser behavior probe
+                === RUN   TestBrowserBehaviorDurationsDensePanelASpreadStaysBoundedAndInteractive/light-768
+                    durations_browser_probe_test.go:1239: no browser is available (set QUEUE_KANBAN_BROWSER to name one); skipping browser behavior probe
+                === RUN   TestBrowserBehaviorDurationsDensePanelASpreadStaysBoundedAndInteractive/dark-768
+                    durations_browser_probe_test.go:1239: no browser is available (set QUEUE_KANBAN_BROWSER to name one); skipping browser behavior probe
+                === RUN   TestBrowserBehaviorDurationsDensePanelASpreadStaysBoundedAndInteractive/light-1280
+                    durations_browser_probe_test.go:1239: no browser is available (set QUEUE_KANBAN_BROWSER to name one); skipping browser behavior probe
+                === RUN   TestBrowserBehaviorDurationsDensePanelASpreadStaysBoundedAndInteractive/dark-1280
+                    durations_browser_probe_test.go:1239: no browser is available (set QUEUE_KANBAN_BROWSER to name one); skipping browser behavior probe
+                --- PASS: TestBrowserBehaviorDurationsDensePanelASpreadStaysBoundedAndInteractive (0.02s)
+                    --- SKIP: TestBrowserBehaviorDurationsDensePanelASpreadStaysBoundedAndInteractive/light-320 (0.00s)
+                    --- SKIP: TestBrowserBehaviorDurationsDensePanelASpreadStaysBoundedAndInteractive/dark-320 (0.00s)
+                    --- SKIP: TestBrowserBehaviorDurationsDensePanelASpreadStaysBoundedAndInteractive/light-768 (0.00s)
+                    --- SKIP: TestBrowserBehaviorDurationsDensePanelASpreadStaysBoundedAndInteractive/dark-768 (0.00s)
+                    --- SKIP: TestBrowserBehaviorDurationsDensePanelASpreadStaysBoundedAndInteractive/light-1280 (0.00s)
+                    --- SKIP: TestBrowserBehaviorDurationsDensePanelASpreadStaysBoundedAndInteractive/dark-1280 (0.00s)
+                === RUN   TestBrowserBehaviorCitationSearchShowsReasonsAcrossViews
+                    generate_test.go:991: no browser is available (set QUEUE_KANBAN_BROWSER to name one); skipping browser behavior probe
+                --- SKIP: TestBrowserBehaviorCitationSearchShowsReasonsAcrossViews (0.00s)
+                === RUN   TestBrowserBehaviorAuthoredTicketLinksPreserveDestinationsAndTwoPassDOM
+                    generate_test.go:1089: no browser is available (set QUEUE_KANBAN_BROWSER to name one); skipping browser behavior probe
+                --- SKIP: TestBrowserBehaviorAuthoredTicketLinksPreserveDestinationsAndTwoPassDOM (0.00s)
+                === RUN   TestBrowserBehaviorPageFragmentOpensAndFollowsThePage
+                    page_fragment_browser_probe_test.go:14: no browser is available (set QUEUE_KANBAN_BROWSER to name one); skipping browser behavior probe
+                --- SKIP: TestBrowserBehaviorPageFragmentOpensAndFollowsThePage (0.00s)
+                === RUN   TestBrowserBehaviorPriorityOrderAndBadges
+                    priority_browser_probe_test.go:33: no browser is available (set QUEUE_KANBAN_BROWSER to name one); skipping browser behavior probe
+                --- SKIP: TestBrowserBehaviorPriorityOrderAndBadges (0.00s)
+                === RUN   TestBrowserBehaviorTimelineBarsCarryTheirStatusColour
+                === RUN   TestBrowserBehaviorTimelineBarsCarryTheirStatusColour/light
+                    timeline_browser_probe_test.go:136: no browser is available (set QUEUE_KANBAN_BROWSER to name one); skipping browser behavior probe
+                === RUN   TestBrowserBehaviorTimelineBarsCarryTheirStatusColour/dark
+                    timeline_browser_probe_test.go:136: no browser is available (set QUEUE_KANBAN_BROWSER to name one); skipping browser behavior probe
+                --- PASS: TestBrowserBehaviorTimelineBarsCarryTheirStatusColour (2.11s)
+                    --- SKIP: TestBrowserBehaviorTimelineBarsCarryTheirStatusColour/light (0.00s)
+                    --- SKIP: TestBrowserBehaviorTimelineBarsCarryTheirStatusColour/dark (0.00s)
+                === RUN   TestBrowserBehaviorTimelineLabelAdvanceTracksTheFace
+                    timeline_browser_probe_test.go:564: no browser is available (set QUEUE_KANBAN_BROWSER to name one); skipping browser behavior probe
+                --- SKIP: TestBrowserBehaviorTimelineLabelAdvanceTracksTheFace (0.00s)
+                === RUN   TestBrowserBehaviorTimelinePressBecomesAPanOnlyAfterMoving
+                    timeline_browser_probe_test.go:781: no browser is available (set QUEUE_KANBAN_BROWSER to name one); skipping browser behavior probe
+                --- SKIP: TestBrowserBehaviorTimelinePressBecomesAPanOnlyAfterMoving (2.73s)
+                === RUN   TestBrowserBehaviorTimelineDragRendersOncePerFrame
+                    timeline_browser_probe_test.go:992: no browser is available (set QUEUE_KANBAN_BROWSER to name one); skipping browser behavior probe
+                --- SKIP: TestBrowserBehaviorTimelineDragRendersOncePerFrame (5.99s)
+                === RUN   TestBrowserBehaviorTimelineVerticalRulesRankByProminence
+                === RUN   TestBrowserBehaviorTimelineVerticalRulesRankByProminence/light
+                    timeline_browser_probe_test.go:1127: no browser is available (set QUEUE_KANBAN_BROWSER to name one); skipping browser behavior probe
+                === RUN   TestBrowserBehaviorTimelineVerticalRulesRankByProminence/dark
+                    timeline_browser_probe_test.go:1127: no browser is available (set QUEUE_KANBAN_BROWSER to name one); skipping browser behavior probe
+                --- PASS: TestBrowserBehaviorTimelineVerticalRulesRankByProminence (0.00s)
+                    --- SKIP: TestBrowserBehaviorTimelineVerticalRulesRankByProminence/light (0.00s)
+                    --- SKIP: TestBrowserBehaviorTimelineVerticalRulesRankByProminence/dark (0.00s)
+                === RUN   TestBrowserBehaviorTimelineBarsSurviveTheDetailDrawerOpening
+                    timeline_browser_probe_test.go:1475: no browser is available (set QUEUE_KANBAN_BROWSER to name one); skipping browser behavior probe
+                --- SKIP: TestBrowserBehaviorTimelineBarsSurviveTheDetailDrawerOpening (6.55s)
+                === RUN   TestBrowserBehaviorTimelineRangeFieldsShowTheWindowTheChartIsDrawnAt
+                    timeline_browser_probe_test.go:1693: no browser is available (set QUEUE_KANBAN_BROWSER to name one); skipping browser behavior probe
+                --- SKIP: TestBrowserBehaviorTimelineRangeFieldsShowTheWindowTheChartIsDrawnAt (5.93s)
+                === RUN   TestBrowserBehaviorTimelineTrailingWindowsEndAtNow
+                    timeline_browser_probe_test.go:1903: no browser is available (set QUEUE_KANBAN_BROWSER to name one); skipping browser behavior probe
+                --- SKIP: TestBrowserBehaviorTimelineTrailingWindowsEndAtNow (0.00s)
+                === RUN   TestBrowserBehaviorTimelineNowAndFitAllLandSomewhereReadable
+                    timeline_browser_probe_test.go:2175: no browser is available (set QUEUE_KANBAN_BROWSER to name one); skipping browser behavior probe
+                --- SKIP: TestBrowserBehaviorTimelineNowAndFitAllLandSomewhereReadable (0.00s)
+                === RUN   TestBrowserBehaviorTimelineProseDescribesOnlyTheWindowOnScreen
+                    timeline_browser_probe_test.go:2482: no browser is available (set QUEUE_KANBAN_BROWSER to name one); skipping browser behavior probe
+                --- SKIP: TestBrowserBehaviorTimelineProseDescribesOnlyTheWindowOnScreen (0.02s)
+                === RUN   TestBrowserBehaviorTimelinePointerAndKeyboardPathsStayAlive
+                panic: test timed out after 28.999908708s
+                	running tests:
+                		TestBrowserBehaviorTimelinePointerAndKeyboardPathsStayAlive (6s)
+                
+                goroutine 20 [running]:
+                testing.(*M).startAlarm.func1()
+                	testing/testing.go:2961 +0x2c4
+                created by time.goFunc
+                	time/sleep.go:182 +0x38
+                
+                goroutine 1 [chan receive]:
+                testing.(*T).Run(0x3f2d8fdcb48, {0x102995898?, 0x3f2d91dfa28?}, 0x103012538)
+                	testing/testing.go:2268 +0x3cc
+                testing.runTests.func1(0x3f2d8fdcb48)
+                	testing/testing.go:2744 +0x38
+                testing.tRunner(0x3f2d8fdcb48, 0x3f2d91dfb58)
+                	testing/testing.go:2195 +0xc4
+                testing.runTests({0x1029858e0, 0x2f}, {0x1029858e0, 0x2f}, 0x3f2d8f22c78, {0x103094cf0, 0x225, 0x225}, {0x3?, 0x0?, ...})
+                	testing/testing.go:2742 +0x400
+                testing.(*M).Run(0x3f2d911b400)
+                	testing/testing.go:2602 +0x578
+                github.com/knews2019/skill-do-work/queue-kanban.TestMain(0x10300fd90?)
+                	github.com/knews2019/skill-do-work/queue-kanban/generate_test.go:209 +0x48
+                main.main()
+                	_testmain.go:1144 +0x88
+                
+                goroutine 88 [runnable]:
+                encoding/json/internal/jsonwire.appendEscapedASCII({0x3f2e3852000?, 0xa0dee0, 0x13b2000?}, 0xa?)
+                	encoding/json/internal/jsonwire/encode.go:112 +0x244
+                encoding/json/internal/jsonwire.AppendQuote({0x3f2e3852000?, 0x3f2d9dc2040?, 0x3f2d9976730?}, {0x3f2dc280000, 0x6742, 0x6742}, 0x3f2d8f13608)
+                	encoding/json/internal/jsonwire/encode.go:80 +0x20c
+                encoding/json/v2.makeStringArshaler.func1(0x3f2d8f13540, {{0x102f8cd60?, 0x3f2d9dc2040?, 0x102f8cd60?}, 0x30?}, 0x3f2d8f13608)
+                	encoding/json/v2/arshal_default.go:231 +0x17c
+                encoding/json/v2.makeMapArshaler.func2(0x3f2d8f13540, {{0x102f4b958?, 0x3f2dd974020?, 0x22aa328400?}, 0x68?}, 0x3f2d8f13608)
+                	encoding/json/v2/arshal_default.go:901 +0x1358
+                encoding/json/v2.makeStructArshaler.func2(0x3f2d8f13540, {{0x102fd1378?, 0x3f2dd974020?, 0x102fd1378?}, 0x0?}, 0x3f2d8f13608)
+                	encoding/json/v2/arshal_default.go:1231 +0x7b8
+                encoding/json/v2.marshalEncode(0x3f2d8f13540, {0x102fd1378?, 0x3f2dd974000?}, 0x3f2d8f13608)
+                	encoding/json/v2/arshal.go:248 +0x1a8
+                encoding/json/v2.MarshalEncode(0x3f2d8f13540, {0x102fd1378, 0x3f2dd974000}, {0x0?, 0x3f2dd974000?, 0x3f2d9509808?})
+                	encoding/json/v2/arshal.go:220 +0x2f8
+                encoding/json.(*Encoder).Encode(0x3f2d8f4f218, {0x102fd1378, 0x3f2dd974000})
+                	encoding/json/v2_stream.go:143 +0x98
+                github.com/knews2019/skill-do-work/queue-kanban.encodeBoardMarkdownForJsAssignment({0x3f2dacfa120, 0x3f2dacfa150, 0x3f2dacfa180, 0x3f2dacfa1b0})
+                	github.com/knews2019/skill-do-work/queue-kanban/generate.go:1202 +0xb8
+                github.com/knews2019/skill-do-work/queue-kanban.generateStaticSiteWithPublisher({0x3f2dab9ed80, 0x7a}, 0x3f2d9004960, 0x103013750)
+                	github.com/knews2019/skill-do-work/queue-kanban/generate.go:514 +0x1ec
+                github.com/knews2019/skill-do-work/queue-kanban.generateStaticSite(...)
+                	github.com/knews2019/skill-do-work/queue-kanban/generate.go:487
+                github.com/knews2019/skill-do-work/queue-kanban.generateLiveSiteInDir(0x3f2d91f4008)
+                	github.com/knews2019/skill-do-work/queue-kanban/generate_test.go:359 +0x138
+                github.com/knews2019/skill-do-work/queue-kanban.TestBrowserBehaviorTimelinePointerAndKeyboardPathsStayAlive(0x3f2d91f4008)
+                	github.com/knews2019/skill-do-work/queue-kanban/timeline_browser_probe_test.go:2586 +0x28
+                testing.tRunner(0x3f2d91f4008, 0x103012538)
+                	testing/testing.go:2195 +0xc4
+                created by testing.(*T).Run in goroutine 1
+                	testing/testing.go:2260 +0x3b8
+        FAIL
+--- FAIL: TestLegacyStrictEntryPointsRejectZeroProbes/browser (29.03s)
+--- FAIL: TestLegacyStrictEntryPointsRejectZeroProbes (31.29s)
+=== RUN   TestLegacyStrictEntryPointsExecuteProbes
+=== RUN   TestLegacyStrictEntryPointsExecuteProbes/JavaScript
+    strict_behavior_regression_test.go:48: real probe execution is heavy-only
+--- SKIP: TestLegacyStrictEntryPointsExecuteProbes/JavaScript (0.00s)
+=== RUN   TestLegacyStrictEntryPointsExecuteProbes/browser
+    strict_behavior_regression_test.go:48: real probe execution is heavy-only
+--- SKIP: TestLegacyStrictEntryPointsExecuteProbes/browser (0.00s)
+--- PASS: TestLegacyStrictEntryPointsExecuteProbes (0.00s)
+=== RUN   TestMaintainerStrictJavaScriptBehaviorLane
+    strict_behavior_test.go:14: legacy strict behavior lane runs only when selected directly
+--- SKIP: TestMaintainerStrictJavaScriptBehaviorLane (0.00s)
+=== RUN   TestMaintainerStrictBrowserBehaviorLane
+    strict_behavior_test.go:18: legacy strict behavior lane runs only when selected directly
+--- SKIP: TestMaintainerStrictBrowserBehaviorLane (0.00s)
+=== RUN   TestNormalizeTestingStatusAliases
+--- PASS: TestNormalizeTestingStatusAliases (0.00s)
+=== RUN   TestParseRequestTicketReadsTestingPlaceholders
+--- PASS: TestParseRequestTicketReadsTestingPlaceholders (0.00s)
+=== RUN   TestUnrecognizedTestingStatusFlagsAndWarns
+--- PASS: TestUnrecognizedTestingStatusFlagsAndWarns (0.00s)
+=== RUN   TestTestingProfilesStoreRoundTrip
+--- PASS: TestTestingProfilesStoreRoundTrip (0.00s)
+=== RUN   TestUpsertFrontmatterFieldsSurgicalEdit
+--- PASS: TestUpsertFrontmatterFieldsSurgicalEdit (0.03s)
+=== RUN   TestUpsertFrontmatterFieldsConsumesDuplicateKeys
+--- PASS: TestUpsertFrontmatterFieldsConsumesDuplicateKeys (0.01s)
+=== RUN   TestTestingApiRejectsUnfinishedReq
+--- PASS: TestTestingApiRejectsUnfinishedReq (0.01s)
+=== RUN   TestTestingApiRejectsSymlinkedReqFile
+2026/11/11 03:28:07 queue-kanban serve: rejecting testing write for REQ-0042: /var/folders/2w/kw8sv6rd1z15yjykl787ryph0000gn/T/TestTestingApiRejectsSymlinkedReqFile2747753065/001/do-work/queue/REQ-0042-link.md is not a regular file — refusing to write testing placeholders through a symlink
+--- PASS: TestTestingApiRejectsSymlinkedReqFile (0.00s)
+=== RUN   TestTestingProfileApiRejectsSymlinkedDoWorkRoot
+--- PASS: TestTestingProfileApiRejectsSymlinkedDoWorkRoot (0.00s)
+=== RUN   TestUpsertFrontmatterFieldsRejectsFencelessFile
+--- PASS: TestUpsertFrontmatterFieldsRejectsFencelessFile (0.00s)
+=== RUN   TestTestingApiProfileAndStatusHappyPath
+--- PASS: TestTestingApiProfileAndStatusHappyPath (0.14s)
+=== RUN   TestTestingApiValidation
+--- PASS: TestTestingApiValidation (0.02s)
+=== RUN   TestGenerateStaticBoardDataOmitsLiveTestingApi
+--- PASS: TestGenerateStaticBoardDataOmitsLiveTestingApi (0.01s)
+=== RUN   TestTestingApiWritesAreLoopbackOnly
+--- PASS: TestTestingApiWritesAreLoopbackOnly (0.01s)
+=== RUN   TestProductionLiveBoardRejectsUnacceptedHostBeforeEveryRoute
+=== RUN   TestProductionLiveBoardRejectsUnacceptedHostBeforeEveryRoute/board_HTML/example.com
+--- PASS: TestProductionLiveBoardRejectsUnacceptedHostBeforeEveryRoute/board_HTML/example.com (0.00s)
+=== RUN   TestProductionLiveBoardRejectsUnacceptedHostBeforeEveryRoute/board_HTML/example.com:55342
+--- PASS: TestProductionLiveBoardRejectsUnacceptedHostBeforeEveryRoute/board_HTML/example.com:55342 (0.00s)
+=== RUN   TestProductionLiveBoardRejectsUnacceptedHostBeforeEveryRoute/board_data/example.com
+--- PASS: TestProductionLiveBoardRejectsUnacceptedHostBeforeEveryRoute/board_data/example.com (0.00s)
+=== RUN   TestProductionLiveBoardRejectsUnacceptedHostBeforeEveryRoute/board_data/example.com:55342
+--- PASS: TestProductionLiveBoardRejectsUnacceptedHostBeforeEveryRoute/board_data/example.com:55342 (0.00s)
+=== RUN   TestProductionLiveBoardRejectsUnacceptedHostBeforeEveryRoute/board_Markdown/example.com
+--- PASS: TestProductionLiveBoardRejectsUnacceptedHostBeforeEveryRoute/board_Markdown/example.com (0.00s)
+=== RUN   TestProductionLiveBoardRejectsUnacceptedHostBeforeEveryRoute/board_Markdown/example.com:55342
+--- PASS: TestProductionLiveBoardRejectsUnacceptedHostBeforeEveryRoute/board_Markdown/example.com:55342 (0.00s)
+=== RUN   TestProductionLiveBoardRejectsUnacceptedHostBeforeEveryRoute/repo_file/example.com
+--- PASS: TestProductionLiveBoardRejectsUnacceptedHostBeforeEveryRoute/repo_file/example.com (0.00s)
+=== RUN   TestProductionLiveBoardRejectsUnacceptedHostBeforeEveryRoute/repo_file/example.com:55342
+--- PASS: TestProductionLiveBoardRejectsUnacceptedHostBeforeEveryRoute/repo_file/example.com:55342 (0.00s)
+=== RUN   TestProductionLiveBoardRejectsUnacceptedHostBeforeEveryRoute/testing_profile/example.com
+--- PASS: TestProductionLiveBoardRejectsUnacceptedHostBeforeEveryRoute/testing_profile/example.com (0.00s)
+=== RUN   TestProductionLiveBoardRejectsUnacceptedHostBeforeEveryRoute/testing_profile/example.com:55342
+--- PASS: TestProductionLiveBoardRejectsUnacceptedHostBeforeEveryRoute/testing_profile/example.com:55342 (0.00s)
+=== RUN   TestProductionLiveBoardRejectsUnacceptedHostBeforeEveryRoute/testing_status/example.com
+--- PASS: TestProductionLiveBoardRejectsUnacceptedHostBeforeEveryRoute/testing_status/example.com (0.00s)
+=== RUN   TestProductionLiveBoardRejectsUnacceptedHostBeforeEveryRoute/testing_status/example.com:55342
+--- PASS: TestProductionLiveBoardRejectsUnacceptedHostBeforeEveryRoute/testing_status/example.com:55342 (0.00s)
+--- PASS: TestProductionLiveBoardRejectsUnacceptedHostBeforeEveryRoute (0.01s)
+=== RUN   TestLiveBoardAuthorityPolicy
+=== RUN   TestLiveBoardAuthorityPolicy/port_zero_trusts_assigned_port
+--- PASS: TestLiveBoardAuthorityPolicy/port_zero_trusts_assigned_port (0.00s)
+=== RUN   TestLiveBoardAuthorityPolicy/port_zero_rejects_configured_zero
+--- PASS: TestLiveBoardAuthorityPolicy/port_zero_rejects_configured_zero (0.00s)
+=== RUN   TestLiveBoardAuthorityPolicy/concrete_loopback_configured_name_normalized
+--- PASS: TestLiveBoardAuthorityPolicy/concrete_loopback_configured_name_normalized (0.00s)
+=== RUN   TestLiveBoardAuthorityPolicy/concrete_loopback_numeric_alias
+--- PASS: TestLiveBoardAuthorityPolicy/concrete_loopback_numeric_alias (0.00s)
+=== RUN   TestLiveBoardAuthorityPolicy/concrete_loopback_rejects_arbitrary_DNS
+--- PASS: TestLiveBoardAuthorityPolicy/concrete_loopback_rejects_arbitrary_DNS (0.00s)
+=== RUN   TestLiveBoardAuthorityPolicy/concrete_LAN_configured_name_normalized
+--- PASS: TestLiveBoardAuthorityPolicy/concrete_LAN_configured_name_normalized (0.00s)
+=== RUN   TestLiveBoardAuthorityPolicy/concrete_LAN_actual_address
+--- PASS: TestLiveBoardAuthorityPolicy/concrete_LAN_actual_address (0.00s)
+=== RUN   TestLiveBoardAuthorityPolicy/concrete_LAN_rejects_loopback_alias
+--- PASS: TestLiveBoardAuthorityPolicy/concrete_LAN_rejects_loopback_alias (0.00s)
+=== RUN   TestLiveBoardAuthorityPolicy/concrete_IPv6_canonicalized
+--- PASS: TestLiveBoardAuthorityPolicy/concrete_IPv6_canonicalized (0.00s)
+=== RUN   TestLiveBoardAuthorityPolicy/wrong_assigned_port
+--- PASS: TestLiveBoardAuthorityPolicy/wrong_assigned_port (0.00s)
+=== RUN   TestLiveBoardAuthorityPolicy/missing_port_means_80_only_rejected_on_high_port
+--- PASS: TestLiveBoardAuthorityPolicy/missing_port_means_80_only_rejected_on_high_port (0.00s)
+=== RUN   TestLiveBoardAuthorityPolicy/missing_port_means_80_accepted_on_port_80
+--- PASS: TestLiveBoardAuthorityPolicy/missing_port_means_80_accepted_on_port_80 (0.00s)
+=== RUN   TestLiveBoardAuthorityPolicy/wildcard_accepts_numeric_connection_destination
+--- PASS: TestLiveBoardAuthorityPolicy/wildcard_accepts_numeric_connection_destination (0.00s)
+=== RUN   TestLiveBoardAuthorityPolicy/wildcard_rejects_arbitrary_DNS
+--- PASS: TestLiveBoardAuthorityPolicy/wildcard_rejects_arbitrary_DNS (0.00s)
+=== RUN   TestLiveBoardAuthorityPolicy/wildcard_rejects_wildcard_literal
+--- PASS: TestLiveBoardAuthorityPolicy/wildcard_rejects_wildcard_literal (0.00s)
+=== RUN   TestLiveBoardAuthorityPolicy/wildcard_accepts_localhost_on_loopback_connection
+--- PASS: TestLiveBoardAuthorityPolicy/wildcard_accepts_localhost_on_loopback_connection (0.00s)
+=== RUN   TestLiveBoardAuthorityPolicy/wildcard_rejects_localhost_on_LAN_connection
+--- PASS: TestLiveBoardAuthorityPolicy/wildcard_rejects_localhost_on_LAN_connection (0.00s)
+=== RUN   TestLiveBoardAuthorityPolicy/wildcard_requires_connection_local_address
+--- PASS: TestLiveBoardAuthorityPolicy/wildcard_requires_connection_local_address (0.00s)
+=== RUN   TestLiveBoardAuthorityPolicy/malformed_user_info
+--- PASS: TestLiveBoardAuthorityPolicy/malformed_user_info (0.00s)
+=== RUN   TestLiveBoardAuthorityPolicy/malformed_unbracketed_IPv6
+--- PASS: TestLiveBoardAuthorityPolicy/malformed_unbracketed_IPv6 (0.00s)
+=== RUN   TestLiveBoardAuthorityPolicy/malformed_bracketed_DNS
+--- PASS: TestLiveBoardAuthorityPolicy/malformed_bracketed_DNS (0.00s)
+=== RUN   TestLiveBoardAuthorityPolicy/malformed_empty_port
+--- PASS: TestLiveBoardAuthorityPolicy/malformed_empty_port (0.00s)
+=== RUN   TestLiveBoardAuthorityPolicy/malformed_nonnumeric_port
+--- PASS: TestLiveBoardAuthorityPolicy/malformed_nonnumeric_port (0.00s)
+--- PASS: TestLiveBoardAuthorityPolicy (0.00s)
+=== RUN   TestTestingApiOriginUsesNormalizedHttpAuthority
+=== RUN   TestTestingApiOriginUsesNormalizedHttpAuthority/DNS_case_and_trailing_dot
+--- PASS: TestTestingApiOriginUsesNormalizedHttpAuthority/DNS_case_and_trailing_dot (0.00s)
+=== RUN   TestTestingApiOriginUsesNormalizedHttpAuthority/IPv6_canonical_spelling
+--- PASS: TestTestingApiOriginUsesNormalizedHttpAuthority/IPv6_canonical_spelling (0.00s)
+=== RUN   TestTestingApiOriginUsesNormalizedHttpAuthority/HTTPS_is_not_board_same-origin
+--- PASS: TestTestingApiOriginUsesNormalizedHttpAuthority/HTTPS_is_not_board_same-origin (0.00s)
+=== RUN   TestTestingApiOriginUsesNormalizedHttpAuthority/wrong_port
+--- PASS: TestTestingApiOriginUsesNormalizedHttpAuthority/wrong_port (0.00s)
+=== RUN   TestTestingApiOriginUsesNormalizedHttpAuthority/origin_path
+--- PASS: TestTestingApiOriginUsesNormalizedHttpAuthority/origin_path (0.00s)
+=== RUN   TestTestingApiOriginUsesNormalizedHttpAuthority/malformed_origin_authority
+--- PASS: TestTestingApiOriginUsesNormalizedHttpAuthority/malformed_origin_authority (0.00s)
+--- PASS: TestTestingApiOriginUsesNormalizedHttpAuthority (0.02s)
+=== RUN   TestTestingWritePreservesFileMode
+--- PASS: TestTestingWritePreservesFileMode (0.05s)
+=== RUN   TestTimelineStatusRowMarkupMatchesTheProbe
+--- PASS: TestTimelineStatusRowMarkupMatchesTheProbe (0.00s)
+=== RUN   TestTimelineVerticalRuleMarkupMatchesTheProbe
+--- PASS: TestTimelineVerticalRuleMarkupMatchesTheProbe (0.00s)
+=== RUN   TestTimelineRowTooltipMarkupMatchesTheProbe
+--- PASS: TestTimelineRowTooltipMarkupMatchesTheProbe (0.00s)
+=== RUN   TestTimelineAggregateProducesTheFourBarShapes
+--- PASS: TestTimelineAggregateProducesTheFourBarShapes (0.00s)
+=== RUN   TestTimelineRowsAreNewestFirstWithAStableTiebreak
+--- PASS: TestTimelineRowsAreNewestFirstWithAStableTiebreak (0.00s)
+=== RUN   TestTimelineNewestFirstTiebreakIsNumeric
+--- PASS: TestTimelineNewestFirstTiebreakIsNumeric (0.00s)
+=== RUN   TestTimelineOpenSpansMeanStillRunningNotAMissingStamp
+--- PASS: TestTimelineOpenSpansMeanStillRunningNotAMissingStamp (0.00s)
+=== RUN   TestTimelineRangeReachesNowWhileAnyBarIsOpen
+--- PASS: TestTimelineRangeReachesNowWhileAnyBarIsOpen (0.00s)
+=== RUN   TestTimelineSkipsTicketsWithoutAParseableCreatedAt
+--- PASS: TestTimelineSkipsTicketsWithoutAParseableCreatedAt (0.00s)
+=== RUN   TestTimelineProjectionChainsTheQueueSerially
+--- PASS: TestTimelineProjectionChainsTheQueueSerially (0.00s)
+=== RUN   TestTimelineProjectionDeclinesOnThinHistory
+--- PASS: TestTimelineProjectionDeclinesOnThinHistory (0.00s)
+=== RUN   TestTimelineProjectionExcludesREQsBlockedBehindAnUnschedulableOne
+--- PASS: TestTimelineProjectionExcludesREQsBlockedBehindAnUnschedulableOne (0.00s)
+=== RUN   TestTimelineProjectionStartsAfterWorkAlreadyInFlight
+--- PASS: TestTimelineProjectionStartsAfterWorkAlreadyInFlight (0.00s)
+=== RUN   TestTimelineProjectionReservesTimeForUntimedClaimedWork
+--- PASS: TestTimelineProjectionReservesTimeForUntimedClaimedWork (0.00s)
+=== RUN   TestTimelineProjectionSchedulesDependentsOfClaimedWork
+--- PASS: TestTimelineProjectionSchedulesDependentsOfClaimedWork (0.00s)
+=== RUN   TestTimelineProjectionChainOrderIsNumericNotLexical
+--- PASS: TestTimelineProjectionChainOrderIsNumericNotLexical (0.00s)
+=== RUN   TestTimelineProjectionNamesARequestWhoseStatusIsOffVocabulary
+--- PASS: TestTimelineProjectionNamesARequestWhoseStatusIsOffVocabulary (0.00s)
+=== RUN   TestFormatCanonicalTimestampMatchesSchemaShape
+--- PASS: TestFormatCanonicalTimestampMatchesSchemaShape (0.00s)
+=== RUN   TestFormatCanonicalTimestampRoundTripsThroughBoardParser
+--- PASS: TestFormatCanonicalTimestampRoundTripsThroughBoardParser (0.00s)
+=== RUN   TestFormatCanonicalTimestampConvertsNonUTCZones
+--- PASS: TestFormatCanonicalTimestampConvertsNonUTCZones (0.00s)
+=== RUN   TestFormatCanonicalTimestampTruncatesSubSecondPrecision
+--- PASS: TestFormatCanonicalTimestampTruncatesSubSecondPrecision (0.00s)
+=== RUN   TestWriteCanonicalTimestampEmitsOnlyTheStampAndOneNewline
+--- PASS: TestWriteCanonicalTimestampEmitsOnlyTheStampAndOneNewline (0.00s)
+=== RUN   TestFutureStampDiagnosesNameBothCauses
+--- PASS: TestFutureStampDiagnosesNameBothCauses (0.12s)
+=== RUN   TestFutureStampDiagnosesKeepTheirFixInstruction
+--- PASS: TestFutureStampDiagnosesKeepTheirFixInstruction (0.16s)
+=== RUN   TestFutureStampCauseClauseMatchesTheShippedClient
+--- PASS: TestFutureStampCauseClauseMatchesTheShippedClient (0.00s)
+=== RUN   TestVerifyPassesOnACleanTree
+--- PASS: TestVerifyPassesOnACleanTree (0.12s)
+=== RUN   TestVerifyAllowsWriteSetOverlapWithoutMutatingRequests
+=== RUN   TestVerifyAllowsWriteSetOverlapWithoutMutatingRequests/literal_overlap
+--- PASS: TestVerifyAllowsWriteSetOverlapWithoutMutatingRequests/literal_overlap (0.08s)
+=== RUN   TestVerifyAllowsWriteSetOverlapWithoutMutatingRequests/glob_and_literal_overlap
+--- PASS: TestVerifyAllowsWriteSetOverlapWithoutMutatingRequests/glob_and_literal_overlap (0.09s)
+=== RUN   TestVerifyAllowsWriteSetOverlapWithoutMutatingRequests/overlap_with_an_unrelated_defect
+--- PASS: TestVerifyAllowsWriteSetOverlapWithoutMutatingRequests/overlap_with_an_unrelated_defect (0.19s)
+--- PASS: TestVerifyAllowsWriteSetOverlapWithoutMutatingRequests (0.35s)
+=== RUN   TestVerifyFlagsVersionAheadOfNewestChangelogEntry
+--- PASS: TestVerifyFlagsVersionAheadOfNewestChangelogEntry (0.12s)
+=== RUN   TestVerifyFlagsVersionBehindNewestChangelogEntry
+--- PASS: TestVerifyFlagsVersionBehindNewestChangelogEntry (0.08s)
+=== RUN   TestVerifyFlagsDuplicateChangelogVersion
+--- PASS: TestVerifyFlagsDuplicateChangelogVersion (0.10s)
+=== RUN   TestVerifyFlagsReusedChangelogTitle
+--- PASS: TestVerifyFlagsReusedChangelogTitle (0.08s)
+=== RUN   TestVerifyFlagsDuplicateRequestIds
+--- PASS: TestVerifyFlagsDuplicateRequestIds (0.13s)
+=== RUN   TestVerifyFlagsCheckpointNamingAMissingRequest
+--- PASS: TestVerifyFlagsCheckpointNamingAMissingRequest (0.09s)
+=== RUN   TestVerifyFlagsStaleAndMalformedClaims
+--- PASS: TestVerifyFlagsStaleAndMalformedClaims (0.11s)
+=== RUN   TestVerifyFlagsStrandedFinishedRequests
+--- PASS: TestVerifyFlagsStrandedFinishedRequests (0.10s)
+=== RUN   TestVerifyFlagsStrayRequestFiles
+--- PASS: TestVerifyFlagsStrayRequestFiles (0.10s)
+=== RUN   TestAppendStrayRequestFileFindingsUsesStructuredEvidence
+--- PASS: TestAppendStrayRequestFileFindingsUsesStructuredEvidence (0.00s)
+=== RUN   TestVerifyStrandedFinishedMemberOfAnArchivedUserRequestFiresOnlyTheStrandedProbe
+--- PASS: TestVerifyStrandedFinishedMemberOfAnArchivedUserRequestFiresOnlyTheStrandedProbe (0.09s)
+=== RUN   TestVerifyReportRoutesFixableFindingsToCleanup
+--- PASS: TestVerifyReportRoutesFixableFindingsToCleanup (0.12s)
+=== RUN   TestVerifyWritesNothing
+--- PASS: TestVerifyWritesNothing (0.08s)
+=== RUN   TestVerifyDoesNotAdvertiseAnUnmergedWorktreeAsFixable
+--- PASS: TestVerifyDoesNotAdvertiseAnUnmergedWorktreeAsFixable (0.51s)
+=== RUN   TestVerifyClassifiesWorktreeLeftoversByMergeState
+--- PASS: TestVerifyClassifiesWorktreeLeftoversByMergeState (1.15s)
+=== RUN   TestVerifyReportsAnUndeterminedMergeStateSeparately
+--- PASS: TestVerifyReportsAnUndeterminedMergeStateSeparately (0.34s)
+=== RUN   TestVerifyDoesNotProbeCommittedQueueStateForAnUndeterminedWorktree
+--- PASS: TestVerifyDoesNotProbeCommittedQueueStateForAnUndeterminedWorktree (0.35s)
+=== RUN   TestVerifyDoesNotAdvertiseADirtyMergedWorktreeAsFixable
+--- PASS: TestVerifyDoesNotAdvertiseADirtyMergedWorktreeAsFixable (0.59s)
+=== RUN   TestVerifyDoesNotAdvertiseAMergedWorktreeOfAnInFlightRequestAsFixable
+--- PASS: TestVerifyDoesNotAdvertiseAMergedWorktreeOfAnInFlightRequestAsFixable (0.53s)
+=== RUN   TestVerifyStillAdvertisesCleanFinishedMergedResidueAsFixable
+--- PASS: TestVerifyStillAdvertisesCleanFinishedMergedResidueAsFixable (0.51s)
+=== RUN   TestVerifyDoesNotAdvertiseAMergedWorktreeOfARequestTheBoardNeverSawAsFixable
+=== RUN   TestVerifyDoesNotAdvertiseAMergedWorktreeOfARequestTheBoardNeverSawAsFixable/no_REQ_file_anywhere_in_the_tree
+--- PASS: TestVerifyDoesNotAdvertiseAMergedWorktreeOfARequestTheBoardNeverSawAsFixable/no_REQ_file_anywhere_in_the_tree (0.48s)
+=== RUN   TestVerifyDoesNotAdvertiseAMergedWorktreeOfARequestTheBoardNeverSawAsFixable/the_REQ_file_is_parked_outside_the_scanned_sections
+--- PASS: TestVerifyDoesNotAdvertiseAMergedWorktreeOfARequestTheBoardNeverSawAsFixable/the_REQ_file_is_parked_outside_the_scanned_sections (0.47s)
+--- PASS: TestVerifyDoesNotAdvertiseAMergedWorktreeOfARequestTheBoardNeverSawAsFixable (0.96s)
+=== RUN   TestVerifyDoesNotAdvertiseAMergedWorktreeWithoutARequestIdAsFixable
+--- PASS: TestVerifyDoesNotAdvertiseAMergedWorktreeWithoutARequestIdAsFixable (0.49s)
+=== RUN   TestVerifyDoesNotAdvertiseAMergedWorktreeWithAnUnreadableStatusAsFixable
+--- PASS: TestVerifyDoesNotAdvertiseAMergedWorktreeWithAnUnreadableStatusAsFixable (0.46s)
+=== RUN   TestVerifyFlagsQueueStateCommittedOnABuilderBranch
+--- PASS: TestVerifyFlagsQueueStateCommittedOnABuilderBranch (0.48s)
+=== RUN   TestVerifyStillFlagsUncommittedQueueStateInAWorktree
+--- PASS: TestVerifyStillFlagsUncommittedQueueStateInAWorktree (0.37s)
+=== RUN   TestVerifyIgnoresAStaleQueueSnapshotAndTheHandBackFile
+--- PASS: TestVerifyIgnoresAStaleQueueSnapshotAndTheHandBackFile (0.49s)
+=== RUN   TestVerifySkipsReleaseProbesOnAForeignChangelogFormat
+--- PASS: TestVerifySkipsReleaseProbesOnAForeignChangelogFormat (0.10s)
+=== RUN   TestParsePorcelainStatusPathsKeepsSpacesAndRenames
+--- PASS: TestParsePorcelainStatusPathsKeepsSpacesAndRenames (0.00s)
+=== RUN   TestCheckpointMentionedRequestIdsSkipsGlobPatterns
+--- PASS: TestCheckpointMentionedRequestIdsSkipsGlobPatterns (0.00s)
+=== RUN   TestVerifyFlagsAssignedRequestClaimedHere
+--- PASS: TestVerifyFlagsAssignedRequestClaimedHere (0.08s)
+=== RUN   TestVerifyIgnoresAnAssignedRequestStillInTheQueue
+--- PASS: TestVerifyIgnoresAnAssignedRequestStillInTheQueue (0.08s)
+=== RUN   TestVerifyStrandedFinishedAssignedRequestFiresOnlyTheStrandedProbe
+--- PASS: TestVerifyStrandedFinishedAssignedRequestFiresOnlyTheStrandedProbe (0.07s)
+=== RUN   TestVerifyAllowsReviewGeneratedMemberUnderClosedUserRequest
+--- PASS: TestVerifyAllowsReviewGeneratedMemberUnderClosedUserRequest (0.09s)
+=== RUN   TestVerifyFlagsArchivedUserRequestWithALiveMember
+--- PASS: TestVerifyFlagsArchivedUserRequestWithALiveMember (0.07s)
+=== RUN   TestVerifyIgnoresAnArchivedUserRequestWhoseMembersAreAllResolved
+--- PASS: TestVerifyIgnoresAnArchivedUserRequestWhoseMembersAreAllResolved (0.10s)
+=== RUN   TestVerifyLiveMemberProbeScansUserRequestFrontmatterNotTheUrArray
+--- PASS: TestVerifyLiveMemberProbeScansUserRequestFrontmatterNotTheUrArray (0.07s)
+=== RUN   TestVerifyFlagsArchivedUserRequestLiveMemberUnderARelativeRepoRoot
+--- PASS: TestVerifyFlagsArchivedUserRequestLiveMemberUnderARelativeRepoRoot (0.09s)
+=== RUN   TestIsArchivedUserRequestPathRejectsLookalikeDirectories
+--- PASS: TestIsArchivedUserRequestPathRejectsLookalikeDirectories (0.00s)
+=== RUN   TestVerifyLiftsCompletionAnomaliesIntoFindings
+--- PASS: TestVerifyLiftsCompletionAnomaliesIntoFindings (0.06s)
+=== RUN   TestHashOnlyAnomalySkippedWhenGitUnavailable
+--- PASS: TestHashOnlyAnomalySkippedWhenGitUnavailable (0.02s)
+=== RUN   TestVerifyFlagsCreatedAfterClaimed
+--- PASS: TestVerifyFlagsCreatedAfterClaimed (0.09s)
+=== RUN   TestVerifyReportsEachViolatedTimestampPairSeparately
+--- PASS: TestVerifyReportsEachViolatedTimestampPairSeparately (0.08s)
+=== RUN   TestVerifyRoutesQueueOrderingRemedyToTheSessionStartRepairer
+--- PASS: TestVerifyRoutesQueueOrderingRemedyToTheSessionStartRepairer (0.19s)
+=== RUN   TestVerifyAcceptsEqualAbsentAndUnparseableTimestamps
+--- PASS: TestVerifyAcceptsEqualAbsentAndUnparseableTimestamps (0.09s)
+=== RUN   TestVerifyFlagsCreatedAfterCompletedWhenClaimedIsAbsent
+--- PASS: TestVerifyFlagsCreatedAfterCompletedWhenClaimedIsAbsent (0.08s)
+=== RUN   TestVerifyDoesNotDoubleReportTheOuterPair
+--- PASS: TestVerifyDoesNotDoubleReportTheOuterPair (0.07s)
+=== RUN   TestVerifyFlagsCalibrationRowDisagreeingWithFrontmatter
+--- PASS: TestVerifyFlagsCalibrationRowDisagreeingWithFrontmatter (0.08s)
+=== RUN   TestVerifyReportsUnreconcilableCalibrationRowsSeparately
+--- PASS: TestVerifyReportsUnreconcilableCalibrationRowsSeparately (0.12s)
+=== RUN   TestVerifySkipsCalibrationProbeWhenTheLogIsAbsent
+--- PASS: TestVerifySkipsCalibrationProbeWhenTheLogIsAbsent (0.10s)
+=== RUN   TestCollectVerifyFindingsSeesAClaimGoStaleWithoutAnyFileChanging
+--- PASS: TestCollectVerifyFindingsSeesAClaimGoStaleWithoutAnyFileChanging (0.33s)
+=== RUN   TestRunVerifyProbesStillReportsWhatCollectDoes
+--- PASS: TestRunVerifyProbesStillReportsWhatCollectDoes (0.13s)
+=== RUN   TestVerifyFlagsEachStructuralDamageShape
+--- PASS: TestVerifyFlagsEachStructuralDamageShape (0.08s)
+=== RUN   TestVerifyReportsABrokenFenceOnceNotOncePerEmptiedField
+--- PASS: TestVerifyReportsABrokenFenceOnceNotOncePerEmptiedField (0.07s)
+=== RUN   TestVerifyStaysSilentOnLegitimateAbsenceOfUserRequest
+--- PASS: TestVerifyStaysSilentOnLegitimateAbsenceOfUserRequest (0.07s)
+=== RUN   TestVerifyStaysSilentOnEveryDocumentedUserRequestlessSchema
+--- PASS: TestVerifyStaysSilentOnEveryDocumentedUserRequestlessSchema (0.07s)
+=== RUN   TestVerifyUserRequestExemptionsRequireTheirSchemaDiscriminator
+--- PASS: TestVerifyUserRequestExemptionsRequireTheirSchemaDiscriminator (0.14s)
+=== RUN   TestVerifyDistinguishesMissingClosingFrontmatterFence
+--- PASS: TestVerifyDistinguishesMissingClosingFrontmatterFence (0.13s)
+=== RUN   TestVerifyDoesNotTreatABareEOFDelimiterAsAnOpeningFence
+--- PASS: TestVerifyDoesNotTreatABareEOFDelimiterAsAnOpeningFence (0.08s)
+=== RUN   TestStructuralDamageStillParsesAndStillReachesTheBoard
+--- PASS: TestStructuralDamageStillParsesAndStillReachesTheBoard (0.00s)
+=== RUN   TestStructuralProbesUseStructuredEvidenceNotWarningProse
+--- PASS: TestStructuralProbesUseStructuredEvidenceNotWarningProse (0.00s)
+=== RUN   TestVerifyNamesTheSubjectEachFindingIsAbout
+--- PASS: TestVerifyNamesTheSubjectEachFindingIsAbout (0.64s)
+=== RUN   TestVerifyNamesTheChangelogAsTheReleaseFindingSubject
+--- PASS: TestVerifyNamesTheChangelogAsTheReleaseFindingSubject (0.08s)
+=== RUN   TestVerifyFindingDetailsDoNotRepeatTheirSubject
+--- PASS: TestVerifyFindingDetailsDoNotRepeatTheirSubject (0.08s)
+=== RUN   TestVerifyCapsThePathListForUncommittedQueueState
+--- PASS: TestVerifyCapsThePathListForUncommittedQueueState (0.46s)
+=== RUN   TestVerifyCapsThePathListForCommittedQueueState
+--- PASS: TestVerifyCapsThePathListForCommittedQueueState (0.42s)
+=== RUN   TestVerifyCapsTheMemberListForAnArchivedUserRequest
+--- PASS: TestVerifyCapsTheMemberListForAnArchivedUserRequest (0.10s)
+=== RUN   TestVerifyLeavesAShortListUncapped
+--- PASS: TestVerifyLeavesAShortListUncapped (0.37s)
+=== RUN   TestResolveRepoRootSkipsSkillInstall
+--- PASS: TestResolveRepoRootSkipsSkillInstall (0.00s)
+=== RUN   TestResolveRepoRootErrorsWhenOnlySkillInstallExists
+--- PASS: TestResolveRepoRootErrorsWhenOnlySkillInstallExists (0.00s)
+=== RUN   TestEnumerateSkipsAssetsRequestFiles
+--- PASS: TestEnumerateSkipsAssetsRequestFiles (0.00s)
+FAIL
+FAIL	github.com/knews2019/skill-do-work/queue-kanban	65.070s
+go-test budget: FAIL module=/Users/t2/Desktop/e1-experimental-repos/skill-do-work2/skills/do-work-board/tools/queue-kanban wall=66s exit=1
+go-test budget: module=/Users/t2/Desktop/e1-experimental-repos/skill-do-work2/skills/do-work-board/tools/queue-kanban wall=66s tests=427 slowest-file=strict_behavior_regression_test.go:31.29s limit=none (heavy)
+{
+  "schema_version": 1,
+  "command": "run-timed-command",
+  "outcome": "findings",
+  "repository_root": "/Users/t2/Desktop/e1-experimental-repos/skill-do-work2",
+  "findings": [
+    {
+      "code": "TIMED-COMMAND-NONZERO-EXIT",
+      "severity": "warning",
+      "affected_ids": [
+        "REQ-718"
+      ],
+      "affected_paths": [],
+      "observed_evidence": [
+        "bash (2 argv tokens) exited 1 after 130s"
+      ],
+      "fixability": "manual",
+      "automation_stop_reason": "",
+      "next_argv": [],
+      "next_just_recipe": "",
+      "verification_argv": []
+    }
+  ],
+  "changes": [],
+  "skipped_work": [],
+  "selected": [],
+  "excluded": [],
+  "selection_summary": {
+    "pending": 0,
+    "finished_awaiting_archive": 0,
+    "pending_answers": 0,
+    "blocked": 0,
+    "blocked_archive_collision": 0,
+    "blocked_dependency_cycle": 0,
+    "probed": 0,
+    "probe_succeeded": 0,
+    "skipped_impact_negligible": 0,
+    "total_estimated_minutes": 0,
+    "unknown_estimate_count": 0
+  },
+  "rollback": {
+    "status": "",
+    "actions": [],
+    "errors": []
+  },
+  "finalizations": [],
+  "lifecycle_timing": {
+    "request_id": "REQ-718",
+    "run_id": "work-2026-11-11-031446",
+    "stream_path": "/Users/t2/Desktop/e1-experimental-repos/skill-do-work2/.git/do-work-timing/work-2026-11-11-031446/REQ-718.jsonl",
+    "stream_state": "appended",
+    "recorded_event": {
+      "schema_version": 1,
+      "event_id": "0001",
+      "run_id": "work-2026-11-11-031446",
+      "request_id": "REQ-718",
+      "category": "verification-gate",
+      "operation": "canonical-gate",
+      "started_at": "2026-11-11T01:26:12Z",
+      "ended_at": "2026-11-11T01:28:22Z",
+      "elapsed_seconds": 130,
+      "elapsed_source": "monotonic_in_process",
+      "outcome": "failure",
+      "exit_status": 1,
+      "command_identity": "bash (2 argv tokens)"
+    },
+    "event_count": 1,
+    "total_observed_seconds": 0,
+    "attributed_seconds": 0,
+    "unattributed_seconds": 0,
+    "section_written": false
+  }
+}
