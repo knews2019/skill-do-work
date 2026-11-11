@@ -12,10 +12,12 @@ The probe used `--safe-mode --setting-sources '' --strict-mcp-config --tools Rea
 
 ## Repeatable procedure
 
-1. Run `python3 _dev/experiments/REQ-718/claude/run-probe.py` from this checkout. It replaces capture and metadata files in this experiment directory and appends the authorized main-tree progress log.
+1. Run `python3 _dev/experiments/REQ-718/claude/run-probe.py` from this checkout. It replaces capture and metadata files in this experiment directory and emits timestamped progress to stderr, without depending on the original main-tree run directory.
 2. Run `python3 _dev/experiments/REQ-718/claude/verify-evidence.py` to check the capture against the repository inputs and regenerate `focused-checks.json`.
 
 The runner sends the exact three prompts stored in `baseline-prompt.txt`, `compact-prompt.txt`, and `continuation-prompt.txt` within one CLI process. It waits for each successful result and requires a real `system/compact_boundary` before sending the continuation. Limits are 150 seconds per turn and 360 seconds overall, with bounded termination and process reaping. Actual elapsed time was 55.288 seconds; process exit was 0. Subsequent runs may choose a different default model: inspect their initialization events before comparing results.
+
+For an offline progress regression check, run `python3 _dev/experiments/REQ-718/claude/test-replay-progress.py`. It simulates an absent run directory by making filesystem opens fail and checks timestamped stderr output without launching the CLI. The evidence verifier in step 2 also runs offline.
 
 ## Observations and evidence
 

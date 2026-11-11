@@ -7,11 +7,11 @@ from pathlib import Path
 import selectors
 import signal
 import subprocess
+import sys
 import time
 
 PROBE_DIRECTORY = Path(__file__).resolve().parent
 REPOSITORY_ROOT = PROBE_DIRECTORY.parents[3]
-PROGRESS_PATH = Path('/Users/t2/Desktop/e1-experimental-repos/skill-do-work2/do-work/runs/work-2026-11-11-031446/REQ-718-claude-progress.log')
 CLI_ARGUMENTS = ['claude', '--safe-mode', '--setting-sources', '', '--strict-mcp-config',
                  '--tools', 'Read', '--allowedTools', 'Read', '--permission-mode', 'dontAsk',
                  '--no-session-persistence', '--input-format', 'stream-json',
@@ -19,8 +19,8 @@ CLI_ARGUMENTS = ['claude', '--safe-mode', '--setting-sources', '', '--strict-mcp
 
 
 def record_progress(message):
-    with PROGRESS_PATH.open('a') as output:
-        output.write(datetime.datetime.now(datetime.timezone.utc).isoformat() + ' ' + message + '\n')
+    print(datetime.datetime.now(datetime.timezone.utc).isoformat() + ' ' + message,
+          file=sys.stderr, flush=True)
 
 
 def sanitize_event(event):
