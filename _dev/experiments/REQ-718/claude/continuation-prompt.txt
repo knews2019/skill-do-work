@@ -1,0 +1,1 @@
+Continue the same paused implementation phase. Output only a JavaScript function that computes the sum of shipment weights from an array of shipment objects with weight fields. Do not export it.

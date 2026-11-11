@@ -1,0 +1,48 @@
+{
+  "argv": [
+    "claude",
+    "--safe-mode",
+    "--setting-sources",
+    "",
+    "--strict-mcp-config",
+    "--tools",
+    "Read",
+    "--allowedTools",
+    "Read",
+    "--permission-mode",
+    "dontAsk",
+    "--no-session-persistence",
+    "--input-format",
+    "stream-json",
+    "--output-format",
+    "stream-json",
+    "--verbose",
+    "--max-budget-usd",
+    "3",
+    "-p"
+  ],
+  "cwd": "/Users/t2/.t3/worktrees/skill-do-work2/t3-491e3e50",
+  "started_at": "2026-11-11T01:20:24.781316+00:00",
+  "cli_version": "2.1.322 (Claude Code)",
+  "process_exit_code": 0,
+  "elapsed_seconds": 55.288,
+  "observed_compact_boundary": true,
+  "completed_turns": [
+    {
+      "phase": "baseline",
+      "is_error": false,
+      "subtype": "success"
+    },
+    {
+      "phase": "compact",
+      "is_error": false,
+      "subtype": "success"
+    },
+    {
+      "phase": "continuation",
+      "is_error": false,
+      "subtype": "success"
+    }
+  ],
+  "process_reaped": true
+}
