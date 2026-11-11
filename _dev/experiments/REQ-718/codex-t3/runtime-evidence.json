@@ -1,0 +1,302 @@
+{
+  "threadConfiguration": {
+    "threadId": "thread:delegated-task:command%3Amcp%3A38ed711b-666b-4b5e-8e14-3e5fa8a3df6c%3Adelegate-task%3Af8b09f80-e2d9-401b-81d3-43384a803871",
+    "modelSelection": {
+      "instanceId": "codex",
+      "model": "gpt-6.1-sol",
+      "options": [
+        {
+          "id": "reasoningEffort",
+          "value": "high"
+        }
+      ]
+    },
+    "runtimeMode": "full-access",
+    "interactionMode": "default"
+  },
+  "t3Server": {
+    "serverVersion": "0.1.7",
+    "platform": {
+      "os": "darwin",
+      "arch": "arm64"
+    }
+  },
+  "installedExecutableEvidence": {
+    "chunk_id": "45a4b6",
+    "wall_time_seconds": 0.118698041,
+    "exit_code": 1,
+    "original_token_count": 27,
+    "output": "t3/execute-codex-brief\na867b1a08d38dfb5605602a6a0ac5408c0368eb9\n/opt/homebrew/bin/codex\ncodex-cli 0.167.0\n"
+  },
+  "daemonVersionEvidence": {
+    "chunk_id": "9c654c",
+    "wall_time_seconds": 0.000009041,
+    "exit_code": 1,
+    "original_token_count": 36,
+    "output": "Error: failed to connect to /Users/t2/.codex/app-server-control/app-server-control.sock\n\nCaused by:\n    No such file or directory (os error 2)\n"
+  },
+  "t3ToolInventory": [
+    {
+      "name": "mcp__t3_code__create_threads",
+      "description": "Create new top-level threads in this checkout. Not delegation. One thread or its own worktree: `t3_thread_launch`. Project, branch, and worktree inherit."
+    },
+    {
+      "name": "mcp__t3_code__delegate_task",
+      "description": "Start one child agent with only `task`. No parent history. Separate checkout or PR per child: `isolation:'worktree'`. Keep `taskId` for `task_status` and `task_cancel`."
+    },
+    {
+      "name": "mcp__t3_code__delete_scheduled_task",
+      "description": "Delete one scheduled task by `scheduledTaskId`. It stops at once. To pause instead, use `schedule_task` with `enabled=false`."
+    },
+    {
+      "name": "mcp__t3_code__device_close",
+      "description": "Remove a device from this thread's Device panel. `shutdown=true` also turns it off."
+    },
+    {
+      "name": "mcp__t3_code__device_list",
+      "description": "List iOS Simulators and Android Emulators on every device host, what each host can run, and what is open in this thread's Device panel. Call before `device_open` when you do not know a device id."
+    },
+    {
+      "name": "mcp__t3_code__device_open",
+      "description": "Open a simulator or emulator for this thread. Pass `deviceId` and `hostId` from `device_list`. Boots it if needed and shows it in the user's Device panel. Returns the `agent-device` CLI call pinned to that device. Drive the device with that CLI."
+    },
+    {
+      "name": "mcp__t3_code__device_screenshot",
+      "description": "Get a PNG of an open device's screen. For taps and text, use the `agent-device` CLI."
+    },
+    {
+      "name": "mcp__t3_code__html_preview",
+      "description": "Check an HTML page before html_render. Returns PNG, contentHeight, and console output. If it says the browser is still installing, call again in a minute. Inline <style> and <script>. Local images as absolute paths are inlined. Remote URLs load as-is. Theme and layout rules are in html_render."
+    },
+    {
+      "name": "mcp__t3_code__html_render",
+      "description": "Show a finished HTML page (chart, diagram, mockup) inline in this thread, above your final reply. Do not announce or restate the page. Frame fits height to 20000px. On mobile, content past the given height scrolls. Frame width is reply width (728px desktop, about 360px phones), on the thread background. Leave html, body, and the outer element with no background color, no outer card, border, banner title, or side padding. This wins over any rule that sets a page background. T3 adds an overridable 8px html gutter for selection rings and shadows. Use fluid widths within it. A box that needs its own background gets 16px padding and var(--radius) corners. Give charts fixed pixel heights. Let content set the height. Do not use vh units or height:100% on html or body. Both are rejected or loop. Use theme CSS variables on :root, not fixed colors: --background, --foreground, --muted, --card, --popover, --secondary, --border, --ring, --primary, --accent, --destructive, --warning, --success, --info, --code-background (most have a matching -foreground; accent, destructive, and warning also have -surface), --chart-1 to --chart-6, --radius, --font-sans, --font-mono. The base sheet sets background, text, and font."
+    },
+    {
+      "name": "mcp__t3_code__link_pull_request",
+      "description": "Link a PR to this thread. T3 shows its status and settles the thread on merge. For several PRs, use `link_pull_requests`."
+    },
+    {
+      "name": "mcp__t3_code__link_pull_requests",
+      "description": "Link several PRs to a thread in one call. Use it instead of one `link_pull_request` per PR. URLs that are not PRs come back in `invalidUrls`."
+    },
+    {
+      "name": "mcp__t3_code__list_scheduled_tasks",
+      "description": "List scheduled tasks. Omit `projectId` for this thread's project. Pass a `scheduledTaskId` to `schedule_task` or `delete_scheduled_task`. In a scheduled run, do not call this to find your task. Do the prompt."
+    },
+    {
+      "name": "mcp__t3_code__list_thread_pull_requests",
+      "description": "List PRs linked to a thread, with last known state and stack order (bottom to top). Call only when you need that list. Never as an end-of-work check."
+    },
+    {
+      "name": "mcp__t3_code__orchestrator_capabilities",
+      "description": "List providers, models, options, and runtime modes for `delegate_task`. Short list. `search` finds others. Any catalog model works."
+    },
+    {
+      "name": "mcp__t3_code__preview_act",
+      "description": "Act on the chosen tab. Target with `locator='aria-ref=<ref>'` from `preview_snapshot`; `x` and `y` go together. `timeoutMs` defaults to 15000. click: `button`, `clickCount` 1 to 3. type: literal `text`, `clear=true` replaces it. hover: shows menus or tooltips. select: `values` in one native <select>, by value or label; for a custom dropdown, click it open, then click the option. drag: `source` onto `target`. upload: absolute `paths` answer the file picker `preview_status` reports, [] cancels it, or a `locator` sets an <input type=file>. press: one `key`, such as 'Enter', with `modifiers`, to the focused element; click a field first to focus it. scroll: the tab, or one container with a locator; positive `deltaY` scrolls down, positive `deltaX` right."
+    },
+    {
+      "name": "mcp__t3_code__preview_dialog",
+      "description": "Accept or dismiss the dialog `preview_status` reports. Pass `promptText` to accept a prompt. Needs your own tab, or an unclaimed one. Desktop hosts may not support this."
+    },
+    {
+      "name": "mcp__t3_code__preview_evaluate",
+      "description": "Run JavaScript in the page. It can change page state. Returns `{value}`, up to 64 KB. Needs your tab, or an unclaimed one. To read a tab the user drives, use `preview_snapshot`. Page tools reached here: read data only, never create, save, or display. Show results with `html_render`."
+    },
+    {
+      "name": "mcp__t3_code__preview_navigate",
+      "description": "Navigate the chosen tab. Pass `url` for a website, or `target:{kind:'environment-port',port}` for a dev server. Exactly one of `url` and `target`."
+    },
+    {
+      "name": "mcp__t3_code__preview_open",
+      "description": "Open a preview tab in this thread and show it. For a dev server, pass `target` instead of `url`. `open=false` keeps it in the background. Reuses your current tab unless `tabId` or `reuseExistingTab=false` says otherwise. Parallel subagents in one session must each use `reuseExistingTab=false`, then their own returned `tabId`."
+    },
+    {
+      "name": "mcp__t3_code__preview_recording_start",
+      "description": "Start recording the chosen tab."
+    },
+    {
+      "name": "mcp__t3_code__preview_recording_stop",
+      "description": "Stop recording the chosen tab. Returns a local path to the recording file (max 50 MiB)."
+    },
+    {
+      "name": "mcp__t3_code__preview_resize",
+      "description": "Resize the chosen tab: {mode:'fill'}, {mode:'freeform',width,height}, or {mode:'preset',preset,orientation}. Changes CSS size only, not the user agent."
+    },
+    {
+      "name": "mcp__t3_code__preview_set_appearance",
+      "description": "Set `prefers-color-scheme` for the chosen tab: 'dark', 'light', or 'system' to clear the override."
+    },
+    {
+      "name": "mcp__t3_code__preview_snapshot",
+      "description": "Use it only when the current request asks for browser work, including checking an edit in the browser. Never use it unasked to verify your own edit, or to repeat a snapshot from an earlier turn. Works on a tab the user is driving. Returns page state, elements, diagnostics, and screenshot size. Target one element with `locator='aria-ref=<ref>'` from `accessibilityTree`, even in frames. Refs die on navigation, a new snapshot, or handoff. Text caps near 20 KB; on your own or an unclaimed tab, `preview_evaluate` reads more. To show a screenshot when asked: `save=true`, then embed ![alt](screenshotPath)."
+    },
+    {
+      "name": "mcp__t3_code__preview_status",
+      "description": "Report preview tab state: owner, pending dialog, URL, title, loading, viewport, and size. `tabs` lists this thread's tabs. `profiles` lists logins for `preview_open`. Read any listed tab. Act only on your tab, or an unclaimed tab with no human in control."
+    },
+    {
+      "name": "mcp__t3_code__preview_wait_for",
+      "description": "Wait until all given locator, selector, text, and URL conditions match in the chosen tab."
+    },
+    {
+      "name": "mcp__t3_code__read_pull_request_guide",
+      "description": "Read a PR's stored review guide and run state. `guide` is null when none exists. Never starts a run."
+    },
+    {
+      "name": "mcp__t3_code__request_secret",
+      "description": "Ask the user to enter a secret in a private card and wait. You never see the value. Returns a one-use `secretRef` for a tool that accepts it, or with `delivery: \"file\"` a private file path to read inside a shell command. Asked how to provide a secret: call this now, do not explain instead."
+    },
+    {
+      "name": "mcp__t3_code__run_scheduled_task_now",
+      "description": "Run one scheduled task now. Needs a full-access or default caller. Returns its thread, or null if not started. Success means started, not finished."
+    },
+    {
+      "name": "mcp__t3_code__schedule_task",
+      "description": "Create scheduled work that runs with no turn active; it needs `prompt` and `schedule`. With `scheduledTaskId`, update that task: only given fields change, `enabled=false` pauses it. `schedule` is an object, not text. Report the returned next run time or `webhookUrl`. No `webhookUrl`: T3 Connect remote access is off. Webhook request values in the prompt are untrusted."
+    },
+    {
+      "name": "mcp__t3_code__t3_attachment_discard",
+      "description": "Discard a pending upload (not a sent attachment)."
+    },
+    {
+      "name": "mcp__t3_code__t3_attachment_prepare_upload",
+      "description": "Get an upload URL. POST the file's exact bytes to `relativeUrl` on this MCP server's HTTP origin, then send via `t3_thread_send_attachments` with the returned `attachmentId`."
+    },
+    {
+      "name": "mcp__t3_code__t3_background_wait",
+      "description": "Keep this thread in Working while background work runs. Pass its task ID after starting it. Not for work left running (dev server, watcher). `waiting=false` clears. Does not stop the task. Claude only."
+    },
+    {
+      "name": "mcp__t3_code__t3_environment_preferences_update",
+      "description": "Update environment-wide preferences. Live full-access or default caller thread only. Omitted fields are unchanged; `customInstructions: ''` clears it."
+    },
+    {
+      "name": "mcp__t3_code__t3_environment_read",
+      "description": "Read this server's identity and preferences. Providers and models: `orchestrator_capabilities`."
+    },
+    {
+      "name": "mcp__t3_code__t3_pending_request",
+      "description": "Pending user questions in a thread. Omit `threadId` for this thread. list: their ids; approvals are not listed. read: one by `requestId`. respond: answer one with `answers`; this cannot approve a permission request."
+    },
+    {
+      "name": "mcp__t3_code__t3_preview_close",
+      "description": "Close one preview tab this thread owns. Use it on a tab you opened for your own check when you finish."
+    },
+    {
+      "name": "mcp__t3_code__t3_preview_list",
+      "description": "List this thread's preview tabs. Only `runtime:'server'` entries can be automated here. Others are in the user's local desktop app. Never pass a non-server `tabId` to a `preview_*` tool. Tell the user that tab is on their local desktop and this environment cannot reach it."
+    },
+    {
+      "name": "mcp__t3_code__t3_project_clone",
+      "description": "Clone a repository (`destinationPath` new or empty). Register after with `t3_project_create`, with the same `environmentId`."
+    },
+    {
+      "name": "mcp__t3_code__t3_project_create",
+      "description": "Register a project folder. `createWorkspaceRootIfMissing` creates it; a registered folder is rejected. No `workspaceRoot`: makes a git repo from `title` with README, icon, first commit (`commitError` on failure; project still exists). Clone first with `t3_project_clone` if needed."
+    },
+    {
+      "name": "mcp__t3_code__t3_project_delete",
+      "description": "Delete one project. Nonempty needs `force: true`. Folder on disk stays."
+    },
+    {
+      "name": "mcp__t3_code__t3_project_list",
+      "description": "List projects. Pages can shift."
+    },
+    {
+      "name": "mcp__t3_code__t3_project_read",
+      "description": "Read one project: workspace and saved scripts."
+    },
+    {
+      "name": "mcp__t3_code__t3_project_update",
+      "description": "Update one project's settings. Omitted fields are unchanged."
+    },
+    {
+      "name": "mcp__t3_code__t3_queue",
+      "description": "Manage a thread's queued messages. Omit `threadId` for this thread. list: send order, paged by `cursor` and `limit`. read: up to 16,000 chars of one. edit: replace its `text`; attachments stay. cancel. reorder: before `beforeRunId`, or to the end with null. promote_to_steer: send it now as steering to active `targetRunId`. Writes fail once the run is no longer queued."
+    },
+    {
+      "name": "mcp__t3_code__t3_thread_configure",
+      "description": "Read a thread's provider, model, and modes, or set its provider, model, and options with `modelSelection`. Omit `threadId` for this thread. Permission modes stay. Values from `orchestrator_capabilities`."
+    },
+    {
+      "name": "mcp__t3_code__t3_thread_interrupt",
+      "description": "Interrupt a top-level thread's running turn. No `runId`: newest running turn. No effect when idle. For a delegate, use `task_cancel`."
+    },
+    {
+      "name": "mcp__t3_code__t3_thread_launch",
+      "description": "Create one new top-level thread, bound to its workspace before the agent starts. Task in `message`. Omit `projectId`, model and modes to inherit yours (outside a thread, pass `projectId` or `scratch`); modes cannot exceed yours. After an error or lost reply, retry with the same `clientRequestId`. Follow it with `t3_thread_read` or `t3_thread_wait`. Mention it with its `link`."
+    },
+    {
+      "name": "mcp__t3_code__t3_thread_list",
+      "description": "List threads newest first, in one project or with `allProjects`. Page with `cursor`."
+    },
+    {
+      "name": "mcp__t3_code__t3_thread_organize",
+      "description": "Pin, snooze, settle, archive, or mark a thread unread. Omit `threadId` for this thread. `snooze` needs `snoozedUntil`. Settling this thread applies at turn end. A failed turn or queued message leaves it active."
+    },
+    {
+      "name": "mcp__t3_code__t3_thread_read",
+      "description": "Read any thread by id. `messages` (default): user and assistant messages and plans. `activity`: all timeline items. Keep reads small: low `limit` and `maxCharsPerItem`. Page with `afterPosition=nextPosition`. Cut-off text: `itemId` with `textOffset=nextTextOffset`. Reading a child's final result marks it delivered. In your reply, name it as its `link` verbatim."
+    },
+    {
+      "name": "mcp__t3_code__t3_thread_search",
+      "description": "Search active threads by title, branch, PR, project, then message text. Skips subagent threads. `projectId`: one project, else yours, else all outside a thread. Not exhaustive."
+    },
+    {
+      "name": "mcp__t3_code__t3_thread_send",
+      "description": "Send a message to any thread. The target cannot run with broader modes than yours. `mode:'auto'` starts an idle thread, steers a running turn, or queues. `queue`: new turn. `steer`: mid-turn update. `restart`: interrupt and restart. A send to a finished child thread starts a fresh task and returns its `taskId`. In your reply, name it as its `link` verbatim."
+    },
+    {
+      "name": "mcp__t3_code__t3_thread_send_attachments",
+      "description": "Send uploaded attachments as a new message to a thread. No retry key. Target modes cannot exceed yours. Success does not mean the provider read them or finished."
+    },
+    {
+      "name": "mcp__t3_code__t3_thread_transfer",
+      "description": "Move context between threads. Omit `threadId` for this thread. fork: copy it from `sourcePoint` (default latest stable run) into a new thread with the same setup; no turn runs yet. merge_back: merge it from `sourcePoint` into a related `targetThreadId` in the same project. status: its context transfers."
+    },
+    {
+      "name": "mcp__t3_code__t3_thread_update",
+      "description": "Rename a thread (`action:'rename'` with `title`) or regenerate its title. Omit `threadId` for this thread. Workspace and branch cannot change here."
+    },
+    {
+      "name": "mcp__t3_code__t3_workflow_stop",
+      "description": "Stop a running Claude workflow in a thread. `subagentId`: coordinator from `t3_thread_read` 'activity'. Stops only the workflow, not the thread."
+    },
+    {
+      "name": "mcp__t3_code__t3_worktree_handoff",
+      "description": "Move THIS thread into a new git worktree on a new branch. Runs the setup script by default. A separate agent in a worktree: `t3_thread_launch` with `workspaceStrategy`. Call last in your turn. The move ends the live session. `continuationPrompt` resumes work there next turn. Without it, the thread waits. The worktree stays after the thread is deleted. Fails if this thread has a worktree."
+    },
+    {
+      "name": "mcp__t3_code__t3_worktree_list",
+      "description": "List branch refs and checkout paths for a thread's workspace. Omit `threadId` for this thread. Detached worktrees with no branch are left out."
+    },
+    {
+      "name": "mcp__t3_code__t3_worktree_status",
+      "description": "Report this thread's worktree: attached or not, path, branch, project root, and the `startFromOrigin` default. Check before `t3_worktree_handoff`."
+    },
+    {
+      "name": "mcp__t3_code__task_cancel",
+      "description": "Stop one delegated task by `taskId`. Stops its running and queued turns, its delegates, and its PR watches, including later runs in its child thread. A finished task keeps its result."
+    },
+    {
+      "name": "mcp__t3_code__task_status",
+      "description": "Read one delegated task you started. Do not call it on a running task before its completion wakes you. `workState`: working, waiting_for_children, result_available. A finished turn with live child work is not done. `summary`: final result. Reading it marks it delivered."
+    },
+    {
+      "name": "mcp__t3_code__unlink_pull_request",
+      "description": "Remove a PR link from this thread. Succeeds with `wasLinked=false` when it was not linked."
+    },
+    {
+      "name": "mcp__t3_code__unlink_pull_requests",
+      "description": "Unlink every PR on a thread whose last known state (as `list_thread_pull_requests` shows) is in `states`, in one call. Use it instead of one `unlink_pull_request` per PR. PRs with no known state stay linked."
+    },
+    {
+      "name": "mcp__t3_code__write_pull_request_guides",
+      "description": "Write review guides for up to 20 PRs (the tour in the PR Guide tab). Returns once runs start. Each run takes minutes in a temporary checkout. A run for the same head is joined. Read with `read_pull_request_guide`. Fails while guides are off."
+    }
+  ],
+  "inventoryCompactionMatches": [],
+  "limits": "Exposed tool metadata only. No hidden/UI control or active-provider binary association verified. No config mutation."
+}

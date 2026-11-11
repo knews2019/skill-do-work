@@ -1,0 +1,12 @@
+{
+  "skills/do-work/SKILL.md": "669e480fae5e65ef2fc3b0b18938c9fee8e6d77455fe71e8e1a8c7ee471d8b51",
+  "skills/do-work/actions/work.md": "fe8bb2c61580ebe4c5133941179e9acd5627af3f1832deb52f755fb0a102ea05",
+  "skills/do-work/actions/work-implementation-reference.md": "b9e8dce7ebe5573b12d6e80edc7468f34029b7a28c7c76f0713ce2d96d0db9bb",
+  "skills/do-work/crew-members/general.md": "0d07b9eaf13f187ba1de7d95f1c814b6606e72e6c405312ce896988438e49683",
+  "skills/do-work/crew-members/coding-guardrails.md": "c94f591e9e5a37a9b4c3bc4dd2ae5a3d199f0e108e53cab816e58f094bc3a667",
+  "skills/do-work/crew-members/shared-principles.md": "fb6451f0d7562b2c4d4a3037232f0ffc73127adf77e1460c13ccd4efc76c6cf9",
+  "skills/do-work/crew-members/communication-style.md": "afd970114117cb7b68e503dc85dcf00c0a5a86cf33512bd9a7de8a3ac8fb2bf7",
+  "skills/do-work/crew-members/testing.md": "2903a6732d0649d41739e23ba76791872670d1de3f9366968d577d8b19d07c76",
+  "skills/do-work/crew-members/background-agents.md": "ab9c8baf536698f2ba17436a1dd1bb1e84a46b73484faefa6b883d6c3adbf5f0",
+  "skills/do-work/crew-members/anti-slop.md": "f4279e669fadf2daa9dbf3e6159d7697ca54a70f6fce762c9857b02d811addcc"
+}
