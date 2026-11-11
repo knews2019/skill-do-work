@@ -1,7 +1,7 @@
 ---
 id: REQ-718
 title: 'Reproduce instruction retention across compaction'
-status: pending
+status: claimed
 created_at: 2026-11-10T23:19:33Z
 user_request: UR-170
 domain: testing
@@ -11,6 +11,7 @@ maintenance: false
 impact: impact-user-visible
 effort_estimate: effort-substantive
 status_changed_at: 2026-11-10T23:23:24Z
+claimed_at: 2026-11-11T01:14:02Z
 ---
 # Reproduce Instruction Retention Across Compaction
 
