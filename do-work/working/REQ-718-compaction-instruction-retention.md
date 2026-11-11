@@ -1,6 +1,20 @@
 ---
 id: REQ-718
 title: 'Reproduce instruction retention across compaction'
+write_set:
+- _dev/experiments/REQ-718/claude/**
+- _dev/experiments/REQ-718/codex-t3/**
+route: B
+estimate:
+  p50_active_minutes: 25
+  confidence: medium
+  calculated_at: 2026-11-11T01:15:53Z
+  basis:
+  - Route B
+  - 2-file write set
+  - 2 new files
+  - 2 subsystems involved
+  - 5 acceptance criteria
 status: claimed
 created_at: 2026-11-10T23:19:33Z
 user_request: UR-170
@@ -44,7 +58,7 @@ There is currently no recorded live compaction reproduction establishing the cla
 No queued request in any UR shares this root cause: the queue and working directories were empty at capture. The user explicitly promoted all accepted findings; only F9 was accepted. The experiment is developer-visible diagnostic work and needs exploration, so impact is user-visible and effort is substantive. See `do-work/user-requests/UR-170/input.md` for the referenced accepted finding and verbatim capture instruction.
 
 ## AI Execution State (P-A-U Loop)
-- [ ] **[PLAN]:** (Agent: Read listed `prime_files` and agent rules. Write brief technical approach here. Do not write code yet.)
+- [x] **[PLAN]:** Split Claude and actual Codex/T3 observations into isolated evidence directories; verify actual compaction or report exact blockers.
 - [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
 - [ ] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
 
@@ -77,3 +91,32 @@ User decisions refine the existing experiment. These answers govern its scope al
 > ```
 > Include the actual Codex setup (recommended): record the harness and model, then test skill-body and referenced-file retention.
 > ```
+
+## Triage
+
+**Route: B** — Outcome is specified; live harness compaction and observation mechanics need discovery.
+
+## Plan
+
+**Planning not required** — Route B: exploration-guided experiment.
+
+## Exploration
+
+Both Claude and Codex executables are installed. T3 exposes Codex GPT-6.1 Sol with high reasoning effort and tool-managed worktree isolation. Standalone Codex cannot stand in for actual T3. Live compaction control and observable transcripts remain unproven and are the workers’ first investigation. No existing compaction probe was found. Lessons index consulted: no matching implementation area for this artifact-only investigation; no required lessons added.
+
+## Scope
+
+**Files I will touch:**
+- `_dev/experiments/REQ-718/claude/**` (new): repeatable probe and observed evidence.
+- `_dev/experiments/REQ-718/codex-t3/**` (new): actual harness probe and observed evidence.
+
+**Acceptance criteria:**
+- Establish actual phase/procedure/crew reads and harmless-rule baseline.
+- Observe a real compaction boundary and subsequent reads and compliance.
+- Record exact harness/model/configuration and repeatable prompts.
+- Distinguish observed loss, absent rereads, and noncompliance, preserving uncertainty.
+- Cover Claude Code and actual Codex/T3 without hooks or global changes.
+
+## Pre-Flight
+
+Git: only execution-lead request/run metadata changed. Focused baseline `git diff --check` exited 0. Canonical `bash _dev/tests/maintainer-verify.sh` exited 0; advance recorded both preflight and green-gate satisfied. Dependencies available.
