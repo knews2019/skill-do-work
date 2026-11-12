@@ -1,7 +1,7 @@
 ---
 id: REQ-719
 title: 'Add a byte budget to the prime size check and shrink the primes it flags'
-status: pending
+status: claimed
 created_at: 2026-11-12T09:05:50Z
 user_request: UR-171
 domain: general
@@ -14,6 +14,7 @@ related: [REQ-720]
 batch: phase-loading-follow-ups
 write_set: ["skills/do-work-toolbox/actions/prime.md", "skills/do-work/crew-members/general.md", "skills/do-work-toolbox/crew-members/general.md", "_dev/primes/prime-kanban-board.md"]
 required_lessons: ["_dev/primes/lessons-releases.md"]
+claimed_at: 2026-11-12T09:12:22Z
 ---
 # Add a Byte Budget to the Prime Size Check and Shrink the Primes It Flags
 ## What
