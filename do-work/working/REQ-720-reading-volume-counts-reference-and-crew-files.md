@@ -2,6 +2,15 @@
 id: REQ-720
 title: '[impact-negligible] Count work-reference.md sections and always-loaded crew files in the reading-volume measurement'
 status: claimed
+route: A
+estimate:
+  p50_active_minutes: 15
+  confidence: medium
+  calculated_at: 2026-11-12T09:19:00Z
+  basis:
+    - Route A
+    - 2-file write set
+    - 6 acceptance criteria
 created_at: 2026-11-12T09:05:50Z
 user_request: UR-171
 domain: general
@@ -51,3 +60,19 @@ See `do-work/user-requests/UR-171/input.md` for complete verbatim input.
 - [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
 - [ ] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
 *Source: Finding 5 of the 2026-11-11 phase-loading triage, as pasted by the user in UR-171: "Record the exact instruction files loaded, total bytes read, and every required check and recovery rule reached."*
+
+## Triage
+
+**Route: A** - Simple
+
+**Reasoning:** Two named maintainer files with a fixed three-scenario measurement and script/report acceptance proof.
+
+**Planning:** Not required
+
+## Plan
+
+**Planning not required** - Route A: Direct implementation
+
+*Skipped by work action*
+
+Implementation approach: keep the pinned baseline and three scenarios, count reference sections outside fenced examples, deduplicate overlapping section reads, enumerate all read units on both sides, and regenerate the report table from script output. Claim-time lessons index consulted: action satellite is relevant but exceeds the shared budget and is partial; no mandatory lesson entry captured. Always-loaded crews read from the current pipeline instructions. No missing entries.
