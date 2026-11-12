@@ -2,6 +2,15 @@
 id: REQ-719
 title: 'Add a byte budget to the prime size check and shrink the primes it flags'
 status: claimed
+route: A
+estimate:
+  p50_active_minutes: 20
+  confidence: medium
+  calculated_at: 2026-11-12T09:13:11Z
+  basis:
+    - Route A
+    - 7-file write set
+    - 7 acceptance criteria
 created_at: 2026-11-12T09:05:50Z
 user_request: UR-171
 domain: general
@@ -12,7 +21,7 @@ impact: impact-user-visible
 effort_estimate: effort-substantive
 related: [REQ-720]
 batch: phase-loading-follow-ups
-write_set: ["skills/do-work-toolbox/actions/prime.md", "skills/do-work/crew-members/general.md", "skills/do-work-toolbox/crew-members/general.md", "_dev/primes/prime-kanban-board.md"]
+write_set: ["skills/do-work-toolbox/actions/prime.md", "skills/do-work/crew-members/general.md", "skills/do-work-toolbox/crew-members/general.md", "_dev/primes/prime-kanban-board.md", "_dev/primes/prime-action-files.md", "_dev/primes/lessons-*.md"]
 required_lessons: ["_dev/primes/lessons-releases.md"]
 claimed_at: 2026-11-12T09:12:22Z
 ---
@@ -64,7 +73,32 @@ The user is certain about the byte budget, the formula and the three files that 
 ## Full Context
 See `do-work/user-requests/UR-171/input.md` for complete verbatim input.
 ## AI Execution State (P-A-U Loop)
-- [ ] **[PLAN]:** (Agent: Read listed `prime_files` and agent rules. Write brief technical approach here. Do not write code yet.)
-- [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
-- [ ] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
+- [x] **[PLAN]:** (Agent: Read listed `prime_files` and agent rules. Write brief technical approach here. Do not write code yet.)
+- [x] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
+- [x] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
 *Source: Finding 2 of the 2026-11-11 phase-loading triage, as pasted by the user in UR-171: "Extend prime and instruction size checks beyond raw line counts (such as the ~60-line prime threshold that mainly relocates lessons) to measure bytes or estimated tokens as well."*
+
+## Triage
+
+**Route: A** - Simple
+
+**Reasoning:** Named rule files and a concrete manual audit proof; relocate existing overflow only.
+
+**Planning:** Not required
+
+## Plan
+
+**Planning not required** - Route A: Direct implementation
+
+*Skipped by work action*
+
+## Decisions
+
+- **D-01 — DECIDE & STATE:** Include lesson satellites in the advisory write set because relocation is required by this request. No scope expansion.
+- **D-02 — DECIDE & STATE:** Audit actual routing primes, excluding the instructional guide and example template. Leave the shipped board prime (12,066 bytes), CLI prime (10,005 bytes), and AGY usage prime (13,442 bytes) flagged: they contain live routing traps/procedures, whose rewrite is outside the audit shrink exception. No required rule is deleted.
+
+## Audit Evidence
+
+RED: the original kanban maintainer prime has 45 lines / 10,551 bytes and passes the former line-only check. GREEN: the updated check flags those same original bytes (10,551 > 6,000), before relocation. After relocation the prime is 33 lines / 5,104 bytes; the action prime is 55 lines / 5,595 bytes (previously 58 / 6,216). Existing scoped detail moved verbatim into same-directory satellites. Shrink: 2 primes, 20 source lines relocated. No automated test added.
+
+P-A-U evidence: inspected the seven-file branch diff and diff hygiene; the initial diff check caught trailing blank lines in the satellites, which were removed before committing. Listed mandatory release lessons and touch-conditional action/shell lessons were read; none missing. Claim-time index consult retained the captured release satellite and dropped the 8,581-token partial action satellite under the shared budget; the latter was separately read under the touch-conditional rule.
