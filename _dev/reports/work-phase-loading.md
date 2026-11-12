@@ -15,23 +15,47 @@ lines and actual UTF-8 bytes for volume. No token conversion is assumed. Each fi
 is counted once in one context; this is a deterministic reading walkthrough, not
 a measurement of model attention or repeated reads by independent agents.
 
-The measured boundary is the skill router and phase procedures: `SKILL.md`,
-`review-work.md`, and, for builds, `work.md` plus the applicable new companions.
-The script lists the exact read sets. Shared schema/template references, crew
-files, project primes, lesson satellites, request artifacts and source code are
-outside this boundary on both sides. Their loaders and contents are unchanged;
-these numbers measure the reorganized procedure surface, **not total task context**.
-The entry-point measurement isolates the bytes loaded before phase selection.
+The measured boundary includes the skill router, applicable phase procedures,
+`review-work.md`, the cited sections of `work-reference.md`, and the crew rules
+loaded by these walkthroughs. The script prints every exact file/section and its
+UTF-8 byte count for both baseline and candidate, alongside distinct file counts.
+A reference file counts as one file even when several sections are read.
 
-| Walkthrough | Before lines | After lines | Before bytes | After bytes |
-|---|---:|---:|---:|---:|
-| Simple fix | 1186 | 1134 | 145974 | 133281 |
-| Complex change | 1186 | 1237 | 145974 | 146407 |
-| Review only | 583 | 583 | 51750 | 51750 |
+Reference selection matches exact heading names (or their step-suffix-free names)
+in the loaded procedures and crew rules, then follows nested named references to
+a fixed point. Headings inside fenced templates are ignored. Parent sections
+subsume children and repeated reads count once. This conservative static model
+includes named conditional recovery/follow-up sections in loaded procedures;
+it does not claim those branches executed in a successful application change.
+A pointer to a separate work phase alone does not load that phase.
+
+Builds count `general`, `coding-guardrails`, `shared-principles`,
+`communication-style`, `prompt-injection` and `anti-slop` crews. Review-only counts
+the same set except implementation-only `general`: shared principles and coding
+checks apply to review, communication is the installed session contract,
+prompt-injection guards UR ingestion, and anti-slop applies to the review report.
+These are general-domain walkthroughs without TDD, security, supply-chain or other
+conditional domain crews. Model agents' repeated reads are not multiplied.
+
+Project primes, lesson satellites, task artifacts, source code and references
+outside `work-reference.md` remain outside the measured boundary. These are
+expanded instruction-surface totals, not total task context. Byte volume spots
+unnecessary reading in unrelated phases; it cannot establish instruction quality
+or justify deleting required rules. No latency, cost or model-quality inference
+is made.
+
+| Walkthrough | Before files | After files | Before lines | After lines | Before bytes | After bytes |
+|---|---:|---:|---:|---:|---:|---:|
+| Simple fix | 10 | 15 | 2394 | 2306 | 301147 | 286689 |
+| Complex change | 10 | 18 | 2394 | 2445 | 301147 | 301715 |
+| Review only | 8 | 8 | 1106 | 1106 | 103725 | 103717 |
 
 Work entry point: 603 lines / 94,224 bytes → 218 lines / 23,645 bytes.
-The complex walkthrough reads all companions and therefore grows by 433 bytes;
-review-only is unchanged. There is no measured time, cost or quality claim.
+The current candidate includes the prime-byte-budget crew change and the earlier
+communication edit as well as the phase extraction. The complex walkthrough grows
+by 568 bytes; review-only falls by 8 bytes. The simple walkthrough saves 14,458
+bytes under this expanded, symmetric boundary. These are actual revision-to-disk
+comparisons, not an attribution of every byte to the phase extraction. There is no measured time, cost or quality claim.
 
 ## Walkthroughs and check coverage
 
@@ -112,7 +136,8 @@ skip-note wording are excluded. Checklist obligations route to their existing
 numbered steps above; the skip-note condition remains explicit at Step 4. Phase
 bodies retain their text and directory depth, so their relative links retain their
 meaning. Existing action citations to work steps enter through the phase pointers.
-The schema/template reference and review-work are byte-unchanged.
+The schema/template reference and review-work remain byte-unchanged; the expanded
+measurement now counts the reference sections their loaders name.
 
 The existing contract tests now inspect the authoritative phase owners. Their
 negative mutations still remove/comment/negate/displace crew loads. Review found
