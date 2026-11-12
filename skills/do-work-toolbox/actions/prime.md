@@ -45,7 +45,7 @@ Generate a prime file for the utility at `<path>` — a routing index that helps
 
 ### Principles
 
-- **Target: 15-30 lines for the routing index, ~60 lines for the whole file.** Every line must save the AI more tokens than it costs to read, and the prime is read in full every time its area is touched — so the budget that matters is the file's, not one section's. Nothing is exempt. Anything that grows per-REQ (accumulated lessons, narrative history) belongs in the satellite `lessons-<name>.md`, which the prime points at and never inlines.
+- **Target: 15-30 lines for the routing index, ~60 lines and about 6,000 bytes for the whole file.** Every line must save the AI more tokens than it costs to read, and the prime is read in full every time its area is touched — so the budget that matters is the file's, not one section's. Nothing is exempt. Anything that grows per-REQ (accumulated lessons, narrative history) belongs in the satellite `lessons-<name>.md`, which the prime points at and never inlines.
 - The AI has `Read`, `Grep`, `Glob`. Don't reproduce what tool calls discover.
 - Only include what the AI CANNOT efficiently find: routing, traps, exclusions.
 - NO: line numbers, code descriptions, DOM anchors, request flow diagrams, URL params, environment tables, external service catalogs. The AI will discover these via tool calls.
@@ -143,7 +143,7 @@ Write `{path}/prime-{short-name}.md` using this template:
 See [`lessons-{short-name}.md`](lessons-{short-name}.md) — read it before changing what **Read first** or **Traps** name above.
 ```
 
-(Include `## Stakes` only for load-bearing elements; omit for utilities with no high-stakes surface. Every section counts against the ~60-line file budget. The `## Lessons` pointer is one line and never grows: the satellite accumulates, the prime does not — see `../../do-work/crew-members/general.md` → Lessons Discipline.)
+(Include `## Stakes` only for load-bearing elements; omit for utilities with no high-stakes surface. Every section counts against the ~60-line / about 6,000-byte file budget. The `## Lessons` pointer is one line and never grows: the satellite accumulates, the prime does not — see `../../do-work/crew-members/general.md` → Lessons Discipline.)
 
 Write `{path}/lessons-{short-name}.md` using this template:
 
@@ -176,7 +176,7 @@ Sections: {list of included sections}
 
 ## Sub-Command: `audit`
 
-Audit the repo's prime file system, **then refresh each prime's `## Stakes` and shrink any prime that outgrew its budget.** Three jobs: (1) a **read-only health check** of the routing index — staleness, missing coverage, broken references; (2) a **write**: spelunk each flagged prime's load-bearing elements and refresh its `## Stakes` (Req / Value / Risk); and (3) a **write in the other direction**: move overflow out of any prime over the ~60-line file budget into its `lessons-<name>.md` satellite.
+Audit the repo's prime file system, **then refresh each prime's `## Stakes` and shrink any prime that outgrew its budget.** Three jobs: (1) a **read-only health check** of the routing index — staleness, missing coverage, broken references; (2) a **write**: spelunk each flagged prime's load-bearing elements and refresh its `## Stakes` (Req / Value / Risk); and (3) a **write in the other direction**: move overflow out of any prime over the ~60-line / about 6,000-byte file budget into its `lessons-<name>.md` satellite.
 
 **What audit writes:** `Read first`, `Do not edit`, and `Must build` are read-only as content. `Traps` is also read-only during health and freshness checks; Step 6.6 is the sole routing-content exception, and may promote an existing utility-wide lesson into one trap line while shrinking. Step 6.5 adds or refreshes `## Stakes`, and Step 6.6 may relocate overflow and write the lesson satellite. Two of audit's three jobs are writes, and one of them **removes** — an audit that can only add is a bloat pump, which is exactly how these files got long. Never tell the user the audit is read-only across the board.
 
@@ -213,7 +213,7 @@ For each prime file, check:
 
 5. **No absolute paths** — grep for `file:///` URLs in the prime. All links must be relative from the prime's directory. Flag any absolute paths as portability violations.
 
-6. **Within the file budget** — count the prime's total lines. Over ~60, or with a `## Lessons` section holding more than the one-line satellite pointer, it is over budget: record it for Step 6.6, which moves the overflow rather than merely flagging it.
+6. **Within the file budget** — count the prime's total lines and measure bytes with `wc -c < <prime-path>`. Over ~60 lines or about 6,000 bytes, or with a `## Lessons` section holding more than the one-line satellite pointer, it is over budget: record it for Step 6.6, which moves the overflow rather than merely flagging it.
 
 7. **Cross-links present** — primes in the same area (sharing a parent directory tree) should cross-link to each other, not just for operational dependencies. If two primes are siblings or cousins in the same area (e.g., multiple primes under the same utility root), flag missing cross-links.
 
@@ -288,9 +288,11 @@ Outside Step 6.6's shrink operation, `## Stakes` is the only prime section audit
 
 ### Step 6.6: Shrink — audit WRITES here too (this is the pass that removes)
 
-Measure each prime as a **whole file**. Over ~60 lines, or with a `## Lessons` section carrying more than a pointer, it has outgrown what a prime is for: it is read in full every time its area is touched, so every unrelated change pays for all of it.
+Measure each prime as a **whole file**. Over ~60 lines or about 6,000 bytes, or with a `## Lessons` section carrying more than a pointer, it has outgrown what a prime is for: it is read in full every time its area is touched, so every unrelated change pays for all of it.
 
 This is audit's sole routing-content write exception: it may create or append one `## Traps` line only by promoting an existing utility-wide lesson as described below. It does not otherwise rewrite traps or author new routing guidance.
+
+Use byte or token volume to spot unnecessary reading in unrelated phases, never as proof of instruction quality or a reason to delete required rules. For estimated tokens, use `ceil(bytes / 4)` from `../../do-work/actions/capture-reference.md` → Required Lessons Budget Contract.
 
 Relocate, don't delete:
 
@@ -316,7 +318,7 @@ Report findings as a structured checklist:
 - Stakes: added M, refreshed N, current K   ← the write audit performs
 - Shrink: N primes over budget, M lines relocated to satellites   ← the write that removes
 - Lesson routing: N missing rows, N dead paths, N drift findings, N missed Trap promotions
-- Largest prime: `path/prime-foo.md` at N lines (budget ~60)
+- Largest prime: `path/prime-foo.md` at N lines / B bytes (budget ~60 lines / about 6,000 bytes)
 
 ### Issues
 
@@ -330,7 +332,7 @@ Report findings as a structured checklist:
 - [ ] ...
 
 #### Over the file budget
-- [ ] `path/prime-foo.md` is N lines (budget ~60); M lines of `## Lessons` relocated to `path/lessons-foo.md`
+- [ ] `path/prime-foo.md` is N lines / B bytes (budget ~60 lines / about 6,000 bytes); M lines of `## Lessons` relocated to `path/lessons-foo.md`
 - [ ] ...
 
 #### Missing primes
@@ -371,7 +373,7 @@ Be concise. Only flag actual issues. "Everything looks fine" for a prime is not 
 
 ## Red Flags
 
-- A newly created prime file's routing index is longer than 30 lines, or the whole file is over ~60 — it's drifting into documentation; tighten it, move accumulated content to the satellite, or split the utility.
+- A newly created prime file's routing index is longer than 30 lines, or the whole file is over ~60 lines or about 6,000 bytes — it's drifting into documentation; tighten it, move accumulated content to the satellite, or split the utility.
 - A prime's `## Lessons` section holds more than the one-line satellite pointer — the work pipeline is appending to the wrong file (`../../do-work/actions/work.md` Step 8 substep 7 writes satellites), or a shrink pass was skipped.
 - `audit` reports Stakes counts but no shrink counts — Step 6.6 was skipped, and the audit only grew the files.
 - `audit` reports no issues across the whole repo, but several primes haven't been touched in months — they're likely stale; spot-check before trusting the clean result.
@@ -383,7 +385,7 @@ Be concise. Only flag actual issues. "Everything looks fine" for a prime is not 
 
 ## Verification Checklist
 
-- [ ] Prime files' routing index is 15–30 lines and the whole file is under ~60 (create mode); no section is exempt, and `## Stakes`, if present, is scoped to load-bearing elements.
+- [ ] Prime files' routing index is 15–30 lines and the whole file is under ~60 lines and about 6,000 bytes (create mode); no section is exempt, and `## Stakes`, if present, is scoped to load-bearing elements.
 - [ ] `audit` ran Step 6.6 and reported `Shrink: N primes, M lines relocated` — every prime over budget had its overflow moved to `lessons-<name>.md`, with each lesson landing in exactly one place (satellite or a `## Traps` line, never both).
 - [ ] `audit` actually wrote `## Stakes` where missing/stale (added or rewrote it, not just flagged it) and reported the `added/refreshed/current` counts — it did not describe itself as read-only across the board.
 - [ ] No line numbers, no reproduced code, no volatile metrics in the generated prime.
