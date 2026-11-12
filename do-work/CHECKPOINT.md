@@ -7,6 +7,5 @@ queue_state: [0 pending, 0 pending-answers, 0 blocked, 0 blocked-archive-collisi
 
 ## In Progress (interrupted)
 
-- REQ-719: Add a byte budget to the prime size check and shrink the primes it flags — claimed 2026-11-12T09:12:22Z — writer: t2s-Virtual-Machine.local:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2
 
 - REQ-720: [impact-negligible] Count work-reference.md sections and always-loaded crew files in the reading-volume measurement — claimed 2026-11-12T09:18:38Z — writer: t2s-Virtual-Machine.local:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2

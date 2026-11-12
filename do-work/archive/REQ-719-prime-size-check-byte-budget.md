@@ -1,9 +1,11 @@
 ---
 id: REQ-719
 title: 'Add a byte budget to the prime size check and shrink the primes it flags'
-status: claimed
+status: completed
 route: A
-commit: 5e248620240b61d5b70d593076ef5450396e4a0c
+heavy_verified_at: 2026-11-12T09:31:03Z
+heavy_verified_revision: ca851acf3c95aafe136e29d101606d89445ec1dc
+commit: 5e248620
 review_at: 2026-11-12T09:18:37Z
 estimate:
   p50_active_minutes: 20
@@ -26,6 +28,8 @@ batch: phase-loading-follow-ups
 write_set: ["skills/do-work-toolbox/actions/prime.md", "skills/do-work/crew-members/general.md", "skills/do-work-toolbox/crew-members/general.md", "_dev/primes/prime-kanban-board.md", "_dev/primes/prime-action-files.md", "_dev/primes/lessons-*.md"]
 required_lessons: ["_dev/primes/lessons-releases.md"]
 claimed_at: 2026-11-12T09:12:22Z
+completed_at: 2026-11-12T09:31:03Z
+release_at: 2026-11-12T09:31:03Z
 ---
 # Add a Byte Budget to the Prime Size Check and Shrink the Primes It Flags
 ## What
@@ -158,3 +162,15 @@ Prime audits now flag large files even when they have few lines. Two maintainer 
 - Target: 5e248620240b61d5b70d593076ef5450396e4a0c
 - staged-skills: env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane staged-skills
 - Reason: shipped instruction paths matched the skills subtree.
+
+## Review Clarification
+
+Independent review approved both implementations. Its minor pointer ambiguity was corrected in 15445735, merged as ca851acf: rendering/clipboard changes explicitly load the relocated section. Final board prime: 35 lines / 5,259 bytes. Shipped-reference check passed after this correction. Retain cumulative range e461ad55..ca851acf; it includes REQ-720 sibling source commits, which belong to that sibling rather than this manifest. Required source paths for this request remain the original seven.
+
+## Finalization Provenance
+
+**D-03 — DECIDE & STATE:** Record the original shipped merge 5e248620 as supplied implementation provenance. The finalizer checks only the supplied commit's first-parent diff, so it refused a release from the maintainer-only supplemental merge ca851acf. No guard was bypassed and no artificial shipped edit was added. This is a narrow exception to the usual latest-merge rule: standalone commit-only review will omit the supplemental pointer; review it at ca851acf as well. Implementation Summary and Review both include this supplemental correction and the cumulative reviewed range e461ad55..ca851acf. Independent review accepted this provenance judgment.
+
+## Heavy Verification Result
+
+Target: 5e248620; supplemental maintainer correction ca851acf. Execution: ca851acf3c95aafe136e29d101606d89445ec1dc. staged-skills: executed, exit 0, 40s. All other union lanes passed too. The held plan remains the original shipped range, with the same staged-skills selection.

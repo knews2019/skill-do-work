@@ -10,6 +10,10 @@ For the complete release history, read this file and the archives below from new
 - [0.50.0 through 0.64.1](https://github.com/knews2019/skill-do-work/blob/main/docs/changelog/CHANGELOG-2026-04-13-up-to-v0.64.1.md)
 - [0.1.0 through 0.49.0](https://github.com/knews2019/skill-do-work/blob/main/docs/changelog/CHANGELOG-2026-04-07-up-to-v0.49.0.md)
 
+## 0.315.5 — Prime Audits Measure Bytes (2026-11-12)
+
+Prime audits now flag files above about 6,000 bytes as well as the existing line budget. Oversized primes retain required rules while relocatable detail moves to lesson satellites.
+
 ## 0.315.4 — Installed Instructions Ask for Emojis (2026-11-11)
 
 The always-on Communication Style block the installer writes into a project's agent instructions now says "Use emojis when you talk with me."
