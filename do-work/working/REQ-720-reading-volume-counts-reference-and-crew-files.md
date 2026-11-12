@@ -1,7 +1,7 @@
 ---
 id: REQ-720
 title: '[impact-negligible] Count work-reference.md sections and always-loaded crew files in the reading-volume measurement'
-status: pending
+status: claimed
 created_at: 2026-11-12T09:05:50Z
 user_request: UR-171
 domain: general
@@ -13,6 +13,7 @@ effort_estimate: effort-substantive
 related: [REQ-719]
 batch: phase-loading-follow-ups
 write_set: ["_dev/tests/instruction-reading-volume.py", "_dev/reports/work-phase-loading.md"]
+claimed_at: 2026-11-12T09:18:38Z
 ---
 # Count work-reference.md Sections and Always-Loaded Crew Files in the Reading-Volume Measurement
 ## What
