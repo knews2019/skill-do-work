@@ -3,6 +3,8 @@ id: REQ-719
 title: 'Add a byte budget to the prime size check and shrink the primes it flags'
 status: claimed
 route: A
+commit: 5e248620240b61d5b70d593076ef5450396e4a0c
+review_at: 2026-11-12T09:18:37Z
 estimate:
   p50_active_minutes: 20
   confidence: medium
@@ -102,3 +104,57 @@ See `do-work/user-requests/UR-171/input.md` for complete verbatim input.
 RED: the original kanban maintainer prime has 45 lines / 10,551 bytes and passes the former line-only check. GREEN: the updated check flags those same original bytes (10,551 > 6,000), before relocation. After relocation the prime is 33 lines / 5,104 bytes; the action prime is 55 lines / 5,595 bytes (previously 58 / 6,216). Existing scoped detail moved verbatim into same-directory satellites. Shrink: 2 primes, 20 source lines relocated. No automated test added.
 
 P-A-U evidence: inspected the seven-file branch diff and diff hygiene; the initial diff check caught trailing blank lines in the satellites, which were removed before committing. Listed mandatory release lessons and touch-conditional action/shell lessons were read; none missing. Claim-time index consult retained the captured release satellite and dropped the 8,581-token partial action satellite under the shared budget; the latter was separately read under the touch-conditional rule.
+
+## Implementation Summary
+
+**Files changed:**
+- `_dev/primes/lessons-action-files.md` (modified)
+- `_dev/primes/lessons-kanban-board.md` (modified)
+- `_dev/primes/prime-action-files.md` (modified)
+- `_dev/primes/prime-kanban-board.md` (modified)
+- `skills/do-work-toolbox/actions/prime.md` (modified)
+- `skills/do-work-toolbox/crew-members/general.md` (modified)
+- `skills/do-work/crew-members/general.md` (modified)
+
+**What was done:** Added byte limits to prime create/audit/shrink guidance and both general crews; relocated existing action variants and board rendering/clipboard detail to their satellites. Three primes remain flagged under the audit write boundary.
+
+## Qualification
+
+Passed — request-bound advance qualification satisfied for e461ad55..5e248620. All seven source paths match the diff; byte conditions and relocated text checked against requirements.
+
+## Testing
+
+**Tests run:** Manual prime budget audit on pinned original and current primes; exact moved-line preservation replay; shipped-package-reference-contract.sh; bash _dev/tests/maintainer-verify.sh.
+**Result:** All passed. Canonical gate exited 0 in 135s; 428 board tests and 980 CLI tests passed. No new automated test, as requested. Request-bound focused and green-gate records satisfied.
+**Heavy verification plan:** e461ad55..5e248620, staged-skills lane selected because shipped instructions changed.
+
+## Review
+
+**Overall: 98%**
+
+| Dimension | Score |
+|---|---|
+| Requirements | 100% |
+| Code Quality | 95% |
+| Test Adequacy | 100% |
+| Scope | 100% |
+| Risk | Low |
+| Acceptance | Pass |
+
+**Important findings:** None.
+**Minor findings:** None.
+**Acceptance:** Pass — implementation and merged integration checked; pinned 45-line/10,551-byte input is newly flagged, both relocated primes fit, and original nonblank lines survive in their prime or satellite. Consumer deployment awaits publication; staged install coverage is selected below.
+**Restatement sweep:** redefined prime whole-file size budget; swept create, audit, shrink, templates, red flags, checklist and both general crews. All agree on line-or-byte overflow.
+**Suggested testing:** staged-skills lane at queue exhaustion.
+**Follow-ups created:** None.
+
+## Orientation
+
+Prime audits now flag large files even when they have few lines. Two maintainer primes shrink by moving existing detail to discoverable satellites; three procedure/routing primes remain explicitly over budget.
+
+## Heavy Verification Plan
+
+- Base: e461ad55a3f4181feeb81d07ff8d2208552306fa
+- Target: 5e248620240b61d5b70d593076ef5450396e4a0c
+- staged-skills: env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane staged-skills
+- Reason: shipped instruction paths matched the skills subtree.
