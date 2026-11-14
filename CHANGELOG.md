@@ -10,6 +10,13 @@ For the complete release history, read this file and the archives below from new
 - [0.50.0 through 0.64.1](https://github.com/knews2019/skill-do-work/blob/main/docs/changelog/CHANGELOG-2026-04-13-up-to-v0.64.1.md)
 - [0.1.0 through 0.49.0](https://github.com/knews2019/skill-do-work/blob/main/docs/changelog/CHANGELOG-2026-04-07-up-to-v0.49.0.md)
 
+## 0.318.0 — Agents Suggest Another Approach to a Bad Idea (2026-11-14)
+
+An agent now objects when you propose an idea that looks bad, and it suggests another approach before it does the work. Before, the always-on communication rules only told it to correct wrong facts.
+
+- `crew-members/communication-style.md` has one new rule next to "Challenge incorrect assumptions".
+- Capture is unchanged: it still records your final wording exactly.
+
 ## 0.317.0 — Tinka Canvas Offer Removed (2026-11-14)
 
 Reports no longer end with a Tinka canvas offer, and the guide no longer holds its recipe. A real canvas showed each report page as a thin strip that cannot be read, so it did not help with reviewing a report.
