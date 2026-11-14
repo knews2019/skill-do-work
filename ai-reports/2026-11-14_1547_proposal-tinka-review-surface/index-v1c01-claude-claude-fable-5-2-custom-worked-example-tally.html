@@ -1,0 +1,539 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="ai-report-kind" content="proposal">
+<title>Tinka as a review canvas: three feedback points, counted</title>
+<link rel="stylesheet" href="presentation.css">
+<style>
+body > p, body > nav.changes{margin:0;padding:10px clamp(20px,2.6vw,60px) 0}
+body > nav.changes{padding-bottom:14px}
+body > nav.changes ul{margin:.3em 0 0;padding-left:1.2em}
+code{overflow-wrap:anywhere}
+.changed{--role:var(--effect);margin-left:.5em;vertical-align:middle}
+.o1{--role:var(--proof)}
+.o2{--role:var(--change)}
+.node .chip,.measure .chip,li .chip,td .chip{white-space:normal}
+.point-text{font-family:var(--display);font-size:1.15rem;font-weight:700;margin:.2em 0 .5em}
+.walk{margin:0 0 34px}
+.walk > h3{margin-bottom:.6em}
+ul.walk-steps{list-style:none;margin:0 0 .8em;padding:0}
+ul.walk-steps li{display:flex;gap:10px;align-items:flex-start;margin:0 0 .65em}
+ul.walk-steps li > div{min-width:0}
+.act{display:inline-grid;place-items:center;flex:0 0 auto;min-width:1.9em;height:1.9em;padding:0 .3em;border-radius:999px;font:800 .85rem/1 var(--display);color:var(--ink);background:color-mix(in srgb,var(--role) 26%,var(--surface));border:2px solid var(--role)}
+.act.free{border-style:dashed;border-color:var(--line);background:transparent;color:var(--muted)}
+.sum{font-weight:700;border-top:1px solid var(--line);padding-top:.6em;margin:0}
+.route{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:0 0 .9em;padding:0;list-style:none}
+.route li{border:2px solid color-mix(in srgb,var(--role) 55%,var(--line));background:var(--surface);border-radius:999px;padding:4px 14px;font-weight:650}
+.route li.arrow{border:0;background:transparent;padding:0;color:var(--muted)}
+.scroll{overflow-x:auto}
+table{width:100%;border-collapse:collapse;table-layout:fixed;margin:0 0 1em;background:var(--surface)}
+th,td{border:1px solid var(--line);padding:.5em .65em;vertical-align:top;text-align:left;overflow-wrap:anywhere}
+th{font-family:var(--display);font-size:.95rem}
+td.num-cell,th.num-cell{text-align:right;font-variant-numeric:tabular-nums;overflow-wrap:normal}
+tr.total td{font-weight:800}
+.bars{margin:0 0 1em}
+.bar-row{display:flex;flex-wrap:wrap;gap:6px 14px;align-items:center;margin:0 0 14px}
+.bar-name{flex:0 0 190px;font-weight:700}
+.bar-track{flex:1 1 320px;display:flex;min-width:0;height:44px}
+.seg{display:grid;place-items:center;min-width:0;font:800 1rem/1 var(--display);color:var(--ink);border-top:5px solid var(--seg);background:color-mix(in srgb,var(--seg) 24%,var(--surface));border-right:2px solid var(--paper)}
+.seg-point{--seg:var(--proof)}
+.seg-session{--seg:var(--change)}
+.seg-setup{--seg:var(--cause)}
+.seg-none{background:transparent;border:0}
+.bar-total{flex:0 0 auto;font:800 1.2rem/1 var(--display);min-width:2.2em;text-align:right}
+.key{display:flex;flex-wrap:wrap;gap:6px 18px;list-style:none;margin:0 0 1em;padding:0;font-size:.92rem}
+.key li::before{content:"";display:inline-block;width:.9em;height:.9em;border-radius:3px;margin-right:.45em;vertical-align:-.08em;background:color-mix(in srgb,var(--seg) 24%,var(--surface));border-top:4px solid var(--seg)}
+.calc{border:2px solid var(--line);border-radius:18px;background:var(--surface);padding:18px 20px;margin:0 0 1em}
+.calc fieldset{border:0;margin:0 0 .6em;padding:0;display:flex;flex-wrap:wrap;gap:12px 22px}
+.calc label{display:flex;flex-direction:column;gap:4px;font-weight:650}
+.calc input{font:inherit;color:var(--ink);background:var(--paper);border:2px solid var(--line);border-radius:10px;padding:8px 10px;width:6.5em;min-height:44px}
+.calc input:focus-visible{outline:3px solid var(--change);outline-offset:2px}
+.calc output,.calc .calc-out{display:block;font-weight:700;margin:0}
+.big{font:800 2.2rem/1.1 var(--display);margin:0 0 .15em}
+.rule{border-left:6px solid var(--change);padding:.2em 0 .2em 1em;margin:0 0 1em}
+dl.gloss{margin:0}
+dl.gloss dt{font-weight:750;margin-top:.7em}
+dl.gloss dd{margin:0}
+@media (max-width:700px){.bar-name{flex-basis:100%}}
+</style>
+<meta name="ai-report-second-opinion-preset" content="custom"><meta name="ai-report-second-opinion-direction" content="Teach the decision as a worked example: follow three concrete feedback points through option O1 and option O2 step by step and tally the actions each one costs"><meta name="ai-report-second-opinion-id" content="v1c01"><meta name="ai-report-second-opinion-base" content="index.html"><meta name="ai-report-second-opinion-model" content="claude claude-fable-5-2"><meta name="ai-report-second-opinion-date" content="2026-11-14"></head>
+<body><!-- second-opinion-header --><aside aria-label="Second-opinion direction" style="overflow-wrap:anywhere"><p><strong>Iteration v1c01</strong>, built on <a href="index.html">index.html</a></p><p><strong>Second-opinion preset:</strong> custom</p><p style="white-space:pre-line"><strong>Direction:</strong> Teach the decision as a worked example: follow three concrete feedback points through option O1 and option O2 step by step and tally the actions each one costs</p></aside><!-- /second-opinion-header -->
+<p>Original report: <a href="index.html">index.html</a></p>
+<nav class="changes" aria-label="Changed in this iteration">
+  <strong>Changed in this iteration</strong>
+  <ul>
+    <li><a href="#rev-1">The decision is now taught with three concrete feedback points and one counting rule</a></li>
+    <li><a href="#rev-2">Each feedback point is followed step by step through O1 and O2</a></li>
+    <li><a href="#rev-3">A tally, a chart and a small calculator show what each option costs in actions</a></li>
+    <li><a href="#rev-4">The recommendation is restated through the tally and scored against the pilot rule</a></li>
+    <li><a href="#rev-5">Three corrections to the original report, and what could not be checked</a></li>
+  </ul>
+</nav>
+<nav class="topbar"><strong>Tinka as a review canvas: three feedback points, counted</strong><span class="spacer"></span><button class="btn deck-toggle" type="button" id="deck-toggle" aria-pressed="false">Deck mode (D)</button></nav>
+<div class="page">
+
+<header class="band depth-one" id="depth-1">
+  <p class="depth-marker"><span class="gauge" aria-hidden="true"><i class="on"></i><i></i><i></i></span>Depth 1 of 3: the answer · Proposal, worked example · 14 November 2026</p>
+  <h1>Three feedback points, counted: O2 costs more actions and keeps the feedback.</h1>
+  <p class="sub measure">This page takes three test feedback points from the live check and walks each one through two options. O1 is chat, as today. O2 is a Tinka <span class="term" tabindex="0" data-def="One Tinka board that shows every page of one report lineage as tiles. Tinka calls it a board. The report says canvas, because board already means queue-kanban in do-work.">canvas</span>, set up by hand. O2 costs 28 more actions in the first session and 8 more in each later one, and it never costs fewer.</p>
+  <p class="sub measure">What O2 gives for those actions is feedback that stays attached to a page after the chat session ends. Counting cannot say whether you would use that. So the decision of the original report stands: <strong>pilot O2 by hand on two lineages and build nothing yet.</strong></p>
+  <div class="row">
+    <article class="node o1" style="flex:1 1 220px">
+      <span class="tag">O1 · chat, as today</span>
+      <p class="big">11</p>
+      <p>actions for the three feedback points.</p>
+    </article>
+    <article class="node o2" style="flex:1 1 220px">
+      <span class="tag">O2 · first session on a lineage</span>
+      <p class="big">39</p>
+      <p>actions: the same 11, plus 8 for the session, plus 20 to set the canvas up.</p>
+    </article>
+    <article class="node o2" style="flex:1 1 220px">
+      <span class="tag">O2 · each later session</span>
+      <p class="big">19</p>
+      <p>actions: the same 11, plus 8 for the session.</p>
+    </article>
+  </div>
+  <p style="margin-top:18px"><span class="chip">Tinka 77ba29c (0.7.14)</span><span class="chip">do-work 9de5839 (0.315.5)</span><span class="chip">20 setup actions: counted by the original report</span><span class="chip">the other counts: made on this page from the original report's recipe</span></p>
+  <p class="measure">An action is not a minute. Nobody timed either option, and no person has used the canvas yet. The three feedback points are test texts written by a labelled test actor.</p>
+  <nav class="jump" aria-label="Go deeper"><span>Go deeper:</span><a class="btn" href="#rev-1">The three points</a><a class="btn" href="#rev-2">Step by step</a><a class="btn" href="#rev-3">The tally</a><a class="btn" href="#rev-4">What it means</a><a class="btn" href="#rev-5">Corrections</a><a class="btn" href="#depth-3">Every detail</a></nav>
+</header>
+
+<section class="band" id="rev-1" aria-labelledby="points-heading">
+  <p class="depth-marker"><span class="gauge" aria-hidden="true"><i class="on"></i><i class="on"></i><i></i></span>Depth 2 of 3: the example</p>
+  <h2 id="points-heading">Three feedback points and one counting rule <span class="tag changed">changed</span></h2>
+  <p class="measure">The example uses the <span class="term" tabindex="0" data-def="A report bundle and every later revision of it, together with their second-opinion pages.">lineage</span> from the live check: <code>2026-11-04_1524_proposal-tstack-review-workflows</code> and its revision <code>2026-11-04_1747_proposal-tstack-review-workflows-rev1</code>. Together they hold five pages and three reply files. The revision is called rev1 below.</p>
+  <p class="measure">A <strong>feedback point</strong> is one thing you want changed or chosen. The live check wrote these three on the canvas as a test actor. Whether they are right about the tstack report does not matter here: they only show where the work goes.</p>
+  <div class="row">
+    <article class="node" style="flex:1 1 300px">
+      <span class="tag">F1 · a note on a page</span>
+      <p class="point-text">"The decision line should name the default option."</p>
+      <p>Place: <code>index.html</code> of rev1. Its decision line reads "Add AI-Evaluation-Loop. Keep council optional."</p>
+      <p>Follow-up: <code>ai-report revise</code>.</p>
+      <span class="chip">original report, live check note 2</span>
+    </article>
+    <article class="node" style="flex:1 1 300px">
+      <span class="tag">F2 · a comment on a phrase</span>
+      <p class="point-text">"The matrix needs a cost row."</p>
+      <p>Place: the <code>v1c02</code> page of rev1 and its reply file, at the phrase "seven-row comparison table".</p>
+      <p>Follow-up: <code>ai-report second-opinion --editor-direction</code>.</p>
+      <span class="chip">original report, live check note 3 · v1c02 reply file, line 4</span>
+    </article>
+    <article class="node" style="flex:1 1 300px">
+      <span class="tag">F3 · a star</span>
+      <p class="point-text">"Build the next page on v1c02."</p>
+      <p>Place: the three pages of rev1. The star marks one of them.</p>
+      <p>Follow-up: <code>ai-report second-opinion</code> with that page as the target.</p>
+      <span class="chip">original report, live check note 2</span>
+    </article>
+  </div>
+  <p class="note measure" style="margin-top:16px">One thing is joined for the example. The live check stored the text of F2 as a comment with no quote, and it stored a second comment on the phrase "seven-row comparison table". The original report does not print the text of that second comment. This page uses the first text with the second place. The meaning of the star in F3 is also this page's reading: the original report records only that the tile was starred.</p>
+
+  <h3>The counting rule</h3>
+  <p class="measure">One <strong>action</strong> is one deliberate thing a person or an agent does: open one page, run one command, write one feedback point, or paste one text. Reading and thinking are not counted, because they are the same in both options.</p>
+  <ul class="measure">
+    <li>Opening the real page is counted in both options. A <span class="term" tabindex="0" data-def="A full-page PNG picture of one report page, 1440 pixels wide, made by the render judge.">capture</span> hides 38 to 46% of a page's text, so the original report expects you to open the page for any careful read.</li>
+    <li>Writing a note, a comment or a star on a <span class="term" tabindex="0" data-def="One item placed on a canvas: a capture, or a copy of a reply file.">tile</span> is counted as one action. In the live check each one was one command. The clicks a person needs in Tinka's window were never counted.</li>
+    <li>The follow-up command is counted once per feedback point in both options.</li>
+  </ul>
+  <p class="measure">The two routes, in short:</p>
+  <ul class="route o1" aria-label="Route of a feedback point under O1"><li>O1</li><li class="arrow" aria-hidden="true">→</li><li>real page</li><li class="arrow" aria-hidden="true">→</li><li>chat</li><li class="arrow" aria-hidden="true">→</li><li>follow-up command</li></ul>
+  <ul class="route o2" aria-label="Route of a feedback point under O2"><li>O2</li><li class="arrow" aria-hidden="true">→</li><li>real page</li><li class="arrow" aria-hidden="true">→</li><li>tile on the canvas</li><li class="arrow" aria-hidden="true">→</li><li>read back</li><li class="arrow" aria-hidden="true">→</li><li>paste into chat</li><li class="arrow" aria-hidden="true">→</li><li>follow-up command</li></ul>
+</section>
+
+<section class="band" id="rev-2" aria-labelledby="walk-heading">
+  <p class="depth-marker"><span class="gauge" aria-hidden="true"><i class="on"></i><i class="on"></i><i></i></span>Depth 2 of 3: step by step</p>
+  <h2 id="walk-heading">Each point, followed through O1 and O2 <span class="tag changed">changed</span></h2>
+  <p class="measure">A numbered circle is a counted action. A dashed circle is a step that is not counted. The actions that all three points share under O2 come after the three walks.</p>
+
+  <article class="walk">
+    <h3>F1 · "The decision line should name the default option."</h3>
+    <div class="row">
+      <div class="node o1" style="flex:1 1 420px">
+        <span class="tag">O1 · chat</span>
+        <ul class="walk-steps">
+          <li><span class="act">1</span><div>Open <code>index.html</code> of rev1. The catalog page has a row that links it. <span class="chip">ai-reports/index.html</span></div></li>
+          <li><span class="act free" aria-label="not counted">·</span><div>Read the page and find the problem.</div></li>
+          <li><span class="act">2</span><div>Write the point in chat. You name the bundle and the page in words, because chat cannot point at a place.</div></li>
+          <li><span class="act">3</span><div>The agent runs <code>ai-report revise</code> on rev1 with your text. It writes a new bundle and never edits the old one. <span class="chip">ai-report.md:65</span></div></li>
+        </ul>
+        <p class="sum">Actions for F1: 3</p>
+      </div>
+      <div class="node o2" style="flex:1 1 420px">
+        <span class="tag">O2 · canvas</span>
+        <ul class="walk-steps">
+          <li><span class="act">1</span><div>Open the same real page. The capture tile is on the canvas, but in full view its text is too small to read and its folded sections stay closed. <span class="chip">original report, K1</span></div></li>
+          <li><span class="act free" aria-label="not counted">·</span><div>Read the page and find the problem.</div></li>
+          <li><span class="act">2</span><div>Write the note on the tile "rev1 · v1 · capture". <span class="chip">live: note on rp-ee575b91c6f804b4</span></div></li>
+          <li><span class="act">3</span><div>After the shared read-back and paste, the agent runs the same <code>ai-report revise</code>.</div></li>
+        </ul>
+        <p class="sum">Actions for F1: 3, plus the shared actions below</p>
+      </div>
+    </div>
+  </article>
+
+  <article class="walk">
+    <h3>F2 · "The matrix needs a cost row."</h3>
+    <div class="row">
+      <div class="node o1" style="flex:1 1 420px">
+        <span class="tag">O1 · chat</span>
+        <ul class="walk-steps">
+          <li><span class="act">1</span><div>Open the <code>v1c02</code> page. The iteration list at the top of rev1's <code>index.html</code> links it. <span class="chip">rev1 index.html, lines 2 to 7</span></div></li>
+          <li><span class="act free" aria-label="not counted">·</span><div>Read the matrix.</div></li>
+          <li><span class="act">2</span><div>Write the point in chat. You describe the place in words: "the comparison matrix on the v1c02 page".</div></li>
+          <li><span class="act">3</span><div>The agent runs <code>ai-report second-opinion --editor-direction</code> with the <code>v1c02</code> page as the target. The new page shows your direction at its top. <span class="chip">ai-report.md:87</span></div></li>
+        </ul>
+        <p class="sum">Actions for F2: 3</p>
+      </div>
+      <div class="node o2" style="flex:1 1 420px">
+        <span class="tag">O2 · canvas</span>
+        <ul class="walk-steps">
+          <li><span class="act">1</span><div>Open the real <code>v1c02</code> page to read the matrix.</div></li>
+          <li><span class="act free" aria-label="not counted">·</span><div>Read the matrix.</div></li>
+          <li><span class="act">2</span><div>Open the reply tile of <code>v1c02</code> and tie the comment to the phrase "seven-row comparison table". Tinka answers <span class="term" tabindex="0" data-def="Tinka found the quoted phrase in the tile's text, so the comment is tied to that exact place.">matched</span>. <span class="chip">live: seven-row comparison table =&gt; matched</span></div></li>
+          <li><span class="act free" aria-label="not counted">·</span><div>Limit: the comment sits on the reply text, not on the matrix. The same kind of comment on a capture tile is stored as <span class="term" tabindex="0" data-def="Tinka stored the comment but could not check the quoted phrase, because the tile is a picture and has no text.">unverified</span>. <span class="chip">live: Decision =&gt; unverified</span></div></li>
+          <li><span class="act">3</span><div>After the shared read-back and paste, the agent runs the same <code>ai-report second-opinion --editor-direction</code>.</div></li>
+        </ul>
+        <p class="sum">Actions for F2: 3, plus the shared actions below</p>
+      </div>
+    </div>
+  </article>
+
+  <article class="walk">
+    <h3>F3 · "Build the next page on v1c02."</h3>
+    <div class="row">
+      <div class="node o1" style="flex:1 1 420px">
+        <span class="tag">O1 · chat</span>
+        <ul class="walk-steps">
+          <li><span class="act">1–3</span><div>Open the three pages of rev1, one after another: <code>index.html</code>, <code>v1c01</code> and <code>v1c02</code>.</div></li>
+          <li><span class="act free" aria-label="not counted">·</span><div>Compare them.</div></li>
+          <li><span class="act">4</span><div>Write the choice in chat, with the file name of the page.</div></li>
+          <li><span class="act">5</span><div>The agent runs <code>ai-report second-opinion</code> with that page as the target, so the next page builds on it. <span class="chip">ai-report.md:22</span></div></li>
+        </ul>
+        <p class="sum">Actions for F3: 5</p>
+      </div>
+      <div class="node o2" style="flex:1 1 420px">
+        <span class="tag">O2 · canvas</span>
+        <ul class="walk-steps">
+          <li><span class="act free" aria-label="not counted">·</span><div>Look at the canvas. The three tiles of rev1 sit in one row.</div></li>
+          <li><span class="act">1–3</span><div>Open the three real pages to compare them. The count assumes this, because the text in a capture is too small to read. If the row of pictures is enough for you to choose, these three actions are saved. Nobody has tested that.</div></li>
+          <li><span class="act">4</span><div>Star the tile "rev1 · v1c02 · capture". <span class="chip">live: star true on rp-4f43727af86dcfb1</span></div></li>
+          <li><span class="act">5</span><div>After the shared read-back and paste, the agent runs the same <code>ai-report second-opinion</code>.</div></li>
+        </ul>
+        <p class="sum">Actions for F3: 5, plus the shared actions below</p>
+      </div>
+    </div>
+  </article>
+
+  <article class="walk">
+    <h3>The actions all three points share</h3>
+    <div class="row">
+      <div class="node o1" style="flex:1 1 420px">
+        <span class="tag">O1 · chat</span>
+        <p>None. The pages are already in the repository, and the feedback is already in chat when you finish writing it.</p>
+        <p class="sum">Shared actions: 0</p>
+      </div>
+      <div class="node o2" style="flex:1 1 420px">
+        <span class="tag">O2 · canvas</span>
+        <p><strong>Once per lineage: 20 actions.</strong> The original report counted them in the live check.</p>
+        <ul>
+          <li>5 runs of the render judge, one capture per page.</li>
+          <li>3 scratch copies, one per second-opinion page, because the judge renders only <code>index.html</code>. <span class="chip">report_judge.go:25, 111, 168</span></li>
+          <li>12 Tinka calls: 4 to create the canvas and 8 to add the tiles.</li>
+        </ul>
+        <p><strong>Once per session: 8 actions.</strong> This page counted them from the recipe in the original report.</p>
+        <ul>
+          <li>Save <code>git status --porcelain</code>, and compare it at the end. 2 actions.</li>
+          <li>Start Tinka, open the canvas in the browser, and stop Tinka at the end. 3 actions.</li>
+          <li>Read the feedback back with <code>board.get</code> and <code>feedback.list</code>. 2 actions.</li>
+          <li>Paste that output into chat as quoted data. 1 action.</li>
+        </ul>
+        <p class="sum">Shared actions: 20 per lineage and 8 per session</p>
+      </div>
+    </div>
+  </article>
+</section>
+
+<section class="band" id="rev-3" aria-labelledby="tally-heading">
+  <p class="depth-marker"><span class="gauge" aria-hidden="true"><i class="on"></i><i class="on"></i><i></i></span>Depth 2 of 3: the tally</p>
+  <h2 id="tally-heading">The tally <span class="tag changed">changed</span></h2>
+  <p class="measure">The three points cost the same 11 actions in both options. Everything O2 adds sits around them: 8 actions per session and 20 per lineage.</p>
+  <div class="bars" aria-hidden="true">
+    <div class="bar-row"><div class="bar-name">O1 · chat</div><div class="bar-track"><div class="seg seg-point" style="flex:11">11</div><div class="seg seg-none" style="flex:28"></div></div><div class="bar-total">11</div></div>
+    <div class="bar-row"><div class="bar-name">O2 · first session</div><div class="bar-track"><div class="seg seg-point" style="flex:11">11</div><div class="seg seg-session" style="flex:8">8</div><div class="seg seg-setup" style="flex:20">20</div></div><div class="bar-total">39</div></div>
+    <div class="bar-row"><div class="bar-name">O2 · later session</div><div class="bar-track"><div class="seg seg-point" style="flex:11">11</div><div class="seg seg-session" style="flex:8">8</div><div class="seg seg-none" style="flex:20"></div></div><div class="bar-total">19</div></div>
+  </div>
+  <ul class="key" aria-hidden="true">
+    <li style="--seg:var(--proof)">the three feedback points</li>
+    <li style="--seg:var(--change)">session actions</li>
+    <li style="--seg:var(--cause)">canvas setup, once per lineage</li>
+  </ul>
+  <p class="note">Chart drawn from the counts on this page. The table below holds the same numbers.</p>
+  <table>
+    <tr><th style="width:40%">Cost line</th><th class="num-cell">O1</th><th class="num-cell">O2 first</th><th class="num-cell">O2 later</th></tr>
+    <tr><td>F1, a note on a page</td><td class="num-cell">3</td><td class="num-cell">3</td><td class="num-cell">3</td></tr>
+    <tr><td>F2, a comment on a phrase</td><td class="num-cell">3</td><td class="num-cell">3</td><td class="num-cell">3</td></tr>
+    <tr><td>F3, a star</td><td class="num-cell">5</td><td class="num-cell">5</td><td class="num-cell">5</td></tr>
+    <tr><td>Session actions</td><td class="num-cell">0</td><td class="num-cell">8</td><td class="num-cell">8</td></tr>
+    <tr><td>Canvas setup, once per lineage</td><td class="num-cell">0</td><td class="num-cell">20</td><td class="num-cell">0</td></tr>
+    <tr class="total"><td>Total</td><td class="num-cell">11</td><td class="num-cell">39</td><td class="num-cell">19</td></tr>
+    <tr class="total"><td>Extra, compared with O1</td><td class="num-cell">0</td><td class="num-cell">28</td><td class="num-cell">8</td></tr>
+  </table>
+  <p class="measure">"O2 first" is the first session on a lineage. "O2 later" is each later session on the same lineage, and it assumes that no page was added in between. Each new page adds one judge run and one tile, and a new second-opinion page also adds one scratch copy and one reply tile.</p>
+
+  <h3>Try your own habit</h3>
+  <p class="measure">The extra cost of O2 depends on how many feedback points you write per session. Change the numbers to match how you review. The lineage is assumed to be like the test lineage: five pages and three reply files.</p>
+  <form class="calc" id="calc">
+    <fieldset>
+      <legend class="note">Your review habit</legend>
+      <label>Lineages <input type="number" id="calc-lineages" min="1" max="50" step="1" value="2" inputmode="numeric"></label>
+      <label>Sessions per lineage <input type="number" id="calc-sessions" min="1" max="50" step="1" value="2" inputmode="numeric"></label>
+      <label>Feedback points per session <input type="number" id="calc-points" min="1" max="100" step="1" value="3" inputmode="numeric"></label>
+    </fieldset>
+    <p class="calc-out" id="calc-out" aria-live="polite">With 2 lineages, 2 sessions each and 3 feedback points per session, O2 costs 72 extra actions for 12 feedback points. That is 6.0 extra actions per feedback point.</p>
+  </form>
+  <p class="note measure">Formula: extra actions = 20 × lineages + 8 × lineages × sessions. The line above shows the default case and stays correct without JavaScript.</p>
+</section>
+
+<section class="band" id="rev-4" aria-labelledby="meaning-heading">
+  <p class="depth-marker"><span class="gauge" aria-hidden="true"><i class="on"></i><i class="on"></i><i></i></span>Depth 2 of 3: what the tally means</p>
+  <h2 id="meaning-heading">What the extra actions buy, and why the decision stays the same <span class="tag changed">changed</span></h2>
+  <p class="measure">O2 never wins on actions. So the question is what you get for the extra ones. The cards show where each feedback point lives after you close the chat session and before any command has run.</p>
+  <div class="row">
+    <article class="node" style="flex:1 1 300px">
+      <span class="tag">F1 · note</span>
+      <p><strong>With O1:</strong> the point exists only in the chat session. If the session ends before <code>revise</code> runs, the point is gone.</p>
+      <p><strong>With O2:</strong> the note stays on the tile of that page. <code>board.get</code> returns it in any later session. A note has no author field.</p>
+      <span class="chip">original report, live check note 2 · lib/tools.json:858</span>
+    </article>
+    <article class="node" style="flex:1 1 300px">
+      <span class="tag">F2 · comment on a phrase</span>
+      <p><strong>With O1:</strong> the place is your description in words. The agent must find the matrix from that description.</p>
+      <p><strong>With O2:</strong> the comment is tied to an exact phrase of the reply file. If the copy of the file changes, Tinka marks the comment <span class="term" tabindex="0" data-def="The quoted phrase was found earlier, but the tile's text has changed since and the phrase is no longer where it was.">stale</span>.</p>
+      <span class="chip">original report, live check note 3</span>
+    </article>
+    <article class="node" style="flex:1 1 300px">
+      <span class="tag">F3 · star</span>
+      <p><strong>With O1:</strong> the choice is a file name in chat. After the run, the new page names the page it was built on.</p>
+      <p><strong>With O2:</strong> the star stays on the tile, and all pages of the lineage sit in one view. A star has no author field.</p>
+      <span class="chip">ai-report.md:87 · original report, live check note 2</span>
+    </article>
+  </div>
+  <p class="measure" style="margin-top:16px">One thing gets worse with O2. From a phone, all three points still work under O1, through the pages and chat. None works under O2, because Tinka answers only on this computer. <span class="chip">original report, K2</span></p>
+
+  <div class="row" style="margin-top:10px">
+    <div style="flex:3 1 520px">
+      <h3>The decision, unchanged</h3>
+      <p class="measure"><strong>Pilot O2 by hand on the next two lineages. Build nothing and ship nothing yet.</strong> Use a source checkout of Tinka pinned at 77ba29c, and keep its files outside the repository.</p>
+      <p class="measure">The tally explains two lines of the original recommendation.</p>
+      <ol class="measure">
+        <li><strong>"Slow hand work is not a reason to stop."</strong> The 20 setup actions are the largest part of the extra cost. They are the part that the O3 command <code>ai-report-canvas</code> would replace. O3 is not built, so this is a design and not a measurement.</li>
+        <li><strong>The pilot must test use, not speed.</strong> Per feedback point the two options cost the same. The only thing the pilot can find out is whether you write on the canvas and use what chat cannot do.</li>
+      </ol>
+      <h3>The example, scored with the pilot rule</h3>
+      <p class="measure">This shows how to count in the pilot. It is not a pilot result, because a test actor wrote the three points through the command line.</p>
+      <table>
+        <tr><th style="width:38%">Rule</th><th>In this example</th></tr>
+        <tr><td><strong>R1.</strong> At least half of the feedback points were written on the canvas before chat.</td><td>3 of 3. R1 passes. The same three points typed straight into chat would give 0 of 3.</td></tr>
+        <tr><td><strong>R2.</strong> At least one point used something chat cannot do.</td><td>F2 counts: a comment on a quoted phrase of a reply. F1 counts only if you read the note again in a later session. F3 does not count, because a star is not in R2's list.</td></tr>
+        <tr><td><strong>R3.</strong> Tinka never changed <code>git status --porcelain</code> or <code>AGENTS.md</code>.</td><td>It held in the live check: 0 bytes before and 0 bytes after.</td></tr>
+      </table>
+    </div>
+    <div style="flex:2 1 340px">
+      <article class="node role-effect">
+        <span class="tag">Pilot rule, from the original report</span>
+        <h3>The result that means "adopt nothing"</h3>
+        <p>The pilot covers two lineages, or 14 days if two do not come up. Write feedback on the canvas first. Then count.</p>
+        <p class="rule"><strong>Adopt nothing (O1)</strong> when any one of these is true:</p>
+        <ol>
+          <li><strong>R1.</strong> Fewer than half of your feedback points were written on the canvas before chat.</li>
+          <li><strong>R2.</strong> No feedback point used something chat cannot do: a pin on a place in a capture, a comment on a quoted phrase of a reply, or a note you read again in a later session.</li>
+          <li><strong>R3.</strong> Tinka changed <code>git status --porcelain</code> or <code>AGENTS.md</code> in the repository.</li>
+        </ol>
+        <p><strong>Go to O3</strong> only when R1 and R2 pass on both lineages and R3 never happens.</p>
+        <span class="chip">index.html, section "Recommendation"</span>
+      </article>
+    </div>
+  </div>
+</section>
+
+<section class="band" id="evidence" aria-labelledby="evidence-heading">
+  <p class="depth-marker"><span class="gauge" aria-hidden="true"><i class="on"></i><i class="on"></i><i></i></span>Depth 2 of 3: the evidence behind the example</p>
+  <h2 id="evidence-heading">Where the three points sit on the real canvas</h2>
+  <p class="measure">Both pictures come from the original report's live check. Every star, note and comment in them is test data.</p>
+  <div class="row">
+    <figure class="shot" style="flex:1 1 420px;margin:0">
+      <a href="screenshots/canvas-lineage-overview.png" target="_blank" rel="noopener"><img src="screenshots/canvas-lineage-overview.png" alt="A Tinka canvas with two rows of tiles. The top row holds two captures and one reply of the original bundle. The bottom row holds three captures and two replies of rev1."></a>
+      <figcaption>Real capture, 2026-11-14. The bottom row is rev1. The note of F1 is on its left tile and the star of F3 is on its right tile.</figcaption>
+    </figure>
+    <figure class="shot" style="flex:1 1 420px;margin:0">
+      <a href="screenshots/tile-reply-markdown-full-view.png" target="_blank" rel="noopener"><img src="screenshots/tile-reply-markdown-full-view.png" alt="The full view of a reply tile. The Markdown text is readable and a button shows two annotations."></a>
+      <figcaption>Real capture, 2026-11-14. A reply tile in full view, the kind of tile that F2 is written on. Its text is readable, and it carries two test comments.</figcaption>
+    </figure>
+  </div>
+</section>
+
+<section class="band" id="rev-5" aria-labelledby="corrections-heading">
+  <p class="depth-marker"><span class="gauge" aria-hidden="true"><i class="on"></i><i class="on"></i><i></i></span>Depth 2 of 3: corrections</p>
+  <h2 id="corrections-heading">Corrections to the original report <span class="tag changed">changed</span></h2>
+  <p class="measure">Three small points differ from the repository. None changes the decision.</p>
+  <div class="scroll">
+  <table style="min-width:640px">
+    <tr><th style="width:30%">The original says</th><th style="width:38%">What is true</th><th>Proof</th></tr>
+    <tr><td>Footer: "The five images in <code>screenshots/</code>".</td><td>The folder holds four images, and the page shows four.</td><td><span class="chip">ls screenshots/: 4 files</span><span class="chip">index.html: 4 img tags</span></td></tr>
+    <tr><td>O1: "After a run only the direction text survives, as a meta tag in the new page."</td><td>The direction is kept in two places in the new page: a meta tag, and a visible block at the top of the page.</td><td><span class="chip">ai-report.md:87</span><span class="chip">rev1 v1c02 page, lines 458 to 459</span></td></tr>
+    <tr><td>O1: "The catalog page lists every bundle".</td><td>It lists the bundles that existed when the catalog was last rebuilt. Today it holds 46, and neither proposal about Tinka from 2026-11-14 is in it.</td><td><span class="chip">grep -c tinka ai-reports/index.html ai-reports/catalog.json: 0 and 0</span></td></tr>
+  </table>
+  </div>
+  <h3>Checked against the repository, and correct</h3>
+  <ul class="measure">
+    <li>The render judge renders only <code>index.html</code>. <span class="chip">report_judge.go:25, 111, 168</span></li>
+    <li>The catalog links revisions by the base name of the bundle folder. <span class="chip">report_index.go:136-141</span></li>
+    <li>The do-work-board preview serves HTML on its own origin and forbids framing. <span class="chip">html_preview.go:21-24, 200-205</span></li>
+    <li>rev1 has an iteration list with two entries, and the original bundle has none. <span class="chip">grep second-opinion-tree: 2 and 0 matches</span></li>
+    <li>The 20 setup actions add up: the lineage has 5 pages, 3 of them second-opinion pages, and 3 reply files. <span class="chip">ls of both bundles</span></li>
+    <li>The phrase "seven-row comparison table" is in the reply file of rev1's <code>v1c02</code> page. <span class="chip">v1c02 reply file, line 4</span></li>
+    <li>do-work at 9de5839 is version 0.315.5. <span class="chip">git show 9de58395:VERSION</span></li>
+  </ul>
+  <h3>Could not be checked in this pass</h3>
+  <ul class="measure">
+    <li>Every line reference into Tinka and every output of the live check. The Tinka checkout is outside this repository, and this pass may read the repository only.</li>
+    <li>The folded-text shares of 38 to 46% and the capture sizes. The measuring script and the captures are not in the bundle.</li>
+  </ul>
+</section>
+
+<section class="band depth-three" id="depth-3" aria-labelledby="depth-3-heading">
+  <p class="depth-marker"><span class="gauge" aria-hidden="true"><i class="on"></i><i class="on"></i><i class="on"></i></span>Depth 3 of 3: every detail, folded</p>
+  <h2 id="depth-3-heading">The details</h2>
+  <p class="step-controls"><button class="btn" type="button" id="open-all">Open all details</button></p>
+
+  <details>
+    <summary>Open questions Q1 to Q6 from this pass</summary>
+    <ul class="measure">
+      <li><strong>Q1. How many clicks does one note cost in Tinka's window?</strong> This page counts one action per note, comment or star, as in the command line. No person has used the canvas, so the real number is unknown.</li>
+      <li><strong>Q2. Does a pin on a place in a capture work?</strong> Rule R2 names it, but the live check placed none. The second report on this topic (<code>ai-reports/2026-11-14_1452_proposal-tinka-review-surface</code>) says the tool schema has it and also did not run it.</li>
+      <li><strong>Q3. Is a row of captures enough to choose between pages?</strong> F3 assumes it is not. If it is, O2 saves three actions on that point.</li>
+      <li><strong>Q4. Does a star count for R2?</strong> R2 lists a pin, a quote comment and a note read again later. The second report counts a star too. Decide before the pilot starts.</li>
+      <li><strong>Q5. Which stop rule applies?</strong> This report pilots two lineages and says slow hand work is no reason to stop. The second report pilots three lineages and stops when setup still takes more than about ten minutes per lineage. The tally shows why this matters: setup is the largest extra cost.</li>
+      <li><strong>Q6. What was the text of the quote comment?</strong> The original report prints its phrase and its status, not its text.</li>
+    </ul>
+    <p class="measure">The original report's own open questions Q1 to Q7 are unchanged. They are in <a href="index.html#depth-3">index.html, section "The details"</a>.</p>
+  </details>
+
+  <details>
+    <summary>The follow-up commands of the example, in full</summary>
+    <p class="measure">These show the form of each follow-up command. They carry test feedback, so they are examples and not commands to run.</p>
+<pre class="capture"><code># F1
+ai-report revise ai-reports/2026-11-04_1747_proposal-tstack-review-workflows-rev1 'The decision line should name the default option'
+
+# F2
+ai-report second-opinion --editor-direction 'The matrix needs a cost row' ai-reports/2026-11-04_1747_proposal-tstack-review-workflows-rev1/index-v1c02-agy-gemini-4-argon-high-custom-decision-matrix-and-steps.html
+
+# F3
+ai-report second-opinion ai-reports/2026-11-04_1747_proposal-tstack-review-workflows-rev1/index-v1c02-agy-gemini-4-argon-high-custom-decision-matrix-and-steps.html</code></pre>
+    <p class="measure">The command forms come from <code>skills/do-work-toolbox/actions/ai-report.md</code>, lines 22, 65 and 79.</p>
+  </details>
+
+  <details>
+    <summary>How the 20 setup actions break down</summary>
+    <ul class="measure">
+      <li><strong>5 judge runs.</strong> One per page: two pages in the original bundle and three in rev1.</li>
+      <li><strong>3 scratch copies.</strong> One per second-opinion page: <code>v1c01</code> in the original bundle, <code>v1c01</code> and <code>v1c02</code> in rev1. Each copy puts that page in place of <code>index.html</code>.</li>
+      <li><strong>4 Tinka calls for the canvas.</strong> <code>init</code>, <code>update policy off</code>, <code>board.create</code> and <code>workspace.update</code>.</li>
+      <li><strong>8 Tinka calls for the tiles.</strong> One <code>item.create</code> per tile: five captures and three reply copies.</li>
+    </ul>
+    <p class="measure">The clone of Tinka happens once for all lineages and is not in the tally. The recipe is in <a href="index.html#depth-3">index.html, "Check it yourself"</a>.</p>
+  </details>
+
+  <details>
+    <summary>The other options and the kill attempts, in short</summary>
+    <ul class="measure">
+      <li><strong>O3, one command <code>ai-report-canvas</code>.</strong> It would replace the 20 setup actions. The original report allows it only after the pilot passes. It is not built.</li>
+      <li><strong>O4, live HTML tiles.</strong> Deferred. In the live check a test HTML tile wrote a note to the canvas with no click from the user.</li>
+      <li><strong>K1 holds.</strong> A capture hides 38 to 46% of a page's text. This is why every walk above opens the real page.</li>
+      <li><strong>K2 holds.</strong> A phone or text-to-speech cannot open the canvas.</li>
+      <li><strong>K3 is mostly answered.</strong> Tinka's tool catalog did not change between v0.7.3 and 0.7.14, but the project is 30 days old.</li>
+      <li><strong>K4 is answered for replies and real for captures.</strong> A reply file is never overwritten. A capture of <code>index.html</code> goes out of date when the iteration list is added.</li>
+    </ul>
+    <p class="measure">Full text, sources and the four capture lines: <a href="index.html#options">options</a>, <a href="index.html#kills">kill attempts</a>, <a href="index.html#depth-3">details</a>.</p>
+  </details>
+
+  <details>
+    <summary>Glossary</summary>
+    <dl class="gloss measure">
+      <dt>Action</dt><dd>One deliberate thing a person or an agent does: open one page, run one command, write one feedback point, or paste one text.</dd>
+      <dt>Bundle</dt><dd>One folder under <code>ai-reports/</code> that holds <code>index.html</code>, its second-opinion pages, reply files and assets.</dd>
+      <dt>Canvas</dt><dd>One Tinka board that shows the pages of one lineage as tiles. "Board" alone means queue-kanban in do-work.</dd>
+      <dt>Capture</dt><dd>A PNG picture of one whole report page, made by the render judge.</dd>
+      <dt>Feedback point</dt><dd>One thing you want changed or chosen in a report.</dd>
+      <dt>Lineage</dt><dd>A bundle and every later revision of it, with their second-opinion pages.</dd>
+      <dt>Matched, unverified, stale</dt><dd>What Tinka says about a comment tied to a quoted phrase. Matched: the phrase was found. Unverified: the tile has no text to check, so the comment is only stored. Stale: the text changed after the comment was written.</dd>
+      <dt>Pilot</dt><dd>A limited trial with a rule, set in advance, for what result ends it.</dd>
+      <dt>Reply file</dt><dd>The Markdown file a second-opinion run writes beside its page. It lists what the run changed.</dd>
+      <dt>Session</dt><dd>One sitting in which you review pages and write feedback.</dd>
+      <dt>Tile</dt><dd>One item on a canvas: a capture, or a copy of a reply file.</dd>
+      <dt>Tree id</dt><dd>The id of a page inside its bundle: <code>index.html</code> is <code>v1</code>, its first second-opinion page is <code>v1c01</code>, the next is <code>v1c02</code>.</dd>
+    </dl>
+  </details>
+
+  <details>
+    <summary>Source map</summary>
+    <p class="measure">Sections of the original report used on this page:</p>
+    <ul class="measure">
+      <li><a href="index.html#options">Options O1 to O4</a>: the 20 setup actions and the limits of O2.</li>
+      <li><a href="index.html#recommendation">Recommendation and pilot rule</a>: R1, R2 and R3, copied word for word.</li>
+      <li><a href="index.html#proof">Live check</a>: the note, the star and the comments, and the two pictures.</li>
+      <li><a href="index.html#kills">Kill attempts</a>: K1 and K2.</li>
+      <li><a href="index.html#depth-3">The details</a>: the hand recipe and the limits.</li>
+    </ul>
+    <p class="measure">Repository files read in this pass. The paths are relative to the repository root. No portable link is available for them, so they are given as text.</p>
+    <dl class="files">
+      <dt>skills/do-work-toolbox/actions/ai-report.md</dt><dd>Lines 22, 65, 79 and 87: the forms of <code>revise</code> and <code>second-opinion</code>, and where a direction is kept.</dd>
+      <dt>skills/do-work/tools/do-work-cli/internal/toolboxcommands/report_judge.go</dt><dd>Lines 25, 111 and 168: the judge renders only <code>index.html</code>.</dd>
+      <dt>skills/do-work/tools/do-work-cli/internal/toolboxcommands/report_index.go</dt><dd>Lines 136 to 141 and 166 to 172: one catalog entry per bundle, linked by folder base name.</dd>
+      <dt>skills/do-work-board/tools/queue-kanban/html_preview.go</dt><dd>Lines 21 to 24 and 199 to 205: the preview's separate origin and its framing ban.</dd>
+      <dt>ai-reports/index.html and ai-reports/catalog.json</dt><dd>The catalog: 46 bundles, with a row for rev1.</dd>
+      <dt>ai-reports/2026-11-04_1524_proposal-tstack-review-workflows</dt><dd>The original bundle of the test lineage: two pages and one reply file.</dd>
+      <dt>ai-reports/2026-11-04_1747_proposal-tstack-review-workflows-rev1</dt><dd>rev1: three pages and two reply files, with the iteration list and the phrase used in F2.</dd>
+      <dt>ai-reports/2026-11-14_1452_proposal-tinka-review-surface/index.html</dt><dd>The second report on this topic, read for Q2, Q4 and Q5.</dd>
+    </dl>
+  </details>
+</section>
+
+<footer class="band note measure">
+  <p>Sources: the original report in this bundle and this repository. Tinka was not read or run in this pass. The two pictures are the original report's real captures from 2026-11-14, and every star, note and comment in them is test data from a labelled test actor. The chart is drawn from the counts on this page. No image is AI-generated. The counts are actions, not minutes.</p>
+</footer>
+
+</div>
+<div class="deck-hint" aria-live="polite" id="deck-hint">Deck mode</div>
+<script src="presentation.js"></script>
+<script>
+// Calculator for "Try your own habit". The static line in #calc-out is the default case.
+(function () {
+  var form = document.getElementById("calc");
+  var out = document.getElementById("calc-out");
+  if (!form || !out) return;
+  function read(id, fallback, max) {
+    var value = Math.floor(Number(document.getElementById(id).value));
+    if (!isFinite(value) || value < 1) return fallback;
+    return Math.min(value, max);
+  }
+  function plural(count, word) { return count + " " + word + (count === 1 ? "" : "s"); }
+  function update() {
+    var lineages = read("calc-lineages", 2, 50);
+    var sessions = read("calc-sessions", 2, 50);
+    var points = read("calc-points", 3, 100);
+    var extra = 20 * lineages + 8 * lineages * sessions;
+    var total = lineages * sessions * points;
+    out.textContent = "With " + plural(lineages, "lineage") + ", " + plural(sessions, "session") + " each and " +
+      plural(points, "feedback point") + " per session, O2 costs " + extra + " extra actions for " +
+      plural(total, "feedback point") + ". That is " + (extra / total).toFixed(1) + " extra actions per feedback point.";
+  }
+  form.addEventListener("input", update);
+  form.addEventListener("submit", function (event) { event.preventDefault(); });
+})();
+</script>
+</body>
+</html>
