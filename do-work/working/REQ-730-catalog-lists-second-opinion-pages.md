@@ -1,7 +1,7 @@
 ---
 id: REQ-730
 title: 'Report catalog lists the second-opinion pages of each bundle'
-status: pending
+status: claimed
 created_at: 2026-11-14T22:47:58Z
 user_request: UR-176
 domain: general
@@ -14,6 +14,7 @@ required_lessons: ["_dev/primes/lessons-releases.md"]
 related: [REQ-726, REQ-727, REQ-728, REQ-729, REQ-731, REQ-732]
 batch: tinka-follow-ups
 write_set: ["skills/do-work/tools/do-work-cli/internal/toolboxcommands/report_index.go", "skills/do-work/tools/do-work-cli/internal/toolboxcommands/report_index_test.go", "skills/do-work-toolbox/actions/ai-report.md", "skills/do-work-toolbox/docs/ai-report-guide.md", "CHANGELOG.md", "VERSION"]
+claimed_at: 2026-11-14T23:28:19Z
 ---
 # Report Catalog Lists the Second-Opinion Pages of Each Bundle
 ## What
