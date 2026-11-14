@@ -1530,7 +1530,7 @@ func secondOpinionBacklink(page []byte) error {
 	return nil
 }
 func secondOpinionBanner(original []byte, pageName string) ([]byte, bool, error) {
-	if !regexp.MustCompile(`^index-[A-Za-z0-9][A-Za-z0-9._-]*\.html$`).MatchString(pageName) {
+	if !reportSecondOpinionPagePattern.MatchString(pageName) {
 		return nil, false, errors.New("unsafe second-opinion page name")
 	}
 	visible := secondOpinionVisibleHTML(original)

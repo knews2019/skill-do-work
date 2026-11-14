@@ -48,6 +48,10 @@ var (
 	reportMonthPattern    = regexp.MustCompile(`^[0-9]{4}-(0[1-9]|1[0-2])(_[0-9]+-reports?)?$`)
 )
 
+// reportSecondOpinionPagePattern is the name shape of a published second-opinion page, tree or plain.
+// Staging pages start with a dot and never match. The catalog and the publisher share it.
+var reportSecondOpinionPagePattern = regexp.MustCompile(`^index-[A-Za-z0-9][A-Za-z0-9._-]*\.html$`)
+
 // reportMonthFolder reports whether a direct child of ai-reports/ named name is a month folder: a
 // container that holds the bundles of one finished month, never a bundle itself. The canonical
 // names are YYYY-MM_<N>-reports and YYYY-MM_1-report; plain YYYY-MM and a hand-made
@@ -73,6 +77,17 @@ type reportBundle struct {
 	Verdict      string   `json:"verdict"`
 	Supersedes   string   `json:"supersedes"`
 	SupersededBy string   `json:"superseded_by"`
+	// SecondOpinions is always an array in the JSON, never null.
+	SecondOpinions []reportSecondOpinionPage `json:"second_opinions"`
+}
+
+// reportSecondOpinionPage holds the raw ai-report-second-opinion-* meta values; empty when absent.
+type reportSecondOpinionPage struct {
+	Page   string `json:"page"`
+	TreeID string `json:"tree_id"`
+	Preset string `json:"preset"`
+	Model  string `json:"model"`
+	Date   string `json:"date"`
 }
 
 func handleAIReportIndex(ctx commandruntime.ExecutionContext, args []string) resultmodel.CommandResult {
@@ -155,7 +170,7 @@ func reportIndexWalk(repositoryRoot string) (bundles []reportBundle, present boo
 // <month folder>/<folder>. The date, kind, linked ids and default title come from <folder> alone.
 func readReportBundle(repositoryRoot, relative string) reportBundle {
 	folder := path.Base(relative)
-	bundle := reportBundle{Path: reportsFolder + "/" + relative, Title: folder, Kind: "unknown", LinkedIDs: []string{}}
+	bundle := reportBundle{Path: reportsFolder + "/" + relative, Title: folder, Kind: "unknown", LinkedIDs: []string{}, SecondOpinions: []reportSecondOpinionPage{}}
 	if match := reportDatePattern.FindStringSubmatch(folder); match != nil {
 		bundle.Date = match[1]
 		if len(match[2]) >= 4 {
@@ -188,6 +203,7 @@ func readReportBundle(repositoryRoot, relative string) reportBundle {
 			}
 		}
 	}
+	bundle.SecondOpinions = readReportSecondOpinionPages(repositoryRoot, relative, bundle.Path, entryName)
 	bundle.Kind = reportKind(folder, metas["ai-report-kind"])
 	bundle.Verdict = metas["ai-report-verdict"]
 	bundle.Supersedes = metas["ai-report-supersedes"]
@@ -394,6 +410,7 @@ table{width:100%;border-collapse:collapse;margin-bottom:1.5rem}
 td{padding:.35rem .5rem;border-top:1px solid var(--line);vertical-align:top}
 td.report-date,td.report-ids{white-space:nowrap;color:var(--muted)}
 tr.superseded{opacity:.5}
+ul.second-opinions{margin:.25rem 0 0;padding-left:1.25rem;color:var(--muted)}
 </style>
 </head>
 <body>
@@ -409,8 +426,8 @@ tr.superseded{opacity:.5}
 				successor = fmt.Sprintf(` <span>superseded by <a href="%s">%s</a></span>`,
 					reportPageLink(byPath[bundle.SupersededBy]), html.EscapeString(bundle.SupersededBy))
 			}
-			fmt.Fprintf(&page, "<tr%s><td class=\"report-date\">%s</td><td><a href=\"%s\">%s</a>%s</td><td class=\"report-ids\">%s</td></tr>\n",
-				rowClass, html.EscapeString(bundle.Date), reportPageLink(bundle), html.EscapeString(bundle.Title), successor,
+			fmt.Fprintf(&page, "<tr%s><td class=\"report-date\">%s</td><td><a href=\"%s\">%s</a>%s%s</td><td class=\"report-ids\">%s</td></tr>\n",
+				rowClass, html.EscapeString(bundle.Date), reportPageLink(bundle), html.EscapeString(bundle.Title), successor, renderReportSecondOpinionList(bundle.SecondOpinions),
 				html.EscapeString(strings.Join(bundle.LinkedIDs, " ")))
 		}
 		page.WriteString("</table>\n")
@@ -464,4 +481,58 @@ func normalizeReportID(text string) string {
 		number = "0"
 	}
 	return strings.ToUpper(match[1]) + "-" + number
+}
+
+// readReportSecondOpinionPages lists the bundle's top-level second-opinion pages in byte order of their names (tree
+// pre-order), skipping the bundle's own entry file. Metas inside a script, style or comment do not count.
+func readReportSecondOpinionPages(repositoryRoot, relative, bundlePath, entryName string) []reportSecondOpinionPage {
+	pages := []reportSecondOpinionPage{}
+	entries, err := os.ReadDir(filepath.Join(repositoryRoot, reportsFolder, relative))
+	if err != nil {
+		return pages
+	}
+	for _, entry := range entries {
+		name := entry.Name()
+		if name == entryName || !entry.Type().IsRegular() || !reportSecondOpinionPagePattern.MatchString(name) {
+			continue
+		}
+		metas := map[string]string{}
+		if data, err := os.ReadFile(filepath.Join(repositoryRoot, reportsFolder, relative, name)); err == nil {
+			metas = readReportMetas(secondOpinionVisibleHTML(data))
+		}
+		pages = append(pages, reportSecondOpinionPage{
+			Page:   bundlePath + "/" + name,
+			TreeID: metas["ai-report-second-opinion-id"],
+			Preset: metas["ai-report-second-opinion-preset"],
+			Model:  metas["ai-report-second-opinion-model"],
+			Date:   metas["ai-report-second-opinion-date"],
+		})
+	}
+	return pages
+}
+
+// renderReportSecondOpinionList is the nested list in a bundle's title cell; empty when the bundle has no pages, so
+// such rows stay byte-identical. Link text is the tree id, or the file name without one.
+func renderReportSecondOpinionList(pages []reportSecondOpinionPage) string {
+	if len(pages) == 0 {
+		return ""
+	}
+	var list strings.Builder
+	list.WriteString(`<ul class="second-opinions">`)
+	for _, page := range pages {
+		text := page.TreeID
+		if text == "" {
+			text = path.Base(page.Page)
+		}
+		relative := strings.TrimPrefix(page.Page, reportsFolder+"/")
+		fmt.Fprintf(&list, `<li><a href="%s">%s</a>`, html.EscapeString((&url.URL{Path: relative}).String()), html.EscapeString(text))
+		for _, part := range []string{page.Preset, page.Model, page.Date} {
+			if part != "" {
+				list.WriteString(" · " + html.EscapeString(part))
+			}
+		}
+		list.WriteString("</li>")
+	}
+	list.WriteString("</ul>")
+	return list.String()
 }

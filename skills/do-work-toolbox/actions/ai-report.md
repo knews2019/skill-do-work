@@ -45,6 +45,8 @@
 <skill-root>/../do-work/tools/do-work-cli.sh --repo-root <project-root> --format text ai-report-index
 ```
 
+The catalog also lists each bundle's second-opinion pages under that bundle.
+
 `ai-report find <topic>` and "is there a report on <topic>" run the same command with `--find <topic>` appended. It prints matching bundle paths newest first, superseded bundles included, and writes nothing. Print the result, then stop: Steps 1 to 8 do not apply. A `refused` result names a hand-made `catalog.json` or `index.html`; report it and do not move it.
 
 ### Organize form
