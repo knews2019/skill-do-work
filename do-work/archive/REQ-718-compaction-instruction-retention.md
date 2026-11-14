@@ -32,7 +32,7 @@ estimate:
   - 2 new files
   - 2 subsystems involved
   - 5 acceptance criteria
-status: failed
+status: cancelled
 created_at: 2026-11-10T23:19:33Z
 user_request: UR-170
 domain: testing
@@ -43,7 +43,7 @@ impact: impact-user-visible
 effort_estimate: effort-substantive
 status_changed_at: 2026-11-10T23:23:24Z
 claimed_at: 2026-11-11T01:14:02Z
-completed_at: 2026-11-11T01:33:19Z
+completed_at: 2026-11-14T22:12:40Z
 error: 'Actual Codex/T3 live compaction remains Untested: no supported active-provider compaction control or observable boundary was established, and exact backing provider build/settings are unverified. Claude live capture is valid for safe-mode Claude Code 2.1.322 / claude-fable-5-1 only. Combined completion proof is unmet; no runtime retention failure inferred. Missing T3 capability is not expected to self-resolve and cannot be remediated within authorized source scope. Evidence artifacts are preserved in the merged commits.'
 error_type: environment
 ---
@@ -242,3 +242,10 @@ Observed 2026-11-11T01:28:47Z to 2026-11-11T01:32:24Z: 3m 37s total, 3m 38s attr
 | verification-gate | 3m 38s | 1 |
 
 Slowest command: verification-gate / canonical-gate-retry, 3m 38s, exit 0, bash (2 argv tokens).
+
+## Cancelled
+
+- **When:** 2026-11-14T22:12:40Z
+- **Why:** Codex/T3 has no compaction control, Claude half delivered its evidence, and the hook approach was already dropped
+- **Decided by:** user, via `do-work abandon`
+- **Previously:** failed (`error_type: environment`) — failed at 2026-11-11T01:33:19Z — resolved by decision not to retry
