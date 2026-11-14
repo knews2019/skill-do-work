@@ -171,3 +171,7 @@ audit-metrics *args:
 # Repository-only verification; the script owns the command inventory.
 maintainer-verify:
     bash "{{justfile_directory()}}/_dev/tests/maintainer-verify.sh"
+
+# Start the local Tinka canvas, killing any process blocking its port first, and open the board in your browser
+tinka $board="":
+    bash "{{justfile_directory()}}/_dev/run-tinka.sh" "{{justfile_directory()}}" "$board"
