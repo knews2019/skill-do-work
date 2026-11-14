@@ -25,6 +25,7 @@ estimate:
     - 8-file write set
     - 2 subsystems involved
     - 6 acceptance criteria
+dispatch_at: 2026-11-14T23:35:11Z
 ---
 # Report Catalog Lists the Second-Opinion Pages of Each Bundle
 ## What
@@ -132,3 +133,11 @@ The REQ has no open questions from capture. Pre-dispatch made these choices (una
 - [ ] Every existing field of `catalog.json` keeps its name and meaning, so `revise`, `find`, `organize` and `second-opinion latest` keep working; the existing catalog tests pass unchanged.
 - [ ] No bundle is edited; the catalog reads bundles and never writes into them.
 - [ ] The RED Go test (fixture bundle with `index.html` and one `index-v1c01-*.html` page) fails at base and passes after; `go test ./...` passes in the do-work-cli module.
+
+## Pre-Flight
+
+**Git:** ✓ No uncommitted project files at dispatch (run artifacts under do-work/ only, committed by the coordinator)
+**Tests baseline:** ✓ Focused pre-build probe passing (do-work/runs/work-2026-11-15-012821/REQ-730-preflight-probe.sh) and the repository gate green at df1bf423 (158 s, detached checkout, stage reuse off)
+**Dependencies:** ✓ Installed
+
+*Checked by work action (coordinator, run work-2026-11-15-012821)*

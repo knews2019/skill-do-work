@@ -25,6 +25,7 @@ estimate:
     - 6-file write set
     - 2 subsystems involved
     - 6 acceptance criteria
+dispatch_at: 2026-11-14T23:35:10Z
 ---
 # ai-report-judge Renders One Named Page of a Bundle
 ## What
@@ -138,3 +139,10 @@ Done by the pre-dispatch agent (no subagent) at main HEAD 1389e2be.
 - [ ] Without the option the judge behaves exactly as today: same captures, same judge.json, same exit codes.
 - [ ] The second-opinion finalize path keeps its verdicts for the same pages; `go test ./...` passes in the do-work-cli module.
 
+## Pre-Flight
+
+**Git:** ✓ No uncommitted project files at dispatch (run artifacts under do-work/ only, committed by the coordinator)
+**Tests baseline:** ✓ Focused pre-build probe passing (do-work/runs/work-2026-11-15-012821/REQ-728-preflight-probe.sh) and the repository gate green at df1bf423 (158 s, detached checkout, stage reuse off)
+**Dependencies:** ✓ Installed
+
+*Checked by work action (coordinator, run work-2026-11-15-012821)*

@@ -25,6 +25,7 @@ estimate:
     - 2 subsystems involved
     - 6 acceptance criteria
   calculated_at: 2026-11-14T23:30:40Z
+dispatch_at: 2026-11-14T23:35:12Z
 ---
 # ai-report Prints the Catalog Rebuild Command When a New Report Is Missing From the Catalog
 ## What
@@ -119,3 +120,11 @@ See `do-work/user-requests/UR-176/input.md` for complete verbatim input.
 - [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
 - [ ] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
 *Source: do-work capture-request: capture the request in _dev/run-prompts/2026-11-15-catalog-lists-second-opinion-pages.md*
+
+## Pre-Flight
+
+**Git:** ✓ No uncommitted project files at dispatch (run artifacts under do-work/ only, committed by the coordinator)
+**Tests baseline:** ✓ Focused pre-build probe passing (do-work/runs/work-2026-11-15-012821/REQ-731-preflight-probe.sh) and the repository gate green at df1bf423 (158 s, detached checkout, stage reuse off)
+**Dependencies:** ✓ Installed
+
+*Checked by work action (coordinator, run work-2026-11-15-012821)*
