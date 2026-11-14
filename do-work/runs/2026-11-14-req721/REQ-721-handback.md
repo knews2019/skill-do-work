@@ -56,3 +56,7 @@ Branch commit ade7cddd fixes review findings F1 to F7 and F9 to F12.
 - F8 (no new report was created) is answered with two checks, not with a full report. The corrected recipe was followed again in this repository from step 1 to step 13 on the same lineage, with the canvas id and tile ids the recipe now prescribes: five tiles, five files served with HTTP 200, one test note written, read back and cleared, Git status identical, `AGENTS.md` unchanged. The new band was filled for that lineage in a scratch page and render-judged: verdict `pass`. No full report was created in this run, and the lineage has no revision and no plain second-opinion page.
 
 - D-07 (DECIDE & STATE): When Tinka is missing, the recipe stops with one line, as the REQ asks, and downloads only after the user says yes. The line names the source and the pinned commit. An agent never downloads third-party code just because a pasted line asked for a canvas.
+
+## Addendum 2 (after the re-check)
+
+Branch commit after ade7cddd fixes re-check finding F13: `<bundle-path>` is now defined as the path from the project root, with two examples. The reviewer's re-check marked F1 to F7 and F9 to F12 fixed and F8 partly fixed.

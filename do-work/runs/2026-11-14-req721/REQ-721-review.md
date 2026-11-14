@@ -111,6 +111,62 @@ Average of the four percentages is 84%. Acceptance Partial takes 10 points.
 
 None (12 findings report only)
 
+## Re-check
+
+Fix range `2285c121..5b5b35fd` (builder commit `ade7cddd`), read from `git diff -- skills/`. The first review above is kept as written. Its line numbers refer to the tree before the fix. The line numbers below refer to `5b5b35fd`. Guide means `skills/do-work-toolbox/docs/ai-report-guide.md`.
+
+**Result: Approve.** Eleven of the twelve findings are fixed, F8 is partly fixed, and the fixes add one small new finding (F13). Final Acceptance: Pass. Final overall score: 91%.
+
+### Status of each finding
+
+- **F1 — fixed.** Guide `:208` and `:211-212` prescribe `<bundle>_<page-id>_page` and `<bundle>_<page-id>_reply`. The five item files in `.tinka/boards/.tinka/items/` carry exactly these ids.
+- **F2 — fixed.** Guide `:151-158`: step 1 checks Node and the pinned commit before any write, and stops with one line when `.tinka/src` is missing. Guide `:172-178`: the download is step 4 and runs only after the user's yes. Decision D-07 in the hand-back records the choice.
+- **F3 — fixed.** Guide `:187`: pictures on `pass` or `fail`; on `skipped` or `error` stop and show the judge's finding.
+- **F4 — fixed.** Guide `:147` defines `<bundle-path>`, `<bundle>`, `<lineage>` and `<page-id>`, with a rule for a page without a tree id. See F13 for one unclear word in it.
+- **F5 — fixed.** Guide `:147`: "Run every command from the project root."
+- **F6 — fixed.** The check block (guide `:153-156`) and the download block (`:174-178`) are separate, and the download is conditional.
+- **F7 — fixed.** `skills/do-work-toolbox/docs/ai-report-kit/skeleton.html:200`: the placeholder now ends the line.
+- **F8 — partly fixed.** The builder followed the corrected recipe again; the canvas file is now named after the oldest bundle, as the recipe says. Still open: no full report was created, and no lineage with a revision or a plain second-opinion page was tried. The hand-back says so.
+- **F9 — fixed.** Guide `:134` no longer promises a request in the user's own words.
+- **F10 — fixed.** `skeleton.html:194` says "stays on its tile".
+- **F11 — fixed.** `skills/do-work-toolbox/docs/ai-report-kit/presentation.css:368` adds the top margin. My new render shows the gap.
+- **F12 — fixed.** `skills/do-work-toolbox/actions/ai-report.md:25`, guide `:144` and `skills/do-work-toolbox/actions/ai-report-reference.md:92` now agree with their pairs.
+
+### New finding
+
+- **F13 (Minor)** — guide `:147`: "`<bundle-path>` is the bundle's path under `ai-reports/`" can be read as a path that starts below `ai-reports/`. The command at `:190` needs a path from the project root, or the judge answers "the bundle must be a directory holding index.html". Fix: "`<bundle-path>` is the bundle's path from the project root, for example `ai-reports/<bundle>` or `ai-reports/2026-10_3-reports/<bundle>`". — impact-negligible → report only
+
+### What the fixes did not break
+
+- Step numbers: the four cross-references inside the recipe are right after renumbering (`:134` step 4, `:144` step 3, `:160` step 13, `:231` step 2). No other shipped file cites a recipe step number.
+- Names: no `<tree-id>` or `<tile-id>` is left in `skills/` or `suite/`.
+- Flow: `ai-report.md:25` and `ai-report-reference.md:92` only point at the recipe, so nothing restates the old "clone when missing" behavior. The rule "Install nothing" (`:145`) still agrees with step 4.
+- Band line: `ai-report.md:25` still matches the new line in `skeleton.html:200`, and the line still starts with `ai-report:`.
+- Links: the shipped-package reference check passes, and the anchor `#review-on-a-tinka-canvas` is unchanged.
+- Fresh project, followed literally: step 1 fails on the missing `.tinka/src` and stops; after a yes, steps 2 to 4 create `.tinka/`, hide it and download into it in a working order. I found no step that goes wrong.
+
+### Checks run for the re-check
+
+- `bash _dev/tests/action-shell-blocks.sh` (pass), `bash _dev/tests/shipped-package-reference-contract.sh` (pass), `bash _dev/tests/contract-regressions.sh` (exit 0).
+- Proof greps: 6 and 2. `git diff --quiet HEAD -- AGENTS.md` passes. `git status --porcelain` shows no `.tinka/` path.
+- Rendered the band from the fixed kit with `ai-report-judge`: verdict `pass`.
+- Not verified: I did not run the recipe or start Tinka. The second run's HTTP 200 answers, its note round trip and the filled scratch band are the builder's word.
+
+One note outside this request: the shell-block lint reads a fence indented up to three spaces, so the fences of steps 10, 11 and 13 (four spaces) are not linted.
+
+### Final scores
+
+**Overall: 91%**
+
+| Dimension | Score | Notes |
+|-----------|-------|-------|
+| Requirements | 100% | 20 of 20 delivered |
+| Code Quality | 90% | One unclear definition (F13) |
+| Test Adequacy | 80% | Recipe followed twice on one lineage; no full report, no revision, no plain second-opinion page |
+| Scope | 95% | Same five files; D-07 recorded |
+| Risk | Low | Pinned third-party code, downloaded only after a yes; local-only server |
+| Acceptance | Pass | Implementation and Integration covered |
+
 ---
 
 ## Ready-to-paste section for the REQ file
@@ -118,36 +174,37 @@ None (12 findings report only)
 ```markdown
 ## Review
 
-**Overall: 74%** | <TIMESTAMP>
+**Overall: 91%** | <TIMESTAMP>
 
 | Dimension | Score |
 |-----------|-------|
-| Requirements | 90% |
-| Code Quality | 80% |
-| Test Adequacy | 75% |
-| Scope | 90% |
+| Requirements | 100% |
+| Code Quality | 90% |
+| Test Adequacy | 80% |
+| Scope | 95% |
 | Risk | Low |
-| Acceptance | Partial |
+| Acceptance | Pass |
 
 **Important findings (each with its recorded impact token — this is the durable audit record the judgment mandates):**
-- F1: `skills/do-work-toolbox/docs/ai-report-guide.md:200` builds a page tile and its reply tile from the same two parts, so both get one id; Tinka answers "Item already exists." and the text calls that fine, so the reply tile is silently missing. The builder's own run used `<bundle>_<tree-id>_page` and `_reply`. Fix: prescribe those two id forms. — impact-user-visible → report only
-- F2: `skills/do-work-toolbox/docs/ai-report-guide.md:161-168` clones Tinka when the checkout is missing, and checks only in step 3 after two writes; the REQ constraint asks the first step to check and stop with one line. The choice is not in Decisions. Fix: check before any write, print one line before cloning, stop when `rev-parse HEAD` is not the pin, record the decision. — impact-user-visible → report only
+- F1: the recipe gave a page tile and its reply tile one id, so the reply tile was silently missing. Fixed in ade7cddd: `skills/do-work-toolbox/docs/ai-report-guide.md:208` prescribes `<bundle>_<page-id>_page` and `<bundle>_<page-id>_reply`. — impact-user-visible → report only
+- F2: the recipe cloned Tinka when it was missing, where the REQ asks the first step to check and stop. Fixed in ade7cddd: `skills/do-work-toolbox/docs/ai-report-guide.md:151-158` checks before any write and stops with one line; the download (`:172-178`) runs only after the user's yes; decision D-07 records it. — impact-user-visible → report only
 
 **Minor findings:**
-- F3: `skills/do-work-toolbox/docs/ai-report-guide.md:179` says captures are written whatever the verdict is; on `skipped` or `error` none exist (`report_judge.go:140-144`) and the recipe has no stop rule for it. — impact-user-visible → report only
-- F4: `skills/do-work-toolbox/docs/ai-report-guide.md:182,185,191,196` leave `<lineage>` unnamed, `<tree-id>` undefined for a plain second-opinion page, and `ai-reports/<bundle>` wrong for a month folder. — impact-user-visible → report only
-- F5: `skills/do-work-toolbox/docs/ai-report-guide.md:175,182,188` use relative paths and `$PWD` with no rule to run from the project root. — impact-user-visible → report only
-- F6: `skills/do-work-toolbox/docs/ai-report-guide.md:163-168` puts the check and the clone in one block, so a later literal run re-clones, fails and stops. — impact-user-visible → report only
-- F7: `skills/do-work-toolbox/docs/ai-report-kit/skeleton.html:200` has its `FILL:` placeholder mid-line with no marked end, so the tail that names the guide section can be lost. — impact-negligible → report only
-- F8: `do-work/runs/2026-11-14-req721/REQ-721-handback.md:13-19` holds no newly created report, and the recipe run had no revision and no plain second-opinion page. — impact-negligible → report only
-- F9: `skills/do-work-toolbox/docs/ai-report-guide.md:134` promises an own-words request, but `skills/do-work-toolbox/SKILL.md:25` has no canvas trigger. — impact-user-visible → report only
-- F10 (Nit): `skills/do-work-toolbox/docs/ai-report-kit/skeleton.html:194` says "stays on its page" where the guide says "stays on its tile". — impact-negligible → report only
-- F11 (Nit): `skills/do-work-toolbox/docs/ai-report-kit/skeleton.html:193` heading touches the code box above it; add a top margin beside `presentation.css:367`. — impact-negligible → report only
-- F12 (Nit): wording pairs disagree at `ai-report.md:25` against `:49`, `ai-report-guide.md:144` against `:155`, and `ai-report-reference.md:92` against `ai-report.md:195`. — impact-negligible → report only
-**Acceptance:** Partial — Implementation and Integration covered: lint, contract checks and a skeleton render pass, and the band and rules are right; the recipe text differs from the builder's real run on tile ids (F1). Deployment and live acceptance unassessed.
-**Restatement sweep:** redefined what the closing band holds (two suggestions plus one Tinka canvas offer) and what the Step 8 summary prints; every restatement in `skills/` and `suite/` agrees, one cosmetic comment at `presentation.css:366`
+- F3: fixed in ade7cddd, `skills/do-work-toolbox/docs/ai-report-guide.md:187` now says pictures exist on `pass` or `fail` and tells the agent to stop on `skipped` or `error`. — impact-user-visible → report only
+- F4: fixed in ade7cddd, `skills/do-work-toolbox/docs/ai-report-guide.md:147` defines `<bundle-path>`, `<bundle>`, `<lineage>` and `<page-id>`. — impact-user-visible → report only
+- F5: fixed in ade7cddd, `skills/do-work-toolbox/docs/ai-report-guide.md:147` says to run every command from the project root. — impact-user-visible → report only
+- F6: fixed in ade7cddd, the check block (`ai-report-guide.md:153-156`) and the download block (`:174-178`) are separate. — impact-user-visible → report only
+- F7: fixed in ade7cddd, the placeholder ends the line at `skills/do-work-toolbox/docs/ai-report-kit/skeleton.html:200`. — impact-negligible → report only
+- F8: partly fixed. The corrected recipe was followed again on the same lineage, but no full report was created and no lineage with a revision or a plain second-opinion page was tried (`do-work/runs/2026-11-14-req721/REQ-721-handback.md`, Addendum). — impact-negligible → report only
+- F9: fixed in ade7cddd, `skills/do-work-toolbox/docs/ai-report-guide.md:134` no longer promises a request in the user's own words. — impact-user-visible → report only
+- F10 (Nit): fixed in ade7cddd, `skills/do-work-toolbox/docs/ai-report-kit/skeleton.html:194` says "stays on its tile". — impact-negligible → report only
+- F11 (Nit): fixed in ade7cddd, `skills/do-work-toolbox/docs/ai-report-kit/presentation.css:368` adds the top margin. — impact-negligible → report only
+- F12 (Nit): fixed in ade7cddd, the three wording pairs agree (`ai-report.md:25`, `ai-report-guide.md:144`, `ai-report-reference.md:92`). — impact-negligible → report only
+- F13: open. `skills/do-work-toolbox/docs/ai-report-guide.md:147` says `<bundle-path>` is the path "under `ai-reports/`", but the command at `:190` needs a path from the project root; write "the bundle's path from the project root, for example `ai-reports/<bundle>`". — impact-negligible → report only
+**Acceptance:** Pass — Implementation and Integration covered: lint, contract checks and a band render pass, and the recipe text now matches the tile and canvas ids of the builder's second run. Deployment and live acceptance unassessed.
+**Restatement sweep:** redefined what the closing band holds (two suggestions plus one Tinka canvas offer) and what the Step 8 summary prints; every restatement in `skills/` and `suite/` agrees after the fix range too, one cosmetic comment at `presentation.css:366`
 **Suggested testing:** 6 items
-**Follow-ups created:** None (12 findings report only)
+**Follow-ups created:** None (13 findings report only)
 
 *Reviewed by review-work action*
 ```
