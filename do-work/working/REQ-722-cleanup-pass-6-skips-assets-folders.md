@@ -1,7 +1,7 @@
 ---
 id: REQ-722
 title: 'Cleanup Pass 6 skips assets folders when scanning for blanked records'
-status: pending
+status: claimed
 created_at: 2026-11-14T21:47:51Z
 user_request: UR-173
 domain: backend
@@ -11,6 +11,7 @@ maintenance: false
 impact: impact-user-visible
 effort_estimate: effort-mechanical
 write_set: [skills/do-work/tools/do-work-cli/internal/cleanup/cleanup_git.go, skills/do-work/tools/do-work-cli/internal/cleanup/cleanup_git_test.go]
+claimed_at: 2026-11-14T22:17:58Z
 ---
 # Cleanup Pass 6 Skips Assets Folders When Scanning for Blanked Records
 ## What
