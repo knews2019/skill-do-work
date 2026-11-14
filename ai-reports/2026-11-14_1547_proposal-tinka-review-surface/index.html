@@ -1,0 +1,533 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="ai-report-kind" content="proposal">
+<title>Tinka as a review canvas for ai-report bundles</title>
+<link rel="stylesheet" href="presentation.css">
+<style>
+.scroll{overflow-x:auto}
+table{width:100%;border-collapse:collapse;table-layout:fixed;margin:0 0 1em;background:var(--surface)}
+th,td{border:1px solid var(--line);padding:.5em .65em;vertical-align:top;text-align:left;overflow-wrap:anywhere}
+th{font-family:var(--display);font-size:.95rem}
+table.wide{min-width:820px}
+td .chip{white-space:normal}
+.price{margin:.6em 0 .2em}
+.price b{font-family:var(--display)}
+.verdict{font-weight:750}
+.rule{border-left:6px solid var(--change);padding:.2em 0 .2em 1em;margin:0 0 1em}
+pre.capture{white-space:pre-wrap;overflow-wrap:anywhere}
+.node .chip,.measure .chip,li .chip{white-space:normal}
+.terminal{white-space:pre-wrap;overflow-wrap:anywhere}
+</style>
+</head>
+<body>
+<nav class="topbar"><strong>Tinka as a review canvas for ai-report bundles</strong><span class="spacer"></span><button class="btn deck-toggle" type="button" id="deck-toggle" aria-pressed="false">Deck mode (D)</button></nav>
+<div class="page">
+
+<header class="band depth-one" id="depth-1">
+  <p class="depth-marker"><span class="gauge" aria-hidden="true"><i class="on"></i><i></i><i></i></span>Depth 1 of 3: the decision · Proposal · 14 November 2026</p>
+  <h1>Pilot Tinka by hand on two lineages. Build nothing yet.</h1>
+  <p class="sub measure">The decision is one of three: adopt nothing, pilot, or build. This report recommends the pilot (option O2), run by hand and with nothing shipped. A <span class="term" tabindex="0" data-def="One Tinka board that shows every page of one report lineage as tiles. Tinka calls it a board. This report says canvas, because board already means queue-kanban in do-work.">canvas</span> for one <span class="term" tabindex="0" data-def="A report bundle and every later revision of it, together with their second-opinion pages.">lineage</span> worked from start to end today and left Git clean. Three limits were measured in the same run, so the pilot has a stop rule and no command is built before it passes.</p>
+  <p><span class="chip">Tinka 77ba29c (0.7.14), read 2026-11-14</span><span class="chip">do-work 9de5839 (0.315.5)</span><span class="chip">live check: 8 tiles, 6 feedback records read back</span><span class="chip">git status --porcelain: 0 bytes before, 0 bytes after</span></p>
+  <p class="measure">In this report <strong>board</strong> means only queue-kanban. Tinka's own commands keep their names (<code>board.get</code>, <code>board.create</code>).</p>
+  <ul class="legend" aria-label="Color key">
+    <li class="role-cause">Cause</li>
+    <li class="role-problem">Problem</li>
+    <li class="role-change">Change</li>
+    <li class="role-effect">Effect</li>
+    <li class="role-proof">Proof</li>
+  </ul>
+  <nav class="jump" aria-label="Go deeper"><span>Go deeper:</span><a class="btn" href="#options">Options O1 to O4</a><a class="btn" href="#recommendation">Recommendation and pilot rule</a><a class="btn" href="#proof">Live check</a><a class="btn" href="#mockup">O3 mockup</a><a class="btn" href="#kills">Kill attempts</a><a class="btn" href="#depth-3">Every detail</a><a class="btn" href="#another-layout">Another layout or method</a></nav>
+</header>
+
+<section class="band" id="options" aria-labelledby="options-heading">
+  <p class="depth-marker"><span class="gauge" aria-hidden="true"><i class="on"></i><i class="on"></i><i></i></span>Depth 2 of 3: the options</p>
+  <h2 id="options-heading">Four options, each priced</h2>
+  <p class="measure">Costs are effort judgments, not measured hours. Line references to Tinka are at commit 77ba29c. Words used the same way everywhere: a <span class="term" tabindex="0" data-def="One folder under ai-reports/ that holds index.html, its second-opinion pages, reply files and assets.">bundle</span> is a report folder, a page is one HTML file in it, a <span class="term" tabindex="0" data-def="A full-page PNG picture of one report page, 1440 pixels wide, made by the render judge.">capture</span> is a PNG picture of a page, and a <span class="term" tabindex="0" data-def="One item placed on a canvas: a capture, or a copy of a reply file.">tile</span> is one item on a canvas.</p>
+
+  <div class="row">
+    <article class="node role-change" style="flex: 1 1 520px">
+      <span class="tag">O1 · smallest change</span>
+      <h3>Do nothing extra</h3>
+      <p>Keep reviewing in the real pages and giving feedback in chat.</p>
+      <table>
+        <tr><th>Pros</th><th>Cons</th></tr>
+        <tr>
+          <td>The catalog page lists every bundle by kind, newest first, with replaced bundles dimmed. <span class="chip">ai-reports/index.html:16,35</span></td>
+          <td>The catalog has one entry per bundle. Second-opinion pages are not in it. <span class="chip">report_index.go:168-171</span></td>
+        </tr>
+        <tr>
+          <td><code>catalog.json</code> records path, entry, title, date, kind, linked ids, verdict, <code>supersedes</code> and <code>superseded_by</code> for 46 bundles. <span class="chip">ai-reports/catalog.json</span></td>
+          <td>No view shows the pages of two bundles of one lineage next to each other.</td>
+        </tr>
+        <tr>
+          <td>The in-bundle iteration list links each tree page with its id, preset, model and date. <span class="chip">…-rev1/index.html:1-7</span></td>
+          <td>The original bundle of the test lineage has a <code>v1c01</code> page but no iteration list, so nothing links to that page. <span class="chip">grep second-opinion-tree …_1524_…/index.html: 0 matches</span></td>
+        </tr>
+        <tr>
+          <td>The do-work-board file preview opens a linked HTML file live, with all folded content, on its own <span class="term" tabindex="0" data-def="An address made of host and port that only this computer can reach, such as http://127.0.0.1:43821. A browser treats each port as a separate site.">loopback origin</span>. <span class="chip">html_preview.go:21-24</span></td>
+          <td>Feedback has no home. After a run only the direction text survives, as a meta tag in the new page. <span class="chip">ai-report.md:87</span></td>
+        </tr>
+      </table>
+      <p class="price"><b>Benefit:</b> nothing new to maintain. <b>Risk:</b> feedback keeps disappearing with the chat session. <b>Cost:</b> none.</p>
+    </article>
+
+    <article class="node role-change" style="flex: 1 1 520px">
+      <span class="tag">O2 · recommended as the pilot</span>
+      <h3>Hand recipe, no code</h3>
+      <p>Tinka in a <span class="term" tabindex="0" data-def="Tinka set up with init --config and --boards, with every file in a folder you choose. Tinka never writes AGENTS.md in this layout.">manual layout</span> that Git cannot see. Captures and reply copies as tiles. Feedback read with <code>board.get</code> and <code>feedback.list</code>, then pasted as quoted data into <code>revise</code> or <code>--editor-direction</code>.</p>
+      <table>
+        <tr><th>Pros</th><th>Cons</th></tr>
+        <tr>
+          <td>It ran today: 5 capture tiles, 3 reply tiles, a star, a note and 4 comments, all read back. <span class="chip">live check, notes 1 to 3</span></td>
+          <td>One 5-page lineage took 20 hand steps: 12 Tinka calls, 5 judge runs and 3 scratch copies.</td>
+        </tr>
+        <tr>
+          <td>Every tile was written with no server running. <span class="chip">lib/cli.mjs:103-107</span></td>
+          <td>The render judge captures only <code>index.html</code>. Each second-opinion page needs a scratch copy renamed to <code>index.html</code>. <span class="chip">report_judge.go:25,111,168</span></td>
+        </tr>
+        <tr>
+          <td>Git stayed clean and no <code>AGENTS.md</code> was created. <span class="chip">lib/updates.mjs:94-103</span></td>
+          <td>A capture hides 38 to 46% of each page's text. <span class="chip">K1</span></td>
+        </tr>
+        <tr>
+          <td>A reply tile accepts a comment tied to a quoted phrase. <span class="chip">anchorStatus: matched</span></td>
+          <td>Feedback still reaches the agent through chat, as pasted text. The canvas opens only on this computer. <span class="chip">K2</span></td>
+        </tr>
+      </table>
+      <p class="price"><b>Benefit:</b> a real answer to "do I write feedback on a canvas?" <b>Risk:</b> low, because every file sits outside the repository. <b>Cost:</b> about one hour per lineage by hand. The brief adds one docs section; this report advises writing it only after the pilot passes.</p>
+    </article>
+  </div>
+
+  <div class="row" style="margin-top:28px">
+    <article class="node role-change" style="flex: 1 1 520px">
+      <span class="tag">O3 · only after the pilot passes</span>
+      <h3>One command: <code>ai-report-canvas</code></h3>
+      <p>The council hybrid: <code>push</code>, <code>pull</code> and <code>--check</code>. One canvas per lineage, columns by <span class="term" tabindex="0" data-def="The id of a second-opinion page inside its bundle: index.html is v1, its first child is v1c01, the next v1c02.">tree id</span>, captures only, reply files as Markdown tiles.</p>
+      <table>
+        <tr><th>Pros</th><th>Cons</th></tr>
+        <tr>
+          <td>One command replaces the 20 hand steps.</td>
+          <td>A Go command would depend on a tool whose first commit is 30 days old, with 20 release tags since. <span class="chip">tinka: first commit 2026-10-15</span></td>
+        </tr>
+        <tr>
+          <td>Stable tile ids work: <code>item.create</code> accepted ids made from a hash of bundle folder name plus page. <span class="chip">lib/tools.json:256 · live: rp-4f43727af86dcfb1</span></td>
+          <td>Comparable commands are 467 to 658 lines plus 167 to 346 test lines. <span class="chip">report_index.go, report_organize.go, report_judge.go</span></td>
+        </tr>
+        <tr>
+          <td>A dated feedback snapshot gives feedback a home that survives the chat session.</td>
+          <td>It answers neither K1 nor K2. Feedback then lives in two places: the canvas and the snapshot.</td>
+        </tr>
+        <tr>
+          <td>Absent Tinka gives a typed <code>skipped</code> and exit 0, so no run breaks.</td>
+          <td>The judge must first learn to capture a second-opinion page, or the command copies bundles as the hand recipe does.</td>
+        </tr>
+      </table>
+      <p class="price"><b>Benefit:</b> the pilot's routine without the hand work. <b>Risk:</b> a Tinka JSON change breaks <code>pull</code>; <code>--check</code> must catch it (K3). <b>Cost:</b> about the size of <code>ai-report-organize</code>, plus an action section, a guide section and a release. This size is an estimate.</p>
+    </article>
+
+    <article class="node role-change" style="flex: 1 1 520px">
+      <span class="tag">O4 · deferred</span>
+      <h3>Live HTML tiles from a separate origin</h3>
+      <p>Serve each bundle from its own loopback origin and give Tinka the URL, or wait until Tinka isolates HTML tiles itself.</p>
+      <table>
+        <tr><th>Pros</th><th>Cons</th></tr>
+        <tr>
+          <td>It is the only option that answers K1: the real page, with folded sections that open.</td>
+          <td>Today an HTML tile from a resource folder can write to the canvas. The probe page wrote a note. <span class="chip">live check, note 4</span></td>
+        </tr>
+        <tr>
+          <td>Tinka refused a write from another origin. <span class="chip">server.mjs:48-51 · live: HTTP 403 "Cross-origin write denied."</span></td>
+          <td>A URL tile was accepted but its full view created no frame in the check. A live tile is not shown to work. <span class="chip">live: 0 iframes for s9-probe-url</span></td>
+        </tr>
+        <tr>
+          <td>Tinka accepts an HTML item given by URL. <span class="chip">docs/PROTOCOL.md:55-61</span></td>
+          <td>The board's preview server forbids framing, so it cannot be reused as it is. <span class="chip">html_preview.go:200-205</span></td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>Text comments do not attach to non-Markdown tiles: the status stays <code>unverified</code>. <span class="chip">lib/document-anchors.mjs:20-24</span></td>
+        </tr>
+      </table>
+      <p class="price"><b>Benefit:</b> full-depth review inside the canvas. <b>Risk:</b> the highest of the four: report pages run scripts next to a write API. <b>Cost:</b> a second server in do-work and a framing test; not priced further until O3 exists.</p>
+    </article>
+  </div>
+</section>
+
+<section class="band" id="recommendation" aria-labelledby="recommendation-heading">
+  <p class="depth-marker"><span class="gauge" aria-hidden="true"><i class="on"></i><i class="on"></i><i></i></span>Depth 2 of 3: the recommendation</p>
+  <h2 id="recommendation-heading">Recommendation: O2 as a pilot, with a stop rule</h2>
+  <div class="row">
+    <div style="flex: 3 1 520px">
+      <p class="measure">Run O2 by hand on the next two lineages you would review anyway. Use a pinned source checkout of Tinka at 77ba29c and keep its files outside the repository. Ship no docs and no code during the pilot: the recipe is under "Check it yourself" below.</p>
+      <p class="measure"><strong>Why not build now.</strong> The canvas gives two things that do-work lacks: one view of a whole lineage, and a note that stays attached to a page. The live check also showed that a capture cannot replace the page (K1) and that the canvas cannot leave this computer (K2). Whether the two gains outweigh those two limits depends on how you review, and only use can show it.</p>
+      <p class="measure"><strong>Why not adopt nothing now.</strong> The recipe costs nothing in the repository, and the first run is already done.</p>
+      <h3>The council's order: agree, with three changes</h3>
+      <p class="measure">The council chose O2 as a pilot, O3 only if the pilot passes, O4 deferred. The evidence supports that order. O4 has to wait because an HTML tile can write to the canvas today, and O3 has to wait because K1 and K2 are open. Three points differ.</p>
+      <ol class="measure">
+        <li><strong>The pilot ships nothing.</strong> The council's O2 starts with a docs section. A shipped section recommends a 30-day-old tool to every do-work user before one real review has used it. Write the section when the pilot passes.</li>
+        <li><strong>"The pilot passes" needs a test.</strong> The council gave none. The pilot rule on the right is that test.</li>
+        <li><strong>The scores are not evidence.</strong> The 72, 66, 61 and 55 are the council's own grades. No source can check them, so this report does not use them.</li>
+      </ol>
+    </div>
+    <div style="flex: 2 1 360px">
+      <article class="node role-effect">
+        <span class="tag">Pilot rule</span>
+        <h3>The result that means "adopt nothing"</h3>
+        <p>The pilot covers two lineages, or 14 days if two do not come up. Write feedback on the canvas first. Then count.</p>
+        <p class="rule"><strong>Adopt nothing (O1)</strong> when any one of these is true:</p>
+        <ol>
+          <li><strong>R1.</strong> Fewer than half of your feedback points were written on the canvas before chat.</li>
+          <li><strong>R2.</strong> No feedback point used something chat cannot do: a pin on a place in a capture, a comment on a quoted phrase of a reply, or a note you read again in a later session.</li>
+          <li><strong>R3.</strong> Tinka changed <code>git status --porcelain</code> or <code>AGENTS.md</code> in the repository.</li>
+        </ol>
+        <p><strong>Go to O3</strong> only when R1 and R2 pass on both lineages and R3 never happens. Slow hand work is not a reason to stop: it is the reason for O3.</p>
+      </article>
+    </div>
+  </div>
+</section>
+
+<section class="band replay" id="proof" data-stepper aria-labelledby="proof-heading">
+  <p class="depth-marker"><span class="gauge" aria-hidden="true"><i class="on"></i><i class="on"></i><i></i></span>Depth 2 of 3: the live check</p>
+  <h2 id="proof-heading">The live check: one lineage on a canvas, as O2 describes</h2>
+  <p class="measure">The lineage is <code>2026-11-04_1524_proposal-tstack-review-workflows</code> and its <code>-rev1</code>: five pages and three reply files. Everything ran in a scratch folder outside the repository.</p>
+  <div class="row">
+    <figure class="shot" style="flex: 1 1 420px; margin: 0">
+      <a href="screenshots/canvas-lineage-overview.png" target="_blank" rel="noopener"><img src="screenshots/canvas-lineage-overview.png" alt="A Tinka canvas with two rows of tiles. The top row holds two captures and one reply of the original bundle. The bottom row holds three captures and two replies of rev1."></a>
+      <figcaption>Real capture, 2026-11-14. The whole canvas (<code>?overview</code> view). Rows are the two bundles, columns are tree ids v1, v1c01, v1c02. The star on the right tile and the note mark on the left tile of the bottom row are test feedback.</figcaption>
+    </figure>
+    <figure class="shot" style="flex: 1 1 420px; margin: 0">
+      <a href="screenshots/tile-reply-markdown-full-view.png" target="_blank" rel="noopener"><img src="screenshots/tile-reply-markdown-full-view.png" alt="The full view of a reply tile. The Markdown text is readable and a button shows two annotations."></a>
+      <figcaption>Real capture, 2026-11-14. A reply tile in full view. The copy of <code>reply.md</code> is readable and carries two test comments. "1 saved annotation needs source review" is the comment whose quoted phrase does not exist in the file.</figcaption>
+    </figure>
+  </div>
+  <div class="row" style="margin-top:28px">
+    <figure class="shot" style="flex: 1 1 420px; margin: 0">
+      <a href="screenshots/tile-capture-full-view.png" target="_blank" rel="noopener"><img src="screenshots/tile-capture-full-view.png" alt="The full view of a capture tile. The whole long page is fitted into the window, so its text is too small to read."></a>
+      <figcaption>Real capture, 2026-11-14. A capture tile in full view at 1440 by 1000. Tinka fits the 5818-pixel-tall capture to the window, so the text cannot be read until you zoom in. The five folded sections at the bottom stay closed.</figcaption>
+    </figure>
+    <figure class="shot" style="flex: 1 1 420px; margin: 0">
+      <a href="screenshots/s1-probe-html-tile-full-view.png" target="_blank" rel="noopener"><img src="screenshots/s1-probe-html-tile-full-view.png" alt="A test page shown as an HTML tile. Its log says it read the workspace id and that the write API answered HTTP 200."></a>
+      <figcaption>Real capture, 2026-11-14. The probe for seed S1, on a separate test canvas. A test HTML tile read the workspace id and wrote a note through Tinka's write API. The word "surface" in the test page means the canvas.</figcaption>
+    </figure>
+  </div>
+
+  <h3 style="margin-top:28px">Real command output</h3>
+  <div class="step-controls">
+    <button class="btn" type="button" data-step-prev>Previous note</button>
+    <button class="btn primary" type="button" data-step-next>Next note</button>
+    <span class="step-label" data-step-label aria-live="polite"></span>
+  </div>
+  <div class="row">
+    <div class="screen" style="flex: 3 1 560px">
+<pre class="terminal"><span class="prompt">$</span> node src/cli.mjs init --config surface/config.json --boards "$PWD/surface/boards" --label "do-work report review (scratch)"
+Created config at …/surface/config.json
+<span class="prompt">$</span> node src/cli.mjs update policy off --config surface/config.json
+Tinka updates: off. Local state: …/surface/config.json.updates.json
+<span class="prompt">$</span> node src/cli.mjs tools call item.create --config surface/config.json --file call.json   <span class="dim"># 8 times, no server running</span>
+<span class="line role-proof" data-at="1"><span class="badge" aria-hidden="true">1</span>"itemId": "rp-4f43727af86dcfb1"   <span class="dim"># rev1 · v1c02 · capture</span></span>
+<span class="prompt">$</span> node src/cli.mjs tools call board.get --config surface/config.json --json '{"boardId":"tstack-review-workflows"}'
+8 placements
+<span class="line role-proof" data-at="2"><span class="badge" aria-hidden="true">2</span>rp-ee575b91c6f804b4 rev1 · v1 · capture | review= {"note": "TEST NOTE (live check): the decision line should name the default option.", "star": false, …}
+rp-4f43727af86dcfb1 rev1 · v1c02 · capture | review= {"note": "", "star": true, …}</span>
+<span class="prompt">$</span> node src/cli.mjs tools call feedback.list --config surface/config.json --json '{"boardId":"tstack-review-workflows","includeBodies":true}'
+'author': {'id': 'live-check-test-actor', 'label': 'TEST ACTOR (ai-report live check, not a person)', 'kind': 'agent'}
+'body': 'TEST COMMENT (live check): the matrix needs a cost row.', 'anchorStatus': 'general'
+<span class="line role-proof" data-at="3"><span class="badge" aria-hidden="true">3</span>seven-row comparison table =&gt; matched      <span class="dim"># quote on a Markdown reply tile</span>
+Decision =&gt; unverified                      <span class="dim"># quote on a PNG capture tile</span>
+seven-row comparison table =&gt; stale        <span class="dim"># after the scratch copy was edited</span></span>
+<span class="prompt">$</span> <span class="dim"># S1 probe: open a test HTML tile, then read the target item's note</span>
+note before: ''
+<span class="line role-problem" data-at="4"><span class="badge" aria-hidden="true">4</span>full view iframes: [{"src":"http://127.0.0.1:43821/resources/probe/probe.html?theme=paper&amp;scale=100","sandbox":null}]
+note after:  'WRITTEN BY FRAMED HTML (S1 live probe)'</span>
+<span class="prompt">$</span> curl -s -H 'Host: 192.168.1.20:43821' http://127.0.0.1:43821/api/health
+<span class="line role-problem" data-at="5"><span class="badge" aria-hidden="true">5</span>{"error":"Tinka answers only requests to http://127.0.0.1:43821/ on this computer."}</span>
+<span class="prompt">$</span> node src/cli.mjs stop --config surface/config.json
+Tinka stopped (PID 4349)
+<span class="prompt">$</span> cmp git-status-before.txt git-status-after.txt
+<span class="line role-proof" data-at="6"><span class="badge" aria-hidden="true">6</span>git status before == after (0 bytes each)</span></pre>
+      <p class="note">Run on 2026-11-14 in a Linux cloud container, Node 22.23.4, Tinka source checkout at 77ba29c, do-work at 9de5839. Long paths are shortened with "…". Lines marked # are comments added for this report.</p>
+    </div>
+    <ol class="notes" style="flex: 2 1 300px">
+      <li class="node role-proof" data-step>
+        <div class="note-head"><span class="badge">1</span><h3>Tiles need no server</h3><span class="tag">Proof</span></div>
+        <p>All 8 tiles were created before Tinka was started. The tile id is a hash of bundle folder name plus page, which is the identity O3 proposes.</p>
+        <span class="chip">lib/cli.mjs:103-107</span>
+      </li>
+      <li class="node role-proof" data-step>
+        <div class="note-head"><span class="badge">2</span><h3>A star and a note read back</h3><span class="tag">Proof</span></div>
+        <p><code>board.get</code> returns each tile with its review note and star. A note and a star carry no author field.</p>
+        <span class="chip">lib/tools.json:858</span>
+      </li>
+      <li class="node role-proof" data-step>
+        <div class="note-head"><span class="badge">3</span><h3>Text comments work on reply tiles only</h3><span class="tag">Proof</span></div>
+        <p>A quoted phrase on a Markdown tile is <code>matched</code>. The same kind of comment on a PNG tile is stored but stays <code>unverified</code>. When the copy changes, the status turns to <code>stale</code>.</p>
+        <span class="chip">lib/document-anchors.mjs:20-24</span>
+      </li>
+      <li class="node role-problem" data-step>
+        <div class="note-head"><span class="badge">4</span><h3>An HTML tile can write to the canvas</h3><span class="tag">Problem</span></div>
+        <p>Tinka framed the test page with no sandbox on its own origin. The page wrote a note with no click from the user. This is why every option before O4 uses captures only.</p>
+        <span class="chip">public/item-content.js:76-101 · server.mjs:80-83, 222-223</span>
+      </li>
+      <li class="node role-problem" data-step>
+        <div class="note-head"><span class="badge">5</span><h3>The canvas answers this computer only</h3><span class="tag">Problem</span></div>
+        <p>Tinka listens on 127.0.0.1 and refuses any other host name with HTTP 403. A phone cannot open it.</p>
+        <span class="chip">server.mjs:45-47, 244</span>
+      </li>
+      <li class="node role-proof" data-step>
+        <div class="note-head"><span class="badge">6</span><h3>Git stayed clean</h3><span class="tag">Proof</span></div>
+        <p><code>git status --porcelain</code> printed nothing before and nothing after. Tinka wrote only into the scratch folder. No <code>AGENTS.md</code> exists there.</p>
+        <span class="chip">find scratch -name AGENTS.md (outside src): 0</span>
+      </li>
+    </ol>
+  </div>
+</section>
+
+<section class="band" id="mockup" aria-labelledby="mockup-heading">
+  <p class="depth-marker"><span class="gauge" aria-hidden="true"><i class="on"></i><i class="on"></i><i></i></span>Depth 2 of 3: the O3 layout</p>
+  <h2 id="mockup-heading">What one canvas per lineage would look like under O3</h2>
+  <div class="row">
+    <figure class="diagram" style="flex: 3 1 560px; margin:0; position:static">
+      <div class="scroll"><svg viewBox="0 0 760 560" role="img" aria-labelledby="mockup-title" style="min-width:600px">
+        <title id="mockup-title">MOCKUP — proposal. A grid of tiles. Rows are the original bundle and rev1. Columns are tree ids v1, v1c01 and v1c02. Each page has a capture tile and, below it, a reply tile. A pull step below writes a feedback snapshot.</title>
+        <defs>
+          <marker id="arrow-change" viewBox="0 0 10 10" refX="9" refY="5" markerUnits="userSpaceOnUse" markerWidth="12" markerHeight="12" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="m-change"/></marker>
+        </defs>
+        <text class="label" x="20" y="30">MOCKUP — proposal</text>
+        <text class="small" x="230" y="30">canvas: tstack-review-workflows</text>
+        <text class="label-sm" x="240" y="78" text-anchor="middle">v1 (index.html)</text>
+        <text class="label-sm" x="440" y="78" text-anchor="middle">v1c01</text>
+        <text class="label-sm" x="640" y="78" text-anchor="middle">v1c02</text>
+        <text class="label-sm" x="20" y="150">original</text>
+        <text class="small" x="20" y="172">bundle …_1524</text>
+        <text class="label-sm" x="20" y="310">rev1</text>
+        <text class="small" x="20" y="332">bundle …_1747</text>
+        <g>
+          <rect class="box" x="150" y="100" width="180" height="70" rx="10"/>
+          <text class="label-sm" x="240" y="130" text-anchor="middle">capture (PNG)</text>
+          <text class="small" x="240" y="154" text-anchor="middle">id rp-2e3c…</text>
+          <rect class="box" x="350" y="100" width="180" height="70" rx="10"/>
+          <text class="label-sm" x="440" y="130" text-anchor="middle">capture (PNG)</text>
+          <text class="small" x="440" y="154" text-anchor="middle">id rp-5431…</text>
+          <rect class="box" x="350" y="180" width="180" height="40" rx="10"/>
+          <text class="small" x="440" y="206" text-anchor="middle">reply.md (copy)</text>
+          <rect class="box dashed" x="550" y="100" width="180" height="70" rx="10"/>
+          <text class="small" x="640" y="140" text-anchor="middle">no page yet</text>
+        </g>
+        <g>
+          <rect class="box" x="150" y="260" width="180" height="70" rx="10"/>
+          <text class="label-sm" x="240" y="290" text-anchor="middle">capture (PNG)</text>
+          <text class="small" x="240" y="314" text-anchor="middle">note</text>
+          <rect class="box" x="350" y="260" width="180" height="70" rx="10"/>
+          <text class="label-sm" x="440" y="290" text-anchor="middle">capture (PNG)</text>
+          <text class="small" x="440" y="314" text-anchor="middle">1 comment</text>
+          <rect class="box" x="350" y="340" width="180" height="40" rx="10"/>
+          <text class="small" x="440" y="366" text-anchor="middle">reply.md (copy)</text>
+          <rect class="box" x="550" y="260" width="180" height="70" rx="10"/>
+          <text class="label-sm" x="640" y="290" text-anchor="middle">capture (PNG)</text>
+          <text class="small" x="640" y="314" text-anchor="middle">star</text>
+          <rect class="box" x="550" y="340" width="180" height="40" rx="10"/>
+          <text class="small" x="640" y="366" text-anchor="middle">reply.md (copy)</text>
+        </g>
+        <g class="change">
+          <path class="wire" d="M440 384 V436" marker-end="url(#arrow-change)"/>
+          <rect class="box" x="150" y="440" width="580" height="100" rx="14"/>
+          <text class="label-sm" x="170" y="472">ai-report-canvas pull</text>
+          <text class="small" x="170" y="498">writes a dated feedback snapshot, word for word,</text>
+          <text class="small" x="170" y="520">and prints proposed commands. You approve them.</text>
+        </g>
+      </svg></div>
+      <figcaption class="synthetic">MOCKUP — proposal. Hand-drawn SVG, not a screenshot. The grid matches the real canvas in the live check; the violet <code>pull</code> step does not exist.</figcaption>
+    </figure>
+    <div style="flex: 2 1 320px">
+      <p class="measure">Rows are bundles of the lineage, oldest at the top. Columns follow the tree id, so the same second-opinion direction lines up across revisions. A new revision adds a row; a new second-opinion page adds a tile in its column.</p>
+      <p class="measure">A tile id is a hash of the bundle folder name plus the page name. <code>ai-report organize</code> moves a bundle into a month folder but keeps its folder name, so the id survives the move. <span class="chip">report_index.go:136-141 · ai-report.md:52</span></p>
+      <p class="measure">Tiles point at capture files and reply copies in a folder outside the repository, never at the bundle. No HTML file and no bundle folder is registered as a <span class="term" tabindex="0" data-def="A folder that Tinka is allowed to serve files from. Tinka serves any file in it on the same origin as its write API.">resource root</span>.</p>
+    </div>
+  </div>
+</section>
+
+<section class="band" id="kills" aria-labelledby="kills-heading">
+  <p class="depth-marker"><span class="gauge" aria-hidden="true"><i class="on"></i><i class="on"></i><i></i></span>Depth 2 of 3: the kill attempts</p>
+  <h2 id="kills-heading">Four kill attempts: two hold, two are mostly answered</h2>
+  <div class="row">
+    <article class="node role-problem" style="flex: 1 1 460px">
+      <span class="tag">K1 · holds</span>
+      <h3>Captures hide folded content</h3>
+      <p>Measured on the five pages: 39%, 46%, 38%, 43% and 45% of the text sits in closed <code>&lt;details&gt;</code> and is absent from the capture. None of the 31 folded sections is open by default. At tile size, and in Tinka's full view, the rest is too small to read without zooming.</p>
+      <p>So you will open the real page for any careful read. What remains is a map of the lineage and a note attached to a page. Chat does not keep either across sessions. Pilot rule R2 tests whether that is enough.</p>
+      <span class="chip">fold-measure.js over 5 pages · only O4 removes this</span>
+    </article>
+    <article class="node role-problem" style="flex: 1 1 460px">
+      <span class="tag">K2 · holds</span>
+      <h3>A phone or text-to-speech cannot open it</h3>
+      <p>Verified live: Tinka listens on 127.0.0.1 and answers HTTP 403 to any other host name. Tinka's own answer is a PNG of the whole canvas, and a picture cannot be read aloud. At that scale its text cannot be read by eye either.</p>
+      <p>For phone and text-to-speech review, the HTML pages and <code>reply.md</code> stay the only channel under every option. The canvas adds nothing there and takes nothing away.</p>
+      <span class="chip">server.mjs:45-47, 244 · docs/AGENT.md:41-43</span>
+    </article>
+  </div>
+  <div class="row" style="margin-top:28px">
+    <article class="node role-cause" style="flex: 1 1 460px">
+      <span class="tag">K3 · mostly answered</span>
+      <h3>Tinka 0.7.x shapes may change</h3>
+      <p>The tool catalog did not change between v0.7.3 and 0.7.14 (0 changed lines in 10 days). Since v0.6.0 it only grew: 168 lines added, none removed. It carries <code>schemaVersion: 1</code>. The 939 lines that changed since the council's commit are outside every file the seeds cite, except one line of <code>docs/PROTOCOL.md</code>.</p>
+      <p>The project is still 30 days old and no written promise about tool shapes was found. O2 has no exposure: a person reads the JSON. O3 must pin the commit, and <code>--check</code> must compare the shapes of the tools it calls and return <code>skipped</code> on a difference.</p>
+      <span class="chip">git diff --shortstat v0.7.3 HEAD -- lib/tools.json: empty</span>
+    </article>
+    <article class="node role-cause" style="flex: 1 1 460px">
+      <span class="tag">K4 · answered for replies, real for captures</span>
+      <h3>Copies drift from the bundle</h3>
+      <p>A <code>reply.md</code> is never overwritten once published, so its copy cannot drift. The copy on the canvas matched the bundle file byte for byte, and its sha256 is in the tile description.</p>
+      <p><code>index.html</code> does change: the launcher adds the iteration list after each passing tree run. A capture of <code>index.html</code> is then out of date. Tinka noticed a change in its own copy (<code>stale</code>), but it cannot see the bundle. O3's <code>--check</code> compares hashes; in O2 you compare them by hand.</p>
+      <span class="chip">ai-report.md:87 · cmp copy vs bundle: identical</span>
+    </article>
+  </div>
+</section>
+
+<section class="band depth-three" id="depth-3" aria-labelledby="depth-3-heading">
+  <p class="depth-marker"><span class="gauge" aria-hidden="true"><i class="on"></i><i class="on"></i><i class="on"></i></span>Depth 3 of 3: every detail, folded</p>
+  <h2 id="depth-3-heading">The details</h2>
+  <p class="step-controls"><button class="btn" type="button" id="open-all">Open all details</button></p>
+
+  <details>
+    <summary>Seeds S1 to S9, re-checked at current HEAD</summary>
+    <p class="measure">The council read Tinka dc692c8 (0.7.12). HEAD is now 77ba29c (0.7.14). do-work HEAD is still 9de5839. <strong>No seed fails.</strong> Three need a correction: S1 (line range), S6 (a comment is stored, not refused) and S8 (wording). "Code" means read in the source; "live" means observed in the live check.</p>
+    <div class="scroll">
+    <table class="wide">
+      <tr><th style="width:5%">Seed</th><th style="width:15%">Label</th><th style="width:42%">Finding at HEAD</th><th>Source</th></tr>
+      <tr><td>S1</td><td class="verdict">VERIFIED (code and live)</td><td>The full view frames an HTML item with no <code>sandbox</code>. <code>/resources</code> sends no CSP. Both sit on the origin of the write API. Live: a test tile wrote a note. Correction: the function now spans lines 76-101, not 76-86. Addition: tile thumbnails are sandboxed, but a panel tile on the canvas page frames the full view without one. do-work-board serves repository HTML on a separate origin and forbids framing.</td><td><span class="chip">tinka public/item-content.js:76-101</span><span class="chip">tinka server.mjs:80-83, 163-179, 222-223</span><span class="chip">html_preview.go:21-24, 200-205</span></td></tr>
+      <tr><td>S2</td><td class="verdict">VERIFIED (code)</td><td>second-opinion refuses any path outside the bundle that <code>git status --porcelain=v1 -z --untracked-files=all</code> lists. The command has no <code>--ignored</code>, so ignored and locally excluded paths are never listed. The check runs at four points.</td><td><span class="chip">report_second_opinion.go:526-576, 583, 661, 699, 916</span></td></tr>
+      <tr><td>S3</td><td class="verdict">VERIFIED (code)</td><td><code>tinka/</code> and <code>design/</code> are not in the allowed root folders, so they are flagged. Dot entries pass. Addition: the check reads only Git-visible paths, so a locally excluded <code>tinka/</code> would also pass.</td><td><span class="chip">folder_structure.go:27-29, 96-97, 111, 126-128</span></td></tr>
+      <tr><td>S4</td><td class="verdict">VERIFIED (code and live)</td><td>Only a portable project has a <code>projectRoot</code>, and only then does a start rewrite the block in <code>AGENTS.md</code>. Live: the manual layout created no <code>AGENTS.md</code>.</td><td><span class="chip">tinka lib/updates.mjs:18-28, 94-103</span><span class="chip">tinka lib/project.mjs:13-17, 92-94</span></td></tr>
+      <tr><td>S5</td><td class="verdict">VERIFIED (code and live)</td><td><code>tools call</code> loads the config and calls the tool: no server, no update check. Live: 16 writes with no server. An installed <code>start</code> checks api.github.com at most once per 24 hours and sends <code>GITHUB_TOKEN</code> when set. Addition: a source checkout has no <code>INSTALLATION.json</code>, so its <code>start</code> never checks.</td><td><span class="chip">tinka lib/cli.mjs:103-107, 145-153</span><span class="chip">tinka lib/updates.mjs:10, 50-52, 57, 120-121</span></td></tr>
+      <tr><td>S6</td><td class="verdict">VERIFIED for PNG (live), INFERRED for HTML (code)</td><td>Highlights are refused on a PNG tile ("This source is unavailable, unsupported or larger than 2 MiB."). Correction: a text-quote comment on a non-Markdown tile is not refused. It is stored with status <code>unverified</code>. HTML takes the same code path but was not run.</td><td><span class="chip">tinka lib/document-anchors.mjs:20-24</span><span class="chip">tinka lib/highlights.mjs:20-27</span></td></tr>
+      <tr><td>S7</td><td class="verdict">VERIFIED (code)</td><td><code>files.import</code>: "Import 1–20 local image/PDF files", command line only. The live check did not use it; it used a resource root.</td><td><span class="chip">tinka lib/tools.json:2750</span><span class="chip">tinka lib/file-import.mjs:34</span></td></tr>
+      <tr><td>S8</td><td class="verdict">VERIFIED (code)</td><td>The catalog links revisions by the bundle folder's base name. A Tinka item stores <code>{rootId, path}</code>. Correction: organize moves bundles and renames month folders; it does not rename a bundle folder.</td><td><span class="chip">report_index.go:136-141</span><span class="chip">report_organize.go:657</span><span class="chip">tinka lib/tools.json:256</span></td></tr>
+      <tr><td>S9</td><td class="verdict">VERIFIED (code and live), with a gap</td><td>The write guard accepts only its own port's origin. Live: a write with another origin got HTTP 403. An HTML item by URL is accepted. Gap: the full view of that item created no frame, so a live tile from a second origin is not shown to work.</td><td><span class="chip">tinka server.mjs:41, 48-51</span><span class="chip">tinka docs/PROTOCOL.md:55-61</span></td></tr>
+    </table>
+    </div>
+  </details>
+
+  <details>
+    <summary>Evidence ledger: one source per claim</summary>
+    <div class="scroll">
+    <table class="wide">
+      <tr><th style="width:44%">Claim</th><th>Source</th></tr>
+      <tr><td>The catalog has one entry per bundle; second-opinion pages are absent.</td><td><span class="chip">report_index.go:68, 168-171</span></td></tr>
+      <tr><td>46 bundles are cataloged.</td><td><span class="chip">ai-reports/catalog.json, counted 2026-11-14</span></td></tr>
+      <tr><td>The original bundle has no iteration list; rev1 has one with two entries.</td><td><span class="chip">grep second-opinion-tree on both index.html files</span></td></tr>
+      <tr><td>The render judge captures only <code>index.html</code>, at 1440 and 390 wide, light and dark.</td><td><span class="chip">report_judge.go:25, 51-54, 111, 168</span></td></tr>
+      <tr><td>Five pages gave 20 PNG files, 17 MB. The five used as tiles are 4.4 MB.</td><td><span class="chip">du -sh judge/ and surface/captures/</span></td></tr>
+      <tr><td>Folded text share per page: 39, 46, 38, 43, 45 percent, with 0 of 31 folded sections open by default. Captures are 4044 to 5818 pixels tall.</td><td><span class="chip">fold-measure.js (Playwright), PNG headers</span></td></tr>
+      <tr><td>The Tinka tool catalog has 41 tools and <code>schemaVersion: 1</code>.</td><td><span class="chip">tinka lib/tools.json:2</span></td></tr>
+      <tr><td>Tinka: 58 commits, 20 tags, first commit 2026-10-15, MIT license, Node 22 or newer, no runtime npm dependencies.</td><td><span class="chip">git rev-list --count, git tag, package.json:4-8, README.md:31</span></td></tr>
+      <tr><td>Resource roots refuse paths with a dot segment and refuse folders inside the app or the metadata folder.</td><td><span class="chip">tinka lib/resources.mjs:29-35, 87-96, 126-132</span></td></tr>
+      <tr><td>Tinka wrote three files beside its config (<code>.log</code>, <code>.pid.json</code>, <code>.updates.json</code>) and a <code>.tinka/</code> folder inside the boards folder.</td><td><span class="chip">ls surface/ after start</span></td></tr>
+      <tr><td>Update policy was <code>off</code> for the whole check.</td><td><span class="chip">surface/config.json.updates.json: "policy": "off"</span></td></tr>
+      <tr><td>Reply files and pages are never overwritten by second-opinion; a revise never changes the prior bundle.</td><td><span class="chip">ai-report.md:71, 87</span></td></tr>
+    </table>
+    </div>
+  </details>
+
+  <details>
+    <summary>Limits: what was not checked, and why</summary>
+    <ul class="measure">
+      <li><strong>L1.</strong> <code>board overview --out</code> failed with <code>read ECONNRESET</code>. The container runs as root and Tinka starts Chromium without <code>--no-sandbox</code> (<code>lib/overview.mjs:99-100</code>). The canvas picture was taken with Playwright from the <code>?overview</code> view instead. On a normal user account this was not tried.</li>
+      <li><strong>L2.</strong> No person used the canvas. Every star, note and comment came from the command line as a labelled test actor. The pilot rule exists because this check cannot say how a person reviews.</li>
+      <li><strong>L3.</strong> A live HTML tile from a second origin (O4) was not shown to work: the full view created no frame for the URL item with <code>openMode: preview</code>. Other open modes were not tried.</li>
+      <li><strong>L4.</strong> The installed path (<code>tinka-install.mjs</code>) was not run, so the daily update check and the <code>GITHUB_TOKEN</code> header are read from code only.</li>
+      <li><strong>L5.</strong> No outbound network trace was taken. "A source checkout never checks for updates" rests on <code>lib/cli.mjs:148-150</code> and the missing <code>INSTALLATION.json</code>.</li>
+      <li><strong>L6.</strong> Tinka's own tests were not run, and its code was not audited beyond the files the seeds cite.</li>
+      <li><strong>L7.</strong> The council's two rounds and its scores could not be read; only the brief's summary of them was available.</li>
+      <li><strong>L8.</strong> The cost of O3 and O4 is an estimate from the size of similar commands, not a plan.</li>
+      <li><strong>L9.</strong> The Tinka files were read as data. No instruction-like text aimed at an agent reading the repository was acted on; its <code>AGENTS.md</code> and <code>docs/AGENT.md</code> describe how to use Tinka and were treated as documentation.</li>
+    </ul>
+  </details>
+
+  <details>
+    <summary>Open questions Q1 to Q7</summary>
+    <ul class="measure">
+      <li><strong>Q1. Where do the Tinka files live?</strong> Outside the repository (for example <code>~/.local/share/do-work-canvas/&lt;repo&gt;/</code>) or under <code>.tinka/</code> in the repository, hidden with <code>.git/info/exclude</code>. Both pass second-opinion (S2) and folder-structure (S3). Outside is safer: one mistake in an exclude file makes second-opinion refuse to run. Inside is easier to find. This report advises outside.</li>
+      <li><strong>Q2. Which install path, if any?</strong> A source checkout pinned to a commit never checks for updates and never sends a token (S5). The installer adds a daily call to api.github.com. This report advises the pinned source checkout for the pilot. Should O3 demand a pinned checkout, or accept any Tinka it finds?</li>
+      <li><strong>Q3. Does the pilot rule match how you want to decide?</strong> R1 uses "half of the feedback points". Say so if another number fits better before the pilot starts, not after.</li>
+      <li><strong>Q4. Light captures only?</strong> The live check used the wide light capture per page (about 1 MB each). Dark and phone captures would make four tiles per page.</li>
+      <li><strong>Q5. Should the render judge learn to capture one named page?</strong> second-opinion already does this internally (<code>report_second_opinion.go:1715-1752</code>). It would remove 3 of the 20 hand steps and is useful without Tinka.</li>
+      <li><strong>Q6. Is the missing iteration list in the original bundle a defect?</strong> Its <code>v1c01</code> page has no link from <code>index.html</code>. This is outside this proposal and was not investigated.</li>
+      <li><strong>Q7. Would a lineage list in <code>ai-reports/index.html</code> be enough?</strong> Listing each bundle's second-opinion pages under it would give the lineage map without Tinka. It would not give notes. It is not one of the four options and is not priced here.</li>
+    </ul>
+  </details>
+
+  <details>
+    <summary>Capture lines: one per option (printed, never run)</summary>
+    <p class="measure">Each line stands alone for a session that never saw this report.</p>
+    <p><strong>O1</strong></p>
+<pre class="capture"><code>do-work capture-request: Record the decision to adopt no external review canvas for ai-report bundles. Context: on 2026-11-14 a proposal (ai-reports/2026-11-14_1547_proposal-tinka-review-surface) tested Tinka (github.com/bladnman/tinka, commit 77ba29c) as an optional place to review report pages and leave feedback, and the decision is to adopt nothing. Files to change: add one maintainer note, _dev/reports/review-canvas-decision.md, with the decision, its date, the three reasons (a PNG capture hides 38 to 46 percent of a page's text; Tinka answers only 127.0.0.1 so phone and text-to-speech review cannot use it; a Tinka HTML item can write to Tinka's own API) and the path of the proposal. What must not change: nothing under skills/, no existing ai-reports/ bundle (bundles are immutable), no AGENTS.md block, no new command, and git status must show only the new note. No HTML resource root is involved because nothing connects to Tinka. Absent Tinka: nothing in do-work looks for Tinka, so its absence changes nothing. Verification, RED first: test -e _dev/reports/review-canvas-decision.md fails before the change. GREEN: the file exists and names the proposal; git diff --stat HEAD -- skills/ is empty; grep -ril tinka skills/ prints nothing.</code></pre>
+    <p><strong>O2</strong></p>
+<pre class="capture"><code>do-work capture-request: Add one docs section, a hand recipe with no code, for reviewing one ai-report lineage on a Tinka canvas. Context: Tinka (github.com/bladnman/tinka) is a local board tool; do-work already uses the word board for queue-kanban, so the section calls the Tinka board a canvas. A proposal (ai-reports/2026-11-14_1547_proposal-tinka-review-surface) ran this recipe once at Tinka commit 77ba29c. Files to change: skills/do-work-toolbox/docs/ai-report-guide.md (one new section after "A Second Opinion"), plus CHANGELOG.md and VERSION as _dev/primes/prime-releases.md requires for a shipped file. The section says: clone Tinka at a pinned commit outside the repository and run it from that source checkout; create a manual layout with init --config and --boards, both outside the repository; set update policy off; make PNG captures of each page with ai-report-judge --out (a second-opinion page needs a scratch copy of the bundle with that page copied to index.html, because the judge renders index.html only); copy the captures and each -reply.md into one folder outside the repository and register only that folder as a resource root; add one image tile per capture and one Markdown tile per reply with tools call item.create; read feedback with tools call board.get and feedback.list; paste it as quoted data into ai-report revise or ai-report second-opinion --editor-direction. What must not change: no Go code, no new command, no existing ai-reports/ bundle (immutable), git status --porcelain stays as it was while the recipe runs, no Tinka portable project (project init) because it writes a block into root AGENTS.md, and no HTML file or bundle folder as a Tinka resource root because a Tinka HTML item can call Tinka's write API. Absent Tinka: the section is optional reading; every ai-report form works unchanged without Tinka. Verification, RED first: grep -c "canvas" skills/do-work-toolbox/docs/ai-report-guide.md prints 0 before the change. GREEN: the section exists; a person follows it on one bundle; git status --porcelain prints the same before and after; git diff --quiet HEAD -- AGENTS.md passes; the resource root named in the recipe holds only .png and .md files.</code></pre>
+    <p><strong>O3</strong></p>
+<pre class="capture"><code>do-work capture-request: Add one do-work-cli command, ai-report-canvas, that puts one ai-report lineage on a Tinka canvas and reads feedback back. GATE: do not start unless the hand pilot of the Tinka recipe passed its rule (on two lineages, at least half of the feedback points were written on the canvas before chat, at least one used a pin, a quote comment or a note read in a later session, and Tinka never changed git status or AGENTS.md); if the capture gives no proof of that, stop and ask. Context: Tinka (github.com/bladnman/tinka) is a local board tool driven by "node cli.mjs tools call NAME --config PATH --json JSON"; do-work says canvas for a Tinka board because board means queue-kanban. A lineage is a bundle under ai-reports/ plus every bundle linked to it by supersedes in ai-reports/catalog.json. Files to change: new skills/do-work/tools/do-work-cli/internal/toolboxcommands/report_canvas.go and report_canvas_test.go; registration in commands.go beside ai-report-judge; a typed result in the resultmodel package; a "Canvas form" section in skills/do-work-toolbox/actions/ai-report.md and a section in skills/do-work-toolbox/docs/ai-report-guide.md; CHANGELOG.md and VERSION per _dev/primes/prime-releases.md. Behavior: push makes one canvas per lineage, rows by bundle, columns by second-opinion tree id; each page becomes one image tile from a PNG capture and each -reply.md becomes one Markdown tile from a copy; the tile id is a hash of the bundle folder base name plus the file name, so ai-report organize does not change it; captures and copies go to a folder outside the repository, with each source file's sha256 recorded. pull writes a dated, word-for-word feedback snapshot outside every bundle and prints proposed ai-report revise or second-opinion commands; it runs none of them. --check compares the recorded sha256 values with the bundle files, and the input shapes of the Tinka tools it calls with the shapes recorded for the pinned Tinka commit. What must not change: existing bundles stay byte-identical; git status --porcelain is the same before and after push, pull and --check; no Tinka portable project and no AGENTS.md block; never an HTML file or a bundle folder as a Tinka resource root; an unattended run (do-work run or any non-interactive caller) never starts Tinka and never reads feedback; the Tinka update policy is off and the Tinka commit is pinned in configuration. Absent Tinka, an unpinned Tinka or a shape mismatch: typed state skipped with the reason, exit 0, nothing written. Verification, RED first: a Go test that runs push against a fake Tinka CLI and asserts the tile ids, the absence of any html content kind and an unchanged bundle digest fails because the command does not exist; a second test asserts skipped and exit 0 with no Tinka on PATH. GREEN: both pass; go test ./... passes; on a real lineage git status --porcelain is identical before and after, and git diff --quiet HEAD -- AGENTS.md passes.</code></pre>
+    <p><strong>O4</strong></p>
+<pre class="capture"><code>do-work capture-request: Decide and, only if its gate is met, build live HTML tiles for the ai-report canvas. GATE: the command ai-report-canvas already exists in do-work-cli, and one of two things is true: Tinka (github.com/bladnman/tinka) now frames a local HTML item with a sandbox or serves /resources with a Content-Security-Policy that blocks calls to its own API, or do-work serves each report bundle from a loopback origin separate from Tinka's. If neither is true, record "deferred" with the date in the canvas section of skills/do-work-toolbox/docs/ai-report-guide.md and change nothing else. Context: at Tinka commit 77ba29c a test HTML item read the workspace id from /api/health and wrote a note through /api/tools/call, because the full view frames HTML with no sandbox on the origin of the write API; a write sent with another origin got HTTP 403. Files to change when the gate is met: skills/do-work/tools/do-work-cli/internal/toolboxcommands/report_canvas.go and its test (a tile kind that gives Tinka a URL on the separate origin, never a resource path), a small read-only bundle server that allows framing only by the pinned Tinka origin, the canvas sections of ai-report.md and ai-report-guide.md, CHANGELOG.md and VERSION. What must not change: existing bundles stay byte-identical; git status --porcelain is unchanged by any canvas command; no AGENTS.md block; no HTML file and no bundle folder as a Tinka resource root, in any mode; PNG capture tiles stay the default and live tiles are opt-in. Absent Tinka or a Tinka that fails the isolation probe: typed skipped, exit 0, capture tiles still work. Verification, RED first: a probe test loads a test page as a live tile, lets it try GET /api/health and POST /api/tools/call against Tinka, and asserts the target item's note stays empty; the test fails today when the page is given as a resource. GREEN: with the separate origin the note stays empty, the page's folded sections open inside the tile, and git status --porcelain is identical before and after.</code></pre>
+  </details>
+
+  <details>
+    <summary>Check it yourself: the hand recipe used in the live check</summary>
+    <p class="measure">These are the commands of the live check, with the scratch folder as <code>$S</code> and the repository as <code>$REPO</code>. <span class="ran">Run on 2026-11-14: all passed except <code>board overview</code> (L1).</span></p>
+<pre class="capture"><code>S=$(mktemp -d)                                   # outside the repository
+git clone https://github.com/bladnman/tinka.git "$S/src" &amp;&amp; git -C "$S/src" checkout 77ba29c
+git -C "$REPO" status --porcelain &gt; "$S/git-status-before.txt"
+
+# captures: index.html directly; a second-opinion page through a scratch copy
+"$REPO"/skills/do-work/tools/do-work-cli.sh --repo-root "$REPO" --format text ai-report-judge ai-reports/&lt;bundle&gt; --out "$S/judge/&lt;name&gt;"
+mkdir -p "$S/stage/&lt;name&gt;" &amp;&amp; cp -R "$REPO"/ai-reports/&lt;bundle&gt;/. "$S/stage/&lt;name&gt;/" &amp;&amp; cp "$S/stage/&lt;name&gt;/&lt;page&gt;.html" "$S/stage/&lt;name&gt;/index.html"
+
+# canvas: manual layout, updates off, one resource root that holds only PNG and Markdown copies
+T="node $S/src/cli.mjs"; C="$S/surface/config.json"
+$T init --config "$C" --boards "$S/surface/boards" --label "report review"
+$T update policy off --config "$C"
+$T tools call board.create --config "$C" --json '{"id":"&lt;lineage&gt;","title":"Lineage: &lt;lineage&gt;"}'
+$T tools call workspace.update --config "$C" --json '{"patch":{"resourceRoots":{"captures":{"path":"../../captures"}}}}'
+$T tools call item.create --config "$C" --json '{"boardId":"&lt;lineage&gt;","item":{"id":"&lt;hash id&gt;","title":"rev1 · v1c02 · capture","content":{"kind":"image","resource":{"rootId":"captures","path":"&lt;bundle&gt;/&lt;page&gt;.wide-light.png"}}},"placement":{"x":984,"y":2260,"width":432,"height":1745,"presentation":{"mode":"panel"}}}'
+
+# review in the browser, then read feedback back and stop
+$T start --config "$C"
+$T tools call board.get --config "$C" --json '{"boardId":"&lt;lineage&gt;"}'
+$T tools call feedback.list --config "$C" --json '{"boardId":"&lt;lineage&gt;","includeBodies":true}'
+$T stop --config "$C"
+git -C "$REPO" status --porcelain | cmp - "$S/git-status-before.txt"</code></pre>
+  </details>
+
+  <details>
+    <summary>Key files</summary>
+    <dl class="files">
+      <dt>skills/do-work/tools/do-work-cli/internal/toolboxcommands/report_judge.go</dt><dd>The render judge. It makes the captures and renders <code>index.html</code> only.</dd>
+      <dt>skills/do-work/tools/do-work-cli/internal/toolboxcommands/report_second_opinion.go</dt><dd>The outside-bundle Git check (S2) and the internal judge run for a second-opinion page.</dd>
+      <dt>skills/do-work/tools/do-work-cli/internal/toolboxcommands/report_index.go</dt><dd>The catalog: one entry per bundle, revisions linked by folder base name (S8).</dd>
+      <dt>skills/do-work/tools/do-work-cli/internal/toolboxcommands/folder_structure.go</dt><dd>The root layout check (S3).</dd>
+      <dt>skills/do-work-board/tools/queue-kanban/html_preview.go</dt><dd>The board's isolated HTML preview (S1, O4).</dd>
+      <dt>tinka: server.mjs, lib/cli.mjs, lib/updates.mjs, lib/tools.json, public/item-content.js</dt><dd>The Tinka files the seeds cite, read at 77ba29c.</dd>
+    </dl>
+  </details>
+</section>
+
+<section class="band" id="another-layout" aria-labelledby="another-layout-heading">
+  <h2 id="another-layout-heading">Try another layout or teaching method</h2>
+  <p class="measure">This page tells the story option by option. A layout built around one review session might decide faster: a single timeline from "second-opinion finishes" to "next revise starts", drawn once per option, with each step marked as chat, real page or canvas. It would show at a glance where the canvas adds a step and where it removes one.</p>
+  <p class="note">To build it as a new page beside this one, give an agent this line:</p>
+<pre class="capture"><code>ai-report second-opinion --editor-direction 'Redraw the four options as four parallel timelines of one review session, from the end of a second-opinion run to the start of the next revise, and mark every step as chat, real page or canvas' ai-reports/2026-11-14_1547_proposal-tinka-review-surface</code></pre>
+  <p class="measure">The teaching method that fits this subject is a worked example with a tally: follow three real feedback points from the tstack lineage through O1 and through O2, and count the actions each one costs. The decision depends on a personal habit, and a tally of concrete actions shows that habit better than a list of pros and cons.</p>
+  <p class="note">To build that as a new page too, give an agent this line:</p>
+<pre class="capture"><code>ai-report second-opinion --editor-direction 'Teach the decision as a worked example: follow three concrete feedback points through option O1 and option O2 step by step and tally the actions each one costs' ai-reports/2026-11-14_1547_proposal-tinka-review-surface</code></pre>
+</section>
+
+<footer class="band note measure">
+  <p>Sources: this repository at 9de5839 (0.315.5) and Tinka at 77ba29c (0.7.14), cloned into a scratch folder outside the repository and read as data on 2026-11-14. The five images in <code>screenshots/</code> are real captures of the scratch Tinka instance from the same day; every star, note and comment in them is test data from a labelled test actor. The one diagram is a hand-drawn SVG labelled "MOCKUP — proposal" and is not a screenshot. No image is AI-generated. The council's seeds were treated as claims to check, not as evidence. Render check: pass at 1440 and 390 wide, light and dark.</p>
+</footer>
+
+</div>
+<div class="deck-hint" aria-live="polite" id="deck-hint">Deck mode</div>
+<script src="presentation.js"></script>
+</body>
+</html>
