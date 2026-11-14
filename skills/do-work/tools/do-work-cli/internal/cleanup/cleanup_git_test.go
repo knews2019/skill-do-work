@@ -138,6 +138,20 @@ func TestBlankedRestorationRequiresExactConsentAndUsesGitHistory(t *testing.T) {
 	}
 }
 
+// Pins the consumer report where 49 evidence files under archived UR assets/
+// folders came back as BLANKED-RECORD-UNRECOVERABLE and cleanup exited 1:
+// an assets/REQ-*.md file is evidence without frontmatter, not a record.
+func TestBlankedScanSkipsEvidenceFilesInAssetsFolders(t *testing.T) {
+	repositoryRoot := cleanupRepository(t)
+	writeCleanupFile(t, repositoryRoot, "do-work/archive/UR-001/assets/REQ-001-evidence.md", "plain evidence text, no frontmatter\n")
+	commitCleanupFixture(t, repositoryRoot)
+	plan := CleanupPlan{RepositoryRoot: repositoryRoot}
+	AddBlankedRepairs(context.Background(), &plan, nil)
+	if len(plan.Groups) != 0 || len(plan.Findings) != 0 {
+		t.Fatalf("assets evidence file was scanned as a blanked record: %#v", plan)
+	}
+}
+
 func TestMergedCleanBuilderWorktreeIsAutomaticButUnmergedNeedsExactConsent(t *testing.T) {
 	repositoryRoot := cleanupRepository(t)
 	writeCleanupFile(t, repositoryRoot, "README.md", "fixture\n")
