@@ -1,7 +1,7 @@
 ---
 id: REQ-724
 title: '[impact-rule-change] Move the maintainer''s global standing rules into the skill'
-status: pending
+status: claimed
 created_at: 2026-11-14T22:44:21Z
 user_request: UR-175
 domain: general
@@ -14,6 +14,7 @@ required_lessons: [_dev/primes/lessons-releases.md]
 related: [REQ-725]
 batch: machine-local-rules
 write_set: [skills/do-work/crew-members/communication-style.md, skills/do-work/crew-members/clear-questions.md, skills/do-work/crew-members/coding-guardrails.md, skills/do-work/crew-members/background-agents.md, skills/do-work/CHANGELOG.md]
+claimed_at: 2026-11-14T23:28:11Z
 ---
 # Move the Maintainer's Global Standing Rules Into the Skill
 ## What
