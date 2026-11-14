@@ -14,9 +14,9 @@
 # — record-commit-hash.sh's size-floor/numstat checks, cleanup Pass 6 blanked-REQ recovery —
 # only work on tracked REQs). These two lines are therefore the ONLY thing keeping the
 # maintainer's queue and knowledge base out of consumer installs.
-# _dev/tests/staged-skills-contract.sh asserts the /docs/kb, /docs/decisions and
-# /docs/changelog lines exist; do not remove them. The dev dotfiles (.gitignore/.gitattributes) are export-ignore-only
-# too, and a stale vendored copy leaks nothing (export-ignore is inert once the skill is a
+# _dev/tests/staged-skills-contract.sh asserts the /docs/kb, /docs/decisions, /docs/changelog
+# and /docs/run-prompts lines exist; do not remove them. The dev dotfiles
+# (.gitignore/.gitattributes) are export-ignore-only too, and a stale vendored copy leaks nothing (export-ignore is inert once the skill is a
 # subdirectory of a consumer's repo).
 #
 # docs/decisions/ holds the maintainer's own ADRs about this skill — design history, never
@@ -32,6 +32,10 @@
 # into /docs/changelog (a move plus a pointer edit in the live changelog's header), never
 # with a .gitattributes edit that gets forgotten. Tarball installs read the archives on
 # GitHub; the live CHANGELOG.md ships.
+#
+# /docs/run-prompts holds the dated prompts the maintainer writes for another session to run
+# (<date>-<slug>.md). They are history of how work was handed off, never read at runtime by
+# any action, so consumers don't need them.
 #
 # CLAUDE.md/AGENTS.md are the maintainer doc for THIS repo, not runtime skill content.
 # Shipped nested inside a consumer's repo, Claude Code auto-loads CLAUDE.md into context
@@ -50,6 +54,7 @@
 /.github         export-ignore
 /_dev            export-ignore
 /docs/decisions  export-ignore
+/docs/run-prompts export-ignore
 /.gitignore      export-ignore
 /.gitattributes  export-ignore
 /CLAUDE.md       export-ignore
