@@ -1,7 +1,7 @@
 ---
 id: REQ-721
 title: 'Suggest a Tinka canvas, with pros and cons, at the end of every ai-report'
-status: pending
+status: claimed
 created_at: 2026-11-14T19:38:23Z
 user_request: UR-172
 domain: general
@@ -20,6 +20,7 @@ estimate:
     - 6 acceptance criteria
     - cross-route regression gates
 write_set: ["skills/do-work-toolbox/actions/ai-report.md", "skills/do-work-toolbox/actions/ai-report-reference.md", "skills/do-work-toolbox/docs/ai-report-kit/skeleton.html", "skills/do-work-toolbox/docs/ai-report-guide.md", "CHANGELOG.md", "VERSION"]
+claimed_at: 2026-11-14T19:54:03Z
 ---
 # Suggest a Tinka Canvas, With Pros and Cons, at the End of Every ai-report
 ## What
