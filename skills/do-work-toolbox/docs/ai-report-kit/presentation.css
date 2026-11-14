@@ -365,6 +365,7 @@ svg .mono { font-family: var(--mono); }
 
 /* The closing suggestions: each command wraps so the whole suggestion is readable, and still copies as one line. */
 #another-layout pre { white-space: pre-wrap; overflow-wrap: anywhere; }
+#another-layout h3 { margin-top: 1.2em; }
 
 /* Depth 1 and the jump links. */
 .depth-one h1 { font-size: clamp(2rem, 4.4vw, 3.5rem); max-width: 22ch; margin-bottom: 16px; }

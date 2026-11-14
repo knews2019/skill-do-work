@@ -22,7 +22,7 @@
 - The user asks for `ai-report second-opinion`, "generate a second opinion", "Codex, generate a second opinion", or "generate second opinions from all models"; use the second-opinion form. "Second opinion with bold" adds `--preset bold`, and any other shipped or bundle preset name works the same way; "second opinion with '<text>'" passes the words as ONE argv token to `--editor-direction`. "Second opinion on <page>.html" passes that page's path as the target, so the pass builds on that page.
 - The user wants an existing report updated (a new revision, a table of contents, a cleaner style); use the revise form.
 - The user wants a proposal, an options comparison or a root-cause brief about open work; use `--kind proposal` or `--kind root-cause`.
-- The user asks to put a report or its lineage on a Tinka canvas, or gives the canvas line from a report's closing band; follow the hand recipe in the guide's [Review on a Tinka Canvas](../docs/ai-report-guide.md#review-on-a-tinka-canvas). It creates no report and skips Steps 1–8.
+- The user asks to put a report or its lineage on a Tinka canvas, or gives the canvas line from a report's closing band; follow the hand recipe in the guide's [Review on a Tinka Canvas](../docs/ai-report-guide.md#review-on-a-tinka-canvas). It creates no report, and Steps 1–8 do not apply.
 
 **Do NOT use when:**
 
