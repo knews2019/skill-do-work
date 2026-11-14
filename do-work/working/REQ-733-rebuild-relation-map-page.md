@@ -1,7 +1,7 @@
 ---
 id: REQ-733
 title: 'Rebuild the relation map page: left to right, nine boxes first, readable labels'
-status: pending
+status: claimed
 created_at: 2026-11-14T23:21:00Z
 user_request: UR-177
 domain: frontend
@@ -13,6 +13,7 @@ effort_estimate: effort-substantive
 related: [REQ-727]
 batch: tinka-follow-ups
 write_set: ["ai-reports/2026-11-14_1547_proposal-tinka-review-surface/index-v1c03c01-*.html", "ai-reports/2026-11-14_1547_proposal-tinka-review-surface/v1c03c01-*-reply.md", "ai-reports/2026-11-14_1547_proposal-tinka-review-surface/index.html"]
+claimed_at: 2026-11-14T23:28:20Z
 ---
 # Rebuild the Relation Map Page: Left to Right, Nine Boxes First, Readable Labels
 ## What
