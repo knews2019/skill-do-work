@@ -10,6 +10,14 @@ For the complete release history, read this file and the archives below from new
 - [0.50.0 through 0.64.1](https://github.com/knews2019/skill-do-work/blob/main/docs/changelog/CHANGELOG-2026-04-13-up-to-v0.64.1.md)
 - [0.1.0 through 0.49.0](https://github.com/knews2019/skill-do-work/blob/main/docs/changelog/CHANGELOG-2026-04-07-up-to-v0.49.0.md)
 
+## 0.316.0 — Every Report Offers a Tinka Canvas (2026-11-14)
+
+Every AI report now ends with an offer to review its pages side by side on a Tinka canvas, with the pros and cons of building that canvas for the report, so you can decide per report.
+
+- The closing band gains a third block after the layout and teaching-method suggestions: the offer, a Pros line, a Cons line and one line an agent can follow.
+- The ai-report guide gains "Review on a Tinka Canvas", a 13-step hand recipe. Tinka is optional and pinned to one commit. The recipe checks for it first and downloads it only after your yes.
+- Everything the recipe writes goes into a `.tinka/` folder that the local Git exclude file hides. Report bundles are never edited, and no report command starts Tinka.
+
 ## 0.315.5 — Prime Audits Measure Bytes (2026-11-12)
 
 Prime audits now flag files above about 6,000 bytes as well as the existing line budget. Oversized primes retain required rules while relocatable detail moves to lesson satellites.
