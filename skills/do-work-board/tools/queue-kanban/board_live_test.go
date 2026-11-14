@@ -141,6 +141,12 @@ func TestLiveTreeColumnBucketingMatchesStatus(t *testing.T) {
 			if !claimedColumn[ticket.RequestId] {
 				t.Fatalf("claimed %s is missing from the Claimed column", ticket.RequestId)
 			}
+		case ticket.Status == "blocked" && len(ticket.UnmetDependencies) > 0:
+			// bucketColumns keeps a blocked REQ under Pending while a depends_on
+			// target is unmet; the reverse check below admits the same resident.
+			if !pendingColumn[ticket.RequestId] {
+				t.Fatalf("blocked %s with unmet dependencies is missing from the Pending column", ticket.RequestId)
+			}
 		case isNeedsInputOrBlockedStatus(ticket.Status):
 			if !needsInputColumn[ticket.RequestId] {
 				t.Fatalf("needs-input/blocked %s is missing from the Needs-input column", ticket.RequestId)
