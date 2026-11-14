@@ -1,7 +1,7 @@
 ---
 id: REQ-725
 title: 'Sort the local memory notes by destination'
-status: pending
+status: claimed
 created_at: 2026-11-14T22:44:21Z
 user_request: UR-175
 domain: general
@@ -12,6 +12,7 @@ impact: impact-user-visible
 effort_estimate: effort-substantive
 related: [REQ-724]
 batch: machine-local-rules
+claimed_at: 2026-11-14T23:28:11Z
 ---
 # Sort the Local Memory Notes by Destination
 ## What
