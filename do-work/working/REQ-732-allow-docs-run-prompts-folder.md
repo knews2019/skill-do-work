@@ -1,7 +1,7 @@
 ---
 id: REQ-732
 title: '[impact-negligible] Allow docs/run-prompts/ in the staged-skills contract and move the run prompts there'
-status: pending
+status: claimed
 created_at: 2026-11-14T22:47:58Z
 user_request: UR-176
 domain: general
@@ -13,6 +13,7 @@ effort_estimate: effort-mechanical
 related: [REQ-726, REQ-727, REQ-728, REQ-729, REQ-730, REQ-731]
 batch: tinka-follow-ups
 write_set: ["_dev/tests/staged-skills-contract.sh", ".gitattributes", "docs/run-prompts/*.md", "_dev/run-prompts/*.md"]
+claimed_at: 2026-11-14T23:28:20Z
 ---
 # Allow docs/run-prompts/ in the Staged-Skills Contract and Move the Run Prompts There
 ## What
