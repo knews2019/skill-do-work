@@ -181,6 +181,8 @@ Run the render check on the bundle:
 <skill-root>/../do-work/tools/do-work-cli.sh --repo-root <project-root> --format json ai-report-judge <bundle-dir>
 ```
 
+Pass `--out <dir>` to choose the output directory. A relative `<bundle-dir>` or `--out <dir>` starts at `--repo-root`, not the current folder.
+
 The command serves the bundle over HTTP on a free local port, takes full-page captures at 1440x1000 and 390x844 in light and dark (`wide-light.png`, `wide-dark.png`, `phone-light.png`, `phone-dark.png`), fails on horizontal overflow and on any same-origin `href` or `src` that does not load, and stops its server. The captures and `judge.json` go to a fresh directory outside the bundle; the result's `changes` entry names `judge.json`. Read the verdict and findings from `judge.json`. Exit 0 is `pass`; exit 1 is `fail` or `skipped`; exit 2 means the check itself failed, so report its finding, never treat the layout as verified, and disclose it in the footer as for `skipped`. Inspect the four captures it names, fix defects, and rerun until the verdict is `pass` (for a revise, until only the expected prior-bundle link findings remain). Any report containing text-bearing SVG requires at least two render-and-judge passes.
 
 Judge width usage, table shape, diagram informativeness, emphasis hierarchy, light/dark contrast, SVG label collisions, edge clipping, screenshot sharpness, and responsive stacking. A `skipped` verdict means no browser engine was found: ship the report and state in its footer that the layout was not render-verified.

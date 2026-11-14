@@ -36,7 +36,7 @@ const (
 	// one page settle, the engine's exit. A hung engine ends the run as an error.
 	judgeProtocolDeadline = 30 * time.Second
 	judgePollInterval     = 25 * time.Millisecond
-	judgeUsage            = "Usage: ai-report-judge <bundle-dir> [--out <dir>] [--browser <path>]"
+	judgeUsage            = "Usage: ai-report-judge <bundle-dir> [--out <dir>] [--browser <path>]; a relative <bundle-dir> or --out starts at --repo-root, not the current folder"
 )
 
 // aiReportJudgeBrowserNames and aiReportJudgeBrowserAppPaths are checked in that
