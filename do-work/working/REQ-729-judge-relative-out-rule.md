@@ -26,6 +26,7 @@ estimate:
     - 2 subsystems involved
     - 3 acceptance criteria
 dispatch_at: 2026-11-14T23:32:29Z
+builder_handback_at: 2026-11-14T23:36:35Z
 ---
 # ai-report-judge Resolves or Documents a Relative --out
 ## What
