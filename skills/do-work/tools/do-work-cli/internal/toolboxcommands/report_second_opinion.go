@@ -1749,7 +1749,7 @@ func secondOpinionRender(bundle string, page []byte) (string, []resultmodel.AIRe
 		return fail(err)
 	}
 	report := judgeReport{SchemaVersion: 1, Bundle: renderBundle, Captures: []judgeCapture{}, Findings: []judgeFinding{}}
-	err = judgeRender(&report, renderBundle, captures, browser)
+	err = judgeRender(&report, renderBundle, "index.html", captures, browser)
 	for _, finding := range report.Findings {
 		detail := finding.Detail
 		if finding.Kind == judgeCodeOverflow {
