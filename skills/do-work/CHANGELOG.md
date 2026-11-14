@@ -10,6 +10,13 @@ For the complete release history, read this file and the archives below from new
 - [0.50.0 through 0.64.1](https://github.com/knews2019/skill-do-work/blob/main/docs/changelog/CHANGELOG-2026-04-13-up-to-v0.64.1.md)
 - [0.1.0 through 0.49.0](https://github.com/knews2019/skill-do-work/blob/main/docs/changelog/CHANGELOG-2026-04-07-up-to-v0.49.0.md)
 
+## 0.316.1 — Tinka Canvas Opens in the Browser (2026-11-14)
+
+A canvas built with the 0.316.0 recipe did not open: Tinka's browser page answered "This board address is invalid."
+
+- The recipe now builds the canvas id from the bundle folder name in lowercase with every `_` replaced by `-`. Tinka's page accepts only lowercase letters, digits and hyphens.
+- Step 10 gives the user the canvas address itself, not only the start page.
+
 ## 0.316.0 — Every Report Offers a Tinka Canvas (2026-11-14)
 
 Every AI report now ends with an offer to review its pages side by side on a Tinka canvas, with the pros and cons of building that canvas for the report, so you can decide per report.
