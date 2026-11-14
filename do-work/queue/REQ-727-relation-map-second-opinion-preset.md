@@ -13,7 +13,7 @@ maintenance: false
 impact: impact-user-visible
 effort_estimate: effort-substantive
 required_lessons: ["_dev/primes/lessons-releases.md"]
-depends_on: [REQ-733]
+depends_on: [REQ-733, REQ-734]
 related: [REQ-733, REQ-726, REQ-728, REQ-729, REQ-730, REQ-731, REQ-732]
 batch: tinka-follow-ups
 write_set: ["skills/do-work-toolbox/docs/second-opinion-presets/relation-map.md", "skills/do-work-toolbox/docs/ai-report-guide.md", "skills/do-work/tools/do-work-cli/internal/toolboxcommands/report_second_opinion_test.go", "CHANGELOG.md", "VERSION"]
@@ -64,6 +64,13 @@ Captured with UR-177 (rebuild the relation map page). The maintainer saw the fir
 - This request now depends on REQ-733.
 - The example the maintainer looks at before releasing the block is the page REQ-733 builds, not the first map page.
 - The preset asks the editor for the improved design: a left-to-right layout, a first view of about nine main boxes with the rest opening on click, line labels that stay readable at every zoom level, and only light dimming of unrelated boxes. Where this differs from the Detailed Requirements above, this addendum wins.
+
+## Addendum 2 (2026-11-14)
+
+Captured with UR-178 (build the proposal as a table and compare it with the map). The maintainer wants to compare the map with a supports-and-limits table before choosing a form.
+
+- This request now also depends on REQ-734.
+- The maintainer picks map or table after seeing both. If the table wins, this request is not built as written: the maintainer cancels it or captures a new one for the table form.
 
 ## AI Execution State (P-A-U Loop)
 - [ ] **[PLAN]:** (Agent: Read listed `prime_files` and agent rules. Write brief technical approach here. Do not write code yet.)
