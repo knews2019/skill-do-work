@@ -47,3 +47,27 @@ func TestArchiveCollisionDistinguishesMissingArchiveFromUnreadableArchive(t *tes
 		t.Fatalf("unreadable archive authorized reuse: %+v", result)
 	}
 }
+
+// Pins the assets/ skip in both directions: an evidence file inside assets/
+// is never an archived twin, and a real record beside that folder still is,
+// so a skip that grows too wide fails here too.
+func TestArchiveCollisionSkipsAssetsFolders(t *testing.T) {
+	outputOf := func(result resultmodel.CommandResult) string {
+		if result.ExactTextOutput == nil {
+			return "<nil>"
+		}
+		return *result.ExactTextOutput
+	}
+	root := t.TempDir()
+	writeMatrixFile(t, root, "do-work/archive/UR-001/assets/REQ-001-evidence.md", "evidence")
+	result := handleArchiveCollision(testContext(root), []string{"REQ-001"})
+	if result.Outcome != resultmodel.OutcomeSuccess || result.ExactTextOutput == nil || *result.ExactTextOutput != "" {
+		t.Fatalf("evidence file in assets/ reported as archived twin: outcome=%s output=%q", result.Outcome, outputOf(result))
+	}
+	writeMatrixFile(t, root, "do-work/archive/UR-001/REQ-001-done.md", "archived")
+	result = handleArchiveCollision(testContext(root), []string{"REQ-001"})
+	want := "do-work/archive/UR-001/REQ-001-done.md\n"
+	if result.Outcome != resultmodel.OutcomeFindings || result.ExactTextOutput == nil || *result.ExactTextOutput != want {
+		t.Fatalf("real archived record beside assets/ not reported alone: outcome=%s output=%q", result.Outcome, outputOf(result))
+	}
+}
