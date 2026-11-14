@@ -1,7 +1,7 @@
 ---
 id: REQ-726
 title: '[impact-negligible] Record the decision to adopt no external review canvas'
-status: pending
+status: claimed
 created_at: 2026-11-14T22:47:58Z
 user_request: UR-176
 domain: general
@@ -13,6 +13,7 @@ effort_estimate: effort-mechanical
 related: [REQ-727, REQ-728, REQ-729, REQ-730, REQ-731, REQ-732]
 batch: tinka-follow-ups
 write_set: ["docs/decisions/records/adr-023-*.md", "docs/decisions/log.md", "docs/decisions/_master_index.md", "docs/decisions/topics/_index_pipeline-deliverables.md"]
+claimed_at: 2026-11-14T23:28:12Z
 ---
 # Record the Decision to Adopt No External Review Canvas
 ## What
