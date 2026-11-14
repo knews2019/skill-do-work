@@ -10,6 +10,13 @@ For the complete release history, read this file and the archives below from new
 - [0.50.0 through 0.64.1](https://github.com/knews2019/skill-do-work/blob/main/docs/changelog/CHANGELOG-2026-04-13-up-to-v0.64.1.md)
 - [0.1.0 through 0.49.0](https://github.com/knews2019/skill-do-work/blob/main/docs/changelog/CHANGELOG-2026-04-07-up-to-v0.49.0.md)
 
+## 0.317.0 — Tinka Canvas Offer Removed (2026-11-14)
+
+Reports no longer end with a Tinka canvas offer, and the guide no longer holds its recipe. A real canvas showed each report page as a thin strip that cannot be read, so it did not help with reviewing a report.
+
+- The closing band is back to two suggestions: another layout and a teaching method.
+- The guide section "Review on a Tinka Canvas" is gone. Its text stays in Git history at version 0.316.1.
+
 ## 0.316.1 — Tinka Canvas Opens in the Browser (2026-11-14)
 
 A canvas built with the 0.316.0 recipe did not open: Tinka's browser page answered "This board address is invalid."
