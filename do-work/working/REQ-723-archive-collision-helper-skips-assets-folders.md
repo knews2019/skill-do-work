@@ -1,7 +1,7 @@
 ---
 id: REQ-723
 title: '[impact-negligible] Archive-collision helper skips assets folders'
-status: pending
+status: claimed
 created_at: 2026-11-14T22:31:56Z
 user_request: UR-174
 domain: backend
@@ -11,6 +11,7 @@ maintenance: false
 impact: impact-negligible
 effort_estimate: effort-mechanical
 write_set: [skills/do-work/tools/do-work-cli/internal/corehelpers/commands.go, skills/do-work/tools/do-work-cli/internal/corehelpers/archive_collision_test.go]
+claimed_at: 2026-11-14T23:28:11Z
 ---
 # Archive-Collision Helper Skips Assets Folders
 ## What
