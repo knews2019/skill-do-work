@@ -14,6 +14,17 @@ related: [REQ-726, REQ-727, REQ-728, REQ-729, REQ-730, REQ-731]
 batch: tinka-follow-ups
 write_set: ["_dev/tests/staged-skills-contract.sh", ".gitattributes", "docs/run-prompts/*.md", "_dev/run-prompts/*.md"]
 claimed_at: 2026-11-14T23:28:20Z
+route: A
+required_lessons: ["_dev/primes/lessons-shell-commands.md#assertion-passes-when-feature-is-dead"]
+estimate:
+  p50_active_minutes: 15
+  confidence: medium
+  calculated_at: 2026-11-14T23:31:31Z
+  basis:
+    - Route A
+    - 8-file write set
+    - 4 acceptance criteria
+dispatch_at: 2026-11-14T23:33:30Z
 ---
 # Allow docs/run-prompts/ in the Staged-Skills Contract and Move the Run Prompts There
 ## What
@@ -43,6 +54,7 @@ None. The other requests of this batch can run in any order.
 ## Open Questions
 - [x] Where do run prompts live in this repository: `docs/run-prompts/` or `_dev/run-prompts/`? → Allow docs/run-prompts/ (Recommended).
   Note (2026-11-14): The maintainer chose to make the global rule work here as in every other project. The accepted cost: one more allowed folder under `docs` to keep out of the shipped package. Keeping `_dev/run-prompts/` with a line in `CLAUDE.md` is out of scope.
+<!-- D-XX counter: last used D-03. Next decision: D-04. -->
 ## Builder Guidance
 - Certainty: firm. The proof uses the heavy lane `staged-skills`, which the normal heavy drain of a run executes.
 - Scope: the smallest change. Two list entries in the contract, one line in `.gitattributes`, and the moves.
@@ -53,3 +65,22 @@ See `do-work/user-requests/UR-176/input.md` for complete verbatim input.
 - [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
 - [ ] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
 *Source: do-work capture-request: capture the request in _dev/run-prompts/2026-11-15-run-prompts-folder-rule.md*
+
+## Triage
+
+**Route: A** - Simple
+
+**Reasoning:** The request names every file and every change: two list entries in `_dev/tests/staged-skills-contract.sh`, one `export-ignore` line in `.gitattributes`, and a `git mv` of the six files in `_dev/run-prompts/`. The repository sweep is already done (below) and finds nothing to repoint outside records.
+
+**Planning:** Not required
+
+**Pre-dispatch decisions (unattended run, no question asked):**
+- **D-01**: Records keep their text. Every remaining mention of `_dev/run-prompts/` sits in `do-work/` records (UR inputs, REQ `Source:` lines, sibling REQs REQ-724 to REQ-731) or inside the moved prompts themselves, which are dated historical prompts. The builder moves the prompts byte for byte (a pure rename) and edits no `do-work/` path. Value: git records a clean rename and no record is rewritten. Risk: low; a reader of an old record follows `_dev/run-prompts/` to a missing folder, and `git log --follow` finds the file.
+- **D-02**: The GREEN probe runs the contract's own docs checks, not the whole contract. The full contract took 39 s at base under load from ten parallel sessions, over the 30-second probe budget. The probe cuts the export-ignore loop and the legacy-root scan out of the real script by their text markers and runs them against a temporary fixture tree, so it tests both `docs/run-prompts/probe.md` (must pass) and `docs/other/probe.md` (must fail) without writing into the checkout. The builder still runs the whole contract once in its worktree, and the integrator's heavy lane runs it. Value: a fast, exact probe of the changed lines. Risk: if the builder renames the marker lines (`for maintainer_docs_path in`, `board_files=(`), the probe fails closed and says so.
+- **D-03**: Scope stays at the request. The heavy-lane `staged-skills` coverage in `_dev/tests/heavy-lanes.json` does not list root `docs/`, which is why the fast gate missed the 2026-11-14 break. Widening that coverage is a separate change and goes to `## Discovered Tasks` in the hand-back, not into this build.
+
+## Plan
+
+**Planning not required** - Route A: Direct implementation
+
+*Skipped by work action*

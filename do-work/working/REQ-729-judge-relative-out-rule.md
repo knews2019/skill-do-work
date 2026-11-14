@@ -15,6 +15,17 @@ related: [REQ-726, REQ-727, REQ-728, REQ-730, REQ-731, REQ-732]
 batch: tinka-follow-ups
 write_set: ["skills/do-work/tools/do-work-cli/internal/toolboxcommands/report_judge.go", "skills/do-work/tools/do-work-cli/internal/toolboxcommands/report_judge_test.go", "skills/do-work-toolbox/actions/ai-report.md", "CHANGELOG.md", "VERSION"]
 claimed_at: 2026-11-14T23:28:18Z
+route: A
+estimate:
+  p50_active_minutes: 15
+  confidence: medium
+  calculated_at: 2026-11-14T23:30:17Z
+  basis:
+    - Route A
+    - 4-file write set
+    - 2 subsystems involved
+    - 3 acceptance criteria
+dispatch_at: 2026-11-14T23:32:29Z
 ---
 # ai-report-judge Resolves or Documents a Relative --out
 ## What
@@ -49,3 +60,24 @@ See `do-work/user-requests/UR-176/input.md` for complete verbatim input.
 - [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
 - [ ] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
 *Source: do-work capture-request: capture the request in _dev/run-prompts/2026-11-15-judge-renders-one-named-page.md*
+
+---
+
+## Triage
+
+**Route: A** - Simple
+
+**Reasoning:** The request names the two files and the exact change. D-01 below keeps today's behavior, so the work is one sentence in the usage text of `report_judge.go` and one sentence in the judge step of `ai-report.md`.
+
+**Planning:** Not required
+
+## Decisions
+
+- **D-01** (DECIDE & STATE): Keep today's behavior and document it. A relative `--out` stays resolved against `--repo-root`. Reasoning: the same handler resolves the relative `<bundle-dir>` against `--repo-root` too (`report_judge.go:110` and `:132`, both through `judgeAbsolutePath` at `:285`), and `ai-report-second-opinion` uses that helper for its own relative paths (`report_second_opinion.go:161`, `:173`, `:385`). Changing only `--out` would give one command two rules for relative paths. The shipped callers (`skills/do-work-toolbox/actions/ai-report.md:181`, `skills/do-work-toolbox/actions/stakeholder-report.md:44`) pass `--repo-root <project-root>` and no `--out`, so documenting changes nothing for them. The rule sentence names both paths: a relative `<bundle-dir>` or `--out` starts at `--repo-root`, not the current folder. Value: no behavior change and no new test. Risk: none for absolute paths; a caller who expected the current folder still has to read the text.
+<!-- D-XX counter: last used D-01. Next decision: D-02. -->
+
+## Plan
+
+**Planning not required** - Route A: Direct implementation
+
+*Skipped by work action*

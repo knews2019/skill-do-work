@@ -12,7 +12,17 @@ impact: impact-user-visible
 effort_estimate: effort-substantive
 related: [REQ-724]
 batch: machine-local-rules
+route: A
+estimate:
+  p50_active_minutes: 10
+  confidence: medium
+  calculated_at: 2026-11-14T23:30:09Z
+  basis:
+    - Route A
+    - 1-file write set
+    - 5 acceptance criteria
 claimed_at: 2026-11-14T23:28:11Z
+dispatch_at: 2026-11-14T23:32:30Z
 ---
 # Sort the Local Memory Notes by Destination
 ## What
@@ -50,3 +60,28 @@ See `do-work/user-requests/UR-175/input.md` for complete verbatim input.
 - [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
 - [ ] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
 *Source: do-work capture-request: capture the request in _dev/run-prompts/2026-11-15-move-global-rules-into-skill.md*
+
+---
+
+## Triage
+
+**Route: A** - Simple
+
+**Reasoning:** Report only: one new `ai-reports/` bundle, no code, no shipped file, no test file. The output and its location are fixed by the REQ; the per-note checks against the repository are the work itself, so a separate exploration pass and a pre-flight baseline add nothing.
+
+**Planning:** Not required
+
+## Open Questions
+
+- [~] Which route and report form? → **D-01**: Builder chose: Route A, delivered with `ai-report --kind proposal REQ-725` (a decision brief about open work), one bundle under `ai-reports/`. Reasoning: the REQ says "the project's normal report path"; a disposition list for approval is a decision brief, and the completed-work form would present open moves as shipped. Value: the maintainer gets one page to approve, catalogued like every other report. Risk: low; the report is unshipped and a revise replaces it.
+- [~] How does a check prove "every note exactly once"? → **D-02**: Builder chose: each note row carries `data-memory-note="<file name>"` and `data-destination="move-to-repository|move-to-skill|delete"`; the GREEN probe counts those attributes against the live folder. `MEMORY.md` is the index, not a note, and gets no row. Reasoning: a file name can also appear in prose and target paths, so a plain text count is ambiguous. Value: the acceptance is checkable by a script. Risk: low; the attributes are invisible in the page.
+- [~] The memory folder can gain a note from another session during the run. → **D-03**: Builder chose: the builder records a SHA-256 list of the folder before and after its run in the hand-back; the probe compares rows with the folder as it is when the probe runs. Reasoning: a note added later is an unsorted note, and a failing probe is the right signal. Value: no silent gap. Risk: a perishable probe; the integrator reruns the builder's sort for the new note only.
+
+<!-- D-XX counter: last used D-03. Next decision: D-04. -->
+
+## Plan
+
+**Planning not required** - Route A: Direct implementation
+
+*Skipped by work action*
+
