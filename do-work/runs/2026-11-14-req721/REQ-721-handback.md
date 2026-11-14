@@ -41,3 +41,18 @@ Builder: the orchestrator session, on the worktree rung. Branch `worktree-agent-
 - PLAN: add a third block to the closing band and its restatements; write the recipe as a guide section; test the `.tinka/` question first; run the recipe once for real.
 - APPLY: five files, all inside the declared scope.
 - UNIFY: `git diff --stat` shows the five declared files, 120 insertions and 6 deletions before the recipe fix; shell-block lint, contract regressions and reference contract pass; no debug text in the diff.
+
+## Addendum (after review)
+
+Branch commit ade7cddd fixes review findings F1 to F7 and F9 to F12.
+
+- F1: the page tile and the reply tile now get different ids, `<bundle>_<page-id>_page` and `<bundle>_<page-id>_reply`. These are the ids the real run used.
+- F2 and F6: step 1 now checks for Node and the pinned checkout before any write, and stops with one line when Tinka is missing. The download is its own step and runs only after the user's yes. D-07 records this.
+- F3: the judge sentence now matches its verdicts: pictures on `pass` or `fail`, none on `skipped` or `error`.
+- F4 and F5: one paragraph defines `<bundle-path>`, `<bundle>`, `<lineage>` and `<page-id>`, and says to run every command from the project root.
+- F7, F10, F11: the band's line ends with its placeholder, the offer says a note stays on its tile, and the sub-heading has a top margin.
+- F9: the guide no longer promises a request in the user's own words.
+- F12: three wording pairs now agree.
+- F8 (no new report was created) is answered with two checks, not with a full report. The corrected recipe was followed again in this repository from step 1 to step 13 on the same lineage, with the canvas id and tile ids the recipe now prescribes: five tiles, five files served with HTTP 200, one test note written, read back and cleared, Git status identical, `AGENTS.md` unchanged. The new band was filled for that lineage in a scratch page and render-judged: verdict `pass`. No full report was created in this run, and the lineage has no revision and no plain second-opinion page.
+
+- D-07 (DECIDE & STATE): When Tinka is missing, the recipe stops with one line, as the REQ asks, and downloads only after the user says yes. The line names the source and the pinned commit. An agent never downloads third-party code just because a pasted line asked for a canvas.
