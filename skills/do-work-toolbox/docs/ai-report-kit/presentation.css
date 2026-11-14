@@ -15,7 +15,8 @@
    - .term[data-def] is a glossary word: its definition shows on hover or focus (tap).
    - [data-stepper] is reader-driven stepping: inactive steps are dimmed, never hidden.
    - #another-layout closes every report: one suggested layout unlike the kit, one suggested teaching method for
-     the subject, and the line that builds each.
+     the subject, and one offer to review the lineage on a Tinka canvas with its pros and cons, each with the line
+     that builds it.
    - Motion always answers a reader action. prefers-reduced-motion turns transitions off. */
 
 :root {
