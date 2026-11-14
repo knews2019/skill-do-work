@@ -112,6 +112,10 @@ func AddBlankedRepairs(ctx context.Context, plan *CleanupPlan, restoreTargets []
 				}
 				return nil
 			}
+			// assets/ folders hold evidence files, never records; repositorymodel skips them the same way.
+			if entry.IsDir() && entry.Name() == "assets" {
+				return filepath.SkipDir
+			}
 			lowerName := strings.ToLower(entry.Name())
 			upperName := strings.ToUpper(entry.Name())
 			if entry.IsDir() || !(strings.HasPrefix(upperName, "REQ-") || strings.HasPrefix(upperName, "UR-")) || !strings.HasSuffix(lowerName, ".md") {
