@@ -1,7 +1,7 @@
 ---
 id: REQ-731
 title: 'ai-report prints the catalog rebuild command when a new report is missing from the catalog'
-status: pending
+status: claimed
 created_at: 2026-11-14T22:47:58Z
 user_request: UR-176
 domain: general
@@ -14,6 +14,7 @@ required_lessons: ["_dev/primes/lessons-releases.md"]
 related: [REQ-726, REQ-727, REQ-728, REQ-729, REQ-730, REQ-732]
 batch: tinka-follow-ups
 write_set: ["skills/do-work-toolbox/actions/ai-report.md", "skills/do-work-toolbox/docs/ai-report-guide.md", "CHANGELOG.md", "VERSION"]
+claimed_at: 2026-11-14T23:28:19Z
 ---
 # ai-report Prints the Catalog Rebuild Command When a New Report Is Missing From the Catalog
 ## What
