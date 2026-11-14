@@ -144,7 +144,7 @@ Every report's closing band offers a canvas for that report, with the pros and c
 - Never edit a report bundle. Every file this recipe writes goes into `.tinka/` at the project root. The one exception is the line in the local exclude file that step 3 adds.
 - Install nothing. Tinka has no dependencies. Never run `npm install` or Tinka's installer.
 
-**Names used in the steps.** Run every command from the project root. `<bundle-path>` is the bundle's path from the project root, for example `ai-reports/<bundle>` or `ai-reports/<month-folder>/<bundle>`, and `<bundle>` is its folder name. `<lineage>` is the folder name of the oldest bundle in the lineage, so every session uses the same canvas. `<page-id>` is the page's tree id: `v1` for `index.html`, then `v1c01` and so on. For a second-opinion page without a tree id, it is the file name without `index-` and `.html`.
+**Names used in the steps.** Run every command from the project root. `<bundle-path>` is the bundle's path from the project root, for example `ai-reports/<bundle>` or `ai-reports/<month-folder>/<bundle>`, and `<bundle>` is its folder name. `<lineage>` is the folder name of the oldest bundle in the lineage, in lowercase, with every `_` replaced by `-`, so every session uses the same canvas. Tinka's browser page opens a canvas only when its id holds lowercase letters, digits and hyphens, although `board.create` accepts more. `<page-id>` is the page's tree id: `v1` for `index.html`, then `v1c01` and so on. For a second-opinion page without a tree id, it is the file name without `index-` and `.html`.
 
 **Steps.**
 
@@ -212,7 +212,7 @@ Every report's closing band offers a canvas for that report, with the pros and c
    node .tinka/src/cli.mjs tools call item.create --config .tinka/config.json --json '{"boardId":"<lineage>","item":{"id":"<bundle>_<page-id>_reply","title":"<bundle> · <page-id> · reply","content":{"kind":"markdown","resource":{"rootId":"captures","path":"<bundle>/<reply-file>.md"}}},"placement":{"x":0,"y":680,"width":432,"height":320}}'
    ```
 
-10. Start Tinka and give the user the address it prints. The user reviews in the browser and tells you when they are done.
+10. Start Tinka and give the user the canvas address: the address it prints, followed by `boards/<lineage>/`. The user reviews in the browser and tells you when they are done.
 
     ```bash
     node .tinka/src/cli.mjs start --config .tinka/config.json
