@@ -10,6 +10,13 @@ For the complete release history, read this file and the archives below from new
 - [0.50.0 through 0.64.1](https://github.com/knews2019/skill-do-work/blob/main/docs/changelog/CHANGELOG-2026-04-13-up-to-v0.64.1.md)
 - [0.1.0 through 0.49.0](https://github.com/knews2019/skill-do-work/blob/main/docs/changelog/CHANGELOG-2026-04-07-up-to-v0.49.0.md)
 
+## 0.318.1 — Cleanup Ignores Evidence Files in Assets Folders (2026-11-14)
+
+`do-work cleanup` no longer reports evidence files in a user request's `assets/` folder as damaged records. Before, a file such as `assets/REQ-001-evidence.md` came back as `BLANKED-RECORD-UNRECOVERABLE` and cleanup exited 1, even when every real record was healthy.
+
+- Pass 6 (blanked-record repair) now skips every folder named `assets`, as the rest of the tool already did.
+- A real request record that was emptied is still reported and can still be restored.
+
 ## 0.318.0 — Agents Suggest Another Approach to a Bad Idea (2026-11-14)
 
 An agent now objects when you propose an idea that looks bad, and it suggests another approach before it does the work. Before, the always-on communication rules only told it to correct wrong facts.
