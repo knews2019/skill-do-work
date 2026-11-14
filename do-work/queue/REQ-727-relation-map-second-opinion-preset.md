@@ -13,7 +13,8 @@ maintenance: false
 impact: impact-user-visible
 effort_estimate: effort-substantive
 required_lessons: ["_dev/primes/lessons-releases.md"]
-related: [REQ-726, REQ-728, REQ-729, REQ-730, REQ-731, REQ-732]
+depends_on: [REQ-733]
+related: [REQ-733, REQ-726, REQ-728, REQ-729, REQ-730, REQ-731, REQ-732]
 batch: tinka-follow-ups
 write_set: ["skills/do-work-toolbox/docs/second-opinion-presets/relation-map.md", "skills/do-work-toolbox/docs/ai-report-guide.md", "skills/do-work/tools/do-work-cli/internal/toolboxcommands/report_second_opinion_test.go", "CHANGELOG.md", "VERSION"]
 ---
@@ -56,6 +57,14 @@ None. The other requests of this batch can run in any order.
 - Scope cue from the maintainer on 2026-11-14: keep language clear, do not complicate it.
 ## Full Context
 See `do-work/user-requests/UR-176/input.md` for complete verbatim input.
+## Addendum (2026-11-14)
+
+Captured with UR-177 (rebuild the relation map page). The maintainer saw the first map page and asked whether it is the best way to present the content. It is not, so REQ-733 builds an improved page first.
+
+- This request now depends on REQ-733.
+- The example the maintainer looks at before releasing the block is the page REQ-733 builds, not the first map page.
+- The preset asks the editor for the improved design: a left-to-right layout, a first view of about nine main boxes with the rest opening on click, line labels that stay readable at every zoom level, and only light dimming of unrelated boxes. Where this differs from the Detailed Requirements above, this addendum wins.
+
 ## AI Execution State (P-A-U Loop)
 - [ ] **[PLAN]:** (Agent: Read listed `prime_files` and agent rules. Write brief technical approach here. Do not write code yet.)
 - [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
