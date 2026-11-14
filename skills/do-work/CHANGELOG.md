@@ -10,6 +10,13 @@ For the complete release history, read this file and the archives below from new
 - [0.50.0 through 0.64.1](https://github.com/knews2019/skill-do-work/blob/main/docs/changelog/CHANGELOG-2026-04-13-up-to-v0.64.1.md)
 - [0.1.0 through 0.49.0](https://github.com/knews2019/skill-do-work/blob/main/docs/changelog/CHANGELOG-2026-04-07-up-to-v0.49.0.md)
 
+## 0.318.2 — Board Test Accepts a Blocked REQ That Waits on a Dependency (2026-11-15)
+
+The board's own live-queue test no longer fails when the queue holds a blocked REQ that also waits on a dependency. The board itself is unchanged.
+
+- The board shows such a REQ under Pending, in the waiting group, and has done so since 0.275.3. One test assertion still expected it in the Needs input column.
+- Only a test file changed. An installed board behaves the same as before.
+
 ## 0.318.1 — Cleanup Ignores Evidence Files in Assets Folders (2026-11-14)
 
 `do-work cleanup` no longer reports evidence files in a user request's `assets/` folder as damaged records. Before, a file such as `assets/REQ-001-evidence.md` came back as `BLANKED-RECORD-UNRECOVERABLE` and cleanup exited 1, even when every real record was healthy.
