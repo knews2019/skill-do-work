@@ -93,7 +93,13 @@ func handleAIReportIndex(ctx commandruntime.ExecutionContext, args []string) res
 			return reportIndexFind(ctx.RepositoryRoot, topic)
 		}
 	}
-	return usageResult(CommandAIReportIndex, "Usage: ai-report-index [--find <topic...>]")
+	// --check is the report writers' seam: the rebuild line or nothing, never a write.
+	if len(args) == 2 && args[0] == "--check" {
+		if bundle := strings.TrimSuffix(strings.TrimSpace(args[1]), "/"); bundle != "" {
+			return exactOutputResult(reportIndexCheck(ctx.RepositoryRoot, bundle), nil)
+		}
+	}
+	return usageResult(CommandAIReportIndex, "Usage: ai-report-index [--find <topic...> | --check <bundle>]")
 }
 
 // reportIndexWalk treats every directory directly under ai-reports/ whose name does not start with
@@ -464,4 +470,26 @@ func normalizeReportID(text string) string {
 		number = "0"
 	}
 	return strings.ToUpper(match[1]) + "-" + number
+}
+
+// reportIndexCheck returns one line recommending `ai-report index` when bundle (as the catalog
+// stores it, ai-reports/<folder>) is not in ai-reports/catalog.json, or the catalog is missing or
+// unreadable, else "". It reads only the catalog file: no walk, no write. A hand-made catalog is
+// decoded the same way, and unknown fields are ignored.
+func reportIndexCheck(repositoryRoot, bundle string) string {
+	line := bundle + " is not in " + reportCatalogFile + " yet: run do-work-toolbox ai-report index to rebuild the catalog.\n"
+	data, err := os.ReadFile(filepath.Join(repositoryRoot, filepath.FromSlash(reportCatalogFile)))
+	if err != nil {
+		return line
+	}
+	var catalog reportCatalog
+	if err := json.Unmarshal(data, &catalog); err != nil {
+		return line
+	}
+	for _, listed := range catalog.Bundles {
+		if listed.Path == bundle {
+			return ""
+		}
+	}
+	return line
 }

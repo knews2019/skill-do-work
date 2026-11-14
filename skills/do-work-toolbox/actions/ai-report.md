@@ -199,6 +199,12 @@ Then run the organize check. It prints one line recommending `ai-report organize
 <skill-root>/../do-work/tools/do-work-cli.sh --repo-root <project-root> --format text ai-report-organize --check
 ```
 
+Then run the catalog check with the new bundle's path. Creating a report never rebuilds the catalog, so this check prints one line recommending `ai-report index` when the new bundle is not in `ai-reports/catalog.json` (or the catalog does not exist yet), or nothing, and writes nothing. Print its line, if any, with the organize line, just before the final bundle-path line. Skip it for a revise, which already regenerated the catalog:
+
+```bash
+<skill-root>/../do-work/tools/do-work-cli.sh --repo-root <project-root> --format text ai-report-index --check ai-reports/<folder>
+```
+
 ## Output Format
 
 For second-opinion, use its per-backend output above. The remaining format applies to ordinary report creation and revision.
