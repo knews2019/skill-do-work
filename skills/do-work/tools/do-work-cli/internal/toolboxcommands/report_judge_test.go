@@ -10,7 +10,6 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 	"time"
 
@@ -209,8 +208,10 @@ func sameJudgeDigest(before, after map[string]string) bool {
 
 // Pins the copy-and-swap workaround: to check a second-opinion page an agent had
 // to copy the bundle and write the page over the copy's index.html. --page must
-// render the named page in place: served_url names it, the phone overflow that
-// only that page has is found (index.html alone passes), and the bundle is unchanged.
+// render the named page in place: served_url names it (as the checked, cleaned path,
+// so "./x.html" or a Windows "sub\x.html" never reaches the server raw), the phone
+// overflow that only that page has is found (index.html alone passes), and the
+// bundle is unchanged.
 func TestAIReportJudgeRendersNamedPageInPlace(t *testing.T) {
 	requireJudgeBrowser(t)
 	repository := t.TempDir()
@@ -231,7 +232,7 @@ func TestAIReportJudgeRendersNamedPageInPlace(t *testing.T) {
 	before := judgeBundleDigest(t, bundle)
 	output := filepath.Join(t.TempDir(), "judge-output")
 	result := handleAIReportJudge(commandruntime.ExecutionContext{RepositoryRoot: repository},
-		[]string{"bundle", "--page", "index-v1c01-x.html", "--out", output})
+		[]string{"bundle", "--page", "./index-v1c01-x.html", "--out", output})
 	judgeBytes, err := os.ReadFile(filepath.Join(output, "judge.json"))
 	if err != nil {
 		t.Fatalf("judge.json was not written: %v (result %+v)", err, result)
@@ -240,8 +241,8 @@ func TestAIReportJudgeRendersNamedPageInPlace(t *testing.T) {
 	if err := json.Unmarshal(judgeBytes, &report); err != nil {
 		t.Fatalf("judge.json is not valid JSON: %v\n%s", err, judgeBytes)
 	}
-	if !strings.HasSuffix(report.ServedURL, "/index-v1c01-x.html") {
-		t.Fatalf("served_url %q does not name the page", report.ServedURL)
+	if served, err := url.Parse(report.ServedURL); err != nil || served.Path != "/index-v1c01-x.html" {
+		t.Fatalf("served_url %q does not name the cleaned page path", report.ServedURL)
 	}
 	if resultmodel.ExitCode(result.Outcome) == 0 || report.Verdict != "fail" {
 		t.Fatalf("overflowing page: outcome %s verdict %q findings %+v", result.Outcome, report.Verdict, report.Findings)

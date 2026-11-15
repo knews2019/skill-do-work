@@ -123,6 +123,9 @@ func handleAIReportJudge(ctx commandruntime.ExecutionContext, args []string) res
 	if refusal := judgeCheckPage(bundle, resolvedBundle, page); refusal != "" {
 		return judgeFailureResultWithStop(judgeCodePage, refusal, "--page names no HTML page inside the bundle")
 	}
+	// Serve the checked path, not the raw text: "./x.html" or a Windows "sub\x.html"
+	// would otherwise reach the file server as a different or refused URL.
+	page = filepath.ToSlash(filepath.Clean(filepath.FromSlash(page)))
 	if browser != "" {
 		resolvedBrowser := judgeLookupBrowser(browser)
 		if resolvedBrowser == "" {
