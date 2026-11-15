@@ -13,7 +13,19 @@ effort_estimate: effort-substantive
 required_lessons: [_dev/primes/lessons-releases.md]
 related: [REQ-736]
 batch: run-012821-follow-ups
+write_set: [skills/do-work/crew-members/communication-style.md, skills/do-work/crew-members/coding-guardrails.md, skills/do-work-toolbox/crew-members/coding-guardrails.md, skills/do-work/crew-members/background-agents.md, skills/do-work-toolbox/crew-members/background-agents.md, skills/do-work-knowledge/crew-members/background-agents.md, skills/do-work/actions/commit.md]
+route: B
+estimate:
+  p50_active_minutes: 30
+  confidence: medium
+  calculated_at: 2026-11-15T07:34:32Z
+  basis:
+    - Route B
+    - 7-file write set
+    - 2 subsystems involved
+    - 8 acceptance criteria
 claimed_at: 2026-11-15T07:30:04Z
+dispatch_at: 2026-11-15T07:40:29Z
 ---
 # Decide, Rule by Rule, Which Moved Standing Rules Load in Ordinary Sessions
 ## What
@@ -75,3 +87,96 @@ See `do-work/user-requests/UR-179/input.md` for complete verbatim input.
 - [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
 - [ ] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
 *Source: item 1 of `do-work/user-requests/UR-179/input.md` (rule scope after REQ-724)*
+
+## Triage
+
+**Route: B** - Medium
+
+**Reasoning:** The outcome is a per-rule decision plus a few one-line prose moves, but each rule's home depends on which files load when, so the load sites must be checked first. Prose only, two subsystems (crew-member files with lock-step package copies, and the commit action), no Go or shell change.
+
+**Planning:** Not required
+
+## Plan
+
+**Planning not required** - Route B: Exploration-guided implementation
+
+*Skipped by work action*
+
+## Exploration
+
+Pre-dispatch agent, base `547d4cc5`. Every pointer below was re-read at that commit.
+
+**Required-lessons consult.** `required_lessons` stays `[_dev/primes/lessons-releases.md]` (856 tokens, read). Its families (`canonical-link-outlives-its-target`, `manifest-ownership-vs-edit-content`) do not fire: no file moves and no manifest changes, only lines inside files. `_dev/primes/lessons-action-files.md` stays dropped for budget (8761 tokens, `slugged: partial`, so it cannot be narrowed). Two of its bullets match and were read anyway: `[family: alternate-writer-contract-drift]` (the lock-step copies, REQ-724 review F1) and `[family: condition-preserving-prose-extraction]` (REQ-509: a moved rule must keep its condition, and every reader of the old home must load the new home). The second one is answered below under "Who reads the old homes". No other index row matches (no shell, Go or board change).
+
+**Who loads which file (the evidence for D-01 to D-03):**
+- `skills/do-work/agent-instructions.template.md:4` is the always-on link: an installed project's agent instructions say to read `crew-members/communication-style.md` before the first reply and follow it in every response. In this repository `CLAUDE.md` imports it. `communication-style.md` exists only in the do-work package, so it has no lock-step copy.
+- `skills/do-work/crew-members/coding-guardrails.md:3` (JIT_CONTEXT): loaded during implementation (Step 6) only. `skills/do-work/actions/work-implementation-reference.md:9` loads it, and `:12` (item 2b) also always loads `communication-style.md` in the same step.
+- `skills/do-work/crew-members/background-agents.md:3` (JIT_CONTEXT): loaded by any action that fans work out to sub-agents. Not loaded for a single agent in an ordinary session.
+- `skills/do-work/actions/commit.md` § Rules (`:218-224`) is the canonical commit-staging guard. Every other action that stages or commits points there (`:220`).
+
+**Who reads the old homes (condition-preserving check for R1 and R2).** The do-work `coding-guardrails.md` is read in Step 6, and Step 6 also loads `communication-style.md` (2b), so a line moved there still reaches every implementation. The toolbox copy `skills/do-work-toolbox/crew-members/coding-guardrails.md` is cited by toolbox actions for review criteria (`code-review.md:140` § Simplicity First, `quick-wins.md:181` surgical changes, `maintainability-audit.md:106` and `validate-feedback.md:84` point at the do-work copy). None of them relies on the numeric or redesign line. Those sessions get the moved lines through the always-on link.
+
+**The three rules at base:**
+- R1: `skills/do-work/crew-members/coding-guardrails.md:22` and `skills/do-work-toolbox/crew-members/coding-guardrails.md:22`, byte-identical: `- Read a number in the request (a size, a count, a time) as approximate unless the user says strict.`
+- R2: `skills/do-work/crew-members/coding-guardrails.md:89` and `skills/do-work-toolbox/crew-members/coding-guardrails.md:87`, byte-identical: `- Never remove existing UI while redesigning unless the user asked for it.` Nearby but different: `crew-members/ui-design.md:58` ("Don't redesign what isn't broken") is about review scope, not about removing UI. It stays.
+- R3: the paragraph "Pick each agent's model by its work." at `skills/do-work/crew-members/background-agents.md:190-193`, `skills/do-work-toolbox/crew-members/background-agents.md:191-194`, `skills/do-work-knowledge/crew-members/background-agents.md:191-194`. The three paragraphs hash the same (checked with `awk` + `shasum` at base).
+
+**F3 targets:** the ask-tool bullet `skills/do-work/crew-members/communication-style.md:25`, first sentence ("Use the agent's ask-user tool when it has one, never a prose list of questions, and load `crew-members/clear-questions.md` first."). The model sentence "Planning, review and build agents keep the session model." in the three R3 paragraphs. The two shipped texts it contradicts today: `skills/do-work-toolbox/actions/tutorial.md:355` (plain-text menus, no ask-user tool) and `skills/do-work/actions/ai-evaluation-loop-reference.md:19-21` (named reviewer models for `sol-loop`, `council`, `--jester`).
+
+**F5 target:** `skills/do-work/actions/commit.md` § Rules, after the exact-path staging bullet at `:222`. Partial coverage elsewhere, not changed: `skills/do-work/actions/work-reference.md:31` (during a run, preserve a diff you did not make) and `skills/do-work/actions/restart-with-parallel-handoff.md:68` (files you did not change stay untouched). `commit.md` has no package copy.
+
+**Size:** `communication-style.md` is 99 lines at base. The change adds two moved bullets and two clauses there. `_dev/tests/instruction-reading-volume.py:43-44` counts both `coding-guardrails` and `communication-style` in the build crew set, so the move is volume-neutral for implementation.
+
+**Negative check at base:** `zsh|AskUserQuestion|haiku|EnterWorktree|CLAUDE\.md` has no hit in the seven Scope files.
+
+**RED searches (at `547d4cc5`), the probe's fixed phrases:**
+1. `unless the user says strict` is in the two `coding-guardrails.md` copies, not in `communication-style.md`.
+2. `while redesigning`: same.
+3. `unless the action in use says how to ask`: no hit in `skills/`.
+4. `unless the action names another model`: no hit in `skills/`.
+5. `change you did not make`: no hit in `skills/`.
+
+**Pre-dispatch decisions.** The maintainer delegated this judgment (REQ § Builder Guidance), so each ESCALATE-tier choice was made here with value and risk instead of a question, per the unattended-run rule.
+
+- **D-01 (ESCALATE, decided): R1 (approximate numeric targets) moves to `communication-style.md`.** The line moves byte-identical as a plain bullet right after the bug-report bullet (`communication-style.md:27`). It is deleted from § 1 of both `coding-guardrails.md` copies, and no pointer stays there. Reason: the rule is about reading the user's request, and numbers arrive in ordinary sessions before any REQ exists, often for prose (a word count, a line count). That is the same reason REQ-724 D-02 gave for putting the bug-report line in the always-on file. Implementation loses nothing, because Step 6 always loads `communication-style.md` too (`work-implementation-reference.md:12`). Value: the rule applies in every session, stated once. Risk: a consumer project that declined the installer's always-on link no longer gets R1 inside toolbox actions that read only the toolbox `coding-guardrails.md`; do-work Step 6 still loads it explicitly. Reversible: move the line back.
+- **D-02 (ESCALATE, decided): R2 (never remove existing UI while redesigning) moves to `communication-style.md`.** Same form as D-01: byte-identical, right after the R1 bullet, deleted from § 3 of both `coding-guardrails.md` copies, no pointer. Rejected alternative: one pointer line "before you change code, load `coding-guardrails.md`". It is one line, but it would load the whole guardrails file (about 130 lines: the four behavioral guardrails, the decide-vs-escalate gate, naming for reach) into every ordinary coding session. That is a much wider behavior change than this REQ asks for, and it contradicts that file's JIT_CONTEXT. Value: a redesign request in an ordinary session keeps the rule, at the cost of one line. Risk: `communication-style.md` holds one more scope rule next to the bug-report line, so its "conversational output" scope stretches a little further. Reversible.
+- **D-03 (ESCALATE, decided): R3 (pick the model per agent) stays only in `background-agents.md`. No copy and no pointer in `communication-style.md`. REQ-724 D-05 holds.** Reason: the maintainer confirmed D-05 on 2026-11-15, and D-05 already named this exact risk ("a single lookup agent outside a fan-out never sees the rule"). No new fact has appeared since then. The rule saves cost and does not change results. Overturning a confirmed answer from the same day is not a call to make silently. Value: the maintainer's answer stands, and the always-on file stays about talking. Risk: after `~/.claude/CLAUDE.md` is deleted, an ordinary session that starts one lookup agent runs it on the harness's default model, which costs more tokens but gives the same result. So the delete does lose R3 for single agents in ordinary sessions. Reversible: one pointer line in `communication-style.md` if the maintainer wants it.
+- **D-04 (DECIDE & STATE): F3 folds in.** Two precedence clauses, worded as the REQ-724 review suggested. (a) The first sentence of the ask-tool bullet (`communication-style.md:25`) ends with "unless the action in use says how to ask". (b) In all three `background-agents.md` copies, "Planning, review and build agents keep the session model" gains "unless the action names another model". The REQ's constraints allow exactly this rewording. It removes the contradiction with `tutorial.md:355` and `ai-evaluation-loop-reference.md:19-21`.
+- **D-05 (DECIDE & STATE): F5 folds in as one new bullet in `commit.md` § Rules,** after the exact-path staging bullet: "Never revert, stash or discard a change you did not make." plus at most one short reason sentence. `commit.md` is the canonical commit-staging guard, so the concurrent-session rules now live together there. `git commit -a` is not added: naming it would reword the shipped `git add -A` bullet, which the constraints forbid, and that bullet's "Stage only the specific files" already rules it out. Not done: an always-on copy of F5. An ordinary session that never commits through the commit action does not load this rule. The concurrent-session rule group was already scoped this way by REQ-724 (G6, exact-path staging lives only in `commit.md`).
+- **D-06 (DECIDE & STATE): the builder never edits `CHANGELOG.md`, `skills/do-work/CHANGELOG.md`, `VERSION` or a version mirror.** It proposes the entry, and the integrator releases. Proposed bump: minor, because R1 and R2 now apply in every session of every installed project (impact-rule-change, same reasoning as REQ-724 D-12).
+- **D-07 (DECIDE & STATE): fixed proof phrases** for the RED searches, the GREEN probe and review: the five phrases under "RED searches" above, plus `cheapest model tier` (must stay in the three `background-agents.md` copies only, which proves D-03).
+
+<!-- D-XX counter: last used D-07. Next decision: D-08. -->
+
+*Generated by pre-dispatch agent (in-context exploration)*
+
+## Scope
+
+**Files I will touch:**
+- `skills/do-work/crew-members/communication-style.md` (modify) — two moved bullets after the bug-report bullet: R1 approximate numbers (D-01) and R2 no UI removal while redesigning (D-02), byte-identical to their old lines; the ask-tool bullet's first sentence gains the precedence clause (D-04 a)
+- `skills/do-work/crew-members/coding-guardrails.md` (modify) — delete the R1 line from § 1 and the R2 line from § 3
+- `skills/do-work-toolbox/crew-members/coding-guardrails.md` (modify) — the same two deletions (lock-step copy)
+- `skills/do-work/crew-members/background-agents.md` (modify) — the model paragraph gains the precedence clause (D-04 b), rewrapped
+- `skills/do-work-toolbox/crew-members/background-agents.md` (modify) — the same paragraph, byte-identical to the do-work copy
+- `skills/do-work-knowledge/crew-members/background-agents.md` (modify) — the same paragraph, byte-identical to the do-work copy
+- `skills/do-work/actions/commit.md` (modify) — one new bullet in the Rules section after the exact-path staging bullet (D-05)
+
+**Files I will NOT touch:** `CHANGELOG.md`, `skills/do-work/CHANGELOG.md`, `VERSION` and the version mirrors (the integrator releases, D-06); the Aliases and Examples sections of `communication-style.md`; `skills/do-work-toolbox/actions/tutorial.md` and `skills/do-work/actions/ai-evaluation-loop-reference.md` (cited, not changed); `skills/do-work/crew-members/ui-design.md`; any file outside the repository; no new file and no test file.
+
+**Acceptance criteria (restated from REQ):**
+- [ ] R1, R2 and R3 each have a recorded decision with value and risk (D-01, D-02, D-03).
+- [ ] R1 and R2 are each stated once, in `communication-style.md`, with no copy and no pointer left in either `coding-guardrails.md` copy.
+- [ ] R3 stays only in the three `background-agents.md` copies, with no copy or pointer in `communication-style.md` (REQ-724 D-05 respected).
+- [ ] F3 is folded in: the ask-tool rule and the model rule each say that an action's own rule wins.
+- [ ] F5 is folded in: one shipped home for never reverting, stashing or discarding a change you did not make.
+- [ ] Lock-step copies stay identical: the model paragraph matches in all three packages, and both `coding-guardrails.md` copies lose the same two lines.
+- [ ] Aliases and Examples of `communication-style.md` are unchanged; no machine, vendor, model or tool name; nothing under `skills/` cites the maintainer doc.
+- [ ] The release follows the releases prime (proposed by the builder, written by the integrator).
+
+## Pre-Flight
+
+**Git:** ✓ No uncommitted project files at dispatch (run artifacts under do-work/ only)
+**Tests baseline:** ✓ Focused pre-build probe passing (do-work/runs/work-2026-11-15-012821/REQ-735-preflight-probe.sh) and the repository gate green at 547d4cc5 (147 s, detached checkout, stage reuse off)
+**Dependencies:** ✓ Installed
+
+*Checked by work action (coordinator, run work-2026-11-15-012821)*
