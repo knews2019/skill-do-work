@@ -1,0 +1,566 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="ai-report-kind" content="proposal">
+<title>Tinka as a review canvas: the proposal as one map, left to right</title>
+<link rel="stylesheet" href="presentation.css">
+<style>
+body > p, body > nav.changes{margin:0;padding:10px clamp(20px,2.6vw,60px) 0}
+body > nav.changes{padding-bottom:14px}
+body > nav.changes ul{margin:.3em 0 0;padding-left:1.2em}
+code{overflow-wrap:anywhere}
+.changed{--role:var(--effect);margin-left:.5em;vertical-align:middle}
+.g-decision{--g:var(--effect)} .g-option{--g:var(--change)} .g-kill{--g:var(--problem)} .g-seed{--g:var(--proof)} .g-limit{--g:var(--cause)}
+.k-order{--k:var(--change)} .k-supports{--k:var(--effect)} .k-limits{--k:var(--problem)} .k-gap{--k:var(--cause)}
+.map-how{margin:0 0 14px}
+.map-how .tag{margin:0 0 .4em}
+.map-tools{display:flex;flex-wrap:wrap;gap:8px 10px;align-items:center;margin:0 0 12px}
+.map-tools .zoom-label{font:700 .95rem var(--display);min-width:3.4em;text-align:center}
+.map-tools .sep{flex:0 0 8px}
+.map-tools .map-count{color:var(--muted);font-size:.95rem}
+.map-wrap{display:flex;flex-wrap:wrap;gap:20px;align-items:stretch}
+.viewport{position:relative;flex:1 1 560px;min-width:0;height:min(84vh,940px);min-height:420px;border:2px solid var(--line);border-radius:18px;background:var(--surface);overflow:auto}
+.viewport.is-live{overflow:hidden;touch-action:none;cursor:grab}
+.viewport.is-live.is-dragging{cursor:grabbing}
+.viewport:focus-visible{outline:3px solid var(--change);outline-offset:2px}
+.world{position:relative;width:1910px;height:1788px;transform-origin:0 0}
+.world svg{position:absolute;left:0;top:0;width:1910px;height:1788px;overflow:visible;pointer-events:none}
+.edge path{fill:none;stroke:var(--k);stroke-width:2.5px;vector-effect:non-scaling-stroke;opacity:.75}
+.edge.is-on path{stroke-width:4px;opacity:1}
+.m-order{fill:var(--change)} .m-supports{fill:var(--effect)} .m-limits{fill:var(--problem)} .m-gap{fill:var(--cause)}
+.box{position:absolute;width:300px;height:160px;display:flex;flex-direction:column;gap:5px;padding:11px 14px;margin:0;border:3px solid var(--g);border-radius:16px;background:color-mix(in srgb,var(--g) 13%,var(--surface));color:var(--ink);font:inherit;text-align:left;cursor:pointer;overflow:hidden}
+.box:focus-visible{outline:5px solid var(--ink);outline-offset:3px}
+.box.is-sel{border-width:6px;padding:8px 11px;box-shadow:0 0 0 6px color-mix(in srgb,var(--g) 35%,transparent)}
+.box-head{display:flex;align-items:baseline;gap:8px;min-width:0;flex:0 0 auto}
+.box-code{font:800 19px/1.15 var(--display);flex:0 0 auto}
+.box-meta{font-size:13px;color:var(--muted);flex:1 1 auto;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.box-more{flex:0 0 auto;font:700 13px/1.4 var(--body);padding:0 .5em;border-radius:999px;background:var(--g);color:var(--surface)}
+.box-more:empty{display:none}
+.box-title{font:700 18px/1.2 var(--display);display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;flex:0 0 auto}
+.box-sum{font-size:14px;line-height:1.3;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;overflow:hidden}
+.z-far .box-code{font-size:27px}
+.z-far .box-meta,.z-far .box-sum{display:none}
+.z-far .box-more{font-size:22px}
+.z-far .box-title{font-size:27px;line-height:1.12;-webkit-line-clamp:3}
+.is-hidden{display:none}
+.has-sel .box:not(.is-on){opacity:.72}
+.has-sel .edge:not(.is-on){opacity:.22}
+.labels{position:absolute;inset:0;pointer-events:none;overflow:hidden;z-index:2}
+.rel-label{position:absolute;left:0;top:0;max-width:190px;padding:2px 8px;font:600 13px/1.3 var(--body);color:var(--ink);background:var(--surface);border:2px solid var(--k);border-radius:8px;box-shadow:0 1px 4px color-mix(in srgb,var(--ink) 18%,transparent)}
+.panel{flex:1 1 300px;max-width:380px;min-width:0;max-height:min(84vh,940px);overflow:auto;border:2px solid var(--line);border-radius:18px;background:var(--surface);padding:18px 20px}
+.panel h3{margin:.2em 0 .5em}
+.panel h4,.detail h4{margin:1em 0 .3em;font:700 1rem var(--display)}
+.panel .reveal{margin:0 0 1em}
+@media (max-width:960px){.panel{max-width:none}}
+.detail{border-left:6px solid var(--g);padding:.2em 0 .2em 1em;margin:0 0 1.4em}
+.panel .detail{border-left:0;padding:0;margin:0}
+.detail .tag{--role:var(--g)}
+.detail-kind{margin:0 0 .3em}
+.detail-sources .chip,td .chip{white-space:normal}
+ul.rel-list{list-style:none;margin:0;padding:0}
+ul.rel-list li{border-left:5px solid var(--k);padding:.15em 0 .15em .7em;margin:0 0 .45em}
+.rel-word{font-style:italic;color:var(--muted)}
+.key{display:flex;flex-wrap:wrap;gap:6px 18px;list-style:none;margin:10px 0 0;padding:0;font-size:.92rem}
+.key li::before{content:"";display:inline-block;vertical-align:-.1em;margin-right:.45em}
+.key.boxes li::before{width:1em;height:1em;border-radius:4px;border:3px solid var(--g);background:color-mix(in srgb,var(--g) 13%,var(--surface));box-sizing:border-box}
+.key.lines li::before{width:1.8em;height:0;border-top:4px solid var(--k);vertical-align:.25em}
+.map-key{margin-top:14px}
+.scroll{overflow-x:auto}
+table{width:100%;border-collapse:collapse;margin:0 0 1em;background:var(--surface)}
+th,td{border:1px solid var(--line);padding:.45em .6em;vertical-align:top;text-align:left;overflow-wrap:anywhere}
+th{font-family:var(--display);font-size:.95rem}
+tr[class^="k-"] td:first-child{border-left:6px solid var(--k)}
+</style>
+<meta name="ai-report-second-opinion-preset" content="custom"><meta name="ai-report-second-opinion-direction" content="Rebuild the map left to right in argument order (evidence, then the decision and options, then kill attempts, then limits), show the nine boxes D, O1-O4 and K1-K4 first with seeds and limits revealed on a click of the box they belong to, keep relation labels readable at every zoom, and dim unrelated boxes only slightly."><meta name="ai-report-second-opinion-id" content="v1c03c01"><meta name="ai-report-second-opinion-base" content="index-v1c03-claude-claude-fable-5-2-custom-zoomable-relation-map.html"><meta name="ai-report-second-opinion-model" content="claude claude-opus-5-5"><meta name="ai-report-second-opinion-date" content="2026-11-14"></head>
+<body><!-- second-opinion-header --><aside aria-label="Second-opinion direction" style="overflow-wrap:anywhere"><p><strong>Iteration v1c03c01</strong>, built on <a href="index-v1c03-claude-claude-fable-5-2-custom-zoomable-relation-map.html">index-v1c03-claude-claude-fable-5-2-custom-zoomable-relation-map.html</a></p><p><strong>Second-opinion preset:</strong> custom</p><p style="white-space:pre-line"><strong>Direction:</strong> Rebuild the map left to right in argument order (evidence, then the decision and options, then kill attempts, then limits), show the nine boxes D, O1-O4 and K1-K4 first with seeds and limits revealed on a click of the box they belong to, keep relation labels readable at every zoom, and dim unrelated boxes only slightly.</p></aside><!-- /second-opinion-header -->
+<p>Original report: <a href="index.html">index.html</a></p>
+<nav class="changes" aria-label="Changed in this iteration">
+  <strong>Changed in this iteration</strong>
+  <ul>
+    <li><a href="#rev-1">The map reads left to right, in the order of the argument: evidence, then the decision and the options, then the kill attempts, then the limits</a></li>
+    <li><a href="#rev-2">The map opens on nine boxes. A click on a box shows the evidence and limits behind it, a second click hides them, and "Show everything" shows all 28</a></li>
+    <li><a href="#rev-3">The words of a line keep one readable size at every zoom, and a selected box dims the other boxes only a little</a></li>
+  </ul>
+</nav>
+<nav class="topbar"><strong>Tinka as a review canvas: the proposal as one map</strong><span class="spacer"></span><button class="btn deck-toggle" type="button" id="deck-toggle" aria-pressed="false">Deck mode (D)</button></nav>
+<div class="page">
+
+<header class="band depth-one" id="depth-1">
+  <p class="depth-marker"><span class="gauge" aria-hidden="true"><i class="on"></i><i></i><i></i></span>Depth 1 of 3: the answer · Proposal as a map · 14 November 2026</p>
+  <h1>One map of the proposal: what supports the pilot, and what limits it.</h1>
+  <p class="sub measure">The original report recommends a pilot of option O2 by hand and no code. This page shows the same content as one map that reads from left to right: the evidence, then the decision and its four options, then the four kill attempts, then the limits of the check.</p>
+  <p class="sub measure">The map opens on nine boxes: the decision, the four options and the four kill attempts. Click a box to read its detail and to show the evidence and limits behind it.</p>
+  <p><span class="chip">28 boxes</span><span class="chip">37 relations</span><span class="chip">source: index.html in this bundle</span><span class="chip">Tinka 77ba29c (0.7.14)</span><span class="chip">do-work 9de5839 (0.315.5)</span></p>
+  <nav class="jump" aria-label="Go deeper"><span>Go deeper:</span><a class="btn" href="#rev-1">The map</a><a class="btn" href="#boxes">Every box as text</a><a class="btn" href="#relations">Every relation</a><a class="btn" href="#after">After the report</a></nav>
+</header>
+
+<section class="band" id="rev-1" aria-labelledby="map-heading">
+  <p class="depth-marker"><span class="gauge" aria-hidden="true"><i class="on"></i><i class="on"></i><i></i></span>Depth 2 of 3: the map</p>
+  <h2 id="map-heading">The map, left to right <span class="tag changed">changed</span></h2>
+  <p class="measure">Four columns, from left to right: <strong>evidence</strong> (the live check and the seeds S1 to S9, the claims that were re-checked), the <strong>decision and options</strong> O1 to O4, the <strong>kill attempts</strong> K1 to K4, and the <strong>limits</strong> L1 to L9 (what was not checked).</p>
+  <div class="map-how" id="rev-2">
+    <span class="tag changed">changed</span>
+    <p class="measure">The map opens on the nine boxes in the middle. A number such as <strong>+8</strong> on a box counts the evidence and limits behind it: click the box to show them, and click it again to hide them. "Show everything" shows all 28 boxes, and "Nine boxes" goes back to the start. Drag to move. Pinch, or hold Control and scroll, to zoom. On a narrow screen such as a phone, the map opens on the decision and the options, and you drag to see the rest. Without JavaScript the map shows all 28 boxes at full size, and you scroll inside it.</p>
+  </div>
+  <div class="map-tools" id="map-tools" hidden>
+    <button class="btn" type="button" id="zoom-out" aria-label="Zoom out">−</button>
+    <span class="zoom-label" id="zoom-label" aria-live="polite">100%</span>
+    <button class="btn" type="button" id="zoom-in" aria-label="Zoom in">+</button>
+    <span class="sep"></span>
+    <button class="btn" type="button" id="show-core">Nine boxes</button>
+    <button class="btn primary" type="button" id="show-all">Show everything</button>
+    <span class="sep"></span>
+    <span class="map-count" id="map-count" aria-live="polite"></span>
+  </div>
+  <div class="map-wrap">
+    <div class="viewport z-mid" id="viewport" tabindex="0" role="group" aria-label="Map of the proposal. Arrow keys move, plus and minus zoom, zero fits the shown boxes, Escape clears the selection.">
+      <div class="world" id="world">
+        <svg viewBox="0 0 1910 1788" aria-hidden="true"><defs><marker id="arrow-order" viewBox="0 0 10 10" refX="9" refY="5" markerUnits="userSpaceOnUse" markerWidth="20" markerHeight="20" orient="auto"><path d="M0 0L10 5L0 10z" class="m-order"/></marker><marker id="arrow-supports" viewBox="0 0 10 10" refX="9" refY="5" markerUnits="userSpaceOnUse" markerWidth="20" markerHeight="20" orient="auto"><path d="M0 0L10 5L0 10z" class="m-supports"/></marker><marker id="arrow-limits" viewBox="0 0 10 10" refX="9" refY="5" markerUnits="userSpaceOnUse" markerWidth="20" markerHeight="20" orient="auto"><path d="M0 0L10 5L0 10z" class="m-limits"/></marker><marker id="arrow-gap" viewBox="0 0 10 10" refX="9" refY="5" markerUnits="userSpaceOnUse" markerWidth="20" markerHeight="20" orient="auto"><path d="M0 0L10 5L0 10z" class="m-gap"/></marker></defs>
+<g class="edge k-order" data-from="D" data-to="O2" data-words="recommends as the pilot" data-from-end="850 566 right" data-to-end="850 846 right"><path d="M850 566 C960 566 960 846 850 846" marker-end="url(#arrow-order)"/></g>
+<g class="edge k-order" data-from="D" data-to="O1" data-words="falls back to, when the pilot rule fails" data-from-end="550 618 left" data-to-end="550 618 left"><path d="M700 606 L700 630" marker-end="url(#arrow-order)"/></g>
+<g class="edge k-order" data-from="O2" data-to="O3" data-words="must pass its pilot before" data-from-end="550 986 left" data-to-end="550 986 left"><path d="M700 974 L700 998" marker-end="url(#arrow-order)"/></g>
+<g class="edge k-order" data-from="O3" data-to="O4" data-words="must exist before" data-from-end="550 1170 left" data-to-end="550 1170 left"><path d="M700 1158 L700 1182" marker-end="url(#arrow-order)"/></g>
+<g class="edge k-supports" data-from="P" data-to="O2" data-words="ran O2 once, start to end" data-from-end="340 136 right" data-to-end="550 832 left"><path d="M340 136 C445 136 445 832 550 832" marker-end="url(#arrow-supports)"/></g>
+<g class="edge k-supports" data-from="S2" data-to="O2" data-words="files outside the bundle stay unseen when Git ignores them" data-from-end="340 292 right" data-to-end="550 850 left"><path d="M340 292 C445 292 445 850 550 850" marker-end="url(#arrow-supports)"/></g>
+<g class="edge k-supports" data-from="S3" data-to="O2" data-words="a dot folder or an excluded folder passes the layout check" data-from-end="340 464 right" data-to-end="550 867 left"><path d="M340 464 C445 464 445 867 550 867" marker-end="url(#arrow-supports)"/></g>
+<g class="edge k-supports" data-from="S4" data-to="O2" data-words="the manual layout never writes AGENTS.md" data-from-end="340 636 right" data-to-end="550 885 left"><path d="M340 636 C445 636 445 885 550 885" marker-end="url(#arrow-supports)"/></g>
+<g class="edge k-supports" data-from="S5" data-to="O2" data-words="tiles are written with no server and no update check" data-from-end="340 768 right" data-to-end="550 903 left"><path d="M340 768 C445 768 445 903 550 903" marker-end="url(#arrow-supports)"/></g>
+<g class="edge k-supports" data-from="S8" data-to="O3" data-words="tile ids built from the folder name survive organize" data-from-end="340 1496 right" data-to-end="550 1105 left"><path d="M340 1496 C445 1496 445 1105 550 1105" marker-end="url(#arrow-supports)"/></g>
+<g class="edge k-supports" data-from="S9" data-to="O4" data-words="a write from another origin is refused" data-from-end="340 1641 right" data-to-end="550 1302 left"><path d="M340 1641 C445 1641 445 1302 550 1302" marker-end="url(#arrow-supports)"/></g>
+<g class="edge k-supports" data-from="O4" data-to="K1" data-words="is the only option that removes K1" data-from-end="850 1214 right" data-to-end="1060 750 left"><path d="M850 1214 C955 1214 955 750 1060 750" marker-end="url(#arrow-supports)"/></g>
+<g class="edge k-limits" data-from="S1" data-to="O4" data-words="blocks today: the page could write feedback by itself" data-from-end="340 1364 right" data-to-end="550 1262 left"><path d="M340 1364 C445 1364 445 1262 550 1262" marker-end="url(#arrow-limits)"/></g>
+<g class="edge k-limits" data-from="S1" data-to="O2" data-words="forces picture tiles only" data-from-end="340 1284 right" data-to-end="550 956 left"><path d="M340 1284 C445 1284 445 956 550 956" marker-end="url(#arrow-limits)"/></g>
+<g class="edge k-limits" data-from="S1" data-to="O3" data-words="forces picture tiles only" data-from-end="340 1324 right" data-to-end="550 1051 left"><path d="M340 1324 C445 1324 445 1051 550 1051" marker-end="url(#arrow-limits)"/></g>
+<g class="edge k-limits" data-from="K1" data-to="O2" data-words="a picture hides 38 to 46% of the text" data-from-end="1060 670 left" data-to-end="850 878 right"><path d="M1060 670 C955 670 955 878 850 878" marker-end="url(#arrow-limits)"/></g>
+<g class="edge k-limits" data-from="K1" data-to="O3" data-words="is not answered by" data-from-end="1060 710 left" data-to-end="850 1025 right"><path d="M1060 710 C955 710 955 1025 850 1025" marker-end="url(#arrow-limits)"/></g>
+<g class="edge k-limits" data-from="K2" data-to="O2" data-words="the canvas opens on this computer only" data-from-end="1060 854 left" data-to-end="850 910 right"><path d="M1060 854 C955 854 955 910 850 910" marker-end="url(#arrow-limits)"/></g>
+<g class="edge k-limits" data-from="K2" data-to="O3" data-words="is not answered by" data-from-end="1060 894 left" data-to-end="850 1051 right"><path d="M1060 894 C955 894 955 1051 850 1051" marker-end="url(#arrow-limits)"/></g>
+<g class="edge k-limits" data-from="K2" data-to="O4" data-words="still holds" data-from-end="1060 934 left" data-to-end="850 1246 right"><path d="M1060 934 C955 934 955 1246 850 1246" marker-end="url(#arrow-limits)"/></g>
+<g class="edge k-limits" data-from="K3" data-to="O3" data-words="a Tinka change can break pull" data-from-end="1060 1078 left" data-to-end="850 1078 right"><path d="M1060 1078 C955 1078 955 1078 850 1078" marker-end="url(#arrow-limits)"/></g>
+<g class="edge k-limits" data-from="K4" data-to="O2" data-words="hashes are compared by hand" data-from-end="1060 1235 left" data-to-end="850 942 right"><path d="M1060 1235 C955 1235 955 942 850 942" marker-end="url(#arrow-limits)"/></g>
+<g class="edge k-limits" data-from="K4" data-to="O3" data-words="--check must compare hashes" data-from-end="1060 1289 left" data-to-end="850 1105 right"><path d="M1060 1289 C955 1289 955 1105 850 1105" marker-end="url(#arrow-limits)"/></g>
+<g class="edge k-limits" data-from="S6" data-to="O2" data-words="text comments work on reply tiles only" data-from-end="340 1125 right" data-to-end="550 938 left"><path d="M340 1125 C445 1125 445 938 550 938" marker-end="url(#arrow-limits)"/></g>
+<g class="edge k-limits" data-from="S6" data-to="O4" data-words="text comments do not attach to HTML tiles" data-from-end="340 1179 right" data-to-end="550 1222 left"><path d="M340 1179 C445 1179 445 1222 550 1222" marker-end="url(#arrow-limits)"/></g>
+<g class="edge k-limits" data-from="S7" data-to="O2" data-words="import takes images and PDF only, so tiles use a resource root" data-from-end="340 980 right" data-to-end="550 921 left"><path d="M340 980 C445 980 445 921 550 921" marker-end="url(#arrow-limits)"/></g>
+<g class="edge k-gap" data-from="L1" data-to="P" data-words="one picture came from a fallback" data-from-end="1570 550 left" data-to-end="340 72 right"><path d="M1570 550 C955 550 955 72 340 72" marker-end="url(#arrow-gap)"/></g>
+<g class="edge k-gap" data-from="L6" data-to="P" data-words="Tinka&#x27;s tests were not run" data-from-end="1570 722 left" data-to-end="340 104 right"><path d="M1570 722 C955 722 955 104 340 104" marker-end="url(#arrow-gap)"/></g>
+<g class="edge k-gap" data-from="L9" data-to="P" data-words="Tinka files were read as data only" data-from-end="1570 894 left" data-to-end="340 168 right"><path d="M1570 894 C955 894 955 168 340 168" marker-end="url(#arrow-gap)"/></g>
+<g class="edge k-gap" data-from="L4" data-to="S5" data-words="the update check was read, not run" data-from-end="1570 1066 left" data-to-end="340 808 right"><path d="M1570 1066 C955 1066 955 808 340 808" marker-end="url(#arrow-gap)"/></g>
+<g class="edge k-gap" data-from="L5" data-to="S5" data-words="no network trace backs this" data-from-end="1570 1238 left" data-to-end="340 848 right"><path d="M1570 1238 C955 1238 955 848 340 848" marker-end="url(#arrow-gap)"/></g>
+<g class="edge k-gap" data-from="L2" data-to="D" data-words="is why the decision is a pilot" data-from-end="1570 378 left" data-to-end="850 526 right"><path d="M1570 378 C1210 378 1210 526 850 526" marker-end="url(#arrow-gap)"/></g>
+<g class="edge k-gap" data-from="L7" data-to="D" data-words="the council&#x27;s scores are not used" data-from-end="1570 206 left" data-to-end="850 486 right"><path d="M1570 206 C1210 206 1210 486 850 486" marker-end="url(#arrow-gap)"/></g>
+<g class="edge k-gap" data-from="L8" data-to="O3" data-words="its cost is an estimate" data-from-end="1570 1383 left" data-to-end="850 1131 right"><path d="M1570 1383 C1210 1383 1210 1131 850 1131" marker-end="url(#arrow-gap)"/></g>
+<g class="edge k-gap" data-from="L8" data-to="O4" data-words="its cost is an estimate" data-from-end="1570 1437 left" data-to-end="850 1278 right"><path d="M1570 1437 C1210 1437 1210 1278 850 1278" marker-end="url(#arrow-gap)"/></g>
+<g class="edge k-gap" data-from="L3" data-to="O4" data-words="a live tile was not shown to work" data-from-end="1570 1555 left" data-to-end="850 1310 right"><path d="M1570 1555 C1210 1555 1210 1310 850 1310" marker-end="url(#arrow-gap)"/></g>
+<g class="edge k-gap" data-from="L3" data-to="S9" data-words="is the gap in S9" data-from-end="1570 1609 left" data-to-end="340 1695 right"><path d="M1570 1609 C955 1609 955 1695 340 1695" marker-end="url(#arrow-gap)"/></g>
+        </svg>
+<button type="button" class="box g-decision" id="box-P" data-id="P" data-core="false" style="left:40px;top:40px" aria-controls="panel" aria-label="Live check: Live check: one lineage on a canvas. the proof."><span class="box-head"><span class="box-code">Live check</span><span class="box-meta">the proof</span><span class="box-more"></span></span><span class="box-title">Live check: one lineage on a canvas</span><span class="box-sum">Run once on 2026-11-14: 8 tiles, 6 feedback records read back, Git status unchanged.</span></button>
+<button type="button" class="box g-seed" id="box-S2" data-id="S2" data-core="false" style="left:40px;top:212px" aria-controls="panel" aria-label="S2: second-opinion refuses changes outside the bundle. verified in code."><span class="box-head"><span class="box-code">S2</span><span class="box-meta">verified in code</span><span class="box-more"></span></span><span class="box-title">second-opinion refuses changes outside the bundle</span><span class="box-sum">The check uses git status, so ignored and locally excluded paths are never listed.</span></button>
+<button type="button" class="box g-seed" id="box-S3" data-id="S3" data-core="false" style="left:40px;top:384px" aria-controls="panel" aria-label="S3: Root folder check flags tinka/ and design/. verified in code."><span class="box-head"><span class="box-code">S3</span><span class="box-meta">verified in code</span><span class="box-more"></span></span><span class="box-title">Root folder check flags tinka/ and design/</span><span class="box-sum">Dot folders pass, and the check reads only paths Git can see.</span></button>
+<button type="button" class="box g-seed" id="box-S4" data-id="S4" data-core="false" style="left:40px;top:556px" aria-controls="panel" aria-label="S4: Only a portable project rewrites AGENTS.md. verified in code and live."><span class="box-head"><span class="box-code">S4</span><span class="box-meta">verified in code and live</span><span class="box-more"></span></span><span class="box-title">Only a portable project rewrites AGENTS.md</span><span class="box-sum">The manual layout created no AGENTS.md.</span></button>
+<button type="button" class="box g-seed" id="box-S5" data-id="S5" data-core="false" style="left:40px;top:728px" aria-controls="panel" aria-label="S5: tools call needs no server and no update check. verified in code and live."><span class="box-head"><span class="box-code">S5</span><span class="box-meta">verified in code and live</span><span class="box-more"></span></span><span class="box-title">tools call needs no server and no update check</span><span class="box-sum">16 writes with no server. A source checkout never checks for updates.</span></button>
+<button type="button" class="box g-seed" id="box-S7" data-id="S7" data-core="false" style="left:40px;top:900px" aria-controls="panel" aria-label="S7: files.import takes images and PDF only. verified in code."><span class="box-head"><span class="box-code">S7</span><span class="box-meta">verified in code</span><span class="box-more"></span></span><span class="box-title">files.import takes images and PDF only</span><span class="box-sum">Command line only. The live check used a resource root instead.</span></button>
+<button type="button" class="box g-seed" id="box-S6" data-id="S6" data-core="false" style="left:40px;top:1072px" aria-controls="panel" aria-label="S6: Text comments attach only to text tiles. verified for PNG, inferred for HTML."><span class="box-head"><span class="box-code">S6</span><span class="box-meta">verified for PNG, inferred for HTML</span><span class="box-more"></span></span><span class="box-title">Text comments attach only to text tiles</span><span class="box-sum">On a picture tile a quote comment is stored but stays unverified.</span></button>
+<button type="button" class="box g-seed" id="box-S1" data-id="S1" data-core="false" style="left:40px;top:1244px" aria-controls="panel" aria-label="S1: An HTML tile can write to the canvas. verified in code and live."><span class="box-head"><span class="box-code">S1</span><span class="box-meta">verified in code and live</span><span class="box-more"></span></span><span class="box-title">An HTML tile can write to the canvas</span><span class="box-sum">Tinka frames a local HTML page with no sandbox, on the same address as its write API.</span></button>
+<button type="button" class="box g-seed" id="box-S8" data-id="S8" data-core="false" style="left:40px;top:1416px" aria-controls="panel" aria-label="S8: Revisions are linked by bundle folder name. verified in code."><span class="box-head"><span class="box-code">S8</span><span class="box-meta">verified in code</span><span class="box-more"></span></span><span class="box-title">Revisions are linked by bundle folder name</span><span class="box-sum">organize moves a bundle but never renames its folder.</span></button>
+<button type="button" class="box g-seed" id="box-S9" data-id="S9" data-core="false" style="left:40px;top:1588px" aria-controls="panel" aria-label="S9: The write guard accepts only its own origin. verified, with a gap."><span class="box-head"><span class="box-code">S9</span><span class="box-meta">verified, with a gap</span><span class="box-more"></span></span><span class="box-title">The write guard accepts only its own origin</span><span class="box-sum">A write from another origin got HTTP 403. A URL tile was accepted but showed no frame.</span></button>
+<button type="button" class="box g-decision" id="box-D" data-id="D" data-core="true" style="left:550px;top:446px" aria-controls="panel" aria-label="Decision: Pilot O2 by hand. Build nothing yet.. the decision."><span class="box-head"><span class="box-code">Decision</span><span class="box-meta">the decision</span><span class="box-more"></span></span><span class="box-title">Pilot O2 by hand. Build nothing yet.</span><span class="box-sum">Run the hand recipe on two lineages, then count how the canvas was used.</span></button>
+<button type="button" class="box g-option" id="box-O1" data-id="O1" data-core="true" style="left:550px;top:630px" aria-controls="panel" aria-label="O1: Do nothing extra. smallest change."><span class="box-head"><span class="box-code">O1</span><span class="box-meta">smallest change</span><span class="box-more"></span></span><span class="box-title">Do nothing extra</span><span class="box-sum">Keep reviewing in the real pages and giving feedback in chat.</span></button>
+<button type="button" class="box g-option" id="box-O2" data-id="O2" data-core="true" style="left:550px;top:814px" aria-controls="panel" aria-label="O2: Hand recipe, no code. recommended as the pilot."><span class="box-head"><span class="box-code">O2</span><span class="box-meta">recommended as the pilot</span><span class="box-more"></span></span><span class="box-title">Hand recipe, no code</span><span class="box-sum">Tinka in a manual layout that Git cannot see. Pictures and reply copies as tiles.</span></button>
+<button type="button" class="box g-option" id="box-O3" data-id="O3" data-core="true" style="left:550px;top:998px" aria-controls="panel" aria-label="O3: One command: ai-report-canvas. only after the pilot passes."><span class="box-head"><span class="box-code">O3</span><span class="box-meta">only after the pilot passes</span><span class="box-more"></span></span><span class="box-title">One command: ai-report-canvas</span><span class="box-sum">push, pull and --check. One canvas per lineage, pictures only, reply files as text tiles.</span></button>
+<button type="button" class="box g-option" id="box-O4" data-id="O4" data-core="true" style="left:550px;top:1182px" aria-controls="panel" aria-label="O4: Live HTML tiles from a separate origin. deferred."><span class="box-head"><span class="box-code">O4</span><span class="box-meta">deferred</span><span class="box-more"></span></span><span class="box-title">Live HTML tiles from a separate origin</span><span class="box-sum">Serve each bundle from its own local address and give Tinka the URL, or wait for Tinka to isolate HTML tiles.</span></button>
+<button type="button" class="box g-kill" id="box-K1" data-id="K1" data-core="true" style="left:1060px;top:630px" aria-controls="panel" aria-label="K1: Pictures hide folded content. holds."><span class="box-head"><span class="box-code">K1</span><span class="box-meta">holds</span><span class="box-more"></span></span><span class="box-title">Pictures hide folded content</span><span class="box-sum">38 to 46% of each page&#x27;s text sits in closed sections and is absent from the picture.</span></button>
+<button type="button" class="box g-kill" id="box-K2" data-id="K2" data-core="true" style="left:1060px;top:814px" aria-controls="panel" aria-label="K2: A phone or text-to-speech cannot open it. holds."><span class="box-head"><span class="box-code">K2</span><span class="box-meta">holds</span><span class="box-more"></span></span><span class="box-title">A phone or text-to-speech cannot open it</span><span class="box-sum">Tinka listens on 127.0.0.1 and refuses any other host name.</span></button>
+<button type="button" class="box g-kill" id="box-K3" data-id="K3" data-core="true" style="left:1060px;top:998px" aria-controls="panel" aria-label="K3: Tinka 0.7.x shapes may change. mostly answered."><span class="box-head"><span class="box-code">K3</span><span class="box-meta">mostly answered</span><span class="box-more"></span></span><span class="box-title">Tinka 0.7.x shapes may change</span><span class="box-sum">The tool catalog did not change in 10 days, but the project is 30 days old.</span></button>
+<button type="button" class="box g-kill" id="box-K4" data-id="K4" data-core="true" style="left:1060px;top:1182px" aria-controls="panel" aria-label="K4: Copies drift from the bundle. answered for replies, real for pictures."><span class="box-head"><span class="box-code">K4</span><span class="box-meta">answered for replies, real for pictures</span><span class="box-more"></span></span><span class="box-title">Copies drift from the bundle</span><span class="box-sum">A reply file never changes. index.html does, so its picture goes out of date.</span></button>
+<button type="button" class="box g-limit" id="box-L7" data-id="L7" data-core="false" style="left:1570px;top:126px" aria-controls="panel" aria-label="L7: The council&#x27;s scores could not be read. limit."><span class="box-head"><span class="box-code">L7</span><span class="box-meta">limit</span><span class="box-more"></span></span><span class="box-title">The council&#x27;s scores could not be read</span><span class="box-sum">Only the brief&#x27;s summary of the two rounds was available.</span></button>
+<button type="button" class="box g-limit" id="box-L2" data-id="L2" data-core="false" style="left:1570px;top:298px" aria-controls="panel" aria-label="L2: No person used the canvas. limit."><span class="box-head"><span class="box-code">L2</span><span class="box-meta">limit</span><span class="box-more"></span></span><span class="box-title">No person used the canvas</span><span class="box-sum">Every star, note and comment came from a labelled test actor.</span></button>
+<button type="button" class="box g-limit" id="box-L1" data-id="L1" data-core="false" style="left:1570px;top:470px" aria-controls="panel" aria-label="L1: The overview picture came from a fallback. limit."><span class="box-head"><span class="box-code">L1</span><span class="box-meta">limit</span><span class="box-more"></span></span><span class="box-title">The overview picture came from a fallback</span><span class="box-sum">board overview --out failed in the container, so the picture was taken another way.</span></button>
+<button type="button" class="box g-limit" id="box-L6" data-id="L6" data-core="false" style="left:1570px;top:642px" aria-controls="panel" aria-label="L6: Tinka&#x27;s tests were not run. limit."><span class="box-head"><span class="box-code">L6</span><span class="box-meta">limit</span><span class="box-more"></span></span><span class="box-title">Tinka&#x27;s tests were not run</span><span class="box-sum">Its code was not audited beyond the files the seeds cite.</span></button>
+<button type="button" class="box g-limit" id="box-L9" data-id="L9" data-core="false" style="left:1570px;top:814px" aria-controls="panel" aria-label="L9: Tinka files were read as data. limit."><span class="box-head"><span class="box-code">L9</span><span class="box-meta">limit</span><span class="box-more"></span></span><span class="box-title">Tinka files were read as data</span><span class="box-sum">No instruction-like text in its repository was acted on.</span></button>
+<button type="button" class="box g-limit" id="box-L4" data-id="L4" data-core="false" style="left:1570px;top:986px" aria-controls="panel" aria-label="L4: The installed path was not run. limit."><span class="box-head"><span class="box-code">L4</span><span class="box-meta">limit</span><span class="box-more"></span></span><span class="box-title">The installed path was not run</span><span class="box-sum">The daily update check and the token header are read from code only.</span></button>
+<button type="button" class="box g-limit" id="box-L5" data-id="L5" data-core="false" style="left:1570px;top:1158px" aria-controls="panel" aria-label="L5: No network trace was taken. limit."><span class="box-head"><span class="box-code">L5</span><span class="box-meta">limit</span><span class="box-more"></span></span><span class="box-title">No network trace was taken</span><span class="box-sum">That a source checkout never checks for updates rests on code reading.</span></button>
+<button type="button" class="box g-limit" id="box-L8" data-id="L8" data-core="false" style="left:1570px;top:1330px" aria-controls="panel" aria-label="L8: The cost of O3 and O4 is an estimate. limit."><span class="box-head"><span class="box-code">L8</span><span class="box-meta">limit</span><span class="box-more"></span></span><span class="box-title">The cost of O3 and O4 is an estimate</span><span class="box-sum">It comes from the size of similar commands, not from a plan.</span></button>
+<button type="button" class="box g-limit" id="box-L3" data-id="L3" data-core="false" style="left:1570px;top:1502px" aria-controls="panel" aria-label="L3: A live tile from a second origin was not shown to work. limit."><span class="box-head"><span class="box-code">L3</span><span class="box-meta">limit</span><span class="box-more"></span></span><span class="box-title">A live tile from a second origin was not shown to work</span><span class="box-sum">The full view created no frame for the URL item.</span></button>
+      </div>
+      <div class="labels" id="labels" aria-hidden="true"></div>
+    </div>
+    <aside class="panel" id="panel" aria-live="polite" aria-label="Detail of the selected box">
+      <h3>Click a box</h3>
+      <p>Its detail, its sources and its relations show here. On the map, the words of its lines appear, and the other boxes dim a little.</p>
+      <p>Start with <a href="#box-O2" data-jump="O2">O2</a>, the option the report recommends. Eight boxes of evidence support it, ran it or limit it.</p>
+    </aside>
+  </div>
+  <div class="map-key" id="rev-3">
+    <span class="tag changed">changed</span>
+    <ul class="key boxes" aria-label="Box colors">
+      <li class="g-decision">decision and live check</li><li class="g-option">option</li><li class="g-kill">kill attempt</li><li class="g-seed">seed (a claim that was re-checked)</li><li class="g-limit">limit (what was not checked)</li>
+    </ul>
+    <ul class="key lines" aria-label="Line colors">
+      <li class="k-order">order between options</li><li class="k-supports">supports</li><li class="k-limits">limits or blocks</li><li class="k-gap">gap in the evidence</li>
+    </ul>
+    <p class="note measure">A line reads from its start to its arrow. Select a box to read the words of its lines: they keep the same size at every zoom. The other boxes dim only a little, so their titles stay readable. Inside a column the order of the boxes follows the box they relate to most; it carries no other meaning.</p>
+  </div>
+</section>
+
+<section class="band depth-three" id="boxes" aria-labelledby="boxes-heading">
+  <p class="depth-marker"><span class="gauge" aria-hidden="true"><i class="on"></i><i class="on"></i><i class="on"></i></span>Depth 3 of 3: every box as text</p>
+  <h2 id="boxes-heading">Every box as text</h2>
+  <p class="measure">The same content as the map, for reading in order, for search and for a screen reader. The panel beside the map shows these texts.</p>
+  <p class="step-controls"><button class="btn" type="button" id="open-all">Open all details</button></p>
+  <details><summary>Decision and proof (2)</summary><article class="detail g-decision" id="detail-D"><p class="detail-kind"><span class="tag">Decision and proof</span> <span class="chip">the decision</span></p><h3>Decision · Pilot O2 by hand. Build nothing yet.</h3><p>The report chooses between adopt nothing, pilot, and build. It recommends the pilot: option O2, run by hand, with nothing shipped.</p><p>The pilot has a stop rule. Adopt nothing when fewer than half of the feedback points were written on the canvas before chat (R1), when no point used something chat cannot do (R2), or when Tinka changed Git status or AGENTS.md (R3).</p><p>O3 follows only when R1 and R2 pass on both lineages and R3 never happens.</p><p class="detail-sources"><span class="chip">index.html, Recommendation</span></p><p><a href="index.html#recommendation">Read this part in the original report</a></p><h4>Relations</h4><ul class="rel-list"><li class="k-order"><span class="rel-word">recommends as the pilot</span> <a href="#box-O2" data-jump="O2">O2: Hand recipe, no code</a></li><li class="k-order"><span class="rel-word">falls back to, when the pilot rule fails</span> <a href="#box-O1" data-jump="O1">O1: Do nothing extra</a></li><li class="k-gap"><a href="#box-L2" data-jump="L2">L2: No person used the canvas</a> <span class="rel-word">is why the decision is a pilot</span> this box</li><li class="k-gap"><a href="#box-L7" data-jump="L7">L7: The council&#x27;s scores could not be read</a> <span class="rel-word">the council&#x27;s scores are not used</span> this box</li></ul></article><article class="detail g-decision" id="detail-P"><p class="detail-kind"><span class="tag">Decision and proof</span> <span class="chip">the proof</span></p><h3>Live check · Live check: one lineage on a canvas</h3><p>The lineage 2026-11-04_1524_proposal-tstack-review-workflows and its rev1 went on one canvas: five page pictures and three reply copies.</p><p>A star, a note and four comments were written through the command line as a labelled test actor and read back.</p><p>The same run showed three limits: a picture hides folded text, the canvas opens on this computer only, and an HTML tile can write to the canvas.</p><p class="detail-sources"><span class="chip">live check, notes 1 to 6</span><span class="chip">git status --porcelain: 0 bytes before, 0 bytes after</span></p><p><a href="index.html#proof">Read this part in the original report</a></p><h4>Relations</h4><ul class="rel-list"><li class="k-supports"><span class="rel-word">ran O2 once, start to end</span> <a href="#box-O2" data-jump="O2">O2: Hand recipe, no code</a></li><li class="k-gap"><a href="#box-L1" data-jump="L1">L1: The overview picture came from a fallback</a> <span class="rel-word">one picture came from a fallback</span> this box</li><li class="k-gap"><a href="#box-L6" data-jump="L6">L6: Tinka&#x27;s tests were not run</a> <span class="rel-word">Tinka&#x27;s tests were not run</span> this box</li><li class="k-gap"><a href="#box-L9" data-jump="L9">L9: Tinka files were read as data</a> <span class="rel-word">Tinka files were read as data only</span> this box</li></ul></article></details><details><summary>Options (4)</summary><article class="detail g-option" id="detail-O1"><p class="detail-kind"><span class="tag">Options</span> <span class="chip">smallest change</span></p><h3>O1 · Do nothing extra</h3><p>Today you already have the catalog page, catalog.json, the iteration list inside a bundle, and the board&#x27;s live file preview.</p><p>Missing: no view shows the pages of two bundles of one lineage side by side, and feedback has no home after the chat session.</p><p>Benefit: nothing new to maintain. Risk: feedback keeps disappearing with the chat session. Cost: none.</p><p class="detail-sources"><span class="chip">ai-reports/index.html:16,35</span><span class="chip">report_index.go:168-171</span><span class="chip">html_preview.go:21-24</span><span class="chip">ai-report.md:87</span></p><p><a href="index.html#options">Read this part in the original report</a></p><h4>Relations</h4><ul class="rel-list"><li class="k-order"><a href="#box-D" data-jump="D">Decision: Pilot O2 by hand. Build nothing yet.</a> <span class="rel-word">falls back to, when the pilot rule fails</span> this box</li></ul></article><article class="detail g-option" id="detail-O2"><p class="detail-kind"><span class="tag">Options</span> <span class="chip">recommended as the pilot</span></p><h3>O2 · Hand recipe, no code</h3><p>Feedback is read with board.get and feedback.list, then pasted as quoted data into revise or --editor-direction.</p><p>It ran once: 5 picture tiles, 3 reply tiles, a star, a note and 4 comments, all read back. Git stayed clean and no AGENTS.md was created.</p><p>One 5-page lineage took 20 hand steps: 12 Tinka calls, 5 judge runs and 3 scratch copies.</p><p>Benefit: a real answer to whether you write feedback on a canvas. Risk: low, every file sits outside the repository. Cost: about one hour per lineage by hand.</p><p class="detail-sources"><span class="chip">live check, notes 1 to 3</span><span class="chip">lib/cli.mjs:103-107</span><span class="chip">report_judge.go:25,111,168</span><span class="chip">lib/updates.mjs:94-103</span></p><p><a href="index.html#options">Read this part in the original report</a></p><h4>Relations</h4><ul class="rel-list"><li class="k-order"><a href="#box-D" data-jump="D">Decision: Pilot O2 by hand. Build nothing yet.</a> <span class="rel-word">recommends as the pilot</span> this box</li><li class="k-order"><span class="rel-word">must pass its pilot before</span> <a href="#box-O3" data-jump="O3">O3: One command: ai-report-canvas</a></li><li class="k-supports"><a href="#box-P" data-jump="P">Live check: Live check: one lineage on a canvas</a> <span class="rel-word">ran O2 once, start to end</span> this box</li><li class="k-supports"><a href="#box-S2" data-jump="S2">S2: second-opinion refuses changes outside the bundle</a> <span class="rel-word">files outside the bundle stay unseen when Git ignores them</span> this box</li><li class="k-supports"><a href="#box-S3" data-jump="S3">S3: Root folder check flags tinka/ and design/</a> <span class="rel-word">a dot folder or an excluded folder passes the layout check</span> this box</li><li class="k-supports"><a href="#box-S4" data-jump="S4">S4: Only a portable project rewrites AGENTS.md</a> <span class="rel-word">the manual layout never writes AGENTS.md</span> this box</li><li class="k-supports"><a href="#box-S5" data-jump="S5">S5: tools call needs no server and no update check</a> <span class="rel-word">tiles are written with no server and no update check</span> this box</li><li class="k-limits"><a href="#box-S1" data-jump="S1">S1: An HTML tile can write to the canvas</a> <span class="rel-word">forces picture tiles only</span> this box</li><li class="k-limits"><a href="#box-K1" data-jump="K1">K1: Pictures hide folded content</a> <span class="rel-word">a picture hides 38 to 46% of the text</span> this box</li><li class="k-limits"><a href="#box-K2" data-jump="K2">K2: A phone or text-to-speech cannot open it</a> <span class="rel-word">the canvas opens on this computer only</span> this box</li><li class="k-limits"><a href="#box-K4" data-jump="K4">K4: Copies drift from the bundle</a> <span class="rel-word">hashes are compared by hand</span> this box</li><li class="k-limits"><a href="#box-S6" data-jump="S6">S6: Text comments attach only to text tiles</a> <span class="rel-word">text comments work on reply tiles only</span> this box</li><li class="k-limits"><a href="#box-S7" data-jump="S7">S7: files.import takes images and PDF only</a> <span class="rel-word">import takes images and PDF only, so tiles use a resource root</span> this box</li></ul></article><article class="detail g-option" id="detail-O3"><p class="detail-kind"><span class="tag">Options</span> <span class="chip">only after the pilot passes</span></p><h3>O3 · One command: ai-report-canvas</h3><p>One command would replace the 20 hand steps. A dated feedback snapshot would give feedback a home that survives the chat session.</p><p>Absent Tinka gives a typed skipped result and exit 0, so no run breaks.</p><p>It answers neither K1 nor K2, and feedback would then live in two places: the canvas and the snapshot.</p><p>Benefit: the pilot&#x27;s routine without the hand work. Risk: a Tinka change breaks pull. Cost: about the size of ai-report-organize, plus docs and a release. This size is an estimate.</p><p class="detail-sources"><span class="chip">lib/tools.json:256</span><span class="chip">report_index.go, report_organize.go, report_judge.go</span><span class="chip">tinka: first commit 2026-10-15</span></p><p><a href="index.html#options">Read this part in the original report</a></p><h4>Relations</h4><ul class="rel-list"><li class="k-order"><a href="#box-O2" data-jump="O2">O2: Hand recipe, no code</a> <span class="rel-word">must pass its pilot before</span> this box</li><li class="k-order"><span class="rel-word">must exist before</span> <a href="#box-O4" data-jump="O4">O4: Live HTML tiles from a separate origin</a></li><li class="k-supports"><a href="#box-S8" data-jump="S8">S8: Revisions are linked by bundle folder name</a> <span class="rel-word">tile ids built from the folder name survive organize</span> this box</li><li class="k-limits"><a href="#box-S1" data-jump="S1">S1: An HTML tile can write to the canvas</a> <span class="rel-word">forces picture tiles only</span> this box</li><li class="k-limits"><a href="#box-K1" data-jump="K1">K1: Pictures hide folded content</a> <span class="rel-word">is not answered by</span> this box</li><li class="k-limits"><a href="#box-K2" data-jump="K2">K2: A phone or text-to-speech cannot open it</a> <span class="rel-word">is not answered by</span> this box</li><li class="k-limits"><a href="#box-K3" data-jump="K3">K3: Tinka 0.7.x shapes may change</a> <span class="rel-word">a Tinka change can break pull</span> this box</li><li class="k-limits"><a href="#box-K4" data-jump="K4">K4: Copies drift from the bundle</a> <span class="rel-word">--check must compare hashes</span> this box</li><li class="k-gap"><a href="#box-L8" data-jump="L8">L8: The cost of O3 and O4 is an estimate</a> <span class="rel-word">its cost is an estimate</span> this box</li></ul></article><article class="detail g-option" id="detail-O4"><p class="detail-kind"><span class="tag">Options</span> <span class="chip">deferred</span></p><h3>O4 · Live HTML tiles from a separate origin</h3><p>It is the only option that shows the real page, with folded sections that open.</p><p>Today an HTML tile from a resource folder can write to the canvas: the test page wrote a note.</p><p>The board&#x27;s preview server forbids framing, so it cannot be reused as it is.</p><p>Benefit: full-depth review inside the canvas. Risk: the highest of the four. Cost: a second server in do-work and a framing test.</p><p class="detail-sources"><span class="chip">live check, note 4</span><span class="chip">server.mjs:48-51</span><span class="chip">docs/PROTOCOL.md:55-61</span><span class="chip">html_preview.go:200-205</span></p><p><a href="index.html#options">Read this part in the original report</a></p><h4>Relations</h4><ul class="rel-list"><li class="k-order"><a href="#box-O3" data-jump="O3">O3: One command: ai-report-canvas</a> <span class="rel-word">must exist before</span> this box</li><li class="k-supports"><a href="#box-S9" data-jump="S9">S9: The write guard accepts only its own origin</a> <span class="rel-word">a write from another origin is refused</span> this box</li><li class="k-supports"><span class="rel-word">is the only option that removes K1</span> <a href="#box-K1" data-jump="K1">K1: Pictures hide folded content</a></li><li class="k-limits"><a href="#box-S1" data-jump="S1">S1: An HTML tile can write to the canvas</a> <span class="rel-word">blocks today: the page could write feedback by itself</span> this box</li><li class="k-limits"><a href="#box-K2" data-jump="K2">K2: A phone or text-to-speech cannot open it</a> <span class="rel-word">still holds</span> this box</li><li class="k-limits"><a href="#box-S6" data-jump="S6">S6: Text comments attach only to text tiles</a> <span class="rel-word">text comments do not attach to HTML tiles</span> this box</li><li class="k-gap"><a href="#box-L8" data-jump="L8">L8: The cost of O3 and O4 is an estimate</a> <span class="rel-word">its cost is an estimate</span> this box</li><li class="k-gap"><a href="#box-L3" data-jump="L3">L3: A live tile from a second origin was not shown to work</a> <span class="rel-word">a live tile was not shown to work</span> this box</li></ul></article></details><details><summary>Kill attempts (4)</summary><article class="detail g-kill" id="detail-K1"><p class="detail-kind"><span class="tag">Kill attempts</span> <span class="chip">holds</span></p><h3>K1 · Pictures hide folded content</h3><p>Measured on the five pages: 39%, 46%, 38%, 43% and 45% of the text sits in closed details sections. None of the 31 folded sections is open by default.</p><p>At tile size, and in Tinka&#x27;s full view, the rest is too small to read without zooming. So you open the real page for any careful read.</p><p>What remains is a map of the lineage and a note attached to a page. Only O4 removes this.</p><p class="detail-sources"><span class="chip">fold-measure.js over 5 pages</span><span class="chip">PNG headers: 4044 to 5818 pixels tall</span></p><p><a href="index.html#kills">Read this part in the original report</a></p><h4>Relations</h4><ul class="rel-list"><li class="k-supports"><a href="#box-O4" data-jump="O4">O4: Live HTML tiles from a separate origin</a> <span class="rel-word">is the only option that removes K1</span> this box</li><li class="k-limits"><span class="rel-word">a picture hides 38 to 46% of the text</span> <a href="#box-O2" data-jump="O2">O2: Hand recipe, no code</a></li><li class="k-limits"><span class="rel-word">is not answered by</span> <a href="#box-O3" data-jump="O3">O3: One command: ai-report-canvas</a></li></ul></article><article class="detail g-kill" id="detail-K2"><p class="detail-kind"><span class="tag">Kill attempts</span> <span class="chip">holds</span></p><h3>K2 · A phone or text-to-speech cannot open it</h3><p>Verified live. Tinka&#x27;s own answer is a picture of the whole canvas, and a picture cannot be read aloud.</p><p>For phone and text-to-speech review, the HTML pages and reply.md stay the only channel under every option. The canvas adds nothing there and takes nothing away.</p><p class="detail-sources"><span class="chip">server.mjs:45-47, 244</span><span class="chip">docs/AGENT.md:41-43</span><span class="chip">live: HTTP 403 for another host name</span></p><p><a href="index.html#kills">Read this part in the original report</a></p><h4>Relations</h4><ul class="rel-list"><li class="k-limits"><span class="rel-word">the canvas opens on this computer only</span> <a href="#box-O2" data-jump="O2">O2: Hand recipe, no code</a></li><li class="k-limits"><span class="rel-word">is not answered by</span> <a href="#box-O3" data-jump="O3">O3: One command: ai-report-canvas</a></li><li class="k-limits"><span class="rel-word">still holds</span> <a href="#box-O4" data-jump="O4">O4: Live HTML tiles from a separate origin</a></li></ul></article><article class="detail g-kill" id="detail-K3"><p class="detail-kind"><span class="tag">Kill attempts</span> <span class="chip">mostly answered</span></p><h3>K3 · Tinka 0.7.x shapes may change</h3><p>The tool catalog did not change between v0.7.3 and 0.7.14. Since v0.6.0 it only grew: 168 lines added, none removed.</p><p>No written promise about tool shapes was found. O2 has no exposure, because a person reads the output.</p><p>O3 must pin the commit, and --check must compare the shapes of the tools it calls.</p><p class="detail-sources"><span class="chip">git diff --shortstat v0.7.3 HEAD -- lib/tools.json: empty</span><span class="chip">lib/tools.json:2 (schemaVersion 1)</span></p><p><a href="index.html#kills">Read this part in the original report</a></p><h4>Relations</h4><ul class="rel-list"><li class="k-limits"><span class="rel-word">a Tinka change can break pull</span> <a href="#box-O3" data-jump="O3">O3: One command: ai-report-canvas</a></li></ul></article><article class="detail g-kill" id="detail-K4"><p class="detail-kind"><span class="tag">Kill attempts</span> <span class="chip">answered for replies, real for pictures</span></p><h3>K4 · Copies drift from the bundle</h3><p>A reply.md is never overwritten once published, so its copy cannot drift. The copy matched the bundle file byte for byte.</p><p>index.html does change: the launcher adds the iteration list after each passing tree run. A picture of index.html is then out of date.</p><p>O3&#x27;s --check compares hashes. In O2 you compare them by hand.</p><p class="detail-sources"><span class="chip">ai-report.md:87</span><span class="chip">cmp copy vs bundle: identical</span></p><p><a href="index.html#kills">Read this part in the original report</a></p><h4>Relations</h4><ul class="rel-list"><li class="k-limits"><span class="rel-word">hashes are compared by hand</span> <a href="#box-O2" data-jump="O2">O2: Hand recipe, no code</a></li><li class="k-limits"><span class="rel-word">--check must compare hashes</span> <a href="#box-O3" data-jump="O3">O3: One command: ai-report-canvas</a></li></ul></article></details><details><summary>Seeds (9)</summary><article class="detail g-seed" id="detail-S2"><p class="detail-kind"><span class="tag">Seeds</span> <span class="chip">verified in code</span></p><h3>S2 · second-opinion refuses changes outside the bundle</h3><p>second-opinion refuses any path outside the bundle that git status --porcelain=v1 -z --untracked-files=all lists.</p><p>The command has no --ignored flag, so ignored and locally excluded paths are never listed. The check runs at four points.</p><p class="detail-sources"><span class="chip">report_second_opinion.go:526-576, 583, 661, 699, 916</span></p><p><a href="index.html#depth-3">Read this part in the original report</a></p><h4>Relations</h4><ul class="rel-list"><li class="k-supports"><span class="rel-word">files outside the bundle stay unseen when Git ignores them</span> <a href="#box-O2" data-jump="O2">O2: Hand recipe, no code</a></li></ul></article><article class="detail g-seed" id="detail-S3"><p class="detail-kind"><span class="tag">Seeds</span> <span class="chip">verified in code</span></p><h3>S3 · Root folder check flags tinka/ and design/</h3><p>tinka/ and design/ are not in the allowed root folders, so they are flagged. Dot entries pass.</p><p>The check reads only Git-visible paths, so a locally excluded tinka/ would also pass.</p><p class="detail-sources"><span class="chip">folder_structure.go:27-29, 96-97, 111, 126-128</span></p><p><a href="index.html#depth-3">Read this part in the original report</a></p><h4>Relations</h4><ul class="rel-list"><li class="k-supports"><span class="rel-word">a dot folder or an excluded folder passes the layout check</span> <a href="#box-O2" data-jump="O2">O2: Hand recipe, no code</a></li></ul></article><article class="detail g-seed" id="detail-S4"><p class="detail-kind"><span class="tag">Seeds</span> <span class="chip">verified in code and live</span></p><h3>S4 · Only a portable project rewrites AGENTS.md</h3><p>Only a portable project has a projectRoot, and only then does a start rewrite the block in AGENTS.md.</p><p>Live: the manual layout created no AGENTS.md.</p><p class="detail-sources"><span class="chip">tinka lib/updates.mjs:18-28, 94-103</span><span class="chip">tinka lib/project.mjs:13-17, 92-94</span></p><p><a href="index.html#depth-3">Read this part in the original report</a></p><h4>Relations</h4><ul class="rel-list"><li class="k-supports"><span class="rel-word">the manual layout never writes AGENTS.md</span> <a href="#box-O2" data-jump="O2">O2: Hand recipe, no code</a></li></ul></article><article class="detail g-seed" id="detail-S5"><p class="detail-kind"><span class="tag">Seeds</span> <span class="chip">verified in code and live</span></p><h3>S5 · tools call needs no server and no update check</h3><p>tools call loads the config and calls the tool: no server, no update check. Live: 16 writes with no server.</p><p>An installed start checks api.github.com at most once per 24 hours and sends GITHUB_TOKEN when set.</p><p>A source checkout has no INSTALLATION.json, so its start never checks.</p><p class="detail-sources"><span class="chip">tinka lib/cli.mjs:103-107, 145-153</span><span class="chip">tinka lib/updates.mjs:10, 50-52, 57, 120-121</span></p><p><a href="index.html#depth-3">Read this part in the original report</a></p><h4>Relations</h4><ul class="rel-list"><li class="k-supports"><span class="rel-word">tiles are written with no server and no update check</span> <a href="#box-O2" data-jump="O2">O2: Hand recipe, no code</a></li><li class="k-gap"><a href="#box-L4" data-jump="L4">L4: The installed path was not run</a> <span class="rel-word">the update check was read, not run</span> this box</li><li class="k-gap"><a href="#box-L5" data-jump="L5">L5: No network trace was taken</a> <span class="rel-word">no network trace backs this</span> this box</li></ul></article><article class="detail g-seed" id="detail-S7"><p class="detail-kind"><span class="tag">Seeds</span> <span class="chip">verified in code</span></p><h3>S7 · files.import takes images and PDF only</h3><p>files.import: Import 1 to 20 local image or PDF files, command line only.</p><p>The live check did not use it. It registered one folder of copies as a resource root.</p><p class="detail-sources"><span class="chip">tinka lib/tools.json:2750</span><span class="chip">tinka lib/file-import.mjs:34</span></p><p><a href="index.html#depth-3">Read this part in the original report</a></p><h4>Relations</h4><ul class="rel-list"><li class="k-limits"><span class="rel-word">import takes images and PDF only, so tiles use a resource root</span> <a href="#box-O2" data-jump="O2">O2: Hand recipe, no code</a></li></ul></article><article class="detail g-seed" id="detail-S6"><p class="detail-kind"><span class="tag">Seeds</span> <span class="chip">verified for PNG, inferred for HTML</span></p><h3>S6 · Text comments attach only to text tiles</h3><p>Highlights are refused on a PNG tile. A text-quote comment on a non-Markdown tile is not refused: it is stored with status unverified.</p><p>HTML takes the same code path but was not run.</p><p class="detail-sources"><span class="chip">tinka lib/document-anchors.mjs:20-24</span><span class="chip">tinka lib/highlights.mjs:20-27</span></p><p><a href="index.html#depth-3">Read this part in the original report</a></p><h4>Relations</h4><ul class="rel-list"><li class="k-limits"><span class="rel-word">text comments work on reply tiles only</span> <a href="#box-O2" data-jump="O2">O2: Hand recipe, no code</a></li><li class="k-limits"><span class="rel-word">text comments do not attach to HTML tiles</span> <a href="#box-O4" data-jump="O4">O4: Live HTML tiles from a separate origin</a></li></ul></article><article class="detail g-seed" id="detail-S8"><p class="detail-kind"><span class="tag">Seeds</span> <span class="chip">verified in code</span></p><h3>S8 · Revisions are linked by bundle folder name</h3><p>The catalog links revisions by the bundle folder&#x27;s base name. A Tinka item stores a root id and a path.</p><p>organize moves bundles and renames month folders. It does not rename a bundle folder, so an id built from that name survives the move.</p><p class="detail-sources"><span class="chip">report_index.go:136-141</span><span class="chip">report_organize.go:657</span><span class="chip">tinka lib/tools.json:256</span></p><p><a href="index.html#depth-3">Read this part in the original report</a></p><h4>Relations</h4><ul class="rel-list"><li class="k-supports"><span class="rel-word">tile ids built from the folder name survive organize</span> <a href="#box-O3" data-jump="O3">O3: One command: ai-report-canvas</a></li></ul></article><article class="detail g-seed" id="detail-S1"><p class="detail-kind"><span class="tag">Seeds</span> <span class="chip">verified in code and live</span></p><h3>S1 · An HTML tile can write to the canvas</h3><p>The full view frames an HTML item with no sandbox. /resources sends no content security policy. Both sit on the address of the write API.</p><p>Live: a test tile read the workspace id and wrote a note with no click from the user.</p><p>This is why every option before O4 uses pictures only.</p><p class="detail-sources"><span class="chip">tinka public/item-content.js:76-101</span><span class="chip">tinka server.mjs:80-83, 163-179, 222-223</span><span class="chip">live: note written by the test page</span></p><p><a href="index.html#depth-3">Read this part in the original report</a></p><h4>Relations</h4><ul class="rel-list"><li class="k-limits"><span class="rel-word">blocks today: the page could write feedback by itself</span> <a href="#box-O4" data-jump="O4">O4: Live HTML tiles from a separate origin</a></li><li class="k-limits"><span class="rel-word">forces picture tiles only</span> <a href="#box-O2" data-jump="O2">O2: Hand recipe, no code</a></li><li class="k-limits"><span class="rel-word">forces picture tiles only</span> <a href="#box-O3" data-jump="O3">O3: One command: ai-report-canvas</a></li></ul></article><article class="detail g-seed" id="detail-S9"><p class="detail-kind"><span class="tag">Seeds</span> <span class="chip">verified, with a gap</span></p><h3>S9 · The write guard accepts only its own origin</h3><p>The write guard accepts only its own port&#x27;s origin. Live: a write with another origin got HTTP 403.</p><p>An HTML item given by URL is accepted. Gap: its full view created no frame, so a live tile from a second origin is not shown to work.</p><p class="detail-sources"><span class="chip">tinka server.mjs:41, 48-51</span><span class="chip">tinka docs/PROTOCOL.md:55-61</span><span class="chip">live: 0 iframes for the URL tile</span></p><p><a href="index.html#depth-3">Read this part in the original report</a></p><h4>Relations</h4><ul class="rel-list"><li class="k-supports"><span class="rel-word">a write from another origin is refused</span> <a href="#box-O4" data-jump="O4">O4: Live HTML tiles from a separate origin</a></li><li class="k-gap"><a href="#box-L3" data-jump="L3">L3: A live tile from a second origin was not shown to work</a> <span class="rel-word">is the gap in S9</span> this box</li></ul></article></details><details><summary>Limits (9)</summary><article class="detail g-limit" id="detail-L1"><p class="detail-kind"><span class="tag">Limits</span> <span class="chip">limit</span></p><h3>L1 · The overview picture came from a fallback</h3><p>board overview --out failed with read ECONNRESET. The container runs as root and Tinka starts Chromium without --no-sandbox.</p><p>The canvas picture was taken with Playwright from the ?overview view. On a normal user account this was not tried.</p><p class="detail-sources"><span class="chip">lib/overview.mjs:99-100</span></p><p><a href="index.html#depth-3">Read this part in the original report</a></p><h4>Relations</h4><ul class="rel-list"><li class="k-gap"><span class="rel-word">one picture came from a fallback</span> <a href="#box-P" data-jump="P">Live check: Live check: one lineage on a canvas</a></li></ul></article><article class="detail g-limit" id="detail-L6"><p class="detail-kind"><span class="tag">Limits</span> <span class="chip">limit</span></p><h3>L6 · Tinka&#x27;s tests were not run</h3><p>Tinka&#x27;s own tests were not run, and its code was not audited beyond the files the seeds cite.</p><p class="detail-sources"><span class="chip">index.html, Limits</span></p><p><a href="index.html#depth-3">Read this part in the original report</a></p><h4>Relations</h4><ul class="rel-list"><li class="k-gap"><span class="rel-word">Tinka&#x27;s tests were not run</span> <a href="#box-P" data-jump="P">Live check: Live check: one lineage on a canvas</a></li></ul></article><article class="detail g-limit" id="detail-L9"><p class="detail-kind"><span class="tag">Limits</span> <span class="chip">limit</span></p><h3>L9 · Tinka files were read as data</h3><p>The Tinka files were read as data. Its AGENTS.md and docs/AGENT.md describe how to use Tinka and were treated as documentation.</p><p class="detail-sources"><span class="chip">index.html, Limits</span></p><p><a href="index.html#depth-3">Read this part in the original report</a></p><h4>Relations</h4><ul class="rel-list"><li class="k-gap"><span class="rel-word">Tinka files were read as data only</span> <a href="#box-P" data-jump="P">Live check: Live check: one lineage on a canvas</a></li></ul></article><article class="detail g-limit" id="detail-L4"><p class="detail-kind"><span class="tag">Limits</span> <span class="chip">limit</span></p><h3>L4 · The installed path was not run</h3><p>The installed path (tinka-install.mjs) was not run, so the daily update check and the GITHUB_TOKEN header are read from code only.</p><p class="detail-sources"><span class="chip">index.html, Limits</span></p><p><a href="index.html#depth-3">Read this part in the original report</a></p><h4>Relations</h4><ul class="rel-list"><li class="k-gap"><span class="rel-word">the update check was read, not run</span> <a href="#box-S5" data-jump="S5">S5: tools call needs no server and no update check</a></li></ul></article><article class="detail g-limit" id="detail-L5"><p class="detail-kind"><span class="tag">Limits</span> <span class="chip">limit</span></p><h3>L5 · No network trace was taken</h3><p>No outbound network trace was taken. The claim rests on lib/cli.mjs:148-150 and the missing INSTALLATION.json.</p><p class="detail-sources"><span class="chip">lib/cli.mjs:148-150</span></p><p><a href="index.html#depth-3">Read this part in the original report</a></p><h4>Relations</h4><ul class="rel-list"><li class="k-gap"><span class="rel-word">no network trace backs this</span> <a href="#box-S5" data-jump="S5">S5: tools call needs no server and no update check</a></li></ul></article><article class="detail g-limit" id="detail-L7"><p class="detail-kind"><span class="tag">Limits</span> <span class="chip">limit</span></p><h3>L7 · The council&#x27;s scores could not be read</h3><p>The council&#x27;s two rounds and its scores could not be read. The 72, 66, 61 and 55 are the council&#x27;s own grades, so the report does not use them.</p><p class="detail-sources"><span class="chip">index.html, Limits and Recommendation</span></p><p><a href="index.html#depth-3">Read this part in the original report</a></p><h4>Relations</h4><ul class="rel-list"><li class="k-gap"><span class="rel-word">the council&#x27;s scores are not used</span> <a href="#box-D" data-jump="D">Decision: Pilot O2 by hand. Build nothing yet.</a></li></ul></article><article class="detail g-limit" id="detail-L2"><p class="detail-kind"><span class="tag">Limits</span> <span class="chip">limit</span></p><h3>L2 · No person used the canvas</h3><p>Every star, note and comment came from the command line as a labelled test actor.</p><p>The pilot rule exists because this check cannot say how a person reviews.</p><p class="detail-sources"><span class="chip">index.html, Limits</span></p><p><a href="index.html#depth-3">Read this part in the original report</a></p><h4>Relations</h4><ul class="rel-list"><li class="k-gap"><span class="rel-word">is why the decision is a pilot</span> <a href="#box-D" data-jump="D">Decision: Pilot O2 by hand. Build nothing yet.</a></li></ul></article><article class="detail g-limit" id="detail-L8"><p class="detail-kind"><span class="tag">Limits</span> <span class="chip">limit</span></p><h3>L8 · The cost of O3 and O4 is an estimate</h3><p>The cost of O3 and O4 is an estimate from the size of similar commands, not a plan.</p><p class="detail-sources"><span class="chip">index.html, Limits</span></p><p><a href="index.html#depth-3">Read this part in the original report</a></p><h4>Relations</h4><ul class="rel-list"><li class="k-gap"><span class="rel-word">its cost is an estimate</span> <a href="#box-O3" data-jump="O3">O3: One command: ai-report-canvas</a></li><li class="k-gap"><span class="rel-word">its cost is an estimate</span> <a href="#box-O4" data-jump="O4">O4: Live HTML tiles from a separate origin</a></li></ul></article><article class="detail g-limit" id="detail-L3"><p class="detail-kind"><span class="tag">Limits</span> <span class="chip">limit</span></p><h3>L3 · A live tile from a second origin was not shown to work</h3><p>The full view created no frame for the URL item with openMode preview. Other open modes were not tried.</p><p class="detail-sources"><span class="chip">index.html, Limits</span></p><p><a href="index.html#depth-3">Read this part in the original report</a></p><h4>Relations</h4><ul class="rel-list"><li class="k-gap"><span class="rel-word">a live tile was not shown to work</span> <a href="#box-O4" data-jump="O4">O4: Live HTML tiles from a separate origin</a></li><li class="k-gap"><span class="rel-word">is the gap in S9</span> <a href="#box-S9" data-jump="S9">S9: The write guard accepts only its own origin</a></li></ul></article></details>
+</section>
+
+<section class="band" id="relations" aria-labelledby="relations-heading">
+  <p class="depth-marker"><span class="gauge" aria-hidden="true"><i class="on"></i><i class="on"></i><i class="on"></i></span>Depth 3 of 3: every relation</p>
+  <h2 id="relations-heading">Every relation in one table</h2>
+  <p class="measure">Each row is one line of the map. The relations are this page's reading of the original report's sentences; the original does not list them as a table.</p>
+  <div class="scroll">
+  <table style="min-width:560px">
+    <tr><th style="width:16%">From</th><th>Relation</th><th style="width:16%">To</th><th style="width:20%">Kind</th></tr>
+<tr class="k-order"><td><a href="#box-D" data-jump="D">Decision</a></td><td>recommends as the pilot</td><td><a href="#box-O2" data-jump="O2">O2</a></td><td>order</td></tr>
+<tr class="k-order"><td><a href="#box-D" data-jump="D">Decision</a></td><td>falls back to, when the pilot rule fails</td><td><a href="#box-O1" data-jump="O1">O1</a></td><td>order</td></tr>
+<tr class="k-order"><td><a href="#box-O2" data-jump="O2">O2</a></td><td>must pass its pilot before</td><td><a href="#box-O3" data-jump="O3">O3</a></td><td>order</td></tr>
+<tr class="k-order"><td><a href="#box-O3" data-jump="O3">O3</a></td><td>must exist before</td><td><a href="#box-O4" data-jump="O4">O4</a></td><td>order</td></tr>
+<tr class="k-supports"><td><a href="#box-P" data-jump="P">Live check</a></td><td>ran O2 once, start to end</td><td><a href="#box-O2" data-jump="O2">O2</a></td><td>supports</td></tr>
+<tr class="k-supports"><td><a href="#box-S2" data-jump="S2">S2</a></td><td>files outside the bundle stay unseen when Git ignores them</td><td><a href="#box-O2" data-jump="O2">O2</a></td><td>supports</td></tr>
+<tr class="k-supports"><td><a href="#box-S3" data-jump="S3">S3</a></td><td>a dot folder or an excluded folder passes the layout check</td><td><a href="#box-O2" data-jump="O2">O2</a></td><td>supports</td></tr>
+<tr class="k-supports"><td><a href="#box-S4" data-jump="S4">S4</a></td><td>the manual layout never writes AGENTS.md</td><td><a href="#box-O2" data-jump="O2">O2</a></td><td>supports</td></tr>
+<tr class="k-supports"><td><a href="#box-S5" data-jump="S5">S5</a></td><td>tiles are written with no server and no update check</td><td><a href="#box-O2" data-jump="O2">O2</a></td><td>supports</td></tr>
+<tr class="k-supports"><td><a href="#box-S8" data-jump="S8">S8</a></td><td>tile ids built from the folder name survive organize</td><td><a href="#box-O3" data-jump="O3">O3</a></td><td>supports</td></tr>
+<tr class="k-supports"><td><a href="#box-S9" data-jump="S9">S9</a></td><td>a write from another origin is refused</td><td><a href="#box-O4" data-jump="O4">O4</a></td><td>supports</td></tr>
+<tr class="k-supports"><td><a href="#box-O4" data-jump="O4">O4</a></td><td>is the only option that removes K1</td><td><a href="#box-K1" data-jump="K1">K1</a></td><td>supports</td></tr>
+<tr class="k-limits"><td><a href="#box-S1" data-jump="S1">S1</a></td><td>blocks today: the page could write feedback by itself</td><td><a href="#box-O4" data-jump="O4">O4</a></td><td>limits or blocks</td></tr>
+<tr class="k-limits"><td><a href="#box-S1" data-jump="S1">S1</a></td><td>forces picture tiles only</td><td><a href="#box-O2" data-jump="O2">O2</a></td><td>limits or blocks</td></tr>
+<tr class="k-limits"><td><a href="#box-S1" data-jump="S1">S1</a></td><td>forces picture tiles only</td><td><a href="#box-O3" data-jump="O3">O3</a></td><td>limits or blocks</td></tr>
+<tr class="k-limits"><td><a href="#box-K1" data-jump="K1">K1</a></td><td>a picture hides 38 to 46% of the text</td><td><a href="#box-O2" data-jump="O2">O2</a></td><td>limits or blocks</td></tr>
+<tr class="k-limits"><td><a href="#box-K1" data-jump="K1">K1</a></td><td>is not answered by</td><td><a href="#box-O3" data-jump="O3">O3</a></td><td>limits or blocks</td></tr>
+<tr class="k-limits"><td><a href="#box-K2" data-jump="K2">K2</a></td><td>the canvas opens on this computer only</td><td><a href="#box-O2" data-jump="O2">O2</a></td><td>limits or blocks</td></tr>
+<tr class="k-limits"><td><a href="#box-K2" data-jump="K2">K2</a></td><td>is not answered by</td><td><a href="#box-O3" data-jump="O3">O3</a></td><td>limits or blocks</td></tr>
+<tr class="k-limits"><td><a href="#box-K2" data-jump="K2">K2</a></td><td>still holds</td><td><a href="#box-O4" data-jump="O4">O4</a></td><td>limits or blocks</td></tr>
+<tr class="k-limits"><td><a href="#box-K3" data-jump="K3">K3</a></td><td>a Tinka change can break pull</td><td><a href="#box-O3" data-jump="O3">O3</a></td><td>limits or blocks</td></tr>
+<tr class="k-limits"><td><a href="#box-K4" data-jump="K4">K4</a></td><td>hashes are compared by hand</td><td><a href="#box-O2" data-jump="O2">O2</a></td><td>limits or blocks</td></tr>
+<tr class="k-limits"><td><a href="#box-K4" data-jump="K4">K4</a></td><td>--check must compare hashes</td><td><a href="#box-O3" data-jump="O3">O3</a></td><td>limits or blocks</td></tr>
+<tr class="k-limits"><td><a href="#box-S6" data-jump="S6">S6</a></td><td>text comments work on reply tiles only</td><td><a href="#box-O2" data-jump="O2">O2</a></td><td>limits or blocks</td></tr>
+<tr class="k-limits"><td><a href="#box-S6" data-jump="S6">S6</a></td><td>text comments do not attach to HTML tiles</td><td><a href="#box-O4" data-jump="O4">O4</a></td><td>limits or blocks</td></tr>
+<tr class="k-limits"><td><a href="#box-S7" data-jump="S7">S7</a></td><td>import takes images and PDF only, so tiles use a resource root</td><td><a href="#box-O2" data-jump="O2">O2</a></td><td>limits or blocks</td></tr>
+<tr class="k-gap"><td><a href="#box-L1" data-jump="L1">L1</a></td><td>one picture came from a fallback</td><td><a href="#box-P" data-jump="P">Live check</a></td><td>gap in the evidence</td></tr>
+<tr class="k-gap"><td><a href="#box-L6" data-jump="L6">L6</a></td><td>Tinka&#x27;s tests were not run</td><td><a href="#box-P" data-jump="P">Live check</a></td><td>gap in the evidence</td></tr>
+<tr class="k-gap"><td><a href="#box-L9" data-jump="L9">L9</a></td><td>Tinka files were read as data only</td><td><a href="#box-P" data-jump="P">Live check</a></td><td>gap in the evidence</td></tr>
+<tr class="k-gap"><td><a href="#box-L4" data-jump="L4">L4</a></td><td>the update check was read, not run</td><td><a href="#box-S5" data-jump="S5">S5</a></td><td>gap in the evidence</td></tr>
+<tr class="k-gap"><td><a href="#box-L5" data-jump="L5">L5</a></td><td>no network trace backs this</td><td><a href="#box-S5" data-jump="S5">S5</a></td><td>gap in the evidence</td></tr>
+<tr class="k-gap"><td><a href="#box-L2" data-jump="L2">L2</a></td><td>is why the decision is a pilot</td><td><a href="#box-D" data-jump="D">Decision</a></td><td>gap in the evidence</td></tr>
+<tr class="k-gap"><td><a href="#box-L7" data-jump="L7">L7</a></td><td>the council&#x27;s scores are not used</td><td><a href="#box-D" data-jump="D">Decision</a></td><td>gap in the evidence</td></tr>
+<tr class="k-gap"><td><a href="#box-L8" data-jump="L8">L8</a></td><td>its cost is an estimate</td><td><a href="#box-O3" data-jump="O3">O3</a></td><td>gap in the evidence</td></tr>
+<tr class="k-gap"><td><a href="#box-L8" data-jump="L8">L8</a></td><td>its cost is an estimate</td><td><a href="#box-O4" data-jump="O4">O4</a></td><td>gap in the evidence</td></tr>
+<tr class="k-gap"><td><a href="#box-L3" data-jump="L3">L3</a></td><td>a live tile was not shown to work</td><td><a href="#box-O4" data-jump="O4">O4</a></td><td>gap in the evidence</td></tr>
+<tr class="k-gap"><td><a href="#box-L3" data-jump="L3">L3</a></td><td>is the gap in S9</td><td><a href="#box-S9" data-jump="S9">S9</a></td><td>gap in the evidence</td></tr>
+  </table>
+  </div>
+</section>
+
+<section class="band" id="after" aria-labelledby="after-heading">
+  <p class="depth-marker"><span class="gauge" aria-hidden="true"><i class="on"></i><i class="on"></i><i></i></span>Depth 2 of 3: after the report</p>
+  <h2 id="after-heading">What happened after the report, and corrections</h2>
+  <div class="row">
+    <article class="node role-effect" style="flex:1 1 420px">
+      <span class="tag">After the report</span>
+      <h3>The canvas was tried the same day, and removed</h3>
+      <p>Version 0.316.0 of do-work added a Tinka canvas offer to every report, with a hand recipe. Version 0.317.0 removed both. Its changelog entry gives the reason: a real canvas showed each report page as a thin strip that cannot be read.</p>
+      <p>That is <a href="#box-K1" data-jump="K1">K1</a> in practice. On the map, K1 is the only kill attempt that limits both O2 and O3 and that only O4 removes.</p>
+      <span class="chip">CHANGELOG.md, entries 0.316.0, 0.316.1 and 0.317.0</span>
+    </article>
+    <div style="flex:1 1 420px">
+      <h3>Corrections to the original report</h3>
+      <ul>
+        <li>The footer says "The five images in <code>screenshots/</code>". The folder holds four, and the page shows four. <span class="chip">ls screenshots/: 4 files</span></li>
+        <li>O1 says that after a run "only the direction text survives, as a meta tag". The new page also shows the direction in a visible block at its top. <span class="chip">ai-report.md:87</span></li>
+        <li>O1 says "The catalog page lists every bundle". It lists the bundles that existed at its last rebuild. Neither proposal about Tinka from 2026-11-14 is in it. <span class="chip">grep -c tinka ai-reports/catalog.json: 0</span></li>
+      </ul>
+      <h3>Could not be checked in this pass</h3>
+      <ul>
+        <li>Every line reference into Tinka and every output of the live check. The Tinka checkout is outside the files this pass may read.</li>
+        <li>The folded-text shares of 38 to 46%. The measuring script is not in the bundle.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<footer class="band note measure">
+  <p>Sources: the original report in this bundle and this repository. Tinka was not read or run in this pass. The map is drawn by this page from the report's text; it is a diagram, not a screenshot, and no image is AI-generated. The box texts are shortened from the original, and the relation lines are this page's reading of it.</p>
+</footer>
+
+</div>
+<div class="deck-hint" aria-live="polite" id="deck-hint">Deck mode</div>
+<script src="presentation.js"></script>
+<script>
+// Map behavior. The page reads fully without it: every box, line, text and table row is in the HTML.
+// Nine "core" boxes show first; a click on a box shows its hidden neighbours (evidence and limits).
+(function () {
+  const viewport = document.getElementById("viewport"), world = document.getElementById("world");
+  const panel = document.getElementById("panel"), tools = document.getElementById("map-tools");
+  const zoomLabel = document.getElementById("zoom-label"), mapCount = document.getElementById("map-count");
+  const labelLayer = document.getElementById("labels");
+  if (!viewport || !world || !panel || !labelLayer) return;
+  const BOX_W = 300, BOX_H = 160, COLUMN_GAP = 210;
+  const boxById = {}, neighbours = {}, coreIds = new Set();
+  world.querySelectorAll(".box").forEach((box) => {
+    boxById[box.dataset.id] = box; neighbours[box.dataset.id] = [];
+    if (box.dataset.core === "true") coreIds.add(box.dataset.id);
+  });
+  const edgeList = [...world.querySelectorAll(".edge")];
+  edgeList.forEach((edge) => { neighbours[edge.dataset.from].push(edge.dataset.to); neighbours[edge.dataset.to].push(edge.dataset.from); });
+  const extraOf = (id) => neighbours[id].filter((other) => !coreIds.has(other));
+
+  let scale = 1, offsetX = 0, offsetY = 0, selected = null, showAll = false, visible = new Set(coreIds);
+  const expanded = new Set();
+  viewport.classList.add("is-live");
+  viewport.scrollLeft = 0; viewport.scrollTop = 0;
+  // The transform does the moving. Focus on an off-screen box would otherwise scroll the clipped viewport and shift the map.
+  viewport.addEventListener("scroll", () => { viewport.scrollLeft = 0; viewport.scrollTop = 0; });
+  if (tools) tools.hidden = false;
+
+  // A box is shown when it is core, when "Show everything" is on, or when an expanded shown box relates to it.
+  function computeVisible() {
+    if (showAll) return new Set(Object.keys(boxById));
+    const seen = new Set(coreIds), queue = [...coreIds];
+    while (queue.length) {
+      const id = queue.shift();
+      if (!expanded.has(id)) continue;
+      neighbours[id].forEach((other) => { if (!seen.has(other)) { seen.add(other); queue.push(other); } });
+    }
+    [...expanded].forEach((id) => { if (!seen.has(id)) expanded.delete(id); });
+    return seen;
+  }
+  function render() {
+    visible = computeVisible();
+    if (selected && !visible.has(selected)) selected = null;
+    const on = new Set(selected ? [selected] : []);
+    edgeList.forEach((edge) => {
+      const shown = visible.has(edge.dataset.from) && visible.has(edge.dataset.to);
+      const hit = shown && selected && (edge.dataset.from === selected || edge.dataset.to === selected);
+      edge.classList.toggle("is-hidden", !shown);
+      edge.classList.toggle("is-on", !!hit);
+      if (hit) { on.add(edge.dataset.from); on.add(edge.dataset.to); }
+    });
+    Object.entries(boxById).forEach(([id, box]) => {
+      box.classList.toggle("is-hidden", !visible.has(id));
+      box.classList.toggle("is-on", on.has(id));
+      box.classList.toggle("is-sel", id === selected);
+      box.setAttribute("aria-pressed", String(id === selected));
+      const hidden = neighbours[id].filter((other) => !visible.has(other)).length;
+      box.querySelector(".box-more").textContent = hidden ? "+" + hidden : "";
+    });
+    viewport.classList.toggle("has-sel", !!selected);
+    if (mapCount) mapCount.textContent = "Showing " + visible.size + " of " + Object.keys(boxById).length + " boxes";
+    renderPanel();
+    apply();
+  }
+  function renderPanel() {
+    const detail = selected && document.getElementById("detail-" + selected);
+    if (!detail) return;
+    const extra = extraOf(selected);
+    let reveal = "";
+    if (extra.length && !showAll) {
+      const open = expanded.has(selected);
+      reveal = '<p class="reveal"><button class="btn" type="button" data-reveal="' + selected + '" aria-pressed="' + open + '">' +
+        (open ? "Hide its evidence and limits" : "Show its evidence and limits (" + extra.length + ")") + "</button></p>";
+    }
+    panel.innerHTML = reveal + '<div class="detail ' + detail.className.replace("detail", "").trim() + '">' + detail.innerHTML + "</div>";
+    panel.scrollTop = 0;
+  }
+
+  function clampScale(value) { return Math.min(2.4, Math.max(0.2, value)); }
+  function apply() {
+    world.style.transform = "translate(" + offsetX + "px," + offsetY + "px) scale(" + scale + ")";
+    viewport.classList.toggle("z-far", scale < 0.75);
+    viewport.classList.toggle("z-mid", scale >= 0.75);
+    if (zoomLabel) zoomLabel.textContent = Math.round(scale * 100) + "%";
+    placeLabels();
+  }
+  // The words of the selected box's lines sit in a layer that is not scaled, so they keep 13px at every zoom.
+  // Each label sits in the gap beside the OTHER box of its line; labels that would overlap are pushed down.
+  function placeLabels() {
+    labelLayer.textContent = "";
+    if (!selected) return;
+    const width = viewport.clientWidth, height = viewport.clientHeight, placed = [];
+    const labelWidth = Math.round(Math.min(190, Math.max(110, (COLUMN_GAP - 14) * scale)));
+    const wanted = edgeList.filter((edge) => edge.classList.contains("is-on")).map((edge) => {
+      const label = document.createElement("span");
+      label.className = "rel-label " + [...edge.classList].find((name) => name.startsWith("k-"));
+      label.textContent = edge.dataset.words;
+      label.style.maxWidth = labelWidth + "px";
+      labelLayer.appendChild(label);
+      const [x, y, side] = (edge.dataset.from === selected ? edge.dataset.toEnd : edge.dataset.fromEnd).split(" ");
+      return { label, side, x: Number(x) * scale + offsetX, y: Number(y) * scale + offsetY };
+    }).sort((first, second) => first.y - second.y);
+    wanted.forEach((item) => {
+      const w = item.label.offsetWidth, h = item.label.offsetHeight;
+      let left = item.side === "left" ? item.x - 6 - w : item.x + 6;
+      left = Math.min(Math.max(left, 4), width - w - 4);
+      let top = item.y - h / 2;
+      let moved = true;
+      while (moved) {
+        moved = false;
+        placed.forEach((rect) => {
+          if (left < rect.right + 4 && left + w > rect.left - 4 && top < rect.bottom + 3 && top + h > rect.top - 3) { top = rect.bottom + 3; moved = true; }
+        });
+      }
+      if (item.x < 0 || item.x > width || top < 0 || top + h > height) { item.label.remove(); return; }
+      placed.push({ left, right: left + w, top, bottom: top + h });
+      item.label.style.transform = "translate(" + Math.round(left) + "px," + Math.round(top) + "px)";
+    });
+  }
+  function boundsOf(ids) {
+    let left = Infinity, top = Infinity, right = -Infinity, bottom = -Infinity;
+    ids.forEach((id) => {
+      const box = boxById[id];
+      left = Math.min(left, box.offsetLeft); top = Math.min(top, box.offsetTop);
+      right = Math.max(right, box.offsetLeft + BOX_W); bottom = Math.max(bottom, box.offsetTop + BOX_H);
+    });
+    return { left, top, right, bottom };
+  }
+  // The view never zooms itself out below READABLE: when the boxes do not fit at that zoom (a phone),
+  // it centers on the selected box, or on O2, and the reader drags to the rest.
+  const READABLE = 0.42;
+  function fitIds(ids, largest) {
+    let rect = boundsOf(ids);
+    const pad = 24;
+    const fitted = Math.min((viewport.clientWidth - 2 * pad) / (rect.right - rect.left), (viewport.clientHeight - 2 * pad) / (rect.bottom - rect.top));
+    scale = clampScale(Math.max(READABLE, Math.min(fitted, largest || 1.2)));
+    if (fitted < READABLE) rect = boundsOf([selected || "O2"]);
+    offsetX = viewport.clientWidth / 2 - (rect.left + rect.right) / 2 * scale;
+    offsetY = viewport.clientHeight / 2 - (rect.top + rect.bottom) / 2 * scale;
+    apply();
+  }
+  // On a phone the nine boxes would be too small to read, so the first view is the decision and options column.
+  function home() {
+    const ids = showAll ? Object.keys(boxById) : [...visible];
+    if (!showAll && expanded.size === 0 && viewport.clientWidth < 600) fitIds(["D", "O1", "O2", "O3", "O4"]);
+    else fitIds(ids);
+  }
+  // After a click, move the view only when the box and the boxes it relates to are not all on screen.
+  function frame(id) {
+    const ids = [id, ...neighbours[id].filter((other) => visible.has(other))], rect = boundsOf(ids);
+    const inside = rect.left * scale + offsetX >= 0 && rect.top * scale + offsetY >= 0 &&
+      rect.right * scale + offsetX <= viewport.clientWidth && rect.bottom * scale + offsetY <= viewport.clientHeight;
+    if (!inside) fitIds(ids, Math.max(scale, 0.75));
+  }
+  function activate(id) {
+    const extra = extraOf(id).length > 0 && !showAll;
+    if (selected === id) {
+      if (extra && expanded.has(id)) expanded.delete(id);
+      else if (extra) expanded.add(id);
+      else selected = null;
+    } else {
+      selected = id;
+      if (extra) expanded.add(id);
+    }
+    render();
+    if (selected) frame(selected);
+  }
+  // A link to a hidden box opens the boxes on the way to it, starting from the nine.
+  function jump(id) {
+    if (!boxById[id]) return;
+    if (!visible.has(id)) {
+      const parent = {}, queue = [...coreIds];
+      coreIds.forEach((core) => { parent[core] = null; });
+      while (queue.length) {
+        const current = queue.shift();
+        neighbours[current].forEach((other) => { if (!(other in parent)) { parent[other] = current; queue.push(other); } });
+      }
+      for (let step = parent[id]; step; step = parent[step]) expanded.add(step);
+    }
+    selected = id;
+    if (extraOf(id).length && !showAll) expanded.add(id);
+    render(); frame(id);
+    viewport.scrollIntoView({ block: "nearest" });
+  }
+  function zoomAt(factor, clientX, clientY) {
+    const rect = viewport.getBoundingClientRect(), pointX = clientX - rect.left, pointY = clientY - rect.top;
+    const worldX = (pointX - offsetX) / scale, worldY = (pointY - offsetY) / scale;
+    scale = clampScale(scale * factor); offsetX = pointX - worldX * scale; offsetY = pointY - worldY * scale; apply();
+  }
+  function zoomCenter(factor) { const rect = viewport.getBoundingClientRect(); zoomAt(factor, rect.left + rect.width / 2, rect.top + rect.height / 2); }
+
+  // One pointer drags the map; two pointers pinch. A drag of a few pixels is still a click.
+  const pointers = {};
+  let dragMoved = false, lastDistance = 0;
+  viewport.addEventListener("pointerdown", (event) => {
+    if (event.pointerType === "mouse" && event.button !== 0) return;
+    pointers[event.pointerId] = { x: event.clientX, y: event.clientY };
+    dragMoved = false; lastDistance = 0;
+  });
+  window.addEventListener("pointermove", (event) => {
+    const pointer = pointers[event.pointerId]; if (!pointer) return;
+    const ids = Object.keys(pointers);
+    if (ids.length === 1) {
+      const deltaX = event.clientX - pointer.x, deltaY = event.clientY - pointer.y;
+      if (!dragMoved && Math.abs(deltaX) + Math.abs(deltaY) < 5) return;
+      dragMoved = true; viewport.classList.add("is-dragging");
+      offsetX += deltaX; offsetY += deltaY; pointer.x = event.clientX; pointer.y = event.clientY; apply();
+    } else if (ids.length === 2) {
+      pointer.x = event.clientX; pointer.y = event.clientY;
+      const first = pointers[ids[0]], second = pointers[ids[1]];
+      const distance = Math.hypot(first.x - second.x, first.y - second.y);
+      if (lastDistance) zoomAt(distance / lastDistance, (first.x + second.x) / 2, (first.y + second.y) / 2);
+      lastDistance = distance; dragMoved = true;
+    }
+  });
+  function release(event) { delete pointers[event.pointerId]; lastDistance = 0; viewport.classList.remove("is-dragging"); }
+  window.addEventListener("pointerup", release); window.addEventListener("pointercancel", release);
+  viewport.addEventListener("click", (event) => {
+    if (dragMoved) { dragMoved = false; event.preventDefault(); return; }
+    const box = event.target.closest(".box");
+    if (box) activate(box.dataset.id); else { selected = null; render(); }
+  });
+  viewport.addEventListener("wheel", (event) => {
+    if (!event.ctrlKey && !event.metaKey) return;
+    event.preventDefault(); zoomAt(Math.exp(-event.deltaY * 0.0045), event.clientX, event.clientY);
+  }, { passive: false });
+  viewport.addEventListener("dblclick", (event) => { if (!event.target.closest(".box")) zoomAt(1.5, event.clientX, event.clientY); });
+  viewport.addEventListener("keydown", (event) => {
+    if (event.altKey || event.ctrlKey || event.metaKey) return;
+    const step = 80;
+    let handled = true;
+    if (event.key === "+" || event.key === "=") zoomCenter(1.25);
+    else if (event.key === "-" || event.key === "_") zoomCenter(0.8);
+    else if (event.key === "0") home();
+    else if (event.key === "ArrowLeft") { offsetX += step; apply(); }
+    else if (event.key === "ArrowRight") { offsetX -= step; apply(); }
+    else if (event.key === "ArrowUp") { offsetY += step; apply(); }
+    else if (event.key === "ArrowDown") { offsetY -= step; apply(); }
+    else if (event.key === "Escape") { selected = null; render(); }
+    else handled = false;
+    if (handled) event.preventDefault();
+  });
+  world.addEventListener("focusin", (event) => {
+    const box = event.target.closest(".box"); if (!box || !box.matches(":focus-visible")) return;
+    const rect = viewport.getBoundingClientRect(), own = box.getBoundingClientRect();
+    if (own.left < rect.left || own.right > rect.right || own.top < rect.top || own.bottom > rect.bottom) frame(box.dataset.id);
+  });
+  document.getElementById("zoom-in").addEventListener("click", () => zoomCenter(1.3));
+  document.getElementById("zoom-out").addEventListener("click", () => zoomCenter(1 / 1.3));
+  document.getElementById("show-core").addEventListener("click", () => { showAll = false; expanded.clear(); selected = null; render(); home(); });
+  document.getElementById("show-all").addEventListener("click", () => { showAll = true; render(); home(); });
+  panel.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-reveal]"); if (!button) return;
+    const id = button.dataset.reveal;
+    if (expanded.has(id)) expanded.delete(id); else expanded.add(id);
+    render(); frame(id);
+  });
+  document.addEventListener("click", (event) => {
+    const link = event.target.closest("[data-jump]"); if (!link) return;
+    event.preventDefault(); jump(link.dataset.jump);
+  });
+  window.addEventListener("resize", () => { if (!selected) home(); else apply(); });
+  render();
+  home();
+  const wanted = /^#box-([A-Z0-9]+)$/.exec(location.hash);
+  if (wanted && boxById[wanted[1]]) jump(wanted[1]);
+})();
+</script>
+</body>
+</html>
