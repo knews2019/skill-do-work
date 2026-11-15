@@ -10,6 +10,14 @@ For the complete release history, read this file and the archives below from new
 - [0.50.0 through 0.64.1](https://github.com/knews2019/skill-do-work/blob/main/docs/changelog/CHANGELOG-2026-04-13-up-to-v0.64.1.md)
 - [0.1.0 through 0.49.0](https://github.com/knews2019/skill-do-work/blob/main/docs/changelog/CHANGELOG-2026-04-07-up-to-v0.49.0.md)
 
+## 0.319.0 — Render Check Takes One Named Page of a Bundle (2026-11-15)
+
+`ai-report-judge --page <file.html>` render-checks one page of a report bundle where it sits. Before, checking a second-opinion page such as `index-v1c01-<name>.html` meant copying the whole bundle and writing that page over the copy's `index.html`.
+
+- The command serves the bundle as before and opens the named page, a path relative to the bundle. `served_url` in `judge.json` ends with that page.
+- A page that is missing, outside the bundle (by `..`, an absolute path or a symlink), or not an `.html`/`.htm` file is refused with `AI-REPORT-JUDGE-PAGE` (exit 2). A refusal starts no browser and writes no `judge.json`.
+- A run without `--page` renders `index.html` exactly as before. The second-opinion finalize path keeps its own render step and its verdicts.
+
 ## 0.318.3 — ai-report-judge States Where a Relative --out Starts (2026-11-15)
 
 The judge's usage text and the ai-report judge step now say which folder a relative path starts from. Before, a run with `--repo-root` pointing at another copy put the captures inside that copy, and nothing told the caller why.
