@@ -1,7 +1,7 @@
 ---
 id: REQ-734
 title: 'Build the proposal as a supports-and-limits table and compare it with the map'
-status: pending
+status: claimed
 created_at: 2026-11-14T23:21:51Z
 user_request: UR-178
 domain: frontend
@@ -14,6 +14,7 @@ depends_on: [REQ-733]
 related: [REQ-727, REQ-733]
 batch: tinka-follow-ups
 write_set: ["ai-reports/2026-11-14_1547_proposal-tinka-review-surface/index-v1c04-*.html", "ai-reports/2026-11-14_1547_proposal-tinka-review-surface/v1c04-*-reply.md", "ai-reports/2026-11-14_1547_proposal-tinka-review-surface/index.html"]
+claimed_at: 2026-11-15T00:47:35Z
 ---
 # Build the Proposal as a Supports-and-Limits Table and Compare It With the Map
 ## What
