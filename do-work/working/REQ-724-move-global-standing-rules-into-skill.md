@@ -25,6 +25,7 @@ estimate:
     - 4-file write set
     - 7 acceptance criteria
 dispatch_at: 2026-11-15T00:01:58Z
+builder_handback_at: 2026-11-15T02:09:01Z
 ---
 # Move the Maintainer's Global Standing Rules Into the Skill
 ## What
