@@ -21,22 +21,24 @@ import (
 	"github.com/knews2019/skill-do-work/do-work-cli/internal/resultmodel"
 )
 
-// ai-report-judge serves one report bundle on a loopback port, renders its
-// index.html in a headless Chromium-family engine at a wide and a phone width in
-// light and dark, and fails on horizontal overflow or a same-origin href/src that
-// answers 400 or more. Captures and judge.json go outside the bundle.
+// ai-report-judge serves one report bundle on a loopback port, renders one of
+// its pages in place (index.html, or the page --page names) in a headless
+// Chromium-family engine at a wide and a phone width in light and dark, and fails
+// on horizontal overflow or a same-origin href/src that answers 400 or more.
+// Captures and judge.json go outside the bundle.
 
 const (
 	judgeCodeOverflow   = "AI-REPORT-JUDGE-OVERFLOW"
 	judgeCodeBrokenLink = "AI-REPORT-JUDGE-BROKEN-LINK"
 	judgeCodeSkipped    = "AI-REPORT-JUDGE-SKIPPED"
 	judgeCodeError      = "AI-REPORT-JUDGE-ERROR"
+	judgeCodePage       = "AI-REPORT-JUDGE-PAGE"
 
 	// judgeProtocolDeadline bounds every wait on the engine: one protocol reply,
 	// one page settle, the engine's exit. A hung engine ends the run as an error.
 	judgeProtocolDeadline = 30 * time.Second
 	judgePollInterval     = 25 * time.Millisecond
-	judgeUsage            = "Usage: ai-report-judge <bundle-dir> [--out <dir>] [--browser <path>]; a relative <bundle-dir> or --out starts at --repo-root, not the current folder"
+	judgeUsage            = "Usage: ai-report-judge <bundle-dir> [--page <file.html>] [--out <dir>] [--browser <path>]; a relative <bundle-dir> or --out starts at --repo-root, not the current folder"
 )
 
 // aiReportJudgeBrowserNames and aiReportJudgeBrowserAppPaths are checked in that
@@ -87,12 +89,15 @@ type judgeReport struct {
 
 func handleAIReportJudge(ctx commandruntime.ExecutionContext, args []string) resultmodel.CommandResult {
 	var bundle, output, browser string
+	page := "index.html"
 	for index := 0; index < len(args); index++ {
 		argument := args[index]
 		var err error
 		switch {
 		case argument == "--out" || strings.HasPrefix(argument, "--out="):
 			output, err = optionValue(args, &index, "--out")
+		case argument == "--page" || strings.HasPrefix(argument, "--page="):
+			page, err = optionValue(args, &index, "--page")
 		case argument == "--browser" || strings.HasPrefix(argument, "--browser="):
 			browser, err = optionValue(args, &index, "--browser")
 		case strings.HasPrefix(argument, "-") || bundle != "":
@@ -114,6 +119,9 @@ func handleAIReportJudge(ctx commandruntime.ExecutionContext, args []string) res
 	resolvedBundle, err := filepath.EvalSymlinks(bundle)
 	if err != nil {
 		return usageResult(CommandAIReportJudge, err.Error())
+	}
+	if refusal := judgeCheckPage(bundle, resolvedBundle, page); refusal != "" {
+		return judgeFailureResultWithStop(judgeCodePage, refusal, "--page names no HTML page inside the bundle")
 	}
 	if browser != "" {
 		resolvedBrowser := judgeLookupBrowser(browser)
@@ -144,7 +152,7 @@ func handleAIReportJudge(ctx commandruntime.ExecutionContext, args []string) res
 		return judgeResult(report, output)
 	}
 	report.Browser = browser
-	if err := judgeRender(&report, bundle, output, browser); err != nil {
+	if err := judgeRender(&report, bundle, page, output, browser); err != nil {
 		return judgeErrorResult(report, output, err.Error())
 	}
 	report.Verdict = "pass"
@@ -156,7 +164,8 @@ func handleAIReportJudge(ctx commandruntime.ExecutionContext, args []string) res
 
 // judgeRender owns the server and the engine: both stop before it returns, on
 // every path, because each is closed by a defer set right after it starts.
-func judgeRender(report *judgeReport, bundle, output, browser string) error {
+// page is the slash-separated path of the page to render, relative to bundle.
+func judgeRender(report *judgeReport, bundle, page, output, browser string) error {
 	listener, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
 		return fmt.Errorf("open the bundle server: %w", err)
@@ -165,7 +174,7 @@ func judgeRender(report *judgeReport, bundle, output, browser string) error {
 	defer server.Close()
 	go func() { _ = server.Serve(listener) }()
 	origin := "http://" + listener.Addr().String()
-	report.ServedURL = origin + "/index.html"
+	report.ServedURL = origin + "/" + (&url.URL{Path: page}).EscapedPath()
 
 	session, err := startJudgeBrowser(browser)
 	if err != nil {
@@ -277,9 +286,34 @@ func judgeErrorResult(report judgeReport, output, detail string) resultmodel.Com
 }
 
 func judgeFailureResult(code, evidence string) resultmodel.CommandResult {
+	return judgeFailureResultWithStop(code, evidence, "the render check could not run")
+}
+
+func judgeFailureResultWithStop(code, evidence, stop string) resultmodel.CommandResult {
 	return resultmodel.CommandResult{Outcome: resultmodel.OutcomeFailure, Findings: []resultmodel.CommandFinding{
-		toolboxFinding(CommandAIReportJudge, code, resultmodel.SeverityError, nil, evidence, resultmodel.FixabilityManual, "the render check could not run"),
+		toolboxFinding(CommandAIReportJudge, code, resultmodel.SeverityError, nil, evidence, resultmodel.FixabilityManual, stop),
 	}}
+}
+
+// judgeCheckPage returns why page cannot be rendered, or "" when it names a
+// regular .html/.htm file that stays inside the bundle after symlinks resolve.
+func judgeCheckPage(bundle, resolvedBundle, page string) string {
+	localPage := filepath.FromSlash(page)
+	if !filepath.IsLocal(localPage) {
+		return "--page must be a path inside the bundle, not absolute and without '..': " + page
+	}
+	if extension := strings.ToLower(filepath.Ext(localPage)); extension != ".html" && extension != ".htm" {
+		return "--page must name an .html or .htm file: " + page
+	}
+	pagePath := filepath.Join(bundle, localPage)
+	if info, err := os.Stat(pagePath); err != nil || !info.Mode().IsRegular() {
+		return "--page names no regular file in the bundle: " + pagePath
+	}
+	resolvedPage, err := filepath.EvalSymlinks(pagePath)
+	if err != nil || !judgePathInside(resolvedPage, resolvedBundle) {
+		return "--page resolves outside the bundle: " + pagePath
+	}
+	return ""
 }
 
 func judgeAbsolutePath(root, path string) string {

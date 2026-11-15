@@ -10,6 +10,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -164,4 +165,152 @@ func TestAIReportJudgeReportsSkippedWithoutBrowser(t *testing.T) {
 		}
 	}
 	t.Fatalf("no %s finding in %+v", judgeCodeSkipped, result.Findings)
+}
+
+// judgeBundleDigest lists every path under the bundle with its bytes (a symlink
+// by its target), so a test can prove the judge wrote nothing inside the bundle.
+func judgeBundleDigest(t *testing.T, bundle string) map[string]string {
+	t.Helper()
+	digest := map[string]string{}
+	err := filepath.WalkDir(bundle, func(path string, entry fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		switch {
+		case entry.Type()&fs.ModeSymlink != 0:
+			target, err := os.Readlink(path)
+			digest[path] = "link:" + target
+			return err
+		case !entry.IsDir():
+			content, err := os.ReadFile(path)
+			digest[path] = string(content)
+			return err
+		}
+		digest[path] = "dir"
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	return digest
+}
+
+func sameJudgeDigest(before, after map[string]string) bool {
+	if len(before) != len(after) {
+		return false
+	}
+	for path, content := range before {
+		if after[path] != content {
+			return false
+		}
+	}
+	return true
+}
+
+// Pins the copy-and-swap workaround: to check a second-opinion page an agent had
+// to copy the bundle and write the page over the copy's index.html. --page must
+// render the named page in place: served_url names it, the phone overflow that
+// only that page has is found (index.html alone passes), and the bundle is unchanged.
+func TestAIReportJudgeRendersNamedPageInPlace(t *testing.T) {
+	requireJudgeBrowser(t)
+	repository := t.TempDir()
+	bundle := filepath.Join(repository, "bundle")
+	if err := os.MkdirAll(bundle, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	pages := map[string]string{
+		"index.html": `<!doctype html><html><head><meta charset="utf-8"><style>body{margin:0}</style></head><body><p>clean</p></body></html>`,
+		"index-v1c01-x.html": `<!doctype html><html><head><meta charset="utf-8"><style>body{margin:0}</style></head>` +
+			`<body><div style="width:600px">wide second opinion</div></body></html>`,
+	}
+	for name, content := range pages {
+		if err := os.WriteFile(filepath.Join(bundle, name), []byte(content), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	before := judgeBundleDigest(t, bundle)
+	output := filepath.Join(t.TempDir(), "judge-output")
+	result := handleAIReportJudge(commandruntime.ExecutionContext{RepositoryRoot: repository},
+		[]string{"bundle", "--page", "index-v1c01-x.html", "--out", output})
+	judgeBytes, err := os.ReadFile(filepath.Join(output, "judge.json"))
+	if err != nil {
+		t.Fatalf("judge.json was not written: %v (result %+v)", err, result)
+	}
+	var report judgeReport
+	if err := json.Unmarshal(judgeBytes, &report); err != nil {
+		t.Fatalf("judge.json is not valid JSON: %v\n%s", err, judgeBytes)
+	}
+	if !strings.HasSuffix(report.ServedURL, "/index-v1c01-x.html") {
+		t.Fatalf("served_url %q does not name the page", report.ServedURL)
+	}
+	if resultmodel.ExitCode(result.Outcome) == 0 || report.Verdict != "fail" {
+		t.Fatalf("overflowing page: outcome %s verdict %q findings %+v", result.Outcome, report.Verdict, report.Findings)
+	}
+	phoneOverflow := false
+	for _, finding := range report.Findings {
+		if finding.Kind == judgeCodeOverflow && finding.Viewport == "phone" && finding.ScrollWidth >= 600 {
+			phoneOverflow = true
+		}
+	}
+	if !phoneOverflow {
+		t.Fatalf("no phone overflow finding, so the captures did not show the named page: %+v", report.Findings)
+	}
+	for _, capture := range []string{"wide-light.png", "wide-dark.png", "phone-light.png", "phone-dark.png"} {
+		if info, err := os.Stat(filepath.Join(output, capture)); err != nil || info.Size() == 0 {
+			t.Fatalf("capture %s missing or empty: %v", capture, err)
+		}
+	}
+	if !sameJudgeDigest(before, judgeBundleDigest(t, bundle)) {
+		t.Fatal("the bundle changed during the --page run")
+	}
+}
+
+// Pins the containment guard: --page must never render a file that is missing or
+// that sits outside the bundle (by "..", an absolute path or a symlink). Each is
+// refused with AI-REPORT-JUDGE-PAGE before any browser or judge.json.
+func TestAIReportJudgeRefusesMissingOrOutsidePage(t *testing.T) {
+	repository := t.TempDir()
+	bundle := filepath.Join(repository, "bundle")
+	if err := os.MkdirAll(bundle, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	outside := filepath.Join(repository, "outside.html")
+	for path, content := range map[string]string{filepath.Join(bundle, "index.html"): "<!doctype html><title>report</title>",
+		outside: "<!doctype html><title>outside</title>"} {
+		if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := os.Symlink(outside, filepath.Join(bundle, "linked.html")); err != nil {
+		t.Fatal(err)
+	}
+	before := judgeBundleDigest(t, bundle)
+	for _, testCase := range []struct{ name, page string }{
+		{"missing", "index-v1c01-missing.html"},
+		{"dot-dot escape", "../outside.html"},
+		{"absolute path", outside},
+		{"symlink outside", "linked.html"},
+	} {
+		t.Run(testCase.name, func(t *testing.T) {
+			output := filepath.Join(t.TempDir(), "judge-output")
+			result := handleAIReportJudge(commandruntime.ExecutionContext{RepositoryRoot: repository},
+				[]string{"bundle", "--page", testCase.page, "--out", output})
+			if result.Outcome != resultmodel.OutcomeFailure {
+				t.Fatalf("page %q: outcome %s, want failure (%+v)", testCase.page, result.Outcome, result.Findings)
+			}
+			typed := false
+			for _, finding := range result.Findings {
+				typed = typed || finding.Code == "AI-REPORT-JUDGE-PAGE"
+			}
+			if !typed {
+				t.Fatalf("page %q: no AI-REPORT-JUDGE-PAGE finding in %+v", testCase.page, result.Findings)
+			}
+			if _, err := os.Stat(filepath.Join(output, "judge.json")); err == nil {
+				t.Fatalf("page %q: a refusal wrote judge.json", testCase.page)
+			}
+			if !sameJudgeDigest(before, judgeBundleDigest(t, bundle)) {
+				t.Fatalf("page %q: the bundle changed", testCase.page)
+			}
+		})
+	}
 }

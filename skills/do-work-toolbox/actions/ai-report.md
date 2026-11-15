@@ -33,7 +33,7 @@
 
 `$ARGUMENTS` is `UR-NNN`, `REQ-NNN`, `most recent`, or blank; the `second-opinion` form below writes a sibling page in an existing bundle; the `judge`, `index`, `find` and `organize` forms below create no report (`organize` moves existing reports into month folders), the `revise` form below writes a new revision of an existing report, and the `--kind` form below writes a decision brief about open work. One report invocation covers one UR or one REQ (a `--kind` brief covers one topic, REQ or UR); a revise covers one existing bundle; blank is the explicit `most recent` form.
 
-`judge <bundle-dir>` runs only the Step 7 render check on an existing report bundle and reports its verdict; it creates no report.
+`judge <bundle-dir> [--page <file.html>]` runs only the Step 7 render check on an existing report bundle and reports its verdict; it creates no report. `--page` checks another page of the bundle, as Step 7 describes.
 
 `--kind proposal|root-cause <topic|REQ-NNN|UR-NNN>` writes a decision brief about open work instead of a completed-work report. Any other `--kind` value stops with one line naming the two kinds; `--kind` without a target stops with a one-line usage. A plain-language ask for an "options report" is `--kind proposal`.
 
@@ -184,6 +184,8 @@ Run the render check on the bundle:
 Pass `--out <dir>` to choose the output directory. A relative `<bundle-dir>` or `--out <dir>` starts at `--repo-root`, not the current folder.
 
 The command serves the bundle over HTTP on a free local port, takes full-page captures at 1440x1000 and 390x844 in light and dark (`wide-light.png`, `wide-dark.png`, `phone-light.png`, `phone-dark.png`), fails on horizontal overflow and on any same-origin `href` or `src` that does not load, and stops its server. The captures and `judge.json` go to a fresh directory outside the bundle; the result's `changes` entry names `judge.json`. Read the verdict and findings from `judge.json`. Exit 0 is `pass`; exit 1 is `fail` or `skipped`; exit 2 means the check itself failed, so report its finding, never treat the layout as verified, and disclose it in the footer as for `skipped`. Inspect the four captures it names, fix defects, and rerun until the verdict is `pass` (for a revise, until only the expected prior-bundle link findings remain). Any report containing text-bearing SVG requires at least two render-and-judge passes.
+
+To check another page of a bundle, such as a second-opinion page `index-v1c01-<name>.html`, add `--page <file.html>` (a path relative to the bundle). The command renders that page in place, with no bundle copy, and `served_url` in `judge.json` ends with that page. A page that is missing, outside the bundle, or not an `.html`/`.htm` file is refused with `AI-REPORT-JUDGE-PAGE` (exit 2) and no `judge.json`.
 
 Judge width usage, table shape, diagram informativeness, emphasis hierarchy, light/dark contrast, SVG label collisions, edge clipping, screenshot sharpness, and responsive stacking. A `skipped` verdict means no browser engine was found: ship the report and state in its footer that the layout was not render-verified.
 
