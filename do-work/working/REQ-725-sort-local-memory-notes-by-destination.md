@@ -23,6 +23,7 @@ estimate:
     - 5 acceptance criteria
 claimed_at: 2026-11-14T23:28:11Z
 dispatch_at: 2026-11-14T23:32:30Z
+builder_handback_at: 2026-11-15T02:56:13Z
 ---
 # Sort the Local Memory Notes by Destination
 ## What
