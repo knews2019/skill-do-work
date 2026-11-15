@@ -22,6 +22,7 @@ estimate:
 write_set: [skills/do-work/tools/do-work-cli/internal/corehelpers/commands.go, skills/do-work/tools/do-work-cli/internal/corehelpers/archive_collision_test.go]
 claimed_at: 2026-11-14T23:28:11Z
 dispatch_at: 2026-11-14T23:32:28Z
+builder_handback_at: 2026-11-15T01:53:29Z
 ---
 # Archive-Collision Helper Skips Assets Folders
 ## What
