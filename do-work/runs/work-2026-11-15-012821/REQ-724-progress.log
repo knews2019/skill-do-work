@@ -15,3 +15,6 @@
 2026-11-15T02:26:32Z heavy start helpers/heavy.sh 0074c2744688f020c37b352325a96a1cbb01b605 queue-kanban-javascript queue-kanban-browser do-work-cli-integrations staged-skills updater installer (load { 2.79 4.33 5.87 })
 2026-11-15T02:31:15Z heavy end
 2026-11-15T02:32:03Z finalize prep-payloads + make-manifests
+2026-11-15T02:32:20Z post-finalize contract-regressions start
+2026-11-15T02:32:41Z post-finalize contract-regressions end exit=0
+2026-11-15T02:32:53Z report written; done
