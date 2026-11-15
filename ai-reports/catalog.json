@@ -111,6 +111,13 @@
           "preset": "custom",
           "model": "agy gemini-4-argon-high",
           "date": "2026-11-04"
+        },
+        {
+          "page": "ai-reports/2026-11-04_1747_proposal-tstack-review-workflows-rev1/index-v1c03-claude-claude-opus-5-5-relation-map-review-loop-map.html",
+          "tree_id": "v1c03",
+          "preset": "relation-map",
+          "model": "claude claude-opus-5-5",
+          "date": "2026-11-15"
         }
       ]
     },
