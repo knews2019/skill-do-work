@@ -1,9 +1,7 @@
 ---
 id: REQ-727
 title: 'Ship a relation-map preset for ai-report second-opinion'
-status: blocked
-blocked_by: 'Not looked yet, hold it: the maintainer looks at the example map page and confirms that it should become a standard option'
-blocked_at: 2026-11-14T22:47:58Z
+status: pending
 created_at: 2026-11-14T22:47:58Z
 user_request: UR-176
 domain: general
@@ -17,6 +15,7 @@ depends_on: [REQ-733, REQ-734]
 related: [REQ-733, REQ-726, REQ-728, REQ-729, REQ-730, REQ-731, REQ-732]
 batch: tinka-follow-ups
 write_set: ["skills/do-work-toolbox/docs/second-opinion-presets/relation-map.md", "skills/do-work-toolbox/docs/ai-report-guide.md", "skills/do-work/tools/do-work-cli/internal/toolboxcommands/report_second_opinion_test.go", "CHANGELOG.md", "VERSION"]
+status_changed_at: 2026-11-15T10:59:37Z
 ---
 # Ship a Relation-Map Preset for ai-report second-opinion
 ## What
@@ -77,3 +76,7 @@ Captured with UR-178 (build the proposal as a table and compare it with the map)
 - [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
 - [ ] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
 *Source: do-work capture-request: capture the request in _dev/run-prompts/2026-11-15-relation-map-preset.md*
+
+## Blocked
+
+- [2026-11-15] blocked on "Not looked yet, hold it: the maintainer looks at the example map page and confirms that it should become a standard option" — cleared by user via clarify
