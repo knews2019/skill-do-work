@@ -27,3 +27,4 @@ Notes
 - REQ-730 (still waiting for its integrator) regenerates ai-reports/catalog.json and ai-reports/index.html; do not regenerate them here unless the REQ asks.
 - The maintainer will open this page to decide whether the map becomes a standard option: tell your reviewer to open the rendered page (desktop and phone width) and check for overlapping boxes, clipped labels and unreadable text, and to delete its captures.
 - REQ-734 (proposal table) depends on this REQ and is claimed right after you finish: keep the tree clean.
+- The coordinator already committed every hand-back file, including yours. Leave it out of commit_paths unless you changed it.
