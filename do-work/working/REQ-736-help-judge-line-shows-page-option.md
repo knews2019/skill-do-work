@@ -1,7 +1,7 @@
 ---
 id: REQ-736
 title: '[impact-negligible] Show the --page option on the ai-report judge line in help'
-status: pending
+status: claimed
 created_at: 2026-11-15T07:25:23Z
 user_request: UR-179
 domain: general
@@ -13,6 +13,7 @@ effort_estimate: effort-mechanical
 related: [REQ-735]
 batch: run-012821-follow-ups
 write_set: [skills/do-work-toolbox/actions/help.md]
+claimed_at: 2026-11-15T07:30:05Z
 ---
 # Show the --page Option on the ai-report Judge Line in Help
 ## What
