@@ -10,6 +10,13 @@ For the complete release history, read this file and the archives below from new
 - [0.50.0 through 0.64.1](https://github.com/knews2019/skill-do-work/blob/main/docs/changelog/CHANGELOG-2026-04-13-up-to-v0.64.1.md)
 - [0.1.0 through 0.49.0](https://github.com/knews2019/skill-do-work/blob/main/docs/changelog/CHANGELOG-2026-04-07-up-to-v0.49.0.md)
 
+## 0.318.3 — ai-report-judge States Where a Relative --out Starts (2026-11-15)
+
+The judge's usage text and the ai-report judge step now say which folder a relative path starts from. Before, a run with `--repo-root` pointing at another copy put the captures inside that copy, and nothing told the caller why.
+
+- A relative `<bundle-dir>` or `--out` starts at `--repo-root`, not the current folder. The usage line and Step 7 of `ai-report.md` now state this rule.
+- Behavior is unchanged. An absolute `--out` works as before, and the judge still refuses an output folder inside the bundle.
+
 ## 0.318.2 — Board Test Accepts a Blocked REQ That Waits on a Dependency (2026-11-15)
 
 The board's own live-queue test no longer fails when the queue holds a blocked REQ that also waits on a dependency. The board itself is unchanged.
