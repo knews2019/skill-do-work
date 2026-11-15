@@ -14,7 +14,7 @@ For the complete release history, read this file and the archives below from new
 
 The `do-work-toolbox help` menu now shows how to check one named page of a report bundle. The option shipped in 0.319.0, but the menu listed only the whole-bundle form.
 
-- `do-work-toolbox/actions/help.md` lists `ai-report judge <dir> [--page <file.html>]`, the same form `ai-report.md` documents. Help text only; no behaviour changes.
+- The toolbox `help.md` lists `ai-report judge <dir> [--page <file.html>]`, the same form `ai-report.md` documents. Help text only; no behaviour changes.
 
 ## 0.322.0 — Crew Files Carry the Rules for Status Explanations, User Decisions and Pasted Commands (2026-11-15)
 
