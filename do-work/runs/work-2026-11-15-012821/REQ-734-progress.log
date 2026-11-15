@@ -1,0 +1,10 @@
+2026-11-15T01:07:12Z start git-status-clean
+2026-11-15T01:07:12Z red-probe REQ-734-probe.sh (exit 1 expected)
+2026-11-15T01:07:58Z prepare ai-report-second-opinion --prepare --backend claude --model claude-opus-5-5
+2026-11-15T01:12:28Z browser-check python3 -I -m http.server 8734 --bind 127.0.0.1
+2026-11-15T01:16:28Z finalize ai-report-second-opinion --finalize .claude-claude-opus-5-5-staging-899910409.html
+2026-11-15T01:16:47Z green-probe REQ-734-probe.sh (uncommitted)
+2026-11-15T01:17:34Z rejudge ai-report-judge --page index-v1c04-claude-claude-opus-5-5-custom-supports-limits-table.html
+2026-11-15T01:17:54Z commit+green-probe REQ-734-probe.sh
+2026-11-15T01:18:22Z cleanup stop servers, rm captures
+2026-11-15T01:19:17Z handback REQ-734-handback.md written
