@@ -15,3 +15,4 @@
 2026-11-15T02:40:55Z heavy-start helpers/heavy.sh ce3cb5dc (6 lanes, load 3.13 4.28 5.02)
 2026-11-15T02:45:24Z heavy-end
 2026-11-15T02:45:52Z finalize-start advance --finalization-manifest (NO_RELEASE=1)
+2026-11-15T02:46:35Z finalize-end primary_commit 35f32e0f; worktree removed, branch deleted, contract-regressions exit 0
