@@ -16,4 +16,3 @@ queue_state: [0 pending, 0 pending-answers, 0 blocked, 0 blocked-archive-collisi
 
 
 
-- REQ-734: Build the proposal as a supports-and-limits table and compare it with the map — claimed 2026-11-15T00:47:35Z — writer: t2s-Virtual-Machine.local:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2

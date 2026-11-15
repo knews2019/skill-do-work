@@ -8,3 +8,11 @@
 2026-11-15T01:17:54Z commit+green-probe REQ-734-probe.sh
 2026-11-15T01:18:22Z cleanup stop servers, rm captures
 2026-11-15T01:19:17Z handback REQ-734-handback.md written
+2026-11-15T03:16:46Z gate start helpers/gate.sh 0ccdf98d (load 2.73)
+2026-11-15T03:18:50Z gate end exit 0
+2026-11-15T03:19:35Z review start reviewer agent (opus)
+2026-11-15T03:29:03Z gate start helpers/gate.sh 13322db2 (load 2.49)
+2026-11-15T03:31:05Z gate end exit 0
+2026-11-15T03:31:51Z heavy start helpers/heavy.sh 13322db2 (load 3.24)
+2026-11-15T03:36:12Z heavy end
+2026-11-15T03:37:22Z finalize advance --finalization-manifest
