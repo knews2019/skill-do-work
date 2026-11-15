@@ -19,7 +19,6 @@ Before implementing:
 - If multiple interpretations exist, present them — don't pick silently.
 - If a simpler approach exists, say so. Push back when warranted.
 - If something is unclear, stop. Name what's confusing. Ask.
-- Read a number in the request (a size, a count, a time) as approximate unless the user says strict.
 
 In do-work terms: open questions get marked `- [~]` with best-judgment reasoning
 and surface later via `do-work clarify`. Silent assumptions are the failure mode.
@@ -86,7 +85,6 @@ When editing existing code:
 - Don't refactor things that aren't broken.
 - Match existing style, even if you'd do it differently.
 - If you notice unrelated dead code, mention it — don't delete it.
-- Never remove existing UI while redesigning unless the user asked for it.
 
 When your changes create orphans:
 

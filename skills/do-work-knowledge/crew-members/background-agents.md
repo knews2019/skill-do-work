@@ -190,8 +190,8 @@ flow.
 
 **Pick each agent's model by its work.** When the harness lets you choose a model per
 agent, run lookups, searches and file sweeps on the cheapest model tier that can do
-them. Planning, review and build agents keep the session model. Never leave a pure
-lookup on the default model.
+them. Planning, review and build agents keep the session model unless the action
+names another model. Never leave a pure lookup on the default model.
 
 ## Manifest Format
 

@@ -220,6 +220,7 @@ Excluded:
 **Canonical statement of the commit-staging/hook guard** — every other action in this skill that stages or commits files points here rather than restating it:
 
 - **Never `git add -A` or `git add .`.** Stage only the specific files that belong to the commit you're making. A blanket add risks sweeping in secrets, `.env` files, or unrelated in-progress changes from other work — the whole point of grouping files by REQ/semantic purpose (Steps 3-4) is defeated if staging ignores those groups.
+- **Never revert, stash or discard a change you did not make.** Another session or the user may own it.
 - **X and XD have different boundaries.** Never read, diff, stage, or commit X. For XD, stage only the verified deletion with the Step 5 procedure; never read, diff, or reconstruct its former contents.
 - **Never bypass a failing pre-commit hook** with `--no-verify` (or signing with `--no-gpg-sign`). Fix the underlying issue, re-stage, and retry as a **new** commit — never amend past a hook failure.
 
