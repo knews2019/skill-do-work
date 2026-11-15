@@ -2,6 +2,71 @@
   "generator": "do-work-cli ai-report-index",
   "bundles": [
     {
+      "path": "ai-reports/2026-11-14_1547_proposal-tinka-review-surface",
+      "entry": "ai-reports/2026-11-14_1547_proposal-tinka-review-surface/index.html",
+      "title": "Tinka as a review canvas for ai-report bundles",
+      "date": "2026-11-14T15:47",
+      "kind": "proposal",
+      "linked_ids": [],
+      "verdict": "",
+      "supersedes": "",
+      "superseded_by": "",
+      "second_opinions": [
+        {
+          "page": "ai-reports/2026-11-14_1547_proposal-tinka-review-surface/index-v1c01-claude-claude-fable-5-2-custom-worked-example-tally.html",
+          "tree_id": "v1c01",
+          "preset": "custom",
+          "model": "claude claude-fable-5-2",
+          "date": "2026-11-14"
+        },
+        {
+          "page": "ai-reports/2026-11-14_1547_proposal-tinka-review-surface/index-v1c02-agy-gemini-pro-orchestrator-custom-parallel-review-session-timelines.html",
+          "tree_id": "v1c02",
+          "preset": "custom",
+          "model": "agy gemini-pro-orchestrator",
+          "date": "2026-11-14"
+        },
+        {
+          "page": "ai-reports/2026-11-14_1547_proposal-tinka-review-surface/index-v1c03-claude-claude-fable-5-2-custom-zoomable-relation-map.html",
+          "tree_id": "v1c03",
+          "preset": "custom",
+          "model": "claude claude-fable-5-2",
+          "date": "2026-11-14"
+        },
+        {
+          "page": "ai-reports/2026-11-14_1547_proposal-tinka-review-surface/index-v1c03c01-claude-claude-opus-5-5-custom-left-to-right-map.html",
+          "tree_id": "v1c03c01",
+          "preset": "custom",
+          "model": "claude claude-opus-5-5",
+          "date": "2026-11-14"
+        }
+      ]
+    },
+    {
+      "path": "ai-reports/2026-11-14_1452_proposal-tinka-review-surface",
+      "entry": "ai-reports/2026-11-14_1452_proposal-tinka-review-surface/index.html",
+      "title": "Tinka as a review canvas for ai-report bundles",
+      "date": "2026-11-14T14:52",
+      "kind": "proposal",
+      "linked_ids": [],
+      "verdict": "",
+      "supersedes": "",
+      "superseded_by": "",
+      "second_opinions": []
+    },
+    {
+      "path": "ai-reports/2026-11-11_1411_commit-22f82fed-work-procedures-load-by-phase",
+      "entry": "ai-reports/2026-11-11_1411_commit-22f82fed-work-procedures-load-by-phase/index.html",
+      "title": "Work procedures load by phase (0.315.3)",
+      "date": "2026-11-11T14:11",
+      "kind": "unknown",
+      "linked_ids": [],
+      "verdict": "",
+      "supersedes": "",
+      "superseded_by": "",
+      "second_opinions": []
+    },
+    {
       "path": "ai-reports/2026-11-04_1747_proposal-tstack-review-workflows-rev1",
       "entry": "ai-reports/2026-11-04_1747_proposal-tstack-review-workflows-rev1/index.html",
       "title": "AI-Evaluation-Loop — tstack opportunities for do-work",
@@ -10,7 +75,23 @@
       "linked_ids": [],
       "verdict": "",
       "supersedes": "ai-reports/2026-11-04_1524_proposal-tstack-review-workflows",
-      "superseded_by": ""
+      "superseded_by": "",
+      "second_opinions": [
+        {
+          "page": "ai-reports/2026-11-04_1747_proposal-tstack-review-workflows-rev1/index-v1c01-codex-gpt-6.1-terra-custom-matrix-to-implementation.html",
+          "tree_id": "v1c01",
+          "preset": "custom",
+          "model": "codex gpt-6.1-terra",
+          "date": "2026-11-04"
+        },
+        {
+          "page": "ai-reports/2026-11-04_1747_proposal-tstack-review-workflows-rev1/index-v1c02-agy-gemini-4-argon-high-custom-decision-matrix-and-steps.html",
+          "tree_id": "v1c02",
+          "preset": "custom",
+          "model": "agy gemini-4-argon-high",
+          "date": "2026-11-04"
+        }
+      ]
     },
     {
       "path": "ai-reports/2026-11-04_1524_proposal-tstack-review-workflows",
@@ -21,7 +102,16 @@
       "linked_ids": [],
       "verdict": "",
       "supersedes": "",
-      "superseded_by": "ai-reports/2026-11-04_1747_proposal-tstack-review-workflows-rev1"
+      "superseded_by": "ai-reports/2026-11-04_1747_proposal-tstack-review-workflows-rev1",
+      "second_opinions": [
+        {
+          "page": "ai-reports/2026-11-04_1524_proposal-tstack-review-workflows/index-v1c01-codex-gpt-6.1-terra-custom-matrix-to-implementation.html",
+          "tree_id": "v1c01",
+          "preset": "custom",
+          "model": "codex gpt-6.1-terra",
+          "date": "2026-11-04"
+        }
+      ]
     },
     {
       "path": "ai-reports/2026-11-02_1757_presentation-style-gallery",
@@ -32,7 +122,8 @@
       "linked_ids": [],
       "verdict": "",
       "supersedes": "",
-      "superseded_by": ""
+      "superseded_by": "",
+      "second_opinions": []
     },
     {
       "path": "ai-reports/2026-10_3-reports/2026-10-27_2356_checkout-copies-control-repo",
@@ -43,7 +134,8 @@
       "linked_ids": [],
       "verdict": "proposal-not-built",
       "supersedes": "",
-      "superseded_by": ""
+      "superseded_by": "",
+      "second_opinions": []
     },
     {
       "path": "ai-reports/2026-10_3-reports/2026-10-15_1731_REQ-698-ai-report-second-opinion",
@@ -58,7 +150,16 @@
       ],
       "verdict": "completed-with-live-limits",
       "supersedes": "",
-      "superseded_by": ""
+      "superseded_by": "",
+      "second_opinions": [
+        {
+          "page": "ai-reports/2026-10_3-reports/2026-10-15_1731_REQ-698-ai-report-second-opinion/index-agy-gemini-4-argon-high.html",
+          "tree_id": "",
+          "preset": "",
+          "model": "",
+          "date": ""
+        }
+      ]
     },
     {
       "path": "ai-reports/2026-10_3-reports/2026-10-09_1916_REQ-632-activity-correlation-determinism",
@@ -71,7 +172,23 @@
       ],
       "verdict": "",
       "supersedes": "",
-      "superseded_by": ""
+      "superseded_by": "",
+      "second_opinions": [
+        {
+          "page": "ai-reports/2026-10_3-reports/2026-10-09_1916_REQ-632-activity-correlation-determinism/index-claude-claude-opus-5-5.html",
+          "tree_id": "",
+          "preset": "",
+          "model": "",
+          "date": ""
+        },
+        {
+          "page": "ai-reports/2026-10_3-reports/2026-10-09_1916_REQ-632-activity-correlation-determinism/index-codex-gpt-6-astra.html",
+          "tree_id": "",
+          "preset": "",
+          "model": "",
+          "date": ""
+        }
+      ]
     },
     {
       "path": "ai-reports/2026-09_18-reports/2026-09-09_1224_REQ-624-verification-review",
@@ -84,7 +201,8 @@
       ],
       "verdict": "",
       "supersedes": "",
-      "superseded_by": ""
+      "superseded_by": "",
+      "second_opinions": []
     },
     {
       "path": "ai-reports/2026-09_18-reports/2026-09-09_0052_do-work-improvement-review-pictures",
@@ -95,7 +213,8 @@
       "linked_ids": [],
       "verdict": "",
       "supersedes": "",
-      "superseded_by": ""
+      "superseded_by": "",
+      "second_opinions": []
     },
     {
       "path": "ai-reports/2026-09_18-reports/2026-09-09_0044_do-work-improvement-review-simple",
@@ -106,7 +225,8 @@
       "linked_ids": [],
       "verdict": "",
       "supersedes": "",
-      "superseded_by": ""
+      "superseded_by": "",
+      "second_opinions": []
     },
     {
       "path": "ai-reports/2026-09_18-reports/2026-09-09_0013_do-work-improvement-review-rev-v2",
@@ -117,7 +237,8 @@
       "linked_ids": [],
       "verdict": "",
       "supersedes": "",
-      "superseded_by": ""
+      "superseded_by": "",
+      "second_opinions": []
     },
     {
       "path": "ai-reports/2026-09_18-reports/2026-09-08_2327_do-work-improvement-review",
@@ -128,7 +249,8 @@
       "linked_ids": [],
       "verdict": "",
       "supersedes": "",
-      "superseded_by": ""
+      "superseded_by": "",
+      "second_opinions": []
     },
     {
       "path": "ai-reports/2026-09_18-reports/2026-09-06_2113_do-work-cli-guide",
@@ -139,7 +261,8 @@
       "linked_ids": [],
       "verdict": "",
       "supersedes": "",
-      "superseded_by": ""
+      "superseded_by": "",
+      "second_opinions": []
     },
     {
       "path": "ai-reports/2026-09_18-reports/2026-09-06_1740_architecture-report",
@@ -150,7 +273,8 @@
       "linked_ids": [],
       "verdict": "",
       "supersedes": "",
-      "superseded_by": ""
+      "superseded_by": "",
+      "second_opinions": []
     },
     {
       "path": "ai-reports/2026-09_18-reports/2026-09-06_1708_architecture-report",
@@ -161,7 +285,8 @@
       "linked_ids": [],
       "verdict": "",
       "supersedes": "",
-      "superseded_by": ""
+      "superseded_by": "",
+      "second_opinions": []
     },
     {
       "path": "ai-reports/2026-09_18-reports/2026-09-06_1706_architecture-report",
@@ -172,7 +297,8 @@
       "linked_ids": [],
       "verdict": "",
       "supersedes": "",
-      "superseded_by": ""
+      "superseded_by": "",
+      "second_opinions": []
     },
     {
       "path": "ai-reports/2026-09_18-reports/2026-09-06_1606_test-efficiency-improvement-proposal",
@@ -183,7 +309,8 @@
       "linked_ids": [],
       "verdict": "",
       "supersedes": "",
-      "superseded_by": ""
+      "superseded_by": "",
+      "second_opinions": []
     },
     {
       "path": "ai-reports/2026-09_18-reports/2026-09-05_1800_REQ-588-verify-findings-slim-band-gallery",
@@ -196,7 +323,8 @@
       ],
       "verdict": "",
       "supersedes": "",
-      "superseded_by": ""
+      "superseded_by": "",
+      "second_opinions": []
     },
     {
       "path": "ai-reports/2026-09_18-reports/2026-09-05_1740_REQ-588-verify-findings-compact-mockups",
@@ -209,7 +337,8 @@
       ],
       "verdict": "",
       "supersedes": "",
-      "superseded_by": ""
+      "superseded_by": "",
+      "second_opinions": []
     },
     {
       "path": "ai-reports/2026-09_18-reports/2026-09-05_1520_activity-view-double-scroll-mockups",
@@ -220,7 +349,8 @@
       "linked_ids": [],
       "verdict": "",
       "supersedes": "",
-      "superseded_by": ""
+      "superseded_by": "",
+      "second_opinions": []
     },
     {
       "path": "ai-reports/2026-09_18-reports/2026-09-05_1445_REQ-588-verify-findings-row-mockups",
@@ -233,7 +363,8 @@
       ],
       "verdict": "",
       "supersedes": "",
-      "superseded_by": ""
+      "superseded_by": "",
+      "second_opinions": []
     },
     {
       "path": "ai-reports/2026-09_18-reports/2026-09-03_2145_do-work-velocity-and-pending-queue-speed",
@@ -244,7 +375,8 @@
       "linked_ids": [],
       "verdict": "",
       "supersedes": "",
-      "superseded_by": ""
+      "superseded_by": "",
+      "second_opinions": []
     },
     {
       "path": "ai-reports/2026-09_18-reports/2026-09-03_0010_maintainer-verify-gate-cost-analysis",
@@ -255,7 +387,8 @@
       "linked_ids": [],
       "verdict": "",
       "supersedes": "",
-      "superseded_by": ""
+      "superseded_by": "",
+      "second_opinions": []
     },
     {
       "path": "ai-reports/2026-09_18-reports/2026-09-02_1651_orchestrator-simplification-analysis",
@@ -266,7 +399,8 @@
       "linked_ids": [],
       "verdict": "",
       "supersedes": "",
-      "superseded_by": ""
+      "superseded_by": "",
+      "second_opinions": []
     },
     {
       "path": "ai-reports/2026-09_18-reports/2026-09-01_0927_queue-analysis-time-cost-disposition",
@@ -277,7 +411,8 @@
       "linked_ids": [],
       "verdict": "",
       "supersedes": "",
-      "superseded_by": ""
+      "superseded_by": "",
+      "second_opinions": []
     },
     {
       "path": "ai-reports/2026-08_18-reports/2026-08-30_1839_architecture-report",
@@ -288,7 +423,8 @@
       "linked_ids": [],
       "verdict": "",
       "supersedes": "",
-      "superseded_by": ""
+      "superseded_by": "",
+      "second_opinions": []
     },
     {
       "path": "ai-reports/2026-08_18-reports/2026-08-27_1522_architecture-report",
@@ -299,7 +435,8 @@
       "linked_ids": [],
       "verdict": "",
       "supersedes": "",
-      "superseded_by": ""
+      "superseded_by": "",
+      "second_opinions": []
     },
     {
       "path": "ai-reports/2026-08_18-reports/2026-08-27_1508_architecture-report",
@@ -310,7 +447,8 @@
       "linked_ids": [],
       "verdict": "",
       "supersedes": "",
-      "superseded_by": ""
+      "superseded_by": "",
+      "second_opinions": []
     },
     {
       "path": "ai-reports/2026-08_18-reports/2026-08-27_1428_req-341-timeline-drag-evidence",
@@ -324,7 +462,8 @@
       ],
       "verdict": "",
       "supersedes": "",
-      "superseded_by": ""
+      "superseded_by": "",
+      "second_opinions": []
     },
     {
       "path": "ai-reports/2026-08_18-reports/2026-08-26_1709_architecture-report",
@@ -335,7 +474,8 @@
       "linked_ids": [],
       "verdict": "",
       "supersedes": "",
-      "superseded_by": ""
+      "superseded_by": "",
+      "second_opinions": []
     },
     {
       "path": "ai-reports/2026-08_18-reports/2026-08-23_2200_durations-panel-improvement-proposal",
@@ -346,7 +486,8 @@
       "linked_ids": [],
       "verdict": "",
       "supersedes": "",
-      "superseded_by": ""
+      "superseded_by": "",
+      "second_opinions": []
     },
     {
       "path": "ai-reports/2026-08_18-reports/2026-08-20_1131_remaining-work-and-the-req-treadmill",
@@ -357,7 +498,8 @@
       "linked_ids": [],
       "verdict": "",
       "supersedes": "",
-      "superseded_by": ""
+      "superseded_by": "",
+      "second_opinions": []
     },
     {
       "path": "ai-reports/2026-08_18-reports/2026-08-19_1345_durations-label-face-robustness",
@@ -368,7 +510,8 @@
       "linked_ids": [],
       "verdict": "",
       "supersedes": "",
-      "superseded_by": ""
+      "superseded_by": "",
+      "second_opinions": []
     },
     {
       "path": "ai-reports/2026-08_18-reports/2026-08-18_1000_durations-lane-legibility-alternatives",
@@ -379,7 +522,8 @@
       "linked_ids": [],
       "verdict": "",
       "supersedes": "",
-      "superseded_by": ""
+      "superseded_by": "",
+      "second_opinions": []
     },
     {
       "path": "ai-reports/2026-08_18-reports/2026-08-17_1401_UR-048-estimator-calibration-and-anomaly-surfacing",
@@ -392,7 +536,8 @@
       ],
       "verdict": "",
       "supersedes": "",
-      "superseded_by": ""
+      "superseded_by": "",
+      "second_opinions": []
     },
     {
       "path": "ai-reports/2026-08_18-reports/2026-08-17_0034_UR-047-p50-active-duration-estimation",
@@ -405,7 +550,8 @@
       ],
       "verdict": "",
       "supersedes": "",
-      "superseded_by": ""
+      "superseded_by": "",
+      "second_opinions": []
     },
     {
       "path": "ai-reports/2026-08_18-reports/2026-08-15_1834_UR-044-board-client-modules",
@@ -418,7 +564,8 @@
       ],
       "verdict": "",
       "supersedes": "",
-      "superseded_by": ""
+      "superseded_by": "",
+      "second_opinions": []
     },
     {
       "path": "ai-reports/2026-08_18-reports/2026-08-14_1959_audit-repository-review",
@@ -429,7 +576,8 @@
       "linked_ids": [],
       "verdict": "",
       "supersedes": "",
-      "superseded_by": ""
+      "superseded_by": "",
+      "second_opinions": []
     },
     {
       "path": "ai-reports/2026-08_18-reports/2026-08-14_1953_REQ-176-test-effectiveness-gap",
@@ -442,7 +590,8 @@
       ],
       "verdict": "",
       "supersedes": "",
-      "superseded_by": ""
+      "superseded_by": "",
+      "second_opinions": []
     },
     {
       "path": "ai-reports/2026-08_18-reports/2026-08-13_2200_maintainability-audit-spec-validation",
@@ -453,7 +602,8 @@
       "linked_ids": [],
       "verdict": "",
       "supersedes": "",
-      "superseded_by": ""
+      "superseded_by": "",
+      "second_opinions": []
     },
     {
       "path": "ai-reports/2026-08_18-reports/2026-08-06_2248_UR-026-by-ur-recent-window",
@@ -466,7 +616,8 @@
       ],
       "verdict": "",
       "supersedes": "",
-      "superseded_by": ""
+      "superseded_by": "",
+      "second_opinions": []
     },
     {
       "path": "ai-reports/2026-08_18-reports/2026-08-06_2241_today-deployments-report",
@@ -477,7 +628,8 @@
       "linked_ids": [],
       "verdict": "",
       "supersedes": "",
-      "superseded_by": ""
+      "superseded_by": "",
+      "second_opinions": []
     },
     {
       "path": "ai-reports/2026-08_18-reports/2026-08-01_1231_lock-simplification-analysis",
@@ -488,7 +640,8 @@
       "linked_ids": [],
       "verdict": "",
       "supersedes": "",
-      "superseded_by": ""
+      "superseded_by": "",
+      "second_opinions": []
     },
     {
       "path": "ai-reports/2026-07_4-reports/2026-07-29_1937_UR-007-008-deep-review-batch",
@@ -502,7 +655,8 @@
       ],
       "verdict": "",
       "supersedes": "",
-      "superseded_by": ""
+      "superseded_by": "",
+      "second_opinions": []
     },
     {
       "path": "ai-reports/2026-07_4-reports/2026-07-28_0104_UR-006-context-engineering-alignment",
@@ -515,7 +669,8 @@
       ],
       "verdict": "",
       "supersedes": "",
-      "superseded_by": ""
+      "superseded_by": "",
+      "second_opinions": []
     },
     {
       "path": "ai-reports/2026-07_4-reports/2026-07-27_1726_UR-006-context-engineering-slimming",
@@ -528,7 +683,8 @@
       ],
       "verdict": "",
       "supersedes": "",
-      "superseded_by": ""
+      "superseded_by": "",
+      "second_opinions": []
     },
     {
       "path": "ai-reports/2026-07_4-reports/2026-07-14_2055_why-do-work-useful",
@@ -539,7 +695,8 @@
       "linked_ids": [],
       "verdict": "",
       "supersedes": "",
-      "superseded_by": ""
+      "superseded_by": "",
+      "second_opinions": []
     }
   ]
 }

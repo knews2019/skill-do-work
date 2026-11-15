@@ -313,3 +313,130 @@ func TestAIReportIndexReadsBundlesInsideMonthFolders(t *testing.T) {
 		})
 	}
 }
+
+// writeReportIndexFiles writes files under root/ai-reports, keyed by their path inside ai-reports/.
+func writeReportIndexFiles(t *testing.T, root string, files map[string]string) {
+	t.Helper()
+	for relative, content := range files {
+		path := filepath.Join(root, "ai-reports", filepath.FromSlash(relative))
+		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+}
+
+// Pins: the catalog had one entry per bundle, so second-opinion pages could not be found through it.
+func TestAIReportIndexListsSecondOpinionPagesUnderTheirBundle(t *testing.T) {
+	root := t.TempDir()
+	page := "index-v1c01-claude-claude-opus-5-5-skeptic.html"
+	writeReportIndexFiles(t, root, map[string]string{
+		"2026-11-01_0900_with-pages/index.html": `<head><title>With pages</title></head><body></body>`,
+		"2026-11-01_0900_with-pages/" + page: `<head><meta name="ai-report-second-opinion-preset" content="skeptic"><meta name="ai-report-second-opinion-direction" content="d">` +
+			`<meta name="ai-report-second-opinion-id" content="v1c01"><meta name="ai-report-second-opinion-base" content="index.html">` +
+			`<meta name="ai-report-second-opinion-model" content="claude/claude-opus-5-5"><meta name="ai-report-second-opinion-date" content="2026-11-02"><title>Page</title></head><body></body>`,
+		"2026-11-02_0900_no-pages/index.html": `<head><title>No pages</title></head><body></body>`,
+	})
+	if result := runReportIndex(t, root); result.Outcome != resultmodel.OutcomeSuccess {
+		t.Fatalf("index outcome=%s findings=%+v", result.Outcome, result.Findings)
+	}
+	data, err := os.ReadFile(filepath.Join(root, "ai-reports", "catalog.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var raw struct {
+		Bundles []map[string]json.RawMessage `json:"bundles"`
+	}
+	if err := json.Unmarshal(data, &raw); err != nil {
+		t.Fatal(err)
+	}
+	pages := map[string]string{}
+	for _, bundle := range raw.Bundles {
+		var bundlePath string
+		_ = json.Unmarshal(bundle["path"], &bundlePath)
+		pages[bundlePath] = string(bundle["second_opinions"])
+	}
+	if got := pages["ai-reports/2026-11-02_0900_no-pages"]; got != "[]" {
+		t.Fatalf("bundle without pages: second_opinions=%q, want []\n%s", got, data)
+	}
+	var listed []map[string]string
+	if err := json.Unmarshal([]byte(pages["ai-reports/2026-11-01_0900_with-pages"]), &listed); err != nil {
+		t.Fatalf("second_opinions does not parse: %v\n%s", err, data)
+	}
+	want := []map[string]string{{"page": "ai-reports/2026-11-01_0900_with-pages/" + page, "tree_id": "v1c01", "preset": "skeptic", "model": "claude/claude-opus-5-5", "date": "2026-11-02"}}
+	if !reflect.DeepEqual(listed, want) {
+		t.Fatalf("second_opinions=%v, want %v", listed, want)
+	}
+	index, err := os.ReadFile(filepath.Join(root, "ai-reports", "index.html"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, line := range strings.Split(string(index), "\n") {
+		if strings.Contains(line, `href="2026-11-01_0900_with-pages/index.html"`) {
+			if !strings.Contains(line, `<ul class="second-opinions"><li><a href="2026-11-01_0900_with-pages/`+page+`">v1c01</a> · skeptic · claude/claude-opus-5-5 · 2026-11-02</li></ul>`) {
+				t.Fatalf("the bundle row does not list the page:\n%s", line)
+			}
+			return
+		}
+	}
+	t.Fatalf("index.html has no row for the bundle:\n%s", index)
+}
+
+// Pins: a page without tree metas must still be listed by file name, metas hidden in a comment or a
+// script must not count, and staging pages, reply files and a fallback entry are not pages.
+func TestAIReportIndexListsPlainSecondOpinionPageByFileName(t *testing.T) {
+	root := t.TempDir()
+	plain := "index-claude-claude-opus-5-5.html"
+	writeReportIndexFiles(t, root, map[string]string{
+		"2026-11-01_0900_plain/index.html":                    `<head><title>Plain</title></head><body></body>`,
+		"2026-11-01_0900_plain/" + plain:                      `<head><!-- <meta name="ai-report-second-opinion-id" content="v1c09"> --><script>let s='<meta name="ai-report-second-opinion-model" content="hidden">'</script><title>P</title></head><body></body>`,
+		"2026-11-01_0900_plain/.index-v1c02-x-staging-1.html": `<head><title>Staging</title></head>`,
+		"2026-11-01_0900_plain/v1c01-x-reply.md":              "# reply\n",
+		"2026-11-02_0900_fallback/index-only-page.html":       `<head><title>Fallback</title></head>`,
+	})
+	if result := runReportIndex(t, root); result.Outcome != resultmodel.OutcomeSuccess {
+		t.Fatalf("index outcome=%s findings=%+v", result.Outcome, result.Findings)
+	}
+	data, err := os.ReadFile(filepath.Join(root, "ai-reports", "catalog.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var raw struct {
+		Bundles []struct {
+			Path           string              `json:"path"`
+			Entry          string              `json:"entry"`
+			SecondOpinions []map[string]string `json:"second_opinions"`
+		} `json:"bundles"`
+	}
+	if err := json.Unmarshal(data, &raw); err != nil {
+		t.Fatal(err)
+	}
+	found := 0
+	for _, bundle := range raw.Bundles {
+		switch bundle.Path {
+		case "ai-reports/2026-11-01_0900_plain":
+			found++
+			want := []map[string]string{{"page": "ai-reports/2026-11-01_0900_plain/" + plain, "tree_id": "", "preset": "", "model": "", "date": ""}}
+			if !reflect.DeepEqual(bundle.SecondOpinions, want) {
+				t.Fatalf("plain bundle second_opinions=%v, want %v", bundle.SecondOpinions, want)
+			}
+		case "ai-reports/2026-11-02_0900_fallback":
+			found++
+			if bundle.Entry != "ai-reports/2026-11-02_0900_fallback/index-only-page.html" || bundle.SecondOpinions == nil || len(bundle.SecondOpinions) != 0 {
+				t.Fatalf("fallback entry listed as a page or field missing: %+v\n%s", bundle, data)
+			}
+		}
+	}
+	if found != 2 {
+		t.Fatalf("catalog misses a fixture bundle:\n%s", data)
+	}
+	index, err := os.ReadFile(filepath.Join(root, "ai-reports", "index.html"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(index), `<li><a href="2026-11-01_0900_plain/`+plain+`">`+plain+`</a></li>`) {
+		t.Fatalf("index.html does not list the plain page by file name:\n%s", index)
+	}
+}
