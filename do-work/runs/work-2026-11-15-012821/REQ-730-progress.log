@@ -2,3 +2,12 @@
 2026-11-14T23:37:00Z verify go test ./... start
 2026-11-14T23:38:53Z verify go test ./... end
 2026-11-14T23:41:18Z verify done; handback
+2026-11-15T01:11:09Z gate start helpers/gate.sh afa0153f2eef19681ca44c68faff29d7eab684a6 (load 4.45 5.19 5.02)
+2026-11-15T01:13:44Z gate done exit 0
+2026-11-15T01:13:52Z probe advance --probe-file REQ-730-probe.sh
+2026-11-15T01:13:53Z probe done
+2026-11-15T01:14:16Z heavy start helpers/heavy.sh afa0153f queue-kanban-javascript queue-kanban-browser do-work-cli-integrations staged-skills updater installer (load 6.12 6.27 5.53)
+2026-11-15T01:14:17Z review start reviewer agent (opus)
+2026-11-15T01:18:21Z review done (approve 95%)
+2026-11-15T01:20:27Z heavy done
+2026-11-15T01:20:55Z finalize advance --finalization-manifest (release 0.320.0)

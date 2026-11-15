@@ -10,6 +10,14 @@ For the complete release history, read this file and the archives below from new
 - [0.50.0 through 0.64.1](https://github.com/knews2019/skill-do-work/blob/main/docs/changelog/CHANGELOG-2026-04-13-up-to-v0.64.1.md)
 - [0.1.0 through 0.49.0](https://github.com/knews2019/skill-do-work/blob/main/docs/changelog/CHANGELOG-2026-04-07-up-to-v0.49.0.md)
 
+## 0.320.0 — Report Catalog Lists Each Bundle's Second-Opinion Pages (2026-11-15)
+
+`ai-report index` now lists each bundle's second-opinion pages, so a page such as `index-v1c01-<name>.html` can be found from the catalog. Before, the catalog showed one entry per bundle and nothing else.
+
+- `ai-reports/catalog.json` gains a `second_opinions` array on every bundle (empty when it has none). Each item has `page`, `tree_id`, `preset`, `model` and `date`, read from the page's `ai-report-second-opinion-*` meta tags and left empty when a tag is absent. Every existing field keeps its name and meaning.
+- `ai-reports/index.html` shows the pages as a short list under the bundle's title. A page without a tree id, such as an older plain page, is listed by its file name.
+- The catalog still never writes into a bundle. The next `ai-report index` run in a project picks up the pages.
+
 ## 0.319.0 — Render Check Takes One Named Page of a Bundle (2026-11-15)
 
 `ai-report-judge --page <file.html>` render-checks one page of a report bundle where it sits. Before, checking a second-opinion page such as `index-v1c01-<name>.html` meant copying the whole bundle and writing that page over the copy's `index.html`.

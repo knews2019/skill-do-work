@@ -1,7 +1,7 @@
 ---
 id: REQ-730
 title: 'Report catalog lists the second-opinion pages of each bundle'
-status: claimed
+status: completed
 created_at: 2026-11-14T22:47:58Z
 user_request: UR-176
 domain: general
@@ -27,6 +27,14 @@ estimate:
     - 6 acceptance criteria
 dispatch_at: 2026-11-14T23:35:11Z
 builder_handback_at: 2026-11-15T01:07:30Z
+integration_at: 2026-11-15T01:08:02Z
+review_at: 2026-11-15T01:18:28Z
+kb_status: pending
+commit: afa0153f2eef19681ca44c68faff29d7eab684a6
+heavy_verified_at: 2026-11-15T01:20:43Z
+heavy_verified_revision: afa0153f2eef19681ca44c68faff29d7eab684a6
+completed_at: 2026-11-15T01:20:55Z
+release_at: 2026-11-15T01:20:55Z
 ---
 # Report Catalog Lists the Second-Opinion Pages of Each Bundle
 ## What
@@ -59,9 +67,9 @@ See `do-work/user-requests/UR-176/input.md` for complete verbatim input.
 - `_dev/primes/lessons-action-files.md` — 8761 tokens, over the 2000-token budget and `slugged: partial`, so it cannot be narrowed. Matching reason: the request changes an action file.
 - `skills/do-work/tools/do-work-cli/lessons-do-work-cli.md` — 24500 tokens, over the 2000-token budget and `slugged: partial`, so it cannot be narrowed. Matching reason: the request changes do-work-cli Go code for reports.
 ## AI Execution State (P-A-U Loop)
-- [ ] **[PLAN]:** (Agent: Read listed `prime_files` and agent rules. Write brief technical approach here. Do not write code yet.)
-- [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
-- [ ] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
+- [x] **[PLAN]:** Pattern variable `reportSecondOpinionPagePattern` + `reportSecondOpinionPage` type + a re-reading helper; field initialised to `[]`; nested list appended after the successor span in the title cell; D-05 one-line swap. (from the builder hand-back)
+- [x] **[APPLY]:** Done as planned in three commits (`f00c54d5` RED tests, `359bb427` implementation, `5a19ca8b` regenerated catalog pair); one CSS line `ul.second-opinions{…}` added to the page style, so the page header bytes change for every catalog while rows without pages are unchanged. (from the builder hand-back)
+- [x] **[UNIFY]:** `git diff --stat` base..tip: 7 files, 409+/54-; checked the Go diff (no debug output, gofmt clean), the two doc lines, and that the `ai-reports/` diff is the catalog pair only. (from the builder hand-back)
 *Source: do-work capture-request: capture the request in _dev/run-prompts/2026-11-15-catalog-lists-second-opinion-pages.md*
 
 ---
@@ -86,6 +94,18 @@ The REQ has no open questions from capture. Pre-dispatch made these choices (una
 - [~] Where does the page-name shape live? → **D-05**: Builder chose: one named package variable in `report_index.go` (for example `reportSecondOpinionPagePattern`), and `secondOpinionBanner` in `report_second_opinion.go` uses it in place of its inline regex. Reasoning: one definition of "a published second-opinion page name" instead of two copies. Value: the catalog and the publisher cannot drift. Risk: a one-line edit in a file REQ-728/729 do not touch; no behaviour change.
 
 <!-- D-XX counter: last used D-05. Next decision: D-06. -->
+
+## Decisions
+
+(from the builder hand-back)
+- D-06 DECIDE & STATE: a page read error leaves the page listed with empty metas (not dropped, not fatal), matching how an unreadable entry still yields a bundle.
+- D-07 DECIDE & STATE: the nested list sits after the "superseded by" span inside the title cell, so a superseded row keeps its existing text first.
+- D-08 DECIDE & STATE: the HTML list shows the raw preset value, empty skipped (D-04); it does not substitute "plain" the way `secondOpinionTreeList` does, so the catalog never invents a value (D-02).
+
+(integrator)
+- D-09 DECIDE & STATE: the brief asked for the catalog pair to be regenerated on the merged tree "as a fix on the builder branch". The builder branch does not hold REQ-733's `index-v1c03c01-…` page, so a regeneration there could not list it. I ran `ai-report-index` on the merged tree in the main checkout during the `--no-commit` merge and committed the regenerated pair inside the merge commit as an integration seam. The pair was never merged by hand. Result: 49 bundles, and the Tinka bundle lists four pages (v1c01, v1c02, v1c03, v1c03c01).
+- D-10 DECIDE & STATE: release bump is minor (0.319.0 → 0.320.0). `second_opinions` is a new field that consumers of `catalog.json` can read, an additive change, and REQ-728 took a minor bump for its additive `--page` option in this same run. Risk: none; a patch would undersell a new readable field.
+- D-11 DECIDE & STATE: the three reviewer findings (F1 duplicate test helper, F2 the guide bullet does not name the field keys, F3 two descriptions slightly wider than the code) stay report only, as the reviewer recommended. Fixing F2 alone would need a re-merge, a re-gate and a six-lane re-drain for one doc line; the CHANGELOG entry names the field and its keys.
 
 ## Plan
 
@@ -142,3 +162,126 @@ The REQ has no open questions from capture. Pre-dispatch made these choices (una
 **Dependencies:** ✓ Installed
 
 *Checked by work action (coordinator, run work-2026-11-15-012821)*
+
+## Implementation Summary
+
+**Files changed:**
+- `skills/do-work/tools/do-work-cli/internal/toolboxcommands/report_index.go` (modified: new reportSecondOpinionPagePattern variable; reportBundle gains the last field SecondOpinions (second_opinions, always an array) and the new reportSecondOpinionPage type; readReportBundle fills it; renderReportIndexPage gains one CSS line and the nested list in the title cell; new readReportSecondOpinionPages and renderReportSecondOpinionList)
+- `skills/do-work/tools/do-work-cli/internal/toolboxcommands/report_index_test.go` (modified: writeReportIndexFiles helper and two tests appended)
+- `skills/do-work/tools/do-work-cli/internal/toolboxcommands/report_second_opinion.go` (modified: secondOpinionBanner uses the shared pattern variable, D-05)
+- `skills/do-work-toolbox/actions/ai-report.md` (modified: one sentence in "Catalog forms: index and find")
+- `skills/do-work-toolbox/docs/ai-report-guide.md` (modified: one bullet in "Report Catalog")
+- `ai-reports/catalog.json`, `ai-reports/index.html` (regenerated with ai-report-index on the merged tree, D-03 and D-09)
+
+**What was done:** ai-report index now lists each bundle's top-level second-opinion pages (`index-*.html`, minus the bundle's own entry file) in a new second_opinions array in `catalog.json`, each item with page, tree_id, preset, model and date read from the page's ai-report-second-opinion-* metas (empty when absent). `ai-reports/index.html` shows them as a nested list under the bundle's title; a plain page without a tree id is linked by its file name. Every existing field is unchanged, and rows without pages render as before.
+
+## Discovered Tasks
+
+(from the builder hand-back)
+- None.
+
+## Qualification
+
+**Gate records** (`advance --diff-range 72f72c3a..afa0153f`): `qualify` satisfied after I removed backticks from Go identifiers in the Implementation Summary (the qualifier read them as claimed paths). `scope-drift` reports three `SCOPE-DECLARED-NOT-TOUCHED`: `CHANGELOG.md` and `VERSION` (the integrator writes them in the finalization transaction) and `secondOpinionBanner` (a Go function name in the Scope list, not a path; it is changed at `report_second_opinion.go:1533`). No undeclared path is touched.
+
+**Requirement trace** (`git diff 72f72c3a..afa0153f --stat`: 7 files, 416+/54-):
+- `catalog.json` gains a per-bundle list with tree id, preset, model and date, additively: `report_index.go` adds `SecondOpinions` (`second_opinions`) as the last `reportBundle` field, always initialised to an empty slice, with items `{page, tree_id, preset, model, date}`. The real `ai-reports/catalog.json` shows `"second_opinions": []` on bundles without pages and four items on the Tinka bundle.
+- `ai-reports/index.html` shows the pages under their bundle's row: `renderReportSecondOpinionList` appends `<ul class="second-opinions">` after the title and successor span; the regenerated page shows it on the Tinka, tstack and REQ-632/REQ-698 rows.
+- A plain page is listed by its file name: the second new test pins it, and the real REQ-632 row shows `index-claude-claude-opus-5-5.html` and `index-codex-gpt-6-astra.html` as link text.
+- Existing fields keep name and meaning: no existing struct field or JSON tag changed; `reportIndexFind`, organize and `second-opinion latest` code is untouched. The five existing `TestAIReportIndex*` tests are unchanged in the diff.
+- No bundle is edited: `readReportSecondOpinionPages` only calls `os.ReadDir` and `os.ReadFile`; `git status -- ai-reports/` after the regeneration showed only the catalog pair.
+- RED then GREEN: the hand-back quotes both new tests failing after commit `f00c54d5` and passing after `359bb427`.
+- Docs: one sentence in `ai-report.md` "Catalog forms: index and find" and one bullet in `ai-report-guide.md` "Report Catalog". Neither contradicts REQ-728's `--page` text, which sits in the judge paragraphs and Step 7.
+
+**Merged hunks of the shared files.** `report_second_opinion.go` holds REQ-728's `judgeRender(..., "index.html")` argument and this REQ's one-line pattern swap; they are 100+ lines apart. `ai-report.md` and `ai-report-guide.md` auto-merged with REQ-728's text; each new line sits in its catalog section.
+
+**Scope:** declared 9 paths; touched 7 of them; the 2 untouched are `CHANGELOG.md` and `VERSION`, written at finalization. The catalog pair was regenerated on the merged tree (D-09), never hand-merged.
+
+## Testing
+
+**Tests run:**
+- Repository gate `bash _dev/tests/maintainer-verify.sh` at merge `afa0153f2eef19681ca44c68faff29d7eab684a6`, in the shared detached checkout with stage reuse off: exit 0, 155 s wall (1-minute load 4.49 at start). Go fast tests: 984 tests, 72 s.
+- GREEN probe `do-work/runs/work-2026-11-15-012821/REQ-730-probe.sh` through `advance --gate-arg bash --gate-arg _dev/tests/maintainer-verify.sh --gate-exit-status 0 -- --probe-file …`: `BLOCKED-PROBE-SUCCEEDED`, green-gate record written for the merge revision.
+- Builder (from the hand-back): `go test -count=1 ./...` in the do-work-cli module all ok; `gofmt -l` empty; `go vet` clean; `contract-regressions.sh` and `audit-lockins.sh` passed.
+
+**Result:** pass.
+
+**Red-green validation (tdd: true, from the builder hand-back):**
+- `TestAIReportIndexListsSecondOpinionPagesUnderTheirBundle`: after RED commit `f00c54d5` it failed with `report_index_test.go:362: bundle without pages: second_opinions="", want []`; after `359bb427` it passes.
+- `TestAIReportIndexListsPlainSecondOpinionPageByFileName`: after `f00c54d5` it failed with `report_index_test.go:428: fallback entry listed as a page or field missing`; after `359bb427` it passes.
+
+**New/updated tests:** two new tests and one fixture helper (`writeReportIndexFiles`) at the end of `skills/do-work/tools/do-work-cli/internal/toolboxcommands/report_index_test.go`; no existing test changed.
+
+**Heavy verification plan** (`plan-heavy-verification --base-revision 72f72c3a6858146c2c7c7a62a6ddd148883b77fc --target-revision afa0153f2eef19681ca44c68faff29d7eab684a6`; `uncertain: true` because no lane covers `ai-reports/catalog.json` and `ai-reports/index.html`):
+- `queue-kanban-javascript`, `queue-kanban-browser`, `do-work-cli-integrations`, `staged-skills`, `updater`, `installer`: each `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane <lane-id>`; reason for each: "coverage is uncertain for: ai-reports/catalog.json, ai-reports/index.html".
+
+## Review
+
+**Overall: 95%** | 2026-11-15T01:18:28Z — Approve. Independent reviewer (opus): full report `do-work/runs/work-2026-11-15-012821/REQ-730-review.md`, range `72f72c3a..afa0153f`.
+
+| Dimension | Score |
+|-----------|-------|
+| Requirements | 97% |
+| Code Quality | 95% |
+| Test Adequacy | 95% |
+| Scope | 95% |
+| Risk | None |
+| Acceptance | Pass |
+
+**Verdict:** Approve. No finding must be fixed in this REQ.
+
+**Important findings (each with its recorded impact token, the durable audit record the judgment requires):**
+- None
+
+**Minor findings:**
+- F1 (Minor). `writeReportIndexFiles` (`report_index_test.go:318`) duplicates `writeOrganizeFiles` (`report_organize_test.go:25`, same package). — impact-negligible → report only
+- F2 (Minor). The "Report Catalog" bullet (`ai-report-guide.md:103`) does not name the `second_opinions` field or its item keys. — impact-user-visible → report only
+- F3 (Nit). The guide's `index-*.html` and the "tree pre-order" comment (`report_index.go:486`) are slightly wider than the code. The entry file is excluded, and plain pages sort among the tree pages by name. — impact-negligible → report only
+
+**Acceptance:** Pass. The focused tests pass, and the committed catalog pair regenerates byte-identically from `afa0153f`. The Tinka row lists v1c01, v1c02, v1c03 and v1c03c01, and five mutations each fail at least one new test.
+**Restatement sweep:** nothing redefined. The diff adds the `second_opinions` field and moves the page-name pattern into a shared variable, and no existing contract changes meaning. Per the dispatcher, this is not the wave's last integration, so no inherited sweep was run.
+**Suggested testing:** 1 item
+**Follow-ups created:** None (3 findings report only)
+
+*Reviewed by review-work action*
+
+## Heavy Verification Plan
+
+- Base: `72f72c3a6858146c2c7c7a62a6ddd148883b77fc`; target: `afa0153f2eef19681ca44c68faff29d7eab684a6`.
+- `uncertain: true`: no lane covers `ai-reports/catalog.json` and `ai-reports/index.html`, so every lane is selected.
+- `queue-kanban-javascript`, `queue-kanban-browser`, `do-work-cli-integrations`, `staged-skills`, `updater`, `installer`: argv `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane <lane-id>`; reason "coverage is uncertain for: ai-reports/catalog.json, ai-reports/index.html".
+
+## Heavy Verification Result
+
+- Target: `afa0153f2eef19681ca44c68faff29d7eab684a6`; execution revision: `afa0153f2eef19681ca44c68faff29d7eab684a6` (shared detached checkout, `QUEUE_KANBAN_BROWSER` set); `run-heavy-verification` exit 0, no findings.
+- `queue-kanban-javascript`: executed, exit 0, 9 s.
+- `queue-kanban-browser`: executed, exit 0, 89 s.
+- `do-work-cli-integrations`: executed, exit 0, 96 s.
+- `staged-skills`: executed, exit 0, 44 s.
+- `updater`: executed, exit 0, 79 s.
+- `installer`: executed, exit 0, 49 s.
+
+## Lessons Learned
+
+**What worked:** pre-dispatch fixed the field name, the page-name shape and the HTML shape (D-01 to D-05) before the build, so the builder had no scope change and the reviewer had no correctness finding. Keying pages on the published name shape, not on a list of models, also catches older plain pages (`index-claude-claude-opus-5-5.html`) without new code.
+
+**What didn't:** a tracked derived file (the catalog pair) regenerated on a builder base goes stale as soon as a sibling adds a bundle page. Regenerating it on the merged tree inside the `--no-commit` merge (D-09) was simpler than a fix commit on the builder branch, which cannot see the sibling's page.
+
+**Worth knowing:** the qualifier reads every backticked token in `## Implementation Summary` as a claimed path; Go identifiers there must stay unquoted. The builder proposed no lesson, so no satellite changes.
+
+## Orientation
+
+The report catalog (`ai-report index`, `report_index.go`) now reads each bundle's second-opinion pages as well as its entry, and `reportSecondOpinionPagePattern` is the one definition of a published second-opinion page name shared with the publisher in `report_second_opinion.go`.
+
+## Timing
+
+Observed 2026-11-14T23:35:11Z to 2026-11-15T01:20:43Z: 1h 45m 32s total, 1h 46m 14s attributed across 5 events, 0s unattributed.
+
+| Category | Elapsed | Events |
+| --- | --- | --- |
+| builder-work | 1h 32m 19s | 1 |
+| verification-gate | 9m 10s | 2 |
+| review | 4m 12s | 1 |
+| handback-merge | 33s | 1 |
+
+Slowest stage: builder-work / builder worktree build, 1h 32m 19s, outcome success.
