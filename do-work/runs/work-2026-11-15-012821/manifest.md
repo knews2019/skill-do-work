@@ -3,7 +3,7 @@
 Run dir: do-work/runs/work-2026-11-15-012821/
 Concurrency: `do-work run --coordinate`: the main session coordinates; ten REQs claimed with two `advance --fan-out 5` calls; parallel worktree builders, one background integrator per REQ in series. REQ-734 (depends on REQ-733) is claimed after REQ-733 finalizes. REQ-727 stays blocked on the maintainer.
 Test policy: focused probe per REQ, then `bash _dev/tests/maintainer-verify.sh` at the merge revision (integrator only, under full-gate.lock), then the planned heavy lanes.
-Status: done (all eleven claimed REQs finalized; REQ-727 stays blocked on the maintainer)
+Status: in-progress (second pass: REQ-735 and REQ-736 from UR-179; the first eleven members are finalized; REQ-727 stays blocked on the maintainer)
 Set aside: none
 Hand-back emphasis note: none
 
@@ -20,3 +20,5 @@ Hand-back emphasis note: none
 | REQ-732 | builder agent (Opus 5.5, worktree) | worktree-agent-REQ-732-allow-docs-run-prompts | do-work/runs/work-2026-11-15-012821/REQ-732-handback.md | finalized, no release; merge ce3cb5dc; finalization 35f32e0f; gate green (125 s); review 95% approve; six heavy lanes green | 2026-11-14T23:33:30Z | 20 | 1 | 0 |
 | REQ-733 | builder agent (Opus 5.5, worktree) | worktree-agent-REQ-733-relation-map-left-to-right | do-work/runs/work-2026-11-15-012821/REQ-733-handback.md | finalized, no release, UR-177 closed; merges fd210a91, 567903a5, b6a1e1a7 (two review-fix re-merges); finalization 2017fb80; gate green x3 (133 s, 137 s, 131 s); review 74%, 72%, then 89% approve; six heavy lanes green | 2026-11-14T23:35:12Z | 45 | 3 | 0 |
 | REQ-734 | builder agent (Opus 5.5, worktree) | worktree-agent-REQ-734-supports-limits-table-page | do-work/runs/work-2026-11-15-012821/REQ-734-handback.md | finalized, no release, UR-178 closed; merges c812ea4b, 13322db2 (one review-fix re-merge); finalization 8c6bb12d; gate green x2 (124 s, 122 s); review 94% then 96% approve with the run-end restatement sweep (one omission, help.md:18); six heavy lanes green | 2026-11-15T01:06:43Z | 35 | 2 | 0 |
+| REQ-735 | pending | pending | do-work/runs/work-2026-11-15-012821/REQ-735-handback.md | pre-dispatch | | | | |
+| REQ-736 | pending | pending | do-work/runs/work-2026-11-15-012821/REQ-736-handback.md | pre-dispatch | | | | |

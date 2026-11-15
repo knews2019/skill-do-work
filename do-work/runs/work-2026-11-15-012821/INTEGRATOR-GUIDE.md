@@ -78,3 +78,6 @@ Release version, archive path, merge hash and finalization commit, review score/
 - **Lessons.** A bullet only when the builder proposed a real one, beside its own family block. Go lessons to `skills/do-work/tools/do-work-cli/lessons-do-work-cli.md`, action-file lessons to `_dev/primes/lessons-action-files.md`, shell-command lessons to `_dev/primes/lessons-shell-commands.md`, release lessons to `_dev/primes/lessons-releases.md`. Refresh the `do-work/lessons-index.md` row (tokens = (bytes+3)//4).
 - **Questions.** Never ask the user. A blocking question becomes a `pending-answers` follow-up REQ; everything else is your judgment, recorded as a D-XX decision.
 - **Commit trailer:** `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>` on every commit you author by hand.
+
+## 13. Second pass (2026-11-15): REQ-735 and REQ-736 from UR-179
+The eleven members named in section 12 are finalized. This pass has two members: REQ-736 (one help line; integrates first, patch release, keeps UR-179 open, flat archive) and REQ-735 (rule scope; integrates last, closes UR-179 and carries the Restatement Sweep over REQ-736 and REQ-724). VERSION is 0.322.0 at the start of this pass. Nothing under `/Users/t2/.claude/` is ever edited. Everything else in this guide applies unchanged.

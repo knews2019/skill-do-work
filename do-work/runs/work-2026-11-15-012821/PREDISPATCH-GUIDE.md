@@ -61,3 +61,15 @@ Unattended run: never ask the user a question. An open choice becomes a D-XX dec
 
 ## Your final message to the coordinator (under 1500 characters)
 Route; operative name; the files you wrote; the last `advance` phase and code; the exact pre-flight argv the coordinator should record (`advance REQ-NNN --request-path P --gate-arg bash --gate-arg _dev/tests/maintainer-verify.sh --gate-exit-status 0 -- bash do-work/runs/work-2026-11-15-012821/REQ-NNN-preflight-probe.sh`); any open choice you made that the coordinator should know; any seam you found that the table above missed.
+
+
+## Second pass (2026-11-15): REQ-735 and REQ-736 from UR-179
+
+The eleven members in the table above are finalized; ignore that table. This pass has two members, claimed together, built in parallel, integrated one at a time (REQ-736 first, REQ-735 last).
+
+| REQ | What | Shared files with the sibling |
+| --- | --- | --- |
+| REQ-735 | Decide, rule by rule, which of three moved standing rules load in ordinary sessions; instruction-file change in `skills/do-work/crew-members/` and the package copies under `skills/do-work-toolbox/crew-members/` and `skills/do-work-knowledge/crew-members/` | none |
+| REQ-736 | One line: the judge line in `skills/do-work-toolbox/actions/help.md` shows the `--page` option | none |
+
+Every rule of this guide still applies, including: a builder never edits `CHANGELOG.md`, `VERSION` or a `do-work/` path; never ask the user; nothing under `/Users/t2/.claude/` is ever edited (read only). REQ-724 (archived at `do-work/archive/UR-175/`) is the parent of REQ-735: read its Decisions, Review and Lessons sections and `do-work/runs/work-2026-11-15-012821/REQ-724-integration-report.md`. Its review required that each new line also lands in every package copy of the same crew file; put that in the REQ-735 brief and probe.
