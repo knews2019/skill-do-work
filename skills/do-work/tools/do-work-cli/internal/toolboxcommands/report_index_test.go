@@ -440,3 +440,73 @@ func TestAIReportIndexListsPlainSecondOpinionPageByFileName(t *testing.T) {
 		t.Fatalf("index.html does not list the plain page by file name:\n%s", index)
 	}
 }
+
+// Pins: a new report missing from the catalog with no reminder. Creating a report never rebuilds
+// ai-reports/catalog.json, so --check is the report writers' seam: one rebuild line while the
+// bundle is absent (or the catalog is missing), nothing once it is listed, and never a write.
+func TestAIReportIndexCheckPrintsRebuildLineOnlyWhenBundleMissing(t *testing.T) {
+	root := t.TempDir()
+	writeBundle := func(folder string) {
+		path := filepath.Join(root, "ai-reports", folder, "index.html")
+		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(path, []byte("<title>"+folder+"</title>"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	check := func(arguments ...string) string {
+		t.Helper()
+		before := snapshotReportTree(t, root)
+		result := runReportIndex(t, root, append([]string{"--check"}, arguments...)...)
+		if result.Outcome != resultmodel.OutcomeSuccess || result.ExactTextOutput == nil {
+			t.Fatalf("--check %v outcome=%s findings=%+v", arguments, result.Outcome, result.Findings)
+		}
+		if after := snapshotReportTree(t, root); !reflect.DeepEqual(before, after) {
+			t.Fatalf("--check %v wrote files: before=%v after=%v", arguments, before, after)
+		}
+		return *result.ExactTextOutput
+	}
+	const newBundle = "ai-reports/2026-11-15_1100_b"
+	wantLine := newBundle + " is not in ai-reports/catalog.json yet: run do-work-toolbox ai-report index to rebuild the catalog.\n"
+
+	writeBundle("2026-11-15_1000_a")
+	writeBundle("2026-11-15_1100_b")
+	if got := check(newBundle); got != wantLine {
+		t.Fatalf("no catalog: --check=%q, want %q", got, wantLine)
+	}
+
+	if err := os.Remove(filepath.Join(root, "ai-reports", "2026-11-15_1100_b", "index.html")); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Remove(filepath.Join(root, "ai-reports", "2026-11-15_1100_b")); err != nil {
+		t.Fatal(err)
+	}
+	if result := runReportIndex(t, root); result.Outcome != resultmodel.OutcomeSuccess {
+		t.Fatalf("index outcome=%s findings=%+v", result.Outcome, result.Findings)
+	}
+	writeBundle("2026-11-15_1100_b")
+	for _, argument := range []string{newBundle, newBundle + "/"} {
+		if got := check(argument); got != wantLine {
+			t.Fatalf("new bundle after the catalog: --check %q=%q, want %q", argument, got, wantLine)
+		}
+	}
+	if got := check("ai-reports/2026-11-15_1000_a"); got != "" {
+		t.Fatalf("listed bundle: --check=%q, want empty", got)
+	}
+
+	if result := runReportIndex(t, root); result.Outcome != resultmodel.OutcomeSuccess {
+		t.Fatalf("index outcome=%s findings=%+v", result.Outcome, result.Findings)
+	}
+	for _, argument := range []string{newBundle, newBundle + "/"} {
+		if got := check(argument); got != "" {
+			t.Fatalf("after rebuild: --check %q=%q, want empty", argument, got)
+		}
+	}
+
+	for _, arguments := range [][]string{{"--check"}, {"--check", ""}, {"--check", "a", "b"}} {
+		if result := runReportIndex(t, root, arguments...); result.Outcome != resultmodel.OutcomeFailure || len(result.Findings) == 0 || result.Findings[0].Code != "TOOLBOX-USAGE" {
+			t.Fatalf("%v: outcome=%s findings=%+v, want the usage result", arguments, result.Outcome, result.Findings)
+		}
+	}
+}

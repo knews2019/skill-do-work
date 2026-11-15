@@ -99,6 +99,7 @@ The current month's reports sit directly under `ai-reports/`. A finished month's
 
 - The catalog is derived: every run regenerates it from the bundles, so it is never hand-edited and catalog generation never edits the bundles.
 - A `catalog.json` or `index.html` that this command did not write is refused, never overwritten. Move it aside by hand, then rerun.
+- A new report enters the catalog at the next rebuild (`ai-report index`); creating a report never rebuilds it, and the report's closing summary reminds you while the new report is missing.
 - From each bundle's HTML entry it reads three optional meta tags: `ai-report-kind`, `ai-report-supersedes` (the folder of the report it replaces) and `ai-report-verdict`.
 - It lists each bundle's second-opinion pages (`index-*.html`) under the bundle, with tree id, preset, model and date read from the `ai-report-second-opinion-*` meta tags; a page without them is listed by its file name.
 
