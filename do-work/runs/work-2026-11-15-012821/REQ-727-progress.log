@@ -15,3 +15,12 @@
 2026-11-15T11:32:42Z verify staged-skills-contract end
 2026-11-15T11:34:22Z handback written; builder done at f2edff06
 2026-11-15T11:35:26Z integrate start (integrator)
+2026-11-15T11:37:13Z gate-start helpers/gate.sh 9d07ce2f load=2.35 3.34 3.57
+2026-11-15T11:39:29Z gate-end exit=0
+2026-11-15T11:40:11Z review-start reviewer agent (opus)
+2026-11-15T11:46:20Z review-end Approve 95% (F1-F6 report only, no fix)
+2026-11-15T11:46:34Z heavy-start 6 lanes at 9d07ce2f load=2.54 3.46 3.82
+2026-11-15T11:51:58Z heavy-end
+2026-11-15T11:53:39Z finalize prep-payloads (BUMP=minor 0.323.0->0.324.0) + make-manifests
+2026-11-15T11:53:44Z finalize advance --finalization-manifest
+2026-11-15T11:54:03Z finalize retry with implementation hash eec3bad0 (RELEASE-WITHOUT-SHIPPED-CHANGE on 9d07ce2f)

@@ -10,6 +10,15 @@ For the complete release history, read this file and the archives below from new
 - [0.50.0 through 0.64.1](https://github.com/knews2019/skill-do-work/blob/main/docs/changelog/CHANGELOG-2026-04-13-up-to-v0.64.1.md)
 - [0.1.0 through 0.49.0](https://github.com/knews2019/skill-do-work/blob/main/docs/changelog/CHANGELOG-2026-04-07-up-to-v0.49.0.md)
 
+## 0.324.0 — Relation-Map Preset for ai-report Second Opinion (2026-11-15)
+
+A report can now be read as one zoomable map of its items and the relations the report states between them. `ai-report second-opinion --preset relation-map` asks the editor for that page.
+
+- The map runs left to right: what is known, then what is proposed or decided, then what tests or limits it. The first view shows about nine main boxes with the words of their relations on the lines, and a click opens a box's sources and relations.
+- The preset turns the defects found while building the first map pages into checks: relation words never cover a box or break inside a word, a click keeps the related boxes in view, keyboard focus keeps the box in view, the phone view needs no sideways pan, and the page still works without JavaScript.
+- Known limits: on a phone, a click zooms the map out far enough to keep every related box in view, so box titles become very small; the list under the map still names every relation. The preset text is printed above the page, so on a phone the map starts on the third screen.
+- The ai-report guide lists the new preset.
+
 ## 0.323.0 — Numeric-Target and Redesign Rules Apply in Every Session; Action Rules Win Over the Ask and Model Rules (2026-11-15)
 
 Two rules that 0.322.0 put in `coding-guardrails.md` loaded only during implementation. They now live in the always-on `communication-style.md`, so every session in an installed project reads numbers in a request as approximate and keeps existing UI during a redesign.

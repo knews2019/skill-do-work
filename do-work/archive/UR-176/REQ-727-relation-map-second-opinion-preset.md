@@ -1,7 +1,7 @@
 ---
 id: REQ-727
 title: 'Ship a relation-map preset for ai-report second-opinion'
-status: claimed
+status: completed
 created_at: 2026-11-14T22:47:58Z
 user_request: UR-176
 domain: general
@@ -28,7 +28,15 @@ estimate:
     - 3 subsystems involved
     - 9 acceptance criteria
 dispatch_at: 2026-11-15T11:10:24Z
+review_at: 2026-11-15T11:46:26Z
+integration_at: 2026-11-15T11:35:49Z
 builder_handback_at: 2026-11-15T11:35:32Z
+heavy_verified_at: 2026-11-15T11:52:19Z
+heavy_verified_revision: 9d07ce2f5d456df94310ee3cbd5b1810b471f611
+kb_status: pending
+commit: eec3bad01cf2546970e7da11035685d884b63f5f
+completed_at: 2026-11-15T11:54:03Z
+release_at: 2026-11-15T11:54:03Z
 ---
 # Ship a Relation-Map Preset for ai-report second-opinion
 ## What
@@ -89,9 +97,9 @@ Captured with UR-178 (build the proposal as a table and compare it with the map)
 - `skills/do-work/tools/do-work-cli/lessons-do-work-cli.md` (bare; the row is `slugged: partial`, so the targeted `#session-is-the-backend` form is not legal) — cost 24,500 tokens against the 2,000-token budget — matches "a session that is its own second-opinion backend": the builder runs a Session second opinion for the real page. The brief names `lessons-do-work-cli.md:17` as optional reading.
 
 ## AI Execution State (P-A-U Loop)
-- [ ] **[PLAN]:** (Agent: Read listed `prime_files` and agent rules. Write brief technical approach here. Do not write code yet.)
-- [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
-- [ ] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
+- [x] **[PLAN]:** Commit 1 adds a RED test list entry. Commit 2 adds a 20-check preset under 3,500 bytes and one guide clause. Commit 3 builds a Session second opinion on the D-01 bundle, measured in a browser before and after finalize.
+- [x] **[APPLY]:** Three commits as planned. The page came from a generator in the builder's scratch folder, written by following the preset text the prompt showed. The preset needed no change during editing (D-18).
+- [x] **[UNIFY]:** git diff --stat main...HEAD shows six files: the page (617+), index.html (1+), the reply (19+), ai-report-guide.md (1 line), relation-map.md (22+) and the test (4 lines). Every hunk read. No debug output, no staging file and no .playwright-mcp file in the diff. The guarded paths (loader, prompt, kit, other presets) show no diff. gofmt and go vet clean.
 *Source: do-work capture-request: capture the request in _dev/run-prompts/2026-11-15-relation-map-preset.md*
 
 ## Blocked
@@ -144,8 +152,8 @@ Captured with UR-178 (build the proposal as a table and compare it with the map)
 - `skills/do-work-toolbox/docs/second-opinion-presets/relation-map.md` (new) — the preset: an opening paragraph that says how it differs from the mind map, then the numbered checks of D-03 and D-04
 - `skills/do-work-toolbox/docs/ai-report-guide.md` (modify) — one clause in the "A Second Opinion" preset list names relation-map
 - `skills/do-work/tools/do-work-cli/internal/toolboxcommands/report_second_opinion_test.go` (modify) — relation-map joins the named list in TestSecondOpinionShippedPresetsLoadFromTheToolbox (D-06)
-- `ai-reports/2026-11-04_1747_proposal-tstack-review-workflows-rev1/index-v1c03-*.html` (new, launcher-named) — the real page built with the preset (D-01)
-- `ai-reports/2026-11-04_1747_proposal-tstack-review-workflows-rev1/v1c03-*-reply.md` (new, launcher-named) — the editor's reply the launcher publishes beside it
+- `ai-reports/2026-11-04_1747_proposal-tstack-review-workflows-rev1/index-v1c03-claude-claude-opus-5-5-relation-map-review-loop-map.html` (new, launcher-named) — the real page built with the preset (D-01)
+- `ai-reports/2026-11-04_1747_proposal-tstack-review-workflows-rev1/v1c03-claude-claude-opus-5-5-relation-map-review-loop-map-reply.md` (new, launcher-named) — the editor's reply the launcher publishes beside it
 - `ai-reports/2026-11-04_1747_proposal-tstack-review-workflows-rev1/index.html` (modify, launcher only) — the iteration list the launcher rebuilds
 - `ai-reports/catalog.json` (modify, integrator only) — catalog rebuild after the merge (D-10)
 - `ai-reports/index.html` (modify, integrator only) — catalog rebuild after the merge (D-10)
@@ -181,7 +189,24 @@ Captured with UR-178 (build the proposal as a table and compare it with the map)
 - **D-11** (DECIDE & STATE): Scope names the launcher-named page and reply as globs, because their final names are known only after finalize. The integrator replaces the globs with the resolved names, as in REQ-734 (its D-17).
 - **D-12** (DECIDE & STATE): This REQ is the last open member of UR-176. Its six other members are archived flat: REQ-726 and REQ-728 to REQ-732. Finalizing this REQ closes UR-176 and moves those records into `do-work/archive/UR-176/`. A sweep on 2026-11-15 found no shipped file that links those flat paths. The only matches were fixture strings in two tests (`finalization_recovery_test.go:509` and `recovery_set_aside_test.go:113`), and those are not links. The integrator runs the sweep again at finalize (`_dev/primes/lessons-releases.md`, family `canonical-link-outlives-its-target`).
 
-<!-- D-XX counter: last used D-12. Next decision: D-13. -->
+(from the builder hand-back)
+
+- **D-13** (DECIDE & STATE): The page styles the launcher's direction block with smaller text (0.8 rem), a border and the page's side gutter, through a `body>aside[aria-label="Second-opinion direction"]` rule in the page's own CSS. Its words and order are unchanged. This answers the REQ-734 lesson that the inserted block had no side gutter. The heights in Verification are with this style.
+- **D-14** (DECIDE & STATE): REQ-710 ("shipped in 0.310.0") is a box in the "what tests or limits it" column, not the "known" column. Its relations go to O2, J and Q1. From the known column, its line to Q1 would cross the proposed column's boxes, and it answers the report rather than supporting it. The page says these page codes are its own (D, J, P1 to P5, L1 to L3, REQ-710).
+- **D-15** (DECIDE & STATE): The map draws only lines between neighboring columns or inside one column. So the link from S3 to L2 (both about `work.md`'s reviewer fallback) is not a line; L2's sources name `work.md:146` instead.
+- **D-16** (ESCALATE): On a phone, check 15 (a click keeps the clicked box and every related shown box in the frame) makes a click zoom out to 0.195 to 0.326. At that scale 0 to 1 relation words fit and titles are 4 to 7 px; the panel below the map lists every relation. This is the phone limit D-05 names, now measured. Value: the rule keeps every related box in view, which REQ-733's G2 showed matters. Risk: the phone map is a navigation overview after a click, not a reading view. A fix is a phone-specific layout, such as stacking the related boxes. That is a preset change, reversible in one text file, and it needs the maintainer's taste.
+- **D-17** (DECIDE & STATE): The preset stays at 3,057 bytes with 20 checks. On a phone the launcher prints it as 1,303 px of text above the page, so the map starts on the third screen. Removing checks would drop the D-04 defects the preset exists to prevent. The launcher's block is out of scope (Discovered Tasks).
+- **D-18** (DECIDE & STATE): The preset text was clear enough to build from, so the finalized page is the one the preset produced. No re-prepare was needed. Where the editor still made choices (D-14, D-15, the R710 to Q1 words "answers: no hold" that fit beside their arc), they are the editor's reading, which the preset allows.
+- **D-19** (DECIDE & STATE): The model slug is `claude-opus-5-5`, this session's declared model, recorded as `session-declared`. The launcher's date meta reads 2026-11-15.
+- **D-20** (DECIDE & STATE): Repository files are cited as text paths, not links, because the prompt allows canonical links only when remote reachability is verified. The page's corrections cite current line numbers next to the report's pinned `ccea405e` lines.
+- **D-21** (DECIDE & STATE): The GREEN probe was not run in a separate base checkout. Its first check needs the preset file, and `git cat-file` shows that file absent at `445950c4`, which is the base failure the brief predicts.
+
+(integrator)
+
+- **D-22** (DECIDE & STATE): The catalog rebuild is the merge follow-up the integrate brief asks for: `ai-report-index` on the merged tree gave 50 bundles and added the v1c03 row (preset `relation-map`) under the tstack bundle, committed as `9d07ce2f` (`ai-reports/catalog.json`, `ai-reports/index.html`). Qualification judges the builder range `9d909325..eec3bad0`; the gate and the heavy lanes run at `9d07ce2f`, the tree that holds both. The recorded implementation hash is the builder merge `eec3bad0`, because finalization judges whether a release is due from the implementation commit itself, and the catalog commit alone changes no shipped path (its first finalization attempt was refused with RELEASE-WITHOUT-SHIPPED-CHANGE).
+- **D-23** (DECIDE & STATE): The two Scope globs now name the files the launcher created (D-11), so scope drift compares exact paths.
+
+<!-- D-XX counter: last used D-23. Next decision: D-24. -->
 
 ## Pre-Flight
 
@@ -190,3 +215,142 @@ Captured with UR-178 (build the proposal as a table and compare it with the map)
 **Dependencies:** ✓ Installed
 
 *Checked by work action (coordinator, run work-2026-11-15-012821)*
+
+## Implementation Summary
+
+**Files changed:**
+- `skills/do-work-toolbox/docs/second-opinion-presets/relation-map.md` (created; the preset: one opening paragraph that says how a relation map differs from a mind map, then 20 numbered checks, 3,057 bytes)
+- `skills/do-work-toolbox/docs/ai-report-guide.md` (modified; one clause in the "A Second Opinion" preset list names relation-map)
+- `skills/do-work/tools/do-work-cli/internal/toolboxcommands/report_second_opinion_test.go` (modified; relation-map joins the named list in TestSecondOpinionShippedPresetsLoadFromTheToolbox, and the comment and error text say "named preset")
+- `ai-reports/2026-11-04_1747_proposal-tstack-review-workflows-rev1/index-v1c03-claude-claude-opus-5-5-relation-map-review-loop-map.html` (created; written by the builder's Session pass with --preset relation-map, named and published by the second-opinion launcher)
+- `ai-reports/2026-11-04_1747_proposal-tstack-review-workflows-rev1/v1c03-claude-claude-opus-5-5-relation-map-review-loop-map-reply.md` (created; the editor's reply, named by the launcher)
+- `ai-reports/2026-11-04_1747_proposal-tstack-review-workflows-rev1/index.html` (modified by the launcher only; one v1c03 line in the iteration list)
+- `ai-reports/catalog.json` (modified; regenerated by the integrator, D-22)
+- `ai-reports/index.html` (modified; regenerated by the integrator, D-22)
+
+**What was done:** Added the relation-map second-opinion preset, so ai-report second-opinion --preset relation-map asks the editor for one zoomable left-to-right map of the report's items and the relations the report states between them. The preset's 20 checks turn the seven open defects of REQ-733 (rebuild the relation map page) and REQ-734 (proposal table and map comparison) into instructions a reader can measure. The shipped-presets test names the new preset (RED first, then GREEN). The builder then ran a Session second opinion with --preset relation-map alone on the tstack review-workflows bundle, which the launcher published as tree page v1c03; the finalize judge reported `pass`, and the builder measured the page in a browser at 1440 × 1000 and 390 × 844 before and after finalize.
+
+## Discovered Tasks
+
+(from the builder hand-back)
+
+- The report kit's closing band (`skeleton.html`) does not suggest the relation-map preset (D-07) — impact-negligible → report only
+- The launcher prints the full direction above every directed page (`report_second_opinion.go:1634`). With the 3,057-byte relation-map preset, that block is 1,303 px tall at 390 px wide, so a phone reader meets the map on the third screen. Folding the direction after its first paragraph (for example in a `<details>`) would be a launcher change — impact-user-visible → report only
+- The render judge does not measure label overlap, broken words, zoom framing, focus or no-JS line words (D-05). The browser script used here (relation words in view, words on boxes, words cut at the frame, related boxes out of frame after every click, Tab framing) could become a judge check for map pages — impact-negligible → report only
+
+## Qualification
+
+**Gate records** (`advance --diff-range 9d909325..9d07ce2f`, the builder merge plus the catalog follow-up, D-22): `qualify` satisfied. `scope-drift` reports only SCOPE-DECLARED-NOT-TOUCHED for `CHANGELOG.md`, `skills/do-work/CHANGELOG.md` and `VERSION`: Scope marks all three "integrator only", and the finalization release writes them. No undeclared touch. The first call (range to `eec3bad0`) also flagged backticked non-path words in the Implementation Summary and the two catalog files; the words are now plain text and the range includes `9d07ce2f`.
+
+**Diff** (`git diff 9d909325..9d07ce2f --stat`): 8 files, the 6 builder files of the hand-back plus `ai-reports/catalog.json` (+7, one v1c03 row with preset `relation-map`) and `ai-reports/index.html` (1 line). Every hunk read.
+
+**Requirement trace:**
+- Shipped-presets test, RED first: `report_second_opinion_test.go:1026` adds `"relation-map"`; the hand-back shows the RED ("named preset \"relation-map\" does not ship") after `773d18a7` and the PASS after `688d9e6f`.
+- Guide names the preset: `ai-report-guide.md:124`, one clause after the teaching presets.
+- Mind-map difference: the preset's opening paragraph ("A mind map is a tree that grows from one center, while a relation map links any two items").
+- Detailed Requirements as changed by Addendum 1: own items and stated relations, marked as the editor's reading (opening paragraph); four line kinds with a key (check 4); semantic zoom (7); click detail with sources, relations and light dimming (8); deselect (9); Show everything (10); drag, pinch, Control-scroll, buttons, keys, plain scroll (11); no-JS full-size map, boxes as text, relations as table rows (18, 19); no library (1); about 30 boxes, else group (3); narrow screen starts on the main item (17); left to right (2); first view of about nine boxes (5); readable labels (12); every fact from the report or repository (opening paragraph).
+- The seven REQ-733/REQ-734 defects as checks (D-04): (1) check 6, (2) checks 12-13, (3) check 14, (4) check 15, (5) check 16, (6) checks 17-18, (7) check 19.
+- What a preset cannot guarantee: D-05, with the phone limit now measured in D-16 and the direction-block height in D-17.
+- Real page on another bundle: tree page v1c03 of the tstack review-workflows bundle, judge `pass` at finalize and on a standalone re-judge, hand-back opens with its path, browser table at 1440 × 1000 and 390 × 844. Spot check: no `<script src`, no Mermaid, a `[hidden]{display:none}` rule, the "relation words in view" counter, a "Show everything" button, 29 table-row tags (28 relation rows plus the header).
+- Guarded paths: `git diff --stat 9d909325..9d07ce2f` over `report_second_opinion.go`, `ai-report-second-opinion-prompt.md` and the other presets is empty; the only existing bundle file touched is the launcher's iteration list line.
+- Tests and gofmt: the hand-back's `go test -run '^TestSecondOpinion'` is ok and gofmt prints nothing; the repository gate at `9d07ce2f` re-checks both (Testing).
+
+**Scope comparison:** declared 11 paths; touched 8, all declared (the two Scope globs now name the launcher's files, D-23); the 3 untouched are the release files the finalization writes.
+
+## Testing
+
+**Tests run:** `bash _dev/tests/maintainer-verify.sh` at `9d07ce2f5d456df94310ee3cbd5b1810b471f611` (the builder merge `eec3bad0` plus the catalog follow-up, D-22; detached drain-head checkout, `DO_WORK_FAST_STAGE_REUSE=off`, 1-minute load 2.35 at start, no other gate running); GREEN probe `do-work/runs/work-2026-11-15-012821/REQ-727-probe.sh` through `advance --probe-file`.
+**Result:** ✓ Gate exit 0, 136 s, "Maintainer verification passed." Probe passed; gate records `run-blocked-check` and `green-gate` satisfied.
+
+**Red-green validation:** (from the builder hand-back)
+- `TestSecondOpinionShippedPresetsLoadFromTheToolbox`: ✗ after `773d18a7` (`report_second_opinion_test.go:1028: named preset "relation-map" does not ship in …/second-opinion-presets`) → ✓ after `688d9e6f` (`--- PASS`, the prepare row in state `prepared` with `preset_file` in the shipped folder).
+- `REQ-727-probe.sh`: ✗ at base (the preset file is absent at `445950c4`, D-21) → ✗ after `688d9e6f` at its fifth check (no page built with the preset yet, as expected) → ✓ at tip `f2edff06` ("REQ-727 probe PASS").
+
+**New tests added:**
+- None. `TestSecondOpinionShippedPresetsLoadFromTheToolbox` gains one name in its list (D-06).
+
+**Heavy verification plan:** `plan-heavy-verification` over 9d90932592b76fb022ed499292a3bd2f055421fa..9d07ce2f5d456df94310ee3cbd5b1810b471f611 selected six lanes, each because coverage is uncertain for the four `ai-reports/` paths (no lane covers report bundles):
+- `queue-kanban-javascript` — `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane queue-kanban-javascript` — reason: uncertain coverage.
+- `queue-kanban-browser` — `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane queue-kanban-browser` — reason: uncertain coverage.
+- `do-work-cli-integrations` — `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane do-work-cli-integrations` — reason: uncertain coverage.
+- `staged-skills` — `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane staged-skills` — reason: uncertain coverage.
+- `updater` — `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane updater` — reason: uncertain coverage.
+- `installer` — `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane installer` — reason: uncertain coverage.
+
+## Review
+
+**Overall: 95%** | 2026-11-15T11:46:26Z
+
+| Dimension | Score |
+|-----------|-------|
+| Requirements | 95% |
+| Code Quality | 95% |
+| Test Adequacy | 90% |
+| Scope | 100% |
+| Risk | None |
+| Acceptance | Pass |
+
+**Important findings (each with its recorded impact token — this is the durable audit record the judgment mandates):**
+None
+
+**Minor findings:**
+- F1: phone click zooms the map to scale 0.205 to 0.342, so titles are 4.5 to 7.5 px (D-16, preset check 15 at `relation-map.md:17`). The first-view criteria still hold — impact-user-visible → report only
+- F2: launcher direction block is 514 px at 1440 and 1,302 px at 390 above the map (D-17, `report_second_opinion.go:1634`) — impact-user-visible → report only
+- F3: kit closing band offers presets only as teaching methods, and its layout line uses only `--editor-direction`, so relation-map is never suggested (`skeleton.html:177-190`, `ai-report-reference.md:91`). Not false, and the files are frozen by the constraints — impact-negligible → report only
+- F4 (nit): guide sentence chains three "and" clauses (`ai-report-guide.md:124`) — impact-negligible → report only
+- F5 (nit): preset check 19's backticks print literally on the page and in the meta tag (`relation-map.md:21`) — impact-negligible → report only
+- F6 (nit): test loop variable still named `method` (`report_second_opinion_test.go:1026`) — impact-negligible → report only
+
+**Acceptance:** Pass — implementation and integration stages. The shipped-presets test passed, gofmt and vet were clean, and the browser re-measurement at 1440x1000 and 390x844 plus a no-JS pass matched the builder's numbers. Phone scales were within 5 % because of scrollbar width.
+**Restatement sweep:** redefined: the shipped preset set (new `relation-map`) and the shipped-presets test's named list with its "learning-method" → "named preset" wording. Swept `skills/`, `docs/`, `_dev/` and `README.md` for preset names, "learning-method", "teaching method" and preset counts. Only `ai-report-guide.md:124` and the test list name or count presets, and both are updated. No "learning-method" text is left outside the CHANGELOG history. `ai-report.md:22,81-83`, `ai-report-reference.md:91`, `skeleton.html:180,190`, the prompt (`{{EDITOR_DIRECTION}}` at :20), `help.md` (no second-opinion line) and the Go loader (folder glob, no list) agree. F3 is the only gap. Inherited at wave end: REQ-703's name shape, placeholder, header-before-backlink and finalize rule agree with v1c03 (page lines 125 and 148). REQ-705's bundle-then-shipped location, `preset_file` meaning and catalog walk agree (`report_second_opinion.go:197`, test :1026, `report_index.go`). REQ-733 recorded nothing. REQ-734 recorded nothing of its own, and its F4 line `help.md:18` now carries `--page`. Unread for the sweep: none.
+**Anti-bloat:** 0 unnamed helpers, 0 options, 0 extra files, 0 decorative tests. Preset check 20 (open the page in a browser) is not named in the REQ, but it serves the D-05 limit, and the page's D-13 direction-block CSS lives in the generated page only.
+**Suggested testing:** 3 items
+**Follow-ups created:** None (6 findings report only)
+
+*Reviewed by review-work action*
+
+Full report with the browser re-measurement: `do-work/runs/work-2026-11-15-012821/REQ-727-review.md`.
+
+## Heavy Verification Plan
+
+- Base: `9d90932592b76fb022ed499292a3bd2f055421fa`
+- Target: `9d07ce2f5d456df94310ee3cbd5b1810b471f611` (builder merge `eec3bad0` plus the catalog follow-up, D-22)
+- `queue-kanban-javascript` — `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane queue-kanban-javascript` — reasons: coverage is uncertain for the four `ai-reports/` paths (the v1c03 page, the bundle's `index.html`, `ai-reports/catalog.json`, `ai-reports/index.html`)
+- `queue-kanban-browser` — `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane queue-kanban-browser` — reasons: coverage is uncertain for the four `ai-reports/` paths (the v1c03 page, the bundle's `index.html`, `ai-reports/catalog.json`, `ai-reports/index.html`)
+- `do-work-cli-integrations` — `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane do-work-cli-integrations` — reasons: coverage is uncertain for the four `ai-reports/` paths (the v1c03 page, the bundle's `index.html`, `ai-reports/catalog.json`, `ai-reports/index.html`)
+- `staged-skills` — `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane staged-skills` — reasons: coverage is uncertain for the four `ai-reports/` paths (the v1c03 page, the bundle's `index.html`, `ai-reports/catalog.json`, `ai-reports/index.html`)
+- `updater` — `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane updater` — reasons: coverage is uncertain for the four `ai-reports/` paths (the v1c03 page, the bundle's `index.html`, `ai-reports/catalog.json`, `ai-reports/index.html`)
+- `installer` — `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane installer` — reasons: coverage is uncertain for the four `ai-reports/` paths (the v1c03 page, the bundle's `index.html`, `ai-reports/catalog.json`, `ai-reports/index.html`)
+
+## Heavy Verification Result
+
+- Target: `9d07ce2f5d456df94310ee3cbd5b1810b471f611`; execution revision `9d07ce2f5d456df94310ee3cbd5b1810b471f611` (detached drain-head checkout, `QUEUE_KANBAN_BROWSER` set, no `HEAVY-RUN-LANE-SKIPPED`).
+- `queue-kanban-javascript` — executed, exit 0, 8 s.
+- `queue-kanban-browser` — executed, exit 0, 79 s.
+- `do-work-cli-integrations` — executed, exit 0, 78 s.
+- `staged-skills` — executed, exit 0, 50 s.
+- `updater` — executed, exit 0, 76 s.
+- `installer` — executed, exit 0, 29 s.
+
+## Lessons Learned
+
+**What worked:** One browser script that clicked every shown box from the first view and from "Show everything", at both widths, on the staging page and again on the published page, found the missing first-view word and the cut column titles before finalize. The reviewer's independent re-measurement matched it within 5 % (the gap came from scrollbar width).
+**What didn't:** The preset's own checks pull against each other on a phone: check 15 (keep every related box in the frame) forces a click to zoom out to titles of about 4 to 7 px (D-16). The launcher prints the whole preset above the page, so a detailed preset pushes the map to the third phone screen (D-17).
+**Worth knowing:** A generated page must be measured again after finalize, because the launcher's direction block moves the map. Plain words in the Implementation Summary keep the qualifier from reading preset names and test names as paths. All six heavy lanes run for any `ai-reports/` change, because no lane covers report bundles.
+
+## Orientation
+
+Second-opinion presets are plain Markdown files in `skills/do-work-toolbox/docs/second-opinion-presets/`; the loader in `report_second_opinion.go` reads the bundle folder first, then that folder, and `TestSecondOpinionShippedPresetsLoadFromTheToolbox` names the presets the maintainer asked for, so a new preset is one file, one guide clause and one test list entry.
+
+## Timing
+
+Observed 2026-11-15T11:10:24Z to 2026-11-15T11:52:19Z: 41m 55s total, 39m 44s attributed across 5 events, 2m 11s unattributed.
+
+| Category | Elapsed | Events |
+| --- | --- | --- |
+| builder-work | 25m 08s | 1 |
+| verification-gate | 8m 07s | 2 |
+| review | 6m 15s | 1 |
+| handback-merge | 14s | 1 |
+
+Slowest stage: builder-work / builder worktree build, 25m 08s, outcome success.
