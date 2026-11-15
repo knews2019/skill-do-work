@@ -26,6 +26,7 @@ estimate:
     - 8 acceptance criteria
 claimed_at: 2026-11-15T07:30:04Z
 dispatch_at: 2026-11-15T07:40:29Z
+builder_handback_at: 2026-11-15T07:54:20Z
 ---
 # Decide, Rule by Rule, Which Moved Standing Rules Load in Ordinary Sessions
 ## What
