@@ -81,3 +81,6 @@ Release version, archive path, merge hash and finalization commit, review score/
 
 ## 13. Second pass (2026-11-15): REQ-735 and REQ-736 from UR-179
 The eleven members named in section 12 are finalized. This pass has two members: REQ-736 (one help line; integrates first, patch release, keeps UR-179 open, flat archive) and REQ-735 (rule scope; integrates last, closes UR-179 and carries the Restatement Sweep over REQ-736 and REQ-724). VERSION is 0.322.0 at the start of this pass. Nothing under `/Users/t2/.claude/` is ever edited. Everything else in this guide applies unchanged.
+
+## 14. Third pass (2026-11-15): REQ-727 alone
+Every earlier member is finalized. REQ-727 (the relation-map preset) is the only member, so it is also the last integration and carries the Restatement Sweep. VERSION is 0.323.0 at the start of this pass. It closes UR-176: REQ-726, REQ-728, REQ-729, REQ-730, REQ-731 and REQ-732 move from their flat archive paths into `do-work/archive/UR-176/` in the same transaction (your brief lists the paths). Everything else in this guide applies unchanged.

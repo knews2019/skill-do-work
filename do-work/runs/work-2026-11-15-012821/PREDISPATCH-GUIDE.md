@@ -73,3 +73,14 @@ The eleven members in the table above are finalized; ignore that table. This pas
 | REQ-736 | One line: the judge line in `skills/do-work-toolbox/actions/help.md` shows the `--page` option | none |
 
 Every rule of this guide still applies, including: a builder never edits `CHANGELOG.md`, `VERSION` or a `do-work/` path; never ask the user; nothing under `/Users/t2/.claude/` is ever edited (read only). REQ-724 (archived at `do-work/archive/UR-175/`) is the parent of REQ-735: read its Decisions, Review and Lessons sections and `do-work/runs/work-2026-11-15-012821/REQ-724-integration-report.md`. Its review required that each new line also lands in every package copy of the same crew file; put that in the REQ-735 brief and probe.
+
+
+## Third pass (2026-11-15): REQ-727 alone
+
+Every member in the tables above is finalized; ignore those tables. This pass has one member, REQ-727 (ship a relation-map preset for `ai-report second-opinion`), unblocked by the maintainer through clarify: the maintainer confirmed the relation map as a standard option after both example pages existed. No sibling builds at the same time. Every rule of this guide still applies: a builder never edits `CHANGELOG.md`, `VERSION` or a `do-work/` path; never ask the user; nothing under `/Users/t2/.claude/` is ever edited.
+
+Read before planning: the two dependency sources, `do-work/archive/UR-177/REQ-733-rebuild-relation-map-page.md` (the map page; its Review took three rounds) and `do-work/archive/UR-178/REQ-734-proposal-table-and-map-comparison.md` (the table page and the reviewer's map-versus-table comparison), plus their integration reports in this run directory. The example pages are `ai-reports/2026-11-14_1547_proposal-tinka-review-surface/index-v1c03c01-*.html` (map) and `index-v1c04-*.html` (table). Also read how the shipped presets are stored and tested (REQ-703 and REQ-705 in `do-work/archive/UR-160/`).
+
+The preset must make a generated map avoid the defects the example needed three review rounds to remove, and the open findings that review left: relation words visible only after a click; labels covering box titles; words broken inside narrow labels; a forced zoom that pushes related boxes out of view; Tab focus on off-screen boxes; a phone view that needs panning; no relation words without JavaScript. Turn each into a checkable instruction in the preset text where a preset can carry it, and say in a decision which ones a preset cannot guarantee.
+
+This REQ closes UR-176 (its other six members are archived flat). Say so in the brief's notes for the integrator; the builder does nothing about it.
