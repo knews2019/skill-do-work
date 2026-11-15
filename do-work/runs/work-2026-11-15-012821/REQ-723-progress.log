@@ -1,2 +1,10 @@
 2026-11-14T23:32:49Z build start (RED test)
 2026-11-14T23:33:36Z build done, handback written
+2026-11-15T01:54:49Z gate wait-quiet start
+2026-11-15T01:54:49Z gate start helpers/gate.sh 858c070867e9f4929cf0306f88bf2c1cf9aef3f3 (load 3.47 5.95 8.29)
+2026-11-15T01:56:59Z gate end exit=0
+2026-11-15T01:57:25Z review start reviewer agent (opus)
+2026-11-15T01:58:57Z review end verdict Approve 98%
+2026-11-15T02:03:05Z heavy start helpers/heavy.sh 858c070867e9f4929cf0306f88bf2c1cf9aef3f3 do-work-cli-integrations staged-skills updater installer (load 4.87 6.43 7.61)
+2026-11-15T02:06:37Z heavy end
+2026-11-15T02:07:05Z finalize prep-payloads + make-manifests

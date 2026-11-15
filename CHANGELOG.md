@@ -10,6 +10,13 @@ For the complete release history, read this file and the archives below from new
 - [0.50.0 through 0.64.1](https://github.com/knews2019/skill-do-work/blob/main/docs/changelog/CHANGELOG-2026-04-13-up-to-v0.64.1.md)
 - [0.1.0 through 0.49.0](https://github.com/knews2019/skill-do-work/blob/main/docs/changelog/CHANGELOG-2026-04-07-up-to-v0.49.0.md)
 
+## 0.321.1 — Archive-Collision Check Ignores Evidence Files in Assets Folders (2026-11-15)
+
+`do-work-cli archive-collision REQ-NNN` no longer reports an evidence file inside an `assets/` folder as an archived copy of the REQ. Before, a file such as `do-work/archive/UR-001/assets/REQ-001-evidence.md` made the check report a collision that did not exist.
+
+- The check skips every folder named `assets` under `do-work/archive`, the same rule cleanup got in 0.318.1 and the queue model already used.
+- A real archived record is still reported, also when it sits next to an `assets/` folder. `tools/checks/archive-collision.sh` calls the same command, so it gets the fix too.
+
 ## 0.321.0 — New Reports Remind You to Rebuild the Catalog (2026-11-15)
 
 After an ordinary `ai-report`, the closing summary now prints the `ai-report index` command while the new report is missing from `ai-reports/catalog.json`. Before, a new report stayed out of the catalog with no sign, until someone happened to rebuild it.

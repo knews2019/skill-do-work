@@ -7,7 +7,6 @@ queue_state: [0 pending, 0 pending-answers, 0 blocked, 0 blocked-archive-collisi
 
 ## In Progress (interrupted)
 
-- REQ-723: [impact-negligible] Archive-collision helper skips assets folders — claimed 2026-11-14T23:28:11Z — writer: t2s-Virtual-Machine.local:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2
 
 - REQ-724: [impact-rule-change] Move the maintainer's global standing rules into the skill — claimed 2026-11-14T23:28:11Z — writer: t2s-Virtual-Machine.local:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2
 
