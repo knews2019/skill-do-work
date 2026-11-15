@@ -2,6 +2,20 @@
   "generator": "do-work-cli ai-report-index",
   "bundles": [
     {
+      "path": "ai-reports/2026-11-15_0137_proposal-REQ-725-memory-note-destinations",
+      "entry": "ai-reports/2026-11-15_0137_proposal-REQ-725-memory-note-destinations/index.html",
+      "title": "Where each memory note goes (REQ-725)",
+      "date": "2026-11-15T01:37",
+      "kind": "proposal",
+      "linked_ids": [
+        "REQ-725"
+      ],
+      "verdict": "",
+      "supersedes": "",
+      "superseded_by": "",
+      "second_opinions": []
+    },
+    {
       "path": "ai-reports/2026-11-14_1547_proposal-tinka-review-surface",
       "entry": "ai-reports/2026-11-14_1547_proposal-tinka-review-surface/index.html",
       "title": "Tinka as a review canvas for ai-report bundles",
