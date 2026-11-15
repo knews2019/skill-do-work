@@ -26,6 +26,7 @@ estimate:
     - 3-file write set
     - 7 acceptance criteria
 dispatch_at: 2026-11-15T01:06:43Z
+builder_handback_at: 2026-11-15T03:14:46Z
 ---
 # Build the Proposal as a Supports-and-Limits Table and Compare It With the Map
 ## What
