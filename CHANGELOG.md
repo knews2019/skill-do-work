@@ -10,6 +10,16 @@ For the complete release history, read this file and the archives below from new
 - [0.50.0 through 0.64.1](https://github.com/knews2019/skill-do-work/blob/main/docs/changelog/CHANGELOG-2026-04-13-up-to-v0.64.1.md)
 - [0.1.0 through 0.49.0](https://github.com/knews2019/skill-do-work/blob/main/docs/changelog/CHANGELOG-2026-04-07-up-to-v0.49.0.md)
 
+## 0.323.0 — Numeric-Target and Redesign Rules Apply in Every Session; Action Rules Win Over the Ask and Model Rules (2026-11-15)
+
+Two rules that 0.322.0 put in `coding-guardrails.md` loaded only during implementation. They now live in the always-on `communication-style.md`, so every session in an installed project reads numbers in a request as approximate and keeps existing UI during a redesign.
+
+- `communication-style.md` gains the two rules: read a number in the request (a size, a count, a time) as approximate unless the user says strict, and never remove existing UI while redesigning unless the user asked for it. Both lines leave `coding-guardrails.md` in the `do-work` and `do-work-toolbox` packages, so each rule is stated once.
+- The ask-user rule in `communication-style.md` now applies unless the action in use says how to ask, so an action that prints its own menu no longer contradicts it.
+- The model rule in `background-agents.md` now keeps the session model for planning, review and build agents unless the action names another model. All three package copies match.
+- `commit.md` gains one rule: never revert, stash or discard a change you did not make, because another session or the user may own it.
+- The model-per-agent rule stays only in `background-agents.md`. It still loads only when an action fans work out to agents.
+
 ## 0.322.1 — Toolbox Help Shows the --page Option of ai-report judge (2026-11-15)
 
 The `do-work-toolbox help` menu now shows how to check one named page of a report bundle. The option shipped in 0.319.0, but the menu listed only the whole-bundle form.

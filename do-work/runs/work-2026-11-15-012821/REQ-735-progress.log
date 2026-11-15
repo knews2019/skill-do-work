@@ -9,3 +9,13 @@
 2026-11-15T07:42:07Z green-at-tip bash REQ-735-probe.sh
 2026-11-15T07:42:38Z handback write REQ-735-handback.md
 2026-11-15T07:54:11Z integrate start (integrator)
+2026-11-15T07:55:29Z gate-start helpers/gate.sh e3f36c6c load=3.94 6.06 6.88
+2026-11-15T07:57:32Z gate-end exit=0
+2026-11-15T07:58:10Z review-start reviewer agent (opus)
+2026-11-15T08:03:39Z review-end Approve 94% (F1 fix applied on builder branch 0b10c310, re-merge 3b2d0ff6)
+2026-11-15T08:03:40Z gate-start (re-merge) helpers/gate.sh 3b2d0ff6 load=4.62 5.47 6.19
+2026-11-15T08:05:47Z gate-end (re-merge) exit=0
+2026-11-15T08:07:51Z heavy-start staged-skills at 3b2d0ff6 load=3.38 5.11 5.92
+2026-11-15T08:08:23Z heavy-end
+2026-11-15T08:09:31Z finalize prep-payloads (BUMP=minor 0.322.1->0.323.0) + make-manifests
+2026-11-15T08:09:37Z finalize advance --finalization-manifest

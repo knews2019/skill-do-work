@@ -1,7 +1,7 @@
 ---
 id: REQ-735
 title: '[impact-rule-change] Decide, rule by rule, which moved standing rules load in ordinary sessions'
-status: claimed
+status: completed
 created_at: 2026-11-15T07:25:23Z
 user_request: UR-179
 domain: general
@@ -27,6 +27,14 @@ estimate:
 claimed_at: 2026-11-15T07:30:04Z
 dispatch_at: 2026-11-15T07:40:29Z
 builder_handback_at: 2026-11-15T07:54:20Z
+integration_at: 2026-11-15T07:54:43Z
+review_at: 2026-11-15T08:07:34Z
+commit: 3b2d0ff6797cc684e879b920492a951b0ae77085
+heavy_verified_at: 2026-11-15T08:08:38Z
+heavy_verified_revision: 3b2d0ff6797cc684e879b920492a951b0ae77085
+kb_status: pending
+completed_at: 2026-11-15T08:09:31Z
+release_at: 2026-11-15T08:09:31Z
 ---
 # Decide, Rule by Rule, Which Moved Standing Rules Load in Ordinary Sessions
 ## What
@@ -84,9 +92,9 @@ See `do-work/user-requests/UR-179/input.md` for complete verbatim input.
 ## Required Lessons — Dropped for Budget
 - `_dev/primes/lessons-action-files.md` — 8761 tokens, over the 2000-token budget and `slugged: partial`, so it cannot be narrowed. Matching reason: the request changes crew-member files with lock-step copies, the `alternate-writer-contract-drift` family that REQ-724's review F1 hit.
 ## AI Execution State (P-A-U Loop)
-- [ ] **[PLAN]:** (Agent: Read listed `prime_files` and agent rules. Write brief technical approach here. Do not write code yet.)
-- [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
-- [ ] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
+- [x] **[PLAN]:** apply D-01 to D-05 as written: two byte-identical line moves, two precedence clauses (one in three lock-step copies), one new commit rule. No other wording. (from the builder hand-back)
+- [x] **[APPLY]:** one Python pass with an exact-once assertion per substitution over the seven files, then one commit by exact path (`82db9eb2`). (from the builder hand-back)
+- [x] **[UNIFY]:** `git diff --stat 547d4cc5..HEAD` lists the seven Scope files only; checked each hunk: R1/R2 gone from both guardrails copies, present once in communication-style.md after the bug-report bullet; the three model paragraphs identical, with "cheapest model tier" still on one line; commit.md bullet sits right after the `git add -A` bullet, which is unchanged; no debug artifacts. (from the builder hand-back)
 *Source: item 1 of `do-work/user-requests/UR-179/input.md` (rule scope after REQ-724)*
 
 ## Triage
@@ -181,3 +189,130 @@ Pre-dispatch agent, base `547d4cc5`. Every pointer below was re-read at that com
 **Dependencies:** ✓ Installed
 
 *Checked by work action (coordinator, run work-2026-11-15-012821)*
+
+## Decisions
+
+(from the builder hand-back)
+
+- **D-08 (DECIDE & STATE):** The F5 reason sentence is "Another session or the user may own it." It is the example the brief gave, one short sentence, and it names the condition (someone else owns the change) without naming a tool.
+- **D-09 (DECIDE & STATE):** The model paragraph rewrap breaks after "unless the action", so lines 1 and 2 stay unchanged and the new line 3 is 81 characters, within the paragraph's existing width (line 1 is 86).
+
+## Implementation Summary
+
+**Files changed:**
+- `skills/do-work/crew-members/communication-style.md` (modified: R1 and R2 bullets added after the bug-report bullet; the ask-tool bullet gains "unless the action in use says how to ask")
+- `skills/do-work/crew-members/coding-guardrails.md` (modified: R1 line deleted from § 1, R2 line deleted from § 3)
+- `skills/do-work-toolbox/crew-members/coding-guardrails.md` (modified: the same two deletions)
+- `skills/do-work/crew-members/background-agents.md` (modified: the model sentence gains "unless the action names another model", rewrapped)
+- `skills/do-work-toolbox/crew-members/background-agents.md` (modified: byte-identical paragraph)
+- `skills/do-work-knowledge/crew-members/background-agents.md` (modified: byte-identical paragraph)
+- `skills/do-work/actions/commit.md` (modified: one new bullet in § Rules after the exact-path staging bullet)
+
+**What was done:** R1 (read numbers as approximate) and R2 (never remove existing UI while redesigning) moved byte-identical from both `coding-guardrails.md` copies into the always-on `communication-style.md`, with no pointer left behind (D-01, D-02). R3 (pick the model per agent) stays only in the three `background-agents.md` copies, so REQ-724 D-05 holds (D-03). F3 folded in: the ask-tool rule and the model rule now yield to an action's own rule (D-04). F5 folded in: `commit.md` § Rules says never to revert, stash or discard a change you did not make (D-05). The builder changed no CHANGELOG, VERSION or mirror (D-06). Diff: seven files, +10/-11, builder commit `82db9eb2`. Review F1 fix (integrator, on the builder branch, commit `0b10c310`, re-merge `3b2d0ff6`): the ask-tool precedence clause moved into the rule's bold lead, so it covers the whole rule; no word added or removed. Cumulative range `08de436c..3b2d0ff6`.
+
+## Discovered Tasks
+
+(from the builder hand-back)
+
+None.
+
+## Qualification
+
+**Gate records:** `advance --diff-range 08de436c..e3f36c6c` returned phase `qualify`, gate records `qualify` and `scope-drift` satisfied. The first call refused `QUALIFY-CLAIMED-PATH-MISSING` and `SCOPE-UNDECLARED-TOUCH` because my Implementation Summary backticked the command text "git add -A", which the qualifier reads as a path; I reworded that phrase and changed nothing else.
+
+**Requirement trace against `git diff 08de436c..e3f36c6c` (7 files, +10/-11):**
+- R1, R2 and R3 each have a recorded decision with value and risk: D-01, D-02 and D-03 in § Exploration.
+- R1 and R2 are stated once, in the always-on file: `skills/do-work/crew-members/communication-style.md:28` and `:29` hold the old lines byte for byte. Both `coding-guardrails.md` copies lose exactly those two lines, with no pointer left (diff hunks at § 1 and § 3).
+- R3 stays only in the three `background-agents.md` copies; `communication-style.md` has no "model tier", "background-agents" or "model by its work" text (probe check). REQ-724 D-05 holds.
+- F3: `communication-style.md:25` ends its first sentence with "unless the action in use says how to ask"; the model paragraph in all three `background-agents.md` copies reads "keep the session model unless the action names another model".
+- F5: `skills/do-work/actions/commit.md:223` says "Never revert, stash or discard a change you did not make." It sits right after the unchanged exact-path staging bullet.
+- Lock-step: the three model paragraphs are byte-identical (probe), and the two guardrails copies drop the same two lines.
+- Aliases and Examples of `communication-style.md` are unchanged against `547d4cc5`; no machine, vendor, model or tool name in the seven files; nothing under `skills/` cites the maintainer doc (probe and `shipped-package-reference-contract.sh`).
+- Release: proposed by the builder (minor, impact-rule-change), written by the integrator at finalization.
+
+**Scope:** Route B. The declared Scope list names seven files and the diff touches exactly those seven. No CHANGELOG, VERSION or mirror hunk. No debug artifacts. `communication-style.md` grows from 99 to 101 lines.
+
+## Testing
+
+**Tests run:** `bash _dev/tests/maintainer-verify.sh` at merge `e3f36c6cc20db8dbf8820d59f9dee040fdbc1011` (detached drain-head checkout, `DO_WORK_FAST_STAGE_REUSE=off`, 1-minute load 4.10 at start, no other gate running); GREEN probe `do-work/runs/work-2026-11-15-012821/REQ-735-probe.sh` through `advance --probe-file`.
+**Result:** ✓ Gate exit 0, 123 s, "Maintainer verification passed." Probe exit 0 ("REQ-735 probe PASS", 15 PASS lines); gate records `run-blocked-check` and `green-gate` satisfied. After the review F1 fix, the gate ran again at re-merge `3b2d0ff6797cc684e879b920492a951b0ae77085` (1-minute load 4.62): exit 0, 127 s; the green record was written with `record-green-gate` at that revision, and the probe passed again.
+
+**Pre-flight baseline (PREFLIGHT-BASELINE-RETRIED):** the pre-build probe `REQ-735-preflight-probe.sh` (shipped-package reference contract plus contract regressions) at base `547d4cc5` failed on its first attempt (non-zero exit, under load from a parallel agent; the coordinator's finding does not keep the exact status) and passed on the retry (exit 0). The repository gate at `547d4cc5` was green (147 s).
+
+**Red-green validation:** (from the builder hand-back)
+- `REQ-735-probe.sh`: ✗ at base `547d4cc5` (exit 1, 7 FAIL lines: R1, R2, F3-ask, F5, the two moved lines, F3-model) → ✓ at tip `82db9eb2` (exit 0, "REQ-735 probe PASS").
+
+**New tests added:**
+- None (prose moves and clauses; the run probe is run evidence, not a shipped test).
+
+**Heavy verification plan:** `plan-heavy-verification` over 08de436c86f851633660d785fceb52c29d81dc0e..e3f36c6cc20db8dbf8820d59f9dee040fdbc1011 selected one lane (the re-merge to `3b2d0ff6` touches only `communication-style.md`, already covered by the same lane):
+- `staged-skills` — `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane staged-skills` — reasons: each of the seven changed files matched subtree `skills`.
+
+## Review
+
+**Overall: 94%** | 2026-11-15T08:07:34Z (delta re-review after the F1 fix: 96%, Approve)
+
+| Dimension | Score |
+|-----------|-------|
+| Requirements | 95% |
+| Code Quality | 90% |
+| Test Adequacy | 90% |
+| Scope | 100% |
+| Risk | Low |
+| Acceptance | Pass |
+
+**Important findings (each with its recorded impact token — this is the durable audit record the judgment mandates):**
+None
+
+**Minor findings:**
+- F1 `skills/do-work/crew-members/communication-style.md:25`: "unless the action in use says how to ask" reads as scoping only the clear-questions load, and the bold lead stays unconditional against `tutorial.md:355`. Fixed before release: the integrator applied the suggested line on the builder branch (`0b10c310`), re-merged as `3b2d0ff6`, re-ran the gate (green, 127 s) and had the delta re-reviewed (`REQ-735-review-delta.md`, 96%, Approve). — impact-rule-change → report only
+- F2 `skills/do-work/actions/commit.md:223`: the never-revert rule loads only with the commit action, so an ordinary session loses it once the global file is deleted (D-05). This is a maintainer decision before that delete. — impact-rule-change → report only
+- F3 `skills/do-work/crew-members/communication-style.md:7`: the "conversational output" scope sentence does not cover R1 and R2 (D-02 risk). — impact-negligible → report only
+- F4 `skills/do-work/docs/commit-guide.md:26-32`: the Key rules summary omits the new revert rule. — impact-negligible → report only
+- F5 `CHANGELOG.md:25-26`, `skills/do-work/CHANGELOG.md:25-26`: the 0.322.0 history still names `coding-guardrails.md` as the home of R1 and R2. History is not rewritten, and the release entry must state the move. — impact-negligible → report only
+- F6 `skills/do-work-toolbox/actions/architecture-report.md:81`: a full redesign each run, now co-loaded with R2. The conflict is weak. — impact-negligible → report only
+- F7 `CHANGELOG.md:23`, `skills/do-work/CHANGELOG.md:23` (delta review): the 0.322.0 history states the ask rule without the new condition. History is not rewritten; the REQ-735 release entry names the new precedence condition. — impact-negligible → report only
+
+**Acceptance:** Pass — the implementation and integration stages were exercised: the REQ-735 probe (15 PASS, exit 0) and `shipped-package-reference-contract.sh` (exit 0) at merge `e3f36c6c`, and again at re-merge `3b2d0ff6` (delta review). Deployment and live acceptance are unassessed.
+**Restatement sweep:** redefined the home of R1 and R2 (now `communication-style.md:28-29`; no live restatement in `skills/`, `docs/`, `_dev/`, `CLAUDE.md`, `AGENTS.md` or `README.md`; history only at `CHANGELOG.md:25` and `skills/do-work/CHANGELOG.md:25`, F5, plus the input quotes in `docs/run-prompts/2026-11-15-move-global-rules-into-skill.md:24,35-36,48`), the ask-tool precedence (now in the bold lead at `communication-style.md:25` after the F1 fix, no longer stale against `tutorial.md:355`; `trace.md:39` and the three `clear-questions.md:3` triggers consistent; history at `CHANGELOG.md:23`, F7), the model-rule precedence (three copies identical, consistent with `ai-evaluation-loop-reference.md:19-21`; history at `CHANGELOG.md:26`), and the new revert rule at `commit.md:223` (consistent with `work-reference.md:31` and `restart-with-parallel-handoff.md:68`; `commit-guide.md:26-32` omits it, F4). Inherited elements from REQ-724 were rechecked with no stale text: the DECIDE & STATE pointer (now `coding-guardrails.md:32`, cited without a line number), the clear-questions option shape (three copies identical apart from package paths), the per-agent model rule, the numeric-target and redesign lines, and the stall-check wording (`communication-style.md:30`). REQ-736 recorded nothing redefined.
+**Suggested testing:** 3 items
+**Follow-ups created:** None (7 findings report only; F1 fixed)
+**Anti-bloat:** 0 unrequested helpers, options, files or tests
+**Full report:** `do-work/runs/work-2026-11-15-012821/REQ-735-review.md` and the delta `do-work/runs/work-2026-11-15-012821/REQ-735-review-delta.md`
+
+*Reviewed by review-work action*
+
+## Heavy Verification Plan
+
+- Base: `08de436c86f851633660d785fceb52c29d81dc0e`
+- Target: `3b2d0ff6797cc684e879b920492a951b0ae77085` (re-merge after the review F1 fix; the first merge `e3f36c6c` selected the same lane)
+- `staged-skills` — `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane staged-skills` — reasons: each of the seven changed files matched subtree `skills`
+
+## Heavy Verification Result
+
+- Target: `3b2d0ff6797cc684e879b920492a951b0ae77085`; execution revision `3b2d0ff6797cc684e879b920492a951b0ae77085` (detached drain-head checkout, `QUEUE_KANBAN_BROWSER` set).
+- `staged-skills` — executed, exit 0, 31 s.
+
+## Lessons Learned
+
+**What worked:** A fixed-phrase probe that names each rule's only allowed home (and checks the three lock-step copies byte for byte) made the move, the two precedence clauses and the D-03 "no pointer" decision mechanical to verify, before and after the review fix.
+**What didn't:** The builder placed the ask-tool precedence clause at the end of the rule's first body sentence, where it read as covering only the clear-questions load; the bold lead stayed unconditional. The review caught it (F1) and the clause moved into the bold lead.
+**Worth knowing:** A precedence condition on a rule with a bold lead belongs in the lead, because readers and sweeps treat the lead as the rule. The qualifier reads any backticked text in an Implementation Summary as a path, so a command such as "git add -A" must stay unbackticked there.
+
+## Orientation
+
+`skills/do-work/crew-members/communication-style.md` is the only always-on rules file (linked from consumer agent instructions and imported by this repository's maintainer doc); `coding-guardrails.md` loads only in implementation and `background-agents.md` only in fan-outs, so a rule that must apply in every session lives in the first.
+
+## Timing
+
+Observed 2026-11-15T07:34:32Z to 2026-11-15T08:08:38Z: 34m 06s total, 29m 00s attributed across 7 events, 5m 06s unattributed.
+
+| Category | Elapsed | Events |
+| --- | --- | --- |
+| builder-work | 13m 51s | 1 |
+| review | 5m 30s | 1 |
+| verification-gate | 5m 09s | 3 |
+| exploration-preflight | 4m 17s | 1 |
+| handback-merge | 13s | 1 |
+
+Slowest stage: builder-work / builder worktree build, 13m 51s, outcome success.
