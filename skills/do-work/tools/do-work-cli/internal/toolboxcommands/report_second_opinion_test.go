@@ -1001,7 +1001,7 @@ func TestSecondOpinionDirectedRunNamesAndMarksPage(t *testing.T) {
 	}
 }
 
-// Pins: a learning-method preset the user curated (UR-164) that does not ship, and a shipped preset file that the
+// Pins: a named preset the user curated (UR-164, UR-176) that does not ship, and a shipped preset file that the
 // launcher cannot load. The fixture tests above fake the shipped folder, so without this no test reads the real files.
 // The toolbox is a required sibling package, so this path exists in an installed copy too.
 func TestSecondOpinionShippedPresetsLoadFromTheToolbox(t *testing.T) {
@@ -1022,10 +1022,10 @@ func TestSecondOpinionShippedPresetsLoadFromTheToolbox(t *testing.T) {
 			shippedNames[name] = true
 		}
 	}
-	// The curated menu is the requirement itself, so it is named here; any other shipped file is still loaded below.
-	for _, method := range []string{"eli5", "80-20", "sticky-notes", "feynman", "mindmap", "quizme", "visual-studyguide", "first-principles", "socrates", "schematics"} {
+	// The named presets (UR-164, UR-176) are the requirement itself, so they are named here; any other shipped file is still loaded below.
+	for _, method := range []string{"eli5", "80-20", "sticky-notes", "feynman", "mindmap", "quizme", "visual-studyguide", "first-principles", "socrates", "schematics", "relation-map"} {
 		if !shippedNames[method] {
-			t.Errorf("learning-method preset %q does not ship in %s", method, shippedFolder)
+			t.Errorf("named preset %q does not ship in %s", method, shippedFolder)
 		}
 	}
 	session := []string{"--prepare", "--backend", "claude", "--model", "claude-fable-5-1"}
