@@ -53,6 +53,13 @@
           "preset": "custom",
           "model": "claude claude-opus-5-5",
           "date": "2026-11-14"
+        },
+        {
+          "page": "ai-reports/2026-11-14_1547_proposal-tinka-review-surface/index-v1c04-claude-claude-opus-5-5-custom-supports-limits-table.html",
+          "tree_id": "v1c04",
+          "preset": "custom",
+          "model": "claude claude-opus-5-5",
+          "date": "2026-11-15"
         }
       ]
     },
