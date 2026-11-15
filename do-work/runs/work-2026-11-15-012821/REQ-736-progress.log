@@ -1,0 +1,14 @@
+2026-11-15T07:33:13Z red-probe bash REQ-736-probe.sh
+2026-11-15T07:33:13Z apply edit help.md:18
+2026-11-15T07:33:13Z commit ab48d0a0
+2026-11-15T07:33:13Z green-probe + contracts
+2026-11-15T07:33:26Z handback written
+2026-11-15T07:41:08Z integrate start (integrator)
+2026-11-15T07:43:46Z gate-start helpers/gate.sh e8a4c69c load=4.19 8.27 6.55
+2026-11-15T07:46:34Z gate-end exit=0
+2026-11-15T07:46:49Z review-start reviewer agent
+2026-11-15T07:47:28Z review-end approve 98%
+2026-11-15T07:50:45Z heavy-start staged-skills load=4.66
+2026-11-15T07:51:24Z heavy-end
+2026-11-15T07:51:53Z finalize prep
+2026-11-15T07:51:58Z finalize advance --finalization-manifest

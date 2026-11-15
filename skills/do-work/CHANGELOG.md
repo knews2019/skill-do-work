@@ -10,6 +10,12 @@ For the complete release history, read this file and the archives below from new
 - [0.50.0 through 0.64.1](https://github.com/knews2019/skill-do-work/blob/main/docs/changelog/CHANGELOG-2026-04-13-up-to-v0.64.1.md)
 - [0.1.0 through 0.49.0](https://github.com/knews2019/skill-do-work/blob/main/docs/changelog/CHANGELOG-2026-04-07-up-to-v0.49.0.md)
 
+## 0.322.1 — Toolbox Help Shows the --page Option of ai-report judge (2026-11-15)
+
+The `do-work-toolbox help` menu now shows how to check one named page of a report bundle. The option shipped in 0.319.0, but the menu listed only the whole-bundle form.
+
+- `do-work-toolbox/actions/help.md` lists `ai-report judge <dir> [--page <file.html>]`, the same form `ai-report.md` documents. Help text only; no behaviour changes.
+
 ## 0.322.0 — Crew Files Carry the Rules for Status Explanations, User Decisions and Pasted Commands (2026-11-15)
 
 Rules that lived only in one maintainer's local agent instructions now ship in the crew-member files, so every machine and every installed project gets them. `communication-style.md` is always on, so its new lines change how an agent talks in every session, not only inside a work loop.
