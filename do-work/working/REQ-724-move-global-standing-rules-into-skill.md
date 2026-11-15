@@ -13,8 +13,18 @@ effort_estimate: effort-substantive
 required_lessons: [_dev/primes/lessons-releases.md]
 related: [REQ-725]
 batch: machine-local-rules
-write_set: [skills/do-work/crew-members/communication-style.md, skills/do-work/crew-members/clear-questions.md, skills/do-work/crew-members/coding-guardrails.md, skills/do-work/crew-members/background-agents.md, skills/do-work/CHANGELOG.md]
+write_set: [skills/do-work/crew-members/communication-style.md, skills/do-work/crew-members/clear-questions.md, skills/do-work/crew-members/coding-guardrails.md, skills/do-work/crew-members/background-agents.md]
 claimed_at: 2026-11-14T23:28:11Z
+route: B
+estimate:
+  p50_active_minutes: 20
+  confidence: medium
+  calculated_at: 2026-11-14T23:31:57Z
+  basis:
+    - Route B
+    - 4-file write set
+    - 7 acceptance criteria
+dispatch_at: 2026-11-15T00:01:58Z
 ---
 # Move the Maintainer's Global Standing Rules Into the Skill
 ## What
@@ -64,7 +74,8 @@ None. REQ-725 (sorting the local memory notes) is related but independent.
 ## Open Questions
 - [x] Should the skill's installer ship the `checkout-lease` session hook, which exists only in `~/.claude/settings.json`? → No, leave it local. Nothing is captured for it.
 - [x] Should the notes in the local memory folder get the same treatment? → Yes, as a separate review request: REQ-725.
-- [~] Where does G5 live if the skill has no natural home for "prompts for another session"? → Builder decides. If no existing file fits, record that in the REQ and leave G5 out instead of creating a new file.
+- [~] Where does G5 live if the skill has no natural home for "prompts for another session"? → Builder decides. If no existing file fits, record that in the REQ and leave G5 out instead of creating a new file. → **D-01**: Builder chose: `skills/do-work/crew-members/communication-style.md`, one Core Patterns bullet that points at the run-prompts folder in `skills/do-work-toolbox/actions/folder-structure.md` and names no path of its own. Reasoning: the only shipped handoff, `actions/restart-with-parallel-handoff.md`, writes the queue-specific `do-work/RESTART-PROMPT.md` and runs only on `phandoff` or a context limit; a request for a prompt to run in another session or tool arrives in a plain session, so only the always-on file sees it. Value: G5 applies on every machine with no new file. Risk: one more always-on line; fully reversible by deleting it.
+<!-- D-XX counter: last used D-06. Next decision: D-07. -->
 ## Required Lessons — Dropped for Budget
 - `_dev/primes/lessons-action-files.md` — 8761 tokens, over the budget, and its row is `slugged: partial` so no targeted entry is legal. Matched on "budgeted context routing": this REQ adds text to an always-on file.
 ## Full Context
@@ -74,3 +85,79 @@ See `do-work/user-requests/UR-175/input.md` for complete verbatim input.
 - [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
 - [ ] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
 *Source: do-work capture-request: capture the request in _dev/run-prompts/2026-11-15-move-global-rules-into-skill.md*
+
+## Triage
+
+**Route: B** - Medium
+
+**Reasoning:** The outcome and the four target files are named, but every source line must first be checked against shipped text at HEAD, and the exact home of G4, G5 and G7 needs discovery. Prose only, one subsystem (crew-member files), no Go or shell change.
+
+**Planning:** Not required
+
+## Plan
+
+**Planning not required** - Route B: Exploration-guided implementation
+
+*Skipped by work action*
+
+## Exploration
+
+Pre-dispatch agent, base `1389e2be`. Every source line was re-checked against `skills/` at HEAD (fixed-string `grep -rliF`, `CHANGELOG.md` excluded).
+
+**Required-lessons consult.** `required_lessons` stays `[_dev/primes/lessons-releases.md]` (856 tokens, read). Its families (`canonical-link-outlives-its-target`, `manifest-ownership-vs-edit-content`) do not fire: nothing moves and no manifest changes. `lessons-action-files.md` stays dropped for budget (8761 tokens, `slugged: partial`). Its `[family: budgeted-context-routing]` bullets (REQ-478, REQ-479) are about the required-lessons pointer, not about always-on prose, so the drop costs nothing here. No other index row matches.
+
+**State per rule group at HEAD:**
+- G1. `skills/do-work/crew-members/communication-style.md:12` already says "Answer first, next action last" (the closing next command). `:17` already says "When you must use a technical term, explain it in plain words the first time" — status words are the case agents skip because they look like plain English. Missing: big picture first, and the status-word clause. Search `big picture in one short paragraph` and `every status word`: no hit.
+- G2. `skills/do-work/crew-members/clear-questions.md:3` loads before any interactive question; principles 3 (`:19-21`, consequence per option) and 5 (`:27-29`, concrete options) exist. Missing: ask-user tool over a prose list, recommended option first, value and risk per option. "Decide reversible trivia yourself" is already the DECIDE & STATE tier, `skills/do-work/crew-members/coding-guardrails.md:32-35`, but that file loads only in Step 6. Search `prose list of questions`: no hit.
+- G3. No hit for `login shell`, `one-line launcher`, or a no-placeholder rule.
+- G4. Operator-work rule shipped (0.305.85). No hit for `unless the user says strict`, `A bug report means`, `while redesigning`. `coding-guardrails.md` § 3 Surgical Changes (`:78-94`) is the natural home for the UI line; § 1 Think Before Coding (`:12-24`) for the numeric-target line.
+- G5. Only the folder: `skills/do-work-toolbox/actions/folder-structure.md:38` (`docs/` holds `run-prompts/`). The only shipped handoff, `skills/do-work/actions/restart-with-parallel-handoff.md`, writes `do-work/RESTART-PROMPT.md` on `phandoff` or a context limit. That is a different artifact. `stall check` appears only in `actions/work-finalization-reference.md` (a different subject). No hit for `20-minute stall check`.
+- G6. Nothing to move (exact-path commits shipped; hook stays local).
+- G7. `skills/do-work/crew-members/background-agents.md` § Match the Pattern to the Harness (`:135-188`, ends before `## Manifest Format` at `:190`). No hit for `cheapest model tier`.
+- Negative check: `zsh|AskUserQuestion|haiku|EnterWorktree` in the four files: no hit at base.
+
+**Cross-package citation.** From `crew-members/` the toolbox file is `../../do-work-toolbox/actions/folder-structure.md` (`_dev/primes/prime-action-files.md` § Cross-Referencing); `_dev/tests/shipped-package-reference-contract.sh` checks it. Existing precedent: `crew-members/general.md:15`.
+
+**RED searches (recorded at `1389e2be`, all empty):**
+1. G1: grep -rliF --exclude=CHANGELOG.md 'every status word' skills
+2. G2: grep -rliF --exclude=CHANGELOG.md 'prose list of questions' skills
+3. G3: grep -rliF --exclude=CHANGELOG.md 'login shell' skills
+4. G4: grep -rliF --exclude=CHANGELOG.md 'unless the user says strict' skills
+5. G5: grep -rliF --exclude=CHANGELOG.md '20-minute stall check' skills
+6. G7: grep -rliF --exclude=CHANGELOG.md 'cheapest model tier' skills
+
+**Pre-dispatch decisions** (D-01 is in Open Questions):
+- **D-02** (DECIDE & STATE): the G4 bug-report line goes to `communication-style.md`, not `coding-guardrails.md`. A bug report arrives in a plain session before any REQ exists, and `coding-guardrails.md` loads only in Step 6. The numeric-target and redesign lines stay in `coding-guardrails.md` as suggested.
+- **D-03** (DECIDE & STATE): the status-word rule is a clause in the new G1 bullet. The shipped technical-term line (`communication-style.md:17`) is not reworded.
+- **D-04** (DECIDE & STATE): the "decide reversible trivia yourself" half of G2 is a pointer to the DECIDE & STATE tier in `coding-guardrails.md`, plus "report it in one line". It does not restate the tier.
+- **D-05** (ESCALATE): G7 goes to `background-agents.md` as suggested. Value: the rule sits where agents are dispatched, and the always-on file stays about talking. Risk: that file loads only for fan-out, so a single lookup agent outside a fan-out never sees the rule. Reversible: move the paragraph to `communication-style.md`.
+- **D-06** (DECIDE & STATE): the proof phrases are fixed (the six RED searches above) and exclude `CHANGELOG.md`, because the changelog mirror under `skills/do-work/` may quote a phrase. Per the run rules the builder never edits `CHANGELOG.md` or `VERSION`; the integrator releases, so they leave Scope even though capture's `write_set` named `skills/do-work/CHANGELOG.md`.
+
+*Generated by pre-dispatch agent (in-context exploration)*
+
+## Scope
+
+**Files I will touch:**
+- `skills/do-work/crew-members/communication-style.md` (modify) — new Core Patterns bullets for G1 (big picture first, every status word defined), G2 (ask-user tool, no prose list of questions, decide reversible choices per the coding-guardrails gate), G3 (commands for the login shell, no placeholder, longer logic in a committed script with a one-line launcher), the G4 bug-report line (D-02) and G5 (D-01)
+- `skills/do-work/crew-members/clear-questions.md` (modify) — principle 5 gains the option shape: recommended option first, value and risk per option
+- `skills/do-work/crew-members/coding-guardrails.md` (modify) — numeric targets approximate unless the user says strict (§ 1), never remove existing UI while redesigning unless asked (§ 3)
+- `skills/do-work/crew-members/background-agents.md` (modify) — one paragraph: model per agent, cheapest model tier for lookups (D-05)
+
+**Files I will NOT touch:** `CHANGELOG.md`, `skills/do-work/CHANGELOG.md`, `VERSION` and the version mirrors (the integrator releases, D-06); the Aliases and Examples sections of `communication-style.md`; any shipped rule's existing wording; `skills/do-work/actions/restart-with-parallel-handoff.md` and `skills/do-work-toolbox/actions/folder-structure.md` (cited, not changed); no new crew-member file, no test file, nothing outside the repository.
+
+**Acceptance criteria (restated from REQ):**
+- [ ] Each rule group G1, G2, G3, G4, G5 and G7 is shipped once; a line is added only where no shipped text already says it, and no shipped rule is reworded.
+- [ ] G1, G2 and G3 live in `communication-style.md` (always on), with the option shape of G2 in `clear-questions.md`.
+- [ ] Shipped text names no machine, vendor, tool or host: the login shell, the agent's ask-user tool when it has one, the cheapest model tier that can do the lookup.
+- [ ] G5 points at the run-prompts folder of `folder-structure.md` and writes no path of its own.
+- [ ] The six RED searches each find exactly one shipped file (CHANGELOG excluded), and `zsh`, `AskUserQuestion`, `haiku`, `EnterWorktree` are absent from the four changed files.
+- [ ] About 25 shipped lines in total (approximate); Aliases and Examples unchanged; no new file.
+- [ ] The release follows `_dev/primes/prime-releases.md` (proposed by the builder, written by the integrator).
+
+## Pre-Flight
+
+**Git:** ✓ No uncommitted project files at dispatch (run artifacts under do-work/ only)
+**Tests baseline:** ✓ Focused pre-build probe passing (do-work/runs/work-2026-11-15-012821/REQ-724-preflight-probe.sh) and the repository gate green at the REQ-729 merge 572e8b94 (141 s)
+**Dependencies:** ✓ Installed
+
+*Checked by work action (coordinator, run work-2026-11-15-012821)*

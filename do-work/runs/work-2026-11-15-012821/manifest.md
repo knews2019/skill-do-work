@@ -10,11 +10,11 @@ Hand-back emphasis note: none
 | REQ | Builder | Operative name | Handback file | Status | Dispatch instant | Takeover-to-finalization min | Full gates | Stall restarts |
 |-----|---------|----------------|---------------|--------|------------------|------|------|------|
 | REQ-723 | builder agent (Opus 5.5, worktree) | worktree-agent-REQ-723-archive-collision-skips-assets | do-work/runs/work-2026-11-15-012821/REQ-723-handback.md | building | 2026-11-14T23:32:28Z | | | |
-| REQ-724 | pending | pending | do-work/runs/work-2026-11-15-012821/REQ-724-handback.md | pre-dispatch | | | | |
+| REQ-724 | builder agent (Opus 5.5, worktree) | worktree-agent-REQ-724-move-standing-rules-into-skill | do-work/runs/work-2026-11-15-012821/REQ-724-handback.md | building | 2026-11-15T00:01:58Z | | | |
 | REQ-725 | builder agent (Opus 5.5, worktree) | worktree-agent-REQ-725-memory-note-destination-report | do-work/runs/work-2026-11-15-012821/REQ-725-handback.md | building | 2026-11-14T23:32:30Z | | | |
 | REQ-726 | builder agent (Opus 5.5, worktree) | worktree-agent-REQ-726-no-review-canvas-decision | do-work/runs/work-2026-11-15-012821/REQ-726-handback.md | building | 2026-11-14T23:32:56Z | | | |
 | REQ-728 | builder agent (Opus 5.5, worktree) | worktree-agent-REQ-728-judge-renders-one-named-page | do-work/runs/work-2026-11-15-012821/REQ-728-handback.md | building | 2026-11-14T23:35:10Z | | | |
-| REQ-729 | builder agent (Opus 5.5, worktree) | worktree-agent-REQ-729-judge-relative-out-rule | do-work/runs/work-2026-11-15-012821/REQ-729-handback.md | building | 2026-11-14T23:32:29Z | | | |
+| REQ-729 | builder agent (Opus 5.5, worktree) | worktree-agent-REQ-729-judge-relative-out-rule | do-work/runs/work-2026-11-15-012821/REQ-729-handback.md | released 0.318.3; merge 572e8b94; finalization c7114668; gate green (141 s); review 98% Pass; four heavy lanes green | 2026-11-14T23:32:29Z | 27 | 1 | 0 |
 | REQ-730 | builder agent (Opus 5.5, worktree) | worktree-agent-REQ-730-catalog-lists-second-opinion-pages | do-work/runs/work-2026-11-15-012821/REQ-730-handback.md | building | 2026-11-14T23:35:11Z | | | |
 | REQ-731 | builder agent (Opus 5.5, worktree) | worktree-agent-REQ-731-report-catalog-rebuild-reminder | do-work/runs/work-2026-11-15-012821/REQ-731-handback.md | building | 2026-11-14T23:35:12Z | | | |
 | REQ-732 | builder agent (Opus 5.5, worktree) | worktree-agent-REQ-732-allow-docs-run-prompts | do-work/runs/work-2026-11-15-012821/REQ-732-handback.md | building | 2026-11-14T23:33:30Z | | | |
