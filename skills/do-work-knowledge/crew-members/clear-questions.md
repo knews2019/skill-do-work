@@ -26,7 +26,7 @@ Write for the person, not the transcript. Domain terms the user introduced are f
 
 ### 5. Concrete options, never open-ended
 
-Every question presents choices the user can pick from — the choices themselves clarify the question, so even a user who doesn't fully follow the wording can select the closest option and move forward. (This is `../../do-work/actions/capture.md`'s "How to ask" rule; it applies everywhere, not just in capture.)
+Every question presents choices the user can pick from — the choices themselves clarify the question, so even a user who doesn't fully follow the wording can select the closest option and move forward. (This is `../../do-work/actions/capture.md`'s "How to ask" rule; it applies everywhere, not just in capture.) Put the recommended option first and mark it, and give each option its value and its risk.
 
 ### 6. The read-once test
 
