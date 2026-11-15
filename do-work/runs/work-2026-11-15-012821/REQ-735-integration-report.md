@@ -1,0 +1,13 @@
+# REQ-735 integration report (which moved standing rules load in every session)
+
+- Release: 0.323.0 (minor, impact-rule-change: two rules now load in every session), "Numeric-Target and Redesign Rules Apply in Every Session; Action Rules Win Over the Ask and Model Rules".
+- Archive: do-work/archive/UR-179/REQ-735-rule-scope-for-moved-standing-rules.md. UR-179 closed: its input.md and REQ-736 (moved from its flat archive path) are in do-work/archive/UR-179/. `git grep 'archive/REQ-736' -- ':!do-work/'` has no hit, so nothing was re-pointed.
+- Pre 08de436c (run-artifacts commit). First merge e3f36c6c; review F1 fix on the builder branch 0b10c310; re-merge 3b2d0ff6797cc684e879b920492a951b0ae77085 (recorded commit). Finalization commit 5db9fcc8dec590c2e2deabee78188ec61f575fc0 (cleanup_complete, no blocked paths, no reason codes).
+- Gate: maintainer-verify.sh exit 0 at e3f36c6c (123 s, load 4.10) and at 3b2d0ff6 (127 s, load 4.62); green record re-written with record-green-gate at 3b2d0ff6. GREEN probe pass.
+- Review (opus, standard, Restatement Sweep over REQ-736 and REQ-724): Approve 94%. F1 (ask-tool clause read as covering only the clear-questions load) fixed: clause moved into the bold lead. Delta re-review: Approve 96%. F2-F7 report only: F2 never-revert rule loads only with the commit action (maintainer decision before deleting the global file); F3 communication-style.md:7 scope sentence says "conversational output"; F4 skills/do-work/docs/commit-guide.md:26-32 omits the revert rule; F5 CHANGELOG.md:25-26 and skills/do-work/CHANGELOG.md:25-26 (0.322.0 history names coding-guardrails.md for R1/R2); F6 skills/do-work-toolbox/actions/architecture-report.md:81 weak conflict with R2; F7 CHANGELOG.md:23 and skills/do-work/CHANGELOG.md:23 (0.322.0 ask rule without the condition). History is not rewritten; the 0.323.0 entry states the move and both conditions. Anti-bloat: 0.
+- Heavy lanes: staged-skills at 3b2d0ff6, executed, exit 0, 31 s.
+- Timing events: builder-work, handback-merge, verification-gate x2 (gate, re-gate), review, verification-gate (heavy drain); folded into ## Timing (34m 06s over 7 events).
+- Pre-flight PREFLIGHT-BASELINE-RETRIED recorded in Testing: first attempt non-zero (exact status not kept by the coordinator), retry exit 0.
+- Lessons: builder proposed none; no satellite bullet.
+- Post-finalize contract-regressions.sh: exit 0. Worktree removed, branch deleted, worktrees pruned. The CHANGELOG.new text passed shipped-package-reference-contract.sh in a throwaway worktree before finalization.
+- Left dirty in main: nothing (this report and the progress log are committed by exact path).

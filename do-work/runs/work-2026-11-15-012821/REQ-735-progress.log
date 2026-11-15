@@ -19,3 +19,6 @@
 2026-11-15T08:08:23Z heavy-end
 2026-11-15T08:09:31Z finalize prep-payloads (BUMP=minor 0.322.1->0.323.0) + make-manifests
 2026-11-15T08:09:37Z finalize advance --finalization-manifest
+2026-11-15T08:09:46Z post-finalize contract-regressions start
+2026-11-15T08:10:07Z post-finalize contract-regressions end exit=0
+2026-11-15T08:10:22Z report written; done
