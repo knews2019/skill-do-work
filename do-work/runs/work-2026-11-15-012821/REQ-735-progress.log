@@ -1,0 +1,10 @@
+2026-11-15T07:40:45Z start read-brief
+2026-11-15T07:40:51Z red bash REQ-735-probe.sh
+2026-11-15T07:41:05Z apply python3 edits (7 files)
+2026-11-15T07:41:11Z green bash REQ-735-probe.sh
+2026-11-15T07:41:24Z verify bash _dev/tests/shipped-package-reference-contract.sh
+2026-11-15T07:41:25Z verify bash _dev/tests/contract-regressions.sh
+2026-11-15T07:41:29Z verify bash _dev/tests/contract-regressions.sh (rerun after scratch dir create)
+2026-11-15T07:42:02Z commit git add <7 paths> && git commit
+2026-11-15T07:42:07Z green-at-tip bash REQ-735-probe.sh
+2026-11-15T07:42:38Z handback write REQ-735-handback.md
