@@ -1,7 +1,7 @@
 ---
 id: REQ-735
 title: '[impact-rule-change] Decide, rule by rule, which moved standing rules load in ordinary sessions'
-status: pending
+status: claimed
 created_at: 2026-11-15T07:25:23Z
 user_request: UR-179
 domain: general
@@ -13,6 +13,7 @@ effort_estimate: effort-substantive
 required_lessons: [_dev/primes/lessons-releases.md]
 related: [REQ-736]
 batch: run-012821-follow-ups
+claimed_at: 2026-11-15T07:30:04Z
 ---
 # Decide, Rule by Rule, Which Moved Standing Rules Load in Ordinary Sessions
 ## What
