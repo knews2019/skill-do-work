@@ -68,11 +68,11 @@ for cutover_export_path in VERSION suite skills; do
   fi
 done
 
-# The maintainer's own knowledge base, ADR log (REQ-714) and dated changelog archives (REQ-715)
-# live under /docs. Their export-ignore lines are the only thing keeping those files out of
-# every consumer install, and a root docs/ that ships would also read as the retired legacy
-# runtime below.
-for maintainer_docs_path in docs/kb docs/decisions docs/changelog; do
+# The maintainer's own knowledge base, ADR log (REQ-714), dated changelog archives (REQ-715)
+# and run prompts for other sessions (REQ-732) live under /docs. Their export-ignore lines are
+# the only thing keeping those files out of every consumer install, and a root docs/ that ships
+# would also read as the retired legacy runtime below.
+for maintainer_docs_path in docs/kb docs/decisions docs/changelog docs/run-prompts; do
   if ! maintainer_docs_attribute_line="$(git -C "$repo_root" check-attr export-ignore -- "$maintainer_docs_path")"; then
     fail "could not read the export-ignore attribute for /$maintainer_docs_path"
   elif ! grep -q 'export-ignore: set' <<<"$maintainer_docs_attribute_line"; then
@@ -104,7 +104,8 @@ for legacy_runtime_path in "${legacy_runtime_paths[@]}"; do
     if ! legacy_leftover_path="$(find "$repo_root/$legacy_runtime_path" -type f \
       ! -path "$repo_root/tools/queue-kanban/queue-kanban" \
       ! -path "$repo_root/docs/kb/*" ! -path "$repo_root/docs/decisions/*" \
-      ! -path "$repo_root/docs/changelog/*" -print -quit)"; then
+      ! -path "$repo_root/docs/changelog/*" ! -path "$repo_root/docs/run-prompts/*" \
+      -print -quit)"; then
       fail "could not scan $legacy_runtime_path for leftover files"
     fi
     if [ -n "$legacy_leftover_path" ]; then
