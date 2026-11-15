@@ -25,6 +25,7 @@ estimate:
     - 3-file write set
     - 7 acceptance criteria
 dispatch_at: 2026-11-14T23:35:12Z
+builder_handback_at: 2026-11-15T00:02:44Z
 ---
 # Rebuild the Relation Map Page: Left to Right, Nine Boxes First, Readable Labels
 ## What
