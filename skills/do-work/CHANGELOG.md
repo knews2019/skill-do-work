@@ -10,6 +10,14 @@ For the complete release history, read this file and the archives below from new
 - [0.50.0 through 0.64.1](https://github.com/knews2019/skill-do-work/blob/main/docs/changelog/CHANGELOG-2026-04-13-up-to-v0.64.1.md)
 - [0.1.0 through 0.49.0](https://github.com/knews2019/skill-do-work/blob/main/docs/changelog/CHANGELOG-2026-04-07-up-to-v0.49.0.md)
 
+## 0.321.0 — New Reports Remind You to Rebuild the Catalog (2026-11-15)
+
+After an ordinary `ai-report`, the closing summary now prints the `ai-report index` command while the new report is missing from `ai-reports/catalog.json`. Before, a new report stayed out of the catalog with no sign, until someone happened to rebuild it.
+
+- `ai-report-index --check ai-reports/<folder>` is new. It reads only `ai-reports/catalog.json` and prints one rebuild line when the bundle is not listed, or when the catalog is missing or unreadable. It prints nothing when the bundle is listed, and it never writes.
+- `ai-report` Step 8 runs it after the organize check and prints its line just before the final bundle-path line. A revise skips it, because a revise already regenerates the catalog.
+- Creating a report still never rebuilds or commits the catalog.
+
 ## 0.320.0 — Report Catalog Lists Each Bundle's Second-Opinion Pages (2026-11-15)
 
 `ai-report index` now lists each bundle's second-opinion pages, so a page such as `index-v1c01-<name>.html` can be found from the catalog. Before, the catalog showed one entry per bundle and nothing else.
