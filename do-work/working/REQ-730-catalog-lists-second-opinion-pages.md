@@ -26,6 +26,7 @@ estimate:
     - 2 subsystems involved
     - 6 acceptance criteria
 dispatch_at: 2026-11-14T23:35:11Z
+builder_handback_at: 2026-11-15T01:07:30Z
 ---
 # Report Catalog Lists the Second-Opinion Pages of Each Bundle
 ## What
