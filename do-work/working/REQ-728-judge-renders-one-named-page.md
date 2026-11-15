@@ -26,6 +26,7 @@ estimate:
     - 2 subsystems involved
     - 6 acceptance criteria
 dispatch_at: 2026-11-14T23:35:10Z
+builder_handback_at: 2026-11-15T00:48:21Z
 ---
 # ai-report-judge Renders One Named Page of a Bundle
 ## What
