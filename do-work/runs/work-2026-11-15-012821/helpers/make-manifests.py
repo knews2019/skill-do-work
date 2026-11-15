@@ -8,7 +8,9 @@ def sha(p): return hashlib.sha256(open(p,'rb').read()).hexdigest()
 def payload(name):
     p = os.path.join(out, name); return {"source_path": p, "sha256": sha(p)}
 req_id = os.environ['REQ_ID']; req_path = os.environ['REQ_PATH']; ur = os.environ['UR_ID']
-release = {
+no_release = os.environ.get('NO_RELEASE') == '1'
+# A no-release member has no payload files, so the release manifest is built only for a release.
+release = None if no_release else {
   "operation": "release",
   "commit_message": f"[{req_id}] release {new}: {title}",
   "release": {
@@ -29,7 +31,6 @@ release = {
     ],
   },
 }
-no_release = os.environ.get('NO_RELEASE') == '1'
 rp = os.path.join(out, 'release-manifest.json')
 if not no_release: json.dump(release, open(rp,'w'), indent=2)
 commit_paths = sorted(set([

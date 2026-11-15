@@ -24,4 +24,3 @@ queue_state: [0 pending, 0 pending-answers, 0 blocked, 0 blocked-archive-collisi
 
 - REQ-732: [impact-negligible] Allow docs/run-prompts/ in the staged-skills contract and move the run prompts there — claimed 2026-11-14T23:28:20Z — writer: t2s-Virtual-Machine.local:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2
 
-- REQ-733: Rebuild the relation map page: left to right, nine boxes first, readable labels — claimed 2026-11-14T23:28:20Z — writer: t2s-Virtual-Machine.local:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2
