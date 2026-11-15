@@ -24,6 +24,7 @@ estimate:
     - 4-file write set
     - 6 acceptance criteria
 dispatch_at: 2026-11-14T23:32:56Z
+builder_handback_at: 2026-11-15T02:47:34Z
 ---
 # Record the Decision to Adopt No External Review Canvas
 ## What
