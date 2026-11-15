@@ -26,6 +26,7 @@ estimate:
     - 7 acceptance criteria
 dispatch_at: 2026-11-15T00:01:58Z
 builder_handback_at: 2026-11-15T02:09:01Z
+integration_at: 2026-11-15T02:09:32Z
 ---
 # Move the Maintainer's Global Standing Rules Into the Skill
 ## What
@@ -76,15 +77,15 @@ None. REQ-725 (sorting the local memory notes) is related but independent.
 - [x] Should the skill's installer ship the `checkout-lease` session hook, which exists only in `~/.claude/settings.json`? → No, leave it local. Nothing is captured for it.
 - [x] Should the notes in the local memory folder get the same treatment? → Yes, as a separate review request: REQ-725.
 - [~] Where does G5 live if the skill has no natural home for "prompts for another session"? → Builder decides. If no existing file fits, record that in the REQ and leave G5 out instead of creating a new file. → **D-01**: Builder chose: `skills/do-work/crew-members/communication-style.md`, one Core Patterns bullet that points at the run-prompts folder in `skills/do-work-toolbox/actions/folder-structure.md` and names no path of its own. Reasoning: the only shipped handoff, `actions/restart-with-parallel-handoff.md`, writes the queue-specific `do-work/RESTART-PROMPT.md` and runs only on `phandoff` or a context limit; a request for a prompt to run in another session or tool arrives in a plain session, so only the always-on file sees it. Value: G5 applies on every machine with no new file. Risk: one more always-on line; fully reversible by deleting it.
-<!-- D-XX counter: last used D-06. Next decision: D-07. -->
+<!-- D-XX counter: last used D-13. Next decision: D-14. -->
 ## Required Lessons — Dropped for Budget
 - `_dev/primes/lessons-action-files.md` — 8761 tokens, over the budget, and its row is `slugged: partial` so no targeted entry is legal. Matched on "budgeted context routing": this REQ adds text to an always-on file.
 ## Full Context
 See `do-work/user-requests/UR-175/input.md` for complete verbatim input.
 ## AI Execution State (P-A-U Loop)
-- [ ] **[PLAN]:** (Agent: Read listed `prime_files` and agent rules. Write brief technical approach here. Do not write code yet.)
-- [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
-- [ ] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
+- [x] **[PLAN]:** (from the builder hand-back) Add only the missing rules, each once, in the four planned files, at the end of the named lists or sections, in the house style of `communication-style.md`.
+- [x] **[APPLY]:** (from the builder hand-back) One commit (`ab80e3a2`), 13 added lines and 1 joined line, prose only.
+- [x] **[UNIFY]:** (from the builder hand-back) `git diff --stat` shows only the four crew-member files. No existing sentence is reworded, Aliases and Examples are unchanged, the cross-package citation resolves, and `zsh|AskUserQuestion|haiku|EnterWorktree` is absent. Integrator re-check after the merge: see Qualification.
 *Source: do-work capture-request: capture the request in _dev/run-prompts/2026-11-15-move-global-rules-into-skill.md*
 
 ## Triage
@@ -162,3 +163,62 @@ Pre-dispatch agent, base `1389e2be`. Every source line was re-checked against `s
 **Dependencies:** ✓ Installed
 
 *Checked by work action (coordinator, run work-2026-11-15-012821)*
+
+## Decisions
+- **D-05 (confirmed by the maintainer, 2026-11-15):** the model-per-agent rule (G7) lives only in `crew-members/background-agents.md`, with no copy or pointer line in `communication-style.md`. The maintainer confirmed this through a question on 2026-11-15, so the pre-dispatch ESCALATE is closed and no pending-answers follow-up is written. (from the builder hand-back and the integrator brief)
+- **D-07 (DECIDE & STATE, from the builder hand-back):** none of the eight rules was already shipped. The builder searched `skills/` for the ideas (big picture, recommended option, placeholder, paste-ready, model tier, stall check, pending answer). The only near hit is the `ttsr` alias appendix ("paste-ready commands"), which covers one answer format, not commands in general. So every rule was added.
+- **D-08 (DECIDE & STATE, from the builder hand-back):** "parks questions as pending answers" is written as "records open questions as pending answers instead of waiting", and "operator steps" as "steps only a person can do". "Stall check" gets a plain gloss in brackets. Reason: the house style asks for plain words, and "parks" and "operator" are jargon for a first-time reader.
+- **D-09 (DECIDE & STATE, from the builder hand-back):** the G5 bullet's long first sentence was split in two, so each sentence stays near 20 words.
+- **D-10 (DECIDE & STATE, from the builder hand-back):** the numeric-target rule says "a number in the request (a size, a count, a time)". The bracket is marked illustrative by "a", it is not a closed list.
+- **D-11 (DECIDE & STATE, from the builder hand-back):** the G4 bug-report line is a plain bullet without a bold lead, because it is one short sentence, like the other short bullets in the list.
+- **D-12 (DECIDE & STATE, integrator):** release as a minor bump. Reason: `communication-style.md` is always on in every installed project, so the new rules change agent behavior in every consumer project (impact-rule-change). The builder proposed minor too. Value: the version tells consumers that behavior changed. Risk: none, a version number only.
+- **D-13 (DECIDE & STATE, integrator):** drain the `installer` heavy lane in addition to the one selected lane (`staged-skills`). Reason: `_dev/tests/install-suite-behavior.sh` (installer lane) is the contract test that names `communication-style.md` (it checks that the installer links the file from a consumer project's agent instructions), and the brief asks that the tests naming that file still pass. Value: direct evidence for the always-on link. Risk: about 30 s more wall time.
+
+## Implementation Summary
+
+**Files changed:**
+- `skills/do-work/crew-members/communication-style.md` (modified) — five bullets appended at the end of the Core Patterns section: G1 big picture first and status words defined, G2 decisions through the ask-user tool, G3 commands that run as pasted, the G4 bug-report line, G5 a prompt for another session is a committed file.
+- `skills/do-work/crew-members/clear-questions.md` (modified) — principle 5 gains one sentence: recommended option first, value and risk per option.
+- `skills/do-work/crew-members/coding-guardrails.md` (modified) — one bullet in § 1 Think Before Coding (numbers are approximate unless the user says strict) and one in § 3 Surgical Changes (never remove existing UI while redesigning unless asked).
+- `skills/do-work/crew-members/background-agents.md` (modified) — one paragraph at the end of § Match the Pattern to the Harness: pick each agent's model by its work, cheapest model tier for lookups.
+
+**What was done:** The rule groups G1, G2, G3, G4 (two of the three missing lines in `coding-guardrails.md`, the bug-report line in `communication-style.md`), G5 and G7 from the maintainer's machine-local instruction file now ship in the crew-member files, each once, written as conditions with no machine, vendor or tool name. Hand-back merge range 60c8a8f8..47565ced, no conflicts, no integration seams.
+
+## Discovered Tasks
+
+(from the builder hand-back) None.
+
+## Qualification
+
+**Gate records:** `advance --diff-range 60c8a8f8..47565ced` (qualify) first refused `QUALIFY-CLAIMED-PATH-MISSING` and `SCOPE-UNDECLARED-TOUCH` on a backticked section heading in the Implementation Summary, which the parser read as a path. I reworded that one mention to plain text; the rerun returned `success` with no findings: no scope drift, no debug artifacts (the diff adds prose only, no TODO, FIXME or stray marker).
+
+**Requirement trace (against `git diff 60c8a8f8..47565ced`, 4 files, +13/-1):**
+- Each rule group G1, G2, G3, G4, G5 and G7 is shipped once, added only where nothing said it: the six RED searches (CHANGELOG excluded) each print exactly one file at the merge: `every status word`, `prose list of questions`, `login shell`, `20-minute stall check` → `communication-style.md`; `unless the user says strict` → `coding-guardrails.md`; `cheapest model tier` → `background-agents.md`. G6 has nothing to move. ✓
+- G1, G2 and G3 are always on: three bold-lead bullets in the Core Patterns section of `communication-style.md`; the G2 option shape (recommended option first, value and risk per option) is one sentence in principle 5 of `clear-questions.md`; "decide reversible trivia yourself" points at the DECIDE & STATE tier (`coding-guardrails.md:33`) and adds only "report it in one line". ✓
+- No machine, vendor, tool or host name: the text says "the user's login shell", "the agent's ask-user tool when it has one", "the cheapest model tier that can do them"; `zsh|AskUserQuestion|haiku|EnterWorktree` is absent from the four files (probe). ✓
+- G5 names no path of its own: it cites `../../do-work-toolbox/actions/folder-structure.md`, whose tree at line 38 lists `run-prompts/` under `docs/`; `docs/run-prompts` does not appear in `communication-style.md`; the shipped-package reference contract passes in both topologies. ✓
+- About 25 lines target (approximate): 13 added lines and 1 joined line. Aliases and Examples are unchanged (the diff touches only the end of Core Patterns). No new file, no test file. ✓
+- No shipped rule reworded: the only deleted line is principle 5 of `clear-questions.md`, whose existing two sentences stay byte-identical with one sentence appended. ✓
+- Release per `_dev/primes/prime-releases.md`: written at finalization (minor, D-12). Pending until Step 9.
+
+**Scope comparison (Route B):** Scope declares the four crew-member files; the merge touched exactly those four. No undeclared file. `CHANGELOG.md` and `VERSION` were left for the integrator, as Scope states (D-06).
+
+## Testing
+
+**Tests run:**
+- Repository gate `bash _dev/tests/maintainer-verify.sh` via `helpers/gate.sh` at merge `47565ced69018a3adb24ad2d7ce3298b367cab04` (detached drain-head checkout, stage reuse off), started at 1-minute load 4.61 → `GATE-EXIT=0 WALL=135s`, `Maintainer verification passed.`
+- GREEN probe `do-work/runs/work-2026-11-15-012821/REQ-724-probe.sh` through `advance --probe-file` → probe status 0 (`REQ-724 probe PASS`, 14 PASS lines: ten single-home phrase checks, the G2 option shape, the G5 citation and no own path, no machine or tool names, the shipped-package reference contract); green gate recorded for the merge revision.
+- The six RED searches re-run on the merged main checkout: each prints exactly one shipped file (see Qualification).
+
+**Result:** ✓ All passing
+
+**Red-green validation:** `tdd: false` (prose rules; the REQ forbids a wording test). RED at builder base `d2f8cefc`: the six searches were empty and the GREEN probe exited 1 with 12 FAIL lines (from the hand-back). GREEN at the builder tip `ab80e3a2` and at the merge `47565ced` (re-run here).
+
+**New tests added:** None (Constraints: no new test file).
+
+**Heavy verification plan:**
+- Range: 60c8a8f8b88b5c30f6923fb33984cfa3f58bd551..47565ced69018a3adb24ad2d7ce3298b367cab04
+- staged-skills: `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane staged-skills` — all four changed files matched subtree skills
+- installer (added by the integrator, D-13): `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane installer` — `install-suite-behavior.sh` checks the link to `communication-style.md`
+
+*Verified by work action (integrator, run work-2026-11-15-012821)*

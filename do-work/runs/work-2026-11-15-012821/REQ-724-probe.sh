@@ -12,11 +12,12 @@ fail() {
   failure_count=$((failure_count + 1))
 }
 
-# Each rule-group phrase must appear in exactly one shipped file (the changelog mirror excluded)
-# and that file must be the planned home.
+# Each rule-group phrase must appear only in its planned home (the changelog mirror excluded).
+# A home may be a crew-member file plus its lock-step copies in the sibling packages
+# (review finding F1): pass every expected file, space-separated, in sorted order.
 expect_single_home() {
   local rule_group="$1" phrase="$2" expected_file="$3" matching_files
-  matching_files="$(grep -rliF --exclude=CHANGELOG.md -- "$phrase" skills || true)"
+  matching_files="$(grep -rliF --exclude=CHANGELOG.md -- "$phrase" skills | LC_ALL=C sort | tr '\n' ' ' | sed 's/ $//' || true)"
   if [ "$matching_files" != "$expected_file" ]; then
     fail "$rule_group: '$phrase' expected only in $expected_file, found: ${matching_files:-nothing}"
   else
@@ -30,10 +31,10 @@ expect_single_home G2 'prose list of questions' "$crew_directory/communication-s
 expect_single_home G3 'login shell' "$crew_directory/communication-style.md"
 expect_single_home G3 'one-line launcher' "$crew_directory/communication-style.md"
 expect_single_home G4 'A bug report means' "$crew_directory/communication-style.md"
-expect_single_home G4 'unless the user says strict' "$crew_directory/coding-guardrails.md"
-expect_single_home G4 'while redesigning' "$crew_directory/coding-guardrails.md"
+expect_single_home G4 'unless the user says strict' "skills/do-work-toolbox/crew-members/coding-guardrails.md $crew_directory/coding-guardrails.md"
+expect_single_home G4 'while redesigning' "skills/do-work-toolbox/crew-members/coding-guardrails.md $crew_directory/coding-guardrails.md"
 expect_single_home G5 '20-minute stall check' "$crew_directory/communication-style.md"
-expect_single_home G7 'cheapest model tier' "$crew_directory/background-agents.md"
+expect_single_home G7 'cheapest model tier' "skills/do-work-knowledge/crew-members/background-agents.md skills/do-work-toolbox/crew-members/background-agents.md $crew_directory/background-agents.md"
 
 # G2 option shape lives in the question-wording file.
 clear_questions_text="$(cat "$crew_directory/clear-questions.md")"
