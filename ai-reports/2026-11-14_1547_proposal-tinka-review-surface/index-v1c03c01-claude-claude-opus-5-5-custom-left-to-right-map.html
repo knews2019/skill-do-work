@@ -17,6 +17,7 @@ code{overflow-wrap:anywhere}
 .map-how{margin:0 0 14px}
 .map-how .tag{margin:0 0 .4em}
 .map-tools{display:flex;flex-wrap:wrap;gap:8px 10px;align-items:center;margin:0 0 12px}
+.map-tools[hidden]{display:none}
 .map-tools .zoom-label{font:700 .95rem var(--display);min-width:3.4em;text-align:center}
 .map-tools .sep{flex:0 0 8px}
 .map-tools .map-count{color:var(--muted);font-size:.95rem}
@@ -304,7 +305,12 @@ tr[class^="k-"] td:first-child{border-left:6px solid var(--k)}
   const zoomLabel = document.getElementById("zoom-label"), mapCount = document.getElementById("map-count");
   const labelLayer = document.getElementById("labels");
   if (!viewport || !world || !panel || !labelLayer) return;
+  const panelStart = panel.innerHTML;
+  let countText = "";
   const BOX_W = 300, BOX_H = 160, COLUMN_GAP = 210;
+  // A label fills the gap between two columns, less 6px on each side. A selection zooms in to at least
+  // LABEL_SCALE, where that gap still gives a label about 100px.
+  const LABEL_SCALE = 0.55;
   const boxById = {}, neighbours = {}, coreIds = new Set();
   world.querySelectorAll(".box").forEach((box) => {
     boxById[box.dataset.id] = box; neighbours[box.dataset.id] = [];
@@ -354,13 +360,13 @@ tr[class^="k-"] td:first-child{border-left:6px solid var(--k)}
       box.querySelector(".box-more").textContent = hidden ? "+" + hidden : "";
     });
     viewport.classList.toggle("has-sel", !!selected);
-    if (mapCount) mapCount.textContent = "Showing " + visible.size + " of " + Object.keys(boxById).length + " boxes";
+    countText = "Showing " + visible.size + " of " + Object.keys(boxById).length + " boxes";
     renderPanel();
     apply();
   }
   function renderPanel() {
     const detail = selected && document.getElementById("detail-" + selected);
-    if (!detail) return;
+    if (!detail) { panel.innerHTML = panelStart; return; }
     const extra = extraOf(selected);
     let reveal = "";
     if (extra.length && !showAll) {
@@ -382,11 +388,17 @@ tr[class^="k-"] td:first-child{border-left:6px solid var(--k)}
   }
   // The words of the selected box's lines sit in a layer that is not scaled, so they keep 13px at every zoom.
   // Each label sits in the gap beside the OTHER box of its line; labels that would overlap are pushed down.
+  // A label never covers a shown box: the boxes count as taken space, and a label with no free place is dropped.
   function placeLabels() {
     labelLayer.textContent = "";
+    if (mapCount) mapCount.textContent = countText;
     if (!selected) return;
     const width = viewport.clientWidth, height = viewport.clientHeight, placed = [];
-    const labelWidth = Math.round(Math.min(190, Math.max(110, (COLUMN_GAP - 14) * scale)));
+    const taken = [...visible].map((id) => {
+      const box = boxById[id], left = box.offsetLeft * scale + offsetX, top = box.offsetTop * scale + offsetY;
+      return { left, top, right: left + BOX_W * scale, bottom: top + BOX_H * scale };
+    });
+    const labelWidth = Math.min(190, Math.floor(COLUMN_GAP * scale) - 12);
     const wanted = edgeList.filter((edge) => edge.classList.contains("is-on")).map((edge) => {
       const label = document.createElement("span");
       label.className = "rel-label " + [...edge.classList].find((name) => name.startsWith("k-"));
@@ -404,14 +416,17 @@ tr[class^="k-"] td:first-child{border-left:6px solid var(--k)}
       let moved = true;
       while (moved) {
         moved = false;
-        placed.forEach((rect) => {
+        taken.concat(placed).forEach((rect) => {
           if (left < rect.right + 4 && left + w > rect.left - 4 && top < rect.bottom + 3 && top + h > rect.top - 3) { top = rect.bottom + 3; moved = true; }
         });
       }
-      if (item.x < 0 || item.x > width || top < 0 || top + h > height) { item.label.remove(); return; }
+      // A label pushed more than one box height from its line end would point at the wrong box.
+      const strayed = top - (item.y - h / 2) > BOX_H * scale;
+      if (strayed || item.x < 0 || item.x > width || top < 0 || top + h > height) { item.label.remove(); return; }
       placed.push({ left, right: left + w, top, bottom: top + h });
       item.label.style.transform = "translate(" + Math.round(left) + "px," + Math.round(top) + "px)";
     });
+    if (mapCount && placed.length < wanted.length) mapCount.textContent = countText + " · " + placed.length + " of " + wanted.length + " line words in view";
   }
   function boundsOf(ids) {
     let left = Infinity, top = Infinity, right = -Infinity, bottom = -Infinity;
@@ -425,12 +440,12 @@ tr[class^="k-"] td:first-child{border-left:6px solid var(--k)}
   // The view never zooms itself out below READABLE: when the boxes do not fit at that zoom (a phone),
   // it centers on the selected box, or on O2, and the reader drags to the rest.
   const READABLE = 0.42;
-  function fitIds(ids, largest) {
+  function fitIds(ids, largest, smallest, centerId) {
     let rect = boundsOf(ids);
-    const pad = 24;
+    const pad = 24, floor = smallest || READABLE;
     const fitted = Math.min((viewport.clientWidth - 2 * pad) / (rect.right - rect.left), (viewport.clientHeight - 2 * pad) / (rect.bottom - rect.top));
-    scale = clampScale(Math.max(READABLE, Math.min(fitted, largest || 1.2)));
-    if (fitted < READABLE) rect = boundsOf([selected || "O2"]);
+    scale = clampScale(Math.max(floor, Math.min(fitted, largest || 1.2)));
+    if (fitted < floor) rect = boundsOf([centerId || selected || "O2"]);
     offsetX = viewport.clientWidth / 2 - (rect.left + rect.right) / 2 * scale;
     offsetY = viewport.clientHeight / 2 - (rect.top + rect.bottom) / 2 * scale;
     apply();
@@ -441,12 +456,14 @@ tr[class^="k-"] td:first-child{border-left:6px solid var(--k)}
     if (!showAll && expanded.size === 0 && viewport.clientWidth < 600) fitIds(["D", "O1", "O2", "O3", "O4"]);
     else fitIds(ids);
   }
-  // After a click, move the view only when the box and the boxes it relates to are not all on screen.
+  // After a click, move the view only when the box and the boxes it relates to are not all on screen,
+  // or when a selection is zoomed out too far for its line words to fit between the columns.
   function frame(id) {
     const ids = [id, ...neighbours[id].filter((other) => visible.has(other))], rect = boundsOf(ids);
     const inside = rect.left * scale + offsetX >= 0 && rect.top * scale + offsetY >= 0 &&
       rect.right * scale + offsetX <= viewport.clientWidth && rect.bottom * scale + offsetY <= viewport.clientHeight;
-    if (!inside) fitIds(ids, Math.max(scale, 0.75));
+    const floor = selected ? LABEL_SCALE : READABLE;
+    if (!inside || scale < floor) fitIds(ids, Math.max(scale, 0.75), floor, id);
   }
   function activate(id) {
     const extra = extraOf(id).length > 0 && !showAll;
@@ -538,6 +555,7 @@ tr[class^="k-"] td:first-child{border-left:6px solid var(--k)}
   });
   world.addEventListener("focusin", (event) => {
     const box = event.target.closest(".box"); if (!box || !box.matches(":focus-visible")) return;
+    viewport.scrollLeft = 0; viewport.scrollTop = 0;
     const rect = viewport.getBoundingClientRect(), own = box.getBoundingClientRect();
     if (own.left < rect.left || own.right > rect.right || own.top < rect.top || own.bottom > rect.bottom) frame(box.dataset.id);
   });
