@@ -26,6 +26,7 @@ estimate:
     - 6 acceptance criteria
   calculated_at: 2026-11-14T23:30:40Z
 dispatch_at: 2026-11-14T23:35:12Z
+builder_handback_at: 2026-11-15T01:23:03Z
 ---
 # ai-report Prints the Catalog Rebuild Command When a New Report Is Missing From the Catalog
 ## What
