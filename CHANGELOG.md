@@ -10,6 +10,16 @@ For the complete release history, read this file and the archives below from new
 - [0.50.0 through 0.64.1](https://github.com/knews2019/skill-do-work/blob/main/docs/changelog/CHANGELOG-2026-04-13-up-to-v0.64.1.md)
 - [0.1.0 through 0.49.0](https://github.com/knews2019/skill-do-work/blob/main/docs/changelog/CHANGELOG-2026-04-07-up-to-v0.49.0.md)
 
+## 0.322.0 — Crew Files Carry the Rules for Status Explanations, User Decisions and Pasted Commands (2026-11-15)
+
+Rules that lived only in one maintainer's local agent instructions now ship in the crew-member files, so every machine and every installed project gets them. `communication-style.md` is always on, so its new lines change how an agent talks in every session, not only inside a work loop.
+
+- `communication-style.md` gains five rules. Explain state with the big picture first, and define every status word the first time. Send a decision for the user through the agent's ask-user tool, never as a prose list of questions. Write a command the user will paste for their login shell, with every value filled in, and put logic longer than about 5 lines in a committed script. Read a bug report as a request to fix the code. Write a prompt for another session as a committed file in the run-prompts folder, reply with a paste block of 3 lines or fewer, and make the prompt run unattended with a 20-minute stall check.
+- `clear-questions.md` puts the recommended option first and gives each option its value and its risk.
+- `coding-guardrails.md` reads a number in a request as approximate unless the user says strict, and never removes existing UI during a redesign unless the user asked for it.
+- `background-agents.md` runs lookups, searches and file sweeps on the cheapest model tier that can do them. Planning, review and build agents keep the session model.
+- The `do-work-toolbox` and `do-work-knowledge` copies of those three files get the same lines.
+
 ## 0.321.1 — Archive-Collision Check Ignores Evidence Files in Assets Folders (2026-11-15)
 
 `do-work-cli archive-collision REQ-NNN` no longer reports an evidence file inside an `assets/` folder as an archived copy of the REQ. Before, a file such as `do-work/archive/UR-001/assets/REQ-001-evidence.md` made the check report a collision that did not exist.

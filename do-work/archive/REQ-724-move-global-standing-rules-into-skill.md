@@ -1,7 +1,7 @@
 ---
 id: REQ-724
 title: '[impact-rule-change] Move the maintainer''s global standing rules into the skill'
-status: claimed
+status: completed
 created_at: 2026-11-14T22:44:21Z
 user_request: UR-175
 domain: general
@@ -27,6 +27,13 @@ estimate:
 dispatch_at: 2026-11-15T00:01:58Z
 builder_handback_at: 2026-11-15T02:09:01Z
 integration_at: 2026-11-15T02:09:32Z
+kb_status: pending
+review_at: 2026-11-15T02:26:21Z
+heavy_verified_at: 2026-11-15T02:31:30Z
+heavy_verified_revision: 0074c2744688f020c37b352325a96a1cbb01b605
+commit: 0074c2744688f020c37b352325a96a1cbb01b605
+completed_at: 2026-11-15T02:32:03Z
+release_at: 2026-11-15T02:32:03Z
 ---
 # Move the Maintainer's Global Standing Rules Into the Skill
 ## What
@@ -77,7 +84,7 @@ None. REQ-725 (sorting the local memory notes) is related but independent.
 - [x] Should the skill's installer ship the `checkout-lease` session hook, which exists only in `~/.claude/settings.json`? → No, leave it local. Nothing is captured for it.
 - [x] Should the notes in the local memory folder get the same treatment? → Yes, as a separate review request: REQ-725.
 - [~] Where does G5 live if the skill has no natural home for "prompts for another session"? → Builder decides. If no existing file fits, record that in the REQ and leave G5 out instead of creating a new file. → **D-01**: Builder chose: `skills/do-work/crew-members/communication-style.md`, one Core Patterns bullet that points at the run-prompts folder in `skills/do-work-toolbox/actions/folder-structure.md` and names no path of its own. Reasoning: the only shipped handoff, `actions/restart-with-parallel-handoff.md`, writes the queue-specific `do-work/RESTART-PROMPT.md` and runs only on `phandoff` or a context limit; a request for a prompt to run in another session or tool arrives in a plain session, so only the always-on file sees it. Value: G5 applies on every machine with no new file. Risk: one more always-on line; fully reversible by deleting it.
-<!-- D-XX counter: last used D-13. Next decision: D-14. -->
+<!-- D-XX counter: last used D-15. Next decision: D-16. -->
 ## Required Lessons — Dropped for Budget
 - `_dev/primes/lessons-action-files.md` — 8761 tokens, over the budget, and its row is `slugged: partial` so no targeted entry is legal. Matched on "budgeted context routing": this REQ adds text to an always-on file.
 ## Full Context
@@ -173,6 +180,8 @@ Pre-dispatch agent, base `1389e2be`. Every source line was re-checked against `s
 - **D-11 (DECIDE & STATE, from the builder hand-back):** the G4 bug-report line is a plain bullet without a bold lead, because it is one short sentence, like the other short bullets in the list.
 - **D-12 (DECIDE & STATE, integrator):** release as a minor bump. Reason: `communication-style.md` is always on in every installed project, so the new rules change agent behavior in every consumer project (impact-rule-change). The builder proposed minor too. Value: the version tells consumers that behavior changed. Risk: none, a version number only.
 - **D-13 (DECIDE & STATE, integrator):** drain the `installer` heavy lane in addition to the one selected lane (`staged-skills`). Reason: `_dev/tests/install-suite-behavior.sh` (installer lane) is the contract test that names `communication-style.md` (it checks that the installer links the file from a consumer project's agent instructions), and the brief asks that the tests naming that file still pass. Value: direct evidence for the always-on link. Risk: about 30 s more wall time.
+- **D-14 (DECIDE & STATE, integrator, review F1):** copy the added lines into the lock-step copies of `clear-questions.md` (toolbox, knowledge), `coding-guardrails.md` (toolbox) and `background-agents.md` (toolbox, knowledge). Reason: each package ships its own copy, earlier rule changes (bf9d9b8a, f06c6082, d1bf4855) changed every copy together, and toolbox fan-outs (`code-review`, `deep-explore`) load their own `background-agents.md`, so G7 would never reach them. A lock-step copy of the same file is the same rule in each package, not a restatement in a second file. The GREEN probe now accepts one home per package for `unless the user says strict`, `while redesigning` and `cheapest model tier`. Value: the rules reach every installed package. Risk: five more files to keep in step by hand, as today; reversible.
+- **D-15 (DECIDE & STATE, integrator, review F2 and F4):** the DECIDE & STATE pointer now carries the tier's "clear from context" condition (F2, required). The G5 unattended sentence is split in three and the stall check says what it does: "if nothing moves for 20 minutes, the run stops and reports what blocked it", the wording of the UR's own capture prompt (F4, report-only finding, applied because the re-merge was happening anyway and the gloss had lost half of the rule). The `<date>-<slug>.md` file name stays out: `folder-structure.md` owns the folder and a second naming rule would be a second path rule.
 
 ## Implementation Summary
 
@@ -182,7 +191,11 @@ Pre-dispatch agent, base `1389e2be`. Every source line was re-checked against `s
 - `skills/do-work/crew-members/coding-guardrails.md` (modified) — one bullet in § 1 Think Before Coding (numbers are approximate unless the user says strict) and one in § 3 Surgical Changes (never remove existing UI while redesigning unless asked).
 - `skills/do-work/crew-members/background-agents.md` (modified) — one paragraph at the end of § Match the Pattern to the Harness: pick each agent's model by its work, cheapest model tier for lookups.
 
-**What was done:** The rule groups G1, G2, G3, G4 (two of the three missing lines in `coding-guardrails.md`, the bug-report line in `communication-style.md`), G5 and G7 from the maintainer's machine-local instruction file now ship in the crew-member files, each once, written as conditions with no machine, vendor or tool name. Hand-back merge range 60c8a8f8..47565ced, no conflicts, no integration seams.
+- `skills/do-work-toolbox/crew-members/clear-questions.md`, `skills/do-work-knowledge/crew-members/clear-questions.md` (modified, at review F1) — the same principle 5 sentence.
+- `skills/do-work-toolbox/crew-members/coding-guardrails.md` (modified, at review F1) — the same two bullets.
+- `skills/do-work-toolbox/crew-members/background-agents.md`, `skills/do-work-knowledge/crew-members/background-agents.md` (modified, at review F1) — the same model paragraph.
+
+**What was done:** The rule groups G1, G2, G3, G4 (two of the three missing lines in `coding-guardrails.md`, the bug-report line in `communication-style.md`), G5 and G7 from the maintainer's machine-local instruction file now ship in the crew-member files, each once, written as conditions with no machine, vendor or tool name. Hand-back merge range 60c8a8f8..47565ced, no conflicts, no integration seams. Review fixes (F1, F2, F4) were committed on the builder branch as `e8bbcd7c` and re-merged with the same base: cumulative range 60c8a8f8..0074c274 (it also holds the run-artifact commit `0bd17956` for the probe, under `do-work/` only).
 
 ## Discovered Tasks
 
@@ -203,12 +216,15 @@ Pre-dispatch agent, base `1389e2be`. Every source line was re-checked against `s
 
 **Scope comparison (Route B):** Scope declares the four crew-member files; the merge touched exactly those four. No undeclared file. `CHANGELOG.md` and `VERSION` were left for the integrator, as Scope states (D-06).
 
+**Re-qualification after the review fixes (range 60c8a8f8..0074c274):** the shipped diff is now 9 files, +27/-3. The five added files are the lock-step sibling-package copies of three Scope files (D-14, review F1); they carry byte-identical added lines, and each copy keeps its own `../../do-work/` path spellings. The six RED searches now print one file per package that ships the file: `cheapest model tier` → the do-work, toolbox and knowledge `background-agents.md`; `unless the user says strict` → the do-work and toolbox `coding-guardrails.md`; the other four → `communication-style.md` only. `zsh|AskUserQuestion|haiku|EnterWorktree` is absent from all nine files.
+
 ## Testing
 
 **Tests run:**
 - Repository gate `bash _dev/tests/maintainer-verify.sh` via `helpers/gate.sh` at merge `47565ced69018a3adb24ad2d7ce3298b367cab04` (detached drain-head checkout, stage reuse off), started at 1-minute load 4.61 → `GATE-EXIT=0 WALL=135s`, `Maintainer verification passed.`
 - GREEN probe `do-work/runs/work-2026-11-15-012821/REQ-724-probe.sh` through `advance --probe-file` → probe status 0 (`REQ-724 probe PASS`, 14 PASS lines: ten single-home phrase checks, the G2 option shape, the G5 citation and no own path, no machine or tool names, the shipped-package reference contract); green gate recorded for the merge revision.
 - The six RED searches re-run on the merged main checkout: each prints exactly one shipped file (see Qualification).
+- After the review fixes (re-merge `0074c2744688f020c37b352325a96a1cbb01b605`): the repository gate again via `helpers/gate.sh`, started at 1-minute load 4.29 → `GATE-EXIT=0 WALL=127s`; the amended GREEN probe (one home per package, D-14) → `REQ-724 probe PASS`; the green gate recorded for that revision with `record-green-gate` (the review phase refuses gate input to `advance`).
 
 **Result:** ✓ All passing
 
@@ -216,9 +232,85 @@ Pre-dispatch agent, base `1389e2be`. Every source line was re-checked against `s
 
 **New tests added:** None (Constraints: no new test file).
 
-**Heavy verification plan:**
-- Range: 60c8a8f8b88b5c30f6923fb33984cfa3f58bd551..47565ced69018a3adb24ad2d7ce3298b367cab04
-- staged-skills: `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane staged-skills` — all four changed files matched subtree skills
-- installer (added by the integrator, D-13): `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane installer` — `install-suite-behavior.sh` checks the link to `communication-style.md`
+**Heavy verification plan:** the first plan (range 60c8a8f8..47565ced) selected only `staged-skills`. The cumulative range after the review fixes holds the run-artifact commit `0bd17956`, whose `do-work/runs/` paths no lane covers, so the planner marks coverage uncertain and selects all six lanes. The final plan is in `## Heavy Verification Plan`.
 
 *Verified by work action (integrator, run work-2026-11-15-012821)*
+
+## Review
+
+**Overall: 92%** | 2026-11-15T02:26:21Z
+
+| Dimension | Score |
+|-----------|-------|
+| Requirements | 95% |
+| Code Quality | 90% |
+| Test Adequacy | 90% |
+| Scope | 95% |
+| Risk | Low |
+| Acceptance | Pass |
+
+**Important findings (each with its recorded impact token — this is the durable audit record the judgment mandates):**
+- F1 sibling-package copies lacked the new lines; fixed in this run (e8bbcd7c, D-14), byte-identical lines in the same position in all five copies, own `../../do-work/` spellings untouched — impact-rule-change → report only
+- F2 `communication-style.md:25` DECIDE & STATE pointer misstated the gate; fixed in this run (e8bbcd7c, D-15), now "A reversible choice whose answer is clear from context" — impact-rule-change → report only
+
+**Minor findings:**
+- F3 the new G2 rule (`communication-style.md:25`) and G7 rule (`background-agents.md:192`, and now its two sibling copies) state no precedence for an action's own rule (`do-work-toolbox/actions/tutorial.md:355`, `actions/ai-evaluation-loop-reference.md:19-20`) — impact-rule-change → report only
+- F4 `communication-style.md:28` long G5 sentence and half-dropped stall-check gloss; fixed in this run (e8bbcd7c, D-15), three sentences of 5, 20 and 20 words, stall check matches `UR-175/input.md:45` — impact-negligible → report only
+- F5 G6 "nothing to move" partly unverified: "never revert files you did not change" has no shipped home — impact-rule-change → report only
+- F6 G4 numeric/redesign lines (`coding-guardrails.md:22`, `:89`) and G7 stop applying in plain sessions once the global file is deleted; decide before the delete step — impact-rule-change → report only
+- N1 probe G2 option-shape and machine-name checks read only the `do-work` copies; PASS message says "found once" for three files — impact-negligible → report only
+
+**Acceptance:** Pass — implementation and integration stages: `shipped-package-reference-contract.sh` PASS, `REQ-724-probe.sh` 14 PASS exit 0, probe negative test fails on a stray file and on a missing copy; the integrator's gate at 0074c274 `GATE-EXIT=0`; deployment and live acceptance unassessed
+**Restatement sweep:** redefined the DECIDE & STATE pointer (now consistent with `coding-guardrails.md:32-35`), the clear-questions option shape (all three copies identical), the per-agent model rule (all three `background-agents.md` copies identical; F3 precedence gap remains), the numeric-target and redesign lines (both `coding-guardrails.md` copies identical), and the stall-check wording (consistent with `UR-175/input.md:45`)
+**Anti-bloat count:** 0 (the five added files are lock-step copies of Scope files, not new surface)
+**Suggested testing:** 4 items (carried from the first review; the F1 grep item is now done)
+**Review history:** first review 88% Approve (`do-work/runs/work-2026-11-15-012821/REQ-724-review.md`, F1 and F2 marked required); fixes F1, F2, F4 re-merged at `0074c274`; delta re-review 92% Approve (`do-work/runs/work-2026-11-15-012821/REQ-724-review-delta.md`).
+**Follow-ups created:** None (7 findings report only)
+
+*Reviewed by review-work action*
+
+## Heavy Verification Plan
+
+- Base: 60c8a8f8b88b5c30f6923fb33984cfa3f58bd551
+- Target: 0074c2744688f020c37b352325a96a1cbb01b605
+- Selection: the shipped paths (nine crew-member files) match only the `staged-skills` subtree; the run-artifact commit `0bd17956` adds `do-work/runs/work-2026-11-15-012821/REQ-724-probe.sh` and `REQ-724-progress.log`, which no lane covers, so the planner reports coverage uncertain and selects every lane.
+- queue-kanban-javascript: `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane queue-kanban-javascript` — coverage is uncertain for: do-work/runs/work-2026-11-15-012821/REQ-724-probe.sh, do-work/runs/work-2026-11-15-012821/REQ-724-progress.log
+- queue-kanban-browser: `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane queue-kanban-browser` — coverage is uncertain for: do-work/runs/work-2026-11-15-012821/REQ-724-probe.sh, do-work/runs/work-2026-11-15-012821/REQ-724-progress.log
+- do-work-cli-integrations: `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane do-work-cli-integrations` — coverage is uncertain for: do-work/runs/work-2026-11-15-012821/REQ-724-probe.sh, do-work/runs/work-2026-11-15-012821/REQ-724-progress.log
+- staged-skills: `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane staged-skills` — coverage is uncertain for: do-work/runs/work-2026-11-15-012821/REQ-724-probe.sh, do-work/runs/work-2026-11-15-012821/REQ-724-progress.log
+- updater: `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane updater` — coverage is uncertain for: do-work/runs/work-2026-11-15-012821/REQ-724-probe.sh, do-work/runs/work-2026-11-15-012821/REQ-724-progress.log
+- installer: `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane installer` — coverage is uncertain for: do-work/runs/work-2026-11-15-012821/REQ-724-probe.sh, do-work/runs/work-2026-11-15-012821/REQ-724-progress.log
+
+## Heavy Verification Result
+
+- Target: 0074c2744688f020c37b352325a96a1cbb01b605
+- Execution revision: 0074c2744688f020c37b352325a96a1cbb01b605 (detached drain-head checkout, `QUEUE_KANBAN_BROWSER` set, start load 2.79)
+- queue-kanban-javascript: executed, exit 0, 7 s
+- queue-kanban-browser: executed, exit 0, 78 s
+- do-work-cli-integrations: executed, exit 0, 64 s
+- staged-skills: executed, exit 0, 36 s
+- updater: executed, exit 0, 66 s
+- installer: executed, exit 0, 27 s (holds `install-suite-behavior.sh`, which checks the link to `communication-style.md`)
+
+## Lessons Learned
+
+**What worked:** Fixed proof phrases chosen at pre-dispatch (six searches, CHANGELOG excluded) made RED, GREEN and the review all check the same thing.
+**What didn't:** The builder brief and the probe treated `skills/do-work/crew-members/` as the only home of each file, so the toolbox and knowledge lock-step copies were missed until review (F1). The probe's "exactly one shipped file" check then had to learn that a home is one file per package.
+**Worth knowing:** `clear-questions.md`, `coding-guardrails.md` and `background-agents.md` have hand-kept copies in `do-work-toolbox` and `do-work-knowledge`; a rule added to one must be added to every copy (`_dev/primes/prime-action-files.md` § Traps, `[family: alternate-writer-contract-drift]`, already names this). The toolbox `coding-guardrails.md` already lacks the "Earned defense" paragraph, a pre-existing drift left out of scope. No new lesson bullet: the builder proposed none, and the existing family covers it.
+
+## Orientation
+
+Crew members: the always-on `communication-style.md` now carries the status, decision, pasted-command, bug-report and other-session-prompt rules; `clear-questions.md`, `coding-guardrails.md` and `background-agents.md` gained one rule each, in all their package copies.
+
+## Timing
+
+Observed 2026-11-15T00:01:58Z to 2026-11-15T02:31:30Z: 2h 29m 32s total, 2h 30m 11s attributed across 6 events, 0s unattributed.
+
+| Category | Elapsed | Events |
+| --- | --- | --- |
+| builder-work | 2h 07m 04s | 1 |
+| review | 12m 05s | 1 |
+| verification-gate | 10m 14s | 3 |
+| handback-merge | 48s | 1 |
+
+Slowest stage: builder-work / builder worktree build, 2h 07m 04s, outcome success.
