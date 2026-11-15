@@ -28,6 +28,7 @@ estimate:
     - 3 subsystems involved
     - 9 acceptance criteria
 dispatch_at: 2026-11-15T11:10:24Z
+builder_handback_at: 2026-11-15T11:35:32Z
 ---
 # Ship a Relation-Map Preset for ai-report second-opinion
 ## What
