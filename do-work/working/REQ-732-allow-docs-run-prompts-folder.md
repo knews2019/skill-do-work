@@ -25,6 +25,7 @@ estimate:
     - 8-file write set
     - 4 acceptance criteria
 dispatch_at: 2026-11-14T23:33:30Z
+builder_handback_at: 2026-11-15T02:33:50Z
 ---
 # Allow docs/run-prompts/ in the Staged-Skills Contract and Move the Run Prompts There
 ## What
