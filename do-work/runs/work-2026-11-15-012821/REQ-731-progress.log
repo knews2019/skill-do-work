@@ -12,3 +12,6 @@
 2026-11-15T01:47:29Z heavy start helpers/heavy.sh 15ad4b3e3dae6992bf369b2d8181f9b94711f94f do-work-cli-integrations staged-skills updater installer (load 5.30 6.49 9.46)
 2026-11-15T01:50:52Z heavy end
 2026-11-15T01:51:36Z finalize prep-payloads + make-manifests
+2026-11-15T01:51:54Z post-finalize contract-regressions start
+2026-11-15T01:52:16Z post-finalize contract-regressions end exit=0
+2026-11-15T01:52:29Z report written; done
