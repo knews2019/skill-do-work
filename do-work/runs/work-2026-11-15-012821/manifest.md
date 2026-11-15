@@ -9,7 +9,7 @@ Hand-back emphasis note: none
 
 | REQ | Builder | Operative name | Handback file | Status | Dispatch instant | Takeover-to-finalization min | Full gates | Stall restarts |
 |-----|---------|----------------|---------------|--------|------------------|------|------|------|
-| REQ-723 | builder agent (Opus 5.5, worktree) | worktree-agent-REQ-723-archive-collision-skips-assets | do-work/runs/work-2026-11-15-012821/REQ-723-handback.md | building | 2026-11-14T23:32:28Z | | | |
+| REQ-723 | builder agent (Opus 5.5, worktree) | worktree-agent-REQ-723-archive-collision-skips-assets | do-work/runs/work-2026-11-15-012821/REQ-723-handback.md | released 0.321.1, UR-174 closed; merge 858c0708; finalization bb43e1af; gate green (130 s); review 98% approve; four heavy lanes green | 2026-11-14T23:32:28Z | 20 | 1 | 0 |
 | REQ-724 | builder agent (Opus 5.5, worktree) | worktree-agent-REQ-724-move-standing-rules-into-skill | do-work/runs/work-2026-11-15-012821/REQ-724-handback.md | building | 2026-11-15T00:01:58Z | | | |
 | REQ-725 | builder agent (Opus 5.5, worktree) | worktree-agent-REQ-725-memory-note-destination-report | do-work/runs/work-2026-11-15-012821/REQ-725-handback.md | building | 2026-11-14T23:32:30Z | | | |
 | REQ-726 | builder agent (Opus 5.5, worktree) | worktree-agent-REQ-726-no-review-canvas-decision | do-work/runs/work-2026-11-15-012821/REQ-726-handback.md | building | 2026-11-14T23:32:56Z | | | |
