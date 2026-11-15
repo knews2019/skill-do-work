@@ -1,0 +1,10 @@
+2026-11-14T23:33:50Z red-before staged-skills-contract with docs/run-prompts/probe.md
+2026-11-14T23:34:41Z red-after staged-skills-contract
+2026-11-14T23:35:05Z green-clean-before staged-skills-contract
+2026-11-14T23:35:36Z green-clean-after staged-skills-contract exit=0
+2026-11-14T23:35:36Z green-runprompts-probe-before staged-skills-contract
+2026-11-14T23:36:08Z green-runprompts-probe-after staged-skills-contract exit=0
+2026-11-14T23:36:08Z green-other-probe-before staged-skills-contract
+2026-11-14T23:36:44Z green-other-probe-after staged-skills-contract exit=1
+2026-11-14T23:37:03Z green-final-before staged-skills-contract (after comment reflow amend)
+2026-11-14T23:38:48Z green-final-after exit=0

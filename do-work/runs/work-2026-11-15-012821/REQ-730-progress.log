@@ -1,0 +1,4 @@
+2026-11-14T23:36:03Z start build
+2026-11-14T23:37:00Z verify go test ./... start
+2026-11-14T23:38:53Z verify go test ./... end
+2026-11-14T23:41:18Z verify done; handback
