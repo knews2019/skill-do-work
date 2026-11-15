@@ -24,3 +24,6 @@
 2026-11-15T11:53:39Z finalize prep-payloads (BUMP=minor 0.323.0->0.324.0) + make-manifests
 2026-11-15T11:53:44Z finalize advance --finalization-manifest
 2026-11-15T11:54:03Z finalize retry with implementation hash eec3bad0 (RELEASE-WITHOUT-SHIPPED-CHANGE on 9d07ce2f)
+2026-11-15T11:54:16Z post-finalize contract-regressions start
+2026-11-15T11:54:38Z post-finalize contract-regressions end exit=0
+2026-11-15T11:54:58Z report written; done
