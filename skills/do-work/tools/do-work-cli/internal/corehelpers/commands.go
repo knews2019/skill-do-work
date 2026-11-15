@@ -171,6 +171,10 @@ func handleArchiveCollision(executionContext commandruntime.ExecutionContext, ar
 		if path == archiveRoot && !entry.IsDir() {
 			return fmt.Errorf("archive root is not a directory: %s", archiveRoot)
 		}
+		// assets/ folders hold evidence files, never records; repositorymodel skips them the same way.
+		if entry.IsDir() && entry.Name() == "assets" {
+			return fs.SkipDir
+		}
 		name := entry.Name()
 		if !entry.IsDir() && (name == arguments[0]+".md" || strings.HasPrefix(name, arguments[0]+"-")) && strings.HasSuffix(name, ".md") {
 			relative, err := filepath.Rel(executionContext.RepositoryRoot, path)
