@@ -1,7 +1,7 @@
 ---
 id: REQ-727
 title: 'Ship a relation-map preset for ai-report second-opinion'
-status: pending
+status: claimed
 created_at: 2026-11-14T22:47:58Z
 user_request: UR-176
 domain: general
@@ -16,6 +16,7 @@ related: [REQ-733, REQ-726, REQ-728, REQ-729, REQ-730, REQ-731, REQ-732]
 batch: tinka-follow-ups
 write_set: ["skills/do-work-toolbox/docs/second-opinion-presets/relation-map.md", "skills/do-work-toolbox/docs/ai-report-guide.md", "skills/do-work/tools/do-work-cli/internal/toolboxcommands/report_second_opinion_test.go", "CHANGELOG.md", "VERSION"]
 status_changed_at: 2026-11-15T10:59:37Z
+claimed_at: 2026-11-15T11:01:29Z
 ---
 # Ship a Relation-Map Preset for ai-report second-opinion
 ## What
