@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="ai-report-kind" content="proposal">
+<title>Tinka as a review canvas: supports and limits per option</title>
+<link rel="stylesheet" href="presentation.css">
+<style>
+/* Plain table page: no script. presentation.css gives the colors (light and dark) and the fonts. */
+/* The launcher's direction block gets the same side gutter as the page. */
+body > aside { padding: 10px clamp(16px, 2.6vw, 60px) 0; }
+body > aside p { margin: 0 0 .3em; }
+body > p, body > nav.changes { margin: 0; padding: 10px clamp(16px, 2.6vw, 60px) 0; }
+body > nav.changes { padding-bottom: 6px; }
+body > nav.changes ul { margin: .2em 0 0; padding-left: 1.2em; }
+.page { padding: 0 clamp(16px, 2.6vw, 60px) 64px; }
+.band { padding: 22px 0; }
+/* Words stay whole: a long file name moves to the next line instead of breaking inside. */
+.chip, code { overflow-wrap: normal; word-break: normal; white-space: normal; }
+a { color: color-mix(in srgb, var(--proof) 80%, var(--ink)); }
+.nw { white-space: nowrap; }
+a:focus-visible { outline: 3px solid var(--change); outline-offset: 2px; border-radius: 3px; }
+.changed { --role: var(--effect); margin: 0 0 0 .5em; vertical-align: middle; font-family: var(--body); letter-spacing: 0; }
+.k-order { --k: var(--change); } .k-supports { --k: var(--effect); } .k-limits { --k: var(--problem); } .k-gap { --k: var(--cause); }
+.end { font-family: var(--display); font-weight: 800; }
+.words { font-style: italic; }
+.arrow { color: var(--muted); }
+
+.decision h1 { font-size: clamp(1.7rem, 3vw, 2.4rem); margin: 0 0 .35em; max-width: none; }
+.decision .kicker { margin: 0 0 .3em; font-weight: 700; color: var(--muted); }
+.decision p { margin-bottom: .5em; }
+.order-list { list-style: none; margin: .4em 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px 10px; }
+.order-list li { background: var(--surface); border: 2px solid var(--line); border-left: 5px solid var(--k); border-radius: 10px; padding: 2px 10px; }
+.order-list .rel { margin: 0; }
+.order-list.in-row { flex-direction: column; font-size: 15px; line-height: 1.4; }
+
+.key { max-width: 120ch; }
+table.options { width: 100%; table-layout: fixed; border-collapse: separate; border-spacing: 0;
+  background: var(--surface); border: 2px solid var(--line); border-radius: 14px; }
+.options col.option { width: 22%; }
+.options th, .options td { vertical-align: top; text-align: left; padding: 12px 14px; border-top: 2px solid var(--line); min-width: 0; }
+.options thead th { border-top: 0; font: 800 1.15rem var(--display); padding-bottom: 8px; }
+.options tbody th { font-weight: 400; }
+.options th[scope="row"] p { margin: 0 0 .3em; }
+.opt-code { font: 800 1.6rem/1.1 var(--display); }
+.opt-title { font: 750 1.08rem/1.25 var(--display); }
+.status { --role: var(--change); margin: 0; font-size: .8rem; }
+.cell-label { display: none; }
+.rel-list { list-style: none; margin: 0; padding: 0; }
+.rel-list li { border-left: 5px solid var(--k); padding: 2px 0 2px 10px; margin: 0 0 12px; font-size: 15px; line-height: 1.4; }
+.rel-list li:last-child { margin-bottom: 0; }
+.rel-list p { margin: 0; }
+.rel-list .about { color: var(--muted); font-size: 14px; }
+.rel-list .about b { color: var(--ink); }
+.rel-list .chip { font-size: 12.8px; margin-top: 2px; }
+.kind { font-weight: 700; color: var(--ink); }
+.none { margin: 0; color: var(--muted); font-size: 15px; }
+
+.groups { display: flex; flex-wrap: wrap; gap: 18px 28px; }
+.group { flex: 1 1 320px; min-width: 0; background: var(--surface); border: 2px solid var(--line); border-radius: 14px; padding: 12px 16px; }
+.group h3 { font-size: 1.05rem; margin: 0 0 .6em; }
+.notes { display: flex; flex-wrap: wrap; gap: 18px 36px; }
+.notes > div { flex: 1 1 340px; min-width: 0; }
+.notes h3 { font-size: 1.1rem; margin-top: .6em; }
+.notes ul { margin: 0 0 1em; padding-left: 1.2em; }
+
+/* Phone width: each option row stacks its name, then Supports, then Limits. */
+@media (max-width: 760px) {
+  table.options, .options tbody, .options tr, .options th, .options td { display: block; width: auto; }
+  .options thead { display: none; }
+  .options tbody tr + tr { border-top: 4px solid var(--line); }
+  .options tbody tr > * { border-top: 0; }
+  .options td { padding-top: 4px; }
+  .cell-label { display: block; font: 800 1.05rem var(--display); margin: 0 0 6px; }
+}
+</style>
+<meta name="ai-report-second-opinion-preset" content="custom"><meta name="ai-report-second-opinion-direction" content="Rebuild the report as one table with one row per option O1 to O4 and the columns Supports and Limits, the decision above it, each cell listing the related kill attempts, seeds and limits with code, one short line and source, the relations that touch no option below it, readable top to bottom with no zoom"><meta name="ai-report-second-opinion-id" content="v1c04"><meta name="ai-report-second-opinion-base" content="index.html"><meta name="ai-report-second-opinion-model" content="claude claude-opus-5-5"><meta name="ai-report-second-opinion-date" content="2026-11-15"></head>
+<body><!-- second-opinion-header --><aside aria-label="Second-opinion direction" style="overflow-wrap:anywhere"><p><strong>Iteration v1c04</strong>, built on <a href="index.html">index.html</a></p><p><strong>Second-opinion preset:</strong> custom</p><p style="white-space:pre-line"><strong>Direction:</strong> Rebuild the report as one table with one row per option O1 to O4 and the columns Supports and Limits, the decision above it, each cell listing the related kill attempts, seeds and limits with code, one short line and source, the relations that touch no option below it, readable top to bottom with no zoom</p></aside><!-- /second-opinion-header -->
+<p>Original report: <a href="index.html">index.html</a></p>
+<nav class="changes" aria-label="Changed in this iteration">
+  <strong>Changed in this iteration</strong>
+  <ul>
+    <li><a href="#rev-1">The decision and its pilot rule come first</a></li>
+    <li><a href="#rev-2">One table: each option with what supports and limits it</a></li>
+    <li><a href="#rev-3">The eight relations that touch no option</a></li>
+    <li><a href="#rev-4">Full texts, after the report, and corrections</a></li>
+  </ul>
+</nav>
+<div class="page">
+
+<section class="band decision" id="rev-1" aria-labelledby="decision-heading">
+  <p class="kicker">Proposal: Tinka as a review canvas, 14 November 2026. The decision (D): <span class="tag changed">changed</span></p>
+  <h1 id="decision-heading">Pilot O2 by hand. Build nothing yet.</h1>
+  <p>The report chooses between adopt nothing, pilot, and build. It recommends the pilot: option O2, run by hand, with nothing shipped.</p>
+  <p><strong>Pilot rule.</strong> Adopt nothing when fewer than half of the feedback points were written on the canvas before chat (R1), when no point used something chat cannot do (R2), or when Tinka changed Git status or AGENTS.md (R3). O3 follows only when R1 and R2 pass on both lineages and R3 never happens. <span class="chip">index.html, Recommendation</span></p>
+  <ul class="order-list" aria-label="Order of the options"><li class="k-order" data-relation="r01"><p class="rel"><b class="end">Decision</b><span class="arrow"> → </span><b class="end">O2</b>: <span class="words">recommends as the pilot</span></p></li><li class="k-order" data-relation="r02"><p class="rel"><b class="end">Decision</b><span class="arrow"> → </span><b class="end">O1</b>: <span class="words">falls back to, when the pilot rule fails</span></p></li><li class="k-order" data-relation="r03"><p class="rel"><b class="end">O2</b><span class="arrow"> → </span><b class="end">O3</b>: <span class="words">must pass its pilot before</span></p></li><li class="k-order" data-relation="r04"><p class="rel"><b class="end">O3</b><span class="arrow"> → </span><b class="end">O4</b>: <span class="words">must exist before</span></p></li></ul>
+</section>
+
+<section class="band" id="rev-2" aria-labelledby="table-heading">
+  <h2 id="table-heading">Each option: what supports it, and what limits it <span class="tag changed">changed</span></h2>
+  <p class="key">O1 to O4 are the options. K is a kill attempt, S is a seed (a claim that was <span class="nw">re-checked),</span> L is a limit (what was not checked). Each entry reads from its start to the arrow, then gives what the other box says and its source.</p>
+  <table class="options">
+    <colgroup><col class="option"><col><col></colgroup>
+    <thead><tr><th scope="col">Option</th><th scope="col">Supports</th><th scope="col">Limits</th></tr></thead>
+    <tbody>
+<tr id="row-O1"><th scope="row"><p class="opt-code">O1</p><p class="opt-title">Do nothing extra</p><p><span class="tag status">smallest change</span></p><ul class="order-list in-row"><li class="k-order" data-relation="r02"><p class="rel"><b class="end">Decision</b><span class="arrow"> → </span><b class="end">O1</b>: <span class="words">falls back to, when the pilot rule fails</span></p></li></ul></th><td><p class="cell-label">Supports</p><p class="none">None. The report relates no kill attempt, seed or limit to O1.</p></td><td><p class="cell-label">Limits</p><p class="none">None. The report relates no kill attempt, seed or limit to O1.</p></td></tr>
+<tr id="row-O2"><th scope="row"><p class="opt-code">O2</p><p class="opt-title">Hand recipe, no code</p><p><span class="tag status">recommended as the pilot</span></p><ul class="order-list in-row"><li class="k-order" data-relation="r01"><p class="rel"><b class="end">Decision</b><span class="arrow"> → </span><b class="end">O2</b>: <span class="words">recommends as the pilot</span></p></li><li class="k-order" data-relation="r03"><p class="rel"><b class="end">O2</b><span class="arrow"> → </span><b class="end">O3</b>: <span class="words">must pass its pilot before</span></p></li></ul></th><td><p class="cell-label">Supports</p><ul class="rel-list"><li class="k-supports" data-relation="r05"><p class="rel"><b class="end">Live check</b><span class="arrow"> → </span><b class="end">O2</b>: <span class="words">ran O2 once, start to end</span></p><p class="about"><b>Live check</b>: one lineage on a canvas <span class="chip">live check, notes 1 to 6</span></p></li><li class="k-supports" data-relation="r06"><p class="rel"><b class="end">S2</b><span class="arrow"> → </span><b class="end">O2</b>: <span class="words">files outside the bundle stay unseen when Git ignores them</span></p><p class="about"><b>S2</b>: <span class="nw">second-opinion</span> refuses changes outside the bundle <span class="chip"><span class="nw">report_second_opinion.go:526-576,</span> 583, 661, 699, 916</span></p></li><li class="k-supports" data-relation="r07"><p class="rel"><b class="end">S3</b><span class="arrow"> → </span><b class="end">O2</b>: <span class="words">a dot folder or an excluded folder passes the layout check</span></p><p class="about"><b>S3</b>: Root folder check flags <span class="nw">tinka/</span> and <span class="nw">design/</span> <span class="chip"><span class="nw">folder_structure.go:27-29,</span> <span class="nw">96-97,</span> 111, <span class="nw">126-128</span></span></p></li><li class="k-supports" data-relation="r08"><p class="rel"><b class="end">S4</b><span class="arrow"> → </span><b class="end">O2</b>: <span class="words">the manual layout never writes AGENTS.md</span></p><p class="about"><b>S4</b>: Only a portable project rewrites AGENTS.md <span class="chip">tinka <span class="nw">lib/updates.mjs:18-28,</span> <span class="nw">94-103</span></span></p></li><li class="k-supports" data-relation="r09"><p class="rel"><b class="end">S5</b><span class="arrow"> → </span><b class="end">O2</b>: <span class="words">tiles are written with no server and no update check</span></p><p class="about"><b>S5</b>: tools call needs no server and no update check <span class="chip">tinka <span class="nw">lib/cli.mjs:103-107,</span> <span class="nw">145-153</span></span></p></li></ul></td><td><p class="cell-label">Limits</p><ul class="rel-list"><li class="k-limits" data-relation="r14"><p class="rel"><b class="end">S1</b><span class="arrow"> → </span><b class="end">O2</b>: <span class="words">forces picture tiles only</span></p><p class="about"><b>S1</b>: An HTML tile can write to the canvas <span class="chip">tinka <span class="nw">public/item-content.js:76-101</span></span></p></li><li class="k-limits" data-relation="r16"><p class="rel"><b class="end">K1</b><span class="arrow"> → </span><b class="end">O2</b>: <span class="words">a picture hides 38 to 46% of the text</span></p><p class="about"><b>K1</b>: Pictures hide folded content <span class="chip"><span class="nw">fold-measure.js</span> over 5 pages</span></p></li><li class="k-limits" data-relation="r18"><p class="rel"><b class="end">K2</b><span class="arrow"> → </span><b class="end">O2</b>: <span class="words">the canvas opens on this computer only</span></p><p class="about"><b>K2</b>: A phone or <span class="nw">text-to-speech</span> cannot open it <span class="chip"><span class="nw">server.mjs:45-47,</span> 244</span></p></li><li class="k-limits" data-relation="r22"><p class="rel"><b class="end">K4</b><span class="arrow"> → </span><b class="end">O2</b>: <span class="words">hashes are compared by hand</span></p><p class="about"><b>K4</b>: Copies drift from the bundle <span class="chip"><span class="nw">ai-report.md:87</span></span></p></li><li class="k-limits" data-relation="r24"><p class="rel"><b class="end">S6</b><span class="arrow"> → </span><b class="end">O2</b>: <span class="words">text comments work on reply tiles only</span></p><p class="about"><b>S6</b>: Text comments attach only to text tiles <span class="chip">tinka <span class="nw">lib/document-anchors.mjs:20-24</span></span></p></li><li class="k-limits" data-relation="r26"><p class="rel"><b class="end">S7</b><span class="arrow"> → </span><b class="end">O2</b>: <span class="words">import takes images and PDF only, so tiles use a resource root</span></p><p class="about"><b>S7</b>: files.import takes images and PDF only <span class="chip">tinka <span class="nw">lib/tools.json:2750</span></span></p></li></ul></td></tr>
+<tr id="row-O3"><th scope="row"><p class="opt-code">O3</p><p class="opt-title">One command: <span class="nw">ai-report-canvas</span></p><p><span class="tag status">only after the pilot passes</span></p><ul class="order-list in-row"><li class="k-order" data-relation="r03"><p class="rel"><b class="end">O2</b><span class="arrow"> → </span><b class="end">O3</b>: <span class="words">must pass its pilot before</span></p></li><li class="k-order" data-relation="r04"><p class="rel"><b class="end">O3</b><span class="arrow"> → </span><b class="end">O4</b>: <span class="words">must exist before</span></p></li></ul></th><td><p class="cell-label">Supports</p><ul class="rel-list"><li class="k-supports" data-relation="r10"><p class="rel"><b class="end">S8</b><span class="arrow"> → </span><b class="end">O3</b>: <span class="words">tile ids built from the folder name survive organize</span></p><p class="about"><b>S8</b>: Revisions are linked by bundle folder name <span class="chip"><span class="nw">report_index.go:136-141</span></span></p></li></ul></td><td><p class="cell-label">Limits</p><ul class="rel-list"><li class="k-limits" data-relation="r15"><p class="rel"><b class="end">S1</b><span class="arrow"> → </span><b class="end">O3</b>: <span class="words">forces picture tiles only</span></p><p class="about"><b>S1</b>: An HTML tile can write to the canvas <span class="chip">tinka <span class="nw">public/item-content.js:76-101</span></span></p></li><li class="k-limits" data-relation="r17"><p class="rel"><b class="end">K1</b><span class="arrow"> → </span><b class="end">O3</b>: <span class="words">is not answered by</span></p><p class="about"><b>K1</b>: Pictures hide folded content <span class="chip"><span class="nw">fold-measure.js</span> over 5 pages</span></p></li><li class="k-limits" data-relation="r19"><p class="rel"><b class="end">K2</b><span class="arrow"> → </span><b class="end">O3</b>: <span class="words">is not answered by</span></p><p class="about"><b>K2</b>: A phone or <span class="nw">text-to-speech</span> cannot open it <span class="chip"><span class="nw">server.mjs:45-47,</span> 244</span></p></li><li class="k-limits" data-relation="r21"><p class="rel"><b class="end">K3</b><span class="arrow"> → </span><b class="end">O3</b>: <span class="words">a Tinka change can break pull</span></p><p class="about"><b>K3</b>: Tinka 0.7.x shapes may change <span class="chip">git diff <span class="nw">--shortstat</span> v0.7.3 HEAD <span class="nw">--</span> <span class="nw">lib/tools.json:</span> empty</span></p></li><li class="k-limits" data-relation="r23"><p class="rel"><b class="end">K4</b><span class="arrow"> → </span><b class="end">O3</b>: <span class="words"><span class="nw">--check</span> must compare hashes</span></p><p class="about"><b>K4</b>: Copies drift from the bundle <span class="chip"><span class="nw">ai-report.md:87</span></span></p></li><li class="k-gap" data-relation="r34"><p class="rel"><b class="end">L8</b><span class="arrow"> → </span><b class="end">O3</b>: <span class="words">its cost is an estimate</span></p><p class="about"><b>L8</b>: The cost of O3 and O4 is an estimate. <span class="kind">Gap in the evidence.</span> <span class="chip">index.html, Limits</span></p></li></ul></td></tr>
+<tr id="row-O4"><th scope="row"><p class="opt-code">O4</p><p class="opt-title">Live HTML tiles from a separate origin</p><p><span class="tag status">deferred</span></p><ul class="order-list in-row"><li class="k-order" data-relation="r04"><p class="rel"><b class="end">O3</b><span class="arrow"> → </span><b class="end">O4</b>: <span class="words">must exist before</span></p></li></ul></th><td><p class="cell-label">Supports</p><ul class="rel-list"><li class="k-supports" data-relation="r11"><p class="rel"><b class="end">S9</b><span class="arrow"> → </span><b class="end">O4</b>: <span class="words">a write from another origin is refused</span></p><p class="about"><b>S9</b>: The write guard accepts only its own origin <span class="chip">tinka server.mjs:41, <span class="nw">48-51</span></span></p></li><li class="k-supports" data-relation="r12"><p class="rel"><b class="end">O4</b><span class="arrow"> → </span><b class="end">K1</b>: <span class="words">is the only option that removes K1</span></p><p class="about"><b>K1</b>: Pictures hide folded content <span class="chip"><span class="nw">fold-measure.js</span> over 5 pages</span></p></li></ul></td><td><p class="cell-label">Limits</p><ul class="rel-list"><li class="k-limits" data-relation="r13"><p class="rel"><b class="end">S1</b><span class="arrow"> → </span><b class="end">O4</b>: <span class="words">blocks today: the page could write feedback by itself</span></p><p class="about"><b>S1</b>: An HTML tile can write to the canvas <span class="chip">tinka <span class="nw">public/item-content.js:76-101</span></span></p></li><li class="k-limits" data-relation="r20"><p class="rel"><b class="end">K2</b><span class="arrow"> → </span><b class="end">O4</b>: <span class="words">still holds</span></p><p class="about"><b>K2</b>: A phone or <span class="nw">text-to-speech</span> cannot open it <span class="chip"><span class="nw">server.mjs:45-47,</span> 244</span></p></li><li class="k-limits" data-relation="r25"><p class="rel"><b class="end">S6</b><span class="arrow"> → </span><b class="end">O4</b>: <span class="words">text comments do not attach to HTML tiles</span></p><p class="about"><b>S6</b>: Text comments attach only to text tiles <span class="chip">tinka <span class="nw">lib/document-anchors.mjs:20-24</span></span></p></li><li class="k-gap" data-relation="r35"><p class="rel"><b class="end">L8</b><span class="arrow"> → </span><b class="end">O4</b>: <span class="words">its cost is an estimate</span></p><p class="about"><b>L8</b>: The cost of O3 and O4 is an estimate. <span class="kind">Gap in the evidence.</span> <span class="chip">index.html, Limits</span></p></li><li class="k-gap" data-relation="r36"><p class="rel"><b class="end">L3</b><span class="arrow"> → </span><b class="end">O4</b>: <span class="words">a live tile was not shown to work</span></p><p class="about"><b>L3</b>: A live tile from a second origin was not shown to work. <span class="kind">Gap in the evidence.</span> <span class="chip">index.html, Limits</span></p></li></ul></td></tr>
+    </tbody>
+  </table>
+</section>
+
+<section class="band" id="rev-3" aria-labelledby="no-option-heading">
+  <h2 id="no-option-heading">Relations that touch no option <span class="tag changed">changed</span></h2>
+  <p class="key">These limits weaken the live check, a seed or the decision itself, not one option.</p>
+  <div class="groups">
+<div class="group"><h3><b class="end">Live check</b>: one lineage on a canvas</h3><ul class="rel-list"><li class="k-gap" data-relation="r27"><p class="rel"><b class="end">L1</b><span class="arrow"> → </span><b class="end">Live check</b>: <span class="words">one picture came from a fallback</span></p><p class="about"><b>L1</b>: The overview picture came from a fallback. <span class="kind">Gap in the evidence.</span> <span class="chip"><span class="nw">lib/overview.mjs:99-100</span></span></p></li><li class="k-gap" data-relation="r28"><p class="rel"><b class="end">L6</b><span class="arrow"> → </span><b class="end">Live check</b>: <span class="words">Tinka&#x27;s tests were not run</span></p><p class="about"><b>L6</b>: Tinka&#x27;s tests were not run. <span class="kind">Gap in the evidence.</span> <span class="chip">index.html, Limits</span></p></li><li class="k-gap" data-relation="r29"><p class="rel"><b class="end">L9</b><span class="arrow"> → </span><b class="end">Live check</b>: <span class="words">Tinka files were read as data only</span></p><p class="about"><b>L9</b>: Tinka files were read as data. <span class="kind">Gap in the evidence.</span> <span class="chip">index.html, Limits</span></p></li></ul></div>
+<div class="group"><h3><b class="end">S5</b>: tools call needs no server and no update check</h3><ul class="rel-list"><li class="k-gap" data-relation="r30"><p class="rel"><b class="end">L4</b><span class="arrow"> → </span><b class="end">S5</b>: <span class="words">the update check was read, not run</span></p><p class="about"><b>L4</b>: The installed path was not run. <span class="kind">Gap in the evidence.</span> <span class="chip">index.html, Limits</span></p></li><li class="k-gap" data-relation="r31"><p class="rel"><b class="end">L5</b><span class="arrow"> → </span><b class="end">S5</b>: <span class="words">no network trace backs this</span></p><p class="about"><b>L5</b>: No network trace was taken. <span class="kind">Gap in the evidence.</span> <span class="chip"><span class="nw">lib/cli.mjs:148-150</span></span></p></li></ul></div>
+<div class="group"><h3><b class="end">Decision</b>: Pilot O2 by hand. Build nothing yet.</h3><ul class="rel-list"><li class="k-gap" data-relation="r32"><p class="rel"><b class="end">L2</b><span class="arrow"> → </span><b class="end">Decision</b>: <span class="words">is why the decision is a pilot</span></p><p class="about"><b>L2</b>: No person used the canvas. <span class="kind">Gap in the evidence.</span> <span class="chip">index.html, Limits</span></p></li><li class="k-gap" data-relation="r33"><p class="rel"><b class="end">L7</b><span class="arrow"> → </span><b class="end">Decision</b>: <span class="words">the council&#x27;s scores are not used</span></p><p class="about"><b>L7</b>: The council&#x27;s scores could not be read. <span class="kind">Gap in the evidence.</span> <span class="chip">index.html, Limits and Recommendation</span></p></li></ul></div>
+<div class="group"><h3><b class="end">S9</b>: The write guard accepts only its own origin</h3><ul class="rel-list"><li class="k-gap" data-relation="r37"><p class="rel"><b class="end">L3</b><span class="arrow"> → </span><b class="end">S9</b>: <span class="words">is the gap in S9</span></p><p class="about"><b>L3</b>: A live tile from a second origin was not shown to work. <span class="kind">Gap in the evidence.</span> <span class="chip">index.html, Limits</span></p></li></ul></div>
+  </div>
+</section>
+
+<section class="band" id="rev-4" aria-labelledby="notes-heading">
+  <h2 id="notes-heading">Full texts, after the report, and corrections <span class="tag changed">changed</span></h2>
+  <div class="notes">
+    <div>
+      <h3>Read the full texts in index.html</h3>
+      <p>This page keeps one line per box. The original report holds every full text:</p>
+      <ul>
+        <li><a href="index.html#recommendation">the decision and the pilot rule</a></li>
+        <li><a href="index.html#proof">the live check</a></li>
+        <li><a href="index.html#options">the options O1 to O4</a></li>
+        <li><a href="index.html#kills">the kill attempts K1 to K4</a></li>
+        <li><a href="index.html#depth-3">the seeds S1 to S9 and the limits L1 to L9</a></li>
+      </ul>
+      <h3>After the report</h3>
+      <p>Version 0.316.0 of <span class="nw">do-work</span> added a Tinka canvas offer to every report. Version 0.317.0 removed it the same day: a real canvas showed each report page as a thin strip that cannot be read. That is K1 in practice. <span class="chip">CHANGELOG.md, entries 0.316.0 and 0.317.0</span></p>
+    </div>
+    <div>
+      <h3>Corrections to the original report</h3>
+      <ul>
+        <li>The footer says "The five images in <span class="nw">screenshots/".</span> The folder holds four. <span class="chip">ls <span class="nw">screenshots/:</span> 4 files</span></li>
+        <li>O1 says that after a run "only the direction text survives, as a meta tag". A directed page also shows the direction in a visible block at its top. <span class="chip"><span class="nw">ai-report.md:87</span></span></li>
+        <li>O1 says "The catalog page lists every bundle". It lists the bundles that existed at its last rebuild, and neither Tinka proposal from <span class="nw">2026-11-14</span> is in it. <span class="chip">grep <span class="nw">-c</span> <span class="nw">-i</span> tinka <span class="nw">ai-reports/catalog.json:</span> 0</span></li>
+      </ul>
+      <h3>Not checked in this pass</h3>
+      <ul>
+        <li>The line references into Tinka and the outputs of the live check: the Tinka checkout is not in this repository.</li>
+        <li>The <span class="nw">folded-text</span> shares of 38 to 46%: the measuring script is not in the bundle.</li>
+      </ul>
+    </div>
+  </div>
+  <p class="note">Built from <code>index.html</code> and the box and relation texts of the <a href="index-v1c03-claude-claude-fable-5-2-custom-zoomable-relation-map.html">v1c03 relation map page</a> in this bundle. The relations are that page's reading of the report's sentences.</p>
+</section>
+
+</div>
+</body>
+</html>
