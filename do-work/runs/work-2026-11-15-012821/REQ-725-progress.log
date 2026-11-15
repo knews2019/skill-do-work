@@ -14,3 +14,4 @@
 2026-11-15T03:07:07Z heavy start helpers/heavy.sh 406d32aa (6 lanes, load 5.42 4.78 4.74)
 2026-11-15T03:11:31Z heavy end
 2026-11-15T03:12:43Z finalize start
+2026-11-15T03:13:32Z finalize end 69579c22; worktree removed; contract-regressions green
