@@ -187,6 +187,11 @@ recovery — never force-merge, `git branch -D`, or `git worktree remove --force
 For `do-work run`, follow `actions/fan-out-reference.md` → **Worktree Dispatch Mode
 (Step 1)** for the canonical hand-back, merge-range, verification, and cleanup flow.
 
+**Pick each agent's model by its work.** When the harness lets you choose a model per
+agent, run lookups, searches and file sweeps on the cheapest model tier that can do
+them. Planning, review and build agents keep the session model. Never leave a pure
+lookup on the default model.
+
 ## Manifest Format
 
 Keep it small and append-friendly. A minimal `manifest.md` (this example uses the
