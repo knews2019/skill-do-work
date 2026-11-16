@@ -9,4 +9,4 @@ Hand-back emphasis note: none
 
 | REQ | Builder | Operative name | Handback file | Status | Dispatch instant | Takeover-to-finalization min | Full gates | Stall restarts |
 |-----|---------|----------------|---------------|--------|------------------|------|------|------|
-| REQ-739 | builder agent (Opus 5.5, worktree) | worktree-agent-REQ-739-header-phone-side-margin | do-work/runs/work-2026-11-16-202422/REQ-739-handback.md | building | 2026-11-16T20:30:25Z | | | |
+| REQ-739 | builder agent (Opus 5.5, worktree) | worktree-agent-REQ-739-header-phone-side-margin | do-work/runs/work-2026-11-16-202422/REQ-739-handback.md | handed back (tip 6584e473); captures approved by the maintainer; integrating | 2026-11-16T20:30:25Z | | | |
