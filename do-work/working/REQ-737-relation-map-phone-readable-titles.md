@@ -27,6 +27,7 @@ estimate:
     - 2 subsystems involved
     - 7 acceptance criteria
 dispatch_at: 2026-11-16T17:31:30Z
+builder_handback_at: 2026-11-16T20:00:45Z
 ---
 # Addendum: Relation-Map Preset Keeps Box Titles Readable After a Click on a Phone
 ## What

@@ -1,0 +1,2983 @@
+{
+ "url": "http://127.0.0.1:8771/index-v1c04-claude-claude-opus-5-5-relation-map-phone-readable-map.html",
+ "measuredAt": "2026-11-16T17:41:48.892Z",
+ "browser": "146.0.7680.0",
+ "readablePx": 11.5,
+ "sizes": {
+  "phone": {
+   "size": "phone",
+   "viewport": "390x844",
+   "views": {
+    "firstView": {
+     "shownBoxes": 10,
+     "startWords": {
+      "displayed": 2,
+      "inView": 2,
+      "onBoxes": 0,
+      "cutAtFrame": 0,
+      "broken": 0,
+      "brokenIds": []
+     },
+     "clicks": [
+      {
+       "box": "S1",
+       "method": "synthetic",
+       "selectedOk": true,
+       "scale": 0.56,
+       "clickedTitlePx": 12.32,
+       "clickedInView": true,
+       "clickedBoxInFrame": true,
+       "related": [
+        {
+         "box": "O2",
+         "titlePx": 12.32,
+         "titleInView": false,
+         "boxInFrame": false
+        },
+        {
+         "box": "O3",
+         "titlePx": 12.32,
+         "titleInView": false,
+         "boxInFrame": false
+        }
+       ],
+       "wordsInView": 2,
+       "wordsOnBoxes": 0,
+       "wordsCut": 0,
+       "wordsBroken": 0,
+       "sideways": 0,
+       "outOfView": [
+        {
+         "box": "O2",
+         "stepNamed": true,
+         "stepLabel": "Show O2",
+         "stepWorks": true,
+         "afterTitlePx": 12.32,
+         "afterInView": true
+        },
+        {
+         "box": "O3",
+         "stepNamed": true,
+         "stepLabel": "Show O3",
+         "stepWorks": true,
+         "afterTitlePx": 12.32,
+         "afterInView": true
+        }
+       ]
+      },
+      {
+       "box": "S2",
+       "method": "synthetic",
+       "selectedOk": true,
+       "scale": 0.56,
+       "clickedTitlePx": 12.32,
+       "clickedInView": true,
+       "clickedBoxInFrame": true,
+       "related": [
+        {
+         "box": "O2",
+         "titlePx": 12.32,
+         "titleInView": false,
+         "boxInFrame": false
+        }
+       ],
+       "wordsInView": 1,
+       "wordsOnBoxes": 0,
+       "wordsCut": 0,
+       "wordsBroken": 0,
+       "sideways": 0,
+       "outOfView": [
+        {
+         "box": "O2",
+         "stepNamed": true,
+         "stepLabel": "Show O2",
+         "stepWorks": true,
+         "afterTitlePx": 12.32,
+         "afterInView": true
+        }
+       ]
+      },
+      {
+       "box": "S3",
+       "method": "synthetic",
+       "selectedOk": true,
+       "scale": 0.56,
+       "clickedTitlePx": 12.32,
+       "clickedInView": true,
+       "clickedBoxInFrame": true,
+       "related": [
+        {
+         "box": "O1",
+         "titlePx": 12.32,
+         "titleInView": false,
+         "boxInFrame": false
+        },
+        {
+         "box": "O2",
+         "titlePx": 12.32,
+         "titleInView": false,
+         "boxInFrame": false
+        }
+       ],
+       "wordsInView": 2,
+       "wordsOnBoxes": 0,
+       "wordsCut": 0,
+       "wordsBroken": 0,
+       "sideways": 0,
+       "outOfView": [
+        {
+         "box": "O1",
+         "stepNamed": true,
+         "stepLabel": "Show O1",
+         "stepWorks": true,
+         "afterTitlePx": 12.32,
+         "afterInView": true
+        },
+        {
+         "box": "O2",
+         "stepNamed": true,
+         "stepLabel": "Show O2",
+         "stepWorks": true,
+         "afterTitlePx": 12.32,
+         "afterInView": true
+        }
+       ]
+      },
+      {
+       "box": "D",
+       "method": "mouse",
+       "selectedOk": true,
+       "scale": 0.56,
+       "clickedTitlePx": 12.32,
+       "clickedInView": true,
+       "clickedBoxInFrame": true,
+       "related": [
+        {
+         "box": "O1",
+         "titlePx": 12.32,
+         "titleInView": true,
+         "boxInFrame": true
+        },
+        {
+         "box": "O2",
+         "titlePx": 12.32,
+         "titleInView": true,
+         "boxInFrame": true
+        },
+        {
+         "box": "O3",
+         "titlePx": 12.32,
+         "titleInView": true,
+         "boxInFrame": true
+        },
+        {
+         "box": "L1",
+         "titlePx": 12.32,
+         "titleInView": false,
+         "boxInFrame": false
+        }
+       ],
+       "wordsInView": 4,
+       "wordsOnBoxes": 0,
+       "wordsCut": 0,
+       "wordsBroken": 0,
+       "sideways": 0,
+       "outOfView": [
+        {
+         "box": "L1",
+         "stepNamed": true,
+         "stepLabel": "Show L1",
+         "stepWorks": true,
+         "afterTitlePx": 12.32,
+         "afterInView": true
+        }
+       ]
+      },
+      {
+       "box": "O1",
+       "method": "mouse",
+       "selectedOk": true,
+       "scale": 0.56,
+       "clickedTitlePx": 12.32,
+       "clickedInView": true,
+       "clickedBoxInFrame": true,
+       "related": [
+        {
+         "box": "S3",
+         "titlePx": 12.32,
+         "titleInView": false,
+         "boxInFrame": false
+        },
+        {
+         "box": "D",
+         "titlePx": 12.32,
+         "titleInView": true,
+         "boxInFrame": true
+        }
+       ],
+       "wordsInView": 1,
+       "wordsOnBoxes": 0,
+       "wordsCut": 0,
+       "wordsBroken": 0,
+       "sideways": 0,
+       "outOfView": [
+        {
+         "box": "S3",
+         "stepNamed": true,
+         "stepLabel": "Show S3",
+         "stepWorks": true,
+         "afterTitlePx": 12.32,
+         "afterInView": true
+        }
+       ]
+      },
+      {
+       "box": "O2",
+       "method": "mouse",
+       "selectedOk": true,
+       "scale": 0.56,
+       "clickedTitlePx": 12.32,
+       "clickedInView": true,
+       "clickedBoxInFrame": true,
+       "related": [
+        {
+         "box": "S1",
+         "titlePx": 12.32,
+         "titleInView": false,
+         "boxInFrame": false
+        },
+        {
+         "box": "S2",
+         "titlePx": 12.32,
+         "titleInView": false,
+         "boxInFrame": false
+        },
+        {
+         "box": "S3",
+         "titlePx": 12.32,
+         "titleInView": false,
+         "boxInFrame": false
+        },
+        {
+         "box": "S4",
+         "titlePx": 12.32,
+         "titleInView": false,
+         "boxInFrame": false
+        },
+        {
+         "box": "D",
+         "titlePx": 12.32,
+         "titleInView": true,
+         "boxInFrame": true
+        },
+        {
+         "box": "J",
+         "titlePx": 12.32,
+         "titleInView": false,
+         "boxInFrame": false
+        },
+        {
+         "box": "L2",
+         "titlePx": 12.32,
+         "titleInView": false,
+         "boxInFrame": false
+        },
+        {
+         "box": "Q1",
+         "titlePx": 12.32,
+         "titleInView": false,
+         "boxInFrame": false
+        },
+        {
+         "box": "R710",
+         "titlePx": 12.32,
+         "titleInView": false,
+         "boxInFrame": false
+        },
+        {
+         "box": "L3",
+         "titlePx": 12.32,
+         "titleInView": false,
+         "boxInFrame": false
+        },
+        {
+         "box": "Q2",
+         "titlePx": 12.32,
+         "titleInView": false,
+         "boxInFrame": false
+        }
+       ],
+       "wordsInView": 5,
+       "wordsOnBoxes": 0,
+       "wordsCut": 0,
+       "wordsBroken": 0,
+       "sideways": 0,
+       "outOfView": [
+        {
+         "box": "S1",
+         "stepNamed": true,
+         "stepLabel": "Show S1",
+         "stepWorks": true,
+         "afterTitlePx": 12.32,
+         "afterInView": true
+        },
+        {
+         "box": "S2",
+         "stepNamed": true,
+         "stepLabel": "Show S2",
+         "stepWorks": true,
+         "afterTitlePx": 12.32,
+         "afterInView": true
+        },
+        {
+         "box": "S3",
+         "stepNamed": true,
+         "stepLabel": "Show S3",
+         "stepWorks": true,
+         "afterTitlePx": 12.32,
+         "afterInView": true
+        },
+        {
+         "box": "S4",
+         "stepNamed": true,
+         "stepLabel": "Show S4",
+         "stepWorks": true,
+         "afterTitlePx": 12.32,
+         "afterInView": true
+        },
+        {
+         "box": "J",
+         "stepNamed": true,
+         "stepLabel": "Show J",
+         "stepWorks": true,
+         "afterTitlePx": 12.32,
+         "afterInView": true
+        },
+        {
+         "box": "L2",
+         "stepNamed": true,
+         "stepLabel": "Show L2",
+         "stepWorks": true,
+         "afterTitlePx": 12.32,
+         "afterInView": true
+        },
+        {
+         "box": "Q1",
+         "stepNamed": true,
+         "stepLabel": "Show Q1",
+         "stepWorks": true,
+         "afterTitlePx": 12.32,
+         "afterInView": true
+        },
+        {
+         "box": "R710",
+         "stepNamed": true,
+         "stepLabel": "Show R710",
+         "stepWorks": true,
+         "afterTitlePx": 12.32,
+         "afterInView": true
+        },
+        {
+         "box": "L3",
+         "stepNamed": true,
+         "stepLabel": "Show L3",
+         "stepWorks": true,
+         "afterTitlePx": 12.32,
+         "afterInView": true
+        },
+        {
+         "box": "Q2",
+         "stepNamed": true,
+         "stepLabel": "Show Q2",
+         "stepWorks": true,
+         "afterTitlePx": 12.32,
+         "afterInView": true
+        }
+       ]
+      },
+      {
+       "box": "O3",
+       "method": "mouse",
+       "selectedOk": true,
+       "scale": 0.56,
+       "clickedTitlePx": 12.32,
+       "clickedInView": true,
+       "clickedBoxInFrame": true,
+       "related": [
+        {
+         "box": "S1",
+         "titlePx": 12.32,
+         "titleInView": false,
+         "boxInFrame": false
+        },
+        {
+         "box": "D",
+         "titlePx": 12.32,
+         "titleInView": true,
+         "boxInFrame": true
+        },
+        {
+         "box": "L3",
+         "titlePx": 12.32,
+         "titleInView": false,
+         "boxInFrame": false
+        }
+       ],
+       "wordsInView": 1,
+       "wordsOnBoxes": 0,
+       "wordsCut": 0,
+       "wordsBroken": 0,
+       "sideways": 0,
+       "outOfView": [
+        {
+         "box": "S1",
+         "stepNamed": true,
+         "stepLabel": "Show S1",
+         "stepWorks": true,
+         "afterTitlePx": 12.32,
+         "afterInView": true
+        },
+        {
+         "box": "L3",
+         "stepNamed": true,
+         "stepLabel": "Show L3",
+         "stepWorks": true,
+         "afterTitlePx": 12.32,
+         "afterInView": true
+        }
+       ]
+      },
+      {
+       "box": "L2",
+       "method": "synthetic",
+       "selectedOk": true,
+       "scale": 0.56,
+       "clickedTitlePx": 12.32,
+       "clickedInView": true,
+       "clickedBoxInFrame": true,
+       "related": [
+        {
+         "box": "O2",
+         "titlePx": 12.32,
+         "titleInView": false,
+         "boxInFrame": false
+        }
+       ],
+       "wordsInView": 1,
+       "wordsOnBoxes": 0,
+       "wordsCut": 0,
+       "wordsBroken": 0,
+       "sideways": 0,
+       "outOfView": [
+        {
+         "box": "O2",
+         "stepNamed": true,
+         "stepLabel": "Show O2",
+         "stepWorks": true,
+         "afterTitlePx": 12.32,
+         "afterInView": true
+        }
+       ]
+      },
+      {
+       "box": "Q1",
+       "method": "synthetic",
+       "selectedOk": true,
+       "scale": 0.56,
+       "clickedTitlePx": 12.32,
+       "clickedInView": true,
+       "clickedBoxInFrame": true,
+       "related": [
+        {
+         "box": "O2",
+         "titlePx": 12.32,
+         "titleInView": false,
+         "boxInFrame": false
+        },
+        {
+         "box": "R710",
+         "titlePx": 12.32,
+         "titleInView": true,
+         "boxInFrame": true
+        }
+       ],
+       "wordsInView": 1,
+       "wordsOnBoxes": 0,
+       "wordsCut": 0,
+       "wordsBroken": 0,
+       "sideways": 0,
+       "outOfView": [
+        {
+         "box": "O2",
+         "stepNamed": true,
+         "stepLabel": "Show O2",
+         "stepWorks": true,
+         "afterTitlePx": 12.32,
+         "afterInView": true
+        }
+       ]
+      },
+      {
+       "box": "R710",
+       "method": "synthetic",
+       "selectedOk": true,
+       "scale": 0.56,
+       "clickedTitlePx": 12.32,
+       "clickedInView": true,
+       "clickedBoxInFrame": true,
+       "related": [
+        {
+         "box": "O2",
+         "titlePx": 12.32,
+         "titleInView": false,
+         "boxInFrame": false
+        },
+        {
+         "box": "J",
+         "titlePx": 12.32,
+         "titleInView": false,
+         "boxInFrame": false
+        },
+        {
+         "box": "Q1",
+         "titlePx": 12.32,
+         "titleInView": true,
+         "boxInFrame": true
+        }
+       ],
+       "wordsInView": 2,
+       "wordsOnBoxes": 0,
+       "wordsCut": 0,
+       "wordsBroken": 0,
+       "sideways": 0,
+       "outOfView": [
+        {
+         "box": "O2",
+         "stepNamed": true,
+         "stepLabel": "Show O2",
+         "stepWorks": true,
+         "afterTitlePx": 12.32,
+         "afterInView": true
+        },
+        {
+         "box": "J",
+         "stepNamed": true,
+         "stepLabel": "Show J",
+         "stepWorks": true,
+         "afterTitlePx": 12.32,
+         "afterInView": true
+        }
+       ]
+      }
+     ]
+    },
+    "showEverything": {
+     "shownBoxes": 23,
+     "startWords": {
+      "displayed": 2,
+      "inView": 2,
+      "onBoxes": 0,
+      "cutAtFrame": 0,
+      "broken": 0,
+      "brokenIds": []
+     },
+     "clicks": [
+      {
+       "box": "S1",
+       "method": "mouse",
+       "selectedOk": true,
+       "scale": 0.56,
+       "clickedTitlePx": 12.32,
+       "clickedInView": true,
+       "clickedBoxInFrame": true,
+       "related": [
+        {
+         "box": "O2",
+         "titlePx": 12.32,
+         "titleInView": false,
+         "boxInFrame": false
+        },
+        {
+         "box": "O3",
+         "titlePx": 12.32,
+         "titleInView": false,
+         "boxInFrame": false
+        }
+       ],
+       "wordsInView": 2,
+       "wordsOnBoxes": 0,
+       "wordsCut": 0,
+       "wordsBroken": 0,
+       "sideways": 0,
+       "outOfView": [
+        {
+         "box": "O2",
+         "stepNamed": true,
+         "stepLabel": "Show O2",
+         "stepWorks": true,
+         "afterTitlePx": 12.32,
+         "afterInView": true
+        },
+        {
+         "box": "O3",
+         "stepNamed": true,
+         "stepLabel": "Show O3",
+         "stepWorks": true,
+         "afterTitlePx": 12.32,
+         "afterInView": true
+        }
+       ]
+      },
+      {
+       "box": "S2",
+       "method": "mouse",
+       "selectedOk": true,
+       "scale": 0.56,
+       "clickedTitlePx": 12.32,
+       "clickedInView": true,
+       "clickedBoxInFrame": true,
+       "related": [
+        {
+         "box": "O2",
+         "titlePx": 12.32,
+         "titleInView": false,
+         "boxInFrame": false
+        }
+       ],
+       "wordsInView": 1,
+       "wordsOnBoxes": 0,
+       "wordsCut": 0,
+       "wordsBroken": 0,
+       "sideways": 0,
+       "outOfView": [
+        {
+         "box": "O2",
+         "stepNamed": true,
+         "stepLabel": "Show O2",
+         "stepWorks": true,
+         "afterTitlePx": 12.32,
+         "afterInView": true
+        }
+       ]
+      },
+      {
+       "box": "S3",
+       "method": "mouse",
+       "selectedOk": true,
+       "scale": 0.56,
+       "clickedTitlePx": 12.32,
+       "clickedInView": true,
+       "clickedBoxInFrame": true,
+       "related": [
+        {
+         "box": "O1",
+         "titlePx": 12.32,
+         "titleInView": false,
+         "boxInFrame": false
+        },
+        {
+         "box": "O2",
+         "titlePx": 12.32,
+         "titleInView": false,
+         "boxInFrame": false
+        }
+       ],
+       "wordsInView": 2,
+       "wordsOnBoxes": 0,
+       "wordsCut": 0,
+       "wordsBroken": 0,
+       "sideways": 0,
+       "outOfView": [
+        {
+         "box": "O1",
+         "stepNamed": true,
+         "stepLabel": "Show O1",
+         "stepWorks": true,
+         "afterTitlePx": 12.32,
+         "afterInView": true
+        },
+        {
+         "box": "O2",
+         "stepNamed": true,
+         "stepLabel": "Show O2",
+         "stepWorks": true,
+         "afterTitlePx": 12.32,
+         "afterInView": true
+        }
+       ]
+      },
+      {
+       "box": "S4",
+       "method": "mouse",
+       "selectedOk": true,
+       "scale": 0.56,
+       "clickedTitlePx": 12.32,
+       "clickedInView": true,
+       "clickedBoxInFrame": true,
+       "related": [
+        {
+         "box": "O2",
+         "titlePx": 12.32,
+         "titleInView": false,
+         "boxInFrame": false
+        }
+       ],
+       "wordsInView": 1,
+       "wordsOnBoxes": 0,
+       "wordsCut": 0,
+       "wordsBroken": 0,
+       "sideways": 0,
+       "outOfView": [
+        {
+         "box": "O2",
+         "stepNamed": true,
+         "stepLabel": "Show O2",
+         "stepWorks": true,
+         "afterTitlePx": 12.32,
+         "afterInView": true
+        }
+       ]
+      },
+      {
+       "box": "S5",
+       "method": "mouse",
+       "selectedOk": true,
+       "scale": 0.56,
+       "clickedTitlePx": 12.32,
+       "clickedInView": true,
+       "clickedBoxInFrame": true,
+       "related": [
+        {
+         "box": "P1",
+         "titlePx": 12.32,
+         "titleInView": false,
+         "boxInFrame": false
+        },
+        {
+         "box": "P4",
+         "titlePx": 12.32,
+         "titleInView": false,
+         "boxInFrame": false
+        }
+       ],
+       "wordsInView": 2,
+       "wordsOnBoxes": 0,
+       "wordsCut": 0,
+       "wordsBroken": 0,
+       "sideways": 0,
+       "outOfView": [
+        {
+         "box": "P1",
+         "stepNamed": true,
+         "stepLabel": "Show P1",
+         "stepWorks": true,
+         "afterTitlePx": 12.32,
+         "afterInView": true
+        },
+        {
+         "box": "P4",
+         "stepNamed": true,
+         "stepLabel": "Show P4",
+         "stepWorks": true,
+         "afterTitlePx": 12.32,
+         "afterInView": true
+        }
+       ]
+      },
+      {
+       "box": "S6",
+       "method": "mouse",
+       "selectedOk": true,
+       "scale": 0.56,
+       "clickedTitlePx": 12.32,
+       "clickedInView": true,
+       "clickedBoxInFrame": true,
+       "related": [
+        {
+         "box": "P1",
+         "titlePx": 12.32,
+         "titleInView": false,
+         "boxInFrame": false
+        },
+        {
+         "box": "P2",
+         "titlePx": 12.32,
+         "titleInView": false,
+         "boxInFrame": false
+        },
+        {
+         "box": "P3",
+         "titlePx": 12.32,
+         "titleInView": false,
+         "boxInFrame": false
+        },
+        {
+         "box": "P4",
+         "titlePx": 12.32,
+         "titleInView": false,
+         "boxInFrame": false
+        },
+        {
+         "box": "P5",
+         "titlePx": 12.32,
+         "titleInView": false,
+         "boxInFrame": false
+        }
+       ],
+       "wordsInView": 5,
+       "wordsOnBoxes": 0,
+       "wordsCut": 0,
+       "wordsBroken": 0,
+       "sideways": 0,
+       "outOfView": [
+        {
+         "box": "P1",
+         "stepNamed": true,
+         "stepLabel": "Show P1",
+         "stepWorks": true,
+         "afterTitlePx": 12.32,
+         "afterInView": true
+        },
+        {
+         "box": "P2",
+         "stepNamed": true,
+         "stepLabel": "Show P2",
+         "stepWorks": true,
+         "afterTitlePx": 12.32,
+         "afterInView": true
+        },
+        {
+         "box": "P3",
+         "stepNamed": true,
+         "stepLabel": "Show P3",
+         "stepWorks": true,
+         "afterTitlePx": 12.32,
+         "afterInView": true
+        },
+        {
+         "box": "P4",
+         "stepNamed": true,
+         "stepLabel": "Show P4",
+         "stepWorks": true,
+         "afterTitlePx": 12.32,
+         "afterInView": true
+        },
+        {
+         "box": "P5",
+         "stepNamed": true,
+         "stepLabel": "Show P5",
+         "stepWorks": true,
+         "afterTitlePx": 12.32,
+         "afterInView": true
+        }
+       ]
+      },
+      {
+       "box": "D",
+       "method": "mouse",
+       "selectedOk": true,
+       "scale": 0.56,
+       "clickedTitlePx": 12.32,
+       "clickedInView": true,
+       "clickedBoxInFrame": true,
+       "related": [
+        {
+         "box": "O1",
+         "titlePx": 12.32,
+         "titleInView": true,
+         "boxInFrame": true
+        },
+        {
+         "box": "O2",
+         "titlePx": 12.32,
+         "titleInView": true,
+         "boxInFrame": true
+        },
+        {
+         "box": "O3",
+         "titlePx": 12.32,
+         "titleInView": true,
+         "boxInFrame": true
+        },
+        {
+         "box": "L1",
+         "titlePx": 12.32,
+         "titleInView": false,
+         "boxInFrame": false
+        }
+       ],
+       "wordsInView": 4,
+       "wordsOnBoxes": 0,
+       "wordsCut": 0,
+       "wordsBroken": 0,
+       "sideways": 0,
+       "outOfView": [
+        {
+         "box": "L1",
+         "stepNamed": true,
+         "stepLabel": "Show L1",
+         "stepWorks": true,
+         "afterTitlePx": 12.32,
+         "afterInView": true
+        }
+       ]
+      },
+      {
+       "box": "O1",
+       "method": "synthetic",
+       "selectedOk": true,
+       "scale": 0.56,
+       "clickedTitlePx": 12.32,
+       "clickedInView": true,
+       "clickedBoxInFrame": true,
+       "related": [
+        {
+         "box": "S3",
+         "titlePx": 12.32,
+         "titleInView": false,
+         "boxInFrame": false
+        },
+        {
+         "box": "D",
+         "titlePx": 12.32,
+         "titleInView": true,
+         "boxInFrame": true
+        }
+       ],
+       "wordsInView": 1,
+       "wordsOnBoxes": 0,
+       "wordsCut": 0,
+       "wordsBroken": 0,
+       "sideways": 0,
+       "outOfView": [
+        {
+         "box": "S3",
+         "stepNamed": true,
+         "stepLabel": "Show S3",
+         "stepWorks": true,
+         "afterTitlePx": 12.32,
+         "afterInView": true
+        }
+       ]
+      },
+      {
+       "box": "O2",
+       "method": "mouse",
+       "selectedOk": true,
+       "scale": 0.56,
+       "clickedTitlePx": 12.32,
+       "clickedInView": true,
+       "clickedBoxInFrame": true,
+       "related": [
+        {
+         "box": "S1",
+         "titlePx": 12.32,
+         "titleInView": false,
+         "boxInFrame": false
+        },
+        {
+         "box": "S2",
+         "titlePx": 12.32,
+         "titleInView": false,
+         "boxInFrame": false
+        },
+        {
+         "box": "S3",
+         "titlePx": 12.32,
+         "titleInView": false,
+         "boxInFrame": false
+        },
+        {
+         "box": "S4",
+         "titlePx": 12.32,
+         "titleInView": false,
+         "boxInFrame": false
+        },
+        {
+         "box": "D",
+         "titlePx": 12.32,
+         "titleInView": true,
+         "boxInFrame": true
+        },
+        {
+         "box": "J",
+         "titlePx": 12.32,
+         "titleInView": false,
+         "boxInFrame": false
+        },
+        {
+         "box": "L2",
+         "titlePx": 12.32,
+         "titleInView": false,
+         "boxInFrame": false
+        },
+        {
+         "box": "Q1",
+         "titlePx": 12.32,
+         "titleInView": false,
+         "boxInFrame": false
+        },
+        {
+         "box": "R710",
+         "titlePx": 12.32,
+         "titleInView": false,
+         "boxInFrame": false
+        },
+        {
+         "box": "L3",
+         "titlePx": 12.32,
+         "titleInView": false,
+         "boxInFrame": false
+        },
+        {
+         "box": "Q2",
+         "titlePx": 12.32,
+         "titleInView": false,
+         "boxInFrame": false
+        }
+       ],
+       "wordsInView": 5,
+       "wordsOnBoxes": 0,
+       "wordsCut": 0,
+       "wordsBroken": 0,
+       "sideways": 0,
+       "outOfView": [
+        {
+         "box": "S1",
+         "stepNamed": true,
+         "stepLabel": "Show S1",
+         "stepWorks": true,
+         "afterTitlePx": 12.32,
+         "afterInView": true
+        },
+        {
+         "box": "S2",
+         "stepNamed": true,
+         "stepLabel": "Show S2",
+         "stepWorks": true,
+         "afterTitlePx": 12.32,
+         "afterInView": true
+        },
+        {
+         "box": "S3",
+         "stepNamed": true,
+         "stepLabel": "Show S3",
+         "stepWorks": true,
+         "afterTitlePx": 12.32,
+         "afterInView": true
+        },
+        {
+         "box": "S4",
+         "stepNamed": true,
+         "stepLabel": "Show S4",
+         "stepWorks": true,
+         "afterTitlePx": 12.32,
+         "afterInView": true
+        },
+        {
+         "box": "J",
+         "stepNamed": true,
+         "stepLabel": "Show J",
+         "stepWorks": true,
+         "afterTitlePx": 12.32,
+         "afterInView": true
+        },
+        {
+         "box": "L2",
+         "stepNamed": true,
+         "stepLabel": "Show L2",
+         "stepWorks": true,
+         "afterTitlePx": 12.32,
+         "afterInView": true
+        },
+        {
+         "box": "Q1",
+         "stepNamed": true,
+         "stepLabel": "Show Q1",
+         "stepWorks": true,
+         "afterTitlePx": 12.32,
+         "afterInView": true
+        },
+        {
+         "box": "R710",
+         "stepNamed": true,
+         "stepLabel": "Show R710",
+         "stepWorks": true,
+         "afterTitlePx": 12.32,
+         "afterInView": true
+        },
+        {
+         "box": "L3",
+         "stepNamed": true,
+         "stepLabel": "Show L3",
+         "stepWorks": true,
+         "afterTitlePx": 12.32,
+         "afterInView": true
+        },
+        {
+         "box": "Q2",
+         "stepNamed": true,
+         "stepLabel": "Show Q2",
+         "stepWorks": true,
+         "afterTitlePx": 12.32,
+         "afterInView": true
+        }
+       ]
+      },
+      {
+       "box": "O3",
+       "method": "mouse",
+       "selectedOk": true,
+       "scale": 0.56,
+       "clickedTitlePx": 12.32,
+       "clickedInView": true,
+       "clickedBoxInFrame": true,
+       "related": [
+        {
+         "box": "S1",
+         "titlePx": 12.32,
+         "titleInView": false,
+         "boxInFrame": false
+        },
+        {
+         "box": "D",
+         "titlePx": 12.32,
+         "titleInView": true,
+         "boxInFrame": true
+        },
+        {
+         "box": "L3",
+         "titlePx": 12.32,
+         "titleInView": false,
+         "boxInFrame": false
+        }
+       ],
+       "wordsInView": 0,
+       "wordsOnBoxes": 0,
+       "wordsCut": 0,
+       "wordsBroken": 0,
+       "sideways": 0,
+       "outOfView": [
+        {
+         "box": "S1",
+         "stepNamed": true,
+         "stepLabel": "Show S1",
+         "stepWorks": true,
+         "afterTitlePx": 12.32,
+         "afterInView": true
+        },
+        {
+         "box": "L3",
+         "stepNamed": true,
+         "stepLabel": "Show L3",
+         "stepWorks": true,
+         "afterTitlePx": 12.32,
+         "afterInView": true
+        }
+       ]
+      },
+      {
+       "box": "J",
+       "method": "mouse",
+       "selectedOk": true,
+       "scale": 0.56,
+       "clickedTitlePx": 12.32,
+       "clickedInView": true,
+       "clickedBoxInFrame": true,
+       "related": [
+        {
+         "box": "O2",
+         "titlePx": 12.32,
+         "titleInView": true,
+         "boxInFrame": true
+        },
+        {
+         "box": "R710",
+         "titlePx": 12.32,
+         "titleInView": false,
+         "boxInFrame": false
+        }
+       ],
+       "wordsInView": 2,
+       "wordsOnBoxes": 0,
+       "wordsCut": 0,
+       "wordsBroken": 0,
+       "sideways": 0,
+       "outOfView": [
+        {
+         "box": "R710",
+         "stepNamed": true,
+         "stepLabel": "Show R710",
+         "stepWorks": true,
+         "afterTitlePx": 12.32,
+         "afterInView": true
+        }
+       ]
+      },
+      {
+       "box": "P1",
+       "method": "mouse",
+       "selectedOk": true,
+       "scale": 0.56,
+       "clickedTitlePx": 12.32,
+       "clickedInView": true,
+       "clickedBoxInFrame": true,
+       "related": [
+        {
+         "box": "S5",
+         "titlePx": 12.32,
+         "titleInView": false,
+         "boxInFrame": false
+        },
+        {
+         "box": "S6",
+         "titlePx": 12.32,
+         "titleInView": false,
+         "boxInFrame": false
+        }
+       ],
+       "wordsInView": 2,
+       "wordsOnBoxes": 0,
+       "wordsCut": 0,
+       "wordsBroken": 0,
+       "sideways": 0,
+       "outOfView": [
+        {
+         "box": "S5",
+         "stepNamed": true,
+         "stepLabel": "Show S5",
+         "stepWorks": true,
+         "afterTitlePx": 12.32,
+         "afterInView": true
+        },
+        {
+         "box": "S6",
+         "stepNamed": true,
+         "stepLabel": "Show S6",
+         "stepWorks": true,
+         "afterTitlePx": 12.32,
+         "afterInView": true
+        }
+       ]
+      },
+      {
+       "box": "P2",
+       "method": "mouse",
+       "selectedOk": true,
+       "scale": 0.56,
+       "clickedTitlePx": 12.32,
+       "clickedInView": true,
+       "clickedBoxInFrame": true,
+       "related": [
+        {
+         "box": "S6",
+         "titlePx": 12.32,
+         "titleInView": false,
+         "boxInFrame": false
+        },
+        {
+         "box": "Q3",
+         "titlePx": 12.32,
+         "titleInView": false,
+         "boxInFrame": false
+        }
+       ],
+       "wordsInView": 0,
+       "wordsOnBoxes": 0,
+       "wordsCut": 0,
+       "wordsBroken": 0,
+       "sideways": 0,
+       "outOfView": [
+        {
+         "box": "S6",
+         "stepNamed": true,
+         "stepLabel": "Show S6",
+         "stepWorks": true,
+         "afterTitlePx": 12.32,
+         "afterInView": true
+        },
+        {
+         "box": "Q3",
+         "stepNamed": true,
+         "stepLabel": "Show Q3",
+         "stepWorks": true,
+         "afterTitlePx": 12.32,
+         "afterInView": true
+        }
+       ]
+      },
+      {
+       "box": "P3",
+       "method": "mouse",
+       "selectedOk": true,
+       "scale": 0.56,
+       "clickedTitlePx": 12.32,
+       "clickedInView": true,
+       "clickedBoxInFrame": true,
+       "related": [
+        {
+         "box": "S6",
+         "titlePx": 12.32,
+         "titleInView": false,
+         "boxInFrame": false
+        },
+        {
+         "box": "Q3",
+         "titlePx": 12.32,
+         "titleInView": false,
+         "boxInFrame": false
+        }
+       ],
+       "wordsInView": 0,
+       "wordsOnBoxes": 0,
+       "wordsCut": 0,
+       "wordsBroken": 0,
+       "sideways": 0,
+       "outOfView": [
+        {
+         "box": "S6",
+         "stepNamed": true,
+         "stepLabel": "Show S6",
+         "stepWorks": true,
+         "afterTitlePx": 12.32,
+         "afterInView": true
+        },
+        {
+         "box": "Q3",
+         "stepNamed": true,
+         "stepLabel": "Show Q3",
+         "stepWorks": true,
+         "afterTitlePx": 12.32,
+         "afterInView": true
+        }
+       ]
+      },
+      {
+       "box": "P4",
+       "method": "mouse",
+       "selectedOk": true,
+       "scale": 0.56,
+       "clickedTitlePx": 12.32,
+       "clickedInView": true,
+       "clickedBoxInFrame": true,
+       "related": [
+        {
+         "box": "S5",
+         "titlePx": 12.32,
+         "titleInView": false,
+         "boxInFrame": false
+        },
+        {
+         "box": "S6",
+         "titlePx": 12.32,
+         "titleInView": false,
+         "boxInFrame": false
+        }
+       ],
+       "wordsInView": 2,
+       "wordsOnBoxes": 0,
+       "wordsCut": 0,
+       "wordsBroken": 0,
+       "sideways": 0,
+       "outOfView": [
+        {
+         "box": "S5",
+         "stepNamed": true,
+         "stepLabel": "Show S5",
+         "stepWorks": true,
+         "afterTitlePx": 12.32,
+         "afterInView": true
+        },
+        {
+         "box": "S6",
+         "stepNamed": true,
+         "stepLabel": "Show S6",
+         "stepWorks": true,
+         "afterTitlePx": 12.32,
+         "afterInView": true
+        }
+       ]
+      },
+      {
+       "box": "P5",
+       "method": "mouse",
+       "selectedOk": true,
+       "scale": 0.56,
+       "clickedTitlePx": 12.32,
+       "clickedInView": true,
+       "clickedBoxInFrame": true,
+       "related": [
+        {
+         "box": "S6",
+         "titlePx": 12.32,
+         "titleInView": false,
+         "boxInFrame": false
+        }
+       ],
+       "wordsInView": 1,
+       "wordsOnBoxes": 0,
+       "wordsCut": 0,
+       "wordsBroken": 0,
+       "sideways": 0,
+       "outOfView": [
+        {
+         "box": "S6",
+         "stepNamed": true,
+         "stepLabel": "Show S6",
+         "stepWorks": true,
+         "afterTitlePx": 12.32,
+         "afterInView": true
+        }
+       ]
+      },
+      {
+       "box": "L1",
+       "method": "mouse",
+       "selectedOk": true,
+       "scale": 0.56,
+       "clickedTitlePx": 12.32,
+       "clickedInView": true,
+       "clickedBoxInFrame": true,
+       "related": [
+        {
+         "box": "D",
+         "titlePx": 12.32,
+         "titleInView": false,
+         "boxInFrame": false
+        }
+       ],
+       "wordsInView": 1,
+       "wordsOnBoxes": 0,
+       "wordsCut": 0,
+       "wordsBroken": 0,
+       "sideways": 0,
+       "outOfView": [
+        {
+         "box": "D",
+         "stepNamed": true,
+         "stepLabel": "Show D",
+         "stepWorks": true,
+         "afterTitlePx": 12.32,
+         "afterInView": true
+        }
+       ]
+      },
+      {
+       "box": "L2",
+       "method": "mouse",
+       "selectedOk": true,
+       "scale": 0.56,
+       "clickedTitlePx": 12.32,
+       "clickedInView": true,
+       "clickedBoxInFrame": true,
+       "related": [
+        {
+         "box": "O2",
+         "titlePx": 12.32,
+         "titleInView": false,
+         "boxInFrame": false
+        }
+       ],
+       "wordsInView": 1,
+       "wordsOnBoxes": 0,
+       "wordsCut": 0,
+       "wordsBroken": 0,
+       "sideways": 0,
+       "outOfView": [
+        {
+         "box": "O2",
+         "stepNamed": true,
+         "stepLabel": "Show O2",
+         "stepWorks": true,
+         "afterTitlePx": 12.32,
+         "afterInView": true
+        }
+       ]
+      },
+      {
+       "box": "Q1",
+       "method": "mouse",
+       "selectedOk": true,
+       "scale": 0.56,
+       "clickedTitlePx": 12.32,
+       "clickedInView": true,
+       "clickedBoxInFrame": true,
+       "related": [
+        {
+         "box": "O2",
+         "titlePx": 12.32,
+         "titleInView": false,
+         "boxInFrame": false
+        },
+        {
+         "box": "R710",
+         "titlePx": 12.32,
+         "titleInView": true,
+         "boxInFrame": true
+        }
+       ],
+       "wordsInView": 1,
+       "wordsOnBoxes": 0,
+       "wordsCut": 0,
+       "wordsBroken": 0,
+       "sideways": 0,
+       "outOfView": [
+        {
+         "box": "O2",
+         "stepNamed": true,
+         "stepLabel": "Show O2",
+         "stepWorks": true,
+         "afterTitlePx": 12.32,
+         "afterInView": true
+        }
+       ]
+      },
+      {
+       "box": "R710",
+       "method": "mouse",
+       "selectedOk": true,
+       "scale": 0.56,
+       "clickedTitlePx": 12.32,
+       "clickedInView": true,
+       "clickedBoxInFrame": true,
+       "related": [
+        {
+         "box": "O2",
+         "titlePx": 12.32,
+         "titleInView": false,
+         "boxInFrame": false
+        },
+        {
+         "box": "J",
+         "titlePx": 12.32,
+         "titleInView": false,
+         "boxInFrame": false
+        },
+        {
+         "box": "Q1",
+         "titlePx": 12.32,
+         "titleInView": true,
+         "boxInFrame": true
+        }
+       ],
+       "wordsInView": 2,
+       "wordsOnBoxes": 0,
+       "wordsCut": 0,
+       "wordsBroken": 0,
+       "sideways": 0,
+       "outOfView": [
+        {
+         "box": "O2",
+         "stepNamed": true,
+         "stepLabel": "Show O2",
+         "stepWorks": true,
+         "afterTitlePx": 12.32,
+         "afterInView": true
+        },
+        {
+         "box": "J",
+         "stepNamed": true,
+         "stepLabel": "Show J",
+         "stepWorks": true,
+         "afterTitlePx": 12.32,
+         "afterInView": true
+        }
+       ]
+      },
+      {
+       "box": "L3",
+       "method": "mouse",
+       "selectedOk": true,
+       "scale": 0.56,
+       "clickedTitlePx": 12.32,
+       "clickedInView": true,
+       "clickedBoxInFrame": true,
+       "related": [
+        {
+         "box": "O2",
+         "titlePx": 12.32,
+         "titleInView": false,
+         "boxInFrame": false
+        },
+        {
+         "box": "O3",
+         "titlePx": 12.32,
+         "titleInView": false,
+         "boxInFrame": false
+        }
+       ],
+       "wordsInView": 2,
+       "wordsOnBoxes": 0,
+       "wordsCut": 0,
+       "wordsBroken": 0,
+       "sideways": 0,
+       "outOfView": [
+        {
+         "box": "O2",
+         "stepNamed": true,
+         "stepLabel": "Show O2",
+         "stepWorks": true,
+         "afterTitlePx": 12.32,
+         "afterInView": true
+        },
+        {
+         "box": "O3",
+         "stepNamed": true,
+         "stepLabel": "Show O3",
+         "stepWorks": true,
+         "afterTitlePx": 12.32,
+         "afterInView": true
+        }
+       ]
+      },
+      {
+       "box": "Q2",
+       "method": "mouse",
+       "selectedOk": true,
+       "scale": 0.56,
+       "clickedTitlePx": 12.32,
+       "clickedInView": true,
+       "clickedBoxInFrame": true,
+       "related": [
+        {
+         "box": "O2",
+         "titlePx": 12.32,
+         "titleInView": false,
+         "boxInFrame": false
+        }
+       ],
+       "wordsInView": 1,
+       "wordsOnBoxes": 0,
+       "wordsCut": 0,
+       "wordsBroken": 0,
+       "sideways": 0,
+       "outOfView": [
+        {
+         "box": "O2",
+         "stepNamed": true,
+         "stepLabel": "Show O2",
+         "stepWorks": true,
+         "afterTitlePx": 12.32,
+         "afterInView": true
+        }
+       ]
+      },
+      {
+       "box": "Q3",
+       "method": "mouse",
+       "selectedOk": true,
+       "scale": 0.56,
+       "clickedTitlePx": 12.32,
+       "clickedInView": true,
+       "clickedBoxInFrame": true,
+       "related": [
+        {
+         "box": "P2",
+         "titlePx": 12.32,
+         "titleInView": false,
+         "boxInFrame": false
+        },
+        {
+         "box": "P3",
+         "titlePx": 12.32,
+         "titleInView": false,
+         "boxInFrame": false
+        }
+       ],
+       "wordsInView": 2,
+       "wordsOnBoxes": 0,
+       "wordsCut": 0,
+       "wordsBroken": 0,
+       "sideways": 0,
+       "outOfView": [
+        {
+         "box": "P2",
+         "stepNamed": true,
+         "stepLabel": "Show P2",
+         "stepWorks": true,
+         "afterTitlePx": 12.32,
+         "afterInView": true
+        },
+        {
+         "box": "P3",
+         "stepNamed": true,
+         "stepLabel": "Show P3",
+         "stepWorks": true,
+         "afterTitlePx": 12.32,
+         "afterInView": true
+        }
+       ]
+      }
+     ]
+    }
+   },
+   "firstView": {
+    "shownBoxes": 10,
+    "titlesInViewNoPan": [
+     "D",
+     "O1",
+     "O2",
+     "O3"
+    ],
+    "titlePx": 12.93,
+    "words": {
+     "displayed": 2,
+     "inView": 2,
+     "onBoxes": 0,
+     "cutAtFrame": 0,
+     "broken": 0,
+     "brokenIds": []
+    },
+    "countLine": "2 of 12 relation words in view; the detail panel and the table below list every relation.",
+    "headerBlockHeight": 1892,
+    "sideways": 0,
+    "narrowLabels": 0,
+    "frameTopY": 2713
+   },
+   "tabFocus": {
+    "reached": 23,
+    "inFrame": 23,
+    "frameScrollNonZero": 0,
+    "scale": 1.08
+   },
+   "list": {
+    "relations": 28,
+    "rows": 28,
+    "distinctRows": 28,
+    "relationsNotNamed": 0,
+    "rowsWiderThanScreen": 0,
+    "boxesAsText": 23,
+    "mapBoxes": 23
+   },
+   "sidewaysAtEnd": 0,
+   "noJavaScript": {
+    "toolsHidden": true,
+    "words": 28,
+    "wordsOnTheirLine": 28,
+    "wordsOnBoxes": 0,
+    "wordsAsSvgText": 28,
+    "mapScrolls": true,
+    "boxesAsText": 23,
+    "tableRows": 28,
+    "sideways": 0
+   },
+   "summary": {
+    "clicks": 33,
+    "mouseClicks": 26,
+    "selectFailed": 0,
+    "scaleRange": [
+     0.56,
+     0.56
+    ],
+    "smallestClickedTitlePx": 12.32,
+    "clickedTitleNotInView": 0,
+    "relatedShown": 87,
+    "relatedTitlesInView": 17,
+    "smallestRelatedTitleInViewPx": 12.32,
+    "relatedOutOfView": 70,
+    "outOfViewWithNamedStep": 70,
+    "outOfViewStepWorks": 70,
+    "clickedOrRelatedBoxOutOfFrame": 70,
+    "maxSideways": 0,
+    "wordsOnBoxes": 0,
+    "wordsBroken": 0,
+    "narrowLabels": 0,
+    "green": true
+   }
+  },
+  "desktop": {
+   "size": "desktop",
+   "viewport": "1440x1000",
+   "views": {
+    "firstView": {
+     "shownBoxes": 10,
+     "startWords": {
+      "displayed": 12,
+      "inView": 12,
+      "onBoxes": 0,
+      "cutAtFrame": 0,
+      "broken": 0,
+      "brokenIds": []
+     },
+     "clicks": [
+      {
+       "box": "S1",
+       "method": "mouse",
+       "selectedOk": true,
+       "scale": 0.6923,
+       "clickedTitlePx": 15.23,
+       "clickedInView": true,
+       "clickedBoxInFrame": true,
+       "related": [
+        {
+         "box": "O2",
+         "titlePx": 15.23,
+         "titleInView": true,
+         "boxInFrame": true
+        },
+        {
+         "box": "O3",
+         "titlePx": 15.23,
+         "titleInView": true,
+         "boxInFrame": true
+        }
+       ],
+       "wordsInView": 2,
+       "wordsOnBoxes": 0,
+       "wordsCut": 0,
+       "wordsBroken": 0,
+       "sideways": 0,
+       "outOfView": []
+      },
+      {
+       "box": "S2",
+       "method": "mouse",
+       "selectedOk": true,
+       "scale": 0.75,
+       "clickedTitlePx": 16.5,
+       "clickedInView": true,
+       "clickedBoxInFrame": true,
+       "related": [
+        {
+         "box": "O2",
+         "titlePx": 16.5,
+         "titleInView": true,
+         "boxInFrame": true
+        }
+       ],
+       "wordsInView": 1,
+       "wordsOnBoxes": 0,
+       "wordsCut": 0,
+       "wordsBroken": 0,
+       "sideways": 0,
+       "outOfView": []
+      },
+      {
+       "box": "S3",
+       "method": "mouse",
+       "selectedOk": true,
+       "scale": 0.75,
+       "clickedTitlePx": 16.5,
+       "clickedInView": true,
+       "clickedBoxInFrame": true,
+       "related": [
+        {
+         "box": "O1",
+         "titlePx": 16.5,
+         "titleInView": true,
+         "boxInFrame": true
+        },
+        {
+         "box": "O2",
+         "titlePx": 16.5,
+         "titleInView": true,
+         "boxInFrame": true
+        }
+       ],
+       "wordsInView": 2,
+       "wordsOnBoxes": 0,
+       "wordsCut": 0,
+       "wordsBroken": 0,
+       "sideways": 0,
+       "outOfView": []
+      },
+      {
+       "box": "D",
+       "method": "mouse",
+       "selectedOk": true,
+       "scale": 0.6923,
+       "clickedTitlePx": 15.23,
+       "clickedInView": true,
+       "clickedBoxInFrame": true,
+       "related": [
+        {
+         "box": "O1",
+         "titlePx": 15.23,
+         "titleInView": true,
+         "boxInFrame": true
+        },
+        {
+         "box": "O2",
+         "titlePx": 15.23,
+         "titleInView": true,
+         "boxInFrame": true
+        },
+        {
+         "box": "O3",
+         "titlePx": 15.23,
+         "titleInView": true,
+         "boxInFrame": true
+        },
+        {
+         "box": "L1",
+         "titlePx": 15.23,
+         "titleInView": true,
+         "boxInFrame": true
+        }
+       ],
+       "wordsInView": 4,
+       "wordsOnBoxes": 0,
+       "wordsCut": 0,
+       "wordsBroken": 0,
+       "sideways": 0,
+       "outOfView": []
+      },
+      {
+       "box": "O1",
+       "method": "mouse",
+       "selectedOk": true,
+       "scale": 0.75,
+       "clickedTitlePx": 16.5,
+       "clickedInView": true,
+       "clickedBoxInFrame": true,
+       "related": [
+        {
+         "box": "S3",
+         "titlePx": 16.5,
+         "titleInView": true,
+         "boxInFrame": true
+        },
+        {
+         "box": "D",
+         "titlePx": 16.5,
+         "titleInView": true,
+         "boxInFrame": true
+        }
+       ],
+       "wordsInView": 2,
+       "wordsOnBoxes": 0,
+       "wordsCut": 0,
+       "wordsBroken": 0,
+       "sideways": 0,
+       "outOfView": []
+      },
+      {
+       "box": "O2",
+       "method": "mouse",
+       "selectedOk": true,
+       "scale": 0.4532,
+       "clickedTitlePx": 9.97,
+       "clickedInView": true,
+       "clickedBoxInFrame": true,
+       "related": [
+        {
+         "box": "S1",
+         "titlePx": 9.97,
+         "titleInView": true,
+         "boxInFrame": true
+        },
+        {
+         "box": "S2",
+         "titlePx": 9.97,
+         "titleInView": true,
+         "boxInFrame": true
+        },
+        {
+         "box": "S3",
+         "titlePx": 9.97,
+         "titleInView": true,
+         "boxInFrame": true
+        },
+        {
+         "box": "S4",
+         "titlePx": 9.97,
+         "titleInView": true,
+         "boxInFrame": true
+        },
+        {
+         "box": "D",
+         "titlePx": 9.97,
+         "titleInView": true,
+         "boxInFrame": true
+        },
+        {
+         "box": "J",
+         "titlePx": 9.97,
+         "titleInView": true,
+         "boxInFrame": true
+        },
+        {
+         "box": "L2",
+         "titlePx": 9.97,
+         "titleInView": true,
+         "boxInFrame": true
+        },
+        {
+         "box": "Q1",
+         "titlePx": 9.97,
+         "titleInView": true,
+         "boxInFrame": true
+        },
+        {
+         "box": "R710",
+         "titlePx": 9.97,
+         "titleInView": true,
+         "boxInFrame": true
+        },
+        {
+         "box": "L3",
+         "titlePx": 9.97,
+         "titleInView": true,
+         "boxInFrame": true
+        },
+        {
+         "box": "Q2",
+         "titlePx": 9.97,
+         "titleInView": true,
+         "boxInFrame": true
+        }
+       ],
+       "wordsInView": 7,
+       "wordsOnBoxes": 0,
+       "wordsCut": 0,
+       "wordsBroken": 0,
+       "sideways": 0,
+       "outOfView": []
+      },
+      {
+       "box": "O3",
+       "method": "mouse",
+       "selectedOk": true,
+       "scale": 0.5478,
+       "clickedTitlePx": 12.05,
+       "clickedInView": true,
+       "clickedBoxInFrame": true,
+       "related": [
+        {
+         "box": "S1",
+         "titlePx": 12.05,
+         "titleInView": true,
+         "boxInFrame": true
+        },
+        {
+         "box": "D",
+         "titlePx": 12.05,
+         "titleInView": true,
+         "boxInFrame": true
+        },
+        {
+         "box": "L3",
+         "titlePx": 12.05,
+         "titleInView": true,
+         "boxInFrame": true
+        }
+       ],
+       "wordsInView": 3,
+       "wordsOnBoxes": 0,
+       "wordsCut": 0,
+       "wordsBroken": 0,
+       "sideways": 0,
+       "outOfView": []
+      },
+      {
+       "box": "L2",
+       "method": "mouse",
+       "selectedOk": true,
+       "scale": 0.75,
+       "clickedTitlePx": 16.5,
+       "clickedInView": true,
+       "clickedBoxInFrame": true,
+       "related": [
+        {
+         "box": "O2",
+         "titlePx": 16.5,
+         "titleInView": true,
+         "boxInFrame": true
+        }
+       ],
+       "wordsInView": 1,
+       "wordsOnBoxes": 0,
+       "wordsCut": 0,
+       "wordsBroken": 0,
+       "sideways": 0,
+       "outOfView": []
+      },
+      {
+       "box": "Q1",
+       "method": "mouse",
+       "selectedOk": true,
+       "scale": 0.75,
+       "clickedTitlePx": 16.5,
+       "clickedInView": true,
+       "clickedBoxInFrame": true,
+       "related": [
+        {
+         "box": "O2",
+         "titlePx": 16.5,
+         "titleInView": true,
+         "boxInFrame": true
+        },
+        {
+         "box": "R710",
+         "titlePx": 16.5,
+         "titleInView": true,
+         "boxInFrame": true
+        }
+       ],
+       "wordsInView": 2,
+       "wordsOnBoxes": 0,
+       "wordsCut": 0,
+       "wordsBroken": 0,
+       "sideways": 0,
+       "outOfView": []
+      },
+      {
+       "box": "R710",
+       "method": "mouse",
+       "selectedOk": true,
+       "scale": 0.75,
+       "clickedTitlePx": 16.5,
+       "clickedInView": true,
+       "clickedBoxInFrame": true,
+       "related": [
+        {
+         "box": "O2",
+         "titlePx": 16.5,
+         "titleInView": true,
+         "boxInFrame": true
+        },
+        {
+         "box": "J",
+         "titlePx": 16.5,
+         "titleInView": true,
+         "boxInFrame": true
+        },
+        {
+         "box": "Q1",
+         "titlePx": 16.5,
+         "titleInView": true,
+         "boxInFrame": true
+        }
+       ],
+       "wordsInView": 3,
+       "wordsOnBoxes": 0,
+       "wordsCut": 0,
+       "wordsBroken": 0,
+       "sideways": 0,
+       "outOfView": []
+      }
+     ]
+    },
+    "showEverything": {
+     "shownBoxes": 23,
+     "startWords": {
+      "displayed": 5,
+      "inView": 5,
+      "onBoxes": 0,
+      "cutAtFrame": 0,
+      "broken": 0,
+      "brokenIds": []
+     },
+     "clicks": [
+      {
+       "box": "S1",
+       "method": "mouse",
+       "selectedOk": true,
+       "scale": 0.6923,
+       "clickedTitlePx": 15.23,
+       "clickedInView": true,
+       "clickedBoxInFrame": true,
+       "related": [
+        {
+         "box": "O2",
+         "titlePx": 15.23,
+         "titleInView": true,
+         "boxInFrame": true
+        },
+        {
+         "box": "O3",
+         "titlePx": 15.23,
+         "titleInView": true,
+         "boxInFrame": true
+        }
+       ],
+       "wordsInView": 2,
+       "wordsOnBoxes": 0,
+       "wordsCut": 0,
+       "wordsBroken": 0,
+       "sideways": 0,
+       "outOfView": []
+      },
+      {
+       "box": "S2",
+       "method": "mouse",
+       "selectedOk": true,
+       "scale": 0.75,
+       "clickedTitlePx": 16.5,
+       "clickedInView": true,
+       "clickedBoxInFrame": true,
+       "related": [
+        {
+         "box": "O2",
+         "titlePx": 16.5,
+         "titleInView": true,
+         "boxInFrame": true
+        }
+       ],
+       "wordsInView": 1,
+       "wordsOnBoxes": 0,
+       "wordsCut": 0,
+       "wordsBroken": 0,
+       "sideways": 0,
+       "outOfView": []
+      },
+      {
+       "box": "S3",
+       "method": "mouse",
+       "selectedOk": true,
+       "scale": 0.75,
+       "clickedTitlePx": 16.5,
+       "clickedInView": true,
+       "clickedBoxInFrame": true,
+       "related": [
+        {
+         "box": "O1",
+         "titlePx": 16.5,
+         "titleInView": true,
+         "boxInFrame": true
+        },
+        {
+         "box": "O2",
+         "titlePx": 16.5,
+         "titleInView": true,
+         "boxInFrame": true
+        }
+       ],
+       "wordsInView": 2,
+       "wordsOnBoxes": 0,
+       "wordsCut": 0,
+       "wordsBroken": 0,
+       "sideways": 0,
+       "outOfView": []
+      },
+      {
+       "box": "S4",
+       "method": "mouse",
+       "selectedOk": true,
+       "scale": 0.75,
+       "clickedTitlePx": 16.5,
+       "clickedInView": true,
+       "clickedBoxInFrame": true,
+       "related": [
+        {
+         "box": "O2",
+         "titlePx": 16.5,
+         "titleInView": true,
+         "boxInFrame": true
+        }
+       ],
+       "wordsInView": 1,
+       "wordsOnBoxes": 0,
+       "wordsCut": 0,
+       "wordsBroken": 0,
+       "sideways": 0,
+       "outOfView": []
+      },
+      {
+       "box": "S5",
+       "method": "mouse",
+       "selectedOk": true,
+       "scale": 0.6923,
+       "clickedTitlePx": 15.23,
+       "clickedInView": true,
+       "clickedBoxInFrame": true,
+       "related": [
+        {
+         "box": "P1",
+         "titlePx": 15.23,
+         "titleInView": true,
+         "boxInFrame": true
+        },
+        {
+         "box": "P4",
+         "titlePx": 15.23,
+         "titleInView": true,
+         "boxInFrame": true
+        }
+       ],
+       "wordsInView": 2,
+       "wordsOnBoxes": 0,
+       "wordsCut": 0,
+       "wordsBroken": 0,
+       "sideways": 0,
+       "outOfView": []
+      },
+      {
+       "box": "S6",
+       "method": "mouse",
+       "selectedOk": true,
+       "scale": 0.5478,
+       "clickedTitlePx": 12.05,
+       "clickedInView": true,
+       "clickedBoxInFrame": true,
+       "related": [
+        {
+         "box": "P1",
+         "titlePx": 12.05,
+         "titleInView": true,
+         "boxInFrame": true
+        },
+        {
+         "box": "P2",
+         "titlePx": 12.05,
+         "titleInView": true,
+         "boxInFrame": true
+        },
+        {
+         "box": "P3",
+         "titlePx": 12.05,
+         "titleInView": true,
+         "boxInFrame": true
+        },
+        {
+         "box": "P4",
+         "titlePx": 12.05,
+         "titleInView": true,
+         "boxInFrame": true
+        },
+        {
+         "box": "P5",
+         "titlePx": 12.05,
+         "titleInView": true,
+         "boxInFrame": true
+        }
+       ],
+       "wordsInView": 5,
+       "wordsOnBoxes": 0,
+       "wordsCut": 0,
+       "wordsBroken": 0,
+       "sideways": 0,
+       "outOfView": []
+      },
+      {
+       "box": "D",
+       "method": "mouse",
+       "selectedOk": true,
+       "scale": 0.6923,
+       "clickedTitlePx": 15.23,
+       "clickedInView": true,
+       "clickedBoxInFrame": true,
+       "related": [
+        {
+         "box": "O1",
+         "titlePx": 15.23,
+         "titleInView": true,
+         "boxInFrame": true
+        },
+        {
+         "box": "O2",
+         "titlePx": 15.23,
+         "titleInView": true,
+         "boxInFrame": true
+        },
+        {
+         "box": "O3",
+         "titlePx": 15.23,
+         "titleInView": true,
+         "boxInFrame": true
+        },
+        {
+         "box": "L1",
+         "titlePx": 15.23,
+         "titleInView": true,
+         "boxInFrame": true
+        }
+       ],
+       "wordsInView": 4,
+       "wordsOnBoxes": 0,
+       "wordsCut": 0,
+       "wordsBroken": 0,
+       "sideways": 0,
+       "outOfView": []
+      },
+      {
+       "box": "O1",
+       "method": "mouse",
+       "selectedOk": true,
+       "scale": 0.75,
+       "clickedTitlePx": 16.5,
+       "clickedInView": true,
+       "clickedBoxInFrame": true,
+       "related": [
+        {
+         "box": "S3",
+         "titlePx": 16.5,
+         "titleInView": true,
+         "boxInFrame": true
+        },
+        {
+         "box": "D",
+         "titlePx": 16.5,
+         "titleInView": true,
+         "boxInFrame": true
+        }
+       ],
+       "wordsInView": 2,
+       "wordsOnBoxes": 0,
+       "wordsCut": 0,
+       "wordsBroken": 0,
+       "sideways": 0,
+       "outOfView": []
+      },
+      {
+       "box": "O2",
+       "method": "mouse",
+       "selectedOk": true,
+       "scale": 0.4532,
+       "clickedTitlePx": 9.97,
+       "clickedInView": true,
+       "clickedBoxInFrame": true,
+       "related": [
+        {
+         "box": "S1",
+         "titlePx": 9.97,
+         "titleInView": true,
+         "boxInFrame": true
+        },
+        {
+         "box": "S2",
+         "titlePx": 9.97,
+         "titleInView": true,
+         "boxInFrame": true
+        },
+        {
+         "box": "S3",
+         "titlePx": 9.97,
+         "titleInView": true,
+         "boxInFrame": true
+        },
+        {
+         "box": "S4",
+         "titlePx": 9.97,
+         "titleInView": true,
+         "boxInFrame": true
+        },
+        {
+         "box": "D",
+         "titlePx": 9.97,
+         "titleInView": true,
+         "boxInFrame": true
+        },
+        {
+         "box": "J",
+         "titlePx": 9.97,
+         "titleInView": true,
+         "boxInFrame": true
+        },
+        {
+         "box": "L2",
+         "titlePx": 9.97,
+         "titleInView": true,
+         "boxInFrame": true
+        },
+        {
+         "box": "Q1",
+         "titlePx": 9.97,
+         "titleInView": true,
+         "boxInFrame": true
+        },
+        {
+         "box": "R710",
+         "titlePx": 9.97,
+         "titleInView": true,
+         "boxInFrame": true
+        },
+        {
+         "box": "L3",
+         "titlePx": 9.97,
+         "titleInView": true,
+         "boxInFrame": true
+        },
+        {
+         "box": "Q2",
+         "titlePx": 9.97,
+         "titleInView": true,
+         "boxInFrame": true
+        }
+       ],
+       "wordsInView": 6,
+       "wordsOnBoxes": 0,
+       "wordsCut": 0,
+       "wordsBroken": 0,
+       "sideways": 0,
+       "outOfView": []
+      },
+      {
+       "box": "O3",
+       "method": "mouse",
+       "selectedOk": true,
+       "scale": 0.5478,
+       "clickedTitlePx": 12.05,
+       "clickedInView": true,
+       "clickedBoxInFrame": true,
+       "related": [
+        {
+         "box": "S1",
+         "titlePx": 12.05,
+         "titleInView": true,
+         "boxInFrame": true
+        },
+        {
+         "box": "D",
+         "titlePx": 12.05,
+         "titleInView": true,
+         "boxInFrame": true
+        },
+        {
+         "box": "L3",
+         "titlePx": 12.05,
+         "titleInView": true,
+         "boxInFrame": true
+        }
+       ],
+       "wordsInView": 3,
+       "wordsOnBoxes": 0,
+       "wordsCut": 0,
+       "wordsBroken": 0,
+       "sideways": 0,
+       "outOfView": []
+      },
+      {
+       "box": "J",
+       "method": "mouse",
+       "selectedOk": true,
+       "scale": 0.75,
+       "clickedTitlePx": 16.5,
+       "clickedInView": true,
+       "clickedBoxInFrame": true,
+       "related": [
+        {
+         "box": "O2",
+         "titlePx": 16.5,
+         "titleInView": true,
+         "boxInFrame": true
+        },
+        {
+         "box": "R710",
+         "titlePx": 16.5,
+         "titleInView": true,
+         "boxInFrame": true
+        }
+       ],
+       "wordsInView": 2,
+       "wordsOnBoxes": 0,
+       "wordsCut": 0,
+       "wordsBroken": 0,
+       "sideways": 0,
+       "outOfView": []
+      },
+      {
+       "box": "P1",
+       "method": "mouse",
+       "selectedOk": true,
+       "scale": 0.75,
+       "clickedTitlePx": 16.5,
+       "clickedInView": true,
+       "clickedBoxInFrame": true,
+       "related": [
+        {
+         "box": "S5",
+         "titlePx": 16.5,
+         "titleInView": true,
+         "boxInFrame": true
+        },
+        {
+         "box": "S6",
+         "titlePx": 16.5,
+         "titleInView": true,
+         "boxInFrame": true
+        }
+       ],
+       "wordsInView": 2,
+       "wordsOnBoxes": 0,
+       "wordsCut": 0,
+       "wordsBroken": 0,
+       "sideways": 0,
+       "outOfView": []
+      },
+      {
+       "box": "P2",
+       "method": "mouse",
+       "selectedOk": true,
+       "scale": 0.6693,
+       "clickedTitlePx": 14.72,
+       "clickedInView": true,
+       "clickedBoxInFrame": true,
+       "related": [
+        {
+         "box": "S6",
+         "titlePx": 14.72,
+         "titleInView": true,
+         "boxInFrame": true
+        },
+        {
+         "box": "Q3",
+         "titlePx": 14.72,
+         "titleInView": true,
+         "boxInFrame": true
+        }
+       ],
+       "wordsInView": 2,
+       "wordsOnBoxes": 0,
+       "wordsCut": 0,
+       "wordsBroken": 0,
+       "sideways": 0,
+       "outOfView": []
+      },
+      {
+       "box": "P3",
+       "method": "mouse",
+       "selectedOk": true,
+       "scale": 0.6693,
+       "clickedTitlePx": 14.72,
+       "clickedInView": true,
+       "clickedBoxInFrame": true,
+       "related": [
+        {
+         "box": "S6",
+         "titlePx": 14.72,
+         "titleInView": true,
+         "boxInFrame": true
+        },
+        {
+         "box": "Q3",
+         "titlePx": 14.72,
+         "titleInView": true,
+         "boxInFrame": true
+        }
+       ],
+       "wordsInView": 2,
+       "wordsOnBoxes": 0,
+       "wordsCut": 0,
+       "wordsBroken": 0,
+       "sideways": 0,
+       "outOfView": []
+      },
+      {
+       "box": "P4",
+       "method": "mouse",
+       "selectedOk": true,
+       "scale": 0.75,
+       "clickedTitlePx": 16.5,
+       "clickedInView": true,
+       "clickedBoxInFrame": true,
+       "related": [
+        {
+         "box": "S5",
+         "titlePx": 16.5,
+         "titleInView": true,
+         "boxInFrame": true
+        },
+        {
+         "box": "S6",
+         "titlePx": 16.5,
+         "titleInView": true,
+         "boxInFrame": true
+        }
+       ],
+       "wordsInView": 2,
+       "wordsOnBoxes": 0,
+       "wordsCut": 0,
+       "wordsBroken": 0,
+       "sideways": 0,
+       "outOfView": []
+      },
+      {
+       "box": "P5",
+       "method": "mouse",
+       "selectedOk": true,
+       "scale": 0.75,
+       "clickedTitlePx": 16.5,
+       "clickedInView": true,
+       "clickedBoxInFrame": true,
+       "related": [
+        {
+         "box": "S6",
+         "titlePx": 16.5,
+         "titleInView": true,
+         "boxInFrame": true
+        }
+       ],
+       "wordsInView": 1,
+       "wordsOnBoxes": 0,
+       "wordsCut": 0,
+       "wordsBroken": 0,
+       "sideways": 0,
+       "outOfView": []
+      },
+      {
+       "box": "L1",
+       "method": "mouse",
+       "selectedOk": true,
+       "scale": 0.75,
+       "clickedTitlePx": 16.5,
+       "clickedInView": true,
+       "clickedBoxInFrame": true,
+       "related": [
+        {
+         "box": "D",
+         "titlePx": 16.5,
+         "titleInView": true,
+         "boxInFrame": true
+        }
+       ],
+       "wordsInView": 1,
+       "wordsOnBoxes": 0,
+       "wordsCut": 0,
+       "wordsBroken": 0,
+       "sideways": 0,
+       "outOfView": []
+      },
+      {
+       "box": "L2",
+       "method": "mouse",
+       "selectedOk": true,
+       "scale": 0.75,
+       "clickedTitlePx": 16.5,
+       "clickedInView": true,
+       "clickedBoxInFrame": true,
+       "related": [
+        {
+         "box": "O2",
+         "titlePx": 16.5,
+         "titleInView": true,
+         "boxInFrame": true
+        }
+       ],
+       "wordsInView": 1,
+       "wordsOnBoxes": 0,
+       "wordsCut": 0,
+       "wordsBroken": 0,
+       "sideways": 0,
+       "outOfView": []
+      },
+      {
+       "box": "Q1",
+       "method": "mouse",
+       "selectedOk": true,
+       "scale": 0.75,
+       "clickedTitlePx": 16.5,
+       "clickedInView": true,
+       "clickedBoxInFrame": true,
+       "related": [
+        {
+         "box": "O2",
+         "titlePx": 16.5,
+         "titleInView": true,
+         "boxInFrame": true
+        },
+        {
+         "box": "R710",
+         "titlePx": 16.5,
+         "titleInView": true,
+         "boxInFrame": true
+        }
+       ],
+       "wordsInView": 2,
+       "wordsOnBoxes": 0,
+       "wordsCut": 0,
+       "wordsBroken": 0,
+       "sideways": 0,
+       "outOfView": []
+      },
+      {
+       "box": "R710",
+       "method": "mouse",
+       "selectedOk": true,
+       "scale": 0.75,
+       "clickedTitlePx": 16.5,
+       "clickedInView": true,
+       "clickedBoxInFrame": true,
+       "related": [
+        {
+         "box": "O2",
+         "titlePx": 16.5,
+         "titleInView": true,
+         "boxInFrame": true
+        },
+        {
+         "box": "J",
+         "titlePx": 16.5,
+         "titleInView": true,
+         "boxInFrame": true
+        },
+        {
+         "box": "Q1",
+         "titlePx": 16.5,
+         "titleInView": true,
+         "boxInFrame": true
+        }
+       ],
+       "wordsInView": 3,
+       "wordsOnBoxes": 0,
+       "wordsCut": 0,
+       "wordsBroken": 0,
+       "sideways": 0,
+       "outOfView": []
+      },
+      {
+       "box": "L3",
+       "method": "mouse",
+       "selectedOk": true,
+       "scale": 0.75,
+       "clickedTitlePx": 16.5,
+       "clickedInView": true,
+       "clickedBoxInFrame": true,
+       "related": [
+        {
+         "box": "O2",
+         "titlePx": 16.5,
+         "titleInView": true,
+         "boxInFrame": true
+        },
+        {
+         "box": "O3",
+         "titlePx": 16.5,
+         "titleInView": true,
+         "boxInFrame": true
+        }
+       ],
+       "wordsInView": 2,
+       "wordsOnBoxes": 0,
+       "wordsCut": 0,
+       "wordsBroken": 0,
+       "sideways": 0,
+       "outOfView": []
+      },
+      {
+       "box": "Q2",
+       "method": "mouse",
+       "selectedOk": true,
+       "scale": 0.6923,
+       "clickedTitlePx": 15.23,
+       "clickedInView": true,
+       "clickedBoxInFrame": true,
+       "related": [
+        {
+         "box": "O2",
+         "titlePx": 15.23,
+         "titleInView": true,
+         "boxInFrame": true
+        }
+       ],
+       "wordsInView": 1,
+       "wordsOnBoxes": 0,
+       "wordsCut": 0,
+       "wordsBroken": 0,
+       "sideways": 0,
+       "outOfView": []
+      },
+      {
+       "box": "Q3",
+       "method": "mouse",
+       "selectedOk": true,
+       "scale": 0.75,
+       "clickedTitlePx": 16.5,
+       "clickedInView": true,
+       "clickedBoxInFrame": true,
+       "related": [
+        {
+         "box": "P2",
+         "titlePx": 16.5,
+         "titleInView": true,
+         "boxInFrame": true
+        },
+        {
+         "box": "P3",
+         "titlePx": 16.5,
+         "titleInView": true,
+         "boxInFrame": true
+        }
+       ],
+       "wordsInView": 2,
+       "wordsOnBoxes": 0,
+       "wordsCut": 0,
+       "wordsBroken": 0,
+       "sideways": 0,
+       "outOfView": []
+      }
+     ]
+    }
+   },
+   "firstView": {
+    "shownBoxes": 10,
+    "titlesInViewNoPan": [
+     "S1",
+     "S2",
+     "S3",
+     "D",
+     "O1",
+     "O2",
+     "O3",
+     "L2",
+     "Q1",
+     "R710"
+    ],
+    "titlePx": 12.41,
+    "words": {
+     "displayed": 12,
+     "inView": 12,
+     "onBoxes": 0,
+     "cutAtFrame": 0,
+     "broken": 0,
+     "brokenIds": []
+    },
+    "countLine": "12 of 12 relation words in view.",
+    "headerBlockHeight": 726,
+    "sideways": 0,
+    "narrowLabels": 0,
+    "frameTopY": 1099
+   },
+   "tabFocus": {
+    "reached": 23,
+    "inFrame": 23,
+    "frameScrollNonZero": 0,
+    "scale": 1.5581
+   },
+   "list": {
+    "relations": 28,
+    "rows": 28,
+    "distinctRows": 28,
+    "relationsNotNamed": 0,
+    "rowsWiderThanScreen": 0,
+    "boxesAsText": 23,
+    "mapBoxes": 23
+   },
+   "sidewaysAtEnd": 0,
+   "noJavaScript": {
+    "toolsHidden": true,
+    "words": 28,
+    "wordsOnTheirLine": 28,
+    "wordsOnBoxes": 0,
+    "wordsAsSvgText": 28,
+    "mapScrolls": true,
+    "boxesAsText": 23,
+    "tableRows": 28,
+    "sideways": 0
+   },
+   "summary": {
+    "clicks": 33,
+    "mouseClicks": 33,
+    "selectFailed": 0,
+    "scaleRange": [
+     0.4532,
+     0.75
+    ],
+    "smallestClickedTitlePx": 9.97,
+    "clickedTitleNotInView": 0,
+    "relatedShown": 87,
+    "relatedTitlesInView": 87,
+    "smallestRelatedTitleInViewPx": 9.97,
+    "relatedOutOfView": 0,
+    "outOfViewWithNamedStep": 0,
+    "outOfViewStepWorks": 0,
+    "clickedOrRelatedBoxOutOfFrame": 0,
+    "maxSideways": 0,
+    "wordsOnBoxes": 0,
+    "wordsBroken": 0,
+    "narrowLabels": 0,
+    "green": true
+   }
+  }
+ }
+}

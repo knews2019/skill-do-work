@@ -1,0 +1,28 @@
+2026-11-16T17:34:34Z build started: commit 1 e9d30a3f done; writing measurement script
+2026-11-16T17:35:44Z RED start node measure-relation-map.js v1c03
+2026-11-16T17:35:52Z RED end
+2026-11-16T17:41:23Z finalize start
+2026-11-16T17:41:24Z finalize end
+2026-11-16T17:41:40Z finalize (second form) end
+2026-11-16T17:41:47Z published + v1c03 measure start
+2026-11-16T17:42:16Z measure end
+2026-11-16T17:42:40Z verify start
+2026-11-16T17:43:21Z verify end
+2026-11-16T17:45:01Z hand-back written; branch tip 8ef2084e; server stopped
+2026-11-16T19:36:18Z second pass started (addendum: page top, labels off frame edge)
+2026-11-16T19:42:17Z finalize v1c05 start
+2026-11-16T19:42:19Z finalize v1c05 end
+2026-11-16T19:42:31Z measure v1c05 start
+2026-11-16T19:43:05Z measure v1c05 end
+2026-11-16T19:43:28Z verify (second pass) start
+2026-11-16T19:43:54Z verify (second pass) end
+2026-11-16T19:44:25Z second pass hand-back addendum written; tip 4b3d6fad
+2026-11-16T19:53:16Z pass 3 started: merge main
+2026-11-16T19:54:06Z pass 3 finalize start
+2026-11-16T19:54:08Z pass 3 finalize end
+2026-11-16T19:54:21Z pass 3 measure start
+2026-11-16T19:54:41Z pass 3 measure end
+2026-11-16T19:54:59Z pass 3 verify start
+2026-11-16T19:55:27Z pass 3 verify end
+2026-11-16T19:55:45Z pass 3 hand-back addendum written; tip 9375501d
+2026-11-16T20:00:50Z integrate start (integrator REQ-737); step 0 run-artifacts commit
