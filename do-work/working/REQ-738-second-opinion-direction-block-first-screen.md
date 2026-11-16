@@ -1,7 +1,7 @@
 ---
 id: REQ-738
 title: 'Second-opinion direction block keeps the page content on the first phone screen'
-status: pending
+status: claimed
 created_at: 2026-11-15T12:45:58Z
 user_request: UR-180
 domain: frontend
@@ -14,6 +14,7 @@ required_lessons: ["_dev/primes/lessons-releases.md"]
 related: [REQ-737]
 batch: relation-map-phone-layout
 write_set: ["skills/do-work/tools/do-work-cli/internal/toolboxcommands/report_second_opinion.go", "skills/do-work/tools/do-work-cli/internal/toolboxcommands/report_second_opinion_test.go", "skills/do-work/tools/do-work-cli/internal/toolboxcommands/report_second_opinion_tree_test.go", "skills/do-work-toolbox/actions/ai-report.md", "skills/do-work-toolbox/docs/ai-report-guide.md", "CHANGELOG.md", "skills/do-work/CHANGELOG.md", "VERSION"]
+claimed_at: 2026-11-16T17:17:19Z
 ---
 # Second-Opinion Direction Block Keeps the Page Content on the First Phone Screen
 ## What

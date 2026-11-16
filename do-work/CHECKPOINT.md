@@ -8,3 +8,5 @@ queue_state: [0 pending, 0 pending-answers, 0 blocked, 0 blocked-archive-collisi
 ## In Progress (interrupted)
 
 - REQ-737: Addendum: relation-map preset keeps box titles readable after a click on a phone — claimed 2026-11-16T17:17:19Z — writer: t2s-Virtual-Machine.local:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2
+
+- REQ-738: Second-opinion direction block keeps the page content on the first phone screen — claimed 2026-11-16T17:17:19Z — writer: t2s-Virtual-Machine.local:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2
