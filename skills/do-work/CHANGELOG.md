@@ -10,6 +10,16 @@ For the complete release history, read this file and the archives below from new
 - [0.50.0 through 0.64.1](https://github.com/knews2019/skill-do-work/blob/main/docs/changelog/CHANGELOG-2026-04-13-up-to-v0.64.1.md)
 - [0.1.0 through 0.49.0](https://github.com/knews2019/skill-do-work/blob/main/docs/changelog/CHANGELOG-2026-04-07-up-to-v0.49.0.md)
 
+## 0.324.2 — Relation-Map Preset Keeps Titles Readable After a Phone Click (2026-11-16)
+
+On a phone, a click on a box in a relation-map page no longer zooms the map out until titles are 4 to 7 px tall. This removes the phone-click limit that 0.324.0 listed; 0.324.1 already removed the other one.
+
+- Below 600 px wide, a click keeps the clicked title and every related title in the frame at about 12 px. The detail panel lists each related box with a Show button that brings that box into view on the map.
+- On a phone, the map frame starts in the top half of the first screen, and the first view puts the main boxes at the frame's top.
+- At every width, a relation word stays wholly inside the frame and never covers an arrowhead.
+- At desktop width, a click still fits the clicked box and every related box in the frame, as before.
+- What changes for an installed copy: a page made with `ai-report second-opinion --preset relation-map` follows the three changed checks of that preset. Pages already published are not rebuilt, and nothing else changes.
+
 ## 0.324.1 — Second-Opinion Pages Fold the Full Direction Under a Short Header (2026-11-16)
 
 A directed second-opinion page now opens with a two-line header instead of the whole direction text. On a phone, the relation-map page's map now starts on the first screen (y = 830 on an 844 px screen, was 2,069), which removes the "map starts on the third screen" limit that 0.324.0 listed.

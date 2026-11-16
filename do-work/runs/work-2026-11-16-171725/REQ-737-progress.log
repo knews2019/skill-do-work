@@ -26,3 +26,10 @@
 2026-11-16T19:55:27Z pass 3 verify end
 2026-11-16T19:55:45Z pass 3 hand-back addendum written; tip 9375501d
 2026-11-16T20:00:50Z integrate start (integrator REQ-737); step 0 run-artifacts commit
+2026-11-16T20:02:41Z gate start (load 2.82) helpers/gate.sh 3f6ebf38
+2026-11-16T20:05:26Z gate end exit 0
+2026-11-16T20:06:06Z heavy drain start (load 5.82) helpers/heavy.sh 3f6ebf38 6 lanes
+2026-11-16T20:06:10Z review start (reviewer agent)
+2026-11-16T20:11:43Z heavy drain end
+2026-11-16T20:12:13Z review end (95%, Pass)
+2026-11-16T20:13:24Z finalize prep (manifests)
