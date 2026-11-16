@@ -1,7 +1,7 @@
 ---
 id: REQ-739
 title: 'Second-opinion header keeps a side margin on a phone'
-status: claimed
+status: completed
 created_at: 2026-11-16T20:15:49Z
 user_request: UR-181
 domain: frontend
@@ -26,6 +26,14 @@ estimate:
 claimed_at: 2026-11-16T20:24:22Z
 dispatch_at: 2026-11-16T20:30:25Z
 builder_handback_at: 2026-11-16T20:39:28Z
+integration_at: 2026-11-16T20:39:48Z
+review_at: 2026-11-16T20:49:50Z
+commit: ef5dc79566d7bf7f074f2d1ce3ed13488720cacc
+heavy_verified_at: 2026-11-16T20:53:56Z
+heavy_verified_revision: ef5dc79566d7bf7f074f2d1ce3ed13488720cacc
+kb_status: pending
+completed_at: 2026-11-16T20:54:49Z
+release_at: 2026-11-16T20:54:49Z
 ---
 # Second-Opinion Header Keeps a Side Margin on a Phone
 ## What
@@ -65,9 +73,9 @@ See `do-work/user-requests/UR-181/input.md` for complete verbatim input.
 
 - `skills/do-work/tools/do-work-cli/lessons-do-work-cli.md` (bare; the row is `slugged: partial`, so a targeted form is not legal) — cost 25,074 tokens against the 2,000-token budget — matches "a session that is its own second-opinion backend" and "writer-anchored-marker-position": the change edits what the launcher writes between the header markers.
 ## AI Execution State (P-A-U Loop)
-- [ ] **[PLAN]:** (Agent: Read listed `prime_files` and agent rules. Write brief technical approach here. Do not write code yet.)
-- [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
-- [ ] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
+- [x] **[PLAN]:** Add the RED test with 5 checks, then one `<style>` with a `:where()` rule inside the markers before the `aside`; prove on scratch pages P1-P5 at 390 and 1440. (from the builder hand-back)
+- [x] **[APPLY]:** Two commits, the test and the block string plus its comment; nothing else in the launcher moved. (from the builder hand-back)
+- [x] **[UNIFY]:** `git diff --stat main...HEAD` lists only `report_second_opinion.go` (+5 −3, comment and `block :=` line) and `report_second_opinion_test.go` (+33, one new function); no scratch test, no debug output, no `ai-reports/` change. (from the builder hand-back)
 *Source: Integrate + capture fix (Recommended): … Capture one new small request for a side margin on the launcher's header, queued for a later run. … Risk: until that request runs, the header touches the screen edge on a phone.*
 
 ## Triage
@@ -153,4 +161,148 @@ See `do-work/user-requests/UR-181/input.md` for complete verbatim input.
 - **D-06** (DECIDE & STATE): The integrator picks the version bump. Suggested: a patch (0.324.2 to 0.324.3), because an existing header changes its look and no option is added. The builder only proposes the changelog entry.
 - **D-07** (ESCALATE): The REQ asks to show a 390 px capture of a plain page's header and of the v1c03 header to the maintainer before the REQ is called done. The run is unattended, so the builder saves captures under `do-work/runs/work-2026-11-16-202422/REQ-739-captures/` and the coordinator shows them before integration starts. Value: the maintainer sees the margin on real pages before it ships to every directed page. Risk: if the maintainer wants another width or form, the change is one block string and one test, fully reversible in a follow-up; pages published in between keep the header they got until a new pass rebuilds them.
 
-<!-- D-XX counter: last used D-07. Next decision: D-08. -->
+(from the builder hand-back)
+
+- **D-08** (DECIDE & STATE): The "before" copies for P1, P2, P4 and P5 are the new pages with only the new `<style>` removed, which is exactly what 0.324.2 writes; for P4 the published 0.324.0 copy is measured too. The published v1c03 page still carries the 0.324.0 unfolded header (1326.7 px tall at 390), so only its margin and padding are comparable; height and map top are compared against the 0.324.2 copy (830 at 390, as REQ-738 measured).
+- **D-09** (DECIDE & STATE): The judge accepted the scratch bundle outside the repository, so no copy went into the worktree's `ai-reports/`.
+- **D-10** (DECIDE & STATE): Captures were written straight into the captures folder by `page.screenshot`; the only file this session created in the main tree's `.playwright-mcp/` was `console-2026-11-16T20-34-09-044Z.log` (a favicon 404), deleted by name. The folder is now empty.
+- **D-11** (DECIDE & STATE): P3 was decorated with an editor direction and no tree marks (a plain `custom` run), so it has no iteration line; its capture is kept because it looks different from P1 (24 px edge, no iteration line).
+
+(integrator)
+
+- **D-12** (DECIDE & STATE): The hand-back file was committed in the step-0 run-artifacts commit `540925d4`, as this REQ's integrator brief asks; the shared guide's "never stage the hand-back" line is the general default, and the brief is the REQ-specific instruction.
+- **D-13** (DECIDE & STATE): The builder's measurement script and raw output were copied from its scratch folder into `do-work/runs/work-2026-11-16-202422/REQ-739-captures/` (`measure.js`, `measure-output.txt`), because the brief names them as part of the captures and a scratch folder does not survive a cleanup.
+- **D-14** (DECIDE & STATE): No `builder-work` timing event was recorded: the hand-back landed before the integrator started, so the wait has no honest end instant (brief instruction).
+
+- **D-15** (DECIDE & STATE): The integration report names the finalization commit, so it cannot ride inside that commit's `commit_paths` as the brief asked. The review file and the progress log ride in the finalization commit; the report is committed alone, by exact path, right after finalization as `[REQ-739] integration report`.
+- **D-16** (DECIDE & STATE): Release is a patch, 0.324.2 to 0.324.3 (D-06): an existing header changes its look and no option is added. The CHANGELOG entry is the builder's proposal, edited for truth: the 16 px is padding inside the header box, so a page that keeps the browser's 8 px body margin shows about 24 px.
+
+<!-- D-XX counter: last used D-16. Next decision: D-17. -->
+
+## Implementation Summary
+
+**Files changed:**
+- `skills/do-work/tools/do-work-cli/internal/toolboxcommands/report_second_opinion.go` (modified)
+- `skills/do-work/tools/do-work-cli/internal/toolboxcommands/report_second_opinion_test.go` (modified)
+
+**What was done:** `secondOpinionDecorate` now writes one `<style>` element inside the header markers, right before the `aside`: `:where(body>aside[aria-label="Second-opinion direction"]){padding-inline:16px}`. The rule has zero specificity, so a page's own rule for the header still wins, and the `aside` open tag is unchanged; the function comment says so. A new test, `TestSecondOpinionHeaderKeepsAPhoneSideMargin`, pins the rule, the unchanged `aside` tag, idempotence, the strip of a literal 0.324.1 block, and a plain decorate that leaves no `<style>` behind.
+
+## Discovered Tasks
+
+(from the builder hand-back)
+
+- The published tstack v1c03 page still shows the 0.324.0 unfolded header (1326.7 px tall at 390, map top y = 2069). Pages are not rewritten by design; a new pass would rebuild it. No action taken. → report only
+
+## Qualification
+
+**Gate records (`advance --diff-range 540925d4..ef5dc795`):** `qualify` satisfied (P-A-U boxes ticked, no debug artifact, no leftover output). `scope-drift` reported three `SCOPE-DECLARED-NOT-TOUCHED` findings, for `CHANGELOG.md`, `skills/do-work/CHANGELOG.md` and `VERSION`. Judged expected: Scope marks all three "integrator only", and the finalization transaction writes them. No undeclared file was touched.
+
+**Diff (`git diff 540925d4..ef5dc795 --stat`):** `report_second_opinion.go` +5 −3 (the function comment and the `block :=` line), `report_second_opinion_test.go` +33 (one new function). Read in full.
+
+**Requirement trace:**
+- Header text about 16 px from the edge on a page with no own rule: the `block :=` line adds `<style>:where(body>aside[aria-label="Second-opinion direction"]){padding-inline:16px}</style>` before the `aside`. Builder measurements: 16 px on the kit page, v1c01 and v1c04 at 390 and 1440; 24 px box edge on a page that keeps the default 8 px body margin (D-02). Right gap matches.
+- Page's own rule still wins: `:where()` gives the rule zero specificity, and the `aside` open tag is byte-identical (test check 2). Builder measurement on the v1c03 scratch copy: margin `12px 16px`, padding `8px 14px` at 390, equal to the 0.324.2 copy.
+- Idempotent, strips an old block: test checks 3 and 4 (a literal 0.324.1 block decorates to the clean-page bytes); check 5 shows a plain decorate removes the `<style>` too. The `<style>` sits between the markers, so the existing masked strip removes it with no new code.
+- Head metas, markers, fold, presets, iteration list unchanged: the diff touches only the string before the `aside` open tag and the comment.
+- No sideways scroll, judge passes: builder matrix shows `scrollWidth == clientWidth` closed and open on every page; `ai-report-judge` passed on the v1c03 and v1c04 scratch pages.
+- Captures shown to the maintainer: approved before integration (question dialog, 2026-11-16).
+
+**Scope comparison (Route B):** declared 5 files; touched 2 of them in the build; the other 3 are release files written at finalization. Nothing outside the declared set.
+
+## Testing
+
+**Tests run:** `bash _dev/tests/maintainer-verify.sh` at merge `ef5dc79566d7bf7f074f2d1ce3ed13488720cacc` (detached run checkout, stage reuse off, 1-minute load 3.11 at start), then `advance … --gate-exit-status 0 -- --probe-file do-work/runs/work-2026-11-16-202422/REQ-739-probe.sh`.
+**Result:** ✓ All passing. Gate wall 128 s ("Maintainer verification passed."; do-work-cli fast tests 988, slowest file `report_second_opinion_test.go` 16.33 s, under the 30 s budget). GREEN probe: "REQ-739 probe PASS (4 header tests, aside tag unchanged)"; `green-gate` and `run-blocked-check` satisfied.
+
+**Red-green validation:** (traces to `## Red-Green Proof`; from the builder hand-back)
+- `TestSecondOpinionHeaderKeepsAPhoneSideMargin` (`report_second_opinion_test.go`): ✗ at RED commit `1e478a2a` (`check 1: the header block has no zero-specificity side-margin rule, so its text touches a phone's edge`, an assertion failure) → ✓ at GREEN commit `6584e473`.
+- GREEN probe: FAIL at base `e71b4aa2` (test missing), FAIL at the RED commit (check 1), PASS at tip.
+- Browser proof (GREEN 2-4): builder matrix in `do-work/runs/work-2026-11-16-202422/REQ-739-handback.md` and `REQ-739-captures/measure-output.txt`.
+
+**New tests added:**
+- `TestSecondOpinionHeaderKeepsAPhoneSideMargin` in `skills/do-work/tools/do-work-cli/internal/toolboxcommands/report_second_opinion_test.go` (5 checks).
+
+**Heavy verification plan:**
+- Range: 540925d4aeabb4887743564db13df76ba4549bb2..ef5dc79566d7bf7f074f2d1ce3ed13488720cacc
+- do-work-cli-integrations: `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane do-work-cli-integrations` — both changed files match subtree `skills/do-work/tools/do-work-cli`
+- staged-skills: `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane staged-skills` — both changed files match subtree `skills`
+- updater: `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane updater` — both changed files match subtree `skills/do-work/tools/do-work-cli`
+- installer: `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane installer` — both changed files match subtree `skills/do-work/tools/do-work-cli`
+
+*Verified by work action (integrator, run work-2026-11-16-202422)*
+
+## Review
+
+**Overall: 98%** | 2026-11-16T20:49:50Z
+
+| Dimension | Score |
+|-----------|-------|
+| Requirements | 100% |
+| Code Quality | 100% |
+| Test Adequacy | 95% |
+| Scope | 100% |
+| Risk | Low |
+| Acceptance | Pass |
+
+**Important findings (each with its recorded impact token — this is the durable audit record the judgment mandates):**
+None
+
+**Minor findings:**
+- F1 (Nit): the launcher's `<style>` sits in the body (`report_second_opinion.go:1645`), where the HTML standard does not allow `<style>`; browsers apply it and the judge does not check, but a strict validator would flag every directed page; chosen on purpose in D-01 — impact-negligible → report only
+
+**Acceptance:** Pass — implementation and integration stages: focused `^TestSecondOpinion` tests green at `ef5dc795` and RED reproduced without the rule; merged decorate on scratch kit, v1c04 and v1c03 pages in Chromium (390 x 844 and 1440 x 1000: text left 16 px on kit and v1c04, 31 px / 43.5 px on v1c03 with its own margin `12px 16px` and padding `8px 14px` unchanged, header heights unchanged, no sideways scroll closed or open, fold opens and closes, "Open all details" leaves the header fold closed); judge from builder evidence; deployment and live acceptance unassessed
+**Restatement sweep:** redefined the header block's content between the markers (a zero-specificity `<style>` before an unchanged `aside`); inherited REQ-738's header visible form; grep over the tracked tree outside `ai-reports/` and `do-work/` finds `ai-report.md:89`, `skeleton.html:8`, `ai-report-reference.md:74`, `lessons-do-work-cli.md:18` and the test literals all agree; no stale restatement
+**Suggested testing:** 3 items
+**Follow-ups created:** None (1 finding report only)
+**Anti-bloat:** 0 helpers, options, files or decorative tests the REQ did not name (two of the new test's five checks overlap existing asserts, as D-04 asked).
+
+*Reviewed by review-work action*
+
+## Heavy Verification Plan
+
+- Base revision: 540925d4aeabb4887743564db13df76ba4549bb2
+- Target revision: ef5dc79566d7bf7f074f2d1ce3ed13488720cacc
+- do-work-cli-integrations: `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane do-work-cli-integrations` — reasons: both changed files match subtree `skills/do-work/tools/do-work-cli`
+- staged-skills: `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane staged-skills` — reasons: both changed files match subtree `skills`
+- updater: `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane updater` — reasons: both changed files match subtree `skills/do-work/tools/do-work-cli`
+- installer: `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane installer` — reasons: both changed files match subtree `skills/do-work/tools/do-work-cli`
+
+## Heavy Verification Result
+
+- Target revision: ef5dc79566d7bf7f074f2d1ce3ed13488720cacc
+- Execution revision: ef5dc79566d7bf7f074f2d1ce3ed13488720cacc (detached run checkout, `QUEUE_KANBAN_BROWSER` set, 1-minute load 4.49 at start)
+- do-work-cli-integrations: exit 0, executed, 65 s
+- staged-skills: exit 0, executed, 40 s
+- updater: exit 0, executed, 71 s
+- installer: exit 0, executed, 34 s
+- Runner findings: none (no lane skipped)
+
+## Lessons Learned
+
+**What worked:**
+- A zero-specificity `:where()` rule in a `<style>` between the launcher's own markers: the page's own header rule still wins, and the existing masked strip removes the style with the old block, so idempotence and the old-block strip needed no new code.
+- Rebuilding scratch pages from their own head metas: the rebuilt v1c04 page minus the new `<style>` matched the published bytes exactly, which proved the "before" copies honest (builder and reviewer both checked it).
+
+**What didn't:**
+- Nothing failed. The rejected forms (inline padding or margin on the `aside`, a head `<style>`, a class, inline padding on the inner `p` and `summary`) were ruled out at pre-dispatch because an inline style beats the v1c03 page's own rule.
+
+**Worth knowing:**
+- The `<style>` sits in the body, which the HTML standard does not allow; browsers apply it and `ai-report-judge` does not check it (review F1, impact-negligible).
+- Published pages keep their old header until a new second-opinion pass rebuilds them; the tstack v1c03 page still shows the 0.324.0 unfolded header.
+
+## Orientation
+
+Now the header that `ai-report second-opinion` writes above a directed page keeps 16 px of side room on pages that do not style it, while a page's own header rule still wins; lives in the do-work CLI's second-opinion launcher (`toolboxcommands`), a release-carrying change under `_dev/primes/prime-releases.md`. Prime spot-check: `prime-releases.md` paths unchanged by this REQ.
+
+## Timing
+
+Observed 2026-11-16T20:39:36Z to 2026-11-16T20:53:57Z: 14m 21s total, 13m 05s attributed across 4 events, 1m 16s unattributed.
+
+| Category | Elapsed | Events |
+| --- | --- | --- |
+| verification-gate | 6m 31s | 2 |
+| review | 6m 20s | 1 |
+| handback-merge | 14s | 1 |
+
+Slowest stage: review / independent review (Route B, restatement sweep), 6m 20s, outcome success.
+Slowest command: verification-gate / heavy drain, 3m 49s, exit 0, .

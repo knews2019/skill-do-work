@@ -10,6 +10,14 @@ For the complete release history, read this file and the archives below from new
 - [0.50.0 through 0.64.1](https://github.com/knews2019/skill-do-work/blob/main/docs/changelog/CHANGELOG-2026-04-13-up-to-v0.64.1.md)
 - [0.1.0 through 0.49.0](https://github.com/knews2019/skill-do-work/blob/main/docs/changelog/CHANGELOG-2026-04-07-up-to-v0.49.0.md)
 
+## 0.324.3 — Second-Opinion Header Keeps a Side Margin on Phones (2026-11-16)
+
+The short header that `ai-report second-opinion` writes above a directed page no longer touches the screen edge on a phone.
+
+- The header gets 16 px of side padding on pages that do not style it themselves. On the report kit and on pages with no body margin, its text now starts 16 px from the edge at 390 px wide (was 0); a page that keeps the browser's default body margin shows about 24 px.
+- A page with its own rule for the header keeps its own look: the padding sits in a zero-specificity CSS rule that any page rule beats.
+- What changes for an installed copy: every page that `ai-report second-opinion` builds with a preset or an editor direction gets the side margin. The head metas and the fold are unchanged, and pages already published keep their old header until a new pass rebuilds them.
+
 ## 0.324.2 — Relation-Map Preset Keeps Titles Readable After a Phone Click (2026-11-16)
 
 On a phone, a click on a box in a relation-map page no longer zooms the map out until titles are 4 to 7 px tall. This removes the phone-click limit that 0.324.0 listed; 0.324.1 already removed the other one.
