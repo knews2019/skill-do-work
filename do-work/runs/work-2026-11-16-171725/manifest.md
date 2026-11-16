@@ -9,5 +9,5 @@ Hand-back emphasis note: none
 
 | REQ | Builder | Operative name | Handback file | Status | Dispatch instant | Takeover-to-finalization min | Full gates | Stall restarts |
 |-----|---------|----------------|---------------|--------|------------------|------|------|------|
-| REQ-737 | builder agent (Opus 5.5, worktree) | worktree-agent-REQ-737-relation-map-phone-titles | do-work/runs/work-2026-11-16-171725/REQ-737-handback.md | pass 1 handed back 17:45:01Z (tip 8ef2084e); maintainer kept form 1 and asked for the page-top fix; pass 2 building | 2026-11-16T17:31:30Z | | | |
+| REQ-737 | builder agent (Opus 5.5, worktree) | worktree-agent-REQ-737-relation-map-phone-titles | do-work/runs/work-2026-11-16-171725/REQ-737-handback.md | three passes (tips 8ef2084e, 4b3d6fad, 9375501d); maintainer kept form 1, asked for the page-top fix, approved the final captures; integrating | 2026-11-16T17:31:30Z | | | |
 | REQ-738 | builder agent (Opus 5.5, worktree) | worktree-agent-REQ-738-fold-second-opinion-direction | do-work/runs/work-2026-11-16-171725/REQ-738-handback.md | released 0.324.1; merge 943c4385; finalization ad8842ea; gate green (129 s); review 96% approve; four heavy lanes green; flat archive, UR-180 open | 2026-11-16T17:31:30Z | 16 | 1 | 0 |
