@@ -78,4 +78,4 @@ Release version, archive path, merge hash and finalization commit, review score/
 - **Anti-bloat.** Tell your reviewer to count helpers, options, files or decorative tests the REQ did not name and list them in `## Review`.
 - **Lessons.** A bullet only when the builder proposed a real one, beside its own family block. Go lessons to `skills/do-work/tools/do-work-cli/lessons-do-work-cli.md`, action-file lessons to `_dev/primes/lessons-action-files.md`, shell-command lessons to `_dev/primes/lessons-shell-commands.md`, release lessons to `_dev/primes/lessons-releases.md`. Refresh the `do-work/lessons-index.md` row (tokens = (bytes+3)//4).
 - **Questions.** Never ask the user. A blocking question becomes a `pending-answers` follow-up REQ; everything else is your judgment, recorded as a D-XX decision.
-- **Commit trailer:** `Co-Authored-By: Claude Fable 5.2 <noreply@anthropic.com>` on every commit you author by hand.
+- **Commit trailer:** `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>` on every commit you author by hand.

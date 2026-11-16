@@ -77,7 +77,7 @@ Run the render judge on S1: `bash skills/do-work/tools/do-work-cli.sh --repo-roo
 ## Rules
 - Write only inside the Scope's file list. If the request's own requirements need another file, proceed and report it under "Scope changes" with the reason; otherwise stop and report.
 - Out-of-scope finds go to "Discovered Tasks" in the hand-back. Do not fix them.
-- Commit by exact path (`git add <paths>`). Never `git add -A` or `git commit -a`. Commit subjects start with `[REQ-738]`. End each commit message with the line `Co-Authored-By: Claude Fable 5.2 <noreply@anthropic.com>`.
+- Commit by exact path (`git add <paths>`). Never `git add -A` or `git commit -a`. Commit subjects start with `[REQ-738]`. End each commit message with the line `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`.
 - Do not push. Do not merge. Do not start subagents. Do not ask the user a question: an open choice becomes a decision in the hand-back.
 - Never run the repository gate `_dev/tests/maintainer-verify.sh`; the integrator runs it. Two builders share the machine, so a 30-second per-file time budget that fails once under load is rerun once, and both runs are recorded.
 - Nothing under `/Users/t2/.claude/` is ever edited.

@@ -25,6 +25,7 @@ estimate:
     - 2 subsystems involved
     - 7 acceptance criteria
 claimed_at: 2026-11-16T17:17:19Z
+dispatch_at: 2026-11-16T17:31:30Z
 ---
 # Second-Opinion Direction Block Keeps the Page Content on the First Phone Screen
 ## What
@@ -147,6 +148,14 @@ See `do-work/user-requests/UR-180/input.md` for complete verbatim input.
 - [ ] A short-preset page (bold) and an editor-direction-only page still show the preset or custom at the top and the full direction on the page; on a report-kit page the header is not restyled by the kit and not toggled by the "Open all details" button.
 - [ ] The two contract sentences describe the new header.
 - [ ] The maintainer is shown a phone capture of the top of the page before the REQ is called done (D-06).
+
+## Pre-Flight
+
+**Git:** ✓ No uncommitted project files at dispatch (run artifacts under do-work/ only)
+**Tests baseline:** ✓ Focused pre-build probe passing (do-work/runs/work-2026-11-16-171725/REQ-738-preflight-probe.sh) and the repository gate green at 6f00ab48 (134 s, detached checkout, stage reuse off, load 1.9). Three earlier base runs (at 7f2c4b94 and 6f00ab48) were red only on the 30 s per-file budget, each on a different file (finalization_recovery_test.go 31.15 s at load 28; report_second_opinion_test.go 30.89 s at load 11; finalization_req499_test.go 34.79 s at load 6), from other projects and the builders loading the machine.
+**Dependencies:** ✓ Installed
+
+*Checked by work action (coordinator, run work-2026-11-16-171725)*
 
 ## Decisions
 
