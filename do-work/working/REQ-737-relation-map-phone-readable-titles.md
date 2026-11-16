@@ -1,7 +1,7 @@
 ---
 id: REQ-737
 title: 'Addendum: relation-map preset keeps box titles readable after a click on a phone'
-status: pending
+status: claimed
 created_at: 2026-11-15T12:45:58Z
 user_request: UR-180
 addendum_to: REQ-727
@@ -15,6 +15,7 @@ required_lessons: ["_dev/primes/lessons-releases.md"]
 related: [REQ-738]
 batch: relation-map-phone-layout
 write_set: ["skills/do-work-toolbox/docs/second-opinion-presets/relation-map.md", "ai-reports/2026-11-04_1747_proposal-tstack-review-workflows-rev1/index-v1c*.html", "ai-reports/2026-11-04_1747_proposal-tstack-review-workflows-rev1/v1c*-reply.md", "ai-reports/2026-11-04_1747_proposal-tstack-review-workflows-rev1/index.html", "ai-reports/catalog.json", "ai-reports/index.html", "CHANGELOG.md", "skills/do-work/CHANGELOG.md", "VERSION"]
+claimed_at: 2026-11-16T17:17:19Z
 ---
 # Addendum: Relation-Map Preset Keeps Box Titles Readable After a Click on a Phone
 ## What
