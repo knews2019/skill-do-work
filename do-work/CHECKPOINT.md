@@ -7,4 +7,4 @@ queue_state: [1 pending, 0 pending-answers, 0 blocked, 0 blocked-archive-collisi
 
 ## In Progress (interrupted)
 
-
+- REQ-739: Second-opinion header keeps a side margin on a phone — claimed 2026-11-16T20:24:22Z — writer: t2s-Virtual-Machine.local:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2

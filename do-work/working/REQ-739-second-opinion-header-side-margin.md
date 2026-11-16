@@ -1,7 +1,7 @@
 ---
 id: REQ-739
 title: 'Second-opinion header keeps a side margin on a phone'
-status: pending
+status: claimed
 created_at: 2026-11-16T20:15:49Z
 user_request: UR-181
 domain: frontend
@@ -13,6 +13,7 @@ effort_estimate: effort-mechanical
 required_lessons: ["_dev/primes/lessons-releases.md"]
 related: [REQ-738]
 write_set: ["skills/do-work/tools/do-work-cli/internal/toolboxcommands/report_second_opinion.go", "skills/do-work/tools/do-work-cli/internal/toolboxcommands/report_second_opinion_test.go", "CHANGELOG.md", "skills/do-work/CHANGELOG.md", "VERSION"]
+claimed_at: 2026-11-16T20:24:22Z
 ---
 # Second-Opinion Header Keeps a Side Margin on a Phone
 ## What
