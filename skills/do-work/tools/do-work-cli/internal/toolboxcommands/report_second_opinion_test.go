@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"html"
 	"io"
 	"os"
 	"os/exec"
@@ -998,6 +999,80 @@ func TestSecondOpinionDirectedRunNamesAndMarksPage(t *testing.T) {
 	}
 	if string(secondOpinionDecorate(once, secondOpinionDirection{}, secondOpinionTreeMarks{})) != string(withHead) {
 		t.Fatalf("plain decoration did not strip the launcher marks: %s", secondOpinionDecorate(once, secondOpinionDirection{}, secondOpinionTreeMarks{}))
+	}
+}
+
+// Pins REQ-727 D-17: the launcher printed the 3,057-byte relation-map direction as always-open text above the page,
+// 1,302 px tall on a 390 px phone, so the map started on the third screen. The header now shows the iteration line and
+// the preset, and the full direction waits behind a closed fold; the metas stay byte-identical to 0.324.0.
+func TestSecondOpinionHeaderFoldsTheFullDirection(t *testing.T) {
+	presets, err := filepath.Abs(filepath.Join("..", "..", "..", "..", "..", "do-work-toolbox", "docs", "second-opinion-presets"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	shipped := func(name string) string {
+		data, err := os.ReadFile(filepath.Join(presets, name+".md"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		return strings.TrimSpace(string(data)) // the loader trims the same way
+	}
+	clean := []byte(`<html><head><title>Map</title></head><body><p>Original report: <a href="index.html">index.html</a></p><h1>Map</h1></body></html>`)
+	// header splits the block between the markers into the always-visible part and the folded body of its details.
+	header := func(page []byte) (visible, folded string) {
+		block := string(page)
+		_, block, _ = strings.Cut(block, "<!-- second-opinion-header -->")
+		block, _, _ = strings.Cut(block, "<!-- /second-opinion-header -->")
+		details := strings.Index(block, "<details")
+		summaryEnd := strings.Index(block, "</summary>")
+		detailsEnd := strings.LastIndex(block, "</details>")
+		if details < 0 || summaryEnd < details || detailsEnd < summaryEnd || strings.Contains(block[details:strings.Index(block[details:], ">")+details], " open") {
+			t.Fatalf("check 1: the header has no closed details fold, so the whole direction is always-open text: %.400s", block)
+		}
+		folded = block[summaryEnd+len("</summary>") : detailsEnd]
+		return block[:summaryEnd] + block[detailsEnd:], folded
+	}
+
+	mapText := shipped("relation-map")
+	mapDirection := secondOpinionDirection{Preset: "relation-map", PresetText: mapText}
+	tree := secondOpinionTreeMarks{treeID: "v1c03", modelLabel: "claude claude-opus-5-5", publishDate: "2026-11-15"}
+	once := secondOpinionDecorate(clean, mapDirection, tree)
+	visible, folded := header(once)
+	if escaped := html.EscapeString(mapText); strings.Contains(visible, escaped[:60]) || !strings.Contains(folded, escaped) {
+		t.Fatalf("check 1: the direction is visible above the page, or not whole in the fold:\nvisible %s\nfolded %.200s", visible, folded)
+	}
+	for _, mark := range []string{"relation-map", "Iteration v1c03", `<a href="index.html">index.html</a>`} {
+		if !strings.Contains(visible, mark) {
+			t.Fatalf("check 2: the visible header lacks %q: %s", mark, visible)
+		}
+	}
+	metas := `<meta name="ai-report-second-opinion-preset" content="relation-map"><meta name="ai-report-second-opinion-direction" content="` + html.EscapeString(mapText) + `"><meta name="ai-report-second-opinion-id" content="v1c03"><meta name="ai-report-second-opinion-base" content="index.html"><meta name="ai-report-second-opinion-model" content="claude claude-opus-5-5"><meta name="ai-report-second-opinion-date" content="2026-11-15"></head>`
+	if !strings.Contains(string(once), "<title>Map</title>"+metas) {
+		t.Fatalf("check 3: the head metas changed from 0.324.0: %.600s", once)
+	}
+	if twice := secondOpinionDecorate(once, mapDirection, tree); string(twice) != string(once) {
+		t.Fatalf("check 4: decorating twice changed the bytes:\n%s\n%s", once, twice)
+	}
+	// The exact block 0.324.0 wrote, so a page published before this change loses its old header on the next pass.
+	oldBlock := `<!-- second-opinion-header --><aside aria-label="Second-opinion direction" style="overflow-wrap:anywhere"><p><strong>Iteration v1c03</strong>, built on <a href="index.html">index.html</a></p><p><strong>Second-opinion preset:</strong> relation-map</p><p style="white-space:pre-line"><strong>Direction:</strong> ` + html.EscapeString(mapText) + `</p></aside><!-- /second-opinion-header -->`
+	oldPage := strings.Replace(strings.Replace(string(clean), "</head>", metas, 1), "<body>", "<body>"+oldBlock, 1)
+	if got := secondOpinionDecorate([]byte(oldPage), mapDirection, tree); string(got) != string(once) {
+		t.Fatalf("check 5: a page with the 0.324.0 header decorates differently from a clean page:\n%s\n%s", got, once)
+	}
+	for _, other := range []struct {
+		direction secondOpinionDirection
+		slot      string
+	}{
+		{secondOpinionDirection{Preset: "bold", PresetText: shipped("bold")}, "bold"},
+		{secondOpinionDirection{EditorDirection: "add a timeline\nwith <dates> & \"names\""}, "custom"},
+	} {
+		visible, folded := header(secondOpinionDecorate(clean, other.direction, secondOpinionTreeMarks{}))
+		if !strings.Contains(visible, other.slot) || !strings.Contains(folded, html.EscapeString(other.direction.combinedText())) {
+			t.Fatalf("check 6: %s page lacks the slot in view or the full direction in the fold:\nvisible %s\nfolded %s", other.slot, visible, folded)
+		}
+	}
+	if !strings.Contains(visible, `<aside aria-label="Second-opinion direction" style="overflow-wrap:anywhere">`) {
+		t.Fatalf("check 7: the header lost its label or its long-token guard: %s", visible)
 	}
 }
 

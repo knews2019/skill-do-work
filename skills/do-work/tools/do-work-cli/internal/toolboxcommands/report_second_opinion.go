@@ -1596,7 +1596,8 @@ type secondOpinionTreeMarks struct {
 
 // secondOpinionDecorate first removes every launcher header block, copied iteration list and ai-report-second-opinion-*
 // meta already on the page, then adds the direction and tree metas before the first real </head> and a header block
-// right after the opening body tag: the tree id with a link to the parent page, then the slot and the full direction.
+// right after the opening body tag: the tree id with a link to the parent page, then the slot as the summary of a closed
+// details fold that holds the full direction, so a long preset never pushes the page content off a phone's first screen.
 // Decorating twice gives the same bytes, and a plain direction with no tree marks only strips. Tags and markers count
 // only on the masked surface, so text inside a script, style or comment never matches.
 func secondOpinionDecorate(page []byte, direction secondOpinionDirection, tree secondOpinionTreeMarks) []byte {
@@ -1631,7 +1632,8 @@ func secondOpinionDecorate(page []byte, direction secondOpinionDirection, tree s
 		paragraphs = `<p><strong>Iteration ` + html.EscapeString(tree.treeID) + `</strong>, built on <a href="` + parent + `">` + parent + `</a></p>`
 	}
 	if slot != "" {
-		paragraphs += `<p><strong>Second-opinion preset:</strong> ` + html.EscapeString(slot) + `</p><p style="white-space:pre-line"><strong>Direction:</strong> ` + text + `</p>`
+		// Inline styles cancel the report kit's details card. The slot is the summary, so the slot and the fold share one line.
+		paragraphs += `<details style="background:none;border:0;border-radius:0;padding:0;margin:0"><summary style="cursor:pointer;font:inherit;padding:0;margin:.25em 0;border:0"><strong>Preset:</strong> ` + html.EscapeString(slot) + ` (full direction)</summary><p style="white-space:pre-line">` + text + `</p></details>`
 	}
 	if head := regexp.MustCompile(`(?i)</head\s*>`).FindIndex(secondOpinionVisibleHTML(page)); head != nil {
 		page = insert(page, head[0], metas)
