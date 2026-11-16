@@ -1,5 +1,5 @@
 {
-  "test_command": "bash do-work/runs/work-2026-11-16-171725/REQ-737-preflight-probe.sh",
+  "test_command": "bash do-work/runs/work-2026-11-16-202422/REQ-739-preflight-probe.sh",
   "exit_status": 0,
   "launched": true
 }
