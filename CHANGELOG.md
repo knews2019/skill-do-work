@@ -10,6 +10,13 @@ For the complete release history, read this file and the archives below from new
 - [0.50.0 through 0.64.1](https://github.com/knews2019/skill-do-work/blob/main/docs/changelog/CHANGELOG-2026-04-13-up-to-v0.64.1.md)
 - [0.1.0 through 0.49.0](https://github.com/knews2019/skill-do-work/blob/main/docs/changelog/CHANGELOG-2026-04-07-up-to-v0.49.0.md)
 
+## 0.324.1 — Second-Opinion Pages Fold the Full Direction Under a Short Header (2026-11-16)
+
+A directed second-opinion page now opens with a two-line header instead of the whole direction text. On a phone, the relation-map page's map now starts on the first screen (y = 830 on an 844 px screen, was 2,069), which removes the "map starts on the third screen" limit that 0.324.0 listed.
+
+- The header shows the iteration line with its parent link, then "▸ Preset: <name> (full direction)". A click, or Enter on that line, opens the full direction with its line breaks. It works without JavaScript, and the report kit neither restyles it nor opens it with "Open all details".
+- What changes for an installed copy: every page that `ai-report second-opinion` builds with a preset or an editor direction gets the short header; the head metas are unchanged, and pages already published keep their old header until a new pass rebuilds them.
+
 ## 0.324.0 — Relation-Map Preset for ai-report Second Opinion (2026-11-15)
 
 A report can now be read as one zoomable map of its items and the relations the report states between them. `ai-report second-opinion --preset relation-map` asks the editor for that page.
