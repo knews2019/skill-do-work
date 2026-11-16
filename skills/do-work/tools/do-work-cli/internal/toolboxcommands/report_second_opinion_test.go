@@ -1076,6 +1076,39 @@ func TestSecondOpinionHeaderFoldsTheFullDirection(t *testing.T) {
 	}
 }
 
+// Pins REQ-739: the header text started at x = 0 on a 390 px phone on every page with no rule of its own for the
+// header (REQ-738 review F3 on the report kit page, and the final REQ-737 relation-map page). The side margin must sit
+// in a zero-specificity rule inside the markers, because an inline padding or margin on the aside would override the
+// tstack v1c03 page's own rule for the same element.
+func TestSecondOpinionHeaderKeepsAPhoneSideMargin(t *testing.T) {
+	clean := []byte(`<html><head><title>Map</title></head><body><p>Original report: <a href="index.html">index.html</a></p><h1>Map</h1></body></html>`)
+	direction := secondOpinionDirection{Preset: "relation-map", PresetText: "Draw a <map> & \"relate\" the parts."}
+	tree := secondOpinionTreeMarks{treeID: "v1c03", modelLabel: "claude claude-opus-5-5", publishDate: "2026-11-16"}
+	once := secondOpinionDecorate(clean, direction, tree)
+	_, block, _ := strings.Cut(string(once), "<!-- second-opinion-header -->")
+	block, _, _ = strings.Cut(block, "<!-- /second-opinion-header -->")
+	if !strings.Contains(block, `<style>:where(body>aside[aria-label="Second-opinion direction"]){padding-inline:16px}</style>`) {
+		t.Fatalf("check 1: the header block has no zero-specificity side-margin rule, so its text touches a phone's edge: %s", block)
+	}
+	if !strings.Contains(block, `<aside aria-label="Second-opinion direction" style="overflow-wrap:anywhere">`) {
+		t.Fatalf("check 2: the aside open tag changed, so an inline padding or margin may beat the page's own rule: %s", block)
+	}
+	if twice := secondOpinionDecorate(once, direction, tree); string(twice) != string(once) {
+		t.Fatalf("check 3: decorating twice changed the bytes:\n%s\n%s", once, twice)
+	}
+	// The exact block 0.324.1 wrote, so a page published before this change loses its old header on the next pass.
+	text := html.EscapeString(direction.combinedText())
+	metas := `<meta name="ai-report-second-opinion-preset" content="relation-map"><meta name="ai-report-second-opinion-direction" content="` + text + `"><meta name="ai-report-second-opinion-id" content="v1c03"><meta name="ai-report-second-opinion-base" content="index.html"><meta name="ai-report-second-opinion-model" content="claude claude-opus-5-5"><meta name="ai-report-second-opinion-date" content="2026-11-16"></head>`
+	oldBlock := `<!-- second-opinion-header --><aside aria-label="Second-opinion direction" style="overflow-wrap:anywhere"><p><strong>Iteration v1c03</strong>, built on <a href="index.html">index.html</a></p><details style="background:none;border:0;border-radius:0;padding:0;margin:0"><summary style="cursor:pointer;font:inherit;padding:0;margin:.25em 0;border:0"><strong>Preset:</strong> relation-map (full direction)</summary><p style="white-space:pre-line">` + text + `</p></details></aside><!-- /second-opinion-header -->`
+	oldPage := strings.Replace(strings.Replace(string(clean), "</head>", metas, 1), "<body>", "<body>"+oldBlock, 1)
+	if got := secondOpinionDecorate([]byte(oldPage), direction, tree); string(got) != string(once) {
+		t.Fatalf("check 4: a page with the 0.324.1 header decorates differently from a clean page:\n%s\n%s", got, once)
+	}
+	if plain := secondOpinionDecorate(once, secondOpinionDirection{}, secondOpinionTreeMarks{}); strings.Contains(string(plain), "<style") {
+		t.Fatalf("check 5: a plain decorate left the launcher's style element behind: %s", plain)
+	}
+}
+
 // Pins: a named preset the user curated (UR-164, UR-176) that does not ship, and a shipped preset file that the
 // launcher cannot load. The fixture tests above fake the shipped folder, so without this no test reads the real files.
 // The toolbox is a required sibling package, so this path exists in an installed copy too.
