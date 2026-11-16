@@ -1598,8 +1598,10 @@ type secondOpinionTreeMarks struct {
 // meta already on the page, then adds the direction and tree metas before the first real </head> and a header block
 // right after the opening body tag: the tree id with a link to the parent page, then the slot as the summary of a closed
 // details fold that holds the full direction, so a long preset never pushes the page content off a phone's first screen.
-// Decorating twice gives the same bytes, and a plain direction with no tree marks only strips. Tags and markers count
-// only on the masked surface, so text inside a script, style or comment never matches.
+// A <style> inside the markers gives the aside 16 px of side padding, so its text does not touch a phone's edge. The
+// rule sits in :where() with zero specificity, so a page's own rule for the header always wins; an inline padding on
+// the aside would beat it. Decorating twice gives the same bytes, and a plain direction with no tree marks only
+// strips. Tags and markers count only on the masked surface, so text inside a script, style or comment never matches.
 func secondOpinionDecorate(page []byte, direction secondOpinionDirection, tree secondOpinionTreeMarks) []byte {
 	const headerStart, headerEnd = "<!-- second-opinion-header -->", "<!-- /second-opinion-header -->"
 	insert := func(data []byte, at int, text string) []byte {
@@ -1640,7 +1642,7 @@ func secondOpinionDecorate(page []byte, direction secondOpinionDirection, tree s
 		metas = ""
 	}
 	// overflow-wrap keeps one long direction token from failing the judge's horizontal-overflow check.
-	block := headerStart + metas + `<aside aria-label="Second-opinion direction" style="overflow-wrap:anywhere">` + paragraphs + `</aside>` + headerEnd
+	block := headerStart + metas + `<style>:where(body>aside[aria-label="Second-opinion direction"]){padding-inline:16px}</style><aside aria-label="Second-opinion direction" style="overflow-wrap:anywhere">` + paragraphs + `</aside>` + headerEnd
 	at := 0
 	if body := secondOpinionBodyTag.FindIndex(secondOpinionVisibleHTML(page)); body != nil {
 		at = body[1]
