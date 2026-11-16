@@ -1,0 +1,4 @@
+2026-11-16T20:31:56Z verify go test -count=1 ./internal/toolboxcommands/ start
+2026-11-16T20:32:20Z verify go test -count=1 ./internal/toolboxcommands/ end
+2026-11-16T20:35:31Z verify contract scripts start
+2026-11-16T20:36:00Z verify contract scripts end
