@@ -8,3 +8,4 @@
 2026-11-16T17:40:33Z end measure-req738.js browser run (plus sweep rerun)
 2026-11-16T17:40:47Z start verify: TestSecondOpinion timing + contract scripts
 2026-11-16T17:42:41Z end verify
+2026-11-16T19:38:30Z integrate start (builder-work timing event skipped per brief: hand-back landed 17:43:57Z, recorder would charge the wait)

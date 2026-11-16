@@ -26,6 +26,7 @@ estimate:
     - 7 acceptance criteria
 claimed_at: 2026-11-16T17:17:19Z
 dispatch_at: 2026-11-16T17:31:30Z
+builder_handback_at: 2026-11-16T19:38:30Z
 ---
 # Second-Opinion Direction Block Keeps the Page Content on the First Phone Screen
 ## What
