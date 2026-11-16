@@ -11,12 +11,12 @@ Make a relation map: one zoomable inline SVG map whose boxes are the report's ow
 9. Escape, a second click on the selected box or a click on empty map deselects it and returns the panel to its first content.
 10. A "Show everything" button shows every box.
 11. Drag moves the map, pinch or Control-scroll zooms it, buttons and keys do the same, and plain scrolling still scrolls the page.
-12. A relation word stays readable at every zoom and never covers a box, because shown boxes count as taken space.
+12. A relation word stays readable at every zoom, sits wholly inside the frame and never covers a box or an arrowhead, because shown boxes and line ends count as taken space.
 13. A word with no free place is left out and counted as "N of M relation words in view", while the panel still lists every relation.
 14. A label is never narrower than its longest word, and no word in a label is broken or hyphenated.
 15. A click never leaves the clicked box or a related shown box outside the frame, and it zooms in only as far as all of them still fit. Below 600 px wide, readable titles win: after a click the clicked title and every related title in the frame stay at about 12 px or more, and the panel lists each related box with a button that brings that box into view on the map.
 16. On keyboard focus, the script resets the map frame's own scroll to 0, then moves the map so the focused box is fully in view.
-17. Below 600 px wide, the first view frames the main item, its titles read without zoom or sideways panning, and the page never scrolls sideways.
+17. Below 600 px wide, the map frame starts in the top half of the first screen, the first view frames the main item at the frame's top, its titles read without zoom or sideways panning, and the page never scrolls sideways.
 18. Below the map, every box is also given as text and every relation as one table row, and on a phone each row stacks so it needs no sideways swipe.
 19. Without JavaScript, the map shows at full size and scrolls, each relation's words sit on its line as SVG text, and the tool buttons are hidden by a `[hidden]` rule that beats their display rule.
 20. When you can, open the page in a browser at desktop and phone width and fix every check that fails.
