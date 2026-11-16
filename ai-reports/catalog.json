@@ -118,6 +118,13 @@
           "preset": "relation-map",
           "model": "claude claude-opus-5-5",
           "date": "2026-11-15"
+        },
+        {
+          "page": "ai-reports/2026-11-04_1747_proposal-tstack-review-workflows-rev1/index-v1c04-claude-claude-opus-5-5-relation-map-phone-first-map.html",
+          "tree_id": "v1c04",
+          "preset": "relation-map",
+          "model": "claude claude-opus-5-5",
+          "date": "2026-11-16"
         }
       ]
     },
