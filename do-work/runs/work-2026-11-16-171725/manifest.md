@@ -9,5 +9,5 @@ Hand-back emphasis note: none
 
 | REQ | Builder | Operative name | Handback file | Status | Dispatch instant | Takeover-to-finalization min | Full gates | Stall restarts |
 |-----|---------|----------------|---------------|--------|------------------|------|------|------|
-| REQ-737 | builder agent (Fable 5.2, worktree) | (set at dispatch) | do-work/runs/work-2026-11-16-171725/REQ-737-handback.md | claimed; pre-dispatch running | | | | |
-| REQ-738 | builder agent (Fable 5.2, worktree) | (set at dispatch) | do-work/runs/work-2026-11-16-171725/REQ-738-handback.md | claimed; pre-dispatch running | | | | |
+| REQ-737 | builder agent (Opus 5.5, worktree) | worktree-agent-REQ-737-relation-map-phone-titles | do-work/runs/work-2026-11-16-171725/REQ-737-handback.md | pass 1 handed back 17:45:01Z (tip 8ef2084e); maintainer kept form 1 and asked for the page-top fix; pass 2 building | 2026-11-16T17:31:30Z | | | |
+| REQ-738 | builder agent (Opus 5.5, worktree) | worktree-agent-REQ-738-fold-second-opinion-direction | do-work/runs/work-2026-11-16-171725/REQ-738-handback.md | handed back 17:43:57Z (tip 6432bb22); captures approved by the maintainer; integrating | 2026-11-16T17:31:30Z | | | |
