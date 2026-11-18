@@ -54,9 +54,7 @@ type reportGalleryFeedback struct {
 }
 
 type reportGalleryReview struct {
-	Title      string
 	ReportPath string
-	Href       string
 	Figures    []reportGalleryFigure
 }
 
@@ -65,39 +63,34 @@ type reportGalleryFigure struct {
 }
 
 type reportGalleryLivePage struct {
-	Reviews   map[string]reportGalleryReview // keyed by the renderer's report link
-	Generated []reportGalleryReview
-	Targets   map[reportGalleryTarget]bool
+	Reviews map[string]*reportGalleryReview // keyed by canonical report path
+	Targets map[reportGalleryTarget]bool
 }
 
 func (live *reportGalleryLivePage) discover(repositoryRoot string, worked []workedReportCard, bundles []reportBundle) error {
-	live.Reviews = make(map[string]reportGalleryReview)
+	live.Reviews = make(map[string]*reportGalleryReview)
 	live.Targets = make(map[reportGalleryTarget]bool)
-	add := func(filename, title string) (reportGalleryReview, error) {
-		review := reportGalleryReview{Title: title, ReportPath: filename, Href: reportGalleryHref(filename)}
+	add := func(filename string) error {
+		review := &reportGalleryReview{ReportPath: filename}
 		if err := validateNoLinkedAncestors(repositoryRoot, filename, true); err != nil {
-			return review, err
+			return err
 		}
 		if strings.EqualFold(path.Ext(filename), ".html") {
 			content, err := rootedReadFile(repositoryRoot, filename)
 			if err != nil {
-				return review, err
+				return err
 			}
-			review.Figures = reportGalleryFigures(content, review.Href)
+			review.Figures = reportGalleryFigures(content, reportGalleryHref(filename))
 		}
 		live.Targets[reportGalleryTarget{Kind: "report", ReportPath: filename}] = true
 		for _, figure := range review.Figures {
 			live.Targets[reportGalleryTarget{Kind: "figure", ReportPath: filename, FigureID: figure.ID}] = true
 		}
-		live.Reviews[review.Href] = review
-		return review, nil
+		live.Reviews[filename] = review
+		return nil
 	}
 	for _, card := range worked {
-		href, err := url.Parse(card.Report)
-		if err != nil {
-			return err
-		}
-		if _, err := add(path.Join(reportGalleryFolder, href.Path), card.Subject); err != nil {
+		if err := add(card.ReportPath); err != nil {
 			return err
 		}
 	}
@@ -105,12 +98,10 @@ func (live *reportGalleryLivePage) discover(repositoryRoot string, worked []work
 		if bundle.Entry == "" {
 			continue
 		}
-		if _, exists := live.Reviews[reportGalleryHref(bundle.Entry)]; !exists {
-			review, err := add(bundle.Entry, bundle.Title)
-			if err != nil {
+		if live.Reviews[bundle.Entry] == nil {
+			if err := add(bundle.Entry); err != nil {
 				return err
 			}
-			live.Generated = append(live.Generated, review)
 		}
 	}
 	return nil

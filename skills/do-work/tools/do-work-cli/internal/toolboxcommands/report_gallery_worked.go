@@ -14,6 +14,8 @@ import (
 type workedReportCard struct {
 	Name, Kind, Subject, Report, Image string
 	Width, Height                      int
+	ReportPath                         string               `json:"-"`
+	Starter                            reportGalleryStarter `json:"-"`
 }
 
 var workedReportName = regexp.MustCompile(`^[a-z]+(-[a-z]+){1,2}$`)
@@ -52,7 +54,8 @@ func readWorkedReports(repository *os.Root) ([]workedReportCard, error) {
 		}
 		seenNames[card.Name], seenReports[card.Report] = true, true
 		kinds[card.Kind]++
-		card.Report = reportGalleryFileLink(repository, card.Report)
+		card.ReportPath = card.Report
+		card.Report = reportGalleryFileLink(repository, card.ReportPath)
 		card.Image = reportGalleryFileLink(repository, card.Image)
 		if card.Report == "" || card.Image == "" {
 			return nil, fmt.Errorf("missing source or screenshot for %q", card.Name)

@@ -44,6 +44,9 @@ body { margin: 0; font: 16px/1.5 var(--sans); }
 .sample-preview { display: block; width: 100%; height: auto; aspect-ratio: 1040 / 740; object-fit: cover; object-position: top; }
 .card-heading { display: flex; justify-content: space-between; gap: .5rem; align-items: baseline; margin: .55rem 0 .1rem; }
 .gallery .card-heading h3 { margin: 0; min-width: 0; font-size: clamp(1.5rem, 2vw, 2.15rem); letter-spacing: -.025em; }
+.generated-design .card-heading h3 { overflow-wrap: anywhere; }
+.report-archive { margin-top: 1rem; }
+.report-archive > summary { cursor: pointer; }
 .name-copy { display: inline-flex; align-items: center; gap: .4rem; max-width: 100%; background: none; color: inherit; font: inherit; text-align: left; border: 0; padding: .15rem 0; cursor: copy; overflow-wrap: anywhere; }
 .name-copy:hover { color: var(--accent); text-decoration: underline; text-underline-offset: .14em; }
 .name-copy:disabled { opacity: 1; cursor: text; }
@@ -62,6 +65,17 @@ body { margin: 0; font: 16px/1.5 var(--sans); }
 .section-note p { margin: 0; color: var(--subtle); font-size: .9rem; }
 .design-prompt { display: block; margin: .55rem 0; padding: .6rem; background: var(--wash); color: var(--text); overflow-wrap: anywhere; }
 .prompt-copy { font: 600 .85rem var(--sans); padding: .45rem .65rem; background: var(--panel); border: 1px solid var(--edge); color: var(--accent); border-radius: .3rem; cursor: pointer; }
+.gallery-dialog { padding: 0; width: min(68rem, calc(100% - 24px)); max-width: none; max-height: 90vh; background: var(--panel); color: var(--text); border: 1px solid var(--edge); border-radius: .5rem; }
+.gallery-dialog[open] { display: flex; flex-direction: column; }
+.gallery-dialog::backdrop { background: rgb(14 22 18 / .78); }
+.dialog-bar { flex: none; display: flex; align-items: center; justify-content: space-between; gap: .5rem; padding: .55rem .9rem; border-bottom: 1px solid var(--edge); }
+.dialog-bar h2 { font-size: 1.15rem; margin: 0; }
+.dialog-bar a { margin-left: auto; }
+.preview-scroll { overflow: auto; overscroll-behavior: contain; }
+.preview-scroll img { display: block; width: 100%; height: auto; }
+.preview-scroll.actual-size img { width: auto; max-width: none; }
+#preview-size[aria-pressed="true"] { background: var(--text); color: var(--ground); }
+@media (max-width: 520px) { .dialog-bar { flex-wrap: wrap; } .dialog-bar h2 { width: 100%; } .dialog-bar a { margin-left: 0; margin-right: auto; } }
 .copy-status:not(:empty) { pointer-events: none; position: fixed; bottom: 1rem; left: 50%; transform: translateX(-50%); z-index: 2; color: var(--ground); background: var(--text); border-radius: .4rem; padding: .6rem 1rem; max-width: calc(100% - 2rem); width: max-content; }
 .gallery-tools { display: grid; grid-template-columns: 3fr 2fr; gap: clamp(1.5rem, 4vw, 5rem); border-block: 1px solid var(--edge); padding: 1.65rem 0 2rem; }
 .gallery-presets { list-style: none; margin: 0; padding: 0; }
@@ -88,6 +102,8 @@ body { margin: 0; font: 16px/1.5 var(--sans); }
   <header class="gallery-header">
     <h1>AI Report Gallery</h1>
     <nav class="gallery-nav" aria-label="Gallery sections">
+      <a href="#samples">Samples</a>
+      <a href="#generated-designs">Generated designs</a>
       <a href="#presets">Presets</a>
       <a class="add-link" href="#add-sample">Add a sample</a>
     </nav>
@@ -102,25 +118,37 @@ body { margin: 0; font: 16px/1.5 var(--sans); }
         <a class="sample-cover" data-gallery-preview href="../../ai-reports/2026-11-11_1411_commit-22f82fed-work-procedures-load-by-phase/index.html" aria-label="Open Work procedures loaded by phase">
           <img class="sample-preview" src="previews/phase-by-phase.png" loading="lazy" alt="" width="900" height="560" style="aspect-ratio: 900 / 560">
         </a>
-        <div class="card-heading"><h3><button class="name-copy" data-gallery-name type="button" disabled data-copy="name-phase-by-phase" title="Copy report name"><span id="name-phase-by-phase">phase-by-phase</span><i class="copy-icon" aria-hidden="true"></i></button></h3>
+        <div class="card-heading"><h3><button class="name-copy" data-gallery-name type="button" disabled data-copy="worked-name-phase-by-phase" title="Copy report name"><span id="worked-name-phase-by-phase">phase-by-phase</span><i class="copy-icon" aria-hidden="true"></i></button></h3>
           <a class="report-link" href="#phase-by-phase" aria-label="Permalink to phase-by-phase">#</a></div>
         <p>Work procedures loaded by phase</p>
+        <details><summary>Use this design</summary>
+          <code class="design-prompt" id="worked-prompt-phase-by-phase">do-work-toolbox ai-report --design &#34;report:2026-11-11_1411_commit-22f82fed-work-procedures-load-by-phase&#34;</code>
+          <button class="prompt-copy" type="button" data-copy="worked-prompt-phase-by-phase" hidden>Copy starter prompt</button>
+        </details>
       </article>
         <article class="gallery-card worked-report" data-gallery-card id="second-opinion">
         <a class="sample-cover" data-gallery-preview href="../../ai-reports/2026-10_3-reports/2026-10-15_1731_REQ-698-ai-report-second-opinion/index.html" aria-label="Open Guarded report rebuilds across models">
           <img class="sample-preview" src="previews/second-opinion.png" loading="lazy" alt="" width="900" height="560" style="aspect-ratio: 900 / 560">
         </a>
-        <div class="card-heading"><h3><button class="name-copy" data-gallery-name type="button" disabled data-copy="name-second-opinion" title="Copy report name"><span id="name-second-opinion">second-opinion</span><i class="copy-icon" aria-hidden="true"></i></button></h3>
+        <div class="card-heading"><h3><button class="name-copy" data-gallery-name type="button" disabled data-copy="worked-name-second-opinion" title="Copy report name"><span id="worked-name-second-opinion">second-opinion</span><i class="copy-icon" aria-hidden="true"></i></button></h3>
           <a class="report-link" href="#second-opinion" aria-label="Permalink to second-opinion">#</a></div>
         <p>Guarded report rebuilds across models</p>
+        <details><summary>Use this design</summary>
+          <code class="design-prompt" id="worked-prompt-second-opinion">do-work-toolbox ai-report --design &#34;report:2026-10-15_1731_REQ-698-ai-report-second-opinion&#34;</code>
+          <button class="prompt-copy" type="button" data-copy="worked-prompt-second-opinion" hidden>Copy starter prompt</button>
+        </details>
       </article>
         <article class="gallery-card worked-report" data-gallery-card id="release-dossier">
         <a class="sample-cover" data-gallery-preview href="../../ai-reports/2026-08_18-reports/2026-08-15_1834_UR-044-board-client-modules/index.html" aria-label="Open Board client modules and deployment evidence">
           <img class="sample-preview" src="previews/release-dossier.png" loading="lazy" alt="" width="900" height="560" style="aspect-ratio: 900 / 560">
         </a>
-        <div class="card-heading"><h3><button class="name-copy" data-gallery-name type="button" disabled data-copy="name-release-dossier" title="Copy report name"><span id="name-release-dossier">release-dossier</span><i class="copy-icon" aria-hidden="true"></i></button></h3>
+        <div class="card-heading"><h3><button class="name-copy" data-gallery-name type="button" disabled data-copy="worked-name-release-dossier" title="Copy report name"><span id="worked-name-release-dossier">release-dossier</span><i class="copy-icon" aria-hidden="true"></i></button></h3>
           <a class="report-link" href="#release-dossier" aria-label="Permalink to release-dossier">#</a></div>
         <p>Board client modules and deployment evidence</p>
+        <details><summary>Use this design</summary>
+          <code class="design-prompt" id="worked-prompt-release-dossier">do-work-toolbox ai-report --design &#34;report:2026-08-15_1834_UR-044-board-client-modules&#34;</code>
+          <button class="prompt-copy" type="button" data-copy="worked-prompt-release-dossier" hidden>Copy starter prompt</button>
+        </details>
       </article>
       </div>
     </section>
@@ -131,25 +159,37 @@ body { margin: 0; font: 16px/1.5 var(--sans); }
         <a class="sample-cover" data-gallery-preview href="../../ai-reports/2026-11-14_1547_proposal-tinka-review-surface/index.html" aria-label="Open Tinka as a review canvas for report bundles">
           <img class="sample-preview" src="previews/tinka-review.png" loading="lazy" alt="" width="900" height="560" style="aspect-ratio: 900 / 560">
         </a>
-        <div class="card-heading"><h3><button class="name-copy" data-gallery-name type="button" disabled data-copy="name-tinka-review" title="Copy report name"><span id="name-tinka-review">tinka-review</span><i class="copy-icon" aria-hidden="true"></i></button></h3>
+        <div class="card-heading"><h3><button class="name-copy" data-gallery-name type="button" disabled data-copy="worked-name-tinka-review" title="Copy report name"><span id="worked-name-tinka-review">tinka-review</span><i class="copy-icon" aria-hidden="true"></i></button></h3>
           <a class="report-link" href="#tinka-review" aria-label="Permalink to tinka-review">#</a></div>
         <p>Tinka as a review canvas for report bundles</p>
+        <details><summary>Use this design</summary>
+          <code class="design-prompt" id="worked-prompt-tinka-review">do-work-toolbox ai-report --design &#34;report:2026-11-14_1547_proposal-tinka-review-surface&#34;</code>
+          <button class="prompt-copy" type="button" data-copy="worked-prompt-tinka-review" hidden>Copy starter prompt</button>
+        </details>
       </article>
         <article class="gallery-card worked-report" data-gallery-card id="memory-note-routing">
         <a class="sample-cover" data-gallery-preview href="../../ai-reports/2026-11-15_0137_proposal-REQ-725-memory-note-destinations/index.html" aria-label="Open Where each memory note should go">
           <img class="sample-preview" src="previews/memory-note-routing.png" loading="lazy" alt="" width="900" height="560" style="aspect-ratio: 900 / 560">
         </a>
-        <div class="card-heading"><h3><button class="name-copy" data-gallery-name type="button" disabled data-copy="name-memory-note-routing" title="Copy report name"><span id="name-memory-note-routing">memory-note-routing</span><i class="copy-icon" aria-hidden="true"></i></button></h3>
+        <div class="card-heading"><h3><button class="name-copy" data-gallery-name type="button" disabled data-copy="worked-name-memory-note-routing" title="Copy report name"><span id="worked-name-memory-note-routing">memory-note-routing</span><i class="copy-icon" aria-hidden="true"></i></button></h3>
           <a class="report-link" href="#memory-note-routing" aria-label="Permalink to memory-note-routing">#</a></div>
         <p>Where each memory note should go</p>
+        <details><summary>Use this design</summary>
+          <code class="design-prompt" id="worked-prompt-memory-note-routing">do-work-toolbox ai-report --design &#34;report:2026-11-15_0137_proposal-REQ-725-memory-note-destinations&#34;</code>
+          <button class="prompt-copy" type="button" data-copy="worked-prompt-memory-note-routing" hidden>Copy starter prompt</button>
+        </details>
       </article>
         <article class="gallery-card worked-report" data-gallery-card id="checkout-control-repo">
         <a class="sample-cover" data-gallery-preview href="../../ai-reports/2026-10_3-reports/2026-10-27_2356_checkout-copies-control-repo/index.html" aria-label="Open A control repository for parallel checkouts">
           <img class="sample-preview" src="previews/checkout-control-repo.png" loading="lazy" alt="" width="900" height="560" style="aspect-ratio: 900 / 560">
         </a>
-        <div class="card-heading"><h3><button class="name-copy" data-gallery-name type="button" disabled data-copy="name-checkout-control-repo" title="Copy report name"><span id="name-checkout-control-repo">checkout-control-repo</span><i class="copy-icon" aria-hidden="true"></i></button></h3>
+        <div class="card-heading"><h3><button class="name-copy" data-gallery-name type="button" disabled data-copy="worked-name-checkout-control-repo" title="Copy report name"><span id="worked-name-checkout-control-repo">checkout-control-repo</span><i class="copy-icon" aria-hidden="true"></i></button></h3>
           <a class="report-link" href="#checkout-control-repo" aria-label="Permalink to checkout-control-repo">#</a></div>
         <p>A control repository for parallel checkouts</p>
+        <details><summary>Use this design</summary>
+          <code class="design-prompt" id="worked-prompt-checkout-control-repo">do-work-toolbox ai-report --design &#34;report:2026-10-27_2356_checkout-copies-control-repo&#34;</code>
+          <button class="prompt-copy" type="button" data-copy="worked-prompt-checkout-control-repo" hidden>Copy starter prompt</button>
+        </details>
       </article>
       </div>
     </section>
@@ -160,17 +200,25 @@ body { margin: 0; font: 16px/1.5 var(--sans); }
         <a class="sample-cover" data-gallery-preview href="../../ai-reports/2026-08_18-reports/2026-08-18_1000_durations-lane-legibility-alternatives/index.html" aria-label="Open Why labels collide above the duration ceiling">
           <img class="sample-preview" src="previews/overflow-labels.png" loading="lazy" alt="" width="900" height="560" style="aspect-ratio: 900 / 560">
         </a>
-        <div class="card-heading"><h3><button class="name-copy" data-gallery-name type="button" disabled data-copy="name-overflow-labels" title="Copy report name"><span id="name-overflow-labels">overflow-labels</span><i class="copy-icon" aria-hidden="true"></i></button></h3>
+        <div class="card-heading"><h3><button class="name-copy" data-gallery-name type="button" disabled data-copy="worked-name-overflow-labels" title="Copy report name"><span id="worked-name-overflow-labels">overflow-labels</span><i class="copy-icon" aria-hidden="true"></i></button></h3>
           <a class="report-link" href="#overflow-labels" aria-label="Permalink to overflow-labels">#</a></div>
         <p>Why labels collide above the duration ceiling</p>
+        <details><summary>Use this design</summary>
+          <code class="design-prompt" id="worked-prompt-overflow-labels">do-work-toolbox ai-report --design &#34;report:2026-08-18_1000_durations-lane-legibility-alternatives&#34;</code>
+          <button class="prompt-copy" type="button" data-copy="worked-prompt-overflow-labels" hidden>Copy starter prompt</button>
+        </details>
       </article>
         <article class="gallery-card worked-report" data-gallery-card id="queue-refills">
         <a class="sample-cover" data-gallery-preview href="../../ai-reports/2026-09_18-reports/2026-09-03_2145_do-work-velocity-and-pending-queue-speed/index.html" aria-label="Open Why the queue refills as fast as it drains">
           <img class="sample-preview" src="previews/queue-refills.png" loading="lazy" alt="" width="900" height="560" style="aspect-ratio: 900 / 560">
         </a>
-        <div class="card-heading"><h3><button class="name-copy" data-gallery-name type="button" disabled data-copy="name-queue-refills" title="Copy report name"><span id="name-queue-refills">queue-refills</span><i class="copy-icon" aria-hidden="true"></i></button></h3>
+        <div class="card-heading"><h3><button class="name-copy" data-gallery-name type="button" disabled data-copy="worked-name-queue-refills" title="Copy report name"><span id="worked-name-queue-refills">queue-refills</span><i class="copy-icon" aria-hidden="true"></i></button></h3>
           <a class="report-link" href="#queue-refills" aria-label="Permalink to queue-refills">#</a></div>
         <p>Why the queue refills as fast as it drains</p>
+        <details><summary>Use this design</summary>
+          <code class="design-prompt" id="worked-prompt-queue-refills">do-work-toolbox ai-report --design &#34;report:2026-09-03_2145_do-work-velocity-and-pending-queue-speed&#34;</code>
+          <button class="prompt-copy" type="button" data-copy="worked-prompt-queue-refills" hidden>Copy starter prompt</button>
+        </details>
       </article>
       </div>
     </section>
@@ -181,20 +229,534 @@ body { margin: 0; font: 16px/1.5 var(--sans); }
         <a class="sample-cover" data-gallery-preview href="../../ai-reports/2026-09_18-reports/2026-09-06_1706_architecture-report/index.html" aria-label="Open Four skill packages and a request’s lifecycle">
           <img class="sample-preview" src="previews/request-lifecycle.png" loading="lazy" alt="" width="900" height="560" style="aspect-ratio: 900 / 560">
         </a>
-        <div class="card-heading"><h3><button class="name-copy" data-gallery-name type="button" disabled data-copy="name-request-lifecycle" title="Copy report name"><span id="name-request-lifecycle">request-lifecycle</span><i class="copy-icon" aria-hidden="true"></i></button></h3>
+        <div class="card-heading"><h3><button class="name-copy" data-gallery-name type="button" disabled data-copy="worked-name-request-lifecycle" title="Copy report name"><span id="worked-name-request-lifecycle">request-lifecycle</span><i class="copy-icon" aria-hidden="true"></i></button></h3>
           <a class="report-link" href="#request-lifecycle" aria-label="Permalink to request-lifecycle">#</a></div>
         <p>Four skill packages and a request’s lifecycle</p>
+        <details><summary>Use this design</summary>
+          <code class="design-prompt" id="worked-prompt-request-lifecycle">do-work-toolbox ai-report --design &#34;report:2026-09-06_1706_architecture-report&#34;</code>
+          <button class="prompt-copy" type="button" data-copy="worked-prompt-request-lifecycle" hidden>Copy starter prompt</button>
+        </details>
       </article>
         <article class="gallery-card worked-report" data-gallery-card id="cli-command-map">
         <a class="sample-cover" data-gallery-preview href="../../ai-reports/2026-09_18-reports/2026-09-06_2113_do-work-cli-guide/index.html" aria-label="Open A guide to the Go CLI and its commands">
           <img class="sample-preview" src="previews/cli-command-map.png" loading="lazy" alt="" width="900" height="560" style="aspect-ratio: 900 / 560">
         </a>
-        <div class="card-heading"><h3><button class="name-copy" data-gallery-name type="button" disabled data-copy="name-cli-command-map" title="Copy report name"><span id="name-cli-command-map">cli-command-map</span><i class="copy-icon" aria-hidden="true"></i></button></h3>
+        <div class="card-heading"><h3><button class="name-copy" data-gallery-name type="button" disabled data-copy="worked-name-cli-command-map" title="Copy report name"><span id="worked-name-cli-command-map">cli-command-map</span><i class="copy-icon" aria-hidden="true"></i></button></h3>
           <a class="report-link" href="#cli-command-map" aria-label="Permalink to cli-command-map">#</a></div>
         <p>A guide to the Go CLI and its commands</p>
+        <details><summary>Use this design</summary>
+          <code class="design-prompt" id="worked-prompt-cli-command-map">do-work-toolbox ai-report --design &#34;report:2026-09-06_2113_do-work-cli-guide&#34;</code>
+          <button class="prompt-copy" type="button" data-copy="worked-prompt-cli-command-map" hidden>Copy starter prompt</button>
+        </details>
       </article>
       </div>
     </section>
+  </section>
+  <section class="samples" id="samples" aria-labelledby="samples-title">
+    <div class="section-note"><h2 id="samples-title">Sample designs</h2>
+      <p>Select a page to preview it. Click a design name to copy it.</p></div>
+    <div class="gallery-grid">
+      <article class="gallery-card" id="sample-before-and-after">
+        <a class="sample-cover" href="../../skills/do-work-toolbox/docs/report-gallery/before-and-after/preview.png" aria-label="Preview Before and After" data-preview>
+          <img class="sample-preview" src="../../skills/do-work-toolbox/docs/report-gallery/before-and-after/preview.png" loading="lazy" alt="" width="1040" height="740">
+          <span aria-hidden="true">Enlarge ↗</span></a>
+        <div class="card-heading"><h3><button class="name-copy" type="button" disabled data-copy="name-before-and-after" title="Copy design name" aria-label="Copy design name Before and After"><span id="name-before-and-after">Before and After</span><i class="copy-icon" aria-hidden="true"></i></button></h3>
+          <a class="report-link" href="../../skills/do-work-toolbox/docs/report-gallery/before-and-after/example.html" aria-label="Worked example — Before and After">Open report ↗</a></div>
+        <p>What changed between two readings?</p>
+        <details><summary>Use this design</summary>
+          <code class="design-prompt" id="prompt-before-and-after">do-work-toolbox ai-report --design &#34;Before and After&#34;</code>
+          <button class="prompt-copy" type="button" data-copy="prompt-before-and-after" hidden>Copy starter prompt</button>
+          <ul aria-label="Borrow"><li>Keep the same measurement and units on both sides.</li><li>Put the size and direction of the change next to the two readings.</li><li>Say which behavior the capture establishes and where the evidence ends.</li></ul>
+          <div class="gallery-links"><a href="#sample-before-and-after">Permalink</a><a href="../../skills/do-work-toolbox/docs/report-gallery/before-and-after/sample.md">Sample record</a></div>
+        </details>
+      </article><article class="gallery-card" id="sample-bottleneck-hunt">
+        <a class="sample-cover" href="../../skills/do-work-toolbox/docs/report-gallery/bottleneck-hunt/preview.png" aria-label="Preview Bottleneck Hunt" data-preview>
+          <img class="sample-preview" src="../../skills/do-work-toolbox/docs/report-gallery/bottleneck-hunt/preview.png" loading="lazy" alt="" width="1040" height="740">
+          <span aria-hidden="true">Enlarge ↗</span></a>
+        <div class="card-heading"><h3><button class="name-copy" type="button" disabled data-copy="name-bottleneck-hunt" title="Copy design name" aria-label="Copy design name Bottleneck Hunt"><span id="name-bottleneck-hunt">Bottleneck Hunt</span><i class="copy-icon" aria-hidden="true"></i></button></h3>
+          <a class="report-link" href="../../skills/do-work-toolbox/docs/report-gallery/bottleneck-hunt/example.html" aria-label="Worked example — Bottleneck Hunt">Open report ↗</a></div>
+        <p>Which measured cost should we investigate first?</p>
+        <details><summary>Use this design</summary>
+          <code class="design-prompt" id="prompt-bottleneck-hunt">do-work-toolbox ai-report --design &#34;Bottleneck Hunt&#34;</code>
+          <button class="prompt-copy" type="button" data-copy="prompt-bottleneck-hunt" hidden>Copy starter prompt</button>
+          <ul aria-label="Borrow"><li>Keep call counts separate from elapsed time so a constant fan-out cannot hide rising work per call.</li><li>Give bars a shared zero and keep the underlying runs visible.</li><li>State what an end-to-end measurement must confirm before changing the system.</li></ul>
+          <div class="gallery-links"><a href="#sample-bottleneck-hunt">Permalink</a><a href="../../skills/do-work-toolbox/docs/report-gallery/bottleneck-hunt/sample.md">Sample record</a></div>
+        </details>
+      </article><article class="gallery-card" id="sample-cause-chain">
+        <a class="sample-cover" href="../../skills/do-work-toolbox/docs/report-gallery/cause-chain/preview.png" aria-label="Preview Cause Chain" data-preview>
+          <img class="sample-preview" src="../../skills/do-work-toolbox/docs/report-gallery/cause-chain/preview.png" loading="lazy" alt="" width="1040" height="740">
+          <span aria-hidden="true">Enlarge ↗</span></a>
+        <div class="card-heading"><h3><button class="name-copy" type="button" disabled data-copy="name-cause-chain" title="Copy design name" aria-label="Copy design name Cause Chain"><span id="name-cause-chain">Cause Chain</span><i class="copy-icon" aria-hidden="true"></i></button></h3>
+          <a class="report-link" href="../../skills/do-work-toolbox/docs/report-gallery/cause-chain/example.html" aria-label="Worked example — Cause Chain">Open report ↗</a></div>
+        <p>How did one failure lead to the next?</p>
+        <details><summary>Use this design</summary>
+          <code class="design-prompt" id="prompt-cause-chain">do-work-toolbox ai-report --design &#34;Cause Chain&#34;</code>
+          <button class="prompt-copy" type="button" data-copy="prompt-cause-chain" hidden>Copy starter prompt</button>
+          <ul aria-label="Borrow"><li>Name the mechanism at each step and make the order visible.</li><li>Include the symptom that confirms the chain reached its final step.</li><li>Show where the fix interrupts the sequence and what the regression test expects.</li></ul>
+          <div class="gallery-links"><a href="#sample-cause-chain">Permalink</a><a href="../../skills/do-work-toolbox/docs/report-gallery/cause-chain/sample.md">Sample record</a></div>
+        </details>
+      </article><article class="gallery-card" id="sample-parts-over-time">
+        <a class="sample-cover" href="../../skills/do-work-toolbox/docs/report-gallery/parts-over-time/preview.png" aria-label="Preview Changing Mix" data-preview>
+          <img class="sample-preview" src="../../skills/do-work-toolbox/docs/report-gallery/parts-over-time/preview.png" loading="lazy" alt="" width="1040" height="740">
+          <span aria-hidden="true">Enlarge ↗</span></a>
+        <div class="card-heading"><h3><button class="name-copy" type="button" disabled data-copy="name-parts-over-time" title="Copy design name" aria-label="Copy design name Changing Mix"><span id="name-parts-over-time">Changing Mix</span><i class="copy-icon" aria-hidden="true"></i></button></h3>
+          <a class="report-link" href="../../skills/do-work-toolbox/docs/report-gallery/parts-over-time/example.html" aria-label="Worked example — Changing Mix">Open report ↗</a></div>
+        <p>Which parts account for the change in the total?</p>
+        <details><summary>Use this design</summary>
+          <code class="design-prompt" id="prompt-parts-over-time">do-work-toolbox ai-report --design &#34;Changing Mix&#34;</code>
+          <button class="prompt-copy" type="button" data-copy="prompt-parts-over-time" hidden>Copy starter prompt</button>
+          <ul aria-label="Borrow"><li>Stack the parts in the same order each period and write the total above each column.</li><li>Give each part a chart with the same scale and dates so changes are comparable.</li><li>Hatch the unfinished period in both views and state how much of it has been counted.</li></ul>
+          <div class="gallery-links"><a href="#sample-parts-over-time">Permalink</a><a href="../../skills/do-work-toolbox/docs/report-gallery/parts-over-time/preview.svg">Figure preview</a><a href="../../skills/do-work-toolbox/docs/report-gallery/parts-over-time/sample.md">Sample record</a></div>
+        </details>
+      </article><article class="gallery-card" id="sample-rhythm-over-cycle">
+        <a class="sample-cover" href="../../skills/do-work-toolbox/docs/report-gallery/rhythm-over-cycle/preview.png" aria-label="Preview Daily Rhythm" data-preview>
+          <img class="sample-preview" src="../../skills/do-work-toolbox/docs/report-gallery/rhythm-over-cycle/preview.png" loading="lazy" alt="" width="1040" height="740">
+          <span aria-hidden="true">Enlarge ↗</span></a>
+        <div class="card-heading"><h3><button class="name-copy" type="button" disabled data-copy="name-rhythm-over-cycle" title="Copy design name" aria-label="Copy design name Daily Rhythm"><span id="name-rhythm-over-cycle">Daily Rhythm</span><i class="copy-icon" aria-hidden="true"></i></button></h3>
+          <a class="report-link" href="../../skills/do-work-toolbox/docs/report-gallery/rhythm-over-cycle/example.html" aria-label="Worked example — Daily Rhythm">Open report ↗</a></div>
+        <p>When does each activity peak, and what drives the busiest hour?</p>
+        <details><summary>Use this design</summary>
+          <code class="design-prompt" id="prompt-rhythm-over-cycle">do-work-toolbox ai-report --design &#34;Daily Rhythm&#34;</code>
+          <button class="prompt-copy" type="button" data-copy="prompt-rhythm-over-cycle" hidden>Copy starter prompt</button>
+          <ul aria-label="Borrow"><li>Open with one combined view to show where the activities overlap.</li><li>Separate the series into aligned rows with one scale and label the time and value of each peak.</li><li>Give readers a single time control to inspect the same moment in every row.</li></ul>
+          <div class="gallery-links"><a href="#sample-rhythm-over-cycle">Permalink</a><a href="../../skills/do-work-toolbox/docs/report-gallery/rhythm-over-cycle/preview.svg">Figure preview</a><a href="../../skills/do-work-toolbox/docs/report-gallery/rhythm-over-cycle/sample.md">Sample record</a></div>
+        </details>
+      </article><article class="gallery-card" id="sample-decision-matrix">
+        <a class="sample-cover" href="../../skills/do-work-toolbox/docs/report-gallery/decision-matrix/preview.png" aria-label="Preview Decision Matrix" data-preview>
+          <img class="sample-preview" src="../../skills/do-work-toolbox/docs/report-gallery/decision-matrix/preview.png" loading="lazy" alt="" width="1040" height="740">
+          <span aria-hidden="true">Enlarge ↗</span></a>
+        <div class="card-heading"><h3><button class="name-copy" type="button" disabled data-copy="name-decision-matrix" title="Copy design name" aria-label="Copy design name Decision Matrix"><span id="name-decision-matrix">Decision Matrix</span><i class="copy-icon" aria-hidden="true"></i></button></h3>
+          <a class="report-link" href="../../skills/do-work-toolbox/docs/report-gallery/decision-matrix/example.html" aria-label="Worked example — Decision Matrix">Open report ↗</a></div>
+        <p>Which option earns approval given its cost, reach and trade-offs?</p>
+        <details><summary>Use this design</summary>
+          <code class="design-prompt" id="prompt-decision-matrix">do-work-toolbox ai-report --design &#34;Decision Matrix&#34;</code>
+          <button class="prompt-copy" type="button" data-copy="prompt-decision-matrix" hidden>Copy starter prompt</button>
+          <ul aria-label="Borrow"><li>Put the same decision criteria in front of every option.</li><li>Show the operational cost and the consequence of deferring in comparable terms.</li><li>Use a counted inventory to explain why the preferred option wins.</li></ul>
+          <div class="gallery-links"><a href="#sample-decision-matrix">Permalink</a><a href="../../skills/do-work-toolbox/docs/report-gallery/decision-matrix/sample.md">Sample record</a></div>
+        </details>
+      </article><article class="gallery-card" id="sample-verdict-with-checks">
+        <a class="sample-cover" href="../../skills/do-work-toolbox/docs/report-gallery/verdict-with-checks/preview.png" aria-label="Preview Evidence Verdict" data-preview>
+          <img class="sample-preview" src="../../skills/do-work-toolbox/docs/report-gallery/verdict-with-checks/preview.png" loading="lazy" alt="" width="1040" height="740">
+          <span aria-hidden="true">Enlarge ↗</span></a>
+        <div class="card-heading"><h3><button class="name-copy" type="button" disabled data-copy="name-verdict-with-checks" title="Copy design name" aria-label="Copy design name Evidence Verdict"><span id="name-verdict-with-checks">Evidence Verdict</span><i class="copy-icon" aria-hidden="true"></i></button></h3>
+          <a class="report-link" href="../../skills/do-work-toolbox/docs/report-gallery/verdict-with-checks/example.html" aria-label="Worked example — Evidence Verdict">Open report ↗</a></div>
+        <p>What evidence supports the verdict, and which checks did it pass?</p>
+        <details><summary>Use this design</summary>
+          <code class="design-prompt" id="prompt-verdict-with-checks">do-work-toolbox ai-report --design &#34;Evidence Verdict&#34;</code>
+          <button class="prompt-copy" type="button" data-copy="prompt-verdict-with-checks" hidden>Copy starter prompt</button>
+          <ul aria-label="Borrow"><li>Give the verdict in one sentence and include the figure that settles it.</li><li>Name the checks so readers can see which definitions, dates and calculations support the judgment.</li><li>Keep the source rows and the calculation behind one disclosure.</li></ul>
+          <div class="gallery-links"><a href="#sample-verdict-with-checks">Permalink</a><a href="../../skills/do-work-toolbox/docs/report-gallery/verdict-with-checks/preview.svg">Figure preview</a><a href="../../skills/do-work-toolbox/docs/report-gallery/verdict-with-checks/sample.md">Sample record</a></div>
+        </details>
+      </article><article class="gallery-card" id="sample-incident-timeline">
+        <a class="sample-cover" href="../../skills/do-work-toolbox/docs/report-gallery/incident-timeline/preview.png" aria-label="Preview Incident Timeline" data-preview>
+          <img class="sample-preview" src="../../skills/do-work-toolbox/docs/report-gallery/incident-timeline/preview.png" loading="lazy" alt="" width="1040" height="740">
+          <span aria-hidden="true">Enlarge ↗</span></a>
+        <div class="card-heading"><h3><button class="name-copy" type="button" disabled data-copy="name-incident-timeline" title="Copy design name" aria-label="Copy design name Incident Timeline"><span id="name-incident-timeline">Incident Timeline</span><i class="copy-icon" aria-hidden="true"></i></button></h3>
+          <a class="report-link" href="../../skills/do-work-toolbox/docs/report-gallery/incident-timeline/example.html" aria-label="Worked example — Incident Timeline">Open report ↗</a></div>
+        <p>How did a regression develop, and what did the investigation establish?</p>
+        <details><summary>Use this design</summary>
+          <code class="design-prompt" id="prompt-incident-timeline">do-work-toolbox ai-report --design &#34;Incident Timeline&#34;</code>
+          <button class="prompt-copy" type="button" data-copy="prompt-incident-timeline" hidden>Copy starter prompt</button>
+          <ul aria-label="Borrow"><li>Order dated changes and observations, then put the evidence beside each event.</li><li>Separate failure in a test safeguard from confirmed user impact.</li><li>Close with the evidence required to resolve the open incident.</li></ul>
+          <div class="gallery-links"><a href="#sample-incident-timeline">Permalink</a><a href="../../skills/do-work-toolbox/docs/report-gallery/incident-timeline/sample.md">Sample record</a></div>
+        </details>
+      </article><article class="gallery-card" id="sample-two-measures-side-by-side">
+        <a class="sample-cover" href="../../skills/do-work-toolbox/docs/report-gallery/two-measures-side-by-side/preview.png" aria-label="Preview Rate and Level" data-preview>
+          <img class="sample-preview" src="../../skills/do-work-toolbox/docs/report-gallery/two-measures-side-by-side/preview.png" loading="lazy" alt="" width="1040" height="740">
+          <span aria-hidden="true">Enlarge ↗</span></a>
+        <div class="card-heading"><h3><button class="name-copy" type="button" disabled data-copy="name-two-measures-side-by-side" title="Copy design name" aria-label="Copy design name Rate and Level"><span id="name-two-measures-side-by-side">Rate and Level</span><i class="copy-icon" aria-hidden="true"></i></button></h3>
+          <a class="report-link" href="../../skills/do-work-toolbox/docs/report-gallery/two-measures-side-by-side/example.html" aria-label="Worked example — Rate and Level">Open report ↗</a></div>
+        <p>How can a growth rate fall while the total keeps rising?</p>
+        <details><summary>Use this design</summary>
+          <code class="design-prompt" id="prompt-two-measures-side-by-side">do-work-toolbox ai-report --design &#34;Rate and Level&#34;</code>
+          <button class="prompt-copy" type="button" data-copy="prompt-two-measures-side-by-side" hidden>Copy starter prompt</button>
+          <ul aria-label="Borrow"><li>Put each measure in its own chart with its units in the heading and matching dates on both horizontal axes.</li><li>Label both endpoints in the plots so the reader can see which way each measure moved.</li><li>Give readers one date control to compare the exact values for the same period.</li></ul>
+          <div class="gallery-links"><a href="#sample-two-measures-side-by-side">Permalink</a><a href="../../skills/do-work-toolbox/docs/report-gallery/two-measures-side-by-side/preview.svg">Figure preview</a><a href="../../skills/do-work-toolbox/docs/report-gallery/two-measures-side-by-side/sample.md">Sample record</a></div>
+        </details>
+      </article><article class="gallery-card" id="sample-system-map">
+        <a class="sample-cover" href="../../skills/do-work-toolbox/docs/report-gallery/system-map/preview.png" aria-label="Preview System Map" data-preview>
+          <img class="sample-preview" src="../../skills/do-work-toolbox/docs/report-gallery/system-map/preview.png" loading="lazy" alt="" width="1040" height="740">
+          <span aria-hidden="true">Enlarge ↗</span></a>
+        <div class="card-heading"><h3><button class="name-copy" type="button" disabled data-copy="name-system-map" title="Copy design name" aria-label="Copy design name System Map"><span id="name-system-map">System Map</span><i class="copy-icon" aria-hidden="true"></i></button></h3>
+          <a class="report-link" href="../../skills/do-work-toolbox/docs/report-gallery/system-map/example.html" aria-label="Worked example — System Map">Open report ↗</a></div>
+        <p>Where do paths branch, and what does each one depend on?</p>
+        <details><summary>Use this design</summary>
+          <code class="design-prompt" id="prompt-system-map">do-work-toolbox ai-report --design &#34;System Map&#34;</code>
+          <button class="prompt-copy" type="button" data-copy="prompt-system-map" hidden>Copy starter prompt</button>
+          <ul aria-label="Borrow"><li>Start with the shared entry and label each branch with its routing condition.</li><li>Group files that load under the same rule and show their combined footprint.</li><li>Compare representative routes to explain what the architecture saves.</li></ul>
+          <div class="gallery-links"><a href="#sample-system-map">Permalink</a><a href="../../skills/do-work-toolbox/docs/report-gallery/system-map/sample.md">Sample record</a></div>
+        </details>
+      </article>
+    </div>
+  </section>
+  <section class="samples" id="generated-designs" aria-labelledby="generated-designs-title">
+    <div class="section-note"><h2 id="generated-designs-title">Generated report designs</h2></div>
+    <div>
+      <details class="report-archive">
+        <summary>Browse other reports (40)</summary>
+        <div class="gallery-grid">
+      <article class="gallery-card generated-design">
+        <div class="card-heading"><h3>Tinka as a review canvas for ai-report bundles</h3>
+          <a class="report-link" href="../../ai-reports/2026-11-14_1452_proposal-tinka-review-surface/index.html" aria-label="Open report — Tinka as a review canvas for ai-report bundles">Open report ↗</a></div>
+<details><summary>Use this design</summary>
+          <code class="design-prompt" id="generated-prompt-2">do-work-toolbox ai-report --design &#34;report:2026-11-14_1452_proposal-tinka-review-surface&#34;</code>
+          <button class="prompt-copy" type="button" data-copy="generated-prompt-2" hidden>Copy starter prompt</button>
+        </details>
+      </article>
+
+      <article class="gallery-card generated-design">
+        <div class="card-heading"><h3>AI-Evaluation-Loop — tstack opportunities for do-work</h3>
+          <a class="report-link" href="../../ai-reports/2026-11-04_1747_proposal-tstack-review-workflows-rev1/index.html" aria-label="Open report — AI-Evaluation-Loop — tstack opportunities for do-work">Open report ↗</a></div>
+<details><summary>Use this design</summary>
+          <code class="design-prompt" id="generated-prompt-4">do-work-toolbox ai-report --design &#34;report:2026-11-04_1747_proposal-tstack-review-workflows-rev1&#34;</code>
+          <button class="prompt-copy" type="button" data-copy="generated-prompt-4" hidden>Copy starter prompt</button>
+        </details>
+      </article>
+
+      <article class="gallery-card generated-design">
+        <div class="card-heading"><h3>AI-Evaluation-Loop — tstack opportunities for do-work</h3>
+          <a class="report-link" href="../../ai-reports/2026-11-04_1524_proposal-tstack-review-workflows/index.html" aria-label="Open report — AI-Evaluation-Loop — tstack opportunities for do-work">Open report ↗</a></div>
+<details><summary>Use this design</summary>
+          <code class="design-prompt" id="generated-prompt-5">do-work-toolbox ai-report --design &#34;report:2026-11-04_1524_proposal-tstack-review-workflows&#34;</code>
+          <button class="prompt-copy" type="button" data-copy="generated-prompt-5" hidden>Copy starter prompt</button>
+        </details>
+      </article>
+
+      <article class="gallery-card generated-design">
+        <div class="card-heading"><h3>Presentation style gallery: one bug, eight ways to explain it</h3>
+          <a class="report-link" href="../../ai-reports/2026-11-02_1757_presentation-style-gallery/index.html" aria-label="Open report — Presentation style gallery: one bug, eight ways to explain it">Open report ↗</a></div>
+<details><summary>Use this design</summary>
+          <code class="design-prompt" id="generated-prompt-6">do-work-toolbox ai-report --design &#34;report:2026-11-02_1757_presentation-style-gallery&#34;</code>
+          <button class="prompt-copy" type="button" data-copy="generated-prompt-6" hidden>Copy starter prompt</button>
+        </details>
+      </article>
+
+      <article class="gallery-card generated-design">
+        <div class="card-heading"><h3>REQ-632 Activity Correlation Determinism</h3>
+          <a class="report-link" href="../../ai-reports/2026-10_3-reports/2026-10-09_1916_REQ-632-activity-correlation-determinism/index.html" aria-label="Open report — REQ-632 Activity Correlation Determinism">Open report ↗</a></div>
+<details><summary>Use this design</summary>
+          <code class="design-prompt" id="generated-prompt-9">do-work-toolbox ai-report --design &#34;report:2026-10-09_1916_REQ-632-activity-correlation-determinism&#34;</code>
+          <button class="prompt-copy" type="button" data-copy="generated-prompt-9" hidden>Copy starter prompt</button>
+        </details>
+      </article>
+
+      <article class="gallery-card generated-design">
+        <div class="card-heading"><h3>Verification review · REQ-624</h3>
+          <a class="report-link" href="../../ai-reports/2026-09_18-reports/2026-09-09_1224_REQ-624-verification-review/index.html" aria-label="Open report — Verification review · REQ-624">Open report ↗</a></div>
+<details><summary>Use this design</summary>
+          <code class="design-prompt" id="generated-prompt-10">do-work-toolbox ai-report --design &#34;report:2026-09-09_1224_REQ-624-verification-review&#34;</code>
+          <button class="prompt-copy" type="button" data-copy="generated-prompt-10" hidden>Copy starter prompt</button>
+        </details>
+      </article>
+
+      <article class="gallery-card generated-design">
+        <div class="card-heading"><h3>Do-work cleanup in pictures</h3>
+          <a class="report-link" href="../../ai-reports/2026-09_18-reports/2026-09-09_0052_do-work-improvement-review-pictures/index.html" aria-label="Open report — Do-work cleanup in pictures">Open report ↗</a></div>
+<details><summary>Use this design</summary>
+          <code class="design-prompt" id="generated-prompt-11">do-work-toolbox ai-report --design &#34;report:2026-09-09_0052_do-work-improvement-review-pictures&#34;</code>
+          <button class="prompt-copy" type="button" data-copy="generated-prompt-11" hidden>Copy starter prompt</button>
+        </details>
+      </article>
+
+      <article class="gallery-card generated-design">
+        <div class="card-heading"><h3>Do-work: three practical improvements</h3>
+          <a class="report-link" href="../../ai-reports/2026-09_18-reports/2026-09-09_0044_do-work-improvement-review-simple/index.html" aria-label="Open report — Do-work: three practical improvements">Open report ↗</a></div>
+<details><summary>Use this design</summary>
+          <code class="design-prompt" id="generated-prompt-12">do-work-toolbox ai-report --design &#34;report:2026-09-09_0044_do-work-improvement-review-simple&#34;</code>
+          <button class="prompt-copy" type="button" data-copy="generated-prompt-12" hidden>Copy starter prompt</button>
+        </details>
+      </article>
+
+      <article class="gallery-card generated-design">
+        <div class="card-heading"><h3>Do-work improvement review · rev-v2 · 9 September 2026</h3>
+          <a class="report-link" href="../../ai-reports/2026-09_18-reports/2026-09-09_0013_do-work-improvement-review-rev-v2/index.html" aria-label="Open report — Do-work improvement review · rev-v2 · 9 September 2026">Open report ↗</a></div>
+<details><summary>Use this design</summary>
+          <code class="design-prompt" id="generated-prompt-13">do-work-toolbox ai-report --design &#34;report:2026-09-09_0013_do-work-improvement-review-rev-v2&#34;</code>
+          <button class="prompt-copy" type="button" data-copy="generated-prompt-13" hidden>Copy starter prompt</button>
+        </details>
+      </article>
+
+      <article class="gallery-card generated-design">
+        <div class="card-heading"><h3>Do-work improvement review · 8 September 2026</h3>
+          <a class="report-link" href="../../ai-reports/2026-09_18-reports/2026-09-08_2327_do-work-improvement-review/index.html" aria-label="Open report — Do-work improvement review · 8 September 2026">Open report ↗</a></div>
+<details><summary>Use this design</summary>
+          <code class="design-prompt" id="generated-prompt-14">do-work-toolbox ai-report --design &#34;report:2026-09-08_2327_do-work-improvement-review&#34;</code>
+          <button class="prompt-copy" type="button" data-copy="generated-prompt-14" hidden>Copy starter prompt</button>
+        </details>
+      </article>
+
+      <article class="gallery-card generated-design">
+        <div class="card-heading"><h3>do-work architecture — folders, technology, examples</h3>
+          <a class="report-link" href="../../ai-reports/2026-09_18-reports/2026-09-06_1740_architecture-report/index.html" aria-label="Open report — do-work architecture — folders, technology, examples">Open report ↗</a></div>
+<details><summary>Use this design</summary>
+          <code class="design-prompt" id="generated-prompt-16">do-work-toolbox ai-report --design &#34;report:2026-09-06_1740_architecture-report&#34;</code>
+          <button class="prompt-copy" type="button" data-copy="generated-prompt-16" hidden>Copy starter prompt</button>
+        </details>
+      </article>
+
+      <article class="gallery-card generated-design">
+        <div class="card-heading"><h3>do-work architecture · 6 September 2026</h3>
+          <a class="report-link" href="../../ai-reports/2026-09_18-reports/2026-09-06_1708_architecture-report/index.html" aria-label="Open report — do-work architecture · 6 September 2026">Open report ↗</a></div>
+<details><summary>Use this design</summary>
+          <code class="design-prompt" id="generated-prompt-17">do-work-toolbox ai-report --design &#34;report:2026-09-06_1708_architecture-report&#34;</code>
+          <button class="prompt-copy" type="button" data-copy="generated-prompt-17" hidden>Copy starter prompt</button>
+        </details>
+      </article>
+
+      <article class="gallery-card generated-design">
+        <div class="card-heading"><h3>Test efficiency · R1 implementation review</h3>
+          <a class="report-link" href="../../ai-reports/2026-09_18-reports/2026-09-06_1606_test-efficiency-improvement-proposal/index.html" aria-label="Open report — Test efficiency · R1 implementation review">Open report ↗</a></div>
+<details><summary>Use this design</summary>
+          <code class="design-prompt" id="generated-prompt-19">do-work-toolbox ai-report --design &#34;report:2026-09-06_1606_test-efficiency-improvement-proposal&#34;</code>
+          <button class="prompt-copy" type="button" data-copy="generated-prompt-19" hidden>Copy starter prompt</button>
+        </details>
+      </article>
+
+      <article class="gallery-card generated-design">
+        <div class="card-heading"><h3>Verify Findings — Slim Band Gallery</h3>
+          <a class="report-link" href="../../ai-reports/2026-09_18-reports/2026-09-05_1800_REQ-588-verify-findings-slim-band-gallery/index.html" aria-label="Open report — Verify Findings — Slim Band Gallery">Open report ↗</a></div>
+<details><summary>Use this design</summary>
+          <code class="design-prompt" id="generated-prompt-20">do-work-toolbox ai-report --design &#34;report:2026-09-05_1800_REQ-588-verify-findings-slim-band-gallery&#34;</code>
+          <button class="prompt-copy" type="button" data-copy="generated-prompt-20" hidden>Copy starter prompt</button>
+        </details>
+      </article>
+
+      <article class="gallery-card generated-design">
+        <div class="card-heading"><h3>Verify Findings — A Slim Band, Three Mockups</h3>
+          <a class="report-link" href="../../ai-reports/2026-09_18-reports/2026-09-05_1740_REQ-588-verify-findings-compact-mockups/index.html" aria-label="Open report — Verify Findings — A Slim Band, Three Mockups">Open report ↗</a></div>
+<details><summary>Use this design</summary>
+          <code class="design-prompt" id="generated-prompt-21">do-work-toolbox ai-report --design &#34;report:2026-09-05_1740_REQ-588-verify-findings-compact-mockups&#34;</code>
+          <button class="prompt-copy" type="button" data-copy="generated-prompt-21" hidden>Copy starter prompt</button>
+        </details>
+      </article>
+
+      <article class="gallery-card generated-design">
+        <div class="card-heading"><h3>Activity View — One Scroll, Three Mockups</h3>
+          <a class="report-link" href="../../ai-reports/2026-09_18-reports/2026-09-05_1520_activity-view-double-scroll-mockups/index.html" aria-label="Open report — Activity View — One Scroll, Three Mockups">Open report ↗</a></div>
+<details><summary>Use this design</summary>
+          <code class="design-prompt" id="generated-prompt-22">do-work-toolbox ai-report --design &#34;report:2026-09-05_1520_activity-view-double-scroll-mockups&#34;</code>
+          <button class="prompt-copy" type="button" data-copy="generated-prompt-22" hidden>Copy starter prompt</button>
+        </details>
+      </article>
+
+      <article class="gallery-card generated-design">
+        <div class="card-heading"><h3>Verify Findings — One Warning Line, Three Mockups</h3>
+          <a class="report-link" href="../../ai-reports/2026-09_18-reports/2026-09-05_1445_REQ-588-verify-findings-row-mockups/index.html" aria-label="Open report — Verify Findings — One Warning Line, Three Mockups">Open report ↗</a></div>
+<details><summary>Use this design</summary>
+          <code class="design-prompt" id="generated-prompt-23">do-work-toolbox ai-report --design &#34;report:2026-09-05_1445_REQ-588-verify-findings-row-mockups&#34;</code>
+          <button class="prompt-copy" type="button" data-copy="generated-prompt-23" hidden>Copy starter prompt</button>
+        </details>
+      </article>
+
+      <article class="gallery-card generated-design">
+        <div class="card-heading"><h3>The Maintainer Gate: What Six and a Half Minutes Buy</h3>
+          <a class="report-link" href="../../ai-reports/2026-09_18-reports/2026-09-03_0010_maintainer-verify-gate-cost-analysis/index.html" aria-label="Open report — The Maintainer Gate: What Six and a Half Minutes Buy">Open report ↗</a></div>
+<details><summary>Use this design</summary>
+          <code class="design-prompt" id="generated-prompt-25">do-work-toolbox ai-report --design &#34;report:2026-09-03_0010_maintainer-verify-gate-cost-analysis&#34;</code>
+          <button class="prompt-copy" type="button" data-copy="generated-prompt-25" hidden>Copy starter prompt</button>
+        </details>
+      </article>
+
+      <article class="gallery-card generated-design">
+        <div class="card-heading"><h3>Simplifying the do-work Orchestrator</h3>
+          <a class="report-link" href="../../ai-reports/2026-09_18-reports/2026-09-02_1651_orchestrator-simplification-analysis/index.html" aria-label="Open report — Simplifying the do-work Orchestrator">Open report ↗</a></div>
+<details><summary>Use this design</summary>
+          <code class="design-prompt" id="generated-prompt-26">do-work-toolbox ai-report --design &#34;report:2026-09-02_1651_orchestrator-simplification-analysis&#34;</code>
+          <button class="prompt-copy" type="button" data-copy="generated-prompt-26" hidden>Copy starter prompt</button>
+        </details>
+      </article>
+
+      <article class="gallery-card generated-design">
+        <div class="card-heading"><h3>Queue Analysis — Where the Time Goes, and What to Drop</h3>
+          <a class="report-link" href="../../ai-reports/2026-09_18-reports/2026-09-01_0927_queue-analysis-time-cost-disposition/index.html" aria-label="Open report — Queue Analysis — Where the Time Goes, and What to Drop">Open report ↗</a></div>
+<details><summary>Use this design</summary>
+          <code class="design-prompt" id="generated-prompt-27">do-work-toolbox ai-report --design &#34;report:2026-09-01_0927_queue-analysis-time-cost-disposition&#34;</code>
+          <button class="prompt-copy" type="button" data-copy="generated-prompt-27" hidden>Copy starter prompt</button>
+        </details>
+      </article>
+
+      <article class="gallery-card generated-design">
+        <div class="card-heading"><h3>Architecture Report · do-work suite · 96b28269</h3>
+          <a class="report-link" href="../../ai-reports/2026-08_18-reports/2026-08-30_1839_architecture-report/index.html" aria-label="Open report — Architecture Report · do-work suite · 96b28269">Open report ↗</a></div>
+<details><summary>Use this design</summary>
+          <code class="design-prompt" id="generated-prompt-28">do-work-toolbox ai-report --design &#34;report:2026-08-30_1839_architecture-report&#34;</code>
+          <button class="prompt-copy" type="button" data-copy="generated-prompt-28" hidden>Copy starter prompt</button>
+        </details>
+      </article>
+
+      <article class="gallery-card generated-design">
+        <div class="card-heading"><h3>Architecture Report — do-work suite · 641231f5</h3>
+          <a class="report-link" href="../../ai-reports/2026-08_18-reports/2026-08-27_1522_architecture-report/index.html" aria-label="Open report — Architecture Report — do-work suite · 641231f5">Open report ↗</a></div>
+<details><summary>Use this design</summary>
+          <code class="design-prompt" id="generated-prompt-29">do-work-toolbox ai-report --design &#34;report:2026-08-27_1522_architecture-report&#34;</code>
+          <button class="prompt-copy" type="button" data-copy="generated-prompt-29" hidden>Copy starter prompt</button>
+        </details>
+      </article>
+
+      <article class="gallery-card generated-design">
+        <div class="card-heading"><h3>Do-work suite · Architecture · 27 August 2026</h3>
+          <a class="report-link" href="../../ai-reports/2026-08_18-reports/2026-08-27_1508_architecture-report/index.html" aria-label="Open report — Do-work suite · Architecture · 27 August 2026">Open report ↗</a></div>
+<details><summary>Use this design</summary>
+          <code class="design-prompt" id="generated-prompt-30">do-work-toolbox ai-report --design &#34;report:2026-08-27_1508_architecture-report&#34;</code>
+          <button class="prompt-copy" type="button" data-copy="generated-prompt-30" hidden>Copy starter prompt</button>
+        </details>
+      </article>
+
+      <article class="gallery-card generated-design">
+        <div class="card-heading"><h3>Timeline panning, not card dragging · REQ-341 / REQ-375</h3>
+          <a class="report-link" href="../../ai-reports/2026-08_18-reports/2026-08-27_1428_req-341-timeline-drag-evidence/index.html" aria-label="Open report — Timeline panning, not card dragging · REQ-341 / REQ-375">Open report ↗</a></div>
+<details><summary>Use this design</summary>
+          <code class="design-prompt" id="generated-prompt-31">do-work-toolbox ai-report --design &#34;report:2026-08-27_1428_req-341-timeline-drag-evidence&#34;</code>
+          <button class="prompt-copy" type="button" data-copy="generated-prompt-31" hidden>Copy starter prompt</button>
+        </details>
+      </article>
+
+      <article class="gallery-card generated-design">
+        <div class="card-heading"><h3>Architecture Report — skill-do-work</h3>
+          <a class="report-link" href="../../ai-reports/2026-08_18-reports/2026-08-26_1709_architecture-report/architecture-report.md" aria-label="Open report — Architecture Report — skill-do-work">Open report ↗</a></div>
+<details><summary>Use this design</summary>
+          <code class="design-prompt" id="generated-prompt-32">do-work-toolbox ai-report --design &#34;report:2026-08-26_1709_architecture-report&#34;</code>
+          <button class="prompt-copy" type="button" data-copy="generated-prompt-32" hidden>Copy starter prompt</button>
+        </details>
+      </article>
+
+      <article class="gallery-card generated-design">
+        <div class="card-heading"><h3>Durations Panel — Improvement Proposal</h3>
+          <a class="report-link" href="../../ai-reports/2026-08_18-reports/2026-08-23_2200_durations-panel-improvement-proposal/index.html" aria-label="Open report — Durations Panel — Improvement Proposal">Open report ↗</a></div>
+<details><summary>Use this design</summary>
+          <code class="design-prompt" id="generated-prompt-33">do-work-toolbox ai-report --design &#34;report:2026-08-23_2200_durations-panel-improvement-proposal&#34;</code>
+          <button class="prompt-copy" type="button" data-copy="generated-prompt-33" hidden>Copy starter prompt</button>
+        </details>
+      </article>
+
+      <article class="gallery-card generated-design">
+        <div class="card-heading"><h3>Remaining Work and the REQ Treadmill — do-work queue analysis, 2026-08-20</h3>
+          <a class="report-link" href="../../ai-reports/2026-08_18-reports/2026-08-20_1131_remaining-work-and-the-req-treadmill/index.html" aria-label="Open report — Remaining Work and the REQ Treadmill — do-work queue analysis, 2026-08-20">Open report ↗</a></div>
+<details><summary>Use this design</summary>
+          <code class="design-prompt" id="generated-prompt-34">do-work-toolbox ai-report --design &#34;report:2026-08-20_1131_remaining-work-and-the-req-treadmill&#34;</code>
+          <button class="prompt-copy" type="button" data-copy="generated-prompt-34" hidden>Copy starter prompt</button>
+        </details>
+      </article>
+
+      <article class="gallery-card generated-design">
+        <div class="card-heading"><h3>Durations Label Face — Robustness Options</h3>
+          <a class="report-link" href="../../ai-reports/2026-08_18-reports/2026-08-19_1345_durations-label-face-robustness/index.html" aria-label="Open report — Durations Label Face — Robustness Options">Open report ↗</a></div>
+<details><summary>Use this design</summary>
+          <code class="design-prompt" id="generated-prompt-35">do-work-toolbox ai-report --design &#34;report:2026-08-19_1345_durations-label-face-robustness&#34;</code>
+          <button class="prompt-copy" type="button" data-copy="generated-prompt-35" hidden>Copy starter prompt</button>
+        </details>
+      </article>
+
+      <article class="gallery-card generated-design">
+        <div class="card-heading"><h3>UR-048 — Estimator Calibration and Anomaly Surfacing</h3>
+          <a class="report-link" href="../../ai-reports/2026-08_18-reports/2026-08-17_1401_UR-048-estimator-calibration-and-anomaly-surfacing/index.html" aria-label="Open report — UR-048 — Estimator Calibration and Anomaly Surfacing">Open report ↗</a></div>
+<details><summary>Use this design</summary>
+          <code class="design-prompt" id="generated-prompt-37">do-work-toolbox ai-report --design &#34;report:2026-08-17_1401_UR-048-estimator-calibration-and-anomaly-surfacing&#34;</code>
+          <button class="prompt-copy" type="button" data-copy="generated-prompt-37" hidden>Copy starter prompt</button>
+        </details>
+      </article>
+
+      <article class="gallery-card generated-design">
+        <div class="card-heading"><h3>UR-047 — P50 Active-Duration Estimation</h3>
+          <a class="report-link" href="../../ai-reports/2026-08_18-reports/2026-08-17_0034_UR-047-p50-active-duration-estimation/index.html" aria-label="Open report — UR-047 — P50 Active-Duration Estimation">Open report ↗</a></div>
+<details><summary>Use this design</summary>
+          <code class="design-prompt" id="generated-prompt-38">do-work-toolbox ai-report --design &#34;report:2026-08-17_0034_UR-047-p50-active-duration-estimation&#34;</code>
+          <button class="prompt-copy" type="button" data-copy="generated-prompt-38" hidden>Copy starter prompt</button>
+        </details>
+      </article>
+
+      <article class="gallery-card generated-design">
+        <div class="card-heading"><h3>Repository review — skill-do-work2</h3>
+          <a class="report-link" href="../../ai-reports/2026-08_18-reports/2026-08-14_1959_audit-repository-review/index.html" aria-label="Open report — Repository review — skill-do-work2">Open report ↗</a></div>
+<details><summary>Use this design</summary>
+          <code class="design-prompt" id="generated-prompt-40">do-work-toolbox ai-report --design &#34;report:2026-08-14_1959_audit-repository-review&#34;</code>
+          <button class="prompt-copy" type="button" data-copy="generated-prompt-40" hidden>Copy starter prompt</button>
+        </details>
+      </article>
+
+      <article class="gallery-card generated-design">
+        <div class="card-heading"><h3>When Green Tests Prove Too Little — REQ-176</h3>
+          <a class="report-link" href="../../ai-reports/2026-08_18-reports/2026-08-14_1953_REQ-176-test-effectiveness-gap/index.html" aria-label="Open report — When Green Tests Prove Too Little — REQ-176">Open report ↗</a></div>
+<details><summary>Use this design</summary>
+          <code class="design-prompt" id="generated-prompt-41">do-work-toolbox ai-report --design &#34;report:2026-08-14_1953_REQ-176-test-effectiveness-gap&#34;</code>
+          <button class="prompt-copy" type="button" data-copy="generated-prompt-41" hidden>Copy starter prompt</button>
+        </details>
+      </article>
+
+      <article class="gallery-card generated-design">
+        <div class="card-heading"><h3>Maintainability-Audit Spec — Validation Report</h3>
+          <a class="report-link" href="../../ai-reports/2026-08_18-reports/2026-08-13_2200_maintainability-audit-spec-validation/index.html" aria-label="Open report — Maintainability-Audit Spec — Validation Report">Open report ↗</a></div>
+<details><summary>Use this design</summary>
+          <code class="design-prompt" id="generated-prompt-42">do-work-toolbox ai-report --design &#34;report:2026-08-13_2200_maintainability-audit-spec-validation&#34;</code>
+          <button class="prompt-copy" type="button" data-copy="generated-prompt-42" hidden>Copy starter prompt</button>
+        </details>
+      </article>
+
+      <article class="gallery-card generated-design">
+        <div class="card-heading"><h3>UR-026 — By UR recent-window report</h3>
+          <a class="report-link" href="../../ai-reports/2026-08_18-reports/2026-08-06_2248_UR-026-by-ur-recent-window/index.html" aria-label="Open report — UR-026 — By UR recent-window report">Open report ↗</a></div>
+<details><summary>Use this design</summary>
+          <code class="design-prompt" id="generated-prompt-43">do-work-toolbox ai-report --design &#34;report:2026-08-06_2248_UR-026-by-ur-recent-window&#34;</code>
+          <button class="prompt-copy" type="button" data-copy="generated-prompt-43" hidden>Copy starter prompt</button>
+        </details>
+      </article>
+
+      <article class="gallery-card generated-design">
+        <div class="card-heading"><h3>AI Report: August 6, 2026 Deployments</h3>
+          <a class="report-link" href="../../ai-reports/2026-08_18-reports/2026-08-06_2241_today-deployments-report/index.html" aria-label="Open report — AI Report: August 6, 2026 Deployments">Open report ↗</a></div>
+<details><summary>Use this design</summary>
+          <code class="design-prompt" id="generated-prompt-44">do-work-toolbox ai-report --design &#34;report:2026-08-06_2241_today-deployments-report&#34;</code>
+          <button class="prompt-copy" type="button" data-copy="generated-prompt-44" hidden>Copy starter prompt</button>
+        </details>
+      </article>
+
+      <article class="gallery-card generated-design">
+        <div class="card-heading"><h3>Exclusive-Session Pipeline — Simplification Analysis</h3>
+          <a class="report-link" href="../../ai-reports/2026-08_18-reports/2026-08-01_1231_lock-simplification-analysis/index.html" aria-label="Open report — Exclusive-Session Pipeline — Simplification Analysis">Open report ↗</a></div>
+<details><summary>Use this design</summary>
+          <code class="design-prompt" id="generated-prompt-45">do-work-toolbox ai-report --design &#34;report:2026-08-01_1231_lock-simplification-analysis&#34;</code>
+          <button class="prompt-copy" type="button" data-copy="generated-prompt-45" hidden>Copy starter prompt</button>
+        </details>
+      </article>
+
+      <article class="gallery-card generated-design">
+        <div class="card-heading"><h3>do-work delivery report — parallel execution &#43; deep-review batch (UR-007 / UR-008)</h3>
+          <a class="report-link" href="../../ai-reports/2026-07_4-reports/2026-07-29_1937_UR-007-008-deep-review-batch/index.html" aria-label="Open report — do-work delivery report — parallel execution &#43; deep-review batch (UR-007 / UR-008)">Open report ↗</a></div>
+<details><summary>Use this design</summary>
+          <code class="design-prompt" id="generated-prompt-46">do-work-toolbox ai-report --design &#34;report:2026-07-29_1937_UR-007-008-deep-review-batch&#34;</code>
+          <button class="prompt-copy" type="button" data-copy="generated-prompt-46" hidden>Copy starter prompt</button>
+        </details>
+      </article>
+
+      <article class="gallery-card generated-design">
+        <div class="card-heading"><h3>UR-006 — Context-Engineering Alignment</h3>
+          <a class="report-link" href="../../ai-reports/2026-07_4-reports/2026-07-28_0104_UR-006-context-engineering-alignment/index.html" aria-label="Open report — UR-006 — Context-Engineering Alignment">Open report ↗</a></div>
+<details><summary>Use this design</summary>
+          <code class="design-prompt" id="generated-prompt-47">do-work-toolbox ai-report --design &#34;report:2026-07-28_0104_UR-006-context-engineering-alignment&#34;</code>
+          <button class="prompt-copy" type="button" data-copy="generated-prompt-47" hidden>Copy starter prompt</button>
+        </details>
+      </article>
+
+      <article class="gallery-card generated-design">
+        <div class="card-heading"><h3>What shipped — do-work 0.137.0 → 0.145.0</h3>
+          <a class="report-link" href="../../ai-reports/2026-07_4-reports/2026-07-27_1726_UR-006-context-engineering-slimming/index.html" aria-label="Open report — What shipped — do-work 0.137.0 → 0.145.0">Open report ↗</a></div>
+<details><summary>Use this design</summary>
+          <code class="design-prompt" id="generated-prompt-48">do-work-toolbox ai-report --design &#34;report:2026-07-27_1726_UR-006-context-engineering-slimming&#34;</code>
+          <button class="prompt-copy" type="button" data-copy="generated-prompt-48" hidden>Copy starter prompt</button>
+        </details>
+      </article>
+
+      <article class="gallery-card generated-design">
+        <div class="card-heading"><h3>Why do-work is useful — auto-ticketing, mechanism by mechanism</h3>
+          <a class="report-link" href="../../ai-reports/2026-07_4-reports/2026-07-14_2055_why-do-work-useful/index.html" aria-label="Open report — Why do-work is useful — auto-ticketing, mechanism by mechanism">Open report ↗</a></div>
+<details><summary>Use this design</summary>
+          <code class="design-prompt" id="generated-prompt-49">do-work-toolbox ai-report --design &#34;report:2026-07-14_2055_why-do-work-useful&#34;</code>
+          <button class="prompt-copy" type="button" data-copy="generated-prompt-49" hidden>Copy starter prompt</button>
+        </details>
+      </article>
+</div>
+      </details>
+    </div>
   </section>
   <section id="presets" aria-labelledby="presets-title">
     <h2 id="presets-title">Second-opinion presets</h2>
@@ -212,6 +774,10 @@ body { margin: 0; font: 16px/1.5 var(--sans); }
     </div>
   </section>
   <div id="copy-status" class="copy-status" role="status"></div>
+  <dialog class="gallery-dialog" aria-labelledby="preview-title">
+    <div class="dialog-bar"><h2 id="preview-title">Page preview</h2><a class="report-link" id="preview-open"></a><button class="prompt-copy" type="button" id="preview-size" aria-pressed="false">Actual size</button><button class="prompt-copy" type="button" id="preview-close" autofocus>Close</button></div>
+    <div class="preview-scroll" tabindex="0" aria-label="Page image"></div>
+  </dialog>
 </main>
 <script>
 const copyStatus = document.getElementById('copy-status');
@@ -243,6 +809,41 @@ for (const button of document.querySelectorAll('[data-copy]')) {
     const success = await copyText(target);
     const message = button.classList.contains('name-copy') ? 'Copied “' + target.textContent + '”.' : 'Copied.';
     announce(success ? message : 'Text selected. Use your keyboard to copy.');
+  });
+}
+const dialog = document.querySelector('.gallery-dialog');
+if (typeof dialog.showModal === 'function') {
+  const image = document.createElement('img');
+  image.id = 'preview-image';
+  const open = document.getElementById('preview-open');
+  const scroller = dialog.querySelector('.preview-scroll');
+  const size = document.getElementById('preview-size');
+  size.addEventListener('click', () => {
+    size.setAttribute('aria-pressed', scroller.classList.toggle('actual-size'));
+  });
+  for (const cover of document.querySelectorAll('[data-preview]')) {
+    cover.addEventListener('click', event => {
+      if (event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
+      event.preventDefault();
+      const card = cover.closest('article');
+      const report = card.querySelector('.report-link');
+      document.getElementById('preview-title').textContent = card.querySelector('h3 span').textContent;
+      open.href = report.href;
+      open.textContent = report.textContent;
+      image.src = cover.href;
+      image.alt = cover.getAttribute('aria-label');
+      if (!image.isConnected) scroller.append(image);
+      scroller.classList.remove('actual-size');
+      size.setAttribute('aria-pressed', 'false');
+      dialog.showModal();
+      scroller.scrollTo(0, 0);
+    });
+  }
+  document.getElementById('preview-close').addEventListener('click', () => dialog.close());
+  dialog.addEventListener('click', event => {
+    if (event.target !== dialog) return;
+    const box = dialog.getBoundingClientRect();
+    if (event.clientX < box.left || event.clientX > box.right || event.clientY < box.top || event.clientY > box.bottom) dialog.close();
   });
 }
 </script>

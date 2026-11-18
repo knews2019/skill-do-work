@@ -10,6 +10,7 @@ import (
 	"path"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 )
 
@@ -22,12 +23,22 @@ type reportGalleryCard struct {
 	Slug     string
 	Title    string
 	CopyName string
-	Prompt   string
 	UseWhen  string
-	Borrow   []string
+	Starter  reportGalleryStarter
 	Preview  string
 	Open     reportGalleryLink
 	More     []reportGalleryLink
+}
+
+type reportGalleryStarter struct {
+	ID, Prompt string
+	Borrow     []string
+}
+
+type reportGalleryGeneratedCard struct {
+	Title, UseWhen, Report string
+	Starter                reportGalleryStarter
+	Review                 *reportGalleryReview
 }
 
 type reportGalleryKind struct {
@@ -67,6 +78,8 @@ type reportGalleryPageData struct {
 	Stylesheet string
 	Samples    []reportGalleryCard
 	Worked     []workedReportGroup
+	Generated  []reportGalleryGeneratedCard
+	Older      []reportGalleryGeneratedCard
 	Kinds      []reportGalleryKind
 	Presets    []reportGalleryLink
 	Live       *reportGalleryLivePage
@@ -87,19 +100,58 @@ func renderReportGalleryPage(repositoryRoot string, repository *os.Root, toolbox
 	if err != nil {
 		return nil, err
 	}
-	page.Worked = groupWorkedReports(worked)
 	if live != nil {
 		if err := live.discover(repositoryRoot, worked, bundles); err != nil {
 			return nil, err
 		}
 	}
-	copyNames := reportGalleryCopyNames(samples)
-	for _, sample := range samples {
-		if len(worked) > 0 && !strings.HasPrefix(sample.RecordPath, reportGalleryFolder+"/") {
+	workedByReport := make(map[string]*workedReportCard, len(worked))
+	for index, card := range worked {
+		workedByReport[card.ReportPath] = &worked[index]
+	}
+	generatedByReport := make(map[string]reportGalleryGeneratedSource, len(bundles))
+	for _, source := range reportGalleryGeneratedSources(repository, bundles) {
+		generatedByReport[source.bundle.Entry] = source
+	}
+	seenReports := make(map[string]bool, len(bundles))
+	for index, bundle := range bundles {
+		if bundle.Entry == "" || seenReports[bundle.Entry] {
 			continue
 		}
-		card := reportGalleryCard{Slug: sample.Name, Title: sample.Title, CopyName: copyNames[sample.Name], UseWhen: sample.UseWhen, Borrow: sample.Borrow}
-		card.Prompt = "do-work-toolbox ai-report --design " + quoteDesignName(card.CopyName)
+		seenReports[bundle.Entry] = true
+		source, found := generatedByReport[bundle.Entry]
+		var design reportGalleryGeneratedDesign
+		if found {
+			design, err = source.readDesign(repository)
+			found = err == nil
+		}
+		if workedCard := workedByReport[bundle.Entry]; workedCard != nil {
+			if found {
+				workedCard.Starter = newReportGalleryStarter("worked-prompt-"+workedCard.Name, source.identity, design.borrow)
+			}
+			continue
+		}
+		card := reportGalleryGeneratedCard{Title: bundle.Title, Report: reportGalleryHref(bundle.Entry)}
+		if live != nil {
+			card.Review = live.Reviews[bundle.Entry]
+		}
+		if found {
+			card.Starter = newReportGalleryStarter("generated-prompt-"+strconv.Itoa(index), source.identity, design.borrow)
+			if design.recordPath != bundle.Entry {
+				card.Title, card.UseWhen = design.title, design.useWhen
+				page.Generated = append(page.Generated, card)
+				continue
+			}
+		}
+		if found || card.Review != nil {
+			page.Older = append(page.Older, card)
+		}
+	}
+	page.Worked = groupWorkedReports(worked)
+	copyNames := reportGalleryCopyNames(samples)
+	for _, sample := range samples {
+		card := reportGalleryCard{Slug: sample.Name, Title: sample.Title, CopyName: copyNames[sample.Name], UseWhen: sample.UseWhen}
+		card.Starter = newReportGalleryStarter("prompt-"+card.Slug, card.CopyName, sample.Borrow)
 		folder := path.Dir(sample.RecordPath)
 		var links []reportGalleryLink
 		if href := reportGalleryFileLink(repository, path.Join(folder, reportGalleryExample)); href != "" {
@@ -134,6 +186,10 @@ func renderReportGalleryPage(repositoryRoot string, repository *os.Root, toolbox
 		return nil, err
 	}
 	return output.Bytes(), nil
+}
+
+func newReportGalleryStarter(id, identity string, borrow []string) reportGalleryStarter {
+	return reportGalleryStarter{ID: id, Prompt: "do-work-toolbox ai-report --design " + quoteDesignName(identity), Borrow: borrow}
 }
 
 // Escape shell interpolation inside the quoted design argument in a pasted starter.
@@ -291,7 +347,10 @@ body { margin: 0; font: 16px/1.5 var(--sans); }
 .sample-preview { display: block; width: 100%; height: auto; aspect-ratio: 1040 / 740; object-fit: cover; object-position: top; }
 .card-heading { display: flex; justify-content: space-between; gap: .5rem; align-items: baseline; margin: .55rem 0 .1rem; }
 .gallery .card-heading h3 { margin: 0; min-width: 0; font-size: clamp(1.5rem, 2vw, 2.15rem); letter-spacing: -.025em; }
-.name-copy { display: inline-flex; align-items: center; gap: .4rem; max-width: 100%; background: none; color: inherit; font: inherit; text-align: left; border: 0; padding: .15rem 0; cursor: copy; overflow-wrap: anywhere; }
+{{if or .Generated .Older}}.generated-design .card-heading h3 { overflow-wrap: anywhere; }
+{{end}}{{if .Older}}.report-archive { margin-top: 1rem; }
+.report-archive > summary { cursor: pointer; }
+{{end}}.name-copy { display: inline-flex; align-items: center; gap: .4rem; max-width: 100%; background: none; color: inherit; font: inherit; text-align: left; border: 0; padding: .15rem 0; cursor: copy; overflow-wrap: anywhere; }
 .name-copy:hover { color: var(--accent); text-decoration: underline; text-underline-offset: .14em; }
 .name-copy:disabled { opacity: 1; cursor: text; }
 .copy-icon { position: relative; display: inline-block; flex: 0 0 14px; height: 15px; color: var(--subtle); }
@@ -350,8 +409,9 @@ body { margin: 0; font: 16px/1.5 var(--sans); }
     <h1>AI Report Gallery</h1>
     <nav class="gallery-nav" aria-label="Gallery sections">
 {{if not .Worked}}      <a href="#report-kinds">Report kinds</a>
-{{end}}{{with .Live}}{{if .Generated}}      <a href="#project-reports">Project reports</a>
-{{end}}{{end}}      <a href="#presets">Presets</a>
+{{end}}{{if and .Worked .Samples}}      <a href="#samples">Samples</a>
+{{end}}{{if or .Generated .Older}}      <a href="#generated-designs">Generated designs</a>
+{{end}}      <a href="#presets">Presets</a>
       <a class="add-link" href="#add-sample">Add a sample</a>
     </nav>
   </header>
@@ -365,15 +425,18 @@ body { margin: 0; font: 16px/1.5 var(--sans); }
         <a class="sample-cover" data-gallery-preview href="{{.Report}}" aria-label="Open {{.Subject}}">
           <img class="sample-preview" src="{{.Image}}" loading="lazy" alt="" width="{{.Width}}" height="{{.Height}}" style="aspect-ratio: {{.Width}} / {{.Height}}">
         </a>
-        <div class="card-heading"><h3><button class="name-copy" data-gallery-name type="button" disabled data-copy="name-{{.Name}}" title="Copy report name"><span id="name-{{.Name}}">{{.Name}}</span><i class="copy-icon" aria-hidden="true"></i></button></h3>
+        <div class="card-heading"><h3><button class="name-copy" data-gallery-name type="button" disabled data-copy="worked-name-{{.Name}}" title="Copy report name"><span id="worked-name-{{.Name}}">{{.Name}}</span><i class="copy-icon" aria-hidden="true"></i></button></h3>
           <a class="report-link" href="#{{.Name}}" aria-label="Permalink to {{.Name}}">#</a></div>
-        <p>{{.Subject}}</p>{{if $.Live}}{{with index $.Live.Reviews .Report}}{{template "galleryFeedbackReview" .}}{{end}}{{end}}
+        <p>{{.Subject}}</p>
+        {{if .Starter.Prompt}}<details><summary>Use this design</summary>
+          {{template "starter-prompt" .Starter}}
+        </details>{{else}}<p>Design unavailable.</p>{{end}}{{if $.Live}}{{with index $.Live.Reviews .ReportPath}}{{template "galleryFeedbackReview" .}}{{end}}{{end}}
       </article>
 {{end}}      </div>
     </section>
-{{end}}  </section>{{end}}{{with .Live}}{{template "galleryProjectReports" .Generated}}{{end}}
+{{end}}  </section>{{end}}
   {{if or (not .Worked) .Samples}}<section class="samples" id="samples" aria-labelledby="samples-title">
-    <div class="section-note"><h2 id="samples-title">{{if .Worked}}Added samples{{else}}{{len .Samples}} report designs{{end}}</h2>
+    <div class="section-note"><h2 id="samples-title">{{if .Worked}}Sample designs{{else}}{{len .Samples}} report designs{{end}}</h2>
       {{if .Samples}}<p>Select a page to preview it. Click a design name to copy it.</p>{{end}}</div>
     {{if .Samples}}<div class="gallery-grid">
       {{range .Samples}}<article class="gallery-card" id="sample-{{.Slug}}">
@@ -384,13 +447,21 @@ body { margin: 0; font: 16px/1.5 var(--sans); }
           <a class="report-link" href="{{.Open.Href}}" aria-label="{{.Open.Label}} — {{.Title}}">{{if eq .Open.Label "Worked example"}}Open report{{else}}{{.Open.Label}}{{end}} ↗</a></div>
         {{if ne .CopyName .Title}}<p>{{.Title}}</p>{{end}}<p>{{.UseWhen}}</p>
         <details><summary>Use this design</summary>
-          <code class="design-prompt" id="prompt-{{.Slug}}">{{.Prompt}}</code>
-          <button class="prompt-copy" type="button" data-copy="prompt-{{.Slug}}" hidden>Copy starter prompt</button>
-          <ul aria-label="Borrow">{{range .Borrow}}<li>{{.}}</li>{{end}}</ul>
+          {{template "starter-prompt" .Starter}}
           <div class="gallery-links"><a href="#sample-{{.Slug}}">Permalink</a>{{range .More}}<a href="{{.Href}}">{{.Label}}</a>{{end}}</div>
         </details>
       </article>{{end}}
     </div>{{else}}<p>No samples yet.</p>{{end}}
+  </section>
+  {{end}}{{if or .Generated .Older}}<section class="samples" id="generated-designs" aria-labelledby="generated-designs-title">
+    <div class="section-note"><h2 id="generated-designs-title">Generated report designs</h2></div>
+    <div{{if .Live}} id="project-reports"{{end}}>
+{{if .Generated}}      <div class="gallery-grid">{{range .Generated}}{{template "generated-report-card" .}}{{end}}</div>
+{{end}}{{if .Older}}      <details class="report-archive">
+        <summary>Browse other reports ({{len .Older}})</summary>
+        <div class="gallery-grid">{{range .Older}}{{template "generated-report-card" .}}{{end}}</div>
+      </details>{{end}}
+    </div>
   </section>
   {{end}}{{if not .Worked}}<div class="gallery-tools">
   <section id="report-kinds" aria-labelledby="report-kinds-title">
@@ -419,7 +490,7 @@ body { margin: 0; font: 16px/1.5 var(--sans); }
   <div id="copy-status" class="copy-status" role="status"></div>
 {{if .Samples}}  <dialog class="gallery-dialog" aria-labelledby="preview-title">
     <div class="dialog-bar"><h2 id="preview-title">Page preview</h2><a class="report-link" id="preview-open"></a><button class="prompt-copy" type="button" id="preview-size" aria-pressed="false">Actual size</button><button class="prompt-copy" type="button" id="preview-close" autofocus>Close</button></div>
-    <div class="preview-scroll" tabindex="0" aria-label="Page image"><img id="preview-image" alt=""></div>
+    <div class="preview-scroll" tabindex="0" aria-label="Page image"></div>
   </dialog>
 {{end}}</main>
 <script>
@@ -456,7 +527,8 @@ for (const button of document.querySelectorAll('[data-copy]')) {
 }
 {{if .Samples}}const dialog = document.querySelector('.gallery-dialog');
 if (typeof dialog.showModal === 'function') {
-  const image = document.getElementById('preview-image');
+  const image = document.createElement('img');
+  image.id = 'preview-image';
   const open = document.getElementById('preview-open');
   const scroller = dialog.querySelector('.preview-scroll');
   const size = document.getElementById('preview-size');
@@ -474,6 +546,7 @@ if (typeof dialog.showModal === 'function') {
       open.textContent = report.textContent;
       image.src = cover.href;
       image.alt = cover.getAttribute('aria-label');
+      if (!image.isConnected) scroller.append(image);
       scroller.classList.remove('actual-size');
       size.setAttribute('aria-pressed', 'false');
       dialog.showModal();
@@ -490,6 +563,22 @@ if (typeof dialog.showModal === 'function') {
 {{end}}</script>{{if .Live}}{{template "galleryFeedbackScript"}}{{end}}
 </body>
 </html>
+{{define "starter-prompt" -}}
+<code class="design-prompt" id="{{.ID}}">{{.Prompt}}</code>
+          <button class="prompt-copy" type="button" data-copy="{{.ID}}" hidden>Copy starter prompt</button>{{if .Borrow}}
+          <ul aria-label="Borrow">{{range .Borrow}}<li>{{.}}</li>{{end}}</ul>{{end}}
+{{- end -}}
+{{define "generated-report-card"}}
+      <article class="gallery-card generated-design">
+        <div class="card-heading"><h3>{{.Title}}</h3>
+          <a class="report-link" href="{{.Report}}" aria-label="Open report — {{.Title}}">Open report ↗</a></div>
+{{if .UseWhen}}        <p>{{.UseWhen}}</p>
+{{end -}}
+        {{if .Starter.Prompt}}<details><summary>Use this design</summary>
+          {{template "starter-prompt" .Starter}}
+        </details>{{else}}<p>Design unavailable.</p>{{end}}{{with .Review}}{{template "galleryFeedbackReview" .}}{{end}}
+      </article>
+{{end -}}
 `))
 
 const reportGalleryFeedbackTemplates = `
@@ -511,16 +600,6 @@ const reportGalleryFeedbackTemplates = `
 .review-status[data-error] { font-weight: 600; }
 </style>
 {{end}}
-{{define "galleryProjectReports"}}{{if .}}
-  <section class="samples" id="project-reports" aria-labelledby="project-reports-title">
-    <h2 id="project-reports-title">Project reports</h2>
-    <div class="gallery-grid">
-      {{range .}}<article class="gallery-card">
-        <div class="card-heading"><h3><a href="{{.Href}}">{{.Title}}</a></h3></div>
-        {{template "galleryFeedbackReview" .}}
-      </article>{{end}}
-    </div>
-  </section>{{end}}{{end}}
 {{define "galleryFeedbackReview"}}
         <details class="review-details"><summary>Review report and figures</summary>
           {{template "galleryFeedbackForm" .}}

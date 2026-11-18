@@ -142,10 +142,20 @@ func TestAIReportGalleryPageLinksLatestRealReportsAndAssets(t *testing.T) {
 			t.Errorf("page missing %q", want)
 		}
 	}
-	for _, absent := range []string{"Old proposal", "empty-proposal", "Replaced shipped sample", "not-a-preset", "<script>alert(1)", "href=\"javascript:", "Unsafe image"} {
+	for _, absent := range []string{"empty-proposal", "Replaced shipped sample", "not-a-preset", "<script>alert(1)", "href=\"javascript:", "Unsafe image"} {
 		if strings.Contains(page, absent) {
 			t.Errorf("page unexpectedly contains %q", absent)
 		}
+	}
+	_, kinds, hasKinds := strings.Cut(page, `<section id="report-kinds"`)
+	kinds, _, _ = strings.Cut(kinds, "</section>")
+	if !hasKinds || !strings.Contains(kinds, "Newest &amp; best proposal") || strings.Contains(kinds, "Old proposal") {
+		t.Error("report kinds must keep only the latest proposal")
+	}
+	_, archive, hasArchive := strings.Cut(page, `<details class="report-archive">`)
+	archive, _, _ = strings.Cut(archive, "</section>")
+	if !hasArchive || !strings.Contains(archive, "Old proposal") {
+		t.Error("older reports should be discoverable inside the closed archive")
 	}
 	for _, match := range regexp.MustCompile(`href="([^"#]+)"`).FindAllStringSubmatch(page, -1) {
 		link, err := url.Parse(match[1])
@@ -337,7 +347,7 @@ func TestAIReportGalleryShowsWorkedReportsAndKeepsProjectSamples(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(live.Generated) != 0 || len(live.Targets) != 20 ||
+	if bytes.Contains(livePage, []byte(`id="project-reports"`)) || len(live.Targets) != 20 ||
 		!live.Targets[reportGalleryTarget{Kind: "figure", ReportPath: "ai-reports/report-one/index.html", FigureID: "visual"}] ||
 		!bytes.Contains(livePage, []byte(`data-gallery-preview href="../../ai-reports/report-one/index.html"`)) {
 		t.Fatal("live gallery should augment each curated card once and preserve the preview destination")
