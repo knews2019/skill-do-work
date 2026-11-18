@@ -10,6 +10,10 @@ For the complete release history, read this file and the archives below from new
 - [0.50.0 through 0.64.1](https://github.com/knews2019/skill-do-work/blob/main/docs/changelog/CHANGELOG-2026-04-13-up-to-v0.64.1.md)
 - [0.1.0 through 0.49.0](https://github.com/knews2019/skill-do-work/blob/main/docs/changelog/CHANGELOG-2026-04-07-up-to-v0.49.0.md)
 
+## 0.328.0 — The Gallery Opens Ten Real Reports (2026-11-18)
+
+Open an actual report from its screenshot, or copy its short name and link directly to its card. A capture command reproduces the ten previews from their source pages.
+
 ## 0.327.0 — Ten Report Designs with Full-Page Previews (2026-11-18)
 
 The gallery now includes ten worked reports. Enlarge a screenshot to inspect the page, open the interactive report, or click its design name to copy it.
