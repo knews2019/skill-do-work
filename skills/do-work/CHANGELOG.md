@@ -10,6 +10,13 @@ For the complete release history, read this file and the archives below from new
 - [0.50.0 through 0.64.1](https://github.com/knews2019/skill-do-work/blob/main/docs/changelog/CHANGELOG-2026-04-13-up-to-v0.64.1.md)
 - [0.1.0 through 0.49.0](https://github.com/knews2019/skill-do-work/blob/main/docs/changelog/CHANGELOG-2026-04-07-up-to-v0.49.0.md)
 
+## 0.331.0 — Generate Reports from Gallery Feedback (2026-11-19)
+
+Generate a report design with GPT-6.2-astra in T3 Code and carry saved report and figure feedback into a new variation.
+
+- Each variation records its evidence source, parent, feedback and design changes.
+- Choose a fact-checked parent for the next variation. Copy any candidate’s design from its gallery card.
+
 ## 0.330.0 — Copy a Starter Prompt for Any Report Design (2026-11-19)
 
 Open **Use this design** to copy a prompt that applies the named layout to your next report. Starters are available for shipped samples, project samples and generated reports, including older reports.
