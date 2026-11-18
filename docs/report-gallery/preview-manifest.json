@@ -7,70 +7,91 @@
       "kind": "Completed work",
       "subject": "Work procedures loaded by phase",
       "report": "ai-reports/2026-11-11_1411_commit-22f82fed-work-procedures-load-by-phase/index.html",
-      "image": "docs/report-gallery/previews/phase-by-phase.png"
+      "image": "docs/report-gallery/previews/phase-by-phase.png",
+      "reportSha256": "6b5bbd51a3d0680063ea84a0576ae4c1234743db91fff2fc4bb7cb40204a316c",
+      "imageSha256": "e062ac06e23a6a3d0aa36de031ec5fb7faa431bc59a908871f9d089638bf28c0"
     },
     {
       "name": "second-opinion",
       "kind": "Completed work",
       "subject": "Guarded report rebuilds across models",
       "report": "ai-reports/2026-10_3-reports/2026-10-15_1731_REQ-698-ai-report-second-opinion/index.html",
-      "image": "docs/report-gallery/previews/second-opinion.png"
+      "image": "docs/report-gallery/previews/second-opinion.png",
+      "reportSha256": "2497371b61a99d1468c402e6dade597ad30fba08282186d13dada70285b2a0bb",
+      "imageSha256": "40587fef46c9736dbbe3ff451be59bc972f98aa117520b85d0aac80d96f6be9d"
     },
     {
       "name": "release-dossier",
       "kind": "Completed work",
       "subject": "Board client modules and deployment evidence",
       "report": "ai-reports/2026-08_18-reports/2026-08-15_1834_UR-044-board-client-modules/index.html",
-      "image": "docs/report-gallery/previews/release-dossier.png"
+      "image": "docs/report-gallery/previews/release-dossier.png",
+      "reportSha256": "4dd2f5c248dcb6f86426d25ebd4960e5d9a8aca1695504e34f5dad69ce4bc630",
+      "imageSha256": "d6f92169a7670725a13cf481c79322a67ee6da9eb1b74a217a2ea2555b737cd0"
     },
     {
       "name": "tinka-review",
       "kind": "Proposal",
       "subject": "Tinka as a review canvas for report bundles",
       "report": "ai-reports/2026-11-14_1547_proposal-tinka-review-surface/index.html",
-      "image": "docs/report-gallery/previews/tinka-review.png"
+      "image": "docs/report-gallery/previews/tinka-review.png",
+      "reportSha256": "a87b23c37ead675200ff24c5678b45ceb607a44b44057e0d66b0f07dba0c9684",
+      "imageSha256": "1c3d12c8636b1a2ac849ae762756888f9a5be5bb73cc66732aa0dc454474df10"
     },
     {
       "name": "memory-note-routing",
       "kind": "Proposal",
       "subject": "Where each memory note should go",
       "report": "ai-reports/2026-11-15_0137_proposal-REQ-725-memory-note-destinations/index.html",
-      "image": "docs/report-gallery/previews/memory-note-routing.png"
+      "image": "docs/report-gallery/previews/memory-note-routing.png",
+      "reportSha256": "f0d3a7d6163da1e2a5cbc8bef70ec72ccedf72a224e6b4474a2bdd832bd26a62",
+      "imageSha256": "34bdaf9cc90ef5981e0cda6bad81100f736c9bb3be54a3779b2ece1870b7dbee"
     },
     {
       "name": "checkout-control-repo",
       "kind": "Proposal",
       "subject": "A control repository for parallel checkouts",
       "report": "ai-reports/2026-10_3-reports/2026-10-27_2356_checkout-copies-control-repo/index.html",
-      "image": "docs/report-gallery/previews/checkout-control-repo.png"
+      "image": "docs/report-gallery/previews/checkout-control-repo.png",
+      "reportSha256": "f46be98beb145d7b62eed8216191a71abff175f2d32a0ccf2a0da19e29e3d375",
+      "imageSha256": "19ad0d08147a42f48c256c016decc374504049667c2bce12b7666449a9741adc"
     },
     {
       "name": "overflow-labels",
       "kind": "Root cause",
       "subject": "Why labels collide above the duration ceiling",
       "report": "ai-reports/2026-08_18-reports/2026-08-18_1000_durations-lane-legibility-alternatives/index.html",
-      "image": "docs/report-gallery/previews/overflow-labels.png"
+      "image": "docs/report-gallery/previews/overflow-labels.png",
+      "reportSha256": "f87d54210d104c3bf791cde09abbb84dd52b31c8f1fc05b35ab27ee99e2147d6",
+      "imageSha256": "922c1d61f48b03c08bc5f033ec4344baebc3da6ac197fd8787a3e6868b528660"
     },
     {
       "name": "queue-refills",
       "kind": "Root cause",
       "subject": "Why the queue refills as fast as it drains",
       "report": "ai-reports/2026-09_18-reports/2026-09-03_2145_do-work-velocity-and-pending-queue-speed/index.html",
-      "image": "docs/report-gallery/previews/queue-refills.png"
+      "image": "docs/report-gallery/previews/queue-refills.png",
+      "reportSha256": "be5494180742cbd98c81c8270aee989629bbf9ce8ac5f4cfcc19f2a1734e962a",
+      "imageSha256": "e58cee9fe15da8d129d6f4c10bffb7f7583c8c9c21aa05a0c26b8eff2af54cb1"
     },
     {
       "name": "request-lifecycle",
       "kind": "Architecture",
       "subject": "Four skill packages and a request\u2019s lifecycle",
       "report": "ai-reports/2026-09_18-reports/2026-09-06_1706_architecture-report/index.html",
-      "image": "docs/report-gallery/previews/request-lifecycle.png"
+      "image": "docs/report-gallery/previews/request-lifecycle.png",
+      "reportSha256": "8b9a14d0aeeed56e9c61708ff7ffe445b285aa833765c4f8303753b8d18f2049",
+      "imageSha256": "bf319113f0f5b67d7ae5575730521dac32e13055b438aa1757d48c777ad22ec4"
     },
     {
       "name": "cli-command-map",
       "kind": "Architecture",
       "subject": "A guide to the Go CLI and its commands",
       "report": "ai-reports/2026-09_18-reports/2026-09-06_2113_do-work-cli-guide/index.html",
-      "image": "docs/report-gallery/previews/cli-command-map.png"
+      "image": "docs/report-gallery/previews/cli-command-map.png",
+      "reportSha256": "2bf8f58bfa5ff445935e0c5e145f506c8388b5f96c5fa0dcebff448c680b4169",
+      "imageSha256": "568213707a9142e925e55496b8a2c2157512a3935f34e7df0fea47f344902de0"
     }
-  ]
+  ],
+  "scrollY": 0
 }

@@ -320,9 +320,15 @@ async function main() {
   };
   let manifest;
   if (options.manifest) {
-    manifest = JSON.parse(await fs.readFile(options.manifest, 'utf8'));
+    const raw = JSON.parse(await fs.readFile(options.manifest, 'utf8'));
+    manifest = raw.cards ? {
+      captures: raw.cards,
+      viewport: { width: raw.width, height: raw.height },
+      scrollY: raw.scrollY,
+    } : raw;
     assert.equal(manifest.captures.length, 10);
     assert.equal(new Set(manifest.captures.map((entry) => entry.report)).size, 10);
+    assert.equal(new Set(manifest.captures.map((entry) => entry.image)).size, 10);
     assert(manifest.scrollY === 0 && Number.isInteger(manifest.viewport.width) &&
       manifest.viewport.width > 0 && Number.isInteger(manifest.viewport.height) &&
       manifest.viewport.height > 0, 'Expected fixed top-viewport capture settings');

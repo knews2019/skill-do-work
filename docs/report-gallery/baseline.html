@@ -1,0 +1,250 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta name="generator" content="do-work-cli ai-report-gallery">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AI Report Gallery</title>
+<link rel="stylesheet" href="../../skills/do-work-toolbox/docs/ai-report-kit/presentation.css">
+<style>
+* { box-sizing: border-box; }
+:root {
+  color-scheme: light dark;
+  --ground: #faf9f5; --panel: #fffefa; --text: #232b28; --subtle: #535d56;
+  --edge: #cccfc5; --accent: #285949; --wash: #e9eee7;
+  --sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --serif: "Iowan Old Style", "Baskerville", Georgia, serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root { --ground: #171c1a; --panel: #1e2522; --text: #f0f2eb; --subtle: #b7c0b9; --edge: #46524b; --accent: #b1dfc7; --wash: #293a31; }
+}
+html, body { background: var(--ground); color: var(--text); }
+body { margin: 0; font: 16px/1.5 var(--sans); }
+.gallery { width: 100%; padding: 0 clamp(16px, 3.2vw, 76px) 3rem; }
+.gallery h1, .gallery h2, .gallery h3 { color: var(--text); font-family: var(--serif); font-weight: 500; line-height: 1.1; }
+.gallery h1 { margin: 0; font-size: clamp(2.3rem, 3.4vw, 3.6rem); letter-spacing: -.045em; }
+.gallery h2 { margin: 0 0 1rem; font-size: clamp(1.6rem, 2vw, 2.1rem); letter-spacing: -.025em; }
+.gallery a { color: var(--accent); text-underline-offset: .2em; }
+.gallery :focus-visible { outline: 3px solid var(--accent); outline-offset: 4px; }
+.gallery-header { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem; padding: clamp(16px, 1.6vw, 30px) 0 1rem; border-bottom: 2px solid var(--text); }
+.gallery-nav, .gallery-links { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem 1.15rem; }
+.gallery-nav a { font-size: .95rem; font-weight: 600; text-decoration: none; padding-block: .45rem; }
+.gallery-nav a:hover { text-decoration: underline; }
+.gallery-nav .add-link, .gallery-copy button { background: var(--text); color: var(--ground); border: 1px solid var(--text); border-radius: .4rem; padding: .65rem 1rem; font: 600 .95rem var(--sans); cursor: pointer; }
+.gallery section { scroll-margin-top: 1rem; }
+.samples { padding: 1.1rem 0 2rem; }
+.gallery-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1.8rem clamp(16px, 1.55vw, 32px); align-items: start; }
+.gallery-card { min-width: 0; scroll-margin-top: 1rem; }
+.gallery-card:target { outline: 2px solid var(--accent); outline-offset: 6px; }
+.sample-cover { display: block; position: relative; background: var(--panel); border: 1px solid var(--edge); border-radius: .4rem; overflow: hidden; }
+.sample-cover:hover { border-color: var(--accent); }
+.sample-cover span { position: absolute; bottom: .5rem; right: .5rem; border: 1px solid #c4c9c3; background: #fff; color: #20382c; padding: .25rem .55rem; border-radius: .25rem; font: 600 .78rem/1.4 var(--sans); }
+.sample-preview { display: block; width: 100%; height: auto; aspect-ratio: 1040 / 740; object-fit: cover; object-position: top; }
+.card-heading { display: flex; justify-content: space-between; gap: .5rem; align-items: baseline; margin: .55rem 0 .1rem; }
+.gallery .card-heading h3 { margin: 0; min-width: 0; font-size: clamp(1.5rem, 2vw, 2.15rem); letter-spacing: -.025em; }
+.name-copy { display: inline-flex; align-items: center; gap: .4rem; max-width: 100%; background: none; color: inherit; font: inherit; text-align: left; border: 0; padding: .15rem 0; cursor: copy; overflow-wrap: anywhere; }
+.name-copy:hover { color: var(--accent); text-decoration: underline; text-underline-offset: .14em; }
+.name-copy:disabled { opacity: 1; cursor: text; }
+.copy-icon { position: relative; display: inline-block; flex: 0 0 14px; height: 15px; color: var(--subtle); }
+.copy-icon::before, .copy-icon::after { content: ""; position: absolute; border: 1.5px solid; border-radius: 2px; width: 8px; height: 10px; top: 0; left: 0; }
+.copy-icon::after { left: 4px; top: 3px; background: var(--ground); }
+.report-link { flex: none; font: 600 .85rem/1.4 var(--sans); padding: .55rem 0; }
+.gallery-card p { margin: 0 0 .45rem; color: var(--subtle); line-height: 1.45; max-width: 52ch; }
+.worked-report .worked-kind { font: 700 .84rem/1.4 var(--sans); color: var(--accent); }
+.gallery-card details { background: none; border: 0; padding: 0; border-radius: 0; }
+.gallery-card summary { display: list-item; font: 600 .9rem var(--sans); width: fit-content; color: var(--accent); padding: .65rem 0; cursor: pointer; }
+.gallery-card details[open] summary { border: 0; margin: 0; }
+.gallery-card ul { padding-left: 1.2rem; margin: .25rem 0 .6rem; }
+.gallery-card details a { font-size: .9rem; }
+.section-note { display: flex; align-items: baseline; justify-content: space-between; flex-wrap: wrap; gap: .25rem 1rem; margin-bottom: .85rem; }
+.section-note h2 { margin: 0; }
+.section-note p { margin: 0; color: var(--subtle); font-size: .9rem; }
+.design-prompt { display: block; margin: .55rem 0; padding: .6rem; background: var(--wash); color: var(--text); overflow-wrap: anywhere; }
+.prompt-copy { font: 600 .85rem var(--sans); padding: .45rem .65rem; background: var(--panel); border: 1px solid var(--edge); color: var(--accent); border-radius: .3rem; cursor: pointer; }
+.copy-status:not(:empty) { pointer-events: none; position: fixed; bottom: 1rem; left: 50%; transform: translateX(-50%); z-index: 2; color: var(--ground); background: var(--text); border-radius: .4rem; padding: .6rem 1rem; max-width: calc(100% - 2rem); width: max-content; }
+.gallery-tools { display: grid; grid-template-columns: 3fr 2fr; gap: clamp(1.5rem, 4vw, 5rem); border-block: 1px solid var(--edge); padding: 1.65rem 0 2rem; }
+.gallery-kinds, .gallery-presets { list-style: none; margin: 0; padding: 0; }
+.gallery-kinds li { border-top: 1px solid var(--edge); padding: .55rem 0; display: grid; grid-template-columns: minmax(7rem, 27%) minmax(0, 1fr); gap: .4rem 1rem; }
+.gallery-kinds code, .gallery-copy code { background: none; color: var(--text); padding: 0; overflow-wrap: anywhere; }
+.gallery-presets { display: flex; flex-wrap: wrap; gap: .45rem; }
+.gallery-presets a { display: block; padding: .4rem .75rem; background: var(--wash); border-radius: .35rem; font-size: .9rem; text-decoration: none; }
+.gallery-presets a:hover { text-decoration: underline; }
+.gallery-add { padding: 1.6rem 0; }
+.gallery-add p { color: var(--subtle); margin: 0 0 .75rem; }
+.gallery-copy { display: flex; align-items: center; flex-wrap: wrap; gap: .8rem; }
+.gallery-copy button[hidden] { display: none; }
+@media (min-width: 1700px) { .gallery-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+@media (max-width: 1000px) { .gallery-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 720px) { .gallery-tools { grid-template-columns: 1fr; } }
+@media (max-width: 560px) {
+  .gallery-grid { grid-template-columns: minmax(0, 1fr); gap: 1.6rem; }
+  .gallery-header { align-items: start; flex-direction: column; gap: .5rem; }
+  .gallery-nav { gap: .5rem .9rem; }
+  .gallery-kinds li { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+<main class="gallery">
+  <header class="gallery-header">
+    <h1>AI Report Gallery</h1>
+    <nav class="gallery-nav" aria-label="Gallery sections">
+      <a href="#report-kinds">Report kinds</a>
+      <a href="#presets">Presets</a>
+      <a class="add-link" href="#add-sample">Add a sample</a>
+    </nav>
+  </header>
+  <section class="samples" id="worked-reports" aria-labelledby="worked-title">
+    <div class="section-note"><h2 id="worked-title">Worked reports</h2>
+      <p>Open a report from its preview. Click a name to copy it.</p></div>
+    <div class="gallery-grid">
+      <article class="gallery-card worked-report" data-gallery-card id="phase-by-phase">
+        <a class="sample-cover" data-gallery-preview href="../../ai-reports/2026-11-11_1411_commit-22f82fed-work-procedures-load-by-phase/index.html" aria-label="Open Work procedures loaded by phase">
+          <img class="sample-preview" src="previews/phase-by-phase.png" loading="lazy" alt="" width="900" height="560" style="aspect-ratio: 900 / 560">
+        </a>
+        <div class="card-heading"><h3><button class="name-copy" data-gallery-name type="button" disabled data-copy="name-phase-by-phase" title="Copy report name"><span id="name-phase-by-phase">phase-by-phase</span><i class="copy-icon" aria-hidden="true"></i></button></h3>
+          <a class="report-link" href="#phase-by-phase" aria-label="Permalink to phase-by-phase">#</a></div>
+        <p class="worked-kind">Completed work</p>
+        <p>Work procedures loaded by phase</p>
+      </article><article class="gallery-card worked-report" data-gallery-card id="second-opinion">
+        <a class="sample-cover" data-gallery-preview href="../../ai-reports/2026-10_3-reports/2026-10-15_1731_REQ-698-ai-report-second-opinion/index.html" aria-label="Open Guarded report rebuilds across models">
+          <img class="sample-preview" src="previews/second-opinion.png" loading="lazy" alt="" width="900" height="560" style="aspect-ratio: 900 / 560">
+        </a>
+        <div class="card-heading"><h3><button class="name-copy" data-gallery-name type="button" disabled data-copy="name-second-opinion" title="Copy report name"><span id="name-second-opinion">second-opinion</span><i class="copy-icon" aria-hidden="true"></i></button></h3>
+          <a class="report-link" href="#second-opinion" aria-label="Permalink to second-opinion">#</a></div>
+        <p class="worked-kind">Completed work</p>
+        <p>Guarded report rebuilds across models</p>
+      </article><article class="gallery-card worked-report" data-gallery-card id="release-dossier">
+        <a class="sample-cover" data-gallery-preview href="../../ai-reports/2026-08_18-reports/2026-08-15_1834_UR-044-board-client-modules/index.html" aria-label="Open Board client modules and deployment evidence">
+          <img class="sample-preview" src="previews/release-dossier.png" loading="lazy" alt="" width="900" height="560" style="aspect-ratio: 900 / 560">
+        </a>
+        <div class="card-heading"><h3><button class="name-copy" data-gallery-name type="button" disabled data-copy="name-release-dossier" title="Copy report name"><span id="name-release-dossier">release-dossier</span><i class="copy-icon" aria-hidden="true"></i></button></h3>
+          <a class="report-link" href="#release-dossier" aria-label="Permalink to release-dossier">#</a></div>
+        <p class="worked-kind">Completed work</p>
+        <p>Board client modules and deployment evidence</p>
+      </article><article class="gallery-card worked-report" data-gallery-card id="tinka-review">
+        <a class="sample-cover" data-gallery-preview href="../../ai-reports/2026-11-14_1547_proposal-tinka-review-surface/index.html" aria-label="Open Tinka as a review canvas for report bundles">
+          <img class="sample-preview" src="previews/tinka-review.png" loading="lazy" alt="" width="900" height="560" style="aspect-ratio: 900 / 560">
+        </a>
+        <div class="card-heading"><h3><button class="name-copy" data-gallery-name type="button" disabled data-copy="name-tinka-review" title="Copy report name"><span id="name-tinka-review">tinka-review</span><i class="copy-icon" aria-hidden="true"></i></button></h3>
+          <a class="report-link" href="#tinka-review" aria-label="Permalink to tinka-review">#</a></div>
+        <p class="worked-kind">Proposal</p>
+        <p>Tinka as a review canvas for report bundles</p>
+      </article><article class="gallery-card worked-report" data-gallery-card id="memory-note-routing">
+        <a class="sample-cover" data-gallery-preview href="../../ai-reports/2026-11-15_0137_proposal-REQ-725-memory-note-destinations/index.html" aria-label="Open Where each memory note should go">
+          <img class="sample-preview" src="previews/memory-note-routing.png" loading="lazy" alt="" width="900" height="560" style="aspect-ratio: 900 / 560">
+        </a>
+        <div class="card-heading"><h3><button class="name-copy" data-gallery-name type="button" disabled data-copy="name-memory-note-routing" title="Copy report name"><span id="name-memory-note-routing">memory-note-routing</span><i class="copy-icon" aria-hidden="true"></i></button></h3>
+          <a class="report-link" href="#memory-note-routing" aria-label="Permalink to memory-note-routing">#</a></div>
+        <p class="worked-kind">Proposal</p>
+        <p>Where each memory note should go</p>
+      </article><article class="gallery-card worked-report" data-gallery-card id="checkout-control-repo">
+        <a class="sample-cover" data-gallery-preview href="../../ai-reports/2026-10_3-reports/2026-10-27_2356_checkout-copies-control-repo/index.html" aria-label="Open A control repository for parallel checkouts">
+          <img class="sample-preview" src="previews/checkout-control-repo.png" loading="lazy" alt="" width="900" height="560" style="aspect-ratio: 900 / 560">
+        </a>
+        <div class="card-heading"><h3><button class="name-copy" data-gallery-name type="button" disabled data-copy="name-checkout-control-repo" title="Copy report name"><span id="name-checkout-control-repo">checkout-control-repo</span><i class="copy-icon" aria-hidden="true"></i></button></h3>
+          <a class="report-link" href="#checkout-control-repo" aria-label="Permalink to checkout-control-repo">#</a></div>
+        <p class="worked-kind">Proposal</p>
+        <p>A control repository for parallel checkouts</p>
+      </article><article class="gallery-card worked-report" data-gallery-card id="overflow-labels">
+        <a class="sample-cover" data-gallery-preview href="../../ai-reports/2026-08_18-reports/2026-08-18_1000_durations-lane-legibility-alternatives/index.html" aria-label="Open Why labels collide above the duration ceiling">
+          <img class="sample-preview" src="previews/overflow-labels.png" loading="lazy" alt="" width="900" height="560" style="aspect-ratio: 900 / 560">
+        </a>
+        <div class="card-heading"><h3><button class="name-copy" data-gallery-name type="button" disabled data-copy="name-overflow-labels" title="Copy report name"><span id="name-overflow-labels">overflow-labels</span><i class="copy-icon" aria-hidden="true"></i></button></h3>
+          <a class="report-link" href="#overflow-labels" aria-label="Permalink to overflow-labels">#</a></div>
+        <p class="worked-kind">Root cause</p>
+        <p>Why labels collide above the duration ceiling</p>
+      </article><article class="gallery-card worked-report" data-gallery-card id="queue-refills">
+        <a class="sample-cover" data-gallery-preview href="../../ai-reports/2026-09_18-reports/2026-09-03_2145_do-work-velocity-and-pending-queue-speed/index.html" aria-label="Open Why the queue refills as fast as it drains">
+          <img class="sample-preview" src="previews/queue-refills.png" loading="lazy" alt="" width="900" height="560" style="aspect-ratio: 900 / 560">
+        </a>
+        <div class="card-heading"><h3><button class="name-copy" data-gallery-name type="button" disabled data-copy="name-queue-refills" title="Copy report name"><span id="name-queue-refills">queue-refills</span><i class="copy-icon" aria-hidden="true"></i></button></h3>
+          <a class="report-link" href="#queue-refills" aria-label="Permalink to queue-refills">#</a></div>
+        <p class="worked-kind">Root cause</p>
+        <p>Why the queue refills as fast as it drains</p>
+      </article><article class="gallery-card worked-report" data-gallery-card id="request-lifecycle">
+        <a class="sample-cover" data-gallery-preview href="../../ai-reports/2026-09_18-reports/2026-09-06_1706_architecture-report/index.html" aria-label="Open Four skill packages and a request’s lifecycle">
+          <img class="sample-preview" src="previews/request-lifecycle.png" loading="lazy" alt="" width="900" height="560" style="aspect-ratio: 900 / 560">
+        </a>
+        <div class="card-heading"><h3><button class="name-copy" data-gallery-name type="button" disabled data-copy="name-request-lifecycle" title="Copy report name"><span id="name-request-lifecycle">request-lifecycle</span><i class="copy-icon" aria-hidden="true"></i></button></h3>
+          <a class="report-link" href="#request-lifecycle" aria-label="Permalink to request-lifecycle">#</a></div>
+        <p class="worked-kind">Architecture</p>
+        <p>Four skill packages and a request’s lifecycle</p>
+      </article><article class="gallery-card worked-report" data-gallery-card id="cli-command-map">
+        <a class="sample-cover" data-gallery-preview href="../../ai-reports/2026-09_18-reports/2026-09-06_2113_do-work-cli-guide/index.html" aria-label="Open A guide to the Go CLI and its commands">
+          <img class="sample-preview" src="previews/cli-command-map.png" loading="lazy" alt="" width="900" height="560" style="aspect-ratio: 900 / 560">
+        </a>
+        <div class="card-heading"><h3><button class="name-copy" data-gallery-name type="button" disabled data-copy="name-cli-command-map" title="Copy report name"><span id="name-cli-command-map">cli-command-map</span><i class="copy-icon" aria-hidden="true"></i></button></h3>
+          <a class="report-link" href="#cli-command-map" aria-label="Permalink to cli-command-map">#</a></div>
+        <p class="worked-kind">Architecture</p>
+        <p>A guide to the Go CLI and its commands</p>
+      </article>
+    </div>
+  </section>
+  <div class="gallery-tools">
+  <section id="report-kinds" aria-labelledby="report-kinds-title">
+    <h2 id="report-kinds-title">Report kinds</h2>
+    <ul class="gallery-kinds">
+      <li><strong>Completed work</strong>
+        <a href="../../ai-reports/2026-11-11_1411_commit-22f82fed-work-procedures-load-by-phase/index.html">Work procedures load by phase (0.315.3)</a>
+      </li><li><strong>Proposal</strong>
+        <a href="../../ai-reports/2026-11-15_0137_proposal-REQ-725-memory-note-destinations/index.html">Where each memory note goes (REQ-725)</a>
+      </li><li><strong>Root cause</strong>
+        <span>Create one with <code>do-work-toolbox ai-report --kind root-cause &lt;topic | REQ-NNN | UR-NNN&gt;</code></span>
+      </li><li><strong>Architecture report</strong>
+        <a href="../../ai-reports/2026-09_18-reports/2026-09-06_1740_architecture-report/index.html">do-work architecture — folders, technology, examples</a>
+      </li>
+    </ul>
+  </section>
+  <section id="presets" aria-labelledby="presets-title">
+    <h2 id="presets-title">Second-opinion presets</h2>
+    <ul class="gallery-links gallery-presets">
+      <li><a href="../../skills/do-work-toolbox/docs/second-opinion-presets/80-20.md">80-20</a></li><li><a href="../../skills/do-work-toolbox/docs/second-opinion-presets/bold.md">bold</a></li><li><a href="../../skills/do-work-toolbox/docs/second-opinion-presets/eli5.md">eli5</a></li><li><a href="../../skills/do-work-toolbox/docs/second-opinion-presets/feynman.md">feynman</a></li><li><a href="../../skills/do-work-toolbox/docs/second-opinion-presets/first-principles.md">first-principles</a></li><li><a href="../../skills/do-work-toolbox/docs/second-opinion-presets/mindmap.md">mindmap</a></li><li><a href="../../skills/do-work-toolbox/docs/second-opinion-presets/quizme.md">quizme</a></li><li><a href="../../skills/do-work-toolbox/docs/second-opinion-presets/relation-map.md">relation-map</a></li><li><a href="../../skills/do-work-toolbox/docs/second-opinion-presets/schematics.md">schematics</a></li><li><a href="../../skills/do-work-toolbox/docs/second-opinion-presets/socrates.md">socrates</a></li><li><a href="../../skills/do-work-toolbox/docs/second-opinion-presets/sticky-notes.md">sticky-notes</a></li><li><a href="../../skills/do-work-toolbox/docs/second-opinion-presets/visual-studyguide.md">visual-studyguide</a></li><li><a href="../../skills/do-work-toolbox/docs/second-opinion-presets/visual.md">visual</a></li>
+    </ul>
+  </section>
+  </div>
+  <section class="gallery-add" id="add-sample" aria-labelledby="add-sample-title">
+    <h2 id="add-sample-title">Add a sample</h2>
+    <p>Paste this line into your agent, replacing the placeholders with the source and what you liked.</p>
+    <div class="gallery-copy">
+      <code id="add-line">do-work-toolbox ai-report gallery add &lt;image path | link | html path&gt; [what the user liked]</code>
+      <button class="btn" id="copy-add-line" data-copy="add-line" type="button" hidden>Copy command</button>
+    </div>
+  </section>
+  <div id="copy-status" class="copy-status" role="status"></div>
+</main>
+<script>
+const copyStatus = document.getElementById('copy-status');
+let statusTimer;
+function announce(message) {
+  clearTimeout(statusTimer);
+  copyStatus.textContent = message;
+  statusTimer = setTimeout(() => { copyStatus.textContent = ''; }, 3200);
+}
+async function copyText(element) {
+  if (location.protocol !== 'file:' && navigator.clipboard) {
+    try { await navigator.clipboard.writeText(element.textContent); return true; } catch {}
+  }
+  const range = document.createRange();
+  range.selectNodeContents(element);
+  const selection = window.getSelection();
+  selection.removeAllRanges();
+  selection.addRange(range);
+  let copied = false;
+  try { copied = document.execCommand('copy'); } catch {}
+  if (copied) selection.removeAllRanges();
+  return copied;
+}
+for (const button of document.querySelectorAll('[data-copy]')) {
+  button.hidden = false;
+  button.disabled = false;
+  button.addEventListener('click', async () => {
+    const target = document.getElementById(button.dataset.copy);
+    const success = await copyText(target);
+    const message = button.classList.contains('name-copy') ? 'Copied “' + target.textContent + '”.' : 'Copied.';
+    announce(success ? message : 'Text selected. Use your keyboard to copy.');
+  });
+}
+</script>
+</body>
+</html>

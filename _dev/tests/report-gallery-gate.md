@@ -8,7 +8,7 @@ for a Playwright-managed Chromium installation.
 ```sh
 node _dev/tests/report-gallery-gate.cjs \
   --gallery docs/report-gallery/index.html \
-  --manifest /path/to/capture-manifest.json \
+  --manifest docs/report-gallery/preview-manifest.json \
   --out /path/to/evidence
 ```
 
@@ -21,24 +21,17 @@ setup or runner error. Use a fresh output directory for each run.
 
 ## Capture manifest from REQ-749
 
-Supply JSON with a fixed `viewport: { width, height }`, `scrollY: 0`, and ten
-`captures` rows. Each row has four string fields:
+The capture command is `python3 docs/report-gallery/capture-previews.py`.
+It requires `playwright-cli`. It captures the ten manifest reports at
+`width` × `height` and `scrollY: 0`, verifies the source files remained
+unchanged during capture, and records `reportSha256` and `imageSha256`
+in each `cards` row before publishing the manifest.
 
-| Field | Value |
-| --- | --- |
-| `report` | Repository-relative `ai-reports/.../index.html` path |
-| `image` | Repository-relative path to the captured preview image file, or an absolute path for fixtures |
-| `reportSha256` | Lowercase SHA-256 of the source HTML bytes at capture |
-| `imageSha256` | Lowercase SHA-256 of the emitted screenshot bytes |
-
-Generate the manifest in the capture script as it visits each source at
-scroll position zero and saves the fixed viewport screenshot. The gate
-trusts this capture record, then matches the preview destination, the
-browser-selected image URL, decoded image dimensions, and both file
-hashes to it. Keep the trusted record separate from candidate markup.
-Identical image hashes across reports are allowed. If REQ-749 emits a
-different schema, adapt its output to this schema using its trusted capture
-records. A run without `--manifest` exercises the browser checks and fails G2.
+The gate matches the report destination, browser-selected image URL, decoded
+dimensions and both file hashes to the capture record. The legacy fixture
+schema uses `viewport: {width, height}` and `captures` instead of the
+gallery's top-level dimensions and `cards`. A run without a manifest
+exercises the browser checks and fails G2.
 
 ## DOM hooks
 

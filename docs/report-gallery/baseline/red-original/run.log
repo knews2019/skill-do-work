@@ -1,0 +1,272 @@
+1440-light G1 PASS
+1440-light G2 FAIL
+  Before and After: No trusted capture entry for file:///Users/t2/.t3/worktrees/skill-do-work2/t3-cfabdc05-3285aedf59f7f49d/skills/do-work-toolbox/docs/report-gallery/before-and-after/example.html
+  Bottleneck Hunt: No trusted capture entry for file:///Users/t2/.t3/worktrees/skill-do-work2/t3-cfabdc05-3285aedf59f7f49d/skills/do-work-toolbox/docs/report-gallery/bottleneck-hunt/example.html
+  Cause Chain: No trusted capture entry for file:///Users/t2/.t3/worktrees/skill-do-work2/t3-cfabdc05-3285aedf59f7f49d/skills/do-work-toolbox/docs/report-gallery/cause-chain/example.html
+  Changing Mix: No trusted capture entry for file:///Users/t2/.t3/worktrees/skill-do-work2/t3-cfabdc05-3285aedf59f7f49d/skills/do-work-toolbox/docs/report-gallery/parts-over-time/example.html
+  Daily Rhythm: No trusted capture entry for file:///Users/t2/.t3/worktrees/skill-do-work2/t3-cfabdc05-3285aedf59f7f49d/skills/do-work-toolbox/docs/report-gallery/rhythm-over-cycle/example.html
+  Decision Matrix: No trusted capture entry for file:///Users/t2/.t3/worktrees/skill-do-work2/t3-cfabdc05-3285aedf59f7f49d/skills/do-work-toolbox/docs/report-gallery/decision-matrix/example.html
+  Evidence Verdict: No trusted capture entry for file:///Users/t2/.t3/worktrees/skill-do-work2/t3-cfabdc05-3285aedf59f7f49d/skills/do-work-toolbox/docs/report-gallery/verdict-with-checks/example.html
+  Incident Timeline: No trusted capture entry for file:///Users/t2/.t3/worktrees/skill-do-work2/t3-cfabdc05-3285aedf59f7f49d/skills/do-work-toolbox/docs/report-gallery/incident-timeline/example.html
+  Rate and Level: No trusted capture entry for file:///Users/t2/.t3/worktrees/skill-do-work2/t3-cfabdc05-3285aedf59f7f49d/skills/do-work-toolbox/docs/report-gallery/two-measures-side-by-side/example.html
+  System Map: No trusted capture entry for file:///Users/t2/.t3/worktrees/skill-do-work2/t3-cfabdc05-3285aedf59f7f49d/skills/do-work-toolbox/docs/report-gallery/system-map/example.html
+1440-light G3 FAIL
+  Card 1: Invalid name "Before and After"
+  Card 2: Invalid name "Bottleneck Hunt"
+  Card 3: Invalid name "Cause Chain"
+  Card 4: Invalid name "Changing Mix"
+  Card 5: Invalid name "Daily Rhythm"
+  Card 6: Invalid name "Decision Matrix"
+  Card 7: Invalid name "Evidence Verdict"
+  Card 8: Invalid name "Incident Timeline"
+  Card 9: Invalid name "Rate and Level"
+  Card 10: Invalid name "System Map"
+1440-light G4 FAIL
+  Before and After: Copied text is not a bare name: "Before and After"
+  Bottleneck Hunt: Copied text is not a bare name: "Bottleneck Hunt"
+  Cause Chain: Copied text is not a bare name: "Cause Chain"
+  Changing Mix: Copied text is not a bare name: "Changing Mix"
+  Daily Rhythm: Copied text is not a bare name: "Daily Rhythm"
+  Decision Matrix: Copied text is not a bare name: "Decision Matrix"
+  Evidence Verdict: Copied text is not a bare name: "Evidence Verdict"
+  Incident Timeline: Copied text is not a bare name: "Incident Timeline"
+  Rate and Level: Copied text is not a bare name: "Rate and Level"
+  System Map: Copied text is not a bare name: "System Map"
+1440-light G5 FAIL
+  Before and After: Bare fragment #Before and After did not bring its card into view
+  Before and After (bare slug): Bare fragment #before-and-after did not bring its card into view
+  Before and After (preview): Expected file:///Users/t2/.t3/worktrees/skill-do-work2/t3-cfabdc05-3285aedf59f7f49d/skills/do-work-toolbox/docs/report-gallery/before-and-after/example.html, reached file:///Users/t2/.t3/worktrees/skill-do-work2/t3-cfabdc05-3285aedf59f7f49d/docs/report-gallery/index.html#before-and-after
+  Bottleneck Hunt: Bare fragment #Bottleneck Hunt did not bring its card into view
+  Bottleneck Hunt (bare slug): Bare fragment #bottleneck-hunt did not bring its card into view
+  Bottleneck Hunt (preview): Expected file:///Users/t2/.t3/worktrees/skill-do-work2/t3-cfabdc05-3285aedf59f7f49d/skills/do-work-toolbox/docs/report-gallery/bottleneck-hunt/example.html, reached file:///Users/t2/.t3/worktrees/skill-do-work2/t3-cfabdc05-3285aedf59f7f49d/docs/report-gallery/index.html#bottleneck-hunt
+  Cause Chain: Bare fragment #Cause Chain did not bring its card into view
+  Cause Chain (bare slug): Bare fragment #cause-chain did not bring its card into view
+  Cause Chain (preview): Expected file:///Users/t2/.t3/worktrees/skill-do-work2/t3-cfabdc05-3285aedf59f7f49d/skills/do-work-toolbox/docs/report-gallery/cause-chain/example.html, reached file:///Users/t2/.t3/worktrees/skill-do-work2/t3-cfabdc05-3285aedf59f7f49d/docs/report-gallery/index.html#cause-chain
+  Changing Mix: Bare fragment #Changing Mix did not bring its card into view
+  Changing Mix (bare slug): Bare fragment #changing-mix did not bring its card into view
+  Changing Mix (preview): Expected file:///Users/t2/.t3/worktrees/skill-do-work2/t3-cfabdc05-3285aedf59f7f49d/skills/do-work-toolbox/docs/report-gallery/parts-over-time/example.html, reached file:///Users/t2/.t3/worktrees/skill-do-work2/t3-cfabdc05-3285aedf59f7f49d/docs/report-gallery/index.html#changing-mix
+  Daily Rhythm: Bare fragment #Daily Rhythm did not bring its card into view
+  Daily Rhythm (bare slug): Bare fragment #daily-rhythm did not bring its card into view
+  Daily Rhythm (preview): Expected file:///Users/t2/.t3/worktrees/skill-do-work2/t3-cfabdc05-3285aedf59f7f49d/skills/do-work-toolbox/docs/report-gallery/rhythm-over-cycle/example.html, reached file:///Users/t2/.t3/worktrees/skill-do-work2/t3-cfabdc05-3285aedf59f7f49d/docs/report-gallery/index.html#daily-rhythm
+  Decision Matrix: Bare fragment #Decision Matrix did not bring its card into view
+  Decision Matrix (bare slug): Bare fragment #decision-matrix did not bring its card into view
+  Decision Matrix (preview): Expected file:///Users/t2/.t3/worktrees/skill-do-work2/t3-cfabdc05-3285aedf59f7f49d/skills/do-work-toolbox/docs/report-gallery/decision-matrix/example.html, reached file:///Users/t2/.t3/worktrees/skill-do-work2/t3-cfabdc05-3285aedf59f7f49d/docs/report-gallery/index.html#decision-matrix
+  Evidence Verdict: Bare fragment #Evidence Verdict did not bring its card into view
+  Evidence Verdict (bare slug): Bare fragment #evidence-verdict did not bring its card into view
+  Evidence Verdict (preview): Expected file:///Users/t2/.t3/worktrees/skill-do-work2/t3-cfabdc05-3285aedf59f7f49d/skills/do-work-toolbox/docs/report-gallery/verdict-with-checks/example.html, reached file:///Users/t2/.t3/worktrees/skill-do-work2/t3-cfabdc05-3285aedf59f7f49d/docs/report-gallery/index.html#evidence-verdict
+  Incident Timeline: Bare fragment #Incident Timeline did not bring its card into view
+  Incident Timeline (bare slug): Bare fragment #incident-timeline did not bring its card into view
+  Incident Timeline (preview): Expected file:///Users/t2/.t3/worktrees/skill-do-work2/t3-cfabdc05-3285aedf59f7f49d/skills/do-work-toolbox/docs/report-gallery/incident-timeline/example.html, reached file:///Users/t2/.t3/worktrees/skill-do-work2/t3-cfabdc05-3285aedf59f7f49d/docs/report-gallery/index.html#incident-timeline
+  Rate and Level: Bare fragment #Rate and Level did not bring its card into view
+  Rate and Level (bare slug): Bare fragment #rate-and-level did not bring its card into view
+  Rate and Level (preview): Expected file:///Users/t2/.t3/worktrees/skill-do-work2/t3-cfabdc05-3285aedf59f7f49d/skills/do-work-toolbox/docs/report-gallery/two-measures-side-by-side/example.html, reached file:///Users/t2/.t3/worktrees/skill-do-work2/t3-cfabdc05-3285aedf59f7f49d/docs/report-gallery/index.html#rate-and-level
+  System Map: Bare fragment #System Map did not bring its card into view
+  System Map (bare slug): Bare fragment #system-map did not bring its card into view
+  System Map (preview): Expected file:///Users/t2/.t3/worktrees/skill-do-work2/t3-cfabdc05-3285aedf59f7f49d/skills/do-work-toolbox/docs/report-gallery/system-map/example.html, reached file:///Users/t2/.t3/worktrees/skill-do-work2/t3-cfabdc05-3285aedf59f7f49d/docs/report-gallery/index.html#system-map
+1440-light G6 FAIL
+  Image without source: locator.evaluate: EncodingError: The source image cannot be decoded.
+1440-light G7 PASS
+1440-dark G1 PASS
+1440-dark G2 FAIL
+  Before and After: No trusted capture entry for file:///Users/t2/.t3/worktrees/skill-do-work2/t3-cfabdc05-3285aedf59f7f49d/skills/do-work-toolbox/docs/report-gallery/before-and-after/example.html
+  Bottleneck Hunt: No trusted capture entry for file:///Users/t2/.t3/worktrees/skill-do-work2/t3-cfabdc05-3285aedf59f7f49d/skills/do-work-toolbox/docs/report-gallery/bottleneck-hunt/example.html
+  Cause Chain: No trusted capture entry for file:///Users/t2/.t3/worktrees/skill-do-work2/t3-cfabdc05-3285aedf59f7f49d/skills/do-work-toolbox/docs/report-gallery/cause-chain/example.html
+  Changing Mix: No trusted capture entry for file:///Users/t2/.t3/worktrees/skill-do-work2/t3-cfabdc05-3285aedf59f7f49d/skills/do-work-toolbox/docs/report-gallery/parts-over-time/example.html
+  Daily Rhythm: No trusted capture entry for file:///Users/t2/.t3/worktrees/skill-do-work2/t3-cfabdc05-3285aedf59f7f49d/skills/do-work-toolbox/docs/report-gallery/rhythm-over-cycle/example.html
+  Decision Matrix: No trusted capture entry for file:///Users/t2/.t3/worktrees/skill-do-work2/t3-cfabdc05-3285aedf59f7f49d/skills/do-work-toolbox/docs/report-gallery/decision-matrix/example.html
+  Evidence Verdict: No trusted capture entry for file:///Users/t2/.t3/worktrees/skill-do-work2/t3-cfabdc05-3285aedf59f7f49d/skills/do-work-toolbox/docs/report-gallery/verdict-with-checks/example.html
+  Incident Timeline: No trusted capture entry for file:///Users/t2/.t3/worktrees/skill-do-work2/t3-cfabdc05-3285aedf59f7f49d/skills/do-work-toolbox/docs/report-gallery/incident-timeline/example.html
+  Rate and Level: No trusted capture entry for file:///Users/t2/.t3/worktrees/skill-do-work2/t3-cfabdc05-3285aedf59f7f49d/skills/do-work-toolbox/docs/report-gallery/two-measures-side-by-side/example.html
+  System Map: No trusted capture entry for file:///Users/t2/.t3/worktrees/skill-do-work2/t3-cfabdc05-3285aedf59f7f49d/skills/do-work-toolbox/docs/report-gallery/system-map/example.html
+1440-dark G3 FAIL
+  Card 1: Invalid name "Before and After"
+  Card 2: Invalid name "Bottleneck Hunt"
+  Card 3: Invalid name "Cause Chain"
+  Card 4: Invalid name "Changing Mix"
+  Card 5: Invalid name "Daily Rhythm"
+  Card 6: Invalid name "Decision Matrix"
+  Card 7: Invalid name "Evidence Verdict"
+  Card 8: Invalid name "Incident Timeline"
+  Card 9: Invalid name "Rate and Level"
+  Card 10: Invalid name "System Map"
+1440-dark G4 FAIL
+  Before and After: Copied text is not a bare name: "Before and After"
+  Bottleneck Hunt: Copied text is not a bare name: "Bottleneck Hunt"
+  Cause Chain: Copied text is not a bare name: "Cause Chain"
+  Changing Mix: Copied text is not a bare name: "Changing Mix"
+  Daily Rhythm: Copied text is not a bare name: "Daily Rhythm"
+  Decision Matrix: Copied text is not a bare name: "Decision Matrix"
+  Evidence Verdict: Copied text is not a bare name: "Evidence Verdict"
+  Incident Timeline: Copied text is not a bare name: "Incident Timeline"
+  Rate and Level: Copied text is not a bare name: "Rate and Level"
+  System Map: Copied text is not a bare name: "System Map"
+1440-dark G5 FAIL
+  Before and After: Bare fragment #Before and After did not bring its card into view
+  Before and After (bare slug): Bare fragment #before-and-after did not bring its card into view
+  Before and After (preview): Expected file:///Users/t2/.t3/worktrees/skill-do-work2/t3-cfabdc05-3285aedf59f7f49d/skills/do-work-toolbox/docs/report-gallery/before-and-after/example.html, reached file:///Users/t2/.t3/worktrees/skill-do-work2/t3-cfabdc05-3285aedf59f7f49d/docs/report-gallery/index.html#before-and-after
+  Bottleneck Hunt: Bare fragment #Bottleneck Hunt did not bring its card into view
+  Bottleneck Hunt (bare slug): Bare fragment #bottleneck-hunt did not bring its card into view
+  Bottleneck Hunt (preview): Expected file:///Users/t2/.t3/worktrees/skill-do-work2/t3-cfabdc05-3285aedf59f7f49d/skills/do-work-toolbox/docs/report-gallery/bottleneck-hunt/example.html, reached file:///Users/t2/.t3/worktrees/skill-do-work2/t3-cfabdc05-3285aedf59f7f49d/docs/report-gallery/index.html#bottleneck-hunt
+  Cause Chain: Bare fragment #Cause Chain did not bring its card into view
+  Cause Chain (bare slug): Bare fragment #cause-chain did not bring its card into view
+  Cause Chain (preview): Expected file:///Users/t2/.t3/worktrees/skill-do-work2/t3-cfabdc05-3285aedf59f7f49d/skills/do-work-toolbox/docs/report-gallery/cause-chain/example.html, reached file:///Users/t2/.t3/worktrees/skill-do-work2/t3-cfabdc05-3285aedf59f7f49d/docs/report-gallery/index.html#cause-chain
+  Changing Mix: Bare fragment #Changing Mix did not bring its card into view
+  Changing Mix (bare slug): Bare fragment #changing-mix did not bring its card into view
+  Changing Mix (preview): Expected file:///Users/t2/.t3/worktrees/skill-do-work2/t3-cfabdc05-3285aedf59f7f49d/skills/do-work-toolbox/docs/report-gallery/parts-over-time/example.html, reached file:///Users/t2/.t3/worktrees/skill-do-work2/t3-cfabdc05-3285aedf59f7f49d/docs/report-gallery/index.html#changing-mix
+  Daily Rhythm: Bare fragment #Daily Rhythm did not bring its card into view
+  Daily Rhythm (bare slug): Bare fragment #daily-rhythm did not bring its card into view
+  Daily Rhythm (preview): Expected file:///Users/t2/.t3/worktrees/skill-do-work2/t3-cfabdc05-3285aedf59f7f49d/skills/do-work-toolbox/docs/report-gallery/rhythm-over-cycle/example.html, reached file:///Users/t2/.t3/worktrees/skill-do-work2/t3-cfabdc05-3285aedf59f7f49d/docs/report-gallery/index.html#daily-rhythm
+  Decision Matrix: Bare fragment #Decision Matrix did not bring its card into view
+  Decision Matrix (bare slug): Bare fragment #decision-matrix did not bring its card into view
+  Decision Matrix (preview): Expected file:///Users/t2/.t3/worktrees/skill-do-work2/t3-cfabdc05-3285aedf59f7f49d/skills/do-work-toolbox/docs/report-gallery/decision-matrix/example.html, reached file:///Users/t2/.t3/worktrees/skill-do-work2/t3-cfabdc05-3285aedf59f7f49d/docs/report-gallery/index.html#decision-matrix
+  Evidence Verdict: Bare fragment #Evidence Verdict did not bring its card into view
+  Evidence Verdict (bare slug): Bare fragment #evidence-verdict did not bring its card into view
+  Evidence Verdict (preview): Expected file:///Users/t2/.t3/worktrees/skill-do-work2/t3-cfabdc05-3285aedf59f7f49d/skills/do-work-toolbox/docs/report-gallery/verdict-with-checks/example.html, reached file:///Users/t2/.t3/worktrees/skill-do-work2/t3-cfabdc05-3285aedf59f7f49d/docs/report-gallery/index.html#evidence-verdict
+  Incident Timeline: Bare fragment #Incident Timeline did not bring its card into view
+  Incident Timeline (bare slug): Bare fragment #incident-timeline did not bring its card into view
+  Incident Timeline (preview): Expected file:///Users/t2/.t3/worktrees/skill-do-work2/t3-cfabdc05-3285aedf59f7f49d/skills/do-work-toolbox/docs/report-gallery/incident-timeline/example.html, reached file:///Users/t2/.t3/worktrees/skill-do-work2/t3-cfabdc05-3285aedf59f7f49d/docs/report-gallery/index.html#incident-timeline
+  Rate and Level: Bare fragment #Rate and Level did not bring its card into view
+  Rate and Level (bare slug): Bare fragment #rate-and-level did not bring its card into view
+  Rate and Level (preview): Expected file:///Users/t2/.t3/worktrees/skill-do-work2/t3-cfabdc05-3285aedf59f7f49d/skills/do-work-toolbox/docs/report-gallery/two-measures-side-by-side/example.html, reached file:///Users/t2/.t3/worktrees/skill-do-work2/t3-cfabdc05-3285aedf59f7f49d/docs/report-gallery/index.html#rate-and-level
+  System Map: Bare fragment #System Map did not bring its card into view
+  System Map (bare slug): Bare fragment #system-map did not bring its card into view
+  System Map (preview): Expected file:///Users/t2/.t3/worktrees/skill-do-work2/t3-cfabdc05-3285aedf59f7f49d/skills/do-work-toolbox/docs/report-gallery/system-map/example.html, reached file:///Users/t2/.t3/worktrees/skill-do-work2/t3-cfabdc05-3285aedf59f7f49d/docs/report-gallery/index.html#system-map
+1440-dark G6 FAIL
+  Image without source: locator.evaluate: EncodingError: The source image cannot be decoded.
+1440-dark G7 PASS
+390-light G1 PASS
+390-light G2 FAIL
+  Before and After: No trusted capture entry for file:///Users/t2/.t3/worktrees/skill-do-work2/t3-cfabdc05-3285aedf59f7f49d/skills/do-work-toolbox/docs/report-gallery/before-and-after/example.html
+  Bottleneck Hunt: No trusted capture entry for file:///Users/t2/.t3/worktrees/skill-do-work2/t3-cfabdc05-3285aedf59f7f49d/skills/do-work-toolbox/docs/report-gallery/bottleneck-hunt/example.html
+  Cause Chain: No trusted capture entry for file:///Users/t2/.t3/worktrees/skill-do-work2/t3-cfabdc05-3285aedf59f7f49d/skills/do-work-toolbox/docs/report-gallery/cause-chain/example.html
+  Changing Mix: No trusted capture entry for file:///Users/t2/.t3/worktrees/skill-do-work2/t3-cfabdc05-3285aedf59f7f49d/skills/do-work-toolbox/docs/report-gallery/parts-over-time/example.html
+  Daily Rhythm: No trusted capture entry for file:///Users/t2/.t3/worktrees/skill-do-work2/t3-cfabdc05-3285aedf59f7f49d/skills/do-work-toolbox/docs/report-gallery/rhythm-over-cycle/example.html
+  Decision Matrix: No trusted capture entry for file:///Users/t2/.t3/worktrees/skill-do-work2/t3-cfabdc05-3285aedf59f7f49d/skills/do-work-toolbox/docs/report-gallery/decision-matrix/example.html
+  Evidence Verdict: No trusted capture entry for file:///Users/t2/.t3/worktrees/skill-do-work2/t3-cfabdc05-3285aedf59f7f49d/skills/do-work-toolbox/docs/report-gallery/verdict-with-checks/example.html
+  Incident Timeline: No trusted capture entry for file:///Users/t2/.t3/worktrees/skill-do-work2/t3-cfabdc05-3285aedf59f7f49d/skills/do-work-toolbox/docs/report-gallery/incident-timeline/example.html
+  Rate and Level: No trusted capture entry for file:///Users/t2/.t3/worktrees/skill-do-work2/t3-cfabdc05-3285aedf59f7f49d/skills/do-work-toolbox/docs/report-gallery/two-measures-side-by-side/example.html
+  System Map: No trusted capture entry for file:///Users/t2/.t3/worktrees/skill-do-work2/t3-cfabdc05-3285aedf59f7f49d/skills/do-work-toolbox/docs/report-gallery/system-map/example.html
+390-light G3 FAIL
+  Card 1: Invalid name "Before and After"
+  Card 2: Invalid name "Bottleneck Hunt"
+  Card 3: Invalid name "Cause Chain"
+  Card 4: Invalid name "Changing Mix"
+  Card 5: Invalid name "Daily Rhythm"
+  Card 6: Invalid name "Decision Matrix"
+  Card 7: Invalid name "Evidence Verdict"
+  Card 8: Invalid name "Incident Timeline"
+  Card 9: Invalid name "Rate and Level"
+  Card 10: Invalid name "System Map"
+390-light G4 FAIL
+  Before and After: Copied text is not a bare name: "Before and After"
+  Bottleneck Hunt: Copied text is not a bare name: "Bottleneck Hunt"
+  Cause Chain: Copied text is not a bare name: "Cause Chain"
+  Changing Mix: Copied text is not a bare name: "Changing Mix"
+  Daily Rhythm: Copied text is not a bare name: "Daily Rhythm"
+  Decision Matrix: Copied text is not a bare name: "Decision Matrix"
+  Evidence Verdict: Copied text is not a bare name: "Evidence Verdict"
+  Incident Timeline: Copied text is not a bare name: "Incident Timeline"
+  Rate and Level: Copied text is not a bare name: "Rate and Level"
+  System Map: Copied text is not a bare name: "System Map"
+390-light G5 FAIL
+  Before and After: Bare fragment #Before and After did not bring its card into view
+  Before and After (bare slug): Bare fragment #before-and-after did not bring its card into view
+  Before and After (preview): Expected file:///Users/t2/.t3/worktrees/skill-do-work2/t3-cfabdc05-3285aedf59f7f49d/skills/do-work-toolbox/docs/report-gallery/before-and-after/example.html, reached file:///Users/t2/.t3/worktrees/skill-do-work2/t3-cfabdc05-3285aedf59f7f49d/docs/report-gallery/index.html#before-and-after
+  Bottleneck Hunt: Bare fragment #Bottleneck Hunt did not bring its card into view
+  Bottleneck Hunt (bare slug): Bare fragment #bottleneck-hunt did not bring its card into view
+  Bottleneck Hunt (preview): Expected file:///Users/t2/.t3/worktrees/skill-do-work2/t3-cfabdc05-3285aedf59f7f49d/skills/do-work-toolbox/docs/report-gallery/bottleneck-hunt/example.html, reached file:///Users/t2/.t3/worktrees/skill-do-work2/t3-cfabdc05-3285aedf59f7f49d/docs/report-gallery/index.html#bottleneck-hunt
+  Cause Chain: Bare fragment #Cause Chain did not bring its card into view
+  Cause Chain (bare slug): Bare fragment #cause-chain did not bring its card into view
+  Cause Chain (preview): Expected file:///Users/t2/.t3/worktrees/skill-do-work2/t3-cfabdc05-3285aedf59f7f49d/skills/do-work-toolbox/docs/report-gallery/cause-chain/example.html, reached file:///Users/t2/.t3/worktrees/skill-do-work2/t3-cfabdc05-3285aedf59f7f49d/docs/report-gallery/index.html#cause-chain
+  Changing Mix: Bare fragment #Changing Mix did not bring its card into view
+  Changing Mix (bare slug): Bare fragment #changing-mix did not bring its card into view
+  Changing Mix (preview): Expected file:///Users/t2/.t3/worktrees/skill-do-work2/t3-cfabdc05-3285aedf59f7f49d/skills/do-work-toolbox/docs/report-gallery/parts-over-time/example.html, reached file:///Users/t2/.t3/worktrees/skill-do-work2/t3-cfabdc05-3285aedf59f7f49d/docs/report-gallery/index.html#changing-mix
+  Daily Rhythm: Bare fragment #Daily Rhythm did not bring its card into view
+  Daily Rhythm (bare slug): Bare fragment #daily-rhythm did not bring its card into view
+  Daily Rhythm (preview): Expected file:///Users/t2/.t3/worktrees/skill-do-work2/t3-cfabdc05-3285aedf59f7f49d/skills/do-work-toolbox/docs/report-gallery/rhythm-over-cycle/example.html, reached file:///Users/t2/.t3/worktrees/skill-do-work2/t3-cfabdc05-3285aedf59f7f49d/docs/report-gallery/index.html#daily-rhythm
+  Decision Matrix: Bare fragment #Decision Matrix did not bring its card into view
+  Decision Matrix (bare slug): Bare fragment #decision-matrix did not bring its card into view
+  Decision Matrix (preview): Expected file:///Users/t2/.t3/worktrees/skill-do-work2/t3-cfabdc05-3285aedf59f7f49d/skills/do-work-toolbox/docs/report-gallery/decision-matrix/example.html, reached file:///Users/t2/.t3/worktrees/skill-do-work2/t3-cfabdc05-3285aedf59f7f49d/docs/report-gallery/index.html#decision-matrix
+  Evidence Verdict: Bare fragment #Evidence Verdict did not bring its card into view
+  Evidence Verdict (bare slug): Bare fragment #evidence-verdict did not bring its card into view
+  Evidence Verdict (preview): Expected file:///Users/t2/.t3/worktrees/skill-do-work2/t3-cfabdc05-3285aedf59f7f49d/skills/do-work-toolbox/docs/report-gallery/verdict-with-checks/example.html, reached file:///Users/t2/.t3/worktrees/skill-do-work2/t3-cfabdc05-3285aedf59f7f49d/docs/report-gallery/index.html#evidence-verdict
+  Incident Timeline: Bare fragment #Incident Timeline did not bring its card into view
+  Incident Timeline (bare slug): Bare fragment #incident-timeline did not bring its card into view
+  Incident Timeline (preview): Expected file:///Users/t2/.t3/worktrees/skill-do-work2/t3-cfabdc05-3285aedf59f7f49d/skills/do-work-toolbox/docs/report-gallery/incident-timeline/example.html, reached file:///Users/t2/.t3/worktrees/skill-do-work2/t3-cfabdc05-3285aedf59f7f49d/docs/report-gallery/index.html#incident-timeline
+  Rate and Level: Bare fragment #Rate and Level did not bring its card into view
+  Rate and Level (bare slug): Bare fragment #rate-and-level did not bring its card into view
+  Rate and Level (preview): Expected file:///Users/t2/.t3/worktrees/skill-do-work2/t3-cfabdc05-3285aedf59f7f49d/skills/do-work-toolbox/docs/report-gallery/two-measures-side-by-side/example.html, reached file:///Users/t2/.t3/worktrees/skill-do-work2/t3-cfabdc05-3285aedf59f7f49d/docs/report-gallery/index.html#rate-and-level
+  System Map: Bare fragment #System Map did not bring its card into view
+  System Map (bare slug): Bare fragment #system-map did not bring its card into view
+  System Map (preview): Expected file:///Users/t2/.t3/worktrees/skill-do-work2/t3-cfabdc05-3285aedf59f7f49d/skills/do-work-toolbox/docs/report-gallery/system-map/example.html, reached file:///Users/t2/.t3/worktrees/skill-do-work2/t3-cfabdc05-3285aedf59f7f49d/docs/report-gallery/index.html#system-map
+390-light G6 FAIL
+  Image without source: locator.evaluate: EncodingError: The source image cannot be decoded.
+390-light G7 PASS
+390-dark G1 PASS
+390-dark G2 FAIL
+  Before and After: No trusted capture entry for file:///Users/t2/.t3/worktrees/skill-do-work2/t3-cfabdc05-3285aedf59f7f49d/skills/do-work-toolbox/docs/report-gallery/before-and-after/example.html
+  Bottleneck Hunt: No trusted capture entry for file:///Users/t2/.t3/worktrees/skill-do-work2/t3-cfabdc05-3285aedf59f7f49d/skills/do-work-toolbox/docs/report-gallery/bottleneck-hunt/example.html
+  Cause Chain: No trusted capture entry for file:///Users/t2/.t3/worktrees/skill-do-work2/t3-cfabdc05-3285aedf59f7f49d/skills/do-work-toolbox/docs/report-gallery/cause-chain/example.html
+  Changing Mix: No trusted capture entry for file:///Users/t2/.t3/worktrees/skill-do-work2/t3-cfabdc05-3285aedf59f7f49d/skills/do-work-toolbox/docs/report-gallery/parts-over-time/example.html
+  Daily Rhythm: No trusted capture entry for file:///Users/t2/.t3/worktrees/skill-do-work2/t3-cfabdc05-3285aedf59f7f49d/skills/do-work-toolbox/docs/report-gallery/rhythm-over-cycle/example.html
+  Decision Matrix: No trusted capture entry for file:///Users/t2/.t3/worktrees/skill-do-work2/t3-cfabdc05-3285aedf59f7f49d/skills/do-work-toolbox/docs/report-gallery/decision-matrix/example.html
+  Evidence Verdict: No trusted capture entry for file:///Users/t2/.t3/worktrees/skill-do-work2/t3-cfabdc05-3285aedf59f7f49d/skills/do-work-toolbox/docs/report-gallery/verdict-with-checks/example.html
+  Incident Timeline: No trusted capture entry for file:///Users/t2/.t3/worktrees/skill-do-work2/t3-cfabdc05-3285aedf59f7f49d/skills/do-work-toolbox/docs/report-gallery/incident-timeline/example.html
+  Rate and Level: No trusted capture entry for file:///Users/t2/.t3/worktrees/skill-do-work2/t3-cfabdc05-3285aedf59f7f49d/skills/do-work-toolbox/docs/report-gallery/two-measures-side-by-side/example.html
+  System Map: No trusted capture entry for file:///Users/t2/.t3/worktrees/skill-do-work2/t3-cfabdc05-3285aedf59f7f49d/skills/do-work-toolbox/docs/report-gallery/system-map/example.html
+390-dark G3 FAIL
+  Card 1: Invalid name "Before and After"
+  Card 2: Invalid name "Bottleneck Hunt"
+  Card 3: Invalid name "Cause Chain"
+  Card 4: Invalid name "Changing Mix"
+  Card 5: Invalid name "Daily Rhythm"
+  Card 6: Invalid name "Decision Matrix"
+  Card 7: Invalid name "Evidence Verdict"
+  Card 8: Invalid name "Incident Timeline"
+  Card 9: Invalid name "Rate and Level"
+  Card 10: Invalid name "System Map"
+390-dark G4 FAIL
+  Before and After: Copied text is not a bare name: "Before and After"
+  Bottleneck Hunt: Copied text is not a bare name: "Bottleneck Hunt"
+  Cause Chain: Copied text is not a bare name: "Cause Chain"
+  Changing Mix: Copied text is not a bare name: "Changing Mix"
+  Daily Rhythm: Copied text is not a bare name: "Daily Rhythm"
+  Decision Matrix: Copied text is not a bare name: "Decision Matrix"
+  Evidence Verdict: Copied text is not a bare name: "Evidence Verdict"
+  Incident Timeline: Copied text is not a bare name: "Incident Timeline"
+  Rate and Level: Copied text is not a bare name: "Rate and Level"
+  System Map: Copied text is not a bare name: "System Map"
+390-dark G5 FAIL
+  Before and After: Bare fragment #Before and After did not bring its card into view
+  Before and After (bare slug): Bare fragment #before-and-after did not bring its card into view
+  Before and After (preview): Expected file:///Users/t2/.t3/worktrees/skill-do-work2/t3-cfabdc05-3285aedf59f7f49d/skills/do-work-toolbox/docs/report-gallery/before-and-after/example.html, reached file:///Users/t2/.t3/worktrees/skill-do-work2/t3-cfabdc05-3285aedf59f7f49d/docs/report-gallery/index.html#before-and-after
+  Bottleneck Hunt: Bare fragment #Bottleneck Hunt did not bring its card into view
+  Bottleneck Hunt (bare slug): Bare fragment #bottleneck-hunt did not bring its card into view
+  Bottleneck Hunt (preview): Expected file:///Users/t2/.t3/worktrees/skill-do-work2/t3-cfabdc05-3285aedf59f7f49d/skills/do-work-toolbox/docs/report-gallery/bottleneck-hunt/example.html, reached file:///Users/t2/.t3/worktrees/skill-do-work2/t3-cfabdc05-3285aedf59f7f49d/docs/report-gallery/index.html#bottleneck-hunt
+  Cause Chain: Bare fragment #Cause Chain did not bring its card into view
+  Cause Chain (bare slug): Bare fragment #cause-chain did not bring its card into view
+  Cause Chain (preview): Expected file:///Users/t2/.t3/worktrees/skill-do-work2/t3-cfabdc05-3285aedf59f7f49d/skills/do-work-toolbox/docs/report-gallery/cause-chain/example.html, reached file:///Users/t2/.t3/worktrees/skill-do-work2/t3-cfabdc05-3285aedf59f7f49d/docs/report-gallery/index.html#cause-chain
+  Changing Mix: Bare fragment #Changing Mix did not bring its card into view
+  Changing Mix (bare slug): Bare fragment #changing-mix did not bring its card into view
+  Changing Mix (preview): Expected file:///Users/t2/.t3/worktrees/skill-do-work2/t3-cfabdc05-3285aedf59f7f49d/skills/do-work-toolbox/docs/report-gallery/parts-over-time/example.html, reached file:///Users/t2/.t3/worktrees/skill-do-work2/t3-cfabdc05-3285aedf59f7f49d/docs/report-gallery/index.html#changing-mix
+  Daily Rhythm: Bare fragment #Daily Rhythm did not bring its card into view
+  Daily Rhythm (bare slug): Bare fragment #daily-rhythm did not bring its card into view
+  Daily Rhythm (preview): Expected file:///Users/t2/.t3/worktrees/skill-do-work2/t3-cfabdc05-3285aedf59f7f49d/skills/do-work-toolbox/docs/report-gallery/rhythm-over-cycle/example.html, reached file:///Users/t2/.t3/worktrees/skill-do-work2/t3-cfabdc05-3285aedf59f7f49d/docs/report-gallery/index.html#daily-rhythm
+  Decision Matrix: Bare fragment #Decision Matrix did not bring its card into view
+  Decision Matrix (bare slug): Bare fragment #decision-matrix did not bring its card into view
+  Decision Matrix (preview): Expected file:///Users/t2/.t3/worktrees/skill-do-work2/t3-cfabdc05-3285aedf59f7f49d/skills/do-work-toolbox/docs/report-gallery/decision-matrix/example.html, reached file:///Users/t2/.t3/worktrees/skill-do-work2/t3-cfabdc05-3285aedf59f7f49d/docs/report-gallery/index.html#decision-matrix
+  Evidence Verdict: Bare fragment #Evidence Verdict did not bring its card into view
+  Evidence Verdict (bare slug): Bare fragment #evidence-verdict did not bring its card into view
+  Evidence Verdict (preview): Expected file:///Users/t2/.t3/worktrees/skill-do-work2/t3-cfabdc05-3285aedf59f7f49d/skills/do-work-toolbox/docs/report-gallery/verdict-with-checks/example.html, reached file:///Users/t2/.t3/worktrees/skill-do-work2/t3-cfabdc05-3285aedf59f7f49d/docs/report-gallery/index.html#evidence-verdict
+  Incident Timeline: Bare fragment #Incident Timeline did not bring its card into view
+  Incident Timeline (bare slug): Bare fragment #incident-timeline did not bring its card into view
+  Incident Timeline (preview): Expected file:///Users/t2/.t3/worktrees/skill-do-work2/t3-cfabdc05-3285aedf59f7f49d/skills/do-work-toolbox/docs/report-gallery/incident-timeline/example.html, reached file:///Users/t2/.t3/worktrees/skill-do-work2/t3-cfabdc05-3285aedf59f7f49d/docs/report-gallery/index.html#incident-timeline
+  Rate and Level: Bare fragment #Rate and Level did not bring its card into view
+  Rate and Level (bare slug): Bare fragment #rate-and-level did not bring its card into view
+  Rate and Level (preview): Expected file:///Users/t2/.t3/worktrees/skill-do-work2/t3-cfabdc05-3285aedf59f7f49d/skills/do-work-toolbox/docs/report-gallery/two-measures-side-by-side/example.html, reached file:///Users/t2/.t3/worktrees/skill-do-work2/t3-cfabdc05-3285aedf59f7f49d/docs/report-gallery/index.html#rate-and-level
+  System Map: Bare fragment #System Map did not bring its card into view
+  System Map (bare slug): Bare fragment #system-map did not bring its card into view
+  System Map (preview): Expected file:///Users/t2/.t3/worktrees/skill-do-work2/t3-cfabdc05-3285aedf59f7f49d/skills/do-work-toolbox/docs/report-gallery/system-map/example.html, reached file:///Users/t2/.t3/worktrees/skill-do-work2/t3-cfabdc05-3285aedf59f7f49d/docs/report-gallery/index.html#system-map
+390-dark G6 FAIL
+  Image without source: locator.evaluate: EncodingError: The source image cannot be decoded.
+390-dark G7 PASS
