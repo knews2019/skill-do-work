@@ -1,7 +1,7 @@
 ---
 id: REQ-750
 title: 'Establish the seven gallery checks and freeze the scored baseline'
-status: pending
+status: claimed
 created_at: 2026-11-18T17:43:03Z
 user_request: UR-185
 domain: testing
@@ -13,6 +13,7 @@ maintenance: false
 batch: report-gallery-climb
 related: [REQ-749, REQ-751, REQ-752]
 depends_on: [REQ-749]
+claimed_at: 2026-11-18T18:04:11Z
 ---
 # Establish the seven gallery checks and freeze the scored baseline
 
