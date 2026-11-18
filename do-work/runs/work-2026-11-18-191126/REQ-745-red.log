@@ -1,0 +1,13 @@
+revision=f3840b087913d8501267dda1c1395580304f2ba4
+RED just lookup exit=1: error: Justfile does not contain recipe `run-report-gallery`
+RED CLI live mode exit=2: ai-report-gallery: failure
+repository: /Users/t2/Desktop/e1-experimental-repos/skill-do-work2
+finding TOOLBOX-USAGE [error]: Usage: ai-report-gallery [--list | --resolve <name>]
+  fixability: manual
+  stopped: the command line is invalid
+  next: do-work-cli ai-report-gallery
+  verify: do-work-cli --format json ai-report-gallery
+CONTROL worked card=phase-by-phase; real figure exists in ai-reports/2026-11-11_1411_commit-22f82fed-work-procedures-load-by-phase/index.html
+RED checked-in curated gallery has no feedback controls or client, and the project has no feedback record.
+LIMIT cannot perform like/dislike/reopen on this base because the recipe and controls are absent.
+CONTROL fresh installed curated render retains worked cards and still has no feedback controls.

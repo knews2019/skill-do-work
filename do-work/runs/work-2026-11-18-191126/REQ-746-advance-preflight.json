@@ -1,0 +1,118 @@
+{
+  "schema_version": 1,
+  "command": "advance",
+  "outcome": "success",
+  "repository_root": "/Users/t2/Desktop/e1-experimental-repos/skill-do-work2",
+  "findings": [],
+  "changes": [
+    {
+      "path": "do-work/working/baseline.json",
+      "kind": "modified",
+      "detail": "recorded test baseline"
+    }
+  ],
+  "skipped_work": [],
+  "selected": [],
+  "excluded": [],
+  "selection_summary": {
+    "pending": 0,
+    "finished_awaiting_archive": 0,
+    "pending_answers": 0,
+    "blocked": 0,
+    "blocked_archive_collision": 0,
+    "blocked_dependency_cycle": 0,
+    "probed": 0,
+    "probe_succeeded": 0,
+    "skipped_impact_negligible": 0,
+    "total_estimated_minutes": 0,
+    "unknown_estimate_count": 0
+  },
+  "rollback": {
+    "status": "",
+    "actions": [],
+    "errors": []
+  },
+  "finalizations": [],
+  "advance": {
+    "request_id": "REQ-746",
+    "request_path": "do-work/working/REQ-746-named-design-starter-prompts.md",
+    "tree_section": "working",
+    "status": "claimed",
+    "route": "C",
+    "phase": "preflight",
+    "phase_kind": "mechanical",
+    "missing_evidence": [],
+    "next_argv": [],
+    "verification_argv": [
+      "do-work-cli",
+      "--format",
+      "json",
+      "advance",
+      "REQ-746"
+    ],
+    "gate_records": [
+      {
+        "request_id": "REQ-746",
+        "request_path": "do-work/working/REQ-746-named-design-starter-prompts.md",
+        "gate_id": "preflight",
+        "provenance": "advance_executed",
+        "state": "satisfied",
+        "outcome": "success",
+        "findings": [],
+        "changes": [
+          {
+            "path": "do-work/working/baseline.json",
+            "kind": "modified",
+            "detail": "recorded test baseline"
+          }
+        ],
+        "output_lines": [],
+        "next_argv": [],
+        "verification_argv": [
+          "do-work-cli",
+          "--format",
+          "json",
+          "advance",
+          "REQ-746"
+        ]
+      },
+      {
+        "request_id": "REQ-746",
+        "request_path": "do-work/working/REQ-746-named-design-starter-prompts.md",
+        "gate_id": "green-gate",
+        "provenance": "existing_evidence",
+        "state": "satisfied",
+        "outcome": "success",
+        "findings": [],
+        "changes": [],
+        "output_lines": [],
+        "next_argv": [],
+        "verification_argv": [
+          "do-work-cli",
+          "--format",
+          "json",
+          "advance",
+          "REQ-746"
+        ],
+        "green_gate": {
+          "repository_identity": "/Users/t2/Desktop/e1-experimental-repos/skill-do-work2/.git",
+          "gate_command": [
+            "bash",
+            "_dev/tests/maintainer-verify.sh"
+          ],
+          "gate_command_sha256": "25aef6a61b17974fce3a08a63953c3eb1719dde37ce3ab556f066e3619e6bbb5",
+          "record_path": "/Users/t2/Desktop/e1-experimental-repos/skill-do-work2/.git/do-work-green-gates/25aef6a61b17974fce3a08a63953c3eb1719dde37ce3ab556f066e3619e6bbb5.json",
+          "record_provenance": "persisted_green_run",
+          "gate_exit_status": 0,
+          "recorded_revision": "f3840b087913d8501267dda1c1395580304f2ba4",
+          "head_revision": "f3840b087913d8501267dda1c1395580304f2ba4",
+          "target_revision": "f3840b087913d8501267dda1c1395580304f2ba4",
+          "state": "exact_revision_match",
+          "matches": true,
+          "match_basis": "exact_revision",
+          "baseline_revision": "f3840b087913d8501267dda1c1395580304f2ba4"
+        }
+      }
+    ]
+  }
+}

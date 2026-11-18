@@ -1,0 +1,2 @@
+total_estimated_effort_minutes: 110
+critical_path_minutes: 60

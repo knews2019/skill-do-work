@@ -1,0 +1,73 @@
+{
+  "schema_version": 1,
+  "command": "advance",
+  "outcome": "success",
+  "repository_root": "/Users/t2/Desktop/e1-experimental-repos/skill-do-work2",
+  "findings": [],
+  "changes": [],
+  "skipped_work": [],
+  "selected": [],
+  "excluded": [],
+  "selection_summary": {
+    "pending": 0,
+    "finished_awaiting_archive": 0,
+    "pending_answers": 0,
+    "blocked": 0,
+    "blocked_archive_collision": 0,
+    "blocked_dependency_cycle": 0,
+    "probed": 0,
+    "probe_succeeded": 0,
+    "skipped_impact_negligible": 0,
+    "total_estimated_minutes": 0,
+    "unknown_estimate_count": 0
+  },
+  "rollback": {
+    "status": "",
+    "actions": [],
+    "errors": []
+  },
+  "finalizations": [],
+  "advance": {
+    "request_id": "REQ-745",
+    "request_path": "do-work/working/REQ-745-persistent-report-figure-feedback.md",
+    "tree_section": "working",
+    "status": "claimed",
+    "route": "C",
+    "phase": "estimate-p50",
+    "phase_kind": "mechanical",
+    "missing_evidence": [
+      {
+        "kind": "field",
+        "path": "do-work/working/REQ-745-persistent-report-figure-feedback.md",
+        "field": "estimate.p50_active_minutes",
+        "expected": "positive integer"
+      }
+    ],
+    "next_argv": [
+      "do-work-cli",
+      "--format",
+      "json",
+      "advance",
+      "REQ-745",
+      "--request-path",
+      "do-work/working/REQ-745-persistent-report-figure-feedback.md",
+      "--",
+      "--route",
+      "C",
+      "--write-set",
+      "\u003ccount\u003e",
+      "--subsystems",
+      "\u003ccount\u003e",
+      "--acceptance",
+      "\u003ccount\u003e"
+    ],
+    "verification_argv": [
+      "do-work-cli",
+      "--format",
+      "json",
+      "advance",
+      "REQ-745"
+    ],
+    "gate_records": []
+  }
+}

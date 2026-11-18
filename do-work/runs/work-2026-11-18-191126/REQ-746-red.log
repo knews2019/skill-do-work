@@ -1,0 +1,25 @@
+revision=f3840b087913d8501267dda1c1395580304f2ba4
+installed_version=0.328.1
+CONTROL installed ordinary gallery shows 11 starter prompts (10 shipped and one project sample); all decode and resolve.
+CONTROL project resolver row: project-comparison	Compare two baseline cases.	docs/report-gallery/project-comparison/sample.md
+CONTROL curated gallery renders 10 worked cards; phase-by-phase has its existing name-only clipboard control.
+RED curated route displays only the project starter and suppresses shipped starter cards.
+RED installed ordinary and curated routes emit no starter for the generated trial report.
+RED installed resolver 'phase-by-phase': exit=2; ai-report-gallery: failure
+repository: /Users/t2/Desktop/e1-experimental-repos/skill-do-work2/build/req745-746-consumer.7dCYq8/consumer
+finding AI-REPORT-GALLERY-FAILED [error]: no gallery design matches "phase-by-phase". Browse the report gallery for a title or run ai-report-gallery --list for folder slugs
+  paths: docs/report-gallery
+  fixability: manual
+  stopped: the report gallery could not be read or written
+  next: do-work-cli ai-report-gallery
+  verify: do-work-cli --format json ai-report-gallery
+RED installed resolver 'report:2026-11-11_1411_commit-22f82fed-work-procedures-load-by-phase': exit=2; ai-report-gallery: failure
+repository: /Users/t2/Desktop/e1-experimental-repos/skill-do-work2/build/req745-746-consumer.7dCYq8/consumer
+finding AI-REPORT-GALLERY-FAILED [error]: no gallery design matches "report:2026-11-11_1411_commit-22f82fed-work-procedures-load-by-phase". Browse the report gallery for a title or run ai-report-gallery --list for folder slugs
+  paths: docs/report-gallery
+  fixability: manual
+  stopped: the report gallery could not be read or written
+  next: do-work-cli ai-report-gallery
+  verify: do-work-cli --format json ai-report-gallery
+CONTROL trial source sha256=6b5bbd51a3d0680063ea84a0576ae4c1234743db91fff2fc4bb7cb40204a316c
+LIMIT copied-text resolution was exercised through the installed CLI; writer output and live clipboard acceptance belong to the builders.

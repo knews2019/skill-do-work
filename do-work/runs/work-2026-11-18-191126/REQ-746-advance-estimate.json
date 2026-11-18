@@ -1,0 +1,81 @@
+{
+  "schema_version": 1,
+  "command": "advance",
+  "outcome": "success",
+  "repository_root": "/Users/t2/Desktop/e1-experimental-repos/skill-do-work2",
+  "findings": [],
+  "changes": [],
+  "skipped_work": [],
+  "selected": [],
+  "excluded": [],
+  "selection_summary": {
+    "pending": 0,
+    "finished_awaiting_archive": 0,
+    "pending_answers": 0,
+    "blocked": 0,
+    "blocked_archive_collision": 0,
+    "blocked_dependency_cycle": 0,
+    "probed": 0,
+    "probe_succeeded": 0,
+    "skipped_impact_negligible": 0,
+    "total_estimated_minutes": 0,
+    "unknown_estimate_count": 0
+  },
+  "rollback": {
+    "status": "",
+    "actions": [],
+    "errors": []
+  },
+  "finalizations": [],
+  "advance": {
+    "request_id": "REQ-746",
+    "request_path": "do-work/working/REQ-746-named-design-starter-prompts.md",
+    "tree_section": "working",
+    "status": "claimed",
+    "route": "C",
+    "phase": "estimate-p50",
+    "phase_kind": "mechanical",
+    "missing_evidence": [],
+    "next_argv": [],
+    "verification_argv": [
+      "do-work-cli",
+      "--format",
+      "json",
+      "advance",
+      "REQ-746"
+    ],
+    "gate_records": [
+      {
+        "request_id": "REQ-746",
+        "request_path": "do-work/working/REQ-746-named-design-starter-prompts.md",
+        "gate_id": "estimate-p50",
+        "provenance": "advance_executed",
+        "state": "satisfied",
+        "outcome": "success",
+        "findings": [],
+        "changes": [],
+        "output_lines": [
+          "p50_active_minutes: 50",
+          "confidence: low",
+          "basis:",
+          "- Route C",
+          "- 6-file write set",
+          "- 1 new files",
+          "- 3 subsystems involved",
+          "- 4 acceptance criteria",
+          "- dependency depth 1",
+          "- browser evidence",
+          "- cross-route regression gates"
+        ],
+        "next_argv": [],
+        "verification_argv": [
+          "do-work-cli",
+          "--format",
+          "json",
+          "advance",
+          "REQ-746"
+        ]
+      }
+    ]
+  }
+}
