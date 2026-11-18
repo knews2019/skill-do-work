@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>System Map</title>
+<style>
+* { box-sizing: border-box; }
+body { margin: 0; }
+main { max-width: 68rem; margin: auto; padding: clamp(1rem, 5vw, 4rem); }
+h1 { font-size: clamp(2.3rem, 6vw, 4.7rem); line-height: 1; margin: .2em 0 .4em; }
+p { margin: .6em 0; }
+a { color: inherit; text-underline-offset: .2em; }
+code { overflow-wrap: anywhere; }
+footer { margin-top: 2rem; font-size: .9rem; }
+body { background: #eaf4f7; color: #102e40; font: 1rem/1.45 system-ui, sans-serif; }
+h1 { max-width: 19ch; }
+figure { margin: 1.3rem 0; }
+.node { background: white; border: 1px solid #6990a4; padding: .8rem 1rem; min-width: 0; }
+.router { background: #103b51; color: white; }
+.route, .phases { display: grid; gap: .75rem; }
+.route { grid-template-columns: 2fr 1fr; }
+.phases { grid-template-columns: 1fr 1fr; margin-top: .75rem; }
+.edge { display: block; font-size: .83rem; font-weight: 700; padding: .4rem 0; }
+.conditional { border-style: dashed; }
+figcaption { margin-top: 1rem; max-width: 70ch; }
+@media (max-width: 42rem) { .route { grid-template-columns: 1fr; } }
+@media (max-width: 29rem) { .phases { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<main>
+<header>
+  <p>Do-work · Release 0.315.3</p>
+  <h1>Work procedures load by phase</h1>
+</header>
+<figure aria-label="Instruction loading paths from the do-work router">
+  <div class="node router"><strong>Do-work router</strong> · <code>SKILL.md</code></div>
+  <div class="route">
+    <section aria-label="Build route">
+      <span class="edge">↓ Requests queued for implementation</span>
+      <div class="node"><strong><code>work.md</code></strong> · 23,645 bytes<br>Shared rules and phase pointers</div>
+      <div class="phases">
+        <div class="node"><strong>↓ In every build</strong><p>Selection, implementation, testing, review and finalization</p><b>57,886 bytes</b> across five files</div>
+        <div class="node conditional"><strong>↓ When applicable</strong><p>Planning on Route C, exploration on Routes B and C, and heavy testing when selected</p><b>13,126 bytes</b> across three files</div>
+      </div>
+    </section>
+    <section aria-label="Review-only route">
+      <span class="edge">↓ Review-only request</span>
+      <div class="node"><strong><code>review-work.md</code></strong><br>Direct from the router</div>
+    </section>
+  </div>
+  <figcaption>The simple-fix walkthrough skipped the three conditional files and read <strong>12,693 fewer bytes</strong> overall. The complex walkthrough loaded all eight phase files and read <strong>433 more bytes</strong>. The comparison counts the router, review procedure and applicable work files once each.</figcaption>
+</figure>
+<footer>Source · <a href="https://github.com/knews2019/skill-do-work/blob/167a382c1937dc5f45cfb72cdf843fe0a61aef92/ai-reports/2026-11-11_1411_commit-22f82fed-work-procedures-load-by-phase/index.html">Phase loading diagram and byte counts, commit 22f82fed</a></footer>
+</main>
+</body>
+</html>

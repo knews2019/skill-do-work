@@ -19,12 +19,15 @@ type reportGalleryLink struct {
 }
 
 type reportGalleryCard struct {
-	Title   string
-	UseWhen string
-	Borrow  []string
-	Preview string
-	Open    reportGalleryLink
-	More    []reportGalleryLink
+	Slug     string
+	Title    string
+	CopyName string
+	Prompt   string
+	UseWhen  string
+	Borrow   []string
+	Preview  string
+	Open     reportGalleryLink
+	More     []reportGalleryLink
 }
 
 type reportGalleryKind struct {
@@ -51,36 +54,50 @@ func renderReportGalleryPage(repositoryRoot string, repository *os.Root, toolbox
 			return nil, err
 		}
 	}
+	copyNames := reportGalleryCopyNames(samples)
 	for _, sample := range samples {
-		card := reportGalleryCard{Title: sample.Title, UseWhen: sample.UseWhen, Borrow: sample.Borrow}
+		card := reportGalleryCard{Slug: sample.Name, Title: sample.Title, CopyName: copyNames[sample.Name], UseWhen: sample.UseWhen, Borrow: sample.Borrow}
+		card.Prompt = "do-work-toolbox ai-report --design " + quoteDesignName(card.CopyName)
 		folder := path.Dir(sample.RecordPath)
 		var links []reportGalleryLink
 		if href := reportGalleryFileLink(repository, path.Join(folder, reportGalleryExample)); href != "" {
 			links = append(links, reportGalleryLink{"Worked example", href})
+		} else if href := reportGallerySourceLink(repositoryRoot, repository, sample.Source); href != "" {
+			links = append(links, reportGalleryLink{"Source", href})
 		}
+		card.Preview = reportGalleryFileLink(repository, path.Join(folder, "preview.png"))
 		if sample.Image != "" {
-			card.Preview = reportGalleryFileLink(repository, path.Join(folder, sample.Image))
-			if card.Preview != "" {
-				links = append(links, reportGalleryLink{"Reference image", card.Preview})
+			if image := reportGalleryFileLink(repository, path.Join(folder, sample.Image)); image != "" {
+				links = append(links, reportGalleryLink{"Reference image", image})
+				if card.Preview == "" {
+					card.Preview = image
+				}
 			}
 		}
-		if card.Preview == "" {
-			card.Preview = reportGalleryFileLink(repository, path.Join(folder, "preview.svg"))
-		}
-		if len(links) == 0 {
-			if href := reportGallerySourceLink(repositoryRoot, repository, sample.Source); href != "" {
-				links = append(links, reportGalleryLink{"Source", href})
+		if figure := reportGalleryFileLink(repository, path.Join(folder, "preview.svg")); figure != "" {
+			links = append(links, reportGalleryLink{"Figure preview", figure})
+			if card.Preview == "" {
+				card.Preview = figure
 			}
 		}
 		links = append(links, reportGalleryLink{"Sample record", reportGalleryHref(sample.RecordPath)})
 		card.Open, card.More = links[0], links[1:]
 		page.Samples = append(page.Samples, card)
 	}
+	sort.SliceStable(page.Samples, func(i, j int) bool {
+		return strings.ToLower(page.Samples[i].CopyName) < strings.ToLower(page.Samples[j].CopyName)
+	})
 	var output bytes.Buffer
 	if err := reportGalleryPageTemplate.Execute(&output, page); err != nil {
 		return nil, err
 	}
 	return output.Bytes(), nil
+}
+
+// Escape shell interpolation inside the quoted design argument in a pasted starter.
+func quoteDesignName(name string) string {
+	escape := strings.NewReplacer(`\`, `\\`, `"`, `\"`, "$", `\$`, "`", "\\`")
+	return `"` + escape.Replace(name) + `"`
 }
 
 func reportGalleryKinds(bundles []reportBundle) []reportGalleryKind {
@@ -217,23 +234,49 @@ body { margin: 0; font: 16px/1.5 var(--sans); }
 .gallery-header { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem; padding: clamp(16px, 1.6vw, 30px) 0 1rem; border-bottom: 2px solid var(--text); }
 .gallery-nav, .gallery-links { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem 1.15rem; }
 .gallery-nav a { font-size: .95rem; font-weight: 600; text-decoration: none; padding-block: .45rem; }
-.gallery-nav a:hover, .sample-open:hover h3 { text-decoration: underline; }
+.gallery-nav a:hover { text-decoration: underline; }
 .gallery-nav .add-link, .gallery-copy button { background: var(--text); color: var(--ground); border: 1px solid var(--text); border-radius: .4rem; padding: .65rem 1rem; font: 600 .95rem var(--sans); cursor: pointer; }
 .gallery section { scroll-margin-top: 1rem; }
 .samples { padding: 1.1rem 0 2rem; }
-.gallery-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: clamp(14px, 1.55vw, 32px); align-items: start; }
-.gallery-card { min-width: 0; }
-.sample-open { display: block; text-decoration: none; }
-.sample-preview { display: block; aspect-ratio: 480 / 284; width: 100%; height: auto; object-fit: contain; background: var(--panel); border: 1px solid var(--edge); border-radius: .5rem; }
-.sample-open:hover .sample-preview { border-color: var(--accent); }
-.sample-open h3 { display: flex; justify-content: space-between; align-items: baseline; gap: .5rem; margin: .8rem 0 .35rem; font-size: clamp(1.42rem, 1.8vw, 2.2rem); letter-spacing: -.025em; }
-.sample-open h3 span { font: 400 1.15rem var(--sans); color: var(--accent); }
+.gallery-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1.8rem clamp(16px, 1.55vw, 32px); align-items: start; }
+.gallery-card { min-width: 0; scroll-margin-top: 1rem; }
+.gallery-card:target { outline: 2px solid var(--accent); outline-offset: 6px; }
+.sample-cover { display: block; position: relative; background: var(--panel); border: 1px solid var(--edge); border-radius: .4rem; overflow: hidden; }
+.sample-cover:hover { border-color: var(--accent); }
+.sample-cover span { position: absolute; bottom: .5rem; right: .5rem; border: 1px solid #c4c9c3; background: #fff; color: #20382c; padding: .25rem .55rem; border-radius: .25rem; font: 600 .78rem/1.4 var(--sans); }
+.sample-preview { display: block; width: 100%; height: auto; aspect-ratio: 1040 / 740; object-fit: cover; object-position: top; }
+.card-heading { display: flex; justify-content: space-between; gap: .5rem; align-items: baseline; margin: .55rem 0 .1rem; }
+.gallery .card-heading h3 { margin: 0; min-width: 0; font-size: clamp(1.5rem, 2vw, 2.15rem); letter-spacing: -.025em; }
+.name-copy { display: inline-flex; align-items: center; gap: .4rem; max-width: 100%; background: none; color: inherit; font: inherit; text-align: left; border: 0; padding: .15rem 0; cursor: copy; overflow-wrap: anywhere; }
+.name-copy:hover { color: var(--accent); text-decoration: underline; text-underline-offset: .14em; }
+.name-copy:disabled { opacity: 1; cursor: text; }
+.copy-icon { position: relative; display: inline-block; flex: 0 0 14px; height: 15px; color: var(--subtle); }
+.copy-icon::before, .copy-icon::after { content: ""; position: absolute; border: 1.5px solid; border-radius: 2px; width: 8px; height: 10px; top: 0; left: 0; }
+.copy-icon::after { left: 4px; top: 3px; background: var(--ground); }
+.report-link { flex: none; font: 600 .85rem/1.4 var(--sans); padding: .55rem 0; }
 .gallery-card p { margin: 0 0 .45rem; color: var(--subtle); line-height: 1.45; max-width: 52ch; }
 .gallery-card details { background: none; border: 0; padding: 0; border-radius: 0; }
 .gallery-card summary { display: list-item; font: 600 .9rem var(--sans); width: fit-content; color: var(--accent); padding: .65rem 0; cursor: pointer; }
 .gallery-card details[open] summary { border: 0; margin: 0; }
 .gallery-card ul { padding-left: 1.2rem; margin: .25rem 0 .6rem; }
 .gallery-card details a { font-size: .9rem; }
+.section-note { display: flex; align-items: baseline; justify-content: space-between; flex-wrap: wrap; gap: .25rem 1rem; margin-bottom: .85rem; }
+.section-note h2 { margin: 0; }
+.section-note p { margin: 0; color: var(--subtle); font-size: .9rem; }
+.design-prompt { display: block; margin: .55rem 0; padding: .6rem; background: var(--wash); color: var(--text); overflow-wrap: anywhere; }
+.prompt-copy { font: 600 .85rem var(--sans); padding: .45rem .65rem; background: var(--panel); border: 1px solid var(--edge); color: var(--accent); border-radius: .3rem; cursor: pointer; }
+.gallery-dialog { padding: 0; width: min(68rem, calc(100% - 24px)); max-width: none; max-height: 90vh; background: var(--panel); color: var(--text); border: 1px solid var(--edge); border-radius: .5rem; }
+.gallery-dialog[open] { display: flex; flex-direction: column; }
+.gallery-dialog::backdrop { background: rgb(14 22 18 / .78); }
+.dialog-bar { flex: none; display: flex; align-items: center; justify-content: space-between; gap: .5rem; padding: .55rem .9rem; border-bottom: 1px solid var(--edge); }
+.dialog-bar h2 { font-size: 1.15rem; margin: 0; }
+.dialog-bar a { margin-left: auto; }
+.preview-scroll { overflow: auto; overscroll-behavior: contain; }
+.preview-scroll img { display: block; width: 100%; height: auto; }
+.preview-scroll.actual-size img { width: auto; max-width: none; }
+#preview-size[aria-pressed="true"] { background: var(--text); color: var(--ground); }
+@media (max-width: 520px) { .dialog-bar { flex-wrap: wrap; } .dialog-bar h2 { width: 100%; } .dialog-bar a { margin-left: 0; margin-right: auto; } }
+.copy-status:not(:empty) { position: fixed; bottom: 1rem; left: 50%; transform: translateX(-50%); z-index: 2; color: var(--ground); background: var(--text); border-radius: .4rem; padding: .6rem 1rem; max-width: calc(100% - 2rem); width: max-content; }
 .gallery-tools { display: grid; grid-template-columns: 3fr 2fr; gap: clamp(1.5rem, 4vw, 5rem); border-block: 1px solid var(--edge); padding: 1.65rem 0 2rem; }
 .gallery-kinds, .gallery-presets { list-style: none; margin: 0; padding: 0; }
 .gallery-kinds li { border-top: 1px solid var(--edge); padding: .55rem 0; display: grid; grid-template-columns: minmax(7rem, 27%) minmax(0, 1fr); gap: .4rem 1rem; }
@@ -245,7 +288,8 @@ body { margin: 0; font: 16px/1.5 var(--sans); }
 .gallery-add p { color: var(--subtle); margin: 0 0 .75rem; }
 .gallery-copy { display: flex; align-items: center; flex-wrap: wrap; gap: .8rem; }
 .gallery-copy button[hidden] { display: none; }
-@media (max-width: 1100px) { .gallery-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (min-width: 1700px) { .gallery-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+@media (max-width: 1000px) { .gallery-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 720px) { .gallery-tools { grid-template-columns: 1fr; } }
 @media (max-width: 560px) {
   .gallery-grid { grid-template-columns: minmax(0, 1fr); gap: 1.6rem; }
@@ -266,17 +310,21 @@ body { margin: 0; font: 16px/1.5 var(--sans); }
     </nav>
   </header>
   <section class="samples" id="samples" aria-labelledby="samples-title">
-    <h2 id="samples-title">Presentation samples</h2>
+    <div class="section-note"><h2 id="samples-title">{{len .Samples}} report designs</h2>
+      {{if .Samples}}<p>Select a page to preview it. Click a design name to copy it.</p>{{end}}</div>
     {{if .Samples}}<div class="gallery-grid">
-      {{range .Samples}}<article class="gallery-card">
-        <a class="sample-open" href="{{.Open.Href}}" aria-label="{{.Title}} — {{.Open.Label}}">
-          {{if .Preview}}<img class="sample-preview" src="{{.Preview}}" alt="" width="480" height="284">{{end}}
-          <h3>{{.Title}}<span aria-hidden="true">→</span></h3>
-        </a>
-        <p>{{.UseWhen}}</p>
-        <details><summary>What to borrow</summary>
+      {{range .Samples}}<article class="gallery-card" id="sample-{{.Slug}}">
+        {{if .Preview}}<a class="sample-cover" href="{{.Preview}}" aria-label="Preview {{.Title}}" data-preview>
+          <img class="sample-preview" src="{{.Preview}}" loading="lazy" alt="" width="1040" height="740">
+          <span aria-hidden="true">Enlarge ↗</span></a>{{end}}
+        <div class="card-heading"><h3><button class="name-copy" type="button" disabled data-copy="name-{{.Slug}}" title="Copy design name" aria-label="Copy design name {{.CopyName}}"><span id="name-{{.Slug}}">{{.CopyName}}</span><i class="copy-icon" aria-hidden="true"></i></button></h3>
+          <a class="report-link" href="{{.Open.Href}}" aria-label="{{.Open.Label}} — {{.Title}}">{{if eq .Open.Label "Worked example"}}Open report{{else}}{{.Open.Label}}{{end}} ↗</a></div>
+        {{if ne .CopyName .Title}}<p>{{.Title}}</p>{{end}}<p>{{.UseWhen}}</p>
+        <details><summary>Use this design</summary>
+          <code class="design-prompt" id="prompt-{{.Slug}}">{{.Prompt}}</code>
+          <button class="prompt-copy" type="button" data-copy="prompt-{{.Slug}}" hidden>Copy starter prompt</button>
           <ul aria-label="Borrow">{{range .Borrow}}<li>{{.}}</li>{{end}}</ul>
-          {{if .More}}<div class="gallery-links">{{range .More}}<a href="{{.Href}}">{{.Label}}</a>{{end}}</div>{{end}}
+          <div class="gallery-links"><a href="#sample-{{.Slug}}">Permalink</a>{{range .More}}<a href="{{.Href}}">{{.Label}}</a>{{end}}</div>
         </details>
       </article>{{end}}
     </div>{{else}}<p>No samples yet.</p>{{end}}
@@ -302,34 +350,80 @@ body { margin: 0; font: 16px/1.5 var(--sans); }
     <p>Paste this line into your agent, replacing the placeholders with the source and what you liked.</p>
     <div class="gallery-copy">
       <code id="add-line">do-work-toolbox ai-report gallery add &lt;image path | link | html path&gt; [what the user liked]</code>
-      <button class="btn" id="copy-add-line" type="button" hidden>Copy command</button>
-      <span id="copy-status" role="status"></span>
+      <button class="btn" id="copy-add-line" data-copy="add-line" type="button" hidden>Copy command</button>
     </div>
   </section>
+  <div id="copy-status" class="copy-status" role="status"></div>
+  <dialog class="gallery-dialog" aria-labelledby="preview-title">
+    <div class="dialog-bar"><h2 id="preview-title">Page preview</h2><a class="report-link" id="preview-open"></a><button class="prompt-copy" type="button" id="preview-size" aria-pressed="false">Actual size</button><button class="prompt-copy" type="button" id="preview-close" autofocus>Close</button></div>
+    <div class="preview-scroll" tabindex="0" aria-label="Page image"><img id="preview-image" alt=""></div>
+  </dialog>
 </main>
 <script>
-const addLine = document.getElementById('add-line');
-const copyButton = document.getElementById('copy-add-line');
 const copyStatus = document.getElementById('copy-status');
-copyButton.hidden = false;
-copyButton.addEventListener('click', async () => {
+let statusTimer;
+function announce(message) {
+  clearTimeout(statusTimer);
+  copyStatus.textContent = message;
+  statusTimer = setTimeout(() => { copyStatus.textContent = ''; }, 3200);
+}
+async function copyText(element) {
   if (location.protocol !== 'file:' && navigator.clipboard) {
-    try {
-      await navigator.clipboard.writeText(addLine.textContent);
-      copyStatus.textContent = 'Copied.';
-      return;
-    } catch {}
+    try { await navigator.clipboard.writeText(element.textContent); return true; } catch {}
   }
   const range = document.createRange();
-  range.selectNodeContents(addLine);
+  range.selectNodeContents(element);
   const selection = window.getSelection();
   selection.removeAllRanges();
   selection.addRange(range);
   let copied = false;
   try { copied = document.execCommand('copy'); } catch {}
   if (copied) selection.removeAllRanges();
-  copyStatus.textContent = copied ? 'Copied.' : 'Command selected. Use your keyboard to copy.';
-});
+  return copied;
+}
+for (const button of document.querySelectorAll('[data-copy]')) {
+  button.hidden = false;
+  button.disabled = false;
+  button.addEventListener('click', async () => {
+    const target = document.getElementById(button.dataset.copy);
+    const success = await copyText(target);
+    const message = button.classList.contains('name-copy') ? 'Copied “' + target.textContent + '”.' : 'Copied.';
+    announce(success ? message : 'Text selected. Use your keyboard to copy.');
+  });
+}
+const dialog = document.querySelector('.gallery-dialog');
+if (typeof dialog.showModal === 'function') {
+  const image = document.getElementById('preview-image');
+  const open = document.getElementById('preview-open');
+  const scroller = dialog.querySelector('.preview-scroll');
+  const size = document.getElementById('preview-size');
+  size.addEventListener('click', () => {
+    size.setAttribute('aria-pressed', scroller.classList.toggle('actual-size'));
+  });
+  for (const cover of document.querySelectorAll('[data-preview]')) {
+    cover.addEventListener('click', event => {
+      if (event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
+      event.preventDefault();
+      const card = cover.closest('article');
+      const report = card.querySelector('.report-link');
+      document.getElementById('preview-title').textContent = card.querySelector('h3 span').textContent;
+      open.href = report.href;
+      open.textContent = report.textContent;
+      image.src = cover.href;
+      image.alt = cover.getAttribute('aria-label');
+      scroller.classList.remove('actual-size');
+      size.setAttribute('aria-pressed', 'false');
+      dialog.showModal();
+      scroller.scrollTo(0, 0);
+    });
+  }
+  document.getElementById('preview-close').addEventListener('click', () => dialog.close());
+  dialog.addEventListener('click', event => {
+    if (event.target !== dialog) return;
+    const box = dialog.getBoundingClientRect();
+    if (event.clientX < box.left || event.clientX > box.right || event.clientY < box.top || event.clientY > box.bottom) dialog.close();
+  });
+}
 </script>
 </body>
 </html>

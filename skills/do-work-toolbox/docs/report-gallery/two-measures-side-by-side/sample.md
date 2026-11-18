@@ -1,5 +1,5 @@
 ---
-title: Two measures side by side
+title: Rate and Level
 use_when: How can a growth rate fall while the total keeps rising?
 source: shipped
 added: 2026-11-18

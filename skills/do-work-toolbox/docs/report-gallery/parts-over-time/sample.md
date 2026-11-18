@@ -1,5 +1,5 @@
 ---
-title: Parts over time
+title: Changing Mix
 use_when: Which parts account for the change in the total?
 source: shipped
 added: 2026-11-18

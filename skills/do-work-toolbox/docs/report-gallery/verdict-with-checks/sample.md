@@ -1,5 +1,5 @@
 ---
-title: Verdict with checks
+title: Evidence Verdict
 use_when: What evidence supports the verdict, and which checks did it pass?
 source: shipped
 added: 2026-11-18

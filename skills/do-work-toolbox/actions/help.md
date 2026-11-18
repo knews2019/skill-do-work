@@ -14,6 +14,7 @@ do-work-toolbox — reviews, reports, discovery, and repository utilities
   journey-qa <target> [--brief]  Check whole user journeys; classify each result
   ai-report [REQ|UR]             Detailed stakeholder HTML for one completed item
   ai-report index|find <topic>   Catalog report bundles; find reports on a topic
+  ai-report --design "<name>" [target]  Use a gallery design for the latest or specified work
   ai-report gallery              Regenerate the report samples, kinds, and presets page
   ai-report gallery add <image path|link|html path> [what you liked]  Save a project sample
   ai-report organize [--dry-run] File finished months into month folders; fix links

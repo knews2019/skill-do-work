@@ -3,9 +3,22 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Verdict with checks · Report gallery</title>
+<title>Evidence Verdict · Report gallery</title>
 <link rel="stylesheet" href="../../ai-report-kit/presentation.css">
+<link rel="stylesheet" href="../chart-examples.css">
 <style>
+  :root { --display: Georgia, serif; }
+  @media (prefers-color-scheme: light) {
+    :root { --paper: #f8f2eb; --ink: #3d2538; --muted: #67535d; --proof: #764465; --line: #d7c6ce; }
+  }
+  .verdict-reading { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 26px; margin-top: 1rem; padding: 16px 20px; border: 1px solid var(--line); background: var(--surface); }
+  .verdict-reading b { font: 600 clamp(3rem, 8vw, 6rem)/1 var(--display); color: var(--proof); }
+  .verdict-reading p { font-size: 1.1rem; }
+  .verdict-reading p strong { display: block; }
+  .check-grid .node { padding: 12px 15px; box-shadow: none; border-width: 1px; border-radius: 0; }
+  .check-grid .node::before { display: none; }
+  .check-grid p { margin: 0; }
+
   .check-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr)); gap: 12px; margin: 0; padding: 0; list-style: none; max-width: 62rem; }
   .check-grid p { font-size: .92rem; }
   .evidence-disclosure { margin-top: 24px; max-width: 62rem; }
@@ -17,15 +30,11 @@
 </style>
 </head>
 <body>
-<header class="topbar">
-  <strong>Verdict with checks</strong>
-  <span class="spacer"></span>
-  <button class="btn deck-toggle" type="button" id="deck-toggle" aria-pressed="false" hidden>Deck mode (D)</button>
-</header>
 <main class="page">
   <header class="band">
-    <p><span class="chip">Sample data · 1–28 June 2026</span></p>
-    <h1>96 of 100 orders shipped on time, clearing the 95% target.</h1>
+    <p class="sample-byline">Evidence Verdict · Sample data · 1–28 June 2026</p>
+    <h1>Dispatch cleared its on-time target</h1>
+    <div class="verdict-reading"><b>96%</b><p><strong>96 of 100 orders shipped on time.</strong>One percentage point above the 95% target.</p></div>
   </header>
 
   <section class="band" aria-labelledby="checks-heading">
@@ -74,6 +83,7 @@
     </details>
   </section>
 </main>
+<footer class="sample-tools"><button class="btn deck-toggle" type="button" id="deck-toggle" aria-pressed="false" hidden>Deck mode (D)</button></footer>
 <div class="deck-hint" aria-live="polite" id="deck-hint">Deck mode</div>
 <script src="../../ai-report-kit/presentation.js"></script>
 <script>document.getElementById("deck-toggle").hidden = false;</script>

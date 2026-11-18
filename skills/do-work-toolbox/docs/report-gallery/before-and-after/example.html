@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Before and After</title>
+<style>
+* { box-sizing: border-box; }
+body { margin: 0; }
+main { max-width: 68rem; margin: auto; padding: clamp(1rem, 5vw, 4rem); }
+h1 { font-size: clamp(2.3rem, 6vw, 4.7rem); line-height: 1; margin: .2em 0 .4em; }
+p { margin: .6em 0; }
+a { color: inherit; text-underline-offset: .2em; }
+code { overflow-wrap: anywhere; }
+footer { margin-top: 2rem; font-size: .9rem; }
+body { background: #f8f0df; color: #292319; font: 1.07rem/1.5 Georgia, serif; }
+.eyebrow, dt, .shift { font: 700 .82rem/1.4 system-ui, sans-serif; letter-spacing: .08em; text-transform: uppercase; }
+figure { margin: 1.5rem 0; border-block: 2px solid #292319; }
+dl { display: grid; grid-template-columns: 1fr 1fr; margin: 0; }
+dl div { padding: clamp(.75rem, 3vw, 2rem); min-width: 0; }
+dl div + div { background: #dce6c4; border-left: 1px solid #292319; }
+dd { margin: .4rem 0 0; font-size: clamp(1.3rem, 4vw, 3.4rem); line-height: 1.05; }
+dd span { display: block; margin-top: .3em; }
+figcaption { padding: .8rem 0; border-top: 1px solid #292319; }
+.note { max-width: 60ch; }
+</style>
+</head>
+<body>
+<main>
+<header>
+  <p class="eyebrow">Board Timeline · Week view</p>
+  <h1>A drag brought earlier dates into view</h1>
+</header>
+<figure>
+  <dl>
+    <div><dt>Before · range start</dt><dd><time datetime="2026-08-24T00:00Z">Aug 24<span>00:00 UTC</span></time></dd></div>
+    <div><dt>After · range start</dt><dd><time datetime="2026-08-23T04:31Z">Aug 23<span>04:31 UTC</span></time></dd></div>
+  </dl>
+  <figcaption><span class="shift">19 hours 29 minutes earlier</span> after a 140-pixel drag to the right.</figcaption>
+</figure>
+<p class="note">The two readings came from one session in August 2026. The gesture panned the Timeline’s date window. The chart still showed <code>is-panning</code> after the drag call, so these readings leave release behavior unresolved.</p>
+<footer>Source · <a href="https://github.com/knews2019/skill-do-work/blob/167a382c1937dc5f45cfb72cdf843fe0a61aef92/ai-reports/2026-08_18-reports/2026-08-27_1428_req-341-timeline-drag-evidence/index.html">REQ-341 Timeline drag evidence, before and after the gesture</a></footer>
+</main>
+</body>
+</html>

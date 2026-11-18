@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bottleneck Hunt</title>
+<style>
+* { box-sizing: border-box }
+body { margin: 0; font: 1rem/1.55 system-ui, sans-serif }
+main { width: min(68rem, 100% - 2rem); margin: auto; padding: clamp(1.5rem, 5vw, 4rem) 0 2rem }
+h1, h2, h3, p, figure { margin: 0 }
+h1 { font-size: clamp(2.55rem, 6.4vw, 5rem); line-height: 1; letter-spacing: -.055em; text-wrap: balance }
+h2 { font-size: 1.4rem; line-height: 1.2 }
+h3 { font-size: 1.1rem }
+p { max-width: 69ch }
+p + p { margin-top: .8rem }
+header > p:last-child { margin-top: 1rem; font-size: 1.12rem }
+section, figure, footer { margin-top: 1.6rem }
+section h2 { margin-bottom: .65rem }
+.eyebrow { font-size: .78rem; font-weight: 750; letter-spacing: .12em; text-transform: uppercase; margin-bottom: .65rem }
+footer { border-top: 1px solid; padding-top: 1rem; font-size: .9rem }
+footer p { max-width: none }
+a { color: inherit; text-underline-offset: .2em }
+:focus-visible { outline: 3px solid currentColor; outline-offset: 4px }
+table { width: 100%; border-collapse: collapse }
+caption { text-align: left; font-weight: bold; padding-bottom: .7rem }
+th, td { padding: .65rem; text-align: left; vertical-align: top }
+
+body { background: #101c24; color: #edf7f7 }
+.eyebrow, a { color: #8ce7d4 }
+figure { background: #172a35; border: 1px solid #466371; padding: clamp(.8rem, 3vw, 1.6rem); border-radius: .8rem }
+figcaption { margin-bottom: 1rem }
+figcaption span { display: block; color: #c2d6df; font-size: .9rem }
+.bar-row { display: grid; grid-template-columns: 6ch 1fr 7ch; align-items: center; gap: .6rem; margin: .5rem 0; font-variant-numeric: tabular-nums }
+.track { background: #263f4d; height: 1.1rem; border-left: 1px solid #c2d6df }
+.fill { display: block; height: 100%; background: #8ce7d4; width: var(--share) }
+.readout { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 21rem), 1fr)); gap: 1.5rem }
+th, td { border-bottom: 1px solid #466371; padding: .45rem .3rem }
+
+</style>
+</head>
+<body>
+<main>
+
+<header>
+<p class="eyebrow">Bottleneck Hunt · Board activity lookup</p>
+<h1>The history window is the first place to look</h1>
+<p>Expanding the window from 7 to 60 days raised the median repeat-run Git history scan from 45 to 158 ms. The board still made five Git calls at each tested branch count.</p>
+</header>
+<figure>
+<figcaption><strong>Time to scan Git history</strong><span>Median of runs 2–4 · shared scale from 0 to 200 ms</span></figcaption>
+<div class="bar-row"><span>7 days</span><span class="track" aria-hidden="true"><span class="fill" style="--share:22.5%"></span></span><strong>45 ms</strong></div>
+<div class="bar-row"><span>60 days</span><span class="track" aria-hidden="true"><span class="fill" style="--share:79%"></span></span><strong>158 ms</strong></div>
+</figure>
+<section class="readout" aria-label="Evidence and next measurement">
+<div>
+<table>
+<caption>Recorded runs on 9 October 2026</caption>
+<thead><tr><th scope="col">Window</th><th scope="col">Commits</th><th scope="col">Runs (ms)</th></tr></thead>
+<tbody>
+<tr><th scope="row">7 days</th><td>212</td><td>166, 47, 44, 45</td></tr>
+<tr><th scope="row">60 days</th><td>2,931</td><td>253, 158, 161, 152</td></tr>
+</tbody>
+</table>
+</div>
+<div>
+<h2>Measure the full response next</h2>
+<p>The timings isolate <code>git log --name-only</code> on a busy machine. The first run was slower in both windows and is listed separately from the plotted median. The canned board fixture counted five commands with 0, 1 and 4 branches, including one history scan.</p>
+<p>Time each Git call alongside total response latency under both windows. If the scan accounts for most of the extra time, review the window size against the board’s required history coverage.</p>
+</div>
+</section>
+
+<footer><p>Repository evidence · <a href="https://github.com/knews2019/skill-do-work/blob/167a382c1937dc5f45cfb72cdf843fe0a61aef92/ai-reports/2026-10_3-reports/2026-10-09_1916_REQ-632-activity-correlation-determinism/evidence/git-log-timing.txt">Raw Git timings</a> · <a href="https://github.com/knews2019/skill-do-work/blob/167a382c1937dc5f45cfb72cdf843fe0a61aef92/ai-reports/2026-10_3-reports/2026-10-09_1916_REQ-632-activity-correlation-determinism/evidence/git-call-count.txt">Board command counts</a></p></footer>
+</main>
+</body>
+</html>

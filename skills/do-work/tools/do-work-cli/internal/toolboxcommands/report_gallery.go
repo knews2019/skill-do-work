@@ -44,8 +44,9 @@ type reportGallerySample struct {
 
 func handleAIReportGallery(ctx commandruntime.ExecutionContext, args []string) resultmodel.CommandResult {
 	listOnly := len(args) == 1 && args[0] == "--list"
-	if len(args) != 0 && !listOnly {
-		return usageResult(CommandAIReportGallery, "Usage: ai-report-gallery [--list]")
+	resolveOnly := len(args) == 2 && args[0] == "--resolve"
+	if len(args) != 0 && !listOnly && !resolveOnly {
+		return usageResult(CommandAIReportGallery, "Usage: ai-report-gallery [--list | --resolve <name>]")
 	}
 	repository, err := os.OpenRoot(ctx.RepositoryRoot)
 	if err != nil {
@@ -54,7 +55,7 @@ func handleAIReportGallery(ctx commandruntime.ExecutionContext, args []string) r
 	defer repository.Close()
 
 	// Reject linked output parents before discovery. The publisher also confines the final write.
-	if !listOnly {
+	if len(args) == 0 {
 		if err := validateNoLinkedAncestors(ctx.RepositoryRoot, ReportGalleryPageFile, false); err != nil {
 			return reportGalleryRefusal(err)
 		}
@@ -73,17 +74,68 @@ func handleAIReportGallery(ctx commandruntime.ExecutionContext, args []string) r
 	}
 
 	var result resultmodel.CommandResult
-	if listOnly {
+	switch {
+	case listOnly:
 		var output strings.Builder
 		for _, sample := range samples {
 			fmt.Fprintf(&output, "%s\t%s\t%s\n", sample.Name, sample.UseWhen, sample.RecordPath)
 		}
 		result = exactOutputResult(output.String(), nil)
-	} else {
+	case resolveOnly:
+		result = resolveReportGallerySample(samples, args[1])
+	default:
 		result = writeReportGallery(ctx.RepositoryRoot, repository, toolboxDocs, samples)
 	}
 	result.Findings = append(result.Findings, findings...)
 	return result
+}
+
+// matchReportGalleryName gives canonical folder slugs precedence over titles.
+func matchReportGalleryName(samples []reportGallerySample, name string) []reportGallerySample {
+	name = strings.TrimSpace(name)
+	var matches []reportGallerySample
+	for _, sample := range samples {
+		if sample.Name == name {
+			return []reportGallerySample{sample}
+		}
+		if strings.EqualFold(sample.Title, name) {
+			matches = append(matches, sample)
+		}
+	}
+	return matches
+}
+
+// reportGalleryCopyNames chooses the visible title whenever it identifies its own sample.
+func reportGalleryCopyNames(samples []reportGallerySample) map[string]string {
+	names := make(map[string]string, len(samples))
+	for _, sample := range samples {
+		matches := matchReportGalleryName(samples, sample.Title)
+		if len(matches) == 1 && matches[0].Name == sample.Name {
+			names[sample.Name] = sample.Title
+		} else {
+			names[sample.Name] = sample.Name
+		}
+	}
+	return names
+}
+
+func resolveReportGallerySample(samples []reportGallerySample, name string) resultmodel.CommandResult {
+	matches := matchReportGalleryName(samples, name)
+	switch len(matches) {
+	case 0:
+		return reportGalleryFailure(reportGalleryFolder, fmt.Errorf(
+			"no gallery design matches %q. Browse the report gallery for a title or run ai-report-gallery --list for folder slugs", name))
+	case 1:
+		sample := matches[0]
+		return exactOutputResult(fmt.Sprintf("%s\t%s\t%s\n", sample.Name, sample.UseWhen, sample.RecordPath), nil)
+	default:
+		slugs := make([]string, 0, len(matches))
+		for _, sample := range matches {
+			slugs = append(slugs, sample.Name)
+		}
+		return reportGalleryFailure(reportGalleryFolder, fmt.Errorf(
+			"gallery design %q is ambiguous. Use one of these folder slugs: %s", name, strings.Join(slugs, ", ")))
+	}
 }
 
 // Installed files take precedence when a project also contains a suite checkout.

@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cause Chain</title>
+<style>
+* { box-sizing: border-box; }
+body { margin: 0; }
+main { max-width: 68rem; margin: auto; padding: clamp(1rem, 5vw, 4rem); }
+h1 { font-size: clamp(2.3rem, 6vw, 4.7rem); line-height: 1; margin: .2em 0 .4em; }
+p { margin: .6em 0; }
+a { color: inherit; text-underline-offset: .2em; }
+code { overflow-wrap: anywhere; }
+footer { margin-top: 2rem; font-size: .9rem; }
+body { background: #171922; color: #f5efdf; font: 1rem/1.5 system-ui, sans-serif; }
+h1 { max-width: 17ch; }
+header p, .fix strong { color: #ffd071; }
+ol { display: grid; grid-template-columns: repeat(3, 1fr); padding: 0; margin: 1.4rem 0; list-style: none; gap: 1rem; }
+li { position: relative; min-width: 0; background: #272b38; padding: 1rem; border-top: .25rem solid #ffd071; }
+li + li::before { content: "→"; position: absolute; left: -.95rem; top: 1rem; color: #ffd071; }
+h2 { font-size: 1.15rem; margin: 0; }
+.fix { border-left: 3px solid #ffd071; padding-left: 1rem; max-width: 70ch; }
+@media (max-width: 42rem) {
+  ol { grid-template-columns: 1fr; }
+  li + li::before { content: "↓"; left: 1rem; top: -1.3rem; }
+}
+</style>
+</head>
+<body>
+<main>
+<header>
+  <p>Second-opinion launcher · Release 0.306.5</p>
+  <h1>How output bypassed its 16 MiB cap</h1>
+</header>
+<ol role="list" aria-label="Sequence before the fix">
+  <li><h2>The buffer exposed <code>ReadFrom</code></h2><p>Embedding <code>bytes.Buffer</code> made its <code>ReadFrom</code> method available on the capture buffer.</p></li>
+  <li><h2>The copy skipped <code>Write</code></h2><p><code>io.Copy</code> used <code>ReadFrom</code> to drain the process pipe. The cap and truncation flag both lived in the capture buffer’s <code>Write</code>.</p></li>
+  <li><h2>Oversized output stayed intact</h2><p>The archived reproduction kept <strong>16,777,300 bytes</strong> with <code>truncated=false</code>.</p></li>
+</ol>
+<p class="fix"><strong>The fix closes the bypass.</strong> A named buffer field removed the promoted method, routing the copy through <code>Write</code>. The regression test sends 16,777,300 bytes and expects exactly 16,777,216 bytes retained and an overflow error.</p>
+<footer>Source · <a href="https://github.com/knews2019/skill-do-work/blob/167a382c1937dc5f45cfb72cdf843fe0a61aef92/ai-reports/2026-11-02_1757_presentation-style-gallery/t1-cause-chain.html">REQ-702 reproduction and regression test, commit aa61c81a</a></footer>
+</main>
+</body>
+</html>

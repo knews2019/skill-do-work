@@ -73,6 +73,7 @@ do-work-toolbox ai-report UR-NNN          Report on successful REQs in that arch
 do-work-toolbox ai-report REQ-NNN         Report on that archived REQ
 do-work-toolbox ai-report                 Most recent successful archived work
 do-work-toolbox ai-report most recent     Same, explicitly
+do-work-toolbox ai-report --design "<name>" [UR-NNN|REQ-NNN|most recent]
 do-work-toolbox ai-report index           Catalog every report bundle under ai-reports/
 do-work-toolbox ai-report find <topic>    List report bundles on a topic, newest first
 do-work-toolbox ai-report gallery         Regenerate the gallery and print its path
@@ -109,11 +110,15 @@ The current month's reports sit directly under `ai-reports/`. A finished month's
 
 ## Report Gallery
 
-`ai-report gallery` regenerates `<project-root>/docs/report-gallery/index.html`. Open it to browse presentation samples with worked examples, report kinds with links to the newest reports, and shipped second-opinion presets. Select a sample preview or title to open it. Expand **What to borrow** for the design notes. The page shows the saved reference image when available, or a local `preview.svg` beside the sample record. It also has a copyable add command. `ai-report gallery add` saves one reusable pattern from an image, link, or HTML file and refreshes the page.
+`ai-report gallery` regenerates `<project-root>/docs/report-gallery/index.html`. Click a page image to enlarge the screenshot, or choose **Open report** for the interactive example. Click the design name to copy it. Under **Use this design**, you can copy the full starter prompt, read the design notes, or get a link to the card. The gallery also links to recent reports and second-opinion presets.
+
+`ai-report gallery add` saves a reusable design from an image, link or HTML file. For a local report, save a full-page screenshot as `preview.png` beside `sample.md`. A supplied image can be saved alongside it using the optional `image` field. The gallery uses the full-page capture for the preview when both exist. See **Add a sample** on the page for the pasteable command.
 
 Each project sample keeps its source, the reader's question it can answer, and two or three presentation moves in `sample.md`. A project sample takes precedence over a shipped sample with the same folder name.
 
-After collecting evidence and before building visuals, the writer runs the installed CLI's `ai-report-gallery --list` and ranks the samples against the reader's main question and the evidence. It reads only the best-fitting records and adapts their Borrow moves using the report's own facts and kit styling. For example, when a count rises and its rate falls, separate charts with the same dates and units in each title let the reader see both changes. The writer records the chosen sample name or `none` in the page head's `ai-report-gallery-sample` meta tag and explains the choice in its summary. Completed-work reports, proposal and root-cause briefs, and revisions all make this choice when they write a new `index.html`.
+Copy a sample’s design command to use it for the most recent completed work. Append a UR or REQ to choose specific work. `--design` accepts the full visible title, with case and surrounding whitespace ignored, or the canonical folder slug. Slugs take precedence if a title collides with one. The copy command uses the slug when the title would fail to identify the sample. A missing or ambiguous match stops the run with guidance for choosing a valid name.
+
+After collecting evidence and before building visuals, the writer runs the installed CLI's `ai-report-gallery --list` and ranks the samples against the reader's main question and the evidence. It uses the named sample as the primary design when supplied, or the best fit otherwise. It reads the selected and best-fitting records and adapts their Borrow moves using the report's own facts and kit styling. For example, when a count rises and its rate falls, separate charts with the same dates and units in each title let the reader see both changes. The writer records the chosen sample name or `none` in the page head's `ai-report-gallery-sample` meta tag and explains the choice in its summary. Completed-work reports, proposal and root-cause briefs, and revisions all make this choice when they write a new `index.html`.
 
 First install and file-writing updates run by the gallery-aware updater regenerate the page automatically. On the first upgrade from a version without gallery support, the previous updater installs the samples. It leaves a missing page absent and preserves a hand-made page silently. Run the same Just update command again to create the missing page, or run `ai-report gallery`. An already-current update leaves an existing gallery alone. When the gallery-aware installer or updater attempts a refresh, a hand-made page stays in place and a refusal or write failure produces one gallery warning.
 

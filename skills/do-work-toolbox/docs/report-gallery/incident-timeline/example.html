@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Incident Timeline</title>
+<style>
+* { box-sizing: border-box }
+body { margin: 0; font: 1rem/1.55 system-ui, sans-serif }
+main { width: min(68rem, 100% - 2rem); margin: auto; padding: clamp(1.5rem, 5vw, 4rem) 0 2rem }
+h1, h2, h3, p, figure { margin: 0 }
+h1 { font-size: clamp(2.55rem, 6.4vw, 5rem); line-height: 1; letter-spacing: -.055em; text-wrap: balance }
+h2 { font-size: 1.4rem; line-height: 1.2 }
+h3 { font-size: 1.1rem }
+p { max-width: 69ch }
+p + p { margin-top: .8rem }
+header > p:last-child { margin-top: 1rem; font-size: 1.12rem }
+section, figure, footer { margin-top: 1.6rem }
+section h2 { margin-bottom: .65rem }
+.eyebrow { font-size: .78rem; font-weight: 750; letter-spacing: .12em; text-transform: uppercase; margin-bottom: .65rem }
+footer { border-top: 1px solid; padding-top: 1rem; font-size: .9rem }
+footer p { max-width: none }
+a { color: inherit; text-underline-offset: .2em }
+:focus-visible { outline: 3px solid currentColor; outline-offset: 4px }
+table { width: 100%; border-collapse: collapse }
+caption { text-align: left; font-weight: bold; padding-bottom: .7rem }
+th, td { padding: .65rem; text-align: left; vertical-align: top }
+
+body { background: #f6f7f0; color: #162e27 }
+main { width: min(61rem, 100% - 2rem) }
+header { padding: clamp(1rem, 4vw, 2.2rem); background: #174739; color: #fffdf3; border-radius: .3rem 2rem .3rem .3rem }
+.eyebrow, time { font-family: ui-monospace, monospace }
+header .eyebrow { color: #c2ebac }
+ol { list-style: none; padding: 0 0 0 1.15rem; margin: .9rem 0 0 .35rem; border-left: 2px solid #54806a }
+li { position: relative; display: grid; grid-template-columns: 8rem 1fr; gap: .6rem; padding-bottom: .95rem }
+li:last-child { padding-bottom: 0 }
+li::before { content: ""; position: absolute; top: .47rem; left: -1.48rem; width: .55rem; height: .55rem; border-radius: 50%; background: #174739; box-shadow: 0 0 0 3px #f6f7f0 }
+time { font-size: .87rem; padding-top: .2rem }
+li p { margin-top: .15rem }
+.closeout { background: #e3edda; padding: 1rem 1.2rem; border-radius: .3rem }
+a { color: #174739 }
+@media (max-width: 34rem) { li { grid-template-columns: 1fr; gap: .15rem } }
+
+</style>
+</head>
+<body>
+<main>
+
+<header>
+<p class="eyebrow">Incident Timeline · Board drag regression</p>
+<h1>A drag test failed on Chrome 141</h1>
+<p>The investigation traced the failure to a missing mouse-leave event in the test’s comparison. The focused test passed on Chrome 151. User impact on Chrome 141 remained unverified.</p>
+</header>
+<section aria-labelledby="chronology">
+<h2 id="chronology">From regression coverage to conflicting results</h2>
+<ol role="list">
+<li><time datetime="2026-08-24">24 Aug 2026</time><div><h3>The probe starts using browser mouse input</h3><p>Commit <code>05d8309</code> adds real input to catch two historical failures: a drag continuing after outside release and a repair that stopped clicks opening bar details.</p></div></li>
+<li><time datetime="2026-08-25">25 Aug 2026</time><div><h3>The probe isolates mouse-leave cleanup</h3><p>Commit <code>dc75446</code> adds a safeguard for the comparison with capture disabled. The comparison needs a mouse-leave event to establish that the intended path ran.</p></div></li>
+<li><time datetime="2026-08-27">27 Aug 2026</time><div><h3>The focused results split by browser version</h3><p>Chrome 141 exits 1 after 3.115 s at line 2987. Chrome 151 exits 0 after 2.745 s and records one isolated mouse-leave event. The strict runs stop in a separate probe after about 90 s each.</p></div></li>
+</ol>
+</section>
+<section class="closeout">
+<h2>What would resolve the finding</h2>
+<p>On each supported browser, verify that a normal click opens details and that an outside release ends panning. Then verify that the capture-disabled comparison exercises the expected mouse-leave path. The investigation documents the split result and leaves that follow-up open.</p>
+</section>
+
+<footer><p>Repository evidence · <a href="https://github.com/knews2019/skill-do-work/blob/167a382c1937dc5f45cfb72cdf843fe0a61aef92/ai-reports/2026-08_18-reports/2026-08-27_1428_req-341-timeline-drag-evidence/index.html">REQ-341 investigation</a> · <a href="https://github.com/knews2019/skill-do-work/blob/167a382c1937dc5f45cfb72cdf843fe0a61aef92/ai-reports/2026-08_18-reports/2026-08-27_1428_req-341-timeline-drag-evidence/evidence/chrome-141-focused.txt">Chrome 141 log</a> · <a href="https://github.com/knews2019/skill-do-work/blob/167a382c1937dc5f45cfb72cdf843fe0a61aef92/ai-reports/2026-08_18-reports/2026-08-27_1428_req-341-timeline-drag-evidence/evidence/chrome-151-focused.txt">Chrome 151 log</a></p></footer>
+</main>
+</body>
+</html>

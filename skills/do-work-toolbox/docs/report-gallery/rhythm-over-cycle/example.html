@@ -3,9 +3,27 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Rhythm over a cycle · Report gallery</title>
+<title>Daily Rhythm · Report gallery</title>
 <link rel="stylesheet" href="../../ai-report-kit/presentation.css">
+<link rel="stylesheet" href="../chart-examples.css">
 <style>
+  :root { --display: "Iowan Old Style", Georgia, serif; }
+  @media (prefers-color-scheme: light) {
+    :root { --paper: #f8f5eb; --ink: #2b2925; --muted: #645e54; --proof: #465d80; --change: #a95942; --cause: #c79c50; --effect: #547e6e; --problem: #967687; --line: #d8d1c3; }
+  }
+  @media (min-width: 57rem) {
+    html:not(.deck) .page { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); column-gap: 24px; align-items: start; }
+    html:not(.deck) .page > header { grid-column: 1 / -1; }
+    html:not(.deck) .overview-card { padding: 14px; }
+    html:not(.deck) .series-list { gap: 6px; }
+    html:not(.deck) .series-list figure { padding: 8px 12px; }
+    html:not(.deck) .series-list .rhythm-plot { height: 40px; }
+    html:not(.deck) .series-heading { gap: 4px 10px; margin-bottom: 0; }
+    html:not(.deck) .series-heading h3 { font-size: 1rem; }
+    html:not(.deck) .series-heading p { font-size: .8rem; }
+    html:not(.deck) .time-minutes { display: none; }
+  }
+
   .study-series { --series: var(--proof); }
   .computer-series { --series: var(--change); }
   .help-series { --series: color-mix(in srgb, var(--cause) 76%, var(--ink)); }
@@ -30,6 +48,7 @@
   .rhythm-scale, .time-axis { color: var(--muted); font-size: .78rem; font-variant-numeric: tabular-nums; }
   .rhythm-plot { position: relative; height: 76px; margin-inline: 12px; }
   .overview-card .rhythm-plot { height: clamp(160px, 24vw, 278px); }
+  @media (min-width: 57rem) { html:not(.deck) .overview-card .rhythm-plot { height: 180px; } }
   .rhythm-plot svg { display: block; width: 100%; height: 100%; overflow: visible; }
   .grid-lines { stroke: var(--line); stroke-width: 1; fill: none; vector-effect: non-scaling-stroke; }
   .series-band { fill: var(--series); stroke: var(--surface); stroke-width: 1; vector-effect: non-scaling-stroke; }
@@ -60,14 +79,9 @@
 </style>
 </head>
 <body>
-<header class="topbar">
-  <strong>Rhythm over a cycle</strong>
-  <span class="spacer"></span>
-  <button class="btn deck-toggle" type="button" id="deck-toggle" aria-pressed="false" hidden>Deck mode (D)</button>
-</header>
 <main class="page">
   <header class="band">
-    <p><span class="chip">Sample data · A weekday at the library</span></p>
+    <p class="sample-byline">Daily Rhythm · Sample data · A weekday at the library</p>
     <h1>The library is busiest at 16:00</h1>
     <p class="lede measure">The children’s room peaks when the library reaches 97 visitors. Quiet study peaks four hours earlier, at noon.</p>
   </header>
@@ -295,6 +309,7 @@
     </details>
   </section>
 </main>
+<footer class="sample-tools"><button class="btn deck-toggle" type="button" id="deck-toggle" aria-pressed="false" hidden>Deck mode (D)</button></footer>
 <div class="deck-hint" aria-live="polite" id="deck-hint">Deck mode</div>
 <script src="../../ai-report-kit/presentation.js"></script>
 <script>

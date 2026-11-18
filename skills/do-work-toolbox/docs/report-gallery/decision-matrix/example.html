@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Decision Matrix</title>
+<style>
+* { box-sizing: border-box }
+body { margin: 0; font: 1rem/1.55 system-ui, sans-serif }
+main { width: min(68rem, 100% - 2rem); margin: auto; padding: clamp(1.5rem, 5vw, 4rem) 0 2rem }
+h1, h2, h3, p, figure { margin: 0 }
+h1 { font-size: clamp(2.55rem, 6.4vw, 5rem); line-height: 1; letter-spacing: -.055em; text-wrap: balance }
+h2 { font-size: 1.4rem; line-height: 1.2 }
+h3 { font-size: 1.1rem }
+p { max-width: 69ch }
+p + p { margin-top: .8rem }
+header > p:last-child { margin-top: 1rem; font-size: 1.12rem }
+section, figure, footer { margin-top: 1.6rem }
+section h2 { margin-bottom: .65rem }
+.eyebrow { font-size: .78rem; font-weight: 750; letter-spacing: .12em; text-transform: uppercase; margin-bottom: .65rem }
+footer { border-top: 1px solid; padding-top: 1rem; font-size: .9rem }
+footer p { max-width: none }
+a { color: inherit; text-underline-offset: .2em }
+:focus-visible { outline: 3px solid currentColor; outline-offset: 4px }
+table { width: 100%; border-collapse: collapse }
+caption { text-align: left; font-weight: bold; padding-bottom: .7rem }
+th, td { padding: .65rem; text-align: left; vertical-align: top }
+
+body { background: #f8f1e5; color: #2d231b }
+main { width: min(66rem, 100% - 2rem) }
+header { border-top: 5px solid #9b3b29; padding-top: 1rem }
+h1, h2, caption { font-family: Georgia, serif; font-weight: normal }
+.eyebrow, a { color: #8e3524 }
+table { background: #fffaf1; border-bottom: 2px solid #9b3b29 }
+caption { font-size: 1.5rem }
+thead { background: #603326; color: white }
+tbody tr:first-child { background: #f2e0c9 }
+tbody tr + tr { border-top: 1px solid #c8a994 }
+th, td { overflow-wrap: anywhere }
+.inventory { border-left: 4px solid #9b3b29; padding: .4rem 0 .4rem 1rem }
+@media (max-width: 36rem) { th, td { padding: .45rem .32rem; font-size: .88rem } }
+
+</style>
+</head>
+<body>
+<main>
+
+<header>
+<p class="eyebrow">Decision Matrix · Local agent memory</p>
+<h1>Approve the cleanup in two steps</h1>
+<p>Delete 28 stale or redundant notes first, then move the other 18 into shared sources so sessions on different machines get the same guidance.</p>
+</header>
+<section aria-label="Decision options">
+<table>
+<caption>Three choices for 46 notes</caption>
+<thead><tr><th scope="col">Option</th><th scope="col">What it resolves</th><th scope="col">Cost</th></tr></thead>
+<tbody>
+<tr><th scope="row">Approve both steps</th><td>Removes 28 notes and shares 18.</td><td>Local deletion, two requests and a skill release.</td></tr>
+<tr><th scope="row">Delete only</th><td>Removes 28 notes. The other 18 stay on one machine.</td><td>One local command.</td></tr>
+<tr><th scope="row">Keep all notes</th><td>Leaves stale advice and machine-specific guidance in use.</td><td>No immediate work.</td></tr>
+</tbody>
+</table>
+</section>
+<section class="inventory">
+<h2>What makes the move worthwhile</h2>
+<p>The inventory assigns 5 rules to the shipped skill and 13 repository-specific notes to shared repository guidance. The skill move was estimated at about eight lines across five files. The repository move requires checking which run instructions still apply.</p>
+<p>For example, the instruction to make a recommendation without building it belongs in the skill. The note warning against the fast gate until REQ-592 belongs in the deletion group because that request had already shipped.</p>
+</section>
+<section>
+<h2>Approval and follow-through</h2>
+<p>Approve the inventory before deleting locally. Track the two moves independently and verify the 5 skill rules and 13 repository notes at their new destinations before removing their local copies.</p>
+</section>
+
+<footer><p>Repository evidence · <a href="https://github.com/knews2019/skill-do-work/blob/167a382c1937dc5f45cfb72cdf843fe0a61aef92/ai-reports/2026-11-15_0137_proposal-REQ-725-memory-note-destinations/index.html#options">Original REQ-725 options</a> · <a href="https://github.com/knews2019/skill-do-work/blob/167a382c1937dc5f45cfb72cdf843fe0a61aef92/ai-reports/2026-11-15_0137_proposal-REQ-725-memory-note-destinations/index.html#list">Note-by-note inventory</a></p></footer>
+</main>
+</body>
+</html>

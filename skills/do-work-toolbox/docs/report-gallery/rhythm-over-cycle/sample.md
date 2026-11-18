@@ -1,5 +1,5 @@
 ---
-title: Rhythm over a cycle
+title: Daily Rhythm
 use_when: When does each activity peak, and what drives the busiest hour?
 source: shipped
 added: 2026-11-18

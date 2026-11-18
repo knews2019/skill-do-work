@@ -75,6 +75,7 @@ func TestAIReportGalleryPageLinksLatestRealReportsAndAssets(t *testing.T) {
 	writeGalleryFixture(t, root, toolbox+"report-gallery/verdict-checks/sample.md", galleryFixtureSample("Verdict checks", "Show why the judgment holds.", "shipped", "", "2026-11-18"))
 	writeGalleryFixture(t, root, toolbox+"report-gallery/verdict-checks/example.html", "<title>Fixture worked example</title>")
 	writeGalleryFixture(t, root, toolbox+"report-gallery/verdict-checks/preview.svg", "<svg/>")
+	writeGalleryFixture(t, root, toolbox+"report-gallery/verdict-checks/preview.png", "full report screenshot")
 	writeGalleryFixture(t, root, toolbox+"report-gallery/two-measures/sample.md", galleryFixtureSample("Replaced shipped sample", "Compare a rate and a level.", "shipped", "", "2026-11-18"))
 	writeGalleryFixture(t, root, project+"two-measures/sample.md", galleryFixtureSample(`"<script>alert(1)</script> & evidence"`, "Compare two project measures.", "shipped", `"images/rate #1.png"`, "2026-11-18"))
 	writeGalleryFixture(t, root, project+"two-measures/images/rate #1.png", "fixture image")
@@ -121,8 +122,11 @@ func TestAIReportGalleryPageLinksLatestRealReportsAndAssets(t *testing.T) {
 		`href="../../.claude/skills/do-work-toolbox/docs/report-gallery/verdict-checks/example.html"`,
 		`href="two-measures/images/rate%20%231.png"`,
 		`src="two-measures/images/rate%20%231.png"`,
-		`src="../../.claude/skills/do-work-toolbox/docs/report-gallery/verdict-checks/preview.svg"`,
-		`<details><summary>What to borrow</summary>`,
+		`src="../../.claude/skills/do-work-toolbox/docs/report-gallery/verdict-checks/preview.png"`,
+		`href="../../.claude/skills/do-work-toolbox/docs/report-gallery/verdict-checks/preview.svg"`,
+		`id="name-verdict-checks">Verdict checks</span>`, `data-copy="name-verdict-checks"`,
+		`id="prompt-verdict-checks">do-work-toolbox ai-report --design &#34;Verdict checks&#34;</code>`,
+		`href="#sample-verdict-checks"`, `<details><summary>Use this design</summary>`,
 		`href="https://example.test/view?a=1&amp;b=2"`,
 		`href="../../notes/local%20%231.html"`,
 		`href="` + externalLink + `"`,

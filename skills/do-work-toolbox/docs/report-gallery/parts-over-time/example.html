@@ -3,9 +3,15 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Parts over time · Report gallery</title>
+<title>Changing Mix · Report gallery</title>
 <link rel="stylesheet" href="../../ai-report-kit/presentation.css">
+<link rel="stylesheet" href="../chart-examples.css">
 <style>
+  :root { --display: "Iowan Old Style", Georgia, serif; }
+  @media (prefers-color-scheme: light) {
+    :root { --paper: #f5f8f4; --ink: #18362a; --muted: #455e50; --proof: #216544; --effect: #74a787; --change: #a85d26; --line: #c5d4c8; }
+  }
+
   .tire-series { --series: var(--proof); }
   .brake-series { --series: var(--effect); }
   .gear-series { --series: var(--change); }
@@ -50,14 +56,9 @@
 </style>
 </head>
 <body>
-<header class="topbar">
-  <strong>Parts over time</strong>
-  <span class="spacer"></span>
-  <button class="btn deck-toggle" type="button" id="deck-toggle" aria-pressed="false" hidden>Deck mode (D)</button>
-</header>
 <main class="page">
   <header class="band">
-    <p><span class="chip">Sample data · Jan–May 2026</span></p>
+    <p class="sample-byline">Changing Mix · Sample data · Jan–May 2026</p>
     <h1>Bike repairs nearly doubled by April</h1>
     <p class="lede measure">From January to April, repairs rose from 30 to 58. Brakes and gears accounted for 24 of the 28 additional repairs.</p>
   </header>
@@ -181,6 +182,7 @@
     </details>
   </section>
 </main>
+<footer class="sample-tools"><button class="btn deck-toggle" type="button" id="deck-toggle" aria-pressed="false" hidden>Deck mode (D)</button></footer>
 <div class="deck-hint" aria-live="polite" id="deck-hint">Deck mode</div>
 <script src="../../ai-report-kit/presentation.js"></script>
 <script>

@@ -10,6 +10,13 @@ For the complete release history, read this file and the archives below from new
 - [0.50.0 through 0.64.1](https://github.com/knews2019/skill-do-work/blob/main/docs/changelog/CHANGELOG-2026-04-13-up-to-v0.64.1.md)
 - [0.1.0 through 0.49.0](https://github.com/knews2019/skill-do-work/blob/main/docs/changelog/CHANGELOG-2026-04-07-up-to-v0.49.0.md)
 
+## 0.327.0 — Ten Report Designs with Full-Page Previews (2026-11-18)
+
+The gallery now includes ten worked reports. Enlarge a screenshot to inspect the page, open the interactive report, or click its design name to copy it.
+
+- Each design has a starter prompt that selects it by name. Add a request ID to use it for specific work.
+- Each gallery card has a stable link. Project samples get the same copy and preview controls.
+
 ## 0.326.1 — Visual Previews Across the Report Gallery (2026-11-18)
 
 The four worked examples now open from labelled chart previews. On a wide screen all four sit in one row. Each sample shows the question it answers, with its borrowing notes available on demand.
