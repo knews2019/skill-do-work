@@ -1,7 +1,7 @@
 ---
 id: REQ-740
 title: 'Browse report types and save new samples'
-status: pending
+status: cancelled
 created_at: 2026-11-18T15:04:36Z
 user_request: UR-182
 domain: frontend
@@ -12,6 +12,7 @@ tdd: true
 maintenance: false
 batch: report-sample-gallery
 related: [REQ-741, REQ-742]
+completed_at: 2026-11-18T15:28:06Z
 ---
 # Browse report types and save new samples
 
@@ -52,3 +53,9 @@ Use the existing report gallery demonstration, report action and second-opinion 
 
 ## Full Context
 See `do-work/user-requests/UR-182/input.md` for the original request and the confirmed example.
+
+## Cancelled
+
+- **When:** 2026-11-18T15:28:06Z
+- **Why:** Replaced on 2026-11-18 by a two-request rewrite the user chose: one request for the report gallery and one for the report writer that uses it.
+- **Decided by:** user, via `do-work abandon`
