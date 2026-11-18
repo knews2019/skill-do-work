@@ -1,0 +1,91 @@
+{
+  "schema_version": 1,
+  "command": "fold-timing-summary",
+  "outcome": "success",
+  "repository_root": "/Users/t2/Desktop/e1-experimental-repos/skill-do-work2",
+  "findings": [],
+  "changes": [
+    {
+      "path": "do-work/working/REQ-744-report-writer-ranks-gallery-samples.md",
+      "kind": "modified",
+      "detail": "folded a 13m 17s Timing summary over 2 events and removed the raw stream"
+    }
+  ],
+  "skipped_work": [],
+  "selected": [],
+  "excluded": [],
+  "selection_summary": {
+    "pending": 0,
+    "finished_awaiting_archive": 0,
+    "pending_answers": 0,
+    "blocked": 0,
+    "blocked_archive_collision": 0,
+    "blocked_dependency_cycle": 0,
+    "probed": 0,
+    "probe_succeeded": 0,
+    "skipped_impact_negligible": 0,
+    "total_estimated_minutes": 0,
+    "unknown_estimate_count": 0
+  },
+  "rollback": {
+    "status": "",
+    "actions": [],
+    "errors": []
+  },
+  "finalizations": [],
+  "lifecycle_timing": {
+    "request_id": "REQ-744",
+    "run_id": "work-2026-11-18-153357",
+    "stream_path": "/Users/t2/Desktop/e1-experimental-repos/skill-do-work2/.git/do-work-timing/work-2026-11-18-153357/REQ-744.jsonl",
+    "stream_state": "folded",
+    "event_count": 2,
+    "observed_start": "2026-11-18T16:22:42Z",
+    "observed_end": "2026-11-18T16:35:59Z",
+    "total_observed_seconds": 797,
+    "attributed_seconds": 620,
+    "unattributed_seconds": 177,
+    "category_totals": [
+      {
+        "category": "builder-work",
+        "elapsed_seconds": 499,
+        "event_count": 1
+      },
+      {
+        "category": "verification-gate",
+        "elapsed_seconds": 121,
+        "event_count": 1
+      }
+    ],
+    "slowest_stage": {
+      "schema_version": 1,
+      "event_id": "0001",
+      "run_id": "work-2026-11-18-153357",
+      "request_id": "REQ-744",
+      "category": "builder-work",
+      "operation": "Implement gallery sample selection and runner-up prompts",
+      "started_at": "2026-11-18T16:22:42Z",
+      "ended_at": "2026-11-18T16:31:01Z",
+      "elapsed_seconds": 499,
+      "elapsed_source": "wall_clock_difference",
+      "outcome": "success"
+    },
+    "slowest_command": {
+      "schema_version": 1,
+      "event_id": "0002",
+      "run_id": "work-2026-11-18-153357",
+      "request_id": "REQ-744",
+      "category": "verification-gate",
+      "operation": "merged maintainer gate attempt 1",
+      "started_at": "2026-11-18T16:33:58Z",
+      "ended_at": "2026-11-18T16:35:59Z",
+      "elapsed_seconds": 121,
+      "elapsed_source": "monotonic_in_process",
+      "outcome": "success",
+      "revision": "bbc1e5d0db0edfb0462b46b51af43b83cd809ac1",
+      "exit_status": 0,
+      "command_identity": "bash (2 argv tokens)"
+    },
+    "request_path": "do-work/working/REQ-744-report-writer-ranks-gallery-samples.md",
+    "section_written": true
+  }
+}

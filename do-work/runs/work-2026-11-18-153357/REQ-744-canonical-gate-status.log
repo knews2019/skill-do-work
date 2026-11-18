@@ -1,0 +1,13 @@
+start_utc=2026-11-18T16:18:32Z
+branch=main
+head_before=82a0eefe05f5cefee388151560ec56aeb378d6de
+argv: bash _dev/tests/maintainer-verify.sh
+attempt_1_exit=0
+final_exit=0
+head_after=82a0eefe05f5cefee388151560ec56aeb378d6de
+finish_utc=2026-11-18T16:20:33Z
+
+Observed console
+- Tool version floors, ShellCheck (249 tracked files), gofmt (348 tracked files) and the aggregate contract suite passed.
+- Both Go stages executed (fingerprint_uncertain). Board: 428 tests in 42s. CLI: 995 tests in 53s.
+- Fast tier reported 121s and "Maintainer verification passed." Heavy-only staged skills, updater and installer checks were skipped by the fast tier.

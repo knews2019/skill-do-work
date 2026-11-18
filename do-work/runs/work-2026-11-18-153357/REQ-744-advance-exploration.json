@@ -1,0 +1,81 @@
+{
+  "schema_version": 1,
+  "command": "advance",
+  "outcome": "refused",
+  "repository_root": "/Users/t2/Desktop/e1-experimental-repos/skill-do-work2",
+  "findings": [
+    {
+      "code": "ADVANCE-GATE-INPUT-IRRELEVANT",
+      "severity": "error",
+      "affected_ids": [
+        "REQ-744"
+      ],
+      "affected_paths": [
+        "do-work/working/REQ-744-report-writer-ranks-gallery-samples.md"
+      ],
+      "observed_evidence": [
+        "the current lifecycle phase requires agent judgment, not gate argv"
+      ],
+      "fixability": "safely_refused",
+      "automation_stop_reason": "the lifecycle phase cannot be derived safely",
+      "next_argv": [],
+      "next_just_recipe": "",
+      "verification_argv": [
+        "do-work-cli",
+        "--format",
+        "json",
+        "advance",
+        "REQ-744"
+      ]
+    }
+  ],
+  "changes": [],
+  "skipped_work": [],
+  "selected": [],
+  "excluded": [],
+  "selection_summary": {
+    "pending": 0,
+    "finished_awaiting_archive": 0,
+    "pending_answers": 0,
+    "blocked": 0,
+    "blocked_archive_collision": 0,
+    "blocked_dependency_cycle": 0,
+    "probed": 0,
+    "probe_succeeded": 0,
+    "skipped_impact_negligible": 0,
+    "total_estimated_minutes": 0,
+    "unknown_estimate_count": 0
+  },
+  "rollback": {
+    "status": "",
+    "actions": [],
+    "errors": []
+  },
+  "finalizations": [],
+  "advance": {
+    "request_id": "REQ-744",
+    "request_path": "do-work/working/REQ-744-report-writer-ranks-gallery-samples.md",
+    "tree_section": "working",
+    "status": "claimed",
+    "route": "B",
+    "phase": "agent judgment: exploration",
+    "phase_kind": "agent_judgment",
+    "missing_evidence": [
+      {
+        "kind": "section",
+        "path": "do-work/working/REQ-744-report-writer-ranks-gallery-samples.md",
+        "section": "Exploration",
+        "expected": "exploration findings"
+      }
+    ],
+    "next_argv": [],
+    "verification_argv": [
+      "do-work-cli",
+      "--format",
+      "json",
+      "advance",
+      "REQ-744"
+    ],
+    "gate_records": []
+  }
+}

@@ -1,0 +1,170 @@
+{
+  "schema_version": 1,
+  "command": "advance",
+  "outcome": "findings",
+  "repository_root": "/Users/t2/Desktop/e1-experimental-repos/skill-do-work2",
+  "findings": [
+    {
+      "code": "ADVANCE-GATE-INPUT-REQUIRED",
+      "severity": "warning",
+      "affected_ids": [
+        "REQ-744"
+      ],
+      "affected_paths": [
+        "do-work/working/REQ-744-report-writer-ranks-gallery-samples.md"
+      ],
+      "observed_evidence": [
+        "estimate-p50 requires estimator argv after --"
+      ],
+      "fixability": "manual",
+      "automation_stop_reason": "the action must supply its judgment-owned input",
+      "next_argv": [
+        "do-work-cli",
+        "--format",
+        "json",
+        "advance",
+        "REQ-744",
+        "--request-path",
+        "do-work/working/REQ-744-report-writer-ranks-gallery-samples.md",
+        "--",
+        "--route",
+        "B",
+        "--write-set",
+        "\u003ccount\u003e",
+        "--subsystems",
+        "\u003ccount\u003e",
+        "--acceptance",
+        "\u003ccount\u003e"
+      ],
+      "next_just_recipe": "",
+      "verification_argv": [
+        "do-work-cli",
+        "--format",
+        "json",
+        "advance",
+        "REQ-744"
+      ]
+    }
+  ],
+  "changes": [],
+  "skipped_work": [],
+  "selected": [],
+  "excluded": [],
+  "selection_summary": {
+    "pending": 0,
+    "finished_awaiting_archive": 0,
+    "pending_answers": 0,
+    "blocked": 0,
+    "blocked_archive_collision": 0,
+    "blocked_dependency_cycle": 0,
+    "probed": 0,
+    "probe_succeeded": 0,
+    "skipped_impact_negligible": 0,
+    "total_estimated_minutes": 0,
+    "unknown_estimate_count": 0
+  },
+  "rollback": {
+    "status": "",
+    "actions": [],
+    "errors": []
+  },
+  "finalizations": [],
+  "advance": {
+    "request_id": "REQ-744",
+    "request_path": "do-work/working/REQ-744-report-writer-ranks-gallery-samples.md",
+    "tree_section": "working",
+    "status": "claimed",
+    "route": "B",
+    "phase": "estimate-p50",
+    "phase_kind": "mechanical",
+    "missing_evidence": [],
+    "next_argv": [],
+    "verification_argv": [
+      "do-work-cli",
+      "--format",
+      "json",
+      "advance",
+      "REQ-744"
+    ],
+    "gate_records": [
+      {
+        "request_id": "REQ-744",
+        "request_path": "do-work/working/REQ-744-report-writer-ranks-gallery-samples.md",
+        "gate_id": "estimate-p50",
+        "provenance": "advance_executed",
+        "state": "needs_input",
+        "outcome": "findings",
+        "findings": [
+          {
+            "code": "ADVANCE-GATE-INPUT-REQUIRED",
+            "severity": "warning",
+            "affected_ids": [
+              "REQ-744"
+            ],
+            "affected_paths": [
+              "do-work/working/REQ-744-report-writer-ranks-gallery-samples.md"
+            ],
+            "observed_evidence": [
+              "estimate-p50 requires estimator argv after --"
+            ],
+            "fixability": "manual",
+            "automation_stop_reason": "the action must supply its judgment-owned input",
+            "next_argv": [
+              "do-work-cli",
+              "--format",
+              "json",
+              "advance",
+              "REQ-744",
+              "--request-path",
+              "do-work/working/REQ-744-report-writer-ranks-gallery-samples.md",
+              "--",
+              "--route",
+              "B",
+              "--write-set",
+              "\u003ccount\u003e",
+              "--subsystems",
+              "\u003ccount\u003e",
+              "--acceptance",
+              "\u003ccount\u003e"
+            ],
+            "next_just_recipe": "",
+            "verification_argv": [
+              "do-work-cli",
+              "--format",
+              "json",
+              "advance",
+              "REQ-744"
+            ]
+          }
+        ],
+        "changes": [],
+        "output_lines": [],
+        "next_argv": [
+          "do-work-cli",
+          "--format",
+          "json",
+          "advance",
+          "REQ-744",
+          "--request-path",
+          "do-work/working/REQ-744-report-writer-ranks-gallery-samples.md",
+          "--",
+          "--route",
+          "B",
+          "--write-set",
+          "\u003ccount\u003e",
+          "--subsystems",
+          "\u003ccount\u003e",
+          "--acceptance",
+          "\u003ccount\u003e"
+        ],
+        "verification_argv": [
+          "do-work-cli",
+          "--format",
+          "json",
+          "advance",
+          "REQ-744"
+        ]
+      }
+    ]
+  }
+}

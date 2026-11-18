@@ -1,0 +1,18 @@
+[
+  [
+    "ai-report",
+    "second-opinion",
+    "--preset",
+    "80-20",
+    "--editor-direction",
+    "Lead with the 10 percentage point drop, show checks for the UTC windows, denominator, units and arithmetic, and fold the fixture rows and calculation into one disclosure.",
+    "ai-reports/2026-11-18_1834_REQ-001-request-outcomes"
+  ],
+  [
+    "ai-report",
+    "second-opinion",
+    "--preset",
+    "feynman",
+    "ai-reports/2026-11-18_1834_REQ-001-request-outcomes"
+  ]
+]

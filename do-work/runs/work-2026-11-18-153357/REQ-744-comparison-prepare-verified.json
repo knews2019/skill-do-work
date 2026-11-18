@@ -1,0 +1,33 @@
+{
+  "backend": "codex",
+  "requested_model": "gpt-6.2-sol",
+  "actual_model": "gpt-6.2-sol",
+  "seen_models": [],
+  "state": "prepared",
+  "page": "",
+  "reply": "",
+  "judge_verdict": "not-run",
+  "judge_findings": [],
+  "banner_state": "not-inserted",
+  "reason": "",
+  "outside_paths": [],
+  "staging_page": "/private/tmp/req-744-acceptance-8u9ze8c1/request-outcomes/ai-reports/2026-11-18_1834_REQ-001-request-outcomes/.codex-gpt-6.2-sol-staging-1208801270.html",
+  "staging_reply": "/private/tmp/req-744-acceptance-8u9ze8c1/request-outcomes/ai-reports/2026-11-18_1834_REQ-001-request-outcomes/.codex-gpt-6.2-sol-staging-1208801270-reply.md",
+  "asset_prefix": "codex-gpt-6.2-sol-",
+  "model_evidence": "session-declared",
+  "preset": "80-20",
+  "preset_file": ".claude/skills/do-work-toolbox/docs/second-opinion-presets/80-20.md",
+  "editor_direction": "Lead with the 10 percentage point drop, show checks for the UTC windows, denominator, units and arithmetic, and fold the fixture rows and calculation into one disclosure.",
+  "base_page": "ai-reports/2026-11-18_1834_REQ-001-request-outcomes/index.html",
+  "prepare_exit": 0,
+  "prompt_base_page_in_bundle": "index.html",
+  "prompt_contains_exact_direction_and_installed_preset": true,
+  "staging_page_bytes": 0,
+  "staging_record": "/private/tmp/req-744-acceptance-8u9ze8c1/request-outcomes/ai-reports/2026-11-18_1834_REQ-001-request-outcomes/.codex-gpt-6.2-sol-staging-1208801270.json",
+  "staging_reply_exists": false,
+  "unchanged_original_bundle_sha256": {
+    "index.html": "81669473d7596aa4d72d35e1a60a6b457f6bd1bb4244aa09af74d57811c55017",
+    "presentation.css": "510b37fa84b07ea15a15e856434dd8910b17c2e85f96b6c9edfcae65f32a8691",
+    "presentation.js": "d9b8f43a4ab283f8e829fbdb777b31874b520ed2813fee3a0a4b405606cc0a48"
+  }
+}

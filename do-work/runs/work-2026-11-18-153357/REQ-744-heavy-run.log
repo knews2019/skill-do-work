@@ -1,0 +1,165 @@
+add-local-git-exclude: 1 case, 0 failures.
+architecture-report-preflight: 9 cases, 0 failures.
+atomic-download: 5 cases, 0 failures.
+finding TIMESTAMP-FUTURE [warning]: line 6 completed_at="2093-05-05T05:05:05Z" is later than the two-minute UTC skew allowance
+  paths: do-work/archive/UR-901/REQ-901-future.md
+finding TIMESTAMP-FUTURE [warning]: line 5 completed_at="2093-05-05T05:05:05Z" is later than the two-minute UTC skew allowance
+  paths: do-work/archive/REQ-902-future.md
+finding TIMESTAMP-REPAIR-PENDING [warning]: timestamp repair is pending
+  paths: do-work/archive/REQ-902-future.md
+finding TIMESTAMP-ORDER [warning]: line 5 claimed_at="2026-08-01T09:00:00Z" precedes created_at="2026-08-10T12:00:00Z"
+  paths: do-work/archive/REQ-905-order.md
+finding TIMESTAMP-ORDER [warning]: line 6 completed_at="2026-08-03T10:00:00Z" precedes claimed_at="2026-08-01T09:00:00Z"
+  paths: do-work/archive/REQ-905-order.md
+finding TIMESTAMP-FUTURE [warning]: line 4 created_at="2093-07-07T07:07:07Z" is later than the two-minute UTC skew allowance
+  paths: do-work/archive/REQ-906-untracked.md
+finding TIMESTAMP-REPAIR-REFUSED [warning]: line 4 created_at="2093-07-07T07:07:07Z": git blame could not derive the field's source instant
+  paths: do-work/archive/REQ-906-untracked.md
+finding TIMESTAMP-FUTURE [warning]: line 4 created_at="2093-01-01 00:00:00" is later than the two-minute UTC skew allowance
+  paths: do-work/archive/REQ-907-space.md
+finding TIMESTAMP-FUTURE [warning]: line 4 created_at="2093-01-01 00:00:00" is later than the two-minute UTC skew allowance
+  paths: do-work/archive/REQ-908-quoted-space.md
+finding TIMESTAMP-FUTURE [warning]: line 4 created_at="2093-03-03T03:03:03Z" is later than the two-minute UTC skew allowance
+  paths: do-work/archive/REQ-909-crlf.md
+finding TIMESTAMP-FUTURE [warning]: line 4 created_at="2093-04-04T04:04:04Z" is later than the two-minute UTC skew allowance
+  paths: do-work/archive/REQ-910-bom.md
+finding TIMESTAMP-REPAIR-REFUSED [warning]: line 4 created_at="9999-99-99T99:99:99Z": the value is not a calendar-valid supported timestamp
+  paths: do-work/archive/REQ-911-impossible.md
+finding TIMESTAMP-UNPARSEABLE [warning]: line 4 created_at="9999-99-99T99:99:99Z" is not a supported timestamp
+  paths: do-work/archive/REQ-911-impossible.md
+finding TIMESTAMP-ORDER [warning]: line 6 claimed_at="2026-08-01T09:00:00Z" precedes created_at="2026-08-10T12:00:00Z"
+  paths: do-work/archive/REQ-912-duplicate-anchor.md
+finding TIMESTAMP-FUTURE [warning]: line 4 created_at="2093-01-01T00:00:00+02:00" is later than the two-minute UTC skew allowance
+  paths: do-work/archive/REQ-913-offset.md
+finding TIMESTAMP-REPAIR-REFUSED [warning]: line 4 created_at="2093-01-01T00:00:00+02:00": numeric offsets, fractional seconds, non-ASCII padding, and unsupported shapes are diagnosis-only
+  paths: do-work/archive/REQ-913-offset.md
+finding TIMESTAMP-FUTURE [warning]: line 4 created_at="2093-01-01 00:00:00 " is later than the two-minute UTC skew allowance
+  paths: do-work/archive/REQ-915-padded-quote.md
+finding TIMESTAMP-REPAIR-REFUSED [warning]: line 4 created_at="9999-99-99T99:99:99Z": the value is not a calendar-valid supported timestamp
+  paths: do-work/archive/REQ-916-impossible.md
+finding TIMESTAMP-UNPARSEABLE [warning]: line 4 created_at="9999-99-99T99:99:99Z" is not a supported timestamp
+  paths: do-work/archive/REQ-916-impossible.md
+audit-archive-timestamps: 11 cases, 0 failures.
+capture-screenshot: 2 cases, 0 failures.
+finding RESERVATION-MALFORMED [warning]: marker name is not canonical
+  paths: do-work/.req-reservations/README
+finding RESERVATION-MALFORMED [warning]: marker name is not canonical
+  paths: do-work/.req-reservations/README
+finding RESERVATION-MALFORMED [warning]: marker name is not canonical
+  paths: do-work/.req-reservations/README
+finding RESERVATION-MALFORMED [warning]: marker name is not canonical
+  paths: do-work/.req-reservations/README
+finding RESERVATION-MALFORMED [warning]: marker name is not canonical
+  paths: do-work/.req-reservations/README
+finding RESERVATION-ROOT-UNSAFE [error]: reservation root is not a real directory
+  paths: do-work/.req-reservations
+cleanup-req-reservations: 6 cases, 0 failures.
+generate-report-image-batch: rolled_back
+repository: /var/folders/2w/kw8sv6rd1z15yjykl787ryph0000gn/T/prescribed-shell-scripts.cVDK2v
+finding GIT-MUTATION-FAILED [error]: context canceled
+  paths: image-interrupt-batch/ai-reports/<report-slug>/generated/01-architecture.png, image-interrupt-batch/ai-reports/<report-slug>/generated/02-dataflow.png
+  fixability: manual
+  stopped: the mutation failed and every declared target was restored
+  next: do-work-cli --format json generate-report-image-batch
+  verify: git status --short -- "image-interrupt-batch/ai-reports/<report-slug>/generated/01-architecture.png" "image-interrupt-batch/ai-reports/<report-slug>/generated/02-dataflow.png"
+rollback: succeeded
+generate-report-image-batch: 6 cases, 0 failures.
+/var/folders/2w/kw8sv6rd1z15yjykl787ryph0000gn/T/prescribed-shell-scripts.mZMOHo/report.png
+generate-report-image: findings
+repository: /var/folders/2w/kw8sv6rd1z15yjykl787ryph0000gn/T/prescribed-shell-scripts.mZMOHo
+finding REPORT-IMAGE-GENERATION-FAILED [warning]: no report image backend succeeded
+  paths: mixed-failure.png
+  fixability: manual
+  stopped: the target was left unchanged
+  next: do-work-cli generate-report-image
+  verify: do-work-cli --format json generate-report-image
+/var/folders/2w/kw8sv6rd1z15yjykl787ryph0000gn/T/prescribed-shell-scripts.mZMOHo/mixed-success.png
+/var/folders/2w/kw8sv6rd1z15yjykl787ryph0000gn/T/prescribed-shell-scripts.mZMOHo/agentic-1.png
+generate-report-image: 11 cases, 0 failures.
+install-last30days: 2 cases, 0 failures.
+install-memory-hooks: 1 case, 0 failures.
+lexical-memory-recall: 1 case, 0 failures.
+protected-inventory: 2 cases, 0 failures.
+publish-portfolio-summary: 7 cases, 0 failures.
+qualify: 26 cases, 0 failures.
+finding TIMESTAMP-FUTURE [warning]: line 4 created_at="2093-01-01T00:00:00Z" is later than the two-minute UTC skew allowance
+  paths: do-work/queue/REQ-801-future.md
+finding TIMESTAMP-ORDER [warning]: line 5 claimed_at="2026-08-01T09:00:00Z" precedes created_at="2026-08-10T12:00:00Z"
+  paths: do-work/working/REQ-802-order.md
+finding TIMESTAMP-ORDER [warning]: line 6 completed_at="2026-08-03T10:00:00Z" precedes claimed_at="2026-08-01T09:00:00Z"
+  paths: do-work/working/REQ-802-order.md
+finding TIMESTAMP-FUTURE [warning]: line 5 claimed_at="2093-02-02T02:02:02Z" is later than the two-minute UTC skew allowance
+  paths: do-work/queue/REQ-803-committed.md
+finding TIMESTAMP-REPAIR-REFUSED [warning]: line 5 blocked_at="2026-08-11T09:00:00+09:00": numeric offsets, fractional seconds, non-ASCII padding, and unsupported shapes are diagnosis-only
+  paths: do-work/queue/REQ-804-clean.md
+finding TIMESTAMP-FUTURE [warning]: line 4 created_at="2093-04-04T04:04:04Z" is later than the two-minute UTC skew allowance
+  paths: do-work/queue/REQ-806-truncated.md
+finding TIMESTAMP-CONTENT-LOSS [error]: content was lost before this run; the request is below half its committed size
+  paths: do-work/queue/REQ-806-truncated.md
+finding TIMESTAMP-FUTURE [warning]: line 4 created_at="2093-01-01 00:00:00" is later than the two-minute UTC skew allowance
+  paths: do-work/queue/REQ-807-space.md
+finding TIMESTAMP-FUTURE [warning]: line 4 created_at="2093-01-01 00:00:00" is later than the two-minute UTC skew allowance
+  paths: do-work/queue/REQ-808-quoted-space.md
+finding TIMESTAMP-FUTURE [warning]: line 4 created_at="2093-03-03T03:03:03Z" is later than the two-minute UTC skew allowance
+  paths: do-work/queue/REQ-809-crlf.md
+finding TIMESTAMP-FUTURE [warning]: line 4 created_at="2093-04-04T04:04:04Z" is later than the two-minute UTC skew allowance
+  paths: do-work/queue/REQ-810-bom.md
+finding TIMESTAMP-REPAIR-REFUSED [warning]: line 4 created_at="9999-99-99T99:99:99Z": the value is not a calendar-valid supported timestamp
+  paths: do-work/queue/REQ-811-impossible.md
+finding TIMESTAMP-UNPARSEABLE [warning]: line 4 created_at="9999-99-99T99:99:99Z" is not a supported timestamp
+  paths: do-work/queue/REQ-811-impossible.md
+finding TIMESTAMP-REPAIR-REFUSED [warning]: line 4 created_at="2093-04-31T10:00:00Z": the value is not a calendar-valid supported timestamp
+  paths: do-work/queue/REQ-812-april-31.md
+finding TIMESTAMP-UNPARSEABLE [warning]: line 4 created_at="2093-04-31T10:00:00Z" is not a supported timestamp
+  paths: do-work/queue/REQ-812-april-31.md
+finding TIMESTAMP-REPAIR-REFUSED [warning]: line 4 created_at="2093-02-29T10:00:00Z": the value is not a calendar-valid supported timestamp
+  paths: do-work/queue/REQ-813-not-a-leap-year.md
+finding TIMESTAMP-UNPARSEABLE [warning]: line 4 created_at="2093-02-29T10:00:00Z" is not a supported timestamp
+  paths: do-work/queue/REQ-813-not-a-leap-year.md
+finding TIMESTAMP-FUTURE [warning]: line 4 created_at="2092-02-29T10:00:00Z" is later than the two-minute UTC skew allowance
+  paths: do-work/queue/REQ-814-real-leap-day.md
+finding TIMESTAMP-FUTURE [warning]: line 4 created_at="2093-01-01T00:00:00+02:00" is later than the two-minute UTC skew allowance
+  paths: do-work/queue/REQ-817-offset-ahead.md
+finding TIMESTAMP-REPAIR-REFUSED [warning]: line 4 created_at="2093-01-01T00:00:00+02:00": numeric offsets, fractional seconds, non-ASCII padding, and unsupported shapes are diagnosis-only
+  paths: do-work/queue/REQ-817-offset-ahead.md
+finding TIMESTAMP-FUTURE [warning]: line 4 created_at="2093-01-01T00:00:00-05:00" is later than the two-minute UTC skew allowance
+  paths: do-work/queue/REQ-818-offset-behind.md
+finding TIMESTAMP-REPAIR-REFUSED [warning]: line 4 created_at="2093-01-01T00:00:00-05:00": numeric offsets, fractional seconds, non-ASCII padding, and unsupported shapes are diagnosis-only
+  paths: do-work/queue/REQ-818-offset-behind.md
+finding TIMESTAMP-FUTURE [warning]: line 4 created_at="2093-01-01T00:00:00+02:00" is later than the two-minute UTC skew allowance
+  paths: do-work/queue/REQ-819-quoted-offset.md
+finding TIMESTAMP-REPAIR-REFUSED [warning]: line 4 created_at="2093-01-01T00:00:00+02:00": numeric offsets, fractional seconds, non-ASCII padding, and unsupported shapes are diagnosis-only
+  paths: do-work/queue/REQ-819-quoted-offset.md
+finding TIMESTAMP-FUTURE [warning]: line 4 created_at="2093-01-01T00:00:00.500Z" is later than the two-minute UTC skew allowance
+  paths: do-work/queue/REQ-820-fractional-zulu.md
+finding TIMESTAMP-REPAIR-REFUSED [warning]: line 4 created_at="2093-01-01T00:00:00.500Z": numeric offsets, fractional seconds, non-ASCII padding, and unsupported shapes are diagnosis-only
+  paths: do-work/queue/REQ-820-fractional-zulu.md
+finding TIMESTAMP-FUTURE [warning]: line 4 created_at="2093-01-01T00:00:00.5" is later than the two-minute UTC skew allowance
+  paths: do-work/queue/REQ-821-fractional-bare.md
+finding TIMESTAMP-REPAIR-REFUSED [warning]: line 4 created_at="2093-01-01T00:00:00.5": numeric offsets, fractional seconds, non-ASCII padding, and unsupported shapes are diagnosis-only
+  paths: do-work/queue/REQ-821-fractional-bare.md
+finding TIMESTAMP-FUTURE [warning]: line 4 created_at="2093-01-01 00:00:00.5" is later than the two-minute UTC skew allowance
+  paths: do-work/queue/REQ-822-fractional-space.md
+finding TIMESTAMP-REPAIR-REFUSED [warning]: line 4 created_at="2093-01-01 00:00:00.5": numeric offsets, fractional seconds, non-ASCII padding, and unsupported shapes are diagnosis-only
+  paths: do-work/queue/REQ-822-fractional-space.md
+finding TIMESTAMP-ORDER [warning]: line 6 claimed_at="2026-08-01T09:00:00Z" precedes created_at="2026-08-10T12:00:00Z"
+  paths: do-work/working/REQ-815-duplicate-anchor.md
+finding TIMESTAMP-FUTURE [warning]: line 4 created_at="2093-01-01 00:00:00 " is later than the two-minute UTC skew allowance
+  paths: do-work/queue/REQ-825-padded-quote.md
+finding TIMESTAMP-FUTURE [warning]: line 4 created_at="2093-01-01T00:00:00Z\u00a0" is later than the two-minute UTC skew allowance
+  paths: do-work/queue/REQ-826-non-ascii-pad.md
+finding TIMESTAMP-REPAIR-REFUSED [warning]: line 4 created_at="2093-01-01T00:00:00Z\u00a0": numeric offsets, fractional seconds, non-ASCII padding, and unsupported shapes are diagnosis-only
+  paths: do-work/queue/REQ-826-non-ascii-pad.md
+repair-req-timestamps: 17 cases, 0 failures.
+run-blocked-check: 2 cases, 0 failures.
+show-commit-diff: 1 case, 0 failures.
+stage-exact-deletion: success
+repository: /var/folders/2w/kw8sv6rd1z15yjykl787ryph0000gn/T/prescribed-shell-scripts.RukX1B/deletion-repo
+change secret name.key [staged-deletion]: staged one exact tracked deletion
+stage-exact-deletion: success
+repository: /var/folders/2w/kw8sv6rd1z15yjykl787ryph0000gn/T/prescribed-shell-scripts.RukX1B/magic-deletion-repo
+change :(glob)* [staged-deletion]: staged one exact tracked deletion
+stage-exact-deletion: 2 cases, 0 failures.
+Prescribed shell script behavior probes passed (112 named script cases across 18 per-script files).
+staged skills contract: PASS
+test-file duration: _dev/tests/staged-skills-contract.sh 32s (limit none (heavy))

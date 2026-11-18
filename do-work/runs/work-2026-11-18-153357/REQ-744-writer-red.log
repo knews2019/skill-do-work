@@ -1,0 +1,11 @@
+Installed routing: ordinary Steps 1–8, proposal/root-cause share Steps 3–4, revise takes Steps 2–8, second opinion dispatches early.
+Source and kit RED: no gallery listing/ranking at the evidence-to-visuals seam, no head marker, one fallback layout and one teaching line.
+Ordinary baseline: in-session reduced writer fixture from the installed action and kit with the specified A/B data.
+Fixture: ai-reports/2026-11-18_1618_req-744-baseline-fixture/index.html
+Authored fixture has the correct verdict and old closing suggestions.
+Closing argv: ["ai-report", "second-opinion", "--editor-direction", "Put the verdict above an evidence table with completed and successful requests", "ai-reports/2026-11-18_1618_req-744-baseline-fixture"]
+Closing argv: ["ai-report", "second-opinion", "--preset", "first-principles", "ai-reports/2026-11-18_1618_req-744-baseline-fixture"]
+Expected acceptance failures: sample meta wanted two-measures-side-by-side, got None. Preset + direction runner-up wanted ≥1, got 0.
+Prepare control argv: ["bash", "<installed-cli>", "--repo-root", "<consumer>", "--format", "json", "ai-report-second-opinion", "--prepare", "--backend", "codex", "--model", "gpt-6.2-sol", "--preset", "first-principles", "--editor-direction", "Lead with the verdict and put the source rows and the calculation behind one disclosure", "ai-reports/2026-11-18_1618_req-744-baseline-fixture/index.html"]
+First prepare control was refused because fresh-install and fixture files were uncommitted outside the bundle. Retrying after committing only the disposable consumer.
+Prepare control passed: state=prepared, installed first-principles preset, exact direction included in the prompt, explicit base page selected, original bytes preserved and no sibling published.

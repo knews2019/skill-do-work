@@ -1,0 +1,178 @@
+{
+  "schema_version": 1,
+  "command": "advance",
+  "outcome": "success",
+  "repository_root": "/Users/t2/Desktop/e1-experimental-repos/skill-do-work2",
+  "findings": [
+    {
+      "code": "FINALIZATION-COMPLETE",
+      "severity": "info",
+      "affected_ids": [
+        "REQ-744"
+      ],
+      "affected_paths": [
+        "do-work/archive/UR-183/REQ-744-report-writer-ranks-gallery-samples.md"
+      ],
+      "observed_evidence": [
+        "resumable finalization reached verified cleanup-complete state"
+      ],
+      "fixability": "automatic",
+      "automation_stop_reason": "",
+      "next_argv": [],
+      "next_just_recipe": "",
+      "verification_argv": [
+        "do-work-cli",
+        "--format",
+        "json",
+        "recover-finalization"
+      ]
+    }
+  ],
+  "changes": [],
+  "skipped_work": [],
+  "selected": [],
+  "excluded": [],
+  "selection_summary": {
+    "pending": 0,
+    "finished_awaiting_archive": 0,
+    "pending_answers": 0,
+    "blocked": 0,
+    "blocked_archive_collision": 0,
+    "blocked_dependency_cycle": 0,
+    "probed": 0,
+    "probe_succeeded": 0,
+    "skipped_impact_negligible": 0,
+    "total_estimated_minutes": 0,
+    "unknown_estimate_count": 0
+  },
+  "rollback": {
+    "status": "",
+    "actions": [],
+    "errors": []
+  },
+  "finalization": {
+    "request_id": "REQ-744",
+    "request_path": "do-work/working/REQ-744-report-writer-ranks-gallery-samples.md",
+    "archive_path": "do-work/archive/UR-183/REQ-744-report-writer-ranks-gallery-samples.md",
+    "journal_path": "/Users/t2/Desktop/e1-experimental-repos/skill-do-work2/.git/do-work-finalization/REQ-744.json",
+    "phase": "cleanup_complete",
+    "terminal_status": "completed",
+    "resumed": false,
+    "discovered": false,
+    "commit_paths": [
+      "CHANGELOG.md",
+      "VERSION",
+      "_dev/primes/lessons-action-files.md",
+      "do-work/CHECKPOINT.md",
+      "do-work/archive/REQ-743-report-gallery-samples-command-add-form.md",
+      "do-work/archive/UR-183/REQ-743-report-gallery-samples-command-add-form.md",
+      "do-work/archive/UR-183/REQ-744-report-writer-ranks-gallery-samples.md",
+      "do-work/archive/UR-183/input.md",
+      "do-work/calibration-log.tsv",
+      "do-work/lessons-index.md",
+      "do-work/user-requests/UR-183/input.md",
+      "do-work/working/REQ-744-report-writer-ranks-gallery-samples.md",
+      "skills/do-work/CHANGELOG.md",
+      "skills/do-work/VERSION",
+      "skills/do-work/actions/version.md",
+      "skills/do-work/tools/lessons-do-work-update.md"
+    ],
+    "primary_commit": "49c2ab2792fd9442c13040924e2547cd74d9e8f4",
+    "metadata_commit": "",
+    "created_primary_commit": "49c2ab2792fd9442c13040924e2547cd74d9e8f4",
+    "created_metadata_commit": "",
+    "blocked_paths": [],
+    "reason_codes": [],
+    "next_argv": [
+      "do-work-cli",
+      "--format",
+      "json",
+      "recover-finalization"
+    ],
+    "verification_argv": [
+      "do-work-cli",
+      "--format",
+      "json",
+      "recover-finalization"
+    ],
+    "collection_argv": [
+      "do-work-cli",
+      "--format",
+      "json",
+      "uncommitted-inventory"
+    ]
+  },
+  "finalizations": [
+    {
+      "request_id": "REQ-744",
+      "request_path": "do-work/working/REQ-744-report-writer-ranks-gallery-samples.md",
+      "archive_path": "do-work/archive/UR-183/REQ-744-report-writer-ranks-gallery-samples.md",
+      "journal_path": "/Users/t2/Desktop/e1-experimental-repos/skill-do-work2/.git/do-work-finalization/REQ-744.json",
+      "phase": "cleanup_complete",
+      "terminal_status": "completed",
+      "resumed": false,
+      "discovered": false,
+      "commit_paths": [
+        "CHANGELOG.md",
+        "VERSION",
+        "_dev/primes/lessons-action-files.md",
+        "do-work/CHECKPOINT.md",
+        "do-work/archive/REQ-743-report-gallery-samples-command-add-form.md",
+        "do-work/archive/UR-183/REQ-743-report-gallery-samples-command-add-form.md",
+        "do-work/archive/UR-183/REQ-744-report-writer-ranks-gallery-samples.md",
+        "do-work/archive/UR-183/input.md",
+        "do-work/calibration-log.tsv",
+        "do-work/lessons-index.md",
+        "do-work/user-requests/UR-183/input.md",
+        "do-work/working/REQ-744-report-writer-ranks-gallery-samples.md",
+        "skills/do-work/CHANGELOG.md",
+        "skills/do-work/VERSION",
+        "skills/do-work/actions/version.md",
+        "skills/do-work/tools/lessons-do-work-update.md"
+      ],
+      "primary_commit": "49c2ab2792fd9442c13040924e2547cd74d9e8f4",
+      "metadata_commit": "",
+      "created_primary_commit": "49c2ab2792fd9442c13040924e2547cd74d9e8f4",
+      "created_metadata_commit": "",
+      "blocked_paths": [],
+      "reason_codes": [],
+      "next_argv": [
+        "do-work-cli",
+        "--format",
+        "json",
+        "recover-finalization"
+      ],
+      "verification_argv": [
+        "do-work-cli",
+        "--format",
+        "json",
+        "recover-finalization"
+      ],
+      "collection_argv": [
+        "do-work-cli",
+        "--format",
+        "json",
+        "uncommitted-inventory"
+      ]
+    }
+  ],
+  "advance": {
+    "request_id": "REQ-744",
+    "request_path": "do-work/working/REQ-744-report-writer-ranks-gallery-samples.md",
+    "tree_section": "working",
+    "status": "claimed",
+    "route": "B",
+    "phase": "finalize",
+    "phase_kind": "mechanical",
+    "missing_evidence": [],
+    "next_argv": [],
+    "verification_argv": [
+      "do-work-cli",
+      "--format",
+      "json",
+      "advance",
+      "REQ-744"
+    ],
+    "gate_records": []
+  }
+}
