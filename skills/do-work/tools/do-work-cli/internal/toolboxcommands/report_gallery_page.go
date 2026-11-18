@@ -22,7 +22,9 @@ type reportGalleryCard struct {
 	Title   string
 	UseWhen string
 	Borrow  []string
-	Links   []reportGalleryLink
+	Preview string
+	Open    reportGalleryLink
+	More    []reportGalleryLink
 }
 
 type reportGalleryKind struct {
@@ -52,20 +54,26 @@ func renderReportGalleryPage(repositoryRoot string, repository *os.Root, toolbox
 	for _, sample := range samples {
 		card := reportGalleryCard{Title: sample.Title, UseWhen: sample.UseWhen, Borrow: sample.Borrow}
 		folder := path.Dir(sample.RecordPath)
+		var links []reportGalleryLink
 		if href := reportGalleryFileLink(repository, path.Join(folder, reportGalleryExample)); href != "" {
-			card.Links = append(card.Links, reportGalleryLink{"Worked example", href})
+			links = append(links, reportGalleryLink{"Worked example", href})
 		}
 		if sample.Image != "" {
-			if href := reportGalleryFileLink(repository, path.Join(folder, sample.Image)); href != "" {
-				card.Links = append(card.Links, reportGalleryLink{"Reference image", href})
+			card.Preview = reportGalleryFileLink(repository, path.Join(folder, sample.Image))
+			if card.Preview != "" {
+				links = append(links, reportGalleryLink{"Reference image", card.Preview})
 			}
 		}
-		if len(card.Links) == 0 {
+		if card.Preview == "" {
+			card.Preview = reportGalleryFileLink(repository, path.Join(folder, "preview.svg"))
+		}
+		if len(links) == 0 {
 			if href := reportGallerySourceLink(repositoryRoot, repository, sample.Source); href != "" {
-				card.Links = append(card.Links, reportGalleryLink{"Source", href})
+				links = append(links, reportGalleryLink{"Source", href})
 			}
 		}
-		card.Links = append(card.Links, reportGalleryLink{"Sample record", reportGalleryHref(sample.RecordPath)})
+		links = append(links, reportGalleryLink{"Sample record", reportGalleryHref(sample.RecordPath)})
+		card.Open, card.More = links[0], links[1:]
 		page.Samples = append(page.Samples, card)
 	}
 	var output bytes.Buffer
@@ -187,48 +195,94 @@ var reportGalleryPageTemplate = template.Must(template.New("report-gallery").Par
 <title>AI Report Gallery</title>
 {{if .Stylesheet}}<link rel="stylesheet" href="{{.Stylesheet}}">{{end}}
 <style>
-html { color-scheme: light dark; }
-.gallery { max-width: 72rem; margin: 0 auto; padding: 0 clamp(1rem, 4vw, 3rem) 4rem; }
-.gallery .band { padding: 2rem 0; }
-.gallery-header { padding: 3rem 0 1rem; }
-.gallery-links { display: flex; flex-wrap: wrap; gap: .5rem 1.25rem; }
-.gallery-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 19rem), 1fr)); gap: 1rem; }
-.gallery-card { display: flex; flex-direction: column; }
-.gallery-card ul { margin: .25rem 0 1rem; padding-inline-start: 1.25em; }
-.gallery-card .gallery-links { margin: auto 0 0; font-size: .95rem; }
-.gallery-kinds { list-style: none; margin: 0; padding: 0; }
-.gallery-kinds li { display: grid; grid-template-columns: minmax(9rem, 13rem) 1fr; gap: .25rem 1rem; padding: .65rem 0; border-bottom: 1px solid var(--line, GrayText); }
-.gallery-presets { list-style: none; padding: 0; }
-.gallery-copy { display: flex; align-items: center; flex-wrap: wrap; gap: .75rem; }
-.gallery-copy code { padding: .35em .5em; overflow-wrap: anywhere; }
+* { box-sizing: border-box; }
+:root {
+  color-scheme: light dark;
+  --ground: #faf9f5; --panel: #fffefa; --text: #232b28; --subtle: #535d56;
+  --edge: #cccfc5; --accent: #285949; --wash: #e9eee7;
+  --sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --serif: "Iowan Old Style", "Baskerville", Georgia, serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root { --ground: #171c1a; --panel: #1e2522; --text: #f0f2eb; --subtle: #b7c0b9; --edge: #46524b; --accent: #b1dfc7; --wash: #293a31; }
+}
+html, body { background: var(--ground); color: var(--text); }
+body { margin: 0; font: 16px/1.5 var(--sans); }
+.gallery { width: 100%; padding: 0 clamp(16px, 3.2vw, 76px) 3rem; }
+.gallery h1, .gallery h2, .gallery h3 { color: var(--text); font-family: var(--serif); font-weight: 500; line-height: 1.1; }
+.gallery h1 { margin: 0; font-size: clamp(2.3rem, 3.4vw, 3.6rem); letter-spacing: -.045em; }
+.gallery h2 { margin: 0 0 1rem; font-size: clamp(1.6rem, 2vw, 2.1rem); letter-spacing: -.025em; }
+.gallery a { color: var(--accent); text-underline-offset: .2em; }
+.gallery :focus-visible { outline: 3px solid var(--accent); outline-offset: 4px; }
+.gallery-header { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem; padding: clamp(16px, 1.6vw, 30px) 0 1rem; border-bottom: 2px solid var(--text); }
+.gallery-nav, .gallery-links { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem 1.15rem; }
+.gallery-nav a { font-size: .95rem; font-weight: 600; text-decoration: none; padding-block: .45rem; }
+.gallery-nav a:hover, .sample-open:hover h3 { text-decoration: underline; }
+.gallery-nav .add-link, .gallery-copy button { background: var(--text); color: var(--ground); border: 1px solid var(--text); border-radius: .4rem; padding: .65rem 1rem; font: 600 .95rem var(--sans); cursor: pointer; }
+.gallery section { scroll-margin-top: 1rem; }
+.samples { padding: 1.1rem 0 2rem; }
+.gallery-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: clamp(14px, 1.55vw, 32px); align-items: start; }
+.gallery-card { min-width: 0; }
+.sample-open { display: block; text-decoration: none; }
+.sample-preview { display: block; aspect-ratio: 480 / 284; width: 100%; height: auto; object-fit: contain; background: var(--panel); border: 1px solid var(--edge); border-radius: .5rem; }
+.sample-open:hover .sample-preview { border-color: var(--accent); }
+.sample-open h3 { display: flex; justify-content: space-between; align-items: baseline; gap: .5rem; margin: .8rem 0 .35rem; font-size: clamp(1.42rem, 1.8vw, 2.2rem); letter-spacing: -.025em; }
+.sample-open h3 span { font: 400 1.15rem var(--sans); color: var(--accent); }
+.gallery-card p { margin: 0 0 .45rem; color: var(--subtle); line-height: 1.45; max-width: 52ch; }
+.gallery-card details { background: none; border: 0; padding: 0; border-radius: 0; }
+.gallery-card summary { display: list-item; font: 600 .9rem var(--sans); width: fit-content; color: var(--accent); padding: .65rem 0; cursor: pointer; }
+.gallery-card details[open] summary { border: 0; margin: 0; }
+.gallery-card ul { padding-left: 1.2rem; margin: .25rem 0 .6rem; }
+.gallery-card details a { font-size: .9rem; }
+.gallery-tools { display: grid; grid-template-columns: 3fr 2fr; gap: clamp(1.5rem, 4vw, 5rem); border-block: 1px solid var(--edge); padding: 1.65rem 0 2rem; }
+.gallery-kinds, .gallery-presets { list-style: none; margin: 0; padding: 0; }
+.gallery-kinds li { border-top: 1px solid var(--edge); padding: .55rem 0; display: grid; grid-template-columns: minmax(7rem, 27%) minmax(0, 1fr); gap: .4rem 1rem; }
+.gallery-kinds code, .gallery-copy code { background: none; color: var(--text); padding: 0; overflow-wrap: anywhere; }
+.gallery-presets { display: flex; flex-wrap: wrap; gap: .45rem; }
+.gallery-presets a { display: block; padding: .4rem .75rem; background: var(--wash); border-radius: .35rem; font-size: .9rem; text-decoration: none; }
+.gallery-presets a:hover { text-decoration: underline; }
+.gallery-add { padding: 1.6rem 0; }
+.gallery-add p { color: var(--subtle); margin: 0 0 .75rem; }
+.gallery-copy { display: flex; align-items: center; flex-wrap: wrap; gap: .8rem; }
 .gallery-copy button[hidden] { display: none; }
-@media (max-width: 40rem) { .gallery-kinds li { grid-template-columns: 1fr; } }
+@media (max-width: 1100px) { .gallery-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 720px) { .gallery-tools { grid-template-columns: 1fr; } }
+@media (max-width: 560px) {
+  .gallery-grid { grid-template-columns: minmax(0, 1fr); gap: 1.6rem; }
+  .gallery-header { align-items: start; flex-direction: column; gap: .5rem; }
+  .gallery-nav { gap: .5rem .9rem; }
+  .gallery-kinds li { grid-template-columns: 1fr; }
+}
 </style>
 </head>
 <body>
 <main class="gallery">
   <header class="gallery-header">
     <h1>AI Report Gallery</h1>
-    <nav class="gallery-links" aria-label="Gallery sections">
-      <a href="#samples">Samples</a>
+    <nav class="gallery-nav" aria-label="Gallery sections">
       <a href="#report-kinds">Report kinds</a>
-      <a href="#presets">Second-opinion presets</a>
-      <a href="#add-sample">Add a sample</a>
+      <a href="#presets">Presets</a>
+      <a class="add-link" href="#add-sample">Add a sample</a>
     </nav>
   </header>
-  <section class="band" id="samples" aria-labelledby="samples-title">
-    <h2 id="samples-title">Samples</h2>
+  <section class="samples" id="samples" aria-labelledby="samples-title">
+    <h2 id="samples-title">Presentation samples</h2>
     {{if .Samples}}<div class="gallery-grid">
-      {{range .Samples}}<article class="node gallery-card">
-        <h3>{{.Title}}</h3>
+      {{range .Samples}}<article class="gallery-card">
+        <a class="sample-open" href="{{.Open.Href}}" aria-label="{{.Title}} — {{.Open.Label}}">
+          {{if .Preview}}<img class="sample-preview" src="{{.Preview}}" alt="" width="480" height="284">{{end}}
+          <h3>{{.Title}}<span aria-hidden="true">→</span></h3>
+        </a>
         <p>{{.UseWhen}}</p>
-        <strong>Borrow</strong>
-        <ul>{{range .Borrow}}<li>{{.}}</li>{{end}}</ul>
-        <p class="gallery-links">{{range .Links}}<a href="{{.Href}}">{{.Label}}</a>{{end}}</p>
+        <details><summary>What to borrow</summary>
+          <ul aria-label="Borrow">{{range .Borrow}}<li>{{.}}</li>{{end}}</ul>
+          {{if .More}}<div class="gallery-links">{{range .More}}<a href="{{.Href}}">{{.Label}}</a>{{end}}</div>{{end}}
+        </details>
       </article>{{end}}
     </div>{{else}}<p>No samples yet.</p>{{end}}
   </section>
-  <section class="band" id="report-kinds" aria-labelledby="report-kinds-title">
+  <div class="gallery-tools">
+  <section id="report-kinds" aria-labelledby="report-kinds-title">
     <h2 id="report-kinds-title">Report kinds</h2>
     <ul class="gallery-kinds">
       {{range .Kinds}}<li><strong>{{.Label}}</strong>
@@ -236,13 +290,14 @@ html { color-scheme: light dark; }
       </li>{{end}}
     </ul>
   </section>
-  <section class="band" id="presets" aria-labelledby="presets-title">
+  <section id="presets" aria-labelledby="presets-title">
     <h2 id="presets-title">Second-opinion presets</h2>
     {{if .Presets}}<ul class="gallery-links gallery-presets">
       {{range .Presets}}<li><a href="{{.Href}}">{{.Label}}</a></li>{{end}}
     </ul>{{else}}<p>No shipped presets found.</p>{{end}}
   </section>
-  <section class="band" id="add-sample" aria-labelledby="add-sample-title">
+  </div>
+  <section class="gallery-add" id="add-sample" aria-labelledby="add-sample-title">
     <h2 id="add-sample-title">Add a sample</h2>
     <p>Paste this line into your agent, replacing the placeholders with the source and what you liked.</p>
     <div class="gallery-copy">

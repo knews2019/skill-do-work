@@ -1,6 +1,6 @@
 ---
 title: Verdict with checks
-use_when: The reader needs to know whether a judgment holds and what was checked before reaching it.
+use_when: What evidence supports the verdict, and which checks did it pass?
 source: shipped
 added: 2026-11-18
 ---

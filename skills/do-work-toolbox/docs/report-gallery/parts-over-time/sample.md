@@ -1,6 +1,6 @@
 ---
 title: Parts over time
-use_when: The reader wants to know which parts account for a change in the total over time.
+use_when: Which parts account for the change in the total?
 source: shipped
 added: 2026-11-18
 ---

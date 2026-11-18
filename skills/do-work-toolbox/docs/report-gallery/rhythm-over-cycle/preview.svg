@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 284" role="img" aria-labelledby="title desc">
+  <title id="title">Library visitors through the day</title>
+  <desc id="desc">Sample counts by activity. Total visits peak at 97 visitors at 16:00.</desc>
+  <rect width="480" height="284" fill="#f5eced"/>
+  <g font-family="system-ui, sans-serif" fill="#463649" color="#463649">
+    <text x="26" y="37" font-size="23" font-weight="650">Library visitors</text>
+    <text x="453" y="35" text-anchor="end" font-size="13">Sample data</text>
+    <text x="26" y="62" font-size="15">Six activities across a day</text>
+    <polygon fill="#413753" points="29,220 99,208 169,194 239,201 309,208 379,219 449,227 449,233 379,233 309,233 239,233 169,233 99,233 29,233"/>
+    <polygon fill="#786383" points="29,212 99,178 169,170 239,181 309,191 379,206 449,223 449,227 379,219 309,208 239,201 169,194 99,208 29,220"/>
+    <polygon fill="#a990ae" points="29,198 99,164 169,157 239,158 309,175 379,199 449,222 449,223 379,206 309,191 239,181 169,170 99,178 29,212"/>
+    <polygon fill="#cb9180" points="29,194 99,153 169,140 239,140 309,141 379,184 449,219 449,222 379,199 309,175 239,158 169,157 99,164 29,198"/>
+    <polygon fill="#dcaa80" points="29,191 99,147 169,130 239,124 309,115 379,151 449,209 449,219 379,184 309,141 239,140 169,140 99,153 29,194"/>
+    <polygon fill="#e7c99e" points="29,168 99,131 169,117 239,108 309,96 379,131 449,198 449,209 379,151 309,115 239,124 169,130 99,147 29,191"/>
+    <text x="309" y="85" font-size="16" text-anchor="middle" font-weight="650">97 at 16:00</text>
+    <path d="M29 233L449 233" fill="none" stroke="currentColor" opacity=".22"/>
+    <text x="29" y="257" font-size="15" text-anchor="start">08:00</text>
+    <text x="169" y="257" font-size="15" text-anchor="middle">12:00</text>
+    <text x="309" y="257" font-size="15" text-anchor="middle">16:00</text>
+    <text x="449" y="257" font-size="15" text-anchor="end">20:00</text>
+  </g>
+</svg>

@@ -1,6 +1,6 @@
 ---
 title: Two measures side by side
-use_when: The reader might mistake a change in how fast something is growing for a change in its level.
+use_when: How can a growth rate fall while the total keeps rising?
 source: shipped
 added: 2026-11-18
 ---

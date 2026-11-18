@@ -7,66 +7,124 @@
 <title>AI Report Gallery</title>
 <link rel="stylesheet" href="../../skills/do-work-toolbox/docs/ai-report-kit/presentation.css">
 <style>
-html { color-scheme: light dark; }
-.gallery { max-width: 72rem; margin: 0 auto; padding: 0 clamp(1rem, 4vw, 3rem) 4rem; }
-.gallery .band { padding: 2rem 0; }
-.gallery-header { padding: 3rem 0 1rem; }
-.gallery-links { display: flex; flex-wrap: wrap; gap: .5rem 1.25rem; }
-.gallery-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 19rem), 1fr)); gap: 1rem; }
-.gallery-card { display: flex; flex-direction: column; }
-.gallery-card ul { margin: .25rem 0 1rem; padding-inline-start: 1.25em; }
-.gallery-card .gallery-links { margin: auto 0 0; font-size: .95rem; }
-.gallery-kinds { list-style: none; margin: 0; padding: 0; }
-.gallery-kinds li { display: grid; grid-template-columns: minmax(9rem, 13rem) 1fr; gap: .25rem 1rem; padding: .65rem 0; border-bottom: 1px solid var(--line, GrayText); }
-.gallery-presets { list-style: none; padding: 0; }
-.gallery-copy { display: flex; align-items: center; flex-wrap: wrap; gap: .75rem; }
-.gallery-copy code { padding: .35em .5em; overflow-wrap: anywhere; }
+* { box-sizing: border-box; }
+:root {
+  color-scheme: light dark;
+  --ground: #faf9f5; --panel: #fffefa; --text: #232b28; --subtle: #535d56;
+  --edge: #cccfc5; --accent: #285949; --wash: #e9eee7;
+  --sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --serif: "Iowan Old Style", "Baskerville", Georgia, serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root { --ground: #171c1a; --panel: #1e2522; --text: #f0f2eb; --subtle: #b7c0b9; --edge: #46524b; --accent: #b1dfc7; --wash: #293a31; }
+}
+html, body { background: var(--ground); color: var(--text); }
+body { margin: 0; font: 16px/1.5 var(--sans); }
+.gallery { width: 100%; padding: 0 clamp(16px, 3.2vw, 76px) 3rem; }
+.gallery h1, .gallery h2, .gallery h3 { color: var(--text); font-family: var(--serif); font-weight: 500; line-height: 1.1; }
+.gallery h1 { margin: 0; font-size: clamp(2.3rem, 3.4vw, 3.6rem); letter-spacing: -.045em; }
+.gallery h2 { margin: 0 0 1rem; font-size: clamp(1.6rem, 2vw, 2.1rem); letter-spacing: -.025em; }
+.gallery a { color: var(--accent); text-underline-offset: .2em; }
+.gallery :focus-visible { outline: 3px solid var(--accent); outline-offset: 4px; }
+.gallery-header { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem; padding: clamp(16px, 1.6vw, 30px) 0 1rem; border-bottom: 2px solid var(--text); }
+.gallery-nav, .gallery-links { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem 1.15rem; }
+.gallery-nav a { font-size: .95rem; font-weight: 600; text-decoration: none; padding-block: .45rem; }
+.gallery-nav a:hover, .sample-open:hover h3 { text-decoration: underline; }
+.gallery-nav .add-link, .gallery-copy button { background: var(--text); color: var(--ground); border: 1px solid var(--text); border-radius: .4rem; padding: .65rem 1rem; font: 600 .95rem var(--sans); cursor: pointer; }
+.gallery section { scroll-margin-top: 1rem; }
+.samples { padding: 1.1rem 0 2rem; }
+.gallery-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: clamp(14px, 1.55vw, 32px); align-items: start; }
+.gallery-card { min-width: 0; }
+.sample-open { display: block; text-decoration: none; }
+.sample-preview { display: block; aspect-ratio: 480 / 284; width: 100%; height: auto; object-fit: contain; background: var(--panel); border: 1px solid var(--edge); border-radius: .5rem; }
+.sample-open:hover .sample-preview { border-color: var(--accent); }
+.sample-open h3 { display: flex; justify-content: space-between; align-items: baseline; gap: .5rem; margin: .8rem 0 .35rem; font-size: clamp(1.42rem, 1.8vw, 2.2rem); letter-spacing: -.025em; }
+.sample-open h3 span { font: 400 1.15rem var(--sans); color: var(--accent); }
+.gallery-card p { margin: 0 0 .45rem; color: var(--subtle); line-height: 1.45; max-width: 52ch; }
+.gallery-card details { background: none; border: 0; padding: 0; border-radius: 0; }
+.gallery-card summary { display: list-item; font: 600 .9rem var(--sans); width: fit-content; color: var(--accent); padding: .65rem 0; cursor: pointer; }
+.gallery-card details[open] summary { border: 0; margin: 0; }
+.gallery-card ul { padding-left: 1.2rem; margin: .25rem 0 .6rem; }
+.gallery-card details a { font-size: .9rem; }
+.gallery-tools { display: grid; grid-template-columns: 3fr 2fr; gap: clamp(1.5rem, 4vw, 5rem); border-block: 1px solid var(--edge); padding: 1.65rem 0 2rem; }
+.gallery-kinds, .gallery-presets { list-style: none; margin: 0; padding: 0; }
+.gallery-kinds li { border-top: 1px solid var(--edge); padding: .55rem 0; display: grid; grid-template-columns: minmax(7rem, 27%) minmax(0, 1fr); gap: .4rem 1rem; }
+.gallery-kinds code, .gallery-copy code { background: none; color: var(--text); padding: 0; overflow-wrap: anywhere; }
+.gallery-presets { display: flex; flex-wrap: wrap; gap: .45rem; }
+.gallery-presets a { display: block; padding: .4rem .75rem; background: var(--wash); border-radius: .35rem; font-size: .9rem; text-decoration: none; }
+.gallery-presets a:hover { text-decoration: underline; }
+.gallery-add { padding: 1.6rem 0; }
+.gallery-add p { color: var(--subtle); margin: 0 0 .75rem; }
+.gallery-copy { display: flex; align-items: center; flex-wrap: wrap; gap: .8rem; }
 .gallery-copy button[hidden] { display: none; }
-@media (max-width: 40rem) { .gallery-kinds li { grid-template-columns: 1fr; } }
+@media (max-width: 1100px) { .gallery-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 720px) { .gallery-tools { grid-template-columns: 1fr; } }
+@media (max-width: 560px) {
+  .gallery-grid { grid-template-columns: minmax(0, 1fr); gap: 1.6rem; }
+  .gallery-header { align-items: start; flex-direction: column; gap: .5rem; }
+  .gallery-nav { gap: .5rem .9rem; }
+  .gallery-kinds li { grid-template-columns: 1fr; }
+}
 </style>
 </head>
 <body>
 <main class="gallery">
   <header class="gallery-header">
     <h1>AI Report Gallery</h1>
-    <nav class="gallery-links" aria-label="Gallery sections">
-      <a href="#samples">Samples</a>
+    <nav class="gallery-nav" aria-label="Gallery sections">
       <a href="#report-kinds">Report kinds</a>
-      <a href="#presets">Second-opinion presets</a>
-      <a href="#add-sample">Add a sample</a>
+      <a href="#presets">Presets</a>
+      <a class="add-link" href="#add-sample">Add a sample</a>
     </nav>
   </header>
-  <section class="band" id="samples" aria-labelledby="samples-title">
-    <h2 id="samples-title">Samples</h2>
+  <section class="samples" id="samples" aria-labelledby="samples-title">
+    <h2 id="samples-title">Presentation samples</h2>
     <div class="gallery-grid">
-      <article class="node gallery-card">
-        <h3>Parts over time</h3>
-        <p>The reader wants to know which parts account for a change in the total over time.</p>
-        <strong>Borrow</strong>
-        <ul><li>Stack the parts in the same order each period and write the total above each column.</li><li>Give each part a chart with the same scale and dates so changes are comparable.</li><li>Hatch the unfinished period in both views and state how much of it has been counted.</li></ul>
-        <p class="gallery-links"><a href="../../skills/do-work-toolbox/docs/report-gallery/parts-over-time/example.html">Worked example</a><a href="../../skills/do-work-toolbox/docs/report-gallery/parts-over-time/sample.md">Sample record</a></p>
-      </article><article class="node gallery-card">
-        <h3>Rhythm over a cycle</h3>
-        <p>The reader wants to see what drives the busiest part of a repeating cycle and when each activity peaks.</p>
-        <strong>Borrow</strong>
-        <ul><li>Open with one combined view to show where the activities overlap.</li><li>Separate the series into aligned rows with one scale and label the time and value of each peak.</li><li>Give readers a single time control to inspect the same moment in every row.</li></ul>
-        <p class="gallery-links"><a href="../../skills/do-work-toolbox/docs/report-gallery/rhythm-over-cycle/example.html">Worked example</a><a href="../../skills/do-work-toolbox/docs/report-gallery/rhythm-over-cycle/sample.md">Sample record</a></p>
-      </article><article class="node gallery-card">
-        <h3>Two measures side by side</h3>
-        <p>The reader might mistake a change in how fast something is growing for a change in its level.</p>
-        <strong>Borrow</strong>
-        <ul><li>Put each measure in its own chart with its units in the heading and matching dates on both horizontal axes.</li><li>Label both endpoints in the plots so the reader can see which way each measure moved.</li><li>Give readers one date control to compare the exact values for the same period.</li></ul>
-        <p class="gallery-links"><a href="../../skills/do-work-toolbox/docs/report-gallery/two-measures-side-by-side/example.html">Worked example</a><a href="../../skills/do-work-toolbox/docs/report-gallery/two-measures-side-by-side/sample.md">Sample record</a></p>
-      </article><article class="node gallery-card">
-        <h3>Verdict with checks</h3>
-        <p>The reader needs to know whether a judgment holds and what was checked before reaching it.</p>
-        <strong>Borrow</strong>
-        <ul><li>Give the verdict in one sentence and include the figure that settles it.</li><li>Name the checks so readers can see which definitions, dates and calculations support the judgment.</li><li>Keep the source rows and the calculation behind one disclosure.</li></ul>
-        <p class="gallery-links"><a href="../../skills/do-work-toolbox/docs/report-gallery/verdict-with-checks/example.html">Worked example</a><a href="../../skills/do-work-toolbox/docs/report-gallery/verdict-with-checks/sample.md">Sample record</a></p>
+      <article class="gallery-card">
+        <a class="sample-open" href="../../skills/do-work-toolbox/docs/report-gallery/parts-over-time/example.html" aria-label="Parts over time — Worked example">
+          <img class="sample-preview" src="../../skills/do-work-toolbox/docs/report-gallery/parts-over-time/preview.svg" alt="" width="480" height="284">
+          <h3>Parts over time<span aria-hidden="true">→</span></h3>
+        </a>
+        <p>Which parts account for the change in the total?</p>
+        <details><summary>What to borrow</summary>
+          <ul aria-label="Borrow"><li>Stack the parts in the same order each period and write the total above each column.</li><li>Give each part a chart with the same scale and dates so changes are comparable.</li><li>Hatch the unfinished period in both views and state how much of it has been counted.</li></ul>
+          <div class="gallery-links"><a href="../../skills/do-work-toolbox/docs/report-gallery/parts-over-time/sample.md">Sample record</a></div>
+        </details>
+      </article><article class="gallery-card">
+        <a class="sample-open" href="../../skills/do-work-toolbox/docs/report-gallery/rhythm-over-cycle/example.html" aria-label="Rhythm over a cycle — Worked example">
+          <img class="sample-preview" src="../../skills/do-work-toolbox/docs/report-gallery/rhythm-over-cycle/preview.svg" alt="" width="480" height="284">
+          <h3>Rhythm over a cycle<span aria-hidden="true">→</span></h3>
+        </a>
+        <p>When does each activity peak, and what drives the busiest hour?</p>
+        <details><summary>What to borrow</summary>
+          <ul aria-label="Borrow"><li>Open with one combined view to show where the activities overlap.</li><li>Separate the series into aligned rows with one scale and label the time and value of each peak.</li><li>Give readers a single time control to inspect the same moment in every row.</li></ul>
+          <div class="gallery-links"><a href="../../skills/do-work-toolbox/docs/report-gallery/rhythm-over-cycle/sample.md">Sample record</a></div>
+        </details>
+      </article><article class="gallery-card">
+        <a class="sample-open" href="../../skills/do-work-toolbox/docs/report-gallery/two-measures-side-by-side/example.html" aria-label="Two measures side by side — Worked example">
+          <img class="sample-preview" src="../../skills/do-work-toolbox/docs/report-gallery/two-measures-side-by-side/preview.svg" alt="" width="480" height="284">
+          <h3>Two measures side by side<span aria-hidden="true">→</span></h3>
+        </a>
+        <p>How can a growth rate fall while the total keeps rising?</p>
+        <details><summary>What to borrow</summary>
+          <ul aria-label="Borrow"><li>Put each measure in its own chart with its units in the heading and matching dates on both horizontal axes.</li><li>Label both endpoints in the plots so the reader can see which way each measure moved.</li><li>Give readers one date control to compare the exact values for the same period.</li></ul>
+          <div class="gallery-links"><a href="../../skills/do-work-toolbox/docs/report-gallery/two-measures-side-by-side/sample.md">Sample record</a></div>
+        </details>
+      </article><article class="gallery-card">
+        <a class="sample-open" href="../../skills/do-work-toolbox/docs/report-gallery/verdict-with-checks/example.html" aria-label="Verdict with checks — Worked example">
+          <img class="sample-preview" src="../../skills/do-work-toolbox/docs/report-gallery/verdict-with-checks/preview.svg" alt="" width="480" height="284">
+          <h3>Verdict with checks<span aria-hidden="true">→</span></h3>
+        </a>
+        <p>What evidence supports the verdict, and which checks did it pass?</p>
+        <details><summary>What to borrow</summary>
+          <ul aria-label="Borrow"><li>Give the verdict in one sentence and include the figure that settles it.</li><li>Name the checks so readers can see which definitions, dates and calculations support the judgment.</li><li>Keep the source rows and the calculation behind one disclosure.</li></ul>
+          <div class="gallery-links"><a href="../../skills/do-work-toolbox/docs/report-gallery/verdict-with-checks/sample.md">Sample record</a></div>
+        </details>
       </article>
     </div>
   </section>
-  <section class="band" id="report-kinds" aria-labelledby="report-kinds-title">
+  <div class="gallery-tools">
+  <section id="report-kinds" aria-labelledby="report-kinds-title">
     <h2 id="report-kinds-title">Report kinds</h2>
     <ul class="gallery-kinds">
       <li><strong>Completed work</strong>
@@ -80,13 +138,14 @@ html { color-scheme: light dark; }
       </li>
     </ul>
   </section>
-  <section class="band" id="presets" aria-labelledby="presets-title">
+  <section id="presets" aria-labelledby="presets-title">
     <h2 id="presets-title">Second-opinion presets</h2>
     <ul class="gallery-links gallery-presets">
       <li><a href="../../skills/do-work-toolbox/docs/second-opinion-presets/80-20.md">80-20</a></li><li><a href="../../skills/do-work-toolbox/docs/second-opinion-presets/bold.md">bold</a></li><li><a href="../../skills/do-work-toolbox/docs/second-opinion-presets/eli5.md">eli5</a></li><li><a href="../../skills/do-work-toolbox/docs/second-opinion-presets/feynman.md">feynman</a></li><li><a href="../../skills/do-work-toolbox/docs/second-opinion-presets/first-principles.md">first-principles</a></li><li><a href="../../skills/do-work-toolbox/docs/second-opinion-presets/mindmap.md">mindmap</a></li><li><a href="../../skills/do-work-toolbox/docs/second-opinion-presets/quizme.md">quizme</a></li><li><a href="../../skills/do-work-toolbox/docs/second-opinion-presets/relation-map.md">relation-map</a></li><li><a href="../../skills/do-work-toolbox/docs/second-opinion-presets/schematics.md">schematics</a></li><li><a href="../../skills/do-work-toolbox/docs/second-opinion-presets/socrates.md">socrates</a></li><li><a href="../../skills/do-work-toolbox/docs/second-opinion-presets/sticky-notes.md">sticky-notes</a></li><li><a href="../../skills/do-work-toolbox/docs/second-opinion-presets/visual-studyguide.md">visual-studyguide</a></li><li><a href="../../skills/do-work-toolbox/docs/second-opinion-presets/visual.md">visual</a></li>
     </ul>
   </section>
-  <section class="band" id="add-sample" aria-labelledby="add-sample-title">
+  </div>
+  <section class="gallery-add" id="add-sample" aria-labelledby="add-sample-title">
     <h2 id="add-sample-title">Add a sample</h2>
     <p>Paste this line into your agent, replacing the placeholders with the source and what you liked.</p>
     <div class="gallery-copy">

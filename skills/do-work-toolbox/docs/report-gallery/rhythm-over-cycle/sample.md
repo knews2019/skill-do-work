@@ -1,6 +1,6 @@
 ---
 title: Rhythm over a cycle
-use_when: The reader wants to see what drives the busiest part of a repeating cycle and when each activity peaks.
+use_when: When does each activity peak, and what drives the busiest hour?
 source: shipped
 added: 2026-11-18
 ---

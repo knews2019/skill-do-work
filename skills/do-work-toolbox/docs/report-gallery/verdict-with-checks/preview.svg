@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 284" role="img" aria-labelledby="title desc">
+  <title id="title">Dispatch verdict and six checks</title>
+  <desc id="desc">Sample data. 96 of 100 orders shipped on time, clearing the 95 percent target. Six checks support this finding.</desc>
+  <rect width="480" height="284" fill="#e9eff4"/>
+  <g font-family="system-ui, sans-serif" fill="#253f54" color="#253f54">
+    <text x="26" y="37" font-size="23" font-weight="650">On-time dispatch</text>
+    <text x="453" y="35" text-anchor="end" font-size="13">Sample data</text>
+    <text x="26" y="63" font-size="15">1–28 June</text>
+    <text x="26" y="162" font-size="83" font-family="Georgia,serif">96%</text>
+    <text x="230" y="124" font-size="18" font-weight="650">96 of 100 orders</text>
+    <text x="230" y="152" font-size="17">Target ≥ 95%</text>
+    <path d="M26 185L454 185" fill="none" stroke="currentColor" opacity=".22"/>
+    <path d="M28 211l4 4 8-10" stroke="#285849" stroke-width="2.5" fill="none"/>
+    <text x="48" y="217" font-size="16">Measure</text>
+    <path d="M174 211l4 4 8-10" stroke="#285849" stroke-width="2.5" fill="none"/>
+    <text x="194" y="217" font-size="16">Units</text>
+    <path d="M320 211l4 4 8-10" stroke="#285849" stroke-width="2.5" fill="none"/>
+    <text x="340" y="217" font-size="16">Dates</text>
+    <path d="M28 245l4 4 8-10" stroke="#285849" stroke-width="2.5" fill="none"/>
+    <text x="48" y="251" font-size="16">Scope</text>
+    <path d="M174 245l4 4 8-10" stroke="#285849" stroke-width="2.5" fill="none"/>
+    <text x="194" y="251" font-size="16">Arithmetic</text>
+    <path d="M320 245l4 4 8-10" stroke="#285849" stroke-width="2.5" fill="none"/>
+    <text x="340" y="251" font-size="16">Target</text>
+  </g>
+</svg>

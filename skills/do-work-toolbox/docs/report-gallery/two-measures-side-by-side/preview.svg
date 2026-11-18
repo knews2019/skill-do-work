@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 284" role="img" aria-labelledby="title desc">
+  <title id="title">Club membership</title>
+  <desc id="desc">Sample data. The monthly growth rate fell from 10% to 5% while total membership rose from 1,100 to 1,542.</desc>
+  <rect width="480" height="284" fill="#f8f0e5"/>
+  <g font-family="system-ui, sans-serif" fill="#503c32" color="#503c32">
+    <text x="26" y="37" font-size="23" font-weight="650">Club membership</text>
+    <text x="453" y="35" text-anchor="end" font-size="13">Sample data</text>
+    <text x="26" y="62" font-size="15">January to June</text>
+    <path d="M240 87L240 252" fill="none" stroke="currentColor" opacity=".22"/>
+    <text x="27" y="104" font-size="16" font-weight="650">Monthly growth</text>
+    <path d="M27 218L213 218" fill="none" stroke="currentColor" opacity=".22"/>
+    <path d="M32 147 L206 194" stroke="#a64d2c" stroke-width="4" fill="none"/>
+    <circle cx="32" cy="147" r="5" fill="#a64d2c"/>
+    <text x="32" y="136" font-size="20" text-anchor="start" font-weight="650">10%</text>
+    <circle cx="206" cy="194" r="5" fill="#a64d2c"/>
+    <text x="206" y="183" font-size="20" text-anchor="end" font-weight="650">5%</text>
+    <text x="27" y="244" font-size="14">Jan</text>
+    <text x="211" y="244" font-size="14" text-anchor="end">Jun</text>
+    <text x="262" y="104" font-size="16" font-weight="650">Total members</text>
+    <path d="M262 218L448 218" fill="none" stroke="currentColor" opacity=".22"/>
+    <path d="M267 206 L441 146" stroke="#4b638e" stroke-width="4" fill="none"/>
+    <circle cx="267" cy="206" r="5" fill="#4b638e"/>
+    <text x="267" y="195" font-size="20" text-anchor="start" font-weight="650">1,100</text>
+    <circle cx="441" cy="146" r="5" fill="#4b638e"/>
+    <text x="441" y="135" font-size="20" text-anchor="end" font-weight="650">1,542</text>
+    <text x="262" y="244" font-size="14">Jan</text>
+    <text x="446" y="244" font-size="14" text-anchor="end">Jun</text>
+  </g>
+</svg>

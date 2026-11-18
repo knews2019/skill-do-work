@@ -109,7 +109,7 @@ The current month's reports sit directly under `ai-reports/`. A finished month's
 
 ## Report Gallery
 
-`ai-report gallery` regenerates `<project-root>/docs/report-gallery/index.html`. Open it to browse presentation samples with worked examples, report kinds with links to the newest reports, and shipped second-opinion presets. The page has a copyable add command. `ai-report gallery add` saves one reusable pattern from an image, link, or HTML file and refreshes the page.
+`ai-report gallery` regenerates `<project-root>/docs/report-gallery/index.html`. Open it to browse presentation samples with worked examples, report kinds with links to the newest reports, and shipped second-opinion presets. Select a sample preview or title to open it. Expand **What to borrow** for the design notes. The page shows the saved reference image when available, or a local `preview.svg` beside the sample record. It also has a copyable add command. `ai-report gallery add` saves one reusable pattern from an image, link, or HTML file and refreshes the page.
 
 Each project sample keeps its source, the reader's question it can answer, and two or three presentation moves in `sample.md`. A project sample takes precedence over a shipped sample with the same folder name.
 
