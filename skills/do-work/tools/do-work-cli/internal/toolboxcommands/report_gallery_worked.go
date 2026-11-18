@@ -19,7 +19,7 @@ type workedReportCard struct {
 var workedReportName = regexp.MustCompile(`^[a-z]+(-[a-z]+){1,2}$`)
 
 func readWorkedReports(repository *os.Root) ([]workedReportCard, error) {
-	record, err := fs.ReadFile(repository.FS(), reportGalleryFolder + "/preview-manifest.json")
+	record, err := fs.ReadFile(repository.FS(), reportGalleryFolder+"/preview-manifest.json")
 	if errors.Is(err, fs.ErrNotExist) {
 		return nil, nil
 	}
