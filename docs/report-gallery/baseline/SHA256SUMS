@@ -1,7 +1,6 @@
 a7b9a7d66ca208d2b571e5d0482a3dcdf0e213c4d48d1f76c601a0aa0e302d8d  docs/report-gallery/baseline.html
 073247c3c2905636414cb463314621497b16a71ab81c0f58ca25ea68fa0e1a6a  docs/report-gallery/capture-previews.py
 9df3ccbd3635edd4b73320f7d6d64357ba88d825e90b2b7ec4f927b06e74acde  docs/report-gallery/preview-manifest.json
-9d359eebbba036a538628a42badb086c3c52497ea05cb33fdbe228536cfe1f77  _dev/tests/report-gallery-gate.cjs
 13e2e2b844b173cc9bf92621c902fb44315cf7252e2dc975e66cc666dbaac887  docs/report-gallery/baseline/reader-needs.json
 50f8bee0a60eeebc4fc4ea78c95d1e82f617cf93f923c5acb8736d40e88bac85  docs/report-gallery/baseline/answer-key.json
 ddf536bc9c782734587a7691195e18c999ca6374e989d04c7af40cdc5d11489c  docs/report-gallery/baseline/rubric.txt
@@ -9,3 +8,4 @@ ddf536bc9c782734587a7691195e18c999ca6374e989d04c7af40cdc5d11489c  docs/report-ga
 fb646c7403993e2633cb4fb15ed3a64d18b66a920076100dbc4ee2dac057dd0f  docs/report-gallery/baseline/views/1440-light.png
 a8d69d42e92eea2ea2543b1e59ce9dd9fd4407801866d1211f3115316554f4c4  docs/report-gallery/baseline/views/390-dark.png
 d364fba13828ab8bd62f7f21afc71b5229fc32d9aeb71c64ba3f8e95cf24343e  docs/report-gallery/baseline/views/390-light.png
+4c9886c7612a031b5f533f354d7e1512a6f0ebf91b7d7de107b697396d107012  _dev/tests/report-gallery-gate.cjs

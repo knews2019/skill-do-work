@@ -351,8 +351,8 @@ async function main() {
         const failures = await runView(browser, width, theme, selectors, manifest, output);
         results[view] = failures;
         for (const [gate, errors] of Object.entries(failures)) {
-          console.log(view, gate, errors.length ? 'FAIL' : 'PASS');
-          for (const error of errors) console.log('  ' + error);
+          process.stdout.write(view + ' ' + gate + ' ' + (errors.length ? 'FAIL' : 'PASS') + '\n');
+          for (const error of errors) process.stdout.write('  ' + error + '\n');
           if (errors.length) process.exitCode = 1;
         }
       }
