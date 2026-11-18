@@ -36,7 +36,11 @@ if __name__ == "__main__":
                 for (const card of {cards}) {{
                     const response = await page.goto({json.dumps(origin)} + '/' + card.report);
                     if (!response.ok()) throw Error(card.report + ': ' + response.status());
-                    await page.evaluate(() => document.fonts.ready.then(() => true));
+                    await page.evaluate(async () => {{
+                        await document.fonts.ready;
+                        window.scrollTo(0, 0);
+                        await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+                    }});
                     await page.screenshot({{path: card.image, scale: 'css', animations: 'disabled'}});
                 }}
             }}""")
