@@ -1,7 +1,7 @@
 ---
 id: REQ-752
 title: 'Compare the frozen endpoints and publish the gallery climb evidence'
-status: pending
+status: claimed
 created_at: 2026-11-18T17:43:03Z
 user_request: UR-185
 domain: general
@@ -13,6 +13,7 @@ maintenance: false
 batch: report-gallery-climb
 related: [REQ-749, REQ-750, REQ-751]
 depends_on: [REQ-751]
+claimed_at: 2026-11-18T18:24:29Z
 ---
 # Compare the frozen endpoints and publish the gallery climb evidence
 
