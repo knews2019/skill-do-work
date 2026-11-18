@@ -54,6 +54,10 @@ func handleAIReportGallery(ctx commandruntime.ExecutionContext, args []string) r
 	}
 	defer repository.Close()
 
+	if resolveOnly && strings.HasPrefix(strings.TrimSpace(args[1]), reportGalleryGeneratedPrefix) {
+		return resolveReportGalleryGenerated(ctx.RepositoryRoot, repository, strings.TrimSpace(args[1]))
+	}
+
 	// Reject linked output parents before discovery. The publisher also confines the final write.
 	if len(args) == 0 {
 		if err := validateNoLinkedAncestors(ctx.RepositoryRoot, ReportGalleryPageFile, false); err != nil {
@@ -110,7 +114,7 @@ func reportGalleryCopyNames(samples []reportGallerySample) map[string]string {
 	names := make(map[string]string, len(samples))
 	for _, sample := range samples {
 		matches := matchReportGalleryName(samples, sample.Title)
-		if len(matches) == 1 && matches[0].Name == sample.Name {
+		if len(matches) == 1 && matches[0].Name == sample.Name && !strings.HasPrefix(sample.Title, reportGalleryGeneratedPrefix) {
 			names[sample.Name] = sample.Title
 		} else {
 			names[sample.Name] = sample.Name
@@ -196,23 +200,9 @@ func discoverReportGallerySamples(repository *os.Root, shippedFolder string) ([]
 func readReportGallerySample(repository *os.Root, name, record string) (reportGallerySample, error) {
 	sample := reportGallerySample{Name: name, RecordPath: record}
 	filename := filepath.FromSlash(record)
-	info, err := repository.Lstat(filename)
+	document, err := readReportGalleryRecord(repository, filename)
 	if err != nil {
 		return sample, err
-	}
-	if !info.Mode().IsRegular() {
-		return sample, errors.New("sample.md must be a regular file")
-	}
-	content, err := rootedfs.ReadFile(repository, filename)
-	if err != nil {
-		return sample, err
-	}
-	document, err := requestmodel.ParseDocument(content)
-	if err != nil {
-		return sample, err
-	}
-	if warnings := document.ParseWarnings(); len(warnings) != 0 {
-		return sample, errors.New(warnings[0])
 	}
 	var added string
 	for _, field := range []struct {
@@ -221,18 +211,13 @@ func readReportGallerySample(repository *os.Root, name, record string) (reportGa
 	}{
 		{"title", &sample.Title}, {"use_when", &sample.UseWhen}, {"source", &sample.Source}, {"added", &added}, {"image", &sample.Image},
 	} {
-		evidence, present := document.FieldValue(field.name)
-		if !present && field.name == "image" {
+		if _, present := document.FieldValue(field.name); !present && field.name == "image" {
 			continue
 		}
-		value := strings.TrimSpace(evidence.ScalarValue)
-		raw := evidence.RawValue
-		quoted := strings.HasPrefix(raw, `"`) || strings.HasPrefix(raw, "'")
-		if value == "" || (quoted && evidence.ScalarValue == raw) || evidence.ListValues != nil || strings.HasPrefix(raw, "{") ||
-			strings.IndexFunc(value, unicode.IsControl) >= 0 {
-			return sample, fmt.Errorf("%s must be a nonempty one-line scalar", field.name)
+		*field.value, err = reportGalleryScalar(document, field.name)
+		if err != nil {
+			return sample, err
 		}
-		*field.value = value
 	}
 	if _, err := time.Parse(time.DateOnly, added); err != nil {
 		return sample, errors.New("added must be a valid YYYY-MM-DD date")
@@ -244,6 +229,40 @@ func readReportGallerySample(repository *os.Root, name, record string) (reportGa
 	return sample, err
 }
 
+func readReportGalleryRecord(repository *os.Root, filename string) (*requestmodel.RequestDocument, error) {
+	info, err := repository.Lstat(filename)
+	if err != nil {
+		return nil, err
+	}
+	if !info.Mode().IsRegular() {
+		return nil, fmt.Errorf("%s must be a regular file", filepath.Base(filename))
+	}
+	content, err := rootedfs.ReadFile(repository, filename)
+	if err != nil {
+		return nil, err
+	}
+	document, err := requestmodel.ParseDocument(content)
+	if err != nil {
+		return nil, err
+	}
+	if warnings := document.ParseWarnings(); len(warnings) != 0 {
+		return nil, errors.New(warnings[0])
+	}
+	return document, nil
+}
+
+func reportGalleryScalar(document *requestmodel.RequestDocument, name string) (string, error) {
+	evidence, _ := document.FieldValue(name)
+	value := strings.TrimSpace(evidence.ScalarValue)
+	raw := evidence.RawValue
+	quoted := strings.HasPrefix(raw, `"`) || strings.HasPrefix(raw, "'")
+	if value == "" || (quoted && evidence.ScalarValue == raw) || evidence.ListValues != nil || strings.HasPrefix(raw, "{") ||
+		strings.IndexFunc(value, unicode.IsControl) >= 0 {
+		return "", fmt.Errorf("%s must be a nonempty one-line scalar", name)
+	}
+	return value, nil
+}
+
 func readReportGalleryBorrow(body []byte) ([]string, error) {
 	var bullets []string
 	for _, section := range requestmodel.VisibleSections(body) {
@@ -251,7 +270,7 @@ func readReportGalleryBorrow(body []byte) ([]string, error) {
 			continue
 		}
 		if bullets != nil {
-			return nil, errors.New("sample has more than one ## Borrow section")
+			return nil, errors.New("record has more than one ## Borrow section")
 		}
 		bullets = []string{}
 		_, remainder, _ := strings.Cut(string(body[section.Start:section.End]), "\n")

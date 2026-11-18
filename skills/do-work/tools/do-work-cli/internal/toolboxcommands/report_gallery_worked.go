@@ -14,6 +14,7 @@ import (
 type workedReportCard struct {
 	Name, Kind, Subject, Report, Image string
 	Width, Height                      int
+	Starter                            reportGalleryStarter `json:"-"`
 }
 
 var workedReportName = regexp.MustCompile(`^[a-z]+(-[a-z]+){1,2}$`)
