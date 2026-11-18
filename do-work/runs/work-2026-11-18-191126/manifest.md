@@ -10,7 +10,9 @@ Wave size: 2
 | REQ-745 | C | 60 min, low | GPT-6.2-sol | t3/persistent-gallery-annotations (t3-354d0a63-342e63c86e1e705e) | [Brief](REQ-745-brief.md) | `REQ-745-handback.md` | Finalized | Worktree created 2026-11-18T21:18:42+02:00 | See REQ-745 integration receipt | 1 pre-build plus integration checks | 0 |
 | REQ-746 | C | 50 min, low | GPT-6.2-sol | t3/copyable-gallery-design-starters (t3-6937a03b-eefe202ad9d08d74) | [Brief](REQ-746-brief.md) | `REQ-746-handback.md` | Finalized | Worktree created 2026-11-18T21:18:51+02:00 | See REQ-746 integration receipt | Reused pre-build plus integration checks | 0 |
 
-Total estimated effort is 110 active minutes and the estimated critical path is 60 active minutes. REQ-744 is already complete. [Estimator output](estimate-critical-path.txt)
+First-wave estimated effort is 110 active minutes and its estimated critical path is 60 active minutes. REQ-744 is already complete. [Estimator output](estimate-critical-path.txt)
+
+The REQ-747 integration wave started after both first-wave releases. Its estimate is 70 active minutes, low confidence. The GPT-6.2-sol implementation worker was dispatched at 23:25:49 UTC against main `48c6a5532b1d93e1003fb322714fe37735380775` in `t3/feedback-guided-report-generation` (`t3-0edd6d71-a945690f75acfeda`). See the [REQ-747 brief](REQ-747-brief.md). The integrator will consume `REQ-747-handback.md` and exercise generation with actual GPT-6.2-astra.
 
 - The full maintainer gate ran once under `full-gate.lock` and passed on the first attempt at the dispatch base. It ran 428 board and 998 CLI tests in 158 seconds. REQ-746 reused that exact revision and argv. The lock was removed after the gate finished. [Status](canonical-gate-status.log) · [REQ-745 preflight](REQ-745-advance-preflight.json) · [REQ-746 preflight](REQ-746-advance-preflight.json)
 - Both focused executions used the same eight-test gallery/catalog command and passed. The request-bound snapshots are byte-identical. The active baseline matches both snapshots. [Probe](gallery-focused-baseline.sh) · [REQ-745 snapshot](REQ-745-focused-baseline.json) · [REQ-746 snapshot](REQ-746-focused-baseline.json)
