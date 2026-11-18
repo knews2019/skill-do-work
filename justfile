@@ -159,6 +159,11 @@ generate-report-image-batch *args:
 [positional-arguments]
 publish-portfolio-summary *args:
     project_root="{{justfile_directory()}}"; skill_root="$project_root/.claude/skills/do-work"; [ -f "$skill_root/SKILL.md" ] || skill_root="$project_root/skills/do-work"; bash "$skill_root/tools/do-work-cli.sh" --repo-root "$project_root" publish-portfolio-summary "$@"
+
+# Open the local gallery for report and figure feedback (Ctrl-C to stop)
+[positional-arguments]
+run-report-gallery *args:
+    project_root="{{justfile_directory()}}"; bash "$project_root/skills/do-work/tools/do-work-cli.sh" --repo-root "$project_root" ai-report-gallery --serve "$@"
 [positional-arguments]
 install-last30days *args:
     project_root="{{justfile_directory()}}"; skill_root="$project_root/.claude/skills/do-work"; [ -f "$skill_root/SKILL.md" ] || skill_root="$project_root/skills/do-work"; bash "$skill_root/tools/do-work-cli.sh" --repo-root "$project_root" install-last30days "$@"

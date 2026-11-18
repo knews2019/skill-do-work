@@ -45,8 +45,10 @@ type reportGallerySample struct {
 func handleAIReportGallery(ctx commandruntime.ExecutionContext, args []string) resultmodel.CommandResult {
 	listOnly := len(args) == 1 && args[0] == "--list"
 	resolveOnly := len(args) == 2 && args[0] == "--resolve"
-	if len(args) != 0 && !listOnly && !resolveOnly {
-		return usageResult(CommandAIReportGallery, "Usage: ai-report-gallery [--list | --resolve <name>]")
+	serve := len(args) == 1 && args[0] == "--serve"
+	serveWithoutBrowser := len(args) == 2 && args[0] == "--serve" && args[1] == "--no-open"
+	if len(args) != 0 && !listOnly && !resolveOnly && !serve && !serveWithoutBrowser {
+		return usageResult(CommandAIReportGallery, "Usage: ai-report-gallery [--list | --resolve <name> | --serve [--no-open]]")
 	}
 	repository, err := os.OpenRoot(ctx.RepositoryRoot)
 	if err != nil {
@@ -83,6 +85,8 @@ func handleAIReportGallery(ctx commandruntime.ExecutionContext, args []string) r
 		result = exactOutputResult(output.String(), nil)
 	case resolveOnly:
 		result = resolveReportGallerySample(samples, args[1])
+	case serve || serveWithoutBrowser:
+		result = serveReportGallery(ctx.RepositoryRoot, repository, toolboxDocs, samples, serve)
 	default:
 		result = writeReportGallery(ctx.RepositoryRoot, repository, toolboxDocs, samples)
 	}
@@ -286,7 +290,7 @@ func writeReportGallery(repositoryRoot string, repository *os.Root, toolboxDocs 
 	if err != nil {
 		return reportGalleryFailure(reportsFolder, err)
 	}
-	page, err := renderReportGalleryPage(repositoryRoot, repository, toolboxDocs, samples, bundles)
+	page, err := renderReportGalleryPage(repositoryRoot, repository, toolboxDocs, samples, bundles, nil)
 	if err != nil {
 		return reportGalleryFailure(ReportGalleryPageFile, err)
 	}
