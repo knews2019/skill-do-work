@@ -1,7 +1,7 @@
 ---
 id: REQ-747
 title: 'Generate traceable report variations with GPT-6.2-astra in T3 Code'
-status: pending
+status: claimed
 created_at: 2026-11-18T15:50:47Z
 user_request: UR-184
 domain: general
@@ -13,6 +13,7 @@ maintenance: false
 batch: report-gallery-feedback
 related: [REQ-745, REQ-746, REQ-748]
 depends_on: [REQ-745, REQ-746]
+claimed_at: 2026-11-18T23:21:30Z
 ---
 # Generate traceable report variations with GPT-6.2-astra in T3 Code
 
