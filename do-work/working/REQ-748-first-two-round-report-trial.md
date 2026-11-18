@@ -1,7 +1,7 @@
 ---
 id: REQ-748
 title: 'Run two rounds of five reports on one real evidence bundle'
-status: pending
+status: claimed
 created_at: 2026-11-18T15:50:47Z
 user_request: UR-184
 domain: general
@@ -13,6 +13,7 @@ maintenance: false
 batch: report-gallery-feedback
 related: [REQ-745, REQ-746, REQ-747]
 depends_on: [REQ-747]
+claimed_at: 2026-11-18T23:53:11Z
 ---
 # Run two rounds of five reports on one real evidence bundle
 
