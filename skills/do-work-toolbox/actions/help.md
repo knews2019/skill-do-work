@@ -17,6 +17,8 @@ do-work-toolbox — reviews, reports, discovery, and repository utilities
   ai-report --design "<name>" [target]  Use a gallery design for the latest or specified work
   ai-report gallery              Regenerate the report samples, kinds, and presets page
   ai-report gallery add <image path|link|html path> [what you liked]  Save a project sample
+  ai-report gallery generate --evidence <manifest.json> --design <name>  Generate one design in T3 Code
+  ai-report gallery generate --evidence <manifest.json> --parent <report/index.html>  Build on saved marks
   ai-report organize [--dry-run] File finished months into month folders; fix links
   ai-report judge <dir> [--page <file.html>]  Render-check a report bundle (widths, themes, links)
   ai-report revise <dir|latest>  New revision; the old report is kept

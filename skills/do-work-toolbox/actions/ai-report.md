@@ -31,7 +31,7 @@
 
 ## Input
 
-`$ARGUMENTS` is `UR-NNN`, `REQ-NNN`, `most recent`, or blank; the `second-opinion` form below writes a sibling page in an existing bundle; the `gallery`, `judge`, `index`, `find` and `organize` forms below create no report (`organize` moves existing reports into month folders), the `revise` form below writes a new revision of an existing report, and the `--kind` form below writes a decision brief about open work. One report invocation covers one UR or one REQ (a `--kind` brief covers one topic, REQ or UR); a revise covers one existing bundle; blank is the explicit `most recent` form.
+`$ARGUMENTS` is `UR-NNN`, `REQ-NNN`, `most recent`, or blank. Catalog, judge, gallery browse and gallery add create no report. Gallery generation creates a candidate from pinned evidence. The second-opinion, organize, revise and `--kind` forms use their own inputs below. Ordinary report creation covers one UR or REQ and treats blank as `most recent`.
 
 `ai-report --design "<name>" [UR-NNN|REQ-NNN|most recent]` selects a named gallery design for a completed-work report. Pass the full sample title, sample slug, or copied `report:` identity as one argument. With no target, use the most recent completed work under the normal target rules. A missing or blank design name stops with usage.
 
@@ -52,6 +52,8 @@ The catalog also lists each bundle's second-opinion pages under that bundle.
 `ai-report find <topic>` and "is there a report on <topic>" run the same command with `--find <topic>` appended. It prints matching bundle paths newest first, superseded bundles included, and writes nothing. Print the result, then stop: Steps 1 to 8 do not apply. A `refused` result names a hand-made `catalog.json` or `index.html`; report it and do not move it.
 
 ### Gallery forms
+
+Dispatch `ai-report gallery generate` first. Use the [gallery generation reference](ai-report-gallery-generate-reference.md) for its T3 Code workflow and stop there.
 
 Dispatch `ai-report gallery` or “report gallery” to browse, and `ai-report gallery add <image path | link | html path> [what the user liked]` to save a sample. Resolve `<project-root>` to the current Git worktree root. Use this command to browse the gallery, or to regenerate it after saving a sample in step 4:
 
