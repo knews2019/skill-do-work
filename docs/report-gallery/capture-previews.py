@@ -38,7 +38,6 @@ if __name__ == "__main__":
                     if (!response.ok()) throw Error(card.report + ': ' + response.status());
                     await page.evaluate(() => document.fonts.ready.then(() => true));
                     await page.screenshot({{path: card.image, scale: 'css', animations: 'disabled'}});
-                    console.log(card.name + ' ' + card.report);
                 }}
             }}""")
         finally:
