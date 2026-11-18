@@ -1,7 +1,7 @@
 ---
 id: REQ-749
 title: 'Addendum: Build the gallery from ten real report pages'
-status: pending
+status: claimed
 created_at: 2026-11-18T17:43:03Z
 user_request: UR-185
 addendum_to: REQ-743
@@ -13,6 +13,7 @@ tdd: true
 maintenance: false
 batch: report-gallery-climb
 related: [REQ-750, REQ-751, REQ-752]
+claimed_at: 2026-11-18T17:55:31Z
 ---
 # Addendum: Build the gallery from ten real report pages
 
