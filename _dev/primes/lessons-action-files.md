@@ -165,3 +165,4 @@ Action files must work with **any** agentic coding tool:
 - **Multi-mode actions** (`present-work.md`, `review-work.md`, `tutorial.md`) — Use a Modes table, then separate workflow sections per mode. A single `Step 1: Mode Selection` dispatcher at the top is acceptable.
 - **State-based actions** (`version.md`, `pipeline.md`) — Response sections keyed by input type instead of sequential steps.
 - **Checklist-based diagnostics** (`forensics.md`) — Use a `## Checks` section with independently-runnable items instead of ordered `## Steps`. Each check is a diagnostic probe, not a sequential step.
+- [family: alternate-writer-contract-drift] [REQ-744: changing the closing band reached the shared writer, reference, skeleton and guide. The old one-layout count survived in a copied CSS comment. Sweep comments in template assets as well as writer routes and guides](../../do-work/archive/UR-183/REQ-744-report-writer-ranks-gallery-samples.md#lessons-learned)

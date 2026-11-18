@@ -10,6 +10,13 @@ For the complete release history, read this file and the archives below from new
 - [0.50.0 through 0.64.1](https://github.com/knews2019/skill-do-work/blob/main/docs/changelog/CHANGELOG-2026-04-13-up-to-v0.64.1.md)
 - [0.1.0 through 0.49.0](https://github.com/knews2019/skill-do-work/blob/main/docs/changelog/CHANGELOG-2026-04-07-up-to-v0.49.0.md)
 
+## 0.326.0 — Report Writer Matches Gallery Samples (2026-11-18)
+
+New AI reports match gallery samples to the question and the evidence. The best fit shapes the report, and the summary explains the choice.
+
+- Completed-work reports, proposal and root-cause briefs, and revisions each make a fresh match.
+- The closing band offers up to two fitting gallery layouts as second-opinion prompts, or a layout tailored to the report. It also includes a teaching prompt.
+
 ## 0.325.0 — Report Gallery with Four Worked Examples (2026-11-18)
 
 Open `docs/report-gallery/index.html` to compare four ways to present evidence, find a real report by kind, or browse second-opinion presets.
