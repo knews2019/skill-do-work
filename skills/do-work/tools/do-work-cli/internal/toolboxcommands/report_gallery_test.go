@@ -291,7 +291,7 @@ func TestAIReportGalleryShowsWorkedReportsAndKeepsProjectSamples(t *testing.T) {
 		name := "report-" + suffix
 		report := "ai-reports/" + name + "/index.html"
 		image := "docs/report-gallery/previews/" + name + ".png"
-		writeGalleryFixture(t, root, report, "<title>Real report</title>")
+		writeGalleryFixture(t, root, report, `<title>Real report</title><figure id="visual"><figcaption>Actual evidence visual</figcaption></figure>`)
 		writeGalleryFixture(t, root, image, "screenshot fixture")
 		cards = append(cards, fmt.Sprintf(`{"name":%q,"kind":%q,"subject":"Actual evidence","report":%q,"image":%q}`, name, kinds[index%len(kinds)], report, image))
 	}
@@ -316,5 +316,30 @@ func TestAIReportGalleryShowsWorkedReportsAndKeepsProjectSamples(t *testing.T) {
 		if !bytes.Contains(page, []byte(fragment)) {
 			t.Errorf("gallery is missing %s", fragment)
 		}
+	}
+	if bytes.Contains(page, []byte("data-report-feedback")) {
+		t.Fatal("static gallery should not include live feedback controls")
+	}
+	if !bytes.HasSuffix(page, []byte("</html>\n")) {
+		t.Fatal("live-only templates should not append anything to the static gallery")
+	}
+	repository, err := os.OpenRoot(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer repository.Close()
+	bundles, _, err := reportIndexWalk(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	live := &reportGalleryLivePage{}
+	livePage, err := renderReportGalleryPage(root, repository, "", nil, bundles, live)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(live.Generated) != 0 || len(live.Targets) != 20 ||
+		!live.Targets[reportGalleryTarget{Kind: "figure", ReportPath: "ai-reports/report-one/index.html", FigureID: "visual"}] ||
+		!bytes.Contains(livePage, []byte(`data-gallery-preview href="../../ai-reports/report-one/index.html"`)) {
+		t.Fatal("live gallery should augment each curated card once and preserve the preview destination")
 	}
 }

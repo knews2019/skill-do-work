@@ -69,10 +69,11 @@ type reportGalleryPageData struct {
 	Worked     []workedReportGroup
 	Kinds      []reportGalleryKind
 	Presets    []reportGalleryLink
+	Live       *reportGalleryLivePage
 }
 
-func renderReportGalleryPage(repositoryRoot string, repository *os.Root, toolboxDocs string, samples []reportGallerySample, bundles []reportBundle) ([]byte, error) {
-	page := reportGalleryPageData{Kinds: reportGalleryKinds(bundles)}
+func renderReportGalleryPage(repositoryRoot string, repository *os.Root, toolboxDocs string, samples []reportGallerySample, bundles []reportBundle, live *reportGalleryLivePage) ([]byte, error) {
+	page := reportGalleryPageData{Kinds: reportGalleryKinds(bundles), Live: live}
 	if toolboxDocs != "" {
 		stylesheet := path.Join(toolboxDocs, "ai-report-kit", "presentation.css")
 		page.Stylesheet = reportGalleryFileLink(repository, stylesheet)
@@ -87,6 +88,11 @@ func renderReportGalleryPage(repositoryRoot string, repository *os.Root, toolbox
 		return nil, err
 	}
 	page.Worked = groupWorkedReports(worked)
+	if live != nil {
+		if err := live.discover(repositoryRoot, worked, bundles); err != nil {
+			return nil, err
+		}
+	}
 	copyNames := reportGalleryCopyNames(samples)
 	for _, sample := range samples {
 		if len(worked) > 0 && !strings.HasPrefix(sample.RecordPath, reportGalleryFolder+"/") {
@@ -243,7 +249,7 @@ const reportGalleryPageHeader = `<!doctype html>
 <meta name="generator" content="do-work-cli ai-report-gallery">
 `
 
-var reportGalleryPageTemplate = template.Must(template.New("report-gallery").Parse(reportGalleryPageHeader + `<meta charset="utf-8">
+var reportGalleryPageTemplate = template.Must(template.Must(template.New("report-gallery").Parse(reportGalleryFeedbackTemplates)).Parse(reportGalleryPageHeader + `<meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>AI Report Gallery</title>
 {{if .Stylesheet}}<link rel="stylesheet" href="{{.Stylesheet}}">{{end}}
@@ -336,7 +342,7 @@ body { margin: 0; font: 16px/1.5 var(--sans); }
   .gallery-nav { gap: .5rem .9rem; }
 {{if not .Worked}}  .gallery-kinds li { grid-template-columns: 1fr; }
 {{end}}}
-</style>
+</style>{{if .Live}}{{template "galleryFeedbackStyles"}}{{end}}
 </head>
 <body>
 <main class="gallery">
@@ -344,7 +350,8 @@ body { margin: 0; font: 16px/1.5 var(--sans); }
     <h1>AI Report Gallery</h1>
     <nav class="gallery-nav" aria-label="Gallery sections">
 {{if not .Worked}}      <a href="#report-kinds">Report kinds</a>
-{{end}}      <a href="#presets">Presets</a>
+{{end}}{{with .Live}}{{if .Generated}}      <a href="#project-reports">Project reports</a>
+{{end}}{{end}}      <a href="#presets">Presets</a>
       <a class="add-link" href="#add-sample">Add a sample</a>
     </nav>
   </header>
@@ -360,11 +367,11 @@ body { margin: 0; font: 16px/1.5 var(--sans); }
         </a>
         <div class="card-heading"><h3><button class="name-copy" data-gallery-name type="button" disabled data-copy="name-{{.Name}}" title="Copy report name"><span id="name-{{.Name}}">{{.Name}}</span><i class="copy-icon" aria-hidden="true"></i></button></h3>
           <a class="report-link" href="#{{.Name}}" aria-label="Permalink to {{.Name}}">#</a></div>
-        <p>{{.Subject}}</p>
+        <p>{{.Subject}}</p>{{if $.Live}}{{with index $.Live.Reviews .Report}}{{template "galleryFeedbackReview" .}}{{end}}{{end}}
       </article>
 {{end}}      </div>
     </section>
-{{end}}  </section>{{end}}
+{{end}}  </section>{{end}}{{with .Live}}{{template "galleryProjectReports" .Generated}}{{end}}
   {{if or (not .Worked) .Samples}}<section class="samples" id="samples" aria-labelledby="samples-title">
     <div class="section-note"><h2 id="samples-title">{{if .Worked}}Added samples{{else}}{{len .Samples}} report designs{{end}}</h2>
       {{if .Samples}}<p>Select a page to preview it. Click a design name to copy it.</p>{{end}}</div>
@@ -480,7 +487,124 @@ if (typeof dialog.showModal === 'function') {
     if (event.clientX < box.left || event.clientX > box.right || event.clientY < box.top || event.clientY > box.bottom) dialog.close();
   });
 }
-{{end}}</script>
+{{end}}</script>{{if .Live}}{{template "galleryFeedbackScript"}}{{end}}
 </body>
 </html>
 `))
+
+const reportGalleryFeedbackTemplates = `
+{{define "galleryFeedbackStyles"}}
+<style>
+.gallery .review-details { margin-top: .55rem; border-top: 1px solid var(--edge); }
+.gallery .review-details summary { min-height: 36px; }
+.review-form { margin: 0 0 .8rem; }
+.review-form fieldset { min-width: 0; margin: 0; padding: .5rem .65rem; border: 1px solid var(--edge); border-radius: .35rem; }
+.review-form legend { max-width: 100%; padding: 0 .2rem; font: 600 .9rem/1.35 var(--sans); overflow-wrap: anywhere; }
+.review-mark { display: flex; flex-wrap: wrap; column-gap: .75rem; margin-bottom: .25rem; }
+.review-mark label { display: inline-flex; gap: .28rem; align-items: center; min-height: 32px; cursor: pointer; }
+.review-mark input { margin: 0; accent-color: var(--accent); }
+.review-note { display: grid; gap: .25rem; font-size: .85rem; }
+.review-note textarea { width: 100%; min-height: 3rem; resize: vertical; padding: .4rem; font: inherit; color: var(--text); background: var(--panel); border: 1px solid var(--edge); border-radius: .25rem; }
+.review-save { display: flex; flex-wrap: wrap; align-items: baseline; gap: .35rem .65rem; margin-top: .5rem; }
+.review-save button { min-height: 32px; }
+.review-status { color: var(--subtle); font-size: .85rem; overflow-wrap: anywhere; }
+.review-status[data-error] { font-weight: 600; }
+</style>
+{{end}}
+{{define "galleryProjectReports"}}{{if .}}
+  <section class="samples" id="project-reports" aria-labelledby="project-reports-title">
+    <h2 id="project-reports-title">Project reports</h2>
+    <div class="gallery-grid">
+      {{range .}}<article class="gallery-card">
+        <div class="card-heading"><h3><a href="{{.Href}}">{{.Title}}</a></h3></div>
+        {{template "galleryFeedbackReview" .}}
+      </article>{{end}}
+    </div>
+  </section>{{end}}{{end}}
+{{define "galleryFeedbackReview"}}
+        <details class="review-details"><summary>Review report and figures</summary>
+          {{template "galleryFeedbackForm" .}}
+          {{range .Figures}}
+            <form class="review-form" data-report-feedback data-target-kind="figure" data-report-path="{{$.ReportPath}}" data-figure-id="{{.ID}}">
+              <fieldset disabled>
+                <legend>{{if .Href}}<a href="{{.Href}}">{{.Label}}</a>{{else}}{{.Label}}{{end}}</legend>
+                {{template "galleryFeedbackFields"}}
+              </fieldset>
+              <div class="review-status" role="status">Loading feedback…</div>
+            </form>
+          {{end}}
+        </details>{{end}}
+{{define "galleryFeedbackForm"}}
+          <form class="review-form" data-report-feedback data-target-kind="report" data-report-path="{{.ReportPath}}">
+            <fieldset disabled>
+              <legend>Whole report</legend>
+              {{template "galleryFeedbackFields"}}
+            </fieldset>
+            <div class="review-status" role="status">Loading feedback…</div>
+          </form>{{end}}
+{{define "galleryFeedbackFields"}}
+                <div class="review-mark">
+                  <label><input type="radio" name="mark" value="like" required> Like</label>
+                  <label><input type="radio" name="mark" value="dislike" required> Dislike</label>
+                </div>
+                <label class="review-note">Note (optional)<textarea name="note" rows="2" maxlength="500"></textarea></label>
+                <div class="review-save"><button class="prompt-copy" type="submit">Save feedback</button></div>
+{{end}}
+{{define "galleryFeedbackScript"}}
+<script>
+(() => {
+  const forms = [...document.querySelectorAll('[data-report-feedback]')];
+  if (!forms.length) return;
+  const endpoint = "/api/report-gallery-feedback";
+  const identity = entry => JSON.stringify([entry.target_kind, entry.report_path, entry.figure_id || '']);
+  async function readResponse(response) {
+    const payload = await response.json();
+    if (!response.ok) throw new Error(payload.error || 'The gallery could not save or load feedback.');
+    return payload;
+  }
+  fetch(endpoint, {mode: 'same-origin', cache: 'no-store'}).then(readResponse).then(feedback => {
+    const savedEntries = new Map(feedback.entries.map(entry => [identity(entry), entry]));
+    for (const form of forms) {
+      const target = {target_kind: form.dataset.targetKind, report_path: form.dataset.reportPath};
+      if (form.dataset.figureId) target.figure_id = form.dataset.figureId;
+      const saved = savedEntries.get(identity(target));
+      const fields = form.querySelector('fieldset');
+      const status = form.querySelector('[role="status"]');
+      form.elements.mark.value = saved?.mark || '';
+      form.elements.note.value = saved?.note || '';
+      status.textContent = saved ? 'Saved ' + saved.mark + '.' : '';
+      fields.disabled = false;
+      form.addEventListener('submit', async event => {
+        event.preventDefault();
+        const entry = {...target, mark: form.elements.mark.value, note: form.elements.note.value};
+        fields.disabled = true;
+        delete status.dataset.error;
+        status.textContent = 'Saving…';
+        try {
+          const stored = await readResponse(await fetch(endpoint, {
+            method: 'PUT', mode: 'same-origin',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(entry),
+          }));
+          if (identity(stored) !== identity(entry) || stored.mark !== entry.mark || (stored.note || '') !== entry.note) {
+            throw new Error('The gallery did not confirm this entry.');
+          }
+          status.textContent = 'Saved ' + stored.mark + '.';
+        } catch (error) {
+          status.dataset.error = '';
+          status.textContent = 'Feedback could not be saved. ' + error.message + ' Use Save feedback to retry.';
+        } finally {
+          fields.disabled = false;
+        }
+      });
+    }
+  }).catch(error => {
+    for (const form of forms) {
+      const status = form.querySelector('[role="status"]');
+      status.dataset.error = '';
+      status.textContent = 'Feedback could not be loaded. ' + error.message + ' Reopen or reload the gallery to retry.';
+    }
+  });
+})();
+</script>{{end}}
+`
