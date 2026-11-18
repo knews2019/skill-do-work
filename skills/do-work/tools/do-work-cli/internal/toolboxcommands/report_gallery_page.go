@@ -263,9 +263,7 @@ copyButton.addEventListener('click', async () => {
       await navigator.clipboard.writeText(addLine.textContent);
       copyStatus.textContent = 'Copied.';
       return;
-    } catch {
-      // Select the visible command for browsers that deny clipboard access.
-    }
+    } catch {}
   }
   const range = document.createRange();
   range.selectNodeContents(addLine);

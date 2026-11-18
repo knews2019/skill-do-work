@@ -107,9 +107,7 @@ copyButton.addEventListener('click', async () => {
       await navigator.clipboard.writeText(addLine.textContent);
       copyStatus.textContent = 'Copied.';
       return;
-    } catch {
-      
-    }
+    } catch {}
   }
   const range = document.createRange();
   range.selectNodeContents(addLine);
