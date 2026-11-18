@@ -1,7 +1,7 @@
 ---
 id: REQ-746
 title: 'Copy a starter prompt that selects a specific report design'
-status: pending
+status: claimed
 created_at: 2026-11-18T15:50:47Z
 user_request: UR-184
 domain: general
@@ -13,6 +13,7 @@ maintenance: false
 batch: report-gallery-feedback
 related: [REQ-745, REQ-747, REQ-748]
 depends_on: [REQ-744]
+claimed_at: 2026-11-18T19:09:13Z
 ---
 # Copy a starter prompt that selects a specific report design
 

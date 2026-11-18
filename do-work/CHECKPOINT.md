@@ -8,3 +8,5 @@ queue_state: [4 pending, 0 pending-answers, 0 blocked, 0 blocked-archive-collisi
 ## In Progress (interrupted)
 
 - REQ-745: Save likes, dislikes and notes on reports and figures — claimed 2026-11-18T19:09:13Z — writer: t2s-Virtual-Machine.local:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2
+
+- REQ-746: Copy a starter prompt that selects a specific report design — claimed 2026-11-18T19:09:13Z — writer: t2s-Virtual-Machine.local:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2
