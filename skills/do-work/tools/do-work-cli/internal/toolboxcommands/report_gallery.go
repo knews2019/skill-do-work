@@ -43,12 +43,18 @@ type reportGallerySample struct {
 }
 
 func handleAIReportGallery(ctx commandruntime.ExecutionContext, args []string) resultmodel.CommandResult {
+	if len(args) > 0 {
+		switch args[0] {
+		case "--prepare-generation", "--generation-digest", "--record-generation", "--record-factual-review":
+			return handleReportGalleryGeneration(ctx.RepositoryRoot, args)
+		}
+	}
 	listOnly := len(args) == 1 && args[0] == "--list"
 	resolveOnly := len(args) == 2 && args[0] == "--resolve"
 	serve := len(args) == 1 && args[0] == "--serve"
 	serveWithoutBrowser := len(args) == 2 && args[0] == "--serve" && args[1] == "--no-open"
 	if len(args) != 0 && !listOnly && !resolveOnly && !serve && !serveWithoutBrowser {
-		return usageResult(CommandAIReportGallery, "Usage: ai-report-gallery [--list | --resolve <name> | --serve [--no-open]]")
+		return usageResult(CommandAIReportGallery, "Usage: ai-report-gallery [--list | --resolve <name> | --serve [--no-open] | "+reportGenerationUsage+"]")
 	}
 	repository, err := os.OpenRoot(ctx.RepositoryRoot)
 	if err != nil {

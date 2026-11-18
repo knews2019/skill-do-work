@@ -78,6 +78,8 @@ do-work-toolbox ai-report index           Catalog every report bundle under ai-r
 do-work-toolbox ai-report find <topic>    List report bundles on a topic, newest first
 do-work-toolbox ai-report gallery         Regenerate the gallery and print its path
 do-work-toolbox ai-report gallery add <image path|link|html path> [what you liked]
+do-work-toolbox ai-report gallery generate --evidence <manifest.json> --design <name>
+do-work-toolbox ai-report gallery generate --evidence <manifest.json> --parent <report/index.html>
 do-work-toolbox ai-report organize [--dry-run]  File finished months into counted month folders; fix every link
 do-work-toolbox ai-report second-opinion [--preset <name>] [--editor-direction '<text>'] [<dir>|<page.html>|latest]  Clarify with the active session model
 do-work-toolbox ai-report second-opinion --backend codex [--model <slug>] [--preset <name>] [--editor-direction '<text>'] [<dir>|<page.html>|latest]
@@ -125,6 +127,18 @@ Copy a sample’s design command to use it for the most recent completed work. A
 After collecting evidence and before building visuals, the writer runs the installed CLI's `ai-report-gallery --list` and ranks the samples against the reader's main question and the evidence. It uses the named sample as the primary design when supplied, or the best fit otherwise. It reads the selected and best-fitting records and adapts their Borrow moves using the report's own facts and kit styling. For example, when a count rises and its rate falls, separate charts with the same dates and units in each title let the reader see both changes. The writer records the chosen sample name or `none` in the page head's `ai-report-gallery-sample` meta tag and explains the choice in its summary. Completed-work reports, proposal and root-cause briefs, and revisions all make this choice when they write a new `index.html`.
 
 First install and file-writing updates run by the gallery-aware updater regenerate the page automatically. On the first upgrade from a version without gallery support, the previous updater installs the samples. It leaves a missing page absent and preserves a hand-made page silently. Run the same Just update command again to create the missing page, or run `ai-report gallery`. An already-current update leaves an existing gallery alone. When the gallery-aware installer or updater attempts a refresh, a hand-made page stays in place and a refusal or write failure produces one gallery warning.
+
+### Feedback-guided generation in T3 Code
+
+Run `do-work-toolbox ai-report gallery generate --evidence <manifest.json> --design "<name>"` in a T3 Code agent session to create one initial candidate with GPT-6.2-astra. The manifest names the stable source and the project files that supply the facts. A minimal manifest looks like this:
+
+```json
+{"source_id":"latency-baseline-run-17","files":["measurements/latency.tsv"]}
+```
+
+Save your marks in the live gallery. To build on one of its reports, run `do-work-toolbox ai-report gallery generate --evidence <manifest.json> --parent <report/index.html>` with the same manifest and the exact project-relative path of the marked page. The child records the parent, the report and figure marks it used, and links to the locations before and after each change. Generation checks the parent's factual verdict before loading marks. A like cannot make a failed, stale or unreviewed report eligible. The gallery's **Use this design** control stays available for each authored candidate.
+
+Use `do-work-toolbox ai-report gallery generate --review <report/index.html>` to review an existing generated bundle after its bytes change or a render was incomplete. See the [generation reference](../actions/ai-report-gallery-generate-reference.md) for the manifest, review and execution records.
 
 ## Organizing Reports by Month
 
