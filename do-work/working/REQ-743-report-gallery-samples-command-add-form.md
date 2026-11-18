@@ -1,7 +1,7 @@
 ---
 id: REQ-743
 title: 'Report gallery: sample format, four shipped samples, list and page command, add form'
-status: pending
+status: claimed
 created_at: 2026-11-18T15:29:51Z
 user_request: UR-183
 domain: frontend
@@ -13,6 +13,7 @@ tdd: true
 maintenance: false
 batch: report-sample-gallery
 related: [REQ-744]
+claimed_at: 2026-11-18T15:33:40Z
 ---
 # Report gallery: sample format, four shipped samples, list and page command, add form
 
