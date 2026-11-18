@@ -1,0 +1,329 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rhythm over a cycle · Report gallery</title>
+<link rel="stylesheet" href="../../ai-report-kit/presentation.css">
+<style>
+  .study-series { --series: var(--proof); }
+  .computer-series { --series: var(--change); }
+  .help-series { --series: color-mix(in srgb, var(--cause) 76%, var(--ink)); }
+  .children-series { --series: var(--effect); }
+  .group-series { --series: var(--problem); }
+  .browsing-series { --series: var(--muted); }
+  .rhythm-card { margin: 0; padding: clamp(12px, 2vw, 24px); border: 2px solid var(--line); border-radius: 18px; background: var(--surface); }
+  .rhythm-key { display: flex; flex-wrap: wrap; gap: 6px 16px; margin: 0 0 16px; padding: 0; list-style: none; font-size: .86rem; }
+  .rhythm-key li { display: flex; align-items: center; gap: 7px; }
+  .series-swatch { flex: 0 0 14px; height: 14px; border-radius: 4px; background: var(--series); }
+  .view-controls { display: flex; flex-wrap: wrap; gap: 4px 18px; margin: 0 0 14px; padding: 0; border: 0; }
+  .view-controls legend { padding: 0; font-size: .88rem; font-weight: 700; }
+  .view-controls label { display: inline-flex; gap: 6px; min-height: 44px; align-items: center; cursor: pointer; }
+  .view-controls input { margin: 0; accent-color: var(--change); }
+  .overview-card:not(:has(#separate-lines:checked)) .overview-lines,
+  .overview-card:has(#separate-lines:checked) .overview-bands { display: none; }
+  .rhythm-frame { display: grid; grid-template-columns: 2.15rem minmax(0, 1fr); gap: 6px 8px; margin-top: 8px; }
+  .rhythm-scale { display: flex; flex-direction: column; justify-content: space-between; text-align: right; }
+  .rhythm-scale span { line-height: 1; }
+  .rhythm-scale span:first-child { translate: 0 -50%; }
+  .rhythm-scale span:last-child { translate: 0 50%; }
+  .rhythm-scale, .time-axis { color: var(--muted); font-size: .78rem; font-variant-numeric: tabular-nums; }
+  .rhythm-plot { position: relative; height: 76px; margin-inline: 12px; }
+  .overview-card .rhythm-plot { height: clamp(160px, 24vw, 278px); }
+  .rhythm-plot svg { display: block; width: 100%; height: 100%; overflow: visible; }
+  .grid-lines { stroke: var(--line); stroke-width: 1; fill: none; vector-effect: non-scaling-stroke; }
+  .series-band { fill: var(--series); stroke: var(--surface); stroke-width: 1; vector-effect: non-scaling-stroke; }
+  .series-area { fill: color-mix(in srgb, var(--series) 22%, var(--surface)); }
+  .series-line { fill: none; stroke: var(--series); stroke-width: 2.5; stroke-linejoin: round; stroke-linecap: round; vector-effect: non-scaling-stroke; }
+  .overview-lines .computer-series, .overview-lines .group-series { stroke-dasharray: 6 4; }
+  .overview-lines .help-series, .overview-lines .browsing-series { stroke-dasharray: 2 4; }
+  .time-marker { position: absolute; inset-block: 0; inset-inline-start: var(--selected-time); border-inline-start: 2px dashed var(--ink); pointer-events: none; }
+  .peak-marker { position: absolute; inset-inline-start: var(--peak-x); inset-block-start: var(--peak-y); width: 10px; height: 10px; translate: -50% -50%; border: 2px solid var(--ink); border-radius: 50%; background: var(--surface); }
+  .time-axis { grid-column: 2; display: flex; justify-content: space-between; margin: 0 12px; padding: 0; list-style: none; }
+  .time-axis li { width: 0; display: flex; justify-content: center; white-space: nowrap; }
+  .time-axis .is-current { color: var(--ink); font-weight: 750; text-decoration: underline; text-underline-offset: .2em; }
+  .series-list { display: grid; gap: 10px; }
+  .series-heading { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 14px; margin-bottom: 10px; }
+  .series-heading h3, .series-heading p { margin: 0; }
+  .series-reading { color: var(--muted); font-size: .86rem; }
+  .hour-inspector:not([hidden]) { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; margin: 16px 0 0; }
+  .hour-inspector select { min-height: 44px; padding-inline: 8px; color: var(--ink); background: var(--surface); border: 1px solid var(--muted); border-radius: 8px; font: inherit; }
+  .hour-inspector output { font-size: .92rem; }
+  .view-controls input:focus-visible, .hour-inspector select:focus-visible, .data-disclosure summary:focus-visible, .table-scroll:focus-visible { outline: 3px solid var(--change); outline-offset: 3px; }
+  .data-disclosure { margin-top: 20px; }
+  .table-scroll { overflow-x: auto; margin-bottom: 12px; }
+  .data-table { width: 100%; border-collapse: collapse; font-size: .82rem; font-variant-numeric: tabular-nums; }
+  .data-table caption { color: var(--muted); text-align: left; padding-bottom: 8px; }
+  .data-table th, .data-table td { text-align: start; border-bottom: 1px solid var(--line); padding: 6px; }
+  .data-table tbody th { white-space: nowrap; }
+  @media (max-width: 480px) { .time-minutes { display: none; } }
+</style>
+</head>
+<body>
+<header class="topbar">
+  <strong>Rhythm over a cycle</strong>
+  <span class="spacer"></span>
+  <button class="btn deck-toggle" type="button" id="deck-toggle" aria-pressed="false" hidden>Deck mode (D)</button>
+</header>
+<main class="page">
+  <header class="band">
+    <p><span class="chip">Sample data · A weekday at the library</span></p>
+    <h1>The library is busiest at 16:00</h1>
+    <p class="lede measure">The children’s room peaks when the library reaches 97 visitors. Quiet study peaks four hours earlier, at noon.</p>
+  </header>
+
+  <section class="band" aria-labelledby="overview-heading">
+    <h2 id="overview-heading">Visitors across the day</h2>
+    <p class="measure">Every two hours, staff count who is present. Each visitor is counted under one activity at that moment.</p>
+    <figure class="rhythm-card overview-card">
+      <figcaption>
+        <ul class="rhythm-key" aria-label="Activity colors">
+          <li><span class="series-swatch study-series" aria-hidden="true"></span>Quiet study</li>
+          <li><span class="series-swatch computer-series" aria-hidden="true"></span>Computer use</li>
+          <li><span class="series-swatch help-series" aria-hidden="true"></span>Help desk</li>
+          <li><span class="series-swatch children-series" aria-hidden="true"></span>Children’s room</li>
+          <li><span class="series-swatch group-series" aria-hidden="true"></span>Group work</li>
+          <li><span class="series-swatch browsing-series" aria-hidden="true"></span>Book browsing</li>
+        </ul>
+      </figcaption>
+      <fieldset class="view-controls">
+        <legend>Chart view</legend>
+        <label><input id="stacked-bands" type="radio" name="rhythm-view" checked> Stacked bands</label>
+        <label><input id="separate-lines" type="radio" name="rhythm-view"> Separate lines</label>
+      </fieldset>
+      <div class="rhythm-frame">
+        <div class="rhythm-scale overview-bands" aria-hidden="true"><span>100</span><span>50</span><span>0</span></div>
+        <div class="rhythm-scale overview-lines" aria-hidden="true"><span>30</span><span>15</span><span>0</span></div>
+        <div class="rhythm-plot">
+          <svg class="overview-bands" viewBox="0 0 600 100" preserveAspectRatio="none" role="img" aria-label="Stacked visitor counts by activity. The total rises from 46 at 08:00 to a peak of 97 at 16:00.">
+            <path class="grid-lines" d="M0 0H600 M0 50H600 M0 100H600"/>
+            <polygon class="series-band study-series" points="0,91 100,82 200,72 300,77 400,82 500,90 600,96 600,100 500,100 400,100 300,100 200,100 100,100 0,100"/>
+            <polygon class="series-band computer-series" points="0,85 100,61 200,55 300,63 400,70 500,81 600,93 600,96 500,90 400,82 300,77 200,72 100,82 0,91"/>
+            <polygon class="series-band help-series" points="0,75 100,51 200,46 300,47 400,59 500,76 600,92 600,93 500,81 400,70 300,63 200,55 100,61 0,85"/>
+            <polygon class="series-band children-series" points="0,72 100,43 200,34 300,34 400,35 500,65 600,90 600,92 500,76 400,59 300,47 200,46 100,51 0,75"/>
+            <polygon class="series-band group-series" points="0,70 100,39 200,27 300,23 400,16 500,42 600,83 600,90 500,65 400,35 300,34 200,34 100,43 0,72"/>
+            <polygon class="series-band browsing-series" points="0,54 100,28 200,18 300,11 400,3 500,28 600,75 600,83 500,42 400,16 300,23 200,27 100,39 0,70"/>
+          </svg>
+          <svg class="overview-lines" viewBox="0 0 600 30" preserveAspectRatio="none" role="img" aria-label="The same six activities as separate lines, on a 0 to 30 visitor scale. Quiet study has the highest activity peak, with 28 people at noon. The aligned charts below show the peaks for all six activities.">
+            <path class="grid-lines" d="M0 0H600 M0 15H600 M0 30H600"/>
+            <polyline class="series-line study-series" points="0,21 100,12 200,2 300,7 400,12 500,20 600,26"/>
+            <polyline class="series-line computer-series" points="0,24 100,9 200,13 300,16 400,18 500,21 600,27"/>
+            <polyline class="series-line help-series" points="0,20 100,20 200,21 300,14 400,19 500,25 600,29"/>
+            <polyline class="series-line children-series" points="0,27 100,22 200,18 300,17 400,6 500,19 600,28"/>
+            <polyline class="series-line group-series" points="0,28 100,26 200,23 300,19 400,11 500,7 600,23"/>
+            <polyline class="series-line browsing-series" points="0,14 100,19 200,21 300,18 400,17 500,16 600,22"/>
+          </svg>
+          <span class="time-marker" hidden></span>
+        </div>
+          <ol class="time-axis" aria-hidden="true">
+            <li>08<span class="time-minutes">:00</span></li><li>10<span class="time-minutes">:00</span></li><li>12<span class="time-minutes">:00</span></li><li>14<span class="time-minutes">:00</span></li><li>16<span class="time-minutes">:00</span></li><li>18<span class="time-minutes">:00</span></li><li>20<span class="time-minutes">:00</span></li>
+          </ol>
+      </div>
+    </figure>
+    <div class="hour-inspector" id="hour-inspector" hidden>
+      <label for="inspect-hour">Inspect a time</label>
+      <select id="inspect-hour">
+        <option>08:00</option>
+        <option>10:00</option>
+        <option>12:00</option>
+        <option>14:00</option>
+        <option selected>16:00</option>
+        <option>18:00</option>
+        <option>20:00</option>
+      </select>
+      <output for="inspect-hour" id="hour-total"></output>
+    </div>
+  </section>
+
+  <section class="band" aria-labelledby="rhythms-heading">
+    <h2 id="rhythms-heading">When each activity peaks</h2>
+    <p class="measure">Every row uses the same hours and a 0–30 visitor scale. The circle marks the busiest count for that activity.</p>
+    <div class="series-list">
+      <figure class="rhythm-card study-series">
+        <figcaption class="series-heading">
+          <h3>Quiet study</h3>
+          <p>Peak <strong>28 at 12:00</strong></p>
+          <p class="series-reading" hidden></p>
+        </figcaption>
+        <div class="rhythm-frame">
+          <div class="rhythm-scale" aria-hidden="true"><span>30</span><span>15</span><span>0</span></div>
+          <div class="rhythm-plot">
+            <svg viewBox="0 0 600 30" preserveAspectRatio="none" role="img" aria-label="Quiet study headcounts. Peak of 28 at 12:00.">
+              <path class="grid-lines" d="M0 0H600 M0 15H600 M0 30H600"/>
+              <polygon class="series-area" points="0,30 0,21 100,12 200,2 300,7 400,12 500,20 600,26 600,30"/>
+              <polyline class="series-line" points="0,21 100,12 200,2 300,7 400,12 500,20 600,26"/>
+            </svg>
+            <span class="time-marker" hidden></span>
+            <span class="peak-marker" style="--peak-x: 33.33%; --peak-y: 6.67%" aria-hidden="true"></span>
+          </div>
+          <ol class="time-axis" aria-hidden="true">
+            <li>08<span class="time-minutes">:00</span></li><li>10<span class="time-minutes">:00</span></li><li>12<span class="time-minutes">:00</span></li><li>14<span class="time-minutes">:00</span></li><li>16<span class="time-minutes">:00</span></li><li>18<span class="time-minutes">:00</span></li><li>20<span class="time-minutes">:00</span></li>
+          </ol>
+        </div>
+      </figure>
+      <figure class="rhythm-card computer-series">
+        <figcaption class="series-heading">
+          <h3>Computer use</h3>
+          <p>Peak <strong>21 at 10:00</strong></p>
+          <p class="series-reading" hidden></p>
+        </figcaption>
+        <div class="rhythm-frame">
+          <div class="rhythm-scale" aria-hidden="true"><span>30</span><span>15</span><span>0</span></div>
+          <div class="rhythm-plot">
+            <svg viewBox="0 0 600 30" preserveAspectRatio="none" role="img" aria-label="Computer use headcounts. Peak of 21 at 10:00.">
+              <path class="grid-lines" d="M0 0H600 M0 15H600 M0 30H600"/>
+              <polygon class="series-area" points="0,30 0,24 100,9 200,13 300,16 400,18 500,21 600,27 600,30"/>
+              <polyline class="series-line" points="0,24 100,9 200,13 300,16 400,18 500,21 600,27"/>
+            </svg>
+            <span class="time-marker" hidden></span>
+            <span class="peak-marker" style="--peak-x: 16.67%; --peak-y: 30.00%" aria-hidden="true"></span>
+          </div>
+          <ol class="time-axis" aria-hidden="true">
+            <li>08<span class="time-minutes">:00</span></li><li>10<span class="time-minutes">:00</span></li><li>12<span class="time-minutes">:00</span></li><li>14<span class="time-minutes">:00</span></li><li>16<span class="time-minutes">:00</span></li><li>18<span class="time-minutes">:00</span></li><li>20<span class="time-minutes">:00</span></li>
+          </ol>
+        </div>
+      </figure>
+      <figure class="rhythm-card help-series">
+        <figcaption class="series-heading">
+          <h3>Help desk</h3>
+          <p>Peak <strong>16 at 14:00</strong></p>
+          <p class="series-reading" hidden></p>
+        </figcaption>
+        <div class="rhythm-frame">
+          <div class="rhythm-scale" aria-hidden="true"><span>30</span><span>15</span><span>0</span></div>
+          <div class="rhythm-plot">
+            <svg viewBox="0 0 600 30" preserveAspectRatio="none" role="img" aria-label="Help desk headcounts. Peak of 16 at 14:00.">
+              <path class="grid-lines" d="M0 0H600 M0 15H600 M0 30H600"/>
+              <polygon class="series-area" points="0,30 0,20 100,20 200,21 300,14 400,19 500,25 600,29 600,30"/>
+              <polyline class="series-line" points="0,20 100,20 200,21 300,14 400,19 500,25 600,29"/>
+            </svg>
+            <span class="time-marker" hidden></span>
+            <span class="peak-marker" style="--peak-x: 50.00%; --peak-y: 46.67%" aria-hidden="true"></span>
+          </div>
+          <ol class="time-axis" aria-hidden="true">
+            <li>08<span class="time-minutes">:00</span></li><li>10<span class="time-minutes">:00</span></li><li>12<span class="time-minutes">:00</span></li><li>14<span class="time-minutes">:00</span></li><li>16<span class="time-minutes">:00</span></li><li>18<span class="time-minutes">:00</span></li><li>20<span class="time-minutes">:00</span></li>
+          </ol>
+        </div>
+      </figure>
+      <figure class="rhythm-card children-series">
+        <figcaption class="series-heading">
+          <h3>Children’s room</h3>
+          <p>Peak <strong>24 at 16:00</strong></p>
+          <p class="series-reading" hidden></p>
+        </figcaption>
+        <div class="rhythm-frame">
+          <div class="rhythm-scale" aria-hidden="true"><span>30</span><span>15</span><span>0</span></div>
+          <div class="rhythm-plot">
+            <svg viewBox="0 0 600 30" preserveAspectRatio="none" role="img" aria-label="Children’s room headcounts. Peak of 24 at 16:00.">
+              <path class="grid-lines" d="M0 0H600 M0 15H600 M0 30H600"/>
+              <polygon class="series-area" points="0,30 0,27 100,22 200,18 300,17 400,6 500,19 600,28 600,30"/>
+              <polyline class="series-line" points="0,27 100,22 200,18 300,17 400,6 500,19 600,28"/>
+            </svg>
+            <span class="time-marker" hidden></span>
+            <span class="peak-marker" style="--peak-x: 66.67%; --peak-y: 20.00%" aria-hidden="true"></span>
+          </div>
+          <ol class="time-axis" aria-hidden="true">
+            <li>08<span class="time-minutes">:00</span></li><li>10<span class="time-minutes">:00</span></li><li>12<span class="time-minutes">:00</span></li><li>14<span class="time-minutes">:00</span></li><li>16<span class="time-minutes">:00</span></li><li>18<span class="time-minutes">:00</span></li><li>20<span class="time-minutes">:00</span></li>
+          </ol>
+        </div>
+      </figure>
+      <figure class="rhythm-card group-series">
+        <figcaption class="series-heading">
+          <h3>Group work</h3>
+          <p>Peak <strong>23 at 18:00</strong></p>
+          <p class="series-reading" hidden></p>
+        </figcaption>
+        <div class="rhythm-frame">
+          <div class="rhythm-scale" aria-hidden="true"><span>30</span><span>15</span><span>0</span></div>
+          <div class="rhythm-plot">
+            <svg viewBox="0 0 600 30" preserveAspectRatio="none" role="img" aria-label="Group work headcounts. Peak of 23 at 18:00.">
+              <path class="grid-lines" d="M0 0H600 M0 15H600 M0 30H600"/>
+              <polygon class="series-area" points="0,30 0,28 100,26 200,23 300,19 400,11 500,7 600,23 600,30"/>
+              <polyline class="series-line" points="0,28 100,26 200,23 300,19 400,11 500,7 600,23"/>
+            </svg>
+            <span class="time-marker" hidden></span>
+            <span class="peak-marker" style="--peak-x: 83.33%; --peak-y: 23.33%" aria-hidden="true"></span>
+          </div>
+          <ol class="time-axis" aria-hidden="true">
+            <li>08<span class="time-minutes">:00</span></li><li>10<span class="time-minutes">:00</span></li><li>12<span class="time-minutes">:00</span></li><li>14<span class="time-minutes">:00</span></li><li>16<span class="time-minutes">:00</span></li><li>18<span class="time-minutes">:00</span></li><li>20<span class="time-minutes">:00</span></li>
+          </ol>
+        </div>
+      </figure>
+      <figure class="rhythm-card browsing-series">
+        <figcaption class="series-heading">
+          <h3>Book browsing</h3>
+          <p>Peak <strong>16 at 08:00</strong></p>
+          <p class="series-reading" hidden></p>
+        </figcaption>
+        <div class="rhythm-frame">
+          <div class="rhythm-scale" aria-hidden="true"><span>30</span><span>15</span><span>0</span></div>
+          <div class="rhythm-plot">
+            <svg viewBox="0 0 600 30" preserveAspectRatio="none" role="img" aria-label="Book browsing headcounts. Peak of 16 at 08:00.">
+              <path class="grid-lines" d="M0 0H600 M0 15H600 M0 30H600"/>
+              <polygon class="series-area" points="0,30 0,14 100,19 200,21 300,18 400,17 500,16 600,22 600,30"/>
+              <polyline class="series-line" points="0,14 100,19 200,21 300,18 400,17 500,16 600,22"/>
+            </svg>
+            <span class="time-marker" hidden></span>
+            <span class="peak-marker" style="--peak-x: 0.00%; --peak-y: 46.67%" aria-hidden="true"></span>
+          </div>
+          <ol class="time-axis" aria-hidden="true">
+            <li>08<span class="time-minutes">:00</span></li><li>10<span class="time-minutes">:00</span></li><li>12<span class="time-minutes">:00</span></li><li>14<span class="time-minutes">:00</span></li><li>16<span class="time-minutes">:00</span></li><li>18<span class="time-minutes">:00</span></li><li>20<span class="time-minutes">:00</span></li>
+          </ol>
+        </div>
+      </figure>
+    </div>
+
+    <details class="data-disclosure">
+      <summary>View visitor sample data</summary>
+      <div class="table-scroll" role="region" aria-label="Visitor headcount table" tabindex="0">
+        <table class="data-table">
+          <caption>Visitor headcounts by local time and activity</caption>
+          <thead>
+            <tr><th scope="col">Time</th><th scope="col">Quiet study</th><th scope="col">Computer use</th><th scope="col">Help desk</th><th scope="col">Children’s room</th><th scope="col">Group work</th><th scope="col">Book browsing</th><th scope="col">Total</th></tr>
+          </thead>
+          <tbody id="visitor-data">
+            <tr><th scope="row">08:00</th><td>9</td><td>6</td><td>10</td><td>3</td><td>2</td><td>16</td><td>46</td></tr>
+            <tr><th scope="row">10:00</th><td>18</td><td>21</td><td>10</td><td>8</td><td>4</td><td>11</td><td>72</td></tr>
+            <tr><th scope="row">12:00</th><td>28</td><td>17</td><td>9</td><td>12</td><td>7</td><td>9</td><td>82</td></tr>
+            <tr><th scope="row">14:00</th><td>23</td><td>14</td><td>16</td><td>13</td><td>11</td><td>12</td><td>89</td></tr>
+            <tr><th scope="row">16:00</th><td>18</td><td>12</td><td>11</td><td>24</td><td>19</td><td>13</td><td>97</td></tr>
+            <tr><th scope="row">18:00</th><td>10</td><td>9</td><td>5</td><td>11</td><td>23</td><td>14</td><td>72</td></tr>
+            <tr><th scope="row">20:00</th><td>4</td><td>3</td><td>1</td><td>2</td><td>7</td><td>8</td><td>25</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </details>
+  </section>
+</main>
+<div class="deck-hint" aria-live="polite" id="deck-hint">Deck mode</div>
+<script src="../../ai-report-kit/presentation.js"></script>
+<script>
+  const inspectHour = document.getElementById("inspect-hour");
+  const visitorRows = document.getElementById("visitor-data").rows;
+  const seriesReadings = document.querySelectorAll(".series-reading");
+
+  function showHeadcount() {
+    const hourIndex = inspectHour.selectedIndex;
+    const [time, ...counts] = [...visitorRows[hourIndex].cells].map(cell => cell.textContent);
+    const total = counts.pop();
+    document.getElementById("hour-total").textContent = `${time} · ${total} visitors across all activities`;
+    seriesReadings.forEach((reading, index) => {
+      reading.textContent = `Selected ${counts[index]} at ${time}`;
+      reading.hidden = false;
+    });
+    document.querySelectorAll(".time-marker").forEach(marker => {
+      marker.style.setProperty("--selected-time", `${100 * hourIndex / (visitorRows.length - 1)}%`);
+      marker.hidden = false;
+    });
+    document.querySelectorAll(".time-axis").forEach(axis => {
+      [...axis.children].forEach((label, index) => label.classList.toggle("is-current", index === hourIndex));
+    });
+  }
+
+  showHeadcount();
+  inspectHour.addEventListener("change", showHeadcount);
+  document.getElementById("hour-inspector").hidden = false;
+  document.getElementById("deck-toggle").hidden = false;
+</script>
+</body>
+</html>

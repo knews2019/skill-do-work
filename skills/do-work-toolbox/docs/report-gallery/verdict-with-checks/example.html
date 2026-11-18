@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Verdict with checks · Report gallery</title>
+<link rel="stylesheet" href="../../ai-report-kit/presentation.css">
+<style>
+  .check-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr)); gap: 12px; margin: 0; padding: 0; list-style: none; max-width: 62rem; }
+  .check-grid p { font-size: .92rem; }
+  .evidence-disclosure { margin-top: 24px; max-width: 62rem; }
+  .evidence-disclosure summary:focus-visible { outline: 3px solid var(--change); outline-offset: 3px; }
+  .evidence-table { width: 100%; border-collapse: collapse; margin-bottom: 12px; font-size: .88rem; font-variant-numeric: tabular-nums; }
+  .evidence-table caption { color: var(--muted); text-align: start; padding-bottom: 8px; }
+  .evidence-table th, .evidence-table td { text-align: start; border-bottom: 1px solid var(--line); padding: 7px 4px; }
+  .evidence-table tfoot { font-weight: 750; background: var(--code-bg); }
+</style>
+</head>
+<body>
+<header class="topbar">
+  <strong>Verdict with checks</strong>
+  <span class="spacer"></span>
+  <button class="btn deck-toggle" type="button" id="deck-toggle" aria-pressed="false" hidden>Deck mode (D)</button>
+</header>
+<main class="page">
+  <header class="band">
+    <p><span class="chip">Sample data · 1–28 June 2026</span></p>
+    <h1>96 of 100 orders shipped on time, clearing the 95% target.</h1>
+  </header>
+
+  <section class="band" aria-labelledby="checks-heading">
+    <h2 id="checks-heading">What we checked</h2>
+    <ul class="check-grid">
+      <li class="node role-proof">
+        <h3>Measure</h3>
+        <p>An order is on time if it ships by the end of its promised dispatch date in UTC.</p>
+      </li>
+      <li class="node role-proof">
+        <h3>Units</h3>
+        <p>The rate is the percentage of orders shipped on time. Each order counts once.</p>
+      </li>
+      <li class="node role-proof">
+        <h3>Dates</h3>
+        <p>The four weeks run from 1 through 28 June. Each order is grouped by its promised date.</p>
+      </li>
+      <li class="node role-proof">
+        <h3>Scope</h3>
+        <p>The count covers warehouse orders due in those weeks and excludes cancellations.</p>
+      </li>
+      <li class="node role-proof">
+        <h3>Arithmetic</h3>
+        <p>The weekly counts add up to 96 on-time orders out of 100 due, or 96%.</p>
+      </li>
+      <li class="node role-proof">
+        <h3>Target</h3>
+        <p>The target is at least 95%. The four-week result cleared it by 1 percentage point.</p>
+      </li>
+    </ul>
+
+    <details class="evidence-disclosure">
+      <summary>View evidence and calculation</summary>
+      <table class="evidence-table">
+        <caption>Sample dispatch log by promised week, June 2026</caption>
+        <thead><tr><th scope="col">Dates</th><th scope="col">Orders due</th><th scope="col">On time</th></tr></thead>
+        <tbody>
+          <tr><th scope="row">1–7 June</th><td>25</td><td>24</td></tr>
+          <tr><th scope="row">8–14 June</th><td>25</td><td>23</td></tr>
+          <tr><th scope="row">15–21 June</th><td>25</td><td>25</td></tr>
+          <tr><th scope="row">22–28 June</th><td>25</td><td>24</td></tr>
+        </tbody>
+        <tfoot><tr><th scope="row">All four weeks</th><td>100</td><td>96</td></tr></tfoot>
+      </table>
+      <p><strong>On-time rate</strong> (24 + 23 + 25 + 24) ÷ (25 + 25 + 25 + 25) = 96%.</p>
+    </details>
+  </section>
+</main>
+<div class="deck-hint" aria-live="polite" id="deck-hint">Deck mode</div>
+<script src="../../ai-report-kit/presentation.js"></script>
+<script>document.getElementById("deck-toggle").hidden = false;</script>
+</body>
+</html>

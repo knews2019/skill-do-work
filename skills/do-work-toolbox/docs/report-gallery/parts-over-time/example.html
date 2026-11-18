@@ -1,0 +1,206 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Parts over time · Report gallery</title>
+<link rel="stylesheet" href="../../ai-report-kit/presentation.css">
+<style>
+  .tire-series { --series: var(--proof); }
+  .brake-series { --series: var(--effect); }
+  .gear-series { --series: var(--change); }
+  .repair-card { margin: 0; padding: clamp(12px, 2vw, 24px); border: 2px solid var(--line); border-radius: 18px; background: var(--surface); }
+  .repair-card h3 { margin-bottom: 6px; }
+  .repair-key { display: flex; flex-wrap: wrap; gap: 6px 16px; margin: 0 0 16px; padding: 0; list-style: none; font-size: .88rem; }
+  .repair-key li { display: flex; align-items: center; gap: 6px; }
+  .repair-swatch { flex: 0 0 14px; height: 14px; border-radius: 3px; background-color: var(--series, var(--surface)); }
+  .partial-key { border: 1px solid var(--muted); }
+  .partial-key, .partial-period .bar-segment {
+    background-image: repeating-linear-gradient(135deg, transparent 0 3px, var(--ink) 3px 4px, transparent 4px 6px);
+  }
+  .column-chart { --chart-max: 72; --plot-height: clamp(180px, 24vw, 290px); }
+  .part-chart { --chart-max: 24; --plot-height: 132px; }
+  .column-chart, .part-chart { display: grid; grid-template-columns: 1.5rem minmax(0, 1fr); gap: 6px 8px; padding-block-start: 8px; }
+  .chart-scale { display: flex; flex-direction: column; justify-content: space-between; text-align: right; }
+  .chart-scale span { line-height: 1; }
+  .chart-scale span:first-child { translate: 0 -50%; }
+  .chart-scale span:last-child { translate: 0 50%; }
+  .chart-scale, .chart-months { color: var(--muted); font-size: .78rem; font-variant-numeric: tabular-nums; }
+  .chart-columns, .chart-months { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: clamp(2px, 1vw, 12px); text-align: center; }
+  .chart-columns {
+    height: var(--plot-height);
+    background: repeating-linear-gradient(to bottom, var(--line) 0 1px, transparent 1px 50%);
+    border-bottom: 1px solid var(--line);
+  }
+  .chart-bar { min-width: 0; display: flex; flex-direction: column-reverse; align-items: center; }
+  .chart-bar.is-selected { background: color-mix(in srgb, var(--proof) 10%, transparent); box-shadow: inset 0 0 0 1px var(--muted); border-radius: 4px 4px 0 0; }
+  .bar-segment { flex: none; width: min(66%, 64px); height: calc(100% * var(--count) / var(--chart-max)); background-color: var(--series); box-shadow: inset 0 1px var(--surface); }
+  .bar-total { margin-bottom: 2px; font-size: .9rem; font-weight: 750; }
+  .chart-months { grid-column: 2; margin: 0; padding: 0; list-style: none; }
+  .chart-months .is-selected { color: var(--ink); font-weight: 750; text-decoration: underline; text-underline-offset: .2em; }
+  .parts-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr)); gap: 12px; }
+  .month-inspector:not([hidden]) { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; margin-block: 16px; }
+  .month-inspector select { min-height: 44px; padding-inline: 8px; color: var(--ink); background: var(--surface); border: 1px solid var(--muted); border-radius: 8px; font: inherit; }
+  .month-inspector output { font-size: .92rem; }
+  .month-inspector select:focus-visible, .data-disclosure summary:focus-visible { outline: 3px solid var(--change); outline-offset: 3px; }
+  .data-disclosure { margin-top: 20px; }
+  .data-table { width: 100%; border-collapse: collapse; margin-bottom: 14px; font-size: .82rem; font-variant-numeric: tabular-nums; }
+  .data-table caption { color: var(--muted); text-align: left; padding-bottom: 8px; }
+  .data-table th, .data-table td { text-align: start; border-bottom: 1px solid var(--line); padding: 6px 3px; }
+</style>
+</head>
+<body>
+<header class="topbar">
+  <strong>Parts over time</strong>
+  <span class="spacer"></span>
+  <button class="btn deck-toggle" type="button" id="deck-toggle" aria-pressed="false" hidden>Deck mode (D)</button>
+</header>
+<main class="page">
+  <header class="band">
+    <p><span class="chip">Sample data · Jan–May 2026</span></p>
+    <h1>Bike repairs nearly doubled by April</h1>
+    <p class="lede measure">From January to April, repairs rose from 30 to 58. Brakes and gears accounted for 24 of the 28 additional repairs.</p>
+  </header>
+
+  <section class="band" aria-labelledby="total-heading">
+    <h2 id="total-heading">Monthly repairs by type</h2>
+    <figure class="repair-card">
+      <figcaption>
+        <ul class="repair-key" aria-label="Chart key">
+          <li><span class="repair-swatch tire-series" aria-hidden="true"></span>Tires</li>
+          <li><span class="repair-swatch brake-series" aria-hidden="true"></span>Brakes</li>
+          <li><span class="repair-swatch gear-series" aria-hidden="true"></span>Gears</li>
+          <li><span class="repair-swatch partial-key" aria-hidden="true"></span>May* through the 14th</li>
+        </ul>
+      </figcaption>
+      <div class="column-chart" role="img" aria-label="Stacked repair counts. Totals from January through April were 30, 37, 45 and 58. May has 29 through the 14th.">
+        <div class="chart-scale"><span>72</span><span>36</span><span>0</span></div>
+        <div class="chart-columns">
+          <div class="chart-bar">
+            <span class="bar-segment tire-series" style="--count: 16"></span>
+            <span class="bar-segment brake-series" style="--count: 9"></span>
+            <span class="bar-segment gear-series" style="--count: 5"></span><span class="bar-total">30</span>
+          </div>
+          <div class="chart-bar">
+            <span class="bar-segment tire-series" style="--count: 18"></span>
+            <span class="bar-segment brake-series" style="--count: 12"></span>
+            <span class="bar-segment gear-series" style="--count: 7"></span><span class="bar-total">37</span>
+          </div>
+          <div class="chart-bar">
+            <span class="bar-segment tire-series" style="--count: 17"></span>
+            <span class="bar-segment brake-series" style="--count: 17"></span>
+            <span class="bar-segment gear-series" style="--count: 11"></span><span class="bar-total">45</span>
+          </div>
+          <div class="chart-bar">
+            <span class="bar-segment tire-series" style="--count: 20"></span>
+            <span class="bar-segment brake-series" style="--count: 22"></span>
+            <span class="bar-segment gear-series" style="--count: 16"></span><span class="bar-total">58</span>
+          </div>
+          <div class="chart-bar partial-period">
+            <span class="bar-segment tire-series" style="--count: 10"></span>
+            <span class="bar-segment brake-series" style="--count: 11"></span>
+            <span class="bar-segment gear-series" style="--count: 8"></span><span class="bar-total">29</span>
+          </div>
+        </div>
+        <ol class="chart-months">
+          <li>Jan</li><li>Feb</li><li>Mar</li><li>Apr</li><li>May*</li>
+        </ol>
+      </div>
+    </figure>
+    <div class="month-inspector" id="month-inspector" hidden>
+      <label for="inspect-month">Inspect a month</label>
+      <select id="inspect-month">
+        <option>January</option><option>February</option><option>March</option>
+        <option selected>April</option><option>May (1–14)</option>
+      </select>
+      <output for="inspect-month" id="month-breakdown"></output>
+    </div>
+  </section>
+
+  <section class="band" aria-labelledby="parts-heading">
+    <h2 id="parts-heading">Each repair type on the same scale</h2>
+    <p class="measure">Brakes rose from 9 to 22 by April, the biggest increase of the three types. Hatched bars show counts through 14 May.</p>
+    <div class="parts-grid">
+      <figure class="repair-card tire-series">
+        <figcaption><h3>Tires</h3></figcaption>
+        <div class="part-chart" role="img" aria-label="Tire repairs rose from 16 in January to 20 in April. May has 10 so far.">
+          <div class="chart-scale"><span>24</span><span>12</span><span>0</span></div>
+          <div class="chart-columns">
+            <div class="chart-bar"><span class="bar-segment" style="--count: 16"></span></div>
+            <div class="chart-bar"><span class="bar-segment" style="--count: 18"></span></div>
+            <div class="chart-bar"><span class="bar-segment" style="--count: 17"></span></div>
+            <div class="chart-bar"><span class="bar-segment" style="--count: 20"></span></div>
+            <div class="chart-bar partial-period"><span class="bar-segment" style="--count: 10"></span></div>
+          </div>
+          <ol class="chart-months"><li>Jan</li><li>Feb</li><li>Mar</li><li>Apr</li><li>May*</li></ol>
+        </div>
+      </figure>
+      <figure class="repair-card brake-series">
+        <figcaption><h3>Brakes</h3></figcaption>
+        <div class="part-chart" role="img" aria-label="Brake repairs rose from 9 in January to 22 in April. May has 11 so far.">
+          <div class="chart-scale"><span>24</span><span>12</span><span>0</span></div>
+          <div class="chart-columns">
+            <div class="chart-bar"><span class="bar-segment" style="--count: 9"></span></div>
+            <div class="chart-bar"><span class="bar-segment" style="--count: 12"></span></div>
+            <div class="chart-bar"><span class="bar-segment" style="--count: 17"></span></div>
+            <div class="chart-bar"><span class="bar-segment" style="--count: 22"></span></div>
+            <div class="chart-bar partial-period"><span class="bar-segment" style="--count: 11"></span></div>
+          </div>
+          <ol class="chart-months"><li>Jan</li><li>Feb</li><li>Mar</li><li>Apr</li><li>May*</li></ol>
+        </div>
+      </figure>
+      <figure class="repair-card gear-series">
+        <figcaption><h3>Gears</h3></figcaption>
+        <div class="part-chart" role="img" aria-label="Gear repairs rose from 5 in January to 16 in April. May has 8 so far.">
+          <div class="chart-scale"><span>24</span><span>12</span><span>0</span></div>
+          <div class="chart-columns">
+            <div class="chart-bar"><span class="bar-segment" style="--count: 5"></span></div>
+            <div class="chart-bar"><span class="bar-segment" style="--count: 7"></span></div>
+            <div class="chart-bar"><span class="bar-segment" style="--count: 11"></span></div>
+            <div class="chart-bar"><span class="bar-segment" style="--count: 16"></span></div>
+            <div class="chart-bar partial-period"><span class="bar-segment" style="--count: 8"></span></div>
+          </div>
+          <ol class="chart-months"><li>Jan</li><li>Feb</li><li>Mar</li><li>Apr</li><li>May*</li></ol>
+        </div>
+      </figure>
+    </div>
+
+    <details class="data-disclosure">
+      <summary>View repair sample data</summary>
+      <table class="data-table">
+        <caption>Repair jobs by type and month. Each job is counted under its primary repair.</caption>
+        <thead><tr><th scope="col">Month</th><th scope="col">Tires</th><th scope="col">Brakes</th><th scope="col">Gears</th><th scope="col">Total</th></tr></thead>
+        <tbody id="repair-data">
+          <tr><th scope="row">January</th><td>16</td><td>9</td><td>5</td><td>30</td></tr>
+          <tr><th scope="row">February</th><td>18</td><td>12</td><td>7</td><td>37</td></tr>
+          <tr><th scope="row">March</th><td>17</td><td>17</td><td>11</td><td>45</td></tr>
+          <tr><th scope="row">April</th><td>20</td><td>22</td><td>16</td><td>58</td></tr>
+          <tr><th scope="row">May (1–14)</th><td>10</td><td>11</td><td>8</td><td>29</td></tr>
+        </tbody>
+      </table>
+    </details>
+  </section>
+</main>
+<div class="deck-hint" aria-live="polite" id="deck-hint">Deck mode</div>
+<script src="../../ai-report-kit/presentation.js"></script>
+<script>
+  const inspectMonth = document.getElementById("inspect-month");
+  const repairRows = document.getElementById("repair-data").rows;
+
+  function showRepairBreakdown() {
+    const monthIndex = inspectMonth.selectedIndex;
+    const [month, tires, brakes, gears, total] = [...repairRows[monthIndex].cells].map(cell => cell.textContent);
+    document.getElementById("month-breakdown").textContent =
+      `${month} · ${total} repairs (${tires} tires, ${brakes} brakes, ${gears} gears)`;
+    document.querySelectorAll(".chart-columns, .chart-months").forEach(chart => {
+      [...chart.children].forEach((bar, index) => bar.classList.toggle("is-selected", index === monthIndex));
+    });
+  }
+
+  showRepairBreakdown();
+  inspectMonth.addEventListener("change", showRepairBreakdown);
+  document.getElementById("month-inspector").hidden = false;
+  document.getElementById("deck-toggle").hidden = false;
+</script>
+</body>
+</html>

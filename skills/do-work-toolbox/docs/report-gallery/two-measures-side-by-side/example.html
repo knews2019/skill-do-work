@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Two measures side by side · Report gallery</title>
+<link rel="stylesheet" href="../../ai-report-kit/presentation.css">
+<style>
+  .comparison-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: clamp(12px, 2vw, 28px); }
+  .comparison-card { display: flex; flex-direction: column; justify-content: space-between; margin: 0; padding: clamp(12px, 2vw, 24px); border: 2px solid var(--line); border-radius: 18px; background: var(--surface); }
+  .comparison-card h3 { margin-bottom: 4px; }
+  .comparison-card figcaption p { margin-bottom: 16px; }
+  .growth-figure { --series: var(--change); }
+  .member-figure { --series: var(--proof); }
+  .chart-frame { display: grid; grid-template-columns: 2.7rem minmax(0, 1fr); gap: 6px 8px; padding-block: 6px 20px; }
+  .chart-scale { display: flex; flex-direction: column; justify-content: space-between; text-align: right; }
+  .chart-scale span { line-height: 1; }
+  .chart-scale span:first-child { translate: 0 -50%; }
+  .chart-scale span:last-child { translate: 0 50%; }
+  .chart-scale, .chart-dates { color: var(--muted); font-size: .78rem; font-variant-numeric: tabular-nums; }
+  .chart-plot { position: relative; height: clamp(136px, 19vw, 208px); margin-inline: 12px; }
+  .chart-plot svg { display: block; width: 100%; height: 100%; overflow: visible; }
+  .chart-gridline { fill: none; stroke: var(--line); stroke-width: 1; vector-effect: non-scaling-stroke; }
+  .series-line { fill: none; stroke: var(--series); stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
+  .endpoint-label { position: absolute; inset-block-start: var(--plot-y); translate: 0 calc(-100% - 3px); font: 750 .95rem var(--body); background: var(--surface); white-space: nowrap; }
+  .endpoint-first { inset-inline-start: 0; }
+  .endpoint-last { inset-inline-end: 0; }
+  .chart-marker { position: absolute; inset-block: 0; inset-inline-start: var(--selected-date); border-inline-start: 2px dashed var(--muted); pointer-events: none; }
+  .chart-dates { display: flex; justify-content: space-between; margin: 4px 0 0; padding: 0; text-align: center; list-style: none; }
+  .chart-dates li { width: 0; display: flex; justify-content: center; white-space: nowrap; }
+  .chart-dates [aria-current="true"] { color: var(--ink); font-weight: 750; text-decoration: underline; text-underline-offset: .2em; }
+  .date-inspector:not([hidden]) { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; margin-block: 18px 0; }
+  .date-inspector select { min-height: 44px; padding-inline: 8px; color: var(--ink); background: var(--surface); border: 1px solid var(--muted); border-radius: 8px; font: inherit; }
+  .date-inspector output { font-size: .92rem; }
+  .date-inspector select:focus-visible, .data-disclosure summary:focus-visible { outline: 3px solid var(--change); outline-offset: 3px; }
+  .data-disclosure { margin-top: 24px; }
+  .data-table { width: 100%; border-collapse: collapse; margin-block: 0 14px; font-size: .88rem; font-variant-numeric: tabular-nums; }
+  .data-table caption { text-align: left; color: var(--muted); padding-block-end: 8px; }
+  .data-table th, .data-table td { text-align: start; border-bottom: 1px solid var(--line); padding: 6px 4px; }
+  @media (max-width: 660px) { .comparison-grid { grid-template-columns: minmax(0, 1fr); } }
+</style>
+</head>
+<body>
+<header class="topbar">
+  <strong>Two measures side by side</strong>
+  <span class="spacer"></span>
+  <button class="btn deck-toggle" type="button" id="deck-toggle" aria-pressed="false" hidden>Deck mode (D)</button>
+</header>
+<main class="page">
+  <header class="band">
+    <p><span class="chip">Sample data · Jan–Jun 2026</span></p>
+    <h1>Membership grew as growth slowed</h1>
+    <p class="lede measure">The club went from 1,100 to 1,542 members while its monthly growth rate fell from 10% to 5%.</p>
+  </header>
+
+  <section class="band" id="monthly-comparison" aria-labelledby="comparison-heading">
+    <h2 id="comparison-heading">Same months, two measures</h2>
+    <div class="comparison-grid">
+      <figure class="comparison-card growth-figure">
+        <figcaption>
+          <h3>Monthly membership growth (%)</h3>
+          <p class="note">Percent change since the previous month</p>
+        </figcaption>
+        <div class="chart-frame">
+          <div class="chart-scale" aria-hidden="true"><span>12%</span><span>6%</span><span>0%</span></div>
+          <div class="chart-plot">
+            <svg viewBox="0 0 500 120" preserveAspectRatio="none" role="img" aria-label="Monthly growth fell from 10 percent in January to 5 percent in June.">
+              <path class="chart-gridline" d="M0 0H500 M0 60H500 M0 120H500"/>
+              <path class="series-line" d="M0 20 L100 30 L200 40 L300 50 L400 60 L500 70"/>
+            </svg>
+            <span class="chart-marker" hidden></span>
+            <span class="endpoint-label endpoint-first" style="--plot-y: 16.67%" aria-hidden="true">10%</span>
+            <span class="endpoint-label endpoint-last" style="--plot-y: 58.33%" aria-hidden="true">5%</span>
+            <ol class="chart-dates" aria-hidden="true">
+              <li>Jan</li><li>Feb</li><li>Mar</li><li>Apr</li><li>May</li><li>Jun</li>
+            </ol>
+          </div>
+        </div>
+      </figure>
+      <figure class="comparison-card member-figure">
+        <figcaption>
+          <h3>Total membership (members)</h3>
+          <p class="note">Member count at the end of each month</p>
+        </figcaption>
+        <div class="chart-frame">
+          <div class="chart-scale" aria-hidden="true"><span>1,800</span><span>900</span><span>0</span></div>
+          <div class="chart-plot">
+            <svg viewBox="0 0 500 1800" preserveAspectRatio="none" role="img" aria-label="Membership rose from 1,100 members in January to 1,542 in June.">
+              <path class="chart-gridline" d="M0 0H500 M0 900H500 M0 1800H500"/>
+              <path class="series-line" d="M0 700 L100 601 L200 505 L300 414 L400 331 L500 258"/>
+            </svg>
+            <span class="chart-marker" hidden></span>
+            <span class="endpoint-label endpoint-first" style="--plot-y: 38.89%" aria-hidden="true">1,100</span>
+            <span class="endpoint-label endpoint-last" style="--plot-y: 14.33%" aria-hidden="true">1,542</span>
+            <ol class="chart-dates" aria-hidden="true">
+              <li>Jan</li><li>Feb</li><li>Mar</li><li>Apr</li><li>May</li><li>Jun</li>
+            </ol>
+          </div>
+        </div>
+      </figure>
+    </div>
+    <div class="date-inspector" id="date-inspector" hidden>
+      <label for="compare-month">Compare a month</label>
+      <select id="compare-month">
+        <option>January</option><option>February</option><option>March</option>
+        <option>April</option><option>May</option><option selected>June</option>
+      </select>
+      <output id="month-reading" for="compare-month"></output>
+    </div>
+    <details class="data-disclosure">
+      <summary>View monthly sample data</summary>
+      <table class="data-table">
+        <caption>Growth is rounded to the nearest whole percent. The December starting count was 1,000.</caption>
+        <thead><tr><th scope="col">Month</th><th scope="col">Growth (%)</th><th scope="col">Members</th></tr></thead>
+        <tbody id="monthly-data">
+          <tr><th scope="row">January</th><td>10</td><td>1,100</td></tr>
+          <tr><th scope="row">February</th><td>9</td><td>1,199</td></tr>
+          <tr><th scope="row">March</th><td>8</td><td>1,295</td></tr>
+          <tr><th scope="row">April</th><td>7</td><td>1,386</td></tr>
+          <tr><th scope="row">May</th><td>6</td><td>1,469</td></tr>
+          <tr><th scope="row">June</th><td>5</td><td>1,542</td></tr>
+        </tbody>
+      </table>
+    </details>
+  </section>
+</main>
+<div class="deck-hint" aria-live="polite" id="deck-hint">Deck mode</div>
+<script src="../../ai-report-kit/presentation.js"></script>
+<script>
+  const compareMonth = document.getElementById("compare-month");
+  const monthlyRows = document.getElementById("monthly-data").rows;
+
+  function showMonthReading() {
+    const monthIndex = compareMonth.selectedIndex;
+    const [month, growth, members] = [...monthlyRows[monthIndex].cells].map(cell => cell.textContent);
+    document.getElementById("month-reading").textContent = `${month} · ${growth}% growth · ${members} members`;
+    document.querySelectorAll(".chart-marker").forEach(marker => {
+      marker.style.setProperty("--selected-date", `${100 * monthIndex / (monthlyRows.length - 1)}%`);
+      marker.hidden = false;
+    });
+    document.querySelectorAll(".chart-dates").forEach(dates => {
+      [...dates.children].forEach((date, index) => {
+        date.setAttribute("aria-current", String(index === monthIndex));
+      });
+    });
+  }
+
+  showMonthReading();
+  compareMonth.addEventListener("change", showMonthReading);
+  document.getElementById("date-inspector").hidden = false;
+  document.getElementById("deck-toggle").hidden = false;
+</script>
+</body>
+</html>
