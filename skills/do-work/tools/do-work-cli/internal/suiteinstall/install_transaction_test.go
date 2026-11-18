@@ -505,6 +505,9 @@ func TestEveryShippedManagedDefinitionRejectsAnExteriorCollision(t *testing.T) {
 		t.Fatalf("read shipped managed template: %v", err)
 	}
 	definitionSet := managedsection.JustDefinitionNames(shippedTemplate)
+	if _, exists := definitionSet["run-report-gallery"]; !exists {
+		t.Fatal("shipped managed definitions omit run-report-gallery")
+	}
 	definitionNames := make([]string, 0, len(definitionSet))
 	for definitionName := range definitionSet {
 		definitionNames = append(definitionNames, definitionName)

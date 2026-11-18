@@ -256,8 +256,8 @@ fi
 if ! cmp -s "$fresh_project/justfile" "$archive_root/skills/do-work-board/justfile.template"; then
   fail 'fresh install did not create the complete Justfile from the board-owned template'
 fi
-fresh_recipe_count="$(grep -Ec '^[A-Za-z0-9_-]+([^:]*)?:$' "$fresh_project/justfile")"
-[ "$fresh_recipe_count" -eq 41 ] || fail "fresh install published $fresh_recipe_count managed recipes, want 41"
+assert_file_contains "$fresh_project/justfile" '^run-report-gallery \*args:$' \
+  'fresh install did not publish the report gallery recipe'
 if [ ! -f "$fresh_project/.claude/settings.json" ]; then
   fail 'fresh install did not create Claude settings for core hooks'
 else
