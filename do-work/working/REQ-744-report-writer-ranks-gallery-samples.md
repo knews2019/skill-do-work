@@ -1,7 +1,7 @@
 ---
 id: REQ-744
 title: 'Report writer ranks gallery samples, borrows from the best, and offers the runners-up as second opinions'
-status: pending
+status: claimed
 created_at: 2026-11-18T15:29:51Z
 user_request: UR-183
 domain: general
@@ -14,6 +14,7 @@ batch: report-sample-gallery
 related: [REQ-743]
 depends_on: [REQ-743]
 addendum_to: REQ-712
+claimed_at: 2026-11-18T16:15:41Z
 ---
 # Report writer ranks gallery samples, borrows from the best, and offers the runners-up as second opinions
 
