@@ -3,6 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="ai-report-gallery-sample" content="FILL: selected sample name or none">
 <title>FILL: report title</title>
 <link rel="stylesheet" href="presentation.css">
 <!-- Page-only CSS, if any, goes in one <style> block here. Do not restyle the kit. -->
@@ -174,17 +175,15 @@
   </details>
 </section>
 
-<!-- Another layout or teaching method: this kit is one way to tell the story, not a proven best one. Suggest one
-     layout unlike this page, chosen for this report's content, and one teaching method chosen for this subject and
-     its reader: the method that would best help the reader understand the subject or deliver it to others. The
-     shipped second-opinion presets are a starting menu, not a closed list: when a better method fits, name it and
-     build its line with editor-direction instead of preset. Fill each line that builds a suggestion as a new page
-     in this bundle, and write each suggestion without a single quote, so each line stays one argument. -->
+<!-- Use the layout block once per fitting runner-up (up to two), or once for a content-specific alternate
+     layout if no runner-up fits. Keep one teaching-method block. Each command targets this bundle and each
+     direction is one single-quoted argument with no internal single quote. -->
 <section class="band" id="another-layout" aria-labelledby="another-layout-heading">
   <h2 id="another-layout-heading">Try another layout or teaching method</h2>
-  <p class="measure">FILL: one layout unlike this page, and why it might tell this story better, in one or two sentences.</p>
-  <p class="note">To build it as a new page beside this one, give an agent this line:</p>
-<pre><code>ai-report second-opinion --editor-direction 'FILL: the suggestion as one instruction' ai-reports/FILL: this bundle folder</code></pre>
+  <!-- Layout block -->
+  <p class="measure">FILL: runner-up sample or alternate layout and what it would make clearer, in one or two sentences.</p>
+<pre><code>ai-report second-opinion FILL: optional verified --preset, one single-quoted --editor-direction, and this bundle path</code></pre>
+  <!-- Teaching-method block -->
   <p class="measure">FILL: the one teaching method that would best help a reader understand or deliver this subject, and why it fits, in one or two sentences.</p>
   <p class="note">To build that as a new page too, give an agent this line:</p>
 <pre><code>ai-report second-opinion FILL: --preset and a shipped preset name, or --editor-direction and the method as one instruction in single quotes ai-reports/FILL: this bundle folder</code></pre>
