@@ -1,0 +1,18 @@
+Observed 2026-11-18T15:35:40Z
+worktree /Users/t2/Desktop/e1-experimental-repos/skill-do-work2
+HEAD fe0b06b74be7bedcafc39056f86c6da9be544c4b
+branch refs/heads/main
+
+worktree /Users/t2/.t3/worktrees/skill-do-work2/t3-2e195558-650cc849445a4539
+HEAD fe0b06b74be7bedcafc39056f86c6da9be544c4b
+branch refs/heads/t3/implement-cli-report-gallery
+
+worktree /Users/t2/.t3/worktrees/skill-do-work2/t3-903dfe0f-9c784110da458af1
+HEAD fe0b06b74be7bedcafc39056f86c6da9be544c4b
+branch refs/heads/t3/implement-agent-forms-hooks
+
+worktree /Users/t2/.t3/worktrees/skill-do-work2/t3-9b22b92f-0ac626ce5c13de96
+HEAD fe0b06b74be7bedcafc39056f86c6da9be544c4b
+branch refs/heads/t3/build-report-gallery-samples
+
+?? do-work/runs/work-2026-11-18-153357/

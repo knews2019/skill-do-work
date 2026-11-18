@@ -1,0 +1,163 @@
+{
+  "schema_version": 1,
+  "command": "plan-heavy-verification",
+  "outcome": "success",
+  "repository_root": "/Users/t2/Desktop/e1-experimental-repos/skill-do-work2",
+  "findings": [],
+  "changes": [],
+  "skipped_work": [],
+  "selected": [],
+  "excluded": [],
+  "selection_summary": {
+    "pending": 0,
+    "finished_awaiting_archive": 0,
+    "pending_answers": 0,
+    "blocked": 0,
+    "blocked_archive_collision": 0,
+    "blocked_dependency_cycle": 0,
+    "probed": 0,
+    "probe_succeeded": 0,
+    "skipped_impact_negligible": 0,
+    "total_estimated_minutes": 0,
+    "unknown_estimate_count": 0
+  },
+  "rollback": {
+    "status": "",
+    "actions": [],
+    "errors": []
+  },
+  "heavy_verification": {
+    "manifest_path": "_dev/tests/heavy-lanes.json",
+    "base_revision": "8ea2e7585d9e627f0c0d3150f00fdb2bdf0fa667",
+    "target_revision": "764f2d45dc9fc51a63e0f10a5ac73abffb7669f0",
+    "forced_all": false,
+    "uncertain": true,
+    "changed_paths": [
+      ".gitattributes",
+      "README.md",
+      "_dev/tests/install-suite-behavior.sh",
+      "_dev/tests/staged-skills-contract.sh",
+      "_dev/tests/update-script-behavior.sh",
+      "docs/report-gallery/index.html",
+      "skills/do-work-toolbox/SKILL.md",
+      "skills/do-work-toolbox/actions/ai-report.md",
+      "skills/do-work-toolbox/actions/help.md",
+      "skills/do-work-toolbox/docs/ai-report-guide.md",
+      "skills/do-work-toolbox/docs/report-gallery/parts-over-time/example.html",
+      "skills/do-work-toolbox/docs/report-gallery/parts-over-time/sample.md",
+      "skills/do-work-toolbox/docs/report-gallery/rhythm-over-cycle/example.html",
+      "skills/do-work-toolbox/docs/report-gallery/rhythm-over-cycle/sample.md",
+      "skills/do-work-toolbox/docs/report-gallery/two-measures-side-by-side/example.html",
+      "skills/do-work-toolbox/docs/report-gallery/two-measures-side-by-side/sample.md",
+      "skills/do-work-toolbox/docs/report-gallery/verdict-with-checks/example.html",
+      "skills/do-work-toolbox/docs/report-gallery/verdict-with-checks/sample.md",
+      "skills/do-work/actions/version.md",
+      "skills/do-work/tools/do-work-cli/internal/suiteinstall/install_transaction_test.go",
+      "skills/do-work/tools/do-work-cli/internal/suiteinstall/suite_commands.go",
+      "skills/do-work/tools/do-work-cli/internal/suiteinstall/suite_commands_test.go",
+      "skills/do-work/tools/do-work-cli/internal/toolboxcommands/commands.go",
+      "skills/do-work/tools/do-work-cli/internal/toolboxcommands/commands_test.go",
+      "skills/do-work/tools/do-work-cli/internal/toolboxcommands/mutation.go",
+      "skills/do-work/tools/do-work-cli/internal/toolboxcommands/report_gallery.go",
+      "skills/do-work/tools/do-work-cli/internal/toolboxcommands/report_gallery_page.go",
+      "skills/do-work/tools/do-work-cli/internal/toolboxcommands/report_gallery_test.go"
+    ],
+    "uncovered_paths": [
+      ".gitattributes",
+      "docs/report-gallery/index.html"
+    ],
+    "selected_lanes": [
+      {
+        "lane_id": "queue-kanban-javascript",
+        "command_argv": [
+          "env",
+          "GIT_CONFIG_NOSYSTEM=1",
+          "GIT_CONFIG_GLOBAL=/dev/null",
+          "bash",
+          "_dev/tests/maintainer-verify.sh",
+          "--heavy-lane",
+          "queue-kanban-javascript"
+        ],
+        "reasons": [
+          "coverage is uncertain for: .gitattributes, docs/report-gallery/index.html"
+        ]
+      },
+      {
+        "lane_id": "queue-kanban-browser",
+        "command_argv": [
+          "env",
+          "GIT_CONFIG_NOSYSTEM=1",
+          "GIT_CONFIG_GLOBAL=/dev/null",
+          "bash",
+          "_dev/tests/maintainer-verify.sh",
+          "--heavy-lane",
+          "queue-kanban-browser"
+        ],
+        "reasons": [
+          "coverage is uncertain for: .gitattributes, docs/report-gallery/index.html"
+        ]
+      },
+      {
+        "lane_id": "do-work-cli-integrations",
+        "command_argv": [
+          "env",
+          "GIT_CONFIG_NOSYSTEM=1",
+          "GIT_CONFIG_GLOBAL=/dev/null",
+          "bash",
+          "_dev/tests/maintainer-verify.sh",
+          "--heavy-lane",
+          "do-work-cli-integrations"
+        ],
+        "reasons": [
+          "coverage is uncertain for: .gitattributes, docs/report-gallery/index.html"
+        ]
+      },
+      {
+        "lane_id": "staged-skills",
+        "command_argv": [
+          "env",
+          "GIT_CONFIG_NOSYSTEM=1",
+          "GIT_CONFIG_GLOBAL=/dev/null",
+          "bash",
+          "_dev/tests/maintainer-verify.sh",
+          "--heavy-lane",
+          "staged-skills"
+        ],
+        "reasons": [
+          "coverage is uncertain for: .gitattributes, docs/report-gallery/index.html"
+        ]
+      },
+      {
+        "lane_id": "updater",
+        "command_argv": [
+          "env",
+          "GIT_CONFIG_NOSYSTEM=1",
+          "GIT_CONFIG_GLOBAL=/dev/null",
+          "bash",
+          "_dev/tests/maintainer-verify.sh",
+          "--heavy-lane",
+          "updater"
+        ],
+        "reasons": [
+          "coverage is uncertain for: .gitattributes, docs/report-gallery/index.html"
+        ]
+      },
+      {
+        "lane_id": "installer",
+        "command_argv": [
+          "env",
+          "GIT_CONFIG_NOSYSTEM=1",
+          "GIT_CONFIG_GLOBAL=/dev/null",
+          "bash",
+          "_dev/tests/maintainer-verify.sh",
+          "--heavy-lane",
+          "installer"
+        ],
+        "reasons": [
+          "coverage is uncertain for: .gitattributes, docs/report-gallery/index.html"
+        ]
+      }
+    ]
+  },
+  "finalizations": []
+}

@@ -1,0 +1,214 @@
+{
+  "schema_version": 1,
+  "command": "plan-heavy-verification",
+  "outcome": "success",
+  "repository_root": "/Users/t2/Desktop/e1-experimental-repos/skill-do-work2",
+  "findings": [],
+  "changes": [],
+  "skipped_work": [],
+  "selected": [],
+  "excluded": [],
+  "selection_summary": {
+    "pending": 0,
+    "finished_awaiting_archive": 0,
+    "pending_answers": 0,
+    "blocked": 0,
+    "blocked_archive_collision": 0,
+    "blocked_dependency_cycle": 0,
+    "probed": 0,
+    "probe_succeeded": 0,
+    "skipped_impact_negligible": 0,
+    "total_estimated_minutes": 0,
+    "unknown_estimate_count": 0
+  },
+  "rollback": {
+    "status": "",
+    "actions": [],
+    "errors": []
+  },
+  "heavy_verification": {
+    "manifest_path": "_dev/tests/heavy-lanes.json",
+    "base_revision": "8ea2e7585d9e627f0c0d3150f00fdb2bdf0fa667",
+    "target_revision": "68353189d908f8b9974475fbfeb273cd63b5b7c8",
+    "forced_all": false,
+    "uncertain": false,
+    "changed_paths": [
+      "README.md",
+      "_dev/tests/install-suite-behavior.sh",
+      "_dev/tests/update-script-behavior.sh",
+      "skills/do-work-toolbox/SKILL.md",
+      "skills/do-work-toolbox/actions/ai-report.md",
+      "skills/do-work-toolbox/actions/help.md",
+      "skills/do-work-toolbox/docs/ai-report-guide.md",
+      "skills/do-work-toolbox/docs/report-gallery/parts-over-time/example.html",
+      "skills/do-work-toolbox/docs/report-gallery/parts-over-time/sample.md",
+      "skills/do-work-toolbox/docs/report-gallery/rhythm-over-cycle/example.html",
+      "skills/do-work-toolbox/docs/report-gallery/rhythm-over-cycle/sample.md",
+      "skills/do-work-toolbox/docs/report-gallery/two-measures-side-by-side/example.html",
+      "skills/do-work-toolbox/docs/report-gallery/two-measures-side-by-side/sample.md",
+      "skills/do-work-toolbox/docs/report-gallery/verdict-with-checks/example.html",
+      "skills/do-work-toolbox/docs/report-gallery/verdict-with-checks/sample.md",
+      "skills/do-work/actions/version.md",
+      "skills/do-work/tools/do-work-cli/internal/suiteinstall/install_transaction_test.go",
+      "skills/do-work/tools/do-work-cli/internal/suiteinstall/suite_commands.go",
+      "skills/do-work/tools/do-work-cli/internal/suiteinstall/suite_commands_test.go",
+      "skills/do-work/tools/do-work-cli/internal/toolboxcommands/commands.go",
+      "skills/do-work/tools/do-work-cli/internal/toolboxcommands/commands_test.go",
+      "skills/do-work/tools/do-work-cli/internal/toolboxcommands/mutation.go",
+      "skills/do-work/tools/do-work-cli/internal/toolboxcommands/report_gallery.go",
+      "skills/do-work/tools/do-work-cli/internal/toolboxcommands/report_gallery_page.go",
+      "skills/do-work/tools/do-work-cli/internal/toolboxcommands/report_gallery_test.go"
+    ],
+    "uncovered_paths": [],
+    "selected_lanes": [
+      {
+        "lane_id": "queue-kanban-javascript",
+        "command_argv": [
+          "env",
+          "GIT_CONFIG_NOSYSTEM=1",
+          "GIT_CONFIG_GLOBAL=/dev/null",
+          "bash",
+          "_dev/tests/maintainer-verify.sh",
+          "--heavy-lane",
+          "queue-kanban-javascript"
+        ],
+        "reasons": [
+          "_dev/tests/install-suite-behavior.sh matched subtree _dev/tests",
+          "_dev/tests/update-script-behavior.sh matched subtree _dev/tests"
+        ]
+      },
+      {
+        "lane_id": "queue-kanban-browser",
+        "command_argv": [
+          "env",
+          "GIT_CONFIG_NOSYSTEM=1",
+          "GIT_CONFIG_GLOBAL=/dev/null",
+          "bash",
+          "_dev/tests/maintainer-verify.sh",
+          "--heavy-lane",
+          "queue-kanban-browser"
+        ],
+        "reasons": [
+          "_dev/tests/install-suite-behavior.sh matched subtree _dev/tests",
+          "_dev/tests/update-script-behavior.sh matched subtree _dev/tests"
+        ]
+      },
+      {
+        "lane_id": "do-work-cli-integrations",
+        "command_argv": [
+          "env",
+          "GIT_CONFIG_NOSYSTEM=1",
+          "GIT_CONFIG_GLOBAL=/dev/null",
+          "bash",
+          "_dev/tests/maintainer-verify.sh",
+          "--heavy-lane",
+          "do-work-cli-integrations"
+        ],
+        "reasons": [
+          "_dev/tests/install-suite-behavior.sh matched subtree _dev/tests",
+          "_dev/tests/update-script-behavior.sh matched subtree _dev/tests",
+          "skills/do-work/tools/do-work-cli/internal/suiteinstall/install_transaction_test.go matched subtree skills/do-work/tools/do-work-cli",
+          "skills/do-work/tools/do-work-cli/internal/suiteinstall/suite_commands.go matched subtree skills/do-work/tools/do-work-cli",
+          "skills/do-work/tools/do-work-cli/internal/suiteinstall/suite_commands_test.go matched subtree skills/do-work/tools/do-work-cli",
+          "skills/do-work/tools/do-work-cli/internal/toolboxcommands/commands.go matched subtree skills/do-work/tools/do-work-cli",
+          "skills/do-work/tools/do-work-cli/internal/toolboxcommands/commands_test.go matched subtree skills/do-work/tools/do-work-cli",
+          "skills/do-work/tools/do-work-cli/internal/toolboxcommands/mutation.go matched subtree skills/do-work/tools/do-work-cli",
+          "skills/do-work/tools/do-work-cli/internal/toolboxcommands/report_gallery.go matched subtree skills/do-work/tools/do-work-cli",
+          "skills/do-work/tools/do-work-cli/internal/toolboxcommands/report_gallery_page.go matched subtree skills/do-work/tools/do-work-cli",
+          "skills/do-work/tools/do-work-cli/internal/toolboxcommands/report_gallery_test.go matched subtree skills/do-work/tools/do-work-cli"
+        ]
+      },
+      {
+        "lane_id": "staged-skills",
+        "command_argv": [
+          "env",
+          "GIT_CONFIG_NOSYSTEM=1",
+          "GIT_CONFIG_GLOBAL=/dev/null",
+          "bash",
+          "_dev/tests/maintainer-verify.sh",
+          "--heavy-lane",
+          "staged-skills"
+        ],
+        "reasons": [
+          "_dev/tests/install-suite-behavior.sh matched subtree _dev/tests",
+          "_dev/tests/update-script-behavior.sh matched subtree _dev/tests",
+          "skills/do-work-toolbox/SKILL.md matched subtree skills",
+          "skills/do-work-toolbox/actions/ai-report.md matched subtree skills",
+          "skills/do-work-toolbox/actions/help.md matched subtree skills",
+          "skills/do-work-toolbox/docs/ai-report-guide.md matched subtree skills",
+          "skills/do-work-toolbox/docs/report-gallery/parts-over-time/example.html matched subtree skills",
+          "skills/do-work-toolbox/docs/report-gallery/parts-over-time/sample.md matched subtree skills",
+          "skills/do-work-toolbox/docs/report-gallery/rhythm-over-cycle/example.html matched subtree skills",
+          "skills/do-work-toolbox/docs/report-gallery/rhythm-over-cycle/sample.md matched subtree skills",
+          "skills/do-work-toolbox/docs/report-gallery/two-measures-side-by-side/example.html matched subtree skills",
+          "skills/do-work-toolbox/docs/report-gallery/two-measures-side-by-side/sample.md matched subtree skills",
+          "skills/do-work-toolbox/docs/report-gallery/verdict-with-checks/example.html matched subtree skills",
+          "skills/do-work-toolbox/docs/report-gallery/verdict-with-checks/sample.md matched subtree skills",
+          "skills/do-work/actions/version.md matched subtree skills",
+          "skills/do-work/tools/do-work-cli/internal/suiteinstall/install_transaction_test.go matched subtree skills",
+          "skills/do-work/tools/do-work-cli/internal/suiteinstall/suite_commands.go matched subtree skills",
+          "skills/do-work/tools/do-work-cli/internal/suiteinstall/suite_commands_test.go matched subtree skills",
+          "skills/do-work/tools/do-work-cli/internal/toolboxcommands/commands.go matched subtree skills",
+          "skills/do-work/tools/do-work-cli/internal/toolboxcommands/commands_test.go matched subtree skills",
+          "skills/do-work/tools/do-work-cli/internal/toolboxcommands/mutation.go matched subtree skills",
+          "skills/do-work/tools/do-work-cli/internal/toolboxcommands/report_gallery.go matched subtree skills",
+          "skills/do-work/tools/do-work-cli/internal/toolboxcommands/report_gallery_page.go matched subtree skills",
+          "skills/do-work/tools/do-work-cli/internal/toolboxcommands/report_gallery_test.go matched subtree skills"
+        ]
+      },
+      {
+        "lane_id": "updater",
+        "command_argv": [
+          "env",
+          "GIT_CONFIG_NOSYSTEM=1",
+          "GIT_CONFIG_GLOBAL=/dev/null",
+          "bash",
+          "_dev/tests/maintainer-verify.sh",
+          "--heavy-lane",
+          "updater"
+        ],
+        "reasons": [
+          "_dev/tests/install-suite-behavior.sh matched subtree _dev/tests",
+          "_dev/tests/update-script-behavior.sh matched subtree _dev/tests",
+          "skills/do-work/actions/version.md matched exact path skills/do-work/actions/version.md",
+          "skills/do-work/tools/do-work-cli/internal/suiteinstall/install_transaction_test.go matched subtree skills/do-work/tools/do-work-cli",
+          "skills/do-work/tools/do-work-cli/internal/suiteinstall/suite_commands.go matched subtree skills/do-work/tools/do-work-cli",
+          "skills/do-work/tools/do-work-cli/internal/suiteinstall/suite_commands_test.go matched subtree skills/do-work/tools/do-work-cli",
+          "skills/do-work/tools/do-work-cli/internal/toolboxcommands/commands.go matched subtree skills/do-work/tools/do-work-cli",
+          "skills/do-work/tools/do-work-cli/internal/toolboxcommands/commands_test.go matched subtree skills/do-work/tools/do-work-cli",
+          "skills/do-work/tools/do-work-cli/internal/toolboxcommands/mutation.go matched subtree skills/do-work/tools/do-work-cli",
+          "skills/do-work/tools/do-work-cli/internal/toolboxcommands/report_gallery.go matched subtree skills/do-work/tools/do-work-cli",
+          "skills/do-work/tools/do-work-cli/internal/toolboxcommands/report_gallery_page.go matched subtree skills/do-work/tools/do-work-cli",
+          "skills/do-work/tools/do-work-cli/internal/toolboxcommands/report_gallery_test.go matched subtree skills/do-work/tools/do-work-cli"
+        ]
+      },
+      {
+        "lane_id": "installer",
+        "command_argv": [
+          "env",
+          "GIT_CONFIG_NOSYSTEM=1",
+          "GIT_CONFIG_GLOBAL=/dev/null",
+          "bash",
+          "_dev/tests/maintainer-verify.sh",
+          "--heavy-lane",
+          "installer"
+        ],
+        "reasons": [
+          "README.md matched exact path README.md",
+          "_dev/tests/install-suite-behavior.sh matched subtree _dev/tests",
+          "_dev/tests/update-script-behavior.sh matched subtree _dev/tests",
+          "skills/do-work/tools/do-work-cli/internal/suiteinstall/install_transaction_test.go matched subtree skills/do-work/tools/do-work-cli",
+          "skills/do-work/tools/do-work-cli/internal/suiteinstall/suite_commands.go matched subtree skills/do-work/tools/do-work-cli",
+          "skills/do-work/tools/do-work-cli/internal/suiteinstall/suite_commands_test.go matched subtree skills/do-work/tools/do-work-cli",
+          "skills/do-work/tools/do-work-cli/internal/toolboxcommands/commands.go matched subtree skills/do-work/tools/do-work-cli",
+          "skills/do-work/tools/do-work-cli/internal/toolboxcommands/commands_test.go matched subtree skills/do-work/tools/do-work-cli",
+          "skills/do-work/tools/do-work-cli/internal/toolboxcommands/mutation.go matched subtree skills/do-work/tools/do-work-cli",
+          "skills/do-work/tools/do-work-cli/internal/toolboxcommands/report_gallery.go matched subtree skills/do-work/tools/do-work-cli",
+          "skills/do-work/tools/do-work-cli/internal/toolboxcommands/report_gallery_page.go matched subtree skills/do-work/tools/do-work-cli",
+          "skills/do-work/tools/do-work-cli/internal/toolboxcommands/report_gallery_test.go matched subtree skills/do-work/tools/do-work-cli"
+        ]
+      }
+    ]
+  },
+  "finalizations": []
+}

@@ -1,0 +1,339 @@
+{
+  "schema_version": 1,
+  "command": "advance",
+  "outcome": "findings",
+  "repository_root": "/Users/t2/Desktop/e1-experimental-repos/skill-do-work2",
+  "findings": [
+    {
+      "code": "QUALIFY-NEW-FILE-UNWIRED",
+      "severity": "warning",
+      "affected_ids": [
+        "REQ-743"
+      ],
+      "affected_paths": [
+        "do-work/working/REQ-743-report-gallery-samples-command-add-form.md",
+        "skills/do-work/tools/do-work-cli/internal/toolboxcommands/report_gallery.go"
+      ],
+      "observed_evidence": [
+        "new file has no static reference outside itself"
+      ],
+      "fixability": "manual",
+      "automation_stop_reason": "judge entry-point or dynamic-wiring exceptions",
+      "next_argv": [
+        "git",
+        "diff",
+        "--name-status",
+        "--",
+        "skills/do-work/tools/do-work-cli/internal/toolboxcommands/report_gallery.go"
+      ],
+      "next_just_recipe": "",
+      "verification_argv": [
+        "git",
+        "status",
+        "--short",
+        "--",
+        "skills/do-work/tools/do-work-cli/internal/toolboxcommands/report_gallery.go"
+      ]
+    },
+    {
+      "code": "QUALIFY-NEW-FILE-UNWIRED",
+      "severity": "warning",
+      "affected_ids": [
+        "REQ-743"
+      ],
+      "affected_paths": [
+        "do-work/working/REQ-743-report-gallery-samples-command-add-form.md",
+        "skills/do-work/tools/do-work-cli/internal/toolboxcommands/report_gallery_page.go"
+      ],
+      "observed_evidence": [
+        "new file has no static reference outside itself"
+      ],
+      "fixability": "manual",
+      "automation_stop_reason": "judge entry-point or dynamic-wiring exceptions",
+      "next_argv": [
+        "git",
+        "diff",
+        "--name-status",
+        "--",
+        "skills/do-work/tools/do-work-cli/internal/toolboxcommands/report_gallery_page.go"
+      ],
+      "next_just_recipe": "",
+      "verification_argv": [
+        "git",
+        "status",
+        "--short",
+        "--",
+        "skills/do-work/tools/do-work-cli/internal/toolboxcommands/report_gallery_page.go"
+      ]
+    },
+    {
+      "code": "QUALIFY-NEW-FILE-UNWIRED",
+      "severity": "warning",
+      "affected_ids": [
+        "REQ-743"
+      ],
+      "affected_paths": [
+        "do-work/working/REQ-743-report-gallery-samples-command-add-form.md",
+        "skills/do-work/tools/do-work-cli/internal/toolboxcommands/report_gallery_test.go"
+      ],
+      "observed_evidence": [
+        "new file has no static reference outside itself"
+      ],
+      "fixability": "manual",
+      "automation_stop_reason": "judge entry-point or dynamic-wiring exceptions",
+      "next_argv": [
+        "git",
+        "diff",
+        "--name-status",
+        "--",
+        "skills/do-work/tools/do-work-cli/internal/toolboxcommands/report_gallery_test.go"
+      ],
+      "next_just_recipe": "",
+      "verification_argv": [
+        "git",
+        "status",
+        "--short",
+        "--",
+        "skills/do-work/tools/do-work-cli/internal/toolboxcommands/report_gallery_test.go"
+      ]
+    },
+    {
+      "code": "SCOPE-DECLARED-NOT-TOUCHED",
+      "severity": "warning",
+      "affected_ids": [
+        "REQ-743"
+      ],
+      "affected_paths": [
+        "do-work/working/REQ-743-report-gallery-samples-command-add-form.md",
+        "skills/do-work/tools/do-work-cli/internal/suiteinstall/update_transaction_test.go"
+      ],
+      "observed_evidence": [
+        "declared in Scope but absent from Implementation Summary"
+      ],
+      "fixability": "manual",
+      "automation_stop_reason": "the declared write set was not fully implemented",
+      "next_argv": [
+        "git",
+        "log",
+        "-1",
+        "--",
+        "skills/do-work/tools/do-work-cli/internal/suiteinstall/update_transaction_test.go"
+      ],
+      "next_just_recipe": "",
+      "verification_argv": [
+        "git",
+        "status",
+        "--short",
+        "--",
+        "skills/do-work/tools/do-work-cli/internal/suiteinstall/update_transaction_test.go"
+      ]
+    }
+  ],
+  "changes": [],
+  "skipped_work": [],
+  "selected": [],
+  "excluded": [],
+  "selection_summary": {
+    "pending": 0,
+    "finished_awaiting_archive": 0,
+    "pending_answers": 0,
+    "blocked": 0,
+    "blocked_archive_collision": 0,
+    "blocked_dependency_cycle": 0,
+    "probed": 0,
+    "probe_succeeded": 0,
+    "skipped_impact_negligible": 0,
+    "total_estimated_minutes": 0,
+    "unknown_estimate_count": 0
+  },
+  "rollback": {
+    "status": "",
+    "actions": [],
+    "errors": []
+  },
+  "finalizations": [],
+  "advance": {
+    "request_id": "REQ-743",
+    "request_path": "do-work/working/REQ-743-report-gallery-samples-command-add-form.md",
+    "tree_section": "working",
+    "status": "claimed",
+    "route": "C",
+    "phase": "qualify",
+    "phase_kind": "mechanical",
+    "missing_evidence": [],
+    "next_argv": [],
+    "verification_argv": [
+      "do-work-cli",
+      "--format",
+      "json",
+      "advance",
+      "REQ-743"
+    ],
+    "gate_records": [
+      {
+        "request_id": "REQ-743",
+        "request_path": "do-work/working/REQ-743-report-gallery-samples-command-add-form.md",
+        "gate_id": "qualify",
+        "provenance": "merged_range",
+        "state": "satisfied",
+        "outcome": "success",
+        "findings": [
+          {
+            "code": "QUALIFY-NEW-FILE-UNWIRED",
+            "severity": "warning",
+            "affected_ids": [
+              "REQ-743"
+            ],
+            "affected_paths": [
+              "do-work/working/REQ-743-report-gallery-samples-command-add-form.md",
+              "skills/do-work/tools/do-work-cli/internal/toolboxcommands/report_gallery.go"
+            ],
+            "observed_evidence": [
+              "new file has no static reference outside itself"
+            ],
+            "fixability": "manual",
+            "automation_stop_reason": "judge entry-point or dynamic-wiring exceptions",
+            "next_argv": [
+              "git",
+              "diff",
+              "--name-status",
+              "--",
+              "skills/do-work/tools/do-work-cli/internal/toolboxcommands/report_gallery.go"
+            ],
+            "next_just_recipe": "",
+            "verification_argv": [
+              "git",
+              "status",
+              "--short",
+              "--",
+              "skills/do-work/tools/do-work-cli/internal/toolboxcommands/report_gallery.go"
+            ]
+          },
+          {
+            "code": "QUALIFY-NEW-FILE-UNWIRED",
+            "severity": "warning",
+            "affected_ids": [
+              "REQ-743"
+            ],
+            "affected_paths": [
+              "do-work/working/REQ-743-report-gallery-samples-command-add-form.md",
+              "skills/do-work/tools/do-work-cli/internal/toolboxcommands/report_gallery_page.go"
+            ],
+            "observed_evidence": [
+              "new file has no static reference outside itself"
+            ],
+            "fixability": "manual",
+            "automation_stop_reason": "judge entry-point or dynamic-wiring exceptions",
+            "next_argv": [
+              "git",
+              "diff",
+              "--name-status",
+              "--",
+              "skills/do-work/tools/do-work-cli/internal/toolboxcommands/report_gallery_page.go"
+            ],
+            "next_just_recipe": "",
+            "verification_argv": [
+              "git",
+              "status",
+              "--short",
+              "--",
+              "skills/do-work/tools/do-work-cli/internal/toolboxcommands/report_gallery_page.go"
+            ]
+          },
+          {
+            "code": "QUALIFY-NEW-FILE-UNWIRED",
+            "severity": "warning",
+            "affected_ids": [
+              "REQ-743"
+            ],
+            "affected_paths": [
+              "do-work/working/REQ-743-report-gallery-samples-command-add-form.md",
+              "skills/do-work/tools/do-work-cli/internal/toolboxcommands/report_gallery_test.go"
+            ],
+            "observed_evidence": [
+              "new file has no static reference outside itself"
+            ],
+            "fixability": "manual",
+            "automation_stop_reason": "judge entry-point or dynamic-wiring exceptions",
+            "next_argv": [
+              "git",
+              "diff",
+              "--name-status",
+              "--",
+              "skills/do-work/tools/do-work-cli/internal/toolboxcommands/report_gallery_test.go"
+            ],
+            "next_just_recipe": "",
+            "verification_argv": [
+              "git",
+              "status",
+              "--short",
+              "--",
+              "skills/do-work/tools/do-work-cli/internal/toolboxcommands/report_gallery_test.go"
+            ]
+          }
+        ],
+        "changes": [],
+        "output_lines": [],
+        "next_argv": [],
+        "verification_argv": [
+          "do-work-cli",
+          "--format",
+          "json",
+          "advance",
+          "REQ-743"
+        ]
+      },
+      {
+        "request_id": "REQ-743",
+        "request_path": "do-work/working/REQ-743-report-gallery-samples-command-add-form.md",
+        "gate_id": "scope-drift",
+        "provenance": "merged_range",
+        "state": "findings",
+        "outcome": "findings",
+        "findings": [
+          {
+            "code": "SCOPE-DECLARED-NOT-TOUCHED",
+            "severity": "warning",
+            "affected_ids": [
+              "REQ-743"
+            ],
+            "affected_paths": [
+              "do-work/working/REQ-743-report-gallery-samples-command-add-form.md",
+              "skills/do-work/tools/do-work-cli/internal/suiteinstall/update_transaction_test.go"
+            ],
+            "observed_evidence": [
+              "declared in Scope but absent from Implementation Summary"
+            ],
+            "fixability": "manual",
+            "automation_stop_reason": "the declared write set was not fully implemented",
+            "next_argv": [
+              "git",
+              "log",
+              "-1",
+              "--",
+              "skills/do-work/tools/do-work-cli/internal/suiteinstall/update_transaction_test.go"
+            ],
+            "next_just_recipe": "",
+            "verification_argv": [
+              "git",
+              "status",
+              "--short",
+              "--",
+              "skills/do-work/tools/do-work-cli/internal/suiteinstall/update_transaction_test.go"
+            ]
+          }
+        ],
+        "changes": [],
+        "output_lines": [],
+        "next_argv": [],
+        "verification_argv": [
+          "do-work-cli",
+          "--format",
+          "json",
+          "advance",
+          "REQ-743"
+        ]
+      }
+    ]
+  }
+}

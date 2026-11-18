@@ -1,0 +1,3 @@
+run-do-work-update exited 0 (base v0.324.3, installed v0.324.4)
+Expected gallery missing after successful run-do-work-update
+Consumer gallery assertion exit: 1

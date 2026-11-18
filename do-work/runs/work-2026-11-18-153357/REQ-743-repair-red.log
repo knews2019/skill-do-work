@@ -1,0 +1,5 @@
+--- FAIL: TestReportGalleryRebuildsFromTheWrittenSuite (0.55s)
+    suite_commands_test.go:357: read /private/var/folders/2w/kw8sv6rd1z15yjykl787ryph0000gn/T/TestReportGalleryRebuildsFromTheWrittenSuite2843442633/001/docs/report-gallery/index.html: open /private/var/folders/2w/kw8sv6rd1z15yjykl787ryph0000gn/T/TestReportGalleryRebuildsFromTheWrittenSuite2843442633/001/docs/report-gallery/index.html: no such file or directory
+FAIL
+FAIL	github.com/knews2019/skill-do-work/do-work-cli/internal/suiteinstall	0.887s
+FAIL

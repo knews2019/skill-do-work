@@ -1,0 +1,16 @@
+Canonical gate started 2026-11-18T15:37:54Z
+fe0b06b74be7bedcafc39056f86c6da9be544c4b
+ M do-work/working/REQ-743-report-gallery-samples-command-add-form.md
+?? do-work/runs/work-2026-11-18-153357/
+17:37  up 4 hrs, 1 user, load averages: 1.57 1.63 1.67
+argv: bash _dev/tests/maintainer-verify.sh
+attempt 1: exit 0 at 2026-11-18T15:40:26Z
+final gate status: 0
+fe0b06b74be7bedcafc39056f86c6da9be544c4b
+
+Observed console results
+- Go and ShellCheck version floors passed. ShellCheck covered 245 tracked files. gofmt covered 345 tracked files.
+- Aggregate contract regressions passed. The fast tier skipped its staged-skills, updater and installer heavy probes.
+- Board vet passed. Fresh board tests: 428, 49 s, slowest file 22.62 s.
+- CLI vet passed. Fresh CLI tests: 988, 74 s, slowest file 22.16 s.
+- Both test stages printed EXECUTING (fingerprint_uncertain). Gate reported 152 s and "Maintainer verification passed."

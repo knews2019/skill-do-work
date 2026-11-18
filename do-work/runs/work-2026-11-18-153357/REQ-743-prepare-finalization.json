@@ -1,0 +1,50 @@
+{
+  "schema_version": 1,
+  "command": "finalize",
+  "outcome": "success",
+  "repository_root": "/Users/t2/Desktop/e1-experimental-repos/skill-do-work2",
+  "findings": [
+    {
+      "code": "FINALIZATION-MANIFEST-EMITTED",
+      "severity": "info",
+      "affected_ids": [
+        "REQ-743"
+      ],
+      "affected_paths": [
+        "/Users/t2/Desktop/e1-experimental-repos/skill-do-work2/.git/REQ-743-checks/finalize.json"
+      ],
+      "observed_evidence": [
+        "emitted /Users/t2/Desktop/e1-experimental-repos/skill-do-work2/.git/REQ-743-checks/finalize.json after every finalize check passed without a journal",
+        "commit_paths: CHANGELOG.md, VERSION, do-work/CHECKPOINT.md, do-work/archive/REQ-743-report-gallery-samples-command-add-form.md, do-work/calibration-log.tsv, do-work/lessons-index.md, do-work/working/REQ-743-report-gallery-samples-command-add-form.md, skills/do-work/CHANGELOG.md, skills/do-work/VERSION, skills/do-work/actions/version.md, skills/do-work/tools/lessons-do-work-update.md"
+      ],
+      "fixability": "automatic",
+      "automation_stop_reason": "",
+      "next_argv": [],
+      "next_just_recipe": "",
+      "verification_argv": []
+    }
+  ],
+  "changes": [],
+  "skipped_work": [],
+  "selected": [],
+  "excluded": [],
+  "selection_summary": {
+    "pending": 0,
+    "finished_awaiting_archive": 0,
+    "pending_answers": 0,
+    "blocked": 0,
+    "blocked_archive_collision": 0,
+    "blocked_dependency_cycle": 0,
+    "probed": 0,
+    "probe_succeeded": 0,
+    "skipped_impact_negligible": 0,
+    "total_estimated_minutes": 0,
+    "unknown_estimate_count": 0
+  },
+  "rollback": {
+    "status": "",
+    "actions": [],
+    "errors": []
+  },
+  "finalizations": []
+}

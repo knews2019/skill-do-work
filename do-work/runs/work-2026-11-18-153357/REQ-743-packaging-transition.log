@@ -1,0 +1,4 @@
+First historical invocation installed the suite but left the gallery missing.
+Newly installed recipe completed the equal-version retry without confirmation.
+run-do-work-update exited 0 (base v0.324.3, installed v0.324.4)
+Generated gallery includes all four installed samples

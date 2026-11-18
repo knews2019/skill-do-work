@@ -1,0 +1,11 @@
+docs/report-gallery/index.html
+[main c71d5c8] Save the pace and level comparison
+ 3 files changed, 19 insertions(+)
+ create mode 100644 docs/report-gallery/pace-and-level/comparison.png
+ create mode 100644 docs/report-gallery/pace-and-level/sample.md
+pace-and-level	The reader might assume a falling rate means the underlying level has fallen too.	docs/report-gallery/pace-and-level/sample.md
+parts-over-time	The reader wants to know which parts account for a change in the total over time.	.claude/skills/do-work-toolbox/docs/report-gallery/parts-over-time/sample.md
+rhythm-over-cycle	The reader wants to see what drives the busiest part of a repeating cycle and when each activity peaks.	.claude/skills/do-work-toolbox/docs/report-gallery/rhythm-over-cycle/sample.md
+two-measures-side-by-side	The reader might mistake a change in how fast something is growing for a change in its level.	.claude/skills/do-work-toolbox/docs/report-gallery/two-measures-side-by-side/sample.md
+verdict-with-checks	The reader needs to know whether a judgment holds and what was checked before reaching it.	.claude/skills/do-work-toolbox/docs/report-gallery/verdict-with-checks/sample.md
+docs/report-gallery/index.html

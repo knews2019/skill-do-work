@@ -1,0 +1,3 @@
+fresh exited 0 (base v0.324.3, installed v0.324.3)
+Expected gallery missing after successful fresh
+Consumer gallery assertion exit: 1

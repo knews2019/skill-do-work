@@ -1,0 +1,16 @@
+fresh exited 0 (base v0.324.3, installed v0.324.3)
+Generated gallery includes all four installed samples
+First historical invocation installed the suite but left the gallery missing.
+Newly installed recipe completed the equal-version retry without confirmation.
+run-do-work-update exited 0 (base v0.324.3, installed v0.324.4)
+Generated gallery includes all four installed samples
+First historical invocation installed the suite but left the gallery missing.
+Newly installed recipe completed the equal-version retry without confirmation.
+do-work-update exited 0 (base v0.324.3, installed v0.324.4)
+Generated gallery includes all four installed samples
+First historical invocation preserved the hand-made page silently.
+Newly installed recipe completed the equal-version retry without confirmation.
+run-do-work-update exited 0 (base v0.324.3, installed v0.324.4)
+Hand-made gallery preserved; 0 warning(s) as expected for this operation.
+fresh exited 0 (base v0.324.3, installed v0.324.3)
+Hand-made gallery preserved; 1 warning(s) as expected for this operation.

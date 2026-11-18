@@ -1,0 +1,4 @@
+fresh exit 0
+run-do-work-update exit 1
+do-work-update exit 1
+run-do-work-update hand-made exit 1

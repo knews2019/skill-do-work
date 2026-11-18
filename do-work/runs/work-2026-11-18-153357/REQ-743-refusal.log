@@ -1,0 +1,12 @@
+ai-report-gallery: refused
+repository: /Users/t2/Desktop/e1-experimental-repos/skill-do-work2/.git/REQ-743-checks/consumer
+finding AI-REPORT-GALLERY-OUTPUT-REFUSED [error]: refusing to replace docs/report-gallery/index.html: missing the ai-report-gallery generator header
+  paths: docs/report-gallery/index.html
+  fixability: manual
+  stopped: the gallery can only replace its own generated page at this path
+  verify: do-work-cli --format json ai-report-gallery
+finding AI-REPORT-GALLERY-SAMPLE-SKIPPED [warning]: skipped sample broken-sample: frontmatter is missing
+  paths: docs/report-gallery/broken-sample/sample.md
+  fixability: manual
+  stopped: no distinct resolving command is available
+  verify: do-work-cli --format json ai-report-gallery

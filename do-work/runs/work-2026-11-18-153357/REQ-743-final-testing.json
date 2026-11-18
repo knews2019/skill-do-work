@@ -1,0 +1,257 @@
+{
+  "schema_version": 1,
+  "command": "advance",
+  "outcome": "success",
+  "repository_root": "/Users/t2/Desktop/e1-experimental-repos/skill-do-work2",
+  "findings": [
+    {
+      "code": "BLOCKED-PROBE-SUCCEEDED",
+      "severity": "info",
+      "affected_ids": [
+        "REQ-743"
+      ],
+      "affected_paths": [
+        "do-work/working/REQ-743-report-gallery-samples-command-add-form.md",
+        "do-work/runs/work-2026-11-18-153357/REQ-743-probe.sh"
+      ],
+      "observed_evidence": [
+        "raw probe status 0; diagnostic sha256 591104d69b76f612ac1476d7ca0bee5957399cc9c8997cb4c8e6c63b253c5bde"
+      ],
+      "fixability": "manual",
+      "automation_stop_reason": "",
+      "next_argv": [
+        "do-work-cli",
+        "--format",
+        "json",
+        "advance",
+        "REQ-743",
+        "--request-path",
+        "do-work/working/REQ-743-report-gallery-samples-command-add-form.md",
+        "--gate-exit-status",
+        "0",
+        "--gate-arg",
+        "bash",
+        "--gate-arg",
+        "_dev/tests/maintainer-verify.sh",
+        "--",
+        "--probe-file",
+        "do-work/runs/work-2026-11-18-153357/REQ-743-probe.sh"
+      ],
+      "next_just_recipe": "",
+      "verification_argv": [
+        "do-work-cli",
+        "--format",
+        "json",
+        "advance",
+        "REQ-743",
+        "--request-path",
+        "do-work/working/REQ-743-report-gallery-samples-command-add-form.md",
+        "--gate-exit-status",
+        "0",
+        "--gate-arg",
+        "bash",
+        "--gate-arg",
+        "_dev/tests/maintainer-verify.sh",
+        "--",
+        "--probe-file",
+        "do-work/runs/work-2026-11-18-153357/REQ-743-probe.sh"
+      ]
+    }
+  ],
+  "changes": [
+    {
+      "path": "/Users/t2/Desktop/e1-experimental-repos/skill-do-work2/.git/do-work-green-gates/25aef6a61b17974fce3a08a63953c3eb1719dde37ce3ab556f066e3619e6bbb5.json",
+      "kind": "git-private",
+      "detail": "recorded the current revision for the exact green gate argv"
+    }
+  ],
+  "skipped_work": [],
+  "selected": [],
+  "excluded": [],
+  "selection_summary": {
+    "pending": 0,
+    "finished_awaiting_archive": 0,
+    "pending_answers": 0,
+    "blocked": 0,
+    "blocked_archive_collision": 0,
+    "blocked_dependency_cycle": 0,
+    "probed": 0,
+    "probe_succeeded": 0,
+    "skipped_impact_negligible": 0,
+    "total_estimated_minutes": 0,
+    "unknown_estimate_count": 0
+  },
+  "rollback": {
+    "status": "",
+    "actions": [],
+    "errors": []
+  },
+  "finalizations": [],
+  "advance": {
+    "request_id": "REQ-743",
+    "request_path": "do-work/working/REQ-743-report-gallery-samples-command-add-form.md",
+    "tree_section": "working",
+    "status": "claimed",
+    "route": "C",
+    "phase": "test-gate",
+    "phase_kind": "mechanical",
+    "missing_evidence": [],
+    "next_argv": [],
+    "verification_argv": [
+      "do-work-cli",
+      "--format",
+      "json",
+      "advance",
+      "REQ-743"
+    ],
+    "gate_records": [
+      {
+        "request_id": "REQ-743",
+        "request_path": "do-work/working/REQ-743-report-gallery-samples-command-add-form.md",
+        "gate_id": "scope-drift",
+        "provenance": "merged_range",
+        "state": "satisfied",
+        "outcome": "success",
+        "findings": [],
+        "changes": [],
+        "output_lines": [],
+        "next_argv": [],
+        "verification_argv": [
+          "do-work-cli",
+          "--format",
+          "json",
+          "advance",
+          "REQ-743"
+        ]
+      },
+      {
+        "request_id": "REQ-743",
+        "request_path": "do-work/working/REQ-743-report-gallery-samples-command-add-form.md",
+        "gate_id": "run-blocked-check",
+        "provenance": "baseline_record",
+        "state": "satisfied",
+        "outcome": "success",
+        "findings": [
+          {
+            "code": "BLOCKED-PROBE-SUCCEEDED",
+            "severity": "info",
+            "affected_ids": [
+              "REQ-743"
+            ],
+            "affected_paths": [
+              "do-work/working/REQ-743-report-gallery-samples-command-add-form.md",
+              "do-work/runs/work-2026-11-18-153357/REQ-743-probe.sh"
+            ],
+            "observed_evidence": [
+              "raw probe status 0; diagnostic sha256 591104d69b76f612ac1476d7ca0bee5957399cc9c8997cb4c8e6c63b253c5bde"
+            ],
+            "fixability": "manual",
+            "automation_stop_reason": "",
+            "next_argv": [
+              "do-work-cli",
+              "--format",
+              "json",
+              "advance",
+              "REQ-743",
+              "--request-path",
+              "do-work/working/REQ-743-report-gallery-samples-command-add-form.md",
+              "--gate-exit-status",
+              "0",
+              "--gate-arg",
+              "bash",
+              "--gate-arg",
+              "_dev/tests/maintainer-verify.sh",
+              "--",
+              "--probe-file",
+              "do-work/runs/work-2026-11-18-153357/REQ-743-probe.sh"
+            ],
+            "next_just_recipe": "",
+            "verification_argv": [
+              "do-work-cli",
+              "--format",
+              "json",
+              "advance",
+              "REQ-743",
+              "--request-path",
+              "do-work/working/REQ-743-report-gallery-samples-command-add-form.md",
+              "--gate-exit-status",
+              "0",
+              "--gate-arg",
+              "bash",
+              "--gate-arg",
+              "_dev/tests/maintainer-verify.sh",
+              "--",
+              "--probe-file",
+              "do-work/runs/work-2026-11-18-153357/REQ-743-probe.sh"
+            ]
+          }
+        ],
+        "changes": [],
+        "output_lines": [],
+        "next_argv": [],
+        "verification_argv": [
+          "do-work-cli",
+          "--format",
+          "json",
+          "advance",
+          "REQ-743"
+        ],
+        "focused_test": {
+          "probe_file": "do-work/runs/work-2026-11-18-153357/REQ-743-probe.sh",
+          "exit_status": 0,
+          "launched": true,
+          "timed_out": false,
+          "diagnostic": "--- PASS: TestHandlersRegisterCanonicalToolboxCommands (0.00s)\n--- PASS: TestAIReportGalleryListUsesProjectOverrideAndSkipsBrokenRecords (0.01s)\n--- PASS: TestAIReportGalleryPageLinksLatestRealReportsAndAssets (0.02s)\n--- PASS: TestAIReportGalleryEmptyListWritesNothingAndSourceCanCreatePage (0.00s)\n--- PASS: TestAIReportGalleryRefusesHandMadeOrLinkedOutput (0.00s)\n--- PASS: TestAIReportGalleryPublicationPreservesAnEditAfterOwnershipCheck (0.01s)\n--- PASS: TestAIReportIndexFindListsMatchesNewestFirstIncludingSuperseded (0.01s)\n--- PASS: TestAIReportIndexRefusesHandMadeCatalog (0.01s)\n--- PASS: TestReportGalleryRebuildsFromTheWrittenSuite (0.64s)\n--- PASS: TestReportGalleryWriteProblemsWarnOnceWithoutRecoveringTheSuite (0.77s)\n--- PASS: TestAnAvailableUpdateInstallsAndVerifiesTheNewVersion (0.35s)\n--- PASS: TestInstallAndUpdateRecommendOrganizeWhenReportsAreLoose (0.41s)",
+          "diagnostic_sha256": "591104d69b76f612ac1476d7ca0bee5957399cc9c8997cb4c8e6c63b253c5bde",
+          "baseline_state": "green",
+          "baseline_exit_status": 0,
+          "baseline_launched": true,
+          "command_text": "#!/bin/sh\nset -eu\ncd \"$(git rev-parse --show-toplevel)/skills/do-work/tools/do-work-cli\"\nrun_named_tests() {\n  package=\"$1\"\n  shift\n  names=$(IFS='|'; echo \"$*\")\n  output=$(go test -count=1 -v -run \"^($names)$\" \"$package\" 2\u003e\u00261) || { echo \"$output\" \u003e\u00262; return 1; }\n  for test_name in \"$@\"; do\n    echo \"$output\" | grep -F -- \"--- PASS: $test_name (\"\n  done\n}\nrun_named_tests ./internal/toolboxcommands TestHandlersRegisterCanonicalToolboxCommands TestAIReportGalleryListUsesProjectOverrideAndSkipsBrokenRecords TestAIReportGalleryPageLinksLatestRealReportsAndAssets TestAIReportGalleryEmptyListWritesNothingAndSourceCanCreatePage TestAIReportGalleryRefusesHandMadeOrLinkedOutput TestAIReportGalleryPublicationPreservesAnEditAfterOwnershipCheck TestAIReportIndexFindListsMatchesNewestFirstIncludingSuperseded TestAIReportIndexRefusesHandMadeCatalog\nrun_named_tests ./internal/suiteinstall TestReportGalleryRebuildsFromTheWrittenSuite TestReportGalleryWriteProblemsWarnOnceWithoutRecoveringTheSuite TestAnAvailableUpdateInstallsAndVerifiesTheNewVersion TestInstallAndUpdateRecommendOrganizeWhenReportsAreLoose"
+        }
+      },
+      {
+        "request_id": "REQ-743",
+        "request_path": "do-work/working/REQ-743-report-gallery-samples-command-add-form.md",
+        "gate_id": "green-gate",
+        "provenance": "advance_executed",
+        "state": "satisfied",
+        "outcome": "success",
+        "findings": [],
+        "changes": [
+          {
+            "path": "/Users/t2/Desktop/e1-experimental-repos/skill-do-work2/.git/do-work-green-gates/25aef6a61b17974fce3a08a63953c3eb1719dde37ce3ab556f066e3619e6bbb5.json",
+            "kind": "git-private",
+            "detail": "recorded the current revision for the exact green gate argv"
+          }
+        ],
+        "output_lines": [],
+        "next_argv": [],
+        "verification_argv": [
+          "do-work-cli",
+          "--format",
+          "json",
+          "advance",
+          "REQ-743"
+        ],
+        "green_gate": {
+          "repository_identity": "/Users/t2/Desktop/e1-experimental-repos/skill-do-work2/.git",
+          "gate_command": [
+            "bash",
+            "_dev/tests/maintainer-verify.sh"
+          ],
+          "gate_command_sha256": "25aef6a61b17974fce3a08a63953c3eb1719dde37ce3ab556f066e3619e6bbb5",
+          "record_path": "/Users/t2/Desktop/e1-experimental-repos/skill-do-work2/.git/do-work-green-gates/25aef6a61b17974fce3a08a63953c3eb1719dde37ce3ab556f066e3619e6bbb5.json",
+          "record_provenance": "reported_direct_zero_exit",
+          "gate_exit_status": 0,
+          "recorded_revision": "7a3fdd3757429433eae939f49b643d49972ddaa4",
+          "head_revision": "7a3fdd3757429433eae939f49b643d49972ddaa4",
+          "target_revision": "7a3fdd3757429433eae939f49b643d49972ddaa4",
+          "state": "recorded",
+          "matches": false,
+          "match_basis": "none",
+          "baseline_revision": "7a3fdd3757429433eae939f49b643d49972ddaa4"
+        }
+      }
+    ]
+  }
+}
