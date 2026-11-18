@@ -1,0 +1,15 @@
+{
+  "threadId": "thread:delegated-task:command%3Amcp%3Afbccb15c-5526-4876-af91-034d461aaae9%3Adelegate-task%3Acb2d8670-49b9-4eea-b200-b21d0e1e807d",
+  "link": "[Blind screenshot evaluation](t3-thread://v2/344b608c-b133-4724-a50e-9ac6cd780e62/thread:delegated-task:command%3Amcp%3Afbccb15c-5526-4876-af91-034d461aaae9%3Adelegate-task%3Acb2d8670-49b9-4eea-b200-b21d0e1e807d)",
+  "run": {
+    "runId": "run:thread:thread%3Adelegated-task%3Acommand%253Amcp%253Afbccb15c-5526-4876-af91-034d461aaae9%253Adelegate-task%253Acb2d8670-49b9-4eea-b200-b21d0e1e807d:ordinal:1",
+    "ordinal": 1,
+    "status": "completed",
+    "providerInstanceId": "claudeAgent",
+    "model": "claude-opus-5-5",
+    "executedModel": "claude-opus-5-5",
+    "requestedAt": "2026-11-18T18:02:42.813Z",
+    "startedAt": "2026-11-18T18:02:42.862Z",
+    "completedAt": "2026-11-18T18:03:09.243Z"
+  }
+}

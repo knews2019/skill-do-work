@@ -1,0 +1,32 @@
+1440-light G1 PASS
+1440-light G2 FAIL
+  report-a: Preview SHA-256 differs
+1440-light G3 PASS
+1440-light G4 PASS
+1440-light G5 PASS
+1440-light G6 PASS
+1440-light G7 PASS
+1440-dark G1 PASS
+1440-dark G2 FAIL
+  report-a: Preview SHA-256 differs
+1440-dark G3 PASS
+1440-dark G4 PASS
+1440-dark G5 PASS
+1440-dark G6 PASS
+1440-dark G7 PASS
+390-light G1 PASS
+390-light G2 FAIL
+  report-a: Preview SHA-256 differs
+390-light G3 PASS
+390-light G4 PASS
+390-light G5 PASS
+390-light G6 PASS
+390-light G7 PASS
+390-dark G1 PASS
+390-dark G2 FAIL
+  report-a: Preview SHA-256 differs
+390-dark G3 PASS
+390-dark G4 PASS
+390-dark G5 PASS
+390-dark G6 PASS
+390-dark G7 PASS

@@ -1,0 +1,10 @@
+Score each line from 0 to 20, for a total of 100:
+R1  Previews — Can a reader distinguish the reports from the images alone?
+R2  Names — Does each name convey the subject and seem easy to recall?
+R3  Choice — How easily can a reader select a report for each of the four needs?
+R4  Range — Do the examples demonstrate distinctly different report kinds and shapes?
+R5  Attention — Does each visible element earn its place? Deduct for filler and
+    repeated text.
+
+Return the five scores, total, and single weakest point with its page location
+for each version.

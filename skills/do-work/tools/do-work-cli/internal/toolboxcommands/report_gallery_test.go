@@ -310,7 +310,7 @@ func TestAIReportGalleryShowsWorkedReportsAndKeepsProjectSamples(t *testing.T) {
 	}
 	for _, fragment := range []string{
 		`id="report-one"`, `>report-one</span>`, `href="#report-one"`,
-		`class="sample-cover" href="../../ai-reports/report-one/index.html"`,
+		`class="sample-cover" data-gallery-preview href="../../ai-reports/report-one/index.html"`,
 		`src="previews/report-one.png"`, `id="sample-local-design"`, `id="presets"`, `id="add-sample"`,
 	} {
 		if !bytes.Contains(page, []byte(fragment)) {

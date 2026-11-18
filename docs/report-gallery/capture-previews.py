@@ -1,4 +1,6 @@
 """Regenerate the gallery previews from their source report pages."""
+from hashlib import sha256
+from tempfile import TemporaryDirectory
 from functools import partial
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 import json
@@ -24,10 +26,18 @@ def playwright(*args):
 
 if __name__ == "__main__":
     handler = partial(SimpleHTTPRequestHandler, directory=root)
-    with ThreadingHTTPServer(("127.0.0.1", 0), handler) as server:
+    with TemporaryDirectory(dir=gallery) as staging, ThreadingHTTPServer(("127.0.0.1", 0), handler) as server:
         Thread(target=server.serve_forever, daemon=True).start()
         origin = f"http://127.0.0.1:{server.server_port}"
-        cards = json.dumps(manifest["cards"])
+        staged_cards = [
+            {**card, "stagedImage": str(Path(staging) / Path(card["image"]).name)}
+            for card in manifest["cards"]
+        ]
+        source_hashes = {
+            card["report"]: sha256((root / card["report"]).read_bytes()).hexdigest()
+            for card in staged_cards
+        }
+        cards = json.dumps(staged_cards)
         try:
             playwright("open", "about:blank")
             playwright("resize", str(manifest["width"]), str(manifest["height"]))
@@ -41,8 +51,26 @@ if __name__ == "__main__":
                         window.scrollTo(0, 0);
                         await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
                     }});
-                    await page.screenshot({{path: card.image, scale: 'css', animations: 'disabled'}});
+                    if (await page.evaluate(() => window.scrollY) !== 0) throw Error(card.report + ': unexpected scroll');
+                    await page.screenshot({{path: card.stagedImage, scale: 'css', animations: 'disabled'}});
                 }}
             }}""")
         finally:
             playwright("close")
+
+        for card in staged_cards:
+            report_hash = sha256((root / card["report"]).read_bytes()).hexdigest()
+            if report_hash != source_hashes[card["report"]]:
+                raise RuntimeError(f"Report changed during capture: {card['report']}")
+            image = Path(card["stagedImage"]).read_bytes()
+            if not image:
+                raise RuntimeError(f"Empty preview: {card['image']}")
+            card["reportSha256"] = report_hash
+            card["imageSha256"] = sha256(image).hexdigest()
+        for card in staged_cards:
+            Path(card.pop("stagedImage")).replace(root / card["image"])
+        manifest["cards"] = staged_cards
+        manifest["scrollY"] = 0
+        staged_manifest = Path(staging) / "preview-manifest.json"
+        staged_manifest.write_text(json.dumps(manifest, indent=2) + "\n")
+        staged_manifest.replace(gallery / staged_manifest.name)
