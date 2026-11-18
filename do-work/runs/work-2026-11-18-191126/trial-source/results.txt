@@ -1,0 +1,92 @@
+Source lines and identities (line, case, condition, observation within group)
+11 inventory cold 1
+12 inventory cold 2
+13 inventory cold 3
+14 inventory warm 1
+15 inventory warm 2
+16 inventory warm 3
+17 finalization cold 1
+18 finalization cold 2
+19 finalization cold 3
+20 finalization warm 1
+21 finalization warm 2
+22 finalization warm 3
+23 session-start warm 1
+24 session-start warm 2
+25 session-start warm 3
+26 shell-audit warm 1
+27 shell-audit warm 2
+28 shell-audit warm 3
+29 heavy-cli-build cold 1
+30 heavy-cli-build cold 2
+31 heavy-cli-build cold 3
+32 heavy-cli-build warm 1
+33 heavy-cli-build warm 2
+34 heavy-cli-build warm 3
+35 reused-stage reused 1
+36 reused-stage reused 2
+37 reused-stage reused 3
+
+Seconds by metric (median [min, max], spread=max-min)
+inventory cold
+  wall_seconds 8.973 [8.921, 9.280], spread 0.359
+  user_cpu_seconds 0.723 [0.712, 0.743], spread 0.031
+  sys_cpu_seconds 0.906 [0.904, 0.945], spread 0.041
+  total_cpu_seconds 1.629 [1.615, 1.688], spread 0.073
+  go_accum_seconds 8.370 [8.310, 8.450], spread 0.140
+inventory warm
+  wall_seconds 9.242 [9.127, 9.292], spread 0.165
+  user_cpu_seconds 0.764 [0.734, 0.767], spread 0.033
+  sys_cpu_seconds 0.991 [0.932, 0.993], spread 0.061
+  total_cpu_seconds 1.756 [1.666, 1.758], spread 0.092
+  go_accum_seconds 8.540 [8.530, 8.650], spread 0.120
+finalization cold
+  wall_seconds 48.606 [41.108, 52.780], spread 11.672
+  user_cpu_seconds 18.135 [15.451, 19.428], spread 3.977
+  sys_cpu_seconds 19.705 [16.388, 21.425], spread 5.037
+  total_cpu_seconds 37.840 [31.839, 40.853], spread 9.014
+  go_accum_seconds 47.780 [40.260, 51.140], spread 10.880
+finalization warm
+  wall_seconds 50.524 [40.788, 54.744], spread 13.956
+  user_cpu_seconds 18.669 [15.501, 20.092], spread 4.591
+  sys_cpu_seconds 20.222 [16.308, 22.229], spread 5.921
+  total_cpu_seconds 38.891 [31.810, 42.321], spread 10.511
+  go_accum_seconds 48.860 [39.820, 53.130], spread 13.310
+session-start warm
+  wall_seconds 4.534 [4.447, 5.283], spread 0.836
+  user_cpu_seconds 0.569 [0.564, 0.574], spread 0.010
+  sys_cpu_seconds 0.636 [0.620, 0.638], spread 0.018
+  total_cpu_seconds 1.207 [1.184, 1.210], spread 0.026
+  go_accum_seconds n/a
+shell-audit warm
+  wall_seconds 5.849 [5.698, 5.958], spread 0.260
+  user_cpu_seconds 1.855 [1.846, 1.904], spread 0.058
+  sys_cpu_seconds 1.377 [1.327, 1.397], spread 0.070
+  total_cpu_seconds 3.253 [3.173, 3.281], spread 0.108
+  go_accum_seconds n/a
+heavy-cli-build cold
+  wall_seconds 7.810 [7.670, 8.344], spread 0.674
+  user_cpu_seconds 2.123 [2.082, 2.182], spread 0.100
+  sys_cpu_seconds 2.252 [2.180, 2.368], spread 0.188
+  total_cpu_seconds 4.375 [4.262, 4.549], spread 0.287
+  go_accum_seconds 7.180 [7.050, 7.360], spread 0.310
+heavy-cli-build warm
+  wall_seconds 7.803 [7.803, 8.058], spread 0.255
+  user_cpu_seconds 2.120 [2.116, 2.193], spread 0.077
+  sys_cpu_seconds 2.248 [2.232, 2.361], spread 0.129
+  total_cpu_seconds 4.364 [4.352, 4.554], spread 0.202
+  go_accum_seconds 7.160 [7.130, 7.400], spread 0.270
+reused-stage reused
+  wall_seconds 3.924 [3.858, 3.992], spread 0.134
+  user_cpu_seconds 0.579 [0.568, 0.592], spread 0.024
+  sys_cpu_seconds 0.606 [0.604, 0.631], spread 0.027
+  total_cpu_seconds 1.185 [1.171, 1.223], spread 0.052
+  go_accum_seconds n/a
+
+Warm minus cold medians in seconds (percent relative to cold)
+inventory wall_seconds +0.269 (+3.00%), user_cpu_seconds +0.041 (+5.67%), sys_cpu_seconds +0.085 (+9.38%), total_cpu_seconds +0.127 (+7.80%), go_accum_seconds +0.170 (+2.03%)
+finalization wall_seconds +1.918 (+3.95%), user_cpu_seconds +0.534 (+2.94%), sys_cpu_seconds +0.517 (+2.62%), total_cpu_seconds +1.051 (+2.78%), go_accum_seconds +1.080 (+2.26%)
+heavy-cli-build wall_seconds -0.007 (-0.09%), user_cpu_seconds -0.003 (-0.14%), sys_cpu_seconds -0.004 (-0.18%), total_cpu_seconds -0.011 (-0.25%), go_accum_seconds -0.020 (-0.28%)
+
+Intercepted totals across 27 rows: {'bash': 624, 'find': 36, 'git': 19269, 'go': 201, 'shasum': 72, 'shellcheck': 324}
+PASS: 27 rows, nine groups of three, row identities, counts, medians and deltas
