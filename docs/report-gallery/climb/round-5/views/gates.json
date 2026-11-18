@@ -1,0 +1,62 @@
+{
+  "1440-light": {
+    "G1": [],
+    "G2": [
+      "report-review-canvas: No trusted capture entry for file:///private/tmp/req751/round5/ai-reports/2026-11-14_1547_proposal-report-review-canvas-surface/index.html"
+    ],
+    "G3": [],
+    "G4": [],
+    "G5": [
+      "report-review-canvas (preview): Expected file:///private/tmp/req751/round5/ai-reports/2026-11-14_1547_proposal-report-review-canvas-surface/index.html, reached chrome-error://chromewebdata/"
+    ],
+    "G6": [
+      "file:///private/tmp/req751/round5/ai-reports/2026-11-14_1547_proposal-report-review-canvas-surface/index.html: ENOENT: no such file or directory, stat '/private/tmp/req751/round5/ai-reports/2026-11-14_1547_proposal-report-review-canvas-surface/index.html'"
+    ],
+    "G7": []
+  },
+  "1440-dark": {
+    "G1": [],
+    "G2": [
+      "report-review-canvas: No trusted capture entry for file:///private/tmp/req751/round5/ai-reports/2026-11-14_1547_proposal-report-review-canvas-surface/index.html"
+    ],
+    "G3": [],
+    "G4": [],
+    "G5": [
+      "report-review-canvas (preview): Expected file:///private/tmp/req751/round5/ai-reports/2026-11-14_1547_proposal-report-review-canvas-surface/index.html, reached chrome-error://chromewebdata/"
+    ],
+    "G6": [
+      "file:///private/tmp/req751/round5/ai-reports/2026-11-14_1547_proposal-report-review-canvas-surface/index.html: ENOENT: no such file or directory, stat '/private/tmp/req751/round5/ai-reports/2026-11-14_1547_proposal-report-review-canvas-surface/index.html'"
+    ],
+    "G7": []
+  },
+  "390-light": {
+    "G1": [],
+    "G2": [
+      "report-review-canvas: No trusted capture entry for file:///private/tmp/req751/round5/ai-reports/2026-11-14_1547_proposal-report-review-canvas-surface/index.html"
+    ],
+    "G3": [],
+    "G4": [],
+    "G5": [
+      "report-review-canvas (preview): Expected file:///private/tmp/req751/round5/ai-reports/2026-11-14_1547_proposal-report-review-canvas-surface/index.html, reached chrome-error://chromewebdata/"
+    ],
+    "G6": [
+      "file:///private/tmp/req751/round5/ai-reports/2026-11-14_1547_proposal-report-review-canvas-surface/index.html: ENOENT: no such file or directory, stat '/private/tmp/req751/round5/ai-reports/2026-11-14_1547_proposal-report-review-canvas-surface/index.html'"
+    ],
+    "G7": []
+  },
+  "390-dark": {
+    "G1": [],
+    "G2": [
+      "report-review-canvas: No trusted capture entry for file:///private/tmp/req751/round5/ai-reports/2026-11-14_1547_proposal-report-review-canvas-surface/index.html"
+    ],
+    "G3": [],
+    "G4": [],
+    "G5": [
+      "report-review-canvas (preview): Expected file:///private/tmp/req751/round5/ai-reports/2026-11-14_1547_proposal-report-review-canvas-surface/index.html, reached chrome-error://chromewebdata/"
+    ],
+    "G6": [
+      "file:///private/tmp/req751/round5/ai-reports/2026-11-14_1547_proposal-report-review-canvas-surface/index.html: ENOENT: no such file or directory, stat '/private/tmp/req751/round5/ai-reports/2026-11-14_1547_proposal-report-review-canvas-surface/index.html'"
+    ],
+    "G7": []
+  }
+}

@@ -36,10 +36,37 @@ type reportGalleryKind struct {
 	Latest  reportGalleryLink
 }
 
+type workedReportGroup struct {
+	Label string
+	Cards []workedReportCard
+}
+
+func groupWorkedReports(cards []workedReportCard) []workedReportGroup {
+	var groups []workedReportGroup
+	groupByKind := make(map[string]int)
+	for _, card := range cards {
+		index, exists := groupByKind[card.Kind]
+		if !exists {
+			label := card.Kind
+			switch card.Kind {
+			case "Proposal":
+				label = "Proposals"
+			case "Root cause":
+				label = "Diagnose a problem"
+			}
+			index = len(groups)
+			groupByKind[card.Kind] = index
+			groups = append(groups, workedReportGroup{Label: label})
+		}
+		groups[index].Cards = append(groups[index].Cards, card)
+	}
+	return groups
+}
+
 type reportGalleryPageData struct {
 	Stylesheet string
 	Samples    []reportGalleryCard
-	Worked     []workedReportCard
+	Worked     []workedReportGroup
 	Kinds      []reportGalleryKind
 	Presets    []reportGalleryLink
 }
@@ -59,7 +86,7 @@ func renderReportGalleryPage(repositoryRoot string, repository *os.Root, toolbox
 	if err != nil {
 		return nil, err
 	}
-	page.Worked = worked
+	page.Worked = groupWorkedReports(worked)
 	copyNames := reportGalleryCopyNames(samples)
 	for _, sample := range samples {
 		if len(worked) > 0 && !strings.HasPrefix(sample.RecordPath, reportGalleryFolder+"/") {
@@ -247,7 +274,9 @@ body { margin: 0; font: 16px/1.5 var(--sans); }
 .gallery-nav .add-link, .gallery-copy button { background: var(--text); color: var(--ground); border: 1px solid var(--text); border-radius: .4rem; padding: .65rem 1rem; font: 600 .95rem var(--sans); cursor: pointer; }
 .gallery section { scroll-margin-top: 1rem; }
 .samples { padding: 1.1rem 0 2rem; }
-.gallery-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1.8rem clamp(16px, 1.55vw, 32px); align-items: start; }
+{{if .Worked}}.report-group + .report-group { margin-top: 1.75rem; }
+.report-group > h3 { margin: 0 0 .75rem; font: 700 1rem/1.4 var(--sans); color: var(--accent); }
+{{end}}.gallery-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1.8rem clamp(16px, 1.55vw, 32px); align-items: start; }
 .gallery-card { min-width: 0; scroll-margin-top: 1rem; }
 .gallery-card:target { outline: 2px solid var(--accent); outline-offset: 6px; }
 .sample-cover { display: block; position: relative; background: var(--panel); border: 1px solid var(--edge); border-radius: .4rem; overflow: hidden; }
@@ -264,8 +293,8 @@ body { margin: 0; font: 16px/1.5 var(--sans); }
 .copy-icon::after { left: 4px; top: 3px; background: var(--ground); }
 .report-link { flex: none; font: 600 .85rem/1.4 var(--sans); padding: .55rem 0; }
 .gallery-card p { margin: 0 0 .45rem; color: var(--subtle); line-height: 1.45; max-width: 52ch; }
-.worked-report .worked-kind { font: 700 .84rem/1.4 var(--sans); color: var(--accent); }
-.gallery-card details { background: none; border: 0; padding: 0; border-radius: 0; }
+{{if not .Worked}}.worked-report .worked-kind { font: 700 .84rem/1.4 var(--sans); color: var(--accent); }
+{{end}}.gallery-card details { background: none; border: 0; padding: 0; border-radius: 0; }
 .gallery-card summary { display: list-item; font: 600 .9rem var(--sans); width: fit-content; color: var(--accent); padding: .65rem 0; cursor: pointer; }
 .gallery-card details[open] summary { border: 0; margin: 0; }
 .gallery-card ul { padding-left: 1.2rem; margin: .25rem 0 .6rem; }
@@ -288,9 +317,9 @@ body { margin: 0; font: 16px/1.5 var(--sans); }
 @media (max-width: 520px) { .dialog-bar { flex-wrap: wrap; } .dialog-bar h2 { width: 100%; } .dialog-bar a { margin-left: 0; margin-right: auto; } }
 {{end}}.copy-status:not(:empty) { pointer-events: none; position: fixed; bottom: 1rem; left: 50%; transform: translateX(-50%); z-index: 2; color: var(--ground); background: var(--text); border-radius: .4rem; padding: .6rem 1rem; max-width: calc(100% - 2rem); width: max-content; }
 .gallery-tools { display: grid; grid-template-columns: 3fr 2fr; gap: clamp(1.5rem, 4vw, 5rem); border-block: 1px solid var(--edge); padding: 1.65rem 0 2rem; }
-.gallery-kinds, .gallery-presets { list-style: none; margin: 0; padding: 0; }
-.gallery-kinds li { border-top: 1px solid var(--edge); padding: .55rem 0; display: grid; grid-template-columns: minmax(7rem, 27%) minmax(0, 1fr); gap: .4rem 1rem; }
-.gallery-kinds code, .gallery-copy code { background: none; color: var(--text); padding: 0; overflow-wrap: anywhere; }
+{{if not .Worked}}.gallery-kinds, {{end}}.gallery-presets { list-style: none; margin: 0; padding: 0; }
+{{if not .Worked}}.gallery-kinds li { border-top: 1px solid var(--edge); padding: .55rem 0; display: grid; grid-template-columns: minmax(7rem, 27%) minmax(0, 1fr); gap: .4rem 1rem; }
+{{end}}{{if not .Worked}}.gallery-kinds code, {{end}}.gallery-copy code { background: none; color: var(--text); padding: 0; overflow-wrap: anywhere; }
 .gallery-presets { display: flex; flex-wrap: wrap; gap: .45rem; }
 .gallery-presets a { display: block; padding: .4rem .75rem; background: var(--wash); border-radius: .35rem; font-size: .9rem; text-decoration: none; }
 .gallery-presets a:hover { text-decoration: underline; }
@@ -305,8 +334,8 @@ body { margin: 0; font: 16px/1.5 var(--sans); }
   .gallery-grid { grid-template-columns: minmax(0, 1fr); gap: 1.6rem; }
   .gallery-header { align-items: start; flex-direction: column; gap: .5rem; }
   .gallery-nav { gap: .5rem .9rem; }
-  .gallery-kinds li { grid-template-columns: 1fr; }
-}
+{{if not .Worked}}  .gallery-kinds li { grid-template-columns: 1fr; }
+{{end}}}
 </style>
 </head>
 <body>
@@ -314,26 +343,28 @@ body { margin: 0; font: 16px/1.5 var(--sans); }
   <header class="gallery-header">
     <h1>AI Report Gallery</h1>
     <nav class="gallery-nav" aria-label="Gallery sections">
-      <a href="#report-kinds">Report kinds</a>
-      <a href="#presets">Presets</a>
+{{if not .Worked}}      <a href="#report-kinds">Report kinds</a>
+{{end}}      <a href="#presets">Presets</a>
       <a class="add-link" href="#add-sample">Add a sample</a>
     </nav>
   </header>
   {{if .Worked}}<section class="samples" id="worked-reports" aria-labelledby="worked-title">
     <div class="section-note"><h2 id="worked-title">Worked reports</h2>
       <p>Open a report from its preview. Click a name to copy it.</p></div>
-    <div class="gallery-grid">
-      {{range .Worked}}<article class="gallery-card worked-report" data-gallery-card id="{{.Name}}">
+    {{range $index, $group := .Worked}}{{if $index}}    {{end}}<section class="report-group" aria-label="{{.Label}}">
+      <h3>{{.Label}}</h3>
+      <div class="gallery-grid">
+{{range .Cards}}        <article class="gallery-card worked-report" data-gallery-card id="{{.Name}}">
         <a class="sample-cover" data-gallery-preview href="{{.Report}}" aria-label="Open {{.Subject}}">
           <img class="sample-preview" src="{{.Image}}" loading="lazy" alt="" width="{{.Width}}" height="{{.Height}}" style="aspect-ratio: {{.Width}} / {{.Height}}">
         </a>
         <div class="card-heading"><h3><button class="name-copy" data-gallery-name type="button" disabled data-copy="name-{{.Name}}" title="Copy report name"><span id="name-{{.Name}}">{{.Name}}</span><i class="copy-icon" aria-hidden="true"></i></button></h3>
           <a class="report-link" href="#{{.Name}}" aria-label="Permalink to {{.Name}}">#</a></div>
-        <p class="worked-kind">{{.Kind}}</p>
         <p>{{.Subject}}</p>
-      </article>{{end}}
-    </div>
-  </section>{{end}}
+      </article>
+{{end}}      </div>
+    </section>
+{{end}}  </section>{{end}}
   {{if or (not .Worked) .Samples}}<section class="samples" id="samples" aria-labelledby="samples-title">
     <div class="section-note"><h2 id="samples-title">{{if .Worked}}Added samples{{else}}{{len .Samples}} report designs{{end}}</h2>
       {{if .Samples}}<p>Select a page to preview it. Click a design name to copy it.</p>{{end}}</div>
@@ -354,7 +385,7 @@ body { margin: 0; font: 16px/1.5 var(--sans); }
       </article>{{end}}
     </div>{{else}}<p>No samples yet.</p>{{end}}
   </section>
-  {{end}}<div class="gallery-tools">
+  {{end}}{{if not .Worked}}<div class="gallery-tools">
   <section id="report-kinds" aria-labelledby="report-kinds-title">
     <h2 id="report-kinds-title">Report kinds</h2>
     <ul class="gallery-kinds">
@@ -363,13 +394,13 @@ body { margin: 0; font: 16px/1.5 var(--sans); }
       </li>{{end}}
     </ul>
   </section>
-  <section id="presets" aria-labelledby="presets-title">
+{{end}}{{if not .Worked}}  {{end}}<section id="presets" aria-labelledby="presets-title">
     <h2 id="presets-title">Second-opinion presets</h2>
     {{if .Presets}}<ul class="gallery-links gallery-presets">
       {{range .Presets}}<li><a href="{{.Href}}">{{.Label}}</a></li>{{end}}
     </ul>{{else}}<p>No shipped presets found.</p>{{end}}
   </section>
-  </div>
+{{/* Keep the closing div byte from the scored worked-report page. */}}  </div>
   <section class="gallery-add" id="add-sample" aria-labelledby="add-sample-title">
     <h2 id="add-sample-title">Add a sample</h2>
     <p>Paste this line into your agent, replacing the placeholders with the source and what you liked.</p>

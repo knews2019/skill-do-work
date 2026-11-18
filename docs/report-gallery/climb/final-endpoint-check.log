@@ -1,0 +1,12 @@
+docs/report-gallery/index.html
+Judge packet HTML SHA-256 matches index.html: a0461b2d026b0232e425ed27e8bba4bc273ba1c2b66157ade9c2ea08af3be4d9
+Visible card counts: Completed work 3, Proposals 3, Diagnose a problem 2, Architecture 2
+Presets and Add a sample sections present.
+1440-light: seven gates green; SHA-256 0bc66e186382e34373402906668cb418e835c929e9c56e7e1bbcaf4bad5ccf54
+1440-dark: seven gates green; SHA-256 6c4296fdb1f56789c315d353c06edadb52e79f92fbb6ae67882b335b027e003e
+390-light: seven gates green; SHA-256 7a3f7f108b244cacf065bf7cb4080f0a9a78442f345aa15d06ade9f631eba62e
+390-dark: seven gates green; SHA-256 4253d4fa55b0154b7ec84cbac16bc16563069471b3bcec97ec2305769bd60bdd
+1440-dark.png: exact pixel match with the neutral evaluator packet
+1440-light.png: exact pixel match with the neutral evaluator packet
+390-dark.png: exact pixel match with the neutral evaluator packet
+390-light.png: exact pixel match with the neutral evaluator packet

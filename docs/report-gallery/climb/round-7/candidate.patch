@@ -1,0 +1,152 @@
+commit d52bc421b305f99829efa2197885e2f75d64322e
+Author:     t2 <t2@t2s-Virtual-Machine.local>
+AuthorDate: Wed Nov 18 20:18:26 2026 +0200
+Commit:     t2 <t2@t2s-Virtual-Machine.local>
+CommitDate: Wed Nov 18 20:18:26 2026 +0200
+
+    [REQ-751] Lead report cards with their subjects
+
+diff --git a/docs/report-gallery/index.html b/docs/report-gallery/index.html
+index c20c61b8..ef97470c 100644
+--- a/docs/report-gallery/index.html
++++ b/docs/report-gallery/index.html
+@@ -33,6 +33,9 @@ body { margin: 0; font: 16px/1.5 var(--sans); }
+ .gallery-nav .add-link, .gallery-copy button { background: var(--text); color: var(--ground); border: 1px solid var(--text); border-radius: .4rem; padding: .65rem 1rem; font: 600 .95rem var(--sans); cursor: pointer; }
+ .gallery section { scroll-margin-top: 1rem; }
+ .samples { padding: 1.1rem 0 2rem; }
++.worked-report > p { font-weight: 700; color: var(--text); margin-bottom: 0; }
++.worked-report .card-heading { margin: 0 0 .3rem; }
++.gallery .worked-report .card-heading h3 { font: 600 .98rem/1.35 var(--sans); letter-spacing: normal; color: var(--subtle); }
+ .report-group + .report-group { margin-top: 1.75rem; }
+ .report-group > h3 { margin: 0 0 .75rem; font: 700 1rem/1.4 var(--sans); color: var(--accent); }
+ .gallery-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1.8rem clamp(16px, 1.55vw, 32px); align-items: start; }
+@@ -99,28 +102,28 @@ body { margin: 0; font: 16px/1.5 var(--sans); }
+       <h3>Completed work</h3>
+       <div class="gallery-grid">
+         <article class="gallery-card worked-report" data-gallery-card id="phase-by-phase">
++        <p>Work procedures loaded by phase</p>
++        <div class="card-heading"><h3><button class="name-copy" data-gallery-name type="button" disabled data-copy="name-phase-by-phase" title="Copy report name"><span id="name-phase-by-phase">phase-by-phase</span><i class="copy-icon" aria-hidden="true"></i></button></h3>
++          <a class="report-link" href="#phase-by-phase" aria-label="Permalink to phase-by-phase">#</a></div>
+         <a class="sample-cover" data-gallery-preview href="../../ai-reports/2026-11-11_1411_commit-22f82fed-work-procedures-load-by-phase/index.html" aria-label="Open Work procedures loaded by phase">
+           <img class="sample-preview" src="previews/phase-by-phase.png" loading="lazy" alt="" width="900" height="560" style="aspect-ratio: 900 / 560">
+         </a>
+-        <div class="card-heading"><h3><button class="name-copy" data-gallery-name type="button" disabled data-copy="name-phase-by-phase" title="Copy report name"><span id="name-phase-by-phase">phase-by-phase</span><i class="copy-icon" aria-hidden="true"></i></button></h3>
+-          <a class="report-link" href="#phase-by-phase" aria-label="Permalink to phase-by-phase">#</a></div>
+-        <p>Work procedures loaded by phase</p>
+       </article>
+         <article class="gallery-card worked-report" data-gallery-card id="second-opinion">
++        <p>Guarded report rebuilds across models</p>
++        <div class="card-heading"><h3><button class="name-copy" data-gallery-name type="button" disabled data-copy="name-second-opinion" title="Copy report name"><span id="name-second-opinion">second-opinion</span><i class="copy-icon" aria-hidden="true"></i></button></h3>
++          <a class="report-link" href="#second-opinion" aria-label="Permalink to second-opinion">#</a></div>
+         <a class="sample-cover" data-gallery-preview href="../../ai-reports/2026-10_3-reports/2026-10-15_1731_REQ-698-ai-report-second-opinion/index.html" aria-label="Open Guarded report rebuilds across models">
+           <img class="sample-preview" src="previews/second-opinion.png" loading="lazy" alt="" width="900" height="560" style="aspect-ratio: 900 / 560">
+         </a>
+-        <div class="card-heading"><h3><button class="name-copy" data-gallery-name type="button" disabled data-copy="name-second-opinion" title="Copy report name"><span id="name-second-opinion">second-opinion</span><i class="copy-icon" aria-hidden="true"></i></button></h3>
+-          <a class="report-link" href="#second-opinion" aria-label="Permalink to second-opinion">#</a></div>
+-        <p>Guarded report rebuilds across models</p>
+       </article>
+         <article class="gallery-card worked-report" data-gallery-card id="release-dossier">
++        <p>Board client modules and deployment evidence</p>
++        <div class="card-heading"><h3><button class="name-copy" data-gallery-name type="button" disabled data-copy="name-release-dossier" title="Copy report name"><span id="name-release-dossier">release-dossier</span><i class="copy-icon" aria-hidden="true"></i></button></h3>
++          <a class="report-link" href="#release-dossier" aria-label="Permalink to release-dossier">#</a></div>
+         <a class="sample-cover" data-gallery-preview href="../../ai-reports/2026-08_18-reports/2026-08-15_1834_UR-044-board-client-modules/index.html" aria-label="Open Board client modules and deployment evidence">
+           <img class="sample-preview" src="previews/release-dossier.png" loading="lazy" alt="" width="900" height="560" style="aspect-ratio: 900 / 560">
+         </a>
+-        <div class="card-heading"><h3><button class="name-copy" data-gallery-name type="button" disabled data-copy="name-release-dossier" title="Copy report name"><span id="name-release-dossier">release-dossier</span><i class="copy-icon" aria-hidden="true"></i></button></h3>
+-          <a class="report-link" href="#release-dossier" aria-label="Permalink to release-dossier">#</a></div>
+-        <p>Board client modules and deployment evidence</p>
+       </article>
+       </div>
+     </section>
+@@ -128,28 +131,28 @@ body { margin: 0; font: 16px/1.5 var(--sans); }
+       <h3>Proposals</h3>
+       <div class="gallery-grid">
+         <article class="gallery-card worked-report" data-gallery-card id="tinka-review">
++        <p>Tinka as a review canvas for report bundles</p>
++        <div class="card-heading"><h3><button class="name-copy" data-gallery-name type="button" disabled data-copy="name-tinka-review" title="Copy report name"><span id="name-tinka-review">tinka-review</span><i class="copy-icon" aria-hidden="true"></i></button></h3>
++          <a class="report-link" href="#tinka-review" aria-label="Permalink to tinka-review">#</a></div>
+         <a class="sample-cover" data-gallery-preview href="../../ai-reports/2026-11-14_1547_proposal-tinka-review-surface/index.html" aria-label="Open Tinka as a review canvas for report bundles">
+           <img class="sample-preview" src="previews/tinka-review.png" loading="lazy" alt="" width="900" height="560" style="aspect-ratio: 900 / 560">
+         </a>
+-        <div class="card-heading"><h3><button class="name-copy" data-gallery-name type="button" disabled data-copy="name-tinka-review" title="Copy report name"><span id="name-tinka-review">tinka-review</span><i class="copy-icon" aria-hidden="true"></i></button></h3>
+-          <a class="report-link" href="#tinka-review" aria-label="Permalink to tinka-review">#</a></div>
+-        <p>Tinka as a review canvas for report bundles</p>
+       </article>
+         <article class="gallery-card worked-report" data-gallery-card id="memory-note-routing">
++        <p>Where each memory note should go</p>
++        <div class="card-heading"><h3><button class="name-copy" data-gallery-name type="button" disabled data-copy="name-memory-note-routing" title="Copy report name"><span id="name-memory-note-routing">memory-note-routing</span><i class="copy-icon" aria-hidden="true"></i></button></h3>
++          <a class="report-link" href="#memory-note-routing" aria-label="Permalink to memory-note-routing">#</a></div>
+         <a class="sample-cover" data-gallery-preview href="../../ai-reports/2026-11-15_0137_proposal-REQ-725-memory-note-destinations/index.html" aria-label="Open Where each memory note should go">
+           <img class="sample-preview" src="previews/memory-note-routing.png" loading="lazy" alt="" width="900" height="560" style="aspect-ratio: 900 / 560">
+         </a>
+-        <div class="card-heading"><h3><button class="name-copy" data-gallery-name type="button" disabled data-copy="name-memory-note-routing" title="Copy report name"><span id="name-memory-note-routing">memory-note-routing</span><i class="copy-icon" aria-hidden="true"></i></button></h3>
+-          <a class="report-link" href="#memory-note-routing" aria-label="Permalink to memory-note-routing">#</a></div>
+-        <p>Where each memory note should go</p>
+       </article>
+         <article class="gallery-card worked-report" data-gallery-card id="checkout-control-repo">
++        <p>A control repository for parallel checkouts</p>
++        <div class="card-heading"><h3><button class="name-copy" data-gallery-name type="button" disabled data-copy="name-checkout-control-repo" title="Copy report name"><span id="name-checkout-control-repo">checkout-control-repo</span><i class="copy-icon" aria-hidden="true"></i></button></h3>
++          <a class="report-link" href="#checkout-control-repo" aria-label="Permalink to checkout-control-repo">#</a></div>
+         <a class="sample-cover" data-gallery-preview href="../../ai-reports/2026-10_3-reports/2026-10-27_2356_checkout-copies-control-repo/index.html" aria-label="Open A control repository for parallel checkouts">
+           <img class="sample-preview" src="previews/checkout-control-repo.png" loading="lazy" alt="" width="900" height="560" style="aspect-ratio: 900 / 560">
+         </a>
+-        <div class="card-heading"><h3><button class="name-copy" data-gallery-name type="button" disabled data-copy="name-checkout-control-repo" title="Copy report name"><span id="name-checkout-control-repo">checkout-control-repo</span><i class="copy-icon" aria-hidden="true"></i></button></h3>
+-          <a class="report-link" href="#checkout-control-repo" aria-label="Permalink to checkout-control-repo">#</a></div>
+-        <p>A control repository for parallel checkouts</p>
+       </article>
+       </div>
+     </section>
+@@ -157,20 +160,20 @@ body { margin: 0; font: 16px/1.5 var(--sans); }
+       <h3>Diagnose a problem</h3>
+       <div class="gallery-grid">
+         <article class="gallery-card worked-report" data-gallery-card id="overflow-labels">
++        <p>Why labels collide above the duration ceiling</p>
++        <div class="card-heading"><h3><button class="name-copy" data-gallery-name type="button" disabled data-copy="name-overflow-labels" title="Copy report name"><span id="name-overflow-labels">overflow-labels</span><i class="copy-icon" aria-hidden="true"></i></button></h3>
++          <a class="report-link" href="#overflow-labels" aria-label="Permalink to overflow-labels">#</a></div>
+         <a class="sample-cover" data-gallery-preview href="../../ai-reports/2026-08_18-reports/2026-08-18_1000_durations-lane-legibility-alternatives/index.html" aria-label="Open Why labels collide above the duration ceiling">
+           <img class="sample-preview" src="previews/overflow-labels.png" loading="lazy" alt="" width="900" height="560" style="aspect-ratio: 900 / 560">
+         </a>
+-        <div class="card-heading"><h3><button class="name-copy" data-gallery-name type="button" disabled data-copy="name-overflow-labels" title="Copy report name"><span id="name-overflow-labels">overflow-labels</span><i class="copy-icon" aria-hidden="true"></i></button></h3>
+-          <a class="report-link" href="#overflow-labels" aria-label="Permalink to overflow-labels">#</a></div>
+-        <p>Why labels collide above the duration ceiling</p>
+       </article>
+         <article class="gallery-card worked-report" data-gallery-card id="queue-refills">
++        <p>Why the queue refills as fast as it drains</p>
++        <div class="card-heading"><h3><button class="name-copy" data-gallery-name type="button" disabled data-copy="name-queue-refills" title="Copy report name"><span id="name-queue-refills">queue-refills</span><i class="copy-icon" aria-hidden="true"></i></button></h3>
++          <a class="report-link" href="#queue-refills" aria-label="Permalink to queue-refills">#</a></div>
+         <a class="sample-cover" data-gallery-preview href="../../ai-reports/2026-09_18-reports/2026-09-03_2145_do-work-velocity-and-pending-queue-speed/index.html" aria-label="Open Why the queue refills as fast as it drains">
+           <img class="sample-preview" src="previews/queue-refills.png" loading="lazy" alt="" width="900" height="560" style="aspect-ratio: 900 / 560">
+         </a>
+-        <div class="card-heading"><h3><button class="name-copy" data-gallery-name type="button" disabled data-copy="name-queue-refills" title="Copy report name"><span id="name-queue-refills">queue-refills</span><i class="copy-icon" aria-hidden="true"></i></button></h3>
+-          <a class="report-link" href="#queue-refills" aria-label="Permalink to queue-refills">#</a></div>
+-        <p>Why the queue refills as fast as it drains</p>
+       </article>
+       </div>
+     </section>
+@@ -178,20 +181,20 @@ body { margin: 0; font: 16px/1.5 var(--sans); }
+       <h3>Architecture</h3>
+       <div class="gallery-grid">
+         <article class="gallery-card worked-report" data-gallery-card id="request-lifecycle">
++        <p>Four skill packages and a request’s lifecycle</p>
++        <div class="card-heading"><h3><button class="name-copy" data-gallery-name type="button" disabled data-copy="name-request-lifecycle" title="Copy report name"><span id="name-request-lifecycle">request-lifecycle</span><i class="copy-icon" aria-hidden="true"></i></button></h3>
++          <a class="report-link" href="#request-lifecycle" aria-label="Permalink to request-lifecycle">#</a></div>
+         <a class="sample-cover" data-gallery-preview href="../../ai-reports/2026-09_18-reports/2026-09-06_1706_architecture-report/index.html" aria-label="Open Four skill packages and a request’s lifecycle">
+           <img class="sample-preview" src="previews/request-lifecycle.png" loading="lazy" alt="" width="900" height="560" style="aspect-ratio: 900 / 560">
+         </a>
+-        <div class="card-heading"><h3><button class="name-copy" data-gallery-name type="button" disabled data-copy="name-request-lifecycle" title="Copy report name"><span id="name-request-lifecycle">request-lifecycle</span><i class="copy-icon" aria-hidden="true"></i></button></h3>
+-          <a class="report-link" href="#request-lifecycle" aria-label="Permalink to request-lifecycle">#</a></div>
+-        <p>Four skill packages and a request’s lifecycle</p>
+       </article>
+         <article class="gallery-card worked-report" data-gallery-card id="cli-command-map">
++        <p>A guide to the Go CLI and its commands</p>
++        <div class="card-heading"><h3><button class="name-copy" data-gallery-name type="button" disabled data-copy="name-cli-command-map" title="Copy report name"><span id="name-cli-command-map">cli-command-map</span><i class="copy-icon" aria-hidden="true"></i></button></h3>
++          <a class="report-link" href="#cli-command-map" aria-label="Permalink to cli-command-map">#</a></div>
+         <a class="sample-cover" data-gallery-preview href="../../ai-reports/2026-09_18-reports/2026-09-06_2113_do-work-cli-guide/index.html" aria-label="Open A guide to the Go CLI and its commands">
+           <img class="sample-preview" src="previews/cli-command-map.png" loading="lazy" alt="" width="900" height="560" style="aspect-ratio: 900 / 560">
+         </a>
+-        <div class="card-heading"><h3><button class="name-copy" data-gallery-name type="button" disabled data-copy="name-cli-command-map" title="Copy report name"><span id="name-cli-command-map">cli-command-map</span><i class="copy-icon" aria-hidden="true"></i></button></h3>
+-          <a class="report-link" href="#cli-command-map" aria-label="Permalink to cli-command-map">#</a></div>
+-        <p>A guide to the Go CLI and its commands</p>
+       </article>
+       </div>
+     </section>

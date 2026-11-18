@@ -1,0 +1,79 @@
+{
+  "incumbent_commit": "eb5ddd58",
+  "candidate_commit": "029a178ec44ffdb8d8cf398a9f03cbbef19420f3",
+  "by_label": {
+    "A": {
+      "role": "candidate",
+      "report_paths": [
+        "ai-reports/2026-10_3-reports/2026-10-15_1731_REQ-698-ai-report-second-opinion/index.html",
+        "ai-reports/2026-11-15_0137_proposal-REQ-725-memory-note-destinations/index.html",
+        "ai-reports/2026-08_18-reports/2026-08-18_1000_durations-lane-legibility-alternatives/index.html",
+        "ai-reports/2026-09_18-reports/2026-09-06_2113_do-work-cli-guide/index.html"
+      ],
+      "matches": [
+        true,
+        true,
+        true,
+        true
+      ],
+      "match_tally": 4,
+      "scores": [
+        15,
+        14,
+        16,
+        14,
+        12
+      ],
+      "total": 71
+    },
+    "B": {
+      "role": "incumbent",
+      "report_paths": [
+        "ai-reports/2026-10_3-reports/2026-10-15_1731_REQ-698-ai-report-second-opinion/index.html",
+        "ai-reports/2026-11-15_0137_proposal-REQ-725-memory-note-destinations/index.html",
+        "ai-reports/2026-08_18-reports/2026-08-18_1000_durations-lane-legibility-alternatives/index.html",
+        "ai-reports/2026-09_18-reports/2026-09-06_2113_do-work-cli-guide/index.html"
+      ],
+      "matches": [
+        true,
+        true,
+        true,
+        true
+      ],
+      "match_tally": 4,
+      "scores": [
+        15,
+        14,
+        17,
+        14,
+        12
+      ],
+      "total": 72
+    }
+  },
+  "deltas": [
+    0,
+    0,
+    -1,
+    0,
+    0
+  ],
+  "total_delta": -1,
+  "decision": "revert",
+  "judge_packet_sha256": {
+    "A": {
+      "1440-dark.png": "0e4ef087637bee3baa5b428b47442c2da85cac5d9b715aca555b1706ef198c27",
+      "1440-light.png": "642a744e8c21778674177964d644cfe8856f78a4e745320e6d7409ed701f7d32",
+      "390-dark.png": "2ebd8952c420a0c5d06f6a5d8273ae0a7b8571b1e7736a5e4fcb76038fd608af",
+      "390-light.png": "c3d4d4cb48745a07018149660031d5955d190f02dae62049f1069dee1cd27a05",
+      "gallery.html": "8ad4330e6bdbd4fe128dc9116f12ccbae43ec9e92baad1e6b11c19ca65d827e9"
+    },
+    "B": {
+      "1440-dark.png": "1558457bf71dbb9ac59c8f95a453caeb5a627a9fb0674c420f806e748a098065",
+      "1440-light.png": "a254b2e02e8274c9d1a10c9d65f59baf7624e3e8de8033dd6fdb4b738e49b38f",
+      "390-dark.png": "21d22ec9e26b13dfc30ee60cc2e77745ebdae6fdcf6cfd58535d0360df96c3b4",
+      "390-light.png": "1e6c023ea581f3a62ca18e4627ec49bb86a8822605fe5a749619500ed548e8a5",
+      "gallery.html": "a7b9a7d66ca208d2b571e5d0482a3dcdf0e213c4d48d1f76c601a0aa0e302d8d"
+    }
+  }
+}

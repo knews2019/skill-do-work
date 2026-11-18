@@ -1,0 +1,24 @@
+127.0.0.1 - - [18/Nov/2026 20:11:33] "GET /ai-reports/2026-11-11_1411_commit-22f82fed-work-procedures-load-by-phase/index.html HTTP/1.1" 200 -
+127.0.0.1 - - [18/Nov/2026 20:11:33] "GET /ai-reports/2026-11-11_1411_commit-22f82fed-work-procedures-load-by-phase/presentation.css HTTP/1.1" 200 -
+127.0.0.1 - - [18/Nov/2026 20:11:33] "GET /ai-reports/2026-11-11_1411_commit-22f82fed-work-procedures-load-by-phase/presentation.js HTTP/1.1" 200 -
+127.0.0.1 - - [18/Nov/2026 20:11:33] code 404, message File not found
+127.0.0.1 - - [18/Nov/2026 20:11:33] "GET /favicon.ico HTTP/1.1" 404 -
+127.0.0.1 - - [18/Nov/2026 20:11:34] "GET /ai-reports/2026-10_3-reports/2026-10-15_1731_REQ-698-ai-report-second-opinion/index.html HTTP/1.1" 200 -
+127.0.0.1 - - [18/Nov/2026 20:11:34] "GET /ai-reports/2026-08_18-reports/2026-08-15_1834_UR-044-board-client-modules/index.html HTTP/1.1" 200 -
+127.0.0.1 - - [18/Nov/2026 20:11:34] "GET /ai-reports/2026-08_18-reports/2026-08-15_1834_UR-044-board-client-modules/screenshots/live-board.png HTTP/1.1" 200 -
+127.0.0.1 - - [18/Nov/2026 20:11:34] "GET /ai-reports/2026-11-14_1547_proposal-tinka-review-surface/index.html HTTP/1.1" 200 -
+127.0.0.1 - - [18/Nov/2026 20:11:34] "GET /ai-reports/2026-11-14_1547_proposal-tinka-review-surface/screenshots/canvas-lineage-overview.png HTTP/1.1" 200 -
+127.0.0.1 - - [18/Nov/2026 20:11:34] "GET /ai-reports/2026-11-14_1547_proposal-tinka-review-surface/presentation.css HTTP/1.1" 200 -
+127.0.0.1 - - [18/Nov/2026 20:11:34] "GET /ai-reports/2026-11-14_1547_proposal-tinka-review-surface/screenshots/tile-reply-markdown-full-view.png HTTP/1.1" 200 -
+127.0.0.1 - - [18/Nov/2026 20:11:34] "GET /ai-reports/2026-11-14_1547_proposal-tinka-review-surface/screenshots/tile-capture-full-view.png HTTP/1.1" 200 -
+127.0.0.1 - - [18/Nov/2026 20:11:34] "GET /ai-reports/2026-11-14_1547_proposal-tinka-review-surface/presentation.js HTTP/1.1" 200 -
+127.0.0.1 - - [18/Nov/2026 20:11:34] "GET /ai-reports/2026-11-14_1547_proposal-tinka-review-surface/screenshots/s1-probe-html-tile-full-view.png HTTP/1.1" 200 -
+127.0.0.1 - - [18/Nov/2026 20:11:34] "GET /ai-reports/2026-11-15_0137_proposal-REQ-725-memory-note-destinations/index.html HTTP/1.1" 200 -
+127.0.0.1 - - [18/Nov/2026 20:11:34] "GET /ai-reports/2026-11-15_0137_proposal-REQ-725-memory-note-destinations/presentation.css HTTP/1.1" 200 -
+127.0.0.1 - - [18/Nov/2026 20:11:34] "GET /ai-reports/2026-11-15_0137_proposal-REQ-725-memory-note-destinations/presentation.js HTTP/1.1" 200 -
+127.0.0.1 - - [18/Nov/2026 20:11:34] "GET /ai-reports/2026-10_3-reports/2026-10-27_2356_checkout-copies-control-repo/index.html HTTP/1.1" 200 -
+127.0.0.1 - - [18/Nov/2026 20:11:34] "GET /ai-reports/2026-08_18-reports/2026-08-18_1000_durations-lane-legibility-alternatives/index.html HTTP/1.1" 200 -
+127.0.0.1 - - [18/Nov/2026 20:11:34] "GET /ai-reports/2026-08_18-reports/2026-08-18_1000_durations-lane-legibility-alternatives/screenshots/durations-view-2026-08-18.png HTTP/1.1" 200 -
+127.0.0.1 - - [18/Nov/2026 20:11:34] "GET /ai-reports/2026-09_18-reports/2026-09-03_2145_do-work-velocity-and-pending-queue-speed/index.html HTTP/1.1" 200 -
+127.0.0.1 - - [18/Nov/2026 20:11:34] "GET /ai-reports/2026-09_18-reports/2026-09-06_1706_architecture-report/index.html HTTP/1.1" 200 -
+127.0.0.1 - - [18/Nov/2026 20:11:35] "GET /ai-reports/2026-09_18-reports/2026-09-06_2113_do-work-cli-guide/index.html HTTP/1.1" 200 -

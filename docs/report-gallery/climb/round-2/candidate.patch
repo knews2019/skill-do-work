@@ -1,0 +1,29 @@
+commit 029a178ec44ffdb8d8cf398a9f03cbbef19420f3
+Author:     t2 <t2@t2s-Virtual-Machine.local>
+AuthorDate: Wed Nov 18 20:09:12 2026 +0200
+Commit:     t2 <t2@t2s-Virtual-Machine.local>
+CommitDate: Wed Nov 18 20:09:12 2026 +0200
+
+    [REQ-751] Identify the duration-label alternatives as a proposal
+
+diff --git a/docs/report-gallery/index.html b/docs/report-gallery/index.html
+index 005e4584..4cd05613 100644
+--- a/docs/report-gallery/index.html
++++ b/docs/report-gallery/index.html
+@@ -147,13 +147,13 @@ body { margin: 0; font: 16px/1.5 var(--sans); }
+         <p class="worked-kind">Proposal</p>
+         <p>A control repository for parallel checkouts</p>
+       </article><article class="gallery-card worked-report" data-gallery-card id="overflow-labels">
+-        <a class="sample-cover" data-gallery-preview href="../../ai-reports/2026-08_18-reports/2026-08-18_1000_durations-lane-legibility-alternatives/index.html" aria-label="Open Why labels collide above the duration ceiling">
++        <a class="sample-cover" data-gallery-preview href="../../ai-reports/2026-08_18-reports/2026-08-18_1000_durations-lane-legibility-alternatives/index.html" aria-label="Open Why duration labels collide and which layouts could fix them">
+           <img class="sample-preview" src="previews/overflow-labels.png" loading="lazy" alt="" width="900" height="560" style="aspect-ratio: 900 / 560">
+         </a>
+         <div class="card-heading"><h3><button class="name-copy" data-gallery-name type="button" disabled data-copy="name-overflow-labels" title="Copy report name"><span id="name-overflow-labels">overflow-labels</span><i class="copy-icon" aria-hidden="true"></i></button></h3>
+           <a class="report-link" href="#overflow-labels" aria-label="Permalink to overflow-labels">#</a></div>
+-        <p class="worked-kind">Root cause</p>
+-        <p>Why labels collide above the duration ceiling</p>
++        <p class="worked-kind">Proposal</p>
++        <p>Why duration labels collide and which layouts could fix them</p>
+       </article><article class="gallery-card worked-report" data-gallery-card id="queue-refills">
+         <a class="sample-cover" data-gallery-preview href="../../ai-reports/2026-09_18-reports/2026-09-03_2145_do-work-velocity-and-pending-queue-speed/index.html" aria-label="Open Why the queue refills as fast as it drains">
+           <img class="sample-preview" src="previews/queue-refills.png" loading="lazy" alt="" width="900" height="560" style="aspect-ratio: 900 / 560">

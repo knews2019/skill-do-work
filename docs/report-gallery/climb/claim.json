@@ -1,0 +1,203 @@
+{
+  "schema_version": 1,
+  "command": "advance",
+  "outcome": "success",
+  "repository_root": "/Users/t2/Desktop/e1-experimental-repos/skill-do-work2",
+  "findings": [
+    {
+      "code": "STATE-APPLIED",
+      "severity": "info",
+      "affected_ids": [
+        "REQ-751"
+      ],
+      "affected_paths": [
+        "do-work/CHECKPOINT.md",
+        "do-work/queue/REQ-751-blind-opus-gallery-climb.md",
+        "do-work/working/REQ-751-blind-opus-gallery-climb.md"
+      ],
+      "observed_evidence": [
+        "lifecycle transaction applied"
+      ],
+      "fixability": "automatic",
+      "automation_stop_reason": "",
+      "next_argv": [
+        "do-work-cli",
+        "claim",
+        "REQ-751"
+      ],
+      "next_just_recipe": "do-work-claim REQ-751",
+      "verification_argv": [
+        "git",
+        "status",
+        "--short",
+        "--",
+        "do-work/CHECKPOINT.md",
+        "do-work/queue/REQ-751-blind-opus-gallery-climb.md",
+        "do-work/working/REQ-751-blind-opus-gallery-climb.md"
+      ]
+    }
+  ],
+  "changes": [
+    {
+      "path": "do-work/queue/REQ-751-blind-opus-gallery-climb.md",
+      "kind": "moved",
+      "detail": "committed in a87f9d569d98d7acda511741a7272623f2f1a4e3"
+    },
+    {
+      "path": "do-work/working/REQ-751-blind-opus-gallery-climb.md",
+      "kind": "created",
+      "detail": "committed in a87f9d569d98d7acda511741a7272623f2f1a4e3"
+    },
+    {
+      "path": "do-work/CHECKPOINT.md",
+      "kind": "modified",
+      "detail": "committed in a87f9d569d98d7acda511741a7272623f2f1a4e3"
+    }
+  ],
+  "skipped_work": [],
+  "selected": [
+    {
+      "request_id": "REQ-751",
+      "request_path": "do-work/queue/REQ-751-blind-opus-gallery-climb.md",
+      "title": "Run blind Opus comparisons and keep qualifying gallery changes",
+      "provenance": "explicit-req",
+      "selection_priority": "ordinary",
+      "priority": "next",
+      "original_status": "pending",
+      "probe_status": "not_applicable",
+      "probe_attempted": false,
+      "probe_exit_code": -1,
+      "unblock_required": false,
+      "dependency_depth": 0,
+      "dependencies": [
+        "REQ-750"
+      ],
+      "estimate_minutes": 0,
+      "estimate_known": false,
+      "next_argv": [
+        "do-work",
+        "run",
+        "REQ-751"
+      ],
+      "next_just_recipe": "",
+      "verification_argv": [
+        "do-work-cli",
+        "--format",
+        "json",
+        "next",
+        "REQ-751"
+      ]
+    }
+  ],
+  "excluded": [],
+  "selection_summary": {
+    "pending": 6,
+    "finished_awaiting_archive": 0,
+    "pending_answers": 0,
+    "blocked": 0,
+    "blocked_archive_collision": 0,
+    "blocked_dependency_cycle": 0,
+    "probed": 0,
+    "probe_succeeded": 0,
+    "skipped_impact_negligible": 0,
+    "total_estimated_minutes": 0,
+    "unknown_estimate_count": 1
+  },
+  "rollback": {
+    "status": "",
+    "actions": [],
+    "errors": []
+  },
+  "finalizations": [],
+  "queue_advance": {
+    "target_tokens": [
+      "REQ-751"
+    ],
+    "skip_impact_negligible": false,
+    "simple_only": false,
+    "dispatch_bound": 1,
+    "frozen_members": [
+      {
+        "request_id": "REQ-751",
+        "request_path": "do-work/working/REQ-751-blind-opus-gallery-climb.md",
+        "provenance": "explicit-req",
+        "consumed": true
+      }
+    ],
+    "claimed": [
+      {
+        "request_id": "REQ-751",
+        "request_path": "do-work/working/REQ-751-blind-opus-gallery-climb.md",
+        "provenance": "explicit-req",
+        "consumed": true
+      }
+    ],
+    "phases": [
+      {
+        "request_id": "REQ-751",
+        "phase": "claim",
+        "outcome": "success",
+        "changes": [
+          {
+            "path": "do-work/queue/REQ-751-blind-opus-gallery-climb.md",
+            "kind": "moved",
+            "detail": "committed in a87f9d569d98d7acda511741a7272623f2f1a4e3"
+          },
+          {
+            "path": "do-work/working/REQ-751-blind-opus-gallery-climb.md",
+            "kind": "created",
+            "detail": "committed in a87f9d569d98d7acda511741a7272623f2f1a4e3"
+          },
+          {
+            "path": "do-work/CHECKPOINT.md",
+            "kind": "modified",
+            "detail": "committed in a87f9d569d98d7acda511741a7272623f2f1a4e3"
+          }
+        ],
+        "findings": [
+          {
+            "code": "STATE-APPLIED",
+            "severity": "info",
+            "affected_ids": [
+              "REQ-751"
+            ],
+            "affected_paths": [
+              "do-work/CHECKPOINT.md",
+              "do-work/queue/REQ-751-blind-opus-gallery-climb.md",
+              "do-work/working/REQ-751-blind-opus-gallery-climb.md"
+            ],
+            "observed_evidence": [
+              "lifecycle transaction applied"
+            ],
+            "fixability": "automatic",
+            "automation_stop_reason": "",
+            "next_argv": [
+              "do-work-cli",
+              "claim",
+              "REQ-751"
+            ],
+            "next_just_recipe": "do-work-claim REQ-751",
+            "verification_argv": [
+              "git",
+              "status",
+              "--short",
+              "--",
+              "do-work/CHECKPOINT.md",
+              "do-work/queue/REQ-751-blind-opus-gallery-climb.md",
+              "do-work/working/REQ-751-blind-opus-gallery-climb.md"
+            ]
+          }
+        ]
+      }
+    ],
+    "partial": false,
+    "continuation_argv": [],
+    "verification_argv": [
+      "git",
+      "status",
+      "--short",
+      "--",
+      "do-work"
+    ]
+  }
+}

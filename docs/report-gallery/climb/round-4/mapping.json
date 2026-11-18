@@ -1,0 +1,8 @@
+{
+  "round": "/tmp/gallery-dns670kh",
+  "sealed_record": "/private/tmp/ur185-blind-logistics/.withheld/gallery-dns670kh/sealed.json",
+  "input_order_by_label": {
+    "A": 2,
+    "B": 1
+  }
+}

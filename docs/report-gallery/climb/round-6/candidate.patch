@@ -1,0 +1,31 @@
+commit 517030ed376d09e7af340a850f8c3523b16a9fb8
+Author:     t2 <t2@t2s-Virtual-Machine.local>
+AuthorDate: Wed Nov 18 20:16:25 2026 +0200
+Commit:     t2 <t2@t2s-Virtual-Machine.local>
+CommitDate: Wed Nov 18 20:16:25 2026 +0200
+
+    [REQ-751] Name the report review canvas for the work it supports
+
+diff --git a/docs/report-gallery/index.html b/docs/report-gallery/index.html
+index c20c61b8..714f4414 100644
+--- a/docs/report-gallery/index.html
++++ b/docs/report-gallery/index.html
+@@ -127,13 +127,13 @@ body { margin: 0; font: 16px/1.5 var(--sans); }
+     <section class="report-group" aria-label="Proposals">
+       <h3>Proposals</h3>
+       <div class="gallery-grid">
+-        <article class="gallery-card worked-report" data-gallery-card id="tinka-review">
+-        <a class="sample-cover" data-gallery-preview href="../../ai-reports/2026-11-14_1547_proposal-tinka-review-surface/index.html" aria-label="Open Tinka as a review canvas for report bundles">
++        <article class="gallery-card worked-report" data-gallery-card id="report-review-canvas">
++        <a class="sample-cover" data-gallery-preview href="../../ai-reports/2026-11-14_1547_proposal-tinka-review-surface/index.html" aria-label="Open Review report drafts and compare feedback in Tinka">
+           <img class="sample-preview" src="previews/tinka-review.png" loading="lazy" alt="" width="900" height="560" style="aspect-ratio: 900 / 560">
+         </a>
+-        <div class="card-heading"><h3><button class="name-copy" data-gallery-name type="button" disabled data-copy="name-tinka-review" title="Copy report name"><span id="name-tinka-review">tinka-review</span><i class="copy-icon" aria-hidden="true"></i></button></h3>
+-          <a class="report-link" href="#tinka-review" aria-label="Permalink to tinka-review">#</a></div>
+-        <p>Tinka as a review canvas for report bundles</p>
++        <div class="card-heading"><h3><button class="name-copy" data-gallery-name type="button" disabled data-copy="name-report-review-canvas" title="Copy report name"><span id="name-report-review-canvas">report-review-canvas</span><i class="copy-icon" aria-hidden="true"></i></button></h3>
++          <a class="report-link" href="#report-review-canvas" aria-label="Permalink to report-review-canvas">#</a></div>
++        <p>Review report drafts and compare feedback in Tinka</p>
+       </article>
+         <article class="gallery-card worked-report" data-gallery-card id="memory-note-routing">
+         <a class="sample-cover" data-gallery-preview href="../../ai-reports/2026-11-15_0137_proposal-REQ-725-memory-note-destinations/index.html" aria-label="Open Where each memory note should go">

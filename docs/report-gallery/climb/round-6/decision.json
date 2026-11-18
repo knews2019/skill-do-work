@@ -1,0 +1,79 @@
+{
+  "incumbent_commit": "58f81933",
+  "candidate_commit": "517030ed376d09e7af340a850f8c3523b16a9fb8",
+  "by_label": {
+    "A": {
+      "role": "incumbent",
+      "report_paths": [
+        "ai-reports/2026-10_3-reports/2026-10-15_1731_REQ-698-ai-report-second-opinion/index.html",
+        "ai-reports/2026-11-15_0137_proposal-REQ-725-memory-note-destinations/index.html",
+        "ai-reports/2026-08_18-reports/2026-08-18_1000_durations-lane-legibility-alternatives/index.html",
+        "ai-reports/2026-09_18-reports/2026-09-06_2113_do-work-cli-guide/index.html"
+      ],
+      "matches": [
+        true,
+        true,
+        true,
+        true
+      ],
+      "match_tally": 4,
+      "scores": [
+        16,
+        14,
+        15,
+        17,
+        16
+      ],
+      "total": 78
+    },
+    "B": {
+      "role": "candidate",
+      "report_paths": [
+        "ai-reports/2026-10_3-reports/2026-10-15_1731_REQ-698-ai-report-second-opinion/index.html",
+        "ai-reports/2026-11-15_0137_proposal-REQ-725-memory-note-destinations/index.html",
+        "ai-reports/2026-08_18-reports/2026-08-18_1000_durations-lane-legibility-alternatives/index.html",
+        "ai-reports/2026-09_18-reports/2026-09-06_2113_do-work-cli-guide/index.html"
+      ],
+      "matches": [
+        true,
+        true,
+        true,
+        true
+      ],
+      "match_tally": 4,
+      "scores": [
+        16,
+        15,
+        15,
+        17,
+        16
+      ],
+      "total": 79
+    }
+  },
+  "deltas": [
+    0,
+    1,
+    0,
+    0,
+    0
+  ],
+  "total_delta": 1,
+  "decision": "revert",
+  "judge_packet_sha256": {
+    "A": {
+      "1440-dark.png": "1955ffaed0c280362ffdcb76e7d20f2a36786930f29b7a979657f86ebffc9095",
+      "1440-light.png": "a7798661349e273588a56a70ed280590d4667f1eaaaf77b321c09a1df5214535",
+      "390-dark.png": "551927a5d0502a6a36eb37b0413ae6b64e07fb7f650ff4fbdc3a466abebc5cf7",
+      "390-light.png": "fee0fff56b9a81a7892bc97a561f655d41c4dc8542d1fdc967fb66980ba779c4",
+      "gallery.html": "a0461b2d026b0232e425ed27e8bba4bc273ba1c2b66157ade9c2ea08af3be4d9"
+    },
+    "B": {
+      "1440-dark.png": "d494bb32354a014f23b75b294a3b0106890755fd8c546922bd323b5307c4306a",
+      "1440-light.png": "d1a5b7ebc0f45512a42c8823a09594174b248ac9ed25b6a38bcce26fee768dfc",
+      "390-dark.png": "2c83ae03cce96c37a08d28838795247a946284fc2a89f4f3eb919452022da53f",
+      "390-light.png": "c57d08dfff40747f01c60a19ba1182eb2738a220f21dda5b879f9545629c237f",
+      "gallery.html": "c0df1a3ba424cdd95d5cfbc47d2742b5963c55993b6407a6a486117bd2b94ba4"
+    }
+  }
+}

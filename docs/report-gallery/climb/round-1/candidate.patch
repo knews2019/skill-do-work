@@ -1,0 +1,32 @@
+commit 1cc7cd5c08d05a677e98786820164370ac7533f1
+Author:     t2 <t2@t2s-Virtual-Machine.local>
+AuthorDate: Wed Nov 18 20:07:14 2026 +0200
+Commit:     t2 <t2@t2s-Virtual-Machine.local>
+CommitDate: Wed Nov 18 20:07:14 2026 +0200
+
+    [REQ-751] Align the board client release card with its report
+
+diff --git a/docs/report-gallery/index.html b/docs/report-gallery/index.html
+index 005e4584..3e0dba8b 100644
+--- a/docs/report-gallery/index.html
++++ b/docs/report-gallery/index.html
+@@ -114,14 +114,14 @@ body { margin: 0; font: 16px/1.5 var(--sans); }
+           <a class="report-link" href="#second-opinion" aria-label="Permalink to second-opinion">#</a></div>
+         <p class="worked-kind">Completed work</p>
+         <p>Guarded report rebuilds across models</p>
+-      </article><article class="gallery-card worked-report" data-gallery-card id="release-dossier">
+-        <a class="sample-cover" data-gallery-preview href="../../ai-reports/2026-08_18-reports/2026-08-15_1834_UR-044-board-client-modules/index.html" aria-label="Open Board client modules and deployment evidence">
++      </article><article class="gallery-card worked-report" data-gallery-card id="board-client-release">
++        <a class="sample-cover" data-gallery-preview href="../../ai-reports/2026-08_18-reports/2026-08-15_1834_UR-044-board-client-modules/index.html" aria-label="Open Board client assembly, skill hardening, and deployment evidence">
+           <img class="sample-preview" src="previews/release-dossier.png" loading="lazy" alt="" width="900" height="560" style="aspect-ratio: 900 / 560">
+         </a>
+-        <div class="card-heading"><h3><button class="name-copy" data-gallery-name type="button" disabled data-copy="name-release-dossier" title="Copy report name"><span id="name-release-dossier">release-dossier</span><i class="copy-icon" aria-hidden="true"></i></button></h3>
+-          <a class="report-link" href="#release-dossier" aria-label="Permalink to release-dossier">#</a></div>
++        <div class="card-heading"><h3><button class="name-copy" data-gallery-name type="button" disabled data-copy="name-board-client-release" title="Copy report name"><span id="name-board-client-release">board-client-release</span><i class="copy-icon" aria-hidden="true"></i></button></h3>
++          <a class="report-link" href="#board-client-release" aria-label="Permalink to board-client-release">#</a></div>
+         <p class="worked-kind">Completed work</p>
+-        <p>Board client modules and deployment evidence</p>
++        <p>Board client assembly, skill hardening, and deployment evidence</p>
+       </article><article class="gallery-card worked-report" data-gallery-card id="tinka-review">
+         <a class="sample-cover" data-gallery-preview href="../../ai-reports/2026-11-14_1547_proposal-tinka-review-surface/index.html" aria-label="Open Tinka as a review canvas for report bundles">
+           <img class="sample-preview" src="previews/tinka-review.png" loading="lazy" alt="" width="900" height="560" style="aspect-ratio: 900 / 560">
