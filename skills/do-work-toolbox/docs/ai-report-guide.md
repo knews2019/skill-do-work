@@ -73,6 +73,8 @@ do-work-toolbox ai-report                 Most recent successful archived work
 do-work-toolbox ai-report most recent     Same, explicitly
 do-work-toolbox ai-report index           Catalog every report bundle under ai-reports/
 do-work-toolbox ai-report find <topic>    List report bundles on a topic, newest first
+do-work-toolbox ai-report gallery         Regenerate the gallery and print its path
+do-work-toolbox ai-report gallery add <image path|link|html path> [what you liked]
 do-work-toolbox ai-report organize [--dry-run]  File finished months into counted month folders; fix every link
 do-work-toolbox ai-report second-opinion [--preset <name>] [--editor-direction '<text>'] [<dir>|<page.html>|latest]  Clarify with the active session model
 do-work-toolbox ai-report second-opinion --backend codex [--model <slug>] [--preset <name>] [--editor-direction '<text>'] [<dir>|<page.html>|latest]
@@ -102,6 +104,14 @@ The current month's reports sit directly under `ai-reports/`. A finished month's
 - A new report enters the catalog at the next rebuild (`ai-report index`); creating a report never rebuilds it, and the report's closing summary reminds you while the new report is missing.
 - From each bundle's HTML entry it reads three optional meta tags: `ai-report-kind`, `ai-report-supersedes` (the folder of the report it replaces) and `ai-report-verdict`.
 - It lists each bundle's second-opinion pages (`index-*.html`) under the bundle, with tree id, preset, model and date read from the `ai-report-second-opinion-*` meta tags; a page without them is listed by its file name.
+
+## Report Gallery
+
+`ai-report gallery` regenerates `<project-root>/docs/report-gallery/index.html`. Open it to browse presentation samples with worked examples, report kinds with links to the newest reports, and shipped second-opinion presets. The page has a copyable add command. `ai-report gallery add` saves one reusable pattern from an image, link, or HTML file and refreshes the page.
+
+Each project sample keeps its source, the reader's question it can answer, and two or three presentation moves in `sample.md`. A project sample takes precedence over a shipped sample with the same folder name. Use a sample's presentation moves with evidence from the report you are writing.
+
+First install and file-writing updates run by the gallery-aware updater regenerate the page automatically. A hand-made page stays in place, and a refusal or write failure shows up as a one-line gallery warning.
 
 ## Organizing Reports by Month
 

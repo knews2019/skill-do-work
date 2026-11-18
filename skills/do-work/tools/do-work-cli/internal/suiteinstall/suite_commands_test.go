@@ -306,6 +306,104 @@ func TestInstallAndUpdateRecommendOrganizeWhenReportsAreLoose(t *testing.T) {
 	}
 }
 
+func TestReportGalleryRebuildsFromTheWrittenSuite(t *testing.T) {
+	projectRoot := newProjectRepository(t)
+	galleryPath := filepath.Join(projectRoot, "docs", "report-gallery", "index.html")
+	sourceRoot := newSuiteSourceTree(t, fixtureSuiteVersion)
+	archivePath := buildArchiveFromSourceTree(t, sourceRoot)
+
+	exitCode, _, narration := runCommand(t, projectRoot, "json", "n\n", CommandInstallSuite, "--archive", archivePath)
+	if exitCode != 0 {
+		t.Fatalf("declined install exited %d:\n%s", exitCode, narration)
+	}
+	if _, err := os.Lstat(galleryPath); !os.IsNotExist(err) {
+		t.Fatalf("declined install touched the gallery: %v", err)
+	}
+
+	exitCode, _, narration = runCommand(t, projectRoot, "json", "y\n", CommandInstallSuite, "--archive", archivePath)
+	if exitCode != 0 {
+		t.Fatalf("first install exited %d:\n%s", exitCode, narration)
+	}
+	if page := readTestFile(t, galleryPath); !strings.Contains(page, "Suite sample "+fixtureSuiteVersion) {
+		t.Fatalf("first install gallery is missing the installed sample:\n%s", page)
+	}
+
+	const newVersion = "0.300.0"
+	_, upstreamURL := newUpstreamArchiveServer(t, newVersion)
+	updateArgs := []string{CommandUpdateSuite, "--upstream-url", upstreamURL}
+	exitCode, _, narration = runCommand(t, projectRoot, "json", "n\n", updateArgs...)
+	if exitCode != 0 || !strings.Contains(narration, "Update cancelled") {
+		t.Fatalf("declined update exited %d:\n%s", exitCode, narration)
+	}
+	if page := readTestFile(t, galleryPath); !strings.Contains(page, "Suite sample "+fixtureSuiteVersion) {
+		t.Fatalf("declined update replaced the current version's sample:\n%s", page)
+	}
+
+	exitCode, _, narration = runCommand(t, projectRoot, "json", "y\n", updateArgs...)
+	if exitCode != 0 || !strings.Contains(narration, "Updated to v"+newVersion) {
+		t.Fatalf("written update exited %d:\n%s", exitCode, narration)
+	}
+	if page := readTestFile(t, galleryPath); !strings.Contains(page, "Suite sample "+newVersion) ||
+		strings.Contains(page, "Suite sample "+fixtureSuiteVersion) {
+		t.Fatalf("updated gallery does not reflect the newly installed sample:\n%s", page)
+	}
+	if err := os.Remove(galleryPath); err != nil {
+		t.Fatal(err)
+	}
+	exitCode, _, narration = runCommand(t, projectRoot, "json", "y\n", updateArgs...)
+	if exitCode != 0 || !strings.Contains(narration, "You're up to date") {
+		t.Fatalf("already-current update exited %d:\n%s", exitCode, narration)
+	}
+	if _, err := os.Lstat(galleryPath); !os.IsNotExist(err) {
+		t.Fatalf("already-current update touched the gallery: %v", err)
+	}
+}
+
+func TestReportGalleryWriteProblemsWarnOnceWithoutRecoveringTheSuite(t *testing.T) {
+	for _, blockedPath := range []string{"docs/report-gallery/index.html", "docs/report-gallery"} {
+		t.Run(blockedPath, func(t *testing.T) {
+			projectRoot := newProjectRepository(t)
+			blocker := filepath.Join(projectRoot, blockedPath)
+			const ownerBytes = "<h1>Consumer-owned bytes</h1>\n"
+			writeTestFile(t, blocker, ownerBytes)
+
+			sourceRoot := newSuiteSourceTree(t, fixtureSuiteVersion)
+			const newVersion = "0.300.0"
+			_, upstreamURL := newUpstreamArchiveServer(t, newVersion)
+			for _, phase := range []struct {
+				version string
+				args    []string
+			}{
+				{fixtureSuiteVersion, []string{CommandInstallSuite, "--archive", buildArchiveFromSourceTree(t, sourceRoot)}},
+				{newVersion, []string{CommandUpdateSuite, "--upstream-url", upstreamURL}},
+			} {
+				exitCode, output, narration := runCommand(t, projectRoot, "json", "y\n", phase.args...)
+				var result resultmodel.CommandResult
+				if err := json.Unmarshal([]byte(output), &result); err != nil {
+					t.Fatalf("%s stdout is not one JSON result: %v\n%s", phase.args[0], err, output)
+				}
+				if exitCode != 0 || result.Outcome != resultmodel.OutcomeSuccess || result.Rollback.Status != resultmodel.RollbackNotNeeded {
+					t.Fatalf("%s tried to fail or recover the suite:\n%s\n%s", phase.args[0], output, narration)
+				}
+				const warning = "Report gallery:"
+				lastLine := strings.TrimSpace(narration)
+				lastLine = lastLine[strings.LastIndex(lastLine, "\n")+1:]
+				if strings.Count(narration, warning) != 1 || !strings.HasPrefix(lastLine, warning) ||
+					!strings.Contains(lastLine, "docs/report-gallery/index.html") || strings.Contains(output, warning) {
+					t.Errorf("%s did not finish with one gallery warning on stderr:\n%s\n%s", phase.args[0], output, narration)
+				}
+				if got := readTestFile(t, blocker); got != ownerBytes {
+					t.Errorf("%s changed consumer-owned bytes: %q", phase.args[0], got)
+				}
+				installedVersion := filepath.Join(projectRoot, ".claude", "skills", "do-work", "VERSION")
+				if got := strings.TrimSpace(readTestFile(t, installedVersion)); got != phase.version {
+					t.Errorf("%s installed version = %q, want %q", phase.args[0], got, phase.version)
+				}
+			}
+		})
+	}
+}
+
 func TestBuiltInstallAndUpdateExit130WhenSignalsInterruptBlockedConfirmation(t *testing.T) {
 	if testing.Short() || os.Getenv("DO_WORK_HEAVY_TESTS") != "1" {
 		t.Skip("built-binary signal integration is heavy-only")

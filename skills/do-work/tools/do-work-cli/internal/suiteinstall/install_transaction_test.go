@@ -149,6 +149,19 @@ func newSuiteSourceTree(t *testing.T, suiteVersion string) string {
 	writeTestFile(t, filepath.Join(sourceRoot, "skills", "do-work-board", "justfile.template"), justfileTemplateBytes)
 	writeTestFile(t, filepath.Join(sourceRoot, "skills", "do-work", "hooks", "hooks.json"), coreHooksFragmentBytes)
 	writeTestFile(t, filepath.Join(sourceRoot, "skills", "do-work", "agent-instructions.template.md"), agentInstructionsTemplateBytes)
+	sampleRoot := filepath.Join(sourceRoot, "skills", "do-work-toolbox", "docs", "report-gallery", "version-sample")
+	writeTestFile(t, filepath.Join(sampleRoot, "sample.md"), `---
+title: Suite sample `+suiteVersion+`
+use_when: The reader needs to compare two measures.
+source: shipped
+added: 2026-11-18
+---
+
+## Borrow
+- Align the dates.
+- Label both units.
+`)
+	writeTestFile(t, filepath.Join(sampleRoot, "example.html"), "<h1>Sample data</h1>\n")
 	return sourceRoot
 }
 
