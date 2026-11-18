@@ -1,0 +1,30 @@
+[
+  {
+    "need": 1,
+    "handle": "second-opinion",
+    "selected": "ai-reports/2026-10_3-reports/2026-10-15_1731_REQ-698-ai-report-second-opinion/index.html",
+    "expected": "ai-reports/2026-10_3-reports/2026-10-15_1731_REQ-698-ai-report-second-opinion/index.html",
+    "match": true
+  },
+  {
+    "need": 2,
+    "handle": "memory-note-routing",
+    "selected": "ai-reports/2026-11-15_0137_proposal-REQ-725-memory-note-destinations/index.html",
+    "expected": "ai-reports/2026-11-15_0137_proposal-REQ-725-memory-note-destinations/index.html",
+    "match": true
+  },
+  {
+    "need": 3,
+    "handle": "overflow-labels",
+    "selected": "ai-reports/2026-08_18-reports/2026-08-18_1000_durations-lane-legibility-alternatives/index.html",
+    "expected": "ai-reports/2026-08_18-reports/2026-08-18_1000_durations-lane-legibility-alternatives/index.html",
+    "match": true
+  },
+  {
+    "need": 4,
+    "handle": "cli-command-map",
+    "selected": "ai-reports/2026-09_18-reports/2026-09-06_2113_do-work-cli-guide/index.html",
+    "expected": "ai-reports/2026-09_18-reports/2026-09-06_2113_do-work-cli-guide/index.html",
+    "match": true
+  }
+]
