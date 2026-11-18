@@ -12,6 +12,7 @@ const (
 	CommandNote                  = "do-work-note"
 	CommandArchitecture          = "architecture-report-preflight"
 	CommandAIReportIndex         = "ai-report-index"
+	CommandAIReportGallery       = "ai-report-gallery"
 	CommandReportImage           = "generate-report-image"
 	CommandReportImageBatch      = "generate-report-image-batch"
 	CommandPortfolio             = "publish-portfolio-summary"
@@ -28,6 +29,7 @@ func Handlers() map[string]commandruntime.CommandHandler {
 		CommandPeriodicCheck:         handlePeriodicCheck,
 		CommandArchitecture:          handleArchitecture,
 		CommandAIReportIndex:         handleAIReportIndex,
+		CommandAIReportGallery:       handleAIReportGallery,
 		CommandReportImage:           handleReportImage,
 		CommandReportImageBatch:      handleReportImageBatch,
 		CommandPortfolio:             handlePortfolio,

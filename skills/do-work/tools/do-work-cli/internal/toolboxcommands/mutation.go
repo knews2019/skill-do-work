@@ -130,6 +130,12 @@ func rootedMkdirExclusive(repositoryRoot, relative string, mode os.FileMode) (os
 // repository. Creation uses an exclusive hard-link claim; replacement checks
 // the observed inode and bytes immediately before the final rename.
 func rootedPublishFile(repositoryRoot, relative string, data []byte, mode os.FileMode, replace bool) error {
+	return rootedPublishFileChecked(repositoryRoot, relative, data, mode, replace, nil)
+}
+
+// checkReplacement can authorize a replace from the same snapshot that is
+// revalidated at publish time, so a preflight check cannot bless different bytes.
+func rootedPublishFileChecked(repositoryRoot, relative string, data []byte, mode os.FileMode, replace bool, checkReplacement func([]byte) error) error {
 	if err := validateNoLinkedAncestors(repositoryRoot, relative, false); err != nil {
 		return err
 	}
@@ -154,6 +160,11 @@ func rootedPublishFile(repositoryRoot, relative string, data []byte, mode os.Fil
 		originalBytes, err = rootedfs.ReadFile(parent, leaf)
 		if err != nil {
 			return err
+		}
+		if checkReplacement != nil {
+			if err := checkReplacement(originalBytes); err != nil {
+				return err
+			}
 		}
 	}
 	random := make([]byte, 12)
@@ -184,8 +195,11 @@ func rootedPublishFile(repositoryRoot, relative string, data []byte, mode os.Fil
 	}
 	if replace {
 		currentInfo, statErr := parent.Lstat(leaf)
+		if statErr != nil || !os.SameFile(originalInfo, currentInfo) || originalInfo.Mode() != currentInfo.Mode() {
+			return fmt.Errorf("target changed before confined replacement: %s", relative)
+		}
 		currentBytes, readErr := rootedfs.ReadFile(parent, leaf)
-		if statErr != nil || readErr != nil || !os.SameFile(originalInfo, currentInfo) || !bytes.Equal(originalBytes, currentBytes) {
+		if readErr != nil || !bytes.Equal(originalBytes, currentBytes) {
 			return fmt.Errorf("target changed before confined replacement: %s", relative)
 		}
 		if err := rootedfs.Rename(parent, temporary, leaf); err != nil {
