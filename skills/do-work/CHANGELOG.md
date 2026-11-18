@@ -10,6 +10,13 @@ For the complete release history, read this file and the archives below from new
 - [0.50.0 through 0.64.1](https://github.com/knews2019/skill-do-work/blob/main/docs/changelog/CHANGELOG-2026-04-13-up-to-v0.64.1.md)
 - [0.1.0 through 0.49.0](https://github.com/knews2019/skill-do-work/blob/main/docs/changelog/CHANGELOG-2026-04-07-up-to-v0.49.0.md)
 
+## 0.330.0 — Copy a Starter Prompt for Any Report Design (2026-11-19)
+
+Open **Use this design** to copy a prompt that applies the named layout to your next report. Starters are available for shipped samples, project samples and generated reports, including older reports.
+
+- The live gallery puts each report's starter and its report and figure feedback on one card.
+- A report written without a named design still picks the best match for its evidence.
+
 ## 0.329.0 — Save Report and Figure Feedback (2026-11-19)
 
 Run `just run-report-gallery` to like or dislike a report or one of its figures and leave an optional note. Reopen the gallery to pick up where you left off.
