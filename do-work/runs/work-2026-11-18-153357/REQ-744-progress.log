@@ -1,0 +1,5 @@
+2026-11-18T16:33:32Z verification start bash _dev/tests/maintainer-verify.sh
+2026-11-18T16:33:58Z verification wrapper restarted in Bash after setup failed before launching the gate
+2026-11-18T16:35:59Z verification exit 0 bash _dev/tests/maintainer-verify.sh attempt 1
+2026-11-18T16:36:46Z heavy verification start staged-skills
+2026-11-18T16:37:18Z heavy verification exit 0 staged-skills
