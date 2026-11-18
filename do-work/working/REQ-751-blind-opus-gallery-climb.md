@@ -1,7 +1,7 @@
 ---
 id: REQ-751
 title: 'Run blind Opus comparisons and keep qualifying gallery changes'
-status: pending
+status: claimed
 created_at: 2026-11-18T17:43:03Z
 user_request: UR-185
 domain: ui-design
@@ -13,6 +13,7 @@ maintenance: false
 batch: report-gallery-climb
 related: [REQ-749, REQ-750, REQ-752]
 depends_on: [REQ-750]
+claimed_at: 2026-11-18T18:07:04Z
 ---
 # Run blind Opus comparisons and keep qualifying gallery changes
 
