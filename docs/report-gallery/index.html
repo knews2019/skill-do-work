@@ -50,6 +50,7 @@ body { margin: 0; font: 16px/1.5 var(--sans); }
 .copy-icon::after { left: 4px; top: 3px; background: var(--ground); }
 .report-link { flex: none; font: 600 .85rem/1.4 var(--sans); padding: .55rem 0; }
 .gallery-card p { margin: 0 0 .45rem; color: var(--subtle); line-height: 1.45; max-width: 52ch; }
+.worked-report .worked-kind { font: 700 .84rem/1.4 var(--sans); color: var(--accent); }
 .gallery-card details { background: none; border: 0; padding: 0; border-radius: 0; }
 .gallery-card summary { display: list-item; font: 600 .9rem var(--sans); width: fit-content; color: var(--accent); padding: .65rem 0; cursor: pointer; }
 .gallery-card details[open] summary { border: 0; margin: 0; }
@@ -104,140 +105,90 @@ body { margin: 0; font: 16px/1.5 var(--sans); }
       <a class="add-link" href="#add-sample">Add a sample</a>
     </nav>
   </header>
-  <section class="samples" id="samples" aria-labelledby="samples-title">
-    <div class="section-note"><h2 id="samples-title">10 report designs</h2>
-      <p>Select a page to preview it. Click a design name to copy it.</p></div>
+  <section class="samples" id="worked-reports" aria-labelledby="worked-title">
+    <div class="section-note"><h2 id="worked-title">Worked reports</h2>
+      <p>Open a report from its preview. Click a name to copy it.</p></div>
     <div class="gallery-grid">
-      <article class="gallery-card" id="sample-before-and-after">
-        <a class="sample-cover" href="../../skills/do-work-toolbox/docs/report-gallery/before-and-after/preview.png" aria-label="Preview Before and After" data-preview>
-          <img class="sample-preview" src="../../skills/do-work-toolbox/docs/report-gallery/before-and-after/preview.png" loading="lazy" alt="" width="1040" height="740">
-          <span aria-hidden="true">Enlarge ↗</span></a>
-        <div class="card-heading"><h3><button class="name-copy" type="button" disabled data-copy="name-before-and-after" title="Copy design name" aria-label="Copy design name Before and After"><span id="name-before-and-after">Before and After</span><i class="copy-icon" aria-hidden="true"></i></button></h3>
-          <a class="report-link" href="../../skills/do-work-toolbox/docs/report-gallery/before-and-after/example.html" aria-label="Worked example — Before and After">Open report ↗</a></div>
-        <p>What changed between two readings?</p>
-        <details><summary>Use this design</summary>
-          <code class="design-prompt" id="prompt-before-and-after">do-work-toolbox ai-report --design &#34;Before and After&#34;</code>
-          <button class="prompt-copy" type="button" data-copy="prompt-before-and-after" hidden>Copy starter prompt</button>
-          <ul aria-label="Borrow"><li>Keep the same measurement and units on both sides.</li><li>Put the size and direction of the change next to the two readings.</li><li>Say which behavior the capture establishes and where the evidence ends.</li></ul>
-          <div class="gallery-links"><a href="#sample-before-and-after">Permalink</a><a href="../../skills/do-work-toolbox/docs/report-gallery/before-and-after/sample.md">Sample record</a></div>
-        </details>
-      </article><article class="gallery-card" id="sample-bottleneck-hunt">
-        <a class="sample-cover" href="../../skills/do-work-toolbox/docs/report-gallery/bottleneck-hunt/preview.png" aria-label="Preview Bottleneck Hunt" data-preview>
-          <img class="sample-preview" src="../../skills/do-work-toolbox/docs/report-gallery/bottleneck-hunt/preview.png" loading="lazy" alt="" width="1040" height="740">
-          <span aria-hidden="true">Enlarge ↗</span></a>
-        <div class="card-heading"><h3><button class="name-copy" type="button" disabled data-copy="name-bottleneck-hunt" title="Copy design name" aria-label="Copy design name Bottleneck Hunt"><span id="name-bottleneck-hunt">Bottleneck Hunt</span><i class="copy-icon" aria-hidden="true"></i></button></h3>
-          <a class="report-link" href="../../skills/do-work-toolbox/docs/report-gallery/bottleneck-hunt/example.html" aria-label="Worked example — Bottleneck Hunt">Open report ↗</a></div>
-        <p>Which measured cost should we investigate first?</p>
-        <details><summary>Use this design</summary>
-          <code class="design-prompt" id="prompt-bottleneck-hunt">do-work-toolbox ai-report --design &#34;Bottleneck Hunt&#34;</code>
-          <button class="prompt-copy" type="button" data-copy="prompt-bottleneck-hunt" hidden>Copy starter prompt</button>
-          <ul aria-label="Borrow"><li>Keep call counts separate from elapsed time so a constant fan-out cannot hide rising work per call.</li><li>Give bars a shared zero and keep the underlying runs visible.</li><li>State what an end-to-end measurement must confirm before changing the system.</li></ul>
-          <div class="gallery-links"><a href="#sample-bottleneck-hunt">Permalink</a><a href="../../skills/do-work-toolbox/docs/report-gallery/bottleneck-hunt/sample.md">Sample record</a></div>
-        </details>
-      </article><article class="gallery-card" id="sample-cause-chain">
-        <a class="sample-cover" href="../../skills/do-work-toolbox/docs/report-gallery/cause-chain/preview.png" aria-label="Preview Cause Chain" data-preview>
-          <img class="sample-preview" src="../../skills/do-work-toolbox/docs/report-gallery/cause-chain/preview.png" loading="lazy" alt="" width="1040" height="740">
-          <span aria-hidden="true">Enlarge ↗</span></a>
-        <div class="card-heading"><h3><button class="name-copy" type="button" disabled data-copy="name-cause-chain" title="Copy design name" aria-label="Copy design name Cause Chain"><span id="name-cause-chain">Cause Chain</span><i class="copy-icon" aria-hidden="true"></i></button></h3>
-          <a class="report-link" href="../../skills/do-work-toolbox/docs/report-gallery/cause-chain/example.html" aria-label="Worked example — Cause Chain">Open report ↗</a></div>
-        <p>How did one failure lead to the next?</p>
-        <details><summary>Use this design</summary>
-          <code class="design-prompt" id="prompt-cause-chain">do-work-toolbox ai-report --design &#34;Cause Chain&#34;</code>
-          <button class="prompt-copy" type="button" data-copy="prompt-cause-chain" hidden>Copy starter prompt</button>
-          <ul aria-label="Borrow"><li>Name the mechanism at each step and make the order visible.</li><li>Include the symptom that confirms the chain reached its final step.</li><li>Show where the fix interrupts the sequence and what the regression test expects.</li></ul>
-          <div class="gallery-links"><a href="#sample-cause-chain">Permalink</a><a href="../../skills/do-work-toolbox/docs/report-gallery/cause-chain/sample.md">Sample record</a></div>
-        </details>
-      </article><article class="gallery-card" id="sample-parts-over-time">
-        <a class="sample-cover" href="../../skills/do-work-toolbox/docs/report-gallery/parts-over-time/preview.png" aria-label="Preview Changing Mix" data-preview>
-          <img class="sample-preview" src="../../skills/do-work-toolbox/docs/report-gallery/parts-over-time/preview.png" loading="lazy" alt="" width="1040" height="740">
-          <span aria-hidden="true">Enlarge ↗</span></a>
-        <div class="card-heading"><h3><button class="name-copy" type="button" disabled data-copy="name-parts-over-time" title="Copy design name" aria-label="Copy design name Changing Mix"><span id="name-parts-over-time">Changing Mix</span><i class="copy-icon" aria-hidden="true"></i></button></h3>
-          <a class="report-link" href="../../skills/do-work-toolbox/docs/report-gallery/parts-over-time/example.html" aria-label="Worked example — Changing Mix">Open report ↗</a></div>
-        <p>Which parts account for the change in the total?</p>
-        <details><summary>Use this design</summary>
-          <code class="design-prompt" id="prompt-parts-over-time">do-work-toolbox ai-report --design &#34;Changing Mix&#34;</code>
-          <button class="prompt-copy" type="button" data-copy="prompt-parts-over-time" hidden>Copy starter prompt</button>
-          <ul aria-label="Borrow"><li>Stack the parts in the same order each period and write the total above each column.</li><li>Give each part a chart with the same scale and dates so changes are comparable.</li><li>Hatch the unfinished period in both views and state how much of it has been counted.</li></ul>
-          <div class="gallery-links"><a href="#sample-parts-over-time">Permalink</a><a href="../../skills/do-work-toolbox/docs/report-gallery/parts-over-time/preview.svg">Figure preview</a><a href="../../skills/do-work-toolbox/docs/report-gallery/parts-over-time/sample.md">Sample record</a></div>
-        </details>
-      </article><article class="gallery-card" id="sample-rhythm-over-cycle">
-        <a class="sample-cover" href="../../skills/do-work-toolbox/docs/report-gallery/rhythm-over-cycle/preview.png" aria-label="Preview Daily Rhythm" data-preview>
-          <img class="sample-preview" src="../../skills/do-work-toolbox/docs/report-gallery/rhythm-over-cycle/preview.png" loading="lazy" alt="" width="1040" height="740">
-          <span aria-hidden="true">Enlarge ↗</span></a>
-        <div class="card-heading"><h3><button class="name-copy" type="button" disabled data-copy="name-rhythm-over-cycle" title="Copy design name" aria-label="Copy design name Daily Rhythm"><span id="name-rhythm-over-cycle">Daily Rhythm</span><i class="copy-icon" aria-hidden="true"></i></button></h3>
-          <a class="report-link" href="../../skills/do-work-toolbox/docs/report-gallery/rhythm-over-cycle/example.html" aria-label="Worked example — Daily Rhythm">Open report ↗</a></div>
-        <p>When does each activity peak, and what drives the busiest hour?</p>
-        <details><summary>Use this design</summary>
-          <code class="design-prompt" id="prompt-rhythm-over-cycle">do-work-toolbox ai-report --design &#34;Daily Rhythm&#34;</code>
-          <button class="prompt-copy" type="button" data-copy="prompt-rhythm-over-cycle" hidden>Copy starter prompt</button>
-          <ul aria-label="Borrow"><li>Open with one combined view to show where the activities overlap.</li><li>Separate the series into aligned rows with one scale and label the time and value of each peak.</li><li>Give readers a single time control to inspect the same moment in every row.</li></ul>
-          <div class="gallery-links"><a href="#sample-rhythm-over-cycle">Permalink</a><a href="../../skills/do-work-toolbox/docs/report-gallery/rhythm-over-cycle/preview.svg">Figure preview</a><a href="../../skills/do-work-toolbox/docs/report-gallery/rhythm-over-cycle/sample.md">Sample record</a></div>
-        </details>
-      </article><article class="gallery-card" id="sample-decision-matrix">
-        <a class="sample-cover" href="../../skills/do-work-toolbox/docs/report-gallery/decision-matrix/preview.png" aria-label="Preview Decision Matrix" data-preview>
-          <img class="sample-preview" src="../../skills/do-work-toolbox/docs/report-gallery/decision-matrix/preview.png" loading="lazy" alt="" width="1040" height="740">
-          <span aria-hidden="true">Enlarge ↗</span></a>
-        <div class="card-heading"><h3><button class="name-copy" type="button" disabled data-copy="name-decision-matrix" title="Copy design name" aria-label="Copy design name Decision Matrix"><span id="name-decision-matrix">Decision Matrix</span><i class="copy-icon" aria-hidden="true"></i></button></h3>
-          <a class="report-link" href="../../skills/do-work-toolbox/docs/report-gallery/decision-matrix/example.html" aria-label="Worked example — Decision Matrix">Open report ↗</a></div>
-        <p>Which option earns approval given its cost, reach and trade-offs?</p>
-        <details><summary>Use this design</summary>
-          <code class="design-prompt" id="prompt-decision-matrix">do-work-toolbox ai-report --design &#34;Decision Matrix&#34;</code>
-          <button class="prompt-copy" type="button" data-copy="prompt-decision-matrix" hidden>Copy starter prompt</button>
-          <ul aria-label="Borrow"><li>Put the same decision criteria in front of every option.</li><li>Show the operational cost and the consequence of deferring in comparable terms.</li><li>Use a counted inventory to explain why the preferred option wins.</li></ul>
-          <div class="gallery-links"><a href="#sample-decision-matrix">Permalink</a><a href="../../skills/do-work-toolbox/docs/report-gallery/decision-matrix/sample.md">Sample record</a></div>
-        </details>
-      </article><article class="gallery-card" id="sample-verdict-with-checks">
-        <a class="sample-cover" href="../../skills/do-work-toolbox/docs/report-gallery/verdict-with-checks/preview.png" aria-label="Preview Evidence Verdict" data-preview>
-          <img class="sample-preview" src="../../skills/do-work-toolbox/docs/report-gallery/verdict-with-checks/preview.png" loading="lazy" alt="" width="1040" height="740">
-          <span aria-hidden="true">Enlarge ↗</span></a>
-        <div class="card-heading"><h3><button class="name-copy" type="button" disabled data-copy="name-verdict-with-checks" title="Copy design name" aria-label="Copy design name Evidence Verdict"><span id="name-verdict-with-checks">Evidence Verdict</span><i class="copy-icon" aria-hidden="true"></i></button></h3>
-          <a class="report-link" href="../../skills/do-work-toolbox/docs/report-gallery/verdict-with-checks/example.html" aria-label="Worked example — Evidence Verdict">Open report ↗</a></div>
-        <p>What evidence supports the verdict, and which checks did it pass?</p>
-        <details><summary>Use this design</summary>
-          <code class="design-prompt" id="prompt-verdict-with-checks">do-work-toolbox ai-report --design &#34;Evidence Verdict&#34;</code>
-          <button class="prompt-copy" type="button" data-copy="prompt-verdict-with-checks" hidden>Copy starter prompt</button>
-          <ul aria-label="Borrow"><li>Give the verdict in one sentence and include the figure that settles it.</li><li>Name the checks so readers can see which definitions, dates and calculations support the judgment.</li><li>Keep the source rows and the calculation behind one disclosure.</li></ul>
-          <div class="gallery-links"><a href="#sample-verdict-with-checks">Permalink</a><a href="../../skills/do-work-toolbox/docs/report-gallery/verdict-with-checks/preview.svg">Figure preview</a><a href="../../skills/do-work-toolbox/docs/report-gallery/verdict-with-checks/sample.md">Sample record</a></div>
-        </details>
-      </article><article class="gallery-card" id="sample-incident-timeline">
-        <a class="sample-cover" href="../../skills/do-work-toolbox/docs/report-gallery/incident-timeline/preview.png" aria-label="Preview Incident Timeline" data-preview>
-          <img class="sample-preview" src="../../skills/do-work-toolbox/docs/report-gallery/incident-timeline/preview.png" loading="lazy" alt="" width="1040" height="740">
-          <span aria-hidden="true">Enlarge ↗</span></a>
-        <div class="card-heading"><h3><button class="name-copy" type="button" disabled data-copy="name-incident-timeline" title="Copy design name" aria-label="Copy design name Incident Timeline"><span id="name-incident-timeline">Incident Timeline</span><i class="copy-icon" aria-hidden="true"></i></button></h3>
-          <a class="report-link" href="../../skills/do-work-toolbox/docs/report-gallery/incident-timeline/example.html" aria-label="Worked example — Incident Timeline">Open report ↗</a></div>
-        <p>How did a regression develop, and what did the investigation establish?</p>
-        <details><summary>Use this design</summary>
-          <code class="design-prompt" id="prompt-incident-timeline">do-work-toolbox ai-report --design &#34;Incident Timeline&#34;</code>
-          <button class="prompt-copy" type="button" data-copy="prompt-incident-timeline" hidden>Copy starter prompt</button>
-          <ul aria-label="Borrow"><li>Order dated changes and observations, then put the evidence beside each event.</li><li>Separate failure in a test safeguard from confirmed user impact.</li><li>Close with the evidence required to resolve the open incident.</li></ul>
-          <div class="gallery-links"><a href="#sample-incident-timeline">Permalink</a><a href="../../skills/do-work-toolbox/docs/report-gallery/incident-timeline/sample.md">Sample record</a></div>
-        </details>
-      </article><article class="gallery-card" id="sample-two-measures-side-by-side">
-        <a class="sample-cover" href="../../skills/do-work-toolbox/docs/report-gallery/two-measures-side-by-side/preview.png" aria-label="Preview Rate and Level" data-preview>
-          <img class="sample-preview" src="../../skills/do-work-toolbox/docs/report-gallery/two-measures-side-by-side/preview.png" loading="lazy" alt="" width="1040" height="740">
-          <span aria-hidden="true">Enlarge ↗</span></a>
-        <div class="card-heading"><h3><button class="name-copy" type="button" disabled data-copy="name-two-measures-side-by-side" title="Copy design name" aria-label="Copy design name Rate and Level"><span id="name-two-measures-side-by-side">Rate and Level</span><i class="copy-icon" aria-hidden="true"></i></button></h3>
-          <a class="report-link" href="../../skills/do-work-toolbox/docs/report-gallery/two-measures-side-by-side/example.html" aria-label="Worked example — Rate and Level">Open report ↗</a></div>
-        <p>How can a growth rate fall while the total keeps rising?</p>
-        <details><summary>Use this design</summary>
-          <code class="design-prompt" id="prompt-two-measures-side-by-side">do-work-toolbox ai-report --design &#34;Rate and Level&#34;</code>
-          <button class="prompt-copy" type="button" data-copy="prompt-two-measures-side-by-side" hidden>Copy starter prompt</button>
-          <ul aria-label="Borrow"><li>Put each measure in its own chart with its units in the heading and matching dates on both horizontal axes.</li><li>Label both endpoints in the plots so the reader can see which way each measure moved.</li><li>Give readers one date control to compare the exact values for the same period.</li></ul>
-          <div class="gallery-links"><a href="#sample-two-measures-side-by-side">Permalink</a><a href="../../skills/do-work-toolbox/docs/report-gallery/two-measures-side-by-side/preview.svg">Figure preview</a><a href="../../skills/do-work-toolbox/docs/report-gallery/two-measures-side-by-side/sample.md">Sample record</a></div>
-        </details>
-      </article><article class="gallery-card" id="sample-system-map">
-        <a class="sample-cover" href="../../skills/do-work-toolbox/docs/report-gallery/system-map/preview.png" aria-label="Preview System Map" data-preview>
-          <img class="sample-preview" src="../../skills/do-work-toolbox/docs/report-gallery/system-map/preview.png" loading="lazy" alt="" width="1040" height="740">
-          <span aria-hidden="true">Enlarge ↗</span></a>
-        <div class="card-heading"><h3><button class="name-copy" type="button" disabled data-copy="name-system-map" title="Copy design name" aria-label="Copy design name System Map"><span id="name-system-map">System Map</span><i class="copy-icon" aria-hidden="true"></i></button></h3>
-          <a class="report-link" href="../../skills/do-work-toolbox/docs/report-gallery/system-map/example.html" aria-label="Worked example — System Map">Open report ↗</a></div>
-        <p>Where do paths branch, and what does each one depend on?</p>
-        <details><summary>Use this design</summary>
-          <code class="design-prompt" id="prompt-system-map">do-work-toolbox ai-report --design &#34;System Map&#34;</code>
-          <button class="prompt-copy" type="button" data-copy="prompt-system-map" hidden>Copy starter prompt</button>
-          <ul aria-label="Borrow"><li>Start with the shared entry and label each branch with its routing condition.</li><li>Group files that load under the same rule and show their combined footprint.</li><li>Compare representative routes to explain what the architecture saves.</li></ul>
-          <div class="gallery-links"><a href="#sample-system-map">Permalink</a><a href="../../skills/do-work-toolbox/docs/report-gallery/system-map/sample.md">Sample record</a></div>
-        </details>
+      <article class="gallery-card worked-report" id="phase-by-phase">
+        <a class="sample-cover" href="../../ai-reports/2026-11-11_1411_commit-22f82fed-work-procedures-load-by-phase/index.html" aria-label="Open Work procedures loaded by phase">
+          <img class="sample-preview" src="previews/phase-by-phase.png" loading="lazy" alt="" width="900" height="560" style="aspect-ratio: 900 / 560">
+        </a>
+        <div class="card-heading"><h3><button class="name-copy" type="button" disabled data-copy="name-phase-by-phase" title="Copy report name"><span id="name-phase-by-phase">phase-by-phase</span><i class="copy-icon" aria-hidden="true"></i></button></h3>
+          <a class="report-link" href="#phase-by-phase" aria-label="Permalink to phase-by-phase">#</a></div>
+        <p class="worked-kind">Completed work</p>
+        <p>Work procedures loaded by phase</p>
+      </article><article class="gallery-card worked-report" id="second-opinion">
+        <a class="sample-cover" href="../../ai-reports/2026-10_3-reports/2026-10-15_1731_REQ-698-ai-report-second-opinion/index.html" aria-label="Open Guarded report rebuilds across models">
+          <img class="sample-preview" src="previews/second-opinion.png" loading="lazy" alt="" width="900" height="560" style="aspect-ratio: 900 / 560">
+        </a>
+        <div class="card-heading"><h3><button class="name-copy" type="button" disabled data-copy="name-second-opinion" title="Copy report name"><span id="name-second-opinion">second-opinion</span><i class="copy-icon" aria-hidden="true"></i></button></h3>
+          <a class="report-link" href="#second-opinion" aria-label="Permalink to second-opinion">#</a></div>
+        <p class="worked-kind">Completed work</p>
+        <p>Guarded report rebuilds across models</p>
+      </article><article class="gallery-card worked-report" id="release-dossier">
+        <a class="sample-cover" href="../../ai-reports/2026-08_18-reports/2026-08-15_1834_UR-044-board-client-modules/index.html" aria-label="Open Board client modules and deployment evidence">
+          <img class="sample-preview" src="previews/release-dossier.png" loading="lazy" alt="" width="900" height="560" style="aspect-ratio: 900 / 560">
+        </a>
+        <div class="card-heading"><h3><button class="name-copy" type="button" disabled data-copy="name-release-dossier" title="Copy report name"><span id="name-release-dossier">release-dossier</span><i class="copy-icon" aria-hidden="true"></i></button></h3>
+          <a class="report-link" href="#release-dossier" aria-label="Permalink to release-dossier">#</a></div>
+        <p class="worked-kind">Completed work</p>
+        <p>Board client modules and deployment evidence</p>
+      </article><article class="gallery-card worked-report" id="tinka-review">
+        <a class="sample-cover" href="../../ai-reports/2026-11-14_1547_proposal-tinka-review-surface/index.html" aria-label="Open Tinka as a review canvas for report bundles">
+          <img class="sample-preview" src="previews/tinka-review.png" loading="lazy" alt="" width="900" height="560" style="aspect-ratio: 900 / 560">
+        </a>
+        <div class="card-heading"><h3><button class="name-copy" type="button" disabled data-copy="name-tinka-review" title="Copy report name"><span id="name-tinka-review">tinka-review</span><i class="copy-icon" aria-hidden="true"></i></button></h3>
+          <a class="report-link" href="#tinka-review" aria-label="Permalink to tinka-review">#</a></div>
+        <p class="worked-kind">Proposal</p>
+        <p>Tinka as a review canvas for report bundles</p>
+      </article><article class="gallery-card worked-report" id="memory-note-routing">
+        <a class="sample-cover" href="../../ai-reports/2026-11-15_0137_proposal-REQ-725-memory-note-destinations/index.html" aria-label="Open Where each memory note should go">
+          <img class="sample-preview" src="previews/memory-note-routing.png" loading="lazy" alt="" width="900" height="560" style="aspect-ratio: 900 / 560">
+        </a>
+        <div class="card-heading"><h3><button class="name-copy" type="button" disabled data-copy="name-memory-note-routing" title="Copy report name"><span id="name-memory-note-routing">memory-note-routing</span><i class="copy-icon" aria-hidden="true"></i></button></h3>
+          <a class="report-link" href="#memory-note-routing" aria-label="Permalink to memory-note-routing">#</a></div>
+        <p class="worked-kind">Proposal</p>
+        <p>Where each memory note should go</p>
+      </article><article class="gallery-card worked-report" id="checkout-control-repo">
+        <a class="sample-cover" href="../../ai-reports/2026-10_3-reports/2026-10-27_2356_checkout-copies-control-repo/index.html" aria-label="Open A control repository for parallel checkouts">
+          <img class="sample-preview" src="previews/checkout-control-repo.png" loading="lazy" alt="" width="900" height="560" style="aspect-ratio: 900 / 560">
+        </a>
+        <div class="card-heading"><h3><button class="name-copy" type="button" disabled data-copy="name-checkout-control-repo" title="Copy report name"><span id="name-checkout-control-repo">checkout-control-repo</span><i class="copy-icon" aria-hidden="true"></i></button></h3>
+          <a class="report-link" href="#checkout-control-repo" aria-label="Permalink to checkout-control-repo">#</a></div>
+        <p class="worked-kind">Proposal</p>
+        <p>A control repository for parallel checkouts</p>
+      </article><article class="gallery-card worked-report" id="overflow-labels">
+        <a class="sample-cover" href="../../ai-reports/2026-08_18-reports/2026-08-18_1000_durations-lane-legibility-alternatives/index.html" aria-label="Open Why labels collide above the duration ceiling">
+          <img class="sample-preview" src="previews/overflow-labels.png" loading="lazy" alt="" width="900" height="560" style="aspect-ratio: 900 / 560">
+        </a>
+        <div class="card-heading"><h3><button class="name-copy" type="button" disabled data-copy="name-overflow-labels" title="Copy report name"><span id="name-overflow-labels">overflow-labels</span><i class="copy-icon" aria-hidden="true"></i></button></h3>
+          <a class="report-link" href="#overflow-labels" aria-label="Permalink to overflow-labels">#</a></div>
+        <p class="worked-kind">Root cause</p>
+        <p>Why labels collide above the duration ceiling</p>
+      </article><article class="gallery-card worked-report" id="queue-refills">
+        <a class="sample-cover" href="../../ai-reports/2026-09_18-reports/2026-09-03_2145_do-work-velocity-and-pending-queue-speed/index.html" aria-label="Open Why the queue refills as fast as it drains">
+          <img class="sample-preview" src="previews/queue-refills.png" loading="lazy" alt="" width="900" height="560" style="aspect-ratio: 900 / 560">
+        </a>
+        <div class="card-heading"><h3><button class="name-copy" type="button" disabled data-copy="name-queue-refills" title="Copy report name"><span id="name-queue-refills">queue-refills</span><i class="copy-icon" aria-hidden="true"></i></button></h3>
+          <a class="report-link" href="#queue-refills" aria-label="Permalink to queue-refills">#</a></div>
+        <p class="worked-kind">Root cause</p>
+        <p>Why the queue refills as fast as it drains</p>
+      </article><article class="gallery-card worked-report" id="request-lifecycle">
+        <a class="sample-cover" href="../../ai-reports/2026-09_18-reports/2026-09-06_1706_architecture-report/index.html" aria-label="Open Four skill packages and a request’s lifecycle">
+          <img class="sample-preview" src="previews/request-lifecycle.png" loading="lazy" alt="" width="900" height="560" style="aspect-ratio: 900 / 560">
+        </a>
+        <div class="card-heading"><h3><button class="name-copy" type="button" disabled data-copy="name-request-lifecycle" title="Copy report name"><span id="name-request-lifecycle">request-lifecycle</span><i class="copy-icon" aria-hidden="true"></i></button></h3>
+          <a class="report-link" href="#request-lifecycle" aria-label="Permalink to request-lifecycle">#</a></div>
+        <p class="worked-kind">Architecture</p>
+        <p>Four skill packages and a request’s lifecycle</p>
+      </article><article class="gallery-card worked-report" id="cli-command-map">
+        <a class="sample-cover" href="../../ai-reports/2026-09_18-reports/2026-09-06_2113_do-work-cli-guide/index.html" aria-label="Open A guide to the Go CLI and its commands">
+          <img class="sample-preview" src="previews/cli-command-map.png" loading="lazy" alt="" width="900" height="560" style="aspect-ratio: 900 / 560">
+        </a>
+        <div class="card-heading"><h3><button class="name-copy" type="button" disabled data-copy="name-cli-command-map" title="Copy report name"><span id="name-cli-command-map">cli-command-map</span><i class="copy-icon" aria-hidden="true"></i></button></h3>
+          <a class="report-link" href="#cli-command-map" aria-label="Permalink to cli-command-map">#</a></div>
+        <p class="worked-kind">Architecture</p>
+        <p>A guide to the Go CLI and its commands</p>
       </article>
     </div>
   </section>

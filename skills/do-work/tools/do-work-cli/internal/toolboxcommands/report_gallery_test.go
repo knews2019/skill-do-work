@@ -282,3 +282,39 @@ func runGalleryFixture(t *testing.T, root string, arguments ...string) resultmod
 	}
 	return handler(commandruntime.ExecutionContext{RepositoryRoot: root, Format: resultmodel.FormatText}, arguments)
 }
+
+func TestAIReportGalleryShowsWorkedReportsAndKeepsProjectSamples(t *testing.T) {
+	root := t.TempDir()
+	var cards []string
+	kinds := []string{"Completed work", "Proposal", "Root cause", "Architecture"}
+	for index, suffix := range strings.Fields("one two three four five six seven eight nine ten") {
+		name := "report-" + suffix
+		report := "ai-reports/" + name + "/index.html"
+		image := "docs/report-gallery/previews/" + name + ".png"
+		writeGalleryFixture(t, root, report, "<title>Real report</title>")
+		writeGalleryFixture(t, root, image, "screenshot fixture")
+		cards = append(cards, fmt.Sprintf(`{"name":%q,"kind":%q,"subject":"Actual evidence","report":%q,"image":%q}`, name, kinds[index%len(kinds)], report, image))
+	}
+	writeGalleryFixture(t, root, "docs/report-gallery/preview-manifest.json", `{"width":900,"height":560,"cards":[`+strings.Join(cards, ",")+`]}`)
+	writeGalleryFixture(t, root, "docs/report-gallery/local-design/sample.md", galleryFixtureSample("Local design", "Compare options.", "https://example.test/report", "", "2026-11-18"))
+	result := runGalleryFixture(t, root)
+	if result.Outcome != resultmodel.OutcomeSuccess {
+		t.Fatalf("generation failed: %+v", result)
+	}
+	page, err := os.ReadFile(filepath.Join(root, galleryFixturePage))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := bytes.Count(page, []byte(`class="gallery-card worked-report"`)); got != 10 {
+		t.Fatalf("worked cards = %d; want 10", got)
+	}
+	for _, fragment := range []string{
+		`id="report-one"`, `>report-one</span>`, `href="#report-one"`,
+		`class="sample-cover" href="../../ai-reports/report-one/index.html"`,
+		`src="previews/report-one.png"`, `id="sample-local-design"`, `id="presets"`, `id="add-sample"`,
+	} {
+		if !bytes.Contains(page, []byte(fragment)) {
+			t.Errorf("gallery is missing %s", fragment)
+		}
+	}
+}
