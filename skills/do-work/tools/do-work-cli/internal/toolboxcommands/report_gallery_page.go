@@ -39,6 +39,7 @@ type reportGalleryKind struct {
 type reportGalleryPageData struct {
 	Stylesheet string
 	Samples    []reportGalleryCard
+	Worked     []workedReportCard
 	Kinds      []reportGalleryKind
 	Presets    []reportGalleryLink
 }
@@ -54,8 +55,16 @@ func renderReportGalleryPage(repositoryRoot string, repository *os.Root, toolbox
 			return nil, err
 		}
 	}
+	worked, err := readWorkedReports(repository)
+	if err != nil {
+		return nil, err
+	}
+	page.Worked = worked
 	copyNames := reportGalleryCopyNames(samples)
 	for _, sample := range samples {
+		if len(worked) > 0 && !strings.HasPrefix(sample.RecordPath, reportGalleryFolder+"/") {
+			continue
+		}
 		card := reportGalleryCard{Slug: sample.Name, Title: sample.Title, CopyName: copyNames[sample.Name], UseWhen: sample.UseWhen, Borrow: sample.Borrow}
 		card.Prompt = "do-work-toolbox ai-report --design " + quoteDesignName(card.CopyName)
 		folder := path.Dir(sample.RecordPath)
@@ -255,6 +264,7 @@ body { margin: 0; font: 16px/1.5 var(--sans); }
 .copy-icon::after { left: 4px; top: 3px; background: var(--ground); }
 .report-link { flex: none; font: 600 .85rem/1.4 var(--sans); padding: .55rem 0; }
 .gallery-card p { margin: 0 0 .45rem; color: var(--subtle); line-height: 1.45; max-width: 52ch; }
+.worked-report .worked-kind { font: 700 .84rem/1.4 var(--sans); color: var(--accent); }
 .gallery-card details { background: none; border: 0; padding: 0; border-radius: 0; }
 .gallery-card summary { display: list-item; font: 600 .9rem var(--sans); width: fit-content; color: var(--accent); padding: .65rem 0; cursor: pointer; }
 .gallery-card details[open] summary { border: 0; margin: 0; }
@@ -309,8 +319,23 @@ body { margin: 0; font: 16px/1.5 var(--sans); }
       <a class="add-link" href="#add-sample">Add a sample</a>
     </nav>
   </header>
-  <section class="samples" id="samples" aria-labelledby="samples-title">
-    <div class="section-note"><h2 id="samples-title">{{len .Samples}} report designs</h2>
+  {{if .Worked}}<section class="samples" id="worked-reports" aria-labelledby="worked-title">
+    <div class="section-note"><h2 id="worked-title">Worked reports</h2>
+      <p>Open a report from its preview. Click a name to copy it.</p></div>
+    <div class="gallery-grid">
+      {{range .Worked}}<article class="gallery-card worked-report" id="{{.Name}}">
+        <a class="sample-cover" href="{{.Report}}" aria-label="Open {{.Subject}}">
+          <img class="sample-preview" src="{{.Image}}" loading="lazy" alt="" width="{{.Width}}" height="{{.Height}}" style="aspect-ratio: {{.Width}} / {{.Height}}">
+        </a>
+        <div class="card-heading"><h3><button class="name-copy" type="button" disabled data-copy="name-{{.Name}}" title="Copy report name"><span id="name-{{.Name}}">{{.Name}}</span><i class="copy-icon" aria-hidden="true"></i></button></h3>
+          <a class="report-link" href="#{{.Name}}" aria-label="Permalink to {{.Name}}">#</a></div>
+        <p class="worked-kind">{{.Kind}}</p>
+        <p>{{.Subject}}</p>
+      </article>{{end}}
+    </div>
+  </section>{{end}}
+  {{if or (not .Worked) .Samples}}<section class="samples" id="samples" aria-labelledby="samples-title">
+    <div class="section-note"><h2 id="samples-title">{{if .Worked}}Added samples{{else}}{{len .Samples}} report designs{{end}}</h2>
       {{if .Samples}}<p>Select a page to preview it. Click a design name to copy it.</p>{{end}}</div>
     {{if .Samples}}<div class="gallery-grid">
       {{range .Samples}}<article class="gallery-card" id="sample-{{.Slug}}">
@@ -329,7 +354,7 @@ body { margin: 0; font: 16px/1.5 var(--sans); }
       </article>{{end}}
     </div>{{else}}<p>No samples yet.</p>{{end}}
   </section>
-  <div class="gallery-tools">
+  {{end}}<div class="gallery-tools">
   <section id="report-kinds" aria-labelledby="report-kinds-title">
     <h2 id="report-kinds-title">Report kinds</h2>
     <ul class="gallery-kinds">

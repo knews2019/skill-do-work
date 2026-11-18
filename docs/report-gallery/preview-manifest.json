@@ -1,0 +1,76 @@
+{
+  "width": 900,
+  "height": 560,
+  "cards": [
+    {
+      "name": "phase-by-phase",
+      "kind": "Completed work",
+      "subject": "Work procedures loaded by phase",
+      "report": "ai-reports/2026-11-11_1411_commit-22f82fed-work-procedures-load-by-phase/index.html",
+      "image": "docs/report-gallery/previews/phase-by-phase.png"
+    },
+    {
+      "name": "second-opinion",
+      "kind": "Completed work",
+      "subject": "Guarded report rebuilds across models",
+      "report": "ai-reports/2026-10_3-reports/2026-10-15_1731_REQ-698-ai-report-second-opinion/index.html",
+      "image": "docs/report-gallery/previews/second-opinion.png"
+    },
+    {
+      "name": "release-dossier",
+      "kind": "Completed work",
+      "subject": "Board client modules and deployment evidence",
+      "report": "ai-reports/2026-08_18-reports/2026-08-15_1834_UR-044-board-client-modules/index.html",
+      "image": "docs/report-gallery/previews/release-dossier.png"
+    },
+    {
+      "name": "tinka-review",
+      "kind": "Proposal",
+      "subject": "Tinka as a review canvas for report bundles",
+      "report": "ai-reports/2026-11-14_1547_proposal-tinka-review-surface/index.html",
+      "image": "docs/report-gallery/previews/tinka-review.png"
+    },
+    {
+      "name": "memory-note-routing",
+      "kind": "Proposal",
+      "subject": "Where each memory note should go",
+      "report": "ai-reports/2026-11-15_0137_proposal-REQ-725-memory-note-destinations/index.html",
+      "image": "docs/report-gallery/previews/memory-note-routing.png"
+    },
+    {
+      "name": "checkout-control-repo",
+      "kind": "Proposal",
+      "subject": "A control repository for parallel checkouts",
+      "report": "ai-reports/2026-10_3-reports/2026-10-27_2356_checkout-copies-control-repo/index.html",
+      "image": "docs/report-gallery/previews/checkout-control-repo.png"
+    },
+    {
+      "name": "overflow-labels",
+      "kind": "Root cause",
+      "subject": "Why labels collide above the duration ceiling",
+      "report": "ai-reports/2026-08_18-reports/2026-08-18_1000_durations-lane-legibility-alternatives/index.html",
+      "image": "docs/report-gallery/previews/overflow-labels.png"
+    },
+    {
+      "name": "queue-refills",
+      "kind": "Root cause",
+      "subject": "Why the queue refills as fast as it drains",
+      "report": "ai-reports/2026-09_18-reports/2026-09-03_2145_do-work-velocity-and-pending-queue-speed/index.html",
+      "image": "docs/report-gallery/previews/queue-refills.png"
+    },
+    {
+      "name": "request-lifecycle",
+      "kind": "Architecture",
+      "subject": "Four skill packages and a request\u2019s lifecycle",
+      "report": "ai-reports/2026-09_18-reports/2026-09-06_1706_architecture-report/index.html",
+      "image": "docs/report-gallery/previews/request-lifecycle.png"
+    },
+    {
+      "name": "cli-command-map",
+      "kind": "Architecture",
+      "subject": "A guide to the Go CLI and its commands",
+      "report": "ai-reports/2026-09_18-reports/2026-09-06_2113_do-work-cli-guide/index.html",
+      "image": "docs/report-gallery/previews/cli-command-map.png"
+    }
+  ]
+}
