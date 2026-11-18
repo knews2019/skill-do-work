@@ -1,0 +1,244 @@
+{
+  "verdict": "Final gallery gained 7 points",
+  "counts": {
+    "rounds": 7,
+    "kept": 2,
+    "reverted": 5
+  },
+  "comparison": {
+    "judge": "Claude Opus 5.5 via T3 Code",
+    "evidence": "judge-output.md",
+    "baseline": {
+      "score": "73/100",
+      "rubric": {
+        "R1": 15,
+        "R2": 16,
+        "R3": 15,
+        "R4": 15,
+        "R5": 12
+      },
+      "weakest_point": "The Root cause row of the Report kinds table below the grid suggests creating an example when two already appear above. Its Architecture row also links to a different report than the card.",
+      "choices": [
+        {
+          "need": "I need to brief a teammate on what shipped for getting another model’s take on an existing report, including how the original is protected.",
+          "first_choice": "second-opinion",
+          "match": true
+        },
+        {
+          "need": "I’m deciding what to do with agent guidance that lives on one machine. I need the alternatives and their trade-offs before approving changes.",
+          "first_choice": "memory-note-routing",
+          "match": true
+        },
+        {
+          "need": "Some labels in our durations chart still collide after a fix. I need to understand why the long-running items bunch together.",
+          "first_choice": "overflow-labels",
+          "match": true
+        },
+        {
+          "need": "I’m adding a command to the Go tool. I need to find the packages that own dispatch and implementation.",
+          "first_choice": "cli-command-map",
+          "match": true
+        }
+      ]
+    },
+    "final": {
+      "score": "80/100",
+      "rubric": {
+        "R1": 15,
+        "R2": 16,
+        "R3": 18,
+        "R4": 15,
+        "R5": 16
+      },
+      "weakest_point": "The first card under Diagnose a problem, overflow-labels, has a preview banner reading “Proposal — Design alternatives.” The heading and preview point readers toward different uses.",
+      "choices": [
+        {
+          "need": "I need to brief a teammate on what shipped for getting another model’s take on an existing report, including how the original is protected.",
+          "first_choice": "second-opinion",
+          "match": true
+        },
+        {
+          "need": "I’m deciding what to do with agent guidance that lives on one machine. I need the alternatives and their trade-offs before approving changes.",
+          "first_choice": "memory-note-routing",
+          "match": true
+        },
+        {
+          "need": "Some labels in our durations chart still collide after a fix. I need to understand why the long-running items bunch together.",
+          "first_choice": "overflow-labels",
+          "match": true
+        },
+        {
+          "need": "I’m adding a command to the Go tool. I need to find the packages that own dispatch and implementation.",
+          "first_choice": "cli-command-map",
+          "match": true
+        }
+      ]
+    }
+  },
+  "galleries": {
+    "original": {
+      "captures": {
+        "1440-light": {
+          "path": "../original/original-desktop-light.png",
+          "provenance": "Captured before REQ-749 at e26f4962."
+        },
+        "1440-dark": {
+          "path": "../original/original-desktop-dark.png",
+          "provenance": "Captured before REQ-749 at e26f4962."
+        },
+        "390-light": {
+          "path": "../original/original-phone-light.png",
+          "provenance": "Captured before REQ-749 at e26f4962."
+        },
+        "390-dark": {
+          "path": "../original/original-phone-dark.png",
+          "provenance": "Captured before REQ-749 at e26f4962."
+        }
+      }
+    },
+    "baseline": {
+      "captures": {
+        "1440-light": {
+          "path": "../baseline/views/1440-light.png",
+          "provenance": "Frozen Round 0 capture. Its pixels match the fresh evaluator packet."
+        },
+        "1440-dark": {
+          "path": "../baseline/views/1440-dark.png",
+          "provenance": "Frozen Round 0 capture. Its pixels match the fresh evaluator packet."
+        },
+        "390-light": {
+          "path": "../baseline/views/390-light.png",
+          "provenance": "Frozen Round 0 capture. Its pixels match the fresh evaluator packet."
+        },
+        "390-dark": {
+          "path": "../baseline/views/390-dark.png",
+          "provenance": "Frozen Round 0 capture. Its pixels match the fresh evaluator packet."
+        }
+      }
+    },
+    "final": {
+      "captures": {
+        "1440-light": {
+          "path": "../climb/round-4/views/1440-light.png",
+          "provenance": "Recorded Round 4 gate capture. Its pixels match the fresh evaluator packet."
+        },
+        "1440-dark": {
+          "path": "../climb/round-4/views/1440-dark.png",
+          "provenance": "Recorded Round 4 gate capture. Its pixels match the fresh evaluator packet."
+        },
+        "390-light": {
+          "path": "../climb/round-4/views/390-light.png",
+          "provenance": "Recorded Round 4 gate capture. Its pixels match the fresh evaluator packet."
+        },
+        "390-dark": {
+          "path": "../climb/round-4/views/390-dark.png",
+          "provenance": "Recorded Round 4 gate capture. Its pixels match the fresh evaluator packet."
+        }
+      }
+    }
+  },
+  "manifest": "reports.json",
+  "stopping_rule": "Rounds 5–7 produced three consecutive reverts. Round 5 failed gates, and Rounds 6 and 7 gained only one point each. Round 3 grouped reports by kind and removed the duplicate kind list. Round 4 grouped the two diagnoses and became the final incumbent. Historical Round 0 scored 79/100 and Round 4 last qualified at 75/100 on a separate pair. The climb stopped short of the 90-point goal.",
+  "climb_log": "../gallery-climb-log.md",
+  "evidence": [
+    {
+      "label": "Fresh T3 evaluator identity",
+      "path": "judge-identity.json"
+    },
+    {
+      "label": "Sealed screenshot-first choices",
+      "path": "sealed-choices.json"
+    },
+    {
+      "label": "Choice verification and endpoint fingerprints",
+      "path": "choice-verification.json"
+    },
+    {
+      "label": "Frozen rubric",
+      "path": "../baseline/rubric.txt"
+    },
+    {
+      "label": "Round 0 frozen evidence",
+      "path": "../baseline/README.md"
+    },
+    {
+      "label": "Round 0 complete original Opus transcript",
+      "path": "baseline-full-opus.md"
+    },
+    {
+      "label": "Original capture provenance",
+      "path": "../original/README.md"
+    },
+    {
+      "label": "Frozen baseline HTML",
+      "path": "../baseline.html"
+    },
+    {
+      "label": "Final incumbent HTML",
+      "path": "../index.html"
+    },
+    {
+      "label": "Recorded Round 4 gates",
+      "path": "../climb/round-4/views/gates.json"
+    },
+    {
+      "label": "Fresh final G1–G7 rerun",
+      "path": "final-gates.log"
+    },
+    {
+      "label": "Generator parity and baseline integrity",
+      "path": "parity.log"
+    },
+    {
+      "label": "Recorded exact endpoint and screenshot checks",
+      "path": "../climb/final-endpoint-check.log"
+    },
+    {
+      "label": "Local report verification",
+      "path": "report-check.log"
+    },
+    {
+      "label": "Round 7 independent reproduction receipt",
+      "path": "round-7-recheck/verification.log"
+    },
+    {
+      "label": "Round 7 frozen baseline recheck",
+      "path": "round-7-recheck/frozen-baseline-check.log"
+    },
+    {
+      "label": "Round 7 complete gate stdout",
+      "path": "round-7-recheck/gate.stdout"
+    },
+    {
+      "label": "Round 7 structured green gates",
+      "path": "round-7-recheck/gates.json"
+    },
+    {
+      "label": "Round 7 gate process exit status",
+      "path": "round-7-recheck/exit-status"
+    }
+  ],
+  "open_decisions": [
+    {
+      "question": "Should we test the ten-second selection goal with new readers?",
+      "value": "Measure selection time and accuracy for each need.",
+      "risk": "The evaluator’s four correct choices establish accuracy for that run. Iteration and evaluator durations measure different work.",
+      "recommendation": "Time unaided first choices with new readers at both widths.",
+      "default": "Keep the ten-second goal unmeasured."
+    },
+    {
+      "question": "Should the duration-label card explicitly describe both diagnosis and alternatives?",
+      "value": "Clarify why a report whose cover says Proposal appears in Diagnose a problem.",
+      "risk": "Moving the card away would reduce visible diagnosis coverage. The Round 5 source-link failure was an iteration issue and has been reverted.",
+      "recommendation": "Test a short gallery description that reflects both uses and preserves the report URL and capture.",
+      "default": "Keep Round 4."
+    },
+    {
+      "question": "Should the gallery revisit cards whose names or previews obscure their subject?",
+      "value": "Make release-dossier, tinka-review, second-opinion and queue-refills easier to distinguish at thumbnail size.",
+      "risk": "Earlier name changes did not qualify, and source screenshots must remain faithful.",
+      "recommendation": "Test targeted gallery wording with new readers before another climb.",
+      "default": "Keep the recorded names and screenshots."
+    }
+  ]
+}

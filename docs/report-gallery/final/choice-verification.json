@@ -1,0 +1,60 @@
+{
+  "expected_report_ids": [
+    "ai-reports/2026-10_3-reports/2026-10-15_1731_REQ-698-ai-report-second-opinion/index.html",
+    "ai-reports/2026-11-15_0137_proposal-REQ-725-memory-note-destinations/index.html",
+    "ai-reports/2026-08_18-reports/2026-08-18_1000_durations-lane-legibility-alternatives/index.html",
+    "ai-reports/2026-09_18-reports/2026-09-06_2113_do-work-cli-guide/index.html"
+  ],
+  "by_label": {
+    "A": {
+      "endpoint": "baseline",
+      "source": "baseline.html",
+      "html_sha256": "a7b9a7d66ca208d2b571e5d0482a3dcdf0e213c4d48d1f76c601a0aa0e302d8d",
+      "neutral_view_sha256": {
+        "1440-light": "a254b2e02e8274c9d1a10c9d65f59baf7624e3e8de8033dd6fdb4b738e49b38f",
+        "1440-dark": "1558457bf71dbb9ac59c8f95a453caeb5a627a9fb0674c420f806e748a098065",
+        "390-light": "1e6c023ea581f3a62ca18e4627ec49bb86a8822605fe5a749619500ed548e8a5",
+        "390-dark": "21d22ec9e26b13dfc30ee60cc2e77745ebdae6fdcf6cfd58535d0360df96c3b4"
+      },
+      "source_views": "baseline/views",
+      "exact_pixel_match": true,
+      "report_ids": [
+        "ai-reports/2026-10_3-reports/2026-10-15_1731_REQ-698-ai-report-second-opinion/index.html",
+        "ai-reports/2026-11-15_0137_proposal-REQ-725-memory-note-destinations/index.html",
+        "ai-reports/2026-08_18-reports/2026-08-18_1000_durations-lane-legibility-alternatives/index.html",
+        "ai-reports/2026-09_18-reports/2026-09-06_2113_do-work-cli-guide/index.html"
+      ],
+      "matches": [
+        true,
+        true,
+        true,
+        true
+      ]
+    },
+    "B": {
+      "endpoint": "final",
+      "source": "index.html",
+      "html_sha256": "a0461b2d026b0232e425ed27e8bba4bc273ba1c2b66157ade9c2ea08af3be4d9",
+      "neutral_view_sha256": {
+        "1440-light": "a7798661349e273588a56a70ed280590d4667f1eaaaf77b321c09a1df5214535",
+        "1440-dark": "1955ffaed0c280362ffdcb76e7d20f2a36786930f29b7a979657f86ebffc9095",
+        "390-light": "fee0fff56b9a81a7892bc97a561f655d41c4dc8542d1fdc967fb66980ba779c4",
+        "390-dark": "551927a5d0502a6a36eb37b0413ae6b64e07fb7f650ff4fbdc3a466abebc5cf7"
+      },
+      "source_views": "climb/round-4/views",
+      "exact_pixel_match": true,
+      "report_ids": [
+        "ai-reports/2026-10_3-reports/2026-10-15_1731_REQ-698-ai-report-second-opinion/index.html",
+        "ai-reports/2026-11-15_0137_proposal-REQ-725-memory-note-destinations/index.html",
+        "ai-reports/2026-08_18-reports/2026-08-18_1000_durations-lane-legibility-alternatives/index.html",
+        "ai-reports/2026-09_18-reports/2026-09-06_2113_do-work-cli-guide/index.html"
+      ],
+      "matches": [
+        true,
+        true,
+        true,
+        true
+      ]
+    }
+  }
+}

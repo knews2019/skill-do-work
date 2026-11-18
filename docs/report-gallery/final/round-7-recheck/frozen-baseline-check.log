@@ -1,0 +1,11 @@
+docs/report-gallery/baseline.html: OK
+docs/report-gallery/capture-previews.py: OK
+docs/report-gallery/preview-manifest.json: OK
+docs/report-gallery/baseline/reader-needs.json: OK
+docs/report-gallery/baseline/answer-key.json: OK
+docs/report-gallery/baseline/rubric.txt: OK
+docs/report-gallery/baseline/views/1440-dark.png: OK
+docs/report-gallery/baseline/views/1440-light.png: OK
+docs/report-gallery/baseline/views/390-dark.png: OK
+docs/report-gallery/baseline/views/390-light.png: OK
+_dev/tests/report-gallery-gate.cjs: OK
