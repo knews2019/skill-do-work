@@ -275,7 +275,7 @@ body { margin: 0; font: 16px/1.5 var(--sans); }
 .section-note p { margin: 0; color: var(--subtle); font-size: .9rem; }
 .design-prompt { display: block; margin: .55rem 0; padding: .6rem; background: var(--wash); color: var(--text); overflow-wrap: anywhere; }
 .prompt-copy { font: 600 .85rem var(--sans); padding: .45rem .65rem; background: var(--panel); border: 1px solid var(--edge); color: var(--accent); border-radius: .3rem; cursor: pointer; }
-.gallery-dialog { padding: 0; width: min(68rem, calc(100% - 24px)); max-width: none; max-height: 90vh; background: var(--panel); color: var(--text); border: 1px solid var(--edge); border-radius: .5rem; }
+{{if .Samples}}.gallery-dialog { padding: 0; width: min(68rem, calc(100% - 24px)); max-width: none; max-height: 90vh; background: var(--panel); color: var(--text); border: 1px solid var(--edge); border-radius: .5rem; }
 .gallery-dialog[open] { display: flex; flex-direction: column; }
 .gallery-dialog::backdrop { background: rgb(14 22 18 / .78); }
 .dialog-bar { flex: none; display: flex; align-items: center; justify-content: space-between; gap: .5rem; padding: .55rem .9rem; border-bottom: 1px solid var(--edge); }
@@ -286,7 +286,7 @@ body { margin: 0; font: 16px/1.5 var(--sans); }
 .preview-scroll.actual-size img { width: auto; max-width: none; }
 #preview-size[aria-pressed="true"] { background: var(--text); color: var(--ground); }
 @media (max-width: 520px) { .dialog-bar { flex-wrap: wrap; } .dialog-bar h2 { width: 100%; } .dialog-bar a { margin-left: 0; margin-right: auto; } }
-.copy-status:not(:empty) { position: fixed; bottom: 1rem; left: 50%; transform: translateX(-50%); z-index: 2; color: var(--ground); background: var(--text); border-radius: .4rem; padding: .6rem 1rem; max-width: calc(100% - 2rem); width: max-content; }
+{{end}}.copy-status:not(:empty) { pointer-events: none; position: fixed; bottom: 1rem; left: 50%; transform: translateX(-50%); z-index: 2; color: var(--ground); background: var(--text); border-radius: .4rem; padding: .6rem 1rem; max-width: calc(100% - 2rem); width: max-content; }
 .gallery-tools { display: grid; grid-template-columns: 3fr 2fr; gap: clamp(1.5rem, 4vw, 5rem); border-block: 1px solid var(--edge); padding: 1.65rem 0 2rem; }
 .gallery-kinds, .gallery-presets { list-style: none; margin: 0; padding: 0; }
 .gallery-kinds li { border-top: 1px solid var(--edge); padding: .55rem 0; display: grid; grid-template-columns: minmax(7rem, 27%) minmax(0, 1fr); gap: .4rem 1rem; }
@@ -323,11 +323,11 @@ body { margin: 0; font: 16px/1.5 var(--sans); }
     <div class="section-note"><h2 id="worked-title">Worked reports</h2>
       <p>Open a report from its preview. Click a name to copy it.</p></div>
     <div class="gallery-grid">
-      {{range .Worked}}<article class="gallery-card worked-report" id="{{.Name}}">
-        <a class="sample-cover" href="{{.Report}}" aria-label="Open {{.Subject}}">
+      {{range .Worked}}<article class="gallery-card worked-report" data-gallery-card id="{{.Name}}">
+        <a class="sample-cover" data-gallery-preview href="{{.Report}}" aria-label="Open {{.Subject}}">
           <img class="sample-preview" src="{{.Image}}" loading="lazy" alt="" width="{{.Width}}" height="{{.Height}}" style="aspect-ratio: {{.Width}} / {{.Height}}">
         </a>
-        <div class="card-heading"><h3><button class="name-copy" type="button" disabled data-copy="name-{{.Name}}" title="Copy report name"><span id="name-{{.Name}}">{{.Name}}</span><i class="copy-icon" aria-hidden="true"></i></button></h3>
+        <div class="card-heading"><h3><button class="name-copy" data-gallery-name type="button" disabled data-copy="name-{{.Name}}" title="Copy report name"><span id="name-{{.Name}}">{{.Name}}</span><i class="copy-icon" aria-hidden="true"></i></button></h3>
           <a class="report-link" href="#{{.Name}}" aria-label="Permalink to {{.Name}}">#</a></div>
         <p class="worked-kind">{{.Kind}}</p>
         <p>{{.Subject}}</p>
@@ -379,11 +379,11 @@ body { margin: 0; font: 16px/1.5 var(--sans); }
     </div>
   </section>
   <div id="copy-status" class="copy-status" role="status"></div>
-  <dialog class="gallery-dialog" aria-labelledby="preview-title">
+{{if .Samples}}  <dialog class="gallery-dialog" aria-labelledby="preview-title">
     <div class="dialog-bar"><h2 id="preview-title">Page preview</h2><a class="report-link" id="preview-open"></a><button class="prompt-copy" type="button" id="preview-size" aria-pressed="false">Actual size</button><button class="prompt-copy" type="button" id="preview-close" autofocus>Close</button></div>
     <div class="preview-scroll" tabindex="0" aria-label="Page image"><img id="preview-image" alt=""></div>
   </dialog>
-</main>
+{{end}}</main>
 <script>
 const copyStatus = document.getElementById('copy-status');
 let statusTimer;
@@ -416,7 +416,7 @@ for (const button of document.querySelectorAll('[data-copy]')) {
     announce(success ? message : 'Text selected. Use your keyboard to copy.');
   });
 }
-const dialog = document.querySelector('.gallery-dialog');
+{{if .Samples}}const dialog = document.querySelector('.gallery-dialog');
 if (typeof dialog.showModal === 'function') {
   const image = document.getElementById('preview-image');
   const open = document.getElementById('preview-open');
@@ -449,7 +449,7 @@ if (typeof dialog.showModal === 'function') {
     if (event.clientX < box.left || event.clientX > box.right || event.clientY < box.top || event.clientY > box.bottom) dialog.close();
   });
 }
-</script>
+{{end}}</script>
 </body>
 </html>
 `))
