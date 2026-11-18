@@ -10,6 +10,13 @@ For the complete release history, read this file and the archives below from new
 - [0.50.0 through 0.64.1](https://github.com/knews2019/skill-do-work/blob/main/docs/changelog/CHANGELOG-2026-04-13-up-to-v0.64.1.md)
 - [0.1.0 through 0.49.0](https://github.com/knews2019/skill-do-work/blob/main/docs/changelog/CHANGELOG-2026-04-07-up-to-v0.49.0.md)
 
+## 0.329.0 — Save Report and Figure Feedback (2026-11-19)
+
+Run `just run-report-gallery` to like or dislike a report or one of its figures and leave an optional note. Reopen the gallery to pick up where you left off.
+
+- The gallery saves feedback in `do-work/report-gallery-feedback.json` for the next report round to read.
+- The suite installer adds the same recipe to the project's managed Just recipes.
+
 ## 0.328.1 — Browse Worked Reports by Kind (2026-11-18)
 
 Scan the worked report gallery by kind. The two diagnostic examples share a group, and the presets and sample submission command remain directly accessible.
