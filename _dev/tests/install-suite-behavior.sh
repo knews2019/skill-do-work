@@ -245,6 +245,10 @@ if [ "$bootstrap_status" -ne 0 ]; then
   fail "canonical bootstrap failed in a clean Git project: $(tail -n 5 "$bootstrap_output")"
 else
   assert_four_modules "$fresh_project"
+  for sample_name in two-measures-side-by-side verdict-with-checks parts-over-time rhythm-over-cycle; do
+    assert_file_contains "$fresh_project/docs/report-gallery/index.html" "$sample_name/example\.html" \
+      "bootstrap did not publish the installed $sample_name example"
+  done
 fi
 if [ "$(cat "$workdir/curl-count" 2>/dev/null || printf 0)" -ne 1 ]; then
   fail 'canonical bootstrap must download exactly one upstream artifact'

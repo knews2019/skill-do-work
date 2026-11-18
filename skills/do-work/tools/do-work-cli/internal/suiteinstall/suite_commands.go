@@ -107,11 +107,11 @@ func handleInstallSuite(context commandruntime.ExecutionContext, arguments []str
 		Narration:           narration,
 		ConfirmationInput:   confirmationInput,
 	})
-	// A declined install wrote nothing, so this run did not install organize: only a written install hints.
-	if result.Outcome == resultmodel.OutcomeSuccess && !result.Cancelled && narration != nil {
-		if hint := toolboxcommands.ReportOrganizeHint(context.RepositoryRoot); hint != "" {
+	if result.Outcome == resultmodel.OutcomeSuccess && !result.Cancelled {
+		if hint := toolboxcommands.ReportOrganizeHint(context.RepositoryRoot); hint != "" && narration != nil {
 			fmt.Fprintln(narration, hint)
 		}
+		refreshInstalledReportGallery(context.RepositoryRoot, narration)
 	}
 	return installResultToCommandResult(CommandInstallSuite, context.RepositoryRoot, result)
 }
@@ -186,6 +186,9 @@ func handleUpdateSuite(context commandruntime.ExecutionContext, arguments []stri
 			fmt.Fprintln(narration, hint)
 		}
 	}
+	if result.Outcome == resultmodel.OutcomeSuccess && len(result.Changes) > 0 {
+		refreshInstalledReportGallery(context.RepositoryRoot, narration)
+	}
 	commandResult := resultmodel.CommandResult{
 		Command:        CommandUpdateSuite,
 		Outcome:        result.Outcome,
@@ -207,6 +210,36 @@ func handleUpdateSuite(context commandruntime.ExecutionContext, arguments []stri
 		}}
 	}
 	return commandResult
+}
+
+// The gallery is a derived project page. Run its trusted command after verification,
+// outside the suite's managed-file and recovery boundary. The command reads the installed
+// toolbox data without executing code from the incoming archive.
+func refreshInstalledReportGallery(repositoryRoot string, narration io.Writer) {
+	// Use the public command contract so install, update and manual regeneration use
+	// the same ownership check and writer.
+	handler := toolboxcommands.Handlers()["ai-report-gallery"]
+	detail := "ai-report-gallery is unavailable"
+	if handler != nil {
+		result := handler(commandruntime.ExecutionContext{
+			RepositoryRoot: repositoryRoot,
+			Format:         resultmodel.FormatText,
+		}, nil)
+		if result.Outcome == resultmodel.OutcomeSuccess {
+			return
+		}
+		detail = string(result.Outcome)
+		for _, finding := range result.Findings {
+			if finding.Severity == resultmodel.SeverityError && len(finding.Evidence) > 0 {
+				detail = strings.Join(finding.Evidence, " ")
+				break
+			}
+		}
+	}
+	if narration != nil {
+		fmt.Fprintf(narration, "Report gallery: could not regenerate docs/report-gallery/index.html (%s)\n",
+			strings.Join(strings.Fields(detail), " "))
+	}
 }
 
 // handleReplaceSection is repository-independent: it operates on the files it is given, so

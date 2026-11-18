@@ -229,6 +229,21 @@ build_suite_tree() {
   cp "$repo_root/skills/do-work-board/justfile.template" \
     "$tree_root/skills/do-work-board/justfile.template"
   printf 'created during update\n' > "$tree_root/skills/do-work/new-core.txt"
+  local sample_path="$tree_root/skills/do-work-toolbox/docs/report-gallery/update-sample"
+  mkdir -p "$sample_path"
+  cat > "$sample_path/sample.md" <<'SAMPLE'
+---
+title: Sample from the updated suite
+use_when: The reader needs to compare two measures.
+source: shipped
+added: 2026-11-18
+---
+
+## Borrow
+- Align the dates.
+- Label both units.
+SAMPLE
+  printf '<h1>Sample data</h1>\n' > "$sample_path/example.html"
 }
 
 archive_suite_tree() {
@@ -332,9 +347,19 @@ cat > "$suite_project/.claude/settings.json" <<'JSON'
 JSON
 init_project "$suite_project"
 commit_project "$suite_project" 'current modular install'
+just_parity_baseline="$fixture_root/just-parity-baseline"
+cp -R "$suite_project" "$just_parity_baseline"
+{
+  printf 'custom-before:\n    echo keep\n\n'
+  cat "$repo_root/skills/do-work-board/justfile.template"
+} > "$just_parity_baseline/Justfile"
+commit_project "$just_parity_baseline" 'installed Just entry points'
+
 run_updater "$suite_project" y "$suite_tarball"
 assert_status 0 'suite update: exits 0'
 assert_output_matches 'four-module suite' 'suite update: identifies layout'
+assert_file_contains "$suite_project/docs/report-gallery/index.html" 'Sample from the updated suite' \
+  'suite update: renders the newly installed sample'
 for module_name in do-work do-work-board do-work-knowledge do-work-toolbox; do
   assert_file_contains "$suite_project/.claude/skills/$module_name/payload.txt" \
     "new $module_name payload" "suite update: installs $module_name"
@@ -366,37 +391,28 @@ if [ "$(wc -l < "$HTTP_CALL_LOG" | tr -d ' ')" != 1 ]; then
   record_failure 'suite update: expected exactly one archive download'
 fi
 
-# The managed Just entry point and direct core entry point converge on byte-identical state.
-just_entry_project="$fixture_root/just-entry-project"
-cp -R "$suite_project" "$just_entry_project"
-rm -rf "$just_entry_project/.git"
-init_project "$just_entry_project"
-commit_project "$just_entry_project" 'modular suite baseline'
-run_updater "$suite_project" y "$suite_tarball"
-assert_status 0 'entry-point parity: direct updater exits 0'
-start_archive_server "$suite_tarball"
-probe_output="$(cd "$just_entry_project" && printf 'y\n' \
-  | DO_WORK_UPSTREAM_URL="$archive_server_url/archive/refs/heads/main.tar.gz" just run-do-work-update 2>&1)"
-probe_status=$?
-stop_archive_server
-assert_status 0 'entry-point parity: managed Just updater exits 0'
-# No build output lives in the managed tree: the launcher runs the command through
-# `go tool`, whose executable belongs to the Go build cache, so the trees compare whole.
-parity_diff_status=0
-parity_report="$(diff -qr "$suite_project/.claude/skills" "$just_entry_project/.claude/skills" 2>&1)" \
-  || parity_diff_status=$?
-if [ "$parity_diff_status" -gt 1 ]; then
-  record_failure "entry-point parity: managed skill trees could not be compared: $parity_report"
-elif [ -n "$parity_report" ]; then
-  record_failure "entry-point parity: direct and managed Just updates produced different managed bytes: $parity_report"
-fi
-if ! cmp -s "$suite_project/Justfile" "$just_entry_project/Justfile" \
-  || ! cmp -s "$suite_project/.claude/settings.json" "$just_entry_project/.claude/settings.json"; then
-  record_failure 'entry-point parity: direct and managed Just updates produced different managed configuration bytes'
-fi
-# Both entry points must have installed a runnable command: the launcher and the module
-# whose go.mod declares the tool it runs.
-for parity_project in "$suite_project" "$just_entry_project"; do
+# Both Just entry points perform a real upgrade from the pre-write baseline.
+for update_recipe in do-work-update run-do-work-update; do
+  just_entry_project="$fixture_root/$update_recipe-project"
+  cp -R "$just_parity_baseline" "$just_entry_project"
+  start_archive_server "$suite_tarball"
+  probe_output="$(cd "$just_entry_project" && printf 'y\n' \
+    | DO_WORK_UPSTREAM_URL="$archive_server_url/archive/refs/heads/main.tar.gz" just "$update_recipe" 2>&1)"
+  probe_status=$?
+  stop_archive_server
+  assert_status 0 "entry-point parity: $update_recipe exits 0"
+  assert_output_matches 'Updated to v0\.0\.2' "entry-point parity: $update_recipe writes the update"
+  assert_file_contains "$just_entry_project/docs/report-gallery/index.html" 'Sample from the updated suite' \
+    "entry-point parity: $update_recipe renders the updated gallery"
+  # The Go build cache lives outside the managed tree, so the trees compare whole.
+  parity_report="$(diff -qr "$suite_project/.claude/skills" "$just_entry_project/.claude/skills" 2>&1)" \
+    || record_failure "entry-point parity: $update_recipe did not produce identical managed modules: $parity_report"
+  if ! cmp -s "$suite_project/Justfile" "$just_entry_project/Justfile" \
+    || ! cmp -s "$suite_project/.claude/settings.json" "$just_entry_project/.claude/settings.json"; then
+    record_failure "entry-point parity: $update_recipe did not produce identical managed configuration"
+  fi
+done
+for parity_project in "$suite_project" "$fixture_root/do-work-update-project" "$fixture_root/run-do-work-update-project"; do
   if [ ! -x "$parity_project/.claude/skills/do-work/tools/do-work-cli.sh" ] \
     || ! grep -q '^tool .*/cmd/do-work-cli$' "$parity_project/.claude/skills/do-work/tools/do-work-cli/go.mod"; then
     record_failure "entry-point parity: ${parity_project##*/} has no runnable do-work-cli after the update"
