@@ -50,6 +50,7 @@
 /docs/kb         export-ignore
 /docs/changelog  export-ignore
 /ai-reports      export-ignore
+/docs/report-gallery export-ignore
 /.vscode         export-ignore
 /.github         export-ignore
 /_dev            export-ignore

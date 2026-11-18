@@ -22,7 +22,7 @@ import (
 
 const (
 	reportGalleryFolder   = "docs/report-gallery"
-	reportGalleryPageFile = reportGalleryFolder + "/index.html"
+	ReportGalleryPageFile = reportGalleryFolder + "/index.html"
 	reportGalleryRecord   = "sample.md"
 	reportGalleryExample  = "example.html"
 )
@@ -55,7 +55,7 @@ func handleAIReportGallery(ctx commandruntime.ExecutionContext, args []string) r
 
 	// Reject linked output parents before discovery. The publisher also confines the final write.
 	if !listOnly {
-		if err := validateNoLinkedAncestors(ctx.RepositoryRoot, reportGalleryPageFile, false); err != nil {
+		if err := validateNoLinkedAncestors(ctx.RepositoryRoot, ReportGalleryPageFile, false); err != nil {
 			return reportGalleryRefusal(err)
 		}
 	}
@@ -221,13 +221,13 @@ func readReportGalleryBorrow(body []byte) ([]string, error) {
 }
 
 func writeReportGallery(repositoryRoot string, repository *os.Root, toolboxDocs string, samples []reportGallerySample) resultmodel.CommandResult {
-	info, err := repository.Lstat(filepath.FromSlash(reportGalleryPageFile))
+	info, err := repository.Lstat(filepath.FromSlash(ReportGalleryPageFile))
 	exists := err == nil
 	if exists && !info.Mode().IsRegular() {
 		return reportGalleryRefusal(errors.New("the output is not a regular file"))
 	}
 	if err != nil && !errors.Is(err, fs.ErrNotExist) {
-		return reportGalleryFailure(reportGalleryPageFile, err)
+		return reportGalleryFailure(ReportGalleryPageFile, err)
 	}
 
 	bundles, _, err := reportIndexWalk(repositoryRoot)
@@ -236,11 +236,11 @@ func writeReportGallery(repositoryRoot string, repository *os.Root, toolboxDocs 
 	}
 	page, err := renderReportGalleryPage(repositoryRoot, repository, toolboxDocs, samples, bundles)
 	if err != nil {
-		return reportGalleryFailure(reportGalleryPageFile, err)
+		return reportGalleryFailure(ReportGalleryPageFile, err)
 	}
 	if !exists {
 		if err := rootedMkdirAll(repositoryRoot, reportGalleryFolder, 0o755); err != nil {
-			return reportGalleryFailure(reportGalleryPageFile, err)
+			return reportGalleryFailure(ReportGalleryPageFile, err)
 		}
 	}
 	checkGenerator := func(original []byte) error {
@@ -249,25 +249,25 @@ func writeReportGallery(repositoryRoot string, repository *os.Root, toolboxDocs 
 		}
 		return nil
 	}
-	if err := rootedPublishFileChecked(repositoryRoot, reportGalleryPageFile, page, 0o644, exists, checkGenerator); err != nil {
+	if err := rootedPublishFileChecked(repositoryRoot, ReportGalleryPageFile, page, 0o644, exists, checkGenerator); err != nil {
 		if errors.Is(err, errHandMadeGallery) {
 			return reportGalleryRefusal(err)
 		}
-		return reportGalleryFailure(reportGalleryPageFile, err)
+		return reportGalleryFailure(ReportGalleryPageFile, err)
 	}
 	kind := "created"
 	if exists {
 		kind = "modified"
 	}
-	return exactOutputResult(reportGalleryPageFile+"\n", []resultmodel.RecordedChange{
-		{Path: reportGalleryPageFile, Kind: kind, Detail: "regenerated derived report gallery"},
+	return exactOutputResult(ReportGalleryPageFile+"\n", []resultmodel.RecordedChange{
+		{Path: ReportGalleryPageFile, Kind: kind, Detail: "regenerated derived report gallery"},
 	})
 }
 
 func reportGalleryRefusal(err error) resultmodel.CommandResult {
 	return resultmodel.CommandResult{Outcome: resultmodel.OutcomeRefused, Findings: []resultmodel.CommandFinding{
 		toolboxFinding(CommandAIReportGallery, "AI-REPORT-GALLERY-OUTPUT-REFUSED", resultmodel.SeverityError,
-			[]string{reportGalleryPageFile}, fmt.Sprintf("refusing to replace %s: %v", reportGalleryPageFile, err),
+			[]string{ReportGalleryPageFile}, fmt.Sprintf("refusing to replace %s: %v", ReportGalleryPageFile, err),
 			resultmodel.FixabilityManual, "the gallery can only replace its own generated page at this path"),
 	}}
 }

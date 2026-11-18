@@ -48,6 +48,8 @@ Paste this into an AI agent from the root of a repository that already has do-wo
 >
 > Do not modify the repository's `do-work/` queue, its knowledge base data (`docs/kb/` or a root `kb/`), application files, or unrelated configuration. When finished, verify the installed version and report the previous version, resulting version, and whether the update completed or was cancelled. Relay the `ai-report organize` recommendation and `Report gallery:` warning when present.
 
+When upgrading from a version without the report gallery, run the same Just update command a second time or ask the agent to run `ai-report gallery`. This creates `docs/report-gallery/index.html` from the newly installed samples.
+
 This prompt updates only the repository where it is run, so you can paste it separately into each existing installation whenever its owner is ready.
 
 ## The idea

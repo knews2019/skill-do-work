@@ -31,7 +31,7 @@
 
 ## Input
 
-`$ARGUMENTS` is `UR-NNN`, `REQ-NNN`, `most recent`, or blank; the `second-opinion` form below writes a sibling page in an existing bundle; the `judge`, `index`, `find` and `organize` forms below create no report (`organize` moves existing reports into month folders), the `revise` form below writes a new revision of an existing report, and the `--kind` form below writes a decision brief about open work. One report invocation covers one UR or one REQ (a `--kind` brief covers one topic, REQ or UR); a revise covers one existing bundle; blank is the explicit `most recent` form.
+`$ARGUMENTS` is `UR-NNN`, `REQ-NNN`, `most recent`, or blank; the `second-opinion` form below writes a sibling page in an existing bundle; the `gallery`, `judge`, `index`, `find` and `organize` forms below create no report (`organize` moves existing reports into month folders), the `revise` form below writes a new revision of an existing report, and the `--kind` form below writes a decision brief about open work. One report invocation covers one UR or one REQ (a `--kind` brief covers one topic, REQ or UR); a revise covers one existing bundle; blank is the explicit `most recent` form.
 
 `judge <bundle-dir> [--page <file.html>]` runs only the Step 7 render check on an existing report bundle and reports its verdict; it creates no report. `--page` checks another page of the bundle, as Step 7 describes.
 
@@ -51,7 +51,7 @@ The catalog also lists each bundle's second-opinion pages under that bundle.
 
 ### Gallery forms
 
-Dispatch `ai-report gallery` or “report gallery” to browse, and `ai-report gallery add <image path | link | html path> [what the user liked]` to save a sample. Resolve `<project-root>` to the current Git worktree root. For either form, regenerate the page with:
+Dispatch `ai-report gallery` or “report gallery” to browse, and `ai-report gallery add <image path | link | html path> [what the user liked]` to save a sample. Resolve `<project-root>` to the current Git worktree root. Use this command to browse the gallery, or to regenerate it after saving a sample in step 4:
 
 ```bash
 <skill-root>/../do-work/tools/do-work-cli.sh --repo-root <project-root> --format text ai-report-gallery

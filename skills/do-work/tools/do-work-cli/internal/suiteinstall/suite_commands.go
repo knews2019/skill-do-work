@@ -186,8 +186,17 @@ func handleUpdateSuite(context commandruntime.ExecutionContext, arguments []stri
 			fmt.Fprintln(narration, hint)
 		}
 	}
-	if result.Outcome == resultmodel.OutcomeSuccess && len(result.Changes) > 0 {
-		refreshInstalledReportGallery(context.RepositoryRoot, narration)
+	if result.Outcome == resultmodel.OutcomeSuccess {
+		refresh := len(result.Changes) > 0
+		if result.LocalVersion == result.RemoteVersion {
+			// The updater that first installed gallery support could not create the page.
+			// An equal-version retry can fill that gap without touching an existing page.
+			_, err := os.Lstat(filepath.Join(context.RepositoryRoot, toolboxcommands.ReportGalleryPageFile))
+			refresh = os.IsNotExist(err)
+		}
+		if refresh {
+			refreshInstalledReportGallery(context.RepositoryRoot, narration)
+		}
 	}
 	commandResult := resultmodel.CommandResult{
 		Command:        CommandUpdateSuite,
@@ -216,24 +225,18 @@ func handleUpdateSuite(context commandruntime.ExecutionContext, arguments []stri
 // outside the suite's managed-file and recovery boundary. The command reads the installed
 // toolbox data without executing code from the incoming archive.
 func refreshInstalledReportGallery(repositoryRoot string, narration io.Writer) {
-	// Use the public command contract so install, update and manual regeneration use
-	// the same ownership check and writer.
-	handler := toolboxcommands.Handlers()["ai-report-gallery"]
-	detail := "ai-report-gallery is unavailable"
-	if handler != nil {
-		result := handler(commandruntime.ExecutionContext{
-			RepositoryRoot: repositoryRoot,
-			Format:         resultmodel.FormatText,
-		}, nil)
-		if result.Outcome == resultmodel.OutcomeSuccess {
-			return
-		}
-		detail = string(result.Outcome)
-		for _, finding := range result.Findings {
-			if finding.Severity == resultmodel.SeverityError && len(finding.Evidence) > 0 {
-				detail = strings.Join(finding.Evidence, " ")
-				break
-			}
+	result := toolboxcommands.Handlers()[toolboxcommands.CommandAIReportGallery](commandruntime.ExecutionContext{
+		RepositoryRoot: repositoryRoot,
+		Format:         resultmodel.FormatText,
+	}, nil)
+	if result.Outcome == resultmodel.OutcomeSuccess {
+		return
+	}
+	detail := string(result.Outcome)
+	for _, finding := range result.Findings {
+		if finding.Severity == resultmodel.SeverityError && len(finding.Evidence) > 0 {
+			detail = strings.Join(finding.Evidence, " ")
+			break
 		}
 	}
 	if narration != nil {

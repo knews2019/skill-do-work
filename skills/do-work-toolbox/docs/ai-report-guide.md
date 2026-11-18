@@ -111,7 +111,7 @@ The current month's reports sit directly under `ai-reports/`. A finished month's
 
 Each project sample keeps its source, the reader's question it can answer, and two or three presentation moves in `sample.md`. A project sample takes precedence over a shipped sample with the same folder name. Use a sample's presentation moves with evidence from the report you are writing.
 
-First install and file-writing updates run by the gallery-aware updater regenerate the page automatically. A hand-made page stays in place, and a refusal or write failure shows up as a one-line gallery warning.
+First install and file-writing updates run by the gallery-aware updater regenerate the page automatically. On the first upgrade from a version without gallery support, the previous updater installs the samples but cannot generate the page. Run the same Just update command again to create the missing page, or run `ai-report gallery`. An already-current update leaves an existing gallery alone. A hand-made page stays in place, and a refusal or write failure shows up as a one-line gallery warning.
 
 ## Organizing Reports by Month
 

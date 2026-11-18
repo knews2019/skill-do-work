@@ -354,8 +354,14 @@ func TestReportGalleryRebuildsFromTheWrittenSuite(t *testing.T) {
 	if exitCode != 0 || !strings.Contains(narration, "You're up to date") {
 		t.Fatalf("already-current update exited %d:\n%s", exitCode, narration)
 	}
-	if _, err := os.Lstat(galleryPath); !os.IsNotExist(err) {
-		t.Fatalf("already-current update touched the gallery: %v", err)
+	if page := readTestFile(t, galleryPath); !strings.Contains(page, "Suite sample "+newVersion) {
+		t.Fatal("already-current update did not restore the missing gallery from the installed suite")
+	}
+	const ownerPage = "<h1>Project gallery</h1>"
+	writeTestFile(t, galleryPath, ownerPage)
+	exitCode, _, narration = runCommand(t, projectRoot, "json", "", updateArgs...)
+	if exitCode != 0 || readTestFile(t, galleryPath) != ownerPage {
+		t.Fatalf("already-current update changed an existing project page: %s", narration)
 	}
 }
 

@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta name="generator" content="do-work-cli ai-report-gallery">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AI Report Gallery</title>
+<link rel="stylesheet" href="../../skills/do-work-toolbox/docs/ai-report-kit/presentation.css">
+<style>
+html { color-scheme: light dark; }
+.gallery { max-width: 72rem; margin: 0 auto; padding: 0 clamp(1rem, 4vw, 3rem) 4rem; }
+.gallery .band { padding: 2rem 0; }
+.gallery-header { padding: 3rem 0 1rem; }
+.gallery-links { display: flex; flex-wrap: wrap; gap: .5rem 1.25rem; }
+.gallery-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 19rem), 1fr)); gap: 1rem; }
+.gallery-card { display: flex; flex-direction: column; }
+.gallery-card ul { margin: .25rem 0 1rem; padding-inline-start: 1.25em; }
+.gallery-card .gallery-links { margin: auto 0 0; font-size: .95rem; }
+.gallery-kinds { list-style: none; margin: 0; padding: 0; }
+.gallery-kinds li { display: grid; grid-template-columns: minmax(9rem, 13rem) 1fr; gap: .25rem 1rem; padding: .65rem 0; border-bottom: 1px solid var(--line, GrayText); }
+.gallery-presets { list-style: none; padding: 0; }
+.gallery-copy { display: flex; align-items: center; flex-wrap: wrap; gap: .75rem; }
+.gallery-copy code { padding: .35em .5em; overflow-wrap: anywhere; }
+.gallery-copy button[hidden] { display: none; }
+@media (max-width: 40rem) { .gallery-kinds li { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<main class="gallery">
+  <header class="gallery-header">
+    <h1>AI Report Gallery</h1>
+    <nav class="gallery-links" aria-label="Gallery sections">
+      <a href="#samples">Samples</a>
+      <a href="#report-kinds">Report kinds</a>
+      <a href="#presets">Second-opinion presets</a>
+      <a href="#add-sample">Add a sample</a>
+    </nav>
+  </header>
+  <section class="band" id="samples" aria-labelledby="samples-title">
+    <h2 id="samples-title">Samples</h2>
+    <div class="gallery-grid">
+      <article class="node gallery-card">
+        <h3>Parts over time</h3>
+        <p>The reader wants to know which parts account for a change in the total over time.</p>
+        <strong>Borrow</strong>
+        <ul><li>Stack the parts in the same order each period and write the total above each column.</li><li>Give each part a chart with the same scale and dates so changes are comparable.</li><li>Hatch the unfinished period in both views and state how much of it has been counted.</li></ul>
+        <p class="gallery-links"><a href="../../skills/do-work-toolbox/docs/report-gallery/parts-over-time/example.html">Worked example</a><a href="../../skills/do-work-toolbox/docs/report-gallery/parts-over-time/sample.md">Sample record</a></p>
+      </article><article class="node gallery-card">
+        <h3>Rhythm over a cycle</h3>
+        <p>The reader wants to see what drives the busiest part of a repeating cycle and when each activity peaks.</p>
+        <strong>Borrow</strong>
+        <ul><li>Open with one combined view to show where the activities overlap.</li><li>Separate the series into aligned rows with one scale and label the time and value of each peak.</li><li>Give readers a single time control to inspect the same moment in every row.</li></ul>
+        <p class="gallery-links"><a href="../../skills/do-work-toolbox/docs/report-gallery/rhythm-over-cycle/example.html">Worked example</a><a href="../../skills/do-work-toolbox/docs/report-gallery/rhythm-over-cycle/sample.md">Sample record</a></p>
+      </article><article class="node gallery-card">
+        <h3>Two measures side by side</h3>
+        <p>The reader might mistake a change in how fast something is growing for a change in its level.</p>
+        <strong>Borrow</strong>
+        <ul><li>Put each measure in its own chart with its units in the heading and matching dates on both horizontal axes.</li><li>Label both endpoints in the plots so the reader can see which way each measure moved.</li><li>Give readers one date control to compare the exact values for the same period.</li></ul>
+        <p class="gallery-links"><a href="../../skills/do-work-toolbox/docs/report-gallery/two-measures-side-by-side/example.html">Worked example</a><a href="../../skills/do-work-toolbox/docs/report-gallery/two-measures-side-by-side/sample.md">Sample record</a></p>
+      </article><article class="node gallery-card">
+        <h3>Verdict with checks</h3>
+        <p>The reader needs to know whether a judgment holds and what was checked before reaching it.</p>
+        <strong>Borrow</strong>
+        <ul><li>Give the verdict in one sentence and include the figure that settles it.</li><li>Name the checks so readers can see which definitions, dates and calculations support the judgment.</li><li>Keep the source rows and the calculation behind one disclosure.</li></ul>
+        <p class="gallery-links"><a href="../../skills/do-work-toolbox/docs/report-gallery/verdict-with-checks/example.html">Worked example</a><a href="../../skills/do-work-toolbox/docs/report-gallery/verdict-with-checks/sample.md">Sample record</a></p>
+      </article>
+    </div>
+  </section>
+  <section class="band" id="report-kinds" aria-labelledby="report-kinds-title">
+    <h2 id="report-kinds-title">Report kinds</h2>
+    <ul class="gallery-kinds">
+      <li><strong>Completed work</strong>
+        <a href="../../ai-reports/2026-11-11_1411_commit-22f82fed-work-procedures-load-by-phase/index.html">Work procedures load by phase (0.315.3)</a>
+      </li><li><strong>Proposal</strong>
+        <a href="../../ai-reports/2026-11-15_0137_proposal-REQ-725-memory-note-destinations/index.html">Where each memory note goes (REQ-725)</a>
+      </li><li><strong>Root cause</strong>
+        <span>Create one with <code>do-work-toolbox ai-report --kind root-cause &lt;topic | REQ-NNN | UR-NNN&gt;</code></span>
+      </li><li><strong>Architecture report</strong>
+        <a href="../../ai-reports/2026-09_18-reports/2026-09-06_1740_architecture-report/index.html">do-work architecture — folders, technology, examples</a>
+      </li>
+    </ul>
+  </section>
+  <section class="band" id="presets" aria-labelledby="presets-title">
+    <h2 id="presets-title">Second-opinion presets</h2>
+    <ul class="gallery-links gallery-presets">
+      <li><a href="../../skills/do-work-toolbox/docs/second-opinion-presets/80-20.md">80-20</a></li><li><a href="../../skills/do-work-toolbox/docs/second-opinion-presets/bold.md">bold</a></li><li><a href="../../skills/do-work-toolbox/docs/second-opinion-presets/eli5.md">eli5</a></li><li><a href="../../skills/do-work-toolbox/docs/second-opinion-presets/feynman.md">feynman</a></li><li><a href="../../skills/do-work-toolbox/docs/second-opinion-presets/first-principles.md">first-principles</a></li><li><a href="../../skills/do-work-toolbox/docs/second-opinion-presets/mindmap.md">mindmap</a></li><li><a href="../../skills/do-work-toolbox/docs/second-opinion-presets/quizme.md">quizme</a></li><li><a href="../../skills/do-work-toolbox/docs/second-opinion-presets/relation-map.md">relation-map</a></li><li><a href="../../skills/do-work-toolbox/docs/second-opinion-presets/schematics.md">schematics</a></li><li><a href="../../skills/do-work-toolbox/docs/second-opinion-presets/socrates.md">socrates</a></li><li><a href="../../skills/do-work-toolbox/docs/second-opinion-presets/sticky-notes.md">sticky-notes</a></li><li><a href="../../skills/do-work-toolbox/docs/second-opinion-presets/visual-studyguide.md">visual-studyguide</a></li><li><a href="../../skills/do-work-toolbox/docs/second-opinion-presets/visual.md">visual</a></li>
+    </ul>
+  </section>
+  <section class="band" id="add-sample" aria-labelledby="add-sample-title">
+    <h2 id="add-sample-title">Add a sample</h2>
+    <p>Paste this line into your agent, replacing the placeholders with the source and what you liked.</p>
+    <div class="gallery-copy">
+      <code id="add-line">do-work-toolbox ai-report gallery add &lt;image path | link | html path&gt; [what the user liked]</code>
+      <button class="btn" id="copy-add-line" type="button" hidden>Copy command</button>
+      <span id="copy-status" role="status"></span>
+    </div>
+  </section>
+</main>
+<script>
+const addLine = document.getElementById('add-line');
+const copyButton = document.getElementById('copy-add-line');
+const copyStatus = document.getElementById('copy-status');
+copyButton.hidden = false;
+copyButton.addEventListener('click', async () => {
+  if (location.protocol !== 'file:' && navigator.clipboard) {
+    try {
+      await navigator.clipboard.writeText(addLine.textContent);
+      copyStatus.textContent = 'Copied.';
+      return;
+    } catch {
+      
+    }
+  }
+  const range = document.createRange();
+  range.selectNodeContents(addLine);
+  const selection = window.getSelection();
+  selection.removeAllRanges();
+  selection.addRange(range);
+  let copied = false;
+  try { copied = document.execCommand('copy'); } catch {}
+  if (copied) selection.removeAllRanges();
+  copyStatus.textContent = copied ? 'Copied.' : 'Command selected. Use your keyboard to copy.';
+});
+</script>
+</body>
+</html>
