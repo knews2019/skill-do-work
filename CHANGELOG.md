@@ -10,6 +10,13 @@ For the complete release history, read this file and the archives below from new
 - [0.50.0 through 0.64.1](https://github.com/knews2019/skill-do-work/blob/main/docs/changelog/CHANGELOG-2026-04-13-up-to-v0.64.1.md)
 - [0.1.0 through 0.49.0](https://github.com/knews2019/skill-do-work/blob/main/docs/changelog/CHANGELOG-2026-04-07-up-to-v0.49.0.md)
 
+## 0.331.1 — Preview Every Report in the Gallery (2026-11-19)
+
+All 55 reports in the project gallery now show screenshots of their actual pages. Click any preview to open the original report.
+
+- Newly written reports save their preview outside the report bundle, keeping reviewed report bytes intact.
+- Capture reports a browser error if the screenshot fails or the report page returns an HTTP error.
+
 ## 0.331.0 — Generate Reports from Gallery Feedback (2026-11-19)
 
 Generate a report design with GPT-6.2-astra in T3 Code and carry saved report and figure feedback into a new variation.
