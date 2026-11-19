@@ -545,39 +545,8 @@ func (session *judgeBrowserSession) evaluate(expression string) (json.RawMessage
 // widths and writes a full-page capture named <viewport>-<scheme>.png.
 func (session *judgeBrowserSession) renderPass(pageURL, viewport string, width, height int, scheme, output string) (judgeCapture, error) {
 	capture := judgeCapture{Viewport: viewport, Width: width, Height: height, Scheme: scheme, File: viewport + "-" + scheme + ".png"}
-	if _, err := session.call("Emulation.setDeviceMetricsOverride",
-		map[string]any{"width": width, "height": height, "deviceScaleFactor": 1, "mobile": false}, true); err != nil {
-		return capture, err
-	}
-	if _, err := session.call("Emulation.setEmulatedMedia",
-		map[string]any{"features": []map[string]string{{"name": "prefers-color-scheme", "value": scheme}}}, true); err != nil {
-		return capture, err
-	}
-	// The marker lives on the old document's window, so its absence proves the
-	// new document loaded; the same URL is navigated four times.
-	if _, err := session.evaluate(`window.aiReportJudgeStale = true`); err != nil {
-		return capture, err
-	}
-	navigationJSON, err := session.call("Page.navigate", map[string]any{"url": pageURL}, true)
-	if err != nil {
-		return capture, err
-	}
-	var navigation struct {
-		ErrorText string `json:"errorText"`
-	}
-	if json.Unmarshal(navigationJSON, &navigation) == nil && navigation.ErrorText != "" {
-		return capture, fmt.Errorf("navigate to %s: %s", pageURL, navigation.ErrorText)
-	}
-	deadline := time.Now().Add(judgeProtocolDeadline)
-	for {
-		readyJSON, err := session.evaluate(`!window.aiReportJudgeStale && document.readyState === "complete"`)
-		if err == nil && string(readyJSON) == "true" {
-			break
-		}
-		if time.Now().After(deadline) {
-			return capture, fmt.Errorf("%s %s pass: the page did not finish loading within %s (last error: %v)", viewport, scheme, judgeProtocolDeadline, err)
-		}
-		time.Sleep(judgePollInterval)
+	if err := session.loadCapturePage(pageURL, width, height, scheme, false); err != nil {
+		return capture, fmt.Errorf("%s %s pass: %w", viewport, scheme, err)
 	}
 	measureJSON, err := session.evaluate(`({ScrollWidth: document.documentElement.scrollWidth, InnerWidth: window.innerWidth, ScrollHeight: document.documentElement.scrollHeight})`)
 	if err != nil {
@@ -588,20 +557,76 @@ func (session *judgeBrowserSession) renderPass(pageURL, viewport string, width, 
 		return capture, fmt.Errorf("decode the page measurement: %w", err)
 	}
 	capture.ScrollWidth, capture.InnerWidth = measured.ScrollWidth, measured.InnerWidth
-	screenshotJSON, err := session.call("Page.captureScreenshot", map[string]any{"format": "png", "captureBeyondViewport": true,
-		"clip": map[string]any{"x": 0, "y": 0, "scale": 1, "width": max(measured.ScrollWidth, width), "height": max(measured.ScrollHeight, height)}}, true)
+	imageBytes, err := session.capturePagePNG(max(measured.ScrollWidth, width), max(measured.ScrollHeight, height))
 	if err != nil {
 		return capture, err
+	}
+	return capture, os.WriteFile(filepath.Join(output, capture.File), imageBytes, 0o644)
+}
+
+func (session *judgeBrowserSession) loadCapturePage(pageURL string, width, height int, scheme string, reduceMotion bool) error {
+	if _, err := session.call("Emulation.setDeviceMetricsOverride",
+		map[string]any{"width": width, "height": height, "deviceScaleFactor": 1, "mobile": false}, true); err != nil {
+		return err
+	}
+	features := []map[string]string{{"name": "prefers-color-scheme", "value": scheme}}
+	if reduceMotion {
+		features = append(features, map[string]string{"name": "prefers-reduced-motion", "value": "reduce"})
+	}
+	if _, err := session.call("Emulation.setEmulatedMedia",
+		map[string]any{"features": features}, true); err != nil {
+		return err
+	}
+	// The marker lives on the old document's window, so its absence proves the
+	// new document loaded, even when navigating to the same URL again.
+	if _, err := session.evaluate(`window.aiReportJudgeStale = true`); err != nil {
+		return err
+	}
+	navigationJSON, err := session.call("Page.navigate", map[string]any{"url": pageURL}, true)
+	if err != nil {
+		return err
+	}
+	var navigation struct {
+		ErrorText string `json:"errorText"`
+		Download  bool   `json:"isDownload"`
+	}
+	if err := json.Unmarshal(navigationJSON, &navigation); err != nil {
+		return fmt.Errorf("decode navigation to %s: %w", pageURL, err)
+	}
+	if navigation.ErrorText != "" {
+		return fmt.Errorf("navigate to %s: %s", pageURL, navigation.ErrorText)
+	}
+	if navigation.Download {
+		return fmt.Errorf("navigate to %s: the browser downloaded the page", pageURL)
+	}
+	deadline := time.Now().Add(judgeProtocolDeadline)
+	for {
+		readyJSON, err := session.evaluate(`!window.aiReportJudgeStale && document.readyState === "complete"`)
+		if err == nil && string(readyJSON) == "true" {
+			return nil
+		}
+		if time.Now().After(deadline) {
+			return fmt.Errorf("the page did not finish loading within %s (last error: %v)", judgeProtocolDeadline, err)
+		}
+		time.Sleep(judgePollInterval)
+	}
+}
+
+func (session *judgeBrowserSession) capturePagePNG(width, height int) ([]byte, error) {
+	screenshotJSON, err := session.call("Page.captureScreenshot", map[string]any{"format": "png", "captureBeyondViewport": true,
+		"clip": map[string]any{"x": 0, "y": 0, "scale": 1, "width": width, "height": height}}, true)
+	if err != nil {
+		return nil, err
 	}
 	var screenshot struct {
 		Data string `json:"data"`
 	}
 	if err := json.Unmarshal(screenshotJSON, &screenshot); err != nil {
-		return capture, err
+		return nil, err
 	}
 	imageBytes, err := base64.StdEncoding.DecodeString(screenshot.Data)
 	if err != nil || len(imageBytes) == 0 {
-		return capture, fmt.Errorf("%s %s pass: the screenshot was empty or undecodable", viewport, scheme)
+		return nil, errors.New("the screenshot was empty or undecodable")
 	}
-	return capture, os.WriteFile(filepath.Join(output, capture.File), imageBytes, 0o644)
+	return imageBytes, nil
 }

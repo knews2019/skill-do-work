@@ -36,9 +36,9 @@ type reportGalleryStarter struct {
 }
 
 type reportGalleryGeneratedCard struct {
-	Title, UseWhen, Report string
-	Starter                reportGalleryStarter
-	Review                 *reportGalleryReview
+	Title, UseWhen, Report, Preview string
+	Starter                         reportGalleryStarter
+	Review                          *reportGalleryReview
 }
 
 type reportGalleryKind struct {
@@ -131,7 +131,10 @@ func renderReportGalleryPage(repositoryRoot string, repository *os.Root, toolbox
 			}
 			continue
 		}
-		card := reportGalleryGeneratedCard{Title: bundle.Title, Report: reportGalleryHref(bundle.Entry)}
+		card := reportGalleryGeneratedCard{
+			Title: bundle.Title, Report: reportGalleryHref(bundle.Entry),
+			Preview: reportGalleryFileLink(repository, reportGalleryPreviewPath(bundle.Entry)),
+		}
 		if live != nil {
 			card.Review = live.Reviews[bundle.Entry]
 		}
@@ -570,7 +573,10 @@ if (typeof dialog.showModal === 'function') {
 {{- end -}}
 {{define "generated-report-card"}}
       <article class="gallery-card generated-design">
-        <div class="card-heading"><h3>{{.Title}}</h3>
+{{if .Preview}}        <a class="sample-cover" href="{{.Report}}" aria-label="Open {{.Title}}">
+          <img class="sample-preview" src="{{.Preview}}" loading="lazy" alt="" width="1040" height="740">
+        </a>
+{{end}}        <div class="card-heading"><h3>{{.Title}}</h3>
           <a class="report-link" href="{{.Report}}" aria-label="Open report — {{.Title}}">Open report ↗</a></div>
 {{if .UseWhen}}        <p>{{.UseWhen}}</p>
 {{end -}}

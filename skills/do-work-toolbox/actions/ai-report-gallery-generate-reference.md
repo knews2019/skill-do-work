@@ -61,6 +61,8 @@ Save fresh review JSON with the exact captured `bundle_sha256`, the `render_verd
 
 The helper checks the digest again and publishes `gallery-factual-review.json` with `version: 1` and the review fields. A completed verdict holds for those bytes. Changed bytes require a fresh review. Keep failures and unverified reports in their own bundles and report the findings. A like cannot qualify either as a parent.
 
+For a new candidate, [capture the gallery preview](ai-report.md#capture-the-gallery-preview) from the final primary page, regardless of the review verdict. The screenshot lives outside the candidate bundle, so it leaves the reviewed digest intact.
+
 ## Hand back
 
-Print the bundle, source ID, exact parent or absence, saved marks used, anchored changes, T3 execution identity, factual and render verdicts and any exclusion reason. Resolve the qualified design identity and print `do-work-toolbox ai-report --design "<qualified identity>"`. Authored candidates remain available via the gallery's **Use this design** control regardless of the verdict. Use the ordinary writer's Step 8 commit rule for the exact bundle, and finish with the new page path and link. A standalone review reports its verdict, findings and review path.
+Print the bundle, source ID, exact parent or absence, saved marks used, anchored changes, T3 execution identity, factual and render verdicts and any exclusion reason. Resolve the qualified design identity and print `do-work-toolbox ai-report --design "<qualified identity>"`. Authored candidates remain available via the gallery's **Use this design** control regardless of the verdict. Use the ordinary writer's Step 8 commit rule for the exact bundle and its preview, and finish with the new page path and link. A standalone review reports its verdict, findings and review path.
