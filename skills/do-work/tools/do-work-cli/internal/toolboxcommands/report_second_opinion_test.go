@@ -142,13 +142,10 @@ func TestSecondOpinionTargetNeverSubstitutes(t *testing.T) {
 }
 
 func TestSecondOpinionOutsideDirtAndOriginalMutationRefuse(t *testing.T) {
-	for _, scenario := range []string{"preexisting", "created", "original"} {
+	for _, scenario := range []string{"created", "original"} {
 		t.Run(scenario, func(t *testing.T) {
 			repo, bundle := secondOpinionFixture(t)
 			extra := ""
-			if scenario == "preexisting" {
-				os.WriteFile(filepath.Join(repo, "outside.txt"), []byte("dirty"), 0644)
-			}
 			if scenario == "created" {
 				extra = "printf dirty > ../../outside.txt"
 			}

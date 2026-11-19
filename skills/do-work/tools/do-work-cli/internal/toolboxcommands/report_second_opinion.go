@@ -562,7 +562,7 @@ func secondOpinionOutside(repository, bundle string) ([]string, error) {
 	return outside, nil
 }
 
-// secondOpinionOutsideCheck records the Git status outside the bundle on the row and refuses any dirt there.
+// secondOpinionOutsideCheck checks only the isolated worktree, never the real checkout.
 func secondOpinionOutsideCheck(repository, bundle string, row *resultmodel.AIReportSecondOpinionRun) error {
 	paths, err := secondOpinionOutside(repository, bundle)
 	row.OutsidePaths = paths
@@ -580,10 +580,6 @@ func secondOpinionOutsideCheck(repository, bundle string, row *resultmodel.AIRep
 // instead of a hidden subprocess of its CLI. Nothing here executes a backend.
 func secondOpinionPrepare(repository, bundle, template string, direction secondOpinionDirection, row *resultmodel.AIReportSecondOpinionRun) {
 	fail := func(err error) { row.FailureReason = err.Error() }
-	if err := secondOpinionOutsideCheck(repository, bundle, row); err != nil {
-		fail(err)
-		return
-	}
 	before, err := secondOpinionSnapshot(bundle)
 	if err != nil {
 		fail(err)
@@ -658,10 +654,6 @@ func secondOpinionFinalize(repository, bundle, stageName string, row *resultmode
 	if record.Direction.parentTreeID() != "" {
 		row.BasePage = filepath.ToSlash(filepath.Join(relative, cmp.Or(record.Direction.Base, "index.html")))
 	}
-	if err := secondOpinionOutsideCheck(repository, bundle, row); err != nil {
-		fail(err)
-		return
-	}
 	if info, err := os.Lstat(filepath.Join(bundle, stageName)); err != nil || info.Size() == 0 {
 		// Nothing was written: the reserved names go back, and nothing is published.
 		if bundleRoot, err := os.OpenRoot(bundle); err == nil {
@@ -696,16 +688,30 @@ func secondOpinionFinalize(repository, bundle, stageName string, row *resultmode
 
 func secondOpinionRun(ctx context.Context, repository, bundle, executable, template string, direction secondOpinionDirection, row *resultmodel.AIReportSecondOpinionRun, result *resultmodel.CommandResult) {
 	fail := func(err error) { row.FailureReason = err.Error() }
-	checkOutside := func() error { return secondOpinionOutsideCheck(repository, bundle, row) }
-	if err := checkOutside(); err != nil {
+	realBundle := bundle
+	realBefore, err := secondOpinionSnapshot(realBundle)
+	if err != nil {
 		fail(err)
 		return
 	}
+	worktree := secondOpinionWorktree{repositoryPath: repository}
+	defer func() {
+		if err := worktree.cleanupWorktree(); err != nil {
+			row.RunState = "failed"
+			row.FailureReason = strings.TrimPrefix(row.FailureReason+"; worktree cleanup failed: "+err.Error(), "; ")
+		}
+	}()
+	if err := worktree.prepareBundle(ctx, realBundle, realBefore); err != nil {
+		fail(err)
+		return
+	}
+	bundle = worktree.bundlePath
 	before, err := secondOpinionSnapshot(bundle)
 	if err != nil {
 		fail(err)
 		return
 	}
+	checkOutside := func() error { return secondOpinionOutsideCheck(worktree.treePath, bundle, row) }
 	// The tiny read-only probe resolves defaults before the asset prefix is sent.
 	probeContext, stopProbe := context.WithTimeout(ctx, 90*time.Second)
 	defer stopProbe()
@@ -758,12 +764,6 @@ func secondOpinionRun(ctx context.Context, repository, bundle, executable, templ
 	row.ActualModel = resolved
 	stopProbe()
 	prefix := row.BackendName + "-" + resolved + "-"
-	bundleRoot, err := os.OpenRoot(bundle)
-	if err != nil {
-		fail(err)
-		return
-	}
-	defer bundleRoot.Close()
 	stage, err := os.CreateTemp(bundle, "."+prefix+"staging-*.html")
 	if err != nil {
 		fail(err)
@@ -771,21 +771,26 @@ func secondOpinionRun(ctx context.Context, repository, bundle, executable, templ
 	}
 	stageName := filepath.Base(stage.Name())
 	stage.Close()
-	relative, _ := filepath.Rel(repository, bundle)
-	// Publication removes the staging leaf itself; what is left here is a page the backend never wrote, which goes, or a finished page a refusal kept, which is named.
+	relative, _ := filepath.Rel(repository, realBundle)
+	importAttempted, stageCopied := false, false
+	importOutputs := func() error {
+		importAttempted = true
+		var err error
+		stageCopied, err = secondOpinionImport(repository, realBundle, bundle, stageName, prefix, realBefore)
+		return err
+	}
 	defer func() {
-		info, statErr := bundleRoot.Stat(stageName)
-		if statErr != nil {
-			return
+		if !importAttempted {
+			if err := importOutputs(); err != nil {
+				row.FailureReason += "; copy-back failed: " + err.Error()
+			}
 		}
-		if info.Size() == 0 {
-			_ = bundleRoot.Remove(stageName)
-			return
+		if info, err := os.Lstat(filepath.Join(realBundle, stageName)); stageCopied && err == nil && info.Size() > 0 {
+			row.FailureReason += "; staged page kept at " + filepath.ToSlash(filepath.Join(relative, stageName))
 		}
-		row.FailureReason += "; staged page kept at " + filepath.ToSlash(filepath.Join(relative, stageName))
 	}()
 	// The backend's cwd is the bundle, so the output file is the bare stage name here.
-	prompt, err := secondOpinionPrompt(template, repository, bundle, stageName, prefix, direction)
+	prompt, err := secondOpinionPrompt(template, worktree.treePath, bundle, stageName, prefix, direction)
 	if err != nil {
 		fail(err)
 		return
@@ -796,6 +801,10 @@ func secondOpinionRun(ctx context.Context, repository, bundle, executable, templ
 		return
 	}
 	if err := secondOpinionPreserved(bundle, before, []string{stageName}, prefix); err != nil {
+		fail(err)
+		return
+	}
+	if err := importOutputs(); err != nil {
 		fail(err)
 		return
 	}
@@ -818,7 +827,7 @@ func secondOpinionRun(ctx context.Context, repository, bundle, executable, templ
 		return
 	}
 	if unverified && len(page) == 0 {
-		// Nothing finished to keep: an empty staging page is a plain failure, and the deferred cleanup removes it.
+		// Nothing finished to keep: an empty staging page stays in the worktree for cleanup.
 		fail(fmt.Errorf("backend wrote no page; actual model unverified: requested %s; seen %s", resolved, strings.Join(row.SeenModels, ", ")))
 		return
 	}
@@ -826,7 +835,7 @@ func secondOpinionRun(ctx context.Context, repository, bundle, executable, templ
 	if unverified {
 		unverifiedModel = resolved
 	}
-	secondOpinionPublication(repository, bundle, stageName, page, reply, before["index.html"], []string{stageName}, unverifiedModel, direction, row, result)
+	secondOpinionPublication(repository, realBundle, stageName, page, strings.ReplaceAll(reply, bundle, realBundle), realBefore["index.html"], []string{stageName}, unverifiedModel, direction, row, result)
 }
 
 // secondOpinionPublication is the launcher tail shared by the exec path and the session finalize: backlink, sibling
@@ -911,11 +920,6 @@ func secondOpinionPublication(repository, bundle, stageName string, page []byte,
 	row.RunState = "ran"
 	if verdict != "pass" {
 		row.FailureReason = "render judge " + verdict + "; original left unchanged"
-		return
-	}
-	if err := secondOpinionOutsideCheck(repository, bundle, row); err != nil {
-		row.RunState = "failed"
-		fail(err)
 		return
 	}
 	current, err := os.Lstat(filepath.Join(bundle, "index.html"))
