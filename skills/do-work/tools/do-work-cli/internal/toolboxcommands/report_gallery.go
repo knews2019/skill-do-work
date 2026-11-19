@@ -53,8 +53,9 @@ func handleAIReportGallery(ctx commandruntime.ExecutionContext, args []string) r
 	resolveOnly := len(args) == 2 && args[0] == "--resolve"
 	serve := len(args) == 1 && args[0] == "--serve"
 	serveWithoutBrowser := len(args) == 2 && args[0] == "--serve" && args[1] == "--no-open"
-	if len(args) != 0 && !listOnly && !resolveOnly && !serve && !serveWithoutBrowser {
-		return usageResult(CommandAIReportGallery, "Usage: ai-report-gallery [--list | --resolve <name> | --serve [--no-open] | "+reportGenerationUsage+"]")
+	capturePreviews := len(args) >= 1 && len(args) <= 2 && args[0] == "--capture-previews"
+	if len(args) != 0 && !listOnly && !resolveOnly && !serve && !serveWithoutBrowser && !capturePreviews {
+		return usageResult(CommandAIReportGallery, "Usage: ai-report-gallery [--list | --resolve <name> | --serve [--no-open] | --capture-previews [<report entry>] | "+reportGenerationUsage+"]")
 	}
 	repository, err := os.OpenRoot(ctx.RepositoryRoot)
 	if err != nil {
@@ -62,6 +63,9 @@ func handleAIReportGallery(ctx commandruntime.ExecutionContext, args []string) r
 	}
 	defer repository.Close()
 
+	if capturePreviews {
+		return captureReportGalleryPreviews(ctx.RepositoryRoot, repository, args[1:])
+	}
 	if resolveOnly && strings.HasPrefix(strings.TrimSpace(args[1]), reportGalleryGeneratedPrefix) {
 		return resolveReportGalleryGenerated(ctx.RepositoryRoot, repository, strings.TrimSpace(args[1]))
 	}

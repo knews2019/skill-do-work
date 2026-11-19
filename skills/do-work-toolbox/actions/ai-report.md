@@ -106,7 +106,7 @@ For browse, print the generated path and any sample diagnostics. Point the reade
 4. **Name the new bundle.** N is 1 plus the number of `supersedes` hops from the prior bundle, read from the catalog (or from each bundle's `ai-report-supersedes` meta when the catalog command refused); stop at a repeated path. The slug is the prior folder name without its date (and time) part and the separator next to it, and without a trailing `-rev<K>` together with any numeric collision suffix right after it. The preferred folder is `yyyy-mm-dd_hhmm_<slug>-rev<N>`; then apply the shared reference's **Collision-Safe Publication** unchanged. Example: revising `ai-reports/2026-09-11_1430_deploy-guide` at 16:00 on 2026-10-10 gives `ai-reports/2026-10-10_1600_deploy-guide-rev1`, and revising that one gives a `-rev2` folder.
 5. **Write it.** Steps 2 to 8 apply to the new bundle as for its kind (step 4 above names the folder); when the prior bundle is not a completed-work report, keep its own section order in place of Step 5's narrative. For any revise, the step 3 re-check serves as the provenance ledger. The new bundle follows the full **Report Design Rules** in `ai-report-reference.md`, even where the prior bundle used another style; do not copy prior CSS that breaks those rules. The rev block is the first content after the page title: a `rev-N (yyyy-mm-dd)` heading, a **Changed** list, a **Still to do** list, and a relative link to the prior bundle that works from the new folder. Step 7's render check serves only the new bundle, so it reports each `href` into the prior bundle as `AI-REPORT-JUDGE-BROKEN-LINK`, one finding per `href` (an anchor link counts separately): these findings are expected, so rerun until no other finding remains and check on disk that the prior bundle the links name exists. Earlier rev blocks are not carried forward. `<head>` carries `<meta name="ai-report-supersedes" content="<prior folder>">` with the bare prior folder name; a revise keeps the prior bundle's kind, so copy its `ai-report-kind` meta when it has one. The prior bundle's bytes never change.
 6. **Regenerate the catalog** with the catalog command above, so the prior bundle's `superseded_by` names the new bundle. If it refuses, keep the new bundle, report the refusal and its fix (move the hand-made file aside, then run `ai-report index`), and still end with the path line from **Output Format**.
-7. **Commit as the project's rules say.** Step 8's commit rule applies here, after the catalog is regenerated: when the project's instructions ask for completed increments to be committed, commit the new bundle together with the regenerated `ai-reports/catalog.json` and `ai-reports/index.html` by exact path and report the hash; otherwise print that exact commit command. Inside a `do-work run`, the run commits. Never stage anything else, and never push.
+7. **Commit as the project's rules say.** Apply Step 8's commit rule after regenerating the catalog. Include the exact preview path when captured and the regenerated `ai-reports/catalog.json` and `ai-reports/index.html` with the new bundle. Never push.
 
 ## Second-opinion form
 
@@ -247,7 +247,7 @@ use_when: "The reader needs to see what changes at each handoff."
 
 Apply every current principle from `../../do-work/crew-members/anti-slop.md`; do not rely on a copied principle count. Verify each claim against the provenance ledger, lead with the verdict, compress repetition, disclose synthetic media, and remove any visual that only decorates.
 
-Confirm that the invocation creates only the report bundle, plus the regenerated catalog for the revise form. It must not create a Markdown client brief, a separate `.single.html` explainer, a video, Remotion/MP4 output, a `--with-video` path, or any automatic video behavior. It also does not publish, host, or search for distribution targets; the catalog, revise and second-opinion forms above are the only exceptions to searching, and they search only existing report bundles.
+Confirm the artifact boundary includes the report bundle, its gallery preview, and the regenerated catalog for the revise form. It must not create a Markdown client brief, a separate `.single.html` explainer, a video, Remotion/MP4 output, a `--with-video` path, or any automatic video behavior. It also does not publish, host, or search for distribution targets; the catalog, revise and second-opinion forms above are the only exceptions to searching, and they search only existing report bundles.
 
 ### Step 7: Render and Judge
 
@@ -269,7 +269,9 @@ Judge width usage, table shape, diagram informativeness, emphasis hierarchy, lig
 
 Confirm `index.html` exists with no `FILL:` marker left in the bundle, the last `judge.json` verdict is `pass` (or `skipped` or `error` and disclosed in the footer, or for a revise `fail` whose only findings are the expected links to the prior bundle), screenshots open at full resolution, synthetic assets are disclosed, and the final bundle satisfies the shared **Collision-Safe Publication** section. Remove the judge output directory and its captures.
 
-**Commit as the project's rules say.** Inside a `do-work run`, the run commits the bundle with its other output; do nothing here. Invoked directly, follow the project's own instructions on committing (its `CLAUDE.md` or similar): when they ask for completed increments to be committed, commit the new bundle by exact path in the same turn and report the hash; otherwise print that exact commit command. Never stage anything outside the bundle, and never push. For a revise, this commit waits until the revise form's step 7, after the catalog is regenerated, and takes the catalog pair with it.
+Capture the [gallery preview](#capture-the-gallery-preview) from the final report.
+
+**Commit as the project's rules say.** Inside a `do-work run`, the run commits the bundle and its preview with its other output; do nothing here. Invoked directly, follow the project's own instructions on committing (its `CLAUDE.md` or similar): when they ask for completed increments to be committed, commit only the new bundle and its captured preview by exact path in the same turn and report the hash; otherwise print that exact commit command. Never push. For a revise, this commit waits until the revise form's step 7, after the catalog is regenerated, and takes the catalog pair with it.
 
 Print a compact summary containing the report path, target and verdict, evidence mode, evidence used, recorded issues, light/dark render status, and the commit hash or exact commit command as applicable. For a `--kind` report, the summary names the kind and the recommended option or change in place of the verdict and evidence mode. Name the selected gallery design and give one line describing the applied moves, or explain why the marker reads `none`. Print every layout and teaching-method suggestion with its rationale and the same `ai-report second-opinion` line shown in the closing band. Leave those lines for the reader to run.
 
@@ -284,6 +286,16 @@ Then run the catalog check with the new bundle's path. Creating a report never r
 ```bash
 <skill-root>/../do-work/tools/do-work-cli.sh --repo-root <project-root> --format text ai-report-index --check ai-reports/<folder>
 ```
+
+#### Capture the gallery preview
+
+Run this on the final primary page. Pass its exact project-relative path, including any month folder.
+
+```bash
+"<skill-root>/../do-work/tools/do-work-cli.sh" --repo-root "<project-root>" --format text ai-report-gallery --capture-previews "ai-reports/<folder>/index.html"
+```
+
+The helper uses the judge's Chromium discovery to capture the top of the actual page in light mode. It prints the saved path, under `<project-root>/docs/report-gallery/previews/` with `.png` appended to the full report entry path. On failure, report the diagnostic and keep the report. Run the same command without a report path to backfill non-curated reports or refresh their previews after organizing them. Regenerate the static gallery or restart the live viewer to pick up the new images.
 
 ## Output Format
 
@@ -308,5 +320,5 @@ A fresh self-contained folder at `ai-reports/yyyy-mm-dd_hhmm_<slug>/` containing
 - [ ] `#another-layout` and Step 8 show the same one or two fitting runners-up, or one content-specific fallback layout, plus one teaching suggestion. Each has a rationale and a pasteable line targeting the current bundle. Each runner-up line has one single-quoted direction without internal single quotes, and any named preset resolves. None of the lines were run by the writer.
 - [ ] Report is built from the kit (three depths, role colors, a receipt on every claim, glossary words, reader-driven motion, no `FILL:` marker), responsive, self-contained at the folder level, and render-judged with `ai-report-judge` at wide and phone widths in light and dark (verdict `pass`, or `skipped` or `error` and disclosed in the footer, or for a revise `fail` with only the expected prior-bundle link findings).
 - [ ] A `--kind` report follows **Proposal and Root-Cause Kinds**: decision first, smallest-change option priced, `<kind>` slug and meta tag, labelled mockups, capture lines printed and never run.
-- [ ] No brief, separate explainer, video, publishing, hosting, or search artifact was created (the catalog forms' and the revise form's `catalog.json` and `index.html` excepted).
+- [ ] The gallery preview is outside the bundle, or the capture diagnostic is reported. No brief, separate explainer, video, publishing, hosting, or search artifact was created (the catalog forms' and the revise form's `catalog.json` and `index.html` excepted).
 - [ ] A revise wrote a new `-rev<N>` bundle with the rev block and supersedes meta, regenerated the catalog, left the prior bundle byte-identical, and committed the bundle and the catalog pair or printed the commit command, as the project's rules say.

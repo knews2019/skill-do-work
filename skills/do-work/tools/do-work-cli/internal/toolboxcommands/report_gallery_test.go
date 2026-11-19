@@ -293,6 +293,53 @@ func runGalleryFixture(t *testing.T, root string, arguments ...string) resultmod
 	return handler(commandruntime.ExecutionContext{RepositoryRoot: root, Format: resultmodel.FormatText}, arguments)
 }
 
+func TestAIReportGalleryDiscoversGeneratedAndLegacyPreviews(t *testing.T) {
+	root := t.TempDir()
+	const generated = "ai-reports/shared name/index.html"
+	const legacy = "ai-reports/2026-11_1-report/shared name/report.md"
+	const missing = "ai-reports/no-preview/index.html"
+	writeGalleryFixture(t, root, generated, `<title>Generated report</title>`)
+	writeGalleryFixture(t, root, "ai-reports/shared name/gallery-design.md",
+		galleryFixtureSample("Generated design", "Compare outcomes.", generated, "", "2026-11-19"))
+	writeGalleryFixture(t, root, legacy, "# Legacy report")
+	writeGalleryFixture(t, root, missing, `<title>Without a preview</title>`)
+	for _, report := range []string{generated, legacy} {
+		writeGalleryFixture(t, root, "docs/report-gallery/previews/"+report+".png", "screenshot fixture")
+	}
+
+	result := runGalleryFixture(t, root)
+	if result.Outcome != resultmodel.OutcomeSuccess {
+		t.Fatalf("generation failed: %+v", result)
+	}
+	page, err := os.ReadFile(filepath.Join(root, galleryFixturePage))
+	if err != nil {
+		t.Fatal(err)
+	}
+	sections := strings.SplitN(string(page), `<details class="report-archive">`, 2)
+	if len(sections) != 2 || !strings.Contains(sections[1], "Browse other reports (2)") {
+		t.Fatal("expected both legacy reports in the archive")
+	}
+	for index, report := range []string{
+		"ai-reports/shared%20name/index.html",
+		"ai-reports/2026-11_1-report/shared%20name/report.md",
+	} {
+		href := "../../" + report
+		for _, fragment := range []string{
+			`class="sample-cover" href="` + href + `"`,
+			`src="previews/` + report + `.png" loading="lazy"`,
+			`class="report-link" href="` + href + `"`,
+		} {
+			if !strings.Contains(sections[index], fragment) {
+				t.Errorf("card for %s is missing %s", report, fragment)
+			}
+		}
+	}
+	if !strings.Contains(sections[1], `href="../../`+missing+`"`) ||
+		strings.Contains(sections[1], `src="previews/`+missing+`.png"`) {
+		t.Fatal("a report without a capture should keep its report link without a broken image")
+	}
+}
+
 func TestAIReportGalleryShowsWorkedReportsAndKeepsProjectSamples(t *testing.T) {
 	root := t.TempDir()
 	var cards []string
