@@ -7,4 +7,3 @@ queue_state: [4 pending, 0 pending-answers, 0 blocked, 0 blocked-archive-collisi
 
 ## In Progress (interrupted)
 
-- REQ-748: Run two rounds of five reports on one real evidence bundle — claimed 2026-11-19T13:57:59Z — writer: t2s-Virtual-Machine.local:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2
