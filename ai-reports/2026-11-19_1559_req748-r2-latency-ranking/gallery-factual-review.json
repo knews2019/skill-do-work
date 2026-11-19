@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "bundle_sha256": "bf99d4520993908150d0ee8e772f59589bc7e6f33ade22118864fdad0e8fed7a",
+  "bundle_sha256": "b58db110a2a4da1bd1ef6f43e4a69d39bacb7354d8902acdf9ef89fa8ce50345",
   "render_verdict": "parent-links-only",
   "verdict": "pass",
   "findings": [

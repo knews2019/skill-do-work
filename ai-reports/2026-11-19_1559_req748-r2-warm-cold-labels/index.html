@@ -9,8 +9,82 @@
 <meta name="ai-report-gallery-reason" content="Compare the same elapsed-time measure across labels and place each signed difference beside its baseline.">
 <style>
 .pairs{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,17rem),1fr));gap:1rem}.pair{border:1px solid currentColor;border-radius:.6rem;padding:1rem}.pair h3{margin-top:0}.reading{font-variant-numeric:tabular-nums;margin:.8rem 0}.track{height:.55rem;border-bottom:1px solid currentColor}.bar{display:block;height:100%;box-sizing:border-box;border:2px solid currentColor}.solid{background:currentColor}figure{margin:0}figcaption{margin-bottom:1rem}summary{cursor:pointer}pre{white-space:pre-wrap;overflow-wrap:anywhere}
-table{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums}td,th{text-align:right;padding:.7em .3em;border-bottom:1px solid currentColor}th:first-child{text-align:left}@media(max-width:520px){td,th{font-size:.8rem;padding:.45em .15em}table{table-layout:fixed}th{overflow-wrap:anywhere}}</style></head><body><nav class="topbar"><strong>Signed gaps against cold medians</strong><span class="spacer"></span><button class="btn deck-toggle" id="deck-toggle" aria-pressed="false">Deck mode (D)</button></nav><main class="page">
-<header class="band depth-one"><p class="depth-marker">REQ-748 · Test duration baseline</p><h1>Finalization showed the largest gap between labels</h1><p class="sub measure">Its warm group took 1.918 seconds longer at the median. Inventory showed a smaller increase, while heavy-cli-build differed by just seven milliseconds in the other direction.</p><span class="chip">results.txt · warm-minus-cold wall_seconds</span><nav class="jump"><a class="btn" href="#signed-change">Compare gaps</a><a class="btn" href="#sample-scope">Sample scope</a><a class="btn" href="#changes">Changes</a><a class="btn" href="#another-layout">Other readings</a></nav></header>
+table{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums}td,th{text-align:right;padding:.7em .3em;border-bottom:1px solid currentColor}th:first-child{text-align:left}@media(max-width:520px){td,th{font-size:.8rem;padding:.45em .15em}table{table-layout:fixed}th{overflow-wrap:anywhere}}</style><style>
+:root { --cover: #684016; --cover-tint: #ffe1a0; --proof: #92600a; }
+
+/* The cover highlights one measured result. Series labels and patterns
+   carry the same distinctions as the chart colors. */
+:root {
+  --paper: #f5f1e8;
+  --surface: #fffcf5;
+  --ink: #252921;
+  --muted: #575c53;
+  --line: #cec9bc;
+  --code-bg: #ebe8dd;
+  --coral: #b23f42;
+  --teal: #097468;
+  --violet: #7650a8;
+  --display: Georgia, "Times New Roman", serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --paper: #171d1c;
+    --surface: #222b29;
+    --ink: #f4f1e7;
+    --muted: #c2c9bf;
+    --line: #53605a;
+    --code-bg: #303b37;
+    --coral: #ff9487;
+    --teal: #73d9c4;
+    --violet: #cbaaff;
+    --proof: var(--cover-tint);
+  }
+}
+body { background: var(--paper); }
+.page { max-width: 92rem; margin: auto; padding: 0 clamp(12px, 3vw, 48px) 4rem; }
+.topbar { position: static; background: var(--paper); border: 0; }
+.topbar strong, .depth-marker { font: 700 .8rem/1.4 system-ui; letter-spacing: .08em; }
+.page > header.band {
+  background: var(--cover); color: #fffaf0;
+  border-bottom: 6px solid var(--cover-tint);
+  padding: clamp(18px, 3vw, 42px);
+}
+.cover-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: clamp(18px, 4vw, 60px); align-items: center; }
+header h1 { font-size: clamp(1.55rem, 3vw, 2.9rem); max-width: 24ch; font-weight: 500; line-height: 1.09; }
+header h1 b { display: block; color: var(--cover-tint); font-size: clamp(2.7rem, 6vw, 5.9rem); font-weight: 500; letter-spacing: -.045em; line-height: 1.04; margin-bottom: .12em; }
+header .depth-marker, header .term { color: var(--cover-tint); }
+header .sub, header .measure { color: #fffaf0; line-height: 1.48; }
+header .cover-copy { font-size: 1rem; }
+header .chip { color: #fffaf0; border-color: #ffffff66; background: #ffffff12; }
+header .jump { gap: .4rem 1rem; margin-top: 1rem; }
+header .jump a { color: var(--cover-tint); font-size: .86rem; text-underline-offset: .2em; }
+header .jump a.btn { background: transparent; border-color: currentColor; }
+.page > section.band { margin-top: .9rem; padding: clamp(16px, 2.8vw, 36px); background: var(--surface); border: 1px solid var(--line); }
+h2 { font-weight: 500; }
+.page table { border-collapse: collapse; }
+.page th, .page td { border-bottom: 1px solid var(--line); }
+.page thead { background: var(--code-bg); }
+.page tbody tr:nth-child(even) { background: color-mix(in srgb, var(--cover-tint) 9%, var(--surface)); }
+.page figcaption { color: var(--muted); }
+.page figcaption h2 { color: var(--ink); }
+@media (max-width: 700px) {
+  .cover-grid { grid-template-columns: 1fr; gap: .25rem; }
+  .page > section.band { padding-inline: 12px; }
+}
+
+.bar { color: var(--teal); }
+.bar.solid { color: var(--coral); }
+#cold-reference-table th:nth-child(2) { border-top: 4px solid var(--teal); }
+#cold-reference-table th:nth-child(3) { border-top: 4px solid var(--coral); }
+#cold-reference-table td:nth-child(4) { color: var(--proof); font-weight: 750; }
+.pair { background: var(--paper); border-color: var(--line); }
+</style>
+</head><body><nav class="topbar"><strong>Signed gaps against cold medians</strong><span class="spacer"></span><button class="btn deck-toggle" id="deck-toggle" aria-pressed="false">Deck mode (D)</button></nav><main class="page">
+<header class="band depth-one">
+<div class="cover-grid"><div><p class="depth-marker">REQ-748 · Test duration baseline</p>
+<h1><b>+1.918 s</b> was the largest warm-minus-cold median gap</h1></div>
+<div class="cover-copy"><p class="sub measure">Its warm group took 1.918 seconds longer at the median. Inventory showed a smaller increase, while heavy-cli-build differed by just seven milliseconds in the other direction.</p><span class="chip">results.txt · warm-minus-cold wall_seconds</span></div></div>
+<nav class="jump"><a class="btn" href="#signed-change">Compare gaps</a><a class="btn" href="#sample-scope">Sample scope</a><a class="btn" href="#changes">Changes</a><a class="btn" href="#another-layout">Other readings</a></nav></header>
 <section class="band" id="signed-change"><h2>How large is each gap relative to cold?</h2><figure id="cold-reference-table" aria-label="Signed elapsed-time gaps against cold medians"><figcaption>Each row uses its own cold median as the denominator. For finalization, 1.918 ÷ 48.606 × 100 rounds to +3.95%.</figcaption><table><thead><tr><th>Selection</th><th>Cold median</th><th>Warm median</th><th>Warm − cold</th><th>Gap / cold</th></tr></thead><tbody><tr><th scope="row">finalization</th><td>48.606 s</td><td>50.524 s</td><td>+1.918 s</td><td>+3.95%</td></tr><tr><th scope="row">inventory</th><td>8.973 s</td><td>9.242 s</td><td>+0.269 s</td><td>+3.00%</td></tr><tr><th scope="row">heavy-cli-build</th><td>7.810 s</td><td>7.803 s</td><td>-0.007 s</td><td>-0.09%</td></tr></tbody></table></figure><p class="chip">selected.tsv · wall_seconds · median by case_name and cache_condition</p></section><section class="band" id="label-comparison"><h2>Elapsed time by selection</h2><figure id="cold-warm-wall-medians" aria-label="Cold and warm median elapsed time by selection"><figcaption>Each bar shows the <span class="term" data-def="The middle elapsed time after sorting three observations.">median</span> of three recorded observations for its label. All bars use the same scale, from 0 to 55 seconds.</figcaption><div class="pairs"><div class="pair"><h3>Inventory</h3><div class="reading">Cold · 8.973 s<div class="track" aria-hidden="true"><i class="bar " style="width:16.3145%"></i></div></div><div class="reading">Warm · 9.242 s<div class="track" aria-hidden="true"><i class="bar solid" style="width:16.8036%"></i></div></div><strong>+0.269 s</strong><br>+3.00% of 8.973 s cold</div><div class="pair"><h3>Finalization</h3><div class="reading">Cold · 48.606 s<div class="track" aria-hidden="true"><i class="bar " style="width:88.3745%"></i></div></div><div class="reading">Warm · 50.524 s<div class="track" aria-hidden="true"><i class="bar solid" style="width:91.8618%"></i></div></div><strong>+1.918 s</strong><br>+3.95% of 48.606 s cold</div><div class="pair"><h3>Heavy-cli-build</h3><div class="reading">Cold · 7.810 s<div class="track" aria-hidden="true"><i class="bar " style="width:14.2000%"></i></div></div><div class="reading">Warm · 7.803 s<div class="track" aria-hidden="true"><i class="bar solid" style="width:14.1873%"></i></div></div><strong>−0.007 s</strong><br>−0.09% of 7.810 s cold</div></div></figure><p>Each percentage divides warm minus cold by that selection’s cold median. The observed ranges overlap for all three selections.</p><span class="chip">results.txt · wall_seconds, median [min, max]</span></section>
 <section class="band" id="sample-scope"><h2>Where the comparison ends</h2><p class="measure">The three comparisons cover 18 of the 27 observations. Session-start and shell-audit each have three warm-only observations. Reused-stage has three observations under its own reused label.</p><span class="chip">results.txt · source rows 11–37</span>
 <details><summary>How to interpret the labels</summary><p class="measure">Each selection contributes separate groups of three cold and three warm runs to its comparison. Run ordinals identify observations within each group. The design provides no replicate pairing or estimate of a causal cache effect. The cold branch cleared the Go test cache, and Go selections already used <code>-count=1</code>.</p><span class="chip">fact-sheet.md · Reading the measurements</span></details></section>

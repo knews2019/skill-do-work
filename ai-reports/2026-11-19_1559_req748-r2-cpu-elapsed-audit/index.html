@@ -9,9 +9,81 @@
 <meta name="ai-report-gallery-reason" content="Aligned charts share selection labels, a seconds scale and a group selector.">
 <style>
 figure{margin:0} .plots{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,24rem),1fr));gap:2rem}.reading{padding:.6rem 0;border-bottom:1px solid currentColor;font-variant-numeric:tabular-nums}.reading strong{float:right}.track{display:block;height:.48rem;background:var(--proof);margin-top:.3rem} select{font:inherit;max-width:100%}pre{white-space:pre-wrap;overflow-wrap:anywhere}
-</style></head><body><nav class="topbar"><strong>Child CPU seconds per elapsed second</strong></nav><main class="page">
-<header class="band"><p class="depth-marker">REQ-748 · Benchmark audit</p><h1>Shell audit and the CLI build recorded nearly the same child CPU time per elapsed second.</h1>
-<p class="sub measure">Across the warm observations, the ratio of median child CPU to median elapsed time was 0.556 for shell audit and 0.559 for the heavy CLI build. Session start recorded 0.266 on the same basis.</p><span class="chip">selected.tsv · rows 14–19, 23–25</span>
+</style><style>
+:root { --cover: #244565; --cover-tint: #c6e4f6; --proof: #326782; }
+
+/* The cover highlights one measured result. Series labels and patterns
+   carry the same distinctions as the chart colors. */
+:root {
+  --paper: #f5f1e8;
+  --surface: #fffcf5;
+  --ink: #252921;
+  --muted: #575c53;
+  --line: #cec9bc;
+  --code-bg: #ebe8dd;
+  --coral: #b23f42;
+  --teal: #097468;
+  --violet: #7650a8;
+  --display: Georgia, "Times New Roman", serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --paper: #171d1c;
+    --surface: #222b29;
+    --ink: #f4f1e7;
+    --muted: #c2c9bf;
+    --line: #53605a;
+    --code-bg: #303b37;
+    --coral: #ff9487;
+    --teal: #73d9c4;
+    --violet: #cbaaff;
+    --proof: var(--cover-tint);
+  }
+}
+body { background: var(--paper); }
+.page { max-width: 92rem; margin: auto; padding: 0 clamp(12px, 3vw, 48px) 4rem; }
+.topbar { position: static; background: var(--paper); border: 0; }
+.topbar strong, .depth-marker { font: 700 .8rem/1.4 system-ui; letter-spacing: .08em; }
+.page > header.band {
+  background: var(--cover); color: #fffaf0;
+  border-bottom: 6px solid var(--cover-tint);
+  padding: clamp(18px, 3vw, 42px);
+}
+.cover-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: clamp(18px, 4vw, 60px); align-items: center; }
+header h1 { font-size: clamp(1.55rem, 3vw, 2.9rem); max-width: 24ch; font-weight: 500; line-height: 1.09; }
+header h1 b { display: block; color: var(--cover-tint); font-size: clamp(2.7rem, 6vw, 5.9rem); font-weight: 500; letter-spacing: -.045em; line-height: 1.04; margin-bottom: .12em; }
+header .depth-marker, header .term { color: var(--cover-tint); }
+header .sub, header .measure { color: #fffaf0; line-height: 1.48; }
+header .cover-copy { font-size: 1rem; }
+header .chip { color: #fffaf0; border-color: #ffffff66; background: #ffffff12; }
+header .jump { gap: .4rem 1rem; margin-top: 1rem; }
+header .jump a { color: var(--cover-tint); font-size: .86rem; text-underline-offset: .2em; }
+header .jump a.btn { background: transparent; border-color: currentColor; }
+.page > section.band { margin-top: .9rem; padding: clamp(16px, 2.8vw, 36px); background: var(--surface); border: 1px solid var(--line); }
+h2 { font-weight: 500; }
+.page table { border-collapse: collapse; }
+.page th, .page td { border-bottom: 1px solid var(--line); }
+.page thead { background: var(--code-bg); }
+.page tbody tr:nth-child(even) { background: color-mix(in srgb, var(--cover-tint) 9%, var(--surface)); }
+.page figcaption { color: var(--muted); }
+.page figcaption h2 { color: var(--ink); }
+@media (max-width: 700px) {
+  .cover-grid { grid-template-columns: 1fr; gap: .25rem; }
+  .page > section.band { padding-inline: 12px; }
+}
+
+.plots > figure { padding: 1rem; background: var(--paper); border-top: 4px solid var(--series); }
+#elapsed-by-selection { --series: var(--teal); }
+#cpu-by-selection { --series: var(--coral); }
+.plots .track { background: var(--series); }
+.reading { border-color: var(--line); }
+</style>
+</head><body><nav class="topbar"><strong>Child CPU seconds per elapsed second</strong></nav><main class="page">
+<header class="band">
+<div class="cover-grid"><div><p class="depth-marker">REQ-748 · Benchmark audit</p>
+<h1><b>0.556 vs 0.559</b> child CPU seconds per elapsed second for warm shell audit and CLI build</h1></div>
+<div class="cover-copy"><p class="sub measure">Across the warm observations, the ratio of median child CPU to median elapsed time was 0.556 for shell audit and 0.559 for the heavy CLI build. Session start recorded 0.266 on the same basis.</p><span class="chip">selected.tsv · rows 14–19, 23–25</span>
+</div></div>
 <nav class="jump"><a href="#paired-readings">Compare groups</a><a href="#measurement-audit">Audit the clocks</a><a href="#ratio-comparison">Compare ratios</a><a href="#changes">Changes</a><a href="#another-layout">Other ways to read</a></nav></header>
 <section class="band" id="paired-readings"><h2>One selection, two clocks</h2><p class="measure">Elapsed time runs from command start to finish. Child CPU adds user and system processor time reported when children are collected, including descendant time passed up through waits.</p>
 <p>Each bar shows the middle of three recorded values for its measure. Both scales run from 0 to 55 seconds.</p><label>Show group <select id="group"><option value="">All nine groups</option><option>inventory · cold</option><option>inventory · warm</option><option>finalization · cold</option><option>finalization · warm</option><option>session-start · warm</option><option>shell-audit · warm</option><option>heavy-cli-build · cold</option><option>heavy-cli-build · warm</option><option>reused-stage · reused</option></select></label><div class="plots"><figure id="elapsed-by-selection" class="role-proof" aria-label="Median command elapsed time by selection"><h3>Command elapsed (seconds)</h3><div class="reading" data-group="inventory · cold">inventory · cold<strong>8.973 s</strong><i class="track" aria-hidden="true" style="width:16.3145%"></i></div><div class="reading" data-group="inventory · warm">inventory · warm<strong>9.242 s</strong><i class="track" aria-hidden="true" style="width:16.8036%"></i></div><div class="reading" data-group="finalization · cold">finalization · cold<strong>48.606 s</strong><i class="track" aria-hidden="true" style="width:88.3745%"></i></div><div class="reading" data-group="finalization · warm">finalization · warm<strong>50.524 s</strong><i class="track" aria-hidden="true" style="width:91.8618%"></i></div><div class="reading" data-group="session-start · warm">session-start · warm<strong>4.534 s</strong><i class="track" aria-hidden="true" style="width:8.2436%"></i></div><div class="reading" data-group="shell-audit · warm">shell-audit · warm<strong>5.849 s</strong><i class="track" aria-hidden="true" style="width:10.6345%"></i></div><div class="reading" data-group="heavy-cli-build · cold">heavy-cli-build · cold<strong>7.810 s</strong><i class="track" aria-hidden="true" style="width:14.2000%"></i></div><div class="reading" data-group="heavy-cli-build · warm">heavy-cli-build · warm<strong>7.803 s</strong><i class="track" aria-hidden="true" style="width:14.1873%"></i></div><div class="reading" data-group="reused-stage · reused">reused-stage · reused<strong>3.924 s</strong><i class="track" aria-hidden="true" style="width:7.1345%"></i></div></figure><figure id="cpu-by-selection" class="role-proof" aria-label="Median reaped child CPU time by selection"><h3>Reaped child CPU (seconds)</h3><div class="reading" data-group="inventory · cold">inventory · cold<strong>1.629 s</strong><i class="track" aria-hidden="true" style="width:2.9618%"></i></div><div class="reading" data-group="inventory · warm">inventory · warm<strong>1.756 s</strong><i class="track" aria-hidden="true" style="width:3.1927%"></i></div><div class="reading" data-group="finalization · cold">finalization · cold<strong>37.840 s</strong><i class="track" aria-hidden="true" style="width:68.8000%"></i></div><div class="reading" data-group="finalization · warm">finalization · warm<strong>38.891 s</strong><i class="track" aria-hidden="true" style="width:70.7109%"></i></div><div class="reading" data-group="session-start · warm">session-start · warm<strong>1.207 s</strong><i class="track" aria-hidden="true" style="width:2.1945%"></i></div><div class="reading" data-group="shell-audit · warm">shell-audit · warm<strong>3.253 s</strong><i class="track" aria-hidden="true" style="width:5.9145%"></i></div><div class="reading" data-group="heavy-cli-build · cold">heavy-cli-build · cold<strong>4.375 s</strong><i class="track" aria-hidden="true" style="width:7.9545%"></i></div><div class="reading" data-group="heavy-cli-build · warm">heavy-cli-build · warm<strong>4.364 s</strong><i class="track" aria-hidden="true" style="width:7.9345%"></i></div><div class="reading" data-group="reused-stage · reused">reused-stage · reused<strong>1.185 s</strong><i class="track" aria-hidden="true" style="width:2.1545%"></i></div></figure></div><p><span class="chip">selected.tsv · rows 2–28</span> <span class="chip">results.txt · group medians</span></p></section>
