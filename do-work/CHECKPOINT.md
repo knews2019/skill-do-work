@@ -6,4 +6,3 @@ queue_state: [4 pending, 0 pending-answers, 0 blocked, 0 blocked-archive-collisi
 # Session Checkpoint
 
 ## In Progress (interrupted)
-
