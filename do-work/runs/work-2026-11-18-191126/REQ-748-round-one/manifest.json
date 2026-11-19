@@ -1,0 +1,229 @@
+{
+  "request_id": "REQ-748",
+  "round": 1,
+  "main_snapshot": "160a96b5563264d45567762c0e7499721b9a11d5",
+  "snapshot_base": "3ece20aea9daf389ed5c7849eb48c9e7e83bcbae",
+  "source_manifest": "do-work/runs/work-2026-11-18-191126/trial-source/gallery-input.json",
+  "initial_plan": {
+    "evidence": {
+      "source_id": "do-work/test-efficiency.tsv@a1b622fb2fb3b6fe4a7b5c0d8ed0d2e300f7e46a#standalone-20260906T134958Z-1358",
+      "files": [
+        {
+          "path": "ai-reports/2026-09_18-reports/2026-09-06_1606_test-efficiency-improvement-proposal/index.html",
+          "sha256": "e5a69a7da80ed7fd8d6fc31c6e42e91c7eb6533c3ee0a65498d3fda99705a8df"
+        },
+        {
+          "path": "ai-reports/2026-09_18-reports/2026-09-06_1606_test-efficiency-improvement-proposal/revisions/r1-evidence.txt",
+          "sha256": "3d4ea480843ac60fdc6a06d974356107f0e6ae52dc575747ff985ea2c52c4b5a"
+        },
+        {
+          "path": "do-work/archive/UR-128/REQ-606-establish-test-efficiency-baseline.md",
+          "sha256": "1dfa95906e6b6f0675286d43a30064e0bc7944371fd4e8f9ad5e9e6ea0000819"
+        },
+        {
+          "path": "do-work/runs/work-2026-11-18-191126/trial-source/fact-sheet.md",
+          "sha256": "3e02fdd03ebf64a293ddccf952b38dace3ae14ef7a982b2d428d2297dc94bd1b"
+        },
+        {
+          "path": "do-work/runs/work-2026-11-18-191126/trial-source/results.txt",
+          "sha256": "5df4c2326936ceb3b6a3b05076db952608eac04fecbcfbecbb2982735b184153"
+        },
+        {
+          "path": "do-work/runs/work-2026-11-18-191126/trial-source/selected.tsv",
+          "sha256": "f9ae5ae0c2c3fd8371222ea44104f6096373d8a5e22e6fcc2f61e35ca8fa6fcd"
+        }
+      ]
+    },
+    "parent_report": "",
+    "parent_sha256": "",
+    "marks": []
+  },
+  "source_verification": {
+    "observations": 27,
+    "groups": 9,
+    "command": "python3 do-work/runs/work-2026-11-18-191126/trial-source/verify.py --repo .",
+    "exit_status": 0
+  },
+  "live_gallery": {
+    "path": "/docs/report-gallery/index.html",
+    "feedback_api": "/api/report-gallery-feedback",
+    "feedback_store": "do-work/report-gallery-feedback.json",
+    "feedback_get_status": 200,
+    "whole_report_target_count": 5,
+    "figure_target_count": 7,
+    "copy_check": "Clicked the gallery controls with an in-memory clipboard receiver and compared the exact payloads. Each copied selector resolved to its own design record.",
+    "server_closed": true
+  },
+  "reports": [
+    {
+      "title": "Two clocks at the command line",
+      "report_path": "ai-reports/2026-11-19_0154_req748-cpu-elapsed-audit/index.html",
+      "gallery_href": "../../ai-reports/2026-11-19_0154_req748-cpu-elapsed-audit/index.html",
+      "html_sha256": "446b80a6474095689aa2bd55ea8a3252d1abd7aaf5cbb61ef0faa17ac6bc6bc8",
+      "bundle_sha256": "f19f8aac23edbe0d7eec6adec32f2286ca7ad8c237d694a1178e542e7735fd9d",
+      "factual_verdict": "pass",
+      "render_verdict": "pass",
+      "figure_ids": [
+        "elapsed-by-selection",
+        "cpu-by-selection"
+      ],
+      "starter": "do-work-toolbox ai-report --design \"report:2026-11-19_0154_req748-cpu-elapsed-audit\"",
+      "design_identity": "report:ai-reports/2026-11-19_0154_req748-cpu-elapsed-audit/",
+      "design_path": "ai-reports/2026-11-19_0154_req748-cpu-elapsed-audit/gallery-design.md",
+      "generation_receipt": "ai-reports/2026-11-19_0154_req748-cpu-elapsed-audit/gallery-generation.json",
+      "factual_review": "ai-reports/2026-11-19_0154_req748-cpu-elapsed-audit/gallery-factual-review.json",
+      "execution": {
+        "provider_instance_id": "codex",
+        "executed_model": "gpt-6.2-astra",
+        "status": "completed",
+        "task_id": "node:delegated-task:command%3Amcp%3Ac7dd6ba8-6519-4e18-8c01-97aa3242924b%3Adelegate-task%3A479b559e-8ef1-4789-8a5a-1bc9bf4817f6",
+        "thread_id": "thread:delegated-task:command%3Amcp%3Ac7dd6ba8-6519-4e18-8c01-97aa3242924b%3Adelegate-task%3A479b559e-8ef1-4789-8a5a-1bc9bf4817f6",
+        "run_id": "run:thread:thread%3Adelegated-task%3Acommand%253Amcp%253Ac7dd6ba8-6519-4e18-8c01-97aa3242924b%253Adelegate-task%253A479b559e-8ef1-4789-8a5a-1bc9bf4817f6:ordinal:1",
+        "completed_at": "2026-11-19T00:00:47.957Z",
+        "thread_link": "[Author REQ-748 CPU and elapsed audit](t3-thread://v2/344b608c-b133-4724-a50e-9ac6cd780e62/thread:delegated-task:command%3Amcp%3Ac7dd6ba8-6519-4e18-8c01-97aa3242924b%3Adelegate-task%3A479b559e-8ef1-4789-8a5a-1bc9bf4817f6)"
+      },
+      "current_feedback_count": 0
+    },
+    {
+      "title": "The Finalization Gap",
+      "report_path": "ai-reports/2026-11-19_0154_req748-latency-ranking/index.html",
+      "gallery_href": "../../ai-reports/2026-11-19_0154_req748-latency-ranking/index.html",
+      "html_sha256": "2be1f5aec418adf307ffd1fede53a7e22c9074b4af75e579393e71ff26f76e56",
+      "bundle_sha256": "d441843792efca511f60c7f618106bc389e66275c3a253ca27a390c9cd368afc",
+      "factual_verdict": "pass",
+      "render_verdict": "pass",
+      "figure_ids": [
+        "elapsed-ranking"
+      ],
+      "starter": "do-work-toolbox ai-report --design \"report:2026-11-19_0154_req748-latency-ranking\"",
+      "design_identity": "report:ai-reports/2026-11-19_0154_req748-latency-ranking/",
+      "design_path": "ai-reports/2026-11-19_0154_req748-latency-ranking/gallery-design.md",
+      "generation_receipt": "ai-reports/2026-11-19_0154_req748-latency-ranking/gallery-generation.json",
+      "factual_review": "ai-reports/2026-11-19_0154_req748-latency-ranking/gallery-factual-review.json",
+      "execution": {
+        "provider_instance_id": "codex",
+        "executed_model": "gpt-6.2-astra",
+        "status": "completed",
+        "task_id": "node:delegated-task:command%3Amcp%3Ac7dd6ba8-6519-4e18-8c01-97aa3242924b%3Adelegate-task%3Ab2112ef0-fff2-4cf4-b28b-34dcefa0fa19",
+        "thread_id": "thread:delegated-task:command%3Amcp%3Ac7dd6ba8-6519-4e18-8c01-97aa3242924b%3Adelegate-task%3Ab2112ef0-fff2-4cf4-b28b-34dcefa0fa19",
+        "run_id": "run:thread:thread%3Adelegated-task%3Acommand%253Amcp%253Ac7dd6ba8-6519-4e18-8c01-97aa3242924b%253Adelegate-task%253Ab2112ef0-fff2-4cf4-b28b-34dcefa0fa19:ordinal:1",
+        "completed_at": "2026-11-18T23:59:38.729Z",
+        "thread_link": "[Author REQ-748 elapsed-time ranking](t3-thread://v2/344b608c-b133-4724-a50e-9ac6cd780e62/thread:delegated-task:command%3Amcp%3Ac7dd6ba8-6519-4e18-8c01-97aa3242924b%3Adelegate-task%3Ab2112ef0-fff2-4cf4-b28b-34dcefa0fa19)"
+      },
+      "current_feedback_count": 0
+    },
+    {
+      "title": "The range behind the middle",
+      "report_path": "ai-reports/2026-11-19_0154_req748-replicate-variability/index.html",
+      "gallery_href": "../../ai-reports/2026-11-19_0154_req748-replicate-variability/index.html",
+      "html_sha256": "4ec017dc5b5148cfe4ef0babfbdc9b62637ad54f33fff66da86f6fc529596040",
+      "bundle_sha256": "8b6315b33740cc629d769fd0c816664a16f003d9cad137ccd9399144cfba8693",
+      "factual_verdict": "pass",
+      "render_verdict": "pass",
+      "figure_ids": [
+        "finalization-ranges",
+        "heavy-build-ties"
+      ],
+      "starter": "do-work-toolbox ai-report --design \"report:2026-11-19_0154_req748-replicate-variability\"",
+      "design_identity": "report:ai-reports/2026-11-19_0154_req748-replicate-variability/",
+      "design_path": "ai-reports/2026-11-19_0154_req748-replicate-variability/gallery-design.md",
+      "generation_receipt": "ai-reports/2026-11-19_0154_req748-replicate-variability/gallery-generation.json",
+      "factual_review": "ai-reports/2026-11-19_0154_req748-replicate-variability/gallery-factual-review.json",
+      "execution": {
+        "provider_instance_id": "codex",
+        "executed_model": "gpt-6.2-astra",
+        "status": "completed",
+        "task_id": "node:delegated-task:command%3Amcp%3Ac7dd6ba8-6519-4e18-8c01-97aa3242924b%3Adelegate-task%3Aa7f812ce-16ca-4e1f-ba5f-a40da4ab6545",
+        "thread_id": "thread:delegated-task:command%3Amcp%3Ac7dd6ba8-6519-4e18-8c01-97aa3242924b%3Adelegate-task%3Aa7f812ce-16ca-4e1f-ba5f-a40da4ab6545",
+        "run_id": "run:thread:thread%3Adelegated-task%3Acommand%253Amcp%253Ac7dd6ba8-6519-4e18-8c01-97aa3242924b%253Adelegate-task%253Aa7f812ce-16ca-4e1f-ba5f-a40da4ab6545:ordinal:1",
+        "completed_at": "2026-11-19T00:00:00.091Z",
+        "thread_link": "[Author REQ-748 replicate variability](t3-thread://v2/344b608c-b133-4724-a50e-9ac6cd780e62/thread:delegated-task:command%3Amcp%3Ac7dd6ba8-6519-4e18-8c01-97aa3242924b%3Adelegate-task%3Aa7f812ce-16ca-4e1f-ba5f-a40da4ab6545)"
+      },
+      "current_feedback_count": 0
+    },
+    {
+      "title": "Case shares by tool",
+      "report_path": "ai-reports/2026-11-19_0154_req748-tool-invocation-counts/index.html",
+      "gallery_href": "../../ai-reports/2026-11-19_0154_req748-tool-invocation-counts/index.html",
+      "html_sha256": "bfeca109f795e21ebfe00d3daf9fc61072fbd17cd78e3a5ad4a914dc575632be",
+      "bundle_sha256": "b7aa1c3a05b38fb724ef5f8c896dcff2769767399eeb28dd4bd7d171d77a9c7c",
+      "factual_verdict": "pass",
+      "render_verdict": "pass",
+      "figure_ids": [
+        "tool-mix"
+      ],
+      "starter": "do-work-toolbox ai-report --design \"report:2026-11-19_0154_req748-tool-invocation-counts\"",
+      "design_identity": "report:ai-reports/2026-11-19_0154_req748-tool-invocation-counts/",
+      "design_path": "ai-reports/2026-11-19_0154_req748-tool-invocation-counts/gallery-design.md",
+      "generation_receipt": "ai-reports/2026-11-19_0154_req748-tool-invocation-counts/gallery-generation.json",
+      "factual_review": "ai-reports/2026-11-19_0154_req748-tool-invocation-counts/gallery-factual-review.json",
+      "execution": {
+        "provider_instance_id": "codex",
+        "executed_model": "gpt-6.2-astra",
+        "status": "completed",
+        "task_id": "node:delegated-task:command%3Amcp%3Ac7dd6ba8-6519-4e18-8c01-97aa3242924b%3Adelegate-task%3A3070d79e-0100-4d92-9880-3ff5bc6974bd",
+        "thread_id": "thread:delegated-task:command%3Amcp%3Ac7dd6ba8-6519-4e18-8c01-97aa3242924b%3Adelegate-task%3A3070d79e-0100-4d92-9880-3ff5bc6974bd",
+        "run_id": "run:thread:thread%3Adelegated-task%3Acommand%253Amcp%253Ac7dd6ba8-6519-4e18-8c01-97aa3242924b%253Adelegate-task%253A3070d79e-0100-4d92-9880-3ff5bc6974bd:ordinal:1",
+        "completed_at": "2026-11-19T00:00:43.783Z",
+        "thread_link": "[Author REQ-748 tool invocation counts](t3-thread://v2/344b608c-b133-4724-a50e-9ac6cd780e62/thread:delegated-task:command%3Amcp%3Ac7dd6ba8-6519-4e18-8c01-97aa3242924b%3Adelegate-task%3A3070d79e-0100-4d92-9880-3ff5bc6974bd)"
+      },
+      "current_feedback_count": 0
+    },
+    {
+      "title": "The warm-label split",
+      "report_path": "ai-reports/2026-11-19_0154_req748-warm-cold-labels/index.html",
+      "gallery_href": "../../ai-reports/2026-11-19_0154_req748-warm-cold-labels/index.html",
+      "html_sha256": "52991ca094ece99ab0bcf75ddafed3c79563a6f8787e7eaf94fa02cf4cdcb848",
+      "bundle_sha256": "d42119702c45386f74416aaf1223e34423ee5dace451563521e302cfddb7717e",
+      "factual_verdict": "pass",
+      "render_verdict": "pass",
+      "figure_ids": [
+        "cold-warm-wall-medians"
+      ],
+      "starter": "do-work-toolbox ai-report --design \"report:2026-11-19_0154_req748-warm-cold-labels\"",
+      "design_identity": "report:ai-reports/2026-11-19_0154_req748-warm-cold-labels/",
+      "design_path": "ai-reports/2026-11-19_0154_req748-warm-cold-labels/gallery-design.md",
+      "generation_receipt": "ai-reports/2026-11-19_0154_req748-warm-cold-labels/gallery-generation.json",
+      "factual_review": "ai-reports/2026-11-19_0154_req748-warm-cold-labels/gallery-factual-review.json",
+      "execution": {
+        "provider_instance_id": "codex",
+        "executed_model": "gpt-6.2-astra",
+        "status": "completed",
+        "task_id": "node:delegated-task:command%3Amcp%3Ac7dd6ba8-6519-4e18-8c01-97aa3242924b%3Adelegate-task%3Ac1148b2b-28a4-480f-ac08-4dcb25957db6",
+        "thread_id": "thread:delegated-task:command%3Amcp%3Ac7dd6ba8-6519-4e18-8c01-97aa3242924b%3Adelegate-task%3Ac1148b2b-28a4-480f-ac08-4dcb25957db6",
+        "run_id": "run:thread:thread%3Adelegated-task%3Acommand%253Amcp%253Ac7dd6ba8-6519-4e18-8c01-97aa3242924b%253Adelegate-task%253Ac1148b2b-28a4-480f-ac08-4dcb25957db6:ordinal:1",
+        "completed_at": "2026-11-19T00:00:11.473Z",
+        "thread_link": "[Author REQ-748 warm and cold comparisons](t3-thread://v2/344b608c-b133-4724-a50e-9ac6cd780e62/thread:delegated-task:command%3Amcp%3Ac7dd6ba8-6519-4e18-8c01-97aa3242924b%3Adelegate-task%3Ac1148b2b-28a4-480f-ac08-4dcb25957db6)"
+      },
+      "current_feedback_count": 0
+    }
+  ],
+  "disqualified_revision": {
+    "report_path": "ai-reports/2026-11-19_0154_req748-warm-cold-labels/index.html",
+    "review": {
+      "version": 1,
+      "bundle_sha256": "3c17f0f410ecdd7fa1a0dbf768d0ce17b3a68a394f68c45950b269e3ef6e7f24",
+      "render_verdict": "pass",
+      "verdict": "fail",
+      "findings": [
+        {
+          "anchor": "cold-warm-wall-medians",
+          "reason": "The rendered caption claims three independent observations for each label. selected.tsv lines 2–28 and fact-sheet.md establish separate recorded observations and group membership. They provide no evidence of statistical independence."
+        }
+      ]
+    },
+    "html_sha256": "5f1e34e650b396023b1328fd2d92a07277f7e11dbcd53e7d5668ca3be7ec1d0e",
+    "local_archive": ".git/do-work-run-scratch/work-2026-11-18-191126/REQ-748-round-one.lkQZp8/warm-cold-disqualified",
+    "html_reversal": [
+      {
+        "corrected": "<figure id=\"cold-warm-wall-medians\" aria-label=\"Cold and warm median elapsed time by selection\">",
+        "rejected": "<figure id=\"cold-warm-wall-medians\">"
+      },
+      {
+        "corrected": "three recorded observations for its label",
+        "rejected": "three independent observations for its label"
+      }
+    ],
+    "eligible_as_parent": false
+  }
+}

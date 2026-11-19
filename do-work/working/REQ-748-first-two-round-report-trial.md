@@ -170,3 +170,9 @@ The coordinator stopped the trial worker on the explicit handoff request. Contin
 | `ai-reports/2026-11-19_0154_req748-warm-cold-labels/index.html` | pass/pass | True |
 
 Next integrator: verify the five main-checkout digests and any changed bytes, complete the live gallery check without writing marks, then publish the five links to the user. Preserve the recorded T3 authorship. Do not generate the first five again. Wait until the user has marked the first five before round two. Then generate five children with the same evidence manifest, verify provenance, changed figures, factual and unit verdicts, and finish canonical finalization. Use ordinary direct repository test commands.
+
+## Round-one publication and feedback handoff
+
+Verified all five reports from `160a96b5` in the live gallery. The [round-one handoff](../runs/work-2026-11-18-191126/REQ-748-round-one/README.md) links the five pages and explains how to save marks and resume. The [manifest](../runs/work-2026-11-18-191126/REQ-748-round-one/manifest.json) records the verified source pins, Astra terminal runs, reviewed bundle digests, live links, exact starters, and the original warm-label rejection.
+
+The next wave waits for the user to save at least one current report or figure mark on each of the five cards. Verify the saved entries with the manifest and read-only preparation command in the handoff before clearing the hold. Round two remains pending.
