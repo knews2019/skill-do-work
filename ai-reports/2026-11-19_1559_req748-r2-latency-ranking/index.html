@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="ai-report-gallery-sample" content="bottleneck-hunt">
+<title>Finalization Across Individual Runs</title>
+<link rel="stylesheet" href="presentation.css">
+<style>
+figure{margin:0}ol{list-style:none;padding:0;counter-reset:rank}li{counter-increment:rank;display:grid;grid-template-columns:2ch 1fr auto;align-items:baseline;gap:.24rem .7rem;margin:.8rem 0;font-variant-numeric:tabular-nums}li::before{content:counter(rank);color:var(--muted)}small{color:var(--muted)}.track{grid-column:2/-1;background:var(--code-bg);border-left:1px solid var(--ink);height:.5rem}.track i{display:block;background:var(--proof);height:100%}.axis{margin-left:calc(2ch + .7rem);display:flex;justify-content:space-between;color:var(--muted);font-size:.8rem}pre{white-space:pre-wrap;overflow-wrap:anywhere}
+</style></head><body><main class="page"><header class="band depth-one"><p class="depth-marker">Finalization Across Individual Runs · REQ-748</p><h1>Investigate finalization first</h1><p class="sub measure">Finalization had the longest median elapsed time under both conditions. Its warm median was 50.524 seconds and its cold median was 48.606 seconds. The next longest was warm inventory at 9.242 seconds.</p><span class="chip">results.txt · wall_seconds</span></header>
+<section class="band"><figure id="elapsed-ranking" aria-label="Median elapsed time by selection and condition"><figcaption><h2 id="ranking-title">Median elapsed time by selection and condition</h2><p>Each bar starts at zero. Its length shows the middle of three observations in seconds.</p></figcaption><div class="axis"><span>0 s</span><span>30 s</span><span>60 s</span></div><ol><li><span>Finalization <small>warm</small></span><b>50.524 s</b><div class="track"><i style="width:84.2066667%"></i></div></li>
+<li><span>Finalization <small>cold</small></span><b>48.606 s</b><div class="track"><i style="width:81.0100000%"></i></div></li>
+<li><span>Inventory <small>warm</small></span><b>9.242 s</b><div class="track"><i style="width:15.4033333%"></i></div></li>
+<li><span>Inventory <small>cold</small></span><b>8.973 s</b><div class="track"><i style="width:14.9550000%"></i></div></li>
+<li><span>Heavy cli build <small>cold</small></span><b>7.810 s</b><div class="track"><i style="width:13.0166667%"></i></div></li>
+<li><span>Heavy cli build <small>warm</small></span><b>7.803 s</b><div class="track"><i style="width:13.0050000%"></i></div></li>
+<li><span>Shell audit <small>warm</small></span><b>5.849 s</b><div class="track"><i style="width:9.7483333%"></i></div></li>
+<li><span>Session start <small>warm</small></span><b>4.534 s</b><div class="track"><i style="width:7.5566667%"></i></div></li>
+<li><span>Reused stage <small>reused</small></span><b>3.924 s</b><div class="track"><i style="width:6.5400000%"></i></div></li>
+</ol></figure><p class="measure">Trace a complete finalization run to locate the delay. All six observations recorded 3,019 Git invocations intercepted by the command wrapper. Those counts give no duration per call. Measuring a complete run before and after a change would establish any time saved.</p><span class="chip">selected.tsv · rows 8–13</span></section>
+<section class="band"><figure id="observed-gap"><figcaption><h2>Even the fastest finalization run took 31.496 seconds longer</h2><p class="measure">Compare the closest observations across the two sets. A single unusually slow run cannot explain finalization’s lead in this sample.</p></figcaption><p><strong>40.788 s</strong> · Fastest of six finalization runs (warm)</p><p><strong>9.292 s</strong> · Slowest of the other 21 runs (warm inventory)</p><small>selected.tsv · wall_seconds · rows 2–28, counting the header as row 1. Gap = 40.788 − 9.292 seconds.</small></figure></section>
+<section class="band"><details><summary>Underlying observations · 27 elapsed times</summary><p>Seconds in source order, grouped as in selected.tsv.</p><p><strong>Finalization · warm</strong> — 54.744, 50.524, 40.788 s</p>
+<p><strong>Finalization · cold</strong> — 41.108, 48.606, 52.780 s</p>
+<p><strong>Inventory · warm</strong> — 9.242, 9.292, 9.127 s</p>
+<p><strong>Inventory · cold</strong> — 9.280, 8.973, 8.921 s</p>
+<p><strong>Heavy cli build · cold</strong> — 8.344, 7.810, 7.670 s</p>
+<p><strong>Heavy cli build · warm</strong> — 7.803, 7.803, 8.058 s</p>
+<p><strong>Shell audit · warm</strong> — 5.958, 5.698, 5.849 s</p>
+<p><strong>Session start · warm</strong> — 5.283, 4.534, 4.447 s</p>
+<p><strong>Reused stage · reused</strong> — 3.992, 3.924, 3.858 s</p>
+</details><h3>Changes from the parent</h3><p>Reader feedback: “Like all five”. The <a href="../2026-11-19_0154_req748-latency-ranking/index.html#elapsed-ranking">parent’s median ranking</a> is retained. The <a href="#observed-gap">closest observed times</a> show whether the lead holds across individual runs.</p></section>
+<section class="band" id="another-layout"><details><summary>Try another layout or teaching method</summary><p>Pair cold and warm observations by selection to compare conditions directly.</p><pre><code>ai-report second-opinion --editor-direction 'Pair cold and warm observations by selection.' ai-reports/2026-11-19_1559_req748-r2-latency-ranking</code></pre><p>Work through one median by sorting the three warm finalization times and locating the middle observation.</p><pre><code>ai-report second-opinion --editor-direction 'Teach the median using the three warm finalization observations.' ai-reports/2026-11-19_1559_req748-r2-latency-ranking</code></pre></details></section></main><script src="presentation.js"></script></body></html>
