@@ -133,7 +133,7 @@ printf new-asset > codex-actual-model-1-chart.svg`
 				if row["state"] != "failed" {
 					t.Fatalf("violation accepted: %v", row)
 				}
-				if scenario != "probe write" && !strings.HasPrefix(scenario, "real ") && !strings.Contains(row["reason"].(string), "staged page kept at") {
+				if scenario != "probe write" && !strings.Contains(row["reason"].(string), "staged page kept at") {
 					t.Fatalf("finished page lost: %v", row)
 				}
 			}

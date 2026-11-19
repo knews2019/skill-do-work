@@ -117,16 +117,16 @@ func (worktree *secondOpinionWorktree) cleanupWorktree() error {
 // import an edited original, an existing asset, a link, or an unrelated path.
 // The stage is first: later publication errors leave its recovery bytes intact.
 func secondOpinionImport(repository, bundle, isolated, stageName, prefix string, before map[string]secondOpinionFile) (bool, error) {
-	if err := secondOpinionPreserved(bundle, before, nil, ""); err != nil {
-		return false, err
-	}
+	preservationErr := secondOpinionPreserved(bundle, before, nil, "")
+	// A changed real bundle refuses normal import/publication, but the finished
+	// page still deserves recovery. Only its exclusive staging leaf may land.
 	entries, err := os.ReadDir(isolated)
 	if err != nil {
-		return false, err
+		return false, errors.Join(preservationErr, err)
 	}
 	names := []string{stageName}
 	for _, entry := range entries {
-		if _, existed := before[entry.Name()]; !existed && strings.HasPrefix(entry.Name(), prefix) && entry.Type().IsRegular() {
+		if _, existed := before[entry.Name()]; preservationErr == nil && !existed && strings.HasPrefix(entry.Name(), prefix) && entry.Type().IsRegular() {
 			names = append(names, entry.Name())
 		}
 	}
@@ -138,10 +138,10 @@ func secondOpinionImport(repository, bundle, isolated, stageName, prefix string,
 			continue
 		}
 		if err != nil {
-			return stageCopied, err
+			return stageCopied, errors.Join(preservationErr, err)
 		}
 		if !info.Mode().IsRegular() {
-			return stageCopied, fmt.Errorf("copy-back source is not a regular file: %s", name)
+			return stageCopied, errors.Join(preservationErr, fmt.Errorf("copy-back source is not a regular file: %s", name))
 		}
 		if name == stageName && info.Size() == 0 {
 			continue
@@ -151,11 +151,11 @@ func secondOpinionImport(repository, bundle, isolated, stageName, prefix string,
 			err = rootedPublishFile(repository, filepath.Join(relative, name), data, info.Mode(), false)
 		}
 		if err != nil {
-			return stageCopied, err
+			return stageCopied, errors.Join(preservationErr, err)
 		}
 		if name == stageName {
 			stageCopied = true
 		}
 	}
-	return stageCopied, nil
+	return stageCopied, preservationErr
 }
