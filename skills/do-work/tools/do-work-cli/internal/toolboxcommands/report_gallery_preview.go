@@ -106,18 +106,32 @@ func (session *judgeBrowserSession) captureReportGalleryPreview(repositoryRoot s
 	if err := session.loadCapturePage(pageURL, reportGalleryPreviewWidth, reportGalleryPreviewHeight, "light", true); err != nil {
 		return change, err
 	}
-	actualURL, err := session.evaluate(`(async () => {
+	pageJSON, err := session.evaluate(`(async () => {
 		await document.fonts.ready;
 		window.scrollTo({top: 0, left: 0, behavior: 'instant'});
 		await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
-		return window.scrollY === 0 ? location.href : '';
+		return {
+			url: location.href,
+			scrollY: window.scrollY,
+			status: performance.getEntriesByType('navigation')[0]?.responseStatus
+		};
 	})()`)
 	if err != nil {
 		return change, err
 	}
-	var renderedURL string
-	if err := json.Unmarshal(actualURL, &renderedURL); err != nil || renderedURL != pageURL {
-		return change, fmt.Errorf("expected the top of %s, got %s", pageURL, actualURL)
+	var rendered struct {
+		URL     string  `json:"url"`
+		ScrollY float64 `json:"scrollY"`
+		Status  int     `json:"status"`
+	}
+	if err := json.Unmarshal(pageJSON, &rendered); err != nil {
+		return change, fmt.Errorf("decode the preview page: %w", err)
+	}
+	if rendered.URL != pageURL || rendered.ScrollY != 0 {
+		return change, fmt.Errorf("expected the top of %s, got %s at scroll offset %g", pageURL, rendered.URL, rendered.ScrollY)
+	}
+	if rendered.Status >= http.StatusBadRequest {
+		return change, fmt.Errorf("load %s: HTTP %d", pageURL, rendered.Status)
 	}
 	image, err := session.capturePagePNG(reportGalleryPreviewWidth, reportGalleryPreviewHeight)
 	if err != nil {
