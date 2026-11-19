@@ -1,0 +1,30 @@
+{
+  "version": 1,
+  "entries": [
+    {
+      "target_kind": "report",
+      "report_path": "ai-reports/2026-11-19_0154_req748-cpu-elapsed-audit/index.html",
+      "mark": "like"
+    },
+    {
+      "target_kind": "report",
+      "report_path": "ai-reports/2026-11-19_0154_req748-latency-ranking/index.html",
+      "mark": "like"
+    },
+    {
+      "target_kind": "report",
+      "report_path": "ai-reports/2026-11-19_0154_req748-replicate-variability/index.html",
+      "mark": "like"
+    },
+    {
+      "target_kind": "report",
+      "report_path": "ai-reports/2026-11-19_0154_req748-tool-invocation-counts/index.html",
+      "mark": "like"
+    },
+    {
+      "target_kind": "report",
+      "report_path": "ai-reports/2026-11-19_0154_req748-warm-cold-labels/index.html",
+      "mark": "like"
+    }
+  ]
+}
