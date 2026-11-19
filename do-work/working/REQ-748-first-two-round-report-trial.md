@@ -1,7 +1,7 @@
 ---
 id: REQ-748
 title: 'Run two rounds of five reports on one real evidence bundle'
-status: pending
+status: claimed
 estimate:
   calculated_at: 2026-11-18T23:55:11Z
   p50_active_minutes: 85
@@ -24,7 +24,7 @@ batch: report-gallery-feedback
 related: [REQ-745, REQ-746, REQ-747]
 depends_on: [REQ-747]
 claimed_at: 2026-11-18T23:53:11Z
-status_changed_at: 2026-11-19T13:57:58Z
+status_changed_at: 2026-11-19T13:57:59Z
 ---
 # Run two rounds of five reports on one real evidence bundle
 
