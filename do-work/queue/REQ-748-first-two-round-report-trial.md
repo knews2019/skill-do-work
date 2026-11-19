@@ -1,9 +1,7 @@
 ---
 id: REQ-748
 title: 'Run two rounds of five reports on one real evidence bundle'
-status: blocked
-blocked_by: 'User saves at least one Like or Dislike on each of the five round-one reports in the live report gallery'
-blocked_at: 2026-11-19T11:23:19Z
+status: pending
 estimate:
   calculated_at: 2026-11-18T23:55:11Z
   p50_active_minutes: 85
@@ -26,6 +24,7 @@ batch: report-gallery-feedback
 related: [REQ-745, REQ-746, REQ-747]
 depends_on: [REQ-747]
 claimed_at: 2026-11-18T23:53:11Z
+status_changed_at: 2026-11-19T13:57:58Z
 ---
 # Run two rounds of five reports on one real evidence bundle
 
@@ -86,3 +85,7 @@ The user gave this feedback while reviewing the gallery on 2026-11-19.
 > Also why don't we have preview image for all of them?
 
 Use the samples as the stronger visual reference and retain the favorable comparison to request-lifecycle and cli-command-map. This comment refers to gallery examples. The five first-round report preferences remain to be collected. The coordinator is fixing missing actual page screenshots on generated and older report cards before the next round.
+
+## Blocked
+
+- [2026-11-19] blocked on "User saves at least one Like or Dislike on each of the five round-one reports in the live report gallery" — cleared by user via clarify
