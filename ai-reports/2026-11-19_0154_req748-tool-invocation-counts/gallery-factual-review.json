@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "bundle_sha256": "b7aa1c3a05b38fb724ef5f8c896dcff2769767399eeb28dd4bd7d171d77a9c7c",
+  "render_verdict": "pass",
+  "verdict": "pass",
+  "findings": [
+    {
+      "anchor": "tool-mix",
+      "reason": "Summing selected.tsv lines 2–28 matches the results.txt line 91 totals. The labels and segment widths show 18,114 of 19,269 Git hits, 324 of 324 ShellCheck hits, and 138 of 201 Go hits. 20,526 is the sum across all six recorded tools. Each bar represents its own tool total."
+    },
+    {
+      "anchor": "observations",
+      "reason": "selected.tsv lines 8–13 show 3,019 Git hits per finalization observation, 9,057 per condition, and 18,114 total. Lines 17–19 show 108 ShellCheck hits per observation and 324 total. Lines 26–28 show 46 Go hits per observation and 138 total. Units are intercepted invocations, with no duration inferred."
+    }
+  ]
+}

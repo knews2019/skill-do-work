@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "bundle_sha256": "d42119702c45386f74416aaf1223e34423ee5dace451563521e302cfddb7717e",
+  "render_verdict": "pass",
+  "verdict": "pass",
+  "findings": [
+    {
+      "anchor": "cold-warm-wall-medians",
+      "reason": "results.txt lines 86–89 and matching selected.tsv rows verify inventory +0.269 s / 8.973 s = +3.00%, finalization +1.918 s / 48.606 s = +3.95%, and heavy CLI build −0.007 s / 7.810 s = −0.09%. The bars use a shared 0–55 s scale. The rendered caption now states three recorded observations per label."
+    },
+    {
+      "anchor": "sample-scope",
+      "reason": "selected.tsv lines 2–28 account for 18 of 27 observations in the three comparisons, six warm-only observations and three reused observations. The within-selection observed ranges overlap. The fact sheet supports the recorded Go test-cache action and the limit on causal interpretation."
+    }
+  ]
+}

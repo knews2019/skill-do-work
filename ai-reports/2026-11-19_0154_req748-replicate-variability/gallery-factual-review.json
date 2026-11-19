@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "bundle_sha256": "8b6315b33740cc629d769fd0c816664a16f003d9cad137ccd9399144cfba8693",
+  "render_verdict": "pass",
+  "verdict": "pass",
+  "findings": [
+    {
+      "anchor": "finalization-ranges",
+      "reason": "selected.tsv lines 8–13 give cold 41.108, 48.606, 52.780 s and warm 40.788, 50.524, 54.744 s. The printed values and six marker positions agree. The cold range lies inside warm. The warm-minus-cold median is 1.918 s. Spreads of 11.672 and 13.956 s are the two largest in results.txt."
+    },
+    {
+      "anchor": "heavy-build-ties",
+      "reason": "selected.tsv lines 20–25 give cold 7.670, 7.810, 8.344 s and warm 7.803, 7.803, 8.058 s. Both equal warm times are plotted on the 7.6–8.4 s scale. Exact spreads are 0.674 and 0.255 s. The warm median is 0.007 s lower."
+    }
+  ]
+}

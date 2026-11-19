@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "bundle_sha256": "d441843792efca511f60c7f618106bc389e66275c3a253ca27a390c9cd368afc",
+  "render_verdict": "pass",
+  "verdict": "pass",
+  "findings": [
+    {
+      "anchor": "elapsed-ranking",
+      "reason": "Recomputed all nine medians from selected.tsv lines 2–28 and matched the descending labels: 50.524, 48.606, 9.242, 8.973, 7.810, 7.803, 5.849, 4.534, and 3.924 seconds. The bars scale from 0 to 60 seconds, and the underlying disclosure retains all 27 rows."
+    },
+    {
+      "anchor": "elapsed-ranking",
+      "reason": "selected.tsv lines 8–13 record 3,019 intercepted Git invocations in each of six observations. The report treats the count as a lead for investigation and makes no per-call timing or savings claim."
+    }
+  ]
+}

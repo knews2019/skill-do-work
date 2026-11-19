@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "bundle_sha256": "f19f8aac23edbe0d7eec6adec32f2286ca7ad8c237d694a1178e542e7735fd9d",
+  "render_verdict": "pass",
+  "verdict": "pass",
+  "findings": [
+    {
+      "anchor": "elapsed-by-selection",
+      "reason": "All nine printed elapsed medians match selected.tsv lines 2–28 and results.txt on a 0–55 seconds scale. Warm inventory reads 9.242 s and warm heavy CLI build 7.803 s."
+    },
+    {
+      "anchor": "cpu-by-selection",
+      "reason": "All nine printed CPU medians use the total_cpu_seconds field. Warm inventory reads 1.756 s and warm heavy CLI build 4.364 s. The direction of that comparison reverses on elapsed seconds."
+    },
+    {
+      "anchor": "measurement-audit",
+      "reason": "selected.tsv line 3 records separately rounded 0.712 and 0.904 s components and a total of 1.615 s. The fact sheet confirms what reaped child CPU counts, why CPU can exceed elapsed seconds with parallel work, and why their difference cannot attribute I/O. Go accumulated uses top-level test events and n/a for the three recorded groups shown."
+    }
+  ]
+}

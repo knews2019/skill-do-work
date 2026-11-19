@@ -2,6 +2,66 @@
   "generator": "do-work-cli ai-report-index",
   "bundles": [
     {
+      "path": "ai-reports/2026-11-19_0154_req748-cpu-elapsed-audit",
+      "entry": "ai-reports/2026-11-19_0154_req748-cpu-elapsed-audit/index.html",
+      "title": "Two clocks at the command line",
+      "date": "2026-11-19T01:54",
+      "kind": "unknown",
+      "linked_ids": [],
+      "verdict": "",
+      "supersedes": "",
+      "superseded_by": "",
+      "second_opinions": []
+    },
+    {
+      "path": "ai-reports/2026-11-19_0154_req748-latency-ranking",
+      "entry": "ai-reports/2026-11-19_0154_req748-latency-ranking/index.html",
+      "title": "The Finalization Gap",
+      "date": "2026-11-19T01:54",
+      "kind": "unknown",
+      "linked_ids": [],
+      "verdict": "",
+      "supersedes": "",
+      "superseded_by": "",
+      "second_opinions": []
+    },
+    {
+      "path": "ai-reports/2026-11-19_0154_req748-replicate-variability",
+      "entry": "ai-reports/2026-11-19_0154_req748-replicate-variability/index.html",
+      "title": "The range behind the middle",
+      "date": "2026-11-19T01:54",
+      "kind": "unknown",
+      "linked_ids": [],
+      "verdict": "",
+      "supersedes": "",
+      "superseded_by": "",
+      "second_opinions": []
+    },
+    {
+      "path": "ai-reports/2026-11-19_0154_req748-tool-invocation-counts",
+      "entry": "ai-reports/2026-11-19_0154_req748-tool-invocation-counts/index.html",
+      "title": "Case shares by tool",
+      "date": "2026-11-19T01:54",
+      "kind": "unknown",
+      "linked_ids": [],
+      "verdict": "",
+      "supersedes": "",
+      "superseded_by": "",
+      "second_opinions": []
+    },
+    {
+      "path": "ai-reports/2026-11-19_0154_req748-warm-cold-labels",
+      "entry": "ai-reports/2026-11-19_0154_req748-warm-cold-labels/index.html",
+      "title": "The warm-label split",
+      "date": "2026-11-19T01:54",
+      "kind": "unknown",
+      "linked_ids": [],
+      "verdict": "",
+      "supersedes": "",
+      "superseded_by": "",
+      "second_opinions": []
+    },
+    {
       "path": "ai-reports/2026-11-15_0137_proposal-REQ-725-memory-note-destinations",
       "entry": "ai-reports/2026-11-15_0137_proposal-REQ-725-memory-note-destinations/index.html",
       "title": "Where each memory note goes (REQ-725)",

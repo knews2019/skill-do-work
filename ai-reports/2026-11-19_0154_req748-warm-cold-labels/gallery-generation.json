@@ -1,0 +1,59 @@
+{
+  "version": 1,
+  "report_path": "ai-reports/2026-11-19_0154_req748-warm-cold-labels/index.html",
+  "design_identity": "report:ai-reports/2026-11-19_0154_req748-warm-cold-labels/",
+  "plan": {
+    "evidence": {
+      "source_id": "do-work/test-efficiency.tsv@a1b622fb2fb3b6fe4a7b5c0d8ed0d2e300f7e46a#standalone-20260906T134958Z-1358",
+      "files": [
+        {
+          "path": "ai-reports/2026-09_18-reports/2026-09-06_1606_test-efficiency-improvement-proposal/index.html",
+          "sha256": "e5a69a7da80ed7fd8d6fc31c6e42e91c7eb6533c3ee0a65498d3fda99705a8df"
+        },
+        {
+          "path": "ai-reports/2026-09_18-reports/2026-09-06_1606_test-efficiency-improvement-proposal/revisions/r1-evidence.txt",
+          "sha256": "3d4ea480843ac60fdc6a06d974356107f0e6ae52dc575747ff985ea2c52c4b5a"
+        },
+        {
+          "path": "do-work/archive/UR-128/REQ-606-establish-test-efficiency-baseline.md",
+          "sha256": "1dfa95906e6b6f0675286d43a30064e0bc7944371fd4e8f9ad5e9e6ea0000819"
+        },
+        {
+          "path": "do-work/runs/work-2026-11-18-191126/trial-source/fact-sheet.md",
+          "sha256": "3e02fdd03ebf64a293ddccf952b38dace3ae14ef7a982b2d428d2297dc94bd1b"
+        },
+        {
+          "path": "do-work/runs/work-2026-11-18-191126/trial-source/results.txt",
+          "sha256": "5df4c2326936ceb3b6a3b05076db952608eac04fecbcfbecbb2982735b184153"
+        },
+        {
+          "path": "do-work/runs/work-2026-11-18-191126/trial-source/selected.tsv",
+          "sha256": "f9ae5ae0c2c3fd8371222ea44104f6096373d8a5e22e6fcc2f61e35ca8fa6fcd"
+        }
+      ]
+    },
+    "parent_report": "",
+    "parent_sha256": "",
+    "marks": []
+  },
+  "execution": {
+    "provider_instance_id": "codex",
+    "executed_model": "gpt-6.2-astra",
+    "status": "completed",
+    "task_id": "node:delegated-task:command%3Amcp%3Ac7dd6ba8-6519-4e18-8c01-97aa3242924b%3Adelegate-task%3Ac1148b2b-28a4-480f-ac08-4dcb25957db6",
+    "thread_id": "thread:delegated-task:command%3Amcp%3Ac7dd6ba8-6519-4e18-8c01-97aa3242924b%3Adelegate-task%3Ac1148b2b-28a4-480f-ac08-4dcb25957db6",
+    "run_id": "run:thread:thread%3Adelegated-task%3Acommand%253Amcp%253Ac7dd6ba8-6519-4e18-8c01-97aa3242924b%253Adelegate-task%253Ac1148b2b-28a4-480f-ac08-4dcb25957db6:ordinal:1"
+  },
+  "changes": [
+    {
+      "before": "",
+      "after": "ai-reports/2026-11-19_0154_req748-warm-cold-labels/index.html#label-comparison",
+      "description": "Compare cold and warm group medians on a shared seconds scale, with signed differences in seconds and percent beside each cold baseline."
+    },
+    {
+      "before": "",
+      "after": "ai-reports/2026-11-19_0154_req748-warm-cold-labels/index.html#sample-scope",
+      "description": "Account for the nine observations outside the comparisons and explain why the independent group medians cannot establish a causal cache effect."
+    }
+  ]
+}
