@@ -2,6 +2,66 @@
   "generator": "do-work-cli ai-report-index",
   "bundles": [
     {
+      "path": "ai-reports/2026-11-19_1559_req748-r2-cpu-elapsed-audit",
+      "entry": "ai-reports/2026-11-19_1559_req748-r2-cpu-elapsed-audit/index.html",
+      "title": "Child CPU seconds per elapsed second",
+      "date": "2026-11-19T15:59",
+      "kind": "unknown",
+      "linked_ids": [],
+      "verdict": "",
+      "supersedes": "",
+      "superseded_by": "",
+      "second_opinions": []
+    },
+    {
+      "path": "ai-reports/2026-11-19_1559_req748-r2-latency-ranking",
+      "entry": "ai-reports/2026-11-19_1559_req748-r2-latency-ranking/index.html",
+      "title": "Finalization Across Individual Runs",
+      "date": "2026-11-19T15:59",
+      "kind": "unknown",
+      "linked_ids": [],
+      "verdict": "",
+      "supersedes": "",
+      "superseded_by": "",
+      "second_opinions": []
+    },
+    {
+      "path": "ai-reports/2026-11-19_1559_req748-r2-replicate-variability",
+      "entry": "ai-reports/2026-11-19_1559_req748-r2-replicate-variability/index.html",
+      "title": "Where the median falls",
+      "date": "2026-11-19T15:59",
+      "kind": "unknown",
+      "linked_ids": [],
+      "verdict": "",
+      "supersedes": "",
+      "superseded_by": "",
+      "second_opinions": []
+    },
+    {
+      "path": "ai-reports/2026-11-19_1559_req748-r2-tool-invocation-counts",
+      "entry": "ai-reports/2026-11-19_1559_req748-r2-tool-invocation-counts/index.html",
+      "title": "Tool hits by measured case",
+      "date": "2026-11-19T15:59",
+      "kind": "unknown",
+      "linked_ids": [],
+      "verdict": "",
+      "supersedes": "",
+      "superseded_by": "",
+      "second_opinions": []
+    },
+    {
+      "path": "ai-reports/2026-11-19_1559_req748-r2-warm-cold-labels",
+      "entry": "ai-reports/2026-11-19_1559_req748-r2-warm-cold-labels/index.html",
+      "title": "Signed gaps against cold medians",
+      "date": "2026-11-19T15:59",
+      "kind": "unknown",
+      "linked_ids": [],
+      "verdict": "",
+      "supersedes": "",
+      "superseded_by": "",
+      "second_opinions": []
+    },
+    {
       "path": "ai-reports/2026-11-19_0154_req748-cpu-elapsed-audit",
       "entry": "ai-reports/2026-11-19_0154_req748-cpu-elapsed-audit/index.html",
       "title": "Two clocks at the command line",

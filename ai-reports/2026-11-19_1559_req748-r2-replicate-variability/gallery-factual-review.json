@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "bundle_sha256": "3f214aa92beef8aed44aff9eac687125220cdafa553e946f5fa8716ff1d9f312",
+  "render_verdict": "parent-links-only",
+  "verdict": "pass",
+  "findings": [
+    {
+      "anchor": "finalization-ranked",
+      "reason": "Selected.tsv finalization rows give cold 41.108, 48.606 and 52.780 s in sorted order, and warm 40.788, 50.524 and 54.744 s. Plot positions match both intervals. The spreads are 11.672 and 13.956 s, the cold interval is contained inside the warm interval, and warm minus cold medians are 1.918 s."
+    },
+    {
+      "anchor": "build-ranked",
+      "reason": "The heavy-cli-build cold timings are 7.670, 7.810 and 8.344 s, giving 0.674 s. Warm gives 7.803, 7.803 and 8.058 s, spread 0.255 s. Both 7.803 s observations appear as stacked dots and as separate cells. The warm median is 0.007 s smaller."
+    },
+    {
+      "anchor": "another-layout",
+      "reason": "The 27 disclosed elapsed times and nine max-minus-min spreads match selected.tsv and results.txt. All other groups have spreads below one second. The page says the statistical independence of the repeated observations is unknown."
+    }
+  ]
+}

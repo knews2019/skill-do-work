@@ -1,0 +1,24 @@
+{
+  "version": 1,
+  "bundle_sha256": "ecc48ae213d0d393b678d33554172fb1c2be8cb336facce2b6065cb4347048b6",
+  "render_verdict": "parent-links-only",
+  "verdict": "pass",
+  "findings": [
+    {
+      "anchor": "elapsed-by-selection",
+      "reason": "The 18 plotted duration labels on the paired panels match the medians of wall_seconds and recorded total_cpu_seconds in selected.tsv rows 2–28. Each bar uses the stated 55-second denominator."
+    },
+    {
+      "anchor": "cpu-by-selection",
+      "reason": "The displayed shell-audit elapsed and accounted child CPU medians are 5.849 s and 3.253 s. The filter selected just those two rows and restored all 18. CPU counts reaped user and system time, including descendant accounting through waits, per fact-sheet.md."
+    },
+    {
+      "anchor": "ratio-ranking",
+      "reason": "Recalculation of all nine ratios as median total_cpu_seconds divided by median wall_seconds matches the display. Shell-audit warm 0.556, heavy-cli-build warm 0.559 and session-start warm 0.266 are child CPU seconds per elapsed second. Fact-sheet.md distinguishes that quotient from machine utilization or per-call attribution."
+    },
+    {
+      "anchor": "measurement-audit",
+      "reason": "Selected.tsv row 3 records 0.712 user, 0.904 system and 1.615 total CPU seconds. Rows 14–19 and 26–28 record Go accumulated time as n/a. Fact-sheet.md supports the rounding, parallel accounting, and I/O caveats."
+    }
+  ]
+}

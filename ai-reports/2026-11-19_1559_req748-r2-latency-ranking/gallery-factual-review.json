@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "bundle_sha256": "bf99d4520993908150d0ee8e772f59589bc7e6f33ade22118864fdad0e8fed7a",
+  "render_verdict": "parent-links-only",
+  "verdict": "pass",
+  "findings": [
+    {
+      "anchor": "elapsed-ranking",
+      "reason": "All nine labels and zero-based lengths match the median wall_seconds field from selected.tsv rows 2–28 up to the 60 s scale. Rows 8–13 record 3,019 intercepted Git invocations each, a count with no duration. The disclosed 27 elapsed values match the recorded order within each displayed group."
+    },
+    {
+      "anchor": "observed-gap",
+      "reason": "From selected.tsv rows 2–28, the minimum of six finalization readings is 40.788 s and the maximum of 21 other readings is 9.292 s, giving 31.496 s. The page scopes the gap to the observations and links it to the parent median ranking."
+    }
+  ]
+}

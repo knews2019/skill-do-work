@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "bundle_sha256": "64fd78b6ad1dbab434edf076ce44348f12544b32e051f8eca8bc7e33d9677c37",
+  "render_verdict": "parent-links-only",
+  "verdict": "pass",
+  "findings": [
+    {
+      "anchor": "tool-mix",
+      "reason": "Selected.tsv rows 2–28 and results.txt line 91 give 18,114/19,269 Git, 324/324 ShellCheck and 138/201 Go hits for the highlighted cases. The bar percentages and complements of 1,155, 0 and 63 match. The six-tool total is 20,526 intercepted invocations."
+    },
+    {
+      "anchor": "case-counts",
+      "reason": "Independently summing subprocess_counts by case reproduces the six displayed rows and three printed denominators. Heavy CLI build contributes 756 Git hits and session start contributes 45 Go hits. No duration is assigned to the counts."
+    },
+    {
+      "anchor": "observations",
+      "reason": "Selected.tsv rows 8–13 record 3,019 Git hits per finalization observation and 9,057 per label. Rows 17–19 record 108 ShellCheck hits per warm shell audit. Rows 26–28 record 46 Go hits per reused-stage observation. Each multiplied total matches the display."
+    }
+  ]
+}
