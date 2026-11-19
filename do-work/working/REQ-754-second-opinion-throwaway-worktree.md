@@ -1,7 +1,7 @@
 ---
 id: REQ-754
 title: 'Addendum: second-opinion runs backends in a throwaway Git worktree, so uncommitted files outside the report never block it'
-status: pending
+status: claimed
 created_at: 2026-11-19T23:37:12Z
 user_request: UR-187
 addendum_to: REQ-698
@@ -12,6 +12,7 @@ maintenance: false
 impact: impact-user-visible
 effort_estimate: effort-substantive
 write_set: ["skills/do-work/tools/do-work-cli/internal/toolboxcommands/report_second_opinion.go", "skills/do-work/tools/do-work-cli/internal/toolboxcommands/report_second_opinion_test.go", "skills/do-work-toolbox/actions/ai-report.md"]
+claimed_at: 2026-11-19T23:38:44Z
 ---
 # Addendum: Second-Opinion Runs Backends in a Throwaway Git Worktree
 
