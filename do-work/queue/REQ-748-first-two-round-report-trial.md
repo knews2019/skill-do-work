@@ -74,3 +74,15 @@ Next integrator: verify the five main-checkout digests and any changed bytes, co
 Verified all five reports from `160a96b5` in the live gallery. The [round-one handoff](../runs/work-2026-11-18-191126/REQ-748-round-one/README.md) links the five pages and explains how to save marks and resume. The [manifest](../runs/work-2026-11-18-191126/REQ-748-round-one/manifest.json) records the verified source pins, Astra terminal runs, reviewed bundle digests, live links, exact starters, and the original warm-label rejection.
 
 The next wave waits for the user to save at least one current report or figure mark on each of the five cards. Verify the saved entries with the manifest and read-only preparation command in the handoff before clearing the hold. Round two remains pending.
+
+
+## Reader feedback — gallery comparison
+
+The user gave this feedback while reviewing the gallery on 2026-11-19.
+
+> request-lifecycle, 
+> cli-command-map is kind of nice, but samples are nicer.
+>
+> Also why don't we have preview image for all of them?
+
+Use the samples as the stronger visual reference and retain the favorable comparison to request-lifecycle and cli-command-map. This comment refers to gallery examples. The five first-round report preferences remain to be collected. The coordinator is fixing missing actual page screenshots on generated and older report cards before the next round.
