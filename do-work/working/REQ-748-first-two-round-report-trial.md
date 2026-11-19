@@ -1,7 +1,9 @@
 ---
 id: REQ-748
 title: 'Run two rounds of five reports on one real evidence bundle'
-status: claimed
+status: blocked
+blocked_by: 'User saves at least one Like or Dislike on each of the five round-one reports in the live report gallery'
+blocked_at: 2026-11-19T11:23:19Z
 route: B
 estimate:
   calculated_at: 2026-11-18T23:55:11Z
