@@ -1,8 +1,15 @@
 ---
 id: REQ-754
 title: 'Addendum: second-opinion runs backends in a throwaway Git worktree, so uncommitted files outside the report never block it'
-status: claimed
+status: completed
 route: C
+heavy_verified_at: 2026-11-20T00:05:27Z
+heavy_verified_revision: d1156bc6d8493ab87bd673cf662bff9ed1006819
+review_at: 2026-11-20T00:00:47Z
+commit: d1156bc6d8493ab87bd673cf662bff9ed1006819
+kb_status: pending
+builder_handback_at: 2026-11-19T23:59:01Z
+integration_at: 2026-11-19T23:59:01Z
 dispatch_at: 2026-11-19T23:43:26Z
 planning_at: 2026-11-19T23:41:11Z
 required_lessons: ["_dev/primes/lessons-releases.md"]
@@ -26,8 +33,10 @@ tdd: true
 maintenance: false
 impact: impact-user-visible
 effort_estimate: effort-substantive
-write_set: ["skills/do-work/tools/do-work-cli/internal/toolboxcommands/report_second_opinion.go", "skills/do-work/tools/do-work-cli/internal/toolboxcommands/report_second_opinion_worktree.go", "skills/do-work/tools/do-work-cli/internal/toolboxcommands/report_second_opinion_test.go", "skills/do-work-toolbox/actions/ai-report.md", "skills/do-work-toolbox/docs/ai-report-guide.md"]
+write_set: ["skills/do-work/tools/do-work-cli/internal/toolboxcommands/report_second_opinion.go", "skills/do-work/tools/do-work-cli/internal/toolboxcommands/report_second_opinion_worktree.go", "skills/do-work/tools/do-work-cli/internal/toolboxcommands/report_second_opinion_test.go", "skills/do-work-toolbox/actions/ai-report.md", "skills/do-work-toolbox/docs/ai-report-guide.md", "skills/do-work/tools/do-work-cli/internal/toolboxcommands/report_second_opinion_worktree_test.go"]
 claimed_at: 2026-11-19T23:38:44Z
+completed_at: 2026-11-20T00:05:27Z
+release_at: 2026-11-20T00:05:27Z
 ---
 # Addendum: Second-Opinion Runs Backends in a Throwaway Git Worktree
 
@@ -74,8 +83,8 @@ See `do-work/user-requests/UR-187/input.md` for complete verbatim input.
 
 ## AI Execution State (P-A-U Loop)
 - [x] **[PLAN]:** Isolate probes and generation in a detached worktree, validate copied bundle, import allowed files exclusively, publish using existing real-bundle tail, then remove the worktree.
-- [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
-- [ ] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
+- [x] **[APPLY]:** Six scoped source, documentation and test files implemented and merged in d1156bc6.
+- [x] **[UNIFY]:** Reviewed all six files and the complete diff. Verified cleanup ordering, current-bundle materialization, exclusive import, session checks, test assertions and documentation. Builder formatting, vet, race, compatibility builds and repository checks passed. Integrated canonical gate and all selected heavy lanes passed.
 *Source: If we are talking about this level of untrustworthiness, wouldn't then it make more sense to create a new work tree, work on that and then check it before merging it in? Also, make sure to clean up any work tree after the work is done.*
 
 ## Triage
@@ -109,15 +118,17 @@ The lessons index was consulted at claim. The CLI satellite remains over the sha
 - `skills/do-work-toolbox/actions/ai-report.md` (modify)
 - `skills/do-work-toolbox/docs/ai-report-guide.md` (modify)
 
+- `skills/do-work/tools/do-work-cli/internal/toolboxcommands/report_second_opinion_worktree_test.go` (new) — authorized regression split for per-file test budget
+
 **Acceptance criteria (restated from REQ):**
-- [ ] Each subprocess backend uses a detached temporary worktree.
-- [ ] Current bundle bytes include uncommitted additions, edits and deletions.
-- [ ] Outside worktree changes fail with named paths and preserve real outside files.
-- [ ] Only allowed new files return, with existing refusal retention behavior.
-- [ ] Success, refusal, backend failure, deadline and signal exits clean up owned worktrees.
-- [ ] Real checkout dirt never blocks subprocess or session second opinions.
-- [ ] Session bundle preservation and backend permission flags remain effective.
-- [ ] Shipped instructions describe the new behavior.
+- [x] Each subprocess backend uses a detached temporary worktree.
+- [x] Current bundle bytes include uncommitted additions, edits and deletions.
+- [x] Outside worktree changes fail with named paths and preserve real outside files.
+- [x] Only allowed new files return, with existing refusal retention behavior.
+- [x] Success, refusal, backend failure, deadline and signal exits clean up owned worktrees.
+- [x] Real checkout dirt never blocks subprocess or session second opinions.
+- [x] Session bundle preservation and backend permission flags remain effective.
+- [x] Shipped instructions describe the new behavior.
 
 ## Pre-Flight
 
@@ -126,3 +137,85 @@ The lessons index was consulted at claim. The CLI satellite remains over the sha
 **Tests baseline:** Focused TestSecondOpinion checks passed. Repository baseline `bash _dev/tests/maintainer-verify.sh` passed, exit 0, 173 seconds. Request-bound advance preflight and green-gate records are satisfied.
 
 **Dependencies:** Existing Go and ShellCheck toolchains passed the native gate.
+
+## Decisions
+
+- D-01 (DECIDE & STATE). Replace the isolated bundle completely to preserve tracked deletions and take separate inode-aware snapshots.
+- D-02 (DECIDE & STATE). Use existing rooted exclusive publication and process reaping. Preserve recoverable per-file publication.
+- D-03 (DECIDE & STATE). Canonicalize temporary paths and use a separate 30-second cleanup context. Report cleanup errors with a failed run.
+- D-04 (DECIDE & STATE). Preserve a finished staging page exclusively even when concurrent real-bundle edits prevent publication.
+- D-05 (DECIDE & STATE). Split new tests into a dedicated worktree test file to satisfy the repository per-file runtime budget.
+
+## Implementation Summary
+
+**Files changed:**
+- `skills/do-work/tools/do-work-cli/internal/toolboxcommands/report_second_opinion.go` (modified)
+- `skills/do-work/tools/do-work-cli/internal/toolboxcommands/report_second_opinion_worktree.go` (new)
+- `skills/do-work/tools/do-work-cli/internal/toolboxcommands/report_second_opinion_test.go` (modified)
+- `skills/do-work-toolbox/actions/ai-report.md` (modified)
+- `skills/do-work-toolbox/docs/ai-report-guide.md` (modified)
+- `skills/do-work/tools/do-work-cli/internal/toolboxcommands/report_second_opinion_worktree_test.go` (new)
+
+**What was done:** Subprocess second opinions now probe and generate in temporary detached Git worktrees containing the current report. Validated new files return through exclusive copy-back and the existing publication tail, with finished refusal output retained. Independent bounded cleanup follows process reaping on all handled exits. Session mode permits unrelated outside edits while enforcing report preservation. Instructions and regression tests cover the new behavior.
+
+## Qualification
+
+Request-bound qualification and scope-drift gates passed for `02f3a5e1..d1156bc6`. All six source, test and documentation files were inspected. The two new-file wiring warnings are false positives for Go package compilation and test discovery. `secondOpinionRun` directly calls the worktree helper, and Go discovers the regression functions. P-A-U and scope evidence are complete.
+
+## Testing
+
+The captured RED/GREEN proof is implemented as `TestSecondOpinionWorktreeDirtyReadme`. Before source changes it failed with `outside-bundle changes: README.md`. After implementation both cases pass, proving dirty tracked README publication, detached HEAD, an outside-write finding, unchanged real README bytes and removal of worktree registration and scratch files.
+
+Run from the CLI module, `go test ./internal/toolboxcommands -run '^TestSecondOpinionWorktreeDirtyReadme$' -count=1` changed from exit 1 to exit 0. The full focused command `go test ./internal/toolboxcommands -run '^TestSecondOpinion' -count=1` passed on the merged main tree in 33.026 seconds. Request-bound test-gate records report scope, focused tests and the repository green gate satisfied. Each test file stays under the repository 30-second file budget.
+
+`bash _dev/tests/maintainer-verify.sh` ran directly and unmodified on merged main, exit 0 in 139 seconds. It checked ShellCheck, formatting, contracts, both Go modules' vet and fast tests. Builder race tests, Go 1.24 and Windows cross-builds also passed. The builder ran a state-output-adjusted repository script, and the parent canonical run supplies the integrated repository evidence.
+
+The final retention fix was also test-first. Concurrent real index replacement and asset collision failed the finished-page assertion before the fix and pass after it. New coverage includes exact bundle additions/edits/deletions, empty directories, isolated probe writes, original replacement, unprefixed and symlink assets, exclusive copy-back, session final publication, deadline, cancellation, SIGINT, setup failure and cleanup failure reporting.
+
+The prior REQ-698 pre-existing-dirt refusal expectation was intentionally replaced by the new positive regression. Existing adapters, permission flags, model verification and judge behavior remain covered. Native protocol fixtures and the existing render-judge seam supply behavior evidence. Live paid model backends were not invoked.
+
+The heavy planner selected CLI integrations, staged skills, updater and installer. All four lanes executed successfully at the merged revision, as recorded below.
+
+## Review
+
+Independent review approved `02f3a5e1..d1156bc6` with no findings. Requirements, code, tests and scope scored 100%; acceptance passed for local implementation and integration. The reviewer read all six files and existing publication/process/rooted helpers and checked each requirement against the original UR.
+
+Independent merged-tree acceptance ran dirty README publication, outside-write refusal, session publication, SIGINT and setup cancellation in 2.763 seconds, exit 0. Whitespace validation passed. The restatement sweep found no stale active instructions requiring unrelated work to be committed. Dated historical records retain their original wording. Windows evidence is cross-build/vet, and live model behavior uses protocol fixtures.
+
+## Lessons Learned
+
+**What worked**
+- Reusing owned-process reaping and exclusive rooted publication kept cleanup and output recovery consistent with existing behavior.
+- Replacing the isolated bundle preserved tracked deletions as well as uncommitted additions and edits.
+
+**What did not work**
+- Comparing a macOS temporary path directly with Git registration missed its canonical `/private` spelling. Canonicalization corrected cleanup.
+- Refusing changed real bundles before retaining their finished new page lost recoverable output. Exclusive staging retention fixed that case.
+
+**Worth knowing**
+- Real and isolated snapshots need separate inode identities. Teardown needs a fresh bounded context after cancellation.
+- A cleanup refusal is reported as a failed run with its path. Absolute-path writes and shared Git metadata remain outside worktree isolation.
+
+## Orientation
+
+[MAP CHANGED] The second-opinion subsystem now permits unrelated uncommitted project work. Subprocess probes and generation run in temporary detached worktrees, and only permitted report output returns to the real report. Session reviews enforce report preservation without requiring outside files to be clean. Touched prime links remain valid.
+
+## Heavy Verification Plan
+
+Base `02f3a5e11ba8cd58ae410fedfca50f39ac081f84`, target `d1156bc6d8493ab87bd673cf662bff9ed1006819`.
+
+- `do-work-cli-integrations` — CLI subtree changed.
+- `staged-skills` — shipped skill paths changed.
+- `updater` — CLI subtree changed.
+- `installer` — CLI subtree changed.
+
+Each lane uses `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane <lane-id>`. The typed plan has no uncovered paths and no uncertainty. The runner executes these lanes at the retained target before finalization.
+
+## Heavy Verification Result
+
+Target and execution revision `d1156bc6d8493ab87bd673cf662bff9ed1006819`. All lanes executed freshly, exited 0 and were not skipped.
+
+- CLI integrations passed in 69 seconds.
+- Staged skills passed in 34 seconds.
+- Updater passed in 71 seconds.
+- Installer passed in 32 seconds.
