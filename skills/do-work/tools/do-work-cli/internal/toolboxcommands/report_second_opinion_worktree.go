@@ -100,6 +100,7 @@ func (worktree *secondOpinionWorktree) cleanupWorktree() error {
 	// have been reaped. Bound Git cleanup independently, even after setup fails.
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
+	permissionErr := secondOpinionWritableScratch(worktree.scratchPath)
 	output, err := secondOpinionWorktreeGit(ctx, worktree.repositoryPath, "worktree", "list", "--porcelain", "-z")
 	if err == nil {
 		for _, field := range strings.Split(string(output), "\x00") {
@@ -109,7 +110,38 @@ func (worktree *secondOpinionWorktree) cleanupWorktree() error {
 			}
 		}
 	}
-	return errors.Join(err, os.RemoveAll(worktree.scratchPath))
+	return errors.Join(permissionErr, err, os.RemoveAll(worktree.scratchPath))
+}
+
+// Copied asset directories retain their original permissions until validation and
+// publication finish. Restore owner access only for deletion, after writers stop.
+func secondOpinionWritableScratch(scratch string) error {
+	return filepath.WalkDir(scratch, func(path string, entry os.DirEntry, err error) error {
+		if os.IsNotExist(err) {
+			return nil
+		}
+		if err != nil || !entry.IsDir() {
+			return err
+		}
+		info, err := entry.Info()
+		if err != nil {
+			return err
+		}
+		directory, err := os.Open(path)
+		if err != nil {
+			return err
+		}
+		defer directory.Close()
+		opened, err := directory.Stat()
+		if err != nil {
+			return err
+		}
+		// WalkDir does not follow links; bind chmod to the same observed directory.
+		if !os.SameFile(info, opened) {
+			return fmt.Errorf("scratch directory changed before cleanup: %s", path)
+		}
+		return directory.Chmod(info.Mode() | 0700)
+	})
 }
 
 // secondOpinionImport keeps only new regular root files admitted by the staging
