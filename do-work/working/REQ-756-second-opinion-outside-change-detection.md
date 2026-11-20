@@ -1,7 +1,7 @@
 ---
 id: REQ-756
 title: 'Addendum: Detect committed and ignored outside-bundle changes'
-status: pending
+status: claimed
 created_at: 2026-11-20T01:30:31Z
 user_request: UR-188
 addendum_to: REQ-754
@@ -13,6 +13,7 @@ tdd: true
 maintenance: false
 impact: impact-user-visible
 effort_estimate: effort-substantive
+claimed_at: 2026-11-20T16:14:14Z
 ---
 # Addendum: Detect committed and ignored outside-bundle changes
 
