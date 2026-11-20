@@ -404,10 +404,15 @@ func TestSecondOpinionOutsideRenameIncludesBothSides(t *testing.T) {
 	os.WriteFile(filepath.Join(repo, "outside.txt"), []byte("tracked"), 0644)
 	toolboxTestGit(t, repo, "add", ".")
 	toolboxTestGit(t, repo, "commit", "-qm", "outside fixture")
+	before, err := secondOpinionOutsideSnapshot(context.Background(), repo, bundle)
+	if err != nil {
+		t.Fatal(err)
+	}
 	toolboxTestGit(t, repo, "mv", "outside.txt", filepath.Join(bundle, "moved.txt"))
-	outside, err := secondOpinionOutside(repo, bundle)
-	if err != nil || len(outside) != 1 || outside[0] != "outside.txt" {
-		t.Fatalf("rename source lost: %v %v", outside, err)
+	row := resultmodel.AIReportSecondOpinionRun{}
+	err = secondOpinionOutsideCheck(context.Background(), repo, bundle, before, &row)
+	if err == nil || len(row.OutsidePaths) != 1 || row.OutsidePaths[0] != "outside.txt" {
+		t.Fatalf("rename source lost: %v %v", row.OutsidePaths, err)
 	}
 }
 
