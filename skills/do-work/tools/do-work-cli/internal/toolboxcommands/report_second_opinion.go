@@ -523,58 +523,6 @@ func secondOpinionPreserved(bundle string, before map[string]secondOpinionFile, 
 	return nil
 }
 
-func secondOpinionOutside(repository, bundle string) ([]string, error) {
-	command := exec.Command("git", "-C", repository, "status", "--porcelain=v1", "-z", "--untracked-files=all")
-	output, err := command.Output()
-	if err != nil {
-		return nil, fmt.Errorf("git status failed: %w", err)
-	}
-	relative, err := filepath.Rel(repository, bundle)
-	if err != nil {
-		return nil, err
-	}
-	prefix := filepath.ToSlash(relative) + "/"
-	outside := []string{}
-	tokens := bytes.Split(output, []byte{0})
-	for i := 0; i < len(tokens); i++ {
-		record := string(tokens[i])
-		if record == "" {
-			continue
-		}
-		if len(record) < 4 {
-			return nil, errors.New("malformed git status")
-		}
-		paths := []string{record[3:]}
-		if strings.ContainsAny(record[:2], "RC") {
-			i++
-			if i >= len(tokens) || len(tokens[i]) == 0 {
-				return nil, errors.New("incomplete git rename status")
-			}
-			paths = append(paths, string(tokens[i]))
-		}
-		for _, name := range paths {
-			if !strings.HasPrefix(name, prefix) {
-				outside = append(outside, name)
-			}
-		}
-	}
-	sort.Strings(outside)
-	return outside, nil
-}
-
-// secondOpinionOutsideCheck checks only the isolated worktree, never the real checkout.
-func secondOpinionOutsideCheck(repository, bundle string, row *resultmodel.AIReportSecondOpinionRun) error {
-	paths, err := secondOpinionOutside(repository, bundle)
-	row.OutsidePaths = paths
-	if err != nil {
-		return err
-	}
-	if len(paths) > 0 {
-		return fmt.Errorf("outside-bundle changes: %s", strings.Join(paths, ", "))
-	}
-	return nil
-}
-
 // secondOpinionPrepare is the session form's first phase: it reserves the staging page, records the bundle's
 // digests beside it, and hands the filled prompt back so the editorial pass runs in the agent's own session
 // instead of a hidden subprocess of its CLI. Nothing here executes a backend.
@@ -711,7 +659,14 @@ func secondOpinionRun(ctx context.Context, repository, bundle, executable, templ
 		fail(err)
 		return
 	}
-	checkOutside := func() error { return secondOpinionOutsideCheck(worktree.treePath, bundle, row) }
+	outsideBefore, err := secondOpinionOutsideSnapshot(ctx, worktree.treePath, bundle)
+	if err != nil {
+		fail(err)
+		return
+	}
+	checkOutside := func() error {
+		return secondOpinionOutsideCheck(ctx, worktree.treePath, bundle, outsideBefore, row)
+	}
 	// The tiny read-only probe resolves defaults before the asset prefix is sent.
 	probeContext, stopProbe := context.WithTimeout(ctx, 90*time.Second)
 	defer stopProbe()
