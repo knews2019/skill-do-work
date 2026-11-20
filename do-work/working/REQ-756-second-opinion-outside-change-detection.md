@@ -3,6 +3,8 @@ id: REQ-756
 title: 'Addendum: Detect committed and ignored outside-bundle changes'
 status: claimed
 route: A
+heavy_verified_at: 2026-11-20T16:27:06Z
+heavy_verified_revision: 3295931f360da8157dbeb799674c6d27dfa86519
 review_at: 2026-11-20T16:19:58Z
 kb_status: pending
 commit: ef938a96d404282c2ce42e6600127c06ba29c76a
@@ -138,3 +140,12 @@ Base: `435f7fa97f054eab40725f8f0f1fa3cd200dcca9`; target: `ef938a96d404282c2ce42
 - `staged-skills`: `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane staged-skills`. Reasons: skills/do-work-toolbox/actions/ai-report.md matched subtree skills; skills/do-work-toolbox/docs/ai-report-guide.md matched subtree skills; skills/do-work/tools/do-work-cli/internal/toolboxcommands/report_second_opinion.go matched subtree skills; skills/do-work/tools/do-work-cli/internal/toolboxcommands/report_second_opinion_outside.go matched subtree skills; skills/do-work/tools/do-work-cli/internal/toolboxcommands/report_second_opinion_outside_test.go matched subtree skills; skills/do-work/tools/do-work-cli/internal/toolboxcommands/report_second_opinion_test.go matched subtree skills.
 - `updater`: `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane updater`. Reasons: skills/do-work/tools/do-work-cli/internal/toolboxcommands/report_second_opinion.go matched subtree skills/do-work/tools/do-work-cli; skills/do-work/tools/do-work-cli/internal/toolboxcommands/report_second_opinion_outside.go matched subtree skills/do-work/tools/do-work-cli; skills/do-work/tools/do-work-cli/internal/toolboxcommands/report_second_opinion_outside_test.go matched subtree skills/do-work/tools/do-work-cli; skills/do-work/tools/do-work-cli/internal/toolboxcommands/report_second_opinion_test.go matched subtree skills/do-work/tools/do-work-cli.
 - `installer`: `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane installer`. Reasons: skills/do-work/tools/do-work-cli/internal/toolboxcommands/report_second_opinion.go matched subtree skills/do-work/tools/do-work-cli; skills/do-work/tools/do-work-cli/internal/toolboxcommands/report_second_opinion_outside.go matched subtree skills/do-work/tools/do-work-cli; skills/do-work/tools/do-work-cli/internal/toolboxcommands/report_second_opinion_outside_test.go matched subtree skills/do-work/tools/do-work-cli; skills/do-work/tools/do-work-cli/internal/toolboxcommands/report_second_opinion_test.go matched subtree skills/do-work/tools/do-work-cli.
+
+## Heavy Verification Result
+
+Target: `ef938a96d404282c2ce42e6600127c06ba29c76a`; execution revision: `3295931f360da8157dbeb799674c6d27dfa86519`. Recomputed plans matched their stored ranges; no pending request remained. All selected lanes passed, none skipped.
+
+- `do-work-cli-integrations`: exit 0, 98s, executed (fingerprint_uncertain).
+- `staged-skills`: exit 0, 40s, executed (fingerprint_uncertain).
+- `updater`: exit 0, 95s, executed (fingerprint_uncertain).
+- `installer`: exit 0, 63s, executed (fingerprint_uncertain).

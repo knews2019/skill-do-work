@@ -3,6 +3,8 @@ id: REQ-755
 title: 'Addendum: Remove second-opinion worktrees containing read-only directories'
 status: claimed
 route: A
+heavy_verified_at: 2026-11-20T16:27:06Z
+heavy_verified_revision: 3295931f360da8157dbeb799674c6d27dfa86519
 review_at: 2026-11-20T16:14:06Z
 kb_status: pending
 commit: 10bd6e71103de2da6282d402ef890da25f68da2e
@@ -134,3 +136,12 @@ Base: `f2414954795c63dcb208a0410505e6869dfa1780`; target: `10bd6e71103de2da6282d
 - `staged-skills`: `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane staged-skills`. Reasons: skills/do-work/tools/do-work-cli/internal/toolboxcommands/report_second_opinion_cleanup_test.go matched subtree skills; skills/do-work/tools/do-work-cli/internal/toolboxcommands/report_second_opinion_worktree.go matched subtree skills.
 - `updater`: `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane updater`. Reasons: skills/do-work/tools/do-work-cli/internal/toolboxcommands/report_second_opinion_cleanup_test.go matched subtree skills/do-work/tools/do-work-cli; skills/do-work/tools/do-work-cli/internal/toolboxcommands/report_second_opinion_worktree.go matched subtree skills/do-work/tools/do-work-cli.
 - `installer`: `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane installer`. Reasons: skills/do-work/tools/do-work-cli/internal/toolboxcommands/report_second_opinion_cleanup_test.go matched subtree skills/do-work/tools/do-work-cli; skills/do-work/tools/do-work-cli/internal/toolboxcommands/report_second_opinion_worktree.go matched subtree skills/do-work/tools/do-work-cli.
+
+## Heavy Verification Result
+
+Target: `10bd6e71103de2da6282d402ef890da25f68da2e`; execution revision: `3295931f360da8157dbeb799674c6d27dfa86519`. Recomputed plans matched their stored ranges; no pending request remained. All selected lanes passed, none skipped.
+
+- `do-work-cli-integrations`: exit 0, 98s, executed (fingerprint_uncertain).
+- `staged-skills`: exit 0, 40s, executed (fingerprint_uncertain).
+- `updater`: exit 0, 95s, executed (fingerprint_uncertain).
+- `installer`: exit 0, 63s, executed (fingerprint_uncertain).
