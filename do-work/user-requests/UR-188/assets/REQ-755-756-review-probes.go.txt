@@ -1,0 +1,53 @@
+package toolboxcommands
+import (
+ "os"
+ "path/filepath"
+ "strings"
+ "testing"
+ "github.com/knews2019/skill-do-work/do-work-cli/internal/resultmodel"
+)
+func TestREQ754ReviewCleanup(t *testing.T) {
+ repo,bundle := secondOpinionFixture(t)
+ scratch:=t.TempDir();t.Setenv("TMPDIR",scratch)
+ folder:=filepath.Join(bundle,"readonly-assets")
+ if err:=os.Mkdir(folder,0755);err!=nil{t.Fatal(err)}
+ secondOpinionWriteTestFile(t,filepath.Join(folder,"chart.svg"),"<svg/>")
+ if err:=os.Chmod(folder,0555);err!=nil{t.Fatal(err)}
+ t.Cleanup(func(){
+  _=os.Chmod(folder,0755)
+  _=filepath.WalkDir(scratch,func(path string,d os.DirEntry,e error)error{if e==nil && d.IsDir(){_=os.Chmod(path,0755)};return nil})
+  _=os.RemoveAll(scratch)
+  toolboxTestGit(t,repo,"worktree","prune")
+ })
+ secondOpinionFakeCodex(t,"")
+ previous:=secondOpinionJudge
+ secondOpinionJudge=func(string,[]byte)(string,[]resultmodel.AIReportSecondOpinionFinding){return "pass",nil}
+ t.Cleanup(func(){secondOpinionJudge=previous})
+ row:=secondOpinionInvoke(t,repo,"--backend","codex").AIReportSecondOpinion.BackendRuns[0]
+ t.Logf("state=%s judge=%s banner=%s reason=%s",row.RunState,row.JudgeVerdict,row.BannerState,row.FailureReason)
+ if row.RunState!="ran" {t.Error("valid read-only assets caused run failure")}
+ secondOpinionAssertNoWorktree(t,repo,scratch)
+}
+func TestREQ754ReviewOutsideChanges(t *testing.T) {
+ for _,scenario:=range []string{"committed edit","ignored new file"}{t.Run(scenario,func(t *testing.T){
+  repo,_:=secondOpinionFixture(t)
+  secondOpinionWriteTestFile(t,filepath.Join(repo,"README.md"),"original")
+  secondOpinionWriteTestFile(t,filepath.Join(repo,".gitignore"),"scratch-output.txt\n")
+  toolboxTestGit(t,repo,"add","README.md",".gitignore")
+  toolboxTestGit(t,repo,"commit","-qm","outside baseline")
+  scratch:=t.TempDir();t.Setenv("TMPDIR",scratch)
+  script:=`printf changed > ../../README.md
+git -C ../.. add README.md
+git -C ../.. commit -qm 'outside edit'`
+  expected:="README.md"
+  if scenario=="ignored new file"{script="printf forbidden > ../../scratch-output.txt";expected="scratch-output.txt"}
+  secondOpinionFakeCodex(t,script)
+  previous:=secondOpinionJudge
+  secondOpinionJudge=func(string,[]byte)(string,[]resultmodel.AIReportSecondOpinionFinding){return "pass",nil}
+  t.Cleanup(func(){secondOpinionJudge=previous})
+  row:=secondOpinionInvoke(t,repo,"--backend","codex").AIReportSecondOpinion.BackendRuns[0]
+  t.Logf("state=%s judge=%s banner=%s outside=%v",row.RunState,row.JudgeVerdict,row.BannerState,row.OutsidePaths)
+  if row.RunState!="failed" || !strings.Contains(strings.Join(row.OutsidePaths,","),expected){t.Error("outside write was not refused")}
+  secondOpinionAssertNoWorktree(t,repo,scratch)
+ })}
+}

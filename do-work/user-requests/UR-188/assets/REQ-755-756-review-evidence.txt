@@ -1,0 +1,10 @@
+Review target: 4e48c2ef38f110de7053cc064fcbf82034af0cb1, version 0.331.2.
+Previous source comparison: 02f3a5e1, replacing report_second_opinion.go via go -overlay.
+Full existing TestSecondOpinion suite: exit 0, 38.532 seconds.
+Current TestREQ754ReviewCleanup: FAIL; state=failed judge=pass banner=inserted; Git worktree remove Permission denied; temporary checkout directory remains.
+Previous TestREQ754ReviewCleanup: PASS; state=ran judge=pass banner=inserted.
+Current and previous TestREQ754ReviewOutsideChanges/committed_edit: FAIL; state=ran judge=pass banner=inserted outside=[].
+Current and previous TestREQ754ReviewOutsideChanges/ignored_new_file: FAIL; state=ran judge=pass banner=inserted outside=[].
+Current three-probe run: exit 1, 1.867 seconds. Previous-source run: exit 1, 1.538 seconds.
+Probes use fake Codex metadata/output and a pass judge seam. No paid backends or browser were invoked. Probe cleanup removed fixture leftovers. No production files were changed by review.
+Reproduce in the CLI module using go test -overlay <mapping of internal/toolboxcommands/req754_review_probe_test.go to saved probe source> ./internal/toolboxcommands -run '^TestREQ754Review' -count=1 -v.
