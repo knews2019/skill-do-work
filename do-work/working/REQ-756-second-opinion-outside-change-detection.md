@@ -2,6 +2,12 @@
 id: REQ-756
 title: 'Addendum: Detect committed and ignored outside-bundle changes'
 status: claimed
+route: A
+estimate:
+  p50_active_minutes: 15
+  confidence: medium
+  calculated_at: 2026-11-20T16:14:38Z
+  basis: ["Route A", "6-file write set", "6 acceptance criteria"]
 created_at: 2026-11-20T01:30:31Z
 user_request: UR-188
 addendum_to: REQ-754
@@ -44,7 +50,7 @@ Keep the current uncommitted bundle contents and unrelated real-checkout changes
 - `skills/do-work/tools/do-work-cli/lessons-do-work-cli.md` — 25337 tokens, slugged partial, exceeds the 2000-token capture budget. Relevant families include canonical-worktree-cleanup and final-boundary-identity. Read touch-required sections during implementation.
 
 ## AI Execution State (P-A-U Loop)
-- [ ] **[PLAN]:** Read listed prime files and agent rules, then record the focused approach.
+- [x] **[PLAN]:** Read CLI, release and action primes and relevant crew/lessons; recorded the six-file focused approach.
 - [ ] **[APPLY]:** Implement the captured repair within its declared scope.
 - [ ] **[UNIFY]:** Review each changed file, run formatting and focused checks, and record evidence.
 
@@ -53,3 +59,15 @@ No pending or pending-answers request in any UR shares this root cause. This is 
 
 ## Assets
 Original probes and observed results are preserved under `do-work/user-requests/UR-188/assets/`.
+
+## Triage
+
+**Route: A** — Reproduced detection bug with known call sites and test seams; no open design question.
+
+## Plan
+
+Planning not required (Route A). Replace mutable Git-status evidence with a fixed filesystem baseline of the isolated checkout outside the selected bundle and root Git control entry, captured before any backend probe. Compare file digests, types, permissions and symlink targets without following links. Check after every probe and generation; retain existing refusal recovery and cleanup. Cover committed/ignored edits at both phases, ordinary staged/unstaged edits, unchanged ignored inputs, and rename deletion evidence. Expected write set: shared runner, new snapshot helper and tests, existing rename test, action and guide (six files). No new dependencies.
+
+## Decisions
+
+- D-01 (DECIDE & STATE): Baseline filesystem evidence also handles untracked/ignored files and mutable ignore rules without combining several Git commands. Ignore only the checkout's root .git control entry; temporary Git internals are expected to change when a backend commits. This remains a worktree behavior check, not a security boundary.
