@@ -219,3 +219,24 @@ Target and execution revision `d1156bc6d8493ab87bd673cf662bff9ed1006819`. All la
 - Staged skills passed in 34 seconds.
 - Updater passed in 71 seconds.
 - Installer passed in 32 seconds.
+
+## Review
+
+**Later review and retrospective** | 2026-11-20T01:30:48Z | reviewed revision 4e48c2ef (0.331.2)
+
+**Verdict: Request changes.** Normal worktree isolation works, but the cleanup and outside-change promises have reproduced gaps. This evidence qualifies the earlier approval; that earlier record remains historical.
+
+- F1 [P2] A readable 0555 asset directory is copied with its mode intact, then both Git removal and os.RemoveAll fail. The page can already be linked while the run reports cleanup failure and leaves scratch files. This is a regression introduced by REQ-754. — impact-user-visible → explicitly captured as REQ-755 under UR-188.
+- F2 [P2] The reused git status check misses a committed outside README edit and an ignored outside file. Both runs were accepted with outside_paths=[]. These gaps predate REQ-754; the writes remained in the isolated checkout. — impact-user-visible → explicitly captured as REQ-756 under UR-188.
+
+**Evidence:** Existing TestSecondOpinion tests passed in 38.532 seconds. Three focused Go overlay probes failed on the reviewed revision. The cleanup probe passed against pre-change source 02f3a5e1; the other two failed there too. Original probes and results are preserved as UR-188 assets. Paid models and real-browser acceptance were not exercised. Fixture leftovers were cleaned up.
+
+### Retrospective
+
+**What worked:** Detached worktrees solved the unrelated-uncommitted-files blocker. Existing failure, cancellation and signal tests exercised real lifecycle paths. Comparing the same new probes against the old source distinguished a new regression from inherited defects.
+
+**What missed the failures:** Cleanup tests varied exit paths but omitted directory permissions. Outside-change tests trusted Git status semantics without checking ignored files or a backend commit. Broad green gates proved their covered scenarios, so the earlier unqualified approval overstated the evidence.
+
+**Review handling:** The later review initially kept findings in chat and probes in temporary storage. This append and UR-188 preserve them. The two repairs remain separate so their root causes and closure evidence are independently reviewable.
+
+**Change for this repair:** Start with the three demonstrated failures, add directly related controls, and require RED/GREEN evidence in the normal Go harness. Recheck every original promise after integration and verify both filesystem cleanup and Git registration cleanup. Keep isolation claims bounded: unrestricted absolute-path access and shared Git metadata are outside its security guarantees.
