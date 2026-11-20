@@ -1,7 +1,7 @@
 ---
 id: REQ-755
 title: 'Addendum: Remove second-opinion worktrees containing read-only directories'
-status: claimed
+status: completed
 route: A
 heavy_verified_at: 2026-11-20T16:27:06Z
 heavy_verified_revision: 3295931f360da8157dbeb799674c6d27dfa86519
@@ -29,6 +29,8 @@ maintenance: false
 impact: impact-user-visible
 effort_estimate: effort-substantive
 claimed_at: 2026-11-20T01:30:48Z
+completed_at: 2026-11-20T16:27:07Z
+release_at: 2026-11-20T16:27:07Z
 ---
 # Addendum: Remove second-opinion worktrees containing read-only directories
 
