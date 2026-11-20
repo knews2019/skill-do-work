@@ -3,6 +3,7 @@ id: REQ-755
 title: 'Addendum: Remove second-opinion worktrees containing read-only directories'
 status: claimed
 route: A
+integration_at: 2026-11-20T01:34:19Z
 estimate:
   p50_active_minutes: 10
   confidence: medium
@@ -52,8 +53,8 @@ Keep the current uncommitted bundle contents and unrelated real-checkout changes
 
 ## AI Execution State (P-A-U Loop)
 - [x] **[PLAN]:** Reproduce read-only-directory cleanup in success, backend-failure and cancellation cases. Restore owner access through verified directory handles only inside owned scratch before teardown; never follow links. Read the listed release lessons and relevant CLI cleanup/identity/process lessons.
-- [ ] **[APPLY]:** Implement the captured repair within its declared scope.
-- [ ] **[UNIFY]:** Review each changed file, run formatting and focused checks, and record evidence.
+- [x] **[APPLY]:** Added scratch-only directory permission restoration and four cleanup regressions on the isolated REQ branch.
+- [x] **[UNIFY]:** Read both changed files and git diff, ran gofmt, diff-check, focused GREEN and race tests. Git/worktree registration and original bytes/modes assertions pass.
 
 ## Context
 No pending or pending-answers request in any UR shares this root cause. This is explicit user promotion of a report-only review finding, not an automatic critical follow-up.
@@ -68,3 +69,16 @@ Original probes and observed results are preserved under `do-work/user-requests/
 ## Plan
 
 Planning not required (Route A). The failure and code path are known.
+
+## Implementation Summary
+
+**Files changed:**
+- `skills/do-work/tools/do-work-cli/internal/toolboxcommands/report_second_opinion_worktree.go` (modified) — restore owner directory access on verified open handles in owned scratch after process reaping, before deletion; do not follow links.
+- `skills/do-work/tools/do-work-cli/internal/toolboxcommands/report_second_opinion_cleanup_test.go` (new) — success, backend failure, cancellation and outside-symlink refusal with read-only assets, original-byte/mode and residue assertions.
+
+**What was done:** Valid read-only report directories no longer prevent worktree cleanup. Existing genuine cleanup errors remain reported. Implementation 24877ad3 integrated in 10bd6e71; merge range f2414954..10bd6e71.
+
+## Decisions
+
+- D-01 (DECIDE & STATE). Preserve copied permissions during generation and validation. Add owner access only for teardown after processes stop. WalkDir skips links, and chmod uses a verified directory handle.
+- D-02 (DECIDE & STATE). Implement the small review repair in the main agent using an owned worktree. Main-tree lifecycle state stays with the orchestrator role.
