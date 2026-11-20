@@ -2,6 +2,15 @@
 id: REQ-755
 title: 'Addendum: Remove second-opinion worktrees containing read-only directories'
 status: claimed
+route: A
+estimate:
+  p50_active_minutes: 10
+  confidence: medium
+  calculated_at: 2026-11-20T01:31:37Z
+  basis:
+    - Route A
+    - 2-file write set
+    - 4 acceptance criteria
 created_at: 2026-11-20T01:30:31Z
 user_request: UR-188
 addendum_to: REQ-754
@@ -42,7 +51,7 @@ Keep the current uncommitted bundle contents and unrelated real-checkout changes
 - `skills/do-work/tools/do-work-cli/lessons-do-work-cli.md` — 25337 tokens, slugged partial, exceeds the 2000-token capture budget. Relevant families include canonical-worktree-cleanup and final-boundary-identity. Read touch-required sections during implementation.
 
 ## AI Execution State (P-A-U Loop)
-- [ ] **[PLAN]:** Read listed prime files and agent rules, then record the focused approach.
+- [x] **[PLAN]:** Reproduce read-only-directory cleanup in success, backend-failure and cancellation cases. Restore owner access through verified directory handles only inside owned scratch before teardown; never follow links. Read the listed release lessons and relevant CLI cleanup/identity/process lessons.
 - [ ] **[APPLY]:** Implement the captured repair within its declared scope.
 - [ ] **[UNIFY]:** Review each changed file, run formatting and focused checks, and record evidence.
 
@@ -51,3 +60,11 @@ No pending or pending-answers request in any UR shares this root cause. This is 
 
 ## Assets
 Original probes and observed results are preserved under `do-work/user-requests/UR-188/assets/`.
+
+## Triage
+
+**Route: A** — Focused bug fix with reproduced input and known helper.
+
+## Plan
+
+Planning not required (Route A). The failure and code path are known.
