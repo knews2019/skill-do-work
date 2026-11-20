@@ -3,6 +3,9 @@ id: REQ-755
 title: 'Addendum: Remove second-opinion worktrees containing read-only directories'
 status: claimed
 route: A
+review_at: 2026-11-20T16:14:06Z
+kb_status: pending
+commit: 10bd6e71103de2da6282d402ef890da25f68da2e
 integration_at: 2026-11-20T01:34:19Z
 estimate:
   p50_active_minutes: 10
@@ -82,3 +85,52 @@ Planning not required (Route A). The failure and code path are known.
 
 - D-01 (DECIDE & STATE). Preserve copied permissions during generation and validation. Add owner access only for teardown after processes stop. WalkDir skips links, and chmod uses a verified directory handle.
 - D-02 (DECIDE & STATE). Implement the small review repair in the main agent using an owned worktree. Main-tree lifecycle state stays with the orchestrator role.
+
+## Qualification
+
+Request-bound advance qualification passed for f2414954..10bd6e71. The new-file static-reference warning is Go test discovery, confirmed by the executed test. Both files and four acceptance criteria were checked; no scope drift.
+
+## Testing
+
+RED: four cases of TestSecondOpinionWorktreeReadOnlyCleanup reproduced permission-denied cleanup/residue before the fix (2.534s). GREEN: the same test passed (2.007s). The adjacent worktree/session tests passed with race detection (17.590s), and the resumed focused probe passed (17.467s). Fresh direct `bash _dev/tests/maintainer-verify.sh` exited 0 in 169s: 428 board and 1012 CLI fast tests, vet, formatting and contracts passed. The interrupted gate had no final result and was not counted. Heavy lanes below await the queue drain.
+
+## Review
+
+**Overall: 97%** | 2026-11-20T16:14:06Z
+
+| Dimension | Score |
+|-----------|-------|
+| Requirements | 100% |
+| Code Quality | 95% |
+| Test Adequacy | 95% |
+| Scope | 100% |
+| Risk | Low |
+| Acceptance | Pass |
+
+**Important findings:** None.
+**Minor findings:** None.
+**Acceptance:** Pass — implementation and integration exercised using the real public handler with fake backend/pass-judge seams, plus cancellation. All four requirements met. WalkDir visits directories before reading their children, does not follow links, and chmod is bound to the observed directory handle; genuine errors remain joined. Original modes/bytes and worktree removal are asserted. Parent reviewed f2414954..10bd6e71; the interrupted independent review's preliminary comments are not counted as approval.
+**Restatement sweep:** nothing redefined; cleanup behavior retains the existing documented contract.
+**Suggested testing:** Live model/render acceptance unassessed; this repair changes teardown, covered by deterministic backend fixtures. Packaging lanes await drain.
+**Follow-ups created:** None.
+
+*Reviewed by review-work action in the current session*
+
+## Lessons Learned
+
+**What worked:** Reproduce read-only directories with nonempty assets and verify both filesystem and Git registration cleanup, including failure/cancellation.
+**What didn't:** A force flag cannot bypass directory permissions; the previous cleanup assumed it could.
+**Worth knowing:** Preserve original modes during generation and verification, then restore owner access only on owned scratch directories after writers stop. This is already covered by the CLI prime's canonical-worktree-cleanup/final-boundary-identity lessons; no duplicate satellite entry needed.
+
+## Orientation
+
+Second-opinion teardown in the do-work CLI now handles readable read-only report assets without altering original permissions. CLI/release prime paths remain valid and need no map update.
+
+## Heavy Verification Plan
+
+Base: `f2414954795c63dcb208a0410505e6869dfa1780`; target: `10bd6e71103de2da6282d402ef890da25f68da2e`.
+
+- `do-work-cli-integrations`: `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane do-work-cli-integrations`. Reasons: skills/do-work/tools/do-work-cli/internal/toolboxcommands/report_second_opinion_cleanup_test.go matched subtree skills/do-work/tools/do-work-cli; skills/do-work/tools/do-work-cli/internal/toolboxcommands/report_second_opinion_worktree.go matched subtree skills/do-work/tools/do-work-cli.
+- `staged-skills`: `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane staged-skills`. Reasons: skills/do-work/tools/do-work-cli/internal/toolboxcommands/report_second_opinion_cleanup_test.go matched subtree skills; skills/do-work/tools/do-work-cli/internal/toolboxcommands/report_second_opinion_worktree.go matched subtree skills.
+- `updater`: `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane updater`. Reasons: skills/do-work/tools/do-work-cli/internal/toolboxcommands/report_second_opinion_cleanup_test.go matched subtree skills/do-work/tools/do-work-cli; skills/do-work/tools/do-work-cli/internal/toolboxcommands/report_second_opinion_worktree.go matched subtree skills/do-work/tools/do-work-cli.
+- `installer`: `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane installer`. Reasons: skills/do-work/tools/do-work-cli/internal/toolboxcommands/report_second_opinion_cleanup_test.go matched subtree skills/do-work/tools/do-work-cli; skills/do-work/tools/do-work-cli/internal/toolboxcommands/report_second_opinion_worktree.go matched subtree skills/do-work/tools/do-work-cli.
