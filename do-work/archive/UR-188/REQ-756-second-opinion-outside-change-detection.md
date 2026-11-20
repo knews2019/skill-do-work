@@ -1,7 +1,7 @@
 ---
 id: REQ-756
 title: 'Addendum: Detect committed and ignored outside-bundle changes'
-status: claimed
+status: completed
 route: A
 heavy_verified_at: 2026-11-20T16:27:06Z
 heavy_verified_revision: 3295931f360da8157dbeb799674c6d27dfa86519
@@ -26,6 +26,8 @@ maintenance: false
 impact: impact-user-visible
 effort_estimate: effort-substantive
 claimed_at: 2026-11-20T16:14:14Z
+completed_at: 2026-11-20T16:27:22Z
+release_at: 2026-11-20T16:27:22Z
 ---
 # Addendum: Detect committed and ignored outside-bundle changes
 

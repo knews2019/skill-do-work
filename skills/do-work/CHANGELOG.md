@@ -10,6 +10,10 @@ For the complete release history, read this file and the archives below from new
 - [0.50.0 through 0.64.1](https://github.com/knews2019/skill-do-work/blob/main/docs/changelog/CHANGELOG-2026-04-13-up-to-v0.64.1.md)
 - [0.1.0 through 0.49.0](https://github.com/knews2019/skill-do-work/blob/main/docs/changelog/CHANGELOG-2026-04-07-up-to-v0.49.0.md)
 
+## 0.331.4 — Detect Committed and Ignored Second-Opinion Changes (2026-11-20)
+
+Second-opinion runs now reject outside-report edits even when the backend commits them or Git ignores the affected files. Checks compare the isolated checkout with a snapshot taken before model probes, while preserving finished refusal pages and leaving unrelated user edits alone.
+
 ## 0.331.3 — Clean Up Read-Only Second-Opinion Assets (2026-11-20)
 
 Second-opinion runs now remove their temporary worktrees when report assets are in readable, read-only directories. Cleanup preserves original file permissions and works after success, failure and cancellation.
