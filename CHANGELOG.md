@@ -10,6 +10,10 @@ For the complete release history, read this file and the archives below from new
 - [0.50.0 through 0.64.1](https://github.com/knews2019/skill-do-work/blob/main/docs/changelog/CHANGELOG-2026-04-13-up-to-v0.64.1.md)
 - [0.1.0 through 0.49.0](https://github.com/knews2019/skill-do-work/blob/main/docs/changelog/CHANGELOG-2026-04-07-up-to-v0.49.0.md)
 
+## 0.331.6 — Schematics Sit on a Plain Sheet (2026-11-23)
+
+A `schematics` second opinion now draws on a plain white sheet, or a plain dark grey sheet in the dark theme. Frames, lines and text use neutral greys, and a frame has no fill, so only the parts and the arrows carry color.
+
 ## 0.331.5 — Schematics Number the Steps and Color Parts by Kind (2026-11-23)
 
 A `schematics` second opinion now shows the order of the actions, not only where the parts sit.
