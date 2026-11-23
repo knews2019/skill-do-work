@@ -4,6 +4,8 @@
    Components (skeleton.html shows each one in place):
    - Color means a role, everywhere: .role-cause (amber), .role-problem (pink-red), .role-change (violet),
      .role-effect (teal), .role-proof (blue). A role class sets --role; components paint with var(--role).
+   - The page is plain: white paper and neutral greys, so color belongs to roles only. A .node is filled with a
+     tint of its role, and its .tag is solid. Text on a solid role color uses var(--on-role).
    - .page > .band (full-width section) > .row (flex-wrap) > children with style="flex: <grow> 1 <basis>".
    - .measure caps running text at a readable width. Media and grids use the full width.
    - .depth-marker + .gauge say which of the three depths a section belongs to.
@@ -19,18 +21,20 @@
    - Motion always answers a reader action. prefers-reduced-motion turns transitions off. */
 
 :root {
-  --paper: #f5f7ff;
+  --paper: #ffffff;
   --surface: #ffffff;
-  --ink: #18203a;
-  --muted: #56607f;
-  --line: #d6dcf0;
-  --code-bg: #eef1fb;
-  --problem: #e2335a;
-  --cause: #e08a00;
-  --change: #6a4cf0;
-  --effect: #0a9a84;
-  --proof: #1f6fe5;
+  --ink: #1f2328;
+  --muted: #59636e;
+  --line: #d5d9de;
+  --code-bg: #f3f4f6;
+  --problem: #d92b4f;
+  --cause: #f08c00;
+  --change: #7048ff;
+  --effect: #008566;
+  --proof: #1570e0;
   --role: var(--proof);
+  --on-role: #ffffff;
+  --on-cause: #2a1800;
   --display: ui-rounded, "SF Pro Rounded", "Arial Rounded MT Bold", "Varela Round", system-ui, sans-serif;
   --body: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
@@ -39,12 +43,14 @@
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --paper: #0f1426;
-    --surface: #182039;
-    --ink: #e8ecff;
-    --muted: #a3acd0;
-    --line: #2c3659;
-    --code-bg: #121a31;
+    --paper: #16181b;
+    --surface: #1e2125;
+    --ink: #e6e8eb;
+    --muted: #a4abb3;
+    --line: #3a3f46;
+    --code-bg: #111315;
+    --on-role: #16181b;
+    --on-cause: #16181b;
     --problem: #ff6b88;
     --cause: #ffc14d;
     --change: #a891ff;
@@ -53,7 +59,7 @@
   }
 }
 
-.role-cause { --role: var(--cause); }
+.role-cause { --role: var(--cause); --on-role: var(--on-cause); }
 .role-problem { --role: var(--problem); }
 .role-change { --role: var(--change); }
 .role-effect { --role: var(--effect); }
@@ -67,9 +73,7 @@ body {
   margin: 0;
   font: 17px/1.6 var(--body);
   overflow-wrap: break-word;
-  background:
-    radial-gradient(circle at 1px 1px, color-mix(in srgb, var(--line) 70%, transparent) 1px, transparent 0) 0 0 / 22px 22px,
-    var(--paper);
+  background: var(--paper);
 }
 
 h1, h2, h3 { font-family: var(--display); line-height: 1.15; margin: 0 0 .5em; letter-spacing: -0.01em; }
@@ -105,23 +109,23 @@ pre code { background: none; padding: 0; }
 .legend li { display: flex; align-items: center; gap: 8px; }
 .legend li::before { content: ""; width: 14px; height: 14px; border-radius: 4px; background: var(--role); }
 
-/* Story step. The valve bar on top carries the role color. */
+/* Story step. The fill, the border and the valve bar on top carry the role color. */
 .node {
   position: relative;
-  background: var(--surface);
-  border: 2px solid color-mix(in srgb, var(--role) 45%, var(--line));
+  background: color-mix(in srgb, var(--role) 13%, var(--surface));
+  border: 2px solid var(--role);
   border-radius: 18px;
   padding: 22px 20px 18px;
   min-width: 0;
   overflow-wrap: break-word;
 }
 .node::before {
-  content: ""; position: absolute; left: 18px; right: 18px; top: -2px; height: 7px;
+  content: ""; position: absolute; left: 18px; right: 18px; top: -2px; height: 9px;
   border-radius: 0 0 8px 8px; background: var(--role);
 }
 .tag {
   display: inline-block; font-weight: 700; font-size: .85rem;
-  color: var(--ink); background: color-mix(in srgb, var(--role) 22%, transparent);
+  color: var(--on-role); background: var(--role);
   border-radius: 999px; padding: 2px 12px; margin-bottom: 10px;
 }
 .node h3 { margin-bottom: .35em; }
@@ -145,6 +149,8 @@ pre code { background: none; padding: 0; }
   border: 1px solid color-mix(in srgb, var(--proof) 35%, var(--line));
   color: var(--ink); overflow-wrap: anywhere;
 }
+/* Inside a filled card a receipt stays on plain surface, edged with the card's role. */
+.node .chip { background: var(--surface); border-color: color-mix(in srgb, var(--role) 55%, var(--surface)); }
 
 /* Glossary words: dotted underline, definition on hover or focus (tap). */
 .term { border-bottom: 2px dotted var(--change); cursor: help; position: relative; }
@@ -164,15 +170,15 @@ pre code { background: none; padding: 0; }
 }
 .btn:hover { border-color: var(--change); }
 .btn:focus-visible { outline: 3px solid var(--change); outline-offset: 2px; }
-.btn.primary { background: var(--change); border-color: var(--change); color: #fff; }
-@media (prefers-color-scheme: dark) { .btn.primary { color: #0f1426; } }
+.btn.primary { background: var(--change); border-color: var(--change); color: var(--on-role); }
 
-/* Reader-driven stepping: everything is visible until a script turns it on; then inactive steps dim. */
+/* Reader-driven stepping: everything is visible until a script turns it on; then inactive steps dim a little,
+   so the page keeps its color. */
 .stepper-on [data-step] { transition: opacity .35s ease, transform .35s ease; }
-.stepper-on [data-step]:not(.is-active) { opacity: .42; }
+.stepper-on [data-step]:not(.is-active) { opacity: .8; }
 .stepper-on [data-step].is-active { transform: translateY(-3px); }
 .stepper-on [data-at] { transition: opacity .35s ease, stroke-width .35s ease; }
-.stepper-on [data-at]:not(.is-lit) { opacity: .3; }
+.stepper-on [data-at]:not(.is-lit) { opacity: .65; }
 .step-controls { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin: 18px 0; }
 .step-label { color: var(--muted); font-weight: 600; }
 
@@ -187,11 +193,11 @@ pre {
   margin: 0; padding: 16px 18px; border-radius: 10px; overflow-x: auto;
   background: var(--code-bg); border: 1px solid var(--line); line-height: 1.5;
 }
-.terminal { background: #141a2e; color: #e3e8ff; border-color: #2c3659; }
+.terminal { background: #1b1e22; color: #e6e8eb; border-color: #3a3f46; }
 .terminal .prompt { color: #7fd9c4; }
 .terminal .bad { color: #ff8fa6; }
 .terminal .good { color: #6ff0cf; }
-.terminal .dim { color: #8d97bd; }
+.terminal .dim { color: #8b949e; }
 
 details { background: var(--surface); border: 2px solid var(--line); border-radius: 14px; padding: 4px 18px; }
 details + details { margin-top: 12px; }
@@ -269,7 +275,7 @@ svg .mono { font-family: var(--mono); }
 .num {
   display: inline-grid; place-items: center; width: 1.7em; height: 1.7em; margin-right: .3em;
   border-radius: 50%; border: 2px solid var(--role); font-size: .9em;
-  background: color-mix(in srgb, var(--role) 22%, var(--surface));
+  background: var(--role); color: var(--on-role);
 }
 
 [data-stepper]:focus { outline: none; }
@@ -281,14 +287,14 @@ svg .mono { font-family: var(--mono); }
 .diagram .box { fill: var(--surface); stroke: var(--muted); stroke-width: 2.5; }
 .diagram .wire { fill: none; stroke: var(--muted); stroke-width: 3.5; stroke-linecap: round; }
 .diagram .dashed { stroke-dasharray: 6 6; }
-.diagram .cause .box { stroke: var(--cause); fill: color-mix(in srgb, var(--cause) 14%, var(--surface)); }
-.diagram .problem .box { stroke: var(--problem); fill: color-mix(in srgb, var(--problem) 10%, var(--surface)); }
+.diagram .cause .box { stroke: var(--cause); fill: color-mix(in srgb, var(--cause) 26%, var(--surface)); }
+.diagram .problem .box { stroke: var(--problem); fill: color-mix(in srgb, var(--problem) 20%, var(--surface)); }
 .diagram .problem .wire { stroke: var(--problem); }
-.diagram .effect .box { stroke: var(--effect); fill: color-mix(in srgb, var(--effect) 10%, var(--surface)); }
+.diagram .effect .box { stroke: var(--effect); fill: color-mix(in srgb, var(--effect) 20%, var(--surface)); }
 .diagram .effect .wire { stroke: var(--effect); }
-.diagram .proof .box { stroke: var(--proof); fill: color-mix(in srgb, var(--proof) 10%, var(--surface)); }
+.diagram .proof .box { stroke: var(--proof); fill: color-mix(in srgb, var(--proof) 20%, var(--surface)); }
 .diagram .proof .wire { stroke: var(--proof); }
-.diagram .change .box { stroke: var(--change); fill: color-mix(in srgb, var(--change) 10%, var(--surface)); }
+.diagram .change .box { stroke: var(--change); fill: color-mix(in srgb, var(--change) 20%, var(--surface)); }
 .diagram .change .wire { stroke: var(--change); }
 .diagram .is-lit .box { stroke-width: 4.5; }
 .diagram .label { font-size: 18px; font-weight: 700; }
@@ -331,8 +337,8 @@ svg .mono { font-family: var(--mono); }
   display: inline-grid; place-items: center; width: 1.7em; height: 1.7em; flex: 0 0 auto;
   border-radius: 50%; font: 800 .8rem/1 var(--display);
 }
-.terminal .badge { background: var(--role); color: #141a2e; margin-right: 4px; }
-.notes .badge { background: color-mix(in srgb, var(--role) 22%, var(--surface)); border: 2px solid var(--role); color: var(--ink); font-size: .95rem; }
+.terminal .badge { background: var(--role); color: #1b1e22; margin-right: 4px; }
+.notes .badge { background: var(--role); border: 2px solid var(--role); color: var(--on-role); font-size: .95rem; }
 
 /* Stepping: lines are never dimmed. The lit line gets a role-colored marker instead. */
 .replay.stepper-on pre [data-at]:not(.is-lit) { opacity: 1; }
@@ -371,8 +377,7 @@ svg .mono { font-family: var(--mono); }
 .jump { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-top: 22px; }
 .jump span { font-weight: 700; color: var(--muted); margin-right: 4px; }
 a.btn { text-decoration: none; display: inline-block; }
-.deck-toggle[aria-pressed="true"] { background: var(--change); border-color: var(--change); color: #fff; }
-@media (prefers-color-scheme: dark) { .deck-toggle[aria-pressed="true"] { color: #0f1426; } }
+.deck-toggle[aria-pressed="true"] { background: var(--change); border-color: var(--change); color: var(--on-role); }
 
 /* Deck mode: every band becomes one slide. Off by default, so the page is a normal page without a script. */
 html.deck { scroll-snap-type: y proximity; }

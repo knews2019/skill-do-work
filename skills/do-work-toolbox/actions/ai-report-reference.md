@@ -18,11 +18,11 @@ The action can illustrate sections with generated raster images (architecture di
 
 Neither raster CLI guarantees an exact pixel size — they pick a close 16:9, which is fine.
 
-**Shared style brief.** Write **one** style brief and prepend it to *every* image prompt so all generated images match each other and the report theme. Tie it to the kit's colors (reports default to a light theme with a dark `prefers-color-scheme` variant, so prefer a **transparent or neutral background** that reads on either): violet (`#6a4cf0`) accent, the role colors only for their roles, flat line-art, 2px strokes, rounded nodes, labeled arrows for flow direction; no photorealism, no 3D, no stock-photo people. Hold it in a shell variable, e.g.:
+**Shared style brief.** Write **one** style brief and prepend it to *every* image prompt so all generated images match each other and the report theme. Tie it to the kit's colors (reports default to a light theme with a dark `prefers-color-scheme` variant, so prefer a **transparent or neutral background** that reads on either): violet (`#7048ff`) accent, the role colors only for their roles, flat line-art, 2px strokes, rounded nodes, labeled arrows for flow direction; no photorealism, no 3D, no stock-photo people. Hold it in a shell variable, e.g.:
 
 ```bash
 STYLE='Style: flat technical line-art diagram, transparent or neutral light background,
-violet (#6a4cf0) accent, 2px strokes, rounded rectangular nodes, labeled arrows for data flow,
+violet (#7048ff) accent, 2px strokes, rounded rectangular nodes, labeled arrows for data flow,
 clean sans-serif labels, no photorealism, no 3D, no stock-photo people, max ~10 short labels.'
 ```
 
