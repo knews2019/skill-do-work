@@ -7,5 +7,6 @@ Make schematics: draw the mechanism as labelled technical drawings in inline SVG
 5. One color has one meaning on the whole page, a box color is never reused for an unrelated arrow, and red is kept for what is refused, failed or not covered. Use about five colors at most.
 6. Color is never the only signal: a stored file or folder also has a dashed outline, control flow also has a dashed line, and the legend names every fill and every line.
 7. A labelled frame, not a color, shows where a part runs, such as a machine or a process.
-8. Text keeps readable contrast on every fill, in the light theme and in the dark theme.
-9. When you can, open the page in a browser at desktop and phone width and fix every check that fails.
+8. The drawing sits on a plain white sheet in the light theme and on a plain dark grey sheet in the dark theme. The sheet, the frames, the lines and the text use neutral greys with no color tint, and a frame has an outline and no fill, so only the parts and the arrows carry color.
+9. Text keeps readable contrast on every fill, in the light theme and in the dark theme.
+10. When you can, open the page in a browser at desktop and phone width and fix every check that fails.
