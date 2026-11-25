@@ -2,6 +2,16 @@
 id: REQ-760
 title: 'Scan skill instructions for new maintenance opportunities'
 status: claimed
+estimate:
+  p50_active_minutes: 20
+  confidence: medium
+  calculated_at: 2026-11-25T23:27:30Z
+  basis:
+  - Route B
+  - 3-file write set
+  - 2 subsystems involved
+  - 5 acceptance criteria
+route: B
 created_at: 2026-11-25T22:57:02Z
 user_request: UR-190
 domain: general
@@ -34,3 +44,11 @@ See `do-work/user-requests/UR-190/input.md` for the verbatim capture instruction
 - [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
 - [ ] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
 *Source: User request, third item. but also capture in 3 a new scan for new improvements*
+
+## Triage
+
+Route B. A fresh audit needs exploration of historical failures and the current workflow.
+
+## Plan
+
+**Planning not required** — Route B, exploration-guided implementation.

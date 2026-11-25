@@ -2,6 +2,13 @@
 id: REQ-761
 title: 'Match board executable names exactly before restart'
 status: claimed
+estimate:
+  p50_active_minutes: 5
+  confidence: high
+  calculated_at: 2026-11-25T23:27:30Z
+  basis:
+  - trivial short-circuit
+route: A
 created_at: 2026-11-25T23:09:19Z
 user_request: UR-191
 domain: general
@@ -34,3 +41,11 @@ Both index entries have partial family coverage and exceed the 2,000-token budge
 - [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
 - [ ] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
 *Source: [Original request](../user-requests/UR-191/input.md)*
+
+## Triage
+
+Route A. The executable check, both supported basenames and the fixture assertions are specified.
+
+## Plan
+
+**Planning not required** — Route A, direct implementation.
