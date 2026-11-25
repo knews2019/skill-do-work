@@ -1,7 +1,7 @@
 ---
 id: REQ-758
 title: 'Preserve the force of the request during capture'
-status: pending
+status: claimed
 created_at: 2026-11-25T22:57:02Z
 user_request: UR-190
 domain: general
@@ -14,6 +14,7 @@ batch: skill-instruction-maintenance
 related: [REQ-759, REQ-760]
 required_lessons: ['_dev/primes/lessons-action-files.md#condition-preserving-prose-extraction']
 write_set: [skills/do-work/actions/capture.md]
+claimed_at: 2026-11-25T23:11:32Z
 ---
 # Preserve the force of the request during capture
 ## What
