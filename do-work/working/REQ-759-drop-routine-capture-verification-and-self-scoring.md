@@ -26,6 +26,7 @@ related: [REQ-758, REQ-760]
 required_lessons: ['_dev/primes/lessons-action-files.md#cross-action-exception-closure']
 write_set: [skills/do-work/next-steps.md, skills/do-work/actions/capture.md, skills/do-work/actions/verify-requests.md, skills/do-work/docs/verify-requests-guide.md]
 claimed_at: 2026-11-25T23:11:32Z
+builder_handback_at: 2026-11-25T23:36:20Z
 ---
 # Drop routine capture verification and self-scoring
 ## What
