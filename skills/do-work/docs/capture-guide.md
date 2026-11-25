@@ -9,7 +9,7 @@ Every invocation produces exactly two things:
 1. A **UR folder** (`do-work/user-requests/UR-NNN/`) preserving your verbatim input
 2. One or more **REQ files** (`do-work/queue/REQ-NNN-slug.md`) that enter the queue
 
-Compound inputs are split into separate REQ files automatically. The skill asks clarifying questions during capture (while you're present) but never starts building — capture and execution are strictly separate.
+Compound inputs are split into separate REQ files automatically. Capture preserves your words and the checks you specify. Building starts when you request it.
 
 ## Folder structure
 
@@ -66,7 +66,7 @@ If a request can't start until an **external condition** is met ("once LM Studio
 
 1. **Parse** — single vs. multiple requests, simple vs. complex, domain classification, TDD assessment
 2. **Deduplicate** — checks existing queue, in-flight, and archived REQs for overlaps
-3. **Clarify** — asks questions while you're present (concrete options, never open-ended)
+3. **Clarify** — asks when your answer would change the outcome, scope, or acceptance criteria
 4. **Write files** — creates UR folder + REQ files, handles screenshots
 5. **Report** — brief summary of what was created
 6. **Commit** — stages only the new files (never `git add -A`)

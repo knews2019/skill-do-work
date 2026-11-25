@@ -10,6 +10,13 @@ For the complete release history, read this file and the archives below from new
 - [0.50.0 through 0.64.1](https://github.com/knews2019/skill-do-work/blob/main/docs/changelog/CHANGELOG-2026-04-13-up-to-v0.64.1.md)
 - [0.1.0 through 0.49.0](https://github.com/knews2019/skill-do-work/blob/main/docs/changelog/CHANGELOG-2026-04-07-up-to-v0.49.0.md)
 
+## 0.332.1 — Capture Asks Only About Choices That Change the Work (2026-11-26)
+
+Capture carries your stated checks into the request and chooses a suitable example when you leave verification to the builder.
+
+- Questions name the affected project, artifact, or workflow and explain what your answer changes.
+- Capture verification accepts an inferred check when it demonstrates the outcome you requested and respects your constraints.
+
 ## 0.332.0 — Reports Use White Paper and Cards Filled with Role Color (2026-11-23)
 
 Every new report is brighter and easier to scan, because color now fills the things it describes.

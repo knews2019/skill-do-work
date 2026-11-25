@@ -115,8 +115,6 @@ Include `## Red-Green Proof` when the request is behavior-changing and can be pr
 
 Add `## Why` when the user supplied reasoning, `## Context` for relevant constraints or details, and `## Assets` for supplied screenshots or files.
 
-Treat defining the RED state as essential, high-value capture work. It is one of the most helpful things you can do for the downstream builder because it turns vague intent into a concrete failing proof target. Do not treat this as paperwork. Lean into it. Be eager to find the best RED case: the smallest, clearest prompt/repro/example that proves the behavior is missing now and will clearly turn GREEN later.
-
 ### Complex REQ (additional sections)
 
 Complex requests use the same base format plus these sections:
@@ -144,9 +142,7 @@ When needed, add `## Open Questions` with this shape:
 
 `- [ ]` = unresolved, `- [x]` = answered (answer follows `→`), `- [~]` = deferred to builder (note follows `→`).
 
-**Capture time is the optimal window for resolving these.** During capture (this action), use the ask tool if your environment provides one; otherwise use your environment's normal ask-user prompt/tool. Present Open Questions immediately. The user is here, engaged, and fleshing out the request — don't defer what you can clarify now. Only leave questions as `- [ ]` if you genuinely can't ask (e.g., batch processing, async capture).
-
-Only add questions where the user's intent is genuinely unclear — don't add questions the builder can answer by reading the codebase.
+For when and how to ask, follow Step 3 of `actions/capture.md`.
 
 A question whose real answerer is a named outside person carries an extra `Answerer: <name>` line under its `Also:` line (capture Step 1's audience assessment — verbatim, never invented). The work loop routes it to that person's stakeholder REQ at archive time instead of into clarify; the build itself never waits on it.
 

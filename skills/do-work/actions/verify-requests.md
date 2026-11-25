@@ -9,7 +9,7 @@ The default mode is **capture QA**: a confidence evaluation that compares extrac
 - **The original input is the source of truth** — the UR's input.md contains everything the user said
 - **REQs should be lossless extractions** — every requirement in the input should appear in at least one REQ
 - **Intent signals matter** — not just WHAT was requested, but HOW firmly and with what scope guidance
-- **REQs are validated intent** — capture resolves ambiguities with the user present. Verify checks that this validation actually happened: are Open Questions resolved? Does the Validation field reflect user confirmation? A REQ marked "Inferred during capture" when the user was available is a missed opportunity.
+- **Proof reflects intent** — an inferred check satisfies capture QA when it demonstrates the requested outcome and respects the user’s constraints. Use the original request and recorded decisions to judge it.
 - **Behavioral proof matters** — when a request is testable, the REQ should preserve the RED/GREEN proof target: how we know it fails now and what turns it GREEN later
 - **Actionable output** — don't just report problems, offer to fix them
 - **A reversed decision must reach unfinished work** — revalidation reports likely and possible dependencies with evidence; it never silently rewrites intent or queue state
@@ -95,7 +95,7 @@ For each REQ, score it on these dimensions:
 - Does the REQ capture a concrete RED prompt/case, repro, or example?
 - Does it explain why that case is RED today?
 - Does it state what observable outcome turns it GREEN?
-- If capture-time validation was possible, does it reflect the user's confirmed or adjusted version?
+- Does the proof preserve any check or adjustment the user supplied?
 
 **Batch Context (0-100%)** — only for multi-REQ batches
 - Do cross-cutting constraints from the UR appear in this REQ's Constraints section?
@@ -111,7 +111,7 @@ For each gap found:
    - **Important**: A firm requirement that was completely dropped or partially captured with significant loss
    - **Minor**: A clear detail that was summarized too aggressively or a soft preference that was missed
    - **Nit**: A passing mention or stylistic preference — won't affect the build
-   - **Ambiguous**: The original input doesn't contain enough information to resolve this — neither the REQ nor the UR has a clear answer. This isn't a gap in the REQ; it's a gap in the original request that only the user can fill.
+   - **Ambiguous**: Plausible readings of the original input lead to materially different outcomes, scope, or acceptance criteria. This isn't a gap in the REQ; it's a gap in the original request that only the user can fill.
 
 ### Step 6: Generate Report
 
@@ -158,10 +158,10 @@ After presenting the report:
 1. Ask the user if they want to apply the recommended fixes
 2. If yes, update the REQ files directly:
    - **Important/Minor gaps**: Add missing requirements to the appropriate sections, add or update Builder Guidance sections, add batch constraints to Constraints sections, and add or tighten `## Red-Green Proof` when the request is testable
-   - **Ambiguous gaps**: The user is here right now — **resolve them on the spot.** For each Ambiguous gap:
+   - **Ambiguous gaps**: Follow the user's directions about asking, deferring, or parking questions. For each gap that needs an answer now:
      1. Present the question with recommended choices using the ask tool if your environment provides one; otherwise use your environment's normal ask-user prompt/tool:
         ```
-        [Question]
+        [Name the affected project, artifact, or workflow and what depends on the answer.]
         Recommended: [best default based on context]
         Also: [alternative A], [alternative B]
         ```
@@ -266,10 +266,9 @@ Omit an empty candidate section. If there are no candidates, say so and still re
 - Don't expand requirements beyond what the user said — you're checking coverage, not inventing new features
 - Don't penalize REQs for missing details the user never mentioned
 - Don't treat implementation details as gaps — those are for the builder to decide
-- Don't ask the user to design test internals — ask for the observable failing case and GREEN outcome instead
 - Don't classify something as Ambiguous when the answer is in the original input — that's an Important gap. Ambiguous means the *user's input itself* doesn't contain the answer.
 - Don't block on verification — it's advisory, not a gate (unless the user wants it as a gate)
-- Don't set `status: pending-answers` on REQs after verify — that status is for follow-ups from the work/review pipeline. Verify already tried to ask the user; any remaining `- [ ]` items stay on a `pending` REQ and the builder will use best judgment.
+- Don't set `status: pending-answers` on REQs after verify — that status is for follow-ups from the work/review pipeline. Any remaining `- [ ]` items stay on a `pending` REQ and the builder will use best judgment.
 - In decision-revalidation mode, don't offer capture-QA Step 7 edits, change any queue status, recalculate any `estimate:` block, or scan claimed/archive content — report candidates and stop.
 
 ## Verification Checklist
@@ -277,7 +276,7 @@ Omit an empty candidate section. If there are no candidates, say so and still re
 - [ ] Every REQ scored on all applicable dimensions — including every REQ named in `## Folded Requests`, each against the input portion its fold line names
 - [ ] Original input compared against REQ content word by word (not skimmed)
 - [ ] Gap severity rated for every identified gap (Important, Minor, Nit, Ambiguous)
-- [ ] Ambiguous gaps resolved on the spot with user input
+- [ ] Material ambiguities were answered, deferred, or recorded as open.
 - [ ] Final score reflects actual coverage, not optimistic rounding
 - [ ] In decision-revalidation mode, every source resolved an explicit old/new pair before the one shared queue scan.
 - [ ] Every revalidation candidate includes quoted REQ evidence and a concrete old → replacement conflict; historical-only mentions were excluded.
