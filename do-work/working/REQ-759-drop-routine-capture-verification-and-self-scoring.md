@@ -2,6 +2,16 @@
 id: REQ-759
 title: 'Drop routine capture verification and self-scoring'
 status: claimed
+estimate:
+  p50_active_minutes: 15
+  confidence: medium
+  calculated_at: 2026-11-25T23:12:22Z
+  basis:
+  - Route A
+  - 4-file write set
+  - 2 subsystems involved
+  - 5 acceptance criteria
+route: A
 created_at: 2026-11-25T22:57:02Z
 user_request: UR-190
 domain: general
@@ -39,3 +49,11 @@ See `do-work/user-requests/UR-190/input.md` for the verbatim capture instruction
 - [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
 - [ ] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
 *Source: Finding 2, pasted audit, rank 2, no severity supplied. Accepted at efcd3618. Surface-cost: N/A. Remove the suggestion to run `verify-requests` after every new capture. When verification is requested, report the original clause, what the capture changed or missed, and the correction. Delete the percentage table and re-scoring step.*
+
+## Triage
+
+Route A. The request names the capture, verification and handoff entry points, the report change and its opt-in exception.
+
+## Plan
+
+**Planning not required** — Route A, direct implementation.

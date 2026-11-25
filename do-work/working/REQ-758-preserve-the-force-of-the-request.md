@@ -2,6 +2,13 @@
 id: REQ-758
 title: 'Preserve the force of the request during capture'
 status: claimed
+estimate:
+  p50_active_minutes: 5
+  confidence: high
+  calculated_at: 2026-11-25T23:12:22Z
+  basis:
+  - trivial short-circuit
+route: A
 created_at: 2026-11-25T22:57:02Z
 user_request: UR-190
 domain: general
@@ -36,3 +43,11 @@ See `do-work/user-requests/UR-190/input.md` for the verbatim capture instruction
 - [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
 - [ ] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
 *Source: Finding 1, pasted audit, rank 1, no severity supplied. Accepted at efcd3618. Surface-cost: N/A. Delete the passing-mention rule. Trim the closing capture checklists where they repeat the comparison already performed before writing the queue.*
+
+## Triage
+
+Route A. The capture action names the exact sentence and identifies which closing checks are duplicates.
+
+## Plan
+
+**Planning not required** — Route A, direct implementation.

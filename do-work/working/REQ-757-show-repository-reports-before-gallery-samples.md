@@ -2,6 +2,13 @@
 id: REQ-757
 title: 'Addendum: Show repository reports before gallery samples'
 status: claimed
+estimate:
+  p50_active_minutes: 5
+  confidence: high
+  calculated_at: 2026-11-25T23:12:22Z
+  basis:
+  - trivial short-circuit
+route: A
 created_at: 2026-11-25T22:17:40Z
 user_request: UR-189
 domain: frontend
@@ -36,3 +43,11 @@ REQ-749 (build the gallery from ten real report pages) added a curated worked-re
 - [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
 - [ ] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
 *Source: [Original request](../user-requests/UR-189/input.md)*
+
+## Triage
+
+Route A. The gallery template and before-and-after ordering are identified, including the empty repository case.
+
+## Plan
+
+**Planning not required** — Route A, direct implementation.
