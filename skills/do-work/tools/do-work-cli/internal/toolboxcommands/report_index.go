@@ -147,13 +147,7 @@ func reportIndexWalk(repositoryRoot string) (bundles []reportBundle, present boo
 			}
 		}
 	}
-	sort.SliceStable(bundles, func(i, j int) bool {
-		left, right := bundles[i], bundles[j]
-		if left.Date != right.Date {
-			return right.Date == "" || (left.Date != "" && left.Date > right.Date)
-		}
-		return left.Path < right.Path
-	})
+	sortReportBundles(bundles)
 	byFolder := map[string]int{}
 	for index, bundle := range bundles {
 		byFolder[path.Base(bundle.Path)] = index
@@ -172,20 +166,36 @@ func reportIndexWalk(repositoryRoot string) (bundles []reportBundle, present boo
 	return bundles, true, nil
 }
 
+func sortReportBundles(bundles []reportBundle) {
+	sort.SliceStable(bundles, func(i, j int) bool {
+		left, right := bundles[i], bundles[j]
+		if left.Date != right.Date {
+			return left.Date > right.Date
+		}
+		return left.Path < right.Path
+	})
+}
+
+func reportBundleDate(folder string) string {
+	match := reportDatePattern.FindStringSubmatch(folder)
+	if match == nil {
+		return ""
+	}
+	date := match[1]
+	if len(match[2]) >= 4 {
+		date += "T" + match[2][0:2] + ":" + match[2][2:4]
+	}
+	if len(match[2]) == 6 {
+		date += ":" + match[2][4:6]
+	}
+	return date
+}
+
 // readReportBundle reads the bundle at ai-reports/<relative>, where relative is <folder> or
 // <month folder>/<folder>. The date, kind, linked ids and default title come from <folder> alone.
 func readReportBundle(repositoryRoot, relative string) reportBundle {
 	folder := path.Base(relative)
-	bundle := reportBundle{Path: reportsFolder + "/" + relative, Title: folder, Kind: "unknown", LinkedIDs: []string{}, SecondOpinions: []reportSecondOpinionPage{}}
-	if match := reportDatePattern.FindStringSubmatch(folder); match != nil {
-		bundle.Date = match[1]
-		if len(match[2]) >= 4 {
-			bundle.Date += "T" + match[2][0:2] + ":" + match[2][2:4]
-		}
-		if len(match[2]) == 6 {
-			bundle.Date += ":" + match[2][4:6]
-		}
-	}
+	bundle := reportBundle{Path: reportsFolder + "/" + relative, Title: folder, Date: reportBundleDate(folder), Kind: "unknown", LinkedIDs: []string{}, SecondOpinions: []reportSecondOpinionPage{}}
 	entryName := pickReportEntry(filepath.Join(repositoryRoot, reportsFolder, relative))
 	metas := map[string]string{}
 	if entryName != "" {

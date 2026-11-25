@@ -71,7 +71,7 @@ body { margin: 0; font: 16px/1.5 var(--sans); }
 .preview-scroll { overflow: auto; overscroll-behavior: contain; }
 .preview-scroll img { display: block; width: 100%; height: auto; }
 .preview-scroll.actual-size img { width: auto; max-width: none; }
-#preview-size[aria-pressed="true"] { background: var(--text); color: var(--ground); }
+.preview-size[aria-pressed="true"] { background: var(--text); color: var(--ground); }
 @media (max-width: 520px) { .dialog-bar { flex-wrap: wrap; } .dialog-bar h2 { width: 100%; } .dialog-bar a { margin-left: 0; margin-right: auto; } }
 .copy-status:not(:empty) { pointer-events: none; position: fixed; bottom: 1rem; left: 50%; transform: translateX(-50%); z-index: 2; color: var(--ground); background: var(--text); border-radius: .4rem; padding: .6rem 1rem; max-width: calc(100% - 2rem); width: max-content; }
 .gallery-tools { display: grid; grid-template-columns: 3fr 2fr; gap: clamp(1.5rem, 4vw, 5rem); border-block: 1px solid var(--edge); padding: 1.65rem 0 2rem; }
@@ -1054,7 +1054,7 @@ body { margin: 0; font: 16px/1.5 var(--sans); }
   </section>
   <div id="copy-status" class="copy-status" role="status"></div>
   <dialog class="gallery-dialog" aria-labelledby="preview-title">
-    <div class="dialog-bar"><h2 id="preview-title">Page preview</h2><a class="report-link" id="preview-open"></a><button class="prompt-copy" type="button" id="preview-size" aria-pressed="false">Actual size</button><button class="prompt-copy" type="button" id="preview-close" autofocus>Close</button></div>
+    <div class="dialog-bar"><h2 id="preview-title">Page preview</h2><a class="report-link" id="preview-open"></a><button class="prompt-copy preview-size" type="button" id="preview-size" aria-pressed="false">Actual size</button><button class="prompt-copy" type="button" id="preview-close" autofocus>Close</button></div>
     <div class="preview-scroll" tabindex="0" aria-label="Page image"></div>
   </dialog>
 </main>

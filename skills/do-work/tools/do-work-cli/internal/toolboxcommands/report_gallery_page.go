@@ -9,6 +9,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -20,7 +21,8 @@ type reportGalleryLink struct {
 }
 
 type reportGalleryCard struct {
-	Slug     string
+	AnchorID string
+	NameID   string
 	Title    string
 	CopyName string
 	UseWhen  string
@@ -56,6 +58,14 @@ type reportGalleryPageData struct {
 	Kinds            []reportGalleryKind
 	Presets          []reportGalleryLink
 	Live             *reportGalleryLivePage
+	workedNames      map[string]bool
+}
+
+func (page reportGalleryPageData) UnclaimedID(id string) string {
+	if page.workedNames[id] {
+		return "gallery_" + id // The underscore keeps this ID outside the worked name format.
+	}
+	return id
 }
 
 func renderReportGalleryPage(repositoryRoot string, repository *os.Root, toolboxDocs string, samples []reportGallerySample, bundles []reportBundle, live *reportGalleryLivePage) ([]byte, error) {
@@ -80,16 +90,18 @@ func renderReportGalleryPage(repositoryRoot string, repository *os.Root, toolbox
 		}
 	}
 	workedByReport := make(map[string]*workedReportCard, len(worked))
+	page.workedNames = make(map[string]bool, len(worked))
 	for index := range worked {
 		card := &worked[index]
 		workedByReport[card.ReportPath] = card
+		page.workedNames[card.Name] = true
 	}
 	generatedByReport := make(map[string]reportGalleryGeneratedSource, len(bundles))
 	for _, source := range reportGalleryGeneratedSources(repository, bundles) {
 		generatedByReport[source.bundle.Entry] = source
 	}
 	seenReports := make(map[string]bool, len(bundles))
-	for index, bundle := range bundles { // The catalog walk has already sorted newest first.
+	for index, bundle := range reportGalleryBundles(bundles, worked) {
 		if bundle.Entry == "" || seenReports[bundle.Entry] {
 			continue
 		}
@@ -120,22 +132,16 @@ func renderReportGalleryPage(repositoryRoot string, repository *os.Root, toolbox
 		}
 		page.Reports = append(page.Reports, card)
 	}
-	// The manifest can reference a report outside the catalog's directory layout.
-	for index := range worked {
-		workedCard := &worked[index]
-		if seenReports[workedCard.ReportPath] {
-			continue
-		}
-		card := reportGalleryRepositoryCard{Worked: workedCard}
-		if live != nil {
-			card.Review = live.Reviews[workedCard.ReportPath]
-		}
-		page.Reports = append(page.Reports, card)
-	}
 	copyNames := reportGalleryCopyNames(samples)
 	for _, sample := range samples {
-		card := reportGalleryCard{Slug: sample.Name, Title: sample.Title, CopyName: copyNames[sample.Name], UseWhen: sample.UseWhen}
-		card.Starter = newReportGalleryStarter("prompt-"+card.Slug, card.CopyName, sample.Borrow)
+		card := reportGalleryCard{
+			AnchorID: page.UnclaimedID("sample-" + sample.Name),
+			NameID:   page.UnclaimedID("name-" + sample.Name),
+			Title:    sample.Title,
+			CopyName: copyNames[sample.Name],
+			UseWhen:  sample.UseWhen,
+		}
+		card.Starter = newReportGalleryStarter(page.UnclaimedID("prompt-"+sample.Name), card.CopyName, sample.Borrow)
 		folder := path.Dir(sample.RecordPath)
 		var links []reportGalleryLink
 		if href := reportGalleryFileLink(repository, path.Join(folder, reportGalleryExample)); href != "" {
@@ -170,6 +176,32 @@ func renderReportGalleryPage(repositoryRoot string, repository *os.Root, toolbox
 		return nil, err
 	}
 	return output.Bytes(), nil
+}
+
+func reportGalleryBundles(bundles []reportBundle, worked []workedReportCard) []reportBundle {
+	if len(worked) == 0 {
+		return bundles
+	}
+	catalogEntries := make(map[string]bool, len(bundles))
+	for _, bundle := range bundles {
+		catalogEntries[bundle.Entry] = true
+	}
+	// Manifests can reference reports outside the catalog's directory layout.
+	var manifestOnly []reportBundle
+	for _, card := range worked {
+		if !catalogEntries[card.ReportPath] {
+			folder := path.Dir(card.ReportPath)
+			manifestOnly = append(manifestOnly, reportBundle{
+				Path: folder, Entry: card.ReportPath, Date: reportBundleDate(path.Base(folder)),
+			})
+		}
+	}
+	if len(manifestOnly) == 0 {
+		return bundles
+	}
+	combined := slices.Concat(bundles, manifestOnly)
+	sortReportBundles(combined)
+	return combined
 }
 
 func newReportGalleryStarter(id, identity string, borrow []string) reportGalleryStarter {
@@ -358,7 +390,7 @@ body { margin: 0; font: 16px/1.5 var(--sans); }
 .preview-scroll { overflow: auto; overscroll-behavior: contain; }
 .preview-scroll img { display: block; width: 100%; height: auto; }
 .preview-scroll.actual-size img { width: auto; max-width: none; }
-#preview-size[aria-pressed="true"] { background: var(--text); color: var(--ground); }
+.preview-size[aria-pressed="true"] { background: var(--text); color: var(--ground); }
 @media (max-width: 520px) { .dialog-bar { flex-wrap: wrap; } .dialog-bar h2 { width: 100%; } .dialog-bar a { margin-left: 0; margin-right: auto; } }
 {{end}}.copy-status:not(:empty) { pointer-events: none; position: fixed; bottom: 1rem; left: 50%; transform: translateX(-50%); z-index: 2; color: var(--ground); background: var(--text); border-radius: .4rem; padding: .6rem 1rem; max-width: calc(100% - 2rem); width: max-content; }
 .gallery-tools { display: grid; grid-template-columns: 3fr 2fr; gap: clamp(1.5rem, 4vw, 5rem); border-block: 1px solid var(--edge); padding: 1.65rem 0 2rem; }
@@ -388,20 +420,20 @@ body { margin: 0; font: 16px/1.5 var(--sans); }
   <header class="gallery-header">
     <h1>AI Report Gallery</h1>
     <nav class="gallery-nav" aria-label="Gallery sections">
-{{if .Reports}}      <a href="#generated-designs">Repository reports</a>
+{{if .Reports}}      <a href="#{{.UnclaimedID "generated-designs"}}">Repository reports</a>
 {{end}}{{if not .HasWorkedReports}}      <a href="#report-kinds">Report kinds</a>
 {{end}}{{if .Samples}}      <a href="#samples">Sample designs</a>
 {{end}}      <a href="#presets">Presets</a>
-      <a class="add-link" href="#add-sample">Add a sample</a>
+      <a class="add-link" href="#{{.UnclaimedID "add-sample"}}">Add a sample</a>
     </nav>
   </header>
-{{if .Reports}}  <section class="samples" id="generated-designs" aria-labelledby="generated-designs-title">
-    <div class="section-note"{{if .HasWorkedReports}} id="worked-reports"{{end}}><h2 id="generated-designs-title">Repository reports</h2></div>
-    <div class="gallery-grid"{{if .Live}} id="project-reports"{{end}}>
+{{if .Reports}}  <section class="samples" id="{{.UnclaimedID "generated-designs"}}" aria-labelledby="{{.UnclaimedID "generated-designs-title"}}">
+    <div class="section-note"{{if .HasWorkedReports}} id="{{.UnclaimedID "worked-reports"}}"{{end}}><h2 id="{{.UnclaimedID "generated-designs-title"}}">Repository reports</h2></div>
+    <div class="gallery-grid"{{if .Live}} id="{{.UnclaimedID "project-reports"}}"{{end}}>
 {{range .Reports}}{{if .Worked}}{{template "worked-report-card" .}}{{else}}{{template "generated-report-card" .}}{{end}}{{end}}
     </div>
   </section>
-{{else}}{{template "sample-designs" .Samples}}{{end}}
+{{else}}{{template "sample-designs" .}}{{end}}
 {{if not .HasWorkedReports}}  <div class="gallery-tools">
   <section id="report-kinds" aria-labelledby="report-kinds-title">
     <h2 id="report-kinds-title">Report kinds</h2>
@@ -411,30 +443,30 @@ body { margin: 0; font: 16px/1.5 var(--sans); }
       </li>{{end}}
     </ul>
   </section>
-{{end}}  <section id="presets" aria-labelledby="presets-title">
-    <h2 id="presets-title">Second-opinion presets</h2>
+{{end}}  <section id="presets" aria-labelledby="{{.UnclaimedID "presets-title"}}">
+    <h2 id="{{.UnclaimedID "presets-title"}}">Second-opinion presets</h2>
     {{if .Presets}}<ul class="gallery-links gallery-presets">
       {{range .Presets}}<li><a href="{{.Href}}">{{.Label}}</a></li>{{end}}
     </ul>{{else}}<p>No shipped presets found.</p>{{end}}
   </section>
 {{if not .HasWorkedReports}}  </div>
-{{end}}{{if and .Reports (or (not .HasWorkedReports) .Samples)}}{{template "sample-designs" .Samples}}{{end}}
-  <section class="gallery-add" id="add-sample" aria-labelledby="add-sample-title">
-    <h2 id="add-sample-title">Add a sample</h2>
+{{end}}{{if and .Reports (or (not .HasWorkedReports) .Samples)}}{{template "sample-designs" .}}{{end}}
+  <section class="gallery-add" id="{{.UnclaimedID "add-sample"}}" aria-labelledby="{{.UnclaimedID "add-sample-title"}}">
+    <h2 id="{{.UnclaimedID "add-sample-title"}}">Add a sample</h2>
     <p>Paste this line into your agent, replacing the placeholders with the source and what you liked.</p>
     <div class="gallery-copy">
-      <code id="add-line">do-work-toolbox ai-report gallery add &lt;image path | link | html path&gt; [what the user liked]</code>
-      <button class="btn" id="copy-add-line" data-copy="add-line" type="button" hidden>Copy command</button>
+      <code id="{{.UnclaimedID "add-line"}}">do-work-toolbox ai-report gallery add &lt;image path | link | html path&gt; [what the user liked]</code>
+      <button class="btn" id="{{.UnclaimedID "copy-add-line"}}" data-copy="{{.UnclaimedID "add-line"}}" type="button" hidden>Copy command</button>
     </div>
   </section>
-  <div id="copy-status" class="copy-status" role="status"></div>
-{{if .Samples}}  <dialog class="gallery-dialog" aria-labelledby="preview-title">
-    <div class="dialog-bar"><h2 id="preview-title">Page preview</h2><a class="report-link" id="preview-open"></a><button class="prompt-copy" type="button" id="preview-size" aria-pressed="false">Actual size</button><button class="prompt-copy" type="button" id="preview-close" autofocus>Close</button></div>
+  <div id="{{.UnclaimedID "copy-status"}}" class="copy-status" role="status"></div>
+{{if .Samples}}  <dialog class="gallery-dialog" aria-labelledby="{{.UnclaimedID "preview-title"}}">
+    <div class="dialog-bar"><h2 id="{{.UnclaimedID "preview-title"}}">Page preview</h2><a class="report-link" id="{{.UnclaimedID "preview-open"}}"></a><button class="prompt-copy preview-size" type="button" id="{{.UnclaimedID "preview-size"}}" aria-pressed="false">Actual size</button><button class="prompt-copy" type="button" id="{{.UnclaimedID "preview-close"}}" autofocus>Close</button></div>
     <div class="preview-scroll" tabindex="0" aria-label="Page image"></div>
   </dialog>
 {{end}}</main>
 <script>
-const copyStatus = document.getElementById('copy-status');
+const copyStatus = document.getElementById('{{.UnclaimedID "copy-status"}}');
 let statusTimer;
 function announce(message) {
   clearTimeout(statusTimer);
@@ -468,10 +500,10 @@ for (const button of document.querySelectorAll('[data-copy]')) {
 {{if .Samples}}const dialog = document.querySelector('.gallery-dialog');
 if (typeof dialog.showModal === 'function') {
   const image = document.createElement('img');
-  image.id = 'preview-image';
-  const open = document.getElementById('preview-open');
+  image.id = '{{.UnclaimedID "preview-image"}}';
+  const open = document.getElementById('{{.UnclaimedID "preview-open"}}');
   const scroller = dialog.querySelector('.preview-scroll');
-  const size = document.getElementById('preview-size');
+  const size = document.getElementById('{{.UnclaimedID "preview-size"}}');
   size.addEventListener('click', () => {
     size.setAttribute('aria-pressed', scroller.classList.toggle('actual-size'));
   });
@@ -481,7 +513,7 @@ if (typeof dialog.showModal === 'function') {
       event.preventDefault();
       const card = cover.closest('article');
       const report = card.querySelector('.report-link');
-      document.getElementById('preview-title').textContent = card.querySelector('h3 span').textContent;
+      document.getElementById('{{.UnclaimedID "preview-title"}}').textContent = card.querySelector('h3 span').textContent;
       open.href = report.href;
       open.textContent = report.textContent;
       image.src = cover.href;
@@ -493,7 +525,7 @@ if (typeof dialog.showModal === 'function') {
       scroller.scrollTo(0, 0);
     });
   }
-  document.getElementById('preview-close').addEventListener('click', () => dialog.close());
+  document.getElementById('{{.UnclaimedID "preview-close"}}').addEventListener('click', () => dialog.close());
   dialog.addEventListener('click', event => {
     if (event.target !== dialog) return;
     const box = dialog.getBoundingClientRect();
@@ -508,20 +540,20 @@ if (typeof dialog.showModal === 'function') {
           <button class="prompt-copy" type="button" data-copy="{{.ID}}" hidden>Copy starter prompt</button>{{if .Borrow}}
           <ul aria-label="Borrow">{{range .Borrow}}<li>{{.}}</li>{{end}}</ul>{{end}}
 {{- end -}}
-{{define "sample-designs"}}  <section class="samples" id="samples" aria-labelledby="samples-title">
-    <div class="section-note"><h2 id="samples-title">Sample designs</h2>
-      {{if .}}<p>Select a page to preview it. Click a design name to copy it.</p>{{end}}</div>
-    {{if .}}<div class="gallery-grid">
-      {{range .}}<article class="gallery-card" id="sample-{{.Slug}}">
+{{define "sample-designs"}}  <section class="samples" id="samples" aria-labelledby="{{.UnclaimedID "samples-title"}}">
+    <div class="section-note"><h2 id="{{.UnclaimedID "samples-title"}}">Sample designs</h2>
+      {{if .Samples}}<p>Select a page to preview it. Click a design name to copy it.</p>{{end}}</div>
+    {{if .Samples}}<div class="gallery-grid">
+      {{range .Samples}}<article class="gallery-card" id="{{.AnchorID}}">
         {{if .Preview}}<a class="sample-cover" href="{{.Preview}}" aria-label="Preview {{.Title}}" data-preview>
           <img class="sample-preview" src="{{.Preview}}" loading="lazy" alt="" width="1040" height="740">
           <span aria-hidden="true">Enlarge ↗</span></a>{{end}}
-        <div class="card-heading"><h3><button class="name-copy" type="button" disabled data-copy="name-{{.Slug}}" title="Copy design name" aria-label="Copy design name {{.CopyName}}"><span id="name-{{.Slug}}">{{.CopyName}}</span><i class="copy-icon" aria-hidden="true"></i></button></h3>
+        <div class="card-heading"><h3><button class="name-copy" type="button" disabled data-copy="{{.NameID}}" title="Copy design name" aria-label="Copy design name {{.CopyName}}"><span id="{{.NameID}}">{{.CopyName}}</span><i class="copy-icon" aria-hidden="true"></i></button></h3>
           <a class="report-link" href="{{.Open.Href}}" aria-label="{{.Open.Label}} — {{.Title}}">{{if eq .Open.Label "Worked example"}}Open report{{else}}{{.Open.Label}}{{end}} ↗</a></div>
         {{if ne .CopyName .Title}}<p>{{.Title}}</p>{{end}}<p>{{.UseWhen}}</p>
         <details><summary>Use this design</summary>
           {{template "starter-prompt" .Starter}}
-          <div class="gallery-links"><a href="#sample-{{.Slug}}">Permalink</a>{{range .More}}<a href="{{.Href}}">{{.Label}}</a>{{end}}</div>
+          <div class="gallery-links"><a href="#{{.AnchorID}}">Permalink</a>{{range .More}}<a href="{{.Href}}">{{.Label}}</a>{{end}}</div>
         </details>
       </article>{{end}}
     </div>{{else}}<p>No samples yet.</p>{{end}}
