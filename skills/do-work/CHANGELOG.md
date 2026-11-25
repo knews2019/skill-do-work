@@ -10,6 +10,13 @@ For the complete release history, read this file and the archives below from new
 - [0.50.0 through 0.64.1](https://github.com/knews2019/skill-do-work/blob/main/docs/changelog/CHANGELOG-2026-04-13-up-to-v0.64.1.md)
 - [0.1.0 through 0.49.0](https://github.com/knews2019/skill-do-work/blob/main/docs/changelog/CHANGELOG-2026-04-07-up-to-v0.49.0.md)
 
+## 0.332.2 — Capture Preserves Requirements and Builder Discretion (2026-11-26)
+
+Capture keeps examples flexible and preserves firm constraints, even when they appear once.
+
+- The final reread checks outcomes, constraints, supplied checks, and builder discretion.
+- The closing checklist verifies that every folded request names its destination.
+
 ## 0.332.1 — Capture Asks Only About Choices That Change the Work (2026-11-26)
 
 Capture carries your stated checks into the request and chooses a suitable example when you leave verification to the builder.
