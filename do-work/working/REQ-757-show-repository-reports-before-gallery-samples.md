@@ -2,6 +2,7 @@
 id: REQ-757
 title: 'Addendum: Show repository reports before gallery samples'
 status: claimed
+dispatch_at: 2026-11-25T23:12:29Z
 estimate:
   p50_active_minutes: 5
   confidence: high

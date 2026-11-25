@@ -2,6 +2,7 @@
 id: REQ-759
 title: 'Drop routine capture verification and self-scoring'
 status: claimed
+dispatch_at: 2026-11-25T23:12:41Z
 estimate:
   p50_active_minutes: 15
   confidence: medium

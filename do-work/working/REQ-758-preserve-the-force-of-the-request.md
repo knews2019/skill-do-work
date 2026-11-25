@@ -2,6 +2,7 @@
 id: REQ-758
 title: 'Preserve the force of the request during capture'
 status: claimed
+dispatch_at: 2026-11-25T23:12:35Z
 estimate:
   p50_active_minutes: 5
   confidence: high
