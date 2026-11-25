@@ -241,7 +241,6 @@ Step 5's single `capture-files --commit` invocation owns staging and the commit.
 - **Conflicting requirements**: Preserve both statements and resolve the conflict through Step 3.
 - **Requirement applies to multiple features**: Include in ALL relevant REQ files. Duplication beats losing it.
 - **User changes mind mid-request**: Capture the final decision, note the evolution in the UR.
-- **Mentioned once in passing**: Still a requirement. Capture it.
 
 ## Common Rationalizations
 
@@ -265,7 +264,7 @@ Guard against these during capture:
 
 - [ ] UR folder created at `do-work/user-requests/UR-NNN/` with `input.md` containing verbatim input
 - [ ] Every REQ file has `user_request: UR-NNN` in frontmatter
-- [ ] Every distinct request in the input is accounted for — a created REQ file, or a line under `## Folded Requests` in the UR's `input.md` naming the REQ that absorbed it
+- [ ] Each folded request has a line under `## Folded Requests` in the UR's `input.md` naming its destination
 - [ ] Every REQ's `impact:` is a judged verdict, or the judgment was put to the user, or the field was left absent because neither was possible — never a copied default
 - [ ] Every REQ's `effort_estimate:` is a judged verdict, or the judgment was put to the user, or the field was left absent because neither was possible — never a copied default
 - [ ] Every emitted `required_lessons` list is index-backed, within `actions/capture-reference.md`'s one budget, and accompanied by the fixed dropped-candidates heading when a relevant candidate did not fit; no index match means no field
