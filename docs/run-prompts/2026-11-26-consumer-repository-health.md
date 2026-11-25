@@ -1,0 +1,10 @@
+# What should we fix first in this repository?
+
+Run this from the root of the project that uses do-work. Audit the project's own code, tests, scripts and docs. Use the installed skill for the audit. Exclude installed skill copies, dependencies and generated output from code-health findings. Inspect their source configuration when it explains a project problem.
+
+1. Read the project's conventions and identify its main entry points. Use `do-work-toolbox quick-wins .` to find small fixes. Follow a few real paths from entry point to implementation and tests, especially where recent changes cluster. Look for concrete consequences such as two callers enforcing different rules or a documented command that fails. File length and churn can tell you where to look. Show what actually goes wrong or makes a change harder.
+2. Use the read-only `folder-structure-check` described by `do-work-toolbox folder-structure`. For each proposed move, give the current and proposed path, who benefits, which live references would need updating, and how to check the move. Respect framework-required paths and documented project conventions. Leave a file in place when moving it costs more than it helps.
+3. Check each candidate against current source, callers, existing tests and open work. Group findings with the same cause. Cite a file and line or a reproducible local check, explain the consequence, and give the smallest useful fix and a way to verify it. Mark already-queued work. Put unresolved questions and unmeasured areas under limits. Use existing tools and record pending answers so the audit can run unattended.
+4. Create one HTML brief with `do-work-toolbox ai-report --kind proposal What should we fix first in this repository?`. Lead with the best next change and why it earns the time. Rank the remaining quick wins by impact, effort and risk. Give larger code-health concerns their own short section when the evidence warrants it. Return the report link and the first recommendation. This is a report-only request. Leave fixes, moves and queue creation for a later decision.
+
+If progress stalls for 20 minutes, stop and report the blocker and what you verified.
