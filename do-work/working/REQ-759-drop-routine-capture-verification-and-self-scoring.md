@@ -1,7 +1,7 @@
 ---
 id: REQ-759
 title: 'Drop routine capture verification and self-scoring'
-status: pending
+status: claimed
 created_at: 2026-11-25T22:57:02Z
 user_request: UR-190
 domain: general
@@ -14,6 +14,7 @@ batch: skill-instruction-maintenance
 related: [REQ-758, REQ-760]
 required_lessons: ['_dev/primes/lessons-action-files.md#cross-action-exception-closure']
 write_set: [skills/do-work/next-steps.md, skills/do-work/actions/capture.md, skills/do-work/actions/verify-requests.md, skills/do-work/docs/verify-requests-guide.md]
+claimed_at: 2026-11-25T23:11:32Z
 ---
 # Drop routine capture verification and self-scoring
 ## What
