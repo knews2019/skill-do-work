@@ -1,7 +1,7 @@
 ---
 id: REQ-760
 title: 'Scan skill instructions for new maintenance opportunities'
-status: pending
+status: claimed
 created_at: 2026-11-25T22:57:02Z
 user_request: UR-190
 domain: general
@@ -12,6 +12,7 @@ impact: impact-user-visible
 effort_estimate: effort-substantive
 batch: skill-instruction-maintenance
 related: [REQ-758, REQ-759]
+claimed_at: 2026-11-25T23:27:19Z
 ---
 # Scan skill instructions for new maintenance opportunities
 ## What
