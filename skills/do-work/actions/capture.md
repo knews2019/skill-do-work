@@ -216,13 +216,11 @@ The wrapper invocation below follows the canonical [Prescribed shell primitives]
 
    Omit `--commit` only when a surrounding owner deliberately owns the later exact-path commit. The command validates linkage and raw containment, safely bootstraps an absent `do-work/`, publishes markers/UR/REQ/assets/folds atomically, and stages only its declared paths when committing. A missing or refused command stops capture. There is no hand-edit, compatibility-helper, allocator, manual staging, or manual commit fallback.
 
-**The `requests:` array is the capture-time record only — never the UR's closure predicate.** It names the REQs *this capture* created, and nothing appends to it afterward: review-spawned follow-ups (`actions/work.md` Step 8), addendum REQs, and clarify-derived REQs all carry `user_request: UR-NNN` without ever landing in the array. So "is this UR finished?" is always answered by scanning `user_request:` frontmatter across `do-work/queue/`, `do-work/working/`, `do-work/archive/` root, and `do-work/archive/UR-NNN/` — the condition `actions/work.md` Step 8 and `actions/cleanup.md` Pass 1 both evaluate. The array's legitimate readers are the ones asking *what the user originally asked for* (e.g. `actions/verify-requests.md`, which grades capture coverage against the original input); any reader deciding whether a UR may close must use the scan instead.
+**The `requests:` array is the capture-time record only — never the UR's closure predicate.** It names the REQs *this capture* created, and nothing appends to it afterward: review-spawned follow-ups (`actions/work.md` Step 8), addendum REQs, and clarify-derived REQs all carry `user_request: UR-NNN` without ever landing in the array. So "is this UR finished?" is always answered by scanning `user_request:` frontmatter across `do-work/queue/`, `do-work/working/`, `do-work/archive/` root, and `do-work/archive/UR-NNN/` — the condition `actions/work.md` Step 8 and `actions/cleanup.md` Pass 1 both evaluate. The array's legitimate readers are the ones asking *what the user originally asked for* (e.g. `actions/verify-requests.md`, which compares the capture with the original input); any reader deciding whether a UR may close must use the scan instead.
 
 ### Step 6: Report Back
 
-Brief summary of created files. If the request was meaningfully complex (complex mode, 3+ REQs, or notably long/nuanced input), add:
-
-> That was a pretty detailed request — it's possible the capture missed some nuances. You can run `do-work verify-requests` to check coverage against your original input.
+Brief summary of created files.
 
 End with next-step suggestions per `next-steps.md` (post-capture flow).
 

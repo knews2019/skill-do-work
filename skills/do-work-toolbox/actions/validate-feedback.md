@@ -118,7 +118,7 @@ Run `../../do-work/actions/verify-requests.md` on the new `UR-NNN` with no secon
 
 - **Without `--run`:** stop. End the report with the next command: `do-work run UR-NNN` with the real id, or the two commands of the last bullet when the verify listed an Important, Minor or Ambiguous gap.
 - **With `--run`, and the UR owns no REQs** (every finding folded): skip the run and say so.
-- **With `--run` and no Important, Minor or Ambiguous gap** (the gap list decides, not the score; a Nit does not stop the run): continue into `do-work run UR-NNN` by following `../../do-work/actions/work.md` with that UR as its target.
+- **With `--run` and no Important, Minor or Ambiguous gap** (a Nit permits the run): continue into `do-work run UR-NNN` by following `../../do-work/actions/work.md` with that UR as its target.
 - **With `--run` and any such gap:** stop before the run. Print the gaps, then the commands to run after fixing them, `do-work verify-requests UR-NNN` then `do-work run UR-NNN`, written with the real id.
 
 ## Output Format

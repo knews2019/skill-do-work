@@ -170,16 +170,14 @@ URs AND REQs
 ```
 THE FULL CYCLE
 
-  capture → verify → run → present
+  capture → run → present
 
   capture    Turn plain language into UR + REQ files
-  verify     Quality-check: did capture get it right?
   run        Triage → plan → build → test → self-review (per REQ)
   present    Client-facing deliverables (optional)
 
-  Run these commands in sequence for an end-to-end request. Testing and
-  review are already inside do-work run; there is no separate state file
-  or second testing stage.
+  To check the capture before building, use do-work verify-requests.
+  do-work run includes testing and review.
 ```
 
 ### Step C-4: Trail of Intent
@@ -235,12 +233,10 @@ WORKFLOW RECIPES — common scenarios → exact commands
 
   "I got meeting notes / a spec / a screenshot"
     do-work capture-request: [paste the content]
-    do-work verify-requests
     do-work run
 
   "I want the full cycle"
     do-work capture-request: [describe what you want]
-    do-work verify-requests UR-NNN
     do-work run UR-NNN
     do-work-toolbox ai-report UR-NNN
 
@@ -309,7 +305,7 @@ Print the menu and stop. Wait for the user's reply. Accept a number (1-8), topic
 For each topic, provide a self-contained explanation (8-15 lines) with the relevant commands and a concrete example. After each explanation, show the topic menu again and wait for the user to pick another or say "done".
 
 **Topic 1 — Capturing requests:**
-Explain the UR/REQ pairing, how multi-part requests become multiple REQs, the role of the RED case / GREEN proof, and how verbatim input is preserved. Key commands: `capture-request:`, `verify-requests`.
+Explain the UR/REQ pairing, how multi-part requests become multiple REQs, the role of the RED case / GREEN proof, and how verbatim input is preserved. Show `capture-request:` and how to use `verify-requests` for an optional capture check.
 
 **Topic 2 — Running the queue:**
 Explain triage routes (A/B/C), autonomous build cycle, test-first approach, self-review, and how Open Questions work. Key commands: `run`, `continue`, `clarify`.
@@ -318,7 +314,7 @@ Explain triage routes (A/B/C), autonomous build cycle, test-first approach, self
 Explain requirements checking, code review, acceptance testing, pass/fail, and what happens on failure (re-queue). Key commands: `review-work`, `review-work REQ-NNN`.
 
 **Topic 4 — The full cycle:**
-Explain the capture → verify → run → report sequence, that `do-work run` already includes testing and review, and how the UR ID ties the commands together. Key commands: `capture-request:`, `verify-requests UR-NNN`, `run UR-NNN`, `do-work-toolbox ai-report UR-NNN`. Distinguish this item-level report from the cross-project portfolio (`do-work-toolbox present-work all`) and an explicit source-only video walkthrough (`do-work-toolbox present-video REQ-NNN`).
+Explain the capture → run → report sequence, that `do-work run` includes testing and review, and how the UR ID ties the commands together. Show `capture-request:`, `run UR-NNN`, and `do-work-toolbox ai-report UR-NNN`. Offer `verify-requests UR-NNN` as an optional check before the run. Distinguish this item-level report from the cross-project portfolio (`do-work-toolbox present-work all`) and an explicit source-only video walkthrough (`do-work-toolbox present-video REQ-NNN`).
 
 **Topic 5 — Knowledge base:**
 Explain what a BKB is (Markdown wiki compiled from raw sources), the init → triage → ingest cycle, querying, and maintenance. Key commands: `bkb init`, `bkb ingest`, `bkb query [question]`.

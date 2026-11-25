@@ -2,7 +2,7 @@
 
 > **Part of the do-work skill.** Verifies captured REQs against their User Request (UR), or revalidates unfinished queued REQs after a recorded decision is superseded. User-facing walkthrough: [`docs/verify-requests-guide.md`](../docs/verify-requests-guide.md).
 
-The default mode is **capture QA**: a confidence evaluation that compares extracted REQs with the original user input. `--against` selects **decision revalidation**: a read-only full-queue scan that reports unfinished REQs which may still depend on an explicitly superseded decision. Neither mode reviews implementation quality.
+The default mode is **capture QA**, which compares captured requests with the original user input and reports discrepancies. `--against` selects **decision revalidation**, a read-only full-queue scan that reports unfinished REQs which may still depend on an explicitly superseded decision. Neither mode reviews implementation quality.
 
 ## Philosophy
 
@@ -19,7 +19,6 @@ The default mode is **capture QA**: a confidence evaluation that compares extrac
 **Use when:**
 - User wants to verify that captured REQs accurately represent the original input
 - User says "verify", "verify-requests", "check REQ-NNN", "evaluate", or "review requests"
-- Quality-checking capture output before running the work queue
 - User recorded an ADR supersession or answered a builder-decision follow-up differently and wants to find queued REQs that still rely on the old choice
 
 **Do NOT use when:**
@@ -56,99 +55,45 @@ do-work verify-requests --against <superseded-decision-path|REQ-NNN> [--against 
 1. Read `do-work/user-requests/UR-NNN/input.md`
 2. Extract the full verbatim input section
 3. Note the `requests` array to know which REQs this capture created
-4. Note any `## Folded Requests` section — each line names where part of this input landed instead of a new REQ file (`actions/capture.md` Step 5): a REQ id, or the literal `prose-backlog` for a prose-only finding recorded in `do-work/prose-backlog.md`. Those destinations are evaluated too: the array alone under-reports coverage for a capture that folded anything, and grading the input against created REQs only would report a folded request as a dropped requirement
+4. Note any `## Folded Requests` section. Each line names where part of this input landed (`actions/capture.md` Step 5): a REQ id or `prose-backlog` for a prose-only finding recorded in `do-work/prose-backlog.md`.
 5. Note any Batch Constraints section
 
 ### Step 3: Read All Related REQs
 
-1. Find all REQ files listed in the UR's `requests` array, plus every REQ named in its `## Folded Requests` section (a `prose-backlog` line names no REQ — see Step 4's rule for it)
+1. Find all REQ files listed in the UR's `requests` array, plus every REQ named in its `## Folded Requests` section
 2. Check `do-work/queue/`, `do-work/` (root, legacy fallback), `do-work/working/`, and `do-work/archive/` for each
 3. Read the full content of each REQ file
-4. **A `prose-backlog` fold line is checked for presence, never scored.** It is not a REQ and has no dimensions: confirm `do-work/prose-backlog.md` holds an item matching the input portion the line names. **A ticked `- [x]` item satisfies this exactly as an open `- [ ]` one does** — a drain ticks what it resolved and never deletes it (`actions/capture-reference.md` → **Fold-First Rule**, destination 3), so a resolved fold is evidence the finding landed, never a lost one. Only genuine absence — no matching item in either state — is an Important gap, reported exactly like a lost fold. **Score a folded REQ only against the input portion its fold line names.** It belongs to another UR — its `user_request`, its other instances, and its Builder Guidance answer to that UR, so the Intent Signals and Batch Context dimensions are graded there, not here. What this run asks of it is narrower: does the REQ now carry the folded request faithfully (for a sweep, as an instance line specific enough to act on), or did the fold lose it? Report a lost fold as an Important gap the same way a dropped requirement is reported
+4. For a `prose-backlog` fold, look for an item in `do-work/prose-backlog.md` that matches the part of the input named in the fold line. Both open `- [ ]` and resolved `- [x]` items count (`actions/capture-reference.md` → **Fold-First Rule**, destination 3). Compare a folded REQ only with the part of the original input its fold line names. For a sweep, check that its instance line is specific enough to act on. Report a missing fold as an Important gap.
 
-### Step 4: Evaluate Each REQ
+### Step 4: Compare the Capture With the Original Input
 
-For each REQ, score it on these dimensions:
-
-**Requirements Coverage (0-100%)**
-- Does the REQ capture all requirements from the original input that apply to this feature?
-- Are specific values, constraints, and conditions preserved?
-- Are edge cases and error handling requirements included?
-
-**UX/Interaction Details (0-100%)**
-- Are interaction behaviors captured? (e.g., "auto-scroll to current file," "collapse on click")
-- Are visual/layout requirements noted?
-- Are state transitions described?
-
-**Intent Signals (0-100%)**
-- Does the Builder Guidance section (if applicable) accurately reflect the user's tone?
-- Is the certainty level correct (exploratory vs firm)?
-- Are scope cues preserved ("keep it simple," "don't over-build")?
-
-**Internal Coherence (0-100%)**
-- Does the REQ contradict itself? (e.g., "## What" says one thing, "## Detailed Requirements" says another)
-- If the REQ has addendum sections, do they conflict with the original content?
-- Are scope cues consistent? (e.g., "keep it simple" in Builder Guidance but 15 detailed requirements)
-- Is the Red-Green Proof consistent with the What section?
-
-**Red-Green Proof (0-100%)** — only for `tdd: true` or clearly behavioral requests
-- Does the REQ capture a concrete RED prompt/case, repro, or example?
-- Does it explain why that case is RED today?
-- Does it state what observable outcome turns it GREEN?
-- Does the proof preserve any check or adjustment the user supplied?
-
-**Batch Context (0-100%)** — only for multi-REQ batches
-- Do cross-cutting constraints from the UR appear in this REQ's Constraints section?
-- Are sequencing requirements noted?
-- Are shared design principles captured?
+Check that each requested outcome and constraint reached its destination with its meaning intact. Compare the requested behavior, interaction details, edge cases, and how firmly the user asked for each part. Check that the REQ's sections and any addenda agree, and that shared constraints and sequencing appear in each affected REQ. For `tdd: true` or clearly behavioral requests, check that the REQ preserves any user-supplied check and names a concrete RED case, why it fails today, and the observable GREEN outcome.
 
 ### Step 5: Identify Gaps
 
 For each gap found:
 1. Quote the relevant section from the original input
-2. Identify which REQ should contain it (or if a new REQ is needed)
+2. Name the affected REQ or fold destination and describe what it changed or missed. Say if a new REQ is needed.
 3. Classify the severity:
    - **Important**: A firm requirement that was completely dropped or partially captured with significant loss
    - **Minor**: A clear detail that was summarized too aggressively or a soft preference that was missed
-   - **Nit**: A passing mention or stylistic preference — won't affect the build
+   - **Nit**: A cosmetic discrepancy with no effect on the build
    - **Ambiguous**: Plausible readings of the original input lead to materially different outcomes, scope, or acceptance criteria. This isn't a gap in the REQ; it's a gap in the original request that only the user can fill.
 
 ### Step 6: Generate Report
 
-Output a confidence report in this format:
+Group gaps by severity. For each gap, show the original clause, the affected REQ or fold destination, what changed or went missing, and the proposed correction or remaining ambiguity. If there are no gaps, say so.
 
 ```
 ## Verification Report: UR-NNN
 
-**Overall Confidence: [X]%**
-
-### Per-REQ Scores
-
-| REQ | Title | Coverage | UX Detail | Intent | Coherence | Red-Green | Batch | Overall |
-|-----|-------|----------|-----------|--------|-----------|------------|-------|---------|
-| REQ-018 | TOC Panel | 85% | 70% | 90% | 100% | 100% | 80% | 85% |
-| REQ-019 | File Tree | 90% | 60% | 90% | 100% | N/A | 80% | 80% |
-
-**Scoring:** Per-REQ Overall = average of applicable dimension scores (omit N/A dimensions from the denominator). Overall Confidence = average of per-REQ Overall scores.
-
 ### Gaps Found
 
-**Important:**
-- [None / list of dropped or significantly under-captured requirements with source quotes]
-
-**Minor:**
-- [List of over-summarized details or missed soft preferences]
-
-**Nit:**
-- [List of stylistic or trivial gaps]
-
-**Ambiguous (needs client input):**
-- [List of requirements where the original input is unclear — these become Open Questions on the REQ]
-
-### Recommendations
-
-1. [Specific fix: "Add 'auto-scroll to current file' to REQ-018 Detailed Requirements"]
-2. [Specific fix: "Add batch constraint about stability-first sequencing to REQ-019"]
+**[Severity]**
+- **Original clause** — "[Exact quote]"
+  - **Affected destination** — [REQ-NNN or fold destination]
+  - **Changed or missed** — [Discrepancy or materially different readings]
+  - **Correction or remaining ambiguity** — [Proposed edit or question requiring the user's answer]
 ```
 
 ### Step 7: Offer Fixes
@@ -168,15 +113,8 @@ After presenting the report:
      2. If the user answers → prepare the resolved question and raw answer for the **Canonical answered-question format** in `actions/clarify.md`, contained per that format's **Outside-text containment** contract, then invoke `<skill-root>/tools/do-work-cli.sh --repo-root "<project-root>" --format json answer --manifest "<manifest-path>" --at "<answer-timestamp>"` in `verify-repair` mode. The manifest may request insertion of the exact open question line before resolving it; the command writes the `- [x] [question] → [user's answer]` line and dated contained note atomically. Missing/refused tooling stops this repair; there is no hand-edit/helper fallback. Important/Minor prose repairs and estimate judgment remain action-owned.
      3. If the user defers ("let the builder decide") → add as `- [~] [question] → Builder decides`
      4. If the user can't answer now → add as unresolved `- [ ]` with choices. The builder will use best judgment when it picks up the REQ.
-3. Re-score after fixes to confirm improvement (Resolved Ambiguous items that resulted in new requirements being added DO affect the re-score. Items left as `- [ ]` or `- [~]` don't.)
-4. **Recalculate the estimate after a material repair.** If the applied fixes materially changed a REQ's scope — added or changed requirements, constraints, acceptance criteria, or the Red-Green Proof, not cosmetic rewording — refresh that REQ's `estimate:` frontmatter block: follow `actions/estimate-reference.md` (extract the REQ's signals, run `<skill-root>/tools/estimate-p50.sh`), replace the block with the new result, stamp a fresh `calculated_at` (Timestamp rule, `actions/work-reference.md`), and update `basis` to reflect the changed scope. A repaired REQ with **no** prior estimate gets one the same way. REQs this step did not modify keep their estimates byte-untouched, and only `pending`/`pending-answers` queue REQs are ever recalculated — a claimed or archived REQ's estimate is frozen (`actions/work.md` Step 3.6). Mention the refreshed figure alongside the re-score. Estimation never blocks: on any failure, note it and finish the verify flow normally.
-
-## Scoring Guidelines
-
-**90-100%**: Excellent — all requirements captured with full detail. Ready to build.
-**75-89%**: Good — minor gaps that probably won't affect implementation. Fix if convenient.
-**50-74%**: Needs attention — important requirements or interaction details missing. Fix before building.
-**Below 50%**: Significant gaps — major requirements dropped. REQ needs substantial rework.
+3. **Recalculate the estimate after a material repair.** If the applied fixes materially changed a REQ's scope — added or changed requirements, constraints, acceptance criteria, or the Red-Green Proof, not cosmetic rewording — refresh that REQ's `estimate:` frontmatter block: follow `actions/estimate-reference.md` (extract the REQ's signals, run `<skill-root>/tools/estimate-p50.sh`), replace the block with the new result, stamp a fresh `calculated_at` (Timestamp rule, `actions/work-reference.md`), and update `basis` to reflect the changed scope. A repaired REQ with **no** prior estimate gets one the same way. REQs this step did not modify keep their estimates byte-untouched, and only `pending`/`pending-answers` queue REQs are ever recalculated — a claimed or archived REQ's estimate is frozen (`actions/work.md` Step 3.6). Estimation never blocks: on any failure, note it and finish the verify flow normally.
+4. Report the disposition of each gap after a repair attempt. Mark a correction as applied only when the repair succeeded. Report any recorded answer, deferral, or open question, and include any refreshed estimate.
 
 ## Legacy REQ Handling
 
@@ -184,7 +122,7 @@ For REQs created before the UR system:
 - They won't have `user_request` in frontmatter
 - They may reference `assets/CONTEXT-*.md` via `context_ref`
 - They won't have a Builder Guidance section
-- Score them the same way, but note that missing Builder Guidance is expected (not a gap) for legacy REQs
+- Use the same comparison and treat absent Builder Guidance as expected for legacy REQs
 - If the user wants to verify legacy REQs and has the original CONTEXT file, use its verbatim input
 
 ## Decision Revalidation Workflow
@@ -273,11 +211,10 @@ Omit an empty candidate section. If there are no candidates, say so and still re
 
 ## Verification Checklist
 
-- [ ] Every REQ scored on all applicable dimensions — including every REQ named in `## Folded Requests`, each against the input portion its fold line names
+- [ ] Every captured REQ and fold destination checked against the input it was meant to carry
 - [ ] Original input compared against REQ content word by word (not skimmed)
-- [ ] Gap severity rated for every identified gap (Important, Minor, Nit, Ambiguous)
+- [ ] Each gap classified as Important, Minor, Nit, or Ambiguous
 - [ ] Material ambiguities were answered, deferred, or recorded as open.
-- [ ] Final score reflects actual coverage, not optimistic rounding
 - [ ] In decision-revalidation mode, every source resolved an explicit old/new pair before the one shared queue scan.
 - [ ] Every revalidation candidate includes quoted REQ evidence and a concrete old → replacement conflict; historical-only mentions were excluded.
 - [ ] The cost line names queued files/words and any claimed REQs excluded from v1.
