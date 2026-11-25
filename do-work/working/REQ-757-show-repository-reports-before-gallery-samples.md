@@ -1,7 +1,7 @@
 ---
 id: REQ-757
 title: 'Addendum: Show repository reports before gallery samples'
-status: pending
+status: claimed
 created_at: 2026-11-25T22:17:40Z
 user_request: UR-189
 domain: frontend
@@ -11,6 +11,7 @@ impact: impact-user-visible
 effort_estimate: effort-mechanical
 addendum_to: REQ-749
 maintenance: false
+claimed_at: 2026-11-25T23:11:32Z
 ---
 # Show repository reports before gallery samples
 ## What
