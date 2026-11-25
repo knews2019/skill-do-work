@@ -2,6 +2,7 @@
 id: REQ-760
 title: 'Scan skill instructions for new maintenance opportunities'
 status: claimed
+dispatch_at: 2026-11-25T23:29:58Z
 estimate:
   p50_active_minutes: 20
   confidence: medium
