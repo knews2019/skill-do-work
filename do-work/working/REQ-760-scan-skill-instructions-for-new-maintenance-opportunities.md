@@ -25,6 +25,7 @@ effort_estimate: effort-substantive
 batch: skill-instruction-maintenance
 related: [REQ-758, REQ-759]
 claimed_at: 2026-11-25T23:27:19Z
+builder_handback_at: 2026-11-25T23:46:54Z
 ---
 # Scan skill instructions for new maintenance opportunities
 ## What
