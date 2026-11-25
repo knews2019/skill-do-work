@@ -35,10 +35,11 @@ type reportGalleryStarter struct {
 	Borrow     []string
 }
 
-type reportGalleryGeneratedCard struct {
+type reportGalleryRepositoryCard struct {
 	Title, UseWhen, Report, Preview string
 	Starter                         reportGalleryStarter
 	Review                          *reportGalleryReview
+	Worked                          *workedReportCard
 }
 
 type reportGalleryKind struct {
@@ -47,42 +48,14 @@ type reportGalleryKind struct {
 	Latest  reportGalleryLink
 }
 
-type workedReportGroup struct {
-	Label string
-	Cards []workedReportCard
-}
-
-func groupWorkedReports(cards []workedReportCard) []workedReportGroup {
-	var groups []workedReportGroup
-	groupByKind := make(map[string]int)
-	for _, card := range cards {
-		index, exists := groupByKind[card.Kind]
-		if !exists {
-			label := card.Kind
-			switch card.Kind {
-			case "Proposal":
-				label = "Proposals"
-			case "Root cause":
-				label = "Diagnose a problem"
-			}
-			index = len(groups)
-			groupByKind[card.Kind] = index
-			groups = append(groups, workedReportGroup{Label: label})
-		}
-		groups[index].Cards = append(groups[index].Cards, card)
-	}
-	return groups
-}
-
 type reportGalleryPageData struct {
-	Stylesheet string
-	Samples    []reportGalleryCard
-	Worked     []workedReportGroup
-	Generated  []reportGalleryGeneratedCard
-	Older      []reportGalleryGeneratedCard
-	Kinds      []reportGalleryKind
-	Presets    []reportGalleryLink
-	Live       *reportGalleryLivePage
+	Stylesheet       string
+	Samples          []reportGalleryCard
+	Reports          []reportGalleryRepositoryCard
+	HasWorkedReports bool
+	Kinds            []reportGalleryKind
+	Presets          []reportGalleryLink
+	Live             *reportGalleryLivePage
 }
 
 func renderReportGalleryPage(repositoryRoot string, repository *os.Root, toolboxDocs string, samples []reportGallerySample, bundles []reportBundle, live *reportGalleryLivePage) ([]byte, error) {
@@ -100,57 +73,65 @@ func renderReportGalleryPage(repositoryRoot string, repository *os.Root, toolbox
 	if err != nil {
 		return nil, err
 	}
+	page.HasWorkedReports = len(worked) != 0
 	if live != nil {
 		if err := live.discover(repositoryRoot, worked, bundles); err != nil {
 			return nil, err
 		}
 	}
 	workedByReport := make(map[string]*workedReportCard, len(worked))
-	for index, card := range worked {
-		workedByReport[card.ReportPath] = &worked[index]
+	for index := range worked {
+		card := &worked[index]
+		workedByReport[card.ReportPath] = card
 	}
 	generatedByReport := make(map[string]reportGalleryGeneratedSource, len(bundles))
 	for _, source := range reportGalleryGeneratedSources(repository, bundles) {
 		generatedByReport[source.bundle.Entry] = source
 	}
 	seenReports := make(map[string]bool, len(bundles))
-	for index, bundle := range bundles {
+	for index, bundle := range bundles { // The catalog walk has already sorted newest first.
 		if bundle.Entry == "" || seenReports[bundle.Entry] {
 			continue
 		}
 		seenReports[bundle.Entry] = true
-		source, found := generatedByReport[bundle.Entry]
-		var design reportGalleryGeneratedDesign
-		if found {
-			design, err = source.readDesign(repository)
-			found = err == nil
-		}
-		if workedCard := workedByReport[bundle.Entry]; workedCard != nil {
-			if found {
-				workedCard.Starter = newReportGalleryStarter("worked-prompt-"+workedCard.Name, source.identity, design.borrow)
-			}
-			continue
-		}
-		card := reportGalleryGeneratedCard{
-			Title: bundle.Title, Report: reportGalleryHref(bundle.Entry),
-			Preview: reportGalleryFileLink(repository, reportGalleryPreviewPath(bundle.Entry)),
-		}
+		card := reportGalleryRepositoryCard{Worked: workedByReport[bundle.Entry]}
 		if live != nil {
 			card.Review = live.Reviews[bundle.Entry]
 		}
+		source, found := generatedByReport[bundle.Entry]
+		if card.Worked == nil && !found && card.Review == nil {
+			continue
+		}
+		if card.Worked == nil {
+			card.Title = bundle.Title
+			card.Report = reportGalleryHref(bundle.Entry)
+			card.Preview = reportGalleryFileLink(repository, reportGalleryPreviewPath(bundle.Entry))
+		}
 		if found {
-			card.Starter = newReportGalleryStarter("generated-prompt-"+strconv.Itoa(index), source.identity, design.borrow)
-			if design.recordPath != bundle.Entry {
-				card.Title, card.UseWhen = design.title, design.useWhen
-				page.Generated = append(page.Generated, card)
-				continue
+			if design, err := source.readDesign(repository); err == nil {
+				starterID := "generated-prompt-" + strconv.Itoa(index)
+				if card.Worked != nil {
+					starterID = "worked-prompt-" + card.Worked.Name
+				} else if design.recordPath != bundle.Entry {
+					card.Title, card.UseWhen = design.title, design.useWhen
+				}
+				card.Starter = newReportGalleryStarter(starterID, source.identity, design.borrow)
 			}
 		}
-		if found || card.Review != nil {
-			page.Older = append(page.Older, card)
-		}
+		page.Reports = append(page.Reports, card)
 	}
-	page.Worked = groupWorkedReports(worked)
+	// The manifest can reference a report outside the catalog's directory layout.
+	for index := range worked {
+		workedCard := &worked[index]
+		if seenReports[workedCard.ReportPath] {
+			continue
+		}
+		card := reportGalleryRepositoryCard{Worked: workedCard}
+		if live != nil {
+			card.Review = live.Reviews[workedCard.ReportPath]
+		}
+		page.Reports = append(page.Reports, card)
+	}
 	copyNames := reportGalleryCopyNames(samples)
 	for _, sample := range samples {
 		card := reportGalleryCard{Slug: sample.Name, Title: sample.Title, CopyName: copyNames[sample.Name], UseWhen: sample.UseWhen}
@@ -339,9 +320,7 @@ body { margin: 0; font: 16px/1.5 var(--sans); }
 .gallery-nav .add-link, .gallery-copy button { background: var(--text); color: var(--ground); border: 1px solid var(--text); border-radius: .4rem; padding: .65rem 1rem; font: 600 .95rem var(--sans); cursor: pointer; }
 .gallery section { scroll-margin-top: 1rem; }
 .samples { padding: 1.1rem 0 2rem; }
-{{if .Worked}}.report-group + .report-group { margin-top: 1.75rem; }
-.report-group > h3 { margin: 0 0 .75rem; font: 700 1rem/1.4 var(--sans); color: var(--accent); }
-{{end}}.gallery-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1.8rem clamp(16px, 1.55vw, 32px); align-items: start; }
+.gallery-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1.8rem clamp(16px, 1.55vw, 32px); align-items: start; }
 .gallery-card { min-width: 0; scroll-margin-top: 1rem; }
 .gallery-card:target { outline: 2px solid var(--accent); outline-offset: 6px; }
 .sample-cover { display: block; position: relative; background: var(--panel); border: 1px solid var(--edge); border-radius: .4rem; overflow: hidden; }
@@ -350,9 +329,7 @@ body { margin: 0; font: 16px/1.5 var(--sans); }
 .sample-preview { display: block; width: 100%; height: auto; aspect-ratio: 1040 / 740; object-fit: cover; object-position: top; }
 .card-heading { display: flex; justify-content: space-between; gap: .5rem; align-items: baseline; margin: .55rem 0 .1rem; }
 .gallery .card-heading h3 { margin: 0; min-width: 0; font-size: clamp(1.5rem, 2vw, 2.15rem); letter-spacing: -.025em; }
-{{if or .Generated .Older}}.generated-design .card-heading h3 { overflow-wrap: anywhere; }
-{{end}}{{if .Older}}.report-archive { margin-top: 1rem; }
-.report-archive > summary { cursor: pointer; }
+{{if .Reports}}.generated-design .card-heading h3 { overflow-wrap: anywhere; }
 {{end}}.name-copy { display: inline-flex; align-items: center; gap: .4rem; max-width: 100%; background: none; color: inherit; font: inherit; text-align: left; border: 0; padding: .15rem 0; cursor: copy; overflow-wrap: anywhere; }
 .name-copy:hover { color: var(--accent); text-decoration: underline; text-underline-offset: .14em; }
 .name-copy:disabled { opacity: 1; cursor: text; }
@@ -361,7 +338,7 @@ body { margin: 0; font: 16px/1.5 var(--sans); }
 .copy-icon::after { left: 4px; top: 3px; background: var(--ground); }
 .report-link { flex: none; font: 600 .85rem/1.4 var(--sans); padding: .55rem 0; }
 .gallery-card p { margin: 0 0 .45rem; color: var(--subtle); line-height: 1.45; max-width: 52ch; }
-{{if not .Worked}}.worked-report .worked-kind { font: 700 .84rem/1.4 var(--sans); color: var(--accent); }
+{{if .HasWorkedReports}}.worked-report .worked-kind { font: 700 .84rem/1.4 var(--sans); color: var(--accent); }
 {{end}}.gallery-card details { background: none; border: 0; padding: 0; border-radius: 0; }
 .gallery-card summary { display: list-item; font: 600 .9rem var(--sans); width: fit-content; color: var(--accent); padding: .65rem 0; cursor: pointer; }
 .gallery-card details[open] summary { border: 0; margin: 0; }
@@ -385,9 +362,9 @@ body { margin: 0; font: 16px/1.5 var(--sans); }
 @media (max-width: 520px) { .dialog-bar { flex-wrap: wrap; } .dialog-bar h2 { width: 100%; } .dialog-bar a { margin-left: 0; margin-right: auto; } }
 {{end}}.copy-status:not(:empty) { pointer-events: none; position: fixed; bottom: 1rem; left: 50%; transform: translateX(-50%); z-index: 2; color: var(--ground); background: var(--text); border-radius: .4rem; padding: .6rem 1rem; max-width: calc(100% - 2rem); width: max-content; }
 .gallery-tools { display: grid; grid-template-columns: 3fr 2fr; gap: clamp(1.5rem, 4vw, 5rem); border-block: 1px solid var(--edge); padding: 1.65rem 0 2rem; }
-{{if not .Worked}}.gallery-kinds, {{end}}.gallery-presets { list-style: none; margin: 0; padding: 0; }
-{{if not .Worked}}.gallery-kinds li { border-top: 1px solid var(--edge); padding: .55rem 0; display: grid; grid-template-columns: minmax(7rem, 27%) minmax(0, 1fr); gap: .4rem 1rem; }
-{{end}}{{if not .Worked}}.gallery-kinds code, {{end}}.gallery-copy code { background: none; color: var(--text); padding: 0; overflow-wrap: anywhere; }
+{{if not .HasWorkedReports}}.gallery-kinds, {{end}}.gallery-presets { list-style: none; margin: 0; padding: 0; }
+{{if not .HasWorkedReports}}.gallery-kinds li { border-top: 1px solid var(--edge); padding: .55rem 0; display: grid; grid-template-columns: minmax(7rem, 27%) minmax(0, 1fr); gap: .4rem 1rem; }
+{{end}}{{if not .HasWorkedReports}}.gallery-kinds code, {{end}}.gallery-copy code { background: none; color: var(--text); padding: 0; overflow-wrap: anywhere; }
 .gallery-presets { display: flex; flex-wrap: wrap; gap: .45rem; }
 .gallery-presets a { display: block; padding: .4rem .75rem; background: var(--wash); border-radius: .35rem; font-size: .9rem; text-decoration: none; }
 .gallery-presets a:hover { text-decoration: underline; }
@@ -402,7 +379,7 @@ body { margin: 0; font: 16px/1.5 var(--sans); }
   .gallery-grid { grid-template-columns: minmax(0, 1fr); gap: 1.6rem; }
   .gallery-header { align-items: start; flex-direction: column; gap: .5rem; }
   .gallery-nav { gap: .5rem .9rem; }
-{{if not .Worked}}  .gallery-kinds li { grid-template-columns: 1fr; }
+{{if not .HasWorkedReports}}  .gallery-kinds li { grid-template-columns: 1fr; }
 {{end}}}
 </style>{{if .Live}}{{template "galleryFeedbackStyles"}}{{end}}
 </head>
@@ -411,62 +388,21 @@ body { margin: 0; font: 16px/1.5 var(--sans); }
   <header class="gallery-header">
     <h1>AI Report Gallery</h1>
     <nav class="gallery-nav" aria-label="Gallery sections">
-{{if not .Worked}}      <a href="#report-kinds">Report kinds</a>
-{{end}}{{if and .Worked .Samples}}      <a href="#samples">Samples</a>
-{{end}}{{if or .Generated .Older}}      <a href="#generated-designs">Generated designs</a>
+{{if .Reports}}      <a href="#generated-designs">Repository reports</a>
+{{end}}{{if not .HasWorkedReports}}      <a href="#report-kinds">Report kinds</a>
+{{end}}{{if .Samples}}      <a href="#samples">Sample designs</a>
 {{end}}      <a href="#presets">Presets</a>
       <a class="add-link" href="#add-sample">Add a sample</a>
     </nav>
   </header>
-  {{if .Worked}}<section class="samples" id="worked-reports" aria-labelledby="worked-title">
-    <div class="section-note"><h2 id="worked-title">Worked reports</h2>
-      <p>Open a report from its preview. Click a name to copy it.</p></div>
-    {{range $index, $group := .Worked}}{{if $index}}    {{end}}<section class="report-group" aria-label="{{.Label}}">
-      <h3>{{.Label}}</h3>
-      <div class="gallery-grid">
-{{range .Cards}}        <article class="gallery-card worked-report" data-gallery-card id="{{.Name}}">
-        <a class="sample-cover" data-gallery-preview href="{{.Report}}" aria-label="Open {{.Subject}}">
-          <img class="sample-preview" src="{{.Image}}" loading="lazy" alt="" width="{{.Width}}" height="{{.Height}}" style="aspect-ratio: {{.Width}} / {{.Height}}">
-        </a>
-        <div class="card-heading"><h3><button class="name-copy" data-gallery-name type="button" disabled data-copy="worked-name-{{.Name}}" title="Copy report name"><span id="worked-name-{{.Name}}">{{.Name}}</span><i class="copy-icon" aria-hidden="true"></i></button></h3>
-          <a class="report-link" href="#{{.Name}}" aria-label="Permalink to {{.Name}}">#</a></div>
-        <p>{{.Subject}}</p>
-        {{if .Starter.Prompt}}<details><summary>Use this design</summary>
-          {{template "starter-prompt" .Starter}}
-        </details>{{else}}<p>Design unavailable.</p>{{end}}{{if $.Live}}{{with index $.Live.Reviews .ReportPath}}{{template "galleryFeedbackReview" .}}{{end}}{{end}}
-      </article>
-{{end}}      </div>
-    </section>
-{{end}}  </section>{{end}}
-  {{if or (not .Worked) .Samples}}<section class="samples" id="samples" aria-labelledby="samples-title">
-    <div class="section-note"><h2 id="samples-title">{{if .Worked}}Sample designs{{else}}{{len .Samples}} report designs{{end}}</h2>
-      {{if .Samples}}<p>Select a page to preview it. Click a design name to copy it.</p>{{end}}</div>
-    {{if .Samples}}<div class="gallery-grid">
-      {{range .Samples}}<article class="gallery-card" id="sample-{{.Slug}}">
-        {{if .Preview}}<a class="sample-cover" href="{{.Preview}}" aria-label="Preview {{.Title}}" data-preview>
-          <img class="sample-preview" src="{{.Preview}}" loading="lazy" alt="" width="1040" height="740">
-          <span aria-hidden="true">Enlarge ↗</span></a>{{end}}
-        <div class="card-heading"><h3><button class="name-copy" type="button" disabled data-copy="name-{{.Slug}}" title="Copy design name" aria-label="Copy design name {{.CopyName}}"><span id="name-{{.Slug}}">{{.CopyName}}</span><i class="copy-icon" aria-hidden="true"></i></button></h3>
-          <a class="report-link" href="{{.Open.Href}}" aria-label="{{.Open.Label}} — {{.Title}}">{{if eq .Open.Label "Worked example"}}Open report{{else}}{{.Open.Label}}{{end}} ↗</a></div>
-        {{if ne .CopyName .Title}}<p>{{.Title}}</p>{{end}}<p>{{.UseWhen}}</p>
-        <details><summary>Use this design</summary>
-          {{template "starter-prompt" .Starter}}
-          <div class="gallery-links"><a href="#sample-{{.Slug}}">Permalink</a>{{range .More}}<a href="{{.Href}}">{{.Label}}</a>{{end}}</div>
-        </details>
-      </article>{{end}}
-    </div>{{else}}<p>No samples yet.</p>{{end}}
-  </section>
-  {{end}}{{if or .Generated .Older}}<section class="samples" id="generated-designs" aria-labelledby="generated-designs-title">
-    <div class="section-note"><h2 id="generated-designs-title">Generated report designs</h2></div>
-    <div{{if .Live}} id="project-reports"{{end}}>
-{{if .Generated}}      <div class="gallery-grid">{{range .Generated}}{{template "generated-report-card" .}}{{end}}</div>
-{{end}}{{if .Older}}      <details class="report-archive">
-        <summary>Browse other reports ({{len .Older}})</summary>
-        <div class="gallery-grid">{{range .Older}}{{template "generated-report-card" .}}{{end}}</div>
-      </details>{{end}}
+{{if .Reports}}  <section class="samples" id="generated-designs" aria-labelledby="generated-designs-title">
+    <div class="section-note"{{if .HasWorkedReports}} id="worked-reports"{{end}}><h2 id="generated-designs-title">Repository reports</h2></div>
+    <div class="gallery-grid"{{if .Live}} id="project-reports"{{end}}>
+{{range .Reports}}{{if .Worked}}{{template "worked-report-card" .}}{{else}}{{template "generated-report-card" .}}{{end}}{{end}}
     </div>
   </section>
-  {{end}}{{if not .Worked}}<div class="gallery-tools">
+{{else}}{{template "sample-designs" .Samples}}{{end}}
+{{if not .HasWorkedReports}}  <div class="gallery-tools">
   <section id="report-kinds" aria-labelledby="report-kinds-title">
     <h2 id="report-kinds-title">Report kinds</h2>
     <ul class="gallery-kinds">
@@ -475,13 +411,14 @@ body { margin: 0; font: 16px/1.5 var(--sans); }
       </li>{{end}}
     </ul>
   </section>
-{{end}}{{if not .Worked}}  {{end}}<section id="presets" aria-labelledby="presets-title">
+{{end}}  <section id="presets" aria-labelledby="presets-title">
     <h2 id="presets-title">Second-opinion presets</h2>
     {{if .Presets}}<ul class="gallery-links gallery-presets">
       {{range .Presets}}<li><a href="{{.Href}}">{{.Label}}</a></li>{{end}}
     </ul>{{else}}<p>No shipped presets found.</p>{{end}}
   </section>
-{{/* Keep the closing div byte from the scored worked-report page. */}}  </div>
+{{if not .HasWorkedReports}}  </div>
+{{end}}{{if and .Reports (or (not .HasWorkedReports) .Samples)}}{{template "sample-designs" .Samples}}{{end}}
   <section class="gallery-add" id="add-sample" aria-labelledby="add-sample-title">
     <h2 id="add-sample-title">Add a sample</h2>
     <p>Paste this line into your agent, replacing the placeholders with the source and what you liked.</p>
@@ -571,6 +508,39 @@ if (typeof dialog.showModal === 'function') {
           <button class="prompt-copy" type="button" data-copy="{{.ID}}" hidden>Copy starter prompt</button>{{if .Borrow}}
           <ul aria-label="Borrow">{{range .Borrow}}<li>{{.}}</li>{{end}}</ul>{{end}}
 {{- end -}}
+{{define "sample-designs"}}  <section class="samples" id="samples" aria-labelledby="samples-title">
+    <div class="section-note"><h2 id="samples-title">Sample designs</h2>
+      {{if .}}<p>Select a page to preview it. Click a design name to copy it.</p>{{end}}</div>
+    {{if .}}<div class="gallery-grid">
+      {{range .}}<article class="gallery-card" id="sample-{{.Slug}}">
+        {{if .Preview}}<a class="sample-cover" href="{{.Preview}}" aria-label="Preview {{.Title}}" data-preview>
+          <img class="sample-preview" src="{{.Preview}}" loading="lazy" alt="" width="1040" height="740">
+          <span aria-hidden="true">Enlarge ↗</span></a>{{end}}
+        <div class="card-heading"><h3><button class="name-copy" type="button" disabled data-copy="name-{{.Slug}}" title="Copy design name" aria-label="Copy design name {{.CopyName}}"><span id="name-{{.Slug}}">{{.CopyName}}</span><i class="copy-icon" aria-hidden="true"></i></button></h3>
+          <a class="report-link" href="{{.Open.Href}}" aria-label="{{.Open.Label}} — {{.Title}}">{{if eq .Open.Label "Worked example"}}Open report{{else}}{{.Open.Label}}{{end}} ↗</a></div>
+        {{if ne .CopyName .Title}}<p>{{.Title}}</p>{{end}}<p>{{.UseWhen}}</p>
+        <details><summary>Use this design</summary>
+          {{template "starter-prompt" .Starter}}
+          <div class="gallery-links"><a href="#sample-{{.Slug}}">Permalink</a>{{range .More}}<a href="{{.Href}}">{{.Label}}</a>{{end}}</div>
+        </details>
+      </article>{{end}}
+    </div>{{else}}<p>No samples yet.</p>{{end}}
+  </section>
+{{end -}}
+{{define "worked-report-card"}}{{with .Worked}}
+      <article class="gallery-card worked-report" data-gallery-card id="{{.Name}}">
+        <a class="sample-cover" data-gallery-preview href="{{.Report}}" aria-label="Open {{.Subject}}">
+          <img class="sample-preview" src="{{.Image}}" loading="lazy" alt="" width="{{.Width}}" height="{{.Height}}" style="aspect-ratio: {{.Width}} / {{.Height}}">
+        </a>
+        <div class="card-heading"><h3><button class="name-copy" data-gallery-name type="button" disabled data-copy="worked-name-{{.Name}}" title="Copy report name"><span id="worked-name-{{.Name}}">{{.Name}}</span><i class="copy-icon" aria-hidden="true"></i></button></h3>
+          <a class="report-link" href="#{{.Name}}" aria-label="Permalink to {{.Name}}">#</a></div>
+        <p class="worked-kind">{{.Kind}}</p>
+        <p>{{.Subject}}</p>
+        {{if $.Starter.Prompt}}<details><summary>Use this design</summary>
+          {{template "starter-prompt" $.Starter}}
+        </details>{{else}}<p>Design unavailable.</p>{{end}}{{with $.Review}}{{template "galleryFeedbackReview" .}}{{end}}
+      </article>
+{{end}}{{end -}}
 {{define "generated-report-card"}}
       <article class="gallery-card generated-design">
 {{if .Preview}}        <a class="sample-cover" href="{{.Report}}" aria-label="Open {{.Title}}">
