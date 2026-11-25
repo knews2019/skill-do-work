@@ -1,7 +1,7 @@
 ---
 id: REQ-761
 title: 'Match board executable names exactly before restart'
-status: pending
+status: claimed
 created_at: 2026-11-25T23:09:19Z
 user_request: UR-191
 domain: general
@@ -11,6 +11,7 @@ suggested_spec: bug-fix
 impact: impact-user-visible
 effort_estimate: effort-mechanical
 maintenance: false
+claimed_at: 2026-11-25T23:27:19Z
 ---
 # Match board executable names exactly before restart
 ## What
