@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="ai-report-kind" content="proposal">
+<meta name="ai-report-gallery-sample" content="decision-matrix">
+<meta name="ai-report-gallery-reason" content="The same benefit, cost and risk fields make two edits and deferral comparable.">
+<title>Two instruction cuts for do-work · REQ-760</title>
+<link rel="stylesheet" href="presentation.css">
+<style>
+  .lead {max-width: 32ch}
+  .comparison {display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,19rem),1fr));gap:1.5rem}
+  .option {border-top:3px solid var(--line);padding-top:1rem;min-width:0}
+  .option:first-child {border-color:var(--change)}
+  .option dt {font-weight:700;margin-top:.8rem}
+  .option dd {margin:0}
+  .option h3 {margin:.6rem 0}
+  .order {color:var(--muted);font-family:var(--mono);font-size:.88rem}
+  .trace {padding-left:1.75rem;max-width:83ch}
+  .trace li {padding:0 0 .9rem .4rem}
+  .trace li::marker {font:700 .9rem var(--mono);color:var(--proof)}
+  .trace p {margin:.25rem 0}
+  .citation {display:block;font-family:var(--mono);font-size:.85em;color:var(--muted);overflow-wrap:anywhere}
+  .ledger {max-width:100ch}
+  .ledger p, .ledger code, pre code {overflow-wrap:anywhere}
+  .ledger pre, #another-layout pre {white-space:pre-wrap;overflow-wrap:anywhere}
+  #open-all {margin-bottom:.65rem}
+  .appendix {margin-top:1.6rem}
+  .recommend {margin-top:1.5rem;padding-left:1rem;border-left:3px solid var(--change);max-width:76ch}
+  .jump {gap:.55rem}
+  .page .band {scroll-margin-top:5rem}
+  @media(max-width:600px){.topbar strong{font-size:.88rem}.topbar .btn{font-size:.78rem}.comparison{gap:.8rem}}
+</style>
+</head>
+<body>
+<nav class="topbar"><strong>do-work · Instruction maintenance</strong><span class="spacer"></span><button class="btn deck-toggle" id="deck-toggle" type="button" aria-pressed="false">Deck mode (D)</button></nav>
+<main class="page">
+<header class="band depth-one" id="decision">
+<p class="depth-marker"><span class="gauge" aria-hidden="true"><i class="on"></i><i></i><i></i></span>Decision brief · REQ-760 · 26 November 2026</p>
+<h1 class="lead">Let the integrator update the request.</h1>
+<p class="sub measure">Step 6 tells a builder in a separate checkout to edit a request that only the integrator may change. The builder can return its evidence in the handback. A second, independent cut would skip drafting a knowledge-base offer when nobody can answer it.</p>
+<p><a class="chip" href="#ownership">Step 6 · lines 43 and 48</a> <a class="chip" href="#lessons">Lessons handoff · steps 2 and 3</a></p>
+<nav class="jump" aria-label="Report sections"><a class="btn" href="#options">Ranked options</a><a class="btn" href="#evidence">Timeline example and sources</a><a class="btn" href="#another-layout">Alternate reading</a></nav>
+</header>
+
+<section class="band" id="options" aria-labelledby="options-title">
+<p class="depth-marker"><span class="gauge" aria-hidden="true"><i class="on"></i><i class="on"></i><i></i></span>Options</p>
+<h2 id="options-title">Two cuts, in order of priority</h2>
+<div class="comparison">
+<article class="option">
+<span class="order">O1 · First priority</span><h3>Let the integrator mark the phases complete</h3>
+<dl><dt>Benefit</dt><dd>A builder in a separate checkout knows to return its plan, changes and checks in the <span class="term" data-def="The builder’s durable record of work given to the integrator.">handback</span>. The integrator checks the evidence and updates the request.</dd>
+<dt>Cost</dt><dd>Narrow one sentence in the implementation instructions and name the evidence in the handback template.</dd>
+<dt>Risk</dt><dd>A copy into the request can silently fail. A previous review caught exactly that. Verify the actual checkboxes before qualification.</dd></dl>
+<a class="chip" href="#ownership">REQ-254 · correction, line 147</a>
+</article>
+<article class="option">
+<span class="order">O2 · Second priority</span><h3>Defer the unattended lessons draft</h3>
+<dl><dt>Benefit</dt><dd>When an unattended run has no way to ask, it can record the lessons as pending before composing an inbox document.</dd>
+<dt>Cost</dt><dd>Move the existing fallback ahead of drafting. Limit the draft and prompt checklist to interactive offers.</dd>
+<dt>Risk</dt><dd>A run wrongly classified as unattended could hide an offer someone wanted. Preserve the full preview and consent step whenever someone can answer.</dd></dl>
+<a class="chip" href="#lessons">kb-lessons-handoff.md · line 121</a>
+</article>
+<article class="option">
+<span class="order">O3 · Defer both</span><h3>Keep the current wording</h3>
+<dl><dt>Benefit</dt><dd>No edits or migration work.</dd><dt>Cost</dt><dd>Builders must reconcile the two writing instructions. A literal reading still calls for an unattended draft.</dd>
+<dt>Risk</dt><dd>The next integrator may receive a request edit on a branch whose queue changes must be rejected at merge.</dd></dl>
+<a class="chip" href="#ownership">fan-out-reference.md · line 79</a>
+</article>
+</div>
+<p class="recommend"><strong>Recommendation.</strong> Choose O1 first. An archived handback shows the proposed division of work already succeeding. O2 removes a draft that cannot be used on one branch of the procedure. The archive confirms the pending outcome, but gives no measurement of time spent writing such drafts.</p>
+</section>
+
+<section class="band" id="evidence" aria-labelledby="evidence-title">
+<p class="depth-marker"><span class="gauge" aria-hidden="true"><i class="on"></i><i class="on"></i><i class="on"></i></span>Evidence ledger</p>
+<h2 id="evidence-title">What a second check actually caught</h2>
+<p class="measure">In August, the Timeline opened on the oldest work in a queue of 309 requests. The user wanted the newest request at the top. REQ-318 carried that change through review.</p>
+<ol class="trace">
+<li><strong>Capture.</strong> “most recent REQ's should be on top.” REQ-318 preserved that direction. It also called the proposed test user-confirmed, although the user had confirmed only the behavior.<span class="citation">UR-065/input.md:151 · 31002694 · ba7b1019</span></li>
+<li><strong>Verification.</strong> The verifier corrected the test attribution, restored the builder’s discretion over where to sort, and named the screen-reader label alongside the visible subheading. The one recorded question about keeping excluded items visible belonged to sibling REQ-319.<span class="citation">ba7b1019 · UR-065/input.md:106–114</span></li>
+<li><strong>Implementation.</strong> The builder reversed the Go comparison and the numeric ID tie-break. Both the chart and table could then use the same ordering. It revised the visible and accessible descriptions together.<span class="citation">9dcfb0c7 · REQ-318:149–163</span></li>
+<li><strong>Testing.</strong> The ordering tests failed before the change and passed after it. On a generated board with 316 rows, the first drawn label was REQ-324. The table ended at REQ-001.<span class="citation">REQ-318:165–191</span></li>
+<li><strong>Review.</strong> Removing the tie-break still left the rewritten ordering test green because its inputs were already in the expected tie order. Reordering the fixture made that same removal fail. Decision D-01 extended scope to two files whose wording the change had made stale.<span class="citation">REQ-318:226–255 · 0aa0b038</span></li>
+</ol>
+
+<div class="appendix ledger">
+<h3>Exact edits and history</h3>
+<button class="btn" id="open-all" type="button">Open all details</button>
+<details id="ownership"><summary>O1 · Where the builder records its evidence</summary>
+<p><strong>Exact cut.</strong> In <code>skills/do-work/actions/work-implementation-reference.md:43</code>, replace “Edit the REQ's ‘AI Execution State (P-A-U Loop)’ checkboxes in real time” with “Record each phase as you work. When the orchestrator owns the REQ, return the phase evidence in the handback for the orchestrator to verify and mark before qualification. Otherwise update the REQ directly.” Keep the three phase descriptions. At <code>skills/do-work/actions/fan-out-reference.md:173</code>, include that phase evidence in the handback contents.</p>
+<p><strong>Why the rule exists.</strong> Commit <code>762dc01b</code> introduced explicit phase updates so the request showed progress as work happened. It named no preceding incident. The current ownership rule assigns queue state to the orchestrator, including serial runs. The merge guard stops on builder-committed queue changes. <span class="citation">skills/do-work/actions/work-implementation-reference.md:48 · skills/do-work/actions/fan-out-reference.md:9, 61, 79</span></p>
+<p><strong>Recorded failure.</strong> A replacement targeting absent checkbox text silently did nothing on REQ-254. The commit claimed the evidence had been copied. Independent review corrected the record. REQ-264 subsequently made a missing phase block visible at qualification. REQ-583 shows a working handoff: the builder supplied the evidence and the integrator read the merged diff before checking the box.</p>
+<p class="citation">do-work/archive/UR-055/REQ-254-let-qualify-tell-a-checks-own-output-from-instrumentation.md:143–148 · abf35549 · do-work/archive/UR-119/REQ-583-pin-the-evidence-gate-remedy-redirection-guard-and-interrupted-path.md:41–46 · do-work/runs/work-2026-09-05-170806/REQ-583-handback.md:122</p>
+<p><strong>Possible consequence.</strong> A builder following the unconditional edit instruction could trip the merge guard. REQ-254 documents a transcription failure. It does not establish that this instruction caused a rejected merge.</p>
+</details>
+<details id="lessons"><summary>O2 · When the knowledge-base offer needs a draft</summary>
+<p><strong>Exact cut.</strong> In <code>skills/do-work/actions/kb-lessons-handoff.md:121</code>, move the unattended fallback to immediately after line 42, before Step 2. Use “If this orchestrated run is unattended and has no blocking prompt, take Save for later at Step 4(b).” Qualify checklist lines 193–194 with “For an interactive offer”. Keep the initial eligibility and silent-skip checks, missing-KB instructions, status write and return to the caller.</p>
+<p><strong>Why the rule exists.</strong> The handoff introduced in <code>3bc0fb0b</code> lets a person inspect a draft before consenting to save it. Commit <code>fc234cf0</code> clarified that the offer concerns new lessons from completed work. An unattended run already defaults to pending. Step 4(b) consumes only the status. A later interactive offer can assemble the document from the lessons in the request.</p>
+<p class="citation">skills/do-work/actions/kb-lessons-handoff.md:16–44, 110–121, 133–156 · skills/do-work/actions/work-review-reference.md:76</p>
+<p><strong>Recorded outcome.</strong> The unattended guide for REQ-739 directed a pending status. Its archived request records that status and retains the lessons. I found no record of a discarded draft or of a missed offer caused by the proposed earlier branch. Both the expected saving and the risk of suppressing an interactive offer are inferences.</p>
+<p class="citation">do-work/runs/work-2026-11-16-202422/INTEGRATOR-GUIDE.md:46 · do-work/archive/UR-181/REQ-739-second-opinion-header-side-margin.md:34, 280</p>
+</details>
+<details><summary>Trace sources, scope and limits</summary>
+<p>Trace citations refer to <code>do-work/archive/UR-065/input.md</code> and <code>do-work/archive/UR-065/REQ-318-put-the-newest-req-at-the-top-of-the-timeline.md</code>. The historical test and browser results come from that archive. This audit checked the capture, verification, implementation and review diffs.</p>
+<p>Instruction citations use <code>77c78cd7</code>, which contains the accepted capture change <code>dc6c016b</code>. The separate accepted verification change <code>9a3eda8a</code> makes verification report the clause, gap and correction when invoked. Neither proposed edit touches its four changed files. The five topics already reviewed at <code>efcd3618</code> were excluded. <span class="citation">do-work/user-requests/UR-190/input.md · 9a3eda8a, verify-requests.md:85</span></p>
+<p>This is one archived request. The test-attribution correction is an observable capture error. The verifier’s question concerned a genuine ambiguity in another request. The record supplies no avoidable interruption or later change of preference for REQ-318. It cannot establish an interruption rate or time saved.</p>
+</details>
+<details><summary>Maintainer decision and capture lines</summary>
+<p><strong>Q1.</strong> Which edits should proceed? The two changes are independent.</p>
+<pre><code>do-work capture-request: Route builder phase evidence through the handback whenever the orchestrator owns the request, and verify it before marking the request checkboxes.
+
+do-work capture-request: Take the existing unattended Save for later branch before drafting a lessons offer when nobody can answer it.
+
+do-work capture-request: Record the decision to retain the existing phase and lessons handoff instructions.</code></pre>
+<p>O3 can also be chosen by leaving the instructions as they stand.</p>
+</details>
+</div>
+</section>
+
+<section class="band" id="another-layout">
+<h2>Alternate reading</h2>
+<details><summary>Incident timeline and teaching method</summary>
+<p><strong>Incident Timeline.</strong> Place the false transcription claim, its correction and the later successful handback in order to show where ownership mattered.</p>
+<pre><code>ai-report second-opinion --editor-direction 'Order the phase-record incidents by date and place each observed correction beside its source.' 'ai-reports/2026-11-26_0128_proposal-instruction-maintenance'</code></pre>
+<p><strong>Feynman explanation.</strong> Explain who can write the request and who can consent to saving a lesson. Those two questions reconstruct the proposed rules.</p>
+<pre><code>ai-report second-opinion --preset feynman 'ai-reports/2026-11-26_0128_proposal-instruction-maintenance'</code></pre>
+</details>
+</section>
+</main>
+<span id="deck-hint" aria-live="polite"></span>
+<script src="presentation.js"></script>
+</body>
+</html>
