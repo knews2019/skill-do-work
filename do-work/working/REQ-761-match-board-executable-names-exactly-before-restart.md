@@ -2,6 +2,7 @@
 id: REQ-761
 title: 'Match board executable names exactly before restart'
 status: claimed
+dispatch_at: 2026-11-25T23:27:36Z
 estimate:
   p50_active_minutes: 5
   confidence: high

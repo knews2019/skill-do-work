@@ -8,4 +8,4 @@ Three background worker slots. Serial integration on local main.
 | REQ-758 | GPT-6.2-sol | REQ-758-brief.md | REQ-758-handback.md | Building on t3/implement-req-758 | 2026-11-25T23:12:35Z | pending | pending | 0 |
 | REQ-759 | GPT-6.2-sol | REQ-759-brief.md | REQ-759-handback.md | Building on t3/req-759-score-consumers | 2026-11-25T23:12:41Z | pending | pending | 0 |
 | REQ-760 | GPT-6.2-astra | REQ-760-brief.md | REQ-760-handback.md | Prepared | pending | pending | pending | 0 |
-| REQ-761 | GPT-6.2-sol | REQ-761-brief.md | REQ-761-handback.md | Prepared | pending | pending | pending | 0 |
+| REQ-761 | GPT-6.2-sol | REQ-761-brief.md | REQ-761-handback.md | Building on t3/req-761-stubbed-shell-contract | 2026-11-25T23:27:36Z | pending | pending | 0 |

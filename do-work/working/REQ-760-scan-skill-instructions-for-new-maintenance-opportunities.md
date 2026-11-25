@@ -12,6 +12,7 @@ estimate:
   - 2 subsystems involved
   - 5 acceptance criteria
 route: B
+write_set: [ai-reports/2026-11-26_0128_proposal-instruction-maintenance, docs/report-gallery/previews/ai-reports/2026-11-26_0128_proposal-instruction-maintenance/index.html.png]
 created_at: 2026-11-25T22:57:02Z
 user_request: UR-190
 domain: general
@@ -52,3 +53,18 @@ Route B. A fresh audit needs exploration of historical failures and the current 
 ## Plan
 
 **Planning not required** — Route B, exploration-guided implementation.
+
+## Exploration
+
+The capture and verify actions define the original-clause comparison and repair steps. The work testing and review companions govern the later handoffs. The archive includes small direct-route requests with documented acceptance evidence, including REQ-318's Timeline ordering. The five preceding audit topics are excluded by the request. The toolbox proposal report can carry ranked recommendations, source-line evidence and historical receipts without changing the source instructions.
+
+## Scope
+
+**Files I will touch:**
+- `ai-reports/2026-11-26_0128_proposal-instruction-maintenance/` (new) — one self-contained proposal report, its design note and local assets.
+- `docs/report-gallery/previews/ai-reports/2026-11-26_0128_proposal-instruction-maintenance/index.html.png` (new) — preview of the rendered report.
+
+**Acceptance criteria:**
+- Trace one straightforward request from capture through review and distinguish recorded failures from hypothetical risks.
+- Rank only new, evidenced recommendations, or report that none qualify. Give current citations, exact cuts and consequences, preserving the original reason, decisions and success evidence.
+- Deliver and render the report. Leave the recommendations for the maintainer to decide.
