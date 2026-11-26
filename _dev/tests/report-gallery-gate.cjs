@@ -135,6 +135,7 @@ async function verifyFragment(page, fragment, cardSelector, index) {
     do {
       const target = document.getElementById(id);
       if (!target || (target !== node && !node.contains(target))) return false;
+      if (document.querySelectorAll('#' + CSS.escape(id)).length !== 1) return false;
       const rect = node.getBoundingClientRect();
       const targetRect = target.getBoundingClientRect();
       const scroller = document.scrollingElement;
@@ -214,8 +215,10 @@ async function runView(browser, width, theme, selectors, manifest, output) {
     }
     failures.G6.push(...await verifyLinks(page, probe));
 
+    // Chrome can fail to capture a tall page while the link probe is in front.
+    await page.bringToFront();
     await page.screenshot({ path: path.join(output, width + '-' + theme + '.png'),
-      fullPage: true, animations: 'disabled' });
+      fullPage: true, animations: 'disabled', timeout: 30000 });
 
     const names = new Set();
     const reports = new Set();

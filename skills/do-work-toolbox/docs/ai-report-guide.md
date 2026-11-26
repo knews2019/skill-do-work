@@ -112,7 +112,9 @@ The current month's reports sit directly under `ai-reports/`. A finished month's
 
 ## Report Gallery
 
-`ai-report gallery` regenerates `<project-root>/docs/report-gallery/index.html`. Click a page image to enlarge the screenshot, or choose **Open report** for the interactive example. Click the design name to copy it. Under **Use this design**, you can copy the full starter prompt, read the design notes, or get a link to the card. The gallery also links to recent reports and second-opinion presets.
+`ai-report gallery` regenerates `<project-root>/docs/report-gallery/index.html`. Repository reports appear newest first. Click a report preview to open the report. **Sample designs** follows the reports and appears first in a repository without reports. Click a sample image to enlarge it or choose **Open report** to open its example.
+
+Click a sample design name or a worked report name to copy it. Open **Use this design** for the starter prompt and design notes. Use **Permalink** on a sample or **#** on a worked report to link to its card. The gallery also links to second-opinion presets.
 
 Run `just run-report-gallery` from the project to review its reports. Just starts a loopback server and opens the gallery in your browser. If the browser does not open, use the URL printed in the terminal. Open **Review report and figures** on a worked or project report, choose **Like** or **Dislike**, optionally enter a note of up to 500 characters, and select **Save feedback**. Each report and figure has its own form. Press Ctrl+C to stop the server, and run the recipe again to reopen the gallery or pick up newly generated reports.
 

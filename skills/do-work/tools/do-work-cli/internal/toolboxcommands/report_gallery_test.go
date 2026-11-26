@@ -17,6 +17,56 @@ import (
 
 const galleryFixturePage = "docs/report-gallery/index.html"
 
+func TestAIReportGalleryOpensOnRepositoryReportsBeforeSamples(t *testing.T) {
+	root := t.TempDir()
+	writeGalleryFixture(t, root, "skills/do-work-toolbox/docs/report-gallery/two-measures/sample.md",
+		galleryFixtureSample("Two measures", "Compare a rate and a level.", "shipped", "", "2026-11-18"))
+	writeGalleryFixture(t, root, "skills/do-work-toolbox/docs/report-gallery/two-measures/example.html",
+		"<title>Shipped sample</title>")
+
+	checkPage := func(wantOrder ...string) string {
+		t.Helper()
+		if result := runGalleryFixture(t, root); result.Outcome != resultmodel.OutcomeSuccess {
+			t.Fatalf("generation failed: %+v", result)
+		}
+		page, err := os.ReadFile(filepath.Join(root, galleryFixturePage))
+		if err != nil {
+			t.Fatal(err)
+		}
+		remaining := string(page)
+		for _, fragment := range wantOrder {
+			_, rest, found := strings.Cut(remaining, fragment)
+			if !found {
+				t.Fatalf("gallery missing or out of order: %s", fragment)
+			}
+			remaining = rest
+		}
+		return string(page)
+	}
+
+	const newer = "ai-reports/2026-11-20_0900_new-report/index.html"
+	const older = "ai-reports/2026-11-19_0900_old-report/index.html"
+	writeGalleryFixture(t, root, older, "<title>Older repository report</title>")
+	writeGalleryFixture(t, root, "ai-reports/2026-11-19_0900_old-report/gallery-design.md",
+		galleryFixtureSample("Older repository design", "Compare outcomes.", older, "", "2026-11-19"))
+	writeGalleryFixture(t, root, newer, "<title>Newer repository report</title>")
+	checkPage(
+		`<div class="gallery-grid">`,
+		`class="report-link" href="../../`+newer+`"`,
+		`class="report-link" href="../../`+older+`"`,
+		`<section id="report-kinds"`,
+		`<h2 id="samples-title">Sample designs</h2>`,
+		`id="sample-two-measures"`,
+	)
+	if err := os.RemoveAll(filepath.Join(root, "ai-reports")); err != nil {
+		t.Fatal(err)
+	}
+	page := checkPage(`<h2 id="samples-title">Sample designs</h2>`, `<div class="gallery-grid">`, `id="sample-two-measures"`)
+	if strings.Contains(page, `id="generated-designs"`) {
+		t.Fatal("gallery without reports has a repository report section")
+	}
+}
+
 func TestAIReportGalleryListUsesProjectOverrideAndSkipsBrokenRecords(t *testing.T) {
 	for _, toolbox := range []string{"skills/do-work-toolbox", ".claude/skills/do-work-toolbox"} {
 		t.Run(toolbox, func(t *testing.T) {
@@ -152,10 +202,10 @@ func TestAIReportGalleryPageLinksLatestRealReportsAndAssets(t *testing.T) {
 	if !hasKinds || !strings.Contains(kinds, "Newest &amp; best proposal") || strings.Contains(kinds, "Old proposal") {
 		t.Error("report kinds must keep only the latest proposal")
 	}
-	_, archive, hasArchive := strings.Cut(page, `<details class="report-archive">`)
-	archive, _, _ = strings.Cut(archive, "</section>")
-	if !hasArchive || !strings.Contains(archive, "Old proposal") {
-		t.Error("older reports should be discoverable inside the closed archive")
+	_, reports, hasReports := strings.Cut(page, `<section class="samples" id="generated-designs"`)
+	reports, _, _ = strings.Cut(reports, "</section>")
+	if !hasReports || !strings.Contains(reports, `<h3>Old proposal</h3>`) {
+		t.Error("older reports should be shown in the repository report grid")
 	}
 	for _, match := range regexp.MustCompile(`href="([^"#]+)"`).FindAllStringSubmatch(page, -1) {
 		link, err := url.Parse(match[1])
@@ -315,11 +365,12 @@ func TestAIReportGalleryDiscoversGeneratedAndLegacyPreviews(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	sections := strings.SplitN(string(page), `<details class="report-archive">`, 2)
-	if len(sections) != 2 || !strings.Contains(sections[1], "Browse other reports (2)") {
-		t.Fatal("expected both legacy reports in the archive")
+	_, reports, hasReports := strings.Cut(string(page), `<section class="samples" id="generated-designs"`)
+	reports, _, _ = strings.Cut(reports, "</section>")
+	if !hasReports || strings.Count(reports, `<article class="gallery-card generated-design">`) != 3 {
+		t.Fatal("expected the generated report and both legacy reports in the repository report grid")
 	}
-	for index, report := range []string{
+	for _, report := range []string{
 		"ai-reports/shared%20name/index.html",
 		"ai-reports/2026-11_1-report/shared%20name/report.md",
 	} {
@@ -329,24 +380,33 @@ func TestAIReportGalleryDiscoversGeneratedAndLegacyPreviews(t *testing.T) {
 			`src="previews/` + report + `.png" loading="lazy"`,
 			`class="report-link" href="` + href + `"`,
 		} {
-			if !strings.Contains(sections[index], fragment) {
+			if !strings.Contains(reports, fragment) {
 				t.Errorf("card for %s is missing %s", report, fragment)
 			}
 		}
 	}
-	if !strings.Contains(sections[1], `href="../../`+missing+`"`) ||
-		strings.Contains(sections[1], `src="previews/`+missing+`.png"`) {
+	if !strings.Contains(reports, `href="../../`+missing+`"`) ||
+		strings.Contains(reports, `src="previews/`+missing+`.png"`) {
 		t.Fatal("a report without a capture should keep its report link without a broken image")
 	}
 }
 
 func TestAIReportGalleryShowsWorkedReportsAndKeepsProjectSamples(t *testing.T) {
 	root := t.TempDir()
+	const firstReport = "ai-reports/2026-11-20_0900_report-one/index.html"
+	const middleReport = "ai-reports/2026-11-19_0900_regular-report/index.html"
+	const nestedReport = "ai-reports/2026-11_1-report/nested/2026-11-21_0900_latest/index.html"
+	workedNames := strings.Fields("report-one report-two project-reports sample-local-design preview-size report-six report-seven report-eight report-nine generated-designs")
 	var cards []string
 	kinds := []string{"Completed work", "Proposal", "Root cause", "Architecture"}
-	for index, suffix := range strings.Fields("one two three four five six seven eight nine ten") {
-		name := "report-" + suffix
+	for index, name := range workedNames {
 		report := "ai-reports/" + name + "/index.html"
+		switch name {
+		case "report-one":
+			report = firstReport
+		case "generated-designs":
+			report = nestedReport
+		}
 		image := "docs/report-gallery/previews/" + name + ".png"
 		writeGalleryFixture(t, root, report, `<title>Real report</title><figure id="visual"><figcaption>Actual evidence visual</figcaption></figure>`)
 		writeGalleryFixture(t, root, image, "screenshot fixture")
@@ -354,6 +414,7 @@ func TestAIReportGalleryShowsWorkedReportsAndKeepsProjectSamples(t *testing.T) {
 	}
 	writeGalleryFixture(t, root, "docs/report-gallery/preview-manifest.json", `{"width":900,"height":560,"cards":[`+strings.Join(cards, ",")+`]}`)
 	writeGalleryFixture(t, root, "docs/report-gallery/local-design/sample.md", galleryFixtureSample("Local design", "Compare options.", "https://example.test/report", "", "2026-11-18"))
+	writeGalleryFixture(t, root, middleReport, "<title>Regular report</title>")
 	result := runGalleryFixture(t, root)
 	if result.Outcome != resultmodel.OutcomeSuccess {
 		t.Fatalf("generation failed: %+v", result)
@@ -367,8 +428,8 @@ func TestAIReportGalleryShowsWorkedReportsAndKeepsProjectSamples(t *testing.T) {
 	}
 	for _, fragment := range []string{
 		`id="report-one"`, `>report-one</span>`, `href="#report-one"`,
-		`class="sample-cover" data-gallery-preview href="../../ai-reports/report-one/index.html"`,
-		`src="previews/report-one.png"`, `id="sample-local-design"`, `id="presets"`, `id="add-sample"`,
+		`class="sample-cover" data-gallery-preview href="../../` + firstReport + `"`,
+		`src="previews/report-one.png"`, `id="samples"`, `id="presets"`, `id="add-sample"`,
 	} {
 		if !bytes.Contains(page, []byte(fragment)) {
 			t.Errorf("gallery is missing %s", fragment)
@@ -379,6 +440,39 @@ func TestAIReportGalleryShowsWorkedReportsAndKeepsProjectSamples(t *testing.T) {
 	}
 	if !bytes.HasSuffix(page, []byte("</html>\n")) {
 		t.Fatal("live-only templates should not append anything to the static gallery")
+	}
+	nestedFirst := bytes.Index(page, []byte(`data-gallery-card id="generated-designs"`))
+	workedNext := bytes.Index(page, []byte(`data-gallery-card id="report-one"`))
+	regularNext := bytes.Index(page, []byte(`class="report-link" href="../../`+middleReport+`"`))
+	undatedLater := bytes.Index(page, []byte(`id="report-two"`))
+	samplesLast := bytes.Index(page, []byte(`id="samples"`))
+	if nestedFirst < 0 || workedNext <= nestedFirst || regularNext <= workedNext || undatedLater <= regularNext || samplesLast <= undatedLater {
+		t.Error("the dated manifest-only report should come first, followed by the older dated reports, undated reports, and samples")
+	}
+	checkWorkedFragments := func(mode string, page []byte) {
+		t.Helper()
+		for _, name := range workedNames {
+			id := ` id="` + name + `"`
+			if count := bytes.Count(page, []byte(id)); count != 1 {
+				t.Errorf("%s gallery has %d elements for worked fragment #%s, want one", mode, count, name)
+			}
+			if !bytes.Contains(page, []byte("data-gallery-card"+id)) || !bytes.Contains(page, []byte(`href="#`+name+`"`)) {
+				t.Errorf("%s gallery does not link #%s to its worked report card", mode, name)
+			}
+		}
+	}
+	checkWorkedFragments("static", page)
+	for _, fragment := range []string{
+		`href="#gallery_generated-designs">Repository reports</a>`,
+		`id="gallery_generated-designs" aria-labelledby="generated-designs-title"`,
+		`id="gallery_sample-local-design"`,
+		`href="#gallery_sample-local-design">Permalink</a>`,
+		`id="gallery_preview-size" aria-pressed="false"`,
+		`getElementById('gallery_preview-size')`,
+	} {
+		if !bytes.Contains(page, []byte(fragment)) {
+			t.Errorf("gallery is missing the adjusted ID or reference %s", fragment)
+		}
 	}
 	repository, err := os.OpenRoot(root)
 	if err != nil {
@@ -394,9 +488,11 @@ func TestAIReportGalleryShowsWorkedReportsAndKeepsProjectSamples(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if bytes.Contains(livePage, []byte(`id="project-reports"`)) || len(live.Targets) != 20 ||
-		!live.Targets[reportGalleryTarget{Kind: "figure", ReportPath: "ai-reports/report-one/index.html", FigureID: "visual"}] ||
-		!bytes.Contains(livePage, []byte(`data-gallery-preview href="../../ai-reports/report-one/index.html"`)) {
+	checkWorkedFragments("live", livePage)
+	if len(live.Targets) != 21 || bytes.Count(livePage, []byte(`data-target-kind="report"`)) != 11 ||
+		!live.Targets[reportGalleryTarget{Kind: "figure", ReportPath: firstReport, FigureID: "visual"}] ||
+		!live.Targets[reportGalleryTarget{Kind: "figure", ReportPath: nestedReport, FigureID: "visual"}] ||
+		!bytes.Contains(livePage, []byte(`data-gallery-preview href="../../`+firstReport+`"`)) {
 		t.Fatal("live gallery should augment each curated card once and preserve the preview destination")
 	}
 }
