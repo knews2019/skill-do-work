@@ -10,6 +10,10 @@ For the complete release history, read this file and the archives below from new
 - [0.50.0 through 0.64.1](https://github.com/knews2019/skill-do-work/blob/main/docs/changelog/CHANGELOG-2026-04-13-up-to-v0.64.1.md)
 - [0.1.0 through 0.49.0](https://github.com/knews2019/skill-do-work/blob/main/docs/changelog/CHANGELOG-2026-04-07-up-to-v0.49.0.md)
 
+## 0.333.1 — Cleanup Finds Stale Linked Worktrees (2026-11-26)
+
+`do-work cleanup` checks linked worktrees of any name and leftover T3 branches. It recognizes squash-merged work by comparing the files a merge would produce with those already on main. The dry run lists eligible removals and explains which candidates need attention.
+
 ## 0.333.0 — Product Launch Brief Joins the Report Gallery (2026-11-26)
 
 Use Product Launch Brief to show a product trial and the team decisions needed to launch it.

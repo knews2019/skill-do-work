@@ -2,7 +2,7 @@
 
 Consolidates the archive — moves loose files into the right places, closes completed URs, organizes legacy items. Runs automatically at the end of every work loop, or manually on demand.
 
-The canonical implementation is `<skill-root>/tools/do-work-cli.sh --repo-root <project-root> cleanup`. It plans and applies the same ordered policy without an LLM. Use `--dry-run` to inspect exact changes, `--format json` before the command for structured evidence, and `--commit` to create one guarded exact-path commit. Blanked restoration and any worktree deletion not proved clean, merged, and settled remain report-only until an exact `--restore-blanked <path>` or `--discard-worktree <name>` consent token is supplied; `--commit` and `--discard-worktree` must be separate runs.
+The canonical implementation is `<skill-root>/tools/do-work-cli.sh --repo-root <project-root> cleanup`. It plans and applies the same ordered policy without an LLM. Use `--dry-run` to inspect exact changes, `--format json` before the command for structured evidence, and `--commit` to create one guarded exact-path commit. Use an exact consent token for a blanked record or an explicit do-work builder discard. Run `--discard-worktree` separately from `--commit`.
 
 ## What it does
 
@@ -26,7 +26,7 @@ Deletes only `do-work/runs/*/` directories whose root `manifest.md` says `Status
 An entirely untracked consumed run is spent scratch but has no Git rollback source. Cleanup therefore revalidates its exact regular-file inventory and consumed manifest immediately before deletion and labels the result as a non-rollback spent-scratch deletion. Mixed or durable dirty targets remain refused.
 
 ### Pass 5: Remove orphaned worktrees
-Clears the `worktree-agent-*` git worktrees and branches left behind when the work loop's worktree dispatch mode is interrupted. A leftover is removed automatically only when it is clean, merged into the current integration branch, and its exact readable, unambiguous REQ is positively settled outside `do-work/working/`. A dirty, unmerged, still-working, absent, ambiguous, malformed, or unreadable case can still be the execution lane or only copy of a builder's work, so cleanup lists it and asks before deleting. When cleanup runs unattended, it only reports those cases. Your own worktrees are never touched; only the `worktree-agent-` naming convention is in scope.
+Checks every linked checkout, including T3 and detached worktrees, plus leftover local `t3/*` and `worktree-agent-*` branches. Cleanup removes a clean candidate when merging its tip would leave the files on local `main` unchanged. This includes squash merges. Repositories without `main` use the primary checkout’s branch. The primary checkout, invoking checkout, locked worktrees, local edits and conflicting changes are protected. Cleanup also protects named do-work lanes with an active or ambiguous request. Use `cleanup --dry-run` to see each planned removal and retained candidate.
 
 ### Pass 6: Restore blanked archived REQs
 Finds archived REQ and UR files that have lost their content — 0 bytes, or no frontmatter left — and offers to write it back from git history. That damage is the signature of an unguarded `commit:` write-back: the file was complete at its implementation commit and the metadata commit right after it replaced the whole thing with nothing. Cleanup shows you a dry run first (which file, which commit the content comes from, how many bytes, which hash goes back into `commit:`), then asks before writing anything; running unattended, it only reports. Recovery has a deadline — the lost content survives in git only until a `git gc` collects it — so a file reported here is worth acting on. Restoring overwrites the file, so anything written to it since it was blanked is discarded.
@@ -53,7 +53,7 @@ do-work/
 
 ## Key rules
 
-- Deletes no work items — only run scratch explicitly marked `Status: consumed`, plus `worktree-agent-*` worktrees proved clean, merged, and settled outside `do-work/working/` (every other case needs your say-so)
+- Preserves work items. Pass 4 sweeps consumed run scratch, and Pass 5 removes stale worktrees and builder branches.
 - No content modification except normalizing non-standard statuses (`done` → `completed`), repointing doc links to moved files, and — only with your say-so — restoring a blanked archived REQ from git history
 - Skips active queue items (`pending`, `claimed`)
 

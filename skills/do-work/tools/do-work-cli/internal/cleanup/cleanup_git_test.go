@@ -199,7 +199,7 @@ func TestMergedCleanBuilderWorktreeIsAutomaticButUnmergedNeedsExactConsent(t *te
 	}
 }
 
-func TestMergedCleanBuilderWorktreeRequiresSettledRequestEvidence(t *testing.T) {
+func TestCleanupRetainsActiveOrAmbiguousBuilderRequests(t *testing.T) {
 	testCases := []struct {
 		name      string
 		requestID string
@@ -214,14 +214,7 @@ func TestMergedCleanBuilderWorktreeRequiresSettledRequestEvidence(t *testing.T) 
 			},
 			wantState: "working",
 		},
-		{
-			name:      "request identity is absent",
-			requestID: "REQ-115",
-			seed: func(t *testing.T, repositoryRoot string) {
-				writeCleanupFile(t, repositoryRoot, "do-work/CHECKPOINT.md", "# no request\n")
-			},
-			wantState: "absent",
-		},
+
 		{
 			name:      "request identity is ambiguous",
 			requestID: "REQ-116",
@@ -354,5 +347,109 @@ func TestWorktreeEnumerationHandlesNULNewlineDetachedAndAbsentConsent(t *testing
 	_, findings = ApplyWorktreeRepairs(context.Background(), t.TempDir(), WorktreeRepairOptions{})
 	if len(findings) != 1 || findings[0].Code != "WORKTREE-ENUMERATION-FAILED" {
 		t.Fatalf("enumeration errors hidden: %#v", findings)
+	}
+}
+
+func TestCleanupIncludesUnprefixedWorktreesAndContentMergedT3Branches(t *testing.T) {
+	root := cleanupRepository(t)
+	writeCleanupFile(t, root, "base", "original\n")
+	writeCleanupFile(t, root, "do-work/CHECKPOINT.md", "# Fixture\n")
+	commitCleanupFixture(t, root)
+	runCleanupGit(t, root, "branch", "-M", "main")
+
+	newTree := func(name string) string {
+		path := filepath.Join(t.TempDir(), "linked")
+		runCleanupGit(t, root, "worktree", "add", "-qb", name, path)
+		return path
+	}
+	squashed := newTree("feature/squashed")
+	writeCleanupFile(t, squashed, "shipped", "delivered\n")
+	commitCleanupFixture(t, squashed)
+	runCleanupGit(t, root, "branch", "t3/no-checkout", "feature/squashed")
+	runCleanupGit(t, root, "config", "branch.t3/no-checkout.description", "temporary lane")
+	runCleanupGit(t, root, "branch", "personal/keep")
+	runCleanupGit(t, root, "branch", "worktree-agent-REQ-115-orphan")
+	runCleanupGit(t, root, "merge", "--squash", "feature/squashed")
+	runCleanupGit(t, root, "commit", "-qm", "squash delivery")
+	writeCleanupFile(t, root, "later", "main advanced\n")
+	commitCleanupFixture(t, root)
+
+	detached := filepath.Join(t.TempDir(), "detached")
+	runCleanupGit(t, root, "worktree", "add", "-q", "--detach", detached)
+	ignored := newTree("t3/local-files")
+	writeCleanupFile(t, root, ".git/info/exclude", "local.env\n")
+	writeCleanupFile(t, ignored, "local.env", "local settings")
+	missing := newTree("feature/vanished")
+	if err := os.RemoveAll(missing); err != nil {
+		t.Fatal(err)
+	}
+	stagedMissing := newTree("feature/vanished-staged")
+	writeCleanupFile(t, stagedMissing, "saved", "staged only")
+	runCleanupGit(t, stagedMissing, "add", "saved")
+	if err := os.RemoveAll(stagedMissing); err != nil {
+		t.Fatal(err)
+	}
+	dirty := newTree("t3/dirty")
+	writeCleanupFile(t, dirty, "untracked", "work in progress")
+	locked := newTree("release/locked")
+	runCleanupGit(t, root, "worktree", "lock", locked)
+	conflict := newTree("t3/conflict")
+	writeCleanupFile(t, conflict, "base", "branch version\n")
+	commitCleanupFixture(t, conflict)
+	writeCleanupFile(t, root, "base", "main version\n")
+	commitCleanupFixture(t, root)
+	pending := newTree("t3/pending")
+	writeCleanupFile(t, pending, "unpublished", "keep me")
+	commitCleanupFixture(t, pending)
+	// Running from a linked tree must preserve the caller and the primary checkout.
+	caller := newTree("t3/caller")
+
+	for _, dry := range []bool{true, false} {
+		changes, findings := ApplyWorktreeRepairs(context.Background(), caller, WorktreeRepairOptions{DryRun: dry})
+		if len(changes) != 5 || len(findings) != 6 {
+			t.Fatalf("dry=%v changes=%#v findings=%#v", dry, changes, findings)
+		}
+		for _, path := range []string{detached, squashed} {
+			_, err := os.Stat(path)
+			if dry && err != nil || !dry && !os.IsNotExist(err) {
+				t.Fatalf("dry=%v path=%s err=%v", dry, path, err)
+			}
+		}
+	}
+	if gitExitSuccess(context.Background(), root, "config", "--local", "--get", "branch.t3/no-checkout.description") {
+		t.Fatal("branch configuration survived deletion")
+	}
+	for _, name := range []string{"t3/no-checkout", "feature/squashed", "feature/vanished", "worktree-agent-REQ-115-orphan"} {
+		if gitExitSuccess(context.Background(), root, "show-ref", "--verify", "--quiet", "refs/heads/"+name) {
+			t.Fatal("retained stale branch", name)
+		}
+	}
+	for _, name := range []string{"main", "personal/keep", "feature/vanished-staged", "t3/local-files", "t3/conflict", "t3/dirty", "release/locked", "t3/pending", "t3/caller"} {
+		if !gitExitSuccess(context.Background(), root, "show-ref", "--verify", "--quiet", "refs/heads/"+name) {
+			t.Fatal("lost branch", name)
+		}
+	}
+}
+
+func TestBranchDeletionRefusesChangedTips(t *testing.T) {
+	root := cleanupRepository(t)
+	writeCleanupFile(t, root, "initial", "included")
+	commitCleanupFixture(t, root)
+	runCleanupGit(t, root, "branch", "-M", "main")
+	base := runCleanupGit(t, root, "rev-parse", "HEAD")
+	tree := worktreeRecord{Name: "t3/checked", Head: base}
+	runCleanupGit(t, root, "branch", tree.Name)
+	writeCleanupFile(t, root, "new", "intervening change")
+	commitCleanupFixture(t, root)
+	newTip := runCleanupGit(t, root, "rev-parse", "HEAD")
+	if err := removeCleanupCandidate(context.Background(), root, tree, nil, "refs/heads/main", base, false); err == nil {
+		t.Fatal("accepted a changed integration tip")
+	}
+	runCleanupGit(t, root, "branch", "-f", tree.Name, newTip)
+	if err := removeCleanupCandidate(context.Background(), root, tree, nil, "refs/heads/main", newTip, false); err == nil {
+		t.Fatal("deleted a branch that changed after discovery")
+	}
+	if got := runCleanupGit(t, root, "rev-parse", tree.Name); got != newTip {
+		t.Fatalf("branch moved: %s", got)
 	}
 }

@@ -518,7 +518,7 @@ func OwnedWorktreeLinks(mainRoot, worktreePath string) []string {
 // matched by a `node_modules/` ignore line, so without this filter every linked worktree
 // would read as dirty.
 func worktreeDirtyPaths(ctx context.Context, worktreePath string, ownedLinks []string) ([]string, error) {
-	output, err := cleanupGit(ctx, worktreePath, "status", "--porcelain=v1", "-z", "--untracked-files=all")
+	output, err := cleanupGit(ctx, worktreePath, "status", "--porcelain=v1", "-z", "--untracked-files=all", "--ignore-submodules=none")
 	if err != nil {
 		return nil, err
 	}
@@ -527,7 +527,7 @@ func worktreeDirtyPaths(ctx context.Context, worktreePath string, ownedLinks []s
 		owned[linkPath] = true
 	}
 	dirty := []string{}
-	entries := splitZero(output)
+	entries := strings.Split(output, "\x00")
 	for index := 0; index < len(entries); index++ {
 		if len(entries[index]) < 4 {
 			continue
@@ -536,7 +536,7 @@ func worktreeDirtyPaths(ctx context.Context, worktreePath string, ownedLinks []s
 		if statusCode[0] == 'R' || statusCode[0] == 'C' {
 			index++ // the rename or copy source follows as its own NUL field
 		}
-		if !owned[entryPath] {
+		if statusCode != "??" || !owned[entryPath] {
 			dirty = append(dirty, entryPath)
 		}
 	}

@@ -216,109 +216,75 @@ type WorktreeRepairOptions struct {
 func ApplyWorktreeRepairs(ctx context.Context, repositoryRoot string, options WorktreeRepairOptions) ([]resultmodel.RecordedChange, []resultmodel.CommandFinding) {
 	changes := []resultmodel.RecordedChange{}
 	findings := []resultmodel.CommandFinding{}
-	repositorySnapshot, discoveryError := repositorymodel.DiscoverRepository(repositoryRoot)
 	discard := map[string]bool{}
 	for _, name := range options.DiscardNames {
 		discard[name] = true
-	}
-	if !options.DryRun {
-		if _, pruneError := cleanupGit(ctx, repositoryRoot, "worktree", "prune"); pruneError != nil {
-			return changes, []resultmodel.CommandFinding{manualFinding("WORKTREE-ENUMERATION-FAILED", nil, nil, pruneError.Error())}
-		}
 	}
 	listOutput, err := cleanupGitBytes(ctx, repositoryRoot, "worktree", "list", "--porcelain", "-z")
 	if err != nil {
 		return changes, []resultmodel.CommandFinding{manualFinding("WORKTREE-ENUMERATION-FAILED", nil, nil, err.Error())}
 	}
-	trees := parseWorktrees(listOutput)
-	// The first porcelain record is the main tree, whose paths `worktree new` links from. An
-	// unreadable or invalid link config owns nothing, so dirt is reported as before.
-	mainRoot := strings.TrimPrefix(string(bytes.SplitN(listOutput, []byte{0}, 2)[0]), "worktree ")
+	trees := allWorktrees(listOutput)
+	if len(trees) == 0 {
+		return changes, []resultmodel.CommandFinding{manualFinding("WORKTREE-ENUMERATION-FAILED", nil, nil, "Git returned no primary checkout")}
+	}
+	mainRoot := trees[0].Path
+	repositorySnapshot, discoveryError := repositorymodel.DiscoverRepository(mainRoot)
+	baseName := "main"
+	if !gitExitSuccess(ctx, repositoryRoot, "show-ref", "--quiet", "--verify", "refs/heads/main") {
+		baseName = trees[0].Name
+	}
+	baseRef := "refs/heads/" + baseName
 	linkPaths, invalidLine, linkConfigError := readWorktreeLinkConfig(mainRoot)
 	if linkConfigError != nil || invalidLine != "" {
 		linkPaths = nil
 	}
-	branchOutput, branchError := cleanupGit(ctx, repositoryRoot, "branch", "--format=%(refname:short)", "--list", "worktree-agent-*")
-	if branchError != nil {
-		return changes, []resultmodel.CommandFinding{manualFinding("WORKTREE-ENUMERATION-FAILED", nil, nil, branchError.Error())}
+	candidates, err := cleanupCandidates(ctx, repositoryRoot, baseName, trees)
+	if err != nil {
+		return changes, []resultmodel.CommandFinding{manualFinding("WORKTREE-ENUMERATION-FAILED", nil, nil, err.Error())}
 	}
-	branches := map[string]bool{}
-	candidates := map[string]bool{}
-	for _, branch := range strings.Fields(branchOutput) {
-		branches[branch] = true
-		candidates[branch] = true
+	base, baseErr := cleanupGit(ctx, repositoryRoot, "rev-parse", "--verify", baseRef+"^{commit}")
+	if len(candidates) > 0 && baseErr != nil {
+		return changes, []resultmodel.CommandFinding{manualFinding("WORKTREE-BASE-UNAVAILABLE", nil, nil, baseErr.Error())}
 	}
-	for _, tree := range trees {
-		candidates[tree.Name] = true
-	}
-	orderedCandidates := make([]string, 0, len(candidates))
-	for name := range candidates {
-		orderedCandidates = append(orderedCandidates, name)
-	}
-	sort.Strings(orderedCandidates)
-	for _, name := range orderedCandidates {
-		discardApproved := discard[name]
+	base = strings.TrimSpace(base)
+	for _, tree := range candidates {
+		name, path := tree.Name, tree.Path
+		legacy := strings.HasPrefix(name, "worktree-agent-")
+		force := legacy && discard[name]
 		delete(discard, name)
 		requestID := requestIDFromWorktree(name)
-		requestState := worktreeRequestState(repositorySnapshot, discoveryError, requestID)
-		tree := worktreeByName(trees, name)
-		path := tree.Path
-		ownedLinks := []string{}
-		if path != "" {
-			ownedLinks = ownedWorktreeLinks(mainRoot, path, linkPaths)
+		state := "not required"
+		var links []string
+		if legacy {
+			state = worktreeRequestState(repositorySnapshot, discoveryError, requestID)
+			if path != "" {
+				links = ownedWorktreeLinks(mainRoot, path, linkPaths)
+			}
 		}
-		clean := path == "" || worktreeClean(ctx, path, ownedLinks)
-		ancestryTarget := name
-		if !branches[name] {
-			ancestryTarget = tree.Head
-		}
-		merged := ancestryTarget != "" && gitExitSuccess(ctx, repositoryRoot, "merge-base", "--is-ancestor", ancestryTarget, "HEAD")
-		if (!clean || !merged || requestState != "settled") && !discardApproved {
-			findings = append(findings, resultmodel.CommandFinding{Code: "WORKTREE-REQUIRES-CONSENT", Severity: resultmodel.SeverityWarning,
-				AffectedIDs: nonEmpty(requestID), AffectedPaths: nonEmpty(path), Evidence: []string{fmt.Sprintf("%s is dirty=%t merged=%t request_state=%s", name, !clean, merged, requestState)},
-				Fixability: resultmodel.FixabilityRefused, AutomationStopReason: "dirty, unmerged, active, or unattributed builder work can be the only copy",
-				NextArgv: []string{"do-work-cli", "cleanup", "--discard-worktree", name}, VerificationArgv: []string{"git", "worktree", "list", "--porcelain"}})
+		clean := tree.safeCheckout(ctx, repositoryRoot, links)
+		empty, mergeReason := cleanupMergeProof(ctx, repositoryRoot, base, tree.Head)
+		blockedRequest := legacy && state != "settled" && state != "absent"
+		if tree.Locked || (!force && (!clean || !empty || blockedRequest)) {
+			detail := fmt.Sprintf("%s: %s against %s, safe_checkout=%t locked=%t request_state=%s", name, mergeReason, baseName, clean, tree.Locked, state)
+			finding := manualFinding("WORKTREE-RETAINED", nonEmpty(requestID), nonEmpty(path), detail)
+			if legacy && !tree.Locked {
+				finding.Code = "WORKTREE-REQUIRES-CONSENT"
+				finding.Fixability = resultmodel.FixabilityRefused
+				finding.NextArgv = []string{"do-work-cli", "cleanup", "--discard-worktree", name}
+			}
+			findings = append(findings, finding)
 			continue
 		}
-		if options.DryRun {
-			changes = append(changes, resultmodel.RecordedChange{Path: path, Kind: "worktree", Detail: "planned removal of " + name})
-			continue
-		}
-		if path != "" {
-			args := []string{"worktree", "remove", path}
-			if discardApproved {
-				args = append(args, "--force")
-			}
-			// The non-forced remove refuses an untracked symlink, so remove the owned links
-			// first (the links only, never their main-tree targets).
-			var linkError error
-			if !discardApproved {
-				for _, linkPath := range ownedLinks {
-					if linkError = os.Remove(filepath.Join(path, filepath.FromSlash(linkPath))); linkError != nil {
-						break
-					}
-				}
-			}
-			if linkError != nil {
-				findings = append(findings, manualFinding("WORKTREE-REMOVE-FAILED", nil, nonEmpty(path), linkError.Error()))
+		detail := "planned removal of " + name + " (" + mergeReason + ")"
+		if !options.DryRun {
+			if err := removeCleanupCandidate(ctx, repositoryRoot, tree, links, baseRef, base, force); err != nil {
+				findings = append(findings, manualFinding("WORKTREE-REMOVE-FAILED", nonEmpty(requestID), nonEmpty(path), err.Error()))
 				continue
 			}
-			if _, removeError := cleanupGit(ctx, repositoryRoot, args...); removeError != nil {
-				findings = append(findings, manualFinding("WORKTREE-REMOVE-FAILED", nil, nonEmpty(path), removeError.Error()))
-				continue
-			}
+			detail = "removed " + name + " at " + tree.Head
 		}
-		deleteFlag := "-d"
-		if discardApproved {
-			deleteFlag = "-D"
-		}
-		if branches[name] {
-			if _, deleteError := cleanupGit(ctx, repositoryRoot, "branch", deleteFlag, name); deleteError != nil {
-				findings = append(findings, manualFinding("WORKTREE-BRANCH-REMOVE-FAILED", nil, nonEmpty(path), deleteError.Error()))
-				continue
-			}
-		}
-		changes = append(changes, resultmodel.RecordedChange{Path: path, Kind: "worktree", Detail: "removed " + name})
+		changes = append(changes, resultmodel.RecordedChange{Path: path, Kind: "worktree", Detail: detail})
 	}
 	for name := range discard {
 		findings = append(findings, manualFinding("WORKTREE-DISCARD-NOT-FOUND", nil, nil, "requested worktree discard target "+name+" was not enumerated"))
@@ -326,21 +292,37 @@ func ApplyWorktreeRepairs(ctx context.Context, repositoryRoot string, options Wo
 	return changes, findings
 }
 
-type worktreeRecord struct{ Name, Path, Head string }
+type worktreeRecord struct {
+	Name, Path, Head           string
+	Locked, Detached, Prunable bool
+}
 
+// Lifecycle commands manage only their named builder lanes.
 func parseWorktrees(output []byte) []worktreeRecord {
+	var builders []worktreeRecord
+	for _, tree := range allWorktrees(output) {
+		if strings.HasPrefix(tree.Name, "worktree-agent-") {
+			builders = append(builders, tree)
+		}
+	}
+	return builders
+}
+
+func allWorktrees(output []byte) []worktreeRecord {
 	result := []worktreeRecord{}
 	record := worktreeRecord{}
 	flush := func() {
 		if record.Path == "" {
 			return
 		}
-		if record.Name == "" && strings.HasPrefix(filepath.Base(record.Path), "worktree-agent-") {
-			record.Name = filepath.Base(record.Path)
+		if record.Name == "" {
+			record.Detached = true
+			record.Name = record.Path
+			if base := filepath.Base(record.Path); strings.HasPrefix(base, "worktree-agent-") {
+				record.Name = base
+			}
 		}
-		if strings.HasPrefix(record.Name, "worktree-agent-") {
-			result = append(result, record)
-		}
+		result = append(result, record)
 		record = worktreeRecord{}
 	}
 	for _, field := range bytes.Split(output, []byte{0}) {
@@ -350,6 +332,10 @@ func parseWorktrees(output []byte) []worktreeRecord {
 		}
 		value := string(field)
 		switch {
+		case value == "prunable" || strings.HasPrefix(value, "prunable "):
+			record.Prunable = true
+		case value == "locked" || strings.HasPrefix(value, "locked "):
+			record.Locked = true
 		case strings.HasPrefix(value, "worktree "):
 			record.Path = strings.TrimPrefix(value, "worktree ")
 		case strings.HasPrefix(value, "HEAD "):
@@ -360,22 +346,6 @@ func parseWorktrees(output []byte) []worktreeRecord {
 	}
 	flush()
 	return result
-}
-
-func worktreeByName(records []worktreeRecord, name string) worktreeRecord {
-	for _, record := range records {
-		if record.Name == name {
-			return record
-		}
-	}
-	return worktreeRecord{Name: name}
-}
-
-// worktreeClean ignores the owned links `worktree new` created; a failed status read is
-// never clean.
-func worktreeClean(ctx context.Context, path string, ownedLinks []string) bool {
-	dirtyPaths, err := worktreeDirtyPaths(ctx, path, ownedLinks)
-	return err == nil && len(dirtyPaths) == 0
 }
 
 func requestIDFromWorktree(name string) string {
