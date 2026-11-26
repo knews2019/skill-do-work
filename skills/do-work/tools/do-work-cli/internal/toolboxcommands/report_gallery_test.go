@@ -67,6 +67,56 @@ func TestAIReportGalleryOpensOnRepositoryReportsBeforeSamples(t *testing.T) {
 	}
 }
 
+func TestUnusableInstalledLayoutPreservesGeneratedGallery(t *testing.T) {
+	const templateFolder = ".claude/skills/do-work/tools/do-work-cli/internal/toolboxcommands"
+	const filename = "report_gallery_page.gohtml"
+	for _, tc := range []struct{ problem, evidence string }{
+		{"missing", filename}, {"syntax error", "unclosed action"},
+		{"incompatible field", "Unknown"}, {"empty", "empty page"},
+		{"linked folder", "symbolic link"}, {"nonregular file", "regular file"},
+	} {
+		t.Run(tc.problem, func(t *testing.T) {
+			root := t.TempDir()
+			const previousPage = reportGalleryPageHeader + "<title>Previous gallery</title>"
+			writeGalleryFixture(t, root, galleryFixturePage, previousPage)
+			switch tc.problem {
+			case "missing":
+				if err := os.MkdirAll(filepath.Join(root, templateFolder), 0o755); err != nil {
+					t.Fatal(err)
+				}
+			case "syntax error":
+				writeGalleryFixture(t, root, templateFolder+"/"+filename, "{{")
+			case "incompatible field":
+				writeGalleryFixture(t, root, templateFolder+"/"+filename, "{{.Unknown}}")
+			case "empty":
+				writeGalleryFixture(t, root, templateFolder+"/"+filename, "")
+			case "linked folder":
+				writeGalleryFixture(t, root, "other/"+filename, "<title>Outside installed skill</title>")
+				folder := filepath.Join(root, templateFolder)
+				if err := os.MkdirAll(filepath.Dir(folder), 0o755); err != nil {
+					t.Fatal(err)
+				}
+				if err := os.Symlink(filepath.Join(root, "other"), folder); err != nil {
+					t.Fatal(err)
+				}
+			case "nonregular file":
+				if err := os.MkdirAll(filepath.Join(root, templateFolder, filename), 0o755); err != nil {
+					t.Fatal(err)
+				}
+			}
+			result := RefreshReportGallery(root, true)
+			if result.Outcome != resultmodel.OutcomeFailure || len(result.Findings) != 1 ||
+				!strings.Contains(strings.Join(result.Findings[0].Evidence, " "), tc.evidence) {
+				t.Fatalf("expected layout failure containing %q, got %+v", tc.evidence, result)
+			}
+			page, err := os.ReadFile(filepath.Join(root, galleryFixturePage))
+			if err != nil || string(page) != previousPage {
+				t.Fatalf("previous gallery changed: %v", err)
+			}
+		})
+	}
+}
+
 func TestAIReportGalleryListUsesProjectOverrideAndSkipsBrokenRecords(t *testing.T) {
 	for _, toolbox := range []string{"skills/do-work-toolbox", ".claude/skills/do-work-toolbox"} {
 		t.Run(toolbox, func(t *testing.T) {
@@ -484,7 +534,7 @@ func TestAIReportGalleryShowsWorkedReportsAndKeepsProjectSamples(t *testing.T) {
 		t.Fatal(err)
 	}
 	live := &reportGalleryLivePage{}
-	livePage, err := renderReportGalleryPage(root, repository, "", nil, bundles, live)
+	livePage, err := renderReportGalleryPage(reportGalleryPageTemplate, root, repository, "", nil, bundles, live)
 	if err != nil {
 		t.Fatal(err)
 	}

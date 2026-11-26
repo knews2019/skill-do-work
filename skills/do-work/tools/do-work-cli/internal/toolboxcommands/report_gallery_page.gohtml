@@ -1,0 +1,370 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AI Report Gallery</title>
+{{if .Stylesheet}}<link rel="stylesheet" href="{{.Stylesheet}}">{{end}}
+<style>
+* { box-sizing: border-box; }
+:root {
+  color-scheme: light dark;
+  --ground: #faf9f5; --panel: #fffefa; --text: #232b28; --subtle: #535d56;
+  --edge: #cccfc5; --accent: #285949; --wash: #e9eee7;
+  --sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --serif: "Iowan Old Style", "Baskerville", Georgia, serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root { --ground: #171c1a; --panel: #1e2522; --text: #f0f2eb; --subtle: #b7c0b9; --edge: #46524b; --accent: #b1dfc7; --wash: #293a31; }
+}
+html, body { background: var(--ground); color: var(--text); }
+body { margin: 0; font: 16px/1.5 var(--sans); }
+.gallery { width: 100%; padding: 0 clamp(16px, 3.2vw, 76px) 3rem; }
+.gallery h1, .gallery h2, .gallery h3 { color: var(--text); font-family: var(--serif); font-weight: 500; line-height: 1.1; }
+.gallery h1 { margin: 0; font-size: clamp(2.3rem, 3.4vw, 3.6rem); letter-spacing: -.045em; }
+.gallery h2 { margin: 0 0 1rem; font-size: clamp(1.6rem, 2vw, 2.1rem); letter-spacing: -.025em; }
+.gallery a { color: var(--accent); text-underline-offset: .2em; }
+.gallery :focus-visible { outline: 3px solid var(--accent); outline-offset: 4px; }
+.gallery-header { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem; padding: clamp(16px, 1.6vw, 30px) 0 1rem; border-bottom: 2px solid var(--text); }
+.gallery-nav, .gallery-links { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem 1.15rem; }
+.gallery-nav a { font-size: .95rem; font-weight: 600; text-decoration: none; padding-block: .45rem; }
+.gallery-nav a:hover { text-decoration: underline; }
+.gallery-nav .add-link, .gallery-copy button { background: var(--text); color: var(--ground); border: 1px solid var(--text); border-radius: .4rem; padding: .65rem 1rem; font: 600 .95rem var(--sans); cursor: pointer; }
+.gallery section { scroll-margin-top: 1rem; }
+.samples { padding: 1.1rem 0 2rem; }
+.gallery-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1.8rem clamp(16px, 1.55vw, 32px); align-items: start; }
+.gallery-card { min-width: 0; scroll-margin-top: 1rem; }
+.gallery-card:target { outline: 2px solid var(--accent); outline-offset: 6px; }
+.sample-cover { display: block; position: relative; background: var(--panel); border: 1px solid var(--edge); border-radius: .4rem; overflow: hidden; }
+.sample-cover:hover { border-color: var(--accent); }
+.sample-cover span { position: absolute; bottom: .5rem; right: .5rem; border: 1px solid #c4c9c3; background: #fff; color: #20382c; padding: .25rem .55rem; border-radius: .25rem; font: 600 .78rem/1.4 var(--sans); }
+.sample-preview { display: block; width: 100%; height: auto; aspect-ratio: 1040 / 740; object-fit: cover; object-position: top; }
+.card-heading { display: flex; justify-content: space-between; gap: .5rem; align-items: baseline; margin: .55rem 0 .1rem; }
+.gallery .card-heading h3 { margin: 0; min-width: 0; font-size: clamp(1.5rem, 2vw, 2.15rem); letter-spacing: -.025em; }
+{{if .Reports}}.generated-design .card-heading h3 { overflow-wrap: anywhere; }
+{{end}}.name-copy { display: inline-flex; align-items: center; gap: .4rem; max-width: 100%; background: none; color: inherit; font: inherit; text-align: left; border: 0; padding: .15rem 0; cursor: copy; overflow-wrap: anywhere; }
+.name-copy:hover { color: var(--accent); text-decoration: underline; text-underline-offset: .14em; }
+.name-copy:disabled { opacity: 1; cursor: text; }
+.copy-icon { position: relative; display: inline-block; flex: 0 0 14px; height: 15px; color: var(--subtle); }
+.copy-icon::before, .copy-icon::after { content: ""; position: absolute; border: 1.5px solid; border-radius: 2px; width: 8px; height: 10px; top: 0; left: 0; }
+.copy-icon::after { left: 4px; top: 3px; background: var(--ground); }
+.report-link { flex: none; font: 600 .85rem/1.4 var(--sans); padding: .55rem 0; }
+.gallery-card p { margin: 0 0 .45rem; color: var(--subtle); line-height: 1.45; max-width: 52ch; }
+{{if .HasWorkedReports}}.worked-report .worked-kind { font: 700 .84rem/1.4 var(--sans); color: var(--accent); }
+{{end}}.gallery-card details { background: none; border: 0; padding: 0; border-radius: 0; }
+.gallery-card summary { display: list-item; font: 600 .9rem var(--sans); width: fit-content; color: var(--accent); padding: .65rem 0; cursor: pointer; }
+.gallery-card details[open] summary { border: 0; margin: 0; }
+.gallery-card ul { padding-left: 1.2rem; margin: .25rem 0 .6rem; }
+.gallery-card details a { font-size: .9rem; }
+.section-note { display: flex; align-items: baseline; justify-content: space-between; flex-wrap: wrap; gap: .25rem 1rem; margin-bottom: .85rem; }
+.section-note h2 { margin: 0; }
+.section-note p { margin: 0; color: var(--subtle); font-size: .9rem; }
+.design-prompt { display: block; margin: .55rem 0; padding: .6rem; background: var(--wash); color: var(--text); overflow-wrap: anywhere; }
+.prompt-copy { font: 600 .85rem var(--sans); padding: .45rem .65rem; background: var(--panel); border: 1px solid var(--edge); color: var(--accent); border-radius: .3rem; cursor: pointer; }
+{{if .Samples}}.gallery-dialog { padding: 0; width: min(68rem, calc(100% - 24px)); max-width: none; max-height: 90vh; background: var(--panel); color: var(--text); border: 1px solid var(--edge); border-radius: .5rem; }
+.gallery-dialog[open] { display: flex; flex-direction: column; }
+.gallery-dialog::backdrop { background: rgb(14 22 18 / .78); }
+.dialog-bar { flex: none; display: flex; align-items: center; justify-content: space-between; gap: .5rem; padding: .55rem .9rem; border-bottom: 1px solid var(--edge); }
+.dialog-bar h2 { font-size: 1.15rem; margin: 0; }
+.dialog-bar a { margin-left: auto; }
+.preview-scroll { overflow: auto; overscroll-behavior: contain; }
+.preview-scroll img { display: block; width: 100%; height: auto; }
+.preview-scroll.actual-size img { width: auto; max-width: none; }
+.preview-size[aria-pressed="true"] { background: var(--text); color: var(--ground); }
+@media (max-width: 520px) { .dialog-bar { flex-wrap: wrap; } .dialog-bar h2 { width: 100%; } .dialog-bar a { margin-left: 0; margin-right: auto; } }
+{{end}}.copy-status:not(:empty) { pointer-events: none; position: fixed; bottom: 1rem; left: 50%; transform: translateX(-50%); z-index: 2; color: var(--ground); background: var(--text); border-radius: .4rem; padding: .6rem 1rem; max-width: calc(100% - 2rem); width: max-content; }
+.gallery-tools { display: grid; grid-template-columns: 3fr 2fr; gap: clamp(1.5rem, 4vw, 5rem); border-block: 1px solid var(--edge); padding: 1.65rem 0 2rem; }
+{{if not .HasWorkedReports}}.gallery-kinds, {{end}}.gallery-presets { list-style: none; margin: 0; padding: 0; }
+{{if not .HasWorkedReports}}.gallery-kinds li { border-top: 1px solid var(--edge); padding: .55rem 0; display: grid; grid-template-columns: minmax(7rem, 27%) minmax(0, 1fr); gap: .4rem 1rem; }
+{{end}}{{if not .HasWorkedReports}}.gallery-kinds code, {{end}}.gallery-copy code { background: none; color: var(--text); padding: 0; overflow-wrap: anywhere; }
+.gallery-presets { display: flex; flex-wrap: wrap; gap: .45rem; }
+.gallery-presets a { display: block; padding: .4rem .75rem; background: var(--wash); border-radius: .35rem; font-size: .9rem; text-decoration: none; }
+.gallery-presets a:hover { text-decoration: underline; }
+.gallery-add { padding: 1.6rem 0; }
+.gallery-add p { color: var(--subtle); margin: 0 0 .75rem; }
+.gallery-copy { display: flex; align-items: center; flex-wrap: wrap; gap: .8rem; }
+.gallery-copy button[hidden] { display: none; }
+@media (min-width: 1700px) { .gallery-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+@media (max-width: 1000px) { .gallery-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 720px) { .gallery-tools { grid-template-columns: 1fr; } }
+@media (max-width: 560px) {
+  .gallery-grid { grid-template-columns: minmax(0, 1fr); gap: 1.6rem; }
+  .gallery-header { align-items: start; flex-direction: column; gap: .5rem; }
+  .gallery-nav { gap: .5rem .9rem; }
+{{if not .HasWorkedReports}}  .gallery-kinds li { grid-template-columns: 1fr; }
+{{end}}}
+</style>{{if .Live}}{{template "galleryFeedbackStyles"}}{{end}}
+</head>
+<body>
+<main class="gallery">
+  <header class="gallery-header">
+    <h1>AI Report Gallery</h1>
+    <nav class="gallery-nav" aria-label="Gallery sections">
+{{if .Reports}}      <a href="#{{.UnclaimedID "generated-designs"}}">Repository reports</a>
+{{end}}{{if not .HasWorkedReports}}      <a href="#report-kinds">Report kinds</a>
+{{end}}{{if .Samples}}      <a href="#samples">Sample designs</a>
+{{end}}      <a href="#presets">Presets</a>
+      <a class="add-link" href="#{{.UnclaimedID "add-sample"}}">Add a sample</a>
+    </nav>
+  </header>
+{{if .Reports}}  <section class="samples" id="{{.UnclaimedID "generated-designs"}}" aria-labelledby="{{.UnclaimedID "generated-designs-title"}}">
+    <div class="section-note"{{if .HasWorkedReports}} id="{{.UnclaimedID "worked-reports"}}"{{end}}><h2 id="{{.UnclaimedID "generated-designs-title"}}">Repository reports</h2></div>
+    <div class="gallery-grid"{{if .Live}} id="{{.UnclaimedID "project-reports"}}"{{end}}>
+{{range .Reports}}{{if .Worked}}{{template "worked-report-card" .}}{{else}}{{template "generated-report-card" .}}{{end}}{{end}}
+    </div>
+  </section>
+{{else}}{{template "sample-designs" .}}{{end}}
+{{if not .HasWorkedReports}}  <div class="gallery-tools">
+  <section id="report-kinds" aria-labelledby="report-kinds-title">
+    <h2 id="report-kinds-title">Report kinds</h2>
+    <ul class="gallery-kinds">
+      {{range .Kinds}}<li><strong>{{.Label}}</strong>
+        {{if .Latest.Href}}<a href="{{.Latest.Href}}">{{.Latest.Label}}</a>{{else}}<span>Create one with <code>{{.Command}}</code></span>{{end}}
+      </li>{{end}}
+    </ul>
+  </section>
+{{end}}  <section id="presets" aria-labelledby="{{.UnclaimedID "presets-title"}}">
+    <h2 id="{{.UnclaimedID "presets-title"}}">Second-opinion presets</h2>
+    {{if .Presets}}<ul class="gallery-links gallery-presets">
+      {{range .Presets}}<li><a href="{{.Href}}">{{.Label}}</a></li>{{end}}
+    </ul>{{else}}<p>No shipped presets found.</p>{{end}}
+  </section>
+{{if not .HasWorkedReports}}  </div>
+{{end}}{{if and .Reports (or (not .HasWorkedReports) .Samples)}}{{template "sample-designs" .}}{{end}}
+  <section class="gallery-add" id="{{.UnclaimedID "add-sample"}}" aria-labelledby="{{.UnclaimedID "add-sample-title"}}">
+    <h2 id="{{.UnclaimedID "add-sample-title"}}">Add a sample</h2>
+    <p>Paste this line into your agent, replacing the placeholders with the source and what you liked.</p>
+    <div class="gallery-copy">
+      <code id="{{.UnclaimedID "add-line"}}">do-work-toolbox ai-report gallery add &lt;image path | link | html path&gt; [what the user liked]</code>
+      <button class="btn" id="{{.UnclaimedID "copy-add-line"}}" data-copy="{{.UnclaimedID "add-line"}}" type="button" hidden>Copy command</button>
+    </div>
+  </section>
+  <div id="{{.UnclaimedID "copy-status"}}" class="copy-status" role="status"></div>
+{{if .Samples}}  <dialog class="gallery-dialog" aria-labelledby="{{.UnclaimedID "preview-title"}}">
+    <div class="dialog-bar"><h2 id="{{.UnclaimedID "preview-title"}}">Page preview</h2><a class="report-link" id="{{.UnclaimedID "preview-open"}}"></a><button class="prompt-copy preview-size" type="button" id="{{.UnclaimedID "preview-size"}}" aria-pressed="false">Actual size</button><button class="prompt-copy" type="button" id="{{.UnclaimedID "preview-close"}}" autofocus>Close</button></div>
+    <div class="preview-scroll" tabindex="0" aria-label="Page image"></div>
+  </dialog>
+{{end}}</main>
+<script>
+const copyStatus = document.getElementById('{{.UnclaimedID "copy-status"}}');
+let statusTimer;
+function announce(message) {
+  clearTimeout(statusTimer);
+  copyStatus.textContent = message;
+  statusTimer = setTimeout(() => { copyStatus.textContent = ''; }, 3200);
+}
+async function copyText(element) {
+  if (location.protocol !== 'file:' && navigator.clipboard) {
+    try { await navigator.clipboard.writeText(element.textContent); return true; } catch {}
+  }
+  const range = document.createRange();
+  range.selectNodeContents(element);
+  const selection = window.getSelection();
+  selection.removeAllRanges();
+  selection.addRange(range);
+  let copied = false;
+  try { copied = document.execCommand('copy'); } catch {}
+  if (copied) selection.removeAllRanges();
+  return copied;
+}
+for (const button of document.querySelectorAll('[data-copy]')) {
+  button.hidden = false;
+  button.disabled = false;
+  button.addEventListener('click', async () => {
+    const target = document.getElementById(button.dataset.copy);
+    const success = await copyText(target);
+    const message = button.classList.contains('name-copy') ? 'Copied “' + target.textContent + '”.' : 'Copied.';
+    announce(success ? message : 'Text selected. Use your keyboard to copy.');
+  });
+}
+{{if .Samples}}const dialog = document.querySelector('.gallery-dialog');
+if (typeof dialog.showModal === 'function') {
+  const image = document.createElement('img');
+  image.id = '{{.UnclaimedID "preview-image"}}';
+  const open = document.getElementById('{{.UnclaimedID "preview-open"}}');
+  const scroller = dialog.querySelector('.preview-scroll');
+  const size = document.getElementById('{{.UnclaimedID "preview-size"}}');
+  size.addEventListener('click', () => {
+    size.setAttribute('aria-pressed', scroller.classList.toggle('actual-size'));
+  });
+  for (const cover of document.querySelectorAll('[data-preview]')) {
+    cover.addEventListener('click', event => {
+      if (event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
+      event.preventDefault();
+      const card = cover.closest('article');
+      const report = card.querySelector('.report-link');
+      document.getElementById('{{.UnclaimedID "preview-title"}}').textContent = card.querySelector('h3 span').textContent;
+      open.href = report.href;
+      open.textContent = report.textContent;
+      image.src = cover.href;
+      image.alt = cover.getAttribute('aria-label');
+      if (!image.isConnected) scroller.append(image);
+      scroller.classList.remove('actual-size');
+      size.setAttribute('aria-pressed', 'false');
+      dialog.showModal();
+      scroller.scrollTo(0, 0);
+    });
+  }
+  document.getElementById('{{.UnclaimedID "preview-close"}}').addEventListener('click', () => dialog.close());
+  dialog.addEventListener('click', event => {
+    if (event.target !== dialog) return;
+    const box = dialog.getBoundingClientRect();
+    if (event.clientX < box.left || event.clientX > box.right || event.clientY < box.top || event.clientY > box.bottom) dialog.close();
+  });
+}
+{{end}}</script>{{if .Live}}{{template "galleryFeedbackScript"}}{{end}}
+</body>
+</html>
+{{define "starter-prompt" -}}
+<code class="design-prompt" id="{{.ID}}">{{.Prompt}}</code>
+          <button class="prompt-copy" type="button" data-copy="{{.ID}}" hidden>Copy starter prompt</button>{{if .Borrow}}
+          <ul aria-label="Borrow">{{range .Borrow}}<li>{{.}}</li>{{end}}</ul>{{end}}
+{{- end -}}
+{{define "sample-designs"}}  <section class="samples" id="samples" aria-labelledby="{{.UnclaimedID "samples-title"}}">
+    <div class="section-note"><h2 id="{{.UnclaimedID "samples-title"}}">Sample designs</h2>
+      {{if .Samples}}<p>Select a page to preview it. Click a design name to copy it.</p>{{end}}</div>
+    {{if .Samples}}<div class="gallery-grid">
+      {{range .Samples}}<article class="gallery-card" id="{{.AnchorID}}">
+        {{if .Preview}}<a class="sample-cover" href="{{.Preview}}" aria-label="Preview {{.Title}}" data-preview>
+          <img class="sample-preview" src="{{.Preview}}" loading="lazy" alt="" width="1040" height="740">
+          <span aria-hidden="true">Enlarge ↗</span></a>{{end}}
+        <div class="card-heading"><h3><button class="name-copy" type="button" disabled data-copy="{{.NameID}}" title="Copy design name" aria-label="Copy design name {{.CopyName}}"><span id="{{.NameID}}">{{.CopyName}}</span><i class="copy-icon" aria-hidden="true"></i></button></h3>
+          <a class="report-link" href="{{.Open.Href}}" aria-label="{{.Open.Label}} — {{.Title}}">{{if eq .Open.Label "Worked example"}}Open report{{else}}{{.Open.Label}}{{end}} ↗</a></div>
+        {{if ne .CopyName .Title}}<p>{{.Title}}</p>{{end}}<p>{{.UseWhen}}</p>
+        <details><summary>Use this design</summary>
+          {{template "starter-prompt" .Starter}}
+          <div class="gallery-links"><a href="#{{.AnchorID}}">Permalink</a>{{range .More}}<a href="{{.Href}}">{{.Label}}</a>{{end}}</div>
+        </details>
+      </article>{{end}}
+    </div>{{else}}<p>No samples yet.</p>{{end}}
+  </section>
+{{end -}}
+{{define "worked-report-card"}}{{with .Worked}}
+      <article class="gallery-card worked-report" data-gallery-card id="{{.Name}}">
+        <a class="sample-cover" data-gallery-preview href="{{.Report}}" aria-label="Open {{.Subject}}">
+          <img class="sample-preview" src="{{.Image}}" loading="lazy" alt="" width="{{.Width}}" height="{{.Height}}" style="aspect-ratio: {{.Width}} / {{.Height}}">
+        </a>
+        <div class="card-heading"><h3><button class="name-copy" data-gallery-name type="button" disabled data-copy="worked-name-{{.Name}}" title="Copy report name"><span id="worked-name-{{.Name}}">{{.Name}}</span><i class="copy-icon" aria-hidden="true"></i></button></h3>
+          <a class="report-link" href="#{{.Name}}" aria-label="Permalink to {{.Name}}">#</a></div>
+        <p class="worked-kind">{{.Kind}}</p>
+        <p>{{.Subject}}</p>
+        {{if $.Starter.Prompt}}<details><summary>Use this design</summary>
+          {{template "starter-prompt" $.Starter}}
+        </details>{{else}}<p>Design unavailable.</p>{{end}}{{with $.Review}}{{template "galleryFeedbackReview" .}}{{end}}
+      </article>
+{{end}}{{end -}}
+{{define "generated-report-card"}}
+      <article class="gallery-card generated-design">
+{{if .Preview}}        <a class="sample-cover" href="{{.Report}}" aria-label="Open {{.Title}}">
+          <img class="sample-preview" src="{{.Preview}}" loading="lazy" alt="" width="1040" height="740">
+        </a>
+{{end}}        <div class="card-heading"><h3>{{.Title}}</h3>
+          <a class="report-link" href="{{.Report}}" aria-label="Open report — {{.Title}}">Open report ↗</a></div>
+{{if .UseWhen}}        <p>{{.UseWhen}}</p>
+{{end -}}
+        {{if .Starter.Prompt}}<details><summary>Use this design</summary>
+          {{template "starter-prompt" .Starter}}
+        </details>{{else}}<p>Design unavailable.</p>{{end}}{{with .Review}}{{template "galleryFeedbackReview" .}}{{end}}
+      </article>
+{{end -}}
+{{- define "galleryFeedbackStyles"}}
+<style>
+.gallery .review-details { margin-top: .55rem; border-top: 1px solid var(--edge); }
+.gallery .review-details summary { min-height: 36px; }
+.review-form { margin: 0 0 .8rem; }
+.review-form fieldset { min-width: 0; margin: 0; padding: .5rem .65rem; border: 1px solid var(--edge); border-radius: .35rem; }
+.review-form legend { max-width: 100%; padding: 0 .2rem; font: 600 .9rem/1.35 var(--sans); overflow-wrap: anywhere; }
+.review-mark { display: flex; flex-wrap: wrap; column-gap: .75rem; margin-bottom: .25rem; }
+.review-mark label { display: inline-flex; gap: .28rem; align-items: center; min-height: 32px; cursor: pointer; }
+.review-mark input { margin: 0; accent-color: var(--accent); }
+.review-note { display: grid; gap: .25rem; font-size: .85rem; }
+.review-note textarea { width: 100%; min-height: 3rem; resize: vertical; padding: .4rem; font: inherit; color: var(--text); background: var(--panel); border: 1px solid var(--edge); border-radius: .25rem; }
+.review-save { display: flex; flex-wrap: wrap; align-items: baseline; gap: .35rem .65rem; margin-top: .5rem; }
+.review-save button { min-height: 32px; }
+.review-status { color: var(--subtle); font-size: .85rem; overflow-wrap: anywhere; }
+.review-status[data-error] { font-weight: 600; }
+</style>
+{{end}}
+{{- define "galleryFeedbackReview"}}
+        <details class="review-details"><summary>Review report and figures</summary>
+          {{template "galleryFeedbackForm" .}}
+          {{range .Figures}}
+            <form class="review-form" data-report-feedback data-target-kind="figure" data-report-path="{{$.ReportPath}}" data-figure-id="{{.ID}}">
+              <fieldset disabled>
+                <legend>{{if .Href}}<a href="{{.Href}}">{{.Label}}</a>{{else}}{{.Label}}{{end}}</legend>
+                {{template "galleryFeedbackFields"}}
+              </fieldset>
+              <div class="review-status" role="status">Loading feedback…</div>
+            </form>
+          {{end}}
+        </details>{{end}}
+{{- define "galleryFeedbackForm"}}
+          <form class="review-form" data-report-feedback data-target-kind="report" data-report-path="{{.ReportPath}}">
+            <fieldset disabled>
+              <legend>Whole report</legend>
+              {{template "galleryFeedbackFields"}}
+            </fieldset>
+            <div class="review-status" role="status">Loading feedback…</div>
+          </form>{{end}}
+{{- define "galleryFeedbackFields"}}
+                <div class="review-mark">
+                  <label><input type="radio" name="mark" value="like" required> Like</label>
+                  <label><input type="radio" name="mark" value="dislike" required> Dislike</label>
+                </div>
+                <label class="review-note">Note (optional)<textarea name="note" rows="2" maxlength="500"></textarea></label>
+                <div class="review-save"><button class="prompt-copy" type="submit">Save feedback</button></div>
+{{end}}
+{{- define "galleryFeedbackScript"}}
+<script>
+(() => {
+  const forms = [...document.querySelectorAll('[data-report-feedback]')];
+  if (!forms.length) return;
+  const endpoint = "/api/report-gallery-feedback";
+  const identity = entry => JSON.stringify([entry.target_kind, entry.report_path, entry.figure_id || '']);
+  async function readResponse(response) {
+    const payload = await response.json();
+    if (!response.ok) throw new Error(payload.error || 'The gallery could not save or load feedback.');
+    return payload;
+  }
+  fetch(endpoint, {mode: 'same-origin', cache: 'no-store'}).then(readResponse).then(feedback => {
+    const savedEntries = new Map(feedback.entries.map(entry => [identity(entry), entry]));
+    for (const form of forms) {
+      const target = {target_kind: form.dataset.targetKind, report_path: form.dataset.reportPath};
+      if (form.dataset.figureId) target.figure_id = form.dataset.figureId;
+      const saved = savedEntries.get(identity(target));
+      const fields = form.querySelector('fieldset');
+      const status = form.querySelector('[role="status"]');
+      form.elements.mark.value = saved?.mark || '';
+      form.elements.note.value = saved?.note || '';
+      status.textContent = saved ? 'Saved ' + saved.mark + '.' : '';
+      fields.disabled = false;
+      form.addEventListener('submit', async event => {
+        event.preventDefault();
+        const entry = {...target, mark: form.elements.mark.value, note: form.elements.note.value};
+        fields.disabled = true;
+        delete status.dataset.error;
+        status.textContent = 'Saving…';
+        try {
+          const stored = await readResponse(await fetch(endpoint, {
+            method: 'PUT', mode: 'same-origin',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(entry),
+          }));
+          if (identity(stored) !== identity(entry) || stored.mark !== entry.mark || (stored.note || '') !== entry.note) {
+            throw new Error('The gallery did not confirm this entry.');
+          }
+          status.textContent = 'Saved ' + stored.mark + '.';
+        } catch (error) {
+          status.dataset.error = '';
+          status.textContent = 'Feedback could not be saved. ' + error.message + ' Use Save feedback to retry.';
+        } finally {
+          fields.disabled = false;
+        }
+      });
+    }
+  }).catch(error => {
+    for (const form of forms) {
+      const status = form.querySelector('[role="status"]');
+      status.dataset.error = '';
+      status.textContent = 'Feedback could not be loaded. ' + error.message + ' Reopen or reload the gallery to retry.';
+    }
+  });
+})();
+</script>{{end -}}

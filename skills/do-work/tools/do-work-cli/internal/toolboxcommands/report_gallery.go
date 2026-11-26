@@ -43,10 +43,20 @@ type reportGallerySample struct {
 }
 
 func handleAIReportGallery(ctx commandruntime.ExecutionContext, args []string) resultmodel.CommandResult {
+	return runReportGallery(ctx.RepositoryRoot, args, false)
+}
+
+// RefreshReportGallery reads the installed layout only after a version-changing update.
+// The running CLI owns data discovery, escaping, the ownership header and publication.
+func RefreshReportGallery(repositoryRoot string, versionChanged bool) resultmodel.CommandResult {
+	return runReportGallery(repositoryRoot, nil, versionChanged)
+}
+
+func runReportGallery(repositoryRoot string, args []string, useInstalledLayout bool) resultmodel.CommandResult {
 	if len(args) > 0 {
 		switch args[0] {
 		case "--prepare-generation", "--generation-digest", "--record-generation", "--record-factual-review":
-			return handleReportGalleryGeneration(ctx.RepositoryRoot, args)
+			return handleReportGalleryGeneration(repositoryRoot, args)
 		}
 	}
 	listOnly := len(args) == 1 && args[0] == "--list"
@@ -57,22 +67,22 @@ func handleAIReportGallery(ctx commandruntime.ExecutionContext, args []string) r
 	if len(args) != 0 && !listOnly && !resolveOnly && !serve && !serveWithoutBrowser && !capturePreviews {
 		return usageResult(CommandAIReportGallery, "Usage: ai-report-gallery [--list | --resolve <name> | --serve [--no-open] | --capture-previews [<report entry>] | "+reportGenerationUsage+"]")
 	}
-	repository, err := os.OpenRoot(ctx.RepositoryRoot)
+	repository, err := os.OpenRoot(repositoryRoot)
 	if err != nil {
 		return reportGalleryFailure(".", err)
 	}
 	defer repository.Close()
 
 	if capturePreviews {
-		return captureReportGalleryPreviews(ctx.RepositoryRoot, repository, args[1:])
+		return captureReportGalleryPreviews(repositoryRoot, repository, args[1:])
 	}
 	if resolveOnly && strings.HasPrefix(strings.TrimSpace(args[1]), reportGalleryGeneratedPrefix) {
-		return resolveReportGalleryGenerated(ctx.RepositoryRoot, repository, strings.TrimSpace(args[1]))
+		return resolveReportGalleryGenerated(repositoryRoot, repository, strings.TrimSpace(args[1]))
 	}
 
 	// Reject linked output parents before discovery. The publisher also confines the final write.
 	if len(args) == 0 {
-		if err := validateNoLinkedAncestors(ctx.RepositoryRoot, ReportGalleryPageFile, false); err != nil {
+		if err := validateNoLinkedAncestors(repositoryRoot, ReportGalleryPageFile, false); err != nil {
 			return reportGalleryRefusal(err)
 		}
 	}
@@ -100,9 +110,9 @@ func handleAIReportGallery(ctx commandruntime.ExecutionContext, args []string) r
 	case resolveOnly:
 		result = resolveReportGallerySample(samples, args[1])
 	case serve || serveWithoutBrowser:
-		result = serveReportGallery(ctx.RepositoryRoot, repository, toolboxDocs, samples, serve)
+		result = serveReportGallery(repositoryRoot, repository, toolboxDocs, samples, serve)
 	default:
-		result = writeReportGallery(ctx.RepositoryRoot, repository, toolboxDocs, samples)
+		result = writeReportGallery(repositoryRoot, repository, toolboxDocs, samples, useInstalledLayout)
 	}
 	result.Findings = append(result.Findings, findings...)
 	return result
@@ -305,7 +315,7 @@ func readReportGalleryBorrow(body []byte) ([]string, error) {
 	return bullets, nil
 }
 
-func writeReportGallery(repositoryRoot string, repository *os.Root, toolboxDocs string, samples []reportGallerySample) resultmodel.CommandResult {
+func writeReportGallery(repositoryRoot string, repository *os.Root, toolboxDocs string, samples []reportGallerySample, useInstalledLayout bool) resultmodel.CommandResult {
 	info, err := repository.Lstat(filepath.FromSlash(ReportGalleryPageFile))
 	exists := err == nil
 	if exists && !info.Mode().IsRegular() {
@@ -319,7 +329,14 @@ func writeReportGallery(repositoryRoot string, repository *os.Root, toolboxDocs 
 	if err != nil {
 		return reportGalleryFailure(reportsFolder, err)
 	}
-	page, err := renderReportGalleryPage(repositoryRoot, repository, toolboxDocs, samples, bundles, nil)
+	layout := reportGalleryPageTemplate
+	if useInstalledLayout {
+		layout, err = installedReportGalleryTemplate(repository)
+		if err != nil {
+			return reportGalleryFailure(ReportGalleryPageFile, err)
+		}
+	}
+	page, err := renderReportGalleryPage(layout, repositoryRoot, repository, toolboxDocs, samples, bundles, nil)
 	if err != nil {
 		return reportGalleryFailure(ReportGalleryPageFile, err)
 	}

@@ -365,6 +365,49 @@ func TestReportGalleryRebuildsFromTheWrittenSuite(t *testing.T) {
 	}
 }
 
+func TestVersionChangingUpdateRendersInstalledGalleryLayout(t *testing.T) {
+	projectRoot := newProjectRepository(t)
+	skill := installSuiteForUpdate(t, projectRoot, fixtureSuiteVersion)
+	const reportPath = "ai-reports/2026-11-20_0900_upgrade-report/index.html"
+	writeTestFile(t, filepath.Join(projectRoot, reportPath), "<title>Upgrade report</title>")
+
+	// Build the calling version with a visibly different layout. Both invocations
+	// start at the installed launcher, just as they do in a consumer project.
+	module := filepath.Join(skill, "tools", "do-work-cli")
+	runTestCommand(t, "cp", "-R", "../../.", module)
+	const previousLayout = `</head><body><section>Sample designs{{range .Samples}}<p>{{.Title}}</p>{{end}}</section>
+<section>Repository reports{{range .Reports}}<p>{{.Title}}</p>{{end}}</section></body></html>`
+	writeTestFile(t, filepath.Join(module, "internal", "toolboxcommands", "report_gallery_page.gohtml"), previousLayout)
+	launcher := filepath.Join(skill, "tools", "do-work-cli.sh")
+	runTestCommand(t, "cp", "../../../do-work-cli.sh", launcher)
+	runTestCommand(t, "bash", launcher, "--repo-root", projectRoot, "ai-report-gallery")
+	gallery := filepath.Join(projectRoot, "docs", "report-gallery", "index.html")
+	previous := readTestFile(t, gallery)
+	if !strings.Contains(previous, "<section>Sample designs<p>Suite sample "+fixtureSuiteVersion) ||
+		!strings.Contains(previous, "<section>Repository reports<p>Upgrade report") {
+		t.Fatal("calling version did not render its samples-first layout")
+	}
+
+	const nextVersion = "0.300.0"
+	_, upstreamURL := newUpstreamArchiveServer(t, nextVersion)
+	update := exec.Command("bash", launcher, "--repo-root", projectRoot, CommandUpdateSuite, "--upstream-url", upstreamURL)
+	update.Stdin = strings.NewReader("y\n")
+	output, err := update.CombinedOutput()
+	if err != nil || !strings.Contains(string(output), "Updated to v"+nextVersion) {
+		t.Fatalf("version-changing update: %v\n%s", err, output)
+	}
+	page := readTestFile(t, gallery)
+	if !strings.Contains(page, "Suite sample "+nextVersion) {
+		t.Fatal("updated gallery is missing the new version's sample")
+	}
+	_, sections, _ := strings.Cut(page, "<section")
+	first, later, _ := strings.Cut(sections, "</section>")
+	if !strings.Contains(first, ">Repository reports</h2>") ||
+		!strings.Contains(first, `href="../../`+reportPath+`"`) || !strings.Contains(later, ">Sample designs</h2>") {
+		t.Fatalf("after one update to %s, expected the repository report card in the first section and samples later; first section: %s", nextVersion, first)
+	}
+}
+
 func TestReportGalleryWriteProblemsWarnOnceWithoutRecoveringTheSuite(t *testing.T) {
 	for _, blockedPath := range []string{"docs/report-gallery/index.html", "docs/report-gallery"} {
 		t.Run(blockedPath, func(t *testing.T) {

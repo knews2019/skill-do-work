@@ -51,7 +51,7 @@ func TestReportGalleryStarterRoundTripAcrossSources(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		page, err := renderReportGalleryPage(root, repository, "", nil, bundles, &reportGalleryLivePage{})
+		page, err := renderReportGalleryPage(reportGalleryPageTemplate, root, repository, "", nil, bundles, &reportGalleryLivePage{})
 		if err != nil {
 			t.Fatal(err)
 		}
