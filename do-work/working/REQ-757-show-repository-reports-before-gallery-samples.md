@@ -20,6 +20,7 @@ effort_estimate: effort-mechanical
 addendum_to: REQ-749
 maintenance: false
 claimed_at: 2026-11-25T23:11:32Z
+builder_handback_at: 2026-11-26T00:08:46Z
 ---
 # Show repository reports before gallery samples
 ## What
