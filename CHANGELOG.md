@@ -10,6 +10,12 @@ For the complete release history, read this file and the archives below from new
 - [0.50.0 through 0.64.1](https://github.com/knews2019/skill-do-work/blob/main/docs/changelog/CHANGELOG-2026-04-13-up-to-v0.64.1.md)
 - [0.1.0 through 0.49.0](https://github.com/knews2019/skill-do-work/blob/main/docs/changelog/CHANGELOG-2026-04-07-up-to-v0.49.0.md)
 
+## 0.332.6 — Complex Capture Creates Asset Directories During Publication (2026-11-26)
+
+A refused complex capture leaves the previous user request available to verify.
+
+- Asset files stay in private staging until `capture-files` publishes them with the request.
+
 ## 0.332.5 — Board Restarts Match Exact Executable Names (2026-11-26)
 
 `just run-kanban` leaves unrelated port listeners running.
