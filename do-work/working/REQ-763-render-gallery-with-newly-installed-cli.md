@@ -1,7 +1,7 @@
 ---
 id: REQ-763
 title: 'Render the static gallery with the newly installed CLI after an upgrade'
-status: pending
+status: claimed
 created_at: 2026-11-26T11:26:10Z
 user_request: UR-193
 addendum_to: REQ-743
@@ -13,6 +13,7 @@ impact: impact-user-visible
 effort_estimate: effort-substantive
 tdd: true
 maintenance: false
+claimed_at: 2026-11-26T11:32:00Z
 ---
 
 # Render the static gallery with the newly installed CLI after an upgrade
