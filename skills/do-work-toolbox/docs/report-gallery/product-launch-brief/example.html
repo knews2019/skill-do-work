@@ -1,0 +1,255 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Product Launch Brief</title>
+<style>
+  :root {
+    color-scheme: light dark;
+    --paper: #f8f4e9;
+    --ink: #172d28;
+    --muted-ink: #465b53;
+    --rule: #a8b2a3;
+    --panel: #e8ebdf;
+    --accent: #9e351f;
+    --on-accent: #fff;
+    --card-paper: #fff9ec;
+    --card-ink: #172d28;
+    --card-rule: #315046;
+    --reading-font: Georgia, serif;
+    --label-font: system-ui, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --paper: #162622;
+      --ink: #f6f0e1;
+      --muted-ink: #c6d1c6;
+      --rule: #71867c;
+      --panel: #233731;
+      --accent: #ffc0aa;
+      --on-accent: #402016;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--paper); color: var(--ink); font: 1.125rem/1.55 var(--reading-font); }
+  main { width: min(74rem, 100%); margin-inline: auto; padding: 0 clamp(1rem, 5vw, 4.5rem); }
+  p { margin: 0; max-inline-size: 65ch; }
+  p + p { margin-top: .85rem; }
+  img { display: block; max-width: 100%; height: auto; }
+  h1, h2, h3, h4 { margin: 0; line-height: 1.07; }
+  h2 { font-size: clamp(2rem, 4vw, 3.25rem); font-weight: normal; }
+  h3 { font-size: clamp(1.35rem, 2.6vw, 1.85rem); }
+  a { color: var(--accent); text-underline-offset: .19em; }
+  :focus-visible { outline: 3px solid var(--accent); outline-offset: 4px; }
+  .small-label {
+    font: 700 .76rem/1.4 var(--label-font);
+    letter-spacing: .09em;
+    text-transform: uppercase;
+  }
+  .report-masthead {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: .4rem 1.25rem;
+    border-block-end: 1px solid var(--rule);
+    padding-block: 1.15rem .85rem;
+  }
+  .report-masthead h1 { font: 750 1rem/1.4 var(--label-font); }
+  .launch-hero { display: grid; gap: clamp(1.5rem, 3vw, 4rem); padding-block: clamp(1.5rem, 3.2vw, 3.5rem); }
+  .launch-premise h2 {
+    font-size: clamp(2.65rem, 5.1vw, 4.6rem);
+    margin-block: .55rem .85rem;
+    text-wrap: balance;
+  }
+  .pilot-assumption { color: var(--muted-ink); font: 650 .88rem/1.5 var(--label-font); margin-top: 1.1rem; }
+  .demo-heading {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: .55rem 1rem;
+    min-height: 2.75rem;
+    margin-block-end: .6rem;
+  }
+  .flip-button {
+    min-height: 2.75rem;
+    min-width: 11.5rem;
+    padding: .55rem .8rem;
+    border: 0;
+    border-radius: .25rem;
+    background: var(--accent);
+    color: var(--on-accent);
+    font: 650 .875rem/1.3 var(--label-font);
+    cursor: pointer;
+  }
+  .flip-button:hover { text-decoration: underline; text-underline-offset: .16em; }
+  .card-stack { display: grid; gap: 1rem; }
+  .card-face {
+    min-width: 0;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    gap: .55rem;
+    padding: clamp(.8rem, 2vw, 1.2rem);
+    border: 2px solid var(--card-rule);
+    border-radius: .75rem;
+    background: var(--card-paper);
+    color: var(--card-ink);
+  }
+  .card-face h4 { font-size: clamp(1.65rem, 3.5vw, 2.5rem); font-weight: normal; }
+  .card-face p:not(.small-label) { font-size: 1.0625rem; }
+  .card-front img { width: 100%; aspect-ratio: 3 / 2; object-fit: cover; border: 1px solid var(--card-rule); border-radius: .25rem; }
+  .card-back { justify-content: center; }
+  .card-back .small-label { margin-block-end: .4rem; }
+  .card-back p:not(.small-label) { margin-block-start: .15rem; max-inline-size: 42ch; }
+  .card-viewport { perspective: 75rem; }
+  .is-interactive .card-stack { transform-style: preserve-3d; }
+  .is-interactive .card-face { grid-area: 1 / 1; backface-visibility: hidden; }
+  .is-interactive .card-back, .is-interactive .is-flipped { transform: rotateY(180deg); }
+  @media (prefers-reduced-motion: no-preference) {
+    .is-interactive .card-stack { transition: transform 220ms ease-in-out; }
+  }
+  .screen-reader-text { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+  .brief-section { border-block-start: 1px solid var(--rule); padding-block: clamp(1.4rem, 4vw, 3rem); }
+  .brief-section h2 { margin-block-end: .6rem; }
+  .collection-section { display: grid; align-items: center; gap: 1.25rem 3rem; }
+  .collection-item {
+    display: grid;
+    grid-template-columns: minmax(0, 7.5rem) minmax(0, 1fr);
+    align-items: center;
+    gap: .8rem;
+    max-width: 27rem;
+    margin: 0;
+    padding: .75rem;
+    border: 1px solid var(--rule);
+    border-radius: .4rem;
+    background: var(--panel);
+  }
+  .collection-item img { border: 1px solid var(--card-rule); border-radius: .2rem; }
+  .collection-item strong { display: block; font-size: 1.23rem; }
+  .collection-item span { color: var(--muted-ink); }
+  .workflow-steps { margin: 1.3rem 0 0; padding-inline-start: 1.7rem; }
+  .workflow-steps li { padding: .85rem 0 .85rem .45rem; border-block-start: 1px solid var(--rule); }
+  .workflow-steps li::marker { font: 700 1rem var(--label-font); }
+  .step-heading { display: flex; flex-wrap: wrap; align-items: baseline; gap: .25rem .85rem; margin-block-end: .3rem; }
+  .step-heading h3 { font-size: 1.25rem; }
+  .step-heading span { color: var(--muted-ink); }
+  .workflow-example { display: flex; align-items: center; gap: .55rem; margin: .6rem 0 0; font: 600 .875rem/1.3 var(--label-font); }
+  .workflow-example img { width: 3.75rem; border: 1px solid var(--card-rule); border-radius: .15rem; }
+  .launch-questions { display: grid; gap: .45rem; margin-block-end: 0; padding-inline-start: 1.3rem; }
+  .launch-questions li { max-inline-size: 65ch; }
+  .report-footer { border-block-start: 1px solid var(--rule); padding-block: .85rem 1.6rem; color: var(--muted-ink); font: .82rem/1.5 var(--label-font); }
+  @media (min-width: 36rem) {
+    .card-stack { grid-template-columns: repeat(2, minmax(0, 1fr)); max-width: 54rem; }
+    .is-interactive .card-stack { grid-template-columns: minmax(0, 1fr); }
+  }
+  @media (min-width: 52rem) {
+    .launch-hero:has(.is-interactive) { grid-template-columns: minmax(0, 1.08fr) minmax(0, 1fr); align-items: center; }
+    .collection-section { grid-template-columns: minmax(0, 1.08fr) minmax(0, 1fr); }
+  }
+</style>
+</head>
+<body>
+<main>
+  <header class="report-masthead">
+    <h1>Product Launch Brief</h1>
+    <p class="small-label">City Postcards · Fictional proposal</p>
+  </header>
+
+  <div class="launch-hero">
+    <section class="launch-premise" aria-labelledby="premise-title">
+      <h2 id="premise-title">A local story worth keeping</h2>
+      <p>City Postcards turns a local news story into an illustrated card. Flip it to read a short excerpt, then keep the card in a personal collection.</p>
+      <p class="pilot-assumption">Pilot assumption · One card each weekday.</p>
+    </section>
+
+    <section class="product-demo" aria-labelledby="demo-title">
+      <div class="demo-heading">
+        <h3 id="demo-title">Try a postcard</h3>
+        <button class="flip-button" type="button" aria-controls="postcard-faces" hidden>Flip to read the excerpt</button>
+        <span class="screen-reader-text" role="status"></span>
+      </div>
+      <div class="card-viewport">
+        <div class="card-stack" id="postcard-faces">
+          <div class="card-face card-front">
+            <p class="small-label">Card 01 · Illustrated front · AI-generated art</p>
+            <h4>The First Ferry</h4>
+            <img src="first-ferry.webp" width="900" height="600" alt="An illustrated ferry approaching a wooden pier at sunrise">
+          </div>
+          <div class="card-face card-back">
+            <p class="small-label">Card 01 · Story on the back</p>
+            <h4>The First Ferry</h4>
+            <p>A deckhand coils the rope as the first ferry noses into the slip. By the time the bakery on Pier Street opens, the boat has already carried the first shift across the harbor.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <section class="brief-section collection-section" aria-labelledby="collection-title">
+    <div>
+      <h2 id="collection-title">The reader’s collection</h2>
+      <p>After saving a postcard, a reader can find it by its illustration and reopen the excerpt. Here’s how the first saved card would appear.</p>
+    </div>
+    <figure class="collection-item">
+      <img src="first-ferry.webp" width="900" height="600" alt="">
+      <figcaption><span class="small-label">Card 01 · Saved</span><strong>The First Ferry</strong><span class="small-label">AI-generated art</span></figcaption>
+    </figure>
+  </section>
+
+  <section class="brief-section" aria-labelledby="workflow-title">
+    <h2 id="workflow-title">How the newsroom makes the card</h2>
+    <ol class="workflow-steps">
+      <li id="choose-excerpt">
+        <div class="step-heading"><h3>Choose the excerpt</h3><span class="small-label">Assigning editor</span></div>
+        <p>Check the ferry excerpt against the reporting and approve a version that makes sense on its own. Flag the card if the story is corrected.</p>
+        <figure class="workflow-example">
+          <img src="first-ferry.webp" width="900" height="600" alt="">
+          <figcaption>The First Ferry <span class="small-label">· AI-generated art</span></figcaption>
+        </figure>
+      </li>
+      <li id="illustrate-card">
+        <div class="step-heading"><h3>Illustrate and assemble</h3><span class="small-label">Visual designer</span></div>
+        <p>Pair the approved excerpt with the ferry illustration and write alt text for the front.</p>
+      </li>
+      <li id="schedule-card">
+        <div class="step-heading"><h3>Check and schedule</h3><span class="small-label">Audience producer</span></div>
+        <p>On a phone, flip The First Ferry, save it, and reopen it from the collection before scheduling the card.</p>
+      </li>
+    </ol>
+  </section>
+
+  <section class="brief-section" aria-labelledby="decisions-title">
+    <h2 id="decisions-title">Decisions before launch</h2>
+    <ul class="launch-questions">
+      <li>When a story is corrected, who <a href="#choose-excerpt">updates the excerpt</a> on cards readers already saved?</li>
+      <li>Can the visual desk <a href="#illustrate-card">supply an original or licensed image and alt text</a> each weekday?</li>
+      <li>Who runs the <a href="#schedule-card">phone check</a> and schedules the card when the audience producer is away?</li>
+    </ul>
+  </section>
+
+  <footer class="report-footer">The ferry story is fictional.</footer>
+</main>
+<script>
+  const productDemo = document.querySelector('.product-demo');
+  const flipButton = productDemo.querySelector('.flip-button');
+  const cardStack = productDemo.querySelector('.card-stack');
+  const cardFront = cardStack.querySelector('.card-front');
+  const cardBack = cardStack.querySelector('.card-back');
+  const cardStatus = productDemo.querySelector('[role="status"]');
+
+  cardBack.inert = true;
+  productDemo.classList.add('is-interactive');
+  flipButton.hidden = false;
+  flipButton.addEventListener('click', () => {
+    const showingBack = cardStack.classList.toggle('is-flipped');
+    cardFront.inert = showingBack;
+    cardBack.inert = !showingBack;
+    flipButton.textContent = showingBack ? 'Flip back to the front' : 'Flip to read the excerpt';
+    cardStatus.textContent = showingBack ? 'Story excerpt shown.' : 'Illustrated front shown.';
+  });
+</script>
+</body>
+</html>
