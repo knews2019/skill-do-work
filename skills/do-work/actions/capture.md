@@ -201,7 +201,6 @@ The wrapper invocation below follows the canonical [Prescribed shell primitives]
 4. If the request is behavior-changing and has a meaningful RED/GREEN proof target, add a `## Red-Green Proof` section. If `tdd: true`, this section is required.
 5. Include all created REQ IDs in the final UR payload. Folded requests created no REQ, so they never enter the array.
    **Complex mode additionally:**
-   - Create `assets/` subfolder in the UR folder
    - Extract EVERY requirement into the appropriate REQ — do not summarize
    - Set `related` and `batch` fields across the batch; populate `depends_on` for prerequisites or explicitly requested serial ordering, and `write_set` when a slice already names the files it writes — both per the **Complex REQ (additional sections)** template's Populating `depends_on` / Populating `write_set` / Slicing convention guidance in `actions/capture-reference.md`
    - Add Batch Constraints to the UR (cross-cutting concerns, scope cues, sequencing)
