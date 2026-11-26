@@ -1,7 +1,7 @@
 ---
 id: REQ-757
 title: 'Addendum: Show repository reports before gallery samples'
-status: claimed
+status: completed
 dispatch_at: 2026-11-25T23:12:29Z
 estimate:
   p50_active_minutes: 5
@@ -25,6 +25,10 @@ integration_at: 2026-11-26T00:09:52Z
 review_at: 2026-11-26T00:15:57Z
 kb_status: pending
 commit: 9348c4b15220d527f6325476b911abd2f00d0e07
+heavy_verified_at: 2026-11-26T00:28:14Z
+heavy_verified_revision: 46836dfef8e9d825bd8a51c040c9cf860c46b7b4
+completed_at: 2026-11-26T00:28:32Z
+release_at: 2026-11-26T00:28:32Z
 ---
 # Show repository reports before gallery samples
 ## What
@@ -43,12 +47,12 @@ REQ-749 (build the gallery from ten real report pages) added a curated worked-re
 
 ## Assets
 
-[Gallery on opening](../user-requests/UR-189/assets/REQ-757-screenshot-1-gallery-opening.png) shows the gallery in sa2-sentence-aligner2. The first grid is headed “10 report designs” and starts with Before and After, Bottleneck Hunt, Cause Chain, and Changing Mix. Generated designs is a navigation link at the top.
+[Gallery on opening](assets/REQ-757-screenshot-1-gallery-opening.png) shows the gallery in sa2-sentence-aligner2. The first grid is headed “10 report designs” and starts with Before and After, Bottleneck Hunt, Cause Chain, and Changing Mix. Generated designs is a navigation link at the top.
 ## AI Execution State (P-A-U Loop)
 - [x] **[PLAN]:** Use catalog order for one repository report grid and keep samples in their own section.
 - [x] **[APPLY]:** Update the shared static and live renderer, keep worked card controls, and regenerate the checked-in gallery.
 - [x] **[UNIFY]:** Reviewed all seven files listed below against the merge range. Native lint and formatting checks passed in the fast suite. The range passed `git diff --check`.
-*Source: [Original request](../user-requests/UR-189/input.md)*
+*Source: [Original request](input.md)*
 
 ## Triage
 
@@ -159,3 +163,27 @@ The report gallery opens on repository reports in date order. Sample designs fol
 - `staged-skills` — `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane staged-skills`. coverage is uncertain for: docs/report-gallery/index.html.
 - `updater` — `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane updater`. coverage is uncertain for: docs/report-gallery/index.html.
 - `installer` — `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane installer`. coverage is uncertain for: docs/report-gallery/index.html.
+
+## Heavy Verification Result
+
+- Target revision `9348c4b15220d527f6325476b911abd2f00d0e07`
+- Execution revision `46836dfef8e9d825bd8a51c040c9cf860c46b7b4`
+
+The typed runner executed the shared lanes at the final integrated tree with Chrome 158.0.8127.37. Both saved plans matched their recomputation.
+
+- `queue-kanban-javascript` — executed, exit 0, 7s, not skipped.
+- `queue-kanban-browser` — executed, exit 0, 70s, not skipped.
+- `do-work-cli-integrations` — executed, exit 0, 64s, not skipped.
+- `staged-skills` — executed, exit 0, 31s, not skipped.
+- `updater` — executed, exit 0, 68s, not skipped.
+- `installer` — executed, exit 0, 30s, not skipped.
+
+## Timing
+
+Observed 2026-11-26T00:23:13Z to 2026-11-26T00:28:14Z: 5m 01s total, 5m 01s attributed across 1 events, 0s unattributed.
+
+| Category | Elapsed | Events |
+| --- | --- | --- |
+| verification-gate | 5m 01s | 1 |
+
+Slowest command: verification-gate / Joint heavy verification (shared with REQ-761), 5m 01s, exit 0, .
