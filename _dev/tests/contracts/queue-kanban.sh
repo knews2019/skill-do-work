@@ -45,40 +45,42 @@ reset_fixture_logs() {
   rm -f "$FIXTURE_ARGV_LOG" "$FIXTURE_KILL_LOG"
 }
 
-# 1. A stale queue-kanban listener is stopped, and serve then receives the project root and port.
-# The lsof stub reports pid 4242 until kill records it, then reports nothing.
-reset_fixture_logs
-if stale_listener_output="$(
-  lsof() {
-    if [ "${4:-}" = "-d" ]; then
-      printf 'n/tmp/queue-kanban\n'
-    elif [ -s "$FIXTURE_KILL_LOG" ]; then
-      return 1
-    else
-      printf '4242\n'
-    fi
-  }
-  ps() { printf '/tmp/queue-kanban serve --port 8090\n'; }
-  kill() { printf '%s\n' "$*" >> "$FIXTURE_KILL_LOG"; }
-  export -f lsof ps kill
-  "$BASH" "$fixture_board/tools/run-kanban.sh" "$fixture_project" 8090 2>&1
-)"; then
-  stale_listener_status=0
-else
-  stale_listener_status=$?
-fi
-if [ "$stale_listener_status" -ne 0 ]; then
-  contract_fail "run-kanban must serve after stopping a stale queue-kanban listener; got exit $stale_listener_status: $stale_listener_output"
-fi
-if ! grep -qxF 'queue-kanban: stopping previous session on :8090 (pid 4242): /tmp/queue-kanban serve --port 8090' <<<"$stale_listener_output"; then
-  contract_fail "run-kanban must announce the stale listener it stops: $stale_listener_output"
-fi
-if [ "$(cat "$FIXTURE_KILL_LOG" 2>/dev/null)" != 4242 ]; then
-  contract_fail 'run-kanban must call kill exactly once, with the stale pid 4242.'
-fi
-if [ "$(cat "$FIXTURE_ARGV_LOG" 2>/dev/null)" != "serve --open --repo-root $fixture_project --port 8090" ]; then
-  contract_fail "run-kanban must start serve --open with the project root and port; got: $(cat "$FIXTURE_ARGV_LOG" 2>/dev/null)"
-fi
+# 1. Both supported executable names restart. The lsof stub reports pid 4242 until the
+# kill stub records it, then reports nothing.
+for board_name in queue-kanban go-bin-queue-kanban; do
+  reset_fixture_logs
+  if stale_listener_output="$(
+    lsof() {
+      if [ "${4:-}" = "-d" ]; then
+        printf 'n%s\n' "$FIXTURE_LISTENER_EXECUTABLE"
+      elif [ -s "$FIXTURE_KILL_LOG" ]; then
+        return 1
+      else
+        printf '4242\n'
+      fi
+    }
+    ps() { printf '%s serve --port 8090\n' "$FIXTURE_LISTENER_EXECUTABLE"; }
+    kill() { printf '%s\n' "$*" >> "$FIXTURE_KILL_LOG"; }
+    export -f lsof ps kill
+    FIXTURE_LISTENER_EXECUTABLE="/tmp/$board_name" "$BASH" "$fixture_board/tools/run-kanban.sh" "$fixture_project" 8090 2>&1
+  )"; then
+    stale_listener_status=0
+  else
+    stale_listener_status=$?
+  fi
+  if [ "$stale_listener_status" -ne 0 ]; then
+    contract_fail "$board_name: expected a successful restart, got exit $stale_listener_status: $stale_listener_output"
+  fi
+  if ! grep -qxF "queue-kanban: stopping previous session on :8090 (pid 4242): /tmp/$board_name serve --port 8090" <<<"$stale_listener_output"; then
+    contract_fail "$board_name: expected run-kanban to announce the stopped listener: $stale_listener_output"
+  fi
+  if ! cmp -s "$FIXTURE_KILL_LOG" <(printf '4242\n'); then
+    contract_fail "$board_name: expected exactly one kill call with pid 4242."
+  fi
+  if [ "$(cat "$FIXTURE_ARGV_LOG" 2>/dev/null)" != "serve --open --repo-root $fixture_project --port 8090" ]; then
+    contract_fail "$board_name: expected serve --open with the project root and port, got: $(cat "$FIXTURE_ARGV_LOG" 2>/dev/null)"
+  fi
+done
 
 # 2. A queue-kanban PID that remains a listener throughout the bounded wait must make run-kanban
 # fail before build+serve, and the diagnosis must name both the PID and full command. sleep is a
@@ -114,31 +116,33 @@ if [ -e "$FIXTURE_ARGV_LOG" ]; then
   contract_fail 'run-kanban must not start serve while a listener remains.'
 fi
 
-# 3. Preserve the older safety boundary: a foreign executable is refused immediately and never
-# passed to kill.
-reset_fixture_logs
-if foreign_listener_output="$(
-  lsof() {
-    if [ "${4:-}" = "-d" ]; then
-      printf 'n/usr/bin/python3\n'
-    else
-      printf '3131\n'
-    fi
-  }
-  ps() { printf '/usr/bin/python3 -m http.server 8090\n'; }
-  kill() { printf '%s\n' "$*" >> "$FIXTURE_KILL_LOG"; }
-  export -f lsof ps kill
-  "$BASH" "$fixture_board/tools/run-kanban.sh" "$fixture_project" 8090 2>&1
-)"; then
-  foreign_listener_status=0
-else
-  foreign_listener_status=$?
-fi
-# This fixture asserts the refusal status and kill boundary; its captured text is intentionally ignored.
-: "$foreign_listener_output"
-if [ "$foreign_listener_status" -ne 1 ] || [ -s "$FIXTURE_KILL_LOG" ]; then
-  contract_fail 'run-kanban must refuse a foreign listener without calling kill.'
-fi
+# 3. A foreign executable and a lookalike are both refused without signaling the listener.
+for listener_executable in /usr/bin/python3 /tmp/queue-kanban-helper; do
+  reset_fixture_logs
+  if foreign_listener_output="$(
+    lsof() {
+      if [ "${4:-}" = "-d" ]; then
+        printf 'n%s\n' "$FIXTURE_LISTENER_EXECUTABLE"
+      else
+        printf '3131\n'
+      fi
+    }
+    ps() { printf '%s\n' "$FIXTURE_LISTENER_EXECUTABLE"; }
+    kill() { printf '%s\n' "$*" >> "$FIXTURE_KILL_LOG"; }
+    export -f lsof ps kill
+    FIXTURE_LISTENER_EXECUTABLE="$listener_executable" "$BASH" "$fixture_board/tools/run-kanban.sh" "$fixture_project" 8090 2>&1
+  )"; then
+    foreign_listener_status=0
+  else
+    foreign_listener_status=$?
+  fi
+  if [ "$foreign_listener_status" -ne 1 ]; then
+    contract_fail "$listener_executable: expected refusal with exit 1, got exit $foreign_listener_status: $foreign_listener_output"
+  fi
+  if [ -s "$FIXTURE_KILL_LOG" ]; then
+    contract_fail "$listener_executable: expected no kill calls (launcher exit $foreign_listener_status), recorded: $(cat "$FIXTURE_KILL_LOG")"
+  fi
+done
 
 # 4. kanban-static writes the snapshot and exactly one local exclude line across two runs, and
 # announces the write once. -x matches the whole line, because just echoes recipe text.

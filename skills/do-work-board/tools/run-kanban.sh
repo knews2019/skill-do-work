@@ -18,7 +18,7 @@ if command -v lsof >/dev/null 2>&1; then
     listener_executable_name="${listener_executable##*/}"
     listener_command="$(ps -p "$listener_pid" -o args= 2>/dev/null)"
     case "$listener_executable_name" in
-      *queue-kanban*)
+      queue-kanban|go-bin-queue-kanban)
         echo "queue-kanban: stopping previous session on :$port (pid $listener_pid): $listener_command"
         kill "$listener_pid" 2>/dev/null
         wait_count=0
