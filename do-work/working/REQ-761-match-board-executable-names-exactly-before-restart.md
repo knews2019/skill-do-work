@@ -20,6 +20,7 @@ impact: impact-user-visible
 effort_estimate: effort-mechanical
 maintenance: false
 claimed_at: 2026-11-25T23:27:19Z
+builder_handback_at: 2026-11-26T00:18:52Z
 ---
 # Match board executable names exactly before restart
 ## What
