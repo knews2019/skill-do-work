@@ -1,0 +1,24 @@
+2026-11-26T19:47:39Z PLAN — Read the complete brief, gallery and report rules. Confirmed the named sample is absent. Build a shipped City Postcards example and static two-face preview, regenerate the gallery, and verify offline plus CLI title/slug resolution.
+2026-11-26T19:51:57Z APPLY — Added the shipped City Postcards report, local artwork and authentic two-face capture. Incorporated the Opus 5.5 review into Borrow and linked the launch questions to their production steps. Regenerated the static gallery.
+2026-11-26T19:54:36Z UNIFY — Passed offline Chrome at 1440 and 390 in both themes, keyboard and emulated touch flip, visible focus, immediate reduced motion, two-face preview, gallery opener and copied reuse starter. Focused Go tests and all 28 gallery gates passed.
+2026-11-26T19:54:36Z COMMIT — b61df115c5eb714de0d35aeba33451f9ba5971b7 on t3/product-launch-brief. Wrote the implementation handback.
+2026-11-26T19:57:09Z HANDOFF — Read-only advance returned preflight with Implementation Summary outstanding. Stamped actual builder handback 2026-11-26T19:54:36Z (dispatch accepted 2026-11-26T19:45:22Z; observed 9m14s). Timing recorder uses invocation time as its end and cannot backdate; skipped the builder-work event to avoid charging integration time. Exact run inputs committed at f5d6bcca. Verified the queue guard was empty and started the no-ff merge with b61df115.
+2026-11-26T19:57:28Z INTEGRATION — git merge --no-ff --no-commit t3/product-launch-brief and commit succeeded. Verified implementation range f5d6bcca..c8593fae. Regenerated gallery wording and captured both credited faces in offline Chrome (exit 0).
+2026-11-26T19:57:28Z VERIFY — Start node /tmp/req764-integration.hc9Ejj1J/check-launch-brief.cjs and repository gallery browser gate.
+2026-11-26T19:57:29Z VERIFY — Offline browser and gallery gate command chain exited 1.
+2026-11-26T19:57:48Z VERIFY — Fixed scratch assertion to match CSS uppercase provenance labels. Restarted offline browser checks and repository gallery gate.
+2026-11-26T19:59:40Z VERIFY — Offline browser and gallery gate command chain exited 0.
+2026-11-26T19:59:50Z FULL GATE — Start bash _dev/tests/maintainer-verify.sh under full-gate.lock at c8593fae. Focused advance recorded probe exit 0 and requested this run.
+2026-11-26T19:59:50Z FULL GATE — bash _dev/tests/maintainer-verify.sh exited 2.
+2026-11-26T20:00:14Z FULL GATE — Timing wrapper refused invalid category before launch. Start bash _dev/tests/maintainer-verify.sh under full-gate.lock using verification-gate.
+2026-11-26T20:01:32Z QUALIFY — advance satisfied qualification and scope-drift after reconciling provisional card-art.png to first-ferry.webp in Scope and write_set. The focused five-test gallery/installer probe exited 0 and title/slug resolution returned the shipped sample. Reviewed the generated preview and all 28 gallery browser checks passed.
+2026-11-26T20:02:36Z FULL GATE — bash _dev/tests/maintainer-verify.sh exited 0.
+2026-11-26T20:03:22Z REVIEW — Review passed with no actionable findings. Recorded lessons, orientation and the six-lane heavy plan. Recomputed plan matches its recorded base and target.
+2026-11-26T20:03:36Z HEAVY GATE — Start run-heavy-verification with manifest _dev/tests/heavy-lanes.json and all six planned lanes (queue-kanban-javascript, queue-kanban-browser, do-work-cli-integrations, staged-skills, updater, installer). Chrome binary explicitly selected.
+2026-11-26T20:08:36Z HEAVY GATE — run-heavy-verification exited 0. Per-lane results are checked separately.
+2026-11-26T20:08:50Z HEAVY GATE — Parsed request evidence from the runner output after its test narration. All six planned lanes passed without skips at c8593fae.
+2026-11-26T20:09:09Z VERIFY — Start fresh install of git archive from c8593fae and resolve Product Launch Brief from the consumer CLI.
+2026-11-26T20:09:12Z VERIFY — Fresh installer and installed named-design resolution passed. Generated consumer gallery includes the sample and its four installed files match the merged bytes.
+2026-11-26T20:09:47Z FINALIZE — Strict manifest validation passed for suite 0.333.0 and supplied merge c8593fae. Start advance REQ-764 with the emitted finalization manifest.
+2026-11-26T20:09:48Z FINALIZE — advance returned cleanup_complete for REQ-764. Release and archive committed at be25fbd094f7ee7f389b580537af2c6d35f31f7d. Coordinator retains Step 10 and T3 worktree cleanup.
+2026-11-26T20:10:10Z VERIFY — Release mirrors match 0.333.0, archive is completed with c8593fae, and scoped implementation and release diffs pass whitespace checks. Terminal checkpoint removal leaves a blank line at EOF. The preflight baseline and run scratch are still in the main checkout for the coordinator.
