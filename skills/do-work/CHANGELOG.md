@@ -10,6 +10,12 @@ For the complete release history, read this file and the archives below from new
 - [0.50.0 through 0.64.1](https://github.com/knews2019/skill-do-work/blob/main/docs/changelog/CHANGELOG-2026-04-13-up-to-v0.64.1.md)
 - [0.1.0 through 0.49.0](https://github.com/knews2019/skill-do-work/blob/main/docs/changelog/CHANGELOG-2026-04-07-up-to-v0.49.0.md)
 
+## 0.332.5 — Board Restarts Match Exact Executable Names (2026-11-26)
+
+`just run-kanban` leaves unrelated port listeners running.
+
+- Automatic restart applies to the exact executable names `queue-kanban` and `go-bin-queue-kanban`. A lookalike such as `queue-kanban-helper` keeps running.
+
 ## 0.332.4 — Repository Reports Come First in the Gallery (2026-11-26)
 
 The report gallery opens with the current repository’s reports in date order, newest first.

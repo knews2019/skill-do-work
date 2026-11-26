@@ -1,7 +1,7 @@
 ---
 id: REQ-761
 title: 'Match board executable names exactly before restart'
-status: claimed
+status: completed
 dispatch_at: 2026-11-25T23:27:36Z
 estimate:
   p50_active_minutes: 5
@@ -24,6 +24,10 @@ builder_handback_at: 2026-11-26T00:18:52Z
 integration_at: 2026-11-26T00:19:23Z
 review_at: 2026-11-26T00:22:42Z
 commit: bbfea807459e39c6e4fa19852e2c58ba566637f7
+heavy_verified_at: 2026-11-26T00:28:14Z
+heavy_verified_revision: 46836dfef8e9d825bd8a51c040c9cf860c46b7b4
+completed_at: 2026-11-26T00:29:01Z
+release_at: 2026-11-26T00:29:01Z
 ---
 # Match board executable names exactly before restart
 ## What
@@ -35,7 +39,7 @@ Use an exact executable basename match in `skills/do-work-board/tools/run-kanban
 **Validation:** User confirmed.
 
 ## Context
-Accepted finding F1 from [the proposal report](../../ai-reports/2026-11-26_0041_proposal-repository-fix-priorities/index.html#f1), rated high impact. The fix narrows the existing signal decision.
+Accepted finding F1 from [the proposal report](../../../ai-reports/2026-11-26_0041_proposal-repository-fix-priorities/index.html#f1), rated high impact. The fix narrows the existing signal decision.
 
 ## Required Lessons — Dropped for Budget
 - `_dev/primes/lessons-shell-commands.md` (9,341 tokens) covers shipped shell and exported-function fixtures.
@@ -45,7 +49,7 @@ Both index entries have partial family coverage and exceed the 2,000-token budge
 - [x] **[PLAN]:** (Agent: Read listed `prime_files` and agent rules. Write brief technical approach here. Do not write code yet.)
 - [x] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
 - [x] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
-*Source: [Original request](../user-requests/UR-191/input.md)*
+*Source: [Original request](input.md)*
 
 ## Triage
 
@@ -134,3 +138,27 @@ The board restart command leaves unrelated listeners alone and can restart eithe
 - `staged-skills` — `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane staged-skills`. _dev/tests/contracts/queue-kanban.sh matched subtree _dev/tests; skills/do-work-board/tools/run-kanban.sh matched subtree skills.
 - `updater` — `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane updater`. _dev/tests/contracts/queue-kanban.sh matched subtree _dev/tests.
 - `installer` — `env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null bash _dev/tests/maintainer-verify.sh --heavy-lane installer`. _dev/tests/contracts/queue-kanban.sh matched subtree _dev/tests.
+
+## Heavy Verification Result
+
+- Target revision `bbfea807459e39c6e4fa19852e2c58ba566637f7`
+- Execution revision `46836dfef8e9d825bd8a51c040c9cf860c46b7b4`
+
+The typed runner executed the shared lanes at the final integrated tree with Chrome 158.0.8127.37. Both saved plans matched their recomputation.
+
+- `queue-kanban-javascript` — executed, exit 0, 7s, not skipped.
+- `queue-kanban-browser` — executed, exit 0, 70s, not skipped.
+- `do-work-cli-integrations` — executed, exit 0, 64s, not skipped.
+- `staged-skills` — executed, exit 0, 31s, not skipped.
+- `updater` — executed, exit 0, 68s, not skipped.
+- `installer` — executed, exit 0, 30s, not skipped.
+
+## Timing
+
+Observed 2026-11-26T00:19:43Z to 2026-11-26T00:28:14Z: 8m 31s total, 7m 30s attributed across 2 events, 1m 01s unattributed.
+
+| Category | Elapsed | Events |
+| --- | --- | --- |
+| verification-gate | 7m 30s | 2 |
+
+Slowest command: verification-gate / Joint heavy verification (shared with REQ-757), 5m 01s, exit 0, .
