@@ -10,6 +10,12 @@ For the complete release history, read this file and the archives below from new
 - [0.50.0 through 0.64.1](https://github.com/knews2019/skill-do-work/blob/main/docs/changelog/CHANGELOG-2026-04-13-up-to-v0.64.1.md)
 - [0.1.0 through 0.49.0](https://github.com/knews2019/skill-do-work/blob/main/docs/changelog/CHANGELOG-2026-04-07-up-to-v0.49.0.md)
 
+## 0.333.0 — Product Launch Brief Joins the Report Gallery (2026-11-26)
+
+Use Product Launch Brief to show a product trial and the team decisions needed to launch it.
+
+- The City Postcards example follows one collectible from the interactive trial into the newsroom workflow. The gallery includes a two-face preview and a reusable design starter.
+
 ## 0.332.7 — Static Galleries Use the Installed Layout After an Upgrade (2026-11-26)
 
 Version-changing updates refresh the static report gallery with the installed layout. Projects coming from an older updater can refresh their existing gallery once with the command in the AI report guide.
