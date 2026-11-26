@@ -1,0 +1,9 @@
+# Integrate Product Launch Brief
+
+Wave 1 consists of REQ-764 only. No requests set aside. Use the T3 builder branch t3/product-launch-brief and this directory’s REQ-764-handback.md. Confirm the branch and SHA from the landed handback. The main checkout is the integration checkout. Entry is read-only advance REQ-764. The coordinator owns recovery and Step 10.
+
+Preflight evidence is in REQ-764-preflight.md and REQ-764-preflight-advance.json. Follow the coordinated integration steps through Step 9, including scoped staging before saving the merge base, post-merge qualification, focused gallery/installer checks and repository gate, review, and the shipped-suite release procedure. Use the handback's actual implementation range, verified artifacts and timing. Write actual commands and outcomes to the progress record. No push.
+
+Check original public assets, real offline sample, both faces visible in the static preview, accessible flip in both directions, reduced motion, responsive demo-before-workflow order, reused identifying detail, owner and decision linkage. Exercise actual named-design resolution. Confirm the gallery's preview, open and reuse affordances. The user’s two mid-run notes and Claude Opus design-instruction review are recorded in the working request and builder brief. Verify their coverage. Record any deviation. Stop after committed release and finalization; the coordinator handles selection, checkpoint and cleanup.
+
+Check the reuse boundary explicitly. Resolve the named design and read the directions a future author receives. They should work for a product without collectible cards. Flip behavior and the both-faces preview belong to this worked example only. A booking brief, for example, should be able to demonstrate choosing a time slot and trace the resulting appointment without introducing a card.
