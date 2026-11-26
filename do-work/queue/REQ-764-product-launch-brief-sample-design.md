@@ -36,3 +36,25 @@ The discussion suggested a compact version with one flippable card, a collection
 - [ ] **[UNIFY]:** Review the diff and verify the gallery entry, report, and reuse controls.
 
 *Source: [Original request](../user-requests/UR-194/input.md)*
+
+## Addendum (2026-11-26)
+
+The user approved the design guidance discussed after capture. [Follow-up request](../user-requests/UR-195/input.md)
+
+### Worked example
+
+- Place the launch premise beside the product example on wide screens. Stack them in reading order on phones, with the example in reach before the operating plan.
+- Use a readable editorial type hierarchy, with prose around 65 characters per line. Repeat the example’s title and imagery in the collection and workflow so readers recognize the same item.
+- Give the collectible a distinct outline. Present the workflow as ordered steps with the responsible person beside each one. Set the launch questions as a short list. Use one consistent accent for controls and focus.
+- If using the proposed two-sided card, give it a labeled button operable by touch and keyboard. Keep the flip brief and user-triggered. Switch faces immediately when reduced motion is enabled. Show both faces together in the static gallery preview.
+- Keep the example self-contained and use original local assets. Label the assumptions behind any illustrative figures.
+
+### Reusable guidance for “Use this design”
+
+- Let the reader try one representative part of the product.
+- Follow that same example through the people and steps needed to deliver it.
+- End with the launch decisions those steps expose.
+
+### Verification
+
+Open the sample at desktop and phone widths. Follow the same item from the demo into the workflow and identify a launch question that arises from one of its steps. For a two-sided card, check both directions by keyboard and touch, verify visible keyboard focus, and verify that reduced motion switches faces immediately. Check that the gallery preview communicates the interaction before the reader opens the report.
