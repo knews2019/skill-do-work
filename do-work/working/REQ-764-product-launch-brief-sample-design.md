@@ -1,7 +1,7 @@
 ---
 id: REQ-764
 title: 'Add Product Launch Brief to Sample Designs'
-status: pending
+status: claimed
 created_at: 2026-11-26T19:38:31Z
 user_request: UR-194
 domain: ui-design
@@ -10,6 +10,7 @@ impact: impact-user-visible
 effort_estimate: effort-substantive
 tdd: false
 maintenance: false
+claimed_at: 2026-11-26T19:44:59Z
 ---
 # Add Product Launch Brief to Sample Designs
 
