@@ -1,7 +1,7 @@
 ---
 id: REQ-762
 title: 'Let capture-files create the UR asset directory'
-status: pending
+status: claimed
 created_at: 2026-11-26T11:18:47Z
 user_request: UR-192
 domain: general
@@ -11,6 +11,7 @@ impact: impact-user-visible
 effort_estimate: effort-mechanical
 tdd: false
 maintenance: true
+claimed_at: 2026-11-26T11:20:41Z
 ---
 # Let capture-files create the UR asset directory
 ## What
