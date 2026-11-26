@@ -128,7 +128,13 @@ Copy a sample’s design command to use it for the most recent completed work. A
 
 After collecting evidence and before building visuals, the writer runs the installed CLI's `ai-report-gallery --list` and ranks the samples against the reader's main question and the evidence. It uses the named sample as the primary design when supplied, or the best fit otherwise. It reads the selected and best-fitting records and adapts their Borrow moves using the report's own facts and kit styling. For example, when a count rises and its rate falls, separate charts with the same dates and units in each title let the reader see both changes. The writer records the chosen sample name or `none` in the page head's `ai-report-gallery-sample` meta tag and explains the choice in its summary. Completed-work reports, proposal and root-cause briefs, and revisions all make this choice when they write a new `index.html`.
 
-First install and file-writing updates run by the gallery-aware updater regenerate the page automatically. On the first upgrade from a version without gallery support, the previous updater installs the samples. It leaves a missing page absent and preserves a hand-made page silently. Run the same Just update command again to create the missing page, or run `ai-report gallery`. An already-current update leaves an existing gallery alone. When the gallery-aware installer or updater attempts a refresh, a hand-made page stays in place and a refusal or write failure produces one gallery warning.
+After upgrading from an older updater, the static page may still show samples first or be missing. Run this command once from your project root to regenerate the page with the installed CLI.
+
+```sh
+bash .claude/skills/do-work/tools/do-work-cli.sh --repo-root . ai-report-gallery
+```
+
+Future version-changing updates regenerate the static page with the newly installed layout during the same command. A gallery-aware first install also generates the page. An already-current update creates a missing page and leaves an existing one in place. If an automatic refresh encounters a hand-made page or a write failure, it preserves the page and prints one gallery warning.
 
 ### Feedback-guided generation in T3 Code
 

@@ -149,6 +149,8 @@ func newSuiteSourceTree(t *testing.T, suiteVersion string) string {
 	writeTestFile(t, filepath.Join(sourceRoot, "skills", "do-work-board", "justfile.template"), justfileTemplateBytes)
 	writeTestFile(t, filepath.Join(sourceRoot, "skills", "do-work", "hooks", "hooks.json"), coreHooksFragmentBytes)
 	writeTestFile(t, filepath.Join(sourceRoot, "skills", "do-work", "agent-instructions.template.md"), agentInstructionsTemplateBytes)
+	layout := readTestFile(t, filepath.Join("..", "toolboxcommands", "report_gallery_page.gohtml"))
+	writeTestFile(t, filepath.Join(sourceRoot, "skills", "do-work", "tools", "do-work-cli", "internal", "toolboxcommands", "report_gallery_page.gohtml"), layout)
 	sampleRoot := filepath.Join(sourceRoot, "skills", "do-work-toolbox", "docs", "report-gallery", "version-sample")
 	writeTestFile(t, filepath.Join(sampleRoot, "sample.md"), `---
 title: Suite sample `+suiteVersion+`

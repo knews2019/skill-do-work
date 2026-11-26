@@ -342,7 +342,7 @@ func serveReportGallery(repositoryRoot string, repository *os.Root, toolboxDocs 
 		return reportGalleryFailure(reportsFolder, err)
 	}
 	live := &reportGalleryLivePage{}
-	page, err := renderReportGalleryPage(repositoryRoot, repository, toolboxDocs, samples, bundles, live)
+	page, err := renderReportGalleryPage(reportGalleryPageTemplate, repositoryRoot, repository, toolboxDocs, samples, bundles, live)
 	if err != nil {
 		return reportGalleryFailure(ReportGalleryPageFile, err)
 	}

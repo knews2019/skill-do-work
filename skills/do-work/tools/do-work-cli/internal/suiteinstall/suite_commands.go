@@ -111,7 +111,7 @@ func handleInstallSuite(context commandruntime.ExecutionContext, arguments []str
 		if hint := toolboxcommands.ReportOrganizeHint(context.RepositoryRoot); hint != "" && narration != nil {
 			fmt.Fprintln(narration, hint)
 		}
-		refreshInstalledReportGallery(context.RepositoryRoot, narration)
+		refreshInstalledReportGallery(context.RepositoryRoot, narration, false)
 	}
 	return installResultToCommandResult(CommandInstallSuite, context.RepositoryRoot, result)
 }
@@ -195,7 +195,7 @@ func handleUpdateSuite(context commandruntime.ExecutionContext, arguments []stri
 			refresh = os.IsNotExist(err)
 		}
 		if refresh {
-			refreshInstalledReportGallery(context.RepositoryRoot, narration)
+			refreshInstalledReportGallery(context.RepositoryRoot, narration, result.LocalVersion != result.RemoteVersion)
 		}
 	}
 	commandResult := resultmodel.CommandResult{
@@ -224,11 +224,8 @@ func handleUpdateSuite(context commandruntime.ExecutionContext, arguments []stri
 // The gallery is a derived project page. Run its trusted command after verification,
 // outside the suite's managed-file and recovery boundary. The command reads the installed
 // toolbox data without executing code from the incoming archive.
-func refreshInstalledReportGallery(repositoryRoot string, narration io.Writer) {
-	result := toolboxcommands.Handlers()[toolboxcommands.CommandAIReportGallery](commandruntime.ExecutionContext{
-		RepositoryRoot: repositoryRoot,
-		Format:         resultmodel.FormatText,
-	}, nil)
+func refreshInstalledReportGallery(repositoryRoot string, narration io.Writer, versionChanged bool) {
+	result := toolboxcommands.RefreshReportGallery(repositoryRoot, versionChanged)
 	if result.Outcome == resultmodel.OutcomeSuccess {
 		return
 	}
